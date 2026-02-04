@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: your_username
+      POSTGRES_PASSWORD: your_secure_password_here
+      POSTGRES_DB: moneyshyft
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U your_username"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  node:
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://your_username:your_secure_password_here@postgres:5432/moneyshyft
+      NODE_ENV: development
+    restart: unless-stopped
+    volumes:
+      - ./src:/app
+      - /app/node_modules
+
+  # NOTE: nginx is only for local development
+  # On remote server, nginx runs directly on the host (not containerized)
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - node
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
