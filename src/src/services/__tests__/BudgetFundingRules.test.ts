@@ -4,6 +4,12 @@ let nextTransactionLookup: Row | null = null;
 let insertedIncomeAssignment: Row | null = null;
 let accountInsertPayload: Row | null = null;
 let transactionInsertPayload: Row | null = null;
+let incomeAssignmentsTotal = 0;
+let accountBalanceAssignmentsTotal = 0;
+let savingsReserveTotal = 0;
+let incomeAssignmentsAndWhereArgs: Array<[string, string, string]> = [];
+let accountBalanceAssignmentsWhereArgs: Array<[string, string, string]> = [];
+let extraMoneyReceivedDateWhere: Array<[string, string, string]> = [];
 
 const fakeKnex: any = (tableName: string) => {
   if (tableName === 'transactions as t') {
@@ -25,8 +31,16 @@ const fakeKnex: any = (tableName: string) => {
   }
 
   if (tableName === 'income_assignments') {
+    let andWhereArgs: Array<[string, string, string]> = [];
     return {
       where() { return this; },
+      andWhere(field: string, op: string, value: string) {
+        andWhereArgs.push([field, op, value]);
+        incomeAssignmentsAndWhereArgs = andWhereArgs;
+        return this;
+      },
+      sum() { return this; },
+      first() { return { total: incomeAssignmentsTotal }; },
       select() { return []; },
       insert(payload: Row) {
         insertedIncomeAssignment = payload;
@@ -38,6 +52,37 @@ const fakeKnex: any = (tableName: string) => {
           }],
         };
       },
+    };
+  }
+
+  if (tableName === 'account_balance_assignments') {
+    return {
+      where(arg?: any) {
+        if (typeof arg === 'function') {
+          arg(this);
+        }
+        return this;
+      },
+      whereNull() { return this; },
+      orWhere(field: string, op: string, value: string) {
+        accountBalanceAssignmentsWhereArgs.push([field, op, value]);
+        return this;
+      },
+      sum() { return this; },
+      first() { return { total: accountBalanceAssignmentsTotal }; },
+    };
+  }
+
+  if (tableName === 'extra_money_entries') {
+    return {
+      where(fieldOrObj: any, op?: string, value?: string) {
+        if (typeof fieldOrObj === 'string' && op && value) {
+          extraMoneyReceivedDateWhere.push([fieldOrObj, op, value]);
+        }
+        return this;
+      },
+      sum() { return this; },
+      first() { return { total: savingsReserveTotal }; },
     };
   }
 
@@ -102,6 +147,12 @@ describe('Budget funding rules', () => {
     insertedIncomeAssignment = null;
     accountInsertPayload = null;
     transactionInsertPayload = null;
+    incomeAssignmentsTotal = 0;
+    accountBalanceAssignmentsTotal = 0;
+    savingsReserveTotal = 0;
+    incomeAssignmentsAndWhereArgs = [];
+    accountBalanceAssignmentsWhereArgs = [];
+    extraMoneyReceivedDateWhere = [];
     jest.clearAllMocks();
   });
 
@@ -168,5 +219,28 @@ describe('Budget funding rules', () => {
     expect(transactionInsertPayload?.amount).toBe(250);
     expect(transactionInsertPayload?.notes).toBe('Created from account opening balance');
     expect(recalcSpy).toHaveBeenCalledWith('acct-1', 'house-1', fakeKnex);
+  });
+
+  it('carries Ready to Assign forward month-to-month using cumulative math', async () => {
+    const grossSpy = jest
+      .spyOn(AssignmentService as any, 'getGrossIncome')
+      .mockResolvedValue(1383.92);
+
+    const outflowSpy = jest
+      .spyOn(AssignmentService as any, 'getOnBudgetToOffBudgetOutflow')
+      .mockResolvedValue(0);
+
+    incomeAssignmentsTotal = 905.0;
+    accountBalanceAssignmentsTotal = 0;
+    savingsReserveTotal = 0;
+
+    const toBeAssigned = await AssignmentService.getToBeAssigned('house-1', '2026-02');
+
+    expect(toBeAssigned).toBeCloseTo(478.92, 2);
+    expect(grossSpy).toHaveBeenCalled();
+    expect(outflowSpy).toHaveBeenCalled();
+    expect(incomeAssignmentsAndWhereArgs).toContainEqual(['month', '<=', '2026-02']);
+    expect(accountBalanceAssignmentsWhereArgs).toContainEqual(['month', '<=', '2026-02']);
+    expect(extraMoneyReceivedDateWhere).toContainEqual(['received_date', '<=', '2026-02-28']);
   });
 });

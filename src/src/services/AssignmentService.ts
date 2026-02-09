@@ -65,7 +65,6 @@ export class AssignmentService {
   // - transfer inflows from off-budget -> on-budget
   private static async getGrossIncome(
     householdId: string,
-    monthStart: string,
     monthEnd: string
   ): Promise<number> {
     const result = await knex('transactions as t')
@@ -74,7 +73,7 @@ export class AssignmentService {
       .leftJoin('transactions as tt', 't.transfer_transaction_id', 'tt.id')
       .leftJoin('accounts as ta', 'tt.account_id', 'ta.id')
       .where('t.household_id', householdId)
-      .whereBetween('t.transaction_date', [monthStart, monthEnd])
+      .where('t.transaction_date', '<=', monthEnd)
       .sum({
         total: knex.raw(`
           CASE
@@ -108,7 +107,6 @@ export class AssignmentService {
   // Outflows from on-budget -> off-budget should immediately reduce RTA.
   private static async getOnBudgetToOffBudgetOutflow(
     householdId: string,
-    monthStart: string,
     monthEnd: string
   ): Promise<number> {
     const result = await knex('transactions as t')
@@ -116,7 +114,7 @@ export class AssignmentService {
       .leftJoin('transactions as tt', 't.transfer_transaction_id', 'tt.id')
       .leftJoin('accounts as ta', 'tt.account_id', 'ta.id')
       .where('t.household_id', householdId)
-      .whereBetween('t.transaction_date', [monthStart, monthEnd])
+      .where('t.transaction_date', '<=', monthEnd)
       .sum({
         total: knex.raw(`
           CASE
@@ -459,28 +457,32 @@ export class AssignmentService {
     householdId: string,
     month: string
   ): Promise<number> {
-    const { monthStart, monthEnd } = this.getMonthRange(month);
-    const totalIncome = await this.getGrossIncome(householdId, monthStart, monthEnd);
-    const offBudgetTransferOutflow = await this.getOnBudgetToOffBudgetOutflow(householdId, monthStart, monthEnd);
+    const { monthEnd } = this.getMonthRange(month);
+    const totalIncome = await this.getGrossIncome(householdId, monthEnd);
+    const offBudgetTransferOutflow = await this.getOnBudgetToOffBudgetOutflow(householdId, monthEnd);
 
-    // Get all income assignments for the month
+    // Cumulative assignments through the selected month preserve carry-forward behavior.
     const assignedResult = await knex('income_assignments')
-      .where({ household_id: householdId, month })
+      .where({ household_id: householdId })
+      .andWhere('month', '<=', month)
       .sum('amount as total')
       .first();
     const totalIncomeAssigned = Number(assignedResult?.total || 0);
 
-    // Opening balance assignments are a one-time pool; subtract all-time to prevent reappearing each month
+    // Opening balance assignments are cumulative through selected month.
     const assignedBalancesResult = await knex('account_balance_assignments')
       .where({ household_id: householdId })
+      .where((qb) => {
+        qb.whereNull('month').orWhere('month', '<=', month);
+      })
       .sum('amount as total')
       .first();
     const totalAssignedBalances = Number(assignedBalancesResult?.total || 0);
 
-    // Get Savings Reserve assignments (they reduce available funds)
+    // Savings reserve reduces assignable funds cumulatively.
     const savingsReserveResult = await knex('extra_money_entries')
       .where({ household_id: householdId })
-      .whereBetween('received_date', [monthStart, monthEnd])
+      .where('received_date', '<=', monthEnd)
       .sum('savings_reserve as total')
       .first();
 

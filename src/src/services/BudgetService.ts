@@ -91,7 +91,6 @@ interface BudgetSummary {
 export class BudgetService {
   private static async getGrossIncomeForMonth(
     householdId: string,
-    monthStart: Date,
     monthEnd: Date
   ): Promise<number> {
     const result = await knex('transactions as t')
@@ -100,7 +99,7 @@ export class BudgetService {
       .leftJoin('transactions as tt', 't.transfer_transaction_id', 'tt.id')
       .leftJoin('accounts as ta', 'tt.account_id', 'ta.id')
       .where('t.household_id', householdId)
-      .whereBetween('t.transaction_date', [monthStart, monthEnd])
+      .where('t.transaction_date', '<=', monthEnd)
       .sum({
         total: knex.raw(`
           CASE
@@ -133,7 +132,6 @@ export class BudgetService {
 
   private static async getOnBudgetToOffBudgetOutflowForMonth(
     householdId: string,
-    monthStart: Date,
     monthEnd: Date
   ): Promise<number> {
     const result = await knex('transactions as t')
@@ -141,7 +139,7 @@ export class BudgetService {
       .leftJoin('transactions as tt', 't.transfer_transaction_id', 'tt.id')
       .leftJoin('accounts as ta', 'tt.account_id', 'ta.id')
       .where('t.household_id', householdId)
-      .whereBetween('t.transaction_date', [monthStart, monthEnd])
+      .where('t.transaction_date', '<=', monthEnd)
       .sum({
         total: knex.raw(`
           CASE
@@ -549,7 +547,7 @@ export class BudgetService {
 
     const savingsReserveResult = await knex('extra_money_entries')
       .where({ household_id: householdId })
-      .whereBetween('received_date', [monthStart, monthEnd])
+      .where('received_date', '<=', monthEnd)
       .sum('savings_reserve as total')
       .first();
 
@@ -560,20 +558,24 @@ export class BudgetService {
     const totalPlannedIncome = await IncomeService.getTotalMonthlyIncome(householdId);
 
     // Gross inflow into the on-budget world.
-    const totalRealIncome = await BudgetService.getGrossIncomeForMonth(householdId, monthStart, monthEnd);
-    const offBudgetTransferOutflow = await BudgetService.getOnBudgetToOffBudgetOutflowForMonth(householdId, monthStart, monthEnd);
+    const totalRealIncome = await BudgetService.getGrossIncomeForMonth(householdId, monthEnd);
+    const offBudgetTransferOutflow = await BudgetService.getOnBudgetToOffBudgetOutflowForMonth(householdId, monthEnd);
 
     const monthString = `${month.getUTCFullYear()}-${String(month.getUTCMonth() + 1).padStart(2, '0')}`;
 
     const incomeAssignedResult = await knex('income_assignments')
-      .where({ household_id: householdId, month: monthString })
+      .where({ household_id: householdId })
+      .andWhere('month', '<=', monthString)
       .sum('amount as total')
       .first();
     const totalIncomeAssigned = Number(incomeAssignedResult?.total || 0);
 
-    // Account balance assignments are a one-time pool; subtract all-time to avoid reappearing each month
+    // Account balance assignments are cumulative through selected month.
     const assignedBalancesResult = await knex('account_balance_assignments')
       .where({ household_id: householdId })
+      .where((qb) => {
+        qb.whereNull('month').orWhere('month', '<=', monthString);
+      })
       .sum('amount as total')
       .first();
     const totalAssignedBalances = Number(assignedBalancesResult?.total || 0);
