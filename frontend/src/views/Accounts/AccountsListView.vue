@@ -104,6 +104,19 @@
                 placeholder="0.00"
               />
             </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Budget Scope</label>
+              <select
+                v-model="formData.is_on_budget"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option :value="true">On Budget</option>
+                <option :value="false">Off Budget</option>
+              </select>
+              <p class="text-xs text-gray-500 mt-1">
+                On-budget accounts affect Ready to Assign. Off-budget accounts are tracking only.
+              </p>
+            </div>
             <div class="flex gap-2 pt-4">
               <button
                 type="button"
@@ -170,6 +183,7 @@ const formData = ref<CreateAccountData>({
   name: '',
   type: 'checking',
   starting_balance: 0,
+  is_on_budget: true,
 });
 
 const accounts = computed(() => accountsStore.accounts);
@@ -201,6 +215,7 @@ function editAccount(account: Account) {
   formData.value = {
     name: account.name,
     type: account.type,
+    is_on_budget: account.is_on_budget,
     is_active: account.is_active,
   };
 }
@@ -212,6 +227,7 @@ function closeModal() {
     name: '',
     type: 'checking',
     starting_balance: 0,
+    is_on_budget: true,
   };
 }
 
@@ -226,7 +242,7 @@ async function handleSubmit() {
       closeModal();
 
       // If account has a positive balance, prompt for balance assignment
-      if (newAccount && newAccount.current_balance > 0) {
+      if (newAccount && newAccount.current_balance > 0 && newAccount.is_on_budget) {
         newlyCreatedAccount.value = newAccount;
         showBalanceAssignment.value = true;
       }

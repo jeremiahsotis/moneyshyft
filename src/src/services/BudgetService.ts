@@ -89,6 +89,74 @@ interface BudgetSummary {
 }
 
 export class BudgetService {
+  private static async getGrossIncomeForMonth(
+    householdId: string,
+    monthStart: Date,
+    monthEnd: Date
+  ): Promise<number> {
+    const result = await knex('transactions as t')
+      .join('households as h', 't.household_id', 'h.id')
+      .join('accounts as a', 't.account_id', 'a.id')
+      .leftJoin('transactions as tt', 't.transfer_transaction_id', 'tt.id')
+      .leftJoin('accounts as ta', 'tt.account_id', 'ta.id')
+      .where('t.household_id', householdId)
+      .whereBetween('t.transaction_date', [monthStart, monthEnd])
+      .sum({
+        total: knex.raw(`
+          CASE
+            WHEN t.amount <= 0 THEN 0
+            WHEN t.transfer_transaction_id IS NULL THEN
+              CASE
+                WHEN a.is_on_budget = false THEN 0
+                WHEN t.payee = 'Initial Funding' THEN
+                  CASE
+                    WHEN h.setup_wizard_completed_at IS NULL
+                      OR t.transaction_date <= DATE(h.setup_wizard_completed_at)
+                      THEN t.amount
+                    ELSE 0
+                  END
+                ELSE t.amount
+              END
+            ELSE
+              CASE
+                WHEN a.is_on_budget = true AND COALESCE(ta.is_on_budget, false) = false
+                  THEN t.amount
+                ELSE 0
+              END
+          END
+        `)
+      })
+      .first();
+
+    return Number(result?.total || 0);
+  }
+
+  private static async getOnBudgetToOffBudgetOutflowForMonth(
+    householdId: string,
+    monthStart: Date,
+    monthEnd: Date
+  ): Promise<number> {
+    const result = await knex('transactions as t')
+      .join('accounts as a', 't.account_id', 'a.id')
+      .leftJoin('transactions as tt', 't.transfer_transaction_id', 'tt.id')
+      .leftJoin('accounts as ta', 'tt.account_id', 'ta.id')
+      .where('t.household_id', householdId)
+      .whereBetween('t.transaction_date', [monthStart, monthEnd])
+      .sum({
+        total: knex.raw(`
+          CASE
+            WHEN t.transfer_transaction_id IS NULL THEN 0
+            WHEN a.is_on_budget = true AND COALESCE(ta.is_on_budget, false) = false AND t.amount < 0
+              THEN ABS(t.amount)
+            ELSE 0
+          END
+        `)
+      })
+      .first();
+
+    return Number(result?.total || 0);
+  }
+
   /**
    * Get or create budget month
    * Automatically copies allocations from previous month if creating new month
@@ -491,24 +559,9 @@ export class BudgetService {
     // Get total monthly PLANNED income from income sources
     const totalPlannedIncome = await IncomeService.getTotalMonthlyIncome(householdId);
 
-    // Get total monthly ACTUAL income from transactions
-    // (monthStart and monthEnd already declared above)
-    const realIncomeResult = await knex('transactions')
-      .where({ household_id: householdId })
-      .whereBetween('transaction_date', [monthStart, monthEnd])
-      .where('amount', '>', 0)
-      .sum('amount as total')
-      .first();
-
-    const totalRealIncome = Number(realIncomeResult?.total || 0);
-
-    // Get total account starting balances
-    const accountBalancesResult = await knex('accounts')
-      .where({ household_id: householdId, is_active: true })
-      .sum('starting_balance as total')
-      .first();
-
-    const totalAccountBalances = Number(accountBalancesResult?.total || 0);
+    // Gross inflow into the on-budget world.
+    const totalRealIncome = await BudgetService.getGrossIncomeForMonth(householdId, monthStart, monthEnd);
+    const offBudgetTransferOutflow = await BudgetService.getOnBudgetToOffBudgetOutflowForMonth(householdId, monthStart, monthEnd);
 
     const monthString = `${month.getUTCFullYear()}-${String(month.getUTCMonth() + 1).padStart(2, '0')}`;
 
@@ -526,9 +579,8 @@ export class BudgetService {
     const totalAssignedBalances = Number(assignedBalancesResult?.total || 0);
 
     // Calculate income variance and "To Be Assigned"
-    // Available = (Real Income + Opening Balances) - (Income Assigned this month + Opening Balance Assigned all-time + Savings Reserve this month)
     const incomeVariance = totalRealIncome - totalPlannedIncome;
-    const toBeAssigned = (totalRealIncome + totalAccountBalances) - (totalIncomeAssigned + totalAssignedBalances + totalSavingsReserve);
+    const toBeAssigned = (totalRealIncome - offBudgetTransferOutflow) - (totalIncomeAssigned + totalAssignedBalances + totalSavingsReserve);
 
     // Calculate Goals summary (virtual section)
     const goalsContributionsResult = await knex('goal_contributions')

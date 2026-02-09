@@ -10,6 +10,7 @@ interface Account {
   type: 'checking' | 'savings' | 'credit' | 'cash' | 'investment';
   current_balance: number;
   starting_balance: number;
+  is_on_budget: boolean;
   is_active: boolean;
   previous_balance_at_start?: number;
   month_start_date?: Date;
@@ -21,11 +22,13 @@ interface CreateAccountData {
   name: string;
   type: Account['type'];
   starting_balance?: number;
+  is_on_budget?: boolean;
   is_active?: boolean;
 }
 
 interface UpdateAccountData {
   name?: string;
+  is_on_budget?: boolean;
   is_active?: boolean;
 }
 
@@ -67,7 +70,7 @@ export class AccountService {
     householdId: string,
     data: CreateAccountData
   ): Promise<Account> {
-    const { name, type, starting_balance = 0, is_active = true } = data;
+    const { name, type, starting_balance = 0, is_on_budget = true, is_active = true } = data;
 
     // Initialize credit card tracking fields if this is a credit card account
     // If starting with existing debt (negative balance), treat it as previous balance
@@ -76,17 +79,42 @@ export class AccountService {
       month_start_date: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     } : {};
 
-    const [account] = await knex('accounts')
-      .insert({
-        household_id: householdId,
-        name,
-        type,
-        current_balance: starting_balance,
-        starting_balance,
-        is_active,
-        ...creditCardFields
-      })
-      .returning('*');
+    const account = await knex.transaction(async (trx: Knex.Transaction) => {
+      const [created] = await trx('accounts')
+        .insert({
+          household_id: householdId,
+          name,
+          type,
+          current_balance: starting_balance,
+          starting_balance: 0, // Opening balance is persisted as a one-time transaction.
+          is_on_budget,
+          is_active,
+          ...creditCardFields
+        })
+        .returning('*');
+
+      if (starting_balance !== 0) {
+        await trx('transactions').insert({
+          household_id: householdId,
+          account_id: created.id,
+          category_id: null,
+          payee: 'Initial Funding',
+          amount: starting_balance,
+          transaction_date: new Date().toISOString().split('T')[0],
+          notes: 'Created from account opening balance',
+          is_cleared: false,
+          is_reconciled: false,
+          created_by_user_id: null,
+          parent_transaction_id: null,
+          is_split_child: false,
+          transfer_transaction_id: null
+        });
+
+        await this.recalculateBalance(created.id, householdId, trx);
+      }
+
+      return created as Account;
+    });
 
     logger.info(`Account created: ${account.id} for household: ${householdId}`);
 

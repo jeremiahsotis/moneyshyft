@@ -31,6 +31,7 @@ export interface Account {
   type: 'checking' | 'savings' | 'credit' | 'cash' | 'investment';
   current_balance: number;
   starting_balance: number;
+  is_on_budget: boolean;
   is_active: boolean;
   previous_balance_at_start?: number;
   month_start_date?: string;
@@ -43,6 +44,7 @@ export interface CreateAccountData {
   type: 'checking' | 'savings' | 'credit' | 'cash' | 'investment';
   current_balance?: number;
   starting_balance?: number;
+  is_on_budget?: boolean;
   is_active?: boolean;
 }
 

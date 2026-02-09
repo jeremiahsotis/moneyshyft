@@ -5,6 +5,12 @@
       <div>
         <h3 class="text-lg font-semibold text-gray-900">{{ account.name }}</h3>
         <p class="text-sm text-gray-500 capitalize">{{ account.type }}</p>
+        <p
+          class="text-xs mt-1 font-medium"
+          :class="account.is_on_budget ? 'text-emerald-700' : 'text-slate-500'"
+        >
+          {{ account.is_on_budget ? 'On Budget' : 'Off Budget' }}
+        </p>
       </div>
       <span :class="accountTypeIcon" class="text-2xl">
         {{ getAccountIcon(account.type) }}

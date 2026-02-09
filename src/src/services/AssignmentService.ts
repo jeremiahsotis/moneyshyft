@@ -46,6 +46,92 @@ export interface TransactionWithAvailable {
 }
 
 export class AssignmentService {
+  private static getMonthRange(month: string): { monthStart: string; monthEnd: string } {
+    const [year, monthPart] = month.split('-');
+    const monthNum = parseInt(monthPart, 10) - 1;
+    const yearNum = parseInt(year, 10);
+
+    const startDate = new Date(Date.UTC(yearNum, monthNum, 1));
+    const endDate = new Date(Date.UTC(yearNum, monthNum + 1, 0, 23, 59, 59, 999));
+
+    return {
+      monthStart: startDate.toISOString().split('T')[0],
+      monthEnd: endDate.toISOString().split('T')[0],
+    };
+  }
+
+  // Gross budget inflows that can fund RTA:
+  // - direct positive transactions in on-budget accounts
+  // - transfer inflows from off-budget -> on-budget
+  private static async getGrossIncome(
+    householdId: string,
+    monthStart: string,
+    monthEnd: string
+  ): Promise<number> {
+    const result = await knex('transactions as t')
+      .join('households as h', 't.household_id', 'h.id')
+      .join('accounts as a', 't.account_id', 'a.id')
+      .leftJoin('transactions as tt', 't.transfer_transaction_id', 'tt.id')
+      .leftJoin('accounts as ta', 'tt.account_id', 'ta.id')
+      .where('t.household_id', householdId)
+      .whereBetween('t.transaction_date', [monthStart, monthEnd])
+      .sum({
+        total: knex.raw(`
+          CASE
+            WHEN t.amount <= 0 THEN 0
+            WHEN t.transfer_transaction_id IS NULL THEN
+              CASE
+                WHEN a.is_on_budget = false THEN 0
+                WHEN t.payee = 'Initial Funding' THEN
+                  CASE
+                    WHEN h.setup_wizard_completed_at IS NULL
+                      OR t.transaction_date <= DATE(h.setup_wizard_completed_at)
+                      THEN t.amount
+                    ELSE 0
+                  END
+                ELSE t.amount
+              END
+            ELSE
+              CASE
+                WHEN a.is_on_budget = true AND COALESCE(ta.is_on_budget, false) = false
+                  THEN t.amount
+                ELSE 0
+              END
+          END
+        `)
+      })
+      .first();
+
+    return Number(result?.total || 0);
+  }
+
+  // Outflows from on-budget -> off-budget should immediately reduce RTA.
+  private static async getOnBudgetToOffBudgetOutflow(
+    householdId: string,
+    monthStart: string,
+    monthEnd: string
+  ): Promise<number> {
+    const result = await knex('transactions as t')
+      .join('accounts as a', 't.account_id', 'a.id')
+      .leftJoin('transactions as tt', 't.transfer_transaction_id', 'tt.id')
+      .leftJoin('accounts as ta', 'tt.account_id', 'ta.id')
+      .where('t.household_id', householdId)
+      .whereBetween('t.transaction_date', [monthStart, monthEnd])
+      .sum({
+        total: knex.raw(`
+          CASE
+            WHEN t.transfer_transaction_id IS NULL THEN 0
+            WHEN a.is_on_budget = true AND COALESCE(ta.is_on_budget, false) = false AND t.amount < 0
+              THEN ABS(t.amount)
+            ELSE 0
+          END
+        `)
+      })
+      .first();
+
+    return Number(result?.total || 0);
+  }
+
   /**
    * Get all assignments for a household in a given month
    */
@@ -73,16 +159,39 @@ export class AssignmentService {
     data: CreateAssignmentData
   ): Promise<IncomeAssignment> {
     // Validate transaction belongs to household and is income
-    const transaction = await knex('transactions')
-      .where({ id: data.income_transaction_id, household_id: householdId })
+    const transaction = await knex('transactions as t')
+      .join('households as h', 't.household_id', 'h.id')
+      .join('accounts as a', 't.account_id', 'a.id')
+      .leftJoin('transactions as tt', 't.transfer_transaction_id', 'tt.id')
+      .leftJoin('accounts as ta', 'tt.account_id', 'ta.id')
+      .where({ 't.id': data.income_transaction_id, 't.household_id': householdId })
+      .select(
+        't.*',
+        knex.raw('a.is_on_budget as account_is_on_budget'),
+        knex.raw('ta.is_on_budget as counterpart_is_on_budget'),
+        knex.raw('h.setup_wizard_completed_at as setup_wizard_completed_at')
+      )
       .first();
 
     if (!transaction) {
       throw new NotFoundError('Income transaction not found');
     }
 
-    if (Number(transaction.amount) <= 0) {
-      throw new BadRequestError('Transaction must be income (positive amount)');
+    const isAssignableIncome =
+      Number(transaction.amount) > 0 &&
+      Boolean(transaction.account_is_on_budget) &&
+      (
+        transaction.payee !== 'Initial Funding' ||
+        !transaction.setup_wizard_completed_at ||
+        new Date(transaction.transaction_date) <= new Date(transaction.setup_wizard_completed_at)
+      ) &&
+      (
+        !transaction.transfer_transaction_id ||
+        !Boolean(transaction.counterpart_is_on_budget)
+      );
+
+    if (!isAssignableIncome) {
+      throw new BadRequestError('Transaction is not eligible as assignable income');
     }
 
     // Extract month from transaction date
@@ -350,34 +459,9 @@ export class AssignmentService {
     householdId: string,
     month: string
   ): Promise<number> {
-    // Use UTC to avoid timezone issues
-    const [year, monthPart] = month.split('-');
-    const monthNum = parseInt(monthPart) - 1; // Convert to 0-based
-    const yearNum = parseInt(year);
-
-    const startDate = new Date(Date.UTC(yearNum, monthNum, 1));
-    const endDate = new Date(Date.UTC(yearNum, monthNum + 1, 0, 23, 59, 59, 999));
-
-    const monthStart = startDate.toISOString().split('T')[0];
-    const monthEnd = endDate.toISOString().split('T')[0];
-
-    // Get all income transactions for the month
-    const incomeResult = await knex('transactions')
-      .where({ household_id: householdId })
-      .whereBetween('transaction_date', [monthStart, monthEnd])
-      .where('amount', '>', 0) // Income only
-      .sum('amount as total')
-      .first();
-
-    const totalIncome = Number(incomeResult?.total || 0);
-
-    // Get total account starting balances
-    const accountBalancesResult = await knex('accounts')
-      .where({ household_id: householdId, is_active: true })
-      .sum('starting_balance as total')
-      .first();
-
-    const totalAccountBalances = Number(accountBalancesResult?.total || 0);
+    const { monthStart, monthEnd } = this.getMonthRange(month);
+    const totalIncome = await this.getGrossIncome(householdId, monthStart, monthEnd);
+    const offBudgetTransferOutflow = await this.getOnBudgetToOffBudgetOutflow(householdId, monthStart, monthEnd);
 
     // Get all income assignments for the month
     const assignedResult = await knex('income_assignments')
@@ -402,9 +486,7 @@ export class AssignmentService {
 
     const totalSavingsReserve = Number(savingsReserveResult?.total || 0);
 
-    // Total Available = (Real Income + Account Balances) - (Assigned + Savings Reserve)
-    // Assigned comes from budget_allocations so it's consistent with BudgetService summary.
-    return (totalIncome + totalAccountBalances) - (totalIncomeAssigned + totalAssignedBalances + totalSavingsReserve);
+    return (totalIncome - offBudgetTransferOutflow) - (totalIncomeAssigned + totalAssignedBalances + totalSavingsReserve);
   }
 
   /**
@@ -535,24 +617,33 @@ export class AssignmentService {
     month: string,
     trx: any
   ): Promise<TransactionWithAvailable[]> {
-    // Get month date range using UTC
-    const [year, monthPart] = month.split('-');
-    const monthNum = parseInt(monthPart) - 1;
-    const yearNum = parseInt(year);
+    const { monthStart, monthEnd } = this.getMonthRange(month);
 
-    const startDate = new Date(Date.UTC(yearNum, monthNum, 1));
-    const endDate = new Date(Date.UTC(yearNum, monthNum + 1, 0, 23, 59, 59, 999));
-
-    const monthStart = startDate.toISOString().split('T')[0];
-    const monthEnd = endDate.toISOString().split('T')[0];
-
-    // Get all income transactions for month (FIFO order)
-    const transactions = await trx('transactions')
-      .where({ household_id: householdId })
-      .whereBetween('transaction_date', [monthStart, monthEnd])
-      .where('amount', '>', 0) // Income only
-      .orderBy('transaction_date', 'asc') // FIFO: oldest first
-      .select('*');
+    // Get assignable positive transactions (FIFO):
+    // - direct inflows to on-budget accounts
+    // - transfer inflows from off-budget -> on-budget
+    const transactions = await trx('transactions as t')
+      .join('households as h', 't.household_id', 'h.id')
+      .join('accounts as a', 't.account_id', 'a.id')
+      .leftJoin('transactions as tt', 't.transfer_transaction_id', 'tt.id')
+      .leftJoin('accounts as ta', 'tt.account_id', 'ta.id')
+      .where('t.household_id', householdId)
+      .whereBetween('t.transaction_date', [monthStart, monthEnd])
+      .where('t.amount', '>', 0)
+      .whereRaw(`
+        a.is_on_budget = true
+        AND (
+          t.transfer_transaction_id IS NULL
+          OR COALESCE(ta.is_on_budget, false) = false
+        )
+        AND (
+          t.payee <> 'Initial Funding'
+          OR h.setup_wizard_completed_at IS NULL
+          OR t.transaction_date <= DATE(h.setup_wizard_completed_at)
+        )
+      `)
+      .orderBy('t.transaction_date', 'asc')
+      .select('t.*');
 
     // Calculate available amount for each transaction
     const pool: TransactionWithAvailable[] = [];
@@ -596,26 +687,12 @@ export class AssignmentService {
 
       // 2. Validate total doesn't exceed available
       const totalRequested = categoryAssignments.reduce((sum, a) => sum + a.amount, 0);
-      const totalTransactionAvailable = pool.reduce((sum, t) => sum + t.available, 0);
-
       // Check total available including Opening Balances (To Be Assigned)
       const currentToBeAssigned = await AssignmentService.getToBeAssigned(householdId, month);
-
-      const totalAvailable = Math.max(currentToBeAssigned, totalTransactionAvailable);
-
-      // If we have enough transaction money, use that check (it's more specific).
-      // If not, check if we have enough TOTAL money (transactions + opening balances).
-      // Logic: If totalRequested > totalTransactionAvailable check if totalRequested <= currentToBeAssigned.
-      // However, currentToBeAssigned INCLUDES totalTransactionAvailable implicitly (as income).
-      // So comparing against currentToBeAssigned is the correct "Global" check.
-
-      if (totalRequested > currentToBeAssigned && totalRequested > totalTransactionAvailable) {
-        // Allow small floating point error margin
-        if (totalRequested - totalAvailable > 0.01) {
-          throw new BadRequestError(
-            `Insufficient funds: $${totalRequested.toFixed(2)} requested, $${totalAvailable.toFixed(2)} available`
-          );
-        }
+      if (totalRequested - currentToBeAssigned > 0.01) {
+        throw new BadRequestError(
+          `Insufficient funds: $${totalRequested.toFixed(2)} requested, $${currentToBeAssigned.toFixed(2)} available`
+        );
       }
 
       // 3. Assign to each category/section using FIFO
@@ -788,7 +865,7 @@ export class AssignmentService {
       return {
         assignments: createdAssignments,
         total_assigned: createdAssignments.reduce((sum, a) => sum + a.amount, 0),
-        remaining: totalAvailable - totalRequested,
+        remaining: currentToBeAssigned - totalRequested,
       };
     });
   }

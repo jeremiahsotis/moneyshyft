@@ -21,6 +21,8 @@ export const createAccountSchema = Joi.object({
       'number.base': 'Starting balance must be a number'
     }),
 
+  is_on_budget: Joi.boolean().default(true),
+
   is_active: Joi.boolean().default(true)
 });
 
@@ -30,6 +32,8 @@ export const updateAccountSchema = Joi.object({
       'string.empty': 'Account name cannot be empty',
       'string.max': 'Account name must be less than 255 characters'
     }),
+
+  is_on_budget: Joi.boolean(),
 
   is_active: Joi.boolean()
 }).min(1).messages({
