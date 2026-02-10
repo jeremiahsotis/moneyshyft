@@ -366,8 +366,8 @@
               </p>
             </div>
 
-            <!-- Debt Selector - only show when "Debt Payments" category is selected -->
-            <div v-if="selectedCategory?.name === 'Debt Payments' && activeDebts.length > 0">
+            <!-- Debt Selector -->
+            <div v-if="transactionType === 'expense' && activeDebts.length > 0">
               <label class="block text-sm font-medium text-gray-700 mb-1">
                 Which Debt? (optional)
               </label>
@@ -385,7 +385,7 @@
                 </option>
               </select>
               <p class="text-xs text-gray-500 mt-1">
-                This transaction will be recorded as a payment to the selected debt
+                If selected, this expense is linked as a debt payment.
               </p>
             </div>
             <div>

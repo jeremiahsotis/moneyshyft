@@ -267,7 +267,7 @@ export class DebtService {
 
     if (!category) {
       // Find or create a section for debt payments (could be part of "Fixed Expenses" or its own section)
-      let section = await trx('sections')
+      let section = await trx('category_sections')
         .where({
           household_id: householdId,
           name: 'Fixed Expenses'
@@ -276,13 +276,14 @@ export class DebtService {
 
       if (!section) {
         // Create a Fixed Expenses section if it doesn't exist
-        [section] = await trx('sections')
+        [section] = await trx('category_sections')
           .insert({
             id: uuidv4(),
             household_id: householdId,
             name: 'Fixed Expenses',
-            section_type: 'spending',
+            type: 'fixed',
             sort_order: 1,
+            is_system: true,
           })
           .returning('*');
       }
@@ -294,8 +295,8 @@ export class DebtService {
           household_id: householdId,
           section_id: section.id,
           name: 'Debt Payments',
-          category_type: 'spending',
           sort_order: 999, // Put it at the end
+          is_system: true,
         })
         .returning('*');
 

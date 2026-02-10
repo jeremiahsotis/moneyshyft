@@ -148,6 +148,7 @@
       <TransferModal
         v-if="showTransferModal"
         :accounts="accounts"
+        :goals="activeGoals"
         @close="showTransferModal = false"
         @success="handleTransferSuccess"
       />
@@ -160,6 +161,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAccountsStore } from '@/stores/accounts';
 import { useBudgetsStore } from '@/stores/budgets';
+import { useGoalsStore } from '@/stores/goals';
 import AppLayout from '@/components/layout/AppLayout.vue';
 import AccountCard from '@/components/accounts/AccountCard.vue';
 import CreditCardStatusCard from '@/components/accounts/CreditCardStatusCard.vue';
@@ -170,6 +172,7 @@ import type { Account, CreateAccountData, CreditCardStatus } from '@/types';
 const router = useRouter();
 const accountsStore = useAccountsStore();
 const budgetsStore = useBudgetsStore();
+const goalsStore = useGoalsStore();
 
 const showAddModal = ref(false);
 const showTransferModal = ref(false);
@@ -187,9 +190,13 @@ const formData = ref<CreateAccountData>({
 });
 
 const accounts = computed(() => accountsStore.accounts);
+const activeGoals = computed(() => goalsStore.goals.filter(g => !g.is_completed));
 
 onMounted(async () => {
-  await accountsStore.fetchAccounts();
+  await Promise.all([
+    accountsStore.fetchAccounts(),
+    goalsStore.fetchGoals(),
+  ]);
 });
 
 function viewTransactions(accountId: string) {
