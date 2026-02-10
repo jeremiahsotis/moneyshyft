@@ -79,7 +79,7 @@
                   type="number"
                   step="0.01"
                   min="0"
-                  :max="Math.min(category.need, currentRemainingBalance + (categoryAssignments[category.id] || 0))"
+                  :max="maxAssignableFor(category)"
                   class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   placeholder="0.00"
                 />
@@ -106,7 +106,7 @@
             </div>
             <div>
               <span class="text-sm text-gray-600">Remaining:</span>
-              <span class="ml-2 text-lg font-bold" :class="remainingBalance < 0 ? 'text-red-600' : 'text-green-600'">
+              <span class="ml-2 text-lg font-bold" :class="isOverAssigned ? 'text-red-600' : 'text-green-600'">
                 {{ formatCurrency(remainingBalance) }}
               </span>
             </div>
@@ -124,7 +124,7 @@
           <button
             v-if="underfundedCategories.length > 0"
             @click="handleAssignToCategories"
-            :disabled="totalToAssign <= 0 || remainingBalance < 0 || isLoading"
+            :disabled="totalToAssign <= 0 || isOverAssigned || isLoading"
             class="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
           >
             Assign Money
@@ -154,6 +154,19 @@ const budgetsStore = useBudgetsStore();
 
 const isLoading = ref(false);
 const categoryAssignments = ref<Record<string, number>>({});
+const EPSILON = 0.0001;
+
+function toCents(value: number): number {
+  return Math.round((Number(value) || 0) * 100);
+}
+
+function fromCents(cents: number): number {
+  return cents / 100;
+}
+
+function normalizeZero(value: number): number {
+  return Math.abs(value) < EPSILON ? 0 : value;
+}
 
 const close = () => {
   emit('update:modelValue', false);
@@ -214,19 +227,23 @@ const underfundedCategories = computed<AssignableItem[]>(() => {
 
 // Calculate total amount to assign
 const totalToAssign = computed(() => {
-  return Object.values(categoryAssignments.value)
-    .reduce((sum, amount) => sum + (amount || 0), 0);
+  const cents = Object.values(categoryAssignments.value)
+    .reduce((sum, amount) => sum + toCents(amount || 0), 0);
+  return fromCents(cents);
 });
 
 // Calculate remaining balance
 const remainingBalance = computed(() => {
-  return budgetsStore.toBeAssigned - totalToAssign.value;
+  const cents = toCents(budgetsStore.toBeAssigned) - toCents(totalToAssign.value);
+  return normalizeZero(fromCents(cents));
 });
 
 // Current remaining balance (for max validation)
 const currentRemainingBalance = computed(() => {
-  return budgetsStore.toBeAssigned - totalToAssign.value;
+  return remainingBalance.value;
 });
+
+const isOverAssigned = computed(() => remainingBalance.value < 0);
 
 // Quick fill a single category or section
 function quickFillCategory(item: AssignableItem) {
@@ -240,7 +257,13 @@ function quickFillCategory(item: AssignableItem) {
     budgetsStore.toBeAssigned - otherTotal
   );
 
-  categoryAssignments.value[item.id] = Math.round(maxAssignable * 100) / 100;
+  categoryAssignments.value[item.id] = fromCents(toCents(maxAssignable));
+}
+
+function maxAssignableFor(item: AssignableItem): number {
+  const currentValue = categoryAssignments.value[item.id] || 0;
+  const max = Math.min(item.need, currentRemainingBalance.value + currentValue);
+  return fromCents(toCents(Math.max(0, max)));
 }
 
 // Manually assign to categories/sections
@@ -262,7 +285,7 @@ async function handleAssignToCategories() {
       // Return with correct field based on type
       return {
         ...(item.isSection ? { section_id: id } : { category_id: id }),
-        amount: Math.round(amount * 100) / 100 // Round to 2 decimals
+        amount: fromCents(toCents(amount)) // Round to cents
       };
     });
 
@@ -272,7 +295,7 @@ async function handleAssignToCategories() {
     return;
   }
 
-  if (remainingBalance.value < 0) {
+  if (isOverAssigned.value) {
     alert('Cannot assign more than available balance');
     isLoading.value = false;
     return;
@@ -331,9 +354,10 @@ watch(() => props.modelValue, (isOpen) => {
 });
 
 function formatCurrency(amount: number): string {
+  const normalized = normalizeZero(amount);
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD'
-  }).format(amount);
+  }).format(normalized);
 }
 </script>

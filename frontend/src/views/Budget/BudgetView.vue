@@ -4,7 +4,7 @@
       <!-- Month Selector -->
       <BudgetMonthSelector
         :current-month="budgetsStore.currentMonth"
-        :unallocated="budgetsStore.toBeAssigned"
+        :unallocated="displayToBeAssigned"
         @month-change="handleMonthChange"
       />
 
@@ -17,14 +17,14 @@
               <InfoTooltip text="Unassigned cash available to plan for this month." />
             </div>
             <h2 class="text-4xl font-bold privacy-value">
-              {{ formatCurrency(budgetsStore.toBeAssigned) }}
+              {{ formatCurrency(displayToBeAssigned) }}
             </h2>
             <p class="text-sm opacity-75 mt-2">
               Available to assign to categories
             </p>
           </div>
           <button
-            v-if="budgetsStore.toBeAssigned > 0"
+            v-if="displayToBeAssigned > 0"
             @click="showAssignmentModal = true"
             class="px-6 py-3 bg-white text-green-600 hover:bg-gray-100 rounded-lg font-semibold transition shadow-md"
           >
@@ -63,12 +63,12 @@
           </div>
         </div>
 
-        <div v-if="budgetsStore.toBeAssigned === 0" class="mt-4 p-3 bg-white/20 rounded-lg">
+        <div v-if="displayToBeAssigned === 0" class="mt-4 p-3 bg-white/20 rounded-lg">
           <p class="text-sm">
             ✨ Budget balanced! You’re ready for anything this month.
           </p>
         </div>
-        <div v-else-if="budgetsStore.toBeAssigned < 0" class="mt-4 p-3 bg-white/20 rounded-lg">
+        <div v-else-if="displayToBeAssigned < 0" class="mt-4 p-3 bg-white/20 rounded-lg">
           <p class="text-sm">
             Your plan is ahead of available cash. No stress—adjust a category or add income when it arrives.
           </p>
@@ -384,12 +384,12 @@
             {{ formatCurrency(budgetsStore.totalSpent) }}
           </span>
         </div>
-        <div v-if="budgetsStore.toBeAssigned !== 0" class="mt-3 pt-3 border-t border-gray-200 text-center">
-          <span :class="budgetsStore.toBeAssigned > 0 ? 'text-yellow-600' : 'text-red-600'">
-            {{ budgetsStore.toBeAssigned > 0 ? 'Ready to plan' : 'Over-planned' }}:
-            <span class="font-bold privacy-value">{{ formatCurrency(Math.abs(budgetsStore.toBeAssigned)) }}</span>
+        <div v-if="displayToBeAssigned !== 0" class="mt-3 pt-3 border-t border-gray-200 text-center">
+          <span :class="displayToBeAssigned > 0 ? 'text-yellow-600' : 'text-red-600'">
+            {{ displayToBeAssigned > 0 ? 'Ready to plan' : 'Over-planned' }}:
+            <span class="font-bold privacy-value">{{ formatCurrency(Math.abs(displayToBeAssigned)) }}</span>
           </span>
-          <p v-if="budgetsStore.toBeAssigned < 0" class="text-xs text-gray-500 mt-1">
+          <p v-if="displayToBeAssigned < 0" class="text-xs text-gray-500 mt-1">
             It’s okay to be over-planned—adjust when you’re ready.
           </p>
         </div>
@@ -444,6 +444,7 @@ const showIncomeSection = ref(false);
 const showAddIncome = ref(false);
 const showAssignmentModal = ref(false);
 const editingIncome = ref<IncomeSource | null>(null);
+const DISPLAY_EPSILON = 0.000001;
 
 const allSections = computed(() => categoriesStore.sections);
 
@@ -483,6 +484,8 @@ const spentColor = computed(() => {
   if (budgetsStore.totalSpent > budgetsStore.totalAllocated) return 'text-red-600';
   return 'text-gray-900';
 });
+
+const displayToBeAssigned = computed(() => normalizeZero(budgetsStore.toBeAssigned));
 
 onMounted(async () => {
   await refreshBudget();
@@ -607,6 +610,10 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-  }).format(amount);
+  }).format(normalizeZero(amount));
+}
+
+function normalizeZero(amount: number): number {
+  return Math.abs(amount) < DISPLAY_EPSILON ? 0 : amount;
 }
 </script>
