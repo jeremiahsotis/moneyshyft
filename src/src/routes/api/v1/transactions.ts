@@ -3,7 +3,7 @@ import { TransactionService } from '../../../services/TransactionService';
 import { asyncHandler } from '../../../middleware/errorHandler';
 import { authenticateToken } from '../../../middleware/auth';
 import { validateRequest } from '../../../middleware/validate';
-import { createTransactionSchema, updateTransactionSchema } from '../../../validators/transaction.validators';
+import { createTransactionSchema, createTransferSchema, updateTransactionSchema } from '../../../validators/transaction.validators';
 
 const router = Router();
 
@@ -69,7 +69,7 @@ router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
  * POST /api/v1/transactions/transfer
  * Create a transfer between accounts
  */
-router.post('/transfer', asyncHandler(async (req: Request, res: Response) => {
+router.post('/transfer', validateRequest(createTransferSchema), asyncHandler(async (req: Request, res: Response) => {
   const householdId = req.user!.householdId;
   const userId = req.user!.userId;
   const transferData = req.body;

@@ -69,6 +69,33 @@
                   <label class="block text-sm font-medium text-gray-700">Notes (Optional)</label>
                   <textarea v-model="form.notes" rows="2" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
                 </div>
+
+                <!-- Optional Goal Link -->
+                <div v-if="goals.length > 0" class="mb-4 border border-indigo-100 rounded-md p-3 bg-indigo-50">
+                  <label class="flex items-center gap-2 text-sm font-medium text-indigo-900">
+                    <input
+                      v-model="form.is_goal_contribution"
+                      type="checkbox"
+                      class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    Count this transfer as a Goal Contribution
+                  </label>
+                  <div v-if="form.is_goal_contribution" class="mt-3">
+                    <label class="block text-sm font-medium text-gray-700">Goal</label>
+                    <select
+                      v-model="form.goal_id"
+                      class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                    >
+                      <option :value="null" disabled>Select Goal</option>
+                      <option v-for="goal in goals" :key="goal.id" :value="goal.id">
+                        {{ goal.name }}
+                      </option>
+                    </select>
+                    <p class="text-xs text-gray-600 mt-2">
+                      Source account must be on-budget. Budget impact will consume assigned goal cash first, then Ready to Assign.
+                    </p>
+                  </div>
+                </div>
                 
               </div>
             </div>
@@ -93,6 +120,7 @@ import api from '@/services/api';
 
 const props = defineProps<{
   accounts: any[];
+  goals?: Array<{ id: string; name: string }>;
 }>();
 
 const emit = defineEmits(['close', 'success']);
@@ -105,7 +133,9 @@ const form = reactive({
   to_account_id: null as string | null,
   amount: 0,
   transaction_date: new Date().toISOString().split('T')[0],
-  notes: ''
+  notes: '',
+  is_goal_contribution: false,
+  goal_id: null as string | null
 });
 
 // Filter out the selected "from" account so you can't transfer to self
@@ -114,6 +144,8 @@ const availableToAccounts = computed(() => {
   return props.accounts.filter(a => a.id !== form.from_account_id);
 });
 
+const goals = computed(() => props.goals || []);
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 }
@@ -121,6 +153,19 @@ function formatCurrency(amount: number) {
 async function submitTransfer() {
   if (!form.from_account_id || !form.to_account_id || form.amount <= 0) {
     return;
+  }
+
+  if (form.is_goal_contribution && !form.goal_id) {
+    error.value = 'Please select a goal for this goal contribution transfer';
+    return;
+  }
+
+  if (form.is_goal_contribution) {
+    const source = props.accounts.find(a => a.id === form.from_account_id);
+    if (source && !source.is_on_budget) {
+      error.value = 'Goal contribution transfers require an on-budget source account';
+      return;
+    }
   }
   
   isLoading.value = true;
@@ -132,7 +177,8 @@ async function submitTransfer() {
       to_account_id: form.to_account_id,
       amount: form.amount,
       transaction_date: form.transaction_date,
-      notes: form.notes
+      notes: form.notes,
+      goal_id: form.is_goal_contribution ? form.goal_id : null
     });
     emit('success');
     emit('close');

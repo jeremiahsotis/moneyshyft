@@ -17,6 +17,16 @@ export const createTransactionSchema = Joi.object({
       'string.guid': 'Tag ID must be a valid UUID'
     }),
 
+  debt_id: Joi.string().uuid().allow(null).optional()
+    .messages({
+      'string.guid': 'Debt ID must be a valid UUID'
+    }),
+
+  goal_id: Joi.string().uuid().allow(null).optional()
+    .messages({
+      'string.guid': 'Goal ID must be a valid UUID'
+    }),
+
   payee: Joi.string().min(1).max(255).required()
     .messages({
       'string.empty': 'Payee is required',
@@ -43,6 +53,53 @@ export const createTransactionSchema = Joi.object({
   is_cleared: Joi.boolean().default(false),
 
   is_reconciled: Joi.boolean().default(false)
+}).custom((value, helpers) => {
+  if (value.debt_id && value.goal_id) {
+    return helpers.error('any.invalid', { message: 'Cannot link a transaction to both a debt and a goal' });
+  }
+  return value;
+});
+
+export const createTransferSchema = Joi.object({
+  from_account_id: Joi.string().uuid().required()
+    .messages({
+      'string.guid': 'From account ID must be a valid UUID',
+      'any.required': 'From account ID is required'
+    }),
+
+  to_account_id: Joi.string().uuid().required()
+    .messages({
+      'string.guid': 'To account ID must be a valid UUID',
+      'any.required': 'To account ID is required'
+    }),
+
+  amount: Joi.number().positive().required()
+    .messages({
+      'number.base': 'Amount must be a number',
+      'number.positive': 'Amount must be positive',
+      'any.required': 'Amount is required'
+    }),
+
+  transaction_date: Joi.date().iso().required()
+    .messages({
+      'date.base': 'Transaction date must be a valid date',
+      'any.required': 'Transaction date is required'
+    }),
+
+  notes: Joi.string().max(1000).allow('', null).optional()
+    .messages({
+      'string.max': 'Notes must be less than 1000 characters'
+    }),
+
+  goal_id: Joi.string().uuid().allow(null).optional()
+    .messages({
+      'string.guid': 'Goal ID must be a valid UUID'
+    })
+}).custom((value, helpers) => {
+  if (value.from_account_id && value.to_account_id && value.from_account_id === value.to_account_id) {
+    return helpers.error('any.invalid', { message: 'Cannot transfer to the same account' });
+  }
+  return value;
 });
 
 export const updateTransactionSchema = Joi.object({

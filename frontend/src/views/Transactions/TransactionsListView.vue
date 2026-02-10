@@ -52,6 +52,18 @@
                 >
                   Cleared
                 </span>
+                <span
+                  v-if="transaction.debt_id && getDebtName(transaction.debt_id)"
+                  class="text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full border border-orange-200"
+                >
+                  Linked to Debt
+                </span>
+                <span
+                  v-if="transaction.goal_id && getGoalName(transaction.goal_id)"
+                  class="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full border border-indigo-200"
+                >
+                  Linked to Goal
+                </span>
               </div>
               <p class="text-sm text-gray-500 mt-1">
                 {{ formatDate(transaction.transaction_date) }}
@@ -63,6 +75,14 @@
                 <template v-if="getTagLabel(transaction.tag_id)">
                   <span class="mx-1">•</span>
                   <span>Tag: {{ getTagLabel(transaction.tag_id) }}</span>
+                </template>
+                <template v-if="transaction.debt_id && getDebtName(transaction.debt_id)">
+                  <span class="mx-1">•</span>
+                  <span>Debt: {{ getDebtName(transaction.debt_id) }}</span>
+                </template>
+                <template v-if="transaction.goal_id && getGoalName(transaction.goal_id)">
+                  <span class="mx-1">•</span>
+                  <span>Goal: {{ getGoalName(transaction.goal_id) }}</span>
                 </template>
               </p>
               <p v-if="transaction.notes" class="text-sm text-gray-600 mt-1">
@@ -421,6 +441,7 @@
     <TransferModal
       v-if="showTransferModal"
       :accounts="accounts"
+      :goals="activeGoals"
       @close="showTransferModal = false"
       @success="handleTransferSuccess"
     />
@@ -492,9 +513,6 @@ const newCategoryData = ref({
 // Goal selection state
 const selectedGoalId = ref<string | null>(null);
 
-// Debt selection state
-const selectedDebtId = ref<string | null>(null);
-
 // Split transaction state
 const showSplitModal = ref(false);
 const splitTransaction = ref<Transaction | null>(null);
@@ -510,6 +528,7 @@ const formData = ref<CreateTransactionData>({
   category_id: null,
   tag_id: null,
   debt_id: null,  // NEW: Debt link
+  goal_id: null,
   notes: '',
 });
 
@@ -608,13 +627,26 @@ watch(selectedCategorySectionName, (sectionName) => {
   }
 });
 
+watch(selectedGoalId, (goalId) => {
+  formData.value.goal_id = goalId;
+  if (goalId) {
+    formData.value.debt_id = null;
+  }
+});
+
+watch(() => formData.value.debt_id, (debtId) => {
+  if (debtId) {
+    selectedGoalId.value = null;
+    formData.value.goal_id = null;
+  }
+});
+
 function closeModal() {
   showAddModal.value = false;
   editingTransaction.value = null;
   transactionType.value = 'expense';
   formAmount.value = 0;
   selectedGoalId.value = null;
-  selectedDebtId.value = null;  // NEW: Reset debt selection
   formData.value = {
     account_id: route.query.account_id ? (route.query.account_id as string) : '',
     payee: '',
@@ -623,6 +655,7 @@ function closeModal() {
     category_id: null,
     tag_id: null,
     debt_id: null,  // NEW: Reset debt link
+    goal_id: null,
     notes: '',
   };
 
@@ -638,11 +671,10 @@ async function handleSubmit() {
       ? Math.abs(formAmount.value)
       : (transactionType.value === 'expense' ? -Math.abs(formAmount.value) : Math.abs(formAmount.value));
 
-    let transaction;
     let extraMoneyEntry = null;
     if (editingTransaction.value) {
       // Update existing transaction
-      transaction = await transactionsStore.updateTransaction(editingTransaction.value.id, {
+      await transactionsStore.updateTransaction(editingTransaction.value.id, {
         ...formData.value,
         amount,
       });
@@ -650,20 +682,11 @@ async function handleSubmit() {
       // Create new transaction
       const result = await transactionsStore.createTransaction({
         ...formData.value,
+        goal_id: selectedGoalId.value,
         amount,
       });
-      transaction = result.transaction;
       extraMoneyEntry = result.extra_money_entry;
       updateTransactionStreak(formData.value.transaction_date);
-    }
-
-    // If a goal is selected, create a contribution
-    if (selectedGoalId.value && transaction) {
-      await goalsStore.addContribution(selectedGoalId.value, {
-        amount: Math.abs(formAmount.value), // Use positive amount for contributions
-        transaction_id: transaction.id,
-        notes: formData.value.notes || `Contribution from transaction: ${formData.value.payee}`,
-      });
     }
 
     if (extraMoneyEntry) {
@@ -729,8 +752,11 @@ function editTransaction(transaction: Transaction) {
     transaction_date: transaction.transaction_date,
     category_id: transaction.category_id,
     tag_id: transaction.tag_id ?? null,
+    debt_id: transaction.debt_id ?? null,
+    goal_id: transaction.goal_id ?? null,
     notes: transaction.notes || '',
   };
+  selectedGoalId.value = transaction.goal_id ?? null;
 
   // Set transaction type based on amount sign
   transactionType.value = transaction.amount < 0 ? 'expense' : 'income';
@@ -875,6 +901,16 @@ function getTagLabel(tagId?: string | null): string | null {
   if (!tag.parent_tag_id) return tag.name;
   const parent = tags.value.find(t => t.id === tag.parent_tag_id);
   return parent ? `${parent.name} / ${tag.name}` : tag.name;
+}
+
+function getGoalName(goalId?: string | null): string | null {
+  if (!goalId) return null;
+  return goalsStore.goals.find(g => g.id === goalId)?.name || null;
+}
+
+function getDebtName(debtId?: string | null): string | null {
+  if (!debtId) return null;
+  return debtsStore.debts.find(d => d.id === debtId)?.name || null;
 }
 
 

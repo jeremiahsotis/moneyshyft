@@ -69,6 +69,7 @@ export interface Transaction {
   category_id: string | null;
   tag_id?: string | null;
   debt_id?: string | null;  // NEW: Optional debt link
+  goal_id?: string | null;
   payee: string;
   amount: number;
   transaction_date: string;
@@ -93,6 +94,7 @@ export interface CreateTransactionData {
   category_id?: string | null;
   tag_id?: string | null;
   debt_id?: string | null;  // NEW: Optional debt link
+  goal_id?: string | null;
   payee: string;
   amount: number;
   transaction_date: string;

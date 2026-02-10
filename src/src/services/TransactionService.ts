@@ -4,6 +4,7 @@ import type { Knex } from 'knex';
 import { AccountService } from './AccountService';
 import { ExtraMoneyService, type ExtraMoneyEntry } from './ExtraMoneyService';
 import { AnalyticsService } from './AnalyticsService';
+import { BudgetService } from './BudgetService';
 import logger from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -14,6 +15,7 @@ interface Transaction {
   category_id: string | null;
   tag_id?: string | null;
   debt_id: string | null;
+  goal_id: string | null;
   transfer_transaction_id: string | null; // NEW: Link to other side of transfer
   payee: string;
   amount: number;
@@ -34,6 +36,7 @@ export interface CreateTransferData {
   amount: number;
   transaction_date: Date | string;
   notes?: string | null;
+  goal_id?: string | null;
 }
 
 interface TransactionCreateResult extends Transaction {
@@ -46,6 +49,7 @@ interface CreateTransactionData {
   category_id?: string | null;
   tag_id?: string | null;
   debt_id?: string | null;  // NEW: Optional debt link
+  goal_id?: string | null;
   payee: string;
   amount: number;
   transaction_date: Date | string;
@@ -66,6 +70,70 @@ interface UpdateTransactionData {
 }
 
 export class TransactionService {
+  private static getMonthString(transactionDate: string | Date): string {
+    const normalizedDate = typeof transactionDate === 'string'
+      ? transactionDate
+      : transactionDate.toISOString().split('T')[0];
+
+    return normalizedDate.slice(0, 7);
+  }
+
+  private static async applyGoalBudgetConsumption(
+    householdId: string,
+    userId: string,
+    goal: { category_id: string | null },
+    contributionAmount: number,
+    transactionDate: string | Date,
+    trx: Knex | Knex.Transaction
+  ): Promise<void> {
+    let remaining = Number(contributionAmount || 0);
+    if (remaining <= 0) return;
+
+    const month = this.getMonthString(transactionDate);
+
+    if (goal.category_id) {
+      const monthDate = new Date(`${month}-01`);
+      const budgetMonth = await BudgetService.getOrCreateBudgetMonth(householdId, monthDate, trx);
+
+      const allocation = await trx('budget_allocations')
+        .where({
+          budget_month_id: budgetMonth.id,
+          category_id: goal.category_id
+        })
+        .first();
+
+      if (allocation) {
+        const assigned = Number(allocation.assigned_amount || 0);
+        const consumeFromAssigned = Math.min(assigned, remaining);
+
+        if (consumeFromAssigned > 0) {
+          await trx('budget_allocations')
+            .where({ id: allocation.id })
+            .update({
+              assigned_amount: assigned - consumeFromAssigned,
+              updated_at: trx.fn.now()
+            });
+
+          remaining -= consumeFromAssigned;
+        }
+      }
+    }
+
+    // If contribution exceeds assigned goal cash, consume the rest from Ready to Assign.
+    if (remaining > 0.0001) {
+      await trx('account_balance_assignments').insert({
+        id: uuidv4(),
+        household_id: householdId,
+        account_id: null,
+        category_id: goal.category_id || null,
+        section_id: null,
+        amount: remaining,
+        month,
+        assigned_by_user_id: userId,
+      });
+    }
+  }
+
   /**
    * Get all transactions for a household with optional filters
    */
@@ -180,14 +248,18 @@ export class TransactionService {
     data: CreateTransactionData,
     trx?: Knex | Knex.Transaction
   ): Promise<TransactionCreateResult> {
-    const { account_id, category_id, tag_id, debt_id, payee, amount, transaction_date, notes, is_cleared = false, is_reconciled = false } = data;
+    const { account_id, category_id, tag_id, debt_id, goal_id, payee, amount, transaction_date, notes, is_cleared = false, is_reconciled = false } = data;
     const normalizedDate = typeof transaction_date === 'string'
       ? transaction_date
       : transaction_date.toISOString().split('T')[0];
 
     const createInTransaction = async (t: Knex | Knex.Transaction): Promise<TransactionCreateResult> => {
       // Verify account belongs to household
-      await AccountService.getAccountById(account_id, householdId, t);
+      const sourceAccount = await AccountService.getAccountById(account_id, householdId, t);
+
+      if (debt_id && goal_id) {
+        throw new BadRequestError('A transaction cannot be linked to both a debt and a goal');
+      }
 
       // If category provided, verify it belongs to household
       if (category_id) {
@@ -211,24 +283,51 @@ export class TransactionService {
         }
       }
 
+      let linkedDebt: any = null;
       // If debt provided, verify it belongs to household
       if (debt_id) {
-        const debt = await t('debts')
+        linkedDebt = await t('debts')
           .where({ id: debt_id, household_id: householdId })
           .first();
 
-        if (!debt) {
+        if (!linkedDebt) {
           throw new BadRequestError('Debt not found or does not belong to this household');
         }
+
+        if (amount >= 0) {
+          throw new BadRequestError('Debt-linked transactions must be expense outflows');
+        }
       }
+
+      let linkedGoal: any = null;
+      if (goal_id) {
+        linkedGoal = await t('goals')
+          .where({ id: goal_id, household_id: householdId })
+          .first();
+
+        if (!linkedGoal) {
+          throw new BadRequestError('Goal not found or does not belong to this household');
+        }
+
+        if (amount >= 0) {
+          throw new BadRequestError('Goal-linked transactions must be expense outflows');
+        }
+
+        if (!sourceAccount.is_on_budget) {
+          throw new BadRequestError('Goal-linked transactions must use an on-budget source account');
+        }
+      }
+
+      const resolvedCategoryId = category_id || linkedDebt?.category_id || null;
 
       // Create transaction
       const [transaction] = await t('transactions')
         .insert({
           household_id: householdId,
           account_id,
-          category_id: category_id || null,
+          category_id: resolvedCategoryId,
           debt_id: debt_id || null,  // NEW: Link to debt
+          goal_id: goal_id || null,
           payee,
           amount,
           transaction_date,
@@ -258,7 +357,7 @@ export class TransactionService {
         {
           amount,
           is_income: amount > 0,
-          has_category: !!category_id,
+          has_category: !!resolvedCategoryId,
           has_debt: !!debt_id,
         },
         t
@@ -302,6 +401,44 @@ export class TransactionService {
         }
 
         logger.info(`Debt payment transaction created: ${transaction.id}, debt_payment created for debt: ${debt_id}`);
+      }
+
+      if (goal_id && amount < 0) {
+        const contributionAmount = Math.abs(amount);
+
+        await t('goal_contributions').insert({
+          id: uuidv4(),
+          goal_id,
+          user_id: userId,
+          amount: contributionAmount,
+          contribution_date: normalizedDate,
+          notes: notes || null,
+          transaction_id: transaction.id,
+        });
+
+        const newCurrentAmount = Number(linkedGoal.current_amount || 0) + contributionAmount;
+        const targetAmount = Number(linkedGoal.target_amount || 0);
+        const isCompleted = newCurrentAmount >= targetAmount;
+
+        await t('goals')
+          .where({ id: goal_id })
+          .update({
+            current_amount: newCurrentAmount,
+            is_completed: isCompleted,
+            completed_at: isCompleted
+              ? (linkedGoal.completed_at || t.fn.now())
+              : null,
+            updated_at: t.fn.now(),
+          });
+
+        await this.applyGoalBudgetConsumption(
+          householdId,
+          userId,
+          { category_id: linkedGoal.category_id || null },
+          contributionAmount,
+          normalizedDate,
+          t
+        );
       }
 
       // Recalculate account balance
@@ -363,7 +500,7 @@ export class TransactionService {
     userId: string,
     data: CreateTransferData
   ): Promise<{ outflow: Transaction; inflow: Transaction }> {
-    const { from_account_id, to_account_id, amount, transaction_date, notes } = data;
+    const { from_account_id, to_account_id, amount, transaction_date, notes, goal_id } = data;
 
     if (from_account_id === to_account_id) {
       throw new BadRequestError('Cannot transfer to the same account');
@@ -379,8 +516,22 @@ export class TransactionService {
 
     return await knex.transaction(async (trx) => {
       // Verify both accounts belong to household
-      await AccountService.getAccountById(from_account_id, householdId, trx);
+      const fromAccount = await AccountService.getAccountById(from_account_id, householdId, trx);
       await AccountService.getAccountById(to_account_id, householdId, trx);
+
+      if (goal_id) {
+        const goal = await trx('goals')
+          .where({ id: goal_id, household_id: householdId })
+          .first();
+
+        if (!goal) {
+          throw new BadRequestError('Goal not found or does not belong to this household');
+        }
+
+        if (!fromAccount.is_on_budget) {
+          throw new BadRequestError('Goal-linked transfers must use an on-budget source account');
+        }
+      }
 
       const outflowId = uuidv4();
       const inflowId = uuidv4();
@@ -394,6 +545,7 @@ export class TransactionService {
           household_id: householdId,
           account_id: from_account_id,
           category_id: null, // Transfers have no category
+          goal_id: goal_id || null,
           payee: 'Transfer to Account', // TODO: Could be dynamic name of other account
           amount: -amount, // Negative
           transaction_date: normalizedDate,
@@ -412,6 +564,7 @@ export class TransactionService {
           household_id: householdId,
           account_id: to_account_id,
           category_id: null, // Transfers have no category
+          goal_id: goal_id || null,
           payee: 'Transfer from Account',
           amount: amount, // Positive
           transaction_date: normalizedDate,
@@ -434,6 +587,48 @@ export class TransactionService {
       // 4. Update balances
       await AccountService.recalculateBalance(from_account_id, householdId, trx);
       await AccountService.recalculateBalance(to_account_id, householdId, trx);
+
+      if (goal_id) {
+        const goal = await trx('goals')
+          .where({ id: goal_id, household_id: householdId })
+          .first();
+
+        const contributionAmount = Math.abs(amount);
+
+        await trx('goal_contributions').insert({
+          id: uuidv4(),
+          goal_id,
+          user_id: userId,
+          amount: contributionAmount,
+          contribution_date: normalizedDate,
+          notes: notes || null,
+          transaction_id: outflow.id,
+        });
+
+        const newCurrentAmount = Number(goal.current_amount || 0) + contributionAmount;
+        const targetAmount = Number(goal.target_amount || 0);
+        const isCompleted = newCurrentAmount >= targetAmount;
+
+        await trx('goals')
+          .where({ id: goal_id })
+          .update({
+            current_amount: newCurrentAmount,
+            is_completed: isCompleted,
+            completed_at: isCompleted
+              ? (goal.completed_at || trx.fn.now())
+              : null,
+            updated_at: trx.fn.now(),
+          });
+
+        await this.applyGoalBudgetConsumption(
+          householdId,
+          userId,
+          { category_id: goal.category_id || null },
+          contributionAmount,
+          normalizedDate,
+          trx
+        );
+      }
 
       logger.info(`Transfer created: ${amount} from ${from_account_id} to ${to_account_id}`);
 
