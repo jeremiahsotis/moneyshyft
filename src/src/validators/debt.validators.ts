@@ -106,6 +106,12 @@ export const addDebtPaymentSchema = Joi.object({
       'any.required': 'Payment date is required',
     }),
 
+  account_id: Joi.string().uuid().required()
+    .messages({
+      'string.guid': 'Account ID must be a valid UUID',
+      'any.required': 'Account ID is required',
+    }),
+
   notes: Joi.string().max(500).allow(null, '').optional()
     .messages({
       'string.max': 'Notes must be less than 500 characters',
