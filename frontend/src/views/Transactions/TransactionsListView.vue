@@ -545,16 +545,6 @@ const tags = computed(() => tagsStore.tags);
 const activeGoals = computed(() => goalsStore.goals.filter(g => !g.is_completed));
 const activeDebts = computed(() => debtsStore.activeDebts);
 
-// Get selected category to check if it's "Debt Payments"
-const selectedCategory = computed(() => {
-  if (!formData.value.category_id) return null;
-  for (const section of sections.value) {
-    const category = section.categories?.find(c => c.id === formData.value.category_id);
-    if (category) return category;
-  }
-  return null;
-});
-
 const selectedCategorySectionName = computed(() => {
   if (!formData.value.category_id) return null;
   for (const section of sections.value) {
