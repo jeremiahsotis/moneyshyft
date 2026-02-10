@@ -171,6 +171,25 @@ export const useAssignmentsStore = defineStore('assignments', () => {
     }
   }
 
+  async function setAssignedAmount(data: {
+    month: string;
+    amount: number;
+    category_id?: string;
+    section_id?: string;
+  }): Promise<void> {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await api.post('/assignments/set-assigned', data);
+      await fetchAssignments(data.month);
+    } catch (err: any) {
+      error.value = err.response?.data?.error || 'Failed to update assigned amount';
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   function clearError(): void {
     error.value = null;
   }
@@ -191,6 +210,7 @@ export const useAssignmentsStore = defineStore('assignments', () => {
     transferMoney,
     assignToCategories,
     autoAssignAll,
+    setAssignedAmount,
     clearError,
   };
 });

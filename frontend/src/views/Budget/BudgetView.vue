@@ -520,18 +520,21 @@ async function handleUpdateAllocation(data: {
   }
 }
 
-async function handleUpdateAssigned(_data: { categoryId?: string; sectionId?: string; amount: number; rollupMode: boolean }) {
-  // For now, show message that user should use Assign Money modal
-  // Inline editing of "Assigned" is complex because assignments are tied to income transactions
-  alert('To assign money to categories, please use the "Assign Money" button above.');
+async function handleUpdateAssigned(data: { categoryId?: string; sectionId?: string; amount: number; rollupMode: boolean }) {
+  try {
+    await assignmentsStore.setAssignedAmount({
+      month: budgetsStore.currentMonth,
+      amount: data.amount,
+      category_id: data.categoryId,
+      section_id: data.sectionId,
+    });
 
-  // Refresh to reset the display
-  await refreshBudget();
-
-  // TODO: Implement proper assignment update logic
-  // This would require either:
-  // 1. Creating/deleting income assignments to match the new amount
-  // 2. Adding a backend endpoint that handles bulk assignment updates
+    await budgetsStore.fetchBudgetSummary(budgetsStore.currentMonth);
+  } catch (error: any) {
+    console.error('Failed to update assigned amount:', error);
+    alert(error.response?.data?.error || error.message || 'Failed to update assigned amount.');
+    await refreshBudget();
+  }
 }
 
 async function handleAddSection(data: { name: string; type: 'fixed' | 'flexible' | 'debt' }) {

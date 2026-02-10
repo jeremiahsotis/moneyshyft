@@ -121,3 +121,45 @@ export const autoAssignAllSchema = Joi.object({
       'string.pattern.base': 'Month must be in YYYY-MM format (e.g., "2025-12")'
     })
 });
+
+/**
+ * Validator for setting an absolute assigned amount on a category/section for a month
+ */
+export const setAssignedAmountSchema = Joi.object({
+  month: Joi.string().pattern(/^\d{4}-\d{2}$/).required()
+    .messages({
+      'any.required': 'Month is required',
+      'string.pattern.base': 'Month must be in YYYY-MM format (e.g., "2025-12")'
+    }),
+  category_id: Joi.string().uuid().optional()
+    .messages({
+      'string.guid': 'Category ID must be a valid UUID'
+    }),
+  section_id: Joi.string().uuid().optional()
+    .messages({
+      'string.guid': 'Section ID must be a valid UUID'
+    }),
+  amount: Joi.number().min(0).required()
+    .messages({
+      'any.required': 'Amount is required',
+      'number.base': 'Amount must be a number',
+      'number.min': 'Amount cannot be negative'
+    }),
+}).custom((value, helpers) => {
+  const hasCategoryId = !!value.category_id;
+  const hasSectionId = !!value.section_id;
+
+  if (!hasCategoryId && !hasSectionId) {
+    return helpers.error('any.invalid', {
+      message: 'Either category_id or section_id must be provided'
+    });
+  }
+
+  if (hasCategoryId && hasSectionId) {
+    return helpers.error('any.invalid', {
+      message: 'Cannot set both category_id and section_id - choose one'
+    });
+  }
+
+  return value;
+});

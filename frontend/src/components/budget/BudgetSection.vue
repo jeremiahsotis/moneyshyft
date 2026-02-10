@@ -574,6 +574,7 @@ function saveSectionAssigned() {
   }
 
   emit('updateAssigned', {
+    sectionId: props.section.id,
     amount: editAssignedAmount.value,
     rollupMode: true,
   });

@@ -243,8 +243,14 @@ export class AssignmentService {
       })
       .returning('*');
 
-    // Update assigned_amount in budget_allocations
-    await this.updateAssignedAmount(householdId, month, data.category_id, data.section_id);
+    // Manual assignment always adds to existing assigned balance.
+    await this.adjustAssignedAmount(
+      householdId,
+      month,
+      Number(data.amount),
+      data.category_id,
+      data.section_id
+    );
 
     logger.info(`Income assignment created: ${assignment.id} - $${data.amount} assigned`);
 
@@ -271,72 +277,57 @@ export class AssignmentService {
   }
 
   /**
-   * Update assigned_amount in budget_allocations based on assignments
+   * Adjust assigned amount by delta for a month/category or month/section.
+   * This preserves carryover by mutating the current month's assigned balance directly.
    */
-  private static async updateAssignedAmount(
+  private static async adjustAssignedAmount(
     householdId: string,
     month: string,
+    delta: number,
     categoryId?: string,
-    sectionId?: string
+    sectionId?: string,
+    trx: any = knex
   ): Promise<void> {
-    // Calculate total assigned to this category/section
-    const query = knex('income_assignments')
-      .where({ household_id: householdId, month })
-      .sum('amount as total');
+    if (Math.abs(delta) < 0.0001) return;
 
+    const monthDate = new Date(`${month}-01`);
+    const budgetMonth = await BudgetService.getOrCreateBudgetMonth(householdId, monthDate, trx);
+
+    const whereClause: any = { budget_month_id: budgetMonth.id };
     if (categoryId) {
-      query.where({ category_id: categoryId });
+      whereClause.category_id = categoryId;
     } else {
-      query.where({ section_id: sectionId });
+      whereClause.section_id = sectionId;
+      whereClause.category_id = null;
     }
 
-    const incomeAssignedResult = await query.first();
-    const incomeAssigned = Number(incomeAssignedResult?.total || 0);
-
-    const balanceAssignedResult = await knex('account_balance_assignments')
-      .where({ household_id: householdId, month })
-      .modify(qb => {
-        if (categoryId) {
-          qb.where({ category_id: categoryId });
-        } else {
-          qb.where({ section_id: sectionId });
-        }
-      })
-      .sum('amount as total')
-      .first();
-    const balanceAssigned = Number(balanceAssignedResult?.total || 0);
-    const totalAssigned = incomeAssigned + balanceAssigned;
-
-    // Get or create budget allocation
-    // Convert month string (YYYY-MM) to Date object
-    const monthDate = new Date(`${month}-01`);
-    const budgetMonth = await BudgetService.getOrCreateBudgetMonth(householdId, monthDate);
-
-    // Find existing allocation
-    const existingAllocation = await knex('budget_allocations')
-      .where({
-        budget_month_id: budgetMonth.id,
-        ...(categoryId ? { category_id: categoryId } : { section_id: sectionId }),
-      })
+    let allocation = await trx('budget_allocations')
+      .where(whereClause)
       .first();
 
-    if (existingAllocation) {
-      // Update assigned_amount
-      await knex('budget_allocations')
-        .where({ id: existingAllocation.id })
-        .update({ assigned_amount: totalAssigned, updated_at: knex.fn.now() });
-    } else {
-      // Create allocation with assigned_amount (allocated_amount = 0 initially)
-      await knex('budget_allocations')
+    if (!allocation) {
+      const initialAssigned = Math.max(delta, 0);
+      await trx('budget_allocations')
         .insert({
           budget_month_id: budgetMonth.id,
           category_id: categoryId || null,
           section_id: sectionId || null,
-          allocated_amount: 0, // No budget set yet
-          assigned_amount: totalAssigned,
+          allocated_amount: 0,
+          assigned_amount: initialAssigned,
           rollup_mode: !!sectionId,
         });
+      return;
     }
+
+    const currentAssigned = Number(allocation.assigned_amount || 0);
+    const nextAssigned = Math.max(currentAssigned + delta, 0);
+
+    await trx('budget_allocations')
+      .where({ id: allocation.id })
+      .update({
+        assigned_amount: nextAssigned,
+        updated_at: trx.fn.now(),
+      });
   }
 
   /**
@@ -438,12 +429,12 @@ export class AssignmentService {
       .where({ id: assignmentId })
       .delete();
 
-    // Update assigned_amount
-    await this.updateAssignedAmount(
+    await this.adjustAssignedAmount(
       householdId,
       assignment.month,
-      assignment.category_id,
-      assignment.section_id
+      -Number(assignment.amount),
+      assignment.category_id || undefined,
+      assignment.section_id || undefined
     );
 
     logger.info(`Assignment deleted: ${assignmentId}`);
@@ -799,76 +790,100 @@ export class AssignmentService {
         }
       }
 
-      // 4. Update budget_allocations.assigned_amount for all categories/sections
-      for (const { category_id, section_id } of categoryAssignments) {
-        // Calculate total assigned to this category or section
-        const query = trx('income_assignments')
-          .where({ household_id: householdId, month });
-
-        if (category_id) {
-          query.where({ category_id });
-        } else {
-          query.where({ section_id });
-        }
-
-        const incomeAssignedResult = await query.sum('amount as total').first();
-        const incomeAssigned = Number(incomeAssignedResult?.total || 0);
-
-        const balanceAssignedResult = await trx('account_balance_assignments')
-          .where({ household_id: householdId, month })
-          .modify(qb => {
-            if (category_id) {
-              qb.where({ category_id });
-            } else {
-              qb.where({ section_id });
-            }
-          })
-          .sum('amount as total')
-          .first();
-        const balanceAssigned = Number(balanceAssignedResult?.total || 0);
-        const totalAssigned = incomeAssigned + balanceAssigned;
-
-        // Get budget month
-        const monthDate = new Date(`${month}-01`);
-        const budgetMonth = await BudgetService.getOrCreateBudgetMonth(householdId, monthDate);
-
-        // Find or create allocation
-        const whereClause: any = { budget_month_id: budgetMonth.id };
-        if (category_id) {
-          whereClause.category_id = category_id;
-        } else {
-          whereClause.section_id = section_id;
-          whereClause.category_id = null; // Rollup mode
-        }
-
-        let allocation = await trx('budget_allocations')
-          .where(whereClause)
-          .first();
-
-        if (allocation) {
-          await trx('budget_allocations')
-            .where({ id: allocation.id })
-            .update({ assigned_amount: totalAssigned, updated_at: trx.fn.now() });
-        } else {
-          await trx('budget_allocations')
-            .insert({
-              budget_month_id: budgetMonth.id,
-              category_id: category_id || null,
-              section_id: section_id || null,
-              allocated_amount: 0,
-              assigned_amount: totalAssigned,
-              rollup_mode: !!section_id,
-            });
-        }
+      // 4. Apply additive deltas to assigned amounts (do not recompute and wipe carryover).
+      for (const { category_id, section_id, amount } of categoryAssignments) {
+        await this.adjustAssignedAmount(
+          householdId,
+          month,
+          Number(amount),
+          category_id,
+          section_id,
+          trx
+        );
       }
 
       logger.info(`Assigned money to ${categoryAssignments.length} categories using FIFO matching`);
 
       return {
         assignments: createdAssignments,
-        total_assigned: createdAssignments.reduce((sum, a) => sum + a.amount, 0),
+        total_assigned: totalRequested,
         remaining: currentToBeAssigned - totalRequested,
       };
+    });
+  }
+
+  /**
+   * Set absolute assigned amount for a category/section in a month.
+   * Used by inline "Assigned" editing in the budget grid.
+   */
+  static async setAssignedAmount(
+    householdId: string,
+    userId: string,
+    data: {
+      month: string;
+      amount: number;
+      category_id?: string;
+      section_id?: string;
+    }
+  ): Promise<void> {
+    const { month, amount, category_id, section_id } = data;
+
+    if (amount < 0) {
+      throw new BadRequestError('Assigned amount cannot be negative');
+    }
+
+    await knex.transaction(async (trx) => {
+      const monthDate = new Date(`${month}-01`);
+      const budgetMonth = await BudgetService.getOrCreateBudgetMonth(householdId, monthDate, trx);
+
+      const whereClause: any = { budget_month_id: budgetMonth.id };
+      if (category_id) {
+        whereClause.category_id = category_id;
+      } else {
+        whereClause.section_id = section_id;
+        whereClause.category_id = null;
+      }
+
+      let allocation = await trx('budget_allocations')
+        .where(whereClause)
+        .first();
+
+      if (!allocation) {
+        [allocation] = await trx('budget_allocations')
+          .insert({
+            budget_month_id: budgetMonth.id,
+            category_id: category_id || null,
+            section_id: section_id || null,
+            allocated_amount: 0,
+            assigned_amount: 0,
+            rollup_mode: !!section_id,
+          })
+          .returning('*');
+      }
+
+      const currentAssigned = Number(allocation.assigned_amount || 0);
+      const delta = Number(amount) - currentAssigned;
+
+      if (Math.abs(delta) < 0.0001) return;
+
+      // Record adjustment so RTA reflects the delta across cumulative month math.
+      await trx('account_balance_assignments').insert({
+        id: uuidv4(),
+        household_id: householdId,
+        account_id: null,
+        category_id: category_id || null,
+        section_id: section_id || null,
+        amount: delta, // negative delta gives money back to RTA
+        month,
+        assigned_by_user_id: userId,
+      });
+
+      await trx('budget_allocations')
+        .where({ id: allocation.id })
+        .update({
+          assigned_amount: Number(amount),
+          updated_at: trx.fn.now(),
+        });
     });
   }
 

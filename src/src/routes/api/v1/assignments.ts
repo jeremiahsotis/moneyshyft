@@ -7,7 +7,8 @@ import {
   createAssignmentSchema,
   autoAssignSchema,
   assignToCategoriesSchema,
-  autoAssignAllSchema
+  autoAssignAllSchema,
+  setAssignedAmountSchema
 } from '../../../validators/assignment.validators';
 import knex from '../../../config/knex';
 
@@ -239,6 +240,33 @@ router.post('/auto-assign-all', validateRequest(autoAssignAllSchema), asyncHandl
   res.json({
     success: true,
     data: result
+  });
+}));
+
+/**
+ * POST /api/v1/assignments/set-assigned
+ * Set absolute assigned amount for a category/section in a month.
+ */
+router.post('/set-assigned', validateRequest(setAssignedAmountSchema), asyncHandler(async (req: Request, res: Response) => {
+  const householdId = req.user!.householdId;
+  const userId = req.user!.userId;
+
+  if (!householdId) {
+    return res.status(403).json({ error: 'User must belong to a household' });
+  }
+
+  const { month, amount, category_id, section_id } = req.body;
+
+  await AssignmentService.setAssignedAmount(householdId, userId, {
+    month,
+    amount: Number(amount),
+    category_id,
+    section_id,
+  });
+
+  res.json({
+    success: true,
+    message: 'Assigned amount updated successfully'
   });
 }));
 
