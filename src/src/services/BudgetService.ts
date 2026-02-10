@@ -212,15 +212,66 @@ export class BudgetService {
           .where({ budget_month_id: previousBudget.id });
 
         if (previousAllocations.length > 0) {
-          // Copy allocations to new month
-          const newAllocations = previousAllocations.map((alloc: { category_id: string | null; section_id: string | null; allocated_amount: number; rollup_mode: boolean; notes: string | null }) => ({
+          const previousMonthStart = new Date(Date.UTC(previousMonth.getFullYear(), previousMonth.getMonth(), 1));
+          const previousMonthEnd = new Date(Date.UTC(previousMonth.getFullYear(), previousMonth.getMonth() + 1, 0, 23, 59, 59, 999));
+
+          const categorySpendingRows = await trx('transactions')
+            .where({ household_id: householdId })
+            .whereBetween('transaction_date', [previousMonthStart, previousMonthEnd])
+            .whereNotNull('category_id')
+            .select('category_id')
+            .sum('amount as total_spent')
+            .groupBy('category_id');
+
+          const categorySpentMap = new Map(
+            (categorySpendingRows as Array<{ category_id: string; total_spent: number | string | null }>).map((row) => [
+              row.category_id,
+              Math.max(Math.abs(Number(row.total_spent || 0)), 0)
+            ])
+          );
+
+          const categories = await trx('categories')
+            .where({ household_id: householdId })
+            .select('id', 'section_id');
+
+          const categoryToSectionMap = new Map<string, string>();
+          for (const category of categories as Array<{ id: string; section_id: string }>) {
+            categoryToSectionMap.set(category.id, category.section_id);
+          }
+
+          const sectionSpentMap = new Map<string, number>();
+          for (const [categoryId, spent] of categorySpentMap.entries()) {
+            const sectionId = categoryToSectionMap.get(categoryId);
+            if (!sectionId) continue;
+            sectionSpentMap.set(sectionId, (sectionSpentMap.get(sectionId) || 0) + spent);
+          }
+
+          // Copy allocations to new month and carry forward unspent assigned cash.
+          const newAllocations = previousAllocations.map((alloc: {
+            category_id: string | null;
+            section_id: string | null;
+            allocated_amount: number;
+            assigned_amount: number;
+            rollup_mode: boolean;
+            notes: string | null;
+          }) => {
+            const previousAssigned = Number(alloc.assigned_amount || 0);
+            const previousSpent = alloc.rollup_mode
+              ? Number(sectionSpentMap.get(alloc.section_id || '') || 0)
+              : Number(categorySpentMap.get(alloc.category_id || '') || 0);
+
+            const carryoverAssigned = Math.max(previousAssigned - previousSpent, 0);
+
+            return {
             budget_month_id: budgetMonth.id,
             category_id: alloc.category_id,
             section_id: alloc.section_id,
             allocated_amount: alloc.allocated_amount,
+            assigned_amount: carryoverAssigned,
             rollup_mode: alloc.rollup_mode,
             notes: alloc.notes
-          }));
+            };
+          });
 
           await trx('budget_allocations').insert(newAllocations);
 
