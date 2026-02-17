@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/shared-api-envelope-and-business-refusal-contract.spec.ts",
+      "content": "import { apiRequest } from '../../support/helpers/apiClient';\nimport { test, expect } from '../../support/fixtures/sharedApiEnvelope.fixture';\n\ntest.describe('Story 0.5 atdd - shared API envelope and business refusal contract journey', () => {\n  test.skip('keeps HTTP 200 semantics for business refusals in journey flow @P0', async ({\n    request,\n    sharedEnvelopeHeaders,\n    businessRefusalProbe,\n  }) => {\n    // Given a browser-driven journey that triggers a business refusal contract path\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/contracts/envelope/business-refusal',\n      headers: sharedEnvelopeHeaders,\n      data: businessRefusalProbe.payload,\n    });\n\n    // Then refusal is represented as a business contract (HTTP 200 + ok=false)\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: false,\n      code: businessRefusalProbe.expected.code,\n      message: businessRefusalProbe.expected.message,\n      refusalType: businessRefusalProbe.expected.refusalType,\n    });\n  });\n\n  test.skip('echoes correlation id consistently across success and refusal envelope paths @P1', async ({\n    request,\n    sharedEnvelopeHeaders,\n    sharedSuccessProbe,\n    businessRefusalProbe,\n  }) => {\n    // Given one request correlation context across multiple contract paths\n    const successResponse = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/contracts/envelope/success',\n      headers: sharedEnvelopeHeaders,\n      data: sharedSuccessProbe.payload,\n    });\n    const refusalResponse = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/contracts/envelope/business-refusal',\n      headers: sharedEnvelopeHeaders,\n      data: businessRefusalProbe.payload,\n    });\n\n    // Then both responses should preserve the same correlation id\n    expect(successResponse.status()).toBe(200);\n    expect(refusalResponse.status()).toBe(200);\n\n    const successBody = await successResponse.json();\n    const refusalBody = await refusalResponse.json();\n\n    expect(successBody.correlationId).toBe(sharedEnvelopeHeaders['x-correlation-id']);\n    expect(refusalBody.correlationId).toBe(sharedEnvelopeHeaders['x-correlation-id']);\n  });\n\n  test.skip('exposes structured refusal fields for downstream UI adapters @P1', async ({\n    request,\n    sharedEnvelopeHeaders,\n    businessRefusalProbe,\n  }) => {\n    // Given a refusal scenario used by downstream UI adapters\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/contracts/envelope/business-refusal',\n      headers: sharedEnvelopeHeaders,\n      data: businessRefusalProbe.payload,\n    });\n\n    // Then response contains deterministic contract fields for rendering and localization\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n\n    expect(body).toMatchObject({\n      ok: false,\n      code: businessRefusalProbe.expected.code,\n      message: businessRefusalProbe.expected.message,\n      refusalType: businessRefusalProbe.expected.refusalType,\n    });\n    expect(typeof body.message).toBe('string');\n    expect(body.message.length).toBeGreaterThan(0);\n  });\n});\n",
+      "description": "ATDD E2E tests for shared envelope and business refusal contract journey (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Shared API envelope helpers are used for structured contract responses",
+        "Business refusals return HTTP 200 with ok=false and structured code/message"
+      ],
+      "priority_coverage": {
+        "P0": 1,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "sharedApiEnvelopeFixture"
+  ],
+  "knowledge_fragments_used": [
+    "selector-resilience",
+    "timing-debugging",
+    "test-quality",
+    "playwright-cli"
+  ],
+  "test_count": 3,
+  "tdd_phase": "RED",
+  "summary": "Generated 3 FAILING E2E tests for Story 0.5 shared envelope/business refusal journey"
+}
