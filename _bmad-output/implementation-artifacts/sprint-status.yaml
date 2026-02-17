@@ -40,17 +40,17 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  epic-0: backlog
-  0-1-canonical-app-entrypoint-and-platform-middleware-chain: backlog
-  0-2-tenancy-context-resolution-and-repository-enforcement: backlog
-  0-3-platform-session-store-and-refresh-rotation: backlog
-  0-4-csrf-and-parent-domain-cookie-enforcement: backlog
-  0-5-shared-api-envelope-and-business-refusal-contract: backlog
-  0-6-platform-events-and-outbox-schema-foundations: backlog
-  0-7-mutation-transaction-wrapper-with-mandatory-event-outbox-writes: backlog
-  0-8-centralized-time-service-and-utc-local-rendering-contract: backlog
-  0-9-ci-policy-gate-as-blocking-first-stage: backlog
-  0-10-kernel-readiness-verification-suite: backlog
+  epic-0: in-progress
+  0-1-canonical-app-entrypoint-and-platform-middleware-chain: ready-for-dev
+  0-2-tenancy-context-resolution-and-repository-enforcement: ready-for-dev
+  0-3-platform-session-store-and-refresh-rotation: ready-for-dev
+  0-4-csrf-and-parent-domain-cookie-enforcement: ready-for-dev
+  0-5-shared-api-envelope-and-business-refusal-contract: ready-for-dev
+  0-6-platform-events-and-outbox-schema-foundations: ready-for-dev
+  0-7-mutation-transaction-wrapper-with-mandatory-event-outbox-writes: ready-for-dev
+  0-8-centralized-time-service-and-utc-local-rendering-contract: ready-for-dev
+  0-9-ci-policy-gate-as-blocking-first-stage: ready-for-dev
+  0-10-kernel-readiness-verification-suite: ready-for-dev
   epic-0-retrospective: optional
   epic-1: backlog
   1-1-tenant-context-resolution-and-isolation-guardrails: backlog
