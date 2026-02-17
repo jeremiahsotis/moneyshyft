@@ -24,7 +24,8 @@ test.describe('Story 0.8 atdd - centralized time service and utc/local rendering
     await page.goto('/operations');
 
     // Then localized operational timestamp should be visible
-    await expect(page.getByText('2026-02-17 10:30 AM')).toBeVisible();
+    await expect(page.getByTestId('operations-time-cell')).toHaveText('2026-02-17 10:30 AM');
+    await expect(page.getByTestId('timezone-source-badge')).toHaveText('user');
   });
 
   test.skip('[P1] shows tenant fallback indicator when user timezone is unavailable @P1', async ({ page }) => {
@@ -44,7 +45,7 @@ test.describe('Story 0.8 atdd - centralized time service and utc/local rendering
     await page.goto('/operations');
 
     // Then tenant fallback indicator should be shown
-    await expect(page.getByText('Timezone source: tenant')).toBeVisible();
+    await expect(page.getByTestId('timezone-source-badge')).toHaveText('tenant');
   });
 
   test.skip('[P1] never surfaces raw utc iso text in operational ui elements @P1', async ({ page }) => {
@@ -71,5 +72,64 @@ test.describe('Story 0.8 atdd - centralized time service and utc/local rendering
 
     // Then raw UTC ISO should not appear in the rendered UI
     await expect(page.getByText('2026-02-17T18:45:00.000Z')).toHaveCount(0);
+    await expect(page.getByTestId('operations-time-cell')).toHaveText('2026-02-17 01:45 PM');
+  });
+
+  test.skip('[P1] shows system timezone source when user and tenant preferences are unavailable @P1', async ({
+    page,
+  }) => {
+    // Given render-context endpoint reports system fallback
+    await page.route('**/api/v1/platform/time/render-context', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          timezone: 'UTC',
+          timezoneSource: 'system',
+        }),
+      });
+    });
+
+    // When operations page is loaded
+    await page.goto('/operations');
+
+    // Then system timezone source should be explicitly displayed
+    await expect(page.getByTestId('timezone-source-badge')).toHaveText('system');
+  });
+
+  test.skip('[P1] keeps operational rows stable while rendering timezone-specific local values @P1', async ({
+    page,
+  }) => {
+    // Given backend returns multiple rows with timezone-aware local render fields
+    await page.route('**/api/v1/platform/operations/feed', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          rows: [
+            {
+              id: 'op-010',
+              occurredAtUtc: '2026-02-17T15:30:00.000Z',
+              occurredAtLocal: '2026-02-17 10:30 AM',
+              timezoneSource: 'user',
+            },
+            {
+              id: 'op-011',
+              occurredAtUtc: '2026-02-17T21:15:00.000Z',
+              occurredAtLocal: '2026-02-17 04:15 PM',
+              timezoneSource: 'user',
+            },
+          ],
+        }),
+      });
+    });
+
+    // When operations page is loaded
+    await page.goto('/operations');
+
+    // Then operation row count and localized values should render deterministically
+    await expect(page.getByTestId('operations-row')).toHaveCount(2);
+    await expect(page.getByTestId('operations-time-cell').first()).toHaveText('2026-02-17 10:30 AM');
+    await expect(page.getByTestId('operations-time-cell').last()).toHaveText('2026-02-17 04:15 PM');
   });
 });
