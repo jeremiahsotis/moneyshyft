@@ -156,6 +156,19 @@ So that branch/workflow discipline is mandatory and auditable.
 **Then** downstream quality jobs are blocked on policy failure
 **And** branch guard commands validate story/epic workflow branch compliance.
 
+### Story 1.6: Security Controls and Redaction Verification
+
+As a security engineer,
+I want tenant isolation, CSRF/cookie posture, and log redaction verified by automated checks,
+So that core security controls are continuously enforced in implementation and CI.
+
+**Acceptance Criteria:**
+
+**Given** protected API and auth paths
+**When** security regression tests run
+**Then** cross-tenant access attempts fail and CSRF protection is enforced on state-changing routes
+**And** logs and event payloads exclude prohibited secret/plaintext sensitive fields.
+
 ## Epic 2: Commitment Core and Intake-to-Commitment Conversion
 
 Implement commitment lifecycle core and unify donor/cashier intake paths into explicit commitment or refusal outcomes.
@@ -224,6 +237,19 @@ So that refusal is explicit, understandable, and actionable.
 **When** refusal is issued
 **Then** refusal reason and structured alternatives are persisted
 **And** refusal is visible in lifecycle/audit history.
+
+### Story 2.6: Canonical Timezone Processing Across Intake and Scheduling
+
+As a dispatcher, cashier, donor, or admin,
+I want all displayed date/time values in my preferred local timezone while UTC is stored at rest,
+So that scheduling decisions are accurate and no user sees raw UTC.
+
+**Acceptance Criteria:**
+
+**Given** a user with explicit timezone preference (or tenant/system fallback)
+**When** date/time fields are created, updated, or rendered
+**Then** timestamps are persisted in UTC and displayed in local timezone with deterministic fallback order (`user -> tenant -> system`)
+**And** UI/API contract tests confirm raw UTC strings are not shown on operational screens.
 
 ## Epic 3: Dispatcher Run Planning and Capacity-Constrained Scheduling
 
@@ -393,6 +419,45 @@ So that reporting aligns with dignity boundaries.
 **Then** only aggregate signal fields are included
 **And** prohibited person-linked fields are excluded unless consent policy explicitly allows.
 
+### Story 5.5: Lifecycle Expiry and Escalation Policy Automation
+
+As operations leadership,
+I want request/commitment lifecycle expiry and escalation rules automated,
+So that stale work is explicitly resolved instead of silently degrading trust.
+
+**Acceptance Criteria:**
+
+**Given** inactive records in configured lifecycle states
+**When** policy windows are reached (`NFR33`, `NFR34`, `NFR35`)
+**Then** auto-expire, escalate, and auto-close actions execute with explicit reason codes
+**And** all policy-driven transitions are audit logged and reflected in reporting views.
+
+### Story 5.6: Performance SLO and Quality Gate Evidence Pipeline
+
+As a release manager,
+I want repeatable checks for performance and quality gate thresholds,
+So that implementation cannot ship without meeting defined reliability expectations.
+
+**Acceptance Criteria:**
+
+**Given** CI and pre-release runs execute
+**When** performance and gate checks run
+**Then** latency and integrity thresholds (`NFR1..NFR5b`, `FR46`) are evaluated against evidence artifacts
+**And** release promotion is blocked if mandatory SLO/gate thresholds fail.
+
+### Story 5.7: Accessibility Conformance and Regression Guarding
+
+As a product owner,
+I want all core workflows verified to WCAG 2.2 AA,
+So that accessibility is a release-level quality requirement and not an afterthought.
+
+**Acceptance Criteria:**
+
+**Given** donor, cashier, dispatcher, and driver core workflows
+**When** accessibility validation runs
+**Then** workflows satisfy WCAG 2.2 AA including keyboard operation, labels/errors, 200% zoom, and reduced-motion support
+**And** unresolved accessibility regressions block release readiness.
+
 ## Epic 6: WordPress Bridge and Monolith State Authority Cutover
 
 Bridge Route workflows from WP to monolith services without dual-write drift.
@@ -478,3 +543,16 @@ So that expansion does not violate policy boundaries.
 **When** consent readiness is not met
 **Then** cross-org sharing remains feature-flagged off
 **And** policy checks block unauthorized activation.
+
+## NFR Traceability Appendix
+
+### NFR to Story Mapping
+
+- `NFR1..NFR5b` -> Story `5.6`
+- `NFR6..NFR12a` -> Stories `1.3`, `1.6`
+- `NFR13..NFR18` -> Stories `2.1`, `2.4`, `4.2`, `4.3`, `5.5`
+- `NFR19..NFR21a` -> Stories `5.2`, `5.3`, `5.6`
+- `NFR22..NFR23b` -> Story `5.7`
+- `NFR25..NFR28` -> Stories `5.2`, `6.1`, `6.2`, `6.3`, `7.1`, `7.2`
+- `NFR29..NFR32a` -> Stories `1.5`, `5.4`, `7.3`
+- `NFR33..NFR35` -> Story `5.5`

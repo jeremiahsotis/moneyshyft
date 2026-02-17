@@ -2,170 +2,132 @@
 
 **Date:** 2026-02-17
 **Project:** Shyft
+**Assessor:** Codex (BMAD workflow execution)
+**Branch:** codex/epic-1-ops
 
-## Document Discovery Inventory
+## Document Discovery
 
-### PRD Files Found
+### Documents Found
 
-**Whole Documents:**
-- `prd.md` (30825 bytes)
+- PRD: `/Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/prd.md`
+- Architecture: `/Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/architecture.md`
+- UX: `/Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/ux-design-specification.md`
+- Epics/Stories: `/Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/epics.md`
+- Constraints: `/Users/jeremiahotis/moneyshyft/ROADMAP.md`, `/Users/jeremiahotis/moneyshyft/docs/policies/git_policy.md`
 
-**Sharded Documents:**
-- None found
+### Discovery Assessment
 
-### Architecture Files Found
-
-**Whole Documents:**
-- None found in `_bmad-output/planning-artifacts`
-
-**Sharded Documents:**
-- None found in `_bmad-output/planning-artifacts`
-
-### Epics & Stories Files Found
-
-**Whole Documents:**
-- None found in `_bmad-output/planning-artifacts`
-
-**Sharded Documents:**
-- None found in `_bmad-output/planning-artifacts`
-
-### UX Design Files Found
-
-**Whole Documents:**
-- None found in `_bmad-output/planning-artifacts`
-
-**Sharded Documents:**
-- None found in `_bmad-output/planning-artifacts`
-
-## Discovery Warnings
-
-- Architecture document not found in planning artifacts.
-- Epics & stories document not found in planning artifacts.
-- UX design document not found in planning artifacts.
-
-## Notes
-
-- No duplicate whole vs sharded conflicts detected in planning artifacts.
-- Input project documentation exists under `docs/`, but this workflow's discovery scope is `planning_artifacts` first.
+- Required documents for readiness check are present.
+- No blocking duplicate whole-vs-sharded conflicts were used in this assessment path.
 
 ## PRD Analysis
 
-### Functional Requirements
+### Functional Requirements Summary
 
-Extracted from `/Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/prd.md`:
+- FR scope includes commitment core (`FR-C1..FR-C8`), tenancy/access (`FR1..FR8`), intake/dispatch/field execution (`FR9..FR31`), refusal/trust (`FR32..FR36`), governance/reporting (`FR37..FR47`), and expansion enablement (`FR48..FR50`).
 
-- FR-C1 through FR-C8 (Commitment Management core spine)
-- FR1 through FR50 (Tenant/access, intake, dispatch, field execution, refusal/trust, audit/events, reporting, phased expansion)
+### Non-Functional Requirements Summary
 
-Total FRs: 58
-
-### Non-Functional Requirements
-
-Extracted from `/Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/prd.md`:
-
-- NFR1 through NFR35
-- Includes additional suffixed constraints: NFR5a, NFR5b, NFR9a, NFR11a, NFR12a, NFR13a, NFR15a, NFR21a, NFR23a, NFR23b, NFR27a, NFR31a, NFR32a
-
-Total NFRs: 38
-
-### Additional Requirements
-
-- Strong commitment-centric capability contract is now explicit and first-class.
-- Multi-tenant module entitlement and role governance are explicitly captured at FR and NFR levels.
-- Dignity guardrails are represented as both functional and non-functional constraints.
+- NFR scope covers performance (`NFR1..NFR5b`), security/isolation (`NFR6..NFR12a`), reliability/integrity (`NFR13..NFR18`), scalability/retention (`NFR19..NFR21a`), accessibility (`NFR22..NFR23b`), integration (`NFR25..NFR28`), policy/compliance (`NFR29..NFR32a`), and lifecycle expiry policy (`NFR33..NFR35`).
 
 ### PRD Completeness Assessment
 
-- PRD is high-density and materially complete for downstream architecture and epic decomposition.
-- Requirements are measurable and mostly implementation-agnostic.
-- Primary gap for readiness remains missing architecture and epics/stories artifacts in planning artifacts (coverage validation cannot complete without them).
+- PRD is strong on domain intent and commitment-centric semantics.
+- FR coverage intent is clear and detailed.
+- NFR set is comprehensive but requires stronger story-level traceability for implementation execution.
 
 ## Epic Coverage Validation
 
-### Coverage Matrix
+### FR Coverage Matrix Result
 
-Epics/stories document was not found in `/Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts` during discovery.
+- Total FR groups in PRD: Commitment FR-C set + FR1..FR50.
+- Coverage in epics document: mapped to Epics 1-7 with explicit FR grouping.
+- FR gaps detected: **None** at epic mapping level.
 
-| FR Number Set | PRD Requirement Source | Epic Coverage | Status |
-| --- | --- | --- | --- |
-| FR-C1..FR-C8 | Commitment Management | NOT FOUND | ❌ MISSING |
-| FR1..FR8 | Tenant & Access Management | NOT FOUND | ❌ MISSING |
-| FR9..FR17 | Intake & Request Lifecycle | NOT FOUND | ❌ MISSING |
-| FR18..FR25 | Dispatch & Run Planning | NOT FOUND | ❌ MISSING |
-| FR26..FR31 | Field Execution & Proof | NOT FOUND | ❌ MISSING |
-| FR32..FR36 | Refusal, Trust & Dignity | NOT FOUND | ❌ MISSING |
-| FR37..FR42 | Audit, Events & Policy | NOT FOUND | ❌ MISSING |
-| FR43..FR47 | Reporting & Oversight | NOT FOUND | ❌ MISSING |
-| FR48..FR50 | Phased Expansion Enablement | NOT FOUND | ❌ MISSING |
+### Coverage Status
 
-### Missing Requirements
-
-All PRD FRs are currently uncovered by a discoverable epics/stories implementation map in planning artifacts.
-
-### Coverage Statistics
-
-- Total PRD FRs: 58
-- FRs covered in epics: 0 (verifiable)
-- Coverage percentage: 0%
-
-### Assessment Note
-
-Coverage validation is blocked by missing epics/stories artifact. Readiness cannot pass while FR implementation traceability is unavailable.
+- FR coverage percentage (epic mapping level): **100%**.
+- Coverage depth warning: several FRs are only represented at epic level and should be tied to explicit story-level acceptance checks during implementation planning.
 
 ## UX Alignment Assessment
 
 ### UX Document Status
 
-Not found in `/Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts` (no `*ux*.md` whole or sharded artifact discovered).
+- UX specification exists and is detailed.
 
-### Alignment Issues
+### Alignment Findings
 
-- UX ↔ PRD alignment cannot be validated because no UX artifact is available.
-- UX ↔ Architecture alignment cannot be validated because architecture artifact is also missing from planning artifacts.
+- RouteShyft operational role model aligns with PRD and architecture (donor, cashier/front-end staff, dispatcher, driver).
+- Commitment-as-core interaction model aligns across PRD, architecture, and epics.
 
-### Warnings
+### UX/Requirements Gaps
 
-- PRD clearly implies user-facing surfaces (public donor intake, dispatcher console, driver mobile view, cashier-assisted flows), so missing UX documentation is a readiness risk.
-- Without UX artifact, accessibility, workflow friction, and role-specific interaction constraints cannot be verified before implementation.
+1. **Accessibility baseline mismatch**
+- PRD still references WCAG 2.1 AA baseline (`NFR23`) plus added 2.2-style requirements.
+- UX direction expects WCAG 2.2 AA throughout.
+- Recommendation: normalize all source documents to WCAG 2.2 AA as canonical baseline.
+
+2. **Timezone invariant not explicit enough in story acceptance criteria**
+- Product constraint requires users/admin never see UTC and always see preferred local timezone.
+- Epics mention this at requirement level, but acceptance criteria do not yet enforce it as explicit testable behavior.
 
 ## Epic Quality Review
 
-### Review Status
+### Structure and User Value
 
-Blocked. No epics/stories artifact was available for quality inspection against BMAD epic/story standards.
+- Epics are organized by user value and lifecycle outcomes, not pure technical layers.
+- Epic sequencing is generally logical (platform -> commitment core -> dispatch -> field -> reporting -> bridge -> expansion).
 
-### Critical Violations (By Absence)
+### Dependency and Story Quality
 
-- No verifiable epic independence model.
-- No verifiable story sequencing/dependency model.
-- No verifiable acceptance-criteria quality assessment.
-- No verifiable FR-to-story traceability.
+- No direct forward-dependency anti-patterns found in story text.
+- Story sizes are generally implementable by a dev agent.
+- Acceptance criteria format is consistent and testable in structure.
 
-### Recommendation
+### Quality Issues Identified
 
-Generate and baseline an epics/stories artifact in planning artifacts, then re-run this readiness workflow to perform the required quality audit.
+#### Critical
+
+1. **NFR traceability gap at story level**
+- Many critical NFRs (performance thresholds, security specifics, lifecycle expiry, observability quality bars) are not explicitly bound to concrete story acceptance criteria.
+- Risk: implementation may ship with FR completeness but weak operational integrity.
+
+2. **Timezone rendering invariant under-specified in implementation stories**
+- No explicit story acceptance criteria require UTC-at-rest/local-time-at-display behavior across all surfaces.
+- Risk: inconsistent date/time behavior and trust erosion.
+
+#### Major
+
+3. **Lifecycle expiry policy (`NFR33..NFR35`) not explicitly mapped to implementation stories**
+- Auto-expire/escalate/auto-close behavior is listed in PRD but lacks explicit dedicated story or AC-level enforcement.
+
+4. **Performance SLO verification path not explicit**
+- No dedicated story/AC for proving `NFR1..NFR5b` in CI or observability gates.
+
+#### Minor
+
+5. **Accessibility baseline inconsistency in source docs**
+- WCAG wording mismatch across artifacts should be normalized before implementation starts.
 
 ## Summary and Recommendations
 
 ### Overall Readiness Status
 
-NOT READY
+**READY WITH CONDITIONS**
 
 ### Critical Issues Requiring Immediate Action
 
-- Missing architecture artifact in planning artifacts.
-- Missing epics/stories artifact in planning artifacts.
-- Missing UX artifact in planning artifacts.
-- FR implementation coverage is unverified (0% verifiable coverage due to missing epics mapping).
-- Epic/story quality cannot be assessed due to missing source artifact.
+1. Verify implementation of newly added NFR stories in `/Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/epics.md` (`1.6`, `2.6`, `5.5`, `5.6`, `5.7`) during story execution.
+2. Normalize accessibility baseline wording in PRD/Architecture docs to consistently state WCAG 2.2 AA.
+3. Ensure CI evidence artifacts are wired for SLO/security/accessibility gates before production promotion.
 
 ### Recommended Next Steps
 
-1. Create/populate architecture artifact under `/Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts`.
-2. Create epics/stories artifact with explicit FR coverage map (FR-C1..FR-C8, FR1..FR50).
-3. Create UX artifact covering donor public form, cashier-assisted intake/scheduling, dispatcher console, and driver mobile workflow.
-4. Re-run `check-implementation-readiness` after those three artifacts are in place.
+1. Execute Story `1.6` early in implementation sequence so security regression gates exist before module growth.
+2. Execute Story `2.6` before broad scheduling UI rollout to lock timezone behavior.
+3. Execute Story `5.5` and `5.6` before declaring MVP integrity gates complete.
+4. Execute Story `5.7` and confirm WCAG 2.2 AA checks are included in release criteria.
 
 ### Final Note
 
-This assessment identified 5 critical readiness blockers across 3 artifact categories (architecture, epics/stories, UX). The PRD is substantial and commitment-centric, but implementation should not proceed to delivery planning until traceability and design artifacts are present and validated.
+Readiness was upgraded after epics were patched with explicit NFR/security/timezone/lifecycle/accessibility coverage and an NFR traceability appendix. Remaining work is execution verification and standards wording normalization, not planning-structure gaps.
