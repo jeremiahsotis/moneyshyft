@@ -6,6 +6,7 @@ import logger from '../utils/logger';
 import { createRecommendedSections } from '../seeds/production/001_recommended_sections';
 import { createRecommendedTags } from '../seeds/production/002_recommended_tags';
 import { AnalyticsService } from './AnalyticsService';
+import PlatformSessionStore from '../platform/sessions/PlatformSessionStore';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -227,6 +228,12 @@ class AuthService {
 
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
+    await PlatformSessionStore.createSession({
+      userId: payload.userId,
+      householdId: payload.householdId,
+      refreshToken,
+      rememberMe: false,
+    });
 
     const response: AuthResponse = {
       user: await this.formatUserResponse(result.user),
@@ -277,6 +284,12 @@ class AuthService {
 
     const accessToken = generateAccessToken(payload, rememberMe);
     const refreshToken = generateRefreshToken(payload, rememberMe);
+    await PlatformSessionStore.createSession({
+      userId: payload.userId,
+      householdId: payload.householdId,
+      refreshToken,
+      rememberMe,
+    });
 
     return {
       user: await this.formatUserResponse(user),
