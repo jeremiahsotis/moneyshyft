@@ -599,7 +599,7 @@ Mitigation: pickup-first scope discipline, defer non-essential analytics/automat
 ### Accessibility
 
 - NFR22: Dispatcher and cashier operational interfaces shall be usable at minimum 800x600 viewport.
-- NFR23: Public donor intake and staff workflows shall meet WCAG 2.1 AA baseline for keyboard navigation, contrast, labels, and error messaging.
+- NFR23: Public donor intake and staff workflows shall meet WCAG 2.2 AA baseline for keyboard navigation, contrast, labels, and error messaging.
 - NFR23a: Core workflows shall remain fully functional at 200% text zoom without loss of content/function.
 - NFR23b: Reduced-motion preferences shall be respected; no required animations for task completion.
 
