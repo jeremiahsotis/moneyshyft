@@ -1,65 +1,113 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context','step-02-identify-targets','step-03-generate-tests','step-03c-aggregate','step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-17T10:45:00Z'
+lastSaved: '2026-02-17T11:20:00Z'
 ---
 
-# Automation Summary - Story 0.2
+# Automation Summary - Story 0.3
 
 ## Scope
 
 Expanded test automation coverage for:
-- `/Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/0-2-tenancy-context-resolution-and-repository-enforcement.md`
+- `/Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/0-3-platform-session-store-and-refresh-rotation.md`
 
-Primary focus: tenant context enforcement and repository-level tenant scoping, including deterministic negative paths for cross-tenant reads/writes.
+Primary focus: first-party refresh session persistence, rotation semantics, replay defense, and revocation enforcement.
 
-## Generated Tests
+## Step 1 - Preflight and Context
+
+- Mode: `BMad-Integrated` (story artifact provided).
+- Framework readiness confirmed:
+  - `/Users/jeremiahotis/moneyshyft/playwright.config.ts`
+  - `/Users/jeremiahotis/moneyshyft/package.json`
+  - `/Users/jeremiahotis/moneyshyft/tests/`
+- Config flags loaded:
+  - `tea_use_playwright_utils: true`
+  - `tea_browser_automation: auto`
+- Existing 0.3 scaffolding discovered (ATDD-red skipped tests):
+  - `/Users/jeremiahotis/moneyshyft/tests/api/platform/platform-session-store-and-refresh-rotation.api.spec.ts`
+  - `/Users/jeremiahotis/moneyshyft/tests/e2e/platform/platform-session-store-and-refresh-rotation.spec.ts`
+
+Knowledge fragments loaded for this run:
+- Core: `test-levels-framework`, `test-priorities`, `data-factories`, `selective-testing`, `ci-burn-in`, `test-quality`
+- API/E2E generation: `api-testing-patterns`, `fixture-architecture`, `network-first`, `selector-resilience`
+- Playwright Utils and tooling: `overview`, `api-request`, `auth-session`, `intercept-network-call`, `recurse`, `log`, `file-utils`, `burn-in`, `network-error-monitor`, `fixtures-composition`, `playwright-cli`
+
+## Step 2 - Coverage Plan
+
+### Targets by Level
+
+- API (`@P0`, `@P1`, `@P2`)
+  - Issue refresh session metadata and hash persistence.
+  - Rotate refresh session and revoke prior token state.
+  - Reject replay and revoked-token reuse.
+  - Reject malformed rotation payload.
+
+- Journey (`@P0`, `@P1`)
+  - End-to-end API lifecycle: issue -> rotate -> replay/revoke rejection.
+
+### Priority Mapping
+
+- `@P0`: AC1 persistence + atomic rotation/revocation.
+- `@P1`: AC2 replay/revoked token rejection.
+- `@P2`: malformed input guardrails for rotation contract.
+
+## Step 3/3C - Generated and Aggregated Outputs
 
 ### API Tests
 
-- File: `/Users/jeremiahotis/moneyshyft/tests/api/platform/tenancy-context-and-repository-enforcement.api.spec.ts`
-- New tests: 4
-  - `@P0` requires tenant context before repository guard query execution
-  - `@P0` verifies mandatory tenant filtering for guarded repository reads
-  - `@P1` rejects cross-tenant read override attempts deterministically
-  - `@P1` blocks cross-tenant write payload mismatches
+- File updated: `/Users/jeremiahotis/moneyshyft/tests/api/platform/platform-session-store-and-refresh-rotation.api.spec.ts`
+- Executable tests now present: 5
+  - `@P0` persists hashed refresh state with expiry/revocation metadata
+  - `@P0` rotates refresh sessions and revokes prior state atomically
+  - `@P1` rejects replayed refresh token attempts
+  - `@P1` rejects revoked refresh tokens
+  - `@P2` rejects malformed rotation payloads
 
-### E2E/API-journey Tests
+### Journey Tests
 
-- File: `/Users/jeremiahotis/moneyshyft/tests/e2e/platform/tenancy-context-and-repository-enforcement.spec.ts`
-- New tests: 3
-  - `@P0` validates stable context resolution across protected endpoints
-  - `@P1` validates deterministic refusal for cross-tenant reads
-  - `@P1` validates scope stability across repeated guarded requests
+- File updated: `/Users/jeremiahotis/moneyshyft/tests/e2e/platform/platform-session-store-and-refresh-rotation.spec.ts`
+- Converted from browser-placeholder `test.skip` to executable API-journey tests via session fixtures.
+- Executable tests now present: 3
+  - `@P0` issue -> rotate lifecycle with prior-session revocation
+  - `@P1` replay rejection after initial rotation
+  - `@P1` rejection after explicit revocation
 
-## Existing Inputs Reused
+### Fixture/Factory Reuse
 
-- Factory: `/Users/jeremiahotis/moneyshyft/tests/support/factories/tenantRepositoryFactory.ts`
-- Fixture: `/Users/jeremiahotis/moneyshyft/tests/support/fixtures/kernelApi.fixture.ts`
-- API helper: `/Users/jeremiahotis/moneyshyft/tests/support/helpers/apiClient.ts`
-- Story artifact: `/Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/0-2-tenancy-context-resolution-and-repository-enforcement.md`
+- `/Users/jeremiahotis/moneyshyft/tests/support/fixtures/sessionRotation.fixture.ts`
+- `/Users/jeremiahotis/moneyshyft/tests/support/factories/sessionRotationFactory.ts`
+- `/Users/jeremiahotis/moneyshyft/tests/support/helpers/apiClient.ts`
 
-## Execution Commands
+## Step 4 - Validation and Risks
+
+Checklist validation status:
+- Framework scaffolding: PASS
+- Coverage mapping to ACs: PASS
+- Priority tagging: PASS
+- Duplicate-coverage control: PASS (API for contracts, journey for lifecycle)
+- Fixture/factory/helper usage: PASS
+- Browser session cleanup: PASS (no browser exploration used)
+- Temp artifact discipline: PASS (summary stored under `_bmad-output/test-artifacts`)
+
+Execution validation:
+- Command run:
+  - `npm run test:e2e -- tests/api/platform/platform-session-store-and-refresh-rotation.api.spec.ts tests/e2e/platform/platform-session-store-and-refresh-rotation.spec.ts`
+- Result: `8 failed` (0 passed)
+- Failure pattern: endpoints under `/api/v1/platform/_kernel/sessions/refresh/*` returned `500` instead of the expected contract statuses (`201`, `200`, `401`, `400`).
+- Interpretation: tests are executable and correctly wired into the suite, but backend story behavior is not yet meeting expected contracts.
+
+Assumptions and risks:
+- Endpoint contracts and error codes are expected to be implemented by story delivery.
+- If routes are not yet available, failures are expected and should be treated as implementation gaps rather than test design defects.
+
+## Suggested Execution
 
 ```bash
-npm run test:e2e -- tests/api/platform/tenancy-context-and-repository-enforcement.api.spec.ts
-npm run test:e2e -- tests/e2e/platform/tenancy-context-and-repository-enforcement.spec.ts
+npm run test:e2e -- tests/api/platform/platform-session-store-and-refresh-rotation.api.spec.ts
+npm run test:e2e -- tests/e2e/platform/platform-session-store-and-refresh-rotation.spec.ts
 ```
-
-## Coverage Plan
-
-- API (`@P0`, `@P1`): enforce context-required and tenant-guard behavior, plus cross-tenant read/write denial contracts.
-- E2E/API-journey (`@P0`, `@P1`): preserve resolved tenant context through repeated guarded routes and verify deterministic refusal envelope.
-- Scope model: `critical-paths` for kernel tenancy gates in phase-0 platform work.
-
-## Quality and Risks
-
-- Avoided duplicating the same assertion at multiple levels where unnecessary.
-- Kept priorities aligned to story acceptance criteria and tenancy risk model (`@P0` + `@P1`).
-- Converted prior ATDD-red `test.skip` coverage into executable automation tests.
-- Assumption: kernel routes and refusal codes are implemented per story contracts; failures are expected until implementation lands.
 
 ## Next Recommended Workflow
 
-- `RV` (`test-review`) for quality scoring and anti-flakiness checks once implementation is complete.
-- `TR` (`trace`) to map story acceptance criteria to passing automated checks before gate decisions.
+- `RV` (`test-review`) after implementation is wired to score quality/flakiness.
+- `TR` (`trace`) to map AC coverage to passing checks before gate decisions.

@@ -1,47 +1,151 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../support/fixtures/sessionRotation.fixture';
+import { apiRequest } from '../../support/helpers/apiClient';
 
-test.describe('Story 0.3 ATDD RED - platform session store and refresh rotation journey', () => {
-  test.skip('shows active refresh session metadata after authenticated entry @P0', async ({ page }) => {
-    // Given a user can authenticate into the first-party session flow
-    await page.goto('/login');
-    await page.getByTestId('auth-email-input').fill('security.engineer@example.com');
-    await page.getByTestId('auth-password-input').fill('SecurePass123!');
-    await page.getByRole('button', { name: 'Sign in' }).click();
+test.describe('Story 0.3 automate - platform session store and refresh rotation journey', () => {
+  test('issues refresh session, rotates it, and marks prior session revoked @P0', async ({
+    request,
+    sessionHeaders,
+    refreshIssuePayload,
+    refreshRotatePayload,
+  }) => {
+    // Given a first-party refresh issue contract request
+    const issueResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/sessions/refresh/issue',
+      headers: sessionHeaders,
+      data: refreshIssuePayload,
+    });
 
-    // When the user opens session security settings
-    await page.getByRole('link', { name: 'Security' }).click();
-    await page.getByTestId('session-store-panel').waitFor({ state: 'visible' });
+    // Then session metadata is persisted
+    expect(issueResponse.status()).toBe(201);
+    const issueBody = await issueResponse.json();
+    expect(issueBody).toMatchObject({
+      ok: true,
+      session: {
+        refreshTokenHash: expect.any(String),
+        revokedAt: null,
+      },
+    });
 
-    // Then refresh session metadata is visible and revocation marker is unset
-    await expect(page.getByTestId('refresh-token-hash')).toBeVisible();
-    await expect(page.getByTestId('refresh-token-expires-at')).toBeVisible();
-    await expect(page.getByTestId('refresh-token-revoked-at')).toHaveText('Active');
+    // When refresh rotation runs for the same lifecycle
+    const rotateResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/sessions/refresh/rotate',
+      headers: sessionHeaders,
+      data: {
+        ...refreshRotatePayload,
+        sessionId: issueBody.session.sessionId,
+      },
+    });
+
+    // Then previous session state is revoked and replacement is issued
+    expect(rotateResponse.status()).toBe(200);
+    const rotateBody = await rotateResponse.json();
+    expect(rotateBody).toMatchObject({
+      ok: true,
+      rotated: {
+        priorSessionId: issueBody.session.sessionId,
+        priorRevokedAt: expect.any(String),
+        replacementSessionId: expect.any(String),
+      },
+    });
   });
 
-  test.skip('rotates refresh token and replaces prior session card in security journey @P0', async ({ page }) => {
-    // Given a user is on security settings with an active session card
-    await page.goto('/settings/security');
-    await page.getByTestId('session-store-panel').waitFor({ state: 'visible' });
+  test('rejects replay of an already-rotated refresh token in journey flow @P1', async ({
+    request,
+    sessionHeaders,
+    refreshIssuePayload,
+    refreshRotatePayload,
+  }) => {
+    // Given a session is issued and rotated once
+    const issueResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/sessions/refresh/issue',
+      headers: sessionHeaders,
+      data: refreshIssuePayload,
+    });
+    expect(issueResponse.status()).toBe(201);
+    const issueBody = await issueResponse.json();
 
-    // When the user rotates refresh credentials
-    await page.getByRole('button', { name: 'Rotate refresh token' }).click();
+    const firstRotate = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/sessions/refresh/rotate',
+      headers: sessionHeaders,
+      data: {
+        ...refreshRotatePayload,
+        sessionId: issueBody.session.sessionId,
+      },
+    });
+    expect(firstRotate.status()).toBe(200);
 
-    // Then previous token is marked revoked and replacement token metadata is shown
-    await expect(page.getByTestId('session-rotation-toast')).toBeVisible();
-    await expect(page.getByTestId('previous-refresh-token-status')).toHaveText('Revoked');
-    await expect(page.getByTestId('active-refresh-token-status')).toHaveText('Active');
+    // When the same prior refresh token is presented again
+    const replayResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/sessions/refresh/rotate',
+      headers: sessionHeaders,
+      data: {
+        ...refreshRotatePayload,
+        sessionId: issueBody.session.sessionId,
+      },
+    });
+
+    // Then replay detection rejects it deterministically
+    expect(replayResponse.status()).toBe(401);
+    const replayBody = await replayResponse.json();
+    expect(replayBody).toMatchObject({
+      ok: false,
+      code: 'REFRESH_TOKEN_REPLAY_DETECTED',
+      refusalType: 'security',
+    });
   });
 
-  test.skip('blocks replayed or revoked refresh actions with deterministic refusal banner @P1', async ({ page }) => {
-    // Given the session panel has a replay/revoke simulation action for diagnostics
-    await page.goto('/settings/security');
-    await page.getByTestId('session-store-panel').waitFor({ state: 'visible' });
+  test('rejects refresh rotation after explicit revocation in journey flow @P1', async ({
+    request,
+    sessionHeaders,
+    refreshIssuePayload,
+    refreshRotatePayload,
+    refreshRevokePayload,
+  }) => {
+    // Given a session has been issued
+    const issueResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/sessions/refresh/issue',
+      headers: sessionHeaders,
+      data: refreshIssuePayload,
+    });
+    expect(issueResponse.status()).toBe(201);
+    const issueBody = await issueResponse.json();
 
-    // When a replayed refresh attempt is triggered
-    await page.getByRole('button', { name: 'Replay revoked token' }).click();
+    // And explicitly revoked
+    const revokeResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/sessions/refresh/revoke',
+      headers: sessionHeaders,
+      data: {
+        ...refreshRevokePayload,
+        sessionId: issueBody.session.sessionId,
+      },
+    });
+    expect(revokeResponse.status()).toBe(200);
 
-    // Then the refusal envelope is surfaced with deterministic security code
-    await expect(page.getByTestId('session-refusal-banner')).toBeVisible();
-    await expect(page.getByTestId('session-refusal-code')).toHaveText('REFRESH_TOKEN_REPLAY_DETECTED');
+    // When refresh rotation is attempted after revocation
+    const rotateAfterRevoke = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/sessions/refresh/rotate',
+      headers: sessionHeaders,
+      data: {
+        ...refreshRotatePayload,
+        sessionId: issueBody.session.sessionId,
+      },
+    });
+
+    // Then request is rejected with revoked token semantics
+    expect(rotateAfterRevoke.status()).toBe(401);
+    const body = await rotateAfterRevoke.json();
+    expect(body).toMatchObject({
+      ok: false,
+      code: 'REFRESH_TOKEN_REVOKED',
+      refusalType: 'security',
+    });
   });
 });

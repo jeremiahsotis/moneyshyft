@@ -7,8 +7,8 @@ import {
   createSessionHeaders,
 } from '../../support/factories/sessionRotationFactory';
 
-test.describe('Story 0.3 ATDD RED - platform session store and refresh rotation API coverage', () => {
-  test.skip('persists hashed refresh state with expiry and revocation metadata @P0', async ({ request }) => {
+test.describe('Story 0.3 automate - platform session store and refresh rotation API coverage', () => {
+  test('persists hashed refresh state with expiry and revocation metadata @P0', async ({ request }) => {
     // Given a valid tenant-authenticated context and refresh issue payload
     const headers = createSessionHeaders({ tenantId: 'tenant-session-alpha' });
     const payload = createRefreshIssuePayload({
@@ -40,7 +40,7 @@ test.describe('Story 0.3 ATDD RED - platform session store and refresh rotation 
     expect(body.session.refreshTokenHash).not.toContain('rt-session-alpha');
   });
 
-  test.skip('rotates refresh sessions and revokes prior refresh state atomically @P0', async ({ request }) => {
+  test('rotates refresh sessions and revokes prior refresh state atomically @P0', async ({ request }) => {
     // Given an existing refresh session context
     const headers = createSessionHeaders({ tenantId: 'tenant-session-alpha' });
     const payload = createRefreshRotatePayload({
@@ -71,7 +71,7 @@ test.describe('Story 0.3 ATDD RED - platform session store and refresh rotation 
     });
   });
 
-  test.skip('rejects replayed refresh token attempts deterministically @P1', async ({ request }) => {
+  test('rejects replayed refresh token attempts deterministically @P1', async ({ request }) => {
     // Given a replayed refresh token from an already-rotated session
     const headers = createSessionHeaders({ tenantId: 'tenant-session-alpha' });
     const payload = createRefreshRotatePayload({
@@ -97,7 +97,7 @@ test.describe('Story 0.3 ATDD RED - platform session store and refresh rotation 
     });
   });
 
-  test.skip('rejects revoked refresh tokens across subsequent refresh attempts @P1', async ({ request }) => {
+  test('rejects revoked refresh tokens across subsequent refresh attempts @P1', async ({ request }) => {
     // Given a refresh session has already been revoked
     const headers = createSessionHeaders({ tenantId: 'tenant-session-alpha' });
     const revokePayload = createRefreshRevokePayload({
@@ -132,6 +132,32 @@ test.describe('Story 0.3 ATDD RED - platform session store and refresh rotation 
       ok: false,
       code: 'REFRESH_TOKEN_REVOKED',
       refusalType: 'security',
+    });
+  });
+
+  test('rejects refresh rotation when replacement token id is missing @P2', async ({ request }) => {
+    // Given a valid tenant context and a malformed rotation payload
+    const headers = createSessionHeaders({ tenantId: 'tenant-session-alpha' });
+    const payload = createRefreshRotatePayload({
+      sessionId: 'sess-invalid-alpha',
+      presentedRefreshToken: 'refresh-valid-alpha',
+      replacementRefreshTokenId: '',
+    });
+
+    // When rotation is requested without replacement token id
+    const response = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/sessions/refresh/rotate',
+      headers,
+      data: payload,
+    });
+
+    // Then the request is refused as invalid input
+    expect(response.status()).toBe(400);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      ok: false,
+      code: 'REFRESH_ROTATION_INVALID_REQUEST',
     });
   });
 });
