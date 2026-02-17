@@ -10,15 +10,21 @@ export class TenantScopeError extends Error {
 }
 
 export const requireTenantId = (tenantId?: string | null): string => {
-  if (typeof tenantId !== 'string' || tenantId.trim() === '') {
+  if (typeof tenantId !== 'string') {
     throw new TenantScopeError('Tenant context is required for tenant-scoped data access');
   }
 
-  if (tenantId === 'public') {
+  const normalizedTenantId = tenantId.trim();
+
+  if (normalizedTenantId === '') {
+    throw new TenantScopeError('Tenant context is required for tenant-scoped data access');
+  }
+
+  if (normalizedTenantId.toLowerCase() === 'public') {
     throw new TenantScopeError('Protected data access requires a non-public tenant context');
   }
 
-  return tenantId;
+  return normalizedTenantId;
 };
 
 export const applyTenantScope = <TQuery extends ScopeableQuery<TQuery>>(

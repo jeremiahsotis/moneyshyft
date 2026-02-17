@@ -88,4 +88,22 @@ describe('AccountService tenancy enforcement', () => {
     expect(transactionWhereCalls).toContainEqual({ account_id: 'acct-1', is_split_child: false });
     expect(transactionWhereCalls).toContainEqual({ household_id: 'house-1' });
   });
+
+  it('fails cross-tenant account updates deterministically', async () => {
+    await expect(
+      AccountService.updateAccount('acct-1', 'house-2', { name: 'Updated' })
+    ).rejects.toThrow('Account not found');
+
+    expect(accountWhereCalls).toContainEqual({ id: 'acct-1' });
+    expect(accountWhereCalls).toContainEqual({ household_id: 'house-2' });
+  });
+
+  it('fails cross-tenant account deletes deterministically', async () => {
+    await expect(
+      AccountService.deleteAccount('acct-1', 'house-2')
+    ).rejects.toThrow('Account not found');
+
+    expect(accountWhereCalls).toContainEqual({ id: 'acct-1' });
+    expect(accountWhereCalls).toContainEqual({ household_id: 'house-2' });
+  });
 });
