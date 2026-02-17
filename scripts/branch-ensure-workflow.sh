@@ -31,12 +31,48 @@ if [[ -z "$workflow" ]]; then
   exit 1
 fi
 
+normalize_workflow_key() {
+  local raw="$1"
+  local lower
+  local base
+  local dir
+
+  lower="$(echo "$raw" | tr '[:upper:]' '[:lower:]')"
+
+  # Common short aliases should continue working directly.
+  case "$lower" in
+    at|ta|ds|cr|ci|nr|rv|tf|tr|tmt|automate|atdd|create-story|dev-story|code-review|sprint-planning|retrospective|correct-course)
+      echo "$lower"
+      return 0
+      ;;
+  esac
+
+  base="$(basename "$lower")"
+
+  # If caller passed a workflow file path, use the parent folder as the key.
+  if [[ "$base" =~ ^workflow\.(yaml|yml|md|xml)$ ]]; then
+    dir="$(basename "$(dirname "$lower")")"
+    echo "$dir"
+    return 0
+  fi
+
+  # Otherwise strip known extensions and use filename.
+  base="${base%.yaml}"
+  base="${base%.yml}"
+  base="${base%.md}"
+  base="${base%.xml}"
+
+  echo "$base"
+}
+
+workflow_key="$(normalize_workflow_key "$workflow")"
+
 branch="${GITHUB_HEAD_REF:-$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)}"
 if [[ -z "$branch" ]]; then
   branch="${GITHUB_REF_NAME:-detached}"
 fi
 
-story_workflow_regex='^(atdd|automate|create-story|dev-story|code-review|AT|TA|DS|CR)$'
+story_workflow_regex='^(atdd|automate|create-story|dev-story|code-review|at|ta|ds|cr)$'
 epic_workflow_regex='^(sprint-planning|retrospective|correct-course)$'
 
 normalize_story_id() {
@@ -57,7 +93,7 @@ normalize_story_id() {
   echo ""
 }
 
-if [[ "$workflow" =~ $story_workflow_regex ]]; then
+if [[ "$workflow_key" =~ $story_workflow_regex ]]; then
   if [[ -z "$story_input" ]]; then
     echo "Story workflow requires --story"
     exit 1
@@ -71,6 +107,7 @@ if [[ "$workflow" =~ $story_workflow_regex ]]; then
 
   if [[ ! "$branch" =~ ^codex/story-${story_id}- ]]; then
     echo "Branch guard failed"
+    echo "Workflow key: $workflow_key"
     echo "Expected branch pattern: codex/story-${story_id}-<slug>"
     echo "Current branch: $branch"
     exit 1
@@ -80,7 +117,7 @@ if [[ "$workflow" =~ $story_workflow_regex ]]; then
   exit 0
 fi
 
-if [[ "$workflow" =~ $epic_workflow_regex ]]; then
+if [[ "$workflow_key" =~ $epic_workflow_regex ]]; then
   if [[ -z "$epic_input" ]]; then
     echo "Epic workflow requires --epic"
     exit 1
@@ -93,6 +130,7 @@ if [[ "$workflow" =~ $epic_workflow_regex ]]; then
 
   if [[ ! "$branch" =~ ^codex/epic-${epic_input}-ops$ ]]; then
     echo "Branch guard failed"
+    echo "Workflow key: $workflow_key"
     echo "Expected branch: codex/epic-${epic_input}-ops"
     echo "Current branch: $branch"
     exit 1

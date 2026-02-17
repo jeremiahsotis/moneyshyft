@@ -47,17 +47,26 @@ If any are missing: **HALT** and notify the user.
 
 ---
 
-## 1.5 Mandatory Git Policy Gate (Hard Requirement)
+## 1.5 Mandatory Git Policy Gate (Hard Requirement + Auto-Remediation)
 
 Before any ATDD generation work:
 
+- Resolve `{story_file}` first (or ask user explicitly)
 - Run `npm run policy:check`
 - Run `npm run branch:ensure-workflow -- --workflow _bmad/tea/workflows/testarch/atdd/workflow.yaml --story {story_file}`
 
 Rules:
 
 - If `{story_file}` is not resolved yet, resolve it first (or ask user explicitly).
-- If either command fails (non-zero exit), **HALT** and report the failure.
+- If `policy:check` fails **only** because current branch is a protected default branch (`main`, `master`, `codex/dev`, `production`), auto-remediate:
+  - Parse `story_id` from `{story_file}` filename prefix (e.g., `0-4-...` -> `0-4`)
+  - Derive branch slug from the story filename (kebab case)
+  - Run `npm run start:story-branch -- {story_id} {derived_slug}`
+  - If that fails due dirty working tree, retry with `npm run start:story-branch -- --allow-dirty {story_id} {derived_slug}`
+  - Re-run `npm run policy:check`
+- If auto-remediation fails at any point, **HALT** and report the exact failing command.
+- Always run `branch:ensure-workflow` after policy check passes.
+- If `branch:ensure-workflow` fails, **HALT** and report the failure.
 - Do **not** proceed to Step 2 until both commands pass.
 
 ---

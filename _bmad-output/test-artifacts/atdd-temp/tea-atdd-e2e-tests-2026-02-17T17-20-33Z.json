@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/csrf-and-parent-domain-cookie-enforcement.spec.ts",
+      "content": "import { test, expect } from '../../support/fixtures/csrfCookiePolicy.fixture';\n\ntest.describe('Story 0.4 automate - csrf and parent-domain cookie enforcement journey', () => {\n  test.skip('blocks cross-subdomain state-changing fetch when csrf header is missing @P0', async ({\n    page,\n    csrfGuardRequestWithoutToken,\n  }) => {\n    // Given browser context is authenticated but missing CSRF header proof\n    await page.goto('/');\n\n    // When app surface performs a state-changing request to the API surface\n    const result = await page.evaluate(\n      async ({ headers, payload }) => {\n        const response = await fetch('/api/v1/platform/_kernel/security/csrf/guard', {\n          method: 'POST',\n          credentials: 'include',\n          headers: {\n            'content-type': 'application/json',\n            ...headers,\n          },\n          body: JSON.stringify(payload),\n        });\n\n        return {\n          status: response.status,\n          body: await response.json(),\n        };\n      },\n      {\n        headers: csrfGuardRequestWithoutToken.headers,\n        payload: csrfGuardRequestWithoutToken.payload,\n      },\n    );\n\n    // Then CSRF guard rejects the request deterministically\n    expect(result.status).toBe(403);\n    expect(result.body).toMatchObject({\n      ok: false,\n      code: 'CSRF_TOKEN_REQUIRED',\n      refusalType: 'security',\n    });\n  });\n\n  test.skip('accepts cross-subdomain state-changing fetch when csrf proof pair is valid @P1', async ({\n    page,\n    csrfGuardRequest,\n  }) => {\n    // Given browser context includes valid CSRF header and body proof token pair\n    await page.goto('/');\n\n    // When app surface performs a state-changing request to the API surface\n    const result = await page.evaluate(\n      async ({ headers, payload }) => {\n        const response = await fetch('/api/v1/platform/_kernel/security/csrf/guard', {\n          method: 'POST',\n          credentials: 'include',\n          headers: {\n            'content-type': 'application/json',\n            ...headers,\n          },\n          body: JSON.stringify(payload),\n        });\n\n        return {\n          status: response.status,\n          body: await response.json(),\n        };\n      },\n      {\n        headers: csrfGuardRequest.headers,\n        payload: csrfGuardRequest.payload,\n      },\n    );\n\n    // Then request is accepted and mutation proceeds safely\n    expect(result.status).toBe(200);\n    expect(result.body).toMatchObject({\n      ok: true,\n      code: 'CSRF_GUARD_PASSED',\n    });\n  });\n\n  test.skip('sets parent-domain cookie attributes that are shared by app and api hosts @P1', async ({\n    context,\n    request,\n    cookiePolicyProbe,\n    parentDomainHosts,\n  }) => {\n    // Given production cookie policy bootstrap for sibling subdomains\n    const bootstrapResponse = await request.post('/api/v1/platform/_kernel/security/cookies/bootstrap', {\n      headers: cookiePolicyProbe.headers,\n      data: cookiePolicyProbe.payload,\n    });\n\n    // Then bootstrap succeeds and emits parent-domain cookies\n    expect(bootstrapResponse.status()).toBe(200);\n\n    const cookies = await context.cookies([parentDomainHosts.appOrigin, parentDomainHosts.apiOrigin]);\n    const accessCookie = cookies.find((cookie) => cookie.name === 'access_token');\n    const refreshCookie = cookies.find((cookie) => cookie.name === 'refresh_token');\n\n    expect(accessCookie).toMatchObject({\n      domain: cookiePolicyProbe.expected.parentDomain,\n      httpOnly: true,\n      secure: cookiePolicyProbe.expected.secure,\n      sameSite: 'Strict',\n    });\n    expect(refreshCookie).toMatchObject({\n      domain: cookiePolicyProbe.expected.parentDomain,\n      httpOnly: true,\n      secure: cookiePolicyProbe.expected.secure,\n      sameSite: 'Strict',\n    });\n  });\n});\n",
+      "description": "ATDD E2E journey tests for cross-subdomain CSRF and parent-domain cookie behavior (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Given app.* to api.* state-changing journey when CSRF header is missing then request is rejected",
+        "Given valid CSRF proof pair when cross-subdomain mutation is attempted then request is accepted",
+        "Cookie domain/same-site/secure flags are consistent for app.* and api.* hosts"
+      ],
+      "priority_coverage": {
+        "P0": 1,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "csrfCookiePolicyFixture"
+  ],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "test_count": 3,
+  "tdd_phase": "RED",
+  "summary": "Generated 3 FAILING E2E tests for story 0.4 user journey across app/api topology"
+}
