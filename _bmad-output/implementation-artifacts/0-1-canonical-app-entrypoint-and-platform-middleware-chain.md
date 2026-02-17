@@ -1,6 +1,6 @@
 # Story 0.1: Canonical App Entrypoint and Platform Middleware Chain
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,10 +17,10 @@ so that all modules inherit the same kernel guarantees..
 
 ## Tasks / Subtasks
 
-- [ ] Implement acceptance criterion 1 (AC: 1)
-  - [ ] Add automated coverage for AC 1
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Add automated coverage for AC 2
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Add automated coverage for AC 1
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Add automated coverage for AC 2
 
 ## Dev Notes
 
@@ -49,12 +49,38 @@ GPT-5 Codex
 
 ### Debug Log References
 
--
+- Added canonical middleware chain and route registry.
+- Added Story 0.1 kernel entrypoint tests.
+- Verified targeted and full backend test runs pass.
+
+### Implementation Plan
+
+- Introduce canonical platform middleware chain for correlation, tenancy resolution, auth context derivation, and response envelope bootstrapping.
+- Centralize v1 route mounting into one shared registry + registration function.
+- Keep existing route behavior unchanged by lazily loading route modules only during app bootstrap.
+- Validate ACs with automated tests for middleware ordering and centralized route registration coverage.
 
 ### Completion Notes List
 
--
+- AC1 complete: app bootstrap now applies ordered platform middleware via `registerPlatformMiddleware` with sequence `correlation -> tenancy -> auth-context -> response-envelope`.
+- AC2 complete: v1 modules are mounted through one shared registration function `registerV1Routes` backed by a single `V1_ROUTE_REGISTRATIONS` registry.
+- Added automated coverage in `src/src/__tests__/app-entrypoint-kernel.test.ts`.
+- Validation passed:
+  - `npm test -- app-entrypoint-kernel.test.ts`
+  - `npm test`
 
 ### File List
 
--
+- src/src/app.ts
+- src/src/api/registerRoutes.ts
+- src/src/platform/middleware/requestCorrelation.ts
+- src/src/platform/middleware/tenancyContext.ts
+- src/src/platform/middleware/authContext.ts
+- src/src/platform/middleware/responseEnvelope.ts
+- src/src/types/express.d.ts
+- src/src/__tests__/app-entrypoint-kernel.test.ts
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+
+## Change Log
+
+- 2026-02-17: Implemented canonical app middleware chain and centralized route registration for Story 0.1; added automated AC coverage and verified full backend regression suite.
