@@ -1,6 +1,6 @@
 # Story 0.4: CSRF and Parent-Domain Cookie Enforcement
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,10 +17,10 @@ so that state-changing routes are protected across domain boundaries..
 
 ## Tasks / Subtasks
 
-- [ ] Implement acceptance criterion 1 (AC: 1)
-  - [ ] Add automated coverage for AC 1
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Add automated coverage for AC 2
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Add automated coverage for AC 1
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Add automated coverage for AC 2
 
 ## Dev Notes
 
@@ -49,12 +49,36 @@ GPT-5 Codex
 
 ### Debug Log References
 
--
+- Added platform middleware `csrfProtection` to reject unsafe authenticated requests when double-submit CSRF token is missing or invalid.
+- Updated auth cookie utilities to enforce environment-safe cookie policy matrix (dev vs prod parent-domain) and issue/clear CSRF token cookie.
+- Wired CSRF middleware in canonical app entrypoint after platform middleware registration and before route registration.
 
 ### Completion Notes List
 
--
+- ✅ AC1 complete: state-changing authenticated requests are rejected with `403` when `x-csrf-token` is missing/invalid, while safe methods are unaffected.
+- ✅ AC2 complete: cookie matrix now enforces dev (`secure=false`, `sameSite=lax`, no domain) and prod (`secure=true`, `sameSite=none`, parent-domain via `COOKIE_DOMAIN`) with consistent auth and CSRF cookie behavior.
+- ✅ Frontend API client now auto-sends `X-CSRF-Token` from `csrf_token` cookie for non-safe methods, including refresh/mutation calls.
+- ✅ Auth cookie clearing now uses the same env-aware policy attributes/domain as cookie issuance to ensure reliable logout in parent-domain production deployments.
+- ✅ Canonical middleware order now logs requests before CSRF rejection, preserving visibility for blocked state-changing requests.
+- ✅ Added automated coverage:
+  - `src/src/platform/middleware/__tests__/csrfProtection.test.ts`
+  - `src/src/utils/__tests__/jwt.cookiePolicy.test.ts`
+- ✅ Added app-chain integration coverage in `src/src/__tests__/app-entrypoint-kernel.test.ts` for CSRF enforcement in canonical middleware order.
+- ✅ Full backend regression suite passed: `cd src && npm test -- --runInBand` (34 tests, 11 suites).
 
 ### File List
 
--
+- src/src/platform/middleware/csrfProtection.ts
+- src/src/platform/middleware/__tests__/csrfProtection.test.ts
+- src/src/utils/jwt.ts
+- src/src/utils/__tests__/jwt.cookiePolicy.test.ts
+- src/src/__tests__/app-entrypoint-kernel.test.ts
+- src/src/app.ts
+- frontend/src/services/api.ts
+- _bmad-output/implementation-artifacts/0-4-csrf-and-parent-domain-cookie-enforcement.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+
+## Change Log
+
+- 2026-02-17: Implemented CSRF double-submit enforcement for authenticated unsafe methods and added parent-domain cookie policy matrix with automated tests; story moved to `review`.
+- 2026-02-17: Code review fixes applied for CSRF header propagation, middleware logging order, cookie-clear policy parity, and app-chain coverage; story moved to `done`.
