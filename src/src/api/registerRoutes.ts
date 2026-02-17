@@ -58,3 +58,12 @@ export const registerV1Routes = (app: Application): void => {
     app.use(path, loadRouter(modulePath));
   });
 };
+
+export const registerV1RoutesWithLoader = (
+  app: Application,
+  routeLoader: (modulePath: string) => Router
+): void => {
+  V1_ROUTE_REGISTRATIONS.forEach(({ path, modulePath }) => {
+    app.use(path, routeLoader(modulePath));
+  });
+};

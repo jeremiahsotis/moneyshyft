@@ -1,6 +1,6 @@
 # Story 0.1: Canonical App Entrypoint and Platform Middleware Chain
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -68,19 +68,34 @@ GPT-5 Codex
 - Validation passed:
   - `npm test -- app-entrypoint-kernel.test.ts`
   - `npm test`
+- Code review fixes applied:
+  - Tenant context no longer trusts inbound `x-tenant-id`; it resolves from verified auth cookie context.
+  - AC2 coverage now verifies route registration executes through shared registration calls.
+  - Story tracking and sprint status synchronized with current git changes.
 
 ### File List
 
-- src/src/app.ts
-- src/src/api/registerRoutes.ts
-- src/src/platform/middleware/requestCorrelation.ts
-- src/src/platform/middleware/tenancyContext.ts
-- src/src/platform/middleware/authContext.ts
-- src/src/platform/middleware/responseEnvelope.ts
-- src/src/types/express.d.ts
 - src/src/__tests__/app-entrypoint-kernel.test.ts
+- src/src/api/registerRoutes.ts
+- src/src/platform/middleware/tenancyContext.ts
 - _bmad-output/implementation-artifacts/sprint-status.yaml
+- _bmad-output/implementation-artifacts/0-1-canonical-app-entrypoint-and-platform-middleware-chain.md
+
+## Senior Developer Review (AI)
+
+### Reviewer
+
+- Jeremiah (AI-assisted review)
+
+### Findings Resolved
+
+- HIGH: Removed client-header trust for tenant identity in platform middleware (`src/src/platform/middleware/tenancyContext.ts`).
+- HIGH: Fixed partial AC1 guarantee by deriving auth context inputs from verified access cookie before tenancy/auth context chain steps.
+- MEDIUM: Strengthened AC2 test coverage to validate shared route registration execution behavior, not just static registry contents.
+- MEDIUM: Resolved story/git traceability mismatch by updating File List and changelog to match current changed files.
+- LOW: Updated story lifecycle state to reflect completed review remediation.
 
 ## Change Log
 
 - 2026-02-17: Implemented canonical app middleware chain and centralized route registration for Story 0.1; added automated AC coverage and verified full backend regression suite.
+- 2026-02-17: Fixed review findings (tenant spoofing prevention, stronger route registration tests), re-ran backend test suites, and synced story/sprint tracking.
