@@ -80,4 +80,40 @@ test.describe('Story 0.6 atdd - platform events and outbox schema foundations jo
     const body = await response.json();
     expect(body.outbox).toEqual(operationalIndexExpectations.outboxIndexes);
   });
+
+  test.skip('aligns replay-query cursor semantics with published outbox index hints @P1', async ({
+    request,
+    platformContractHeaders,
+    operationalIndexExpectations,
+  }) => {
+    // Given one operator context consuming both indexes and replay query metadata
+    const indexesResponse = await apiRequest(request, {
+      method: 'GET',
+      path: '/api/v1/platform/_kernel/contracts/events-outbox/indexes',
+      headers: platformContractHeaders,
+    });
+    const replayQueryResponse = await apiRequest(request, {
+      method: 'GET',
+      path: '/api/v1/platform/_kernel/contracts/outbox/replay-query',
+      headers: platformContractHeaders,
+    });
+
+    // Then replay cursor keys should align with replay-oriented outbox indexes
+    expect(indexesResponse.status()).toBe(200);
+    expect(replayQueryResponse.status()).toBe(200);
+
+    const indexesBody = await indexesResponse.json();
+    const replayBody = await replayQueryResponse.json();
+
+    expect(indexesBody.outbox).toEqual(operationalIndexExpectations.outboxIndexes);
+    expect(replayBody.queryKeys).toEqual([
+      'delivery_status',
+      'available_at',
+      'outbox_event_id',
+    ]);
+    expect(replayBody.defaultOrder).toEqual([
+      'available_at ASC',
+      'outbox_event_id ASC',
+    ]);
+  });
 });

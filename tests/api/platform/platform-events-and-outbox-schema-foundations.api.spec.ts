@@ -60,7 +60,9 @@ test.describe('Story 0.6 atdd - platform events and outbox schema foundations AP
     });
   });
 
-  test.skip('returns operational and replay index contract metadata for events/outbox @P1', async ({
+  test.skip(
+    'returns operational and replay index contract metadata for events/outbox @P1',
+    async ({
     request,
   }) => {
     // Given required index expectations for operational and replay queries
@@ -86,7 +88,9 @@ test.describe('Story 0.6 atdd - platform events and outbox schema foundations AP
     });
   });
 
-  test.skip('exposes replay cursor semantics for pending outbox delivery queries @P1', async ({
+  test.skip(
+    'exposes replay cursor semantics for pending outbox delivery queries @P1',
+    async ({
     request,
   }) => {
     // Given a replay query contract requiring status + available_at cursor semantics
@@ -111,4 +115,78 @@ test.describe('Story 0.6 atdd - platform events and outbox schema foundations AP
       defaultOrder: ['available_at ASC', 'outbox_event_id ASC'],
     });
   });
+
+  test.skip(
+    'keeps tenant/correlation metadata stable across schema and replay endpoints @P1',
+    async ({ request }) => {
+      // Given one request context used across all contract endpoints
+      const headers = createPlatformContractHeaders({
+        tenantId: 'tenant-platform-correlation',
+        correlationId: 'corr-platform-correlation',
+      });
+
+      // When schema/index/replay contracts are requested
+      const eventsSchemaResponse = await apiRequest(request, {
+        method: 'GET',
+        path: '/api/v1/platform/_kernel/contracts/events/schema',
+        headers,
+      });
+      const indexesResponse = await apiRequest(request, {
+        method: 'GET',
+        path: '/api/v1/platform/_kernel/contracts/events-outbox/indexes',
+        headers,
+      });
+      const replayResponse = await apiRequest(request, {
+        method: 'GET',
+        path: '/api/v1/platform/_kernel/contracts/outbox/replay-query',
+        headers,
+      });
+
+      // Then each response should echo the same tenancy + correlation context
+      expect(eventsSchemaResponse.status()).toBe(200);
+      expect(indexesResponse.status()).toBe(200);
+      expect(replayResponse.status()).toBe(200);
+
+      const eventsBody = await eventsSchemaResponse.json();
+      const indexesBody = await indexesResponse.json();
+      const replayBody = await replayResponse.json();
+
+      expect(eventsBody.tenantId).toBe(headers['x-tenant-id']);
+      expect(eventsBody.correlationId).toBe(headers['x-correlation-id']);
+      expect(indexesBody.tenantId).toBe(headers['x-tenant-id']);
+      expect(indexesBody.correlationId).toBe(headers['x-correlation-id']);
+      expect(replayBody.tenantId).toBe(headers['x-tenant-id']);
+      expect(replayBody.correlationId).toBe(headers['x-correlation-id']);
+    },
+  );
+
+  test.skip(
+    'publishes deterministic index sets without duplicates for operator adapters @P2',
+    async ({ request }) => {
+      // Given expected operational/replay index names
+      const headers = createPlatformContractHeaders({
+        tenantId: 'tenant-platform-index-determinism',
+        correlationId: 'corr-platform-index-determinism',
+      });
+      const indexExpectations = createOperationalIndexExpectations();
+
+      // When the index contract endpoint is called
+      const response = await apiRequest(request, {
+        method: 'GET',
+        path: '/api/v1/platform/_kernel/contracts/events-outbox/indexes',
+        headers,
+      });
+
+      // Then index arrays should be deterministic and duplicate-free
+      expect(response.status()).toBe(200);
+      const body = await response.json();
+
+      expect(body.events).toEqual(indexExpectations.eventsIndexes);
+      expect(body.outbox).toEqual(indexExpectations.outboxIndexes);
+      expect(new Set(body.events).size).toBe(body.events.length);
+      expect(new Set(body.outbox).size).toBe(body.outbox.length);
+      expect(body.events.every((idx: string) => idx.endsWith('_idx'))).toBe(true);
+      expect(body.outbox.every((idx: string) => idx.endsWith('_idx'))).toBe(true);
+    },
+  );
 });
