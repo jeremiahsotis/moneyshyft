@@ -5,7 +5,7 @@ type MutationRow = { id: string; value: string };
 type PlatformEventRow = Record<string, unknown> & { id: string };
 type OutboxRow = Record<string, unknown>;
 
-function createFakeDb(options?: { failOutboxInsert?: boolean; eventInsertReturnsId?: boolean }) {
+function createFakeDb(options?: { failOutboxInsert?: boolean; eventInsertReturnsId?: boolean; outboxInsertReturnsId?: boolean }) {
   const state = {
     mutationRows: [] as MutationRow[],
     platformEvents: [] as PlatformEventRow[],
@@ -67,12 +67,19 @@ function createFakeDb(options?: { failOutboxInsert?: boolean; eventInsertReturns
 
             if (tableName === 'outbox_events') {
               return {
-                async insert(payload: Record<string, unknown>) {
-                  if (options?.failOutboxInsert) {
-                    throw new Error('Simulated outbox write failure');
-                  }
-                  staged.outboxEvents.push(payload);
-                  return [{ id: 'out-1' }];
+                insert(payload: Record<string, unknown>) {
+                  return {
+                    async returning() {
+                      if (options?.failOutboxInsert) {
+                        throw new Error('Simulated outbox write failure');
+                      }
+                      staged.outboxEvents.push(payload);
+                      if (options?.outboxInsertReturnsId === false) {
+                        return [{}];
+                      }
+                      return [{ id: 'out-1' }];
+                    },
+                  };
                 },
               };
             }
@@ -108,11 +115,11 @@ describe('executePlatformMutation', () => {
           return inserted[0];
         },
         event: (mutationResult) => ({
-          tenantId: 'house-1',
-          actorId: 'user-1',
+          tenantId: '11111111-1111-4111-8111-111111111111',
+          actorId: '22222222-2222-4222-8222-222222222222',
           eventName: 'kernel.mutation.accepted',
           entityType: 'kernel_mutation_row',
-          entityId: mutationResult.id,
+          entityId: '33333333-3333-4333-8333-333333333333',
           payload: { value: mutationResult.value },
         }),
       },
@@ -125,7 +132,7 @@ describe('executePlatformMutation', () => {
     expect(state.outboxEvents).toHaveLength(1);
     expect(state.platformEvents[0].event_name).toBe('kernel.mutation.accepted');
     expect(state.outboxEvents[0].event_id).toBe(state.platformEvents[0].id);
-    expect(state.outboxEvents[0].tenant_id).toBe('house-1');
+    expect(state.outboxEvents[0].tenant_id).toBe('11111111-1111-4111-8111-111111111111');
   });
 
   it('AC1: rolls back domain write when outbox insert fails', async () => {
@@ -139,11 +146,11 @@ describe('executePlatformMutation', () => {
             return inserted[0];
           },
           event: {
-            tenantId: 'house-1',
-            actorId: 'user-1',
+            tenantId: '11111111-1111-4111-8111-111111111111',
+            actorId: '22222222-2222-4222-8222-222222222222',
             eventName: 'kernel.mutation.rollback',
             entityType: 'kernel_mutation_row',
-            entityId: 'mut-pending',
+            entityId: '33333333-3333-4333-8333-333333333333',
             payload: {},
           },
         },
@@ -167,10 +174,10 @@ describe('executePlatformMutation', () => {
             return inserted[0];
           },
           event: {
-            tenantId: 'house-1',
+            tenantId: '11111111-1111-4111-8111-111111111111',
             eventName: '',
             entityType: 'kernel_mutation_row',
-            entityId: 'mut-1',
+            entityId: '33333333-3333-4333-8333-333333333333',
             payload: {},
           },
         },
@@ -190,10 +197,10 @@ describe('executePlatformMutation', () => {
             return inserted[0];
           },
           event: {
-            tenantId: 'house-1',
+            tenantId: '11111111-1111-4111-8111-111111111111',
             eventName: 'kernel.mutation.missing-id',
             entityType: 'kernel_mutation_row',
-            entityId: 'mut-1',
+            entityId: '33333333-3333-4333-8333-333333333333',
             payload: {},
           },
         },
@@ -201,5 +208,51 @@ describe('executePlatformMutation', () => {
       )
     ).rejects.toThrow('Mutation contract violation: event write did not return an id');
   });
-});
 
+  it('AC2: fails contract when outbox write does not return an id', async () => {
+    const { db } = createFakeDb({ outboxInsertReturnsId: false });
+
+    await expect(
+      executePlatformMutation(
+        {
+          mutation: async (trx) => {
+            const inserted = await (trx as any)('kernel_mutation_rows').insert({ value: 'missing-outbox-id' });
+            return inserted[0];
+          },
+          event: {
+            tenantId: '11111111-1111-4111-8111-111111111111',
+            eventName: 'kernel.mutation.missing-outbox-id',
+            entityType: 'kernel_mutation_row',
+            entityId: '33333333-3333-4333-8333-333333333333',
+            payload: {},
+          },
+        },
+        db
+      )
+    ).rejects.toThrow('Mutation contract violation: outbox write did not return an id');
+  });
+
+  it('AC2: fails contract when ids are not UUIDs', async () => {
+    const { db } = createFakeDb();
+
+    await expect(
+      executePlatformMutation(
+        {
+          mutation: async (trx) => {
+            const inserted = await (trx as any)('kernel_mutation_rows').insert({ value: 'invalid-ids' });
+            return inserted[0];
+          },
+          event: {
+            tenantId: 'house-1',
+            actorId: 'user-1',
+            eventName: 'kernel.mutation.invalid-ids',
+            entityType: 'kernel_mutation_row',
+            entityId: 'mut-1',
+            payload: {},
+          },
+        },
+        db
+      )
+    ).rejects.toThrow('Mutation contract violation: tenantId, entityId, and actorId (if present) must be UUIDs');
+  });
+});

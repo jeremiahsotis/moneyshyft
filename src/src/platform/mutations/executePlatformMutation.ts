@@ -7,7 +7,7 @@ export interface PlatformMutationEvent {
   entityType: string;
   entityId: string;
   payload?: Record<string, unknown>;
-  occurredAtUtc?: Date;
+  occurredAtUtc?: Date | string;
 }
 
 export interface ExecutePlatformMutationOptions<T> {
@@ -19,11 +19,21 @@ const isNonEmpty = (value: string | undefined | null): value is string => {
   return typeof value === 'string' && value.trim().length > 0;
 };
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const isUuid = (value: string | undefined | null): value is string => {
+  return isNonEmpty(value) && UUID_PATTERN.test(value);
+};
+
 const resolveEvent = <T>(eventInput: ExecutePlatformMutationOptions<T>['event'], result: T): PlatformMutationEvent => {
   const event = typeof eventInput === 'function' ? eventInput(result) : eventInput;
 
   if (!event || !isNonEmpty(event.tenantId) || !isNonEmpty(event.eventName) || !isNonEmpty(event.entityType) || !isNonEmpty(event.entityId)) {
     throw new Error('Mutation contract violation: tenantId, eventName, entityType, and entityId are required');
+  }
+
+  if (!isUuid(event.tenantId) || !isUuid(event.entityId) || (event.actorId != null && !isUuid(event.actorId))) {
+    throw new Error('Mutation contract violation: tenantId, entityId, and actorId (if present) must be UUIDs');
   }
 
   return event;
@@ -60,7 +70,7 @@ export async function executePlatformMutation<T>(
       throw new Error('Mutation contract violation: event write did not return an id');
     }
 
-    await trx
+    const insertedOutboxEvents = await trx
       .withSchema('platform')
       .table('outbox_events')
       .insert({
@@ -74,7 +84,13 @@ export async function executePlatformMutation<T>(
         delivery_status: 'pending',
         delivery_attempts: 0,
         available_at_utc: occurredAtUtc,
-      });
+      })
+      .returning(['id']);
+
+    const outboxId = insertedOutboxEvents?.[0]?.id;
+    if (!isNonEmpty(outboxId)) {
+      throw new Error('Mutation contract violation: outbox write did not return an id');
+    }
 
     return result;
   });
