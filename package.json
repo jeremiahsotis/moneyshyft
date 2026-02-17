@@ -10,6 +10,7 @@
     "policy:check": "bash scripts/enforce-git-policy.sh",
     "branch:ensure-workflow": "bash scripts/branch-ensure-workflow.sh",
     "quality-gates": "bash scripts/quality-gates.sh",
+    "quality-gates:epic0": "bash scripts/quality-gates-epic0.sh",
     "ci:local": "bash scripts/ci-local.sh",
     "promote:production": "bash scripts/promote-to-production.sh"
   },
