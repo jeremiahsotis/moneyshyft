@@ -14,6 +14,7 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - One PR per story branch.
 - Story PRs must use merge commit.
 - Do not squash-merge story PRs.
+- Story PR base branch is mandatory: `codex/dev`.
 
 ## 2) Story-Scoped Workflow Policy (`AT` / `TA` / `DS` / `CR` and equivalents)
 
@@ -23,8 +24,17 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
   - `npm run branch:ensure-workflow -- --workflow <name-or-path> --story <story-key-or-story-file>`
 - Required story branch naming:
   - `codex/story-<story-id>-<short-slug>`
+- Story branches must be created from `codex/dev` and merged back into `codex/dev`.
 - Do not run story-scoped workflows on `master` or mismatched story branches.
 - Keep all code, tests, and story artifacts for that story on the same story branch.
+
+### Production Promotion Flow (Mandatory)
+
+1. Story work merges into `codex/dev`.
+2. Promote only from `codex/dev`:
+   - `npm run promote:production -- "X-YYY: release <summary>"`
+3. Push production branch:
+   - `git push origin production`
 
 ## 3) Epic-Ops Workflow Policy
 

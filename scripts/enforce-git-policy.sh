@@ -22,8 +22,9 @@ if [[ -z "$branch" ]]; then
 fi
 
 event="${GITHUB_EVENT_NAME:-local}"
+base_branch="${GITHUB_BASE_REF:-}"
 is_default_branch=false
-if [[ "$branch" == "main" || "$branch" == "master" || "$branch" == "production" ]]; then
+if [[ "$branch" == "main" || "$branch" == "master" || "$branch" == "codex/dev" || "$branch" == "production" ]]; then
   is_default_branch=true
 fi
 
@@ -35,6 +36,15 @@ fi
 if [[ "$event" == "local" && "$is_default_branch" == "true" ]]; then
   echo "Policy check failed: branch-first policy requires a non-default branch"
   exit 1
+fi
+
+if [[ "$event" == "pull_request" ]]; then
+  if [[ "$branch" =~ ^codex/story- ]] && [[ "$base_branch" != "codex/dev" ]]; then
+    echo "Policy check failed: story pull requests must target codex/dev"
+    echo "Head branch: $branch"
+    echo "Base branch: ${base_branch:-<unset>}"
+    exit 1
+  fi
 fi
 
 last_subject="$(git log -1 --pretty=%s 2>/dev/null || true)"

@@ -41,7 +41,7 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   epic-0: in-progress
-  0-1-canonical-app-entrypoint-and-platform-middleware-chain: ready-for-dev
+  0-1-canonical-app-entrypoint-and-platform-middleware-chain: done
   0-2-tenancy-context-resolution-and-repository-enforcement: ready-for-dev
   0-3-platform-session-store-and-refresh-rotation: ready-for-dev
   0-4-csrf-and-parent-domain-cookie-enforcement: ready-for-dev
