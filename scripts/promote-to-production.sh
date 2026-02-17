@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 EXCLUDE_FILE="$ROOT_DIR/.production-excludes"
 SOURCE_BRANCH="$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD)"
 TARGET_BRANCH="production"
+SOURCE_REQUIRED_BRANCH="codex/dev"
 MESSAGE="${1:-release: promote from ${SOURCE_BRANCH}}"
 
 if [[ ! -f "$EXCLUDE_FILE" ]]; then
@@ -14,6 +15,16 @@ fi
 
 if [[ "$SOURCE_BRANCH" == "$TARGET_BRANCH" ]]; then
   echo "Run promotion from a non-production branch"
+  exit 1
+fi
+
+if [[ "$SOURCE_BRANCH" != "$SOURCE_REQUIRED_BRANCH" ]]; then
+  echo "Promotion must run from '$SOURCE_REQUIRED_BRANCH'. Current branch: '$SOURCE_BRANCH'"
+  exit 1
+fi
+
+if [[ -n "$(git -C "$ROOT_DIR" status --porcelain)" ]]; then
+  echo "Working tree must be clean before promotion"
   exit 1
 fi
 
