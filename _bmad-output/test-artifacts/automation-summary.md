@@ -1,113 +1,86 @@
 ---
-stepsCompleted: ['step-01-preflight-and-context','step-02-identify-targets','step-03-generate-tests','step-03c-aggregate','step-04-validate-and-summarize']
-lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-17T11:40:00Z'
+stepsCompleted:
+  - step-01-preflight-and-context
+  - step-02-identify-targets
+  - step-03-generate-tests
+  - step-03c-aggregate
+  - step-04-validate-and-summarize
+lastStep: step-04-validate-and-summarize
+lastSaved: 2026-02-17T19:52:18Z
 ---
 
-# Automation Summary - Story 0.4
-
-## Scope
-
-Expanded test automation coverage for:
-- `/Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/0-4-csrf-and-parent-domain-cookie-enforcement.md`
-
-Primary focus: CSRF rejection semantics for state-changing routes and parent-domain cookie-policy enforcement for `app.*` / `api.*` topology.
+# Test Automation Summary - Story 0.5
 
 ## Step 1 - Preflight and Context
-
-- Mode: `BMad-Integrated` (story artifact provided).
-- Framework readiness confirmed:
-  - `/Users/jeremiahotis/moneyshyft/playwright.config.ts`
-  - `/Users/jeremiahotis/moneyshyft/package.json`
-  - `/Users/jeremiahotis/moneyshyft/tests/`
-- Config flags loaded:
-  - `tea_use_playwright_utils: true`
-  - `tea_browser_automation: auto`
-- Existing 0.4 scaffolding discovered (ATDD-style skipped tests):
-  - `/Users/jeremiahotis/moneyshyft/tests/api/platform/csrf-and-parent-domain-cookie-enforcement.api.spec.ts`
-  - `/Users/jeremiahotis/moneyshyft/tests/e2e/platform/csrf-and-parent-domain-cookie-enforcement.spec.ts`
-
-Knowledge fragments loaded for this run:
-- Core: `test-levels-framework`, `test-priorities`, `data-factories`, `selective-testing`, `ci-burn-in`, `test-quality`
-- API/E2E generation: `api-testing-patterns`, `fixture-architecture`, `network-first`, `selector-resilience`
-- Playwright Utils and tooling: `overview`, `api-request`, `auth-session`, `intercept-network-call`, `recurse`, `log`, `file-utils`, `burn-in`, `network-error-monitor`, `fixtures-composition`, `playwright-cli`
+- Mode: BMad-Integrated
+- Input artifact: `_bmad-output/implementation-artifacts/0-5-shared-api-envelope-and-business-refusal-contract.md`
+- Framework readiness: `playwright.config.ts` present and `@playwright/test` installed in `package.json`
+- Existing test structure detected under `tests/` with `api`, `e2e`, `support/fixtures`, and `support/factories`
+- TEA flags loaded from `_bmad/tea/config.yaml`:
+  - `tea_use_playwright_utils=true`
+  - `tea_browser_automation=auto`
+- Browser exploration: `playwright-cli` not installed, so discovery used code + artifact analysis fallback
 
 ## Step 2 - Coverage Plan
+- Scope basis: Story AC1 and AC2
+- Coverage target: `critical-paths`
 
-### Targets by Level
+### API targets
+- `POST /api/v1/platform/_kernel/contracts/envelope/success`
+  - P0: canonical shared envelope helper contract shape (`ok=true`, `code`, `message`, `correlationId`, `tenantId`)
+- `POST /api/v1/platform/_kernel/contracts/envelope/business-refusal`
+  - P0: business refusal contract with HTTP 200 and `ok=false`
+  - P1: deterministic refusal content and no internal stack leakage
+- Cross-endpoint consistency
+  - P1: required top-level keys consistent between success and refusal envelopes
 
-- API (`@P0`, `@P1`)
-  - Reject state-changing requests when CSRF token is missing.
-  - Reject state-changing requests when CSRF token proof is invalid.
-  - Validate cookie policy matrix for `development` and `production` host topology.
+### E2E targets
+- P0: journey-level verification of business refusal semantics (HTTP 200 + `ok=false`)
+- P1: correlation-id consistency across success/refusal flows
+- P1: structured refusal fields stable for downstream UI adapters
 
-- Journey (`@P0`, `@P1`)
-  - State-changing guard behavior with missing CSRF proof.
-  - State-changing guard behavior with valid CSRF proof pair.
-  - Cookie bootstrap contract for parent-domain shared cookie attributes.
+## Step 3 - Parallel Generation + Aggregation
+- Subprocess outputs generated:
+  - `/tmp/tea-automate-api-tests-2026-02-17T19-52-18-200Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-17T19-52-18-200Z.json`
+- Aggregated summary generated:
+  - `/tmp/tea-automate-summary-2026-02-17T19-52-18-200Z.json`
 
-### Priority Mapping
+### Files updated
+- `tests/api/platform/shared-api-envelope-and-business-refusal-contract.api.spec.ts`
+  - Enabled 4 tests (removed `test.skip`)
+- `tests/e2e/platform/shared-api-envelope-and-business-refusal-contract.spec.ts`
+  - Enabled 3 tests (removed `test.skip`)
 
-- `@P0`: AC1 request rejection semantics on CSRF guard failures.
-- `@P1`: AC2 environment-safe cookie policy and successful guarded request behavior.
+### Fixture infrastructure
+- Reused existing shared fixture/factory stack (no additional scaffold required):
+  - `tests/support/fixtures/sharedApiEnvelope.fixture.ts`
+  - `tests/support/factories/sharedApiEnvelopeFactory.ts`
+  - `tests/support/helpers/apiClient.ts`
 
-## Step 3/3C - Generated and Aggregated Outputs
+### Aggregated totals
+- Total tests: 7
+  - API: 4
+  - E2E: 3
+- Priority coverage:
+  - P0: 3
+  - P1: 4
+  - P2: 0
+  - P3: 0
 
-### API Tests
+## Step 4 - Validation
+Checklist alignment:
+- Framework readiness: pass
+- Coverage mapping: pass (AC1 + AC2 explicitly covered)
+- Test quality structure: pass (priority tags, deterministic assertions, no hard waits)
+- Fixtures/factories/helpers: pass (existing reusable support layer)
+- CLI session cleanup: pass (CLI not used)
+- Temp artifacts location: pass (`/tmp` and `_bmad-output/test-artifacts`)
 
-- File updated: `/Users/jeremiahotis/moneyshyft/tests/api/platform/csrf-and-parent-domain-cookie-enforcement.api.spec.ts`
-- Converted skipped coverage to executable tests.
-- Executable tests now present: 4
-  - `@P0` rejects missing CSRF header
-  - `@P0` rejects invalid CSRF proof token
-  - `@P1` enforces development cookie policy matrix
-  - `@P1` enforces production cookie policy matrix
+## Assumptions and Risks
+- Assumption: Story 0.5 implementation and route registration for `_kernel/contracts/envelope/*` exist or will be landed before CI gate runs.
+- Risk: If endpoints are not implemented yet, newly enabled tests will fail as intended and should be treated as implementation gap signal.
 
-### Journey Tests
-
-- File updated: `/Users/jeremiahotis/moneyshyft/tests/e2e/platform/csrf-and-parent-domain-cookie-enforcement.spec.ts`
-- Converted skipped coverage to executable request-driven journey tests.
-- Executable tests now present: 3
-  - `@P0` blocks state-changing request without CSRF header
-  - `@P1` accepts state-changing request with valid CSRF proof pair
-  - `@P1` validates parent-domain cookie attributes from bootstrap contract
-
-### Fixture/Factory Reuse
-
-- `/Users/jeremiahotis/moneyshyft/tests/support/fixtures/csrfCookiePolicy.fixture.ts`
-- `/Users/jeremiahotis/moneyshyft/tests/support/factories/csrfCookiePolicyFactory.ts`
-- `/Users/jeremiahotis/moneyshyft/tests/support/helpers/apiClient.ts`
-
-## Step 4 - Validation and Risks
-
-Checklist validation status:
-- Framework scaffolding: PASS
-- Coverage mapping to ACs: PASS
-- Priority tagging: PASS
-- Duplicate-coverage control: PASS (API contracts plus journey-level contract checks)
-- Fixture/factory/helper usage: PASS
-- Browser session cleanup: PASS (no CLI browser sessions opened)
-- Temp artifact discipline: PASS (summary stored under `_bmad-output/test-artifacts`)
-
-Execution validation:
-- Command run:
-  - `npm run test:e2e -- tests/api/platform/csrf-and-parent-domain-cookie-enforcement.api.spec.ts tests/e2e/platform/csrf-and-parent-domain-cookie-enforcement.spec.ts`
-- Result: `7 failed` (0 passed)
-- Failure pattern: all 0.4 security endpoints returned `500` instead of expected contract statuses (`403`, `200`).
-- Interpretation: tests are executable and correctly wired into the suite, but backend story behavior is not yet meeting expected contracts.
-
-Assumptions and risks:
-- Endpoint contracts and refusal codes are expected to be implemented by story delivery.
-- Until kernel CSRF/cookie handlers are implemented, these tests should be treated as failing-acceptance coverage, not flaky tests.
-
-## Suggested Execution
-
-```bash
-npm run test:e2e -- tests/api/platform/csrf-and-parent-domain-cookie-enforcement.api.spec.ts
-npm run test:e2e -- tests/e2e/platform/csrf-and-parent-domain-cookie-enforcement.spec.ts
-```
-
-## Next Recommended Workflow
-
-- `RV` (`test-review`) after endpoint implementation to score determinism/quality.
-- `TR` (`trace`) to map AC coverage to pass/fail gate decisions.
+## Recommended Next Workflow
+- `RV` (Review Tests): run TEA test review for robustness scoring and anti-pattern scan.
+- `TR` (Trace Requirements): map Story 0.5 acceptance criteria to these 7 tests for gate decision.
