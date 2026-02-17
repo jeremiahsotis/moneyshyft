@@ -1,6 +1,8 @@
 module.exports = {
   testEnvironment: 'node',
+  roots: ['<rootDir>/src'],
   testMatch: ['<rootDir>/src/**/__tests__/**/*.test.ts'],
+  modulePathIgnorePatterns: ['<rootDir>/dist/'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   clearMocks: true,
   transform: {
