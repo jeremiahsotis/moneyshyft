@@ -1,5 +1,6 @@
+import crypto from 'crypto';
 import jwt, { SignOptions } from 'jsonwebtoken';
-import { Response } from 'express';
+import { CookieOptions, Response } from 'express';
 
 export interface JWTPayload {
   userId: string;
@@ -16,6 +17,48 @@ const SHORT_SESSION_ACCESS = '2h';
 const SHORT_SESSION_REFRESH = '7d';
 const EXTENDED_SESSION_ACCESS = '7d';  // Extended access token
 const EXTENDED_SESSION_REFRESH = '30d'; // Extended refresh token
+
+type CookiePolicy = {
+  authCookie: CookieOptions;
+  csrfCookie: CookieOptions;
+};
+
+const resolveCookieDomain = (): string | undefined => {
+  const configuredDomain = process.env.COOKIE_DOMAIN?.trim();
+  if (!configuredDomain) {
+    return undefined;
+  }
+
+  return configuredDomain.startsWith('.') ? configuredDomain : `.${configuredDomain}`;
+};
+
+const getCookiePolicy = (): CookiePolicy => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const domain = isProduction ? resolveCookieDomain() : undefined;
+
+  const authCookie: CookieOptions = {
+    path: '/',
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+  };
+
+  const csrfCookie: CookieOptions = {
+    path: '/',
+    httpOnly: false,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+  };
+
+  if (domain) {
+    authCookie.domain = domain;
+    csrfCookie.domain = domain;
+  }
+
+  return { authCookie, csrfCookie };
+};
+
+const generateCsrfToken = (): string => crypto.randomBytes(32).toString('hex');
 
 /**
  * Generate access token (short-lived or extended based on rememberMe)
@@ -59,7 +102,8 @@ export function verifyRefreshToken(token: string): JWTPayload {
  * Set auth cookies on response
  */
 export function setAuthCookies(res: Response, accessToken: string, refreshToken: string, rememberMe: boolean = false): void {
-  const isProduction = process.env.NODE_ENV === 'production';
+  const { authCookie, csrfCookie } = getCookiePolicy();
+  const csrfToken = generateCsrfToken();
 
   // Calculate maxAge based on rememberMe
   const accessMaxAge = rememberMe
@@ -72,18 +116,20 @@ export function setAuthCookies(res: Response, accessToken: string, refreshToken:
 
   // Access token cookie (HTTP-only, secure in production)
   res.cookie('access_token', accessToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
     maxAge: accessMaxAge,
+    ...authCookie,
   });
 
   // Refresh token cookie (HTTP-only, secure in production)
   res.cookie('refresh_token', refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
     maxAge: refreshMaxAge,
+    ...authCookie,
+  });
+
+  // CSRF cookie (readable by browser JS for double-submit validation)
+  res.cookie('csrf_token', csrfToken, {
+    maxAge: refreshMaxAge,
+    ...csrfCookie,
   });
 }
 
@@ -91,6 +137,9 @@ export function setAuthCookies(res: Response, accessToken: string, refreshToken:
  * Clear auth cookies
  */
 export function clearAuthCookies(res: Response): void {
-  res.clearCookie('access_token');
-  res.clearCookie('refresh_token');
+  const { authCookie, csrfCookie } = getCookiePolicy();
+
+  res.clearCookie('access_token', { ...authCookie });
+  res.clearCookie('refresh_token', { ...authCookie });
+  res.clearCookie('csrf_token', { ...csrfCookie });
 }

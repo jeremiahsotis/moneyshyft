@@ -9,6 +9,40 @@ const api: AxiosInstance = axios.create({
   },
 });
 
+const SAFE_METHODS = new Set(['get', 'head', 'options']);
+
+const getCookieValue = (name: string): string | null => {
+  if (typeof document === 'undefined' || !document.cookie) {
+    return null;
+  }
+
+  const encodedName = `${encodeURIComponent(name)}=`;
+  const cookie = document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(encodedName));
+
+  if (!cookie) {
+    return null;
+  }
+
+  return decodeURIComponent(cookie.slice(encodedName.length));
+};
+
+api.interceptors.request.use((config) => {
+  const method = (config.method || 'get').toLowerCase();
+
+  if (!SAFE_METHODS.has(method)) {
+    const csrfToken = getCookieValue('csrf_token');
+    if (csrfToken) {
+      config.headers = config.headers || {};
+      (config.headers as Record<string, string>)['X-CSRF-Token'] = csrfToken;
+    }
+  }
+
+  return config;
+});
+
 // Track if we're currently refreshing the token to avoid multiple refresh attempts
 let isRefreshing = false;
 let failedQueue: Array<{

@@ -9,6 +9,7 @@ import {
   V1_ROUTE_REGISTRATIONS
 } from '../api/registerRoutes';
 import { generateAccessToken } from '../utils/jwt';
+import { csrfProtection } from '../platform/middleware/csrfProtection';
 
 describe('Story 0.1 - canonical app entrypoint and kernel middleware', () => {
   describe('AC1: ordered platform middleware chain', () => {
@@ -104,5 +105,32 @@ describe('Story 0.1 - canonical app entrypoint and kernel middleware', () => {
         expect(routeLoader).toHaveBeenNthCalledWith(index + 1, modulePath);
       });
     });
+  });
+});
+
+describe('Story 0.4 - csrf and parent-domain cookie enforcement', () => {
+  it('rejects authenticated state-changing requests without a matching CSRF token in app middleware order', async () => {
+    const testApp = express();
+    testApp.use(cookieParser());
+    PLATFORM_MIDDLEWARE_CHAIN.forEach((middleware) => testApp.use(middleware));
+    testApp.use(csrfProtection);
+    testApp.post('/_test/mutate', (_req, res) => {
+      res.status(200).json({ ok: true });
+    });
+
+    const missingTokenResponse = await request(testApp)
+      .post('/_test/mutate')
+      .set('Cookie', ['access_token=access-token']);
+
+    expect(missingTokenResponse.status).toBe(403);
+    expect(missingTokenResponse.body.error).toBe('CSRF token missing or invalid');
+
+    const validTokenResponse = await request(testApp)
+      .post('/_test/mutate')
+      .set('Cookie', ['access_token=access-token', 'csrf_token=csrf-token'])
+      .set('X-CSRF-Token', 'csrf-token');
+
+    expect(validTokenResponse.status).toBe(200);
+    expect(validTokenResponse.body.ok).toBe(true);
   });
 });

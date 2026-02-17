@@ -6,6 +6,7 @@ import logger from './utils/logger';
 import pool from './config/database';
 import { registerPlatformMiddleware, registerV1Routes } from './api/registerRoutes';
 import { errorHandler } from './middleware/errorHandler';
+import { csrfProtection } from './platform/middleware/csrfProtection';
 
 // Load environment variables
 dotenv.config();
@@ -27,6 +28,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   logger.info(`${req.method} ${req.path}`);
   next();
 });
+app.use(csrfProtection);
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
