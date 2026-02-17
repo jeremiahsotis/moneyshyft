@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken, JWTPayload } from '../utils/jwt';
 import logger from '../utils/logger';
+import { requireTenantId, TenantScopeError } from '../platform/tenancy/tenantScope';
 
 /**
  * Authentication middleware
@@ -16,9 +17,16 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
     }
 
     const payload = verifyAccessToken(token);
+    if (payload.householdId !== null) {
+      payload.householdId = requireTenantId(payload.householdId);
+    }
     req.user = payload;
     next();
   } catch (error) {
+    if (error instanceof TenantScopeError) {
+      res.status(403).json({ error: error.message });
+      return;
+    }
     logger.error('Authentication error:', error);
     res.status(403).json({ error: 'Invalid or expired token' });
   }

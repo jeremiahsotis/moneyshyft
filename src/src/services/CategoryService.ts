@@ -1,6 +1,7 @@
 import knex from '../config/knex';
 import { NotFoundError, BadRequestError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
+import { requireTenantId } from '../platform/tenancy/tenantScope';
 
 interface CategorySection {
   id: string;
@@ -37,8 +38,9 @@ export class CategoryService {
    * Get all sections for a household
    */
   static async getAllSections(householdId: string): Promise<CategorySection[]> {
+    const tenantId = requireTenantId(householdId);
     const sections = await knex('category_sections')
-      .where({ household_id: householdId })
+      .where({ household_id: tenantId })
       .orderBy('sort_order', 'asc');
 
     return sections;
@@ -48,8 +50,9 @@ export class CategoryService {
    * Get a single section by ID
    */
   static async getSectionById(sectionId: string, householdId: string): Promise<CategorySection> {
+    const tenantId = requireTenantId(householdId);
     const section = await knex('category_sections')
-      .where({ id: sectionId, household_id: householdId })
+      .where({ id: sectionId, household_id: tenantId })
       .first();
 
     if (!section) {
@@ -66,11 +69,12 @@ export class CategoryService {
     householdId: string,
     data: { name: string; type: 'fixed' | 'flexible' | 'debt'; sort_order?: number }
   ): Promise<CategorySection> {
+    const tenantId = requireTenantId(householdId);
     const { name, type, sort_order = 0 } = data;
 
     const [section] = await knex('category_sections')
       .insert({
-        household_id: householdId,
+        household_id: tenantId,
         name,
         type,
         sort_order,
@@ -78,7 +82,7 @@ export class CategoryService {
       })
       .returning('*');
 
-    logger.info(`Section created: ${section.id} for household: ${householdId}`);
+    logger.info(`Section created: ${section.id} for household: ${tenantId}`);
 
     return section;
   }
@@ -91,15 +95,16 @@ export class CategoryService {
     householdId: string,
     data: { name?: string; type?: 'fixed' | 'flexible' | 'debt'; sort_order?: number }
   ): Promise<CategorySection> {
+    const tenantId = requireTenantId(householdId);
     // Check if section exists and is not a system section
-    const section = await this.getSectionById(sectionId, householdId);
+    const section = await this.getSectionById(sectionId, tenantId);
 
     if (section.is_system) {
       throw new BadRequestError('System sections cannot be modified');
     }
 
     const [updatedSection] = await knex('category_sections')
-      .where({ id: sectionId, household_id: householdId })
+      .where({ id: sectionId, household_id: tenantId })
       .update({
         ...data,
         updated_at: knex.fn.now()
@@ -115,7 +120,8 @@ export class CategoryService {
    * Delete a section
    */
   static async deleteSection(sectionId: string, householdId: string): Promise<void> {
-    const section = await this.getSectionById(sectionId, householdId);
+    const tenantId = requireTenantId(householdId);
+    const section = await this.getSectionById(sectionId, tenantId);
 
     if (section.is_system) {
       throw new BadRequestError('System sections cannot be deleted');
@@ -132,7 +138,7 @@ export class CategoryService {
     }
 
     await knex('category_sections')
-      .where({ id: sectionId, household_id: householdId })
+      .where({ id: sectionId, household_id: tenantId })
       .del();
 
     logger.info(`Section deleted: ${sectionId}`);
@@ -146,10 +152,11 @@ export class CategoryService {
    * Get all categories for a household (organized by section)
    */
   static async getAllCategories(householdId: string): Promise<any> {
-    const sections = await this.getAllSections(householdId);
+    const tenantId = requireTenantId(householdId);
+    const sections = await this.getAllSections(tenantId);
 
     const categories = await knex('categories')
-      .where({ household_id: householdId })
+      .where({ household_id: tenantId })
       .orderBy('sort_order', 'asc');
 
     // Organize categories by section
@@ -165,8 +172,9 @@ export class CategoryService {
    * Get a single category by ID
    */
   static async getCategoryById(categoryId: string, householdId: string): Promise<Category> {
+    const tenantId = requireTenantId(householdId);
     const category = await knex('categories')
-      .where({ id: categoryId, household_id: householdId })
+      .where({ id: categoryId, household_id: tenantId })
       .first();
 
     if (!category) {
@@ -190,14 +198,15 @@ export class CategoryService {
       sort_order?: number;
     }
   ): Promise<Category> {
+    const tenantId = requireTenantId(householdId);
     const { section_id, name, parent_category_id, color, icon, sort_order = 0 } = data;
 
     // Verify section belongs to household
-    await this.getSectionById(section_id, householdId);
+    await this.getSectionById(section_id, tenantId);
 
     // If parent category provided, verify it belongs to same section
     if (parent_category_id) {
-      const parentCategory = await this.getCategoryById(parent_category_id, householdId);
+      const parentCategory = await this.getCategoryById(parent_category_id, tenantId);
       if (parentCategory.section_id !== section_id) {
         throw new BadRequestError('Parent category must belong to the same section');
       }
@@ -205,7 +214,7 @@ export class CategoryService {
 
     const [category] = await knex('categories')
       .insert({
-        household_id: householdId,
+        household_id: tenantId,
         section_id,
         name,
         parent_category_id: parent_category_id || null,
@@ -237,7 +246,8 @@ export class CategoryService {
       is_archived?: boolean;
     }
   ): Promise<Category> {
-    const category = await this.getCategoryById(categoryId, householdId);
+    const tenantId = requireTenantId(householdId);
+    const category = await this.getCategoryById(categoryId, tenantId);
 
     if (category.is_system) {
       throw new BadRequestError('System categories cannot be modified');
@@ -249,7 +259,7 @@ export class CategoryService {
 
     // If updating parent, verify it belongs to same section
     if (data.parent_category_id !== undefined && data.parent_category_id !== null) {
-      const parentCategory = await this.getCategoryById(data.parent_category_id, householdId);
+      const parentCategory = await this.getCategoryById(data.parent_category_id, tenantId);
       if (parentCategory.section_id !== category.section_id) {
         throw new BadRequestError('Parent category must belong to the same section');
       }
@@ -260,7 +270,7 @@ export class CategoryService {
     }
 
     const [updatedCategory] = await knex('categories')
-      .where({ id: categoryId, household_id: householdId })
+      .where({ id: categoryId, household_id: tenantId })
       .update({
         ...data,
         updated_at: knex.fn.now()
@@ -276,7 +286,8 @@ export class CategoryService {
    * Delete a category
    */
   static async deleteCategory(categoryId: string, householdId: string): Promise<void> {
-    const category = await this.getCategoryById(categoryId, householdId);
+    const tenantId = requireTenantId(householdId);
+    const category = await this.getCategoryById(categoryId, tenantId);
 
     if (category.is_system) {
       throw new BadRequestError('System categories cannot be deleted');
@@ -384,7 +395,7 @@ export class CategoryService {
     }
 
     await knex('categories')
-      .where({ id: categoryId, household_id: householdId })
+      .where({ id: categoryId, household_id: tenantId })
       .del();
 
     logger.info(`Category deleted: ${categoryId}`);

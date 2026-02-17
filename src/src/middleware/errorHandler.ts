@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import logger from '../utils/logger';
 import { ValidationError } from 'joi';
+import { TenantScopeError } from '../platform/tenancy/tenantScope';
 
 // Custom error class for API errors
 export class ApiError extends Error {
@@ -77,6 +78,13 @@ export const errorHandler = (
   // Handle custom API errors
   if (err instanceof ApiError) {
     return res.status(err.statusCode).json({
+      error: err.message
+    });
+  }
+
+  // Handle tenant scope errors
+  if (err instanceof TenantScopeError) {
+    return res.status(403).json({
       error: err.message
     });
   }

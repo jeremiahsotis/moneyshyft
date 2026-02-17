@@ -1,6 +1,6 @@
 # Story 0.2: Tenancy Context Resolution and Repository Enforcement
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,10 +17,10 @@ so that cross-tenant reads/writes cannot occur by omission..
 
 ## Tasks / Subtasks
 
-- [ ] Implement acceptance criterion 1 (AC: 1)
-  - [ ] Add automated coverage for AC 1
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Add automated coverage for AC 2
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Add automated coverage for AC 1
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Add automated coverage for AC 2
 
 ## Dev Notes
 
@@ -49,12 +49,29 @@ GPT-5 Codex
 
 ### Debug Log References
 
--
+- `npm test -- --runInBand` (in `/Users/jeremiahotis/moneyshyft/src`) - pass, 7/7 suites, 21/21 tests
 
 ### Completion Notes List
 
--
+- Added `/Users/jeremiahotis/moneyshyft/src/src/platform/tenancy/tenantScope.ts` to require non-public tenant context and apply mandatory tenant filters to repository-style query builders.
+- Enforced tenant scoping in `/Users/jeremiahotis/moneyshyft/src/src/services/AccountService.ts` across read/update/delete/recalculate query paths so tenant filtering cannot be omitted.
+- Added deterministic negative coverage for cross-tenant account access and tenant-filter assertions in account/transaction query paths.
+- Added dedicated tenant scope unit tests to verify missing/public tenant context is rejected and required tenant filters are always injected.
+- Added tenant-scope error mapping in `/Users/jeremiahotis/moneyshyft/src/src/middleware/errorHandler.ts` so tenant context violations are returned as explicit `403` responses instead of generic `500`s.
+- Added canonical tenant normalization/enforcement in `/Users/jeremiahotis/moneyshyft/src/src/middleware/auth.ts` and `/Users/jeremiahotis/moneyshyft/src/src/services/CategoryService.ts` to reject reserved/invalid tenant contexts and require validated tenant IDs in category operations.
+- Expanded cross-tenant deterministic negative coverage to write paths (`updateAccount` and `deleteAccount`) in `/Users/jeremiahotis/moneyshyft/src/src/services/__tests__/AccountService.tenancy.test.ts`.
 
 ### File List
 
--
+- src/src/platform/tenancy/tenantScope.ts
+- src/src/platform/tenancy/__tests__/tenantScope.test.ts
+- src/src/services/AccountService.ts
+- src/src/services/__tests__/AccountService.tenancy.test.ts
+- src/src/middleware/errorHandler.ts
+- src/src/middleware/auth.ts
+- src/src/services/CategoryService.ts
+
+## Change Log
+
+- 2026-02-17: Implemented tenant-scope enforcement helpers, applied mandatory tenant filters in AccountService, and added deterministic cross-tenant negative tests for Story 0.2.
+- 2026-02-17: Addressed senior review findings by canonicalizing tenant IDs, mapping tenant-scope failures to `403`, enforcing tenant validation in CategoryService, and expanding cross-tenant negative write-path tests.
