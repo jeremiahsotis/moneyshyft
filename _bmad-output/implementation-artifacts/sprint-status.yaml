@@ -1,0 +1,101 @@
+# generated: 2026-02-17
+# project: Shyft
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-02-17
+project: Shyft
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-0: backlog
+  0-1-canonical-app-entrypoint-and-platform-middleware-chain: backlog
+  0-2-tenancy-context-resolution-and-repository-enforcement: backlog
+  0-3-platform-session-store-and-refresh-rotation: backlog
+  0-4-csrf-and-parent-domain-cookie-enforcement: backlog
+  0-5-shared-api-envelope-and-business-refusal-contract: backlog
+  0-6-platform-events-and-outbox-schema-foundations: backlog
+  0-7-mutation-transaction-wrapper-with-mandatory-event-outbox-writes: backlog
+  0-8-centralized-time-service-and-utc-local-rendering-contract: backlog
+  0-9-ci-policy-gate-as-blocking-first-stage: backlog
+  0-10-kernel-readiness-verification-suite: backlog
+  epic-0-retrospective: optional
+  epic-1: backlog
+  1-1-tenant-context-resolution-and-isolation-guardrails: backlog
+  1-2-tenant-and-module-entitlement-administration: backlog
+  1-3-first-party-auth-sessions-and-csrf-enforcement: backlog
+  1-4-shared-response-envelope-and-refusal-helpers: backlog
+  1-5-policy-gate-and-branch-workflow-guard-enforcement: backlog
+  1-6-security-controls-and-redaction-verification: backlog
+  epic-1-retrospective: optional
+  epic-2: backlog
+  2-1-commitment-domain-model-and-transition-rules: backlog
+  2-2-donor-self-service-pickup-intake-with-capacity-check: backlog
+  2-3-cashier-assisted-intake-and-voucher-delivery-scheduling: backlog
+  2-4-request-to-commitment-linkage-and-terminal-enforcement: backlog
+  2-5-refusal-outcomes-with-structured-alternatives: backlog
+  2-6-canonical-timezone-processing-across-intake-and-scheduling: backlog
+  epic-2-retrospective: optional
+  epic-3: backlog
+  3-1-unified-dispatcher-queue-and-triage-attributes: backlog
+  3-2-run-creation-stop-ordering-and-edit-operations: backlog
+  3-3-publish-constraints-from-commitment-capacity-impact: backlog
+  3-4-pickup-first-planning-with-limited-delivery-insertion: backlog
+  epic-3-retrospective: optional
+  epic-4: backlog
+  4-1-driver-daily-run-view-and-ordered-stop-navigation: backlog
+  4-2-execution-state-updates-with-idempotent-submissions: backlog
+  4-3-completion-proof-capture-and-immutable-records: backlog
+  4-4-execution-day-exception-handling: backlog
+  epic-4-retrospective: optional
+  epic-5: backlog
+  5-1-state-transition-audit-ledger: backlog
+  5-2-events-and-outbox-integration-readiness: backlog
+  5-3-operational-dashboards-for-execution-integrity: backlog
+  5-4-dignity-safe-aggregate-reporting-exports: backlog
+  5-5-lifecycle-expiry-and-escalation-policy-automation: backlog
+  5-6-performance-slo-and-quality-gate-evidence-pipeline: backlog
+  5-7-accessibility-conformance-and-regression-guarding: backlog
+  epic-5-retrospective: optional
+  epic-6: backlog
+  6-1-bridge-fulfillment-and-pending-endpoints: backlog
+  6-2-bridge-completion-endpoint-and-idempotency: backlog
+  6-3-cutover-controls-and-dual-write-prevention: backlog
+  epic-6-retrospective: optional
+  epic-7: backlog
+  7-1-operations-commitment-intake-contract: backlog
+  7-2-pos-origin-commitment-and-completion-linkage: backlog
+  7-3-expansion-guardrails-and-consent-readiness-gates: backlog
+  epic-7-retrospective: optional
