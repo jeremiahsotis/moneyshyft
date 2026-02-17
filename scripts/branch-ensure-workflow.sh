@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+workflow=""
+story_input=""
+epic_input=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --workflow)
+      workflow="$2"
+      shift 2
+      ;;
+    --story)
+      story_input="$2"
+      shift 2
+      ;;
+    --epic)
+      epic_input="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown argument: $1"
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "$workflow" ]]; then
+  echo "Missing required argument: --workflow"
+  exit 1
+fi
+
+branch="${GITHUB_HEAD_REF:-$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)}"
+if [[ -z "$branch" ]]; then
+  branch="${GITHUB_REF_NAME:-detached}"
+fi
+
+story_workflow_regex='^(atdd|automate|create-story|dev-story|code-review|AT|TA|DS|CR)$'
+epic_workflow_regex='^(sprint-planning|retrospective|correct-course)$'
+
+normalize_story_id() {
+  local raw="$1"
+  raw="$(basename "$raw")"
+  if [[ "$raw" =~ ^([0-9]+-[0-9]+) ]]; then
+    echo "${BASH_REMATCH[1]}"
+    return 0
+  fi
+  if [[ "$raw" =~ ^([0-9]+\.[0-9]+) ]]; then
+    echo "${BASH_REMATCH[1]//./-}"
+    return 0
+  fi
+  if [[ "$raw" =~ ^([0-9]+-[0-9]+)$ ]]; then
+    echo "${BASH_REMATCH[1]}"
+    return 0
+  fi
+  echo ""
+}
+
+if [[ "$workflow" =~ $story_workflow_regex ]]; then
+  if [[ -z "$story_input" ]]; then
+    echo "Story workflow requires --story"
+    exit 1
+  fi
+
+  story_id="$(normalize_story_id "$story_input")"
+  if [[ -z "$story_id" ]]; then
+    echo "Could not parse story id from: $story_input"
+    exit 1
+  fi
+
+  if [[ ! "$branch" =~ ^codex/story-${story_id}- ]]; then
+    echo "Branch guard failed"
+    echo "Expected branch pattern: codex/story-${story_id}-<slug>"
+    echo "Current branch: $branch"
+    exit 1
+  fi
+
+  echo "Branch guard passed for story workflow"
+  exit 0
+fi
+
+if [[ "$workflow" =~ $epic_workflow_regex ]]; then
+  if [[ -z "$epic_input" ]]; then
+    echo "Epic workflow requires --epic"
+    exit 1
+  fi
+
+  if [[ ! "$epic_input" =~ ^[0-9]+$ ]]; then
+    echo "Epic value must be numeric. Actual: $epic_input"
+    exit 1
+  fi
+
+  if [[ ! "$branch" =~ ^codex/epic-${epic_input}-ops$ ]]; then
+    echo "Branch guard failed"
+    echo "Expected branch: codex/epic-${epic_input}-ops"
+    echo "Current branch: $branch"
+    exit 1
+  fi
+
+  echo "Branch guard passed for epic workflow"
+  exit 0
+fi
+
+echo "No branch rule for workflow '$workflow'; guard passed"

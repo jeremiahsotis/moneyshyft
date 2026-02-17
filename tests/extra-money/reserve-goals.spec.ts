@@ -9,7 +9,7 @@ test.describe('Extra money savings reserve to goals', () => {
     await login(page);
   });
 
-  test('allocates savings reserve to a goal', async ({ page }) => {
+  test('allocates savings reserve to a goal @P1', async ({ page }) => {
     const source = `QA Extra Reserve ${Date.now()}`;
     const goalName = `QA Goal Reserve ${Date.now()}`;
     let entryId: string | undefined;

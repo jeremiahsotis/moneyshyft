@@ -9,7 +9,7 @@ test.describe('Extra money', () => {
     await login(page);
   });
 
-  test('creates an entry and assigns it to a category', async ({ page }) => {
+  test('creates an entry and assigns it to a category @P1', async ({ page }) => {
     const source = `QA Extra ${Date.now()}`;
     let entryId: string | undefined;
 

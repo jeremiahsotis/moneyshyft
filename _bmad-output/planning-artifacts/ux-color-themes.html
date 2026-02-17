@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shyft UX Color Themes</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f5f7f8; color: #13222d; }
+    header { padding: 16px 20px; border-bottom: 1px solid #d9e1e6; background: #fff; }
+    h1 { margin: 0; font-size: 20px; }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); padding: 16px 20px 24px; }
+    .card { background: #fff; border: 1px solid #d9e1e6; border-radius: 10px; overflow: hidden; }
+    .title { font-weight: 700; padding: 10px 12px; border-bottom: 1px solid #e6ecef; }
+    .swatches { display: grid; gap: 8px; padding: 12px; }
+    .sw { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .dot { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.15); }
+    .n1 .title { background: #0f4c81; color: #fff; }
+    .n2 .title { background: #123b2a; color: #fff; }
+    .n3 .title { background: #6a2d0f; color: #fff; }
+    .n4 .title { background: #2f2f46; color: #fff; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Shyft Color Theme Visualizer</h1>
+  </header>
+  <main class="grid">
+    <section class="card n1"><div class="title">Operations Classic</div><div class="swatches"><div class="sw"><span class="dot" style="background:#0f4c81"></span>Primary</div><div class="sw"><span class="dot" style="background:#f59e0b"></span>In Progress</div><div class="sw"><span class="dot" style="background:#16a34a"></span>Completed</div><div class="sw"><span class="dot" style="background:#dc2626"></span>Refused</div></div></section>
+    <section class="card n2"><div class="title">Calm Command</div><div class="swatches"><div class="sw"><span class="dot" style="background:#123b2a"></span>Primary</div><div class="sw"><span class="dot" style="background:#d97706"></span>In Progress</div><div class="sw"><span class="dot" style="background:#15803d"></span>Completed</div><div class="sw"><span class="dot" style="background:#b91c1c"></span>Refused</div></div></section>
+    <section class="card n3"><div class="title">Field Priority</div><div class="swatches"><div class="sw"><span class="dot" style="background:#6a2d0f"></span>Primary</div><div class="sw"><span class="dot" style="background:#ea580c"></span>In Progress</div><div class="sw"><span class="dot" style="background:#22c55e"></span>Completed</div><div class="sw"><span class="dot" style="background:#ef4444"></span>Refused</div></div></section>
+    <section class="card n4"><div class="title">Audit Strong</div><div class="swatches"><div class="sw"><span class="dot" style="background:#2f2f46"></span>Primary</div><div class="sw"><span class="dot" style="background:#f59e0b"></span>In Progress</div><div class="sw"><span class="dot" style="background:#22c55e"></span>Completed</div><div class="sw"><span class="dot" style="background:#ef4444"></span>Refused</div></div></section>
+  </main>
+</body>
+</html>

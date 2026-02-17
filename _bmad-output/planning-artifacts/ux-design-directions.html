@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shyft UX Design Directions</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --ink: #10202a;
+      --muted: #5a6b76;
+      --line: #d8e0e6;
+      --card: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Inter", "Segoe UI", Arial, sans-serif; color: var(--ink); background: var(--bg); }
+    header { padding: 20px 24px; border-bottom: 1px solid var(--line); background: #fff; position: sticky; top: 0; }
+    h1 { margin: 0; font-size: 20px; }
+    p { margin: 6px 0 0; color: var(--muted); }
+    .grid { padding: 20px 24px 30px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .dir { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .top { padding: 14px; font-weight: 700; font-size: 14px; border-bottom: 1px solid var(--line); }
+    .body { padding: 14px; display: grid; gap: 10px; }
+    .row { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-radius: 8px; font-size: 12px; border: 1px solid #e8edf1; }
+    .chip { font-size: 11px; border-radius: 999px; padding: 3px 8px; font-weight: 700; }
+    .a .top { background: #0f4c81; color: #fff; }
+    .a .chip { background: #dfefff; color: #0f4c81; }
+    .b .top { background: #123b2a; color: #fff; }
+    .b .chip { background: #dff7ea; color: #123b2a; }
+    .c .top { background: #6a2d0f; color: #fff; }
+    .c .chip { background: #ffe9dc; color: #6a2d0f; }
+    .d .top { background: #2f2f46; color: #fff; }
+    .d .chip { background: #ececff; color: #2f2f46; }
+    .e .top { background: #3a245f; color: #fff; }
+    .e .chip { background: #f0e9ff; color: #3a245f; }
+    .f .top { background: #004f4d; color: #fff; }
+    .f .chip { background: #dff5f4; color: #004f4d; }
+    .note { font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Shyft Design Directions (Step 9)</h1>
+    <p>Six visual directions for dispatcher/cashier/driver/donor workflows, aligned to commitment-first UX.</p>
+  </header>
+  <main class="grid">
+    <section class="dir a"><div class="top">Direction 1: Operations Classic</div><div class="body"><div class="row"><span>Queue-First Dispatch</span><span class="chip">Dense</span></div><div class="row"><span>Explicit State Ribbons</span><span class="chip">High Clarity</span></div><div class="note">Best for keyboard-heavy dispatch teams and high-volume triage.</div></div></section>
+    <section class="dir b"><div class="top">Direction 2: Calm Command</div><div class="body"><div class="row"><span>Low-Stress Rhythm</span><span class="chip">Calm</span></div><div class="row"><span>Refusal as Equal Path</span><span class="chip">Trust</span></div><div class="note">Best for reducing cognitive load and emotional fatigue.</div></div></section>
+    <section class="dir c"><div class="top">Direction 3: Field-First Motion</div><div class="body"><div class="row"><span>Driver Priority Cards</span><span class="chip">Mobile</span></div><div class="row"><span>One-Tap Status Loop</span><span class="chip">Fast</span></div><div class="note">Best for pickup-dominant day execution from the truck.</div></div></section>
+    <section class="dir d"><div class="top">Direction 4: Audit-Strong Grid</div><div class="body"><div class="row"><span>Lineage + Proof Focus</span><span class="chip">Governance</span></div><div class="row"><span>Policy Gate Visibility</span><span class="chip">Control</span></div><div class="note">Best for leadership, compliance, and traceability confidence.</div></div></section>
+    <section class="dir e"><div class="top">Direction 5: Adaptive Workspace</div><div class="body"><div class="row"><span>Role-Tailored Panels</span><span class="chip">Flexible</span></div><div class="row"><span>Capacity Heat Cues</span><span class="chip">Planning</span></div><div class="note">Best when workflows vary by tenant/module configuration.</div></div></section>
+    <section class="dir f"><div class="top">Direction 6: Public Trust Surface</div><div class="body"><div class="row"><span>Guided Donor Intake</span><span class="chip">Accessible</span></div><div class="row"><span>Explicit Outcome Messaging</span><span class="chip">Dignity</span></div><div class="note">Best for donor confidence and clear acceptance/refusal communication.</div></div></section>
+  </main>
+</body>
+</html>

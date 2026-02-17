@@ -6,7 +6,7 @@ test.describe('Dashboard', () => {
     await login(page);
   });
 
-  test('loads key dashboard widgets', async ({ page }) => {
+  test('loads key dashboard widgets @P0', async ({ page }) => {
     await page.goto('/');
 
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();

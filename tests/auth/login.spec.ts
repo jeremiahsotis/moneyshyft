@@ -4,7 +4,7 @@ const email = process.env.TEST_EMAIL;
 const password = process.env.TEST_PASSWORD;
 
 test.describe('Login', () => {
-  test('logs in with valid credentials', async ({ page }) => {
+  test('logs in with valid credentials @P0', async ({ page }) => {
     await page.goto('/login');
 
     await page.fill('#email', email || '');

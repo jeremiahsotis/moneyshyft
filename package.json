@@ -1,9 +1,23 @@
 {
   "version": "0.3.6",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:changed": "bash scripts/test-changed.sh",
+    "test:burn-in": "bash scripts/burn-in.sh 10",
+    "test:contracts:backend": "bash scripts/test-contracts-backend.sh",
+    "policy:check": "bash scripts/enforce-git-policy.sh",
+    "branch:ensure-workflow": "bash scripts/branch-ensure-workflow.sh",
+    "quality-gates": "bash scripts/quality-gates.sh",
+    "ci:local": "bash scripts/ci-local.sh",
+    "promote:production": "bash scripts/promote-to-production.sh"
+  },
   "dependencies": {
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@faker-js/faker": "^9.9.0",
     "@playwright/test": "^1.57.0",
     "@types/uuid": "^11.0.0",
     "playwright": "^1.57.0"

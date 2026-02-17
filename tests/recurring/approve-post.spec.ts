@@ -8,7 +8,7 @@ test.describe('Recurring transactions', () => {
     await login(page);
   });
 
-  test('approves and posts a recurring instance', async ({ page }) => {
+  test('approves and posts a recurring instance @P1', async ({ page }) => {
     const payee = `QA Recurring ${Date.now()}`;
     let templateId: string | undefined;
 

@@ -8,7 +8,7 @@ test.describe('Transactions', () => {
     await login(page);
   });
 
-  test('creates a transaction', async ({ page }) => {
+  test('creates a transaction @P0', async ({ page }) => {
     const payee = `QA Transaction ${Date.now()}`;
     let createdId: string | undefined;
 

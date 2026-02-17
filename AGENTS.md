@@ -3,11 +3,6 @@
 ## Repository Location
 - GitHub: https://github.com/jeremiahotis/moneyshyft.git
 
-## GitHub Issues & Milestones Policy
-- Always use GitHub Issues and Milestones as the source of truth.
-- Always mark items done and add notes with status, plan, and current progress.
-- Do not start coding until issues/milestones are reviewed and notes are posted.
-
 ## Project Structure & Module Organization
 MoneyShyft is a full-stack app with a Vue 3 frontend and an Express/TypeScript backend.
 - `frontend/` houses the Vue app (`frontend/src/` for components, views, stores, and router).
@@ -56,3 +51,25 @@ Docker:
 - Prod nginx config proxies `/api/` to `127.0.0.1:3000` and serves the Vue SPA from `/home/jeremiahotis/projects/moneyshyft/frontend/dist`.
 - Prod build runs `npm run build` inside `src/Dockerfile` and must succeed with TypeScript strictness.
 - Prod migrations should use `npm run migrate:latest:prod` inside the container.
+
+## Required Git Policy & CI Enforcement (Target-State Constraint)
+- Git policy at `docs/policies/git_policy.md` is mandatory and repository-wide.
+- Policy gate must be enforced in CI via `npm run policy:check` as the first blocking job.
+- Workflow guard command is required before story/epic workflow execution:
+  - `npm run branch:ensure-workflow -- --workflow <name-or-path> --story <story-key-or-story-file>`
+  - `npm run branch:ensure-workflow -- --workflow <name-or-path> --epic <epic-number>`
+- CI pipeline specification to enforce:
+1. `policy` (blocking): `npm run policy:check`
+2. `lint`: `npm run lint` (or fallback test-discovery check)
+3. `test`: Playwright in 4 shards
+4. `burn-in`: 10-iteration loop on PR/scheduled runs
+5. `quality-gates`: TEA thresholds (`@P0` 100%, `@P1` >=95%)
+6. `backend-contracts`: optional `workflow_dispatch` lane against live API
+7. `report`: aggregate and publish CI summary
+- Local parity commands:
+  - `scripts/ci-local.sh`
+  - `npm run policy:check`
+  - `scripts/burn-in.sh 10`
+  - `scripts/test-changed.sh origin/main`
+  - `scripts/quality-gates.sh`
+  - `npm run test:contracts:backend`

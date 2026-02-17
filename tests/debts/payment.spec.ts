@@ -9,7 +9,7 @@ test.describe('Debts', () => {
     await login(page);
   });
 
-  test('creates a debt and records a payment', async ({ page }) => {
+  test('creates a debt and records a payment @P1', async ({ page }) => {
     const debtName = `QA Debt ${Date.now()}`;
     let debtId: string | undefined;
 

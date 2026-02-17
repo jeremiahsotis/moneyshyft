@@ -1,0 +1,5 @@
+# Excluded from production branch
+_bmad/
+_bmad-output/
+AGENTS.md
+.github/agents/

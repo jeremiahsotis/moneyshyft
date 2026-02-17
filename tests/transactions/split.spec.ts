@@ -8,7 +8,7 @@ test.describe('Split transactions', () => {
     await login(page);
   });
 
-  test('splits a transaction across two categories', async ({ page }) => {
+  test('splits a transaction across two categories @P1', async ({ page }) => {
     const payee = `QA Split ${Date.now()}`;
     let createdId: string | undefined;
 

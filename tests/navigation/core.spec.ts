@@ -6,7 +6,7 @@ test.describe('Core navigation', () => {
     await login(page);
   });
 
-  test('navigates through primary sections', async ({ page }) => {
+  test('navigates through primary sections @P1', async ({ page }) => {
     await page.getByRole('link', { name: 'Accounts' }).click();
     await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
 

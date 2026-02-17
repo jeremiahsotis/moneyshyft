@@ -35,6 +35,7 @@ pids
 # Testing
 coverage/
 .nyc_output
+tests/artifacts/
 
 # IDE
 .vscode/

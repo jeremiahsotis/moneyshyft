@@ -9,7 +9,7 @@ test.describe('Extra money multi-category', () => {
     await login(page);
   });
 
-  test('assigns extra money across multiple categories', async ({ page }) => {
+  test('assigns extra money across multiple categories @P1', async ({ page }) => {
     const source = `QA Extra Multi ${Date.now()}`;
     let entryId: string | undefined;
 
