@@ -1,6 +1,6 @@
 # Story 0.7: Mutation Transaction Wrapper with Mandatory Event/Outbox Writes
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,10 +17,10 @@ so that handlers cannot persist state without corresponding event/outbox records
 
 ## Tasks / Subtasks
 
-- [ ] Implement acceptance criterion 1 (AC: 1)
-  - [ ] Add automated coverage for AC 1
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Add automated coverage for AC 2
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Add automated coverage for AC 1
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Add automated coverage for AC 2
 
 ## Dev Notes
 
@@ -49,12 +49,29 @@ GPT-5 Codex
 
 ### Debug Log References
 
--
+- Added `executePlatformMutation` wrapper under `src/src/platform/mutations` to enforce atomic mutation + event + outbox writes.
+- Added contract tests with transactional rollback simulation and mandatory event/outbox contract validation.
+- Validation run: `cd src && npm test` (14 suites, 45 tests passing).
 
 ### Completion Notes List
 
--
+- Implemented shared mutation transaction wrapper that:
+  - executes domain mutation logic inside a single transaction
+  - writes `platform.events` and `platform.outbox_events` in that same transaction boundary
+  - fails fast when mandatory event contract fields are missing
+  - fails when event insert does not return an event id (prevents outbox orphaning)
+- Added automated contract coverage for:
+  - atomic commit across domain + event + outbox writes
+  - rollback behavior when outbox write fails
+  - contract failure for missing required event fields
+  - contract failure when event id is unavailable
+- Full backend regression suite is passing after changes.
 
 ### File List
 
--
+- src/src/platform/mutations/executePlatformMutation.ts
+- src/src/platform/mutations/__tests__/executePlatformMutation.test.ts
+
+## Change Log
+
+- 2026-02-17: Added shared mutation transaction wrapper with mandatory platform event/outbox writes and AC1/AC2 contract coverage.
