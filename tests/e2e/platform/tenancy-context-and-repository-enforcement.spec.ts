@@ -4,8 +4,8 @@ import {
   createTenantScopeHeaders,
 } from '../../support/factories/tenantRepositoryFactory';
 
-test.describe('Story 0.2 ATDD RED - tenancy context and repository enforcement journey', () => {
-  test.skip('[P0] resolves stable tenant context for protected repository diagnostics journey', async ({
+test.describe('Story 0.2 automate - tenancy context and repository enforcement journey', () => {
+  test('resolves stable tenant context for protected repository diagnostics journey @P0', async ({
     request,
     kernelRequest,
   }) => {
@@ -29,7 +29,7 @@ test.describe('Story 0.2 ATDD RED - tenancy context and repository enforcement j
     expect(guardBody.context.tenantId).toBe(kernelRequest.tenantId);
   });
 
-  test.skip('[P1] denies cross-tenant read attempts deterministically in end-to-end flow', async ({ request }) => {
+  test('denies cross-tenant read attempts deterministically in end-to-end flow @P1', async ({ request }) => {
     // Given tenant-alpha session context
     const headers = createTenantScopeHeaders({ tenantId: 'tenant-alpha' });
     const crossTenantProbe = createCrossTenantProbe({
@@ -52,7 +52,7 @@ test.describe('Story 0.2 ATDD RED - tenancy context and repository enforcement j
     });
   });
 
-  test.skip('[P1] keeps tenant scope consistent across repeated guarded requests', async ({ request }) => {
+  test('keeps tenant scope consistent across repeated guarded requests @P1', async ({ request }) => {
     // Given a valid tenant context for repeated requests
     const headers = createTenantScopeHeaders({ tenantId: 'tenant-repeat' });
 

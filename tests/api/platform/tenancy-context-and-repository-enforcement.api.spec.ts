@@ -6,8 +6,8 @@ import {
   createTenantScopeHeaders,
 } from '../../support/factories/tenantRepositoryFactory';
 
-test.describe('Story 0.2 ATDD RED - tenancy context and repository enforcement API coverage', () => {
-  test.skip('[P0] requires tenant context before repository guard queries execute', async ({ request }) => {
+test.describe('Story 0.2 automate - tenancy context and repository enforcement API coverage', () => {
+  test('requires tenant context before repository guard queries execute @P0', async ({ request }) => {
     // Given no tenant context is supplied
     // When the tenancy diagnostics endpoint is queried
     const response = await apiRequest(request, {
@@ -24,7 +24,7 @@ test.describe('Story 0.2 ATDD RED - tenancy context and repository enforcement A
     });
   });
 
-  test.skip('[P0] applies mandatory tenant filter to repository reads', async ({ request }) => {
+  test('applies mandatory tenant filter to repository reads @P0', async ({ request }) => {
     // Given a valid tenant context
     const tenantHeaders = createTenantScopeHeaders({ tenantId: 'tenant-alpha' });
     const query = createRepositoryGuardQuery({
@@ -46,7 +46,7 @@ test.describe('Story 0.2 ATDD RED - tenancy context and repository enforcement A
     expect(body.rows.every((row: { tenantId: string }) => row.tenantId === 'tenant-alpha')).toBe(true);
   });
 
-  test.skip('[P1] rejects cross-tenant query overrides from protected paths', async ({ request }) => {
+  test('rejects cross-tenant query overrides from protected paths @P1', async ({ request }) => {
     // Given a tenant-scoped request and a conflicting target tenant override
     const tenantHeaders = createTenantScopeHeaders({ tenantId: 'tenant-alpha' });
     const crossTenantProbe = createCrossTenantProbe({
@@ -71,7 +71,7 @@ test.describe('Story 0.2 ATDD RED - tenancy context and repository enforcement A
     });
   });
 
-  test.skip('[P1] blocks cross-tenant writes when payload tenant differs from context tenant', async ({ request }) => {
+  test('blocks cross-tenant writes when payload tenant differs from context tenant @P1', async ({ request }) => {
     // Given a tenant-scoped request with mismatched payload tenant
     const tenantHeaders = createTenantScopeHeaders({ tenantId: 'tenant-alpha' });
     const crossTenantProbe = createCrossTenantProbe({
