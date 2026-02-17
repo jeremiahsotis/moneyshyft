@@ -44,6 +44,15 @@ tests/artifacts/
 *.swo
 *~
 .DS_Store
+.agent/
+.claude/
+.clinerules/
+.codex/
+.cursor/
+.gemini/
+.opencode/
+.qwen/
+.windsurf/
 
 # OS
 .DS_Store
