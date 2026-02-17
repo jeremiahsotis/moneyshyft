@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import AuthService from '../../../services/AuthService';
-import { setAuthCookies, clearAuthCookies, verifyRefreshToken, generateAccessToken } from '../../../utils/jwt';
+import { setAuthCookies, clearAuthCookies, verifyRefreshToken, generateAccessToken, generateRefreshToken } from '../../../utils/jwt';
 import { validateRequest } from '../../../middleware/validate';
 import { signupSchema, loginSchema } from '../../../validators/auth.validators';
 import { authenticateToken } from '../../../middleware/auth';
 import logger from '../../../utils/logger';
+import PlatformSessionStore from '../../../platform/sessions/PlatformSessionStore';
 
 const router = Router();
 
@@ -60,7 +61,17 @@ router.post('/login', validateRequest(loginSchema), async (req: Request, res: Re
  * POST /api/v1/auth/logout
  * Logout user
  */
-router.post('/logout', (req: Request, res: Response) => {
+router.post('/logout', async (req: Request, res: Response) => {
+  const refreshToken = req.cookies.refresh_token;
+
+  if (typeof refreshToken === 'string' && refreshToken.trim() !== '') {
+    try {
+      await PlatformSessionStore.revokeSessionByRefreshToken(refreshToken, 'logout');
+    } catch (error) {
+      logger.warn('Failed to revoke refresh session on logout', { error });
+    }
+  }
+
   clearAuthCookies(res);
   res.json({ message: 'Logged out successfully' });
 });
@@ -69,7 +80,7 @@ router.post('/logout', (req: Request, res: Response) => {
  * POST /api/v1/auth/refresh
  * Refresh access token using refresh token
  */
-router.post('/refresh', (req: Request, res: Response) => {
+router.post('/refresh', async (req: Request, res: Response) => {
   try {
     const refreshToken = req.cookies.refresh_token;
 
@@ -88,20 +99,33 @@ router.post('/refresh', (req: Request, res: Response) => {
       hasHouseholdId: !!payload.householdId
     });
 
-    // Generate new access token
-    const newAccessToken = generateAccessToken(payload);
+    const storedSession = await PlatformSessionStore.findSessionByRefreshToken(refreshToken);
+    if (!storedSession || storedSession.revokedAt) {
+      res.status(403).json({ error: 'Refresh token rejected' });
+      return;
+    }
 
-    // Set new access token cookie with same maxAge as token expiration (2 hours)
-    res.cookie('access_token', newAccessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-      maxAge: 2 * 60 * 60 * 1000, // 2 hours (matches SHORT_SESSION_ACCESS)
-    });
+    if (storedSession.expiresAt.getTime() <= Date.now()) {
+      await PlatformSessionStore.revokeSessionById(storedSession.id, 'expired');
+      res.status(403).json({ error: 'Refresh token rejected' });
+      return;
+    }
+
+    const rememberMe = storedSession.rememberMe;
+    const newAccessToken = generateAccessToken(payload, rememberMe);
+    const newRefreshToken = generateRefreshToken(payload, rememberMe);
+
+    await PlatformSessionStore.rotateSession(refreshToken, newRefreshToken);
+
+    setAuthCookies(res, newAccessToken, newRefreshToken, rememberMe);
 
     res.json({ message: 'Token refreshed successfully' });
   } catch (error) {
     logger.error('Token refresh error:', error);
+    if (error instanceof Error && (error.message === 'SESSION_REVOKED' || error.message === 'SESSION_EXPIRED')) {
+      res.status(403).json({ error: 'Refresh token rejected' });
+      return;
+    }
     res.status(403).json({ error: 'Invalid refresh token' });
   }
 });

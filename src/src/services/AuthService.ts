@@ -6,6 +6,7 @@ import logger from '../utils/logger';
 import { createRecommendedSections } from '../seeds/production/001_recommended_sections';
 import { createRecommendedTags } from '../seeds/production/002_recommended_tags';
 import { AnalyticsService } from './AnalyticsService';
+import PlatformSessionStore from '../platform/sessions/PlatformSessionStore';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -193,45 +194,50 @@ class AuthService {
         throw new Error('Failed to assign user to household. Please contact support.');
       }
 
-      return { user, invitationCode: returnInvitationCode };
+      const payload: JWTPayload = {
+        userId: user.id,
+        email: user.email,
+        householdId: user.household_id,
+        role: user.role,
+      };
+
+      // Log JWT payload creation (redact sensitive data)
+      logger.info(`Creating JWT tokens for user`, {
+        userId: user.id,
+        email: user.email,
+        householdId: payload.householdId,
+        role: payload.role,
+        hasHouseholdId: !!payload.householdId
+      });
+
+      // Final validation: Ensure householdId is set if user joined via invitation
+      if (invitationCode && !payload.householdId) {
+        logger.error(`CRITICAL: JWT payload has null householdId despite invitation code signup`, {
+          userId: payload.userId,
+          userHouseholdId: user.household_id,
+          payloadHouseholdId: payload.householdId
+        });
+        throw new Error('Authentication error: Invalid household assignment');
+      }
+
+      const accessToken = generateAccessToken(payload);
+      const refreshToken = generateRefreshToken(payload);
+      await PlatformSessionStore.createSession({
+        userId: payload.userId,
+        householdId: payload.householdId,
+        refreshToken,
+        rememberMe: false,
+      }, trx);
+
+      return { user, invitationCode: returnInvitationCode, accessToken, refreshToken };
     });
 
     logger.info(`New user signed up: ${email}`);
 
-    // Generate tokens
-    const payload: JWTPayload = {
-      userId: result.user.id,
-      email: result.user.email,
-      householdId: result.user.household_id,
-      role: result.user.role,
-    };
-
-    // Log JWT payload creation (redact sensitive data)
-    logger.info(`Creating JWT tokens for user`, {
-      userId: result.user.id,
-      email: result.user.email,
-      householdId: payload.householdId,
-      role: payload.role,
-      hasHouseholdId: !!payload.householdId
-    });
-
-    // Final validation: Ensure householdId is set if user joined via invitation
-    if (data.invitationCode && !payload.householdId) {
-      logger.error(`CRITICAL: JWT payload has null householdId despite invitation code signup`, {
-        userId: payload.userId,
-        userHouseholdId: result.user.household_id,
-        payloadHouseholdId: payload.householdId
-      });
-      throw new Error('Authentication error: Invalid household assignment');
-    }
-
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
-
     const response: AuthResponse = {
       user: await this.formatUserResponse(result.user),
-      accessToken,
-      refreshToken,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
     };
 
     // Include invitation code if household was created
@@ -277,6 +283,12 @@ class AuthService {
 
     const accessToken = generateAccessToken(payload, rememberMe);
     const refreshToken = generateRefreshToken(payload, rememberMe);
+    await PlatformSessionStore.createSession({
+      userId: payload.userId,
+      householdId: payload.householdId,
+      refreshToken,
+      rememberMe,
+    });
 
     return {
       user: await this.formatUserResponse(user),

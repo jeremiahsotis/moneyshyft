@@ -1,6 +1,6 @@
 # Story 0.3: Platform Session Store and Refresh Rotation
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,10 +17,10 @@ so that token lifecycle and revocation are auditable and safe..
 
 ## Tasks / Subtasks
 
-- [ ] Implement acceptance criterion 1 (AC: 1)
-  - [ ] Add automated coverage for AC 1
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Add automated coverage for AC 2
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Add automated coverage for AC 1
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Add automated coverage for AC 2
 
 ## Dev Notes
 
@@ -49,12 +49,30 @@ GPT-5 Codex
 
 ### Debug Log References
 
--
+- `npm test -- PlatformSessionStore.test.ts auth.refresh.test.ts`
+- `npm test -- PlatformSessionStore.test.ts`
+- `npm test`
+- `npm run build`
 
 ### Completion Notes List
 
--
+- Added `platform.sessions` persistence with hashed refresh token state, expiry metadata, and revocation/rotation fields.
+- Added row-level lock protection and replay-safe refresh rotation behavior in `PlatformSessionStore`.
+- Added signup transaction-scoped session creation so user/session writes commit atomically.
+- Added route-level `/api/v1/auth/refresh` replay/revocation coverage.
+- Added automated tests for AC1 and AC2 including explicit replay rejection assertions.
+- Full backend Jest suite and TypeScript build pass.
 
 ### File List
 
--
+- `src/src/migrations/20260217103000_create_platform_sessions.ts`
+- `src/src/platform/sessions/PlatformSessionStore.ts`
+- `src/src/platform/sessions/__tests__/PlatformSessionStore.test.ts`
+- `src/src/services/AuthService.ts`
+- `src/src/routes/api/v1/__tests__/auth.refresh.test.ts`
+- `_bmad-output/implementation-artifacts/0-3-platform-session-store-and-refresh-rotation.md`
+
+## Change Log
+
+- 2026-02-17: Implemented platform session store + refresh rotation and added automated AC coverage.
+- 2026-02-17: Addressed code-review findings for race-safe rotation, transactional signup session persistence, and replay route coverage.
