@@ -149,12 +149,36 @@ describe('20260217113000_create_platform_events_and_outbox migration', () => {
       expect(outbox.columns.last_delivery_error).toBeDefined();
 
       expect(outbox.columns.event_id).toBeDefined();
+      expect(outbox.columns.event_id.chain.notNullable).toBe(true);
+      expect(outbox.columns.event_id.chain.isUnique).toBe(true);
+      expect(outbox.columns.event_id.chain.references).toBe('id');
+      expect(outbox.columns.event_id.chain.inTable).toBe('platform.events');
+      expect(outbox.columns.event_id.chain.onDelete).toBe('CASCADE');
       expect(outbox.columns.tenant_id).toBeDefined();
+      expect(outbox.columns.tenant_id.chain.notNullable).toBe(true);
+      expect(outbox.columns.tenant_id.chain.references).toBe('id');
+      expect(outbox.columns.tenant_id.chain.inTable).toBe('households');
+      expect(outbox.columns.tenant_id.chain.onDelete).toBe('CASCADE');
       expect(outbox.columns.event_name).toBeDefined();
       expect(outbox.columns.entity_type).toBeDefined();
       expect(outbox.columns.entity_id).toBeDefined();
       expect(outbox.columns.occurred_at_utc).toBeDefined();
       expect(outbox.columns.payload).toBeDefined();
+
+      expect(knex.raw).toHaveBeenCalledWith(expect.stringContaining('outbox_events_delivery_status_chk'));
+      expect(knex.raw).toHaveBeenCalledWith(
+        expect.stringContaining("CHECK (delivery_status IN ('pending', 'leased', 'delivered', 'failed'))")
+      );
+      expect(knex.raw).toHaveBeenCalledWith(
+        expect.stringContaining('outbox_events_delivery_attempts_nonnegative_chk')
+      );
+      expect(knex.raw).toHaveBeenCalledWith(expect.stringContaining('CHECK (delivery_attempts >= 0)'));
+      expect(knex.raw).toHaveBeenCalledWith(
+        expect.stringContaining('CREATE OR REPLACE FUNCTION platform.set_outbox_events_updated_at()')
+      );
+      expect(knex.raw).toHaveBeenCalledWith(
+        expect.stringContaining('CREATE TRIGGER trg_outbox_events_set_updated_at')
+      );
     });
   });
 
@@ -179,12 +203,17 @@ describe('20260217113000_create_platform_events_and_outbox migration', () => {
         expect.arrayContaining([
           expect.objectContaining({ columns: ['delivery_status', 'available_at_utc'] }),
           expect.objectContaining({ columns: ['tenant_id', 'delivery_status', 'available_at_utc'] }),
+          expect.objectContaining({ columns: ['delivery_status', 'available_at_utc', 'leased_until_utc'] }),
           expect.objectContaining({ columns: ['event_name', 'occurred_at_utc'] }),
         ])
       );
 
       await down(knex);
       expect(dropped).toEqual(['platform.outbox_events', 'platform.events']);
+      expect(knex.raw).toHaveBeenCalledWith(
+        'DROP TRIGGER IF EXISTS trg_outbox_events_set_updated_at ON platform.outbox_events'
+      );
+      expect(knex.raw).toHaveBeenCalledWith('DROP FUNCTION IF EXISTS platform.set_outbox_events_updated_at()');
     });
   });
 });

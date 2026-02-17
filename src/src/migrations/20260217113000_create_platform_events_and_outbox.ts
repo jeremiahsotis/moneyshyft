@@ -48,11 +48,43 @@ export async function up(knex: Knex): Promise<void> {
 
     table.index(['delivery_status', 'available_at_utc']);
     table.index(['tenant_id', 'delivery_status', 'available_at_utc']);
+    table.index(['delivery_status', 'available_at_utc', 'leased_until_utc']);
     table.index(['event_name', 'occurred_at_utc']);
   });
+
+  await knex.raw(`
+    ALTER TABLE platform.outbox_events
+    ADD CONSTRAINT outbox_events_delivery_status_chk
+    CHECK (delivery_status IN ('pending', 'leased', 'delivered', 'failed'))
+  `);
+
+  await knex.raw(`
+    ALTER TABLE platform.outbox_events
+    ADD CONSTRAINT outbox_events_delivery_attempts_nonnegative_chk
+    CHECK (delivery_attempts >= 0)
+  `);
+
+  await knex.raw(`
+    CREATE OR REPLACE FUNCTION platform.set_outbox_events_updated_at()
+    RETURNS TRIGGER AS $$
+    BEGIN
+      NEW.updated_at = NOW();
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql
+  `);
+
+  await knex.raw(`
+    CREATE TRIGGER trg_outbox_events_set_updated_at
+    BEFORE UPDATE ON platform.outbox_events
+    FOR EACH ROW
+    EXECUTE FUNCTION platform.set_outbox_events_updated_at()
+  `);
 }
 
 export async function down(knex: Knex): Promise<void> {
+  await knex.raw('DROP TRIGGER IF EXISTS trg_outbox_events_set_updated_at ON platform.outbox_events');
+  await knex.raw('DROP FUNCTION IF EXISTS platform.set_outbox_events_updated_at()');
   await knex.schema.withSchema('platform').dropTableIfExists('outbox_events');
   await knex.schema.withSchema('platform').dropTableIfExists('events');
 }

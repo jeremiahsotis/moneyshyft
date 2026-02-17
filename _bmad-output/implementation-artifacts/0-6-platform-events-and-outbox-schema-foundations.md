@@ -1,6 +1,6 @@
 # Story 0.6: Platform Events and Outbox Schema Foundations
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -51,6 +51,8 @@ GPT-5 Codex
 
 - `cd src && npm test -- --runInBand src/src/migrations/__tests__/platformEventsOutboxMigration.test.ts` (RED: module not found before migration, then GREEN)
 - `cd src && npm test -- --runInBand` (full backend regression suite)
+- `cd src && npm test -- --runInBand src/src/migrations/__tests__/platformEventsOutboxMigration.test.ts` (post-review hardening verification)
+- `cd src && npm test -- --runInBand` (post-review full backend regression suite)
 
 ### Completion Notes List
 
@@ -58,7 +60,11 @@ GPT-5 Codex
 - Implemented required lineage fields on `platform.events`: `event_name`, `tenant_id`, `actor_id`, `entity_type`, `entity_id`, `occurred_at_utc`, and `payload`.
 - Implemented required delivery + lineage fields on `platform.outbox_events`, including `delivery_status`, `delivery_attempts`, `available_at_utc`, `delivered_at_utc`, `last_delivery_error`, and immutable event linkage via `event_id`.
 - Added operational/replay indexes for events and outbox polling/replay query patterns.
+- Hardened outbox schema invariants with DB-level checks for allowed `delivery_status` values and non-negative `delivery_attempts`.
+- Added lease-aware outbox index on (`delivery_status`, `available_at_utc`, `leased_until_utc`) for worker polling and lease expiry scanning.
+- Added trigger-backed `updated_at` maintenance for `platform.outbox_events` plus rollback-safe trigger/function teardown.
 - Added automated migration contract coverage in `src/src/migrations/__tests__/platformEventsOutboxMigration.test.ts` for AC1 and AC2.
+- Expanded migration tests to verify FK/uniqueness semantics, DB constraint creation, lease index presence, and trigger lifecycle calls.
 - Verified no regressions with full Jest suite: 13/13 suites passing, 41/41 tests passing.
 
 ### File List
@@ -68,6 +74,11 @@ GPT-5 Codex
 - _bmad-output/implementation-artifacts/0-6-platform-events-and-outbox-schema-foundations.md
 - _bmad-output/implementation-artifacts/sprint-status.yaml
 
+### Senior Developer Review (AI)
+
+- 2026-02-17: Resolved 1 high + 3 medium findings from adversarial review by adding DB guardrails, lease-aware indexing, `updated_at` trigger enforcement, and stronger migration contract assertions.
+
 ## Change Log
 
 - 2026-02-17: Implemented Story 0.6 by adding canonical platform events/outbox migration with lineage+delivery fields, replay/operational indexes, and automated migration coverage; story moved to `review`.
+- 2026-02-17: Code review remediation complete; story moved to `done` with schema hardening and expanded test coverage.
