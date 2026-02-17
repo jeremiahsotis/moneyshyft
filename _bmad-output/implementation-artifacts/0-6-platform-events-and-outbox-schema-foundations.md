@@ -1,6 +1,6 @@
 # Story 0.6: Platform Events and Outbox Schema Foundations
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,10 +17,10 @@ so that all write paths can emit integration-safe records..
 
 ## Tasks / Subtasks
 
-- [ ] Implement acceptance criterion 1 (AC: 1)
-  - [ ] Add automated coverage for AC 1
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Add automated coverage for AC 2
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Add automated coverage for AC 1
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Add automated coverage for AC 2
 
 ## Dev Notes
 
@@ -49,12 +49,36 @@ GPT-5 Codex
 
 ### Debug Log References
 
--
+- `cd src && npm test -- --runInBand src/src/migrations/__tests__/platformEventsOutboxMigration.test.ts` (RED: module not found before migration, then GREEN)
+- `cd src && npm test -- --runInBand` (full backend regression suite)
+- `cd src && npm test -- --runInBand src/src/migrations/__tests__/platformEventsOutboxMigration.test.ts` (post-review hardening verification)
+- `cd src && npm test -- --runInBand` (post-review full backend regression suite)
 
 ### Completion Notes List
 
--
+- Added migration `src/src/migrations/20260217113000_create_platform_events_and_outbox.ts` creating canonical `platform.events` and `platform.outbox_events` tables.
+- Implemented required lineage fields on `platform.events`: `event_name`, `tenant_id`, `actor_id`, `entity_type`, `entity_id`, `occurred_at_utc`, and `payload`.
+- Implemented required delivery + lineage fields on `platform.outbox_events`, including `delivery_status`, `delivery_attempts`, `available_at_utc`, `delivered_at_utc`, `last_delivery_error`, and immutable event linkage via `event_id`.
+- Added operational/replay indexes for events and outbox polling/replay query patterns.
+- Hardened outbox schema invariants with DB-level checks for allowed `delivery_status` values and non-negative `delivery_attempts`.
+- Added lease-aware outbox index on (`delivery_status`, `available_at_utc`, `leased_until_utc`) for worker polling and lease expiry scanning.
+- Added trigger-backed `updated_at` maintenance for `platform.outbox_events` plus rollback-safe trigger/function teardown.
+- Added automated migration contract coverage in `src/src/migrations/__tests__/platformEventsOutboxMigration.test.ts` for AC1 and AC2.
+- Expanded migration tests to verify FK/uniqueness semantics, DB constraint creation, lease index presence, and trigger lifecycle calls.
+- Verified no regressions with full Jest suite: 13/13 suites passing, 41/41 tests passing.
 
 ### File List
 
--
+- src/src/migrations/20260217113000_create_platform_events_and_outbox.ts
+- src/src/migrations/__tests__/platformEventsOutboxMigration.test.ts
+- _bmad-output/implementation-artifacts/0-6-platform-events-and-outbox-schema-foundations.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+
+### Senior Developer Review (AI)
+
+- 2026-02-17: Resolved 1 high + 3 medium findings from adversarial review by adding DB guardrails, lease-aware indexing, `updated_at` trigger enforcement, and stronger migration contract assertions.
+
+## Change Log
+
+- 2026-02-17: Implemented Story 0.6 by adding canonical platform events/outbox migration with lineage+delivery fields, replay/operational indexes, and automated migration coverage; story moved to `review`.
+- 2026-02-17: Code review remediation complete; story moved to `done` with schema hardening and expanded test coverage.

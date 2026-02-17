@@ -6,81 +6,111 @@ stepsCompleted:
   - step-03c-aggregate
   - step-04-validate-and-summarize
 lastStep: step-04-validate-and-summarize
-lastSaved: 2026-02-17T19:52:18Z
+lastSaved: 2026-02-17T21:16:37Z
+storyId: '0-6'
+storyFile: '/Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/0-6-platform-events-and-outbox-schema-foundations.md'
+subprocessTimestamp: '2026-02-17T21-16-37Z'
+executionMode: 'BMad-Integrated'
 ---
 
-# Test Automation Summary - Story 0.5
+# Test Automation Summary - Story 0.6
 
 ## Step 1 - Preflight and Context
 - Mode: BMad-Integrated
-- Input artifact: `_bmad-output/implementation-artifacts/0-5-shared-api-envelope-and-business-refusal-contract.md`
-- Framework readiness: `playwright.config.ts` present and `@playwright/test` installed in `package.json`
-- Existing test structure detected under `tests/` with `api`, `e2e`, `support/fixtures`, and `support/factories`
-- TEA flags loaded from `_bmad/tea/config.yaml`:
+- Input artifacts loaded:
+  - `_bmad-output/implementation-artifacts/0-6-platform-events-and-outbox-schema-foundations.md`
+  - `_bmad-output/test-artifacts/atdd-checklist-0-6.md`
+- Framework readiness:
+  - `playwright.config.ts` exists
+  - `@playwright/test` present in `package.json`
+  - test structure present under `tests/`
+- TEA config flags:
   - `tea_use_playwright_utils=true`
   - `tea_browser_automation=auto`
-- Browser exploration: `playwright-cli` not installed, so discovery used code + artifact analysis fallback
+- Story implementation status discovered:
+  - `src/src/routes/api/v1/platform-contracts.ts` does **not** yet implement Story 0.6 contract endpoints:
+    - `GET /api/v1/platform/_kernel/contracts/events/schema`
+    - `GET /api/v1/platform/_kernel/contracts/outbox/schema`
+    - `GET /api/v1/platform/_kernel/contracts/events-outbox/indexes`
+    - `GET /api/v1/platform/_kernel/contracts/outbox/replay-query`
+
+Knowledge fragments loaded:
+- Core: `test-levels`, `test-priorities`, `data-factories`, `selective-testing`, `ci-burn-in`, `test-quality`
+- Playwright utils + automation: `overview`, `api-request`, `network-recorder`, `auth-session`, `intercept-network-call`, `recurse`, `log`, `file-utils`, `burn-in`, `network-error-monitor`, `fixtures-composition`, `playwright-cli`
+- Additional for current target: `api-testing-patterns`, `selector-resilience`
 
 ## Step 2 - Coverage Plan
-- Scope basis: Story AC1 and AC2
-- Coverage target: `critical-paths`
+Coverage target: `critical-paths`
 
 ### API targets
-- `POST /api/v1/platform/_kernel/contracts/envelope/success`
-  - P0: canonical shared envelope helper contract shape (`ok=true`, `code`, `message`, `correlationId`, `tenantId`)
-- `POST /api/v1/platform/_kernel/contracts/envelope/business-refusal`
-  - P0: business refusal contract with HTTP 200 and `ok=false`
-  - P1: deterministic refusal content and no internal stack leakage
-- Cross-endpoint consistency
-  - P1: required top-level keys consistent between success and refusal envelopes
+- P0:
+  - canonical `platform.events` lineage schema contract
+  - canonical `platform.outbox_events` delivery schema contract
+- P1:
+  - operational/replay index metadata contract
+  - replay-query cursor semantics contract
+  - tenant/correlation metadata continuity across schema/index/replay endpoints
+- P2:
+  - deterministic, duplicate-free index set contract for operator adapters
 
 ### E2E targets
-- P0: journey-level verification of business refusal semantics (HTTP 200 + `ok=false`)
-- P1: correlation-id consistency across success/refusal flows
-- P1: structured refusal fields stable for downstream UI adapters
+- P0:
+  - combined schema journey across events and outbox endpoints
+- P1:
+  - correlation metadata stability across schema/index endpoints
+  - replay-ready outbox index hints for adapter consumers
+  - replay-query cursor semantics alignment with outbox index hints
+
+### Duplicate-coverage handling
+- Reused existing Story 0.6 ATDD files and expanded them in-place to avoid duplicate specs.
 
 ## Step 3 - Parallel Generation + Aggregation
-- Subprocess outputs generated:
-  - `/tmp/tea-automate-api-tests-2026-02-17T19-52-18-200Z.json`
-  - `/tmp/tea-automate-e2e-tests-2026-02-17T19-52-18-200Z.json`
-- Aggregated summary generated:
-  - `/tmp/tea-automate-summary-2026-02-17T19-52-18-200Z.json`
+Subprocess outputs:
+- `/tmp/tea-automate-api-tests-2026-02-17T21-16-37Z.json`
+- `/tmp/tea-automate-e2e-tests-2026-02-17T21-16-37Z.json`
 
-### Files updated
-- `tests/api/platform/shared-api-envelope-and-business-refusal-contract.api.spec.ts`
-  - Enabled 4 tests (removed `test.skip`)
-- `tests/e2e/platform/shared-api-envelope-and-business-refusal-contract.spec.ts`
-  - Enabled 3 tests (removed `test.skip`)
+Aggregate summary:
+- `/tmp/tea-automate-summary-2026-02-17T21-16-37Z.json`
 
-### Fixture infrastructure
-- Reused existing shared fixture/factory stack (no additional scaffold required):
-  - `tests/support/fixtures/sharedApiEnvelope.fixture.ts`
-  - `tests/support/factories/sharedApiEnvelopeFactory.ts`
+Files updated:
+- `tests/api/platform/platform-events-and-outbox-schema-foundations.api.spec.ts`
+  - expanded from 4 to 6 API tests
+- `tests/e2e/platform/platform-events-and-outbox-schema-foundations.spec.ts`
+  - expanded from 3 to 4 E2E tests
+
+Fixture infrastructure:
+- Reused existing support stack (no new scaffolding required):
+  - `tests/support/factories/platformEventOutboxFactory.ts`
+  - `tests/support/fixtures/platformEventOutbox.fixture.ts`
   - `tests/support/helpers/apiClient.ts`
 
-### Aggregated totals
-- Total tests: 7
-  - API: 4
-  - E2E: 3
+Aggregated totals:
+- Total tests: 10
+  - API: 6
+  - E2E: 4
 - Priority coverage:
   - P0: 3
-  - P1: 4
-  - P2: 0
+  - P1: 6
+  - P2: 1
   - P3: 0
 
 ## Step 4 - Validation
-Checklist alignment:
+Checklist outcome:
 - Framework readiness: pass
-- Coverage mapping: pass (AC1 + AC2 explicitly covered)
+- Coverage mapping to Story 0.6 ACs: pass
 - Test quality structure: pass (priority tags, deterministic assertions, no hard waits)
-- Fixtures/factories/helpers: pass (existing reusable support layer)
-- CLI session cleanup: pass (CLI not used)
+- Fixtures/factories/helpers: pass (reused existing architecture)
+- CLI sessions cleaned: pass (no CLI browser sessions opened)
 - Temp artifacts location: pass (`/tmp` and `_bmad-output/test-artifacts`)
 
-## Assumptions and Risks
-- Assumption: Story 0.5 implementation and route registration for `_kernel/contracts/envelope/*` exist or will be landed before CI gate runs.
-- Risk: If endpoints are not implemented yet, newly enabled tests will fail as intended and should be treated as implementation gap signal.
+Execution validation:
+- `npm run test:e2e -- --list tests/api/platform/platform-events-and-outbox-schema-foundations.api.spec.ts tests/e2e/platform/platform-events-and-outbox-schema-foundations.spec.ts`
+- Result: 10 tests discovered successfully in 2 files
+
+Assumptions and risks:
+- Story 0.6 backend contract endpoints are not implemented yet; all Story 0.6 tests remain intentionally `test.skip(...)`.
+- Green-phase activation requires implementing the four Story 0.6 contract endpoints and then removing `test.skip` incrementally (P0 before P1/P2).
 
 ## Recommended Next Workflow
-- `RV` (Review Tests): run TEA test review for robustness scoring and anti-pattern scan.
-- `TR` (Trace Requirements): map Story 0.5 acceptance criteria to these 7 tests for gate decision.
+- `RV` (Review Tests): quality scorecard and anti-pattern scan.
+- `TR` (Trace Requirements): map Story 0.6 ACs to these 10 tests and gate readiness.

@@ -1,0 +1,32 @@
+{
+  "success": true,
+  "subprocess": "atdd-api-tests",
+  "tests": [
+    {
+      "file": "tests/api/platform/platform-events-and-outbox-schema-foundations.api.spec.ts",
+      "description": "ATDD API tests for Story 0.6 platform events/outbox schema foundations (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "events and outbox tables exist with required lineage and delivery fields",
+        "indexes support operational and replay queries"
+      ],
+      "priority_coverage": {
+        "P0": 2,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "platformEventOutbox.fixture.ts"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns"
+  ],
+  "test_count": 4,
+  "tdd_phase": "RED",
+  "summary": "Generated 4 FAILING API tests for Story 0.6 platform events/outbox schema contracts"
+}
