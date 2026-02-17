@@ -13,7 +13,7 @@ type AtomicMutationProbeOverrides = {
 };
 
 type MissingWriteProbeOverrides = {
-  missingWrite?: 'event' | 'outbox';
+  missingWrite?: 'event' | 'outbox' | 'both';
   aggregateType?: string;
   aggregateId?: string;
   refusalCode?: string;
@@ -83,14 +83,14 @@ export function createMissingWriteProbe(
       path: 'platform.ledger_entries',
     },
     eventWrite:
-      missingWrite === 'event'
+      missingWrite === 'event' || missingWrite === 'both'
         ? null
         : {
             eventType: 'ledger.entry.created',
             eventVersion: 1,
           },
     outboxWrite:
-      missingWrite === 'outbox'
+      missingWrite === 'outbox' || missingWrite === 'both'
         ? null
         : {
             destination: 'platform-events',
@@ -103,7 +103,8 @@ export function createMissingWriteProbe(
       code: refusalCode,
       message: refusalMessage,
       refusalType: 'business' as const,
-      missingWrites: [missingWrite],
+      missingWrites:
+        missingWrite === 'both' ? (['event', 'outbox'] as const) : [missingWrite],
     },
   };
 }

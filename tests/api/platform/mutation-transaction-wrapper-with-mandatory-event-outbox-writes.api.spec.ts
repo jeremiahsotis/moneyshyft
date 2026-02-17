@@ -103,6 +103,38 @@ test.describe('Story 0.7 atdd - mutation wrapper with mandatory event/outbox API
     });
   });
 
+  test.skip('returns business refusal when both event and outbox writes are missing @P1', async ({
+    request,
+  }) => {
+    // Given a mutation payload that omits both event and outbox persistence
+    const headers = createMutationWrapperHeaders({
+      tenantId: 'tenant-mutation-missing-both',
+      correlationId: 'corr-mutation-missing-both',
+    });
+    const missingBothProbe = createMissingWriteProbe({ missingWrite: 'both' });
+
+    // When mutation wrapper contract validates required writes
+    const response = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/contracts/mutation/transaction-wrapper/validate-required-writes',
+      headers,
+      data: missingBothProbe.payload,
+    });
+
+    // Then refusal must include both missing categories without partial acceptance
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      ok: false,
+      code: missingBothProbe.expected.code,
+      message: missingBothProbe.expected.message,
+      refusalType: missingBothProbe.expected.refusalType,
+      missingWrites: missingBothProbe.expected.missingWrites,
+      correlationId: headers['x-correlation-id'],
+      tenantId: headers['x-tenant-id'],
+    });
+  });
+
   test.skip('guarantees refusal path reports no commit when required writes are missing @P1', async ({
     request,
   }) => {
@@ -147,5 +179,43 @@ test.describe('Story 0.7 atdd - mutation wrapper with mandatory event/outbox API
         committed: false,
       },
     });
+  });
+
+  test.skip('preserves tenant and correlation metadata across atomic and refusal contracts @P1', async ({
+    request,
+  }) => {
+    // Given a stable tenant and correlation context reused across contract probes
+    const headers = createMutationWrapperHeaders({
+      tenantId: 'tenant-mutation-metadata-stability',
+      correlationId: 'corr-mutation-metadata-stability',
+    });
+    const atomicProbe = createAtomicMutationProbe();
+    const missingEventProbe = createMissingWriteProbe({ missingWrite: 'event' });
+
+    // When atomic and refusal probes are executed under the same context
+    const atomicResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/contracts/mutation/transaction-wrapper/atomic',
+      headers,
+      data: atomicProbe.payload,
+    });
+    const refusalResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/contracts/mutation/transaction-wrapper/validate-required-writes',
+      headers,
+      data: missingEventProbe.payload,
+    });
+
+    // Then both envelopes should preserve tenant and correlation identity
+    expect(atomicResponse.status()).toBe(200);
+    expect(refusalResponse.status()).toBe(200);
+
+    const atomicBody = await atomicResponse.json();
+    const refusalBody = await refusalResponse.json();
+
+    expect(atomicBody.correlationId).toBe(headers['x-correlation-id']);
+    expect(refusalBody.correlationId).toBe(headers['x-correlation-id']);
+    expect(atomicBody.tenantId).toBe(headers['x-tenant-id']);
+    expect(refusalBody.tenantId).toBe(headers['x-tenant-id']);
   });
 });

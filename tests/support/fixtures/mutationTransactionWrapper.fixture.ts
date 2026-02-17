@@ -10,6 +10,7 @@ type MutationTransactionWrapperFixtures = {
   atomicMutationProbe: ReturnType<typeof createAtomicMutationProbe>;
   missingEventProbe: ReturnType<typeof createMissingWriteProbe>;
   missingOutboxProbe: ReturnType<typeof createMissingWriteProbe>;
+  missingBothProbe: ReturnType<typeof createMissingWriteProbe>;
 };
 
 export const test = base.extend<MutationTransactionWrapperFixtures>({
@@ -24,6 +25,9 @@ export const test = base.extend<MutationTransactionWrapperFixtures>({
   },
   missingOutboxProbe: async ({}, use) => {
     await use(createMissingWriteProbe({ missingWrite: 'outbox' }));
+  },
+  missingBothProbe: async ({}, use) => {
+    await use(createMissingWriteProbe({ missingWrite: 'both' }));
   },
 });
 
