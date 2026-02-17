@@ -49,6 +49,7 @@ GPT-5 Codex
 
 ### Debug Log References
 
+- `npm test -- PlatformSessionStore.test.ts auth.refresh.test.ts`
 - `npm test -- PlatformSessionStore.test.ts`
 - `npm test`
 - `npm run build`
@@ -56,9 +57,10 @@ GPT-5 Codex
 ### Completion Notes List
 
 - Added `platform.sessions` persistence with hashed refresh token state, expiry metadata, and revocation/rotation fields.
-- Added `PlatformSessionStore` for refresh hash persistence, lookup, revocation, and atomic rotation behavior.
-- Integrated session persistence into signup/login and refresh-token rotation plus logout revocation.
-- Added automated tests for AC1 and AC2 in `PlatformSessionStore.test.ts`.
+- Added row-level lock protection and replay-safe refresh rotation behavior in `PlatformSessionStore`.
+- Added signup transaction-scoped session creation so user/session writes commit atomically.
+- Added route-level `/api/v1/auth/refresh` replay/revocation coverage.
+- Added automated tests for AC1 and AC2 including explicit replay rejection assertions.
 - Full backend Jest suite and TypeScript build pass.
 
 ### File List
@@ -67,10 +69,10 @@ GPT-5 Codex
 - `src/src/platform/sessions/PlatformSessionStore.ts`
 - `src/src/platform/sessions/__tests__/PlatformSessionStore.test.ts`
 - `src/src/services/AuthService.ts`
-- `src/src/routes/api/v1/auth.ts`
-- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `src/src/routes/api/v1/__tests__/auth.refresh.test.ts`
 - `_bmad-output/implementation-artifacts/0-3-platform-session-store-and-refresh-rotation.md`
 
 ## Change Log
 
 - 2026-02-17: Implemented platform session store + refresh rotation and added automated AC coverage.
+- 2026-02-17: Addressed code-review findings for race-safe rotation, transactional signup session persistence, and replay route coverage.

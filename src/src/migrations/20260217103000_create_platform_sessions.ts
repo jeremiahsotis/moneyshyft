@@ -12,7 +12,11 @@ export async function up(knex: Knex): Promise<void> {
     table.timestamp('expires_at').notNullable();
     table.timestamp('revoked_at');
     table.string('revoked_reason', 100);
-    table.uuid('rotated_to_session_id');
+    table
+      .uuid('rotated_to_session_id')
+      .references('id')
+      .inTable('platform.sessions')
+      .onDelete('SET NULL');
     table.timestamp('last_used_at');
     table.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
     table.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
@@ -21,6 +25,7 @@ export async function up(knex: Knex): Promise<void> {
     table.index(['household_id']);
     table.index(['expires_at']);
     table.index(['revoked_at']);
+    table.index(['rotated_to_session_id']);
   });
 }
 

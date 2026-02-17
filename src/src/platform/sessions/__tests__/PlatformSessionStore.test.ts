@@ -33,26 +33,31 @@ const fakeDb: any = {
         throw new Error(`Unhandled table: ${tableName}`);
       }
 
-      const whereChain = (predicate: Partial<SessionRow>) => ({
-        first: async () => {
-          const match = sessionRows.find((row) =>
-            Object.entries(predicate).every(([key, value]) => (row as any)[key] === value)
-          );
-          return match ?? undefined;
-        },
-        update: async (changes: Partial<SessionRow>) => {
-          let updated = 0;
-          sessionRows = sessionRows.map((row) => {
-            const matches = Object.entries(predicate).every(([key, value]) => (row as any)[key] === value);
-            if (!matches) {
-              return row;
-            }
-            updated += 1;
-            return { ...row, ...changes };
-          });
-          return updated;
-        },
-      });
+      const whereChain = (predicate: Partial<SessionRow>) => {
+        const chain: any = {
+          first: async () => {
+            const match = sessionRows.find((row) =>
+              Object.entries(predicate).every(([key, value]) => (row as any)[key] === value)
+            );
+            return match ?? undefined;
+          },
+          update: async (changes: Partial<SessionRow>) => {
+            let updated = 0;
+            sessionRows = sessionRows.map((row) => {
+              const matches = Object.entries(predicate).every(([key, value]) => (row as any)[key] === value);
+              if (!matches) {
+                return row;
+              }
+              updated += 1;
+              return { ...row, ...changes };
+            });
+            return updated;
+          },
+        };
+
+        chain.forUpdate = () => chain;
+        return chain;
+      };
 
       return {
         insert(payload: Partial<SessionRow>) {
@@ -123,6 +128,40 @@ describe('PlatformSessionStore', () => {
   });
 
   describe('AC2: reject replayed/revoked refresh token usage', () => {
+    it('rejects replay of an already-rotated refresh token', async () => {
+      const oldRefreshToken = generateRefreshToken({
+        userId: 'user-2',
+        email: 'user-2@example.com',
+        householdId: 'house-2',
+        role: 'member',
+      });
+      const rotatedRefreshToken = generateRefreshToken({
+        userId: 'user-2',
+        email: 'user-2@example.com',
+        householdId: 'house-2',
+        role: 'member',
+      });
+      const replayAttemptRefreshToken = generateRefreshToken({
+        userId: 'user-2',
+        email: 'user-2@example.com',
+        householdId: 'house-2',
+        role: 'member',
+      });
+
+      await PlatformSessionStore.createSession({
+        userId: 'user-2',
+        householdId: 'house-2',
+        refreshToken: oldRefreshToken,
+        rememberMe: false,
+      });
+
+      await PlatformSessionStore.rotateSession(oldRefreshToken, rotatedRefreshToken);
+
+      await expect(
+        PlatformSessionStore.rotateSession(oldRefreshToken, replayAttemptRefreshToken)
+      ).rejects.toThrow('SESSION_REVOKED');
+    });
+
     it('throws SESSION_REVOKED when rotating a revoked refresh token', async () => {
       const oldRefreshToken = generateRefreshToken({
         userId: 'user-2',

@@ -91,7 +91,13 @@ class PlatformSessionStore {
     const executor = trx ?? db;
 
     const run = async (innerTrx: Knex.Transaction): Promise<SessionRecord> => {
-      const currentSession = await this.findSessionByRefreshToken(oldRefreshToken, innerTrx);
+      const oldRefreshTokenHash = this.hashRefreshToken(oldRefreshToken);
+      const currentSessionRecord = await this.getScopedDb(innerTrx)
+        .where({ refresh_token_hash: oldRefreshTokenHash })
+        .forUpdate()
+        .first();
+
+      const currentSession = currentSessionRecord ? this.mapRecord(currentSessionRecord) : null;
 
       if (!currentSession) {
         throw new Error('SESSION_NOT_FOUND');
