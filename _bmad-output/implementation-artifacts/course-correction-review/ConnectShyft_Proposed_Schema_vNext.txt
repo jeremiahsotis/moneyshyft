@@ -1,0 +1,92 @@
+ConnectShyft Proposed Schema vNext (2026-02-18)
+Scope: greenfield schema for ConnectShyft on the updated Phase 0 platform (Tenant + OrgUnit +
+BillingAccount). No prior code assumptions are required.
+Notation: all timestamps stored as UTC. All phone numbers stored as E.164. Tables are Postgres-friendly;
+adjust types if using another datastore.
+A. Platform schema (Phase 0)
+Table
+Primary key
+Core columns (non-exhaustive)
+Notes / constraints
+platform_tenants
+tenant_id (uuid)
+name, status, created_at_utc, updated_at_utc
+Hard isolation boundary.
+platform_billing_accounts
+billing_account_id (uuid)
+name, status, created_at_utc, updated_at_utc
+Pays for tenants; no visibility implied.
+platform_tenant_billing
+(tenant_id, billing_account_id)
+tenant_id, billing_account_id, starts_at_utc, ends_at_utc
+1 active billing account per tenant (enforce via partial unique where ends_at_utc is null).
+platform_org_units
+org_unit_id (uuid)
+tenant_id, parent_org_unit_id (null), type, name, status, created_at_utc
+Soft boundary within tenant. type includes CONFERENCE.
+platform_users
+user_id (uuid)
+email, display_name, status, created_at_utc, last_login_at_utc
+Auth identity. Email uniqueness policy: global or per-tenant (lock separately).
+platform_tenant_memberships
+(tenant_id, user_id)
+tenant_id, user_id, role_set_json, created_at_utc
+Tenant roles.
+platform_org_unit_memberships
+(org_unit_id, user_id)
+org_unit_id, user_id, role_set_json, created_at_utc
+OrgUnit roles. Multi-orgUnit membership allowed.
+platform_audit_events
+event_id (uuid)
+tenant_id, org_unit_id (null), actor_user_id, event_type, entity_type, entity_id, metadata_json, occurred_at_utc
+Immutable append-only audit log.
+platform_outbox
+outbox_id (uuid)
+tenant_id, event_type, payload_json, status, created_at_utc, dispatched_at_utc
+Outbox pattern for reliable async integrations.
+Indexes (minimum): platform_org_units(tenant_id), platform_org_units(parent_org_unit_id). Membership
+composite keys are unique.
+B. ConnectShyft schema
+Table
+Primary key
+Core columns (non-exhaustive)
+Notes / constraints
+cs_numbers
+cs_number_id (uuid)
+tenant_id, org_unit_id, twilio_number_e164, capabilities_json, status, created_at_utc
+Inbound routing mapping. Unique (tenant_id, twilio_number_e164).
+cs_org_unit_config
+org_unit_id (uuid, FK)
+tenant_id, org_unit_id, escalation_hours_x (int, default 24), primary_user_id, secondary_user_id, updated_by_user_id, updated_at_utc
+One row per orgUnit. Validate primary != secondary.
+cs_neighbors
+neighbor_id (uuid)
+tenant_id, first_name, last_name, dob (date), language, prefers_texting (UNKNOWN|YES|NO), address1, address2, city, state, zip, notes, created_at_utc, updated_at_utc
+Tenant-scoped canonical neighbor record.
+cs_neighbor_phones
+neighbor_phone_id (uuid)
+tenant_id, neighbor_id, phone_e164, phone_type, phone_status (ACTIVE|OLD|UNKNOWN), is_shared, verified_at_utc (null), notes
+At least 1 phone per neighbor. Index (tenant_id, phone_e164).
+cs_threads
+thread_id (uuid)
+tenant_id, org_unit_id, neighbor_id, cs_number_id, state, claimed_by_user_id (null), escalation_stage, escalation_count, identify_required_flag, unidentified_flag, last_activity_at_utc, created_at_utc
+Unique active thread per (tenant_id, org_unit_id, neighbor_id, cs_number_id) where state != CLOSED.
+cs_messages
+message_id (uuid)
+tenant_id, thread_id, direction, body_text, twilio_message_sid (null), actor_user_id (null), created_at_utc
+SMS content retained 24 months. Index (thread_id, created_at_utc).
+cs_voicemails
+voicemail_id (uuid)
+tenant_id, thread_id, audio_url, duration_seconds, transcript_text, transcript_confidence (null), created_at_utc
+Voicemail artifact + transcript. Retained 24 months.
+cs_sms_preference_overrides
+override_id (uuid)
+tenant_id, thread_id, neighbor_id, actor_user_id, reason_code, reason_note (null), created_at_utc
+Logged when prefers_texting=NO but outbound SMS sent anyway.
+C. Scoping and enforcement (locked)
+Neighbor search is tenant-wide. Threads are orgUnit-scoped to the active orgUnit context.
+Neighbor edits allowed only if user has an active thread with that neighbor in active orgUnit, or user has
+tenant-privileged role.
+Escalation clears only on claim. Outbound messages/calls do not clear escalation.
+Prefers texting enforcement: enum UNKNOWN/YES/NO. If NO, outbound SMS requires override reason and
+logs cs_sms_preference_overrides + audit event.

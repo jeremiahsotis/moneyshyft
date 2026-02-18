@@ -171,9 +171,17 @@ Modular monolith backend + web clients in an existing brownfield repo (Node/Expr
 - Future schemas: `operations`, `resource`, `pos`.
 
 **Modeling Rules:**
+- Hard boundary is tenant; soft boundary is orgUnit within tenant.
+- Request context is canonicalized as `{ tenantId, orgUnitId|null, scopeMode }`.
 - Commitment is first-class execution entity.
 - Request is input artifact that ends in refusal/cancel OR linked commitment path.
 - Completion proof is append-only and immutable after finalization.
+- Billing sponsorship is represented separately and does not grant data visibility.
+
+**Data Scoping Patterns:**
+- Pattern A (tenant-scoped): all rows include `tenant_id`; repository helpers inject tenant filter.
+- Pattern B (orgUnit-scoped): rows include `tenant_id + org_unit_id`; repository helpers inject both filters.
+- Pattern C (cross-orgUnit within tenant): only for explicit tenant-privileged capabilities; never cross-tenant.
 
 **Migration Strategy:**
 - Single migration source: `src/db/migrations`.
@@ -201,8 +209,10 @@ Modular monolith backend + web clients in an existing brownfield repo (Node/Expr
 
 **Tenant Isolation Enforcement:**
 - Middleware `resolveTenant()` + repository mandatory tenant filters.
+- OrgUnit-scoped paths require repository-level `tenant_id + org_unit_id` filters.
+- OrgUnit context must be validated as belonging to tenant and caller membership unless tenant-privileged role.
 - Tenant-scoped composite keys/indexes.
-- Negative tests for cross-tenant access.
+- Negative tests for cross-tenant access, cross-orgUnit access, and orgUnit spoofing.
 
 ### API & Communication Patterns
 
@@ -527,7 +537,7 @@ moneyshyft/
 
 **Data Boundaries:**
 - Schema-per-context (`platform`, `route`, future module schemas).
-- Repository layer enforces tenant scope and transition rules.
+- Repository layer enforces tenant/orgUnit scope and transition rules.
 - UTC persist + centralized timezone rendering model enforced globally.
 
 ### Requirements to Structure Mapping

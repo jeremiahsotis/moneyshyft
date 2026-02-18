@@ -1,0 +1,36 @@
+Phase 0 Course Correction  Proposed Schema
+(2026-02-18)
+Schema Overview
+This schema extends the existing platform kernel to support tenant isolation plus optional org-unit scoping and
+separate billing sponsorship.
+Tables
+Table
+Key Columns
+Notes / Constraints
+platform.tenants
+id (uuid), name, status, created_at_utc
+Hard isolation boundary.
+platform.billing_accounts
+id (uuid), name, status
+Pays for one or more tenants; no visibility implied.
+platform.tenant_billing
+tenant_id, billing_account_id
+FKs; 1 tenant -> 1 billing acct (or allow many later).
+platform.org_units
+id, tenant_id, parent_org_unit_id, type, name
+Soft boundary; hierarchical within tenant.
+platform.tenant_memberships
+user_id, tenant_id, roles_json
+Tenant-level roles (tenant_admin, staff, etc.).
+platform.org_unit_memberships
+user_id, org_unit_id, roles_json
+OrgUnit roles (orgunit_admin, member).
+Indexes and Constraints (Minimum)
+org_units: index (tenant_id), index (parent_org_unit_id), unique (tenant_id, name) optional.
+memberships: unique (user_id, tenant_id) and unique (user_id, org_unit_id).
+org_units: FK parent_org_unit_id references org_units.id with ON DELETE RESTRICT (avoid accidental tree
+deletion).
+tenant_billing: FK tenant_id references tenants.id; FK billing_account_id references billing_accounts.id.
+Request Context Contract
+All server handlers receive a resolved context: { tenantId, orgUnitId|null, scopeMode }. scopeMode=ORG_UNIT
+implies orgUnitId is non-null.

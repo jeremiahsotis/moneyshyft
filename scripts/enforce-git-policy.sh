@@ -105,6 +105,41 @@ if [[ "$branch" =~ ^codex/story-([0-9]+-[0-9]+)- ]]; then
   story_branch_id="${BASH_REMATCH[1]}"
 fi
 
+enforce_corrected_kernel_gate_for_story() {
+  local story_id="$1"
+  local epic_id="${story_id%%-*}"
+  local status_file="_bmad-output/implementation-artifacts/sprint-status.yaml"
+
+  if [[ "$epic_id" == "0" ]]; then
+    return 0
+  fi
+
+  if [[ ! -f "$status_file" ]]; then
+    echo "Policy check failed: missing $status_file required for corrected kernel gate enforcement"
+    exit 1
+  fi
+
+  if ! grep -Eq '0-10-kernel-readiness-verification-suite:\s*done' "$status_file"; then
+    echo "Policy check failed: corrected kernel gate unmet (Story 0-10 is not done)"
+    echo "Feature story progression is blocked until corrected kernel acceptance criteria complete."
+    exit 1
+  fi
+
+  if ! awk '
+    /cc-2026-02-18:/ { in_block=1; next }
+    in_block && /^[^[:space:]]/ { in_block=0 }
+    in_block && /status:[[:space:]]*approved/ { ok=1 }
+    END { exit ok ? 0 : 1 }
+  ' "$status_file"; then
+    echo "Policy check failed: corrected kernel gate unmet (course correction cc-2026-02-18 is not approved)"
+    exit 1
+  fi
+}
+
+if [[ -n "$story_branch_id" ]]; then
+  enforce_corrected_kernel_gate_for_story "$story_branch_id"
+fi
+
 if [[ -n "$last_subject" ]]; then
   if [[ "$last_subject" != Merge* ]] && [[ "$is_default_branch" != "true" ]]; then
     if [[ ! "$last_subject" =~ ^[0-9]+-[0-9]+:\ .+ ]]; then

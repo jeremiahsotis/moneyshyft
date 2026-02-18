@@ -77,6 +77,9 @@ Interaction strategy:
 
 Constraints:
 - Multi-tenant/module-role access must shape visible actions and data.
+- Active tenant context must be explicit in authenticated surfaces (`Acting in Tenant: ...`).
+- OrgUnit-scoped workflows require explicit active orgUnit selection when tenant has orgUnits.
+- No blended cross-orgUnit inbox by default; cross-orgUnit visibility is explicit and privileged.
 - CSRF/session/auth boundaries must be invisible to users but strict in behavior.
 - Offline/weak-connectivity execution must avoid duplicate completion side effects.
 
@@ -232,6 +235,7 @@ This is a hybrid "themeable system" approach, not a fully custom-from-scratch sy
   4. Form primitives (donor + assisted intake)
   5. Driver mobile action cards
 - Enforce role-aware UI gates in component usage (entitlement-aware action visibility).
+- Implement explicit tenant/orgUnit context-switch controls in shared shell/header.
 - Include motion constraints (`prefers-reduced-motion`) and high-contrast compliance in base layer.
 
 ### Customization Strategy
@@ -683,6 +687,7 @@ Assisted-entry parity:
 
 Dispatcher/cashier:
 - Queue-first navigation with stable filter/sort model.
+- Active tenant and orgUnit context is always visible and switchable from header controls.
 - List-detail layout with persistent action bar.
 
 Driver:

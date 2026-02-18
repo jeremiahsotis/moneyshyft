@@ -355,35 +355,54 @@ Shyft is a multi-tenant operations platform delivered as a modular monolith with
 
 ### Technical Architecture Considerations
 
-- Platform-level tenant resolution is mandatory for every request path.
+- Platform-level request context resolution is mandatory for every request path using `{ tenantId, orgUnitId|null, scopeMode }`.
+- `tenant` is the hard isolation boundary; `orgUnit` is a soft boundary within tenant.
+- `scopeMode` drives repository enforcement:
+  - `TENANT` mode requires `tenant_id`.
+  - `ORG_UNIT` mode requires `tenant_id` + `org_unit_id`.
 - Module access is entitlement-driven (tenant may enable any subset of modules).
-- Authorization is role-based within tenant and module scopes.
+- Authorization is role-based across system, tenant, and orgUnit layers.
 - Route/module handlers must enforce deny-by-default when entitlement or role checks fail.
 - Immutable completion records and terminal-state invariants are core system guarantees.
 - Cookie/auth/CSRF controls must remain consistent across app.* and api.* surfaces.
+- Billing sponsorship relationships must not imply cross-tenant data visibility.
 
 ### Tenant Model
 
 - `tenant` is the top-level boundary for data and access.
 - Tenant lifecycle states: `active`, `suspended`, `archived`.
 - Tenant may enable module combinations (Route, Operations, Resource, POS, etc.) independently.
-- Tenant-owned users exist within tenant scope and receive module-specific roles.
+- Tenant-owned users exist within tenant scope and can belong to multiple tenants using explicit active tenant context selection.
+- Tenant archetypes supported:
+  - tenant with users only
+  - tenant with internal orgUnits and orgUnit-scoped users
+  - sponsor-funded independent tenants (financial sponsorship only, no inherited data visibility)
+- OrgUnits are optional soft boundaries inside tenants and never cross tenant boundaries.
+- UI/API require explicit active tenant and (where required) active orgUnit context.
 - Tenant administration APIs/UI required for:
   - user invite/remove
+  - orgUnit create/update
   - module enable/disable
   - role assignment and revocation
 
 ### RBAC Matrix
 
 Core role layers:
-- Platform roles (limited, internal admin use)
-- Tenant roles (tenant admin/operator/staff)
-- Module roles (dispatcher, cashier/front-end, driver, support, leadership-view)
+- System roles:
+  - `SYSTEM_ADMIN` (internal-only; platform-wide governance)
+- Tenant roles:
+  - `TENANT_ADMIN`
+  - `TENANT_STAFF`
+  - `TENANT_VIEWER`
+- OrgUnit roles:
+  - `ORGUNIT_ADMIN`
+  - `ORGUNIT_MEMBER`
+  - `ORGUNIT_IDENTITY_LEAD`
 
 Access principles:
 - deny by default
 - least privilege
-- explicit module-role grants
+- explicit capability grants by scope layer
 - auditable entitlement and role changes
 
 ### Subscription Tiers
@@ -480,14 +499,14 @@ Mitigation: pickup-first scope discipline, defer non-essential analytics/automat
 
 ### Tenant & Access Management
 
-- FR1: Platform admins can create, activate, suspend, and archive tenants.
-- FR2: Tenant admins can enable or disable individual modules for their tenant.
-- FR3: Tenant admins can invite, remove, and manage tenant users.
-- FR4: Tenant admins can assign tenant-scoped roles to users.
-- FR5: Tenant admins can assign module-scoped roles to users within enabled modules.
-- FR6: The system can deny module access by default when entitlement is missing.
-- FR7: Authorized users can access only modules and actions permitted by tenant/module role policy.
-- FR8: The system can log all entitlement and role changes in an auditable trail.
+- FR1: `SYSTEM_ADMIN` can create, activate, suspend, and archive tenants and assign initial `TENANT_ADMIN`.
+- FR2: `TENANT_ADMIN` can create/update orgUnits within tenant and assign orgUnit administrators.
+- FR3: The platform can assign users to tenants and to multiple orgUnits within tenant using explicit active tenant context.
+- FR4: Every authenticated request resolves `{tenantId, orgUnitId|null, scopeMode}`; orgUnit-scoped routes reject missing/invalid orgUnit context.
+- FR5: OrgUnit context is validated against tenant membership and orgUnit membership unless tenant-privileged role is present.
+- FR6: Repository enforcement prevents omitted tenant filters and, for orgUnit-scoped access, omitted orgUnit filters.
+- FR7: Authorization is deny-by-default and capability-gated across system/tenant/orgUnit role layers.
+- FR8: All tenant/orgUnit/membership/entitlement mutations emit auditable events and outbox records atomically.
 
 ### Intake & Request Lifecycle (Input Layer)
 

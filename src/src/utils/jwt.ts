@@ -6,6 +6,8 @@ export interface JWTPayload {
   userId: string;
   email: string;
   householdId: string | null;
+  activeTenantId?: string | null;
+  activeOrgUnitId?: string | null;
   role: string;
 }
 

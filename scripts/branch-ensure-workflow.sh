@@ -93,6 +93,36 @@ normalize_story_id() {
   echo ""
 }
 
+ensure_corrected_kernel_gate() {
+  local story_id="$1"
+  local epic_id="${story_id%%-*}"
+  local status_file="_bmad-output/implementation-artifacts/sprint-status.yaml"
+
+  if [[ "$epic_id" == "0" ]]; then
+    return 0
+  fi
+
+  if [[ ! -f "$status_file" ]]; then
+    echo "Kernel gate failed: missing $status_file"
+    exit 1
+  fi
+
+  if ! grep -Eq '0-10-kernel-readiness-verification-suite:\s*done' "$status_file"; then
+    echo "Kernel gate failed: Story 0-10 is not done. Feature story workflows are blocked until corrected kernel acceptance criteria are complete."
+    exit 1
+  fi
+
+  if ! awk '
+    /cc-2026-02-18:/ { in_block=1; next }
+    in_block && /^[^[:space:]]/ { in_block=0 }
+    in_block && /status:[[:space:]]*approved/ { ok=1 }
+    END { exit ok ? 0 : 1 }
+  ' "$status_file"; then
+    echo "Kernel gate failed: course correction cc-2026-02-18 is not approved in sprint status."
+    exit 1
+  fi
+}
+
 if [[ "$workflow_key" =~ $story_workflow_regex ]]; then
   if [[ -z "$story_input" ]]; then
     echo "Story workflow requires --story"
@@ -104,6 +134,8 @@ if [[ "$workflow_key" =~ $story_workflow_regex ]]; then
     echo "Could not parse story id from: $story_input"
     exit 1
   fi
+
+  ensure_corrected_kernel_gate "$story_id"
 
   if [[ ! "$branch" =~ ^codex/story-${story_id}- ]]; then
     echo "Branch guard failed"

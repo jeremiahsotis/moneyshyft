@@ -1,0 +1,8 @@
+Phase0_Additional_Developer_Notes.pdf: 13 extracted lines -> /Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/course-correction-review/Phase0_Additional_Developer_Notes.txt
+Phase0_Architecture_and_Boundaries.pdf: 15 extracted lines -> /Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/course-correction-review/Phase0_Architecture_and_Boundaries.txt
+Phase0_Course_Correction_Spec.pdf: 47 extracted lines -> /Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/course-correction-review/Phase0_Course_Correction_Spec.txt
+Phase0_Functional_Requirements.pdf: 12 extracted lines -> /Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/course-correction-review/Phase0_Functional_Requirements.txt
+Phase0_Nonfunctional_Requirements.pdf: 11 extracted lines -> /Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/course-correction-review/Phase0_Nonfunctional_Requirements.txt
+Phase0_Proposed_Schema.pdf: 36 extracted lines -> /Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/course-correction-review/Phase0_Proposed_Schema.txt
+Phase0_Technical_Task_Breakdown.pdf: 23 extracted lines -> /Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/course-correction-review/Phase0_Technical_Task_Breakdown.txt
+ConnectShyft_Proposed_Schema_vNext.pdf: 92 extracted lines -> /Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/course-correction-review/ConnectShyft_Proposed_Schema_vNext.txt

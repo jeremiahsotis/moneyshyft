@@ -1,0 +1,13 @@
+Phase 0 Course Correction  Additional Developer Notes
+(2026-02-18)
+Developer Notes / Gotchas
+Do not treat OrgUnit as a tenant. OrgUnits never cross tenant boundaries.
+Avoid tenant trees. Cross-tenant admin (if ever needed) must be explicit delegation, not inheritance.
+Context switching must be explicit: no combined inbox across orgUnits by default.
+Ensure all new mutations use the platform mutation wrapper so events/outbox writes remain mandatory.
+If existing code currently assumes tenant == conference, update naming and comments to avoid conceptual
+drift.
+Inputs Needed
+Confirm canonical tenant roles and orgUnit roles (names and allowed capabilities).
+Decide if users can belong to multiple tenants (default: yes, but requires an active tenant context selection
+similar to orgUnit).

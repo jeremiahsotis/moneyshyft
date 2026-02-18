@@ -99,3 +99,24 @@ development_status:
   7-2-pos-origin-commitment-and-completion-linkage: backlog
   7-3-expansion-guardrails-and-consent-readiness-gates: backlog
   epic-7-retrospective: optional
+course_correction:
+  cc-2026-02-18:
+    status: approved
+    scope: major
+    proposal: /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-18.md
+    escalation_notice: /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/sprint-change-escalation-notice-2026-02-18.md
+    locked_decisions:
+      role_stack:
+        system:
+          - SYSTEM_ADMIN
+        tenant:
+          - TENANT_ADMIN
+          - TENANT_STAFF
+          - TENANT_VIEWER
+        orgunit:
+          - ORGUNIT_ADMIN
+          - ORGUNIT_MEMBER
+          - ORGUNIT_IDENTITY_LEAD
+      multi_tenant_memberships: true
+      explicit_active_tenant_required: true
+      global_email_uniqueness: true
