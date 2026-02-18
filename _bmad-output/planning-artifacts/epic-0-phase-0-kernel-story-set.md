@@ -52,15 +52,17 @@ So that all modules inherit the same kernel guarantees.
 ### Story 0.2: Tenancy Context Resolution and Repository Enforcement
 
 As a platform engineer,
-I want tenant resolution and mandatory tenant-scoped data access,
-So that cross-tenant reads/writes cannot occur by omission.
+I want tenant + orgUnit context resolution and mandatory scoped data access,
+So that cross-tenant or cross-orgUnit reads/writes cannot occur by omission.
 
 **Acceptance Criteria:**
 
 **Given** any request reaches protected data paths
 **When** data queries execute
-**Then** tenant context is present and required filters are applied
-**And** cross-tenant negative tests fail deterministically.
+**Then** request context includes `{tenantId, orgUnitId|null, scopeMode}`
+**And** required filters are applied by scope mode
+**And** orgUnit-scoped reads/writes validate orgUnit membership unless tenant-privileged role
+**And** deterministic negative tests fail for cross-tenant, cross-orgUnit, and orgUnit spoofing attempts.
 
 ### Story 0.3: Platform Session Store and Refresh Rotation
 
@@ -164,6 +166,9 @@ So that Phase 1 Route work starts only when kernel controls are proven.
 **Given** Phase-0 verification runs
 **When** checks complete
 **Then** tenancy/auth/csrf/envelope/event-outbox/timezone gates all pass
+**And** three-layer RBAC contracts are validated (`SYSTEM_ADMIN`, tenant roles, orgUnit roles)
+**And** multi-tenant membership with explicit `activeTenantId` is validated
+**And** global email uniqueness contract for platform identities is validated
 **And** readiness status is recorded as Phase-0 complete before Route story execution.
 
 ## Phase-0 Exit Gates
@@ -177,6 +182,9 @@ All must pass before Route implementation stories begin:
 5. Mutation event/outbox contract tests green.
 6. UTC storage + local timezone display tests green.
 7. Policy gate blocks downstream jobs on violations.
+8. Tenant + orgUnit scope enforcement tests green (including spoofing negatives).
+9. RBAC capability matrix tests green for system/tenant/orgUnit layers.
+10. Active tenant context enforcement and global identity uniqueness checks green.
 
 ## Implementation Order (Small PR Sequence)
 

@@ -35,3 +35,32 @@ export const applyTenantScope = <TQuery extends ScopeableQuery<TQuery>>(
   const scopedTenantId = requireTenantId(tenantId);
   return query.where({ [tenantColumn]: scopedTenantId });
 };
+
+export const requireOrgUnitId = (orgUnitId?: string | null): string => {
+  if (typeof orgUnitId !== 'string') {
+    throw new TenantScopeError('OrgUnit context is required for orgUnit-scoped data access');
+  }
+
+  const normalizedOrgUnitId = orgUnitId.trim();
+
+  if (normalizedOrgUnitId === '') {
+    throw new TenantScopeError('OrgUnit context is required for orgUnit-scoped data access');
+  }
+
+  return normalizedOrgUnitId;
+};
+
+export const applyOrgUnitScope = <TQuery extends ScopeableQuery<TQuery>>(
+  query: TQuery,
+  tenantId: string,
+  orgUnitId: string,
+  tenantColumn = 'household_id',
+  orgUnitColumn = 'org_unit_id'
+): TQuery => {
+  const scopedTenantId = requireTenantId(tenantId);
+  const scopedOrgUnitId = requireOrgUnitId(orgUnitId);
+  return query.where({
+    [tenantColumn]: scopedTenantId,
+    [orgUnitColumn]: scopedOrgUnitId,
+  });
+};

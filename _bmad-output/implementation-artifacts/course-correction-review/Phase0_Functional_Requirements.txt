@@ -1,0 +1,12 @@
+Phase 0 Course Correction  Functional Requirements
+(2026-02-18)
+Functional Requirements
+FR1: Platform supports creation of Tenants (System Admin only).
+FR2: Platform supports creation of OrgUnits within a Tenant (Tenant Admin or System Admin).
+FR3: Platform supports assigning users to Tenants and to multiple OrgUnits within a Tenant.
+FR4: Every authenticated request resolves tenantId; routes may optionally require orgUnitId.
+FR5: Repository enforcement prevents omitted tenant scoping and, for orgUnit-scoped repositories, prevents
+omitted orgUnit scoping.
+FR6: UI supports explicit orgUnit selection; server rejects orgUnit-scoped requests when orgUnitId is
+missing/invalid.
+FR7: All tenant/orgUnit/membership mutations emit platform.events and outbox records atomically.

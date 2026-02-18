@@ -1155,6 +1155,8 @@ router.get('/_kernel/context', (req: Request, res: Response) => {
     message: 'Kernel context resolved',
     data: {
       tenantId: tenantHeader,
+      orgUnitId: req.orgUnitId || null,
+      scopeMode: req.scopeMode || 'TENANT',
       correlationId: req.correlationId || null
     }
   });
@@ -1184,6 +1186,7 @@ router.get('/_kernel/routes', (req: Request, res: Response) => {
     ...envelope,
     modules: [
       'platform',
+      'platform-admin',
       'auth',
       'accounts',
       'transactions',
@@ -1401,7 +1404,9 @@ router.get('/_kernel/tenancy/diagnostics', (req: Request, res: Response) => {
 
   return res.status(200).json({
     ...envelope,
-    tenantId: tenantHeader
+    tenantId: tenantHeader,
+    orgUnitId: req.orgUnitId || null,
+    scopeMode: req.scopeMode || 'TENANT'
   });
 });
 

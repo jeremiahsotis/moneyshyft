@@ -17,9 +17,15 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
     }
 
     const payload = verifyAccessToken(token);
-    if (payload.householdId !== null) {
-      payload.householdId = requireTenantId(payload.householdId);
+    const resolvedActiveTenant = payload.activeTenantId ?? payload.householdId;
+    if (resolvedActiveTenant !== null) {
+      const scopedTenantId = requireTenantId(resolvedActiveTenant);
+      payload.householdId = scopedTenantId;
+      payload.activeTenantId = scopedTenantId;
+    } else {
+      payload.activeTenantId = null;
     }
+    payload.activeOrgUnitId = payload.activeOrgUnitId ?? null;
     req.user = payload;
     next();
   } catch (error) {
@@ -42,6 +48,15 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction): v
 
     if (token) {
       const payload = verifyAccessToken(token);
+      const resolvedActiveTenant = payload.activeTenantId ?? payload.householdId;
+      if (resolvedActiveTenant !== null) {
+        const scopedTenantId = requireTenantId(resolvedActiveTenant);
+        payload.householdId = scopedTenantId;
+        payload.activeTenantId = scopedTenantId;
+      } else {
+        payload.activeTenantId = null;
+      }
+      payload.activeOrgUnitId = payload.activeOrgUnitId ?? null;
       req.user = payload;
     }
 

@@ -54,6 +54,16 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - Run full regression before PR is marked ready.
 - PR description must include Story ID, AC traceability, and exact test commands/results.
 
+### Corrected Kernel Gate (Mandatory for Feature Story Progression)
+
+- Feature stories outside Epic 0 are blocked until corrected kernel acceptance criteria are complete.
+- Required sprint-status conditions before starting or validating non-Epic-0 story workflows:
+  - `0-10-kernel-readiness-verification-suite: done`
+  - `course_correction.cc-2026-02-18.status: approved`
+- Enforced by:
+  - `scripts/start-story-branch.sh`
+  - `scripts/branch-ensure-workflow.sh`
+
 ## 5) Story Creation Inside Epics (`create-story`)
 
 - `create-story` uses sprint tracking as primary source (`sprint-status.yaml`) to choose/create the next story.

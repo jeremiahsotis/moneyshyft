@@ -1,0 +1,15 @@
+Phase 0 Course Correction  Architecture & Boundaries
+(2026-02-18)
+Service Boundaries (Inside Monorepo)
+platform/tenancy: request context derivation, validation, and enforcement helpers.
+platform/auth: session -> identity -> tenant membership resolution.
+platform/rbac: role evaluation helpers (tenant roles + orgUnit roles).
+platform/admin-api: platform-only routes for tenant/orgUnit/user membership management.
+platform/events + outbox: unchanged, but used for all new mutations.
+Data Scoping Patterns
+Pattern A (Tenant-scoped): all rows include tenant_id; repository helper injects tenant filter.
+Pattern B (OrgUnit-scoped): rows include tenant_id + org_unit_id; repository helper injects both filters.
+Pattern C (Cross-OrgUnit allowed within tenant): only for tenant-wide privileged roles; still never cross-tenant.
+OrgUnit Context Switching
+UI must present explicit OrgUnit selection. The selected orgUnitId is stored in session (recommended) and
+reflected in server-side resolved context. Modules may require scopeMode=ORG_UNIT.

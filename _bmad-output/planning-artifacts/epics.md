@@ -94,28 +94,31 @@ Deliver secure, multi-tenant, role-governed platform controls and policy-gated w
 ### Story 1.1: Tenant Context Resolution and Isolation Guardrails
 
 As a platform engineer,
-I want every request to resolve tenant context and enforce tenant data boundaries,
-So that cross-tenant data leakage is structurally prevented.
+I want every request to resolve tenant + orgUnit context and enforce scoped data boundaries,
+So that cross-tenant and cross-orgUnit leakage are structurally prevented.
 
 **Acceptance Criteria:**
 
 **Given** an authenticated or anonymous request reaches the API
 **When** middleware resolves tenancy
-**Then** a canonical tenant identifier is attached to request context
-**And** repository paths reject cross-tenant access attempts.
+**Then** canonical context `{tenantId, orgUnitId|null, scopeMode}` is attached to request context
+**And** orgUnit-scoped routes require a valid orgUnit belonging to the active tenant
+**And** repository helpers enforce required scope filters (`tenant_id`; plus `org_unit_id` when orgUnit-scoped)
+**And** deterministic negative tests reject cross-tenant access, cross-orgUnit access, and orgUnit spoofing.
 
 ### Story 1.2: Tenant and Module Entitlement Administration
 
 As a tenant admin,
-I want to manage module entitlements and user role assignments,
-So that only authorized users can access enabled module actions.
+I want to manage module entitlements, orgUnits, and scoped role assignments,
+So that only authorized users can access actions in the correct tenant/orgUnit scope.
 
 **Acceptance Criteria:**
 
 **Given** a tenant admin opens tenant settings
-**When** they enable/disable a module or change user/module roles
-**Then** authorization behavior updates immediately for protected actions
-**And** every entitlement/role change is audit logged.
+**When** they enable/disable a module, create/update orgUnits, or change user roles
+**Then** authorization behavior updates immediately for protected actions by scope layer
+**And** every entitlement/role/membership change is audit logged via platform events/outbox
+**And** only `SYSTEM_ADMIN` can assign initial `TENANT_ADMIN` for a tenant.
 
 ### Story 1.3: First-Party Auth, Sessions, and CSRF Enforcement
 

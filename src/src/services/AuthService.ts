@@ -198,6 +198,8 @@ class AuthService {
         userId: user.id,
         email: user.email,
         householdId: user.household_id,
+        activeTenantId: user.household_id,
+        activeOrgUnitId: null,
         role: user.role,
       };
 
@@ -278,6 +280,8 @@ class AuthService {
       userId: user.id,
       email: user.email,
       householdId: user.household_id,
+      activeTenantId: user.household_id,
+      activeOrgUnitId: null,
       role: user.role,
     };
 

@@ -1,0 +1,47 @@
+Phase 0 Course Correction  Hierarchical Tenancy Spec
+(2026-02-18)
+Objective
+Course-correct Phase 0 tenancy from a single Conference-specific model to a generalized hierarchical
+tenancy model that supports: (a) traditional tenants, (b) tenants with internal OrgUnits (e.g., SVdP
+Conferences), and (c) sponsor-funded multi-tenant deployments (e.g., a foundation paying for multiple
+agencies).
+Key Decisions (Locked)
+1) Hard boundary is Tenant. No implicit parent-child tenant visibility.
+2) Soft boundary is OrgUnit within a Tenant (optional hierarchy). Conferences become OrgUnits, not Tenants.
+3) Billing sponsorship is represented separately via BillingAccount; sponsorship implies no data visibility.
+4) Users may belong to multiple OrgUnits within a Tenant.
+5) UI requires explicit OrgUnit context switch. No blended cross-OrgUnit inbox by default.
+Compatibility With Current Kernel
+The existing Phase 0 kernel enforces tenant scoping and middleware order. This course-correction extends
+tenancy context to include orgUnit scope (optional) and adds sponsor/billing abstractions without weakening
+tenant isolation.
+Scope
+In Scope
+Add platform schema for tenants, org_units, memberships, and billing accounts.
+Extend request context derivation: tenantId (required), orgUnitId (optional), scopeMode
+(TENANT|ORG_UNIT).
+Extend repository enforcement helpers to support tenant-scoped and orgUnit-scoped data access patterns.
+Add admin APIs for Tenant + OrgUnit + membership management (platform-only).
+Add test suite coverage: negative tests for cross-tenant and cross-orgUnit access.
+Out of Scope (Explicit)
+No module feature work (ConnectShyft/RouteShyft) beyond adapting them to the new scoping helpers.
+No cross-tenant delegation/admin (can be added later explicitly).
+No billing/checkout implementation (BillingAccount is structural only).
+Acceptance Criteria
+AC1: Every authenticated request resolves a validated tenantId; unauthenticated/public contexts are refused for
+non-public routes.
+AC2: orgUnitId is optional but, when present, is validated as belonging to tenantId and to the users
+memberships (unless tenant-wide privileged role).
+AC3: Repository helpers prevent omission of required tenant filters, and when using orgUnit-scoped
+repositories, also prevent omission of required orgUnit filters.
+AC4: Deterministic negative tests exist for: cross-tenant access, cross-orgUnit access within same tenant, and
+orgUnit spoofing.
+AC5: Admin APIs exist to create tenants, orgUnits, and memberships with audit events emitted via existing
+event/outbox wrapper.
+AC6: UI context selection contract exists (header/cookie/session) so modules can require explicit orgUnit
+context.
+Integration Notes
+Preserve existing middleware ordering and refusal envelope semantics.
+Emit platform.events for tenant/orgUnit/membership changes; outbox writes remain mandatory and atomic
+with mutations.
+Store all timestamps in UTC; render using centralized time service.

@@ -38,6 +38,31 @@ if [[ ! "$story_id" =~ ^[0-9]+-[0-9]+$ ]]; then
   exit 1
 fi
 
+epic_id="${story_id%%-*}"
+status_file="_bmad-output/implementation-artifacts/sprint-status.yaml"
+
+if [[ "$epic_id" != "0" ]]; then
+  if [[ ! -f "$status_file" ]]; then
+    echo "Kernel gate failed: missing $status_file"
+    exit 1
+  fi
+
+  if ! grep -Eq '0-10-kernel-readiness-verification-suite:\s*done' "$status_file"; then
+    echo "Kernel gate failed: Story 0-10 is not done. Cannot start feature story branch $story_id yet."
+    exit 1
+  fi
+
+  if ! awk '
+    /cc-2026-02-18:/ { in_block=1; next }
+    in_block && /^[^[:space:]]/ { in_block=0 }
+    in_block && /status:[[:space:]]*approved/ { ok=1 }
+    END { exit ok ? 0 : 1 }
+  ' "$status_file"; then
+    echo "Kernel gate failed: course correction cc-2026-02-18 is not approved."
+    exit 1
+  fi
+fi
+
 slug="$(echo "$slug_raw" \
   | tr '[:upper:]' '[:lower:]' \
   | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//; s/-+/-/g')"

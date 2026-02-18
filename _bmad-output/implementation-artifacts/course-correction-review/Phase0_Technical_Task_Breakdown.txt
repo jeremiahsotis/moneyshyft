@@ -1,0 +1,23 @@
+Phase 0 Course Correction  Technical Task Breakdown
+(2026-02-18)
+Technical Task Breakdown
+Workstream
+Tasks (deliverables)
+DB & Migrations
+Add migrations for tenants, billing_accounts, tenant_billing, org_units, tenant_memberships, org_unit_memberships; add indexes/constraints; add migration contract tests.
+Tenancy Context
+Extend context object to include orgUnitId + scopeMode; validate orgUnit belongs to tenant; attach to request.
+RBAC
+Implement role evaluation for tenant roles + orgUnit roles; add helper to require orgUnit context for routes.
+Repo Enforcement
+Add orgUnit-scoped enforcement helper; update existing tenantScope helper to support scope modes; add deterministic negative tests.
+Admin APIs
+Add platform routes for creating tenants/orgUnits, managing memberships; enforce permissions; emit events/outbox via mutation wrapper.
+UI Context Switch
+Add minimal endpoint(s) to set active orgUnit in session; add minimal UI shell control for switching (can be stubbed if no UI yet).
+QA/Testing
+Add unit tests for context resolution, membership validation, enforcement injection; add integration tests for admin APIs; add e2e negative tests.
+Definition of Done
+All ACs satisfied and covered by tests.
+No module behavior changes beyond adopting the new context/enforcement interfaces.
+Backward compatibility: tenant-only routes continue to function with orgUnitId=null.
