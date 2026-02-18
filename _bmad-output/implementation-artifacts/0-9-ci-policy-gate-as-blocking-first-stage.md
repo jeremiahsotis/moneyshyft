@@ -14,6 +14,7 @@ so that non-compliant workflow/branch operations are blocked immediately..
 
 1. lint/test/burn-in/gates do not proceed
 2. failure output includes actionable policy violation context
+3. non-Epic-0 story workflow is blocked until corrected kernel gate passes (`0-10-kernel-readiness-verification-suite: done` and `course_correction.cc-2026-02-18.status: approved`)
 
 ## Tasks / Subtasks
 
@@ -21,6 +22,9 @@ so that non-compliant workflow/branch operations are blocked immediately..
   - [ ] Add automated coverage for AC 1
 - [ ] Implement acceptance criterion 2 (AC: 2)
   - [ ] Add automated coverage for AC 2
+- [ ] Implement acceptance criterion 3 (AC: 3)
+  - [ ] Enforce corrected-kernel policy gate in local and CI guards before non-Epic-0 story workflow execution
+  - [ ] Add automated coverage for AC 3
 
 ### Review Follow-ups (AI)
 
@@ -46,6 +50,7 @@ so that non-compliant workflow/branch operations are blocked immediately..
 - /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/epic-0-phase-0-kernel-story-set.md
 - /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/prd.md
 - /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/architecture.md
+- /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-18.md
 - /Users/jeremiahotis/moneyshyft/docs/policies/git_policy.md
 - /Users/jeremiahotis/moneyshyft/ROADMAP.md
 
@@ -111,6 +116,7 @@ GPT-5 Codex
 
 - AC1 validated in current branch state: CI dependency chain blocks downstream jobs when `policy` fails via `needs` graph.
 - AC2 is now fully satisfied with actionable diagnostics across local and pull-request policy violations.
+- Course-correction gating now blocks non-Epic-0 story progression until Story 0.10 is complete and course-correction status is approved.
 - Story remains `in-progress`; sprint tracking for `0-9-ci-policy-gate-as-blocking-first-stage` remains `in-progress`.
 
 ### Findings

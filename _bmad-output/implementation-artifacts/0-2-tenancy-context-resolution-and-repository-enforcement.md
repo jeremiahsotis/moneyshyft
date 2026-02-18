@@ -1,26 +1,36 @@
 # Story 0.2: Tenancy Context Resolution and Repository Enforcement
 
-Status: done
+Status: ready-for-dev
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
 ## Story
 
 As a platform engineer,
-I want tenant resolution and mandatory tenant-scoped data access,
-so that cross-tenant reads/writes cannot occur by omission..
+I want tenant + orgUnit context resolution and mandatory scoped data access,
+so that cross-tenant or cross-orgUnit reads/writes cannot occur by omission..
 
 ## Acceptance Criteria
 
-1. tenant context is present and required filters are applied
-2. cross-tenant negative tests fail deterministically
+1. request context includes `{tenantId, orgUnitId|null, scopeMode}` for protected data paths
+2. required repository filters are applied by scope mode (`tenant_id`, plus `org_unit_id` when orgUnit-scoped)
+3. orgUnit-scoped reads/writes validate orgUnit membership unless caller has tenant-privileged scope
+4. deterministic negative tests fail for cross-tenant access, cross-orgUnit access, and orgUnit spoofing
 
 ## Tasks / Subtasks
 
-- [x] Implement acceptance criterion 1 (AC: 1)
-  - [x] Add automated coverage for AC 1
-- [x] Implement acceptance criterion 2 (AC: 2)
-  - [x] Add automated coverage for AC 2
+- [ ] Implement acceptance criterion 1 (AC: 1)
+  - [ ] Resolve canonical request context `{tenantId, orgUnitId|null, scopeMode}` in platform middleware from authenticated session claims (never from caller-supplied tenant/orgUnit headers)
+  - [ ] Add automated coverage for AC 1
+- [ ] Implement acceptance criterion 2 (AC: 2)
+  - [ ] Enforce scope-aware repository helpers for tenant-scoped and orgUnit-scoped query patterns
+  - [ ] Add automated coverage for AC 2
+- [ ] Implement acceptance criterion 3 (AC: 3)
+  - [ ] Validate orgUnit membership via `tenant_memberships` + `org_unit_memberships` with tenant-privileged bypass only through capability checks
+  - [ ] Add automated coverage for AC 3
+- [ ] Implement acceptance criterion 4 (AC: 4)
+  - [ ] Add deterministic negative tests for cross-tenant, cross-orgUnit, and spoofed-orgUnit context attempts
+  - [ ] Add automated coverage for AC 4
 
 ## Dev Notes
 
@@ -38,6 +48,8 @@ so that cross-tenant reads/writes cannot occur by omission..
 - /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/epic-0-phase-0-kernel-story-set.md
 - /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/prd.md
 - /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/architecture.md
+- /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-18.md
+- /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/sprint-change-escalation-notice-2026-02-18.md
 - /Users/jeremiahotis/moneyshyft/docs/policies/git_policy.md
 - /Users/jeremiahotis/moneyshyft/ROADMAP.md
 
@@ -75,3 +87,4 @@ GPT-5 Codex
 
 - 2026-02-17: Implemented tenant-scope enforcement helpers, applied mandatory tenant filters in AccountService, and added deterministic cross-tenant negative tests for Story 0.2.
 - 2026-02-17: Addressed senior review findings by canonicalizing tenant IDs, mapping tenant-scope failures to `403`, enforcing tenant validation in CategoryService, and expanding cross-tenant negative write-path tests.
+- 2026-02-18: Re-opened for approved course-correction scope (tenant + orgUnit context contract, membership validation, scope-mode enforcement, and spoofing negatives).
