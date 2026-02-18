@@ -74,6 +74,8 @@ fi
 
 story_workflow_regex='^(atdd|automate|create-story|dev-story|code-review|at|ta|ds|cr)$'
 epic_workflow_regex='^(sprint-planning|retrospective|correct-course)$'
+phase0_status_file="${PHASE0_READINESS_STATUS_FILE:-_bmad-output/implementation-artifacts/phase0-readiness.json}"
+readiness_api_spec="${PHASE0_READINESS_API_SPEC:-tests/api/platform/kernel-readiness-verification-suite.api.spec.ts}"
 
 normalize_story_id() {
   local raw="$1"
@@ -91,6 +93,130 @@ normalize_story_id() {
     return 0
   fi
   echo ""
+}
+
+is_phase0_readiness_complete() {
+  local file_path="$1"
+
+  if [[ ! -f "$file_path" ]]; then
+    return 1
+  fi
+
+  node -e '
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
+const filePath = process.argv[1];
+const repoRoot = process.cwd();
+const requiredGates = ["tenancy", "auth", "csrf", "envelope", "eventOutbox", "timezone"];
+const allowedRoots = [
+  path.resolve(path.join(repoRoot, "_bmad-output/implementation-artifacts")),
+  path.resolve(path.join(repoRoot, "tests/artifacts/gates")),
+];
+
+const isIsoDate = (value) => typeof value === "string" && !Number.isNaN(Date.parse(value));
+const isInsideAllowedRoot = (targetPath) =>
+  allowedRoots.some((root) => targetPath === root || targetPath.startsWith(`${root}${path.sep}`));
+const resolveAllowedPath = (candidatePath) => {
+  if (typeof candidatePath !== "string" || candidatePath.trim() === "") {
+    return null;
+  }
+  const resolved = path.resolve(path.isAbsolute(candidatePath) ? candidatePath : path.join(repoRoot, candidatePath));
+  if (!isInsideAllowedRoot(resolved)) {
+    return null;
+  }
+  return resolved;
+};
+
+const hasCanonicalRequiredGates = (value) =>
+  Array.isArray(value)
+  && value.length === requiredGates.length
+  && requiredGates.every((gate, index) => value[index] === gate);
+
+const hasCanonicalGateResultMap = (value) => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const keys = Object.keys(value);
+  if (keys.length !== requiredGates.length) {
+    return false;
+  }
+
+  for (const gate of requiredGates) {
+    if (value[gate] !== "pass") {
+      return false;
+    }
+  }
+
+  return keys.every((key) => requiredGates.includes(key));
+};
+
+try {
+  const payload = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  if (!payload || payload.phase0Status !== "complete" || payload.storyId !== "0-10") {
+    process.exit(1);
+  }
+
+  if (!isIsoDate(payload.recordedAt)) {
+    process.exit(1);
+  }
+
+  if (typeof payload.readinessReportHash !== "string" || !/^[a-f0-9]{64}$/i.test(payload.readinessReportHash)) {
+    process.exit(1);
+  }
+
+  if (!hasCanonicalRequiredGates(payload.requiredGates)) {
+    process.exit(1);
+  }
+
+  if (!hasCanonicalGateResultMap(payload.gateResults)) {
+    process.exit(1);
+  }
+
+  const readinessReportPath = resolveAllowedPath(payload.readinessReportPath);
+  if (!readinessReportPath || !fs.existsSync(readinessReportPath)) {
+    process.exit(1);
+  }
+
+  const reportRaw = fs.readFileSync(readinessReportPath, "utf8");
+  const reportHash = crypto.createHash("sha256").update(reportRaw, "utf8").digest("hex");
+  if (reportHash !== payload.readinessReportHash) {
+    process.exit(1);
+  }
+
+  const report = JSON.parse(reportRaw);
+  const phase0Readiness = report?.phase0_readiness;
+  if (
+    report?.gate !== "epic-0-quality"
+    || report?.pass !== true
+    || !phase0Readiness
+    || phase0Readiness.story_id !== "0-10"
+    || phase0Readiness.all_passed !== true
+    || !hasCanonicalRequiredGates(phase0Readiness.required_gates)
+    || !hasCanonicalGateResultMap(phase0Readiness.gate_results)
+    || !isIsoDate(report?.timestamp_utc)
+  ) {
+    process.exit(1);
+  }
+
+  process.exit(0);
+} catch (_error) {
+  // treated as incomplete
+}
+process.exit(1);
+' "$file_path"
+}
+
+requires_phase0_readiness() {
+  local normalized_story_id="$1"
+  local epic_number="${normalized_story_id%%-*}"
+
+  if [[ ! "$epic_number" =~ ^[0-9]+$ ]]; then
+    return 1
+  fi
+
+  [[ "$epic_number" -gt 0 ]]
 }
 
 if [[ "$workflow_key" =~ $story_workflow_regex ]]; then
@@ -111,6 +237,19 @@ if [[ "$workflow_key" =~ $story_workflow_regex ]]; then
     echo "Expected branch pattern: codex/story-${story_id}-<slug>"
     echo "Current branch: $branch"
     exit 1
+  fi
+
+  if requires_phase0_readiness "$story_id"; then
+    if ! is_phase0_readiness_complete "$phase0_status_file"; then
+      echo "Phase-0 readiness incomplete"
+      echo "Complete Story 0.10 kernel readiness verification suite first"
+      echo "Readiness status file: $phase0_status_file"
+      echo "Run: npm run test:e2e -- $readiness_api_spec"
+      echo "Run: npm run branch:ensure-workflow -- --workflow $workflow --story $story_input"
+      exit 1
+    fi
+
+    echo "Phase-0 readiness verified"
   fi
 
   echo "Branch guard passed for story workflow"

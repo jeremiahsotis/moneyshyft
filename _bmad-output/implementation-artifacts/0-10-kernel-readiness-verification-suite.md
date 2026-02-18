@@ -1,6 +1,6 @@
 # Story 0.10: Kernel Readiness Verification Suite
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,10 +17,10 @@ so that Phase 1 Route work starts only when kernel controls are proven..
 
 ## Tasks / Subtasks
 
-- [ ] Implement acceptance criterion 1 (AC: 1)
-  - [ ] Add automated coverage for AC 1
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Add automated coverage for AC 2
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Add automated coverage for AC 1
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Add automated coverage for AC 2
 
 ## Dev Notes
 
@@ -49,12 +49,31 @@ GPT-5 Codex
 
 ### Debug Log References
 
--
+- `cd src && npm run build`
+- `bash scripts/quality-gates-epic0.sh`
+- `API_URL=http://localhost:3001 npm run test:e2e -- tests/api/platform/kernel-readiness-verification-suite.api.spec.ts tests/e2e/platform/kernel-readiness-verification-suite.spec.ts`
+- `API_URL=http://localhost:3001 npm run test:e2e -- tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts`
 
 ### Completion Notes List
 
--
+- Hardened readiness verification to use canonical evidence reports only (no client-driven gate simulation) and reject invalid/mismatched evidence.
+- Hardened readiness recording to require successful verified evidence before persisting Phase-0 completion status.
+- Restricted readiness artifact paths to approved roots to prevent arbitrary file-write targets.
+- Upgraded branch guard readiness validation to require canonical story/gate metadata plus report hash integrity checks.
+- Reworked `quality-gates-epic0.sh` to compute gate outcomes from executable runtime API checks instead of sprint status labels.
+- Updated Story 0.10 API/E2E suites to validate the hardened readiness lifecycle and added script exit-code assertions.
+- Reconciled story documentation file list to match current git-modified files exactly.
 
 ### File List
 
--
+- src/src/routes/api/v1/platform-contracts.ts
+- scripts/quality-gates-epic0.sh
+- scripts/branch-ensure-workflow.sh
+- tests/api/platform/kernel-readiness-verification-suite.api.spec.ts
+- tests/e2e/platform/kernel-readiness-verification-suite.spec.ts
+- _bmad-output/implementation-artifacts/0-10-kernel-readiness-verification-suite.md
+
+## Change Log
+
+- 2026-02-18: Implemented kernel readiness verification + Phase-0 readiness recording contracts, release-gate script enforcement, and full AC coverage tests for Story 0.10.
+- 2026-02-18: Remediated Story 0.10 review findings (guard bypass, client-controlled verification, evidence precondition, path safety, executable gate evidence, and test hardening).

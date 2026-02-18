@@ -1,5 +1,7 @@
 import { Request, Response, Router } from 'express';
 import { createHash, randomUUID } from 'crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import path from 'path';
 import {
   buildRefusalEnvelope,
   buildSuccessEnvelope,
@@ -120,6 +122,354 @@ const platformOutboxIndexes = [
   'outbox_replay_cursor_idx',
   'outbox_event_id_unique_idx'
 ] as const;
+const kernelReadinessRequiredGates = [
+  'tenancy',
+  'auth',
+  'csrf',
+  'envelope',
+  'eventOutbox',
+  'timezone'
+] as const;
+const kernelReadinessStoryId = '0-10';
+const defaultKernelReadinessReportPath = 'tests/artifacts/gates/epic-0-quality.json';
+const defaultPhase0ReadinessStatusPath = '_bmad-output/implementation-artifacts/phase0-readiness.json';
+const kernelReadinessReportAllowedRoots = [
+  'tests/artifacts/gates',
+  '_bmad-output/implementation-artifacts'
+] as const;
+const phase0ReadinessStatusAllowedRoots = [
+  '_bmad-output/implementation-artifacts',
+  'tests/artifacts/gates'
+] as const;
+
+type KernelReadinessGateName = typeof kernelReadinessRequiredGates[number];
+type KernelReadinessGateStatus = 'pass' | 'fail';
+type KernelReadinessGateResultMap = Record<KernelReadinessGateName, KernelReadinessGateStatus>;
+type KernelReadinessStatusRecord = {
+  phase0Status: 'complete';
+  storyId: string;
+  verifiedBy: string;
+  readinessReportPath: string;
+  readinessReportHash: string;
+  requiredGates: KernelReadinessGateName[];
+  gateResults: KernelReadinessGateResultMap;
+  recordedAt: string;
+};
+type KernelReadinessEvidenceReport = {
+  checkedAt: string;
+  storyId: string;
+  requiredGates: KernelReadinessGateName[];
+  allPassed: boolean;
+  gateResults: KernelReadinessGateResultMap;
+  reportHash: string;
+};
+type KernelReadinessEvidenceParseResult = {
+  evidence: KernelReadinessEvidenceReport | null;
+  errors: string[];
+};
+
+const isKernelReadinessGateName = (value: string): value is KernelReadinessGateName => {
+  return kernelReadinessRequiredGates.includes(value as KernelReadinessGateName);
+};
+
+const isKernelReadinessGateStatus = (value: unknown): value is KernelReadinessGateStatus => {
+  return value === 'pass' || value === 'fail';
+};
+
+const isIsoDateString = (value: unknown): value is string => {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  return !Number.isNaN(Date.parse(value));
+};
+
+const readStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const values: string[] = [];
+
+  for (const entry of value) {
+    if (typeof entry !== 'string') {
+      continue;
+    }
+
+    const trimmed = entry.trim();
+    if (trimmed === '' || seen.has(trimmed)) {
+      continue;
+    }
+
+    seen.add(trimmed);
+    values.push(trimmed);
+  }
+
+  return values;
+};
+
+const resolveRepoRoot = (): string => {
+  const candidates = [
+    process.cwd(),
+    path.resolve(process.cwd(), '..'),
+    path.resolve(process.cwd(), '../..')
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(path.join(candidate, '.git'))) {
+      return candidate;
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (existsSync(path.join(candidate, '_bmad-output'))) {
+      return candidate;
+    }
+  }
+
+  return process.cwd();
+};
+
+const toPosixPath = (value: string): string => value.replace(/\\/g, '/');
+
+const resolveScopedArtifactPath = (
+  relativeOrAbsolutePath: string,
+  allowedRoots: readonly string[]
+): { absolutePath: string; relativePath: string } => {
+  const repoRoot = resolveRepoRoot();
+  const resolvedPath = path.resolve(
+    path.isAbsolute(relativeOrAbsolutePath)
+      ? relativeOrAbsolutePath
+      : path.join(repoRoot, relativeOrAbsolutePath)
+  );
+  const allowedAbsoluteRoots = allowedRoots.map((allowedRoot) => path.resolve(path.join(repoRoot, allowedRoot)));
+  const isAllowed = allowedAbsoluteRoots.some((allowedRoot) =>
+    resolvedPath === allowedRoot || resolvedPath.startsWith(`${allowedRoot}${path.sep}`)
+  );
+
+  if (!isAllowed) {
+    throw new Error(`Artifact path is outside allowed roots: ${relativeOrAbsolutePath}`);
+  }
+
+  return {
+    absolutePath: resolvedPath,
+    relativePath: toPosixPath(path.relative(repoRoot, resolvedPath))
+  };
+};
+
+const writeJsonArtifact = (filePath: string, payload: unknown): void => {
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+};
+
+const isCanonicalKernelGateSet = (gates: KernelReadinessGateName[]): boolean => {
+  if (gates.length !== kernelReadinessRequiredGates.length) {
+    return false;
+  }
+
+  return kernelReadinessRequiredGates.every((gate, index) => gates[index] === gate);
+};
+
+const readKernelReadinessGateResults = (value: unknown): KernelReadinessGateResultMap | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const source = value as Record<string, unknown>;
+  const results = {} as KernelReadinessGateResultMap;
+
+  for (const gate of kernelReadinessRequiredGates) {
+    const status = source[gate];
+    if (!isKernelReadinessGateStatus(status)) {
+      return null;
+    }
+    results[gate] = status;
+  }
+
+  const providedKeys = Object.keys(source);
+  if (providedKeys.length !== kernelReadinessRequiredGates.length) {
+    return null;
+  }
+
+  for (const key of providedKeys) {
+    if (!isKernelReadinessGateName(key)) {
+      return null;
+    }
+  }
+
+  return results;
+};
+
+const readKernelReadinessEvidenceReport = (filePath: string): KernelReadinessEvidenceParseResult => {
+  if (!existsSync(filePath)) {
+    return {
+      evidence: null,
+      errors: ['readiness report does not exist']
+    };
+  }
+
+  let raw = '';
+  try {
+    raw = readFileSync(filePath, 'utf8');
+  } catch (_error) {
+    return {
+      evidence: null,
+      errors: ['readiness report could not be read']
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (_error) {
+    return {
+      evidence: null,
+      errors: ['readiness report is not valid JSON']
+    };
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return {
+      evidence: null,
+      errors: ['readiness report payload must be an object']
+    };
+  }
+
+  const payload = parsed as Record<string, unknown>;
+  const phase0Readiness = payload.phase0_readiness as Record<string, unknown> | undefined;
+  const errors: string[] = [];
+
+  if (!isIsoDateString(payload.timestamp_utc)) {
+    errors.push('timestamp_utc must be an ISO-8601 timestamp');
+  }
+
+  if (payload.gate !== 'epic-0-quality') {
+    errors.push('gate must equal epic-0-quality');
+  }
+
+  if (!phase0Readiness) {
+    errors.push('phase0_readiness object is required');
+  }
+
+  const storyId = typeof phase0Readiness?.story_id === 'string'
+    ? phase0Readiness.story_id.trim()
+    : '';
+  if (!storyId) {
+    errors.push('phase0_readiness.story_id must be a non-empty string');
+  }
+
+  const requiredGateInputs = readStringArray(phase0Readiness?.required_gates);
+  const invalidRequiredGates = requiredGateInputs.filter((gate) => !isKernelReadinessGateName(gate));
+  if (invalidRequiredGates.length > 0) {
+    errors.push(`phase0_readiness.required_gates has unsupported values: ${invalidRequiredGates.join(', ')}`);
+  }
+
+  const requiredGates = requiredGateInputs.filter(
+    (gate): gate is KernelReadinessGateName => isKernelReadinessGateName(gate)
+  );
+  if (!isCanonicalKernelGateSet(requiredGates)) {
+    errors.push('phase0_readiness.required_gates must match canonical gate order');
+  }
+
+  if (typeof phase0Readiness?.all_passed !== 'boolean') {
+    errors.push('phase0_readiness.all_passed must be boolean');
+  }
+
+  const gateResults = readKernelReadinessGateResults(phase0Readiness?.gate_results);
+  if (!gateResults) {
+    errors.push('phase0_readiness.gate_results must include canonical pass/fail entries');
+  }
+
+  const allPassedFromGateResults = gateResults
+    ? kernelReadinessRequiredGates.every((gate) => gateResults[gate] === 'pass')
+    : false;
+
+  if (typeof phase0Readiness?.all_passed === 'boolean' && gateResults) {
+    if (phase0Readiness.all_passed !== allPassedFromGateResults) {
+      errors.push('phase0_readiness.all_passed does not match gate_results');
+    }
+  }
+
+  if (typeof payload.pass === 'boolean') {
+    if (payload.pass !== allPassedFromGateResults) {
+      errors.push('pass does not match phase0_readiness gate outcomes');
+    }
+  } else {
+    errors.push('pass must be boolean');
+  }
+
+  if (errors.length > 0 || !gateResults || !isIsoDateString(payload.timestamp_utc)) {
+    return {
+      evidence: null,
+      errors
+    };
+  }
+
+  return {
+    evidence: {
+      checkedAt: payload.timestamp_utc,
+      storyId,
+      requiredGates,
+      allPassed: allPassedFromGateResults,
+      gateResults,
+      reportHash: createHash('sha256').update(raw, 'utf8').digest('hex')
+    },
+    errors: []
+  };
+};
+
+const readPhase0ReadinessStatus = (filePath: string): KernelReadinessStatusRecord | null => {
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(filePath, 'utf8')) as Partial<KernelReadinessStatusRecord>;
+    const gateResults = readKernelReadinessGateResults(parsed.gateResults);
+    const requiredGates = Array.isArray(parsed.requiredGates)
+      ? parsed.requiredGates.filter((gate): gate is KernelReadinessGateName => typeof gate === 'string' && isKernelReadinessGateName(gate))
+      : [];
+
+    if (
+      parsed.phase0Status === 'complete'
+      && typeof parsed.storyId === 'string'
+      && typeof parsed.verifiedBy === 'string'
+      && typeof parsed.readinessReportPath === 'string'
+      && typeof parsed.readinessReportHash === 'string'
+      && isIsoDateString(parsed.recordedAt)
+      && isCanonicalKernelGateSet(requiredGates)
+      && !!gateResults
+    ) {
+      return {
+        phase0Status: 'complete',
+        storyId: parsed.storyId,
+        verifiedBy: parsed.verifiedBy,
+        readinessReportPath: parsed.readinessReportPath,
+        readinessReportHash: parsed.readinessReportHash,
+        requiredGates,
+        gateResults,
+        recordedAt: parsed.recordedAt
+      };
+    }
+  } catch (_error) {
+    // Invalid readiness artifact should be treated as absent.
+  }
+
+  return null;
+};
+
+const asGateStatusMap = (
+  gateResults: KernelReadinessGateResultMap
+): Record<KernelReadinessGateName, { status: KernelReadinessGateStatus }> => {
+  const mapped = {} as Record<KernelReadinessGateName, { status: KernelReadinessGateStatus }>;
+
+  for (const gate of kernelReadinessRequiredGates) {
+    mapped[gate] = { status: gateResults[gate] };
+  }
+
+  return mapped;
+};
 
 router.post('/_kernel/contracts/envelope/success', (req: Request, res: Response) => {
   applyEnvelopeTenantOverride(req, res);
@@ -328,6 +678,376 @@ router.post('/_kernel/contracts/mutation/transaction-wrapper/validate-required-w
     }
   });
 });
+
+router.post('/_kernel/readiness/verify', (req: Request, res: Response) => {
+  applyEnvelopeTenantOverride(req, res);
+
+  const storyId = typeof req.body?.storyId === 'string' ? req.body.storyId.trim() : '';
+  const providedGates = readStringArray(req.body?.requiredGates);
+  const invalidGates = providedGates.filter((gate) => !isKernelReadinessGateName(gate));
+
+  if (!storyId) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'KERNEL_READINESS_STORY_ID_REQUIRED',
+      message: 'storyId is required',
+      refusalType: 'client'
+    });
+
+    return res.status(400).json(envelope);
+  }
+
+  if (storyId !== kernelReadinessStoryId) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'KERNEL_READINESS_STORY_ID_INVALID',
+      message: `storyId must be ${kernelReadinessStoryId}`,
+      refusalType: 'client'
+    });
+
+    return res.status(400).json(envelope);
+  }
+
+  if (invalidGates.length > 0) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'KERNEL_READINESS_INVALID_GATE_SET',
+      message: 'requiredGates must only include supported kernel readiness gates',
+      refusalType: 'client'
+    });
+
+    return res.status(400).json({
+      ...envelope,
+      invalidGates
+    });
+  }
+
+  const canonicalProvidedGates = providedGates.filter(
+    (gate): gate is KernelReadinessGateName => isKernelReadinessGateName(gate)
+  );
+  if (canonicalProvidedGates.length > 0 && !isCanonicalKernelGateSet(canonicalProvidedGates)) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'KERNEL_READINESS_INVALID_GATE_SET',
+      message: 'requiredGates must match canonical kernel readiness gates and order',
+      refusalType: 'client'
+    });
+
+    return res.status(400).json({
+      ...envelope,
+      expectedGates: [...kernelReadinessRequiredGates]
+    });
+  }
+
+  const reportPath = typeof req.body?.readinessReportPath === 'string' && req.body.readinessReportPath.trim() !== ''
+    ? req.body.readinessReportPath.trim()
+    : defaultKernelReadinessReportPath;
+  let resolvedReport: { absolutePath: string; relativePath: string };
+  try {
+    resolvedReport = resolveScopedArtifactPath(reportPath, kernelReadinessReportAllowedRoots);
+  } catch (_error) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'KERNEL_READINESS_REPORT_PATH_NOT_ALLOWED',
+      message: 'readinessReportPath must be under approved artifact roots',
+      refusalType: 'client'
+    });
+
+    return res.status(400).json({
+      ...envelope,
+      allowedRoots: [...kernelReadinessReportAllowedRoots]
+    });
+  }
+
+  const parsedReport = readKernelReadinessEvidenceReport(resolvedReport.absolutePath);
+  if (!parsedReport.evidence) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'KERNEL_READINESS_EVIDENCE_INVALID',
+      message: 'Kernel readiness report evidence is missing or invalid',
+      refusalType: 'client'
+    });
+
+    return res.status(400).json({
+      ...envelope,
+      evidenceErrors: parsedReport.errors
+    });
+  }
+
+  if (parsedReport.evidence.storyId !== storyId) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'KERNEL_READINESS_STORY_ID_MISMATCH',
+      message: 'readiness report story_id does not match storyId request value',
+      refusalType: 'client'
+    });
+
+    return res.status(400).json({
+      ...envelope,
+      reportStoryId: parsedReport.evidence.storyId
+    });
+  }
+
+  const failingGates = kernelReadinessRequiredGates.filter(
+    (gate) => parsedReport.evidence?.gateResults[gate] === 'fail'
+  );
+  const allPassed = failingGates.length === 0 && parsedReport.evidence.allPassed;
+
+  if (!allPassed) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'KERNEL_READINESS_GATE_FAILURE',
+      message: 'One or more kernel readiness gates failed verification',
+      refusalType: 'business'
+    });
+
+    return res.status(200).json({
+      ...envelope,
+      readiness: {
+        allPassed: false,
+        failingGates
+      },
+      routeExecutionAllowed: false,
+      evidence: {
+        reportPath: resolvedReport.relativePath,
+        reportHash: parsedReport.evidence.reportHash
+      }
+    });
+  }
+
+  const context = resolveEnvelopeContext(req, res);
+  const envelope = buildSuccessEnvelope(context, {
+    code: 'KERNEL_READINESS_VERIFIED',
+    message: 'Kernel readiness verification passed for all required gates'
+  });
+
+  return res.status(200).json({
+    ...envelope,
+    readiness: {
+      allPassed: true,
+      gates: asGateStatusMap(parsedReport.evidence.gateResults),
+      evidence: {
+        reportPath: resolvedReport.relativePath,
+        reportHash: parsedReport.evidence.reportHash
+      },
+      checkedAt: parsedReport.evidence.checkedAt
+    }
+  });
+});
+
+router.post('/_kernel/readiness/record-phase0-complete', (req: Request, res: Response) => {
+  applyEnvelopeTenantOverride(req, res);
+
+  const storyId = typeof req.body?.storyId === 'string' ? req.body.storyId.trim() : '';
+  const verifiedBy = typeof req.body?.verifiedBy === 'string' ? req.body.verifiedBy.trim() : '';
+  const readinessReportPath = typeof req.body?.readinessReportPath === 'string'
+    ? req.body.readinessReportPath.trim()
+    : '';
+  const statusFilePath = typeof req.body?.statusFilePath === 'string' && req.body.statusFilePath.trim() !== ''
+    ? req.body.statusFilePath.trim()
+    : defaultPhase0ReadinessStatusPath;
+
+  if (!storyId || !verifiedBy || !readinessReportPath) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'PHASE0_READINESS_RECORD_INVALID_REQUEST',
+      message: 'storyId, verifiedBy, and readinessReportPath are required',
+      refusalType: 'client'
+    });
+
+    return res.status(400).json(envelope);
+  }
+
+  if (storyId !== kernelReadinessStoryId) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'PHASE0_READINESS_RECORD_STORY_ID_INVALID',
+      message: `storyId must be ${kernelReadinessStoryId}`,
+      refusalType: 'client'
+    });
+
+    return res.status(400).json(envelope);
+  }
+
+  let resolvedReport: { absolutePath: string; relativePath: string };
+  try {
+    resolvedReport = resolveScopedArtifactPath(readinessReportPath, kernelReadinessReportAllowedRoots);
+  } catch (_error) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'PHASE0_READINESS_RECORD_REPORT_PATH_NOT_ALLOWED',
+      message: 'readinessReportPath must be under approved artifact roots',
+      refusalType: 'client'
+    });
+
+    return res.status(400).json({
+      ...envelope,
+      allowedRoots: [...kernelReadinessReportAllowedRoots]
+    });
+  }
+
+  const parsedReport = readKernelReadinessEvidenceReport(resolvedReport.absolutePath);
+  if (!parsedReport.evidence) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'PHASE0_READINESS_EVIDENCE_REQUIRED',
+      message: 'Phase-0 readiness report evidence is missing or invalid',
+      refusalType: 'business'
+    });
+
+    return res.status(409).json({
+      ...envelope,
+      evidenceErrors: parsedReport.errors,
+      routeExecution: {
+        allowed: false
+      }
+    });
+  }
+
+  if (parsedReport.evidence.storyId !== storyId) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'PHASE0_READINESS_EVIDENCE_STORY_ID_MISMATCH',
+      message: 'readiness report story_id does not match storyId request value',
+      refusalType: 'business'
+    });
+
+    return res.status(409).json({
+      ...envelope,
+      reportStoryId: parsedReport.evidence.storyId,
+      routeExecution: {
+        allowed: false
+      }
+    });
+  }
+
+  const failingEvidenceGates = kernelReadinessRequiredGates.filter(
+    (gate) => parsedReport.evidence?.gateResults[gate] === 'fail'
+  );
+  if (failingEvidenceGates.length > 0 || !parsedReport.evidence.allPassed) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'PHASE0_READINESS_EVIDENCE_REQUIRED',
+      message: 'Phase-0 readiness evidence must show all canonical gates passing',
+      refusalType: 'business'
+    });
+
+    return res.status(409).json({
+      ...envelope,
+      readiness: {
+        allPassed: false,
+        failingGates: failingEvidenceGates
+      },
+      routeExecution: {
+        allowed: false
+      }
+    });
+  }
+
+  let resolvedStatusPath: { absolutePath: string; relativePath: string };
+  try {
+    resolvedStatusPath = resolveScopedArtifactPath(statusFilePath, phase0ReadinessStatusAllowedRoots);
+  } catch (_error) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'PHASE0_READINESS_STATUS_PATH_NOT_ALLOWED',
+      message: 'statusFilePath must be under approved artifact roots',
+      refusalType: 'client'
+    });
+
+    return res.status(400).json({
+      ...envelope,
+      allowedRoots: [...phase0ReadinessStatusAllowedRoots]
+    });
+  }
+
+  const existingRecord = readPhase0ReadinessStatus(resolvedStatusPath.absolutePath);
+
+  if (existingRecord) {
+    if (
+      existingRecord.storyId !== storyId
+      || existingRecord.readinessReportHash !== parsedReport.evidence.reportHash
+      || !isCanonicalKernelGateSet(existingRecord.requiredGates)
+    ) {
+      const context = resolveEnvelopeContext(req, res);
+      const envelope = buildRefusalEnvelope(context, {
+        code: 'PHASE0_READINESS_ALREADY_RECORDED_WITH_DIFFERENT_EVIDENCE',
+        message: 'Phase-0 readiness status already exists with different evidence',
+        refusalType: 'business'
+      });
+
+      return res.status(409).json({
+        ...envelope,
+        statusRecord: {
+          filePath: resolvedStatusPath.relativePath,
+          recordedAt: existingRecord.recordedAt
+        },
+        routeExecution: {
+          allowed: false
+        }
+      });
+    }
+
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildSuccessEnvelope(context, {
+      code: 'PHASE0_READINESS_ALREADY_RECORDED',
+      message: 'Phase-0 readiness status has already been recorded'
+    });
+
+    return res.status(200).json({
+      ...envelope,
+      readiness: {
+        phase0Status: existingRecord.phase0Status,
+        storyId: existingRecord.storyId
+      },
+      statusRecord: {
+        filePath: resolvedStatusPath.relativePath,
+        recordedAt: existingRecord.recordedAt
+      },
+      routeExecution: {
+        allowed: true
+      }
+    });
+  }
+
+  const recordedAt = new Date().toISOString();
+  const statusRecord: KernelReadinessStatusRecord = {
+    phase0Status: 'complete',
+    storyId,
+    verifiedBy,
+    readinessReportPath: resolvedReport.relativePath,
+    readinessReportHash: parsedReport.evidence.reportHash,
+    requiredGates: [...kernelReadinessRequiredGates],
+    gateResults: parsedReport.evidence.gateResults,
+    recordedAt
+  };
+
+  writeJsonArtifact(resolvedStatusPath.absolutePath, statusRecord);
+
+  const context = resolveEnvelopeContext(req, res);
+  const envelope = buildSuccessEnvelope(context, {
+    code: 'PHASE0_READINESS_RECORDED',
+    message: 'Phase-0 readiness status recorded for route-story gating'
+  });
+
+  return res.status(201).json({
+    ...envelope,
+    readiness: {
+      phase0Status: 'complete',
+      storyId
+    },
+    statusRecord: {
+      filePath: resolvedStatusPath.relativePath,
+      readinessReportPath: resolvedReport.relativePath,
+      readinessReportHash: parsedReport.evidence.reportHash,
+      recordedAt
+    },
+    routeExecution: {
+      allowed: true
+    }
+  });
+});
+
 router.post('/_kernel/security/csrf/guard', (req: Request, res: Response) => {
   const csrfHeader = req.header('x-csrf-token');
   const csrfProof = typeof req.body?.csrfToken === 'string'
