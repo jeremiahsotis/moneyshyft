@@ -70,7 +70,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
       [
         kernelReadinessContext.branchGuardScript,
         '--workflow',
-        'dev-story',
+        kernelReadinessContext.routeWorkflow,
         '--story',
         kernelReadinessContext.routeStoryFile,
       ],
@@ -92,7 +92,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
     // Given Phase-0 readiness has been explicitly recorded
     const recordResponse = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/readiness/record-phase0-complete',
+      path: kernelReadinessContext.readinessRecordPath,
       headers: kernelReadinessContext.headers,
       data: {
         storyId: kernelReadinessContext.storyId,
@@ -109,7 +109,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
       [
         kernelReadinessContext.branchGuardScript,
         '--workflow',
-        'dev-story',
+        kernelReadinessContext.routeWorkflow,
         '--story',
         kernelReadinessContext.routeStoryFile,
       ],
@@ -121,5 +121,55 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
     // Then execution should be allowed with explicit readiness confirmation
     expect(result.status).toBe(0);
     expect(/Phase-0 readiness verified/.test(result.output)).toBe(true);
+  });
+
+  test.skip('[P1] readiness matrix artifact keeps required gate ordering and complete gate keys @P1', async ({
+    kernelReadinessContext,
+  }) => {
+    // Given the quality gate script emits readiness diagnostics
+    runScript('bash', [kernelReadinessContext.qualityGateScript]);
+
+    // When the generated readiness report is parsed
+    const report = JSON.parse(readFileSync(kernelReadinessContext.readinessReportPath, 'utf8')) as {
+      phase0_readiness?: {
+        required_gates?: string[];
+        gate_results?: Record<string, string>;
+      };
+    };
+
+    // Then required gate ordering and gate-result keys should match canonical requirements
+    expect(report.phase0_readiness?.required_gates).toEqual(kernelReadinessContext.requiredGates);
+    expect(Object.keys(report.phase0_readiness?.gate_results ?? {})).toEqual(kernelReadinessContext.requiredGates);
+  });
+
+  test.skip('[P1] route-story guard failure output includes explicit readiness remediation commands @P1', async ({
+    kernelReadinessContext,
+  }) => {
+    // Given route-story workflow guard runs before readiness recording exists
+    const result = runScript(
+      'bash',
+      [
+        kernelReadinessContext.branchGuardScript,
+        '--workflow',
+        kernelReadinessContext.routeWorkflow,
+        '--story',
+        kernelReadinessContext.routeStoryFile,
+      ],
+      {
+        GITHUB_HEAD_REF: kernelReadinessContext.routeStoryBranch,
+      },
+    );
+
+    // When execution is blocked
+    // Then remediation output should include explicit readiness verification + rerun commands
+    expect(result.status !== 0).toBe(true);
+    expect(new RegExp(`npm run test:e2e -- ${kernelReadinessContext.readinessApiSpecPath}`).test(result.output)).toBe(
+      true,
+    );
+    expect(
+      new RegExp(
+        `npm run branch:ensure-workflow -- --workflow ${kernelReadinessContext.routeWorkflow} --story ${kernelReadinessContext.routeStoryFile}`,
+      ).test(result.output),
+    ).toBe(true);
   });
 });

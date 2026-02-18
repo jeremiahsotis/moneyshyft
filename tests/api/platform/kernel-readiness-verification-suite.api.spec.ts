@@ -10,7 +10,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
     // When readiness verification is requested for all required gates
     const response = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/readiness/verify',
+      path: kernelReadinessContext.readinessVerifyPath,
       headers: kernelReadinessContext.headers,
       data: {
         storyId: kernelReadinessContext.storyId,
@@ -52,7 +52,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
     // When readiness verification is requested with a forced gate failure
     const response = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/readiness/verify',
+      path: kernelReadinessContext.readinessVerifyPath,
       headers: kernelReadinessContext.headers,
       data: {
         storyId: kernelReadinessContext.storyId,
@@ -85,7 +85,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
     // When Phase-0 completion is recorded for release gating
     const response = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/readiness/record-phase0-complete',
+      path: kernelReadinessContext.readinessRecordPath,
       headers: kernelReadinessContext.headers,
       data: {
         storyId: kernelReadinessContext.storyId,
@@ -114,5 +114,73 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
     });
 
     expect(typeof body.statusRecord.recordedAt).toBe('string');
+  });
+
+  test.skip('[P1] refuses readiness verification when unknown gate identifiers are supplied @P1', async ({
+    request,
+    kernelReadinessContext,
+  }) => {
+    // Given the caller requests readiness verification with unsupported gate keys
+    // When readiness verification runs against an invalid gate set
+    const response = await apiRequest(request, {
+      method: 'POST',
+      path: kernelReadinessContext.readinessVerifyPath,
+      headers: kernelReadinessContext.headers,
+      data: {
+        storyId: kernelReadinessContext.storyId,
+        requiredGates: [...kernelReadinessContext.requiredGates, 'unknownGate'],
+      },
+    });
+
+    // Then request should be refused with explicit invalid-gate diagnostics
+    expect(response.status()).toBe(400);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      ok: false,
+      code: 'KERNEL_READINESS_INVALID_GATE_SET',
+      invalidGates: ['unknownGate'],
+    });
+  });
+
+  test.skip('[P1] keeps Phase-0 readiness recording idempotent across repeated submissions @P1', async ({
+    request,
+    kernelReadinessContext,
+  }) => {
+    // Given a valid readiness completion payload
+    const payload = {
+      storyId: kernelReadinessContext.storyId,
+      verifiedBy: 'epic-0-quality-gate',
+      readinessReportPath: kernelReadinessContext.readinessReportPath,
+    };
+
+    // When readiness is recorded more than once
+    const firstResponse = await apiRequest(request, {
+      method: 'POST',
+      path: kernelReadinessContext.readinessRecordPath,
+      headers: kernelReadinessContext.headers,
+      data: payload,
+    });
+    const secondResponse = await apiRequest(request, {
+      method: 'POST',
+      path: kernelReadinessContext.readinessRecordPath,
+      headers: kernelReadinessContext.headers,
+      data: payload,
+    });
+
+    // Then first write should create the record and second write should be idempotent
+    expect(firstResponse.status()).toBe(201);
+    expect(secondResponse.status()).toBe(200);
+    const secondBody = await secondResponse.json();
+    expect(secondBody).toMatchObject({
+      ok: true,
+      code: 'PHASE0_READINESS_ALREADY_RECORDED',
+      readiness: {
+        phase0Status: 'complete',
+        storyId: kernelReadinessContext.storyId,
+      },
+      routeExecution: {
+        allowed: true,
+      },
+    });
   });
 });
