@@ -1,0 +1,125 @@
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { test, expect } from '../../support/fixtures/kernelReadinessContext.fixture';
+import { apiRequest } from '../../support/helpers/apiClient';
+
+type ScriptRunResult = {
+  status: number;
+  output: string;
+};
+
+function runScript(command: string, args: string[], env: Record<string, string> = {}): ScriptRunResult {
+  try {
+    const output = execFileSync(command, args, {
+      env: {
+        ...process.env,
+        ...env,
+      },
+      encoding: 'utf8',
+    });
+
+    return {
+      status: 0,
+      output,
+    };
+  } catch (error) {
+    const typed = error as { status?: number; stdout?: string; stderr?: string };
+    return {
+      status: typed.status ?? 1,
+      output: `${typed.stdout ?? ''}${typed.stderr ?? ''}`,
+    };
+  }
+}
+
+test.describe('Story 0.10 atdd - kernel readiness verification suite release gating', () => {
+  test.skip('[P0] quality gate script emits explicit Phase-0 readiness matrix for all mandatory kernel controls @P0', async ({
+    kernelReadinessContext,
+  }) => {
+    // Given the Epic-0 quality gate script is used to evaluate readiness
+    runScript('bash', [kernelReadinessContext.qualityGateScript]);
+
+    // When the quality gate report artifact is inspected
+    const report = JSON.parse(readFileSync(kernelReadinessContext.readinessReportPath, 'utf8')) as Record<string, unknown>;
+
+    // Then report should include explicit readiness matrix for all required kernel gates
+    expect(report).toMatchObject({
+      gate: 'epic-0-quality',
+      pass: true,
+      phase0_readiness: {
+        required_gates: kernelReadinessContext.requiredGates,
+        all_passed: true,
+        gate_results: {
+          tenancy: 'pass',
+          auth: 'pass',
+          csrf: 'pass',
+          envelope: 'pass',
+          eventOutbox: 'pass',
+          timezone: 'pass',
+        },
+      },
+    });
+  });
+
+  test.skip('[P0] route-story workflow guard blocks execution when Phase-0 readiness is not yet recorded @P0', async ({
+    kernelReadinessContext,
+  }) => {
+    // Given a Route story branch requests workflow execution before readiness is recorded
+    // When branch workflow guard validates route-story execution
+    const result = runScript(
+      'bash',
+      [
+        kernelReadinessContext.branchGuardScript,
+        '--workflow',
+        'dev-story',
+        '--story',
+        kernelReadinessContext.routeStoryFile,
+      ],
+      {
+        GITHUB_HEAD_REF: kernelReadinessContext.routeStoryBranch,
+      },
+    );
+
+    // Then execution should be blocked with readiness-specific remediation guidance
+    expect(result.status !== 0).toBe(true);
+    expect(/Phase-0 readiness incomplete/.test(result.output)).toBe(true);
+    expect(/Complete Story 0\.10 kernel readiness verification suite first/.test(result.output)).toBe(true);
+  });
+
+  test.skip('[P1] route-story workflow guard allows execution after Phase-0 readiness is recorded @P1', async ({
+    request,
+    kernelReadinessContext,
+  }) => {
+    // Given Phase-0 readiness has been explicitly recorded
+    const recordResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/readiness/record-phase0-complete',
+      headers: kernelReadinessContext.headers,
+      data: {
+        storyId: kernelReadinessContext.storyId,
+        verifiedBy: 'epic-0-quality-gate',
+        readinessReportPath: kernelReadinessContext.readinessReportPath,
+      },
+    });
+
+    expect(recordResponse.status()).toBe(201);
+
+    // When branch workflow guard validates route-story execution
+    const result = runScript(
+      'bash',
+      [
+        kernelReadinessContext.branchGuardScript,
+        '--workflow',
+        'dev-story',
+        '--story',
+        kernelReadinessContext.routeStoryFile,
+      ],
+      {
+        GITHUB_HEAD_REF: kernelReadinessContext.routeStoryBranch,
+      },
+    );
+
+    // Then execution should be allowed with explicit readiness confirmation
+    expect(result.status).toBe(0);
+    expect(/Phase-0 readiness verified/.test(result.output)).toBe(true);
+  });
+});
