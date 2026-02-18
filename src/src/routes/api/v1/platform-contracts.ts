@@ -72,10 +72,16 @@ router.get('/time/render-context', (req: Request, res: Response) => {
     });
   }
 
-  return success(res, {
+  const envelope = buildSuccessEnvelope(resolveEnvelopeContext(req, res), {
     code: 'TIMEZONE_CONTEXT_RESOLVED',
     message: 'Timezone context resolved for localized rendering',
     data: context
+  });
+
+  return res.status(200).json({
+    ...envelope,
+    timezone: context.timezone,
+    timezoneSource: context.timezoneSource
   });
 });
 
@@ -103,7 +109,7 @@ router.post('/time/render-contract', (req: Request, res: Response) => {
     });
   }
 
-  return success(res, {
+  const envelope = buildSuccessEnvelope(resolveEnvelopeContext(req, res), {
     code: 'TIMEZONE_RENDER_CONTRACT_READY',
     message: 'UTC timestamp converted to localized display value',
     data: {
@@ -112,6 +118,14 @@ router.post('/time/render-contract', (req: Request, res: Response) => {
       timezoneSource: context.timezoneSource,
       purpose: typeof req.body?.purpose === 'string' ? req.body.purpose : 'unspecified'
     }
+  });
+
+  return res.status(200).json({
+    ...envelope,
+    utcTimestamp,
+    rendered,
+    timezone: context.timezone,
+    timezoneSource: context.timezoneSource
   });
 });
 
@@ -153,7 +167,7 @@ router.get('/operations/feed', (req: Request, res: Response) => {
     });
   }
 
-  return success(res, {
+  const envelope = buildSuccessEnvelope(resolveEnvelopeContext(req, res), {
     code: 'OPERATIONS_FEED_READY',
     message: 'Operational feed prepared with localized timestamps',
     data: {
@@ -161,6 +175,13 @@ router.get('/operations/feed', (req: Request, res: Response) => {
       timezoneSource: context.timezoneSource,
       rows
     }
+  });
+
+  return res.status(200).json({
+    ...envelope,
+    timezone: context.timezone,
+    timezoneSource: context.timezoneSource,
+    rows
   });
 });
 
