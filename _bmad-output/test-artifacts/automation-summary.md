@@ -6,23 +6,26 @@ stepsCompleted:
   - step-03c-aggregate
   - step-04-validate-and-summarize
 lastStep: step-04-validate-and-summarize
-lastSaved: 2026-02-18T02:13:35Z
-storyId: '0-9'
-storyFile: '/Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/0-9-ci-policy-gate-as-blocking-first-stage.md'
-subprocessTimestamp: '2026-02-18T02-13-35Z'
+lastSaved: 2026-02-18T14:47:59Z
+storyId: '0-10'
+storyFile: '/Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/0-10-kernel-readiness-verification-suite.md'
+subprocessTimestamp: '2026-02-18T14-47-59-114Z'
 executionMode: 'BMad-Integrated'
 ---
 
-# Test Automation Summary - Story 0.9
+# Test Automation Summary - Story 0.10
 
 ## Step 1 - Preflight and Context
 - Mode: BMad-Integrated
 - Input artifacts loaded:
-  - `_bmad-output/implementation-artifacts/0-9-ci-policy-gate-as-blocking-first-stage.md`
-  - `_bmad-output/test-artifacts/atdd-checklist-0-9.md`
+  - `_bmad-output/implementation-artifacts/0-10-kernel-readiness-verification-suite.md`
+  - `_bmad-output/test-artifacts/atdd-checklist-0-10.md`
+  - `_bmad-output/planning-artifacts/epic-0-phase-0-kernel-story-set.md`
+  - `_bmad-output/planning-artifacts/prd.md`
+  - `_bmad-output/planning-artifacts/architecture.md`
 - Framework readiness:
   - `playwright.config.ts` exists
-  - `@playwright/test` present in root `package.json`
+  - Root `package.json` includes `@playwright/test` and `playwright`
   - test structure present under `tests/`
 - TEA config flags:
   - `tea_use_playwright_utils=true`
@@ -30,52 +33,59 @@ executionMode: 'BMad-Integrated'
 
 Knowledge fragments applied:
 - Core: `test-levels-framework`, `test-priorities-matrix`, `data-factories`, `selective-testing`, `ci-burn-in`, `test-quality`
-- Additional: `api-request`, `api-testing-patterns`, `network-first`, `selector-resilience`, `playwright-cli`
+- Additional: `api-testing-patterns`, `network-first`, `selector-resilience`, `playwright-cli`
 
 ## Step 2 - Coverage Plan
 Coverage target: `critical-paths`
 
 ### API targets
 - P0:
-  - local default-branch policy violation fails fast with explicit failure context
-  - pull-request base-branch policy violation includes head/base branch diagnostics
+  - aggregated readiness verification contract for tenancy/auth/csrf/envelope/event-outbox/timezone gates
+  - refusal contract with deterministic failing-gate evidence
 - P1:
-  - workflow guard enforces required story argument for story workflows
-  - workflow guard mismatch emits expected branch pattern and current branch
-  - policy local-run output includes policy-path and command-level remediation contract
+  - phase-0 readiness record persistence and route-execution eligibility
+  - invalid-gate validation for readiness verification input contract
+  - idempotent readiness recording behavior across repeated submissions
 
-### E2E targets
+### E2E/script targets
 - P0:
-  - workflow graph stage ordering keeps `policy` as first quality gate
-  - transitive dependency chain blocks `lint -> test -> burn-in -> quality-gates` when policy fails
+  - epic-0 quality gate emits explicit readiness matrix for required kernel controls
+  - route-story workflow guard blocks execution when readiness is incomplete
 - P1:
-  - quality-gates conditional expression enforces upstream success requirements
-  - report summary includes policy and downstream quality status lines
-  - local policy failure messaging includes branch-specific recovery guidance
+  - route-story workflow guard allows execution after readiness is recorded
+  - readiness matrix preserves canonical required-gate ordering and full key set
+  - workflow-guard failure output includes explicit readiness remediation commands
 
 ### Duplicate-coverage handling
-- Expanded existing Story 0.9 ATDD files in place to avoid duplicate spec proliferation.
+- Expanded existing Story 0.10 spec files in place (no duplicate spec files created).
 
 ## Step 3 - Parallel Generation and Aggregation
 Generated artifacts (in-place updates):
-- `tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts`
-  - expanded from 3 to 5 API governance tests
-- `tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts`
-  - expanded from 3 to 5 E2E governance tests
+- `tests/api/platform/kernel-readiness-verification-suite.api.spec.ts`
+  - expanded from 3 to 5 API tests (P0/P1)
+- `tests/e2e/platform/kernel-readiness-verification-suite.spec.ts`
+  - expanded from 3 to 5 E2E/script tests (P0/P1)
+- `tests/support/factories/kernelReadinessContextFactory.ts`
+  - added shared readiness contract paths/workflow fields for deterministic test reuse
 
 Subprocess artifacts:
-- `/tmp/tea-automate-api-tests-2026-02-18T02-13-35Z.json`
-- `/tmp/tea-automate-e2e-tests-2026-02-18T02-13-35Z.json`
-- `/tmp/tea-automate-summary-2026-02-18T02-13-35Z.json`
+- `/tmp/tea-automate-api-tests-2026-02-18T14-47-59-114Z.json`
+- `/tmp/tea-automate-e2e-tests-2026-02-18T14-47-59-114Z.json`
+- `/tmp/tea-automate-summary-2026-02-18T14-47-59-114Z.json`
+
+Persisted copies:
+- `_bmad-output/test-artifacts/tea-automate-api-tests-2026-02-18T14-47-59-114Z.json`
+- `_bmad-output/test-artifacts/tea-automate-e2e-tests-2026-02-18T14-47-59-114Z.json`
+- `_bmad-output/test-artifacts/tea-automate-summary-2026-02-18T14-47-59-114Z.json`
 
 Infrastructure reused:
-- `tests/support/factories/ciPolicyContextFactory.ts`
-- `tests/support/fixtures/ciPolicyContext.fixture.ts`
+- `tests/support/fixtures/kernelReadinessContext.fixture.ts`
+- `tests/support/helpers/apiClient.ts`
 
 Aggregated totals:
 - Total tests: 10
   - API: 5
-  - E2E: 5
+  - E2E/script: 5
 - Priority coverage:
   - P0: 4
   - P1: 6
@@ -85,21 +95,24 @@ Aggregated totals:
 ## Step 4 - Validation
 Checklist outcome:
 - Framework readiness: pass
-- Coverage mapping to Story 0.9 acceptance criteria: pass
+- Coverage mapping to Story 0.10 acceptance criteria: pass
 - Test structure and priority tagging: pass
-- Artifacts location: pass (`tests/` and `_bmad-output/test-artifacts/`)
+- Artifact storage: pass (`tests/` and `_bmad-output/test-artifacts/`)
+- Duplicate-coverage avoidance: pass (in-place expansion)
 - CLI session hygiene: pass (no browser CLI session opened)
 
 Execution validation:
 - Command:
-  - `npm run test:e2e -- --list tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts`
+  - `npm run test:e2e -- --list tests/api/platform/kernel-readiness-verification-suite.api.spec.ts tests/e2e/platform/kernel-readiness-verification-suite.spec.ts`
 - Result:
-  - 10 tests discovered in 2 files.
+  - 10 tests discovered in 2 files
 
 Assumptions and risks:
-- Story 0.9 tests remain in staged RED-mode (`test.skip`) until workflow and script diagnostics are fully implemented to contract.
-- Two P1 diagnostics tests intentionally assert remediation context not yet emitted by current shell scripts.
+- Story 0.10 readiness API endpoints are still not implemented; generated Story 0.10 tests remain intentionally in RED scaffold mode (`test.skip`) until backend/script implementation lands.
+- Route-story readiness blocking/allowance messaging is not yet present in `scripts/branch-ensure-workflow.sh`.
+- Epic-0 readiness matrix shape is not yet emitted by `scripts/quality-gates-epic0.sh`.
 
 ## Recommended Next Workflow
-- `RV` (Review Tests): audit quality and maintainability of the generated Story 0.9 tests.
-- `TR` (Trace Requirements): map Story 0.9 acceptance criteria to this 10-test suite and produce gate decision.
+- `DS` (Dev Story): implement readiness endpoints + quality-gate/branch-guard readiness enforcement contracts.
+- `RV` (Review Tests): evaluate Story 0.10 test quality/maintainability after implementation turns tests green.
+- `TR` (Trace Requirements): map Story 0.10 AC coverage to this 10-test suite and record gate decision.

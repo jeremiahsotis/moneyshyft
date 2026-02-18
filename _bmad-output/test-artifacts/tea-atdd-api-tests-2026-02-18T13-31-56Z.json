@@ -1,0 +1,33 @@
+{
+  "success": true,
+  "subprocess": "atdd-api-tests",
+  "tests": [
+    {
+      "file": "tests/api/platform/kernel-readiness-verification-suite.api.spec.ts",
+      "content": "import { test, expect } from '../../support/fixtures/kernelReadinessContext.fixture';\nimport { apiRequest } from '../../support/helpers/apiClient';\n\ntest.describe('Story 0.10 atdd - kernel readiness verification suite API coverage', () => {\n  test.skip('[P0] verifies tenancy/auth/csrf/envelope/event-outbox/timezone gates in a single readiness contract @P0', async ({\n    request,\n    kernelReadinessContext,\n  }) => {\n    // Given Phase-0 kernel gate requirements for Story 0.10\n    // When readiness verification is requested for all required gates\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/readiness/verify',\n      headers: kernelReadinessContext.headers,\n      data: {\n        storyId: kernelReadinessContext.storyId,\n        requiredGates: kernelReadinessContext.requiredGates,\n      },\n    });\n\n    // Then the readiness contract should confirm all kernel gates pass\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n\n    expect(body).toMatchObject({\n      ok: true,\n      code: 'KERNEL_READINESS_VERIFIED',\n      readiness: {\n        allPassed: true,\n        gates: {\n          tenancy: { status: 'pass' },\n          auth: { status: 'pass' },\n          csrf: { status: 'pass' },\n          envelope: { status: 'pass' },\n          eventOutbox: { status: 'pass' },\n          timezone: { status: 'pass' },\n        },\n        evidence: {\n          reportPath: kernelReadinessContext.readinessReportPath,\n        },\n      },\n    });\n\n    expect(typeof body.readiness.checkedAt).toBe('string');\n  });\n\n  test.skip('[P0] returns refusal contract with failing gate list when readiness verification does not pass @P0', async ({\n    request,\n    kernelReadinessContext,\n  }) => {\n    // Given one mandatory kernel gate fails during verification\n    // When readiness verification is requested with a forced gate failure\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/readiness/verify',\n      headers: kernelReadinessContext.headers,\n      data: {\n        storyId: kernelReadinessContext.storyId,\n        requiredGates: kernelReadinessContext.requiredGates,\n        simulateFailures: ['csrf'],\n      },\n    });\n\n    // Then the suite should return a refusal contract with failing-gate evidence\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n\n    expect(body).toMatchObject({\n      ok: false,\n      code: 'KERNEL_READINESS_GATE_FAILURE',\n      refusalType: 'business',\n      readiness: {\n        allPassed: false,\n        failingGates: ['csrf'],\n      },\n      routeExecutionAllowed: false,\n    });\n  });\n\n  test.skip('[P1] records Phase-0 completion status and route-execution eligibility after successful readiness verification @P1', async ({\n    request,\n    kernelReadinessContext,\n  }) => {\n    // Given all kernel gates are verified successfully\n    // When Phase-0 completion is recorded for release gating\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/readiness/record-phase0-complete',\n      headers: kernelReadinessContext.headers,\n      data: {\n        storyId: kernelReadinessContext.storyId,\n        verifiedBy: 'epic-0-quality-gate',\n        readinessReportPath: kernelReadinessContext.readinessReportPath,\n      },\n    });\n\n    // Then readiness status should be persisted and Route story execution allowed\n    expect(response.status()).toBe(201);\n    const body = await response.json();\n\n    expect(body).toMatchObject({\n      ok: true,\n      code: 'PHASE0_READINESS_RECORDED',\n      readiness: {\n        phase0Status: 'complete',\n        storyId: '0-10',\n      },\n      statusRecord: {\n        filePath: kernelReadinessContext.phase0StatusFile,\n      },\n      routeExecution: {\n        allowed: true,\n      },\n    });\n\n    expect(typeof body.statusRecord.recordedAt).toBe('string');\n  });\n});\n",
+      "description": "ATDD API tests for kernel readiness verification and Phase-0 status recording (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "tenancy/auth/csrf/envelope/event-outbox/timezone gates all pass",
+        "readiness status is recorded as Phase-0 complete before Route story execution"
+      ],
+      "priority_coverage": {
+        "P0": 2,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "kernelReadinessContext"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns"
+  ],
+  "test_count": 3,
+  "tdd_phase": "RED",
+  "summary": "Generated 3 FAILING API tests for kernel readiness verification suite story"
+}

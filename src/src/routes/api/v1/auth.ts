@@ -16,8 +16,12 @@ const router = Router();
 
 const testEmail = process.env.TEST_EMAIL?.trim();
 const testPassword = process.env.TEST_PASSWORD?.trim();
+const testEnv = process.env.TEST_ENV?.trim().toLowerCase();
+const nodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
+const isLocalTestScope = testEnv === 'local' || nodeEnv === 'test';
 const isTestAuthHarnessEnabled = process.env.ENABLE_TEST_AUTH_HARNESS === 'true'
-  && process.env.NODE_ENV !== 'production'
+  && isLocalTestScope
+  && nodeEnv !== 'production'
   && !!testEmail
   && !!testPassword;
 
