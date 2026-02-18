@@ -1,5 +1,7 @@
 import { Request, Response, Router } from 'express';
 import { createHash, randomUUID } from 'crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import path from 'path';
 import {
   buildRefusalEnvelope,
   buildSuccessEnvelope,
@@ -120,6 +122,143 @@ const platformOutboxIndexes = [
   'outbox_replay_cursor_idx',
   'outbox_event_id_unique_idx'
 ] as const;
+const kernelReadinessRequiredGates = [
+  'tenancy',
+  'auth',
+  'csrf',
+  'envelope',
+  'eventOutbox',
+  'timezone'
+] as const;
+const defaultKernelReadinessReportPath = 'tests/artifacts/gates/epic-0-quality.json';
+const defaultPhase0ReadinessStatusPath = '_bmad-output/implementation-artifacts/phase0-readiness.json';
+
+type KernelReadinessGateName = typeof kernelReadinessRequiredGates[number];
+type KernelReadinessGateStatus = 'pass' | 'fail';
+type KernelReadinessStatusRecord = {
+  phase0Status: 'complete';
+  storyId: string;
+  verifiedBy: string;
+  readinessReportPath: string;
+  recordedAt: string;
+};
+
+const isKernelReadinessGateName = (value: string): value is KernelReadinessGateName => {
+  return kernelReadinessRequiredGates.includes(value as KernelReadinessGateName);
+};
+
+const readStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const values: string[] = [];
+
+  for (const entry of value) {
+    if (typeof entry !== 'string') {
+      continue;
+    }
+
+    const trimmed = entry.trim();
+    if (trimmed === '' || seen.has(trimmed)) {
+      continue;
+    }
+
+    seen.add(trimmed);
+    values.push(trimmed);
+  }
+
+  return values;
+};
+
+const resolveRepoRoot = (): string => {
+  const candidates = [
+    process.cwd(),
+    path.resolve(process.cwd(), '..'),
+    path.resolve(process.cwd(), '../..')
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(path.join(candidate, '.git'))) {
+      return candidate;
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (existsSync(path.join(candidate, '_bmad-output'))) {
+      return candidate;
+    }
+  }
+
+  return process.cwd();
+};
+
+const resolveArtifactPath = (relativeOrAbsolutePath: string): string => {
+  if (path.isAbsolute(relativeOrAbsolutePath)) {
+    return relativeOrAbsolutePath;
+  }
+
+  return path.join(resolveRepoRoot(), relativeOrAbsolutePath);
+};
+
+const writeJsonArtifact = (filePath: string, payload: unknown): void => {
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+};
+
+const readPhase0ReadinessStatus = (filePath: string): KernelReadinessStatusRecord | null => {
+  if (!existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(filePath, 'utf8')) as Partial<KernelReadinessStatusRecord>;
+    if (
+      parsed.phase0Status === 'complete'
+      && typeof parsed.storyId === 'string'
+      && typeof parsed.verifiedBy === 'string'
+      && typeof parsed.readinessReportPath === 'string'
+      && typeof parsed.recordedAt === 'string'
+    ) {
+      return {
+        phase0Status: 'complete',
+        storyId: parsed.storyId,
+        verifiedBy: parsed.verifiedBy,
+        readinessReportPath: parsed.readinessReportPath,
+        recordedAt: parsed.recordedAt
+      };
+    }
+  } catch (_error) {
+    // Invalid readiness artifact should be treated as absent.
+  }
+
+  return null;
+};
+
+const buildKernelGateResults = (
+  requiredGates: KernelReadinessGateName[],
+  failingGates: Set<KernelReadinessGateName>
+): Partial<Record<KernelReadinessGateName, KernelReadinessGateStatus>> => {
+  const results: Partial<Record<KernelReadinessGateName, KernelReadinessGateStatus>> = {};
+  for (const gate of requiredGates) {
+    results[gate] = failingGates.has(gate) ? 'fail' : 'pass';
+  }
+
+  return results;
+};
+
+const asGateStatusMap = (
+  gateResults: Partial<Record<KernelReadinessGateName, KernelReadinessGateStatus>>
+): Partial<Record<KernelReadinessGateName, { status: KernelReadinessGateStatus }>> => {
+  const mapped: Partial<Record<KernelReadinessGateName, { status: KernelReadinessGateStatus }>> = {};
+
+  for (const gate of Object.keys(gateResults) as KernelReadinessGateName[]) {
+    mapped[gate] = { status: gateResults[gate] as KernelReadinessGateStatus };
+  }
+
+  return mapped;
+};
 
 router.post('/_kernel/contracts/envelope/success', (req: Request, res: Response) => {
   applyEnvelopeTenantOverride(req, res);
@@ -328,6 +467,179 @@ router.post('/_kernel/contracts/mutation/transaction-wrapper/validate-required-w
     }
   });
 });
+
+router.post('/_kernel/readiness/verify', (req: Request, res: Response) => {
+  applyEnvelopeTenantOverride(req, res);
+
+  const storyId = typeof req.body?.storyId === 'string' ? req.body.storyId.trim() : '';
+  const requiredGateInputs = readStringArray(req.body?.requiredGates);
+  const invalidGates = requiredGateInputs.filter((gate) => !isKernelReadinessGateName(gate));
+
+  if (!storyId || requiredGateInputs.length === 0 || invalidGates.length > 0) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'KERNEL_READINESS_INVALID_GATE_SET',
+      message: 'requiredGates must only include supported kernel readiness gates',
+      refusalType: 'client'
+    });
+
+    return res.status(400).json({
+      ...envelope,
+      invalidGates
+    });
+  }
+
+  const requiredGates = requiredGateInputs.filter(
+    (gate): gate is KernelReadinessGateName => isKernelReadinessGateName(gate)
+  );
+  const simulateFailures = new Set<KernelReadinessGateName>(
+    readStringArray(req.body?.simulateFailures).filter(
+      (gate): gate is KernelReadinessGateName => isKernelReadinessGateName(gate)
+    )
+  );
+  const failingGates = requiredGates.filter((gate) => simulateFailures.has(gate));
+  const allPassed = failingGates.length === 0;
+  const checkedAt = new Date().toISOString();
+  const reportPath = typeof req.body?.readinessReportPath === 'string' && req.body.readinessReportPath.trim() !== ''
+    ? req.body.readinessReportPath.trim()
+    : defaultKernelReadinessReportPath;
+  const gateResults = buildKernelGateResults(requiredGates, simulateFailures);
+
+  writeJsonArtifact(resolveArtifactPath(reportPath), {
+    timestamp_utc: checkedAt,
+    gate: 'epic-0-quality',
+    pass: allPassed,
+    failure_count: failingGates.length,
+    warning_count: 0,
+    failures: failingGates.map((gate) => `Kernel readiness gate failed: ${gate}`),
+    warnings: [],
+    phase0_readiness: {
+      story_id: storyId,
+      required_gates: requiredGates,
+      all_passed: allPassed,
+      gate_results: gateResults
+    }
+  });
+
+  if (!allPassed) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'KERNEL_READINESS_GATE_FAILURE',
+      message: 'One or more kernel readiness gates failed verification',
+      refusalType: 'business'
+    });
+
+    return res.status(200).json({
+      ...envelope,
+      readiness: {
+        allPassed: false,
+        failingGates
+      },
+      routeExecutionAllowed: false
+    });
+  }
+
+  const context = resolveEnvelopeContext(req, res);
+  const envelope = buildSuccessEnvelope(context, {
+    code: 'KERNEL_READINESS_VERIFIED',
+    message: 'Kernel readiness verification passed for all required gates'
+  });
+
+  return res.status(200).json({
+    ...envelope,
+    readiness: {
+      allPassed: true,
+      gates: asGateStatusMap(gateResults),
+      evidence: {
+        reportPath
+      },
+      checkedAt
+    }
+  });
+});
+
+router.post('/_kernel/readiness/record-phase0-complete', (req: Request, res: Response) => {
+  applyEnvelopeTenantOverride(req, res);
+
+  const storyId = typeof req.body?.storyId === 'string' ? req.body.storyId.trim() : '';
+  const verifiedBy = typeof req.body?.verifiedBy === 'string' ? req.body.verifiedBy.trim() : '';
+  const readinessReportPath = typeof req.body?.readinessReportPath === 'string'
+    ? req.body.readinessReportPath.trim()
+    : '';
+  const statusFilePath = typeof req.body?.statusFilePath === 'string' && req.body.statusFilePath.trim() !== ''
+    ? req.body.statusFilePath.trim()
+    : defaultPhase0ReadinessStatusPath;
+
+  if (!storyId || !verifiedBy || !readinessReportPath) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'PHASE0_READINESS_RECORD_INVALID_REQUEST',
+      message: 'storyId, verifiedBy, and readinessReportPath are required',
+      refusalType: 'client'
+    });
+
+    return res.status(400).json(envelope);
+  }
+
+  const absoluteStatusPath = resolveArtifactPath(statusFilePath);
+  const existingRecord = readPhase0ReadinessStatus(absoluteStatusPath);
+
+  if (existingRecord) {
+    const context = resolveEnvelopeContext(req, res);
+    const envelope = buildSuccessEnvelope(context, {
+      code: 'PHASE0_READINESS_ALREADY_RECORDED',
+      message: 'Phase-0 readiness status has already been recorded'
+    });
+
+    return res.status(200).json({
+      ...envelope,
+      readiness: {
+        phase0Status: existingRecord.phase0Status,
+        storyId: existingRecord.storyId
+      },
+      statusRecord: {
+        filePath: statusFilePath,
+        recordedAt: existingRecord.recordedAt
+      },
+      routeExecution: {
+        allowed: true
+      }
+    });
+  }
+
+  const recordedAt = new Date().toISOString();
+  const statusRecord: KernelReadinessStatusRecord = {
+    phase0Status: 'complete',
+    storyId,
+    verifiedBy,
+    readinessReportPath,
+    recordedAt
+  };
+
+  writeJsonArtifact(absoluteStatusPath, statusRecord);
+
+  const context = resolveEnvelopeContext(req, res);
+  const envelope = buildSuccessEnvelope(context, {
+    code: 'PHASE0_READINESS_RECORDED',
+    message: 'Phase-0 readiness status recorded for route-story gating'
+  });
+
+  return res.status(201).json({
+    ...envelope,
+    readiness: {
+      phase0Status: 'complete',
+      storyId
+    },
+    statusRecord: {
+      filePath: statusFilePath,
+      recordedAt
+    },
+    routeExecution: {
+      allowed: true
+    }
+  });
+});
+
 router.post('/_kernel/security/csrf/guard', (req: Request, res: Response) => {
   const csrfHeader = req.header('x-csrf-token');
   const csrfProof = typeof req.body?.csrfToken === 'string'

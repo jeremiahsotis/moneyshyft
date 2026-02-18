@@ -27,6 +27,7 @@ export type KernelReadinessContext = {
 export function createKernelReadinessContext(
   overrides: Partial<KernelReadinessContext> = {},
 ): KernelReadinessContext {
+  const runId = randomUUID();
   const tenantId = `tenant-${randomUUID()}`;
   const correlationId = `corr-${randomUUID()}`;
   const csrfToken = `csrf-${randomUUID()}`;
@@ -39,8 +40,8 @@ export function createKernelReadinessContext(
     routeWorkflow: 'dev-story',
     qualityGateScript: 'scripts/quality-gates-epic0.sh',
     branchGuardScript: 'scripts/branch-ensure-workflow.sh',
-    phase0StatusFile: '_bmad-output/implementation-artifacts/sprint-status.yaml',
-    readinessReportPath: 'tests/artifacts/gates/epic-0-quality.json',
+    phase0StatusFile: `tests/artifacts/gates/phase0-readiness-${runId}.json`,
+    readinessReportPath: `tests/artifacts/gates/epic-0-quality-${runId}.json`,
     readinessVerifyPath: '/api/v1/platform/_kernel/readiness/verify',
     readinessRecordPath: '/api/v1/platform/_kernel/readiness/record-phase0-complete',
     readinessApiSpecPath: 'tests/api/platform/kernel-readiness-verification-suite.api.spec.ts',

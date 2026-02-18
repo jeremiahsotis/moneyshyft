@@ -6,6 +6,10 @@ const fs = require('fs');
 const path = require('path');
 
 const root = process.cwd();
+const reportPathInput = process.env.EPIC0_QUALITY_REPORT_PATH || 'tests/artifacts/gates/epic-0-quality.json';
+const reportPath = path.isAbsolute(reportPathInput)
+  ? reportPathInput
+  : path.join(root, reportPathInput);
 const requiredFiles = [
   '_bmad-output/planning-artifacts/epic-0-phase-0-kernel-story-set.md',
   '_bmad-output/implementation-artifacts/sprint-status.yaml',
@@ -28,6 +32,19 @@ const storyKeys = [
 
 const allowedStoryStates = new Set(['ready-for-dev', 'in-progress', 'review', 'done']);
 const allowedEpicStates = new Set(['in-progress', 'done']);
+const readinessReadyStates = new Set(['review', 'done']);
+const requiredReadinessGates = ['tenancy', 'auth', 'csrf', 'envelope', 'eventOutbox', 'timezone'];
+const readinessGateDependencies = {
+  tenancy: ['0-2-tenancy-context-resolution-and-repository-enforcement'],
+  auth: ['0-3-platform-session-store-and-refresh-rotation'],
+  csrf: ['0-4-csrf-and-parent-domain-cookie-enforcement'],
+  envelope: ['0-5-shared-api-envelope-and-business-refusal-contract'],
+  eventOutbox: [
+    '0-6-platform-events-and-outbox-schema-foundations',
+    '0-7-mutation-transaction-wrapper-with-mandatory-event-outbox-writes',
+  ],
+  timezone: ['0-8-centralized-time-service-and-utc-local-rendering-contract'],
+};
 
 const failures = [];
 const warnings = [];
@@ -77,8 +94,22 @@ for (const key of storyKeys) {
   }
 }
 
-const gateDir = path.join(root, 'tests/artifacts/gates');
-fs.mkdirSync(gateDir, { recursive: true });
+const readinessGateResults = {};
+for (const gate of requiredReadinessGates) {
+  const dependencies = readinessGateDependencies[gate];
+  const gatePass = dependencies.every((storyKey) => readinessReadyStates.has(statuses.get(storyKey)));
+  readinessGateResults[gate] = gatePass ? 'pass' : 'fail';
+
+  if (!gatePass) {
+    failures.push(
+      `Phase-0 readiness gate failed: ${gate} (expected ${dependencies.join(', ')} in review|done)`,
+    );
+  }
+}
+
+const allReadinessPassed = requiredReadinessGates.every((gate) => readinessGateResults[gate] === 'pass');
+
+fs.mkdirSync(path.dirname(reportPath), { recursive: true });
 const report = {
   timestamp_utc: new Date().toISOString(),
   gate: 'epic-0-quality',
@@ -87,8 +118,13 @@ const report = {
   warning_count: warnings.length,
   failures,
   warnings,
+  phase0_readiness: {
+    required_gates: requiredReadinessGates,
+    all_passed: allReadinessPassed,
+    gate_results: readinessGateResults,
+  },
 };
-fs.writeFileSync(path.join(gateDir, 'epic-0-quality.json'), JSON.stringify(report, null, 2));
+fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
 if (warnings.length) {
   console.log('Epic 0 quality warnings:');

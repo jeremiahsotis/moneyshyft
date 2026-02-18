@@ -74,6 +74,8 @@ fi
 
 story_workflow_regex='^(atdd|automate|create-story|dev-story|code-review|at|ta|ds|cr)$'
 epic_workflow_regex='^(sprint-planning|retrospective|correct-course)$'
+phase0_status_file="${PHASE0_READINESS_STATUS_FILE:-_bmad-output/implementation-artifacts/phase0-readiness.json}"
+readiness_api_spec="${PHASE0_READINESS_API_SPEC:-tests/api/platform/kernel-readiness-verification-suite.api.spec.ts}"
 
 normalize_story_id() {
   local raw="$1"
@@ -91,6 +93,39 @@ normalize_story_id() {
     return 0
   fi
   echo ""
+}
+
+is_phase0_readiness_complete() {
+  local file_path="$1"
+
+  if [[ ! -f "$file_path" ]]; then
+    return 1
+  fi
+
+  node -e '
+const fs = require("fs");
+const filePath = process.argv[1];
+try {
+  const payload = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  if (payload && payload.phase0Status === "complete") {
+    process.exit(0);
+  }
+} catch (_error) {
+  // treated as incomplete
+}
+process.exit(1);
+' "$file_path"
+}
+
+requires_phase0_readiness() {
+  local normalized_story_id="$1"
+  local epic_number="${normalized_story_id%%-*}"
+
+  if [[ ! "$epic_number" =~ ^[0-9]+$ ]]; then
+    return 1
+  fi
+
+  [[ "$epic_number" -gt 0 ]]
 }
 
 if [[ "$workflow_key" =~ $story_workflow_regex ]]; then
@@ -111,6 +146,19 @@ if [[ "$workflow_key" =~ $story_workflow_regex ]]; then
     echo "Expected branch pattern: codex/story-${story_id}-<slug>"
     echo "Current branch: $branch"
     exit 1
+  fi
+
+  if requires_phase0_readiness "$story_id"; then
+    if ! is_phase0_readiness_complete "$phase0_status_file"; then
+      echo "Phase-0 readiness incomplete"
+      echo "Complete Story 0.10 kernel readiness verification suite first"
+      echo "Readiness status file: $phase0_status_file"
+      echo "Run: npm run test:e2e -- $readiness_api_spec"
+      echo "Run: npm run branch:ensure-workflow -- --workflow $workflow --story $story_input"
+      exit 1
+    fi
+
+    echo "Phase-0 readiness verified"
   fi
 
   echo "Branch guard passed for story workflow"

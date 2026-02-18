@@ -32,11 +32,13 @@ function runScript(command: string, args: string[], env: Record<string, string> 
 }
 
 test.describe('Story 0.10 atdd - kernel readiness verification suite release gating', () => {
-  test.skip('[P0] quality gate script emits explicit Phase-0 readiness matrix for all mandatory kernel controls @P0', async ({
+  test('[P0] quality gate script emits explicit Phase-0 readiness matrix for all mandatory kernel controls @P0', async ({
     kernelReadinessContext,
   }) => {
     // Given the Epic-0 quality gate script is used to evaluate readiness
-    runScript('bash', [kernelReadinessContext.qualityGateScript]);
+    runScript('bash', [kernelReadinessContext.qualityGateScript], {
+      EPIC0_QUALITY_REPORT_PATH: kernelReadinessContext.readinessReportPath,
+    });
 
     // When the quality gate report artifact is inspected
     const report = JSON.parse(readFileSync(kernelReadinessContext.readinessReportPath, 'utf8')) as Record<string, unknown>;
@@ -60,7 +62,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
     });
   });
 
-  test.skip('[P0] route-story workflow guard blocks execution when Phase-0 readiness is not yet recorded @P0', async ({
+  test('[P0] route-story workflow guard blocks execution when Phase-0 readiness is not yet recorded @P0', async ({
     kernelReadinessContext,
   }) => {
     // Given a Route story branch requests workflow execution before readiness is recorded
@@ -76,6 +78,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
       ],
       {
         GITHUB_HEAD_REF: kernelReadinessContext.routeStoryBranch,
+        PHASE0_READINESS_STATUS_FILE: kernelReadinessContext.phase0StatusFile,
       },
     );
 
@@ -85,7 +88,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
     expect(/Complete Story 0\.10 kernel readiness verification suite first/.test(result.output)).toBe(true);
   });
 
-  test.skip('[P1] route-story workflow guard allows execution after Phase-0 readiness is recorded @P1', async ({
+  test('[P1] route-story workflow guard allows execution after Phase-0 readiness is recorded @P1', async ({
     request,
     kernelReadinessContext,
   }) => {
@@ -98,6 +101,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
         storyId: kernelReadinessContext.storyId,
         verifiedBy: 'epic-0-quality-gate',
         readinessReportPath: kernelReadinessContext.readinessReportPath,
+        statusFilePath: kernelReadinessContext.phase0StatusFile,
       },
     });
 
@@ -115,6 +119,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
       ],
       {
         GITHUB_HEAD_REF: kernelReadinessContext.routeStoryBranch,
+        PHASE0_READINESS_STATUS_FILE: kernelReadinessContext.phase0StatusFile,
       },
     );
 
@@ -123,11 +128,13 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
     expect(/Phase-0 readiness verified/.test(result.output)).toBe(true);
   });
 
-  test.skip('[P1] readiness matrix artifact keeps required gate ordering and complete gate keys @P1', async ({
+  test('[P1] readiness matrix artifact keeps required gate ordering and complete gate keys @P1', async ({
     kernelReadinessContext,
   }) => {
     // Given the quality gate script emits readiness diagnostics
-    runScript('bash', [kernelReadinessContext.qualityGateScript]);
+    runScript('bash', [kernelReadinessContext.qualityGateScript], {
+      EPIC0_QUALITY_REPORT_PATH: kernelReadinessContext.readinessReportPath,
+    });
 
     // When the generated readiness report is parsed
     const report = JSON.parse(readFileSync(kernelReadinessContext.readinessReportPath, 'utf8')) as {
@@ -142,7 +149,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
     expect(Object.keys(report.phase0_readiness?.gate_results ?? {})).toEqual(kernelReadinessContext.requiredGates);
   });
 
-  test.skip('[P1] route-story guard failure output includes explicit readiness remediation commands @P1', async ({
+  test('[P1] route-story guard failure output includes explicit readiness remediation commands @P1', async ({
     kernelReadinessContext,
   }) => {
     // Given route-story workflow guard runs before readiness recording exists
@@ -157,6 +164,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
       ],
       {
         GITHUB_HEAD_REF: kernelReadinessContext.routeStoryBranch,
+        PHASE0_READINESS_STATUS_FILE: kernelReadinessContext.phase0StatusFile,
       },
     );
 

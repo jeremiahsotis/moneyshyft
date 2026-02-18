@@ -2,7 +2,7 @@ import { test, expect } from '../../support/fixtures/kernelReadinessContext.fixt
 import { apiRequest } from '../../support/helpers/apiClient';
 
 test.describe('Story 0.10 atdd - kernel readiness verification suite API coverage', () => {
-  test.skip('[P0] verifies tenancy/auth/csrf/envelope/event-outbox/timezone gates in a single readiness contract @P0', async ({
+  test('[P0] verifies tenancy/auth/csrf/envelope/event-outbox/timezone gates in a single readiness contract @P0', async ({
     request,
     kernelReadinessContext,
   }) => {
@@ -15,6 +15,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
       data: {
         storyId: kernelReadinessContext.storyId,
         requiredGates: kernelReadinessContext.requiredGates,
+        readinessReportPath: kernelReadinessContext.readinessReportPath,
       },
     });
 
@@ -44,7 +45,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
     expect(typeof body.readiness.checkedAt).toBe('string');
   });
 
-  test.skip('[P0] returns refusal contract with failing gate list when readiness verification does not pass @P0', async ({
+  test('[P0] returns refusal contract with failing gate list when readiness verification does not pass @P0', async ({
     request,
     kernelReadinessContext,
   }) => {
@@ -57,6 +58,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
       data: {
         storyId: kernelReadinessContext.storyId,
         requiredGates: kernelReadinessContext.requiredGates,
+        readinessReportPath: kernelReadinessContext.readinessReportPath,
         simulateFailures: ['csrf'],
       },
     });
@@ -77,7 +79,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
     });
   });
 
-  test.skip('[P1] records Phase-0 completion status and route-execution eligibility after successful readiness verification @P1', async ({
+  test('[P1] records Phase-0 completion status and route-execution eligibility after successful readiness verification @P1', async ({
     request,
     kernelReadinessContext,
   }) => {
@@ -91,6 +93,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
         storyId: kernelReadinessContext.storyId,
         verifiedBy: 'epic-0-quality-gate',
         readinessReportPath: kernelReadinessContext.readinessReportPath,
+        statusFilePath: kernelReadinessContext.phase0StatusFile,
       },
     });
 
@@ -116,7 +119,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
     expect(typeof body.statusRecord.recordedAt).toBe('string');
   });
 
-  test.skip('[P1] refuses readiness verification when unknown gate identifiers are supplied @P1', async ({
+  test('[P1] refuses readiness verification when unknown gate identifiers are supplied @P1', async ({
     request,
     kernelReadinessContext,
   }) => {
@@ -129,6 +132,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
       data: {
         storyId: kernelReadinessContext.storyId,
         requiredGates: [...kernelReadinessContext.requiredGates, 'unknownGate'],
+        readinessReportPath: kernelReadinessContext.readinessReportPath,
       },
     });
 
@@ -142,7 +146,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
     });
   });
 
-  test.skip('[P1] keeps Phase-0 readiness recording idempotent across repeated submissions @P1', async ({
+  test('[P1] keeps Phase-0 readiness recording idempotent across repeated submissions @P1', async ({
     request,
     kernelReadinessContext,
   }) => {
@@ -151,6 +155,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
       storyId: kernelReadinessContext.storyId,
       verifiedBy: 'epic-0-quality-gate',
       readinessReportPath: kernelReadinessContext.readinessReportPath,
+      statusFilePath: kernelReadinessContext.phase0StatusFile,
     };
 
     // When readiness is recorded more than once
