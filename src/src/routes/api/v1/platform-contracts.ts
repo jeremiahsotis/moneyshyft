@@ -408,19 +408,12 @@ router.post('/_kernel/sessions/refresh/rotate', (req: Request, res: Response) =>
       refreshSessions.delete(sessionId);
     } else {
       if (existing.revocationReason === 'rotation') {
-        const isReplayAttempt = presentedRefreshToken.toLowerCase().includes('replayed')
-          || sessionId.toLowerCase().includes('replay');
-        if (isReplayAttempt) {
-          return refusal(res, {
-            code: 'REFRESH_TOKEN_REPLAY_DETECTED',
-            message: 'Presented refresh token has already been rotated',
-            refusalType: 'security',
-            httpStatus: 401
-          });
-        }
-
-        // Keep synthetic kernel contract routes deterministic across repeated suite runs.
-        refreshSessions.delete(sessionId);
+        return refusal(res, {
+          code: 'REFRESH_TOKEN_REPLAY_DETECTED',
+          message: 'Presented refresh token has already been rotated',
+          refusalType: 'security',
+          httpStatus: 401
+        });
       } else {
         return refusal(res, {
           code: 'REFRESH_TOKEN_REVOKED',
