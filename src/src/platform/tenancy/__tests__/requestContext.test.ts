@@ -47,23 +47,18 @@ describe('resolveTenantRequestContext', () => {
     });
   });
 
-  it('resolves orgunit scope when active orgunit is set via header', () => {
+  it('resolves orgunit scope from authenticated session claims', () => {
     const req = {
       user: {
         userId: 'u1',
         email: 'u1@example.com',
         householdId: 'tenant-a',
         activeTenantId: 'tenant-a',
-        activeOrgUnitId: null,
+        activeOrgUnitId: 'org-1',
         role: 'TENANT_STAFF',
       },
       cookies: {},
-      header: (name: string) => {
-        if (name.toLowerCase() === 'x-active-org-unit-id') {
-          return 'org-1';
-        }
-        return undefined;
-      },
+      header: () => undefined,
     } as unknown as Request;
 
     expect(resolveTenantRequestContext(req)).toEqual({
@@ -74,27 +69,30 @@ describe('resolveTenantRequestContext', () => {
     });
   });
 
-  it('allows system admin to override active tenant via header', () => {
+  it('ignores caller-supplied tenant and orgunit headers for authenticated context', () => {
     const req = {
       user: {
-        userId: 'sys-1',
-        email: 'sys@example.com',
-        householdId: null,
-        activeTenantId: null,
+        userId: 'u1',
+        email: 'u1@example.com',
+        householdId: 'tenant-safe',
+        activeTenantId: 'tenant-safe',
         activeOrgUnitId: null,
-        role: 'SYSTEM_ADMIN',
+        role: 'TENANT_STAFF',
       },
       cookies: {},
       header: (name: string) => {
         if (name.toLowerCase() === 'x-active-tenant-id') {
-          return 'tenant-z';
+          return 'tenant-spoof';
+        }
+        if (name.toLowerCase() === 'x-active-org-unit-id') {
+          return 'org-spoof';
         }
         return undefined;
       },
     } as unknown as Request;
 
     expect(resolveTenantRequestContext(req)).toEqual({
-      tenantId: 'tenant-z',
+      tenantId: 'tenant-safe',
       orgUnitId: null,
       scopeMode: 'TENANT',
       source: 'auth',

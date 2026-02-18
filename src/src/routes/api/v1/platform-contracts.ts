@@ -2,6 +2,7 @@ import { Request, Response, Router } from 'express';
 import { createHash, randomUUID } from 'crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
+import type { Knex } from 'knex';
 import {
   buildRefusalEnvelope,
   buildSuccessEnvelope,
@@ -10,6 +11,17 @@ import {
   systemError,
   type EnvelopeContext
 } from '../../../platform/envelopes/response';
+import {
+  type TenantScopeContext,
+  requireOrgUnitId,
+  requireTenantId,
+  resolveScopeFilters,
+  TenantScopeError,
+} from '../../../platform/tenancy/tenantScope';
+import {
+  createKnexOrgUnitAccessStore,
+  validateOrgUnitScopedAccess,
+} from '../../../platform/tenancy/orgUnitAccess';
 import {
   formatUtcTimestampForTimezone,
   resolveTimezoneContext
@@ -71,6 +83,119 @@ const applyEnvelopeTenantOverride = (req: Request, res: Response): void => {
     ...current,
     tenantId: headerTenant
   };
+};
+
+const normalizeContextValue = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const loadPlatformDb = (): Knex => {
+  const knexModule = require('../../../config/knex') as { default: Knex };
+  return knexModule.default;
+};
+
+const resolveProtectedScopeContext = (req: Request): TenantScopeContext => {
+  const tenantId = requireTenantId(req.tenantContext?.tenantId || req.tenantId || null);
+  const orgUnitId = normalizeContextValue(req.tenantContext?.orgUnitId || req.orgUnitId || null);
+  const scopeMode = orgUnitId ? 'ORG_UNIT' : 'TENANT';
+
+  return {
+    tenantId,
+    orgUnitId,
+    scopeMode,
+  };
+};
+
+const mapOrgUnitAccessFailure = (
+  reason: 'TENANT_MEMBERSHIP_REQUIRED' | 'ORG_UNIT_NOT_FOUND' | 'ORG_UNIT_TENANT_MISMATCH' | 'ORG_UNIT_MEMBERSHIP_REQUIRED'
+): { code: string; message: string } => {
+  if (reason === 'TENANT_MEMBERSHIP_REQUIRED') {
+    return {
+      code: 'TENANT_SCOPE_VIOLATION',
+      message: 'Tenant membership is required for orgUnit-scoped access',
+    };
+  }
+
+  if (reason === 'ORG_UNIT_NOT_FOUND' || reason === 'ORG_UNIT_TENANT_MISMATCH') {
+    return {
+      code: 'ORG_UNIT_INVALID',
+      message: 'OrgUnit context does not belong to the active tenant',
+    };
+  }
+
+  return {
+    code: 'ORG_UNIT_FORBIDDEN',
+    message: 'OrgUnit membership is required for orgUnit-scoped access',
+  };
+};
+
+const validateOrgUnitContextAccess = async (
+  req: Request,
+  res: Response,
+  scopeContext: TenantScopeContext
+): Promise<{ ok: true; bypassedOrgUnitMembership: boolean } | { ok: false; response: Response }> => {
+  if (scopeContext.scopeMode !== 'ORG_UNIT') {
+    return {
+      ok: true,
+      bypassedOrgUnitMembership: false,
+    };
+  }
+
+  if (!req.user?.userId) {
+    return {
+      ok: false,
+      response: refusal(res, {
+        code: 'ORG_UNIT_FORBIDDEN',
+        message: 'Authenticated user context is required for orgUnit-scoped access',
+        refusalType: 'security',
+        httpStatus: 403,
+      }),
+    };
+  }
+
+  try {
+    const platformDb = loadPlatformDb();
+    const decision = await platformDb.transaction(async (trx: Knex.Transaction) => {
+      return validateOrgUnitScopedAccess(createKnexOrgUnitAccessStore(trx), {
+        tenantId: scopeContext.tenantId,
+        orgUnitId: requireOrgUnitId(scopeContext.orgUnitId),
+        userId: req.user!.userId,
+        baseRoles: [req.user?.role || null],
+      });
+    });
+
+    if (!decision.ok) {
+      const mapped = mapOrgUnitAccessFailure(decision.reason);
+      return {
+        ok: false,
+        response: refusal(res, {
+          code: mapped.code,
+          message: mapped.message,
+          refusalType: 'security',
+          httpStatus: 403,
+        }),
+      };
+    }
+
+    return {
+      ok: true,
+      bypassedOrgUnitMembership: decision.bypassedOrgUnitMembership,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      response: systemError(res, {
+        code: 'ORG_UNIT_ACCESS_VALIDATION_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to validate orgUnit access',
+        httpStatus: 500,
+      }),
+    };
+  }
 };
 
 type RefreshSessionRecord = {
@@ -1385,15 +1510,30 @@ router.post('/_kernel/sessions/refresh/rotate', (req: Request, res: Response) =>
   });
 });
 
-router.get('/_kernel/tenancy/diagnostics', (req: Request, res: Response) => {
-  const tenantHeader = req.header('x-tenant-id');
-  if (!tenantHeader || tenantHeader.trim() === '') {
-    return refusal(res, {
-      code: 'TENANCY_CONTEXT_REQUIRED',
-      message: 'x-tenant-id is required for tenancy diagnostics',
-      refusalType: 'client',
-      httpStatus: 400
+router.get('/_kernel/tenancy/diagnostics', async (req: Request, res: Response) => {
+  let scopeContext: TenantScopeContext;
+  try {
+    scopeContext = resolveProtectedScopeContext(req);
+  } catch (error) {
+    if (error instanceof TenantScopeError) {
+      return refusal(res, {
+        code: 'TENANCY_CONTEXT_REQUIRED',
+        message: error.message,
+        refusalType: 'security',
+        httpStatus: 403,
+      });
+    }
+
+    return systemError(res, {
+      code: 'TENANCY_CONTEXT_RESOLUTION_FAILED',
+      message: error instanceof Error ? error.message : 'Failed to resolve tenancy context',
+      httpStatus: 500,
     });
+  }
+
+  const orgUnitValidation = await validateOrgUnitContextAccess(req, res, scopeContext);
+  if (!orgUnitValidation.ok) {
+    return orgUnitValidation.response;
   }
 
   const context = resolveEnvelopeContext(req, res);
@@ -1404,65 +1544,120 @@ router.get('/_kernel/tenancy/diagnostics', (req: Request, res: Response) => {
 
   return res.status(200).json({
     ...envelope,
-    tenantId: tenantHeader,
-    orgUnitId: req.orgUnitId || null,
-    scopeMode: req.scopeMode || 'TENANT'
+    tenantId: scopeContext.tenantId,
+    orgUnitId: scopeContext.orgUnitId,
+    scopeMode: scopeContext.scopeMode,
+    bypassedOrgUnitMembership: orgUnitValidation.bypassedOrgUnitMembership,
   });
 });
 
-router.get('/_kernel/tenancy/repository-check', (req: Request, res: Response) => {
-  const tenantHeader = req.header('x-tenant-id');
-  if (!tenantHeader || tenantHeader.trim() === '') {
-    return refusal(res, {
-      code: 'TENANCY_CONTEXT_REQUIRED',
-      message: 'x-tenant-id is required for repository checks',
-      refusalType: 'client',
-      httpStatus: 400
+router.get('/_kernel/tenancy/repository-check', async (req: Request, res: Response) => {
+  let scopeContext: TenantScopeContext;
+  try {
+    scopeContext = resolveProtectedScopeContext(req);
+  } catch (error) {
+    if (error instanceof TenantScopeError) {
+      return refusal(res, {
+        code: 'TENANCY_CONTEXT_REQUIRED',
+        message: error.message,
+        refusalType: 'security',
+        httpStatus: 403,
+      });
+    }
+
+    return systemError(res, {
+      code: 'TENANCY_CONTEXT_RESOLUTION_FAILED',
+      message: error instanceof Error ? error.message : 'Failed to resolve tenancy context',
+      httpStatus: 500,
     });
   }
 
-  const tenantOverride = typeof req.query.tenantOverride === 'string' ? req.query.tenantOverride.trim() : '';
-  if (tenantOverride && tenantOverride !== tenantHeader) {
+  const tenantOverride = normalizeContextValue(
+    typeof req.query.tenantOverride === 'string' ? req.query.tenantOverride : null
+  );
+  const spoofedActiveTenant = normalizeContextValue(req.header('x-active-tenant-id'));
+  if (
+    (tenantOverride && tenantOverride !== scopeContext.tenantId)
+    || (spoofedActiveTenant && spoofedActiveTenant !== scopeContext.tenantId)
+  ) {
     return refusal(res, {
       code: 'TENANT_SCOPE_VIOLATION',
-      message: 'Cross-tenant query overrides are not allowed',
+      message: 'Cross-tenant context overrides are not allowed',
       refusalType: 'security',
-      httpStatus: 403
+      httpStatus: 403,
     });
   }
 
+  const orgUnitOverride = normalizeContextValue(
+    typeof req.query.orgUnitOverride === 'string' ? req.query.orgUnitOverride : null
+  );
+  const spoofedActiveOrgUnit = normalizeContextValue(req.header('x-active-org-unit-id'));
+  const attemptedOrgUnit = orgUnitOverride || spoofedActiveOrgUnit;
+  if (attemptedOrgUnit && attemptedOrgUnit !== scopeContext.orgUnitId) {
+    return refusal(res, {
+      code: 'ORG_UNIT_SCOPE_VIOLATION',
+      message: 'Spoofed or cross-orgUnit context overrides are not allowed',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+  }
+
+  const orgUnitValidation = await validateOrgUnitContextAccess(req, res, scopeContext);
+  if (!orgUnitValidation.ok) {
+    return orgUnitValidation.response;
+  }
+
+  const requiredFilters = resolveScopeFilters(scopeContext);
   const context = resolveEnvelopeContext(req, res);
   const envelope = buildSuccessEnvelope(context, {
     code: 'TENANT_SCOPE_APPLIED',
-    message: 'Repository read constrained to tenant scope'
+    message: 'Repository read constrained to canonical scope context'
   });
 
   return res.status(200).json({
     ...envelope,
     context: {
-      tenantId: tenantHeader
+      tenantId: scopeContext.tenantId,
+      orgUnitId: scopeContext.orgUnitId,
+      scopeMode: scopeContext.scopeMode,
     },
+    requiredFilters,
     rows: [
-      { id: 'txn-001', tenantId: tenantHeader },
-      { id: 'txn-002', tenantId: tenantHeader }
+      { id: 'txn-001', tenantId: scopeContext.tenantId, orgUnitId: scopeContext.orgUnitId },
+      { id: 'txn-002', tenantId: scopeContext.tenantId, orgUnitId: scopeContext.orgUnitId }
     ]
   });
 });
 
-router.post('/_kernel/tenancy/repository-check', (req: Request, res: Response) => {
-  const tenantHeader = req.header('x-tenant-id');
-  const targetTenantId = typeof req.body?.targetTenantId === 'string' ? req.body.targetTenantId.trim() : '';
+router.post('/_kernel/tenancy/repository-check', async (req: Request, res: Response) => {
+  let scopeContext: TenantScopeContext;
+  try {
+    scopeContext = resolveProtectedScopeContext(req);
+  } catch (error) {
+    if (error instanceof TenantScopeError) {
+      return refusal(res, {
+        code: 'TENANCY_CONTEXT_REQUIRED',
+        message: error.message,
+        refusalType: 'security',
+        httpStatus: 403,
+      });
+    }
 
-  if (!tenantHeader || tenantHeader.trim() === '') {
-    return refusal(res, {
-      code: 'TENANCY_CONTEXT_REQUIRED',
-      message: 'x-tenant-id is required for repository checks',
-      refusalType: 'client',
-      httpStatus: 400
+    return systemError(res, {
+      code: 'TENANCY_CONTEXT_RESOLUTION_FAILED',
+      message: error instanceof Error ? error.message : 'Failed to resolve tenancy context',
+      httpStatus: 500,
     });
   }
 
-  if (targetTenantId && targetTenantId !== tenantHeader) {
+  const targetTenantId = normalizeContextValue(
+    typeof req.body?.targetTenantId === 'string' ? req.body.targetTenantId : null
+  );
+  const spoofedActiveTenant = normalizeContextValue(req.header('x-active-tenant-id'));
+  if (
+    (targetTenantId && targetTenantId !== scopeContext.tenantId)
+    || (spoofedActiveTenant && spoofedActiveTenant !== scopeContext.tenantId)
+  ) {
     return refusal(res, {
       code: 'TENANT_SCOPE_VIOLATION',
       message: 'Cross-tenant writes are blocked by tenant scope guard',
@@ -1471,9 +1666,36 @@ router.post('/_kernel/tenancy/repository-check', (req: Request, res: Response) =
     });
   }
 
+  const targetOrgUnitId = normalizeContextValue(
+    typeof req.body?.targetOrgUnitId === 'string' ? req.body.targetOrgUnitId : null
+  );
+  const spoofedActiveOrgUnit = normalizeContextValue(req.header('x-active-org-unit-id'));
+  const attemptedOrgUnit = targetOrgUnitId || spoofedActiveOrgUnit;
+  if (attemptedOrgUnit && attemptedOrgUnit !== scopeContext.orgUnitId) {
+    return refusal(res, {
+      code: 'ORG_UNIT_SCOPE_VIOLATION',
+      message: 'Cross-orgUnit writes are blocked by orgUnit scope guard',
+      refusalType: 'business',
+      httpStatus: 200
+    });
+  }
+
+  const orgUnitValidation = await validateOrgUnitContextAccess(req, res, scopeContext);
+  if (!orgUnitValidation.ok) {
+    return orgUnitValidation.response;
+  }
+
   return success(res, {
     code: 'TENANT_SCOPE_WRITE_ALLOWED',
-    message: 'Write request is within tenant scope'
+    message: 'Write request is within canonical scope context',
+    data: {
+      context: {
+        tenantId: scopeContext.tenantId,
+        orgUnitId: scopeContext.orgUnitId,
+        scopeMode: scopeContext.scopeMode,
+      },
+      requiredFilters: resolveScopeFilters(scopeContext),
+    },
   });
 });
 

@@ -1,5 +1,13 @@
+import { ScopeMode } from './requestContext';
+
 type ScopeableQuery<TQuery> = {
   where: (conditions: Record<string, string>) => TQuery;
+};
+
+export type TenantScopeContext = {
+  tenantId: string;
+  orgUnitId: string | null;
+  scopeMode: ScopeMode;
 };
 
 export class TenantScopeError extends Error {
@@ -64,3 +72,29 @@ export const applyOrgUnitScope = <TQuery extends ScopeableQuery<TQuery>>(
     [orgUnitColumn]: scopedOrgUnitId,
   });
 };
+
+export const resolveScopeFilters = (
+  context: TenantScopeContext,
+  tenantColumn = 'tenant_id',
+  orgUnitColumn = 'org_unit_id'
+): Record<string, string> => {
+  const scopedTenantId = requireTenantId(context.tenantId);
+
+  if (context.scopeMode === 'ORG_UNIT') {
+    return {
+      [tenantColumn]: scopedTenantId,
+      [orgUnitColumn]: requireOrgUnitId(context.orgUnitId),
+    };
+  }
+
+  return {
+    [tenantColumn]: scopedTenantId,
+  };
+};
+
+export const applyScopeMode = <TQuery extends ScopeableQuery<TQuery>>(
+  query: TQuery,
+  context: TenantScopeContext,
+  tenantColumn = 'tenant_id',
+  orgUnitColumn = 'org_unit_id'
+): TQuery => query.where(resolveScopeFilters(context, tenantColumn, orgUnitColumn));
