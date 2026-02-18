@@ -68,6 +68,55 @@ describe('Story 0.8 - centralized time service and utc/local rendering contract'
   });
 
   describe('AC2: no raw UTC in operational UI response contract', () => {
+    it('returns localized render contract payload without raw UTC timestamp field', async () => {
+      const app = buildApp();
+
+      const response = await request(app)
+        .post('/api/v1/platform/time/render-contract')
+        .set('x-correlation-id', 'corr-time-render-alpha')
+        .set('x-user-timezone', 'America/New_York')
+        .set('x-tenant-timezone', 'America/Chicago')
+        .set('x-system-timezone', 'UTC')
+        .send({
+          utcTimestamp: '2026-02-17T15:30:00.000Z',
+          purpose: 'operations-ui'
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'TIMEZONE_RENDER_CONTRACT_READY',
+        data: {
+          rendered: expect.any(String),
+          timezone: 'America/New_York',
+          timezoneSource: 'user',
+          purpose: 'operations-ui'
+        }
+      });
+      expect(response.body?.data).not.toHaveProperty('utcTimestamp');
+    });
+
+    it('returns business refusal for non-UTC timestamp inputs', async () => {
+      const app = buildApp();
+
+      const response = await request(app)
+        .post('/api/v1/platform/time/render-contract')
+        .set('x-correlation-id', 'corr-time-render-invalid-alpha')
+        .set('x-user-timezone', 'America/New_York')
+        .set('x-tenant-timezone', 'America/Chicago')
+        .set('x-system-timezone', 'UTC')
+        .send({
+          utcTimestamp: '2026-02-17T15:30:00-05:00'
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: false,
+        code: 'INVALID_UTC_TIMESTAMP',
+        refusalType: 'business'
+      });
+    });
+
     it('returns localized values and omits UTC ISO in operations feed payload', async () => {
       const app = buildApp();
 

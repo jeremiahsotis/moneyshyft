@@ -11,6 +11,8 @@ type ResolveTimezoneInput = {
   systemTimezone?: unknown;
 };
 
+const UTC_ISO_8601_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+
 const normalizeTimezone = (value: unknown): string | null => {
   if (typeof value !== 'string') {
     return null;
@@ -48,22 +50,40 @@ export const resolveTimezoneContext = (input: ResolveTimezoneInput): TimezoneCon
   return null;
 };
 
+export const isStrictUtcIsoTimestamp = (timestamp: string): boolean => {
+  if (!UTC_ISO_8601_PATTERN.test(timestamp)) {
+    return false;
+  }
+
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) {
+    return false;
+  }
+
+  const normalizedInput = timestamp.includes('.') ? timestamp : timestamp.replace('Z', '.000Z');
+  return parsed.toISOString() === normalizedInput;
+};
+
 export const formatUtcTimestampForTimezone = (
   utcTimestamp: string,
   timezone: string
 ): string | null => {
-  const parsed = new Date(utcTimestamp);
-  if (Number.isNaN(parsed.getTime())) {
+  if (!isStrictUtcIsoTimestamp(utcTimestamp) || !isValidIanaTimezone(timezone)) {
     return null;
   }
 
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  }).format(parsed);
+  const parsed = new Date(utcTimestamp);
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).format(parsed);
+  } catch (_error) {
+    return null;
+  }
 };

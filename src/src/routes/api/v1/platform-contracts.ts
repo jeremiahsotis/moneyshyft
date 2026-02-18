@@ -107,7 +107,6 @@ router.post('/time/render-contract', (req: Request, res: Response) => {
     code: 'TIMEZONE_RENDER_CONTRACT_READY',
     message: 'UTC timestamp converted to localized display value',
     data: {
-      utcTimestamp,
       rendered,
       timezone: context.timezone,
       timezoneSource: context.timezoneSource,
@@ -135,11 +134,24 @@ router.get('/operations/feed', (req: Request, res: Response) => {
     { id: 'op-002', occurredAtUtc: '2026-02-17T18:45:00.000Z' }
   ];
 
-  const rows = sourceRows.map((row) => ({
-    id: row.id,
-    occurredAtLocal: formatUtcTimestampForTimezone(row.occurredAtUtc, context.timezone),
-    timezoneSource: context.timezoneSource
-  }));
+  const rows: Array<{ id: string; occurredAtLocal: string; timezoneSource: typeof context.timezoneSource }> = [];
+
+  for (const row of sourceRows) {
+    const occurredAtLocal = formatUtcTimestampForTimezone(row.occurredAtUtc, context.timezone);
+
+    if (!occurredAtLocal) {
+      return refusal(res, {
+        code: 'INVALID_UTC_TIMESTAMP',
+        message: `Operational row ${row.id} contains an invalid UTC timestamp`
+      });
+    }
+
+    rows.push({
+      id: row.id,
+      occurredAtLocal,
+      timezoneSource: context.timezoneSource
+    });
+  }
 
   return success(res, {
     code: 'OPERATIONS_FEED_READY',
