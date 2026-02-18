@@ -36,9 +36,10 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
     kernelReadinessContext,
   }) => {
     // Given the Epic-0 quality gate script is used to evaluate readiness
-    runScript('bash', [kernelReadinessContext.qualityGateScript], {
+    const result = runScript('bash', [kernelReadinessContext.qualityGateScript], {
       EPIC0_QUALITY_REPORT_PATH: kernelReadinessContext.readinessReportPath,
     });
+    expect(result.status).toBe(0);
 
     // When the quality gate report artifact is inspected
     const report = JSON.parse(readFileSync(kernelReadinessContext.readinessReportPath, 'utf8')) as Record<string, unknown>;
@@ -92,7 +93,12 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
     request,
     kernelReadinessContext,
   }) => {
-    // Given Phase-0 readiness has been explicitly recorded
+    // Given runtime readiness evidence exists and Phase-0 readiness has been explicitly recorded
+    const qualityGateResult = runScript('bash', [kernelReadinessContext.qualityGateScript], {
+      EPIC0_QUALITY_REPORT_PATH: kernelReadinessContext.readinessReportPath,
+    });
+    expect(qualityGateResult.status).toBe(0);
+
     const recordResponse = await apiRequest(request, {
       method: 'POST',
       path: kernelReadinessContext.readinessRecordPath,
@@ -132,9 +138,10 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
     kernelReadinessContext,
   }) => {
     // Given the quality gate script emits readiness diagnostics
-    runScript('bash', [kernelReadinessContext.qualityGateScript], {
+    const result = runScript('bash', [kernelReadinessContext.qualityGateScript], {
       EPIC0_QUALITY_REPORT_PATH: kernelReadinessContext.readinessReportPath,
     });
+    expect(result.status).toBe(0);
 
     // When the generated readiness report is parsed
     const report = JSON.parse(readFileSync(kernelReadinessContext.readinessReportPath, 'utf8')) as {

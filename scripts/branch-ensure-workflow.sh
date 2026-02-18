@@ -104,12 +104,103 @@ is_phase0_readiness_complete() {
 
   node -e '
 const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
 const filePath = process.argv[1];
+const repoRoot = process.cwd();
+const requiredGates = ["tenancy", "auth", "csrf", "envelope", "eventOutbox", "timezone"];
+const allowedRoots = [
+  path.resolve(path.join(repoRoot, "_bmad-output/implementation-artifacts")),
+  path.resolve(path.join(repoRoot, "tests/artifacts/gates")),
+];
+
+const isIsoDate = (value) => typeof value === "string" && !Number.isNaN(Date.parse(value));
+const isInsideAllowedRoot = (targetPath) =>
+  allowedRoots.some((root) => targetPath === root || targetPath.startsWith(`${root}${path.sep}`));
+const resolveAllowedPath = (candidatePath) => {
+  if (typeof candidatePath !== "string" || candidatePath.trim() === "") {
+    return null;
+  }
+  const resolved = path.resolve(path.isAbsolute(candidatePath) ? candidatePath : path.join(repoRoot, candidatePath));
+  if (!isInsideAllowedRoot(resolved)) {
+    return null;
+  }
+  return resolved;
+};
+
+const hasCanonicalRequiredGates = (value) =>
+  Array.isArray(value)
+  && value.length === requiredGates.length
+  && requiredGates.every((gate, index) => value[index] === gate);
+
+const hasCanonicalGateResultMap = (value) => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const keys = Object.keys(value);
+  if (keys.length !== requiredGates.length) {
+    return false;
+  }
+
+  for (const gate of requiredGates) {
+    if (value[gate] !== "pass") {
+      return false;
+    }
+  }
+
+  return keys.every((key) => requiredGates.includes(key));
+};
+
 try {
   const payload = JSON.parse(fs.readFileSync(filePath, "utf8"));
-  if (payload && payload.phase0Status === "complete") {
-    process.exit(0);
+  if (!payload || payload.phase0Status !== "complete" || payload.storyId !== "0-10") {
+    process.exit(1);
   }
+
+  if (!isIsoDate(payload.recordedAt)) {
+    process.exit(1);
+  }
+
+  if (typeof payload.readinessReportHash !== "string" || !/^[a-f0-9]{64}$/i.test(payload.readinessReportHash)) {
+    process.exit(1);
+  }
+
+  if (!hasCanonicalRequiredGates(payload.requiredGates)) {
+    process.exit(1);
+  }
+
+  if (!hasCanonicalGateResultMap(payload.gateResults)) {
+    process.exit(1);
+  }
+
+  const readinessReportPath = resolveAllowedPath(payload.readinessReportPath);
+  if (!readinessReportPath || !fs.existsSync(readinessReportPath)) {
+    process.exit(1);
+  }
+
+  const reportRaw = fs.readFileSync(readinessReportPath, "utf8");
+  const reportHash = crypto.createHash("sha256").update(reportRaw, "utf8").digest("hex");
+  if (reportHash !== payload.readinessReportHash) {
+    process.exit(1);
+  }
+
+  const report = JSON.parse(reportRaw);
+  const phase0Readiness = report?.phase0_readiness;
+  if (
+    report?.gate !== "epic-0-quality"
+    || report?.pass !== true
+    || !phase0Readiness
+    || phase0Readiness.story_id !== "0-10"
+    || phase0Readiness.all_passed !== true
+    || !hasCanonicalRequiredGates(phase0Readiness.required_gates)
+    || !hasCanonicalGateResultMap(phase0Readiness.gate_results)
+    || !isIsoDate(report?.timestamp_utc)
+  ) {
+    process.exit(1);
+  }
+
+  process.exit(0);
 } catch (_error) {
   // treated as incomplete
 }

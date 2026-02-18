@@ -1,13 +1,66 @@
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { test, expect } from '../../support/fixtures/kernelReadinessContext.fixture';
 import { apiRequest } from '../../support/helpers/apiClient';
+import type { KernelReadinessContext } from '../../support/factories/kernelReadinessContextFactory';
+
+type ScriptRunResult = {
+  status: number;
+  output: string;
+};
+
+function runScript(command: string, args: string[], env: Record<string, string> = {}): ScriptRunResult {
+  try {
+    const output = execFileSync(command, args, {
+      env: {
+        ...process.env,
+        ...env,
+      },
+      encoding: 'utf8',
+    });
+
+    return {
+      status: 0,
+      output,
+    };
+  } catch (error) {
+    const typed = error as { status?: number; stdout?: string; stderr?: string };
+    return {
+      status: typed.status ?? 1,
+      output: `${typed.stdout ?? ''}${typed.stderr ?? ''}`,
+    };
+  }
+}
+
+function toAbsolutePath(filePath: string): string {
+  return path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath);
+}
+
+function writeJsonFile(filePath: string, payload: unknown): void {
+  const absolutePath = toAbsolutePath(filePath);
+  mkdirSync(path.dirname(absolutePath), { recursive: true });
+  writeFileSync(absolutePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+}
+
+function runQualityGateScript(kernelReadinessContext: KernelReadinessContext): Record<string, unknown> {
+  const result = runScript('bash', [kernelReadinessContext.qualityGateScript], {
+    EPIC0_QUALITY_REPORT_PATH: kernelReadinessContext.readinessReportPath,
+  });
+
+  expect(result.status).toBe(0);
+  return JSON.parse(readFileSync(toAbsolutePath(kernelReadinessContext.readinessReportPath), 'utf8')) as Record<string, unknown>;
+}
 
 test.describe('Story 0.10 atdd - kernel readiness verification suite API coverage', () => {
   test('[P0] verifies tenancy/auth/csrf/envelope/event-outbox/timezone gates in a single readiness contract @P0', async ({
     request,
     kernelReadinessContext,
   }) => {
-    // Given Phase-0 kernel gate requirements for Story 0.10
-    // When readiness verification is requested for all required gates
+    // Given runtime kernel evidence exists from the Epic-0 quality gate script
+    runQualityGateScript(kernelReadinessContext);
+
+    // When readiness verification is requested for Story 0.10
     const response = await apiRequest(request, {
       method: 'POST',
       path: kernelReadinessContext.readinessVerifyPath,
@@ -43,14 +96,36 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
     });
 
     expect(typeof body.readiness.checkedAt).toBe('string');
+    expect(typeof body.readiness.evidence.reportHash).toBe('string');
   });
 
-  test('[P0] returns refusal contract with failing gate list when readiness verification does not pass @P0', async ({
+  test('[P0] returns refusal contract with failing gate list when report evidence contains failed gates @P0', async ({
     request,
     kernelReadinessContext,
   }) => {
-    // Given one mandatory kernel gate fails during verification
-    // When readiness verification is requested with a forced gate failure
+    // Given a readiness report where one mandatory gate failed
+    const report = runQualityGateScript(kernelReadinessContext) as {
+      pass?: boolean;
+      failure_count?: number;
+      failures?: string[];
+      phase0_readiness?: {
+        all_passed?: boolean;
+        gate_results?: Record<string, string>;
+      };
+    };
+    report.pass = false;
+    report.failure_count = 1;
+    report.failures = ['Phase-0 readiness gate failed: csrf'];
+    if (report.phase0_readiness) {
+      report.phase0_readiness.all_passed = false;
+      report.phase0_readiness.gate_results = {
+        ...(report.phase0_readiness.gate_results || {}),
+        csrf: 'fail',
+      };
+    }
+    writeJsonFile(kernelReadinessContext.readinessReportPath, report);
+
+    // When readiness verification is requested
     const response = await apiRequest(request, {
       method: 'POST',
       path: kernelReadinessContext.readinessVerifyPath,
@@ -59,7 +134,6 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
         storyId: kernelReadinessContext.storyId,
         requiredGates: kernelReadinessContext.requiredGates,
         readinessReportPath: kernelReadinessContext.readinessReportPath,
-        simulateFailures: ['csrf'],
       },
     });
 
@@ -79,11 +153,23 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
     });
   });
 
-  test('[P1] records Phase-0 completion status and route-execution eligibility after successful readiness verification @P1', async ({
+  test('[P1] records Phase-0 completion status only after successful readiness verification @P1', async ({
     request,
     kernelReadinessContext,
   }) => {
-    // Given all kernel gates are verified successfully
+    // Given runtime readiness evidence exists and verification succeeds first
+    runQualityGateScript(kernelReadinessContext);
+    const verifyResponse = await apiRequest(request, {
+      method: 'POST',
+      path: kernelReadinessContext.readinessVerifyPath,
+      headers: kernelReadinessContext.headers,
+      data: {
+        storyId: kernelReadinessContext.storyId,
+        readinessReportPath: kernelReadinessContext.readinessReportPath,
+      },
+    });
+    expect(verifyResponse.status()).toBe(200);
+
     // When Phase-0 completion is recorded for release gating
     const response = await apiRequest(request, {
       method: 'POST',
@@ -110,12 +196,14 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
       },
       statusRecord: {
         filePath: kernelReadinessContext.phase0StatusFile,
+        readinessReportPath: kernelReadinessContext.readinessReportPath,
       },
       routeExecution: {
         allowed: true,
       },
     });
 
+    expect(typeof body.statusRecord.readinessReportHash).toBe('string');
     expect(typeof body.statusRecord.recordedAt).toBe('string');
   });
 
@@ -146,11 +234,42 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
     });
   });
 
+  test('[P1] rejects readiness recording when readiness evidence has not been generated @P1', async ({
+    request,
+    kernelReadinessContext,
+  }) => {
+    // Given no valid readiness report exists at the provided path
+    // When Phase-0 completion is recorded
+    const response = await apiRequest(request, {
+      method: 'POST',
+      path: kernelReadinessContext.readinessRecordPath,
+      headers: kernelReadinessContext.headers,
+      data: {
+        storyId: kernelReadinessContext.storyId,
+        verifiedBy: 'epic-0-quality-gate',
+        readinessReportPath: kernelReadinessContext.readinessReportPath,
+        statusFilePath: kernelReadinessContext.phase0StatusFile,
+      },
+    });
+
+    // Then recording should be blocked until valid readiness evidence is available
+    expect(response.status()).toBe(409);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      ok: false,
+      code: 'PHASE0_READINESS_EVIDENCE_REQUIRED',
+      routeExecution: {
+        allowed: false,
+      },
+    });
+  });
+
   test('[P1] keeps Phase-0 readiness recording idempotent across repeated submissions @P1', async ({
     request,
     kernelReadinessContext,
   }) => {
-    // Given a valid readiness completion payload
+    // Given a valid readiness completion payload with runtime evidence
+    runQualityGateScript(kernelReadinessContext);
     const payload = {
       storyId: kernelReadinessContext.storyId,
       verifiedBy: 'epic-0-quality-gate',
