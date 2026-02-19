@@ -123,9 +123,13 @@ GPT-5 Codex
   - Epic 0 quality gate JWT dependency resolution now supports standard module lookup with backend-local fallback instead of a single hard-coded path
 - Additional remediation and regression hardening completed:
   - enabled test auth harness in development mode and seeded baseline harness data on first login creation
+  - hardened test auth harness provisioning to tolerate concurrent first-login races without surfacing transient duplicate-email failures
   - normalized transaction date persistence to avoid timezone-related off-by-one drift from date objects
   - stabilized debt and recurring E2E assertions for current UI behavior
   - aligned synthetic tenancy test token signing with backend JWT secrets loaded from `src/.env`
+- CI quality gate parser now:
+  - supports Playwright JSON test statuses (`expected`, `skipped`, `flaky`) with result-status fallback
+  - deduplicates merged shard/spec records and counts only executed tagged tests toward `@P0`/`@P1` rates
 - Completion gate is now clear in this run:
   - `policy:check` is green on this branch
   - full regression is green (`98 passed, 0 failed, 13 skipped`), so story is ready for `review`
@@ -137,6 +141,7 @@ GPT-5 Codex
 - frontend/src/views/Debts/DebtsView.vue
 - scripts/branch-ensure-workflow.sh
 - scripts/enforce-git-policy.sh
+- scripts/quality-gates.sh
 - scripts/quality-gates-epic0.sh
 - src/src/platform/sessions/PlatformSessionStore.ts
 - src/src/routes/api/v1/auth.ts
@@ -155,6 +160,7 @@ GPT-5 Codex
 ## Change Log
 
 - 2026-02-19: Addressed Senior Developer Review follow-up findings by enabling CI on `codex/dev` PR targets, hardening local branch guard branch resolution against env spoofing, improving corrected-kernel policy failure remediation output, removing hard-coded JWT module path assumptions in Epic 0 quality gates, and reconciling story File List with actual branch changes.
+- 2026-02-19: Fixed quality-gates parsing for Playwright shard artifacts (`expected`/`skipped`/`flaky` semantics with deduped executed-test counting) and hardened test-auth harness first-login provisioning against concurrent duplicate-email races observed in CI shard retries.
 - 2026-02-19: Completed regression remediation for Story 0.9 validation run; fixed harness auth/bootstrap seeding, date persistence drift, and tenancy token factory compatibility, then revalidated full suite to green (`98 passed, 0 failed, 13 skipped`). Story status moved to `review`.
 - 2026-02-19: Executed full completion revalidation on `codex/story-0-9-ci-policy-gate-as-blocking-first-stage`; `policy:check` now passes and Story 0.9 targeted suites remain green (18 passed), but full regression is still blocked by unrelated failures (`71 passed, 27 failed, 13 skipped`), so story remains `in-progress`.
 - 2026-02-19: Re-ran Dev Story validation from `codex/story-0-9-ci-policy-gate-as-blocking-first-stage`; story-targeted suites are green (18 passed), but completion remains blocked by commit-subject policy gate and full regression failures (`27 failed, 13 skipped` with live app services).

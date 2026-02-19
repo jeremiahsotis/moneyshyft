@@ -32,6 +32,35 @@ const getDb = (): Knex => {
   return require('../../../config/knex').default as Knex;
 };
 
+const isUserEmailUniqueConstraintError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybeDbError = error as { code?: string; constraint?: string };
+  return maybeDbError.code === '23505' && maybeDbError.constraint === 'users_email_unique';
+};
+
+const sleep = async (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+const loadHarnessUserByEmail = async (db: Knex, normalizedEmail: string) =>
+  db('users')
+    .whereRaw('LOWER(email) = ?', [normalizedEmail])
+    .first();
+
+const waitForHarnessUser = async (db: Knex, normalizedEmail: string) => {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const user = await loadHarnessUserByEmail(db, normalizedEmail);
+    if (user) {
+      return user;
+    }
+    await sleep(50);
+  }
+
+  return null;
+};
+
 const canUseTestAuthCredentials = (email: string, password: string): boolean => {
   if (!isTestAuthHarnessEnabled || !testEmail || !testPassword) {
     return false;
@@ -129,22 +158,32 @@ const ensureHarnessBaselineData = async (householdId: string): Promise<void> => 
 const ensureHarnessUser = async (email: string, password: string): Promise<void> => {
   const db = getDb();
   const normalizedEmail = email.trim().toLowerCase();
-  const user = await db('users')
-    .whereRaw('LOWER(email) = ?', [normalizedEmail])
-    .first();
+  let user = await loadHarnessUserByEmail(db, normalizedEmail);
 
   if (!user) {
-    const signupResult = await AuthService.signup({
-      email: normalizedEmail,
-      password,
-      firstName: 'Test',
-      lastName: 'User',
-      householdName: 'Test Household',
-    });
-    if (signupResult.user.householdId) {
-      await ensureHarnessBaselineData(signupResult.user.householdId);
+    try {
+      const signupResult = await AuthService.signup({
+        email: normalizedEmail,
+        password,
+        firstName: 'Test',
+        lastName: 'User',
+        householdName: 'Test Household',
+      });
+      if (signupResult.user.householdId) {
+        await ensureHarnessBaselineData(signupResult.user.householdId);
+      }
+      return;
+    } catch (error) {
+      if (!isUserEmailUniqueConstraintError(error)) {
+        throw error;
+      }
+
+      const existingUser = await waitForHarnessUser(db, normalizedEmail);
+      if (!existingUser) {
+        throw error;
+      }
+      user = existingUser;
     }
-    return;
   }
 
   const updates: Record<string, unknown> = {};
