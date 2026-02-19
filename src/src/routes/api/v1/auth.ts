@@ -225,16 +225,21 @@ router.post('/logout', async (req: Request, res: Response) => {
  * Refresh access token using refresh token
  */
 router.post('/refresh', async (req: Request, res: Response) => {
+  const refreshToken = req.cookies.refresh_token;
+
+  if (!refreshToken) {
+    res.status(401).json({ error: 'Refresh token required' });
+    return;
+  }
+
   try {
-    const refreshToken = req.cookies.refresh_token;
-
-    if (!refreshToken) {
-      res.status(401).json({ error: 'Refresh token required' });
-      return;
-    }
-
     // Verify refresh token
     const payload = verifyRefreshToken(refreshToken);
+    const tenantId = payload.activeTenantId ?? payload.householdId;
+
+    if (!tenantId) {
+      throw new Error('SESSION_TENANT_MISSING');
+    }
 
     // Log token refresh for debugging
     logger.info('Refreshing access token', {
@@ -243,14 +248,14 @@ router.post('/refresh', async (req: Request, res: Response) => {
       hasHouseholdId: !!payload.householdId
     });
 
-    const storedSession = await PlatformSessionStore.findSessionByRefreshToken(refreshToken);
-    if (!storedSession || storedSession.revokedAt) {
+    const storedSession = await PlatformSessionStore.findSessionByRefreshToken(refreshToken, tenantId);
+    if (!storedSession || storedSession.revokedAt || storedSession.userId !== payload.userId) {
       res.status(403).json({ error: 'Refresh token rejected' });
       return;
     }
 
     if (storedSession.expiresAt.getTime() <= Date.now()) {
-      await PlatformSessionStore.revokeSessionById(storedSession.id, 'expired');
+      await PlatformSessionStore.revokeSessionById(storedSession.id, 'expired', null, undefined, tenantId);
       res.status(403).json({ error: 'Refresh token rejected' });
       return;
     }
@@ -259,14 +264,26 @@ router.post('/refresh', async (req: Request, res: Response) => {
     const newAccessToken = generateAccessToken(payload, rememberMe);
     const newRefreshToken = generateRefreshToken(payload, rememberMe);
 
-    await PlatformSessionStore.rotateSession(refreshToken, newRefreshToken);
+    await PlatformSessionStore.rotateSession(refreshToken, newRefreshToken, tenantId);
 
     setAuthCookies(res, newAccessToken, newRefreshToken, rememberMe);
 
     res.json({ message: 'Token refreshed successfully' });
   } catch (error) {
     logger.error('Token refresh error:', error);
-    if (error instanceof Error && (error.message === 'SESSION_REVOKED' || error.message === 'SESSION_EXPIRED')) {
+
+    try {
+      await PlatformSessionStore.revokeSessionByRefreshToken(refreshToken, 'invalid_or_expired_refresh_token');
+    } catch (revokeError) {
+      logger.warn('Failed to revoke refresh session after token refresh failure', { revokeError });
+    }
+
+    if (
+      error instanceof Error
+      && (error.message === 'SESSION_REVOKED'
+        || error.message === 'SESSION_EXPIRED'
+        || error.message === 'SESSION_TENANT_MISSING')
+    ) {
       res.status(403).json({ error: 'Refresh token rejected' });
       return;
     }

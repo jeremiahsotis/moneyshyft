@@ -224,7 +224,9 @@ class AuthService {
 
       const accessToken = generateAccessToken(payload);
       const refreshToken = generateRefreshToken(payload);
+      const tenantId = this.resolveSessionTenantId(payload);
       await PlatformSessionStore.createSession({
+        tenantId,
         userId: payload.userId,
         householdId: payload.householdId,
         refreshToken,
@@ -287,7 +289,9 @@ class AuthService {
 
     const accessToken = generateAccessToken(payload, rememberMe);
     const refreshToken = generateRefreshToken(payload, rememberMe);
+    const tenantId = this.resolveSessionTenantId(payload);
     await PlatformSessionStore.createSession({
+      tenantId,
       userId: payload.userId,
       householdId: payload.householdId,
       refreshToken,
@@ -340,6 +344,16 @@ class AuthService {
       setupWizardCompleted,
       createdAt: user.created_at,
     };
+  }
+
+  private resolveSessionTenantId(payload: JWTPayload): string {
+    const tenantId = payload.activeTenantId ?? payload.householdId;
+
+    if (!tenantId) {
+      throw new Error('Session tenant context is required');
+    }
+
+    return tenantId;
   }
 }
 

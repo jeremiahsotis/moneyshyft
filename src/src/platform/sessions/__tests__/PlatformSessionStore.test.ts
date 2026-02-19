@@ -3,6 +3,7 @@ import { generateRefreshToken } from '../../../utils/jwt';
 
 type SessionRow = {
   id: string;
+  tenant_id: string;
   user_id: string;
   household_id: string | null;
   refresh_token_hash: string;
@@ -56,6 +57,8 @@ const fakeDb: any = {
         };
 
         chain.forUpdate = () => chain;
+        chain.whereNull = () => chain;
+        chain.andWhere = (nextPredicate: Partial<SessionRow>) => whereChain({ ...predicate, ...nextPredicate });
         return chain;
       };
 
@@ -63,6 +66,7 @@ const fakeDb: any = {
         insert(payload: Partial<SessionRow>) {
           const row: SessionRow = {
             id: `session-${sequence++}`,
+            tenant_id: payload.tenant_id!,
             user_id: payload.user_id!,
             household_id: payload.household_id ?? null,
             refresh_token_hash: payload.refresh_token_hash!,
@@ -111,6 +115,7 @@ describe('PlatformSessionStore', () => {
       });
 
       const created = await PlatformSessionStore.createSession({
+        tenantId: 'house-1',
         userId: 'user-1',
         householdId: 'house-1',
         refreshToken,
@@ -124,6 +129,26 @@ describe('PlatformSessionStore', () => {
       expect(created.expiresAt.getTime()).toBeGreaterThan(now().getTime());
       expect(created.revokedAt).toBeNull();
       expect(created.revokedReason).toBeNull();
+      expect(created.tenantId).toBe('house-1');
+    });
+
+    it('rejects tampered refresh tokens when extracting expiry metadata', async () => {
+      const refreshToken = generateRefreshToken({
+        userId: 'user-9',
+        email: 'user-9@example.com',
+        householdId: 'house-9',
+        role: 'member',
+      });
+
+      await expect(
+        PlatformSessionStore.createSession({
+          tenantId: 'house-9',
+          userId: 'user-9',
+          householdId: 'house-9',
+          refreshToken: `${refreshToken}tampered`,
+          rememberMe: false,
+        })
+      ).rejects.toThrow('INVALID_REFRESH_TOKEN');
     });
   });
 
@@ -149,16 +174,22 @@ describe('PlatformSessionStore', () => {
       });
 
       await PlatformSessionStore.createSession({
+        tenantId: 'house-2',
         userId: 'user-2',
         householdId: 'house-2',
         refreshToken: oldRefreshToken,
         rememberMe: false,
       });
 
-      await PlatformSessionStore.rotateSession(oldRefreshToken, rotatedRefreshToken);
+      const nextSession = await PlatformSessionStore.rotateSession(oldRefreshToken, rotatedRefreshToken, 'house-2');
+
+      const oldSessionHash = crypto.createHash('sha256').update(oldRefreshToken).digest('hex');
+      const oldSessionRow = sessionRows.find((row) => row.refresh_token_hash === oldSessionHash);
+      expect(oldSessionRow?.revoked_reason).toBe('rotated');
+      expect(oldSessionRow?.rotated_to_session_id).toBe(nextSession.id);
 
       await expect(
-        PlatformSessionStore.rotateSession(oldRefreshToken, replayAttemptRefreshToken)
+        PlatformSessionStore.rotateSession(oldRefreshToken, replayAttemptRefreshToken, 'house-2')
       ).rejects.toThrow('SESSION_REVOKED');
     });
 
@@ -177,6 +208,7 @@ describe('PlatformSessionStore', () => {
       });
 
       const current = await PlatformSessionStore.createSession({
+        tenantId: 'house-2',
         userId: 'user-2',
         householdId: 'house-2',
         refreshToken: oldRefreshToken,
@@ -185,7 +217,7 @@ describe('PlatformSessionStore', () => {
       await PlatformSessionStore.revokeSessionById(current.id, 'logout');
 
       await expect(
-        PlatformSessionStore.rotateSession(oldRefreshToken, newRefreshToken)
+        PlatformSessionStore.rotateSession(oldRefreshToken, newRefreshToken, 'house-2')
       ).rejects.toThrow('SESSION_REVOKED');
     });
   });

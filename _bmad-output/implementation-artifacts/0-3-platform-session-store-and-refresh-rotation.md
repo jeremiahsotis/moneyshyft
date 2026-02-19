@@ -1,6 +1,6 @@
 # Story 0.3: Platform Session Store and Refresh Rotation
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -62,17 +62,28 @@ GPT-5 Codex
 - Added route-level `/api/v1/auth/refresh` replay/revocation coverage.
 - Added automated tests for AC1 and AC2 including explicit replay rejection assertions.
 - Full backend Jest suite and TypeScript build pass.
+- Added additive migration to enforce `tenant_id` scoping on `platform.sessions` and invalidate legacy unscoped session rows.
+- Enforced tenant-scoped session lookups/rotation paths and verified refresh token signatures before expiry extraction.
+- Added audit-safe revocation behavior for refresh-token verification failures and rotation metadata assertions.
+
+### Senior Developer Review (AI)
+
+- 2026-02-19: Resolved 5 review findings (tenant scope enforcement, refresh failure revocation auditability, verified expiry extraction, file-list discrepancy, and AC metadata coverage expansion).
 
 ### File List
 
 - `src/src/migrations/20260217103000_create_platform_sessions.ts`
+- `src/src/migrations/20260219020000_add_tenant_scope_to_platform_sessions.ts`
 - `src/src/platform/sessions/PlatformSessionStore.ts`
 - `src/src/platform/sessions/__tests__/PlatformSessionStore.test.ts`
 - `src/src/services/AuthService.ts`
+- `src/src/routes/api/v1/auth.ts`
 - `src/src/routes/api/v1/__tests__/auth.refresh.test.ts`
 - `_bmad-output/implementation-artifacts/0-3-platform-session-store-and-refresh-rotation.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ## Change Log
 
 - 2026-02-17: Implemented platform session store + refresh rotation and added automated AC coverage.
 - 2026-02-17: Addressed code-review findings for race-safe rotation, transactional signup session persistence, and replay route coverage.
+- 2026-02-19: Closed review remediations for tenant-scoped sessions, refresh audit revocation path, and story/file-list alignment.

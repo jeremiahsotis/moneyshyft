@@ -5,6 +5,7 @@ import db from '../../config/knex';
 
 export type SessionRecord = {
   id: string;
+  tenantId: string;
   userId: string;
   householdId: string | null;
   refreshTokenHash: string;
@@ -19,6 +20,7 @@ export type SessionRecord = {
 };
 
 type CreateSessionInput = {
+  tenantId: string;
   userId: string;
   householdId: string | null;
   refreshToken: string;
@@ -41,6 +43,7 @@ class PlatformSessionStore {
 
     const [record] = await this.getScopedDb(trx)
       .insert({
+        tenant_id: input.tenantId,
         user_id: input.userId,
         household_id: input.householdId,
         refresh_token_hash: refreshTokenHash,
@@ -52,9 +55,19 @@ class PlatformSessionStore {
     return this.mapRecord(record);
   }
 
-  async findSessionByRefreshToken(refreshToken: string, trx?: Knex.Transaction): Promise<SessionRecord | null> {
+  async findSessionByRefreshToken(
+    refreshToken: string,
+    tenantId?: string,
+    trx?: Knex.Transaction
+  ): Promise<SessionRecord | null> {
     const refreshTokenHash = this.hashRefreshToken(refreshToken);
-    const record = await this.getScopedDb(trx).where({ refresh_token_hash: refreshTokenHash }).first();
+    const query = this.getScopedDb(trx).where({ refresh_token_hash: refreshTokenHash });
+
+    if (tenantId) {
+      query.andWhere({ tenant_id: tenantId });
+    }
+
+    const record = await query.first();
     return record ? this.mapRecord(record) : null;
   }
 
@@ -62,38 +75,59 @@ class PlatformSessionStore {
     sessionId: string,
     reason: string,
     rotatedToSessionId: string | null = null,
-    trx?: Knex.Transaction
+    trx?: Knex.Transaction,
+    tenantId?: string
   ): Promise<void> {
-    await this.getScopedDb(trx)
-      .where({ id: sessionId })
-      .update({
-        revoked_at: new Date(),
-        revoked_reason: reason,
-        rotated_to_session_id: rotatedToSessionId,
-        last_used_at: new Date(),
-        updated_at: new Date(),
-      });
+    const query = this.getScopedDb(trx).where({ id: sessionId }).whereNull('revoked_at');
+
+    if (tenantId) {
+      query.andWhere({ tenant_id: tenantId });
+    }
+
+    await query.update({
+      revoked_at: new Date(),
+      revoked_reason: reason,
+      rotated_to_session_id: rotatedToSessionId,
+      last_used_at: new Date(),
+      updated_at: new Date(),
+    });
   }
 
-  async revokeSessionByRefreshToken(refreshToken: string, reason: string, trx?: Knex.Transaction): Promise<void> {
+  async revokeSessionByRefreshToken(
+    refreshToken: string,
+    reason: string,
+    trx?: Knex.Transaction,
+    tenantId?: string
+  ): Promise<void> {
     const refreshTokenHash = this.hashRefreshToken(refreshToken);
-    await this.getScopedDb(trx)
+    const query = this.getScopedDb(trx)
       .where({ refresh_token_hash: refreshTokenHash })
-      .update({
-        revoked_at: new Date(),
-        revoked_reason: reason,
-        last_used_at: new Date(),
-        updated_at: new Date(),
-      });
+      .whereNull('revoked_at');
+
+    if (tenantId) {
+      query.andWhere({ tenant_id: tenantId });
+    }
+
+    await query.update({
+      revoked_at: new Date(),
+      revoked_reason: reason,
+      last_used_at: new Date(),
+      updated_at: new Date(),
+    });
   }
 
-  async rotateSession(oldRefreshToken: string, nextRefreshToken: string, trx?: Knex.Transaction): Promise<SessionRecord> {
+  async rotateSession(
+    oldRefreshToken: string,
+    nextRefreshToken: string,
+    tenantId: string,
+    trx?: Knex.Transaction
+  ): Promise<SessionRecord> {
     const executor = trx ?? db;
 
     const run = async (innerTrx: Knex.Transaction): Promise<SessionRecord> => {
       const oldRefreshTokenHash = this.hashRefreshToken(oldRefreshToken);
       const currentSessionRecord = await this.getScopedDb(innerTrx)
-        .where({ refresh_token_hash: oldRefreshTokenHash })
+        .where({ refresh_token_hash: oldRefreshTokenHash, tenant_id: tenantId })
         .forUpdate()
         .first();
 
@@ -101,6 +135,10 @@ class PlatformSessionStore {
 
       if (!currentSession) {
         throw new Error('SESSION_NOT_FOUND');
+      }
+
+      if (currentSession.tenantId !== tenantId) {
+        throw new Error('SESSION_TENANT_MISMATCH');
       }
 
       if (currentSession.revokedAt) {
@@ -114,6 +152,7 @@ class PlatformSessionStore {
 
       const nextSession = await this.createSession(
         {
+          tenantId: currentSession.tenantId,
           userId: currentSession.userId,
           householdId: currentSession.householdId,
           refreshToken: nextRefreshToken,
@@ -122,7 +161,7 @@ class PlatformSessionStore {
         innerTrx
       );
 
-      await this.revokeSessionById(currentSession.id, 'rotated', nextSession.id, innerTrx);
+      await this.revokeSessionById(currentSession.id, 'rotated', nextSession.id, innerTrx, tenantId);
       return nextSession;
     };
 
@@ -134,16 +173,26 @@ class PlatformSessionStore {
   }
 
   private extractRefreshExpiry(refreshToken: string): Date {
-    const decoded = jwt.decode(refreshToken) as JwtPayload | null;
-    if (!decoded || typeof decoded.exp !== 'number') {
-      throw new Error('Refresh token is missing exp claim');
+    try {
+      const decoded = jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET || 'your_refresh_secret_change_in_production'
+      ) as JwtPayload | string;
+
+      if (!decoded || typeof decoded === 'string' || typeof decoded.exp !== 'number') {
+        throw new Error('Refresh token is missing exp claim');
+      }
+
+      return new Date(decoded.exp * 1000);
+    } catch (error) {
+      throw new Error('INVALID_REFRESH_TOKEN');
     }
-    return new Date(decoded.exp * 1000);
   }
 
   private mapRecord(record: any): SessionRecord {
     return {
       id: record.id,
+      tenantId: record.tenant_id,
       userId: record.user_id,
       householdId: record.household_id,
       refreshTokenHash: record.refresh_token_hash,

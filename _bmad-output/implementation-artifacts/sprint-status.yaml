@@ -43,7 +43,7 @@ development_status:
   epic-0: in-progress
   0-1-canonical-app-entrypoint-and-platform-middleware-chain: done
   0-2-tenancy-context-resolution-and-repository-enforcement: review
-  0-3-platform-session-store-and-refresh-rotation: review
+  0-3-platform-session-store-and-refresh-rotation: done
   0-4-csrf-and-parent-domain-cookie-enforcement: done
   0-5-shared-api-envelope-and-business-refusal-contract: done
   0-6-platform-events-and-outbox-schema-foundations: done

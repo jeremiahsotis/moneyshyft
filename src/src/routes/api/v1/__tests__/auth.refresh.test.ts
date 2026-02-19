@@ -8,6 +8,8 @@ const mockVerifyRefreshToken = jest.fn();
 const mockGenerateAccessToken = jest.fn();
 const mockGenerateRefreshToken = jest.fn();
 const mockSetAuthCookies = jest.fn();
+const mockRevokeSessionById = jest.fn();
+const mockRevokeSessionByRefreshToken = jest.fn();
 
 jest.mock('../../../../services/AuthService', () => ({
   __esModule: true,
@@ -45,8 +47,8 @@ jest.mock('../../../../platform/sessions/PlatformSessionStore', () => ({
   default: {
     findSessionByRefreshToken: (...args: unknown[]) => mockFindSessionByRefreshToken(...args),
     rotateSession: (...args: unknown[]) => mockRotateSession(...args),
-    revokeSessionById: jest.fn(),
-    revokeSessionByRefreshToken: jest.fn(),
+    revokeSessionById: (...args: unknown[]) => mockRevokeSessionById(...args),
+    revokeSessionByRefreshToken: (...args: unknown[]) => mockRevokeSessionByRefreshToken(...args),
   },
 }));
 
@@ -72,11 +74,13 @@ const refreshPayload = {
   userId: 'user-123',
   email: 'user-123@example.com',
   householdId: 'house-123',
+  activeTenantId: 'house-123',
   role: 'member',
 };
 
 const activeSession = (overrides?: Partial<{ revokedAt: Date | null; rememberMe: boolean }>) => ({
   id: 'session-1',
+  tenantId: 'house-123',
   userId: 'user-123',
   householdId: 'house-123',
   refreshTokenHash: 'hash-1',
@@ -125,6 +129,7 @@ describe('auth refresh route', () => {
     expect(replayRefresh.status).toBe(403);
     expect(replayRefresh.body.error).toBe('Refresh token rejected');
     expect(mockRotateSession).toHaveBeenCalledTimes(1);
+    expect(mockRotateSession).toHaveBeenCalledWith('refresh-old', 'refresh-next', 'house-123');
     expect(mockSetAuthCookies).toHaveBeenCalledTimes(1);
   });
 
@@ -138,6 +143,25 @@ describe('auth refresh route', () => {
 
     expect(response.status).toBe(403);
     expect(response.body.error).toBe('Refresh token rejected');
+    expect(mockRotateSession).not.toHaveBeenCalled();
+  });
+
+  it('revokes stored session metadata when refresh token verification fails', async () => {
+    const app = buildApp();
+    mockVerifyRefreshToken.mockImplementation(() => {
+      throw new Error('Invalid or expired refresh token');
+    });
+
+    const response = await request(app)
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', ['refresh_token=refresh-expired']);
+
+    expect(response.status).toBe(403);
+    expect(response.body.error).toBe('Invalid refresh token');
+    expect(mockRevokeSessionByRefreshToken).toHaveBeenCalledWith(
+      'refresh-expired',
+      'invalid_or_expired_refresh_token'
+    );
     expect(mockRotateSession).not.toHaveBeenCalled();
   });
 });
