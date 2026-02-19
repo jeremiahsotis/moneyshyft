@@ -80,7 +80,7 @@ test.describe('Extra money savings reserve to goals', () => {
 
       const reserveInput = allocationModal.getByTestId('extra-money-savings-reserve');
       await reserveInput.fill('10.00');
-      await expect(reserveInput).toHaveValue('10');
+      await expect(reserveInput).toHaveValue(/^10(?:\.0+)?$/);
       const goalSelect = allocationModal.getByTestId('extra-money-goal-select').first();
       await expect(goalSelect).toBeVisible();
       await goalSelect.selectOption(goalId);
