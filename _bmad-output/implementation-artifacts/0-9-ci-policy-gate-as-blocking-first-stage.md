@@ -74,6 +74,12 @@ GPT-5 Codex
 - Ran focused policy checks for review fixes:
   - `GITHUB_EVENT_NAME=local GITHUB_HEAD_REF=main bash scripts/enforce-git-policy.sh` (fails with actionable default-branch remediation)
   - `GITHUB_EVENT_NAME=pull_request GITHUB_HEAD_REF=main GITHUB_BASE_REF=production bash scripts/enforce-git-policy.sh` (fails with actionable pull-request remediation)
+- Re-ran story validation from the canonical story branch:
+  - `npm run start:story-branch -- --allow-dirty 0-9 ci-policy-gate-as-blocking-first-stage` (created `codex/story-0-9-ci-policy-gate-as-blocking-first-stage`)
+  - `npm run test:e2e -- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts` (18 passed, 0 failed)
+  - `npm run policy:check` (fails on branch commit-subject gate: latest commit subject is `Fix: complete Story 0.9 AC3 coverage slice`, expected `0-9: <summary>`)
+  - `npm run test:e2e` before app services (18 passed, 80 failed, 13 skipped; connectivity failures to API/frontend)
+  - `npm run test:e2e` with backend/frontend running on `:3001/:5174` (71 passed, 27 failed, 13 skipped; remaining failures are out of Story 0.9 scope, including readiness/mutation metadata/UI login timeout suites)
 
 ### Completion Notes List
 
@@ -100,6 +106,9 @@ GPT-5 Codex
   - branch/story commit-subject consistency enforced for story branches
   - pull-request default-branch violations emit actionable remediation hints
 - Full-repo regression is currently red for unrelated suites; story status remains `in-progress` until broader suite health is addressed.
+- Completion gate remains blocked in this run:
+  - `policy:check` is red until the latest branch commit subject matches `0-9: <summary>`
+  - full regression remains red (`27 failed, 13 skipped` with live app services; `80 failed, 13 skipped` without services)
 
 ### File List
 
@@ -112,6 +121,7 @@ GPT-5 Codex
 
 ## Change Log
 
+- 2026-02-19: Re-ran Dev Story validation from `codex/story-0-9-ci-policy-gate-as-blocking-first-stage`; story-targeted suites are green (18 passed), but completion remains blocked by commit-subject policy gate and full regression failures (`27 failed, 13 skipped` with live app services).
 - 2026-02-19: Completed Story 0.9 AC3 automation coverage for corrected-kernel gating in CI/local guards, expanded policy-script harness for seeded sprint-status scenarios, and revalidated story-specific suites (18 passed). Full regression remains non-green (27 failed, 13 skipped) due out-of-scope suites.
 - 2026-02-18: Implemented Story 0.9 AC1/AC2 updates, activated automated coverage, and verified targeted story tests pass. Full regression remains red due to unrelated existing failures.
 - 2026-02-18: Senior Developer Review (AI) completed; changes requested and follow-up action items added.
