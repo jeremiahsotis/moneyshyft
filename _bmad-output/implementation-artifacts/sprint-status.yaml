@@ -52,13 +52,13 @@ development_status:
   0-9-ci-policy-gate-as-blocking-first-stage: done
   0-10-kernel-readiness-verification-suite: done
   epic-0-retrospective: done
-  epic-1: backlog
-  1-1-tenant-context-resolution-and-isolation-guardrails: backlog
-  1-2-tenant-and-module-entitlement-administration: backlog
-  1-3-first-party-auth-sessions-and-csrf-enforcement: backlog
-  1-4-shared-response-envelope-and-refusal-helpers: backlog
-  1-5-policy-gate-and-branch-workflow-guard-enforcement: backlog
-  1-6-security-controls-and-redaction-verification: backlog
+  epic-1: in-progress
+  1-1-tenant-context-resolution-and-isolation-guardrails: ready-for-dev
+  1-2-tenant-and-module-entitlement-administration: ready-for-dev
+  1-3-first-party-auth-sessions-and-csrf-enforcement: ready-for-dev
+  1-4-shared-response-envelope-and-refusal-helpers: ready-for-dev
+  1-5-policy-gate-and-branch-workflow-guard-enforcement: ready-for-dev
+  1-6-security-controls-and-redaction-verification: ready-for-dev
   epic-1-retrospective: optional
   epic-2: backlog
   2-1-commitment-domain-model-and-transition-rules: backlog
