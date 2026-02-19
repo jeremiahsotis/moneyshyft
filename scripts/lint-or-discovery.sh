@@ -8,4 +8,5 @@ if node -e "const p=require('./package.json'); process.exit((p.scripts && p.scri
 fi
 
 echo "No lint script found; running Playwright discovery fallback"
+# Use direct Playwright discovery so lint CI does not require backend/frontend preflight.
 npx playwright test --list
