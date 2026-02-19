@@ -1,0 +1,76 @@
+# generated: 2026-02-19
+# project: ConnectShyft
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach "done" status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to "in-progress" automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is "done" to incorporate learnings
+# - Dev moves story to "review", then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-02-19
+project: ConnectShyft
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: backlog
+  1-1-connectshyft-feature-flag-and-availability-guardrails: backlog
+  1-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes: backlog
+  1-3-orgunit-number-mapping-management: backlog
+  1-4-escalation-baseline-and-recipient-configuration: backlog
+  1-5-capability-based-route-access-and-envelope-contract-compliance: backlog
+  epic-1-retrospective: optional
+  epic-2: backlog
+  2-1-tenant-scoped-neighbor-creation-with-required-phone: backlog
+  2-2-shared-tenant-identity-and-shared-phone-indicators: backlog
+  2-3-relationship-gated-neighbor-edits-with-provenance-audit: backlog
+  2-4-role-restricted-neighbor-merge-with-irreversible-confirmation: backlog
+  epic-2-retrospective: optional
+  epic-3: backlog
+  3-1-core-connectshyft-thread-schema-and-lifecycle-constraints: backlog
+  3-2-thread-ensure-endpoint-with-conflict-safe-idempotency: backlog
+  3-3-inbox-and-thread-detail-read-contracts: backlog
+  3-4-claim-takeover-and-close-lifecycle-actions: backlog
+  3-5-deterministic-escalation-scheduler-with-claim-only-reset: backlog
+  epic-3-retrospective: optional
+  epic-4: backlog
+  4-1-outbound-sms-call-actions-that-preserve-escalation-semantics: backlog
+  4-2-preference-override-enforcement-for-outbound-sms: backlog
+  4-3-outbound-audit-outbox-and-refusal-envelope-integration: backlog
+  4-4-operator-interaction-contracts-for-outbound-safety: backlog
+  epic-4-retrospective: optional
+  epic-5: backlog
+  5-1-verified-webhook-ingress-and-deterministic-context-routing: backlog
+  5-2-inbound-sms-processing-with-active-thread-ensure: backlog
+  5-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: backlog
+  5-4-transcription-webhook-attachment-to-voicemail-records: backlog
+  5-5-replay-safe-webhook-receipt-ledger-and-retention-controls: backlog
+  5-6-parallel-delivery-safety-gates-for-connectshyft-rollout: backlog
+  epic-5-retrospective: optional
