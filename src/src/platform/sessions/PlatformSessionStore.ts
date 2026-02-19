@@ -28,9 +28,26 @@ type CreateSessionInput = {
 };
 
 class PlatformSessionStore {
+  private tenantColumnSupport: Promise<boolean> | null = null;
+
   private getScopedDb(trx?: Knex.Transaction): Knex.QueryBuilder {
     const client = trx ?? db;
     return client.withSchema('platform').table('sessions');
+  }
+
+  private async hasTenantColumn(): Promise<boolean> {
+    if (!this.tenantColumnSupport) {
+      this.tenantColumnSupport = db.schema
+        .withSchema('platform')
+        .hasColumn('sessions', 'tenant_id')
+        .catch(() => false);
+    }
+
+    return this.tenantColumnSupport;
+  }
+
+  private async resolveTenantColumn(): Promise<'tenant_id' | 'household_id'> {
+    return (await this.hasTenantColumn()) ? 'tenant_id' : 'household_id';
   }
 
   hashRefreshToken(refreshToken: string): string {
@@ -40,12 +57,13 @@ class PlatformSessionStore {
   async createSession(input: CreateSessionInput, trx?: Knex.Transaction): Promise<SessionRecord> {
     const refreshTokenHash = this.hashRefreshToken(input.refreshToken);
     const expiresAt = this.extractRefreshExpiry(input.refreshToken);
+    const tenantColumn = await this.resolveTenantColumn();
 
     const [record] = await this.getScopedDb(trx)
       .insert({
-        tenant_id: input.tenantId,
         user_id: input.userId,
         household_id: input.householdId,
+        [tenantColumn]: input.tenantId,
         refresh_token_hash: refreshTokenHash,
         remember_me: input.rememberMe,
         expires_at: expiresAt,
@@ -61,10 +79,11 @@ class PlatformSessionStore {
     trx?: Knex.Transaction
   ): Promise<SessionRecord | null> {
     const refreshTokenHash = this.hashRefreshToken(refreshToken);
+    const tenantColumn = await this.resolveTenantColumn();
     const query = this.getScopedDb(trx).where({ refresh_token_hash: refreshTokenHash });
 
     if (tenantId) {
-      query.andWhere({ tenant_id: tenantId });
+      query.andWhere({ [tenantColumn]: tenantId });
     }
 
     const record = await query.first();
@@ -78,10 +97,11 @@ class PlatformSessionStore {
     trx?: Knex.Transaction,
     tenantId?: string
   ): Promise<void> {
+    const tenantColumn = await this.resolveTenantColumn();
     const query = this.getScopedDb(trx).where({ id: sessionId }).whereNull('revoked_at');
 
     if (tenantId) {
-      query.andWhere({ tenant_id: tenantId });
+      query.andWhere({ [tenantColumn]: tenantId });
     }
 
     await query.update({
@@ -100,12 +120,13 @@ class PlatformSessionStore {
     tenantId?: string
   ): Promise<void> {
     const refreshTokenHash = this.hashRefreshToken(refreshToken);
+    const tenantColumn = await this.resolveTenantColumn();
     const query = this.getScopedDb(trx)
       .where({ refresh_token_hash: refreshTokenHash })
       .whereNull('revoked_at');
 
     if (tenantId) {
-      query.andWhere({ tenant_id: tenantId });
+      query.andWhere({ [tenantColumn]: tenantId });
     }
 
     await query.update({
@@ -123,11 +144,12 @@ class PlatformSessionStore {
     trx?: Knex.Transaction
   ): Promise<SessionRecord> {
     const executor = trx ?? db;
+    const tenantColumn = await this.resolveTenantColumn();
 
     const run = async (innerTrx: Knex.Transaction): Promise<SessionRecord> => {
       const oldRefreshTokenHash = this.hashRefreshToken(oldRefreshToken);
       const currentSessionRecord = await this.getScopedDb(innerTrx)
-        .where({ refresh_token_hash: oldRefreshTokenHash, tenant_id: tenantId })
+        .where({ refresh_token_hash: oldRefreshTokenHash, [tenantColumn]: tenantId })
         .forUpdate()
         .first();
 
@@ -190,9 +212,11 @@ class PlatformSessionStore {
   }
 
   private mapRecord(record: any): SessionRecord {
+    const tenantId = record.tenant_id ?? record.household_id;
+
     return {
       id: record.id,
-      tenantId: record.tenant_id,
+      tenantId,
       userId: record.user_id,
       householdId: record.household_id,
       refreshTokenHash: record.refresh_token_hash,

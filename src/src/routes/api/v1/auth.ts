@@ -18,7 +18,7 @@ const testEmail = process.env.TEST_EMAIL?.trim();
 const testPassword = process.env.TEST_PASSWORD?.trim();
 const testEnv = process.env.TEST_ENV?.trim().toLowerCase();
 const nodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
-const isLocalTestScope = testEnv === 'local' || nodeEnv === 'test';
+const isLocalTestScope = testEnv === 'local' || nodeEnv === 'test' || nodeEnv === 'development';
 const isTestAuthHarnessEnabled = process.env.ENABLE_TEST_AUTH_HARNESS === 'true'
   && isLocalTestScope
   && nodeEnv !== 'production'
@@ -30,6 +30,35 @@ const getDb = (): Knex => {
   // Lazy-load to keep route module import-safe in unit tests that mock app wiring.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   return require('../../../config/knex').default as Knex;
+};
+
+const isUserEmailUniqueConstraintError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybeDbError = error as { code?: string; constraint?: string };
+  return maybeDbError.code === '23505' && maybeDbError.constraint === 'users_email_unique';
+};
+
+const sleep = async (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+const loadHarnessUserByEmail = async (db: Knex, normalizedEmail: string) =>
+  db('users')
+    .whereRaw('LOWER(email) = ?', [normalizedEmail])
+    .first();
+
+const waitForHarnessUser = async (db: Knex, normalizedEmail: string) => {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const user = await loadHarnessUserByEmail(db, normalizedEmail);
+    if (user) {
+      return user;
+    }
+    await sleep(50);
+  }
+
+  return null;
 };
 
 const canUseTestAuthCredentials = (email: string, password: string): boolean => {
@@ -94,22 +123,67 @@ const createHarnessHousehold = async (): Promise<string> => {
   });
 };
 
+const ensureHarnessBaselineData = async (householdId: string): Promise<void> => {
+  const db = getDb();
+
+  const existingAccount = await db('accounts')
+    .where({ household_id: householdId, is_active: true })
+    .first();
+  if (!existingAccount) {
+    await db('accounts').insert({
+      household_id: householdId,
+      name: 'Test Checking',
+      type: 'checking',
+      current_balance: 1000,
+      starting_balance: 1000,
+      is_active: true,
+    });
+  }
+
+  const existingIncomeSource = await db('income_sources')
+    .where({ household_id: householdId, is_active: true })
+    .first();
+  if (!existingIncomeSource) {
+    await db('income_sources').insert({
+      household_id: householdId,
+      name: 'Test Income',
+      monthly_amount: 3000,
+      is_active: true,
+      sort_order: 0,
+      notes: null,
+    });
+  }
+};
+
 const ensureHarnessUser = async (email: string, password: string): Promise<void> => {
   const db = getDb();
   const normalizedEmail = email.trim().toLowerCase();
-  const user = await db('users')
-    .whereRaw('LOWER(email) = ?', [normalizedEmail])
-    .first();
+  let user = await loadHarnessUserByEmail(db, normalizedEmail);
 
   if (!user) {
-    await AuthService.signup({
-      email: normalizedEmail,
-      password,
-      firstName: 'Test',
-      lastName: 'User',
-      householdName: 'Test Household',
-    });
-    return;
+    try {
+      const signupResult = await AuthService.signup({
+        email: normalizedEmail,
+        password,
+        firstName: 'Test',
+        lastName: 'User',
+        householdName: 'Test Household',
+      });
+      if (signupResult.user.householdId) {
+        await ensureHarnessBaselineData(signupResult.user.householdId);
+      }
+      return;
+    } catch (error) {
+      if (!isUserEmailUniqueConstraintError(error)) {
+        throw error;
+      }
+
+      const existingUser = await waitForHarnessUser(db, normalizedEmail);
+      if (!existingUser) {
+        throw error;
+      }
+      user = existingUser;
+    }
   }
 
   const updates: Record<string, unknown> = {};
@@ -129,6 +203,11 @@ const ensureHarnessUser = async (email: string, password: string): Promise<void>
     await db('users')
       .where({ id: user.id })
       .update(updates);
+  }
+
+  const resolvedHouseholdId = (updates.household_id as string | undefined) ?? user.household_id ?? null;
+  if (resolvedHouseholdId) {
+    await ensureHarnessBaselineData(resolvedHouseholdId);
   }
 };
 

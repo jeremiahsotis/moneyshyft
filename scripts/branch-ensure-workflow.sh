@@ -67,10 +67,35 @@ normalize_workflow_key() {
 
 workflow_key="$(normalize_workflow_key "$workflow")"
 
-branch="${GITHUB_HEAD_REF:-$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)}"
-if [[ -z "$branch" ]]; then
-  branch="${GITHUB_REF_NAME:-detached}"
-fi
+resolve_branch() {
+  local event="${GITHUB_EVENT_NAME:-local}"
+  local resolved=""
+
+  if [[ "$event" == "local" ]]; then
+    # Local checks must trust repository state, not CI-provided branch env vars.
+    resolved="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    if [[ -z "$resolved" || "$resolved" == "HEAD" ]]; then
+      resolved="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+    fi
+  else
+    resolved="${GITHUB_HEAD_REF:-}"
+    if [[ -z "$resolved" ]]; then
+      resolved="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    fi
+    if [[ -z "$resolved" || "$resolved" == "HEAD" ]]; then
+      resolved="${GITHUB_REF_NAME:-}"
+    fi
+  fi
+
+  if [[ -z "$resolved" || "$resolved" == "HEAD" ]]; then
+    echo "detached"
+    return 0
+  fi
+
+  echo "$resolved"
+}
+
+branch="$(resolve_branch)"
 
 story_workflow_regex='^(atdd|automate|create-story|dev-story|code-review|at|ta|ds|cr)$'
 epic_workflow_regex='^(sprint-planning|retrospective|correct-course)$'

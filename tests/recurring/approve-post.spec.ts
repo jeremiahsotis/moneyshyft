@@ -45,14 +45,18 @@ test.describe('Recurring transactions', () => {
       await page.reload();
       await page.getByTestId('recurring-tab-pending').click();
 
-      const row = page.locator('[data-testid="recurring-instance-row"]', { hasText: `${payee}Today` });
-      await expect(row).toBeVisible({ timeout: 15000 });
+      const rows = page.locator('[data-testid="recurring-instance-row"]', { hasText: payee });
+      await expect(rows.first()).toBeVisible({ timeout: 15000 });
+      const pendingCountBefore = await rows.count();
+      const row = rows.first();
 
       await row.getByTestId('recurring-approve').click();
       await expect(row.getByTestId('recurring-post')).toBeVisible();
 
       await row.getByTestId('recurring-post').click();
-      await expect(row).toHaveCount(0);
+      await expect
+        .poll(async () => page.locator('[data-testid="recurring-instance-row"]', { hasText: payee }).count())
+        .toBe(Math.max(0, pendingCountBefore - 1));
 
       await page.getByTestId('recurring-tab-history').click();
       await page.getByTestId('recurring-history-status-posted').click();

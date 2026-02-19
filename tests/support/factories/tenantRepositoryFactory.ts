@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { generateAccessToken, type JWTPayload } from '../../../src/src/utils/jwt';
 
 type TenantScopeOverrides = {
@@ -24,7 +26,52 @@ type CrossTenantProbeOverrides = {
   mode?: 'read' | 'write';
 };
 
+let jwtEnvHydrated = false;
+
+const hydrateJwtEnvFromBackendConfig = (): void => {
+  if (jwtEnvHydrated) {
+    return;
+  }
+
+  jwtEnvHydrated = true;
+
+  if (process.env.JWT_SECRET && process.env.JWT_REFRESH_SECRET) {
+    return;
+  }
+
+  const backendEnvPath = path.resolve(process.cwd(), 'src/.env');
+  if (!existsSync(backendEnvPath)) {
+    return;
+  }
+
+  const lines = readFileSync(backendEnvPath, 'utf8').split('\n');
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) {
+      continue;
+    }
+
+    const delimiterIndex = line.indexOf('=');
+    if (delimiterIndex <= 0) {
+      continue;
+    }
+
+    const key = line.slice(0, delimiterIndex).trim();
+    if (key !== 'JWT_SECRET' && key !== 'JWT_REFRESH_SECRET') {
+      continue;
+    }
+
+    if (process.env[key] !== undefined) {
+      continue;
+    }
+
+    process.env[key] = line.slice(delimiterIndex + 1).trim();
+  }
+};
+
 export function createTenantScopeHeaders(overrides: TenantScopeOverrides = {}): Record<string, string> {
+  hydrateJwtEnvFromBackendConfig();
+
   const tenantId = overrides.tenantId ?? `tenant-${randomUUID()}`;
   const orgUnitId = overrides.orgUnitId ?? null;
   const role = overrides.role ?? 'TENANT_STAFF';
