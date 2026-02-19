@@ -18,13 +18,13 @@ so that non-compliant workflow/branch operations are blocked immediately..
 
 ## Tasks / Subtasks
 
-- [ ] Implement acceptance criterion 1 (AC: 1)
-  - [ ] Add automated coverage for AC 1
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Add automated coverage for AC 2
-- [ ] Implement acceptance criterion 3 (AC: 3)
-  - [ ] Enforce corrected-kernel policy gate in local and CI guards before non-Epic-0 story workflow execution
-  - [ ] Add automated coverage for AC 3
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Add automated coverage for AC 1
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Add automated coverage for AC 2
+- [x] Implement acceptance criterion 3 (AC: 3)
+  - [x] Enforce corrected-kernel policy gate in local and CI guards before non-Epic-0 story workflow execution
+  - [x] Add automated coverage for AC 3
 
 ### Review Follow-ups (AI)
 
@@ -65,10 +65,12 @@ GPT-5 Codex
 - Activated Story 0.9 tests (removed `test.skip`) in API and E2E coverage files.
 - Ran targeted story suite:
   - `npm run test:e2e -- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts`
-  - Final result: 12 passed, 0 failed.
+  - Final result: 18 passed, 0 failed.
 - Ran full regression suite:
   - `npm run test:e2e`
-  - Result: 10 passed, 48 failed, 30 skipped (failures are outside Story 0.9 scope and block status promotion to `review` in this run).
+  - Initial result without active app services: 18 passed, 80 failed, 13 skipped (blocked by runtime connectivity).
+  - Result with backend/frontend running (`src` on `:3001`, `frontend` on `:5174`): 71 passed, 27 failed, 13 skipped.
+  - Remaining failures are outside Story 0.9 scope and block status promotion to `review` in this run.
 - Ran focused policy checks for review fixes:
   - `GITHUB_EVENT_NAME=local GITHUB_HEAD_REF=main bash scripts/enforce-git-policy.sh` (fails with actionable default-branch remediation)
   - `GITHUB_EVENT_NAME=pull_request GITHUB_HEAD_REF=main GITHUB_BASE_REF=production bash scripts/enforce-git-policy.sh` (fails with actionable pull-request remediation)
@@ -84,6 +86,14 @@ GPT-5 Codex
     - current branch
     - base branch (when relevant)
     - remediation commands (dynamic when story branch context exists, generic placeholders otherwise)
+- AC3 implemented and covered:
+  - Corrected-kernel enforcement for non-Epic-0 story progression is active in both:
+    - CI policy guard: `scripts/enforce-git-policy.sh`
+    - Local workflow guard: `scripts/branch-ensure-workflow.sh`
+  - Added deterministic AC3 coverage for both unmet and satisfied gate states:
+    - Story `0-10` status gate (`done` required)
+    - `course_correction.cc-2026-02-18.status` gate (`approved` required)
+  - Added seeded temp-repo harness support to test policy gating against synthetic sprint-status states.
 - Story-specific coverage is now executable (not skipped) and passing.
 - Review findings resolved:
   - local branch spoof prevention now reads git branch in local mode
@@ -102,6 +112,7 @@ GPT-5 Codex
 
 ## Change Log
 
+- 2026-02-19: Completed Story 0.9 AC3 automation coverage for corrected-kernel gating in CI/local guards, expanded policy-script harness for seeded sprint-status scenarios, and revalidated story-specific suites (18 passed). Full regression remains non-green (27 failed, 13 skipped) due out-of-scope suites.
 - 2026-02-18: Implemented Story 0.9 AC1/AC2 updates, activated automated coverage, and verified targeted story tests pass. Full regression remains red due to unrelated existing failures.
 - 2026-02-18: Senior Developer Review (AI) completed; changes requested and follow-up action items added.
 - 2026-02-18: Resolved all five Senior Developer Review findings; hardened policy enforcement logic, added deterministic policy harness coverage, and reconciled story file metadata with git-tracked changes.

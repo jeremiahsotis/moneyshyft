@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 type PolicyScriptHarnessOptions = {
   branch: string;
@@ -9,6 +9,8 @@ type PolicyScriptHarnessOptions = {
   headRef?: string;
   baseRef?: string;
   commitSubject?: string;
+  seedFiles?: Record<string, string>;
+  env?: Record<string, string>;
 };
 
 type PolicyScriptHarnessResult = {
@@ -31,6 +33,11 @@ export function runPolicyScriptInTempRepo(
     mkdirSync(join(repoDir, 'docs/policies'), { recursive: true });
     writeFileSync(join(repoDir, 'docs/policies/git_policy.md'), policyContents);
     writeFileSync(join(repoDir, 'README.md'), '# policy harness\n');
+    for (const [relativePath, contents] of Object.entries(options.seedFiles ?? {})) {
+      const absolutePath = join(repoDir, relativePath);
+      mkdirSync(dirname(absolutePath), { recursive: true });
+      writeFileSync(absolutePath, contents);
+    }
 
     execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
     execFileSync('git', ['config', 'user.email', 'policy-harness@example.com'], { cwd: repoDir, stdio: 'ignore' });
@@ -44,6 +51,7 @@ export function runPolicyScriptInTempRepo(
       GITHUB_EVENT_NAME: options.event ?? 'local',
       ...(options.headRef ? { GITHUB_HEAD_REF: options.headRef } : {}),
       ...(options.baseRef ? { GITHUB_BASE_REF: options.baseRef } : {}),
+      ...(options.env ?? {}),
     };
 
     try {
