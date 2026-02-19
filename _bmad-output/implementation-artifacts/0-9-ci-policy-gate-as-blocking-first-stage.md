@@ -1,6 +1,6 @@
 # Story 0.9: CI Policy Gate as Blocking First Stage
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
