@@ -8,4 +8,4 @@ if node -e "const p=require('./package.json'); process.exit((p.scripts && p.scri
 fi
 
 echo "No lint script found; running Playwright discovery fallback"
-npm run test:e2e -- --list
+npx playwright test --list
