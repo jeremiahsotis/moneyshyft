@@ -1,6 +1,6 @@
 # Story 1.1: Tenant Context Resolution and Isolation Guardrails
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -113,14 +113,39 @@ This story formalizes tenancy + orgUnit context as a hard platform invariant for
 
 GPT-5 Codex
 
+### Implementation Plan
+
+- Validate AC1-AC4 against existing tenancy middleware, scope helpers, and platform contract routes.
+- Execute story-specific API and E2E automation for `1-1` guardrails.
+- Execute broader regression/build checks before task completion.
+
 ### Debug Log References
 
 - Story preparation only; implementation logs pending.
+- `npm run test:e2e -- tests/api/platform/1-1-tenant-context-resolution-and-isolation-guardrails.api.spec.ts` (pass)
+- `npm run test:e2e -- tests/e2e/platform/1-1-tenant-context-resolution-and-isolation-guardrails.spec.ts` (pass)
+- `npm test` in `src/` (failures outside Story 1.1 scope: `PlatformSessionStore` and centralized time contract suites)
+- `npm run build` in `src/` (pass)
+- `npm run build` in `frontend/` (pass)
+- `npm run test:e2e` full suite (11 unrelated UI login/navigation failures with `/api/v1/auth/*` `ECONNREFUSED`)
 
 ### Completion Notes List
 
 - Story context prepared with tenancy and scope-enforcement guardrails.
+- Confirmed AC-aligned implementation already exists in:
+  - `src/src/platform/middleware/tenancyContext.ts`
+  - `src/src/platform/tenancy/requestContext.ts`
+  - `src/src/platform/tenancy/tenantScope.ts`
+  - `src/src/platform/tenancy/orgUnitAccess.ts`
+  - `src/src/routes/api/v1/platform-contracts.ts`
+- Confirmed Story 1.1 API + E2E automated coverage passes end-to-end.
+- Story remains `in-progress` because full regression gates are red due to unrelated baseline failures.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/1-1-tenant-context-resolution-and-isolation-guardrails.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+
+## Change Log
+
+- 2026-02-19: Executed `dev-story` for `mono-s1.1` (`1-1-tenant-context-resolution-and-isolation-guardrails`), validated story-specific implementation/tests, and moved story to `in-progress` pending unrelated baseline regression failures.
