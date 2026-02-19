@@ -163,7 +163,17 @@ const path = require("path");
 const crypto = require("crypto");
 const filePath = process.argv[1];
 const repoRoot = process.cwd();
-const requiredGates = ["tenancy", "auth", "csrf", "envelope", "eventOutbox", "timezone"];
+const requiredGates = [
+  "tenancy",
+  "auth",
+  "csrf",
+  "envelope",
+  "eventOutbox",
+  "timezone",
+  "rbac",
+  "activeTenantMembership",
+  "globalEmailUniqueness",
+];
 const allowedRoots = [
   path.resolve(path.join(repoRoot, "_bmad-output/implementation-artifacts")),
   path.resolve(path.join(repoRoot, "tests/artifacts/gates")),

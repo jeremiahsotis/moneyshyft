@@ -51,7 +51,17 @@ const storyKeys = [
   '0-10-kernel-readiness-verification-suite',
 ];
 
-const requiredReadinessGates = ['tenancy', 'auth', 'csrf', 'envelope', 'eventOutbox', 'timezone'];
+const requiredReadinessGates = [
+  'tenancy',
+  'auth',
+  'csrf',
+  'envelope',
+  'eventOutbox',
+  'timezone',
+  'rbac',
+  'activeTenantMembership',
+  'globalEmailUniqueness',
+];
 const failures = [];
 const warnings = [];
 const gateEvidence = {};
@@ -442,6 +452,123 @@ const main = async () => {
     }
 
     return { pass: errors.length === 0, evidence: errors.length ? errors : ['timezone contract checks passed'] };
+  });
+
+  await runGateCheck('rbac', async () => {
+    const errors = [];
+    const matrixResult = await requestJson('GET', '/api/v1/platform/_kernel/contracts/rbac/three-layer-matrix', {
+      headers: defaultHeaders,
+    });
+
+    assertCondition(matrixResult.ok, `request failure: ${matrixResult.error || 'network error'}`, errors);
+    if (matrixResult.ok) {
+      assertCondition(matrixResult.status === 200, `expected 200 for RBAC matrix, got ${matrixResult.status}`, errors);
+      assertCondition(matrixResult.body?.ok === true, 'expected ok=true for RBAC matrix', errors);
+      assertCondition(
+        matrixResult.body?.code === 'RBAC_CAPABILITY_MATRIX_VALIDATED',
+        'expected RBAC_CAPABILITY_MATRIX_VALIDATED',
+        errors
+      );
+      assertCondition(Array.isArray(matrixResult.body?.roleModel), 'expected roleModel array in RBAC matrix response', errors);
+      assertCondition(Array.isArray(matrixResult.body?.checks), 'expected checks array in RBAC matrix response', errors);
+    }
+
+    return { pass: errors.length === 0, evidence: errors.length ? errors : ['rbac capability matrix checks passed'] };
+  });
+
+  await runGateCheck('activeTenantMembership', async () => {
+    const errors = [];
+    const decoded = jwt.decode(signedTenantAccessToken);
+    const decodedPayload = decoded && typeof decoded === 'object' ? decoded : null;
+    const decodedActiveTenant = decodedPayload && typeof decodedPayload.activeTenantId === 'string'
+      ? decodedPayload.activeTenantId
+      : null;
+
+    assertCondition(
+      decodedActiveTenant === tenantId,
+      'expected signed access token to contain explicit activeTenantId matching tenant scope',
+      errors
+    );
+
+    const scopedRead = await requestJson('GET', '/api/v1/platform/_kernel/tenancy/repository-check', {
+      headers: tenantScopedHeaders,
+    });
+    assertCondition(scopedRead.ok, `request failure: ${scopedRead.error || 'network error'}`, errors);
+    if (scopedRead.ok) {
+      assertCondition(scopedRead.status === 200, `expected 200 for canonical activeTenantId context, got ${scopedRead.status}`, errors);
+      assertCondition(scopedRead.body?.code === 'TENANT_SCOPE_APPLIED', 'expected TENANT_SCOPE_APPLIED', errors);
+    }
+
+    const spoofedActiveTenantRead = await requestJson('GET', '/api/v1/platform/_kernel/tenancy/repository-check', {
+      headers: {
+        ...tenantScopedHeaders,
+        'x-active-tenant-id': `tenant-${randomUUID()}`,
+      },
+    });
+    assertCondition(
+      spoofedActiveTenantRead.ok,
+      `request failure: ${spoofedActiveTenantRead.error || 'network error'}`,
+      errors
+    );
+    if (spoofedActiveTenantRead.ok) {
+      assertCondition(
+        spoofedActiveTenantRead.status === 403,
+        `expected 403 for spoofed x-active-tenant-id, got ${spoofedActiveTenantRead.status}`,
+        errors
+      );
+      assertCondition(
+        spoofedActiveTenantRead.body?.code === 'TENANT_SCOPE_VIOLATION',
+        'expected TENANT_SCOPE_VIOLATION for spoofed x-active-tenant-id',
+        errors
+      );
+    }
+
+    return {
+      pass: errors.length === 0,
+      evidence: errors.length ? errors : ['activeTenantId context and membership guard checks passed']
+    };
+  });
+
+  await runGateCheck('globalEmailUniqueness', async () => {
+    const errors = [];
+    const uniquenessContractResult = await requestJson(
+      'GET',
+      '/api/v1/platform/_kernel/contracts/identity/global-email-uniqueness',
+      { headers: defaultHeaders }
+    );
+
+    assertCondition(
+      uniquenessContractResult.ok,
+      `request failure: ${uniquenessContractResult.error || 'network error'}`,
+      errors
+    );
+    if (uniquenessContractResult.ok) {
+      assertCondition(
+        uniquenessContractResult.status === 200,
+        `expected 200 for global email uniqueness contract, got ${uniquenessContractResult.status}`,
+        errors
+      );
+      assertCondition(
+        uniquenessContractResult.body?.ok === true,
+        'expected ok=true for global email uniqueness contract',
+        errors
+      );
+      assertCondition(
+        uniquenessContractResult.body?.code === 'GLOBAL_EMAIL_UNIQUENESS_CONTRACT_VALIDATED',
+        'expected GLOBAL_EMAIL_UNIQUENESS_CONTRACT_VALIDATED',
+        errors
+      );
+      assertCondition(
+        uniquenessContractResult.body?.contract?.allPassed === true,
+        'expected contract.allPassed=true for global email uniqueness',
+        errors
+      );
+    }
+
+    return {
+      pass: errors.length === 0,
+      evidence: errors.length ? errors : ['global email uniqueness contract checks passed']
+    };
   });
 
   const readinessGateResults = {};

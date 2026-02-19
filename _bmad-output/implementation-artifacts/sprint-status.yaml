@@ -50,7 +50,7 @@ development_status:
   0-7-mutation-transaction-wrapper-with-mandatory-event-outbox-writes: review
   0-8-centralized-time-service-and-utc-local-rendering-contract: done
   0-9-ci-policy-gate-as-blocking-first-stage: done
-  0-10-kernel-readiness-verification-suite: review
+  0-10-kernel-readiness-verification-suite: done
   epic-0-retrospective: optional
   epic-1: backlog
   1-1-tenant-context-resolution-and-isolation-guardrails: backlog
