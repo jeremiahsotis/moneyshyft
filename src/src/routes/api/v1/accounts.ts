@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { AccountService } from '../../../services/AccountService';
 import { CreditCardService } from '../../../services/CreditCardService';
 import { asyncHandler } from '../../../middleware/errorHandler';
@@ -8,8 +8,19 @@ import { createAccountSchema, updateAccountSchema } from '../../../validators/ac
 
 const router = Router();
 
+const requireTenantScopedAccountsContext = (req: Request, res: Response, next: NextFunction): void => {
+  if (req.scopeMode === 'ORG_UNIT') {
+    res.status(403).json({
+      error: 'OrgUnit-scoped account access is not enabled for this module yet',
+    });
+    return;
+  }
+
+  next();
+};
+
 // All routes require authentication
-router.use(authenticateToken);
+router.use(authenticateToken, requireTenantScopedAccountsContext);
 
 /**
  * GET /api/v1/accounts

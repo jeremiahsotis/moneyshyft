@@ -99,6 +99,28 @@ describe('Story 0.5 - shared API envelope and business refusal contract', () => 
       });
     });
 
+    it('preserves caller tenant header for public envelope contract probes', async () => {
+      const app = buildApp();
+
+      const response = await request(app)
+        .post('/api/v1/platform/_kernel/contracts/envelope/success')
+        .set('x-correlation-id', 'corr-envelope-tenant-echo')
+        .set('x-tenant-id', 'tenant-envelope-alpha')
+        .send({
+          code: 'ENVELOPE_SUCCESS',
+          message: 'Envelope tenant echo contract',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'ENVELOPE_SUCCESS',
+        message: 'Envelope tenant echo contract',
+        correlationId: 'corr-envelope-tenant-echo',
+        tenantId: 'tenant-envelope-alpha',
+      });
+    });
+
     it('serializes module endpoint success responses through shared envelope helpers', async () => {
       const app = buildApp();
 

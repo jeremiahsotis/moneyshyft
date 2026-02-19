@@ -87,7 +87,7 @@ export class AccountService {
     const account = await knex.transaction(async (trx: Knex.Transaction) => {
       const [created] = await trx('accounts')
         .insert({
-          household_id: householdId,
+          household_id: tenantId,
           name,
           type,
           current_balance: starting_balance,
@@ -100,7 +100,7 @@ export class AccountService {
 
       if (starting_balance !== 0) {
         await trx('transactions').insert({
-          household_id: householdId,
+          household_id: tenantId,
           account_id: created.id,
           category_id: null,
           payee: 'Initial Funding',

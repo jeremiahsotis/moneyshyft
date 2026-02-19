@@ -12,6 +12,7 @@ import {
   type EnvelopeContext
 } from '../../../platform/envelopes/response';
 import {
+  applyScopeMode,
   type TenantScopeContext,
   requireOrgUnitId,
   requireTenantId,
@@ -56,15 +57,15 @@ const resolveCookiePolicy = (environment: CookiePolicyEnvironment): {
 };
 
 const resolveEnvelopeContext = (req: Request, res: Response): EnvelopeContext => {
-  const headerTenant = req.header('x-tenant-id');
+  const canonicalTenant = normalizeContextValue(req.tenantContext?.tenantId || req.tenantId || null);
   const base = (res.locals.responseEnvelope as EnvelopeContext | undefined) || {
     correlationId: req.correlationId || null,
-    tenantId: req.tenantId || null
+    tenantId: canonicalTenant
   };
 
   return {
     correlationId: base.correlationId ?? req.correlationId ?? null,
-    tenantId: headerTenant || base.tenantId || req.tenantId || null
+    tenantId: base.tenantId ?? canonicalTenant
   };
 };
 
@@ -74,14 +75,28 @@ const applyEnvelopeTenantOverride = (req: Request, res: Response): void => {
     return;
   }
 
+  const normalizedHeaderTenant = normalizeContextValue(headerTenant);
+  if (!normalizedHeaderTenant) {
+    return;
+  }
+
+  const canonicalTenant = normalizeContextValue(req.tenantContext?.tenantId || req.tenantId || null);
+  const isPublicContext = !canonicalTenant || canonicalTenant === 'public';
+
+  if (!isPublicContext && normalizedHeaderTenant !== canonicalTenant) {
+    return;
+  }
+
+  const resolvedTenant = isPublicContext ? normalizedHeaderTenant : canonicalTenant;
+
   const current = (res.locals.responseEnvelope as EnvelopeContext | undefined) || {
     correlationId: req.correlationId || null,
-    tenantId: req.tenantId || null
+    tenantId: resolvedTenant
   };
 
   res.locals.responseEnvelope = {
     ...current,
-    tenantId: headerTenant
+    tenantId: resolvedTenant
   };
 };
 
@@ -97,6 +112,44 @@ const normalizeContextValue = (value: string | null | undefined): string | null 
 const loadPlatformDb = (): Knex => {
   const knexModule = require('../../../config/knex') as { default: Knex };
   return knexModule.default;
+};
+
+type RepositoryProbeResource = 'accounts' | 'transactions' | 'goals' | 'debts';
+
+const resolveRepositoryProbe = (resource: RepositoryProbeResource): {
+  table: string;
+  tenantColumn: string;
+  orgUnitColumn: string;
+} => {
+  if (resource === 'accounts') {
+    return {
+      table: 'accounts',
+      tenantColumn: 'household_id',
+      orgUnitColumn: 'org_unit_id',
+    };
+  }
+
+  if (resource === 'goals') {
+    return {
+      table: 'goals',
+      tenantColumn: 'household_id',
+      orgUnitColumn: 'org_unit_id',
+    };
+  }
+
+  if (resource === 'debts') {
+    return {
+      table: 'debts',
+      tenantColumn: 'household_id',
+      orgUnitColumn: 'org_unit_id',
+    };
+  }
+
+  return {
+    table: 'transactions',
+    tenantColumn: 'household_id',
+    orgUnitColumn: 'org_unit_id',
+  };
 };
 
 const resolveProtectedScopeContext = (req: Request): TenantScopeContext => {
@@ -1608,6 +1661,22 @@ router.get('/_kernel/tenancy/repository-check', async (req: Request, res: Respon
   }
 
   const requiredFilters = resolveScopeFilters(scopeContext);
+  const resource = (
+    typeof req.query.resource === 'string'
+    && ['accounts', 'transactions', 'goals', 'debts'].includes(req.query.resource)
+      ? req.query.resource
+      : 'transactions'
+  ) as RepositoryProbeResource;
+  const probeConfig = resolveRepositoryProbe(resource);
+  const scopeProbe = applyScopeMode(
+    loadPlatformDb().queryBuilder().from(probeConfig.table),
+    scopeContext,
+    probeConfig.tenantColumn,
+    probeConfig.orgUnitColumn
+  )
+    .select([probeConfig.tenantColumn, probeConfig.orgUnitColumn])
+    .limit(2)
+    .toSQL();
   const context = resolveEnvelopeContext(req, res);
   const envelope = buildSuccessEnvelope(context, {
     code: 'TENANT_SCOPE_APPLIED',
@@ -1622,10 +1691,13 @@ router.get('/_kernel/tenancy/repository-check', async (req: Request, res: Respon
       scopeMode: scopeContext.scopeMode,
     },
     requiredFilters,
-    rows: [
-      { id: 'txn-001', tenantId: scopeContext.tenantId, orgUnitId: scopeContext.orgUnitId },
-      { id: 'txn-002', tenantId: scopeContext.tenantId, orgUnitId: scopeContext.orgUnitId }
-    ]
+    rows: [],
+    repositoryProbe: {
+      resource,
+      table: probeConfig.table,
+      sql: scopeProbe.sql,
+      bindings: scopeProbe.bindings,
+    }
   });
 });
 

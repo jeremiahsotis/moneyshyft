@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 import { apiRequest } from '../../support/helpers/apiClient';
 import {
   createRepositoryGuardQuery,
@@ -39,7 +40,7 @@ test.describe('Story 0.2 automate - tenancy context and repository enforcement A
       headers: tenantHeaders,
     });
 
-    // Then all returned rows are scoped to the resolved tenant
+    // Then repository probe evidence proves tenant scope filters are injected
     expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body.context).toMatchObject({
@@ -50,8 +51,19 @@ test.describe('Story 0.2 automate - tenancy context and repository enforcement A
     expect(body.requiredFilters).toEqual({
       tenant_id: 'tenant-alpha',
     });
-    expect(Array.isArray(body.rows)).toBe(true);
-    expect(body.rows.every((row: { tenantId: string }) => row.tenantId === 'tenant-alpha')).toBe(true);
+    expect(body.rows).toEqual([]);
+    expect(body.repositoryProbe).toMatchObject({
+      resource: 'transactions',
+      table: 'transactions',
+    });
+    expect(typeof body.repositoryProbe.sql).toBe('string');
+    expect(body.repositoryProbe.sql.toLowerCase()).toContain('from');
+    expect(body.repositoryProbe.sql.toLowerCase()).toContain('transactions');
+    expect(body.repositoryProbe.sql.toLowerCase()).toContain('household_id');
+    expect(Array.isArray(body.repositoryProbe.bindings)).toBe(true);
+    expect(body.repositoryProbe.bindings).toEqual(
+      expect.arrayContaining(['tenant-alpha'])
+    );
   });
 
   test('rejects cross-tenant query overrides from protected paths @P1', async ({ request }) => {
@@ -107,6 +119,34 @@ test.describe('Story 0.2 automate - tenancy context and repository enforcement A
     expect(body).toMatchObject({
       ok: false,
       code: 'ORG_UNIT_SCOPE_VIOLATION',
+    });
+  });
+
+  test('requires tenant membership before orgUnit-scoped diagnostics are allowed @P1', async ({ request }) => {
+    // Given an orgUnit-scoped request for a synthetic tenant/user pair with no memberships
+    const tenantId = randomUUID();
+    const orgUnitId = randomUUID();
+    const userId = randomUUID();
+    const tenantHeaders = createTenantScopeHeaders({
+      tenantId,
+      orgUnitId,
+      role: 'ORGUNIT_MEMBER',
+      userId,
+    });
+
+    // When orgUnit-scoped diagnostics are requested
+    const response = await apiRequest(request, {
+      method: 'GET',
+      path: '/api/v1/platform/_kernel/tenancy/diagnostics',
+      headers: tenantHeaders,
+    });
+
+    // Then tenant membership is required before orgUnit diagnostics can proceed
+    expect(response.status()).toBe(403);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      ok: false,
+      code: 'TENANT_SCOPE_VIOLATION',
     });
   });
 
