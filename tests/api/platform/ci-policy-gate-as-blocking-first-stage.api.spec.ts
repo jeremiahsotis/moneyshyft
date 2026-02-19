@@ -66,6 +66,9 @@ function runBranchGuardInTempRepo(
           cwd: repoDir,
           env: {
             ...process.env,
+            GITHUB_EVENT_NAME: 'local',
+            GITHUB_HEAD_REF: '',
+            GITHUB_REF_NAME: '',
             SPRINT_STATUS_FILE: sprintStatusPath,
             ...(options.env ?? {}),
           },

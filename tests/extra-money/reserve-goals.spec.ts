@@ -58,32 +58,56 @@ test.describe('Extra money savings reserve to goals', () => {
       await page.getByTestId('extra-money-assign-submit').click();
       await expect(page.getByTestId('extra-money-assign-modal')).toBeHidden();
 
+      const assignedEntriesResponse = await page.request.get('/api/v1/extra-money?status=assigned');
+      const assignedEntriesData = await assignedEntriesResponse.json();
+      const assignedEntry = assignedEntriesData.data.find((entry: { source: string }) => entry.source === source);
+      expect(assignedEntry).toBeTruthy();
+      entryId = assignedEntry.id;
+
       await page.getByTestId('extra-money-tab-assigned').click();
       await expect(entryCard).toBeVisible();
+      const recommendationRequest = page
+        .waitForResponse(
+          (response) =>
+            response.request().method() === 'POST' && response.url().includes('/api/v1/extra-money/recommendations'),
+          { timeout: 3000 },
+        )
+        .catch(() => null);
       await entryCard.getByTestId('extra-money-allocate-button').click();
-      await expect(page.getByTestId('extra-money-assign-modal')).toBeVisible();
+      const allocationModal = page.getByTestId('extra-money-assign-modal').filter({ hasText: source });
+      await expect(allocationModal).toBeVisible();
+      await recommendationRequest;
 
-      await page.getByTestId('extra-money-savings-reserve').fill('10.00');
-      await page.getByTestId('extra-money-goal-select').first().selectOption(goalId);
-      await page.getByTestId('extra-money-goal-amount').first().fill('10.00');
+      const reserveInput = allocationModal.getByTestId('extra-money-savings-reserve');
+      await reserveInput.fill('10.00');
+      await expect(reserveInput).toHaveValue('10');
+      const goalSelect = allocationModal.getByTestId('extra-money-goal-select').first();
+      await expect(goalSelect).toBeVisible();
+      await goalSelect.selectOption(goalId);
+      await allocationModal.getByTestId('extra-money-goal-amount').first().fill('10.00');
 
-      await expect(page.getByTestId('extra-money-apply-goals')).toBeEnabled();
-      const applyResponsePromise = page.waitForResponse((response) => {
-        return response.url().includes(`/api/v1/extra-money/`) && response.url().includes('/assign-goals');
-      });
-      await page.getByTestId('extra-money-apply-goals').click();
-      await applyResponsePromise;
+      const applyGoalsButton = allocationModal.getByTestId('extra-money-apply-goals');
+      await expect(applyGoalsButton).toBeEnabled();
+      await Promise.all([
+        page.waitForResponse((response) => {
+          return (
+            response.request().method() === 'POST' &&
+            response.url().includes('/api/v1/extra-money/') &&
+            response.url().includes('/assign-goals')
+          );
+        }),
+        applyGoalsButton.click(),
+      ]);
 
       const updatedGoalResponse = await page.request.get(`/api/v1/goals/${goalId}`);
       const updatedGoalData = await updatedGoalResponse.json();
       expect(Number(updatedGoalData.data.current_amount)).toBe(10);
 
-      const entriesResponse = await page.request.get('/api/v1/extra-money?status=assigned');
-      const entriesData = await entriesResponse.json();
-      const assignedEntry = entriesData.data.find((entry: { source: string }) => entry.source === source);
-      expect(assignedEntry).toBeTruthy();
-      entryId = assignedEntry.id;
-      expect(Number(assignedEntry.savings_reserve)).toBe(0);
+      const refreshedEntriesResponse = await page.request.get('/api/v1/extra-money?status=assigned');
+      const refreshedEntriesData = await refreshedEntriesResponse.json();
+      const refreshedEntry = refreshedEntriesData.data.find((entry: { source: string }) => entry.source === source);
+      expect(refreshedEntry).toBeTruthy();
+      expect(Number(refreshedEntry.savings_reserve)).toBe(0);
     } finally {
       await deleteById(page.request, '/api/v1/extra-money', entryId);
       await deleteById(page.request, '/api/v1/goals', goalId);
