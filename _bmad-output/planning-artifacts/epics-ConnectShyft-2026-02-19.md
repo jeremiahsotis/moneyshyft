@@ -31,7 +31,7 @@ FR-CS-010: Shared-phone flags are explicit and persisted per phone entry.
 FR-CS-011: Exactly one active thread may exist per `(tenant_id, org_unit_id, neighbor_id)`.
 FR-CS-012: `POST /api/v1/connectshyft/threads` must return existing active thread when present; otherwise create.
 FR-CS-013: Canonical thread state enum is `UNCLAIMED | CLAIMED | CLOSED`.
-FR-CS-014: Escalation progression follows `X -> 2X -> 3X`.
+FR-CS-014: Escalation progression follows `X -> 2X -> 3X`, where default `X = 24 hours` and orgUnit-configurable range is `1-24 hours` (integer hours only).
 FR-CS-015: Escalation resets only on explicit claim and cancels pending escalation notifications.
 FR-CS-016: Outbound attempts without claim must not reset escalation.
 FR-CS-017: Thread supports metadata fields `last_inbound_cs_number_id` and `preferred_outbound_cs_number_id` (or derived outbound selection from orgUnit config).
@@ -45,7 +45,7 @@ FR-CS-023: Outbound SMS when `NO` requires override reason; override is persiste
 FR-CS-024: Critical state transitions and governance actions emit audit/outbox records.
 FR-CS-025: OrgUnit supports multiple mapped Twilio numbers.
 FR-CS-026: Number mapping uniqueness is enforced per tenant for phone number.
-FR-CS-027: OrgUnit escalation config supports `X` baseline and recipient targets.
+FR-CS-027: OrgUnit escalation config supports integer-hour `X` baseline (default 24, range 1-24) and recipient targets.
 
 ### NonFunctional Requirements
 
@@ -59,8 +59,8 @@ NFR-CS-007: Webhook replay protection must ensure duplicate Twilio SID events do
 NFR-CS-008: Escalation evaluation must be event-scheduled per thread using persisted `next_evaluation_at_utc`; no in-memory timers.
 NFR-CS-009: Escalation engine behavior must remain consistent across retries and process restarts.
 NFR-CS-010: No silent state transitions outside audited paths.
-NFR-CS-011: Inbox and thread fetch performance supports operational use without manual fallback.
-NFR-CS-012: Webhook ingestion supports near-real-time processing under expected load.
+NFR-CS-011: Inbox list and thread detail endpoint responses must meet `p95 <= 750ms` and `p99 <= 1500ms` under expected operational load.
+NFR-CS-012: Webhook ingestion (signature validation, dedupe, durable write acceptance) must meet `p95 <= 1000ms` and `p99 <= 2000ms`; end-to-end thread timeline visibility target is `p95 <= 5000ms`.
 NFR-CS-013: Retention compliance for communication artifacts.
 NFR-CS-014: Unauthorized cross-conference sharing is technically blocked.
 
@@ -109,6 +109,30 @@ FR-CS-024: Epic 4, Story 4.3
 FR-CS-025: Epic 1, Story 1.3
 FR-CS-026: Epic 1, Story 1.3
 FR-CS-027: Epic 1, Story 1.4
+
+### Story Dependency Map (Parallel-Safe)
+
+- `1.2` depends on `1.1`
+- `1.3` depends on `1.1`, `1.2`
+- `1.4` depends on `1.1`, `1.2`
+- `1.5` depends on `1.2`
+- `2.1` depends on `1.2`
+- `2.2` depends on `2.1`
+- `2.3` depends on `2.1`, `3.3`
+- `2.4` depends on `2.3`
+- `3.2` depends on `3.1`
+- `3.3` depends on `3.2`
+- `3.4` depends on `3.2`, `3.3`
+- `3.5` depends on `3.4`, `1.4`
+- `4.1` depends on `3.3`
+- `4.2` depends on `3.3`
+- `4.3` depends on `4.1`, `4.2`
+- `4.4` depends on `3.3`, `4.1`, `4.2`
+- `5.2` depends on `5.1`, `3.2`
+- `5.3` depends on `5.1`, `3.2`
+- `5.4` depends on `5.3`
+- `5.5` depends on `5.1`
+- `5.6` depends on `1.5`, `5.1`, `5.5`
 
 ## Epic List
 
@@ -182,7 +206,7 @@ So that inbound routing is deterministic and operationally maintainable.
 ### Story 1.4: Escalation Baseline and Recipient Configuration
 
 As an orgUnit administrator,
-I want to configure escalation baseline `X` and recipient targets,
+I want to configure escalation baseline `X` in integer hours and recipient targets,
 So that unclaimed threads escalate to the correct recipients at defined intervals.
 
 **FRs:** FR-CS-027
@@ -191,7 +215,7 @@ So that unclaimed threads escalate to the correct recipients at defined interval
 
 **Given** an orgUnit admin updates escalation settings
 **When** baseline and recipients are submitted
-**Then** configuration is persisted with validation for required recipients and valid timings
+**Then** configuration is persisted with validation for required recipients and valid integer-hour timings (`X` default 24, allowed 1-24)
 **And** invalid recipient assignments are blocked with deterministic refusal messaging.
 
 ### Story 1.5: Capability-Based Route Access and Envelope Contract Compliance
@@ -199,6 +223,11 @@ So that unclaimed threads escalate to the correct recipients at defined interval
 As a tenant operations lead,
 I want capability checks and response envelopes to be consistent across ConnectShyft APIs,
 So that client behavior is predictable and unauthorized operations are safely refused.
+
+**FRs:** FR-CS-001, FR-CS-002, FR-CS-003
+**NFRs:** NFR-CS-001, NFR-CS-002, NFR-CS-004
+**Depends On:** Story 1.2
+**Parallel Lane:** lane-a-platform-guards
 
 **Acceptance Criteria:**
 
@@ -348,7 +377,7 @@ So that unclaimed threads escalate predictably and operational ownership is expl
 
 **Given** unclaimed threads have persisted `next_evaluation_at_utc` values
 **When** scheduler evaluation runs
-**Then** escalation progresses `X -> 2X -> 3X` using persisted timestamps with no in-memory timers
+**Then** escalation progresses `X -> 2X -> 3X` using persisted timestamps with no in-memory timers, where `X` is integer hours (default 24, allowed 1-24)
 **And** explicit claim resets escalation and cancels pending escalation notifications.
 
 ## Epic 4: Policy-Safe Outbound Communication
@@ -405,6 +434,11 @@ So that operational decisions are traceable and clients can respond deterministi
 As a frontline operator,
 I want outbound policy controls to be visible and accessible in desktop, tablet, and mobile thread workflows,
 So that I can complete actions quickly without violating governance rules.
+
+**FRs:** FR-CS-016, FR-CS-022, FR-CS-023
+**NFRs:** NFR-CS-011
+**Depends On:** Story 3.3, Story 4.1, Story 4.2
+**Parallel Lane:** lane-d-outbound-ux
 
 **Acceptance Criteria:**
 
@@ -497,6 +531,11 @@ So that duplicate Twilio events are safely ignored and storage remains bounded.
 As a release maintainer,
 I want policy and regression gates enforced for ConnectShyft pull requests,
 So that ConnectShyft can ship in parallel with RouteShyft without cross-module regressions.
+
+**FRs:** FR-CS-021, FR-CS-021a
+**NFRs:** NFR-CS-001, NFR-CS-004, NFR-CS-010
+**Depends On:** Story 1.5, Story 5.1, Story 5.5
+**Parallel Lane:** lane-e-release-safety
 
 **Acceptance Criteria:**
 

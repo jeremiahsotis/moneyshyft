@@ -98,10 +98,11 @@ The UX must preserve a single, stable mental model:
 ### Flow 4: Escalation Lifecycle Visibility
 
 1. Escalation stage chip visible in inbox and thread header.
-2. Escalation chip displays current stage and countdown to next stage, derived from persisted timestamps.
-3. Countdown is informational only and must never be used for client-side escalation enforcement.
-4. UI copy explicitly states: "Outbound messages do not stop escalation. Claim to reset."
-5. Claim action confirmation includes "pending escalation notifications canceled".
+2. Escalation chip displays current stage and countdown to next stage, derived from persisted timestamps and integer-hour baseline configuration.
+3. Escalation baseline uses integer hours only, default `X = 24` and allowed range `1-24`.
+4. Countdown is informational only and must never be used for client-side escalation enforcement.
+5. UI copy explicitly states: "Outbound messages do not stop escalation. Claim to reset."
+6. Claim action confirmation includes "pending escalation notifications canceled".
 
 ### Flow 5: Neighbor Edit and Merge Governance
 
@@ -175,7 +176,7 @@ The UX must preserve a single, stable mental model:
 
 **Key Controls:**
 - OrgUnit number mapping table (supports multiple numbers).
-- Escalation base `X` configuration.
+- Escalation base `X` configuration in integer hours (default 24, allowed 1-24).
 - Primary/secondary/tenant-staff recipient controls.
 
 **Validation UX:**
@@ -231,6 +232,7 @@ The UX must preserve a single, stable mental model:
 2. Always name state and ownership in plain language.
 3. Preference override copy must explain why reason capture is required.
 4. Escalation copy must reinforce claim-only reset semantics.
+5. Escalation timing copy must use hour increments only and display baseline as default 24 hours unless orgUnit config overrides it.
 
 ## Instrumentation and UX Metrics
 

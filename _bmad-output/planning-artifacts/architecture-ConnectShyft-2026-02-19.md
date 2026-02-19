@@ -112,10 +112,11 @@ Rationale:
 
 Decision:
 1. Escalation progression is `X -> 2X -> 3X`.
-2. Outbound communication attempts do not reset escalation.
-3. Claim resets escalation and cancels pending escalation notifications.
-4. Escalation evaluation is event-scheduled per thread via persisted `next_evaluation_at_utc`.
-5. No in-memory timers are allowed for authoritative escalation decisions.
+2. `X` is measured in integer hours with default `X = 24` and allowed configuration range `1-24`.
+3. Outbound communication attempts do not reset escalation.
+4. Claim resets escalation and cancels pending escalation notifications.
+5. Escalation evaluation is event-scheduled per thread via persisted `next_evaluation_at_utc`.
+6. No in-memory timers are allowed for authoritative escalation decisions.
 
 Rationale:
 - Ensures restart-safe deterministic behavior and operational clarity.
@@ -261,6 +262,7 @@ Decision:
    3. Advance escalation stage when due.
    4. Enqueue notifications/events.
    5. Persist next evaluation timestamp or null when terminal.
+4. Escalation intervals are computed from configured integer-hour baseline `X` (default 24, range 1-24).
 
 ### 6.2 Claim Interaction
 
@@ -347,7 +349,11 @@ Selected default:
 4. Scheduler tests:
    1. due-evaluation progression
    2. claim suppression semantics
-5. Regression tests:
+5. Performance budget tests:
+   1. inbox/thread endpoint latency budgets (`p95 <= 750ms`, `p99 <= 1500ms`)
+   2. webhook ingestion budgets (`p95 <= 1000ms`, `p99 <= 2000ms`)
+   3. end-to-end timeline visibility budget (`p95 <= 5000ms`)
+6. Regression tests:
    1. RouteShyft smoke/regression suite runs on ConnectShyft PRs
 
 ### 11.2 Mandatory CI Gates

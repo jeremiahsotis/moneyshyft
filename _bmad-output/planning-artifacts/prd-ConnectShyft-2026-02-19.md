@@ -92,7 +92,7 @@ The delivery strategy is bounded-context, contract-first, and feature-flagged. T
 4. OrgUnit-scoped inbox and thread lifecycle (ensure, claim, takeover, close).
 5. Outbound SMS/call actions with preference enforcement.
 6. Twilio SMS/voice/transcription webhook handling with signature validation.
-7. Escalation timers (`X -> 2X -> 3X`) with claim-only reset.
+7. Escalation timers (`X -> 2X -> 3X`) with claim-only reset; default `X` is 24 hours and orgUnit-configurable range is 1-24 hours (integer hours only).
 
 ### Post-MVP
 
@@ -142,8 +142,8 @@ The delivery strategy is bounded-context, contract-first, and feature-flagged. T
 
 ### Journey C: Escalation Path
 
-1. Thread remains unclaimed beyond `X`.
-2. Escalates to Primary at `X`, Secondary at `2X`, Tenant staff at `3X`.
+1. Thread remains unclaimed beyond baseline `X` (default `X = 24 hours`; allowed range 1-24 hours, integer hours only).
+2. Escalates to Primary at `X`, Secondary at `2X`, Tenant staff at `3X` using hour-based increments.
 3. Outbound attempts without claim do not reset escalation.
 4. Claim action resets escalation state and cancels pending escalation notifications.
 
@@ -172,7 +172,7 @@ The delivery strategy is bounded-context, contract-first, and feature-flagged. T
 11. **FR-CS-011**: Exactly one active thread may exist per `(tenant_id, org_unit_id, neighbor_id)`.
 12. **FR-CS-012**: `POST /api/v1/connectshyft/threads` must return existing active thread when present; otherwise create.
 13. **FR-CS-013**: Canonical thread state enum is `UNCLAIMED | CLAIMED | CLOSED`.
-14. **FR-CS-014**: Escalation progression follows `X -> 2X -> 3X`.
+14. **FR-CS-014**: Escalation progression follows `X -> 2X -> 3X`, where default `X = 24 hours` and orgUnit-configurable range is `1-24 hours` (integer hours only).
 15. **FR-CS-015**: Escalation resets only on explicit claim and cancels pending escalation notifications.
 16. **FR-CS-016**: Outbound attempts without claim must not reset escalation.
 17. **FR-CS-017**: Thread supports metadata fields `last_inbound_cs_number_id` and `preferred_outbound_cs_number_id` (or derived outbound selection from orgUnit config).
@@ -195,7 +195,7 @@ The delivery strategy is bounded-context, contract-first, and feature-flagged. T
 
 26. **FR-CS-025**: OrgUnit supports multiple mapped Twilio numbers.
 27. **FR-CS-026**: Number mapping uniqueness is enforced per tenant for phone number.
-28. **FR-CS-027**: OrgUnit escalation config supports `X` baseline and recipient targets.
+28. **FR-CS-027**: OrgUnit escalation config supports `X` baseline in integer hours (default 24, allowed 1-24) and recipient targets.
 
 ## API Contract Requirements
 
@@ -240,8 +240,8 @@ The delivery strategy is bounded-context, contract-first, and feature-flagged. T
 
 ### Performance
 
-11. Inbox and thread fetch performance supports operational use without manual fallback.
-12. Webhook ingestion supports near-real-time processing under expected load.
+11. Inbox list and thread detail endpoint responses must meet `p95 <= 750ms` and `p99 <= 1500ms` under expected operational load.
+12. Webhook ingestion (signature validation, dedupe, and durable write acceptance) must meet `p95 <= 1000ms` and `p99 <= 2000ms`; end-to-end thread timeline visibility target is `p95 <= 5000ms`.
 
 ### Compliance and Governance
 
