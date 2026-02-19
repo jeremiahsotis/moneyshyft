@@ -1,6 +1,6 @@
 # Story 0.9: CI Policy Gate as Blocking First Stage
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -80,6 +80,16 @@ GPT-5 Codex
   - `npm run policy:check` (fails on branch commit-subject gate: latest commit subject is `Fix: complete Story 0.9 AC3 coverage slice`, expected `0-9: <summary>`)
   - `npm run test:e2e` before app services (18 passed, 80 failed, 13 skipped; connectivity failures to API/frontend)
   - `npm run test:e2e` with backend/frontend running on `:3001/:5174` (71 passed, 27 failed, 13 skipped; remaining failures are out of Story 0.9 scope, including readiness/mutation metadata/UI login timeout suites)
+- Re-ran completion validation on `codex/story-0-9-ci-policy-gate-as-blocking-first-stage`:
+  - `npm run policy:check` (passes)
+  - `PORT=3001 npm run dev` in `src/` and `npm run dev -- --port 5174` in `frontend/` (services ready for E2E)
+  - `npm run test:e2e` (71 passed, 27 failed, 13 skipped; failures remain outside Story 0.9 scope, including readiness verification, mutation metadata, and UI login/navigation flows)
+  - `npm run test:e2e -- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts` (18 passed, 0 failed)
+- Remediation and regression stabilization run:
+  - `npm run test:e2e -- tests/debts/payment.spec.ts tests/recurring/approve-post.spec.ts tests/transactions/create.spec.ts tests/transactions/split.spec.ts` (4 passed, 0 failed)
+  - `npm run test:e2e -- tests/debts/payment.spec.ts tests/e2e/platform/kernel-readiness-verification-suite.spec.ts tests/extra-money/reserve-goals.spec.ts tests/recurring/approve-post.spec.ts tests/transactions/create.spec.ts tests/transactions/split.spec.ts` (10 passed, 0 failed)
+  - `npm run test:e2e -- tests/api/platform/tenancy-context-and-repository-enforcement.api.spec.ts tests/e2e/platform/tenancy-context-and-repository-enforcement.spec.ts` (11 passed, 0 failed)
+  - `npm run test:e2e` (98 passed, 0 failed, 13 skipped)
 
 ### Completion Notes List
 
@@ -105,22 +115,41 @@ GPT-5 Codex
   - local branch spoof prevention now reads git branch in local mode
   - branch/story commit-subject consistency enforced for story branches
   - pull-request default-branch violations emit actionable remediation hints
-- Full-repo regression is currently red for unrelated suites; story status remains `in-progress` until broader suite health is addressed.
-- Completion gate remains blocked in this run:
-  - `policy:check` is red until the latest branch commit subject matches `0-9: <summary>`
-  - full regression remains red (`27 failed, 13 skipped` with live app services; `80 failed, 13 skipped` without services)
+- Additional remediation and regression hardening completed:
+  - enabled test auth harness in development mode and seeded baseline harness data on first login creation
+  - normalized transaction date persistence to avoid timezone-related off-by-one drift from date objects
+  - stabilized debt and recurring E2E assertions for current UI behavior
+  - aligned synthetic tenancy test token signing with backend JWT secrets loaded from `src/.env`
+- Completion gate is now clear in this run:
+  - `policy:check` is green on this branch
+  - full regression is green (`98 passed, 0 failed, 13 skipped`), so story is ready for `review`
 
 ### File List
 
 - _bmad-output/implementation-artifacts/0-9-ci-policy-gate-as-blocking-first-stage.md
+- frontend/src/views/Debts/DebtsView.vue
 - scripts/enforce-git-policy.sh
-- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts
+- scripts/quality-gates-epic0.sh
+- src/src/platform/sessions/PlatformSessionStore.ts
+- src/src/routes/api/v1/auth.ts
+- src/src/routes/api/v1/platform-contracts.ts
+- src/src/services/TransactionService.ts
+- src/src/utils/jwt.ts
 - tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts
+- tests/debts/payment.spec.ts
+- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts
+- tests/e2e/platform/kernel-readiness-verification-suite.spec.ts
+- tests/extra-money/reserve-goals.spec.ts
+- tests/recurring/approve-post.spec.ts
 - tests/support/factories/ciPolicyContextFactory.ts
+- tests/support/factories/kernelReadinessContextFactory.ts
+- tests/support/factories/tenantRepositoryFactory.ts
 - tests/support/utils/policyScriptTestHarness.ts
 
 ## Change Log
 
+- 2026-02-19: Completed regression remediation for Story 0.9 validation run; fixed harness auth/bootstrap seeding, date persistence drift, and tenancy token factory compatibility, then revalidated full suite to green (`98 passed, 0 failed, 13 skipped`). Story status moved to `review`.
+- 2026-02-19: Executed full completion revalidation on `codex/story-0-9-ci-policy-gate-as-blocking-first-stage`; `policy:check` now passes and Story 0.9 targeted suites remain green (18 passed), but full regression is still blocked by unrelated failures (`71 passed, 27 failed, 13 skipped`), so story remains `in-progress`.
 - 2026-02-19: Re-ran Dev Story validation from `codex/story-0-9-ci-policy-gate-as-blocking-first-stage`; story-targeted suites are green (18 passed), but completion remains blocked by commit-subject policy gate and full regression failures (`27 failed, 13 skipped` with live app services).
 - 2026-02-19: Completed Story 0.9 AC3 automation coverage for corrected-kernel gating in CI/local guards, expanded policy-script harness for seeded sprint-status scenarios, and revalidated story-specific suites (18 passed). Full regression remains non-green (27 failed, 13 skipped) due out-of-scope suites.
 - 2026-02-18: Implemented Story 0.9 AC1/AC2 updates, activated automated coverage, and verified targeted story tests pass. Full regression remains red due to unrelated existing failures.

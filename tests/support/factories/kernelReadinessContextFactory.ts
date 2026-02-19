@@ -15,6 +15,7 @@ export type KernelReadinessContext = {
   routeWorkflow: string;
   qualityGateScript: string;
   branchGuardScript: string;
+  sprintStatusFile: string;
   phase0StatusFile: string;
   readinessReportPath: string;
   readinessVerifyPath: string;
@@ -40,6 +41,7 @@ export function createKernelReadinessContext(
     routeWorkflow: 'dev-story',
     qualityGateScript: 'scripts/quality-gates-epic0.sh',
     branchGuardScript: 'scripts/branch-ensure-workflow.sh',
+    sprintStatusFile: `tests/artifacts/gates/sprint-status-${runId}.yaml`,
     phase0StatusFile: `tests/artifacts/gates/phase0-readiness-${runId}.json`,
     readinessReportPath: `tests/artifacts/gates/epic-0-quality-${runId}.json`,
     readinessVerifyPath: '/api/v1/platform/_kernel/readiness/verify',

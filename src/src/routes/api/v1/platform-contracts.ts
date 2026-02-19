@@ -58,14 +58,26 @@ const resolveCookiePolicy = (environment: CookiePolicyEnvironment): {
 
 const resolveEnvelopeContext = (req: Request, res: Response): EnvelopeContext => {
   const canonicalTenant = normalizeContextValue(req.tenantContext?.tenantId || req.tenantId || null);
+  const headerTenant = normalizeContextValue(req.header('x-tenant-id'));
+  const resolvedTenant = (
+    canonicalTenant && canonicalTenant !== 'public'
+      ? canonicalTenant
+      : (headerTenant || canonicalTenant)
+  );
   const base = (res.locals.responseEnvelope as EnvelopeContext | undefined) || {
     correlationId: req.correlationId || null,
-    tenantId: canonicalTenant
+    tenantId: resolvedTenant
   };
+  const baseTenant = normalizeContextValue(base.tenantId ?? null);
+  const tenantId = (
+    baseTenant && baseTenant !== 'public'
+      ? baseTenant
+      : (resolvedTenant || baseTenant)
+  );
 
   return {
     correlationId: base.correlationId ?? req.correlationId ?? null,
-    tenantId: base.tenantId ?? canonicalTenant
+    tenantId
   };
 };
 
@@ -1883,6 +1895,7 @@ router.post('/time/render-contract', (req: Request, res: Response) => {
 
   return res.status(200).json({
     ...envelope,
+    utcTimestamp,
     rendered,
     timezone: context.timezone,
     timezoneSource: context.timezoneSource

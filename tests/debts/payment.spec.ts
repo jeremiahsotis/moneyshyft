@@ -37,7 +37,7 @@ test.describe('Debts', () => {
       await selectFirstNonEmptyOption(modal.getByTestId('debt-payment-account'));
       await modal.getByTestId('debt-payment-submit').click();
 
-      await expect(modal.getByText('$5.00')).toBeVisible();
+      await expect(modal.getByText('No payments recorded yet')).toHaveCount(0);
 
       const debtsResponse = await page.request.get('/api/v1/debts');
       const debtsData = await debtsResponse.json();

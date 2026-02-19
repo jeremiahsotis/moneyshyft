@@ -18,7 +18,7 @@ const testEmail = process.env.TEST_EMAIL?.trim();
 const testPassword = process.env.TEST_PASSWORD?.trim();
 const testEnv = process.env.TEST_ENV?.trim().toLowerCase();
 const nodeEnv = process.env.NODE_ENV?.trim().toLowerCase();
-const isLocalTestScope = testEnv === 'local' || nodeEnv === 'test';
+const isLocalTestScope = testEnv === 'local' || nodeEnv === 'test' || nodeEnv === 'development';
 const isTestAuthHarnessEnabled = process.env.ENABLE_TEST_AUTH_HARNESS === 'true'
   && isLocalTestScope
   && nodeEnv !== 'production'
@@ -94,6 +94,38 @@ const createHarnessHousehold = async (): Promise<string> => {
   });
 };
 
+const ensureHarnessBaselineData = async (householdId: string): Promise<void> => {
+  const db = getDb();
+
+  const existingAccount = await db('accounts')
+    .where({ household_id: householdId, is_active: true })
+    .first();
+  if (!existingAccount) {
+    await db('accounts').insert({
+      household_id: householdId,
+      name: 'Test Checking',
+      type: 'checking',
+      current_balance: 1000,
+      starting_balance: 1000,
+      is_active: true,
+    });
+  }
+
+  const existingIncomeSource = await db('income_sources')
+    .where({ household_id: householdId, is_active: true })
+    .first();
+  if (!existingIncomeSource) {
+    await db('income_sources').insert({
+      household_id: householdId,
+      name: 'Test Income',
+      monthly_amount: 3000,
+      is_active: true,
+      sort_order: 0,
+      notes: null,
+    });
+  }
+};
+
 const ensureHarnessUser = async (email: string, password: string): Promise<void> => {
   const db = getDb();
   const normalizedEmail = email.trim().toLowerCase();
@@ -102,13 +134,16 @@ const ensureHarnessUser = async (email: string, password: string): Promise<void>
     .first();
 
   if (!user) {
-    await AuthService.signup({
+    const signupResult = await AuthService.signup({
       email: normalizedEmail,
       password,
       firstName: 'Test',
       lastName: 'User',
       householdName: 'Test Household',
     });
+    if (signupResult.user.householdId) {
+      await ensureHarnessBaselineData(signupResult.user.householdId);
+    }
     return;
   }
 
@@ -129,6 +164,11 @@ const ensureHarnessUser = async (email: string, password: string): Promise<void>
     await db('users')
       .where({ id: user.id })
       .update(updates);
+  }
+
+  const resolvedHouseholdId = (updates.household_id as string | undefined) ?? user.household_id ?? null;
+  if (resolvedHouseholdId) {
+    await ensureHarnessBaselineData(resolvedHouseholdId);
   }
 };
 

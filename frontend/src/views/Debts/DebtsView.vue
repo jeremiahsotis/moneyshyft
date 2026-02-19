@@ -232,7 +232,7 @@
         <button
           @click="showCreateModal = true"
           class="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition font-medium"
-          data-testid="debts-add-button"
+          data-testid="debts-empty-add-button"
         >
           Add Your First Debt
         </button>

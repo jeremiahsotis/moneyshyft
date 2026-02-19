@@ -11,8 +11,8 @@ export interface JWTPayload {
   role: string;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_change_in_production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your_refresh_secret_change_in_production';
+const resolveJwtSecret = (): string => process.env.JWT_SECRET || 'your_jwt_secret_change_in_production';
+const resolveJwtRefreshSecret = (): string => process.env.JWT_REFRESH_SECRET || 'your_refresh_secret_change_in_production';
 
 // Session duration constants
 const SHORT_SESSION_ACCESS = '2h';
@@ -67,7 +67,7 @@ const generateCsrfToken = (): string => crypto.randomBytes(32).toString('hex');
  */
 export function generateAccessToken(payload: JWTPayload, rememberMe: boolean = false): string {
   const expiresIn = rememberMe ? EXTENDED_SESSION_ACCESS : SHORT_SESSION_ACCESS;
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+  return jwt.sign(payload, resolveJwtSecret(), { expiresIn });
 }
 
 /**
@@ -75,7 +75,7 @@ export function generateAccessToken(payload: JWTPayload, rememberMe: boolean = f
  */
 export function generateRefreshToken(payload: JWTPayload, rememberMe: boolean = false): string {
   const expiresIn = rememberMe ? EXTENDED_SESSION_REFRESH : SHORT_SESSION_REFRESH;
-  return jwt.sign(payload, JWT_REFRESH_SECRET, {
+  return jwt.sign(payload, resolveJwtRefreshSecret(), {
     expiresIn,
     jwtid: crypto.randomUUID(),
   });
@@ -86,7 +86,7 @@ export function generateRefreshToken(payload: JWTPayload, rememberMe: boolean = 
  */
 export function verifyAccessToken(token: string): JWTPayload {
   try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload;
+    return jwt.verify(token, resolveJwtSecret()) as JWTPayload;
   } catch (error) {
     throw new Error('Invalid or expired access token');
   }
@@ -97,7 +97,7 @@ export function verifyAccessToken(token: string): JWTPayload {
  */
 export function verifyRefreshToken(token: string): JWTPayload {
   try {
-    return jwt.verify(token, JWT_REFRESH_SECRET) as JWTPayload;
+    return jwt.verify(token, resolveJwtRefreshSecret()) as JWTPayload;
   } catch (error) {
     throw new Error('Invalid or expired refresh token');
   }

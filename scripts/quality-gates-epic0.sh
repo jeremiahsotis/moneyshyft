@@ -5,6 +5,7 @@ node <<'NODE'
 const fs = require('fs');
 const path = require('path');
 const { randomUUID } = require('crypto');
+const jwt = require(path.join(process.cwd(), 'src/node_modules/jsonwebtoken'));
 
 const root = process.cwd();
 const apiBaseUrl = (process.env.API_URL || process.env.API_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
@@ -47,6 +48,56 @@ const timezoneUtcTimestamp = '2026-02-17T15:30:00.000Z';
 const defaultHeaders = {
   'x-tenant-id': tenantId,
   'x-correlation-id': correlationId,
+};
+
+const parseDotEnv = (filePath) => {
+  if (!fs.existsSync(filePath)) {
+    return {};
+  }
+
+  const content = fs.readFileSync(filePath, 'utf8');
+  const result = {};
+
+  for (const rawLine of content.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) {
+      continue;
+    }
+
+    const separator = line.indexOf('=');
+    if (separator <= 0) {
+      continue;
+    }
+
+    const key = line.slice(0, separator).trim();
+    const value = line.slice(separator + 1).trim();
+    if (key.length > 0) {
+      result[key] = value;
+    }
+  }
+
+  return result;
+};
+
+const backendEnv = parseDotEnv(path.join(root, 'src/.env'));
+const jwtSecret = process.env.JWT_SECRET || backendEnv.JWT_SECRET || 'your_jwt_secret_change_in_production';
+const signedTenantAccessToken = jwt.sign(
+  {
+    userId: `quality-gate-user-${randomUUID()}`,
+    email: 'quality-gate@example.com',
+    householdId: tenantId,
+    activeTenantId: tenantId,
+    activeOrgUnitId: null,
+    role: 'TENANT_STAFF',
+  },
+  jwtSecret,
+  { expiresIn: '2h' }
+);
+
+const tenantScopedHeaders = {
+  ...defaultHeaders,
+  'x-csrf-token': csrfToken,
+  cookie: `access_token=${signedTenantAccessToken}; csrf_token=${csrfToken}`,
 };
 
 const requestJson = async (method, endpointPath, { headers = {}, data } = {}) => {
@@ -137,12 +188,12 @@ const main = async () => {
     const withoutTenant = await requestJson('GET', '/api/v1/platform/_kernel/tenancy/repository-check');
     assertCondition(withoutTenant.ok, `request failure: ${withoutTenant.error || 'network error'}`, errors);
     if (withoutTenant.ok) {
-      assertCondition(withoutTenant.status === 400, `expected 400 without tenant header, got ${withoutTenant.status}`, errors);
+      assertCondition(withoutTenant.status === 403, `expected 403 without tenant context, got ${withoutTenant.status}`, errors);
       assertCondition(withoutTenant.body?.code === 'TENANCY_CONTEXT_REQUIRED', 'expected TENANCY_CONTEXT_REQUIRED', errors);
     }
 
     const scopedRead = await requestJson('GET', '/api/v1/platform/_kernel/tenancy/repository-check', {
-      headers: defaultHeaders,
+      headers: tenantScopedHeaders,
     });
     assertCondition(scopedRead.ok, `request failure: ${scopedRead.error || 'network error'}`, errors);
     if (scopedRead.ok) {
@@ -152,7 +203,7 @@ const main = async () => {
     }
 
     const scopedWrite = await requestJson('POST', '/api/v1/platform/_kernel/tenancy/repository-check', {
-      headers: defaultHeaders,
+      headers: tenantScopedHeaders,
       data: {
         targetTenantId: `tenant-${randomUUID()}`,
       },

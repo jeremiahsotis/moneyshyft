@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { test, expect } from '../../support/fixtures/kernelReadinessContext.fixture';
 import { apiRequest } from '../../support/helpers/apiClient';
 
@@ -29,6 +30,22 @@ function runScript(command: string, args: string[], env: Record<string, string> 
       output: `${typed.stdout ?? ''}${typed.stderr ?? ''}`,
     };
   }
+}
+
+function writeKernelReadySprintStatus(filePath: string): void {
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  writeFileSync(
+    filePath,
+    [
+      'development_status:',
+      '  0-10-kernel-readiness-verification-suite: done',
+      'course_correction:',
+      '  cc-2026-02-18:',
+      '    status: approved',
+      '',
+    ].join('\n'),
+    'utf8',
+  );
 }
 
 test.describe('Story 0.10 atdd - kernel readiness verification suite release gating', () => {
@@ -67,6 +84,8 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
     kernelReadinessContext,
   }) => {
     // Given a Route story branch requests workflow execution before readiness is recorded
+    writeKernelReadySprintStatus(kernelReadinessContext.sprintStatusFile);
+
     // When branch workflow guard validates route-story execution
     const result = runScript(
       'bash',
@@ -79,6 +98,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
       ],
       {
         GITHUB_HEAD_REF: kernelReadinessContext.routeStoryBranch,
+        SPRINT_STATUS_FILE: kernelReadinessContext.sprintStatusFile,
         PHASE0_READINESS_STATUS_FILE: kernelReadinessContext.phase0StatusFile,
       },
     );
@@ -94,6 +114,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
     kernelReadinessContext,
   }) => {
     // Given runtime readiness evidence exists and Phase-0 readiness has been explicitly recorded
+    writeKernelReadySprintStatus(kernelReadinessContext.sprintStatusFile);
     const qualityGateResult = runScript('bash', [kernelReadinessContext.qualityGateScript], {
       EPIC0_QUALITY_REPORT_PATH: kernelReadinessContext.readinessReportPath,
     });
@@ -125,6 +146,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
       ],
       {
         GITHUB_HEAD_REF: kernelReadinessContext.routeStoryBranch,
+        SPRINT_STATUS_FILE: kernelReadinessContext.sprintStatusFile,
         PHASE0_READINESS_STATUS_FILE: kernelReadinessContext.phase0StatusFile,
       },
     );
@@ -160,6 +182,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
     kernelReadinessContext,
   }) => {
     // Given route-story workflow guard runs before readiness recording exists
+    writeKernelReadySprintStatus(kernelReadinessContext.sprintStatusFile);
     const result = runScript(
       'bash',
       [
@@ -171,6 +194,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
       ],
       {
         GITHUB_HEAD_REF: kernelReadinessContext.routeStoryBranch,
+        SPRINT_STATUS_FILE: kernelReadinessContext.sprintStatusFile,
         PHASE0_READINESS_STATUS_FILE: kernelReadinessContext.phase0StatusFile,
       },
     );

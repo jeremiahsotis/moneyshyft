@@ -13,8 +13,15 @@ test.describe('Extra money savings reserve to goals', () => {
     const source = `QA Extra Reserve ${Date.now()}`;
     const goalName = `QA Goal Reserve ${Date.now()}`;
     let entryId: string | undefined;
+    let goalId: string | undefined;
+
+    const csrfToken = (await page.context().cookies()).find((cookie) => cookie.name === 'csrf_token')?.value;
+    expect(csrfToken).toBeTruthy();
 
     const goalResponse = await page.request.post('/api/v1/goals', {
+      headers: {
+        'x-csrf-token': csrfToken!,
+      },
       data: {
         name: goalName,
         target_amount: 100,
@@ -23,8 +30,10 @@ test.describe('Extra money savings reserve to goals', () => {
         target_date: null
       }
     });
+    expect(goalResponse.ok()).toBeTruthy();
     const goalData = await goalResponse.json();
-    const goalId = goalData.data.id as string;
+    goalId = goalData?.data?.id as string | undefined;
+    expect(goalId).toBeTruthy();
 
     try {
       await page.goto('/extra-money');

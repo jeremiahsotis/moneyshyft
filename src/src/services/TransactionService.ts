@@ -330,7 +330,7 @@ export class TransactionService {
           goal_id: goal_id || null,
           payee,
           amount,
-          transaction_date,
+          transaction_date: normalizedDate,
           notes: notes || null,
           is_cleared,
           is_reconciled,
@@ -645,6 +645,12 @@ export class TransactionService {
     data: UpdateTransactionData
   ): Promise<Transaction> {
     const { tag_id, ...transactionData } = data;
+    const normalizedTransactionData: Record<string, unknown> = { ...transactionData };
+    if (transactionData.transaction_date !== undefined) {
+      normalizedTransactionData.transaction_date = typeof transactionData.transaction_date === 'string'
+        ? transactionData.transaction_date
+        : transactionData.transaction_date.toISOString().split('T')[0];
+    }
 
     // Check if transaction exists and belongs to household
     const existingTransaction = await this.getTransactionById(transactionId, householdId);
@@ -696,7 +702,7 @@ export class TransactionService {
     const [updatedTransaction] = await knex('transactions')
       .where({ id: transactionId, household_id: householdId })
       .update({
-        ...transactionData,
+        ...normalizedTransactionData,
         updated_at: knex.fn.now()
       })
       .returning('*');
