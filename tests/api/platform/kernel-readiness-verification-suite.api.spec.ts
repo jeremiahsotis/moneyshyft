@@ -53,7 +53,7 @@ function runQualityGateScript(kernelReadinessContext: KernelReadinessContext): R
 }
 
 test.describe('Story 0.10 atdd - kernel readiness verification suite API coverage', () => {
-  test('[P0] verifies tenancy/auth/csrf/envelope/event-outbox/timezone gates in a single readiness contract @P0', async ({
+  test('[P0] verifies canonical kernel readiness gates in a single readiness contract @P0', async ({
     request,
     kernelReadinessContext,
   }) => {
@@ -88,6 +88,9 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite API coverag
           envelope: { status: 'pass' },
           eventOutbox: { status: 'pass' },
           timezone: { status: 'pass' },
+          rbac: { status: 'pass' },
+          activeTenantMembership: { status: 'pass' },
+          globalEmailUniqueness: { status: 'pass' },
         },
         evidence: {
           reportPath: kernelReadinessContext.readinessReportPath,

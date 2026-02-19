@@ -1,6 +1,6 @@
 # Story 0.10: Kernel Readiness Verification Suite
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -23,18 +23,18 @@ so that Phase 1 Route work starts only when kernel controls are proven..
 - [x] Implement acceptance criterion 1 (AC: 1)
   - [x] Execute targeted verification suites for tenancy/auth/csrf/envelope/event-outbox/timezone kernel gates
   - [x] Add automated coverage for AC 1
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Validate capability matrix coverage for all system/tenant/orgUnit roles in automated RBAC tests
-  - [ ] Add automated coverage for AC 2
-- [ ] Implement acceptance criterion 3 (AC: 3)
-  - [ ] Validate multi-tenant membership context-switch behavior requires explicit `activeTenantId` in session/context
-  - [ ] Add automated coverage for AC 3
-- [ ] Implement acceptance criterion 4 (AC: 4)
-  - [ ] Validate database/application contract enforcing global email uniqueness across platform user identities
-  - [ ] Add automated coverage for AC 4
-- [ ] Implement acceptance criterion 5 (AC: 5)
-  - [ ] Record readiness completion and verify policy scripts block Route-story progression until this story reaches `done`
-  - [ ] Add automated coverage for AC 5
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Validate capability matrix coverage for all system/tenant/orgUnit roles in automated RBAC tests
+  - [x] Add automated coverage for AC 2
+- [x] Implement acceptance criterion 3 (AC: 3)
+  - [x] Validate multi-tenant membership context-switch behavior requires explicit `activeTenantId` in session/context
+  - [x] Add automated coverage for AC 3
+- [x] Implement acceptance criterion 4 (AC: 4)
+  - [x] Validate database/application contract enforcing global email uniqueness across platform user identities
+  - [x] Add automated coverage for AC 4
+- [x] Implement acceptance criterion 5 (AC: 5)
+  - [x] Record readiness completion and verify policy scripts block Route-story progression until this story reaches `done`
+  - [x] Add automated coverage for AC 5
 
 ## Dev Notes
 
@@ -70,7 +70,9 @@ GPT-5 Codex
 ### Debug Log References
 
 - `cd src && npm run build`
+- `cd src && npm test -- src/routes/api/v1/__tests__/platform-contracts.tenancy.test.ts src/platform/rbac/__tests__/capabilities.test.ts`
 - `bash scripts/quality-gates-epic0.sh`
+- `API_URL=http://localhost:3001 bash scripts/quality-gates-epic0.sh`
 - `API_URL=http://localhost:3001 npm run test:e2e -- tests/api/platform/kernel-readiness-verification-suite.api.spec.ts tests/e2e/platform/kernel-readiness-verification-suite.spec.ts`
 - `API_URL=http://localhost:3001 npm run test:e2e -- tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts`
 
@@ -82,18 +84,25 @@ GPT-5 Codex
 - Upgraded branch guard readiness validation to require canonical story/gate metadata plus report hash integrity checks.
 - Reworked `quality-gates-epic0.sh` to compute gate outcomes from executable runtime API checks instead of sprint status labels.
 - Updated Story 0.10 API/E2E suites to validate the hardened readiness lifecycle and added script exit-code assertions.
+- Added canonical readiness gates for AC2/AC3/AC4: `rbac`, `activeTenantMembership`, and `globalEmailUniqueness`.
+- Added kernel contract endpoints for three-layer RBAC matrix validation and global email uniqueness contract validation.
+- Expanded Story 0.10 quality-gate and branch-guard canonical gate validation to include all AC1-AC5 readiness controls.
 - Reconciled story documentation file list to match current git-modified files exactly.
+- Synced sprint status tracking (`development_status.0-10-kernel-readiness-verification-suite`) to `done`.
 
 ### File List
 
 - src/src/routes/api/v1/platform-contracts.ts
 - scripts/quality-gates-epic0.sh
 - scripts/branch-ensure-workflow.sh
+- tests/support/factories/kernelReadinessContextFactory.ts
 - tests/api/platform/kernel-readiness-verification-suite.api.spec.ts
 - tests/e2e/platform/kernel-readiness-verification-suite.spec.ts
+- _bmad-output/implementation-artifacts/sprint-status.yaml
 - _bmad-output/implementation-artifacts/0-10-kernel-readiness-verification-suite.md
 
 ## Change Log
 
 - 2026-02-18: Implemented kernel readiness verification + Phase-0 readiness recording contracts, release-gate script enforcement, and full AC coverage tests for Story 0.10.
 - 2026-02-18: Remediated Story 0.10 review findings (guard bypass, client-controlled verification, evidence precondition, path safety, executable gate evidence, and test hardening).
+- 2026-02-19: Completed AC2/AC3/AC4 readiness enforcement and test coverage (RBAC matrix, activeTenant membership context checks, global email uniqueness contract), and reconciled story/git file tracking.

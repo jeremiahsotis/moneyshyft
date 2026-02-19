@@ -27,6 +27,10 @@ import {
   formatUtcTimestampForTimezone,
   resolveTimezoneContext
 } from '../../../platform/time/timezoneService';
+import {
+  CAPABILITIES,
+  hasCapability,
+} from '../../../platform/rbac/capabilities';
 
 const router = Router();
 
@@ -318,7 +322,10 @@ const kernelReadinessRequiredGates = [
   'csrf',
   'envelope',
   'eventOutbox',
-  'timezone'
+  'timezone',
+  'rbac',
+  'activeTenantMembership',
+  'globalEmailUniqueness'
 ] as const;
 const kernelReadinessStoryId = '0-10';
 const defaultKernelReadinessReportPath = 'tests/artifacts/gates/epic-0-quality.json';
@@ -356,6 +363,18 @@ type KernelReadinessEvidenceReport = {
 type KernelReadinessEvidenceParseResult = {
   evidence: KernelReadinessEvidenceReport | null;
   errors: string[];
+};
+type KernelReadinessRbacMatrixCheck = {
+  id: string;
+  roles: string[];
+  capability: string;
+  expected: boolean;
+  actual: boolean;
+};
+type KernelReadinessGlobalEmailContract = {
+  dbClient: string;
+  allPassed: boolean;
+  evidence: string[];
 };
 
 const isKernelReadinessGateName = (value: string): value is KernelReadinessGateName => {
@@ -661,6 +680,149 @@ const asGateStatusMap = (
   return mapped;
 };
 
+const kernelReadinessRbacRoleModel = [
+  'SYSTEM_ADMIN',
+  'TENANT_ADMIN',
+  'TENANT_STAFF',
+  'TENANT_VIEWER',
+  'ORGUNIT_ADMIN',
+  'ORGUNIT_MEMBER',
+  'ORGUNIT_IDENTITY_LEAD',
+] as const;
+
+const evaluateKernelReadinessRbacMatrix = (): {
+  allPassed: boolean;
+  checks: KernelReadinessRbacMatrixCheck[];
+  failingChecks: KernelReadinessRbacMatrixCheck[];
+} => {
+  const matrix: Array<{
+    id: string;
+    roles: string[];
+    capability: (typeof CAPABILITIES)[keyof typeof CAPABILITIES];
+    expected: boolean;
+  }> = [
+    {
+      id: 'system-admin-has-tenant-create',
+      roles: ['SYSTEM_ADMIN'],
+      capability: CAPABILITIES.TENANT_CREATE,
+      expected: true,
+    },
+    {
+      id: 'system-admin-has-orgunit-identity-resolve',
+      roles: ['SYSTEM_ADMIN'],
+      capability: CAPABILITIES.ORG_UNIT_IDENTITY_RESOLVE,
+      expected: true,
+    },
+    {
+      id: 'tenant-admin-has-orgunit-create',
+      roles: ['TENANT_ADMIN'],
+      capability: CAPABILITIES.ORG_UNIT_CREATE,
+      expected: true,
+    },
+    {
+      id: 'tenant-staff-cannot-orgunit-create',
+      roles: ['TENANT_STAFF'],
+      capability: CAPABILITIES.ORG_UNIT_CREATE,
+      expected: false,
+    },
+    {
+      id: 'tenant-viewer-has-tenant-read-all',
+      roles: ['TENANT_VIEWER'],
+      capability: CAPABILITIES.TENANT_READ_ALL,
+      expected: true,
+    },
+    {
+      id: 'orgunit-admin-has-membership-manage',
+      roles: ['ORGUNIT_ADMIN'],
+      capability: CAPABILITIES.ORG_UNIT_MEMBERSHIP_MANAGE,
+      expected: true,
+    },
+    {
+      id: 'orgunit-member-has-orgunit-sms-send',
+      roles: ['ORGUNIT_MEMBER'],
+      capability: CAPABILITIES.ORG_UNIT_SMS_SEND,
+      expected: true,
+    },
+    {
+      id: 'orgunit-member-cannot-membership-manage',
+      roles: ['ORGUNIT_MEMBER'],
+      capability: CAPABILITIES.ORG_UNIT_MEMBERSHIP_MANAGE,
+      expected: false,
+    },
+    {
+      id: 'orgunit-identity-lead-has-identity-resolve',
+      roles: ['ORGUNIT_IDENTITY_LEAD'],
+      capability: CAPABILITIES.ORG_UNIT_IDENTITY_RESOLVE,
+      expected: true,
+    },
+  ];
+
+  const checks: KernelReadinessRbacMatrixCheck[] = matrix.map((check) => {
+    const actual = hasCapability(check.roles, check.capability);
+    return {
+      id: check.id,
+      roles: check.roles,
+      capability: check.capability,
+      expected: check.expected,
+      actual,
+    };
+  });
+  const failingChecks = checks.filter((check) => check.expected !== check.actual);
+
+  return {
+    allPassed: failingChecks.length === 0,
+    checks,
+    failingChecks,
+  };
+};
+
+const evaluateKernelReadinessGlobalEmailUniquenessContract = async (): Promise<KernelReadinessGlobalEmailContract> => {
+  const repoRoot = resolveRepoRoot();
+  const migrationPath = path.join(repoRoot, 'src/src/migrations/001_initial_schema.ts');
+  const authServicePath = path.join(repoRoot, 'src/src/services/AuthService.ts');
+  const authRoutePath = path.join(repoRoot, 'src/src/routes/api/v1/auth.ts');
+  const checks = [
+    {
+      filePath: migrationPath,
+      description: 'users table migration enforces unique email column',
+      pattern: /table\.string\(\s*['"]email['"][^)]*\)\.notNullable\(\)\.unique\(\)/,
+    },
+    {
+      filePath: authServicePath,
+      description: 'AuthService signup preflight checks existing users by email',
+      pattern: /const\s+existingUser\s*=\s*await\s+db\('users'\)\.where\(\{\s*email\s*\}\)\.first\(\);/,
+    },
+    {
+      filePath: authRoutePath,
+      description: 'auth route detects users_email_unique database constraint violations',
+      pattern: /users_email_unique/,
+    },
+  ];
+  const evidence: string[] = [];
+  let allPassed = true;
+
+  for (const check of checks) {
+    if (!existsSync(check.filePath)) {
+      evidence.push(`missing file for contract evidence: ${toPosixPath(path.relative(repoRoot, check.filePath))}`);
+      allPassed = false;
+      continue;
+    }
+
+    const content = readFileSync(check.filePath, 'utf8');
+    const checkPassed = check.pattern.test(content);
+    evidence.push(`${checkPassed ? 'PASS' : 'FAIL'} - ${check.description}`);
+    if (!checkPassed) {
+      allPassed = false;
+    }
+  }
+
+  return {
+    dbClient: 'file-inspection',
+    allPassed,
+    evidence,
+  };
+};
+
 router.post('/_kernel/contracts/envelope/success', (req: Request, res: Response) => {
   applyEnvelopeTenantOverride(req, res);
 
@@ -773,6 +935,73 @@ router.get('/_kernel/contracts/outbox/replay-query', (req: Request, res: Respons
     queryKeys: ['delivery_status', 'available_at', 'outbox_event_id'],
     defaultOrder: ['available_at ASC', 'outbox_event_id ASC']
   });
+});
+
+router.get('/_kernel/contracts/rbac/three-layer-matrix', (req: Request, res: Response) => {
+  const evaluation = evaluateKernelReadinessRbacMatrix();
+  const context = resolveEnvelopeContext(req, res);
+
+  if (!evaluation.allPassed) {
+    const envelope = buildRefusalEnvelope(context, {
+      code: 'RBAC_CAPABILITY_MATRIX_FAILURE',
+      message: 'Three-layer RBAC capability matrix failed canonical role checks',
+      refusalType: 'business'
+    });
+
+    return res.status(200).json({
+      ...envelope,
+      roleModel: [...kernelReadinessRbacRoleModel],
+      checks: evaluation.checks,
+      failingChecks: evaluation.failingChecks
+    });
+  }
+
+  const envelope = buildSuccessEnvelope(context, {
+    code: 'RBAC_CAPABILITY_MATRIX_VALIDATED',
+    message: 'Three-layer RBAC capability matrix validated'
+  });
+
+  return res.status(200).json({
+    ...envelope,
+    roleModel: [...kernelReadinessRbacRoleModel],
+    checks: evaluation.checks
+  });
+});
+
+router.get('/_kernel/contracts/identity/global-email-uniqueness', async (req: Request, res: Response) => {
+  const context = resolveEnvelopeContext(req, res);
+
+  try {
+    const contract = await evaluateKernelReadinessGlobalEmailUniquenessContract();
+    if (!contract.allPassed) {
+      const envelope = buildRefusalEnvelope(context, {
+        code: 'GLOBAL_EMAIL_UNIQUENESS_CONTRACT_MISSING',
+        message: 'Global email uniqueness contract is not enforced for platform identities',
+        refusalType: 'business'
+      });
+
+      return res.status(200).json({
+        ...envelope,
+        contract
+      });
+    }
+
+    const envelope = buildSuccessEnvelope(context, {
+      code: 'GLOBAL_EMAIL_UNIQUENESS_CONTRACT_VALIDATED',
+      message: 'Global email uniqueness contract validated for platform identities'
+    });
+
+    return res.status(200).json({
+      ...envelope,
+      contract
+    });
+  } catch (error) {
+    return systemError(res, {
+      code: 'GLOBAL_EMAIL_UNIQUENESS_CONTRACT_CHECK_FAILED',
+      message: error instanceof Error ? error.message : 'Failed to evaluate global email uniqueness contract',
+      httpStatus: 500
+    });
+  }
 });
 
 router.post('/_kernel/contracts/mutation/transaction-wrapper/atomic', (req: Request, res: Response) => {

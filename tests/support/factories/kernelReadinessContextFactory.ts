@@ -6,7 +6,10 @@ export type KernelGateName =
   | 'csrf'
   | 'envelope'
   | 'eventOutbox'
-  | 'timezone';
+  | 'timezone'
+  | 'rbac'
+  | 'activeTenantMembership'
+  | 'globalEmailUniqueness';
 
 export type KernelReadinessContext = {
   storyId: string;
@@ -47,7 +50,17 @@ export function createKernelReadinessContext(
     readinessVerifyPath: '/api/v1/platform/_kernel/readiness/verify',
     readinessRecordPath: '/api/v1/platform/_kernel/readiness/record-phase0-complete',
     readinessApiSpecPath: 'tests/api/platform/kernel-readiness-verification-suite.api.spec.ts',
-    requiredGates: ['tenancy', 'auth', 'csrf', 'envelope', 'eventOutbox', 'timezone'],
+    requiredGates: [
+      'tenancy',
+      'auth',
+      'csrf',
+      'envelope',
+      'eventOutbox',
+      'timezone',
+      'rbac',
+      'activeTenantMembership',
+      'globalEmailUniqueness',
+    ],
     headers: {
       'x-tenant-id': tenantId,
       'x-correlation-id': correlationId,

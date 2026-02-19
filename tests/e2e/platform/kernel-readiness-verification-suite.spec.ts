@@ -75,6 +75,9 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
           envelope: 'pass',
           eventOutbox: 'pass',
           timezone: 'pass',
+          rbac: 'pass',
+          activeTenantMembership: 'pass',
+          globalEmailUniqueness: 'pass',
         },
       },
     });
@@ -98,6 +101,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
       ],
       {
         GITHUB_HEAD_REF: kernelReadinessContext.routeStoryBranch,
+        GITHUB_EVENT_NAME: 'pull_request',
         SPRINT_STATUS_FILE: kernelReadinessContext.sprintStatusFile,
         PHASE0_READINESS_STATUS_FILE: kernelReadinessContext.phase0StatusFile,
       },
@@ -146,6 +150,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
       ],
       {
         GITHUB_HEAD_REF: kernelReadinessContext.routeStoryBranch,
+        GITHUB_EVENT_NAME: 'pull_request',
         SPRINT_STATUS_FILE: kernelReadinessContext.sprintStatusFile,
         PHASE0_READINESS_STATUS_FILE: kernelReadinessContext.phase0StatusFile,
       },
@@ -194,6 +199,7 @@ test.describe('Story 0.10 atdd - kernel readiness verification suite release gat
       ],
       {
         GITHUB_HEAD_REF: kernelReadinessContext.routeStoryBranch,
+        GITHUB_EVENT_NAME: 'pull_request',
         SPRINT_STATUS_FILE: kernelReadinessContext.sprintStatusFile,
         PHASE0_READINESS_STATUS_FILE: kernelReadinessContext.phase0StatusFile,
       },
