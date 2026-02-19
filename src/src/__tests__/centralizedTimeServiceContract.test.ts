@@ -94,6 +94,7 @@ describe('Story 0.8 - centralized time service and utc/local rendering contract'
         }
       });
       expect(response.body?.data).not.toHaveProperty('utcTimestamp');
+      expect(response.body).not.toHaveProperty('utcTimestamp');
     });
 
     it('returns business refusal for non-UTC timestamp inputs', async () => {

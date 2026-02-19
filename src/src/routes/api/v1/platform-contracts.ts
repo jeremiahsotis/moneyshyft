@@ -1883,7 +1883,6 @@ router.post('/time/render-contract', (req: Request, res: Response) => {
 
   return res.status(200).json({
     ...envelope,
-    utcTimestamp,
     rendered,
     timezone: context.timezone,
     timezoneSource: context.timezoneSource
