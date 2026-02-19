@@ -410,13 +410,20 @@ watch(() => props.entry, async (entry) => {
     if (goalsStore.goals.length === 0) {
       await goalsStore.fetchGoals();
     }
-    // Check if entry already has assignments (editing existing)
-    if (entry.assignments && entry.assignments.length > 0) {
-      localAssignments.value = entry.assignments.map(a => ({
+    const shouldReuseExistingAllocation = entry.status === 'assigned'
+      || entry.status === 'ignored'
+      || (entry.assignments && entry.assignments.length > 0);
+
+    // Existing assigned/ignored entries should preserve stored allocation state.
+    if (shouldReuseExistingAllocation) {
+      localAssignments.value = (entry.assignments || []).map(a => ({
         category_id: a.category_id || null,
         section_id: a.section_id || null,
         amount: a.amount
       }));
+      if (localAssignments.value.length === 0) {
+        localAssignments.value = [{ category_id: '', amount: 0 }];
+      }
       hasRecommendations.value = false;
       savingsReserve.value = Number(entry.savings_reserve || 0);
     } else {
