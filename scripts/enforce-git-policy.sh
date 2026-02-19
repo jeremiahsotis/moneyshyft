@@ -109,6 +109,11 @@ enforce_corrected_kernel_gate_for_story() {
   local story_id="$1"
   local epic_id="${story_id%%-*}"
   local status_file="_bmad-output/implementation-artifacts/sprint-status.yaml"
+  local workflow_hint="dev-story"
+
+  if [[ "$event" == "pull_request" ]]; then
+    workflow_hint="code-review"
+  fi
 
   if [[ "$epic_id" == "0" ]]; then
     return 0
@@ -116,12 +121,17 @@ enforce_corrected_kernel_gate_for_story() {
 
   if [[ ! -f "$status_file" ]]; then
     echo "Policy check failed: missing $status_file required for corrected kernel gate enforcement"
+    print_policy_context
+    print_recovery "$workflow_hint"
     exit 1
   fi
 
   if ! grep -Eq '0-10-kernel-readiness-verification-suite:\s*done' "$status_file"; then
     echo "Policy check failed: corrected kernel gate unmet (Story 0-10 is not done)"
     echo "Feature story progression is blocked until corrected kernel acceptance criteria complete."
+    print_policy_context
+    echo "Required status gate: 0-10-kernel-readiness-verification-suite: done"
+    print_recovery "$workflow_hint"
     exit 1
   fi
 
@@ -132,6 +142,9 @@ enforce_corrected_kernel_gate_for_story() {
     END { exit ok ? 0 : 1 }
   ' "$status_file"; then
     echo "Policy check failed: corrected kernel gate unmet (course correction cc-2026-02-18 is not approved)"
+    print_policy_context
+    echo "Required status gate: course_correction.cc-2026-02-18.status: approved"
+    print_recovery "$workflow_hint"
     exit 1
   fi
 }

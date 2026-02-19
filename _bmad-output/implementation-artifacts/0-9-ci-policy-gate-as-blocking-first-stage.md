@@ -90,11 +90,15 @@ GPT-5 Codex
   - `npm run test:e2e -- tests/debts/payment.spec.ts tests/e2e/platform/kernel-readiness-verification-suite.spec.ts tests/extra-money/reserve-goals.spec.ts tests/recurring/approve-post.spec.ts tests/transactions/create.spec.ts tests/transactions/split.spec.ts` (10 passed, 0 failed)
   - `npm run test:e2e -- tests/api/platform/tenancy-context-and-repository-enforcement.api.spec.ts tests/e2e/platform/tenancy-context-and-repository-enforcement.spec.ts` (11 passed, 0 failed)
   - `npm run test:e2e` (98 passed, 0 failed, 13 skipped)
+- Senior review remediation pass (2026-02-19):
+  - `npm run test:e2e -- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts` (20 passed, 0 failed)
+  - `npm run policy:check` (passes)
 
 ### Completion Notes List
 
 - AC1 implemented and covered:
   - CI dependency-chain assertions are active and validate policy-first gating for `lint`, `test`, `burn-in`, and `quality-gates`.
+  - CI pull-request trigger scope now includes `codex/dev` in addition to `production`, so policy-first graph enforcement executes on required story PR targets.
   - AC1 graph assertions now parse job blocks/needs structurally to reduce false failures from harmless formatting changes.
 - AC2 implemented and covered:
   - `scripts/enforce-git-policy.sh` now emits actionable local and pull-request failure context including:
@@ -115,6 +119,8 @@ GPT-5 Codex
   - local branch spoof prevention now reads git branch in local mode
   - branch/story commit-subject consistency enforced for story branches
   - pull-request default-branch violations emit actionable remediation hints
+  - corrected-kernel gate failures now also include policy context and remediation commands
+  - Epic 0 quality gate JWT dependency resolution now supports standard module lookup with backend-local fallback instead of a single hard-coded path
 - Additional remediation and regression hardening completed:
   - enabled test auth harness in development mode and seeded baseline harness data on first login creation
   - normalized transaction date persistence to avoid timezone-related off-by-one drift from date objects
@@ -127,7 +133,9 @@ GPT-5 Codex
 ### File List
 
 - _bmad-output/implementation-artifacts/0-9-ci-policy-gate-as-blocking-first-stage.md
+- .github/workflows/test.yml
 - frontend/src/views/Debts/DebtsView.vue
+- scripts/branch-ensure-workflow.sh
 - scripts/enforce-git-policy.sh
 - scripts/quality-gates-epic0.sh
 - src/src/platform/sessions/PlatformSessionStore.ts
@@ -141,13 +149,12 @@ GPT-5 Codex
 - tests/e2e/platform/kernel-readiness-verification-suite.spec.ts
 - tests/extra-money/reserve-goals.spec.ts
 - tests/recurring/approve-post.spec.ts
-- tests/support/factories/ciPolicyContextFactory.ts
 - tests/support/factories/kernelReadinessContextFactory.ts
 - tests/support/factories/tenantRepositoryFactory.ts
-- tests/support/utils/policyScriptTestHarness.ts
 
 ## Change Log
 
+- 2026-02-19: Addressed Senior Developer Review follow-up findings by enabling CI on `codex/dev` PR targets, hardening local branch guard branch resolution against env spoofing, improving corrected-kernel policy failure remediation output, removing hard-coded JWT module path assumptions in Epic 0 quality gates, and reconciling story File List with actual branch changes.
 - 2026-02-19: Completed regression remediation for Story 0.9 validation run; fixed harness auth/bootstrap seeding, date persistence drift, and tenancy token factory compatibility, then revalidated full suite to green (`98 passed, 0 failed, 13 skipped`). Story status moved to `review`.
 - 2026-02-19: Executed full completion revalidation on `codex/story-0-9-ci-policy-gate-as-blocking-first-stage`; `policy:check` now passes and Story 0.9 targeted suites remain green (18 passed), but full regression is still blocked by unrelated failures (`71 passed, 27 failed, 13 skipped`), so story remains `in-progress`.
 - 2026-02-19: Re-ran Dev Story validation from `codex/story-0-9-ci-policy-gate-as-blocking-first-stage`; story-targeted suites are green (18 passed), but completion remains blocked by commit-subject policy gate and full regression failures (`27 failed, 13 skipped` with live app services).

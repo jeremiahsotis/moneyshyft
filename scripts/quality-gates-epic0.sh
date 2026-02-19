@@ -5,9 +5,27 @@ node <<'NODE'
 const fs = require('fs');
 const path = require('path');
 const { randomUUID } = require('crypto');
-const jwt = require(path.join(process.cwd(), 'src/node_modules/jsonwebtoken'));
-
 const root = process.cwd();
+
+const resolveJwtModule = () => {
+  try {
+    return require('jsonwebtoken');
+  } catch (_error) {
+    // Continue to backend-local install fallback.
+  }
+
+  try {
+    return require(path.join(root, 'src/node_modules/jsonwebtoken'));
+  } catch (_error) {
+    // Continue to explicit failure with remediation.
+  }
+
+  throw new Error(
+    'Missing jsonwebtoken dependency. Install with `npm ci` or `cd src && npm ci` before running Epic 0 quality gates.'
+  );
+};
+
+const jwt = resolveJwtModule();
 const apiBaseUrl = (process.env.API_URL || process.env.API_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 const reportPathInput = process.env.EPIC0_QUALITY_REPORT_PATH || 'tests/artifacts/gates/epic-0-quality.json';
 const reportPath = path.isAbsolute(reportPathInput)

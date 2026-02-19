@@ -52,6 +52,8 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     const burnInJob = getJobBlock(workflow, 'burn-in');
     const qualityGatesJob = getJobBlock(workflow, 'quality-gates');
     const policyRunsGate = /\n\s*run:\s*npm run policy:check\b/.test(policyJob);
+    const pullRequestIncludesProduction = /pull_request:\s*\n\s*branches:\s*\[[^\]]*\bproduction\b/.test(workflow);
+    const pullRequestIncludesCodexDev = /pull_request:\s*\n\s*branches:\s*\[[^\]]*\bcodex\/dev\b/.test(workflow);
 
     // Then CI should define all required quality jobs and run policy:check in policy stage
     expect(
@@ -60,7 +62,9 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
         testJob.length > 0 &&
         burnInJob.length > 0 &&
         qualityGatesJob.length > 0 &&
-        policyRunsGate,
+        policyRunsGate &&
+        pullRequestIncludesProduction &&
+        pullRequestIncludesCodexDev,
     ).toBe(true);
   });
 
@@ -135,5 +139,19 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
 
     // Then local feedback should be actionable and include current branch context
     expect(status !== 0 && hasViolationHeadline && hasBranchName && hasRecoveryCommand).toBe(true);
+  });
+
+  test('[P1] epic-0 quality gate script resolves jsonwebtoken with portable module lookup order @P1', async () => {
+    // Given the Epic-0 quality gate script source
+    const script = readFileSync('scripts/quality-gates-epic0.sh', 'utf8');
+
+    // When checking JWT dependency resolution strategy
+    const hasNodeModuleRequire = /return require\('jsonwebtoken'\);/.test(script);
+    const hasBackendFallbackRequire = /return require\(path\.join\(root, 'src\/node_modules\/jsonwebtoken'\)\);/.test(
+      script,
+    );
+
+    // Then script should try normal resolution first and support backend-local fallback
+    expect(hasNodeModuleRequire && hasBackendFallbackRequire).toBe(true);
   });
 });

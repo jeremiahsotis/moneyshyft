@@ -10,6 +10,13 @@ type ScriptRunResult = {
   status: number;
 };
 
+type BranchGuardHarnessOptions = {
+  env?: Record<string, string>;
+  branch?: string;
+  workflow?: string;
+  story?: string;
+};
+
 const FEATURE_STORY_ID = '1-1';
 const FEATURE_STORY_BRANCH = 'codex/story-1-1-tenant-context-resolution-and-isolation-guardrails';
 const FEATURE_STORY_FILE =
@@ -27,27 +34,40 @@ course_correction:
 function runBranchGuardInTempRepo(
   branchGuardScript: string,
   sprintStatusContents: string,
-  env: Record<string, string> = {},
+  options: BranchGuardHarnessOptions = {},
 ): ScriptRunResult {
   const repoDir = mkdtempSync(join(tmpdir(), 'branch-guard-harness-'));
   const sprintStatusPath = join(repoDir, '_bmad-output/implementation-artifacts/sprint-status.yaml');
   const branchGuardAbsolutePath = resolve(branchGuardScript);
+  const branch = options.branch ?? FEATURE_STORY_BRANCH;
+  const workflow = options.workflow ?? 'dev-story';
+  const story = options.story ?? FEATURE_STORY_FILE;
 
   try {
     mkdirSync(dirname(sprintStatusPath), { recursive: true });
     writeFileSync(sprintStatusPath, sprintStatusContents, 'utf8');
+    writeFileSync(join(repoDir, 'README.md'), '# branch guard harness\n', 'utf8');
+
+    execFileSync('git', ['init', '-b', 'main'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.email', 'branch-guard-harness@example.com'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.name', 'Branch Guard Harness'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['add', '.'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['commit', '-m', 'seed branch guard harness'], { cwd: repoDir, stdio: 'ignore' });
+
+    if (branch !== 'main') {
+      execFileSync('git', ['checkout', '-b', branch], { cwd: repoDir, stdio: 'ignore' });
+    }
 
     try {
       const output = execFileSync(
         'bash',
-        [branchGuardAbsolutePath, '--workflow', 'dev-story', '--story', FEATURE_STORY_FILE],
+        [branchGuardAbsolutePath, '--workflow', workflow, '--story', story],
         {
           cwd: repoDir,
           env: {
             ...process.env,
-            GITHUB_HEAD_REF: FEATURE_STORY_BRANCH,
             SPRINT_STATUS_FILE: sprintStatusPath,
-            ...env,
+            ...(options.env ?? {}),
           },
           encoding: 'utf8',
         },
@@ -168,39 +188,46 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
   test('[P1] branch workflow guard failure output includes exact expected pattern and current branch @P1', async ({
     ciPolicyContext,
   }) => {
-    // Given a mismatched story branch for workflow execution
-    let output = '';
-    try {
-      execFileSync(
-        'bash',
-        [
-          ciPolicyContext.branchGuardScript,
-          '--workflow',
-          '_bmad/tea/workflows/testarch/atdd/workflow.yaml',
-          '--story',
-          '_bmad-output/implementation-artifacts/0-9-ci-policy-gate-as-blocking-first-stage.md',
-        ],
-        {
-          env: {
-            ...process.env,
-            GITHUB_HEAD_REF: 'codex/story-0-8-centralized-time-service-and-utc-local-rendering-contract',
-          },
-          encoding: 'utf8',
-        },
-      );
-    } catch (error) {
-      const typed = error as { stdout?: string; stderr?: string };
-      output = `${typed.stdout ?? ''}${typed.stderr ?? ''}`;
-    }
+    // Given a local repository branch that does not match the requested story id
+    const mismatchedBranch = 'codex/story-0-8-centralized-time-service-and-utc-local-rendering-contract';
+    const { output, status } = runBranchGuardInTempRepo(
+      ciPolicyContext.branchGuardScript,
+      createSprintStatus('done', 'approved'),
+      {
+        branch: mismatchedBranch,
+        workflow: '_bmad/tea/workflows/testarch/atdd/workflow.yaml',
+        story: '_bmad-output/implementation-artifacts/0-9-ci-policy-gate-as-blocking-first-stage.md',
+      },
+    );
 
     // When reading guard failure diagnostics
     const hasExpectedPattern = /Expected branch pattern:\s*codex\/story-0-9-<slug>/.test(output);
-    const hasCurrentBranch = /Current branch:\s*codex\/story-0-8-centralized-time-service-and-utc-local-rendering-contract/.test(
-      output,
-    );
+    const hasCurrentBranch = new RegExp(`Current branch:\\s*${mismatchedBranch}`).test(output);
 
     // Then output should include concrete branch mismatch diagnostics
-    expect(hasExpectedPattern && hasCurrentBranch).toBe(true);
+    expect(status !== 0 && hasExpectedPattern && hasCurrentBranch).toBe(true);
+  });
+
+  test('[P0] local branch guard ignores env spoofing and enforces git branch state @P0', async ({
+    ciPolicyContext,
+  }) => {
+    // Given local execution on main with a spoofed story branch env variable
+    const { output, status } = runBranchGuardInTempRepo(
+      ciPolicyContext.branchGuardScript,
+      createSprintStatus('done', 'approved'),
+      {
+        branch: 'main',
+        story: '_bmad-output/implementation-artifacts/0-9-ci-policy-gate-as-blocking-first-stage.md',
+        env: {
+          GITHUB_HEAD_REF: 'codex/story-0-9-ci-policy-gate-as-blocking-first-stage',
+        },
+      },
+    );
+
+    // Then guard should fail using actual git branch context, not env spoof values
+    const hasFailurePrefix = /Branch guard failed/.test(output);
+    const hasCurrentBranch = /Current branch:\s*main/.test(output);
+    expect(status !== 0 && hasFailurePrefix && hasCurrentBranch).toBe(true);
   });
 
   test('[P1] policy failure output includes explicit policy path and remediation commands for local runs @P1', async ({
@@ -254,7 +281,11 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
 
     // Then CI policy should block workflow progression with explicit corrected-kernel context
     const hasGateFailureMessage = /corrected kernel gate unmet \(Story 0-10 is not done\)/.test(output);
-    expect(status !== 0 && hasGateFailureMessage).toBe(true);
+    const hasPolicyReference = /Policy reference:\s*docs\/policies\/git_policy\.md/.test(output);
+    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-tenant-context-resolution-and-isolation-guardrails\.md/.test(
+      output,
+    );
+    expect(status !== 0 && hasGateFailureMessage && hasPolicyReference && hasRemediationHint).toBe(true);
   });
 
   test('[P0] policy gate blocks non-Epic-0 story branches until course-correction status is approved @P0', async ({
@@ -276,7 +307,11 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     const hasCourseCorrectionFailure = /corrected kernel gate unmet \(course correction cc-2026-02-18 is not approved\)/.test(
       output,
     );
-    expect(status !== 0 && hasCourseCorrectionFailure).toBe(true);
+    const hasPolicyReference = /Policy reference:\s*docs\/policies\/git_policy\.md/.test(output);
+    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-tenant-context-resolution-and-isolation-guardrails\.md/.test(
+      output,
+    );
+    expect(status !== 0 && hasCourseCorrectionFailure && hasPolicyReference && hasRemediationHint).toBe(true);
   });
 
   test('[P0] policy gate allows non-Epic-0 story branches after corrected-kernel gate prerequisites are satisfied @P0', async ({
