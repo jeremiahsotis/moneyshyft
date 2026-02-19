@@ -95,7 +95,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     // When checking quality-gates conditional execution criteria
     const hasAlwaysGateCondition =
       /quality-gates:\s*[\s\S]*?\n\s*if:\s*always\(\)\s*&&\s*needs\.test\.result\s*==\s*'success'/.test(workflow);
-    const hasBurnInSuccessOrSkipped = /\(\s*needs\.burn-in\.result\s*==\s*'success'\s*\|\|\s*needs\.burn-in\.result\s*==\s*'skipped'\s*\)/.test(
+    const hasBurnInSuccessOrSkipped = /\(\s*needs\['burn-in'\]\.result\s*==\s*'success'\s*\|\|\s*needs\['burn-in'\]\.result\s*==\s*'skipped'\s*\)/.test(
       workflow,
     );
 
@@ -113,7 +113,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     const reportContainsPolicyStatus = /echo "- policy: \$\{\{ needs\.policy\.result \}\}"/.test(workflow);
     const reportContainsLintStatus = /echo "- lint: \$\{\{ needs\.lint\.result \}\}"/.test(workflow);
     const reportContainsTestStatus = /echo "- test: \$\{\{ needs\.test\.result \}\}"/.test(workflow);
-    const reportContainsQualityGateStatus = /echo "- quality-gates: \$\{\{ needs\.quality-gates\.result \}\}"/.test(workflow);
+    const reportContainsQualityGateStatus = /echo "- quality-gates: \$\{\{ needs\['quality-gates'\]\.result \}\}"/.test(workflow);
 
     // Then summary should include policy and all quality-stage statuses
     expect(reportContainsPolicyStatus && reportContainsLintStatus && reportContainsTestStatus && reportContainsQualityGateStatus).toBe(

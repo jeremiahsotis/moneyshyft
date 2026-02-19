@@ -128,7 +128,7 @@ jobs:
     name: quality-gates
     runs-on: ubuntu-latest
     needs: [test, burn-in]
-    if: always() && needs.test.result == 'success' && (needs.burn-in.result == 'success' || needs.burn-in.result == 'skipped')
+    if: always() && needs.test.result == 'success' && (needs['burn-in'].result == 'success' || needs['burn-in'].result == 'skipped')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -158,7 +158,7 @@ jobs:
     needs: quality-gates
     if: |
       always() &&
-      needs.quality-gates.result == 'success' &&
+      needs['quality-gates'].result == 'success' &&
       (
         (github.event_name == 'workflow_dispatch' && inputs.run_epic0_quality == true) ||
         startsWith(github.ref, 'refs/heads/codex/epic-0-ops') ||
@@ -220,10 +220,10 @@ jobs:
             echo "- policy: ${{ needs.policy.result }}"
             echo "- lint: ${{ needs.lint.result }}"
             echo "- test: ${{ needs.test.result }}"
-            echo "- burn-in: ${{ needs.burn-in.result }}"
-            echo "- quality-gates: ${{ needs.quality-gates.result }}"
+            echo "- burn-in: ${{ needs['burn-in'].result }}"
+            echo "- quality-gates: ${{ needs['quality-gates'].result }}"
             echo "- epic-0-quality: ${{ needs['epic-0-quality'].result }}"
-            echo "- backend-contracts: ${{ needs.backend-contracts.result }}"
+            echo "- backend-contracts: ${{ needs['backend-contracts'].result }}"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Slack failure notification
         if: failure() && secrets.SLACK_WEBHOOK_URL != ''
