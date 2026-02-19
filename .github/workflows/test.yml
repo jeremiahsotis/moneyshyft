@@ -54,6 +54,7 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci
+      - run: npm ci --prefix src
       - name: Lint or discovery fallback
         run: bash scripts/lint-or-discovery.sh
 
@@ -72,6 +73,7 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci
+      - run: npm ci --prefix src
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Run Playwright shard
@@ -109,6 +111,7 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci
+      - run: npm ci --prefix src
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Run burn-in loop
@@ -136,6 +139,7 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci
+      - run: npm ci --prefix src
       - name: Download shard artifacts
         uses: actions/download-artifact@v4
         with:
@@ -171,6 +175,7 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci
+      - run: npm ci --prefix src
       - name: Run Epic 0 quality gates
         run: bash scripts/quality-gates-epic0.sh
       - name: Upload Epic 0 gate artifacts
@@ -201,6 +206,7 @@ jobs:
           node-version-file: '.nvmrc'
           cache: npm
       - run: npm ci
+      - run: npm ci --prefix src
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Run backend-connected contracts
