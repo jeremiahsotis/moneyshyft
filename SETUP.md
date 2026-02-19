@@ -42,15 +42,16 @@ The `.env` file in `src/` contains configuration. For production:
 Playwright tests run against a live app. Set these env vars before running:
 
 ```bash
-export BASE_URL=http://localhost:5173
+export API_URL=http://127.0.0.1:3000
+export BASE_URL=http://127.0.0.1:5173
 export TEST_EMAIL=you@example.com
 export TEST_PASSWORD=yourpassword
 ```
 
-Run the suite:
+Start backend/frontend first, then run the suite:
 
 ```bash
-npx playwright test
+npm run test:e2e
 ```
 
 CI uses the same variables via GitHub Secrets:

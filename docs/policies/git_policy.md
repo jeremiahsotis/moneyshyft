@@ -54,6 +54,17 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - Run full regression before PR is marked ready.
 - PR description must include Story ID, AC traceability, and exact test commands/results.
 
+### Playwright Regression Execution Policy (Mandatory)
+
+- Playwright regression runs must target loopback IPv4 only:
+  - `API_URL` host must be `127.0.0.1`
+  - `BASE_URL` host must be `127.0.0.1`
+- Backend and frontend must be live and reachable before Playwright starts.
+- Enforcement is mandatory through:
+  - `scripts/run-playwright-with-preflight.sh`
+  - Root npm scripts: `test:e2e`, `test:e2e:headed`, `test:e2e:debug`
+- If preflight cannot reach backend/frontend health endpoints, Playwright execution must fail immediately.
+
 ### Corrected Kernel Gate (Mandatory for Feature Story Progression)
 
 - Feature stories outside Epic 0 are blocked until corrected kernel acceptance criteria are complete.

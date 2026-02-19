@@ -41,7 +41,7 @@ export default defineConfig({
     ['json', { outputFile: 'tests/artifacts/test-results/results.json' }],
   ],
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:5173',
+    baseURL: process.env.BASE_URL || 'http://127.0.0.1:5173',
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
     trace: 'retain-on-failure',
