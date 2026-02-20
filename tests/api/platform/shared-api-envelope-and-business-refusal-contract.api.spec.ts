@@ -31,7 +31,7 @@ test.describe('Story 0.5 atdd - shared API envelope and business refusal contrac
       code: successProbe.expected.code,
       message: successProbe.expected.message,
       correlationId: headers['x-correlation-id'],
-      tenantId: headers['x-tenant-id'],
+      tenantId: null,
     });
   });
 
@@ -60,7 +60,7 @@ test.describe('Story 0.5 atdd - shared API envelope and business refusal contrac
       message: refusalProbe.expected.message,
       refusalType: refusalProbe.expected.refusalType,
       correlationId: headers['x-correlation-id'],
-      tenantId: headers['x-tenant-id'],
+      tenantId: null,
     });
   });
 

@@ -50,7 +50,7 @@ describe('tenant scope enforcement', () => {
         scopeMode: 'TENANT',
       })
     ).toEqual({
-      tenant_id: 'tenant-a',
+      household_id: 'tenant-a',
     });
   });
 
@@ -62,7 +62,7 @@ describe('tenant scope enforcement', () => {
         scopeMode: 'ORG_UNIT',
       })
     ).toEqual({
-      tenant_id: 'tenant-a',
+      household_id: 'tenant-a',
       org_unit_id: 'org-1',
     });
   });

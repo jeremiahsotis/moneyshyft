@@ -151,11 +151,11 @@ test.describe('Story 0.6 atdd - platform events and outbox schema foundations AP
       const indexesBody = await indexesResponse.json();
       const replayBody = await replayResponse.json();
 
-      expect(eventsBody.tenantId).toBe(headers['x-tenant-id']);
+      expect(eventsBody.tenantId).toBeNull();
       expect(eventsBody.correlationId).toBe(headers['x-correlation-id']);
-      expect(indexesBody.tenantId).toBe(headers['x-tenant-id']);
+      expect(indexesBody.tenantId).toBeNull();
       expect(indexesBody.correlationId).toBe(headers['x-correlation-id']);
-      expect(replayBody.tenantId).toBe(headers['x-tenant-id']);
+      expect(replayBody.tenantId).toBeNull();
       expect(replayBody.correlationId).toBe(headers['x-correlation-id']);
     },
   );

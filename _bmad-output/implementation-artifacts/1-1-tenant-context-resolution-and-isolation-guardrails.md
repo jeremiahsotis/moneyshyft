@@ -1,6 +1,6 @@
 # Story 1.1: Tenant Context Resolution and Isolation Guardrails
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -145,19 +145,23 @@ GPT-5 Codex
 - Revalidated Story 1.1 tenancy-focused Jest suites and route contract coverage.
 - Cleared unrelated baseline regressions that previously blocked completion gates (`PlatformSessionStore`, centralized time contract, Playwright preflight auth proxy).
 - Story completion gates are now green; status moved to `review`.
+- Senior code review findings remediated:
+  - Removed header-derived tenant trust from envelope context resolution.
+  - Added explicit cross-tenant write rejection test coverage for Story 1.1.
+  - Normalized tenant scope-helper default column behavior and kept platform contract responses explicit (`tenant_id`).
 
 ### File List
 
 - _bmad-output/implementation-artifacts/1-1-tenant-context-resolution-and-isolation-guardrails.md
-- _bmad-output/implementation-artifacts/sprint-status.yaml
-- src/src/platform/sessions/PlatformSessionStore.ts
+- src/src/platform/tenancy/tenantScope.ts
+- src/src/platform/tenancy/__tests__/tenantScope.test.ts
 - src/src/routes/api/v1/platform-contracts.ts
-- tests/api/platform/centralized-time-service-and-utc-local-rendering-contract.api.spec.ts
-- frontend/vite.config.ts
-- scripts/run-playwright-with-preflight.sh
+- tests/api/platform/1-1-tenant-context-resolution-and-isolation-guardrails.api.spec.ts
 
 ## Change Log
 
 - 2026-02-19: Executed `dev-story` for `mono-s1.1` (`1-1-tenant-context-resolution-and-isolation-guardrails`), validated story-specific implementation/tests, and moved story to `in-progress` pending unrelated baseline regression failures.
 - 2026-02-19: Re-ran `dev-story` for `mono-s1.1`; Story 1.1 targeted API/E2E/tenancy unit tests remain green while unrelated baseline regressions still block completion gates.
 - 2026-02-20: Cleared baseline regression blockers, reran full backend/frontend/Playwright gates successfully, and promoted Story `1-1-tenant-context-resolution-and-isolation-guardrails` to `review`.
+- 2026-02-20: Completed adversarial code-review remediation for `mono-s1.1` by removing header-derived tenant trust in envelopes, adding cross-tenant write refusal coverage, and normalizing scope-helper column defaults; focused Jest and Story 1.1 API Playwright suites passing.
+- 2026-02-20: Finalized envelope contract standardization (`public/no-auth tenantId -> null`), completed contract-test realignment, reran broader Jest + full platform API suites successfully, and marked Story `1-1-tenant-context-resolution-and-isolation-guardrails` as `done`.

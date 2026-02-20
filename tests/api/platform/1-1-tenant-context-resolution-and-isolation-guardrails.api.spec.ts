@@ -126,4 +126,31 @@ test.describe('Story 1.1 automate - tenant context resolution and isolation guar
       refusalType: 'business',
     });
   });
+
+  test('[P1] blocks cross-tenant write overrides with deterministic business refusal @P1', async ({
+    request,
+  }) => {
+    const headers = createStory11TenantHeaders({
+      orgUnitId: tenantContextStory11.orgUnitId,
+      role: 'ORGUNIT_MEMBER',
+    });
+
+    const response = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/tenancy/repository-check',
+      headers,
+      data: {
+        targetTenantId: 'story11-tenant-cross-write',
+        targetOrgUnitId: tenantContextStory11.orgUnitId,
+      },
+    });
+
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      ok: false,
+      code: 'TENANT_SCOPE_VIOLATION',
+      refusalType: 'business',
+    });
+  });
 });
