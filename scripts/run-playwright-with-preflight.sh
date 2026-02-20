@@ -148,7 +148,7 @@ if ! is_http_reachable "$frontend_root/login" && ! is_http_reachable "$frontend_
 
   echo "Managed runtime policy: starting frontend for this test run"
   : > "$FRONTEND_LOG_FILE"
-  (cd frontend && npm run dev -- --host 127.0.0.1 --port 5173) >"$FRONTEND_LOG_FILE" 2>&1 &
+  (cd frontend && VITE_API_PROXY_TARGET="$API_URL" npm run dev -- --host 127.0.0.1 --port 5173 --strictPort) >"$FRONTEND_LOG_FILE" 2>&1 &
   FRONTEND_PID=$!
   FRONTEND_STARTED=true
   echo "$FRONTEND_PID" > "$FRONTEND_PID_FILE"

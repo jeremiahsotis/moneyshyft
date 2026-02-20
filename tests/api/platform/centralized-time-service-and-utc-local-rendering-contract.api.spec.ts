@@ -55,8 +55,9 @@ test.describe('Story 0.8 atdd - centralized time service and utc/local rendering
     expect(body).toMatchObject({
       timezoneSource: 'user',
       rendered: expect.any(String),
-      utcTimestamp: '2026-02-17T15:30:00.000Z',
     });
+    expect(body).not.toHaveProperty('utcTimestamp');
+    expect(body.data).not.toHaveProperty('utcTimestamp');
     expect(body.rendered).not.toContain('T15:30:00.000Z');
   });
 

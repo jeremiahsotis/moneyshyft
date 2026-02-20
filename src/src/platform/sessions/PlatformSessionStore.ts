@@ -37,10 +37,15 @@ class PlatformSessionStore {
 
   private async hasTenantColumn(): Promise<boolean> {
     if (!this.tenantColumnSupport) {
-      this.tenantColumnSupport = db.schema
-        .withSchema('platform')
-        .hasColumn('sessions', 'tenant_id')
-        .catch(() => false);
+      const schema = (db as Knex & { schema?: Knex['schema'] }).schema;
+      if (!schema || typeof schema.withSchema !== 'function') {
+        this.tenantColumnSupport = Promise.resolve(true);
+      } else {
+        this.tenantColumnSupport = schema
+          .withSchema('platform')
+          .hasColumn('sessions', 'tenant_id')
+          .catch(() => false);
+      }
     }
 
     return this.tenantColumnSupport;

@@ -4,7 +4,7 @@ import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const apiProxyTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:3000';
+  const apiProxyTarget = env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:3000';
 
   return {
     plugins: [vue()],
