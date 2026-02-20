@@ -263,7 +263,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
 
     // Then policy should fail with explicit branch/story mismatch context
     const hasStoryMismatchMessage = /latest commit subject must match '0-9: <summary>'/.test(output);
-    const hasActualSubject = /Actual:\s*0-8: wrong story commit subject/.test(output);
+    const hasActualSubject = /Actual(?: \([^)]+\))?:\s*0-8: wrong story commit subject/.test(output);
     expect(status !== 0 && hasStoryMismatchMessage && hasActualSubject).toBe(true);
   });
 
