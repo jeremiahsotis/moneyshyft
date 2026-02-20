@@ -1,6 +1,7 @@
 import type { Knex } from 'knex';
 import { generateInvitationCode } from '../utils/invitationCode';
 import { executePlatformMutation } from '../platform/mutations/executePlatformMutation';
+import { redactSensitivePayload } from '../platform/audit/redaction';
 import {
   CAPABILITIES,
   Capability,
@@ -119,6 +120,7 @@ const writePlatformEventAndOutbox = async (
     throw new Error('Mutation contract violation: tenantId, entityId, and actorId (if present) must be UUIDs');
   }
 
+  const sanitizedPayload = redactSensitivePayload(event.payload ?? {}).redactedPayload as Record<string, unknown>;
   const occurredAtUtc = trx.fn.now();
   const [insertedEvent] = await trx
     .withSchema('platform')
@@ -130,7 +132,7 @@ const writePlatformEventAndOutbox = async (
       entity_type: event.entityType,
       entity_id: event.entityId,
       occurred_at_utc: occurredAtUtc,
-      payload: event.payload ?? {},
+      payload: sanitizedPayload,
     })
     .returning(['id']);
 
@@ -149,7 +151,7 @@ const writePlatformEventAndOutbox = async (
       entity_type: event.entityType,
       entity_id: event.entityId,
       occurred_at_utc: occurredAtUtc,
-      payload: event.payload ?? {},
+      payload: sanitizedPayload,
       delivery_status: 'pending',
       delivery_attempts: 0,
       available_at_utc: occurredAtUtc,

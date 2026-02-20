@@ -1,0 +1,43 @@
+{
+  "success": true,
+  "subprocess": "atdd-api-tests",
+  "tests": [
+    {
+      "file": "tests/api/platform/1-6-security-controls-and-redaction-verification.atdd.api.spec.ts",
+      "content": "import { apiRequest } from '../../support/helpers/apiClient';\nimport { test, expect } from '../../support/fixtures/securityControlsStory16.fixture';\n\ntest.describe('Story 1.6 Security Controls and Redaction Verification (ATDD API RED)', () => {\n  test.skip(\n    '[P0] rejects cross-tenant read overrides on protected repository diagnostics @P0',\n    async ({ request, story16TenantHeaders, story16CrossTenantReadProbe }) => {\n      const response = await apiRequest(request, {\n        method: 'GET',\n        path: `/api/v1/platform/_kernel/tenancy/repository-check${story16CrossTenantReadProbe.query}`,\n        headers: story16TenantHeaders,\n      });\n\n      expect(response.status()).toBe(403);\n      const body = await response.json();\n      expect(body).toMatchObject({\n        ok: false,\n        code: 'TENANT_SCOPE_VIOLATION',\n        refusalType: 'security',\n      });\n    },\n  );\n\n  test.skip(\n    '[P0] rejects cross-tenant write overrides with deterministic business refusal envelope @P0',\n    async ({ request, story16TenantHeaders, story16CrossTenantWriteProbe }) => {\n      const response = await apiRequest(request, {\n        method: 'POST',\n        path: '/api/v1/platform/_kernel/tenancy/repository-check',\n        headers: story16TenantHeaders,\n        data: story16CrossTenantWriteProbe.payload,\n      });\n\n      expect(response.status()).toBe(200);\n      const body = await response.json();\n      expect(body).toMatchObject({\n        ok: false,\n        code: 'TENANT_SCOPE_VIOLATION',\n        refusalType: 'business',\n      });\n    },\n  );\n\n  test.skip(\n    '[P0] enforces csrf evidence on state-changing security guard endpoints @P0',\n    async ({ request, story16CsrfGuardProbe }) => {\n      const headers = { ...story16CsrfGuardProbe.headers };\n      delete headers['x-csrf-token'];\n\n      const response = await apiRequest(request, {\n        method: 'POST',\n        path: '/api/v1/platform/_kernel/security/csrf/guard',\n        headers,\n        data: story16CsrfGuardProbe.payload,\n      });\n\n      expect(response.status()).toBe(403);\n      const body = await response.json();\n      expect(body).toMatchObject({\n        ok: false,\n        code: 'CSRF_TOKEN_REQUIRED',\n        refusalType: 'security',\n      });\n    },\n  );\n\n  test.skip(\n    '[P1] rejects csrf mismatch and preserves deterministic security refusal semantics @P1',\n    async ({ request, story16CsrfGuardProbe }) => {\n      const response = await apiRequest(request, {\n        method: 'POST',\n        path: '/api/v1/platform/_kernel/security/csrf/guard',\n        headers: {\n          ...story16CsrfGuardProbe.headers,\n          'x-csrf-token': 'csrf-mismatch-story-1-6',\n        },\n        data: story16CsrfGuardProbe.payload,\n      });\n\n      expect(response.status()).toBe(403);\n      const body = await response.json();\n      expect(body).toMatchObject({\n        ok: false,\n        code: 'CSRF_TOKEN_INVALID',\n        refusalType: 'security',\n      });\n    },\n  );\n\n  test.skip(\n    '[P1] verifies production cookie posture contract for sibling app/api domains @P1',\n    async ({ request, story16CookiePolicyProbe }) => {\n      const response = await apiRequest(request, {\n        method: 'POST',\n        path: '/api/v1/platform/_kernel/security/cookies/policy/evaluate',\n        headers: story16CookiePolicyProbe.headers,\n        data: story16CookiePolicyProbe.payload,\n      });\n\n      expect(response.status()).toBe(200);\n      const body = await response.json();\n      expect(body).toMatchObject({\n        ok: true,\n        policy: {\n          environment: story16CookiePolicyProbe.expected.environment,\n          parentDomain: story16CookiePolicyProbe.expected.parentDomain,\n          accessToken: {\n            httpOnly: true,\n            secure: story16CookiePolicyProbe.expected.secure,\n            sameSite: story16CookiePolicyProbe.expected.sameSite,\n            domain: story16CookiePolicyProbe.expected.parentDomain,\n          },\n          refreshToken: {\n            httpOnly: true,\n            secure: story16CookiePolicyProbe.expected.secure,\n            sameSite: story16CookiePolicyProbe.expected.sameSite,\n            domain: story16CookiePolicyProbe.expected.parentDomain,\n          },\n        },\n      });\n    },\n  );\n\n  test.skip(\n    '[P1] emits redaction-safe audit evidence and excludes plaintext secrets from payload contracts @P1',\n    async ({ request, story16Context, story16TenantHeaders, story16RedactionProbe }) => {\n      const response = await apiRequest(request, {\n        method: 'POST',\n        path: story16Context.redactionReportPath,\n        headers: story16TenantHeaders,\n        data: story16RedactionProbe.payload,\n      });\n\n      expect(response.status()).toBe(200);\n      const body = await response.json();\n      expect(body).toMatchObject({\n        ok: true,\n        code: 'SECURITY_REDACTION_VERIFIED',\n        data: {\n          redaction: {\n            allSensitiveFieldsRedacted: true,\n            redactedFields: expect.arrayContaining(\n              story16RedactionProbe.expected.redactedFields,\n            ),\n            preservedPaths: expect.arrayContaining(\n              story16RedactionProbe.expected.preservedPaths,\n            ),\n          },\n        },\n      });\n\n      const serialized = JSON.stringify(body);\n      for (const marker of story16RedactionProbe.expected.forbiddenPlaintextMarkers) {\n        expect(serialized).not.toContain(marker);\n      }\n    },\n  );\n});\n",
+      "description": "ATDD API RED tests for Story 1.6 security controls and redaction verification",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Cross-tenant access attempts fail on protected paths",
+        "CSRF protection is enforced on state-changing routes",
+        "Cookie posture assertions align with app/api domain model",
+        "Logs and event payloads exclude prohibited plaintext sensitive fields"
+      ],
+      "priority_coverage": {
+        "P0": 3,
+        "P1": 3,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "securityControlsStory16Factory",
+    "securityControlsStory16Fixture"
+  ],
+  "knowledge_fragments_used": [
+    "data-factories",
+    "test-quality",
+    "test-healing-patterns",
+    "selector-resilience",
+    "timing-debugging",
+    "overview",
+    "api-request",
+    "auth-session",
+    "intercept-network-call",
+    "playwright-cli"
+  ],
+  "test_count": 6,
+  "tdd_phase": "RED",
+  "summary": "Generated 6 FAILING (skipped) API tests for Story 1.6"
+}

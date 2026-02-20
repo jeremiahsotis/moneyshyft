@@ -36,6 +36,7 @@ Docker:
 ## Testing Guidelines
 - Backend uses Jest (`npm test`, `npm test:watch`). No test files are currently checked in, so add tests alongside new backend logic when feasible.
 - There is no configured frontend test runner; document manual test steps in PRs when UI changes.
+- For TEA/Playwright CLI browser exploration, if sandbox permissions block browser actions of any kind, stop and ask the user for escalation/permission instead of pivoting to non-browser fallback automatically.
 
 ## Commit & Pull Request Guidelines
 - Recent commits use a short type prefix like `Fix:`, `Docs:`, or `chore:` followed by a concise summary.

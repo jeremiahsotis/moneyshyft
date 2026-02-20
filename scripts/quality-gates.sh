@@ -96,6 +96,10 @@ let p0Total = 0;
 let p0Pass = 0;
 let p1Total = 0;
 let p1Pass = 0;
+const requiredSecuritySuites = [
+  'api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts',
+  'e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts',
+];
 
 for (const file of inputFiles) {
   let json;
@@ -115,6 +119,7 @@ for (const file of inputFiles) {
   json.suites.forEach((suite) => collectSpecsFromSuite(suite, specs));
 
   for (const spec of specs) {
+    const specFile = String(spec.file || '').replace(/\\/g, '/');
     const tags = extractTags(spec);
     if (!tags.has('P0') && !tags.has('P1')) {
       continue;
@@ -124,6 +129,7 @@ for (const file of inputFiles) {
     tests.forEach((test, testIndex) => {
       const key = buildSpecTestKey(spec, test, testIndex);
       const prior = observationsByTest.get(key) || {
+        file: specFile,
         tags: new Set(),
         observations: [],
       };
@@ -160,6 +166,36 @@ for (const value of observationsByTest.values()) {
 
 const p0Rate = p0Total === 0 ? null : (p0Pass / p0Total) * 100;
 const p1Rate = p1Total === 0 ? null : (p1Pass / p1Total) * 100;
+const securitySuiteStats = new Map(
+  requiredSecuritySuites.map((suite) => [suite, { executed: 0, passed: 0, failed: 0 }]),
+);
+
+for (const value of observationsByTest.values()) {
+  for (const suite of requiredSecuritySuites) {
+    if (!String(value.file || '').endsWith(suite)) {
+      continue;
+    }
+
+    const executed = value.observations.some((observation) => observation.executed);
+    if (!executed) {
+      continue;
+    }
+
+    const failed = value.observations.some((observation) => observation.failed);
+    const passed = !failed && value.observations.some((observation) => observation.passed);
+    const stats = securitySuiteStats.get(suite);
+    if (!stats) {
+      continue;
+    }
+
+    stats.executed += 1;
+    if (failed) {
+      stats.failed += 1;
+    } else if (passed) {
+      stats.passed += 1;
+    }
+  }
+}
 
 if (skippedUnreadableFiles > 0) {
   console.log(`Skipped unreadable JSON files: ${skippedUnreadableFiles}`);
@@ -180,5 +216,19 @@ if (p1Total > 0 && p1Rate < 95) {
 
 if (p0Total === 0) console.log('Skipping @P0 gate: no tagged tests found');
 if (p1Total === 0) console.log('Skipping @P1 gate: no tagged tests found');
+
+for (const suite of requiredSecuritySuites) {
+  const stats = securitySuiteStats.get(suite);
+  if (!stats || stats.executed === 0) {
+    console.error(`Quality gate failed: required security verification suite did not execute: ${suite}`);
+    process.exit(1);
+  }
+  if (stats.failed > 0) {
+    console.error(`Quality gate failed: required security verification suite has failures: ${suite}`);
+    process.exit(1);
+  }
+  console.log(`Security verification suite gate passed: ${suite} (${stats.passed}/${stats.executed})`);
+}
+
 console.log('Quality gates passed');
 NODE
