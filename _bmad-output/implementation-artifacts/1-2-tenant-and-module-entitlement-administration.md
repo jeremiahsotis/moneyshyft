@@ -1,6 +1,6 @@
 # Story 1.2: Tenant and Module Entitlement Administration
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -18,16 +18,16 @@ so that only authorized users can access actions in the correct tenant/orgUnit s
 
 ## Tasks / Subtasks
 
-- [ ] Implement acceptance criterion 1 (AC: 1)
-  - [ ] Add tenant-admin APIs/services for module entitlement toggles.
-  - [ ] Add orgUnit create/update flows scoped to active tenant.
-  - [ ] Add scoped role assignment/revocation endpoints with immediate authorization effect.
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Emit event + outbox records atomically for entitlement/role/membership mutations.
-  - [ ] Include actor, tenant, scope, and reason metadata in audit payloads.
-- [ ] Implement acceptance criterion 3 (AC: 3)
-  - [ ] Enforce `SYSTEM_ADMIN`-only control for initial tenant-admin assignment path.
-  - [ ] Add refusal/error path tests for unauthorized initial tenant-admin assignment attempts.
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Add tenant-admin APIs/services for module entitlement toggles.
+  - [x] Add orgUnit create/update flows scoped to active tenant.
+  - [x] Add scoped role assignment/revocation endpoints with immediate authorization effect.
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Emit event + outbox records atomically for entitlement/role/membership mutations.
+  - [x] Include actor, tenant, scope, and reason metadata in audit payloads.
+- [x] Implement acceptance criterion 3 (AC: 3)
+  - [x] Enforce `SYSTEM_ADMIN`-only control for initial tenant-admin assignment path.
+  - [x] Add refusal/error path tests for unauthorized initial tenant-admin assignment attempts.
 
 ## Dev Notes
 
@@ -108,12 +108,46 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story preparation only; implementation logs pending.
+- `npm test -- --runInBand` (src/)
 
 ### Completion Notes List
 
-- Story context prepared with entitlement/RBAC/audit-outbox guardrails.
+- Implemented `PlatformAdminService` to centralize entitlement, orgUnit, and membership mutation logic and keep route handlers thin.
+- Added tenant-scoped module entitlement API + persistence (`platform.tenant_module_entitlements`) with active-tenant enforcement.
+- Added orgUnit update endpoint and tenant/orgUnit membership revoke endpoints with immediate authorization effect via direct membership writes.
+- Added actor/tenant/scope/reason metadata to entitlement and membership mutation event payloads, persisted via mutation wrapper event+outbox contract.
+- Enforced SYSTEM_ADMIN-only initial tenant-admin assignment gate in both tenant-create bootstrap and tenant-membership assignment path.
+- Added/updated Jest coverage for route refusal paths and migration schema contract.
+- Hardened actor context by ignoring client-controlled role headers in platform admin routes.
+- Added governance module entitlement enforcement for orgUnit and membership mutation capabilities with immediate refusal when disabled.
+- Added explicit bootstrap `platform.tenant_membership.upserted` event + outbox write when initial tenant-admin is assigned during tenant creation.
+- Added UUID client validation on platform admin mutation routes to avoid 500s from downstream mutation contract checks.
+- Added service-level tests for role matrix denial, module-disable immediate enforcement, and bootstrap audit event/outbox writes.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/1-2-tenant-and-module-entitlement-administration.md
+- src/src/services/PlatformAdminService.ts
+- src/src/routes/api/v1/platform-admin.ts
+- src/src/platform/rbac/capabilities.ts
+- src/src/routes/api/v1/__tests__/platform-admin.test.ts
+- src/src/migrations/20260220110000_add_tenant_module_entitlements.ts
+- src/src/migrations/__tests__/tenantModuleEntitlementsMigration.test.ts
+- src/src/services/__tests__/PlatformAdminService.test.ts
+
+### Change Log
+
+- 2026-02-20: Implemented AC1-AC3 for tenant module entitlement administration, scoped orgUnit/role mutation APIs, and initial tenant-admin enforcement with passing backend test suite.
+- 2026-02-20: Addressed senior code-review findings by removing header-role trust, enforcing module entitlements in capability checks, adding bootstrap membership audit outbox writes, adding UUID refusal validation, and expanding role/audit coverage tests.
+
+### Senior Developer Review (AI)
+
+- Reviewer: Jeremiah (AI)
+- Date: 2026-02-20
+- Outcome: Changes Requested items resolved
+- Resolution summary:
+  - Fixed role escalation risk from request headers by eliminating header role trust in actor context.
+  - Implemented immediate module entitlement enforcement for protected governance mutations (`org_units`, `rbac`).
+  - Added explicit audit event + outbox records for initial tenant-admin bootstrap membership assignment.
+  - Added UUID input validation refusals at route layer to prevent server-error leakage on bad IDs.
+  - Added service-level test coverage for role matrix denial, module-disable enforcement, and membership audit writes.
