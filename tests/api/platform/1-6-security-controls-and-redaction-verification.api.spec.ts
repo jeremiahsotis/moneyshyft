@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/securityControlsStory16.fixture';
 import {
@@ -149,6 +150,29 @@ test.describe('Story 1.6 automate - security controls and redaction verification
     });
   });
 
+  test('[P1] rejects csrf mismatch with deterministic security refusal semantics @P1', async ({
+    request,
+    story16CsrfGuardProbe,
+  }) => {
+    const response = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/_kernel/security/csrf/guard',
+      headers: {
+        ...story16CsrfGuardProbe.headers,
+        'x-csrf-token': 'csrf-mismatch-story-1-6',
+      },
+      data: story16CsrfGuardProbe.payload,
+    });
+
+    expect(response.status()).toBe(403);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      ok: false,
+      code: 'CSRF_TOKEN_INVALID',
+      refusalType: 'security',
+    });
+  });
+
   (['development', 'production'] as EnvironmentName[]).forEach((environment) => {
     test('[P1] validates ' + environment + ' cookie policy matrix for sibling app/api domains @P1', async ({
       request,
@@ -192,7 +216,7 @@ test.describe('Story 1.6 automate - security controls and redaction verification
     });
   });
 
-  test.fixme('[P1] verifies redaction endpoint strips prohibited plaintext markers from audit payload contracts @P1', async ({
+  test('[P1] verifies redaction endpoint strips prohibited plaintext markers from audit payload contracts @P1', async ({
     request,
     story16Context,
     story16TenantHeaders,
@@ -223,5 +247,12 @@ test.describe('Story 1.6 automate - security controls and redaction verification
     for (const marker of story16RedactionProbe.expected.forbiddenPlaintextMarkers) {
       expect(serialized).not.toContain(marker);
     }
+  });
+
+  test('[P1] keeps Story 1.6 security verification specs in required quality gate suites @P1', async () => {
+    const qualityGateScript = readFileSync('scripts/quality-gates.sh', 'utf8');
+
+    expect(qualityGateScript).toContain('api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts');
+    expect(qualityGateScript).toContain('e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts');
   });
 });

@@ -31,6 +31,10 @@ import {
   CAPABILITIES,
   hasCapability,
 } from '../../../platform/rbac/capabilities';
+import {
+  containsPlaintextMarkers,
+  redactSensitivePayload,
+} from '../../../platform/audit/redaction';
 
 const router = Router();
 
@@ -58,6 +62,34 @@ const resolveCookiePolicy = (environment: CookiePolicyEnvironment): {
   }
 
   return { secure: false, sameSite: 'lax' };
+};
+
+const securityRedactionPreservedPaths = [
+  'scope.tenantId',
+  'scope.actorUserId',
+  'scope.correlationId',
+  'auditEvent.eventName',
+  'auditEvent.action',
+] as const;
+
+const hasPath = (value: unknown, dotPath: string): boolean => {
+  const segments = dotPath.split('.');
+  let current: unknown = value;
+
+  for (const segment of segments) {
+    if (!current || typeof current !== 'object') {
+      return false;
+    }
+
+    const record = current as Record<string, unknown>;
+    if (!(segment in record)) {
+      return false;
+    }
+
+    current = record[segment];
+  }
+
+  return current !== undefined;
 };
 
 const resolveEnvelopeContext = (req: Request, res: Response): EnvelopeContext => {
@@ -1582,6 +1614,66 @@ router.post('/_kernel/security/cookies/policy/evaluate', (req: Request, res: Res
   return res.status(200).json({
     ...envelope,
     policy: policyPayload
+  });
+});
+
+router.post('/_kernel/security/redaction/verify', (req: Request, res: Response) => {
+  const scope = req.body?.scope;
+  const auditEvent = req.body?.auditEvent;
+
+  const tenantId = typeof scope?.tenantId === 'string' ? scope.tenantId.trim() : '';
+  const actorUserId = typeof scope?.actorUserId === 'string' ? scope.actorUserId.trim() : '';
+  const correlationId = typeof scope?.correlationId === 'string' ? scope.correlationId.trim() : '';
+  const eventName = typeof auditEvent?.eventName === 'string' ? auditEvent.eventName.trim() : '';
+  const action = typeof auditEvent?.action === 'string' ? auditEvent.action.trim() : '';
+
+  if (!tenantId || !actorUserId || !correlationId || !eventName || !action) {
+    return refusal(res, {
+      code: 'SECURITY_REDACTION_PAYLOAD_INVALID',
+      message: 'scope.tenantId, scope.actorUserId, scope.correlationId, auditEvent.eventName, and auditEvent.action are required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  const normalizedPayload = {
+    scope: {
+      tenantId,
+      actorUserId,
+      correlationId,
+    },
+    auditEvent: {
+      eventName,
+      action,
+      metadata: auditEvent?.metadata && typeof auditEvent.metadata === 'object'
+        ? auditEvent.metadata
+        : {},
+      sensitive: auditEvent?.sensitive && typeof auditEvent.sensitive === 'object'
+        ? auditEvent.sensitive
+        : {},
+    },
+  };
+
+  const redactionResult = redactSensitivePayload(normalizedPayload);
+  const preservedPaths = securityRedactionPreservedPaths.filter((dotPath) => hasPath(redactionResult.redactedPayload, dotPath));
+  const allSensitiveFieldsRedacted = !containsPlaintextMarkers(
+    redactionResult.redactedPayload,
+    redactionResult.sensitiveMarkers,
+  );
+
+  return success(res, {
+    code: 'SECURITY_REDACTION_VERIFIED',
+    message: 'Security redaction policy verified for audit payload contract',
+    data: {
+      redaction: {
+        policy: 'deny-list',
+        allSensitiveFieldsRedacted,
+        redactedFields: redactionResult.redactedFields,
+        redactedPaths: redactionResult.redactedPaths,
+        preservedPaths,
+      },
+      auditEvent: redactionResult.redactedPayload.auditEvent,
+    },
   });
 });
 

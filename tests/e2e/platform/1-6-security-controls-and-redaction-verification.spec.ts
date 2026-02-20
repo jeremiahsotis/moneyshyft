@@ -101,7 +101,7 @@ test.describe('Story 1.6 automate - security controls and redaction verification
     }
   });
 
-  test.fixme('[P1] operator journey validates redaction-safe evidence stream with no plaintext secret exposure @P1', async ({
+  test('[P1] operator journey validates redaction-safe evidence stream with no plaintext secret exposure @P1', async ({
     request,
     story16Context,
     story16TenantHeaders,

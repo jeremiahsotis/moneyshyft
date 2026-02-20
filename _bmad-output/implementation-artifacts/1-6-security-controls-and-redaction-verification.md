@@ -1,6 +1,6 @@
 # Story 1.6: Security Controls and Redaction Verification
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,15 +17,15 @@ so that core security controls are continuously enforced in implementation and C
 
 ## Tasks / Subtasks
 
-- [ ] Implement acceptance criterion 1 (AC: 1)
-  - [ ] Build or extend security regression suite for cross-tenant isolation and CSRF-required state-changing operations.
-  - [ ] Include cookie posture assertions relevant to app/api domain model.
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Add centralized log/event payload redaction rules for secrets and sensitive fields.
-  - [ ] Verify audit/event payloads remain minimal and policy-compliant.
-- [ ] Add verification coverage
-  - [ ] Add deterministic tests for redaction behavior (allow-list or deny-list based policy).
-  - [ ] Ensure CI lane includes this security verification suite as a required gate.
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Build or extend security regression suite for cross-tenant isolation and CSRF-required state-changing operations.
+  - [x] Include cookie posture assertions relevant to app/api domain model.
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Add centralized log/event payload redaction rules for secrets and sensitive fields.
+  - [x] Verify audit/event payloads remain minimal and policy-compliant.
+- [x] Add verification coverage
+  - [x] Add deterministic tests for redaction behavior (allow-list or deny-list based policy).
+  - [x] Ensure CI lane includes this security verification suite as a required gate.
 
 ## Dev Notes
 
@@ -103,12 +103,35 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story preparation only; implementation logs pending.
+- `npm test -- src/platform/audit/__tests__/redaction.test.ts src/routes/api/v1/__tests__/platform-contracts.redaction.test.ts`
+- `npm run test:e2e -- tests/api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts tests/e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts`
+- `npm run test:e2e` (224-test regression attempt; one transient ECONNRESET in unrelated Story 1.4 journey)
+- `npm run test:e2e -- tests/e2e/platform/1-4-shared-response-envelope-and-refusal-helpers.spec.ts` (re-run passed: 3/3)
+- `npm run quality-gates`
+- `npm run build` (from `src/`)
 
 ### Completion Notes List
 
-- Story context prepared with security regression and redaction verification guardrails.
+- Added centralized redaction utility (`src/src/platform/audit/redaction.ts`) with deterministic deny-list behavior for tokens/secrets/password-style fields.
+- Added kernel verification contract route `POST /api/v1/platform/_kernel/security/redaction/verify` with strict payload validation and envelope-compliant output.
+- Activated redaction verification tests in Story 1.6 API and E2E suites and added explicit CSRF mismatch regression coverage.
+- Added backend Jest coverage for redaction utility and redaction verification contract route.
+- Enforced Story 1.6 security verification suites as required CI quality gates via `scripts/quality-gates.sh`.
+- Verified no plaintext secret markers leak through redaction verification responses.
+- Full-suite Playwright run encountered one unrelated transport flake (`ECONNRESET` in Story 1.4); isolated re-run of that spec passed cleanly.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/1-6-security-controls-and-redaction-verification.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+- scripts/quality-gates.sh
+- src/src/platform/audit/redaction.ts
+- src/src/platform/audit/__tests__/redaction.test.ts
+- src/src/routes/api/v1/platform-contracts.ts
+- src/src/routes/api/v1/__tests__/platform-contracts.redaction.test.ts
+- tests/api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts
+- tests/e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts
+
+## Change Log
+
+- 2026-02-20: Implemented Story 1.6 security verification controls (tenant/CSRF/cookie regression coverage completion, centralized redaction verification contract, required CI gate enforcement, and deterministic redaction tests).

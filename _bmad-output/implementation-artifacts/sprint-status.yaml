@@ -58,7 +58,7 @@ development_status:
   1-3-first-party-auth-sessions-and-csrf-enforcement: done
   1-4-shared-response-envelope-and-refusal-helpers: review
   1-5-policy-gate-and-branch-workflow-guard-enforcement: review
-  1-6-security-controls-and-redaction-verification: ready-for-dev
+  1-6-security-controls-and-redaction-verification: review
   epic-1-retrospective: optional
   epic-2: backlog
   2-1-commitment-domain-model-and-transition-rules: backlog
