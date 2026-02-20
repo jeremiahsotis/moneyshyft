@@ -1,0 +1,33 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/1-2-tenant-and-module-entitlement-administration.atdd.spec.ts",
+      "content": "import { test, expect } from '@playwright/test';\n\ntest.describe('Story 1.2 Tenant and Module Entitlement Administration (ATDD E2E RED)', () => {\n  test.skip('[P0] tenant admin toggles module and authorization updates immediately @P0', async ({ page }) => {\n    await page.goto('/app/tenant/settings/modules');\n\n    await page.getByTestId('module-row-payroll').getByTestId('module-enabled-toggle').click();\n    await expect(page.getByTestId('module-change-toast')).toHaveText('Module entitlement updated');\n\n    await page.goto('/app/payroll');\n    await expect(page.getByText('Access denied for module')).toBeVisible();\n  });\n\n  test.skip('[P1] non-system actor is refused for initial tenant admin assignment @P1', async ({ page }) => {\n    await page.goto('/app/tenant/settings/admins');\n\n    await page.getByTestId('initial-admin-user-id-input').fill('user-234');\n    await page.getByTestId('assign-initial-tenant-admin-button').click();\n\n    await expect(page.getByTestId('business-refusal-banner')).toContainText('SYSTEM_ADMIN role is required');\n    await expect(page.getByTestId('business-refusal-code')).toHaveText('INITIAL_TENANT_ADMIN_REQUIRES_SYSTEM_ADMIN');\n  });\n});\n",
+      "description": "ATDD E2E tests for tenant/module entitlement administration (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Tenant admin can manage module entitlements with immediate authorization effect",
+        "Only SYSTEM_ADMIN can assign initial TENANT_ADMIN"
+      ],
+      "priority_coverage": {
+        "P0": 1,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "tests/fixtures/test-data.ts"
+  ],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "test_count": 2,
+  "tdd_phase": "RED",
+  "summary": "Generated 2 FAILING E2E tests for Story 1.2"
+}
