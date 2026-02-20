@@ -1,0 +1,33 @@
+{
+  "tdd_phase": "RED",
+  "total_tests": 8,
+  "api_tests": 6,
+  "e2e_tests": 2,
+  "all_tests_skipped": true,
+  "expected_to_fail": true,
+  "fixtures_created": 2,
+  "acceptance_criteria_covered": [
+    "Cross-tenant access attempts fail on protected paths",
+    "CSRF protection is enforced on state-changing routes",
+    "Cookie posture assertions align with app/api domain model",
+    "Logs and event payloads exclude prohibited plaintext sensitive fields",
+    "Security workspace exposes tenant-scope and CSRF verification evidence",
+    "Security evidence UI does not expose plaintext secret markers"
+  ],
+  "knowledge_fragments_used": [
+    "data-factories",
+    "test-quality",
+    "test-healing-patterns",
+    "selector-resilience",
+    "timing-debugging",
+    "overview",
+    "api-request",
+    "auth-session",
+    "intercept-network-call",
+    "playwright-cli",
+    "network-recorder",
+    "network-error-monitor"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential"
+}
