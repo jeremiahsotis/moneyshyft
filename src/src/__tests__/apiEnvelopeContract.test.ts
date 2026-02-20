@@ -94,12 +94,12 @@ describe('Story 0.5 - shared API envelope and business refusal contract', () => 
         code: 'ENVELOPE_SUCCESS',
         message: 'Envelope contract success',
         correlationId: 'corr-envelope-alpha',
-        tenantId: 'public',
+        tenantId: null,
         data: { mode: 'success' }
       });
     });
 
-    it('preserves caller tenant header for public envelope contract probes', async () => {
+    it('ignores caller tenant header for public envelope contract probes', async () => {
       const app = buildApp();
 
       const response = await request(app)
@@ -117,7 +117,7 @@ describe('Story 0.5 - shared API envelope and business refusal contract', () => 
         code: 'ENVELOPE_SUCCESS',
         message: 'Envelope tenant echo contract',
         correlationId: 'corr-envelope-tenant-echo',
-        tenantId: 'tenant-envelope-alpha',
+        tenantId: null,
       });
     });
 
@@ -134,7 +134,7 @@ describe('Story 0.5 - shared API envelope and business refusal contract', () => 
         code: 'REQUEST_SUCCESS',
         message: 'Logged out successfully',
         correlationId: 'corr-module-success-alpha',
-        tenantId: 'public'
+        tenantId: null
       });
     });
 
@@ -152,7 +152,7 @@ describe('Story 0.5 - shared API envelope and business refusal contract', () => 
         message: 'Refresh token required',
         refusalType: 'client',
         correlationId: 'corr-module-refusal-alpha',
-        tenantId: 'public'
+        tenantId: null
       });
     });
   });
@@ -177,7 +177,7 @@ describe('Story 0.5 - shared API envelope and business refusal contract', () => 
         message: 'Requested amount exceeds available envelope balance',
         refusalType: 'business',
         correlationId: 'corr-envelope-refusal-alpha',
-        tenantId: 'public',
+        tenantId: null,
         data: { available: 42 }
       });
       expect(response.body).not.toHaveProperty('stack');
@@ -205,7 +205,7 @@ describe('Story 0.5 - shared API envelope and business refusal contract', () => 
         message: 'Unhandled exception while processing envelope contract',
         errorType: 'system',
         correlationId: 'corr-envelope-system-alpha',
-        tenantId: 'public',
+        tenantId: null,
         data: { operation: 'post-envelope' }
       });
     });

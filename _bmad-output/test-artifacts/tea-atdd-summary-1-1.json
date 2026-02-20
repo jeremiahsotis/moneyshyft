@@ -1,0 +1,15 @@
+{
+  "story_id": "1-1",
+  "tdd_phase": "RED",
+  "total_tests": 6,
+  "api_tests": 4,
+  "e2e_tests": 2,
+  "all_tests_skipped": true,
+  "files": [
+    "tests/api/platform/1-1-tenant-context-resolution-and-isolation-guardrails.atdd.api.spec.ts",
+    "tests/e2e/platform/1-1-tenant-context-resolution-and-isolation-guardrails.atdd.spec.ts",
+    "tests/support/fixtures/tenantContextStory11.fixture.ts",
+    "_bmad-output/test-artifacts/atdd-checklist-1-1.md"
+  ],
+  "generated_at": "20260219-165809"
+}

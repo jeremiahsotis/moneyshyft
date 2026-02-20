@@ -61,23 +61,13 @@ const resolveCookiePolicy = (environment: CookiePolicyEnvironment): {
 };
 
 const resolveEnvelopeContext = (req: Request, res: Response): EnvelopeContext => {
-  const canonicalTenant = normalizeContextValue(req.tenantContext?.tenantId || req.tenantId || null);
-  const headerTenant = normalizeContextValue(req.header('x-tenant-id'));
-  const resolvedTenant = (
-    canonicalTenant && canonicalTenant !== 'public'
-      ? canonicalTenant
-      : (headerTenant || canonicalTenant)
-  );
+  const canonicalTenant = resolveEnvelopeTenantValue(req.tenantContext?.tenantId || req.tenantId || null);
   const base = (res.locals.responseEnvelope as EnvelopeContext | undefined) || {
     correlationId: req.correlationId || null,
-    tenantId: resolvedTenant
+    tenantId: canonicalTenant
   };
-  const baseTenant = normalizeContextValue(base.tenantId ?? null);
-  const tenantId = (
-    baseTenant && baseTenant !== 'public'
-      ? baseTenant
-      : (resolvedTenant || baseTenant)
-  );
+  const baseTenant = resolveEnvelopeTenantValue(base.tenantId ?? null);
+  const tenantId = baseTenant || canonicalTenant || null;
 
   return {
     correlationId: base.correlationId ?? req.correlationId ?? null,
@@ -86,33 +76,19 @@ const resolveEnvelopeContext = (req: Request, res: Response): EnvelopeContext =>
 };
 
 const applyEnvelopeTenantOverride = (req: Request, res: Response): void => {
-  const headerTenant = req.header('x-tenant-id');
-  if (!headerTenant || headerTenant.trim() === '') {
+  const canonicalTenant = resolveEnvelopeTenantValue(req.tenantContext?.tenantId || req.tenantId || null);
+  if (!canonicalTenant) {
     return;
   }
-
-  const normalizedHeaderTenant = normalizeContextValue(headerTenant);
-  if (!normalizedHeaderTenant) {
-    return;
-  }
-
-  const canonicalTenant = normalizeContextValue(req.tenantContext?.tenantId || req.tenantId || null);
-  const isPublicContext = !canonicalTenant || canonicalTenant === 'public';
-
-  if (!isPublicContext && normalizedHeaderTenant !== canonicalTenant) {
-    return;
-  }
-
-  const resolvedTenant = isPublicContext ? normalizedHeaderTenant : canonicalTenant;
 
   const current = (res.locals.responseEnvelope as EnvelopeContext | undefined) || {
     correlationId: req.correlationId || null,
-    tenantId: resolvedTenant
+    tenantId: canonicalTenant
   };
 
   res.locals.responseEnvelope = {
     ...current,
-    tenantId: resolvedTenant
+    tenantId: canonicalTenant
   };
 };
 
@@ -123,6 +99,15 @@ const normalizeContextValue = (value: string | null | undefined): string | null 
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+};
+
+const resolveEnvelopeTenantValue = (value: string | null | undefined): string | null => {
+  const normalized = normalizeContextValue(value);
+  if (!normalized) {
+    return null;
+  }
+
+  return normalized.toLowerCase() === 'public' ? null : normalized;
 };
 
 const loadPlatformDb = (): Knex => {
@@ -1901,7 +1886,7 @@ router.get('/_kernel/tenancy/repository-check', async (req: Request, res: Respon
     return orgUnitValidation.response;
   }
 
-  const requiredFilters = resolveScopeFilters(scopeContext);
+  const requiredFilters = resolveScopeFilters(scopeContext, 'tenant_id', 'org_unit_id');
   const resource = (
     typeof req.query.resource === 'string'
     && ['accounts', 'transactions', 'goals', 'debts'].includes(req.query.resource)
@@ -2007,7 +1992,7 @@ router.post('/_kernel/tenancy/repository-check', async (req: Request, res: Respo
         orgUnitId: scopeContext.orgUnitId,
         scopeMode: scopeContext.scopeMode,
       },
-      requiredFilters: resolveScopeFilters(scopeContext),
+      requiredFilters: resolveScopeFilters(scopeContext, 'tenant_id', 'org_unit_id'),
     },
   });
 });
@@ -2124,7 +2109,6 @@ router.post('/time/render-contract', (req: Request, res: Response) => {
 
   return res.status(200).json({
     ...envelope,
-    utcTimestamp,
     rendered,
     timezone: context.timezone,
     timezoneSource: context.timezoneSource

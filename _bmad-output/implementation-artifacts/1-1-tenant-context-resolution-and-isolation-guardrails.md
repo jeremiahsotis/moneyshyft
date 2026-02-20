@@ -1,6 +1,6 @@
 # Story 1.1: Tenant Context Resolution and Isolation Guardrails
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -19,18 +19,18 @@ so that cross-tenant and cross-orgUnit leakage are structurally prevented.
 
 ## Tasks / Subtasks
 
-- [ ] Implement acceptance criterion 1 (AC: 1)
-  - [ ] Normalize tenancy context resolution in middleware for both authenticated and anonymous requests.
-  - [ ] Ensure request context object is typed and consistently available to downstream handlers.
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Enforce orgUnit membership validation against the active tenant context.
-  - [ ] Reject missing/invalid orgUnit context on orgUnit-scoped routes with deterministic refusal/error response.
-- [ ] Implement acceptance criterion 3 (AC: 3)
-  - [ ] Add or harden shared repository helpers to require tenant/orgUnit filters by scope.
-  - [ ] Remove/flag any unscoped repository access paths.
-- [ ] Implement acceptance criterion 4 (AC: 4)
-  - [ ] Add API/integration negative tests for tenant isolation and orgUnit spoof prevention.
-  - [ ] Verify tests cover both read and write paths.
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Normalize tenancy context resolution in middleware for both authenticated and anonymous requests.
+  - [x] Ensure request context object is typed and consistently available to downstream handlers.
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Enforce orgUnit membership validation against the active tenant context.
+  - [x] Reject missing/invalid orgUnit context on orgUnit-scoped routes with deterministic refusal/error response.
+- [x] Implement acceptance criterion 3 (AC: 3)
+  - [x] Add or harden shared repository helpers to require tenant/orgUnit filters by scope.
+  - [x] Remove/flag any unscoped repository access paths.
+- [x] Implement acceptance criterion 4 (AC: 4)
+  - [x] Add API/integration negative tests for tenant isolation and orgUnit spoof prevention.
+  - [x] Verify tests cover both read and write paths.
 
 ## Dev Notes
 
@@ -113,14 +113,55 @@ This story formalizes tenancy + orgUnit context as a hard platform invariant for
 
 GPT-5 Codex
 
+### Implementation Plan
+
+- Validate AC1-AC4 against existing tenancy middleware, scope helpers, and platform contract routes.
+- Execute story-specific API and E2E automation for `1-1` guardrails.
+- Execute broader regression/build checks before task completion.
+
 ### Debug Log References
 
-- Story preparation only; implementation logs pending.
+- `npm run test:e2e -- tests/api/platform/1-1-tenant-context-resolution-and-isolation-guardrails.api.spec.ts` (pass)
+- `npm run test:e2e -- tests/e2e/platform/1-1-tenant-context-resolution-and-isolation-guardrails.spec.ts` (pass)
+- `cd src && npm test -- src/src/platform/tenancy/__tests__/tenantScope.test.ts src/src/platform/tenancy/__tests__/orgUnitAccess.test.ts src/src/routes/api/v1/__tests__/platform-contracts.tenancy.test.ts` (pass)
+- `cd src && npm test -- src/src/platform/sessions/__tests__/PlatformSessionStore.test.ts src/src/__tests__/centralizedTimeServiceContract.test.ts` (pass)
+- `npm run test:e2e -- tests/api/platform/centralized-time-service-and-utc-local-rendering-contract.api.spec.ts` (pass)
+- `npm run test:e2e -- tests/auth/login.spec.ts tests/dashboard/load.spec.ts` (pass)
+- `cd src && npm test` (pass)
+- `npm run build` in `src/` (pass)
+- `npm run build` in `frontend/` (pass)
+- `npm run test:e2e` full suite (pass: 110 passed, 30 skipped)
 
 ### Completion Notes List
 
 - Story context prepared with tenancy and scope-enforcement guardrails.
+- Confirmed AC-aligned implementation already exists in:
+  - `src/src/platform/middleware/tenancyContext.ts`
+  - `src/src/platform/tenancy/requestContext.ts`
+  - `src/src/platform/tenancy/tenantScope.ts`
+  - `src/src/platform/tenancy/orgUnitAccess.ts`
+  - `src/src/routes/api/v1/platform-contracts.ts`
+- Confirmed Story 1.1 API + E2E automated coverage passes end-to-end.
+- Revalidated Story 1.1 tenancy-focused Jest suites and route contract coverage.
+- Cleared unrelated baseline regressions that previously blocked completion gates (`PlatformSessionStore`, centralized time contract, Playwright preflight auth proxy).
+- Story completion gates are now green; status moved to `review`.
+- Senior code review findings remediated:
+  - Removed header-derived tenant trust from envelope context resolution.
+  - Added explicit cross-tenant write rejection test coverage for Story 1.1.
+  - Normalized tenant scope-helper default column behavior and kept platform contract responses explicit (`tenant_id`).
 
 ### File List
 
 - _bmad-output/implementation-artifacts/1-1-tenant-context-resolution-and-isolation-guardrails.md
+- src/src/platform/tenancy/tenantScope.ts
+- src/src/platform/tenancy/__tests__/tenantScope.test.ts
+- src/src/routes/api/v1/platform-contracts.ts
+- tests/api/platform/1-1-tenant-context-resolution-and-isolation-guardrails.api.spec.ts
+
+## Change Log
+
+- 2026-02-19: Executed `dev-story` for `mono-s1.1` (`1-1-tenant-context-resolution-and-isolation-guardrails`), validated story-specific implementation/tests, and moved story to `in-progress` pending unrelated baseline regression failures.
+- 2026-02-19: Re-ran `dev-story` for `mono-s1.1`; Story 1.1 targeted API/E2E/tenancy unit tests remain green while unrelated baseline regressions still block completion gates.
+- 2026-02-20: Cleared baseline regression blockers, reran full backend/frontend/Playwright gates successfully, and promoted Story `1-1-tenant-context-resolution-and-isolation-guardrails` to `review`.
+- 2026-02-20: Completed adversarial code-review remediation for `mono-s1.1` by removing header-derived tenant trust in envelopes, adding cross-tenant write refusal coverage, and normalizing scope-helper column defaults; focused Jest and Story 1.1 API Playwright suites passing.
+- 2026-02-20: Finalized envelope contract standardization (`public/no-auth tenantId -> null`), completed contract-test realignment, reran broader Jest + full platform API suites successfully, and marked Story `1-1-tenant-context-resolution-and-isolation-guardrails` as `done`.

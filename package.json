@@ -4,6 +4,7 @@
     "test:e2e": "bash scripts/run-playwright-with-preflight.sh",
     "test:e2e:headed": "bash scripts/run-playwright-with-preflight.sh --headed",
     "test:e2e:debug": "bash scripts/run-playwright-with-preflight.sh --debug",
+    "test:runtime:cleanup": "bash scripts/cleanup-test-runtime.sh",
     "test:changed": "bash scripts/test-changed.sh",
     "test:burn-in": "bash scripts/burn-in.sh 10",
     "test:contracts:backend": "bash scripts/test-contracts-backend.sh",

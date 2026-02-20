@@ -1,0 +1,30 @@
+{
+  "phase0Status": "complete",
+  "storyId": "0-10",
+  "verifiedBy": "epic-0-quality-gate",
+  "readinessReportPath": "tests/artifacts/gates/epic-0-quality-b411d904-388d-4230-ac61-921f853cd595.json",
+  "readinessReportHash": "1a6f0e7135ac0c2aabdab6c2f75dc2dad8fbd0e2449e894aecb988dd77138124",
+  "requiredGates": [
+    "tenancy",
+    "auth",
+    "csrf",
+    "envelope",
+    "eventOutbox",
+    "timezone",
+    "rbac",
+    "activeTenantMembership",
+    "globalEmailUniqueness"
+  ],
+  "gateResults": {
+    "tenancy": "pass",
+    "auth": "pass",
+    "csrf": "pass",
+    "envelope": "pass",
+    "eventOutbox": "pass",
+    "timezone": "pass",
+    "rbac": "pass",
+    "activeTenantMembership": "pass",
+    "globalEmailUniqueness": "pass"
+  },
+  "recordedAt": "2026-02-19T21:54:04.289Z"
+}

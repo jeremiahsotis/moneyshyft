@@ -75,7 +75,7 @@ export const applyOrgUnitScope = <TQuery extends ScopeableQuery<TQuery>>(
 
 export const resolveScopeFilters = (
   context: TenantScopeContext,
-  tenantColumn = 'tenant_id',
+  tenantColumn = 'household_id',
   orgUnitColumn = 'org_unit_id'
 ): Record<string, string> => {
   const scopedTenantId = requireTenantId(context.tenantId);
@@ -95,6 +95,6 @@ export const resolveScopeFilters = (
 export const applyScopeMode = <TQuery extends ScopeableQuery<TQuery>>(
   query: TQuery,
   context: TenantScopeContext,
-  tenantColumn = 'tenant_id',
+  tenantColumn = 'household_id',
   orgUnitColumn = 'org_unit_id'
 ): TQuery => query.where(resolveScopeFilters(context, tenantColumn, orgUnitColumn));

@@ -35,7 +35,7 @@ test.describe('Story 0.7 atdd - mutation wrapper with mandatory event/outbox API
       eventOutboxRequired: atomicProbe.expected.eventOutboxRequired,
       missingWrites: atomicProbe.expected.missingWrites,
       correlationId: headers['x-correlation-id'],
-      tenantId: headers['x-tenant-id'],
+      tenantId: null,
     });
   });
 
@@ -67,7 +67,7 @@ test.describe('Story 0.7 atdd - mutation wrapper with mandatory event/outbox API
       refusalType: missingEventProbe.expected.refusalType,
       missingWrites: missingEventProbe.expected.missingWrites,
       correlationId: headers['x-correlation-id'],
-      tenantId: headers['x-tenant-id'],
+      tenantId: null,
     });
   });
 
@@ -99,7 +99,7 @@ test.describe('Story 0.7 atdd - mutation wrapper with mandatory event/outbox API
       refusalType: missingOutboxProbe.expected.refusalType,
       missingWrites: missingOutboxProbe.expected.missingWrites,
       correlationId: headers['x-correlation-id'],
-      tenantId: headers['x-tenant-id'],
+      tenantId: null,
     });
   });
 
@@ -131,7 +131,7 @@ test.describe('Story 0.7 atdd - mutation wrapper with mandatory event/outbox API
       refusalType: missingBothProbe.expected.refusalType,
       missingWrites: missingBothProbe.expected.missingWrites,
       correlationId: headers['x-correlation-id'],
-      tenantId: headers['x-tenant-id'],
+      tenantId: null,
     });
   });
 
@@ -215,7 +215,7 @@ test.describe('Story 0.7 atdd - mutation wrapper with mandatory event/outbox API
 
     expect(atomicBody.correlationId).toBe(headers['x-correlation-id']);
     expect(refusalBody.correlationId).toBe(headers['x-correlation-id']);
-    expect(atomicBody.tenantId).toBe(headers['x-tenant-id']);
-    expect(refusalBody.tenantId).toBe(headers['x-tenant-id']);
+    expect(atomicBody.tenantId).toBeNull();
+    expect(refusalBody.tenantId).toBeNull();
   });
 });

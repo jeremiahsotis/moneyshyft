@@ -68,11 +68,30 @@ export type ApiEnvelopePayload =
 const resolveContext = (res: Response): EnvelopeContext => {
   const locals = res.locals as ResponseLocalsEnvelope;
   const envelope = locals.responseEnvelope;
+  const normalizedTenant = typeof envelope?.tenantId === 'string'
+    ? envelope.tenantId.trim()
+    : null;
+  const tenantId = normalizedTenant && normalizedTenant.toLowerCase() !== 'public'
+    ? normalizedTenant
+    : null;
 
   return {
     correlationId: envelope?.correlationId ?? null,
-    tenantId: envelope?.tenantId ?? null
+    tenantId
   };
+};
+
+const normalizeEnvelopeTenant = (tenantId: string | null | undefined): string | null => {
+  if (typeof tenantId !== 'string') {
+    return null;
+  }
+
+  const trimmed = tenantId.trim();
+  if (trimmed === '' || trimmed.toLowerCase() === 'public') {
+    return null;
+  }
+
+  return trimmed;
 };
 
 export const buildSuccessEnvelope = (
@@ -83,7 +102,7 @@ export const buildSuccessEnvelope = (
   code,
   message,
   correlationId: context.correlationId,
-  tenantId: context.tenantId,
+  tenantId: normalizeEnvelopeTenant(context.tenantId),
   ...(data !== undefined ? { data } : {})
 });
 
@@ -101,7 +120,7 @@ export const buildRefusalEnvelope = (
   message,
   refusalType,
   correlationId: context.correlationId,
-  tenantId: context.tenantId,
+  tenantId: normalizeEnvelopeTenant(context.tenantId),
   ...(data !== undefined ? { data } : {})
 });
 
@@ -114,7 +133,7 @@ export const buildSystemErrorEnvelope = (
   message,
   errorType: 'system',
   correlationId: context.correlationId,
-  tenantId: context.tenantId,
+  tenantId: normalizeEnvelopeTenant(context.tenantId),
   ...(data !== undefined ? { data } : {})
 });
 
