@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
@@ -33,6 +33,14 @@ export function runPolicyScriptInTempRepo(
     mkdirSync(join(repoDir, 'docs/policies'), { recursive: true });
     writeFileSync(join(repoDir, 'docs/policies/git_policy.md'), policyContents);
     writeFileSync(join(repoDir, 'README.md'), '# policy harness\n');
+    const envelopeGuardSource = join(dirname(scriptAbsolutePath), 'enforce-envelope-helper-guard.sh');
+    if (existsSync(envelopeGuardSource)) {
+      const envelopeGuardContents = readFileSync(envelopeGuardSource, 'utf8');
+      const envelopeGuardTarget = join(repoDir, 'scripts/enforce-envelope-helper-guard.sh');
+      mkdirSync(dirname(envelopeGuardTarget), { recursive: true });
+      writeFileSync(envelopeGuardTarget, envelopeGuardContents, 'utf8');
+      chmodSync(envelopeGuardTarget, 0o755);
+    }
     for (const [relativePath, contents] of Object.entries(options.seedFiles ?? {})) {
       const absolutePath = join(repoDir, relativePath);
       mkdirSync(dirname(absolutePath), { recursive: true });

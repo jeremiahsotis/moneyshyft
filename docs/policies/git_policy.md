@@ -75,6 +75,15 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
   - `scripts/start-story-branch.sh`
   - `scripts/branch-ensure-workflow.sh`
 
+### Shared Envelope Guardrail (Mandatory for New/Modified Module Endpoints)
+
+- Legacy module routes may be migrated incrementally.
+- New or modified module endpoints must not introduce ad hoc response serialization (`res.json(...)` or `res.status(...).json(...)`).
+- Required serializer path for module endpoint changes: shared helpers (`success`, `refusal`, `systemError`).
+- Enforced by:
+  - `scripts/enforce-envelope-helper-guard.sh`
+  - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+
 ## 5) Story Creation Inside Epics (`create-story`)
 
 - `create-story` uses sprint tracking as primary source (`sprint-status.yaml`) to choose/create the next story.
