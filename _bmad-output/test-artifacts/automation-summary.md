@@ -6,107 +6,114 @@ stepsCompleted:
   - step-03c-aggregate
   - step-04-validate-and-summarize
 lastStep: step-04-validate-and-summarize
-lastSaved: 2026-02-19T22:06:51Z
-storyId: '1-1'
-storyFile: '/Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/1-1-tenant-context-resolution-and-isolation-guardrails.md'
-subprocessTimestamp: '2026-02-19T22-06-51Z'
+lastSaved: 2026-02-20T00:44:22Z
+storyId: '1-2'
+storyFile: '/Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/1-2-tenant-and-module-entitlement-administration.md'
+subprocessTimestamp: '2026-02-20T00-41-56Z'
 executionMode: 'BMad-Integrated'
 ---
 
-# Test Automation Summary - Story 1.1
+# Test Automation Summary - Story 1.2
 
 ## Step 1 - Preflight and Context
 - Mode: BMad-Integrated
 - Input artifacts loaded:
-  - `_bmad-output/implementation-artifacts/1-1-tenant-context-resolution-and-isolation-guardrails.md`
-  - `_bmad-output/test-artifacts/atdd-checklist-1-1.md`
+  - `_bmad-output/implementation-artifacts/1-2-tenant-and-module-entitlement-administration.md`
+  - existing ATDD baselines:
+    - `tests/api/platform/1-2-tenant-and-module-entitlement-administration.atdd.api.spec.ts`
+    - `tests/e2e/platform/1-2-tenant-and-module-entitlement-administration.atdd.spec.ts`
   - `playwright.config.ts`
-  - `tests/` existing platform suites
+  - root `package.json`
+  - `tests/` structure and platform suites
 - Framework readiness:
   - `playwright.config.ts` exists
-  - Root `package.json` includes Playwright test dependencies
-  - `tests/` structure exists for `api`, `e2e`, `support`
+  - root `package.json` includes `@playwright/test` and `playwright`
+  - `tests/` supports `api`, `e2e`, `support`, `fixtures`, `factories`
 - TEA config flags:
   - `tea_use_playwright_utils=true`
   - `tea_browser_automation=auto`
 
 Knowledge fragments applied:
 - Core: `test-levels-framework`, `test-priorities-matrix`, `data-factories`, `selective-testing`, `ci-burn-in`, `test-quality`
-- Additional: `api-request`, `api-testing-patterns`, `fixture-architecture`, `network-first`, `selector-resilience`, `playwright-cli`
+- Playwright utils: `overview`, `api-request`, `network-recorder`, `auth-session`, `intercept-network-call`, `recurse`, `log`, `file-utils`, `burn-in`, `network-error-monitor`, `fixtures-composition`
+- Browser automation: `playwright-cli`
 
 ## Step 2 - Coverage Plan
 Coverage target: `critical-paths`
 
 ### API targets
 - P0:
-  - canonical tenancy context resolution for protected diagnostics
-  - deterministic refusal when protected scope context is missing
+  - module entitlement toggle applies immediately to authorization behavior
+  - orgUnit create/update preserves tenant scope and immediate authorization updates
+  - role assignment mutation emits audit + outbox metadata
 - P1:
-  - required tenant scope filters for repository reads
-  - deterministic tenant spoof override refusal
-  - deterministic orgUnit write override refusal
+  - non-system actor refused for initial tenant-admin bootstrap
+  - system admin allowed to assign initial tenant admin during bootstrap
 
-### E2E/API-journey targets
+### E2E/Journey targets
 - P0:
-  - canonical context remains stable across diagnostics and repository-read journey
-  - anonymous requests denied consistently across diagnostics and repository-check
+  - module disable path plus protected action refusal in one journey
+  - orgUnit creation + scoped role assignment + authorization probe in one journey
 - P1:
-  - orgUnit spoof header rejection across guarded read paths
-  - cross-tenant read override rejection
-  - cross-orgUnit write refusal envelope consistency
+  - deterministic outbox/audit metadata across entitlement and role mutation sequence
+  - bootstrap guardrail sequence (TENANT_ADMIN refusal then SYSTEM_ADMIN success)
 
 ### Duplicate-coverage handling
-- New Story 1.1 non-ATDD automation specs were created alongside existing `.atdd` RED-phase files.
-- Existing Story 0.2 tenancy specs were not modified.
+- Existing `*.atdd.*` Story 1.2 files remain unchanged (RED phase baselines).
+- New non-ATDD automation coverage added in dedicated Story 1.2 specs.
 
 ## Step 3 - Parallel Generation and Aggregation
 Generated test files:
-- `tests/api/platform/1-1-tenant-context-resolution-and-isolation-guardrails.api.spec.ts`
-- `tests/e2e/platform/1-1-tenant-context-resolution-and-isolation-guardrails.spec.ts`
+- `tests/api/platform/1-2-tenant-and-module-entitlement-administration.api.spec.ts`
+- `tests/e2e/platform/1-2-tenant-and-module-entitlement-administration.spec.ts`
 
-Updated support infrastructure:
-- `tests/support/fixtures/tenantContextStory11.fixture.ts`
+Generated support infrastructure:
+- `tests/support/factories/tenantEntitlementFactory.ts`
+- `tests/support/fixtures/tenantEntitlementStory12.fixture.ts`
 
 Subprocess artifacts:
-- `/tmp/tea-automate-api-tests-2026-02-19T22-06-51Z.json`
-- `/tmp/tea-automate-e2e-tests-2026-02-19T22-06-51Z.json`
-- `/tmp/tea-automate-summary-2026-02-19T22-06-51Z.json`
+- `/tmp/tea-automate-api-tests-2026-02-20T00-41-56Z.json`
+- `/tmp/tea-automate-e2e-tests-2026-02-20T00-41-56Z.json`
+- `/tmp/tea-automate-summary-2026-02-20T00-41-56Z.json`
 
 Persisted copies:
-- `_bmad-output/test-artifacts/tea-automate-api-tests-2026-02-19T22-06-51Z.json`
-- `_bmad-output/test-artifacts/tea-automate-e2e-tests-2026-02-19T22-06-51Z.json`
-- `_bmad-output/test-artifacts/tea-automate-summary-2026-02-19T22-06-51Z.json`
+- `_bmad-output/test-artifacts/tea-automate-api-tests-2026-02-20T00-41-56Z.json`
+- `_bmad-output/test-artifacts/tea-automate-e2e-tests-2026-02-20T00-41-56Z.json`
+- `_bmad-output/test-artifacts/tea-automate-summary-2026-02-20T00-41-56Z.json`
 
 Aggregated totals:
-- Total tests: 10
+- Total tests: 9
   - API: 5
-  - E2E/API-journey: 5
+  - E2E/Journey: 4
 - Priority coverage:
-  - P0: 4
-  - P1: 6
+  - P0: 5
+  - P1: 4
   - P2: 0
   - P3: 0
 
 ## Step 4 - Validation
 Checklist outcome:
 - Framework readiness: pass
-- Story 1.1 AC mapping to test scenarios: pass
-- Test structure and priority tagging: pass
-- Fixture/data helper integration: pass
-- Artifact storage to `_bmad-output/test-artifacts/`: pass
-- CLI session hygiene: pass (no browser CLI session opened)
+- Story 1.2 AC mapping to test scenarios: pass
+- Test structure, deterministic patterns, and priority tagging: pass
+- Shared fixture/factory support generated: pass
+- Artifacts stored in `_bmad-output/test-artifacts/`: pass
+- CLI session hygiene: pass (no CLI browser session opened)
 
 Execution validation:
-- Command attempted:
-  - `npm run test:e2e -- --list tests/api/platform/1-1-tenant-context-resolution-and-isolation-guardrails.api.spec.ts tests/e2e/platform/1-1-tenant-context-resolution-and-isolation-guardrails.spec.ts`
-- Result:
-  - blocked by local preflight because backend health endpoints were not reachable at `http://127.0.0.1:3000/health` and `http://127.0.0.1:3000/api/v1/health`
+- Listing command:
+  - `npm run test:e2e -- --list tests/api/platform/1-2-tenant-and-module-entitlement-administration.api.spec.ts tests/e2e/platform/1-2-tenant-and-module-entitlement-administration.spec.ts`
+  - Result: pass (9 tests discovered)
+- Execution command:
+  - `npm run test:e2e -- tests/api/platform/1-2-tenant-and-module-entitlement-administration.api.spec.ts tests/e2e/platform/1-2-tenant-and-module-entitlement-administration.spec.ts`
+  - Result: fail (9/9 failed)
+  - Dominant failure mode: expected 200/201 but received 404 for Story 1.2 endpoints
 
 Assumptions and risks:
-- Story 1.1 coverage is focused on platform-kernel tenancy guardrails and deterministic refusal contracts; no UI-only flows were added.
-- Positive orgUnit-membership path remains sensitive to environment seed/membership state; deterministic negative-path coverage is prioritized.
+- Story 1.2 implementation endpoints/contracts are not yet present or are mounted under different routes.
+- Generated tests currently represent target-state contracts and remain red until Story 1.2 implementation is completed.
 
 ## Recommended Next Workflow
-- `RV` (Review Tests): run TEA review against new Story 1.1 automation suites.
-- `TR` (Trace Requirements): map ACs to generated Story 1.1 automation coverage and gate decision.
-- `CI`: wire Story 1.1 targeted run into CI slice once backend is up in local/CI preflight.
+- `AT`: refresh failing acceptance tests if route contracts changed before implementation proceeds.
+- `TR`: trace Story 1.2 requirements to generated coverage and record gate as blocked until endpoints exist.
+- `RV`: perform quality review after implementation lands and tests are adjusted to actual contracts.
