@@ -25,7 +25,11 @@ describe('csrfProtection middleware', () => {
       .set('Cookie', ['access_token=access-token']);
 
     expect(response.status).toBe(403);
-    expect(response.body.error).toBe('CSRF token missing or invalid');
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CSRF_TOKEN_REQUIRED',
+      refusalType: 'security',
+    });
   });
 
   it('rejects authenticated state-changing requests with invalid CSRF token', async () => {
@@ -37,7 +41,11 @@ describe('csrfProtection middleware', () => {
       .set('X-CSRF-Token', 'header-token');
 
     expect(response.status).toBe(403);
-    expect(response.body.error).toBe('CSRF token missing or invalid');
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CSRF_TOKEN_INVALID',
+      refusalType: 'security',
+    });
   });
 
   it('allows authenticated state-changing requests with matching CSRF token', async () => {

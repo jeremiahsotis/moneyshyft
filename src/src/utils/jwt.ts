@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import jwt, { SignOptions } from 'jsonwebtoken';
+import jwt, { SignOptions, JwtPayload } from 'jsonwebtoken';
 import { CookieOptions, Response } from 'express';
 
 export interface JWTPayload {
@@ -10,6 +10,33 @@ export interface JWTPayload {
   activeOrgUnitId?: string | null;
   role: string;
 }
+
+const sanitizeJwtPayload = (decoded: JwtPayload | string): JWTPayload => {
+  if (!decoded || typeof decoded === 'string') {
+    throw new Error('Invalid token payload');
+  }
+
+  const userId = typeof decoded.userId === 'string' ? decoded.userId : null;
+  const email = typeof decoded.email === 'string' ? decoded.email : null;
+  const role = typeof decoded.role === 'string' ? decoded.role : null;
+
+  if (!userId || !email || !role) {
+    throw new Error('Invalid token payload');
+  }
+
+  return {
+    userId,
+    email,
+    householdId: typeof decoded.householdId === 'string' ? decoded.householdId : null,
+    activeTenantId: typeof decoded.activeTenantId === 'string'
+      ? decoded.activeTenantId
+      : typeof decoded.householdId === 'string'
+        ? decoded.householdId
+        : null,
+    activeOrgUnitId: typeof decoded.activeOrgUnitId === 'string' ? decoded.activeOrgUnitId : null,
+    role,
+  };
+};
 
 const resolveJwtSecret = (): string => process.env.JWT_SECRET || 'your_jwt_secret_change_in_production';
 const resolveJwtRefreshSecret = (): string => process.env.JWT_REFRESH_SECRET || 'your_refresh_secret_change_in_production';
@@ -42,14 +69,14 @@ const getCookiePolicy = (): CookiePolicy => {
     path: '/',
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: isProduction ? 'strict' : 'lax',
   };
 
   const csrfCookie: CookieOptions = {
     path: '/',
     httpOnly: false,
     secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: isProduction ? 'strict' : 'lax',
   };
 
   if (domain) {
@@ -86,7 +113,8 @@ export function generateRefreshToken(payload: JWTPayload, rememberMe: boolean = 
  */
 export function verifyAccessToken(token: string): JWTPayload {
   try {
-    return jwt.verify(token, resolveJwtSecret()) as JWTPayload;
+    const decoded = jwt.verify(token, resolveJwtSecret()) as JwtPayload | string;
+    return sanitizeJwtPayload(decoded);
   } catch (error) {
     throw new Error('Invalid or expired access token');
   }
@@ -97,7 +125,8 @@ export function verifyAccessToken(token: string): JWTPayload {
  */
 export function verifyRefreshToken(token: string): JWTPayload {
   try {
-    return jwt.verify(token, resolveJwtRefreshSecret()) as JWTPayload;
+    const decoded = jwt.verify(token, resolveJwtRefreshSecret()) as JwtPayload | string;
+    return sanitizeJwtPayload(decoded);
   } catch (error) {
     throw new Error('Invalid or expired refresh token');
   }

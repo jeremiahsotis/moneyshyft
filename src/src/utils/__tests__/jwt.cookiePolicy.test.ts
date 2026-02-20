@@ -75,19 +75,19 @@ describe('jwt cookie policy', () => {
     expect(accessCall?.[2]).toMatchObject({
       httpOnly: true,
       secure: true,
-      sameSite: 'none',
+      sameSite: 'strict',
       domain: '.example.com',
     });
     expect(refreshCall?.[2]).toMatchObject({
       httpOnly: true,
       secure: true,
-      sameSite: 'none',
+      sameSite: 'strict',
       domain: '.example.com',
     });
     expect(csrfCall?.[2]).toMatchObject({
       httpOnly: false,
       secure: true,
-      sameSite: 'none',
+      sameSite: 'strict',
       domain: '.example.com',
     });
   });
@@ -105,21 +105,21 @@ describe('jwt cookie policy', () => {
         path: '/',
         httpOnly: true,
         secure: true,
-        sameSite: 'none',
+        sameSite: 'strict',
         domain: '.example.com',
       }],
       ['refresh_token', {
         path: '/',
         httpOnly: true,
         secure: true,
-        sameSite: 'none',
+        sameSite: 'strict',
         domain: '.example.com',
       }],
       ['csrf_token', {
         path: '/',
         httpOnly: false,
         secure: true,
-        sameSite: 'none',
+        sameSite: 'strict',
         domain: '.example.com',
       }],
     ]);

@@ -12,6 +12,7 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     request: Parameters<typeof apiRequest>[0],
     story12Context: {
       assigneeUserId: string;
+      actorUserId: string;
       orgUnitCode: string;
     },
   ) => {
@@ -37,13 +38,15 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
       || signupBody?.data?.user?.userId;
     expect(typeof userId).toBe('string');
     story12Context.assigneeUserId = userId;
+    story12Context.actorUserId = userId;
   };
 
   const bootstrapTenant = async (request: Parameters<typeof apiRequest>[0], story12Context: {
     tenantId: string;
+    actorUserId: string;
     orgUnitCode: string;
   }) => {
-    const systemHeaders = createStory12TenantHeaders(story12Context as any, { role: 'SYSTEM_ADMIN' });
+    const systemHeaders = createStory12TenantHeaders(story12Context, { role: 'SYSTEM_ADMIN' });
     const tenantResponse = await apiRequest(request, {
       method: 'POST',
       path: '/api/v1/platform/admin/tenants',
@@ -62,8 +65,8 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     request,
     story12Context,
   }) => {
-    await bootstrapTenant(request, story12Context);
     await bootstrapAssigneeUser(request, story12Context);
+    await bootstrapTenant(request, story12Context);
     const tenantAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'TENANT_ADMIN' });
 
     const disableResponse = await apiRequest(request, {
@@ -124,8 +127,8 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     request,
     story12Context,
   }) => {
-    await bootstrapTenant(request, story12Context);
     await bootstrapAssigneeUser(request, story12Context);
+    await bootstrapTenant(request, story12Context);
     const tenantAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'SYSTEM_ADMIN' });
 
     const orgUnitResponse = await apiRequest(request, {
@@ -171,8 +174,8 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     request,
     story12Context,
   }) => {
-    await bootstrapTenant(request, story12Context);
     await bootstrapAssigneeUser(request, story12Context);
+    await bootstrapTenant(request, story12Context);
     const tenantAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'TENANT_ADMIN' });
 
     const entitlementResponse = await apiRequest(request, {
@@ -214,8 +217,8 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     request,
     story12Context,
   }) => {
-    await bootstrapTenant(request, story12Context);
     await bootstrapAssigneeUser(request, story12Context);
+    await bootstrapTenant(request, story12Context);
     const tenantAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'TENANT_ADMIN' });
     const systemAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'SYSTEM_ADMIN' });
 

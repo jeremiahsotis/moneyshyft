@@ -125,7 +125,11 @@ describe('Story 0.4 - csrf and parent-domain cookie enforcement', () => {
       .set('Cookie', ['access_token=access-token']);
 
     expect(missingTokenResponse.status).toBe(403);
-    expect(missingTokenResponse.body.error).toBe('CSRF token missing or invalid');
+    expect(missingTokenResponse.body).toMatchObject({
+      ok: false,
+      code: 'CSRF_TOKEN_REQUIRED',
+      refusalType: 'security',
+    });
 
     const validTokenResponse = await request(testApp)
       .post('/_test/mutate')
