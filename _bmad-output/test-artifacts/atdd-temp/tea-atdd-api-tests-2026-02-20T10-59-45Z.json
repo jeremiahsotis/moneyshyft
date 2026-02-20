@@ -1,0 +1,33 @@
+{
+  "success": true,
+  "subprocess": "atdd-api-tests",
+  "tests": [
+    {
+      "file": "tests/api/platform/1-4-shared-response-envelope-and-refusal-helpers.atdd.api.spec.ts",
+      "content": "import { test, expect } from '@playwright/test';\nimport { apiRequest } from '../../support/helpers/apiClient';\nimport {\n  createStory14BusinessRefusalProbe,\n  createStory14SharedEnvelopeHeaders,\n  createStory14SuccessProbe,\n  createStory14SystemErrorProbe,\n} from '../../support/factories/sharedResponseEnvelopeStory14Factory';\n\ntest.describe('Story 1.4 Shared Response Envelope and Refusal Helpers (ATDD API RED)', () => {\n  test.skip('[P0] emits canonical success envelope contract through shared serializer helpers @P0', async ({ request }) => {\n    const headers = createStory14SharedEnvelopeHeaders({\n      tenantId: 'tenant-story-1-4-success',\n      correlationId: 'corr-story-1-4-success',\n    });\n    const successProbe = createStory14SuccessProbe();\n\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/contracts/envelope/response-matrix/success',\n      headers,\n      data: successProbe.payload,\n    });\n\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: true,\n      code: successProbe.expected.code,\n      message: successProbe.expected.message,\n      correlationId: headers['x-correlation-id'],\n      tenantId: null,\n    });\n  });\n\n  test.skip('[P0] preserves refusal transport semantics (HTTP 200 + ok=false) for business outcomes @P0', async ({ request }) => {\n    const headers = createStory14SharedEnvelopeHeaders({\n      tenantId: 'tenant-story-1-4-refusal',\n      correlationId: 'corr-story-1-4-refusal',\n    });\n    const refusalProbe = createStory14BusinessRefusalProbe();\n\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/contracts/envelope/response-matrix/business-refusal',\n      headers,\n      data: refusalProbe.payload,\n    });\n\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: false,\n      code: refusalProbe.expected.code,\n      message: refusalProbe.expected.message,\n      refusalType: refusalProbe.expected.refusalType,\n      correlationId: headers['x-correlation-id'],\n      tenantId: null,\n    });\n  });\n\n  test.skip('[P1] emits canonical system error envelope without leaking internal stack details @P1', async ({ request }) => {\n    const headers = createStory14SharedEnvelopeHeaders({\n      tenantId: 'tenant-story-1-4-system-error',\n      correlationId: 'corr-story-1-4-system-error',\n    });\n    const systemErrorProbe = createStory14SystemErrorProbe();\n\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/contracts/envelope/response-matrix/system-error',\n      headers,\n      data: systemErrorProbe.payload,\n    });\n\n    expect(response.status()).toBe(500);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: false,\n      code: systemErrorProbe.expected.code,\n      message: systemErrorProbe.expected.message,\n      correlationId: headers['x-correlation-id'],\n    });\n    expect(body).not.toHaveProperty('stack');\n  });\n});\n",
+      "description": "ATDD API tests for story 1.4 response envelope and refusal helpers (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Shared envelope helpers serialize success/refusal/systemError outcomes",
+        "Business refusals return HTTP 200 with ok=false"
+      ],
+      "priority_coverage": {
+        "P0": 2,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "sharedResponseEnvelopeStory14Factory"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns"
+  ],
+  "test_count": 3,
+  "tdd_phase": "RED",
+  "summary": "Generated 3 RED-phase API tests for story 1.4 with shared envelope/refusal assertions"
+}
