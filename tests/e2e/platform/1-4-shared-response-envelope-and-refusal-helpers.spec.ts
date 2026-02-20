@@ -44,6 +44,8 @@ test.describe('Story 1.4 automate - shared response envelope and refusal helpers
       code: story14SystemErrorProbe.expected.code,
       message: story14SystemErrorProbe.expected.message,
       correlationId: story14SharedEnvelopeHeaders['x-correlation-id'],
+      tenantId: null,
+      errorType: 'system',
     });
     expect(body).not.toHaveProperty('stack');
   });

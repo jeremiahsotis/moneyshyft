@@ -171,4 +171,6 @@ if [[ -n "$last_subject" ]]; then
   fi
 fi
 
+bash scripts/enforce-envelope-helper-guard.sh
+
 echo "Policy check passed"

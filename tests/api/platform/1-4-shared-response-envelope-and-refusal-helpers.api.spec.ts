@@ -80,6 +80,8 @@ test.describe('Story 1.4 automate - shared response envelope and refusal helpers
       code: systemErrorProbe.expected.code,
       message: systemErrorProbe.expected.message,
       correlationId: headers['x-correlation-id'],
+      tenantId: null,
+      errorType: 'system',
     });
     expect(body).not.toHaveProperty('stack');
   });
@@ -116,10 +118,11 @@ test.describe('Story 1.4 automate - shared response envelope and refusal helpers
     const successBody = await successResponse.json();
     const refusalBody = await refusalResponse.json();
     const systemErrorBody = await systemErrorResponse.json();
-    const requiredKeys = ['ok', 'code', 'message', 'correlationId'];
+    const requiredKeys = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
 
     expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(successBody, key))).toBe(true);
     expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(refusalBody, key))).toBe(true);
     expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(systemErrorBody, key))).toBe(true);
+    expect(systemErrorBody.errorType).toBe('system');
   });
 });

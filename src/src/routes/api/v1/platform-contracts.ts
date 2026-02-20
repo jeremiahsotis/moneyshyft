@@ -871,7 +871,11 @@ router.post('/_kernel/contracts/envelope/response-matrix/success', (req: Request
   return success(res, {
     code: 'ENVELOPE_CONTRACT_OK',
     message: 'Shared response envelope emitted success contract',
-    data: req.body ?? {}
+    data: {
+      probe: 'response-matrix-success',
+      helper: 'success',
+      contractVersion: '1.4'
+    }
   });
 });
 
@@ -882,7 +886,11 @@ router.post('/_kernel/contracts/envelope/response-matrix/business-refusal', (req
     code: 'ENVELOPE_BUSINESS_REFUSAL',
     message: 'Requested amount exceeds available envelope balance',
     refusalType: 'business',
-    data: req.body ?? {}
+    data: {
+      probe: 'response-matrix-business-refusal',
+      helper: 'refusal',
+      contractVersion: '1.4'
+    }
   });
 });
 
@@ -892,7 +900,11 @@ router.post('/_kernel/contracts/envelope/response-matrix/system-error', (req: Re
   return systemError(res, {
     code: 'ENVELOPE_SYSTEM_ERROR',
     message: 'Shared response envelope emitted system error contract',
-    data: req.body ?? {},
+    data: {
+      probe: 'response-matrix-system-error',
+      helper: 'systemError',
+      contractVersion: '1.4'
+    },
     httpStatus: 500
   });
 });
