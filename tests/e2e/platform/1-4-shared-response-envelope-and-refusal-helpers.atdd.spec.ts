@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test as story14Test } from '../../support/fixtures/sharedResponseEnvelopeStory14.fixture';
 
-test.describe('Story 1.4 Shared Response Envelope and Refusal Helpers (ATDD E2E RED)', () => {
+story14Test.describe('Story 1.4 Shared Response Envelope and Refusal Helpers (ATDD E2E RED)', () => {
   story14Test.skip('[P1] journey-level refusal handling keeps deterministic contract semantics for consumers @P1', async ({
     page,
     request,
