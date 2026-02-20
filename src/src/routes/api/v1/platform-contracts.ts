@@ -865,6 +865,38 @@ router.post('/_kernel/contracts/envelope/system-error', (req: Request, res: Resp
   });
 });
 
+router.post('/_kernel/contracts/envelope/response-matrix/success', (req: Request, res: Response) => {
+  applyEnvelopeTenantOverride(req, res);
+
+  return success(res, {
+    code: 'ENVELOPE_CONTRACT_OK',
+    message: 'Shared response envelope emitted success contract',
+    data: req.body ?? {}
+  });
+});
+
+router.post('/_kernel/contracts/envelope/response-matrix/business-refusal', (req: Request, res: Response) => {
+  applyEnvelopeTenantOverride(req, res);
+
+  return refusal(res, {
+    code: 'ENVELOPE_BUSINESS_REFUSAL',
+    message: 'Requested amount exceeds available envelope balance',
+    refusalType: 'business',
+    data: req.body ?? {}
+  });
+});
+
+router.post('/_kernel/contracts/envelope/response-matrix/system-error', (req: Request, res: Response) => {
+  applyEnvelopeTenantOverride(req, res);
+
+  return systemError(res, {
+    code: 'ENVELOPE_SYSTEM_ERROR',
+    message: 'Shared response envelope emitted system error contract',
+    data: req.body ?? {},
+    httpStatus: 500
+  });
+});
+
 router.get('/_kernel/contracts/events/schema', (req: Request, res: Response) => {
   const context = resolveEnvelopeContext(req, res);
   const envelope = buildSuccessEnvelope(context, {
