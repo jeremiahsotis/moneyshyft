@@ -1,6 +1,6 @@
 # Story 1.3: First-Party Auth, Sessions, and CSRF Enforcement
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,14 +17,14 @@ so that authentication is resilient and state-changing routes are protected.
 
 ## Tasks / Subtasks
 
-- [ ] Implement acceptance criterion 1 (AC: 1)
-  - [ ] Ensure refresh token rotation persists session state with revocation metadata support.
-  - [ ] Enforce token invalidation/revocation behavior for compromised or expired sessions.
-  - [ ] Maintain secure cookie posture for app/api parent-domain topology.
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Apply CSRF middleware to all authenticated state-changing routes.
-  - [ ] Ensure missing/invalid token paths fail deterministically with standardized refusal/error contract.
-  - [ ] Add API coverage for allowed/denied CSRF scenarios.
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Ensure refresh token rotation persists session state with revocation metadata support.
+  - [x] Enforce token invalidation/revocation behavior for compromised or expired sessions.
+  - [x] Maintain secure cookie posture for app/api parent-domain topology.
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Apply CSRF middleware to all authenticated state-changing routes.
+  - [x] Ensure missing/invalid token paths fail deterministically with standardized refusal/error contract.
+  - [x] Add API coverage for allowed/denied CSRF scenarios.
 
 ## Dev Notes
 
@@ -102,14 +102,30 @@ This story hardens authentication and request integrity guarantees before broade
 
 GPT-5 Codex
 
+### Implementation Plan
+
+- Validate existing platform session rotation, revocation, CSRF middleware, and cookie posture against AC1/AC2 requirements.
+- Execute targeted and full regression tests to verify refresh lifecycle, revocation handling, CSRF denial/allow paths, and no regressions.
+- Update story tracking artifacts only after validation gates pass.
+
 ### Debug Log References
 
-- Story preparation only; implementation logs pending.
+- `cd src && npm test -- src/src/platform/sessions/__tests__/PlatformSessionStore.test.ts src/src/routes/api/v1/__tests__/auth.refresh.test.ts src/src/platform/middleware/__tests__/csrfProtection.test.ts`
+- `npm run test:e2e -- tests/api/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.api.spec.ts`
+- `cd src && npm test`
 
 ### Completion Notes List
 
-- Story context prepared with auth/session/csrf hardening requirements.
+- Verified AC1 coverage via passing session store and auth refresh tests (rotation, revocation, replay rejection, invalid token revocation handling).
+- Verified AC2 coverage via passing CSRF middleware tests and story-specific API contract tests for missing/invalid/valid CSRF evidence.
+- Confirmed secure cookie posture and environment-aware handling are already implemented and covered by existing regression suite.
+- No product code changes were required; existing implementation satisfied all acceptance criteria.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/1-3-first-party-auth-sessions-and-csrf-enforcement.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+
+## Change Log
+
+- 2026-02-20: Validated Story 1.3 against AC1/AC2, executed full regression checks, and advanced status to review.
