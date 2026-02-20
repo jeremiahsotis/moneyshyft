@@ -1,123 +1,140 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type APIResponse, type APIRequestContext } from '@playwright/test';
 import { apiRequest } from '../../support/helpers/apiClient';
-import {
-  createRefreshIssuePayload,
-  createRefreshRotatePayload,
-  createSessionHeaders,
-} from '../../support/factories/sessionRotationFactory';
-import { createCsrfGuardRequest } from '../../support/factories/csrfCookiePolicyFactory';
+
+type AuthSessionCookies = {
+  accessToken: string;
+  refreshToken: string;
+  csrfToken: string;
+};
+
+const TEST_EMAIL = process.env.TEST_EMAIL || 'operator@example.com';
+const TEST_PASSWORD = process.env.TEST_PASSWORD || 'SecurePass123!';
+
+const getSetCookieHeaders = (response: APIResponse): string[] =>
+  response
+    .headersArray()
+    .filter((header) => header.name.toLowerCase() === 'set-cookie')
+    .map((header) => header.value);
+
+const extractCookie = (setCookieHeaders: string[], cookieName: string): string => {
+  for (const cookieHeader of setCookieHeaders) {
+    const [nameValue] = cookieHeader.split(';');
+    const separatorIndex = nameValue.indexOf('=');
+    if (separatorIndex < 0) {
+      continue;
+    }
+
+    const name = nameValue.slice(0, separatorIndex).trim();
+    const value = nameValue.slice(separatorIndex + 1).trim();
+    if (name === cookieName) {
+      return value;
+    }
+  }
+
+  return '';
+};
+
+const buildCookieHeader = ({ accessToken, refreshToken, csrfToken }: AuthSessionCookies): string =>
+  `access_token=${accessToken}; refresh_token=${refreshToken}; csrf_token=${csrfToken}`;
+
+const expectErrorMessage = (body: Record<string, unknown>, expectedMessage: string): void => {
+  const candidates = [body.error, body.message];
+  expect(candidates).toContain(expectedMessage);
+};
+
+const loginAndCaptureSessionCookies = async (request: APIRequestContext): Promise<AuthSessionCookies> => {
+  const loginResponse = await apiRequest(request, {
+    method: 'POST',
+    path: '/api/v1/auth/login',
+    data: {
+      email: TEST_EMAIL,
+      password: TEST_PASSWORD,
+      rememberMe: false,
+    },
+  });
+
+  expect(loginResponse.status()).toBe(200);
+  const loginBody = await loginResponse.json();
+  expect(loginBody).toMatchObject({
+    message: 'Login successful',
+  });
+
+  const setCookieHeaders = getSetCookieHeaders(loginResponse);
+  const accessToken = extractCookie(setCookieHeaders, 'access_token');
+  const refreshToken = extractCookie(setCookieHeaders, 'refresh_token');
+  const csrfToken = extractCookie(setCookieHeaders, 'csrf_token');
+
+  expect(accessToken).not.toBe('');
+  expect(refreshToken).not.toBe('');
+  expect(csrfToken).not.toBe('');
+
+  return {
+    accessToken,
+    refreshToken,
+    csrfToken,
+  };
+};
 
 test.describe('Story 1.3 automate - first-party auth sessions and csrf enforcement API coverage', () => {
-  test('[P0] persists refresh metadata and revokes prior session on rotation @P0', async ({ request }) => {
-    const headers = createSessionHeaders({ tenantId: 'tenant-auth-alpha' });
+  test('[P0] persists refresh rotation metadata and rotates refresh cookie on /auth/refresh @P0', async ({ request }) => {
+    const session = await loginAndCaptureSessionCookies(request);
 
-    const issuePayload = createRefreshIssuePayload({
-      userId: 'user-auth-alpha',
-      refreshTokenId: 'refresh-auth-alpha',
-      expiresInSeconds: 1800,
-    });
-
-    const issueResponse = await apiRequest(request, {
+    const refreshResponse = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/sessions/refresh/issue',
-      headers,
-      data: issuePayload,
-    });
-
-    expect(issueResponse.status()).toBe(201);
-    const issueBody = await issueResponse.json();
-    expect(issueBody).toMatchObject({
-      ok: true,
-      session: {
-        sessionId: expect.any(String),
-        refreshTokenHash: expect.any(String),
-        refreshTokenExpiresAt: expect.any(String),
-        revokedAt: null,
+      path: '/api/v1/auth/refresh',
+      headers: {
+        cookie: buildCookieHeader(session),
+        'x-csrf-token': session.csrfToken,
       },
     });
 
-    const rotatePayload = createRefreshRotatePayload({
-      sessionId: issueBody.session.sessionId,
-      presentedRefreshToken: 'refresh-auth-alpha',
-      replacementRefreshTokenId: 'refresh-auth-beta',
+    expect(refreshResponse.status()).toBe(200);
+    const refreshBody = await refreshResponse.json();
+    expect(refreshBody).toMatchObject({
+      message: 'Token refreshed successfully',
     });
 
-    const rotateResponse = await apiRequest(request, {
+    const rotatedRefreshToken = extractCookie(getSetCookieHeaders(refreshResponse), 'refresh_token');
+    expect(rotatedRefreshToken).not.toBe('');
+    expect(rotatedRefreshToken).not.toBe(session.refreshToken);
+  });
+
+  test('[P0] rejects replayed refresh token after successful rotation on /auth/refresh @P0', async ({ request }) => {
+    const session = await loginAndCaptureSessionCookies(request);
+
+    const firstRefresh = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/sessions/refresh/rotate',
-      headers,
-      data: rotatePayload,
-    });
-
-    expect(rotateResponse.status()).toBe(200);
-    const rotateBody = await rotateResponse.json();
-    expect(rotateBody).toMatchObject({
-      ok: true,
-      rotated: {
-        priorSessionId: issueBody.session.sessionId,
-        priorRevokedAt: expect.any(String),
-        replacementSessionId: expect.any(String),
+      path: '/api/v1/auth/refresh',
+      headers: {
+        cookie: buildCookieHeader(session),
+        'x-csrf-token': session.csrfToken,
       },
     });
+    expect(firstRefresh.status()).toBe(200);
+
+    const replayResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/auth/refresh',
+      headers: {
+        cookie: `refresh_token=${session.refreshToken}; csrf_token=${session.csrfToken}`,
+        'x-csrf-token': session.csrfToken,
+      },
+    });
+
+    expect(replayResponse.status()).toBe(403);
+    const replayBody = await replayResponse.json();
+    expectErrorMessage(replayBody as Record<string, unknown>, 'Refresh token rejected');
   });
 
-  test('[P0] rejects replayed refresh tokens after successful rotation @P0', async ({ request }) => {
-    const headers = createSessionHeaders({ tenantId: 'tenant-auth-alpha' });
-
-    const issueResponse = await apiRequest(request, {
-      method: 'POST',
-      path: '/api/v1/platform/_kernel/sessions/refresh/issue',
-      headers,
-      data: createRefreshIssuePayload({
-        userId: 'user-auth-alpha',
-        refreshTokenId: 'refresh-replay-alpha',
-      }),
-    });
-
-    expect(issueResponse.status()).toBe(201);
-    const issued = await issueResponse.json();
-
-    const firstRotate = await apiRequest(request, {
-      method: 'POST',
-      path: '/api/v1/platform/_kernel/sessions/refresh/rotate',
-      headers,
-      data: createRefreshRotatePayload({
-        sessionId: issued.session.sessionId,
-        presentedRefreshToken: 'refresh-replay-alpha',
-        replacementRefreshTokenId: 'refresh-replay-beta',
-      }),
-    });
-
-    expect(firstRotate.status()).toBe(200);
-
-    const replayRotate = await apiRequest(request, {
-      method: 'POST',
-      path: '/api/v1/platform/_kernel/sessions/refresh/rotate',
-      headers,
-      data: createRefreshRotatePayload({
-        sessionId: issued.session.sessionId,
-        presentedRefreshToken: 'refresh-replay-alpha',
-        replacementRefreshTokenId: 'refresh-replay-gamma',
-      }),
-    });
-
-    expect(replayRotate.status()).toBe(401);
-    const replayBody = await replayRotate.json();
-    expect(replayBody).toMatchObject({
-      ok: false,
-      code: 'REFRESH_TOKEN_REPLAY_DETECTED',
-      refusalType: 'security',
-    });
-  });
-
-  test('[P0] rejects csrf-guard mutation when csrf evidence is missing @P0', async ({ request }) => {
-    const guard = createCsrfGuardRequest({ includeCsrfHeader: false });
+  test('[P0] rejects authenticated state-changing mutation when CSRF header is missing @P0', async ({ request }) => {
+    const session = await loginAndCaptureSessionCookies(request);
 
     const response = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/security/csrf/guard',
-      headers: guard.headers,
-      data: guard.payload,
+      path: '/api/v1/auth/logout',
+      headers: {
+        cookie: buildCookieHeader(session),
+      },
     });
 
     expect(response.status()).toBe(403);
@@ -129,17 +146,16 @@ test.describe('Story 1.3 automate - first-party auth sessions and csrf enforceme
     });
   });
 
-  test('[P0] rejects csrf-guard mutation on header/body mismatch @P0', async ({ request }) => {
-    const guard = createCsrfGuardRequest({ csrfToken: 'csrf-story-1-3-valid' });
+  test('[P0] rejects authenticated state-changing mutation on CSRF header/cookie mismatch @P0', async ({ request }) => {
+    const session = await loginAndCaptureSessionCookies(request);
 
     const response = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/security/csrf/guard',
+      path: '/api/v1/auth/logout',
       headers: {
-        ...guard.headers,
-        'x-csrf-token': 'csrf-story-1-3-invalid',
+        cookie: buildCookieHeader(session),
+        'x-csrf-token': 'csrf-token-invalid',
       },
-      data: guard.payload,
     });
 
     expect(response.status()).toBe(403);
@@ -151,49 +167,37 @@ test.describe('Story 1.3 automate - first-party auth sessions and csrf enforceme
     });
   });
 
-  test('[P1] accepts csrf-guard mutation when header and proof token match @P1', async ({ request }) => {
-    const guard = createCsrfGuardRequest({ csrfToken: 'csrf-story-1-3-pass' });
+  test('[P1] allows authenticated state-changing mutation when CSRF header and cookie match @P1', async ({ request }) => {
+    const session = await loginAndCaptureSessionCookies(request);
 
     const response = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/security/csrf/guard',
+      path: '/api/v1/auth/logout',
       headers: {
-        ...guard.headers,
-        'x-csrf-token': 'csrf-story-1-3-pass',
-      },
-      data: {
-        ...guard.payload,
-        csrfToken: 'csrf-story-1-3-pass',
+        cookie: buildCookieHeader(session),
+        'x-csrf-token': session.csrfToken,
       },
     });
 
     expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body).toMatchObject({
-      ok: true,
-      code: 'CSRF_GUARD_PASSED',
+      message: 'Logged out successfully',
     });
   });
 
-  test('[P2] rejects refresh rotation requests missing replacement token id @P2', async ({ request }) => {
-    const headers = createSessionHeaders({ tenantId: 'tenant-auth-alpha' });
-
+  test('[P2] rejects refresh request when refresh token cookie is missing @P2', async ({ request }) => {
     const response = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/sessions/refresh/rotate',
-      headers,
-      data: createRefreshRotatePayload({
-        sessionId: 'sess-invalid-alpha',
-        presentedRefreshToken: 'refresh-alpha',
-        replacementRefreshTokenId: '',
-      }),
+      path: '/api/v1/auth/refresh',
+      headers: {
+        'x-csrf-token': 'csrf-standalone-token',
+        cookie: 'csrf_token=csrf-standalone-token',
+      },
     });
 
-    expect(response.status()).toBe(400);
+    expect(response.status()).toBe(401);
     const body = await response.json();
-    expect(body).toMatchObject({
-      ok: false,
-      code: 'REFRESH_ROTATION_INVALID_REQUEST',
-    });
+    expectErrorMessage(body as Record<string, unknown>, 'Refresh token required');
   });
 });

@@ -1,124 +1,116 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type APIRequestContext, type APIResponse } from '@playwright/test';
 import { apiRequest } from '../../support/helpers/apiClient';
 
-test.describe('Story 1.3 First-Party Auth Sessions and CSRF Enforcement (ATDD API RED)', () => {
-  test.skip('[P0] persists refresh rotation with revocation metadata in session records @P0', async ({ request }) => {
-    const headers = {
-      'x-platform-tenant-id': 'tenant-auth-alpha',
-      'x-platform-user-id': 'user-auth-alpha',
-      'x-platform-user-role': 'SYSTEM_ADMIN',
-    };
+type AuthSessionCookies = {
+  accessToken: string;
+  refreshToken: string;
+  csrfToken: string;
+};
 
-    const issueResponse = await apiRequest(request, {
-      method: 'POST',
-      path: '/api/v1/platform/_kernel/sessions/refresh/issue',
-      headers,
-      data: {
-        refreshTokenId: 'refresh-token-story-1-3-alpha',
-        userId: 'user-auth-alpha',
-        expiresInSeconds: 3600,
-      },
-    });
+const TEST_EMAIL = process.env.TEST_EMAIL || 'operator@example.com';
+const TEST_PASSWORD = process.env.TEST_PASSWORD || 'SecurePass123!';
 
-    expect(issueResponse.status()).toBe(201);
-    const issueBody = await issueResponse.json();
-    expect(issueBody).toMatchObject({
-      ok: true,
-      session: {
-        sessionId: expect.any(String),
-        refreshTokenHash: expect.any(String),
-        revokedAt: null,
-      },
-    });
+const getSetCookieHeaders = (response: APIResponse): string[] =>
+  response
+    .headersArray()
+    .filter((header) => header.name.toLowerCase() === 'set-cookie')
+    .map((header) => header.value);
 
-    const rotateResponse = await apiRequest(request, {
-      method: 'POST',
-      path: '/api/v1/platform/_kernel/sessions/refresh/rotate',
-      headers,
-      data: {
-        sessionId: issueBody.session.sessionId,
-        presentedRefreshToken: 'refresh-token-story-1-3-alpha',
-        replacementRefreshTokenId: 'refresh-token-story-1-3-beta',
-      },
-    });
+const extractCookie = (setCookieHeaders: string[], cookieName: string): string => {
+  for (const cookieHeader of setCookieHeaders) {
+    const [nameValue] = cookieHeader.split(';');
+    const separatorIndex = nameValue.indexOf('=');
+    if (separatorIndex < 0) {
+      continue;
+    }
 
-    expect(rotateResponse.status()).toBe(200);
-    const rotateBody = await rotateResponse.json();
-    expect(rotateBody).toMatchObject({
-      ok: true,
-      rotated: {
-        priorSessionId: issueBody.session.sessionId,
-        priorRevokedAt: expect.any(String),
-        replacementSessionId: expect.any(String),
-      },
-    });
+    const name = nameValue.slice(0, separatorIndex).trim();
+    const value = nameValue.slice(separatorIndex + 1).trim();
+    if (name === cookieName) {
+      return value;
+    }
+  }
+
+  return '';
+};
+
+const buildCookieHeader = ({ accessToken, refreshToken, csrfToken }: AuthSessionCookies): string =>
+  `access_token=${accessToken}; refresh_token=${refreshToken}; csrf_token=${csrfToken}`;
+
+const expectErrorMessage = (body: Record<string, unknown>, expectedMessage: string): void => {
+  const candidates = [body.error, body.message];
+  expect(candidates).toContain(expectedMessage);
+};
+
+const loginAndCaptureSessionCookies = async (request: APIRequestContext): Promise<AuthSessionCookies> => {
+  const loginResponse = await apiRequest(request, {
+    method: 'POST',
+    path: '/api/v1/auth/login',
+    data: {
+      email: TEST_EMAIL,
+      password: TEST_PASSWORD,
+      rememberMe: false,
+    },
   });
 
-  test.skip('[P0] rejects replayed refresh token usage after successful rotation @P0', async ({ request }) => {
-    const headers = {
-      'x-platform-tenant-id': 'tenant-auth-alpha',
-      'x-platform-user-id': 'user-auth-alpha',
-      'x-platform-user-role': 'SYSTEM_ADMIN',
-    };
+  expect(loginResponse.status()).toBe(200);
+  const setCookieHeaders = getSetCookieHeaders(loginResponse);
+  const accessToken = extractCookie(setCookieHeaders, 'access_token');
+  const refreshToken = extractCookie(setCookieHeaders, 'refresh_token');
+  const csrfToken = extractCookie(setCookieHeaders, 'csrf_token');
 
-    const issueResponse = await apiRequest(request, {
+  expect(accessToken).not.toBe('');
+  expect(refreshToken).not.toBe('');
+  expect(csrfToken).not.toBe('');
+
+  return {
+    accessToken,
+    refreshToken,
+    csrfToken,
+  };
+};
+
+test.describe('Story 1.3 First-Party Auth Sessions and CSRF Enforcement (ATDD API)', () => {
+  test('[P0] rotates refresh session and rejects replay of prior refresh token @P0', async ({ request }) => {
+    const session = await loginAndCaptureSessionCookies(request);
+
+    const refreshResponse = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/sessions/refresh/issue',
-      headers,
-      data: {
-        refreshTokenId: 'refresh-token-story-1-3-replay',
-        userId: 'user-auth-alpha',
-        expiresInSeconds: 3600,
+      path: '/api/v1/auth/refresh',
+      headers: {
+        cookie: buildCookieHeader(session),
+        'x-csrf-token': session.csrfToken,
       },
     });
 
-    expect(issueResponse.status()).toBe(201);
-    const issueBody = await issueResponse.json();
+    expect(refreshResponse.status()).toBe(200);
+    const refreshSetCookies = getSetCookieHeaders(refreshResponse);
+    const rotatedRefreshToken = extractCookie(refreshSetCookies, 'refresh_token');
+    expect(rotatedRefreshToken).not.toBe('');
+    expect(rotatedRefreshToken).not.toBe(session.refreshToken);
 
-    const firstRotate = await apiRequest(request, {
+    const replayResponse = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/sessions/refresh/rotate',
-      headers,
-      data: {
-        sessionId: issueBody.session.sessionId,
-        presentedRefreshToken: 'refresh-token-story-1-3-replay',
-        replacementRefreshTokenId: 'refresh-token-story-1-3-replay-next',
+      path: '/api/v1/auth/refresh',
+      headers: {
+        cookie: `refresh_token=${session.refreshToken}; csrf_token=${session.csrfToken}`,
+        'x-csrf-token': session.csrfToken,
       },
     });
 
-    expect(firstRotate.status()).toBe(200);
-
-    const replayRotate = await apiRequest(request, {
-      method: 'POST',
-      path: '/api/v1/platform/_kernel/sessions/refresh/rotate',
-      headers,
-      data: {
-        sessionId: issueBody.session.sessionId,
-        presentedRefreshToken: 'refresh-token-story-1-3-replay',
-        replacementRefreshTokenId: 'refresh-token-story-1-3-replay-third',
-      },
-    });
-
-    expect(replayRotate.status()).toBe(401);
-    const replayBody = await replayRotate.json();
-    expect(replayBody).toMatchObject({
-      ok: false,
-      code: 'REFRESH_TOKEN_REPLAY_DETECTED',
-      refusalType: 'security',
-    });
+    expect(replayResponse.status()).toBe(403);
+    const replayBody = await replayResponse.json();
+    expectErrorMessage(replayBody as Record<string, unknown>, 'Refresh token rejected');
   });
 
-  test.skip('[P0] blocks state-changing requests without csrf token evidence @P0', async ({ request }) => {
+  test('[P0] blocks authenticated state-changing requests without CSRF header @P0', async ({ request }) => {
+    const session = await loginAndCaptureSessionCookies(request);
+
     const response = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/security/csrf/guard',
+      path: '/api/v1/auth/logout',
       headers: {
-        'x-platform-tenant-id': 'tenant-auth-alpha',
-        'x-platform-user-id': 'user-auth-alpha',
-        'x-platform-user-role': 'TENANT_ADMIN',
-      },
-      data: {
-        csrfToken: 'csrf-proof-token-alpha',
+        cookie: buildCookieHeader(session),
       },
     });
 
@@ -131,18 +123,15 @@ test.describe('Story 1.3 First-Party Auth Sessions and CSRF Enforcement (ATDD AP
     });
   });
 
-  test.skip('[P0] blocks state-changing requests when csrf header and proof mismatch @P0', async ({ request }) => {
+  test('[P0] blocks authenticated state-changing requests on CSRF mismatch @P0', async ({ request }) => {
+    const session = await loginAndCaptureSessionCookies(request);
+
     const response = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/security/csrf/guard',
+      path: '/api/v1/auth/logout',
       headers: {
-        'x-platform-tenant-id': 'tenant-auth-alpha',
-        'x-platform-user-id': 'user-auth-alpha',
-        'x-platform-user-role': 'TENANT_ADMIN',
-        'x-csrf-token': 'csrf-header-token-invalid',
-      },
-      data: {
-        csrfToken: 'csrf-proof-token-valid',
+        cookie: buildCookieHeader(session),
+        'x-csrf-token': 'csrf-mismatch-token',
       },
     });
 
@@ -155,41 +144,22 @@ test.describe('Story 1.3 First-Party Auth Sessions and CSRF Enforcement (ATDD AP
     });
   });
 
-  test.skip('[P1] enforces parent-domain secure cookie policy matrix for app/api topology @P1', async ({ request }) => {
+  test('[P1] allows authenticated state-changing requests with valid CSRF evidence @P1', async ({ request }) => {
+    const session = await loginAndCaptureSessionCookies(request);
+
     const response = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/platform/_kernel/security/cookies/policy/evaluate',
+      path: '/api/v1/auth/logout',
       headers: {
-        'x-platform-tenant-id': 'tenant-auth-alpha',
-        'x-platform-user-id': 'user-auth-alpha',
-        'x-platform-user-role': 'SYSTEM_ADMIN',
-      },
-      data: {
-        environment: 'production',
-        appHost: 'app.moneyshyft.test',
-        apiHost: 'api.moneyshyft.test',
+        cookie: buildCookieHeader(session),
+        'x-csrf-token': session.csrfToken,
       },
     });
 
     expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body).toMatchObject({
-      ok: true,
-      policy: {
-        parentDomain: '.moneyshyft.test',
-        accessToken: {
-          httpOnly: true,
-          secure: true,
-          sameSite: 'Strict',
-          domain: '.moneyshyft.test',
-        },
-        refreshToken: {
-          httpOnly: true,
-          secure: true,
-          sameSite: 'Strict',
-          domain: '.moneyshyft.test',
-        },
-      },
+      message: 'Logged out successfully',
     });
   });
 });

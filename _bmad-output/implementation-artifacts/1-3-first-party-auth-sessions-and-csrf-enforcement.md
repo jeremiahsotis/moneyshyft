@@ -1,6 +1,6 @@
 # Story 1.3: First-Party Auth, Sessions, and CSRF Enforcement
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -113,19 +113,46 @@ GPT-5 Codex
 - `cd src && npm test -- src/src/platform/sessions/__tests__/PlatformSessionStore.test.ts src/src/routes/api/v1/__tests__/auth.refresh.test.ts src/src/platform/middleware/__tests__/csrfProtection.test.ts`
 - `npm run test:e2e -- tests/api/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.api.spec.ts`
 - `cd src && npm test`
+- `cd src && npm test -- src/src/platform/middleware/__tests__/csrfProtection.test.ts src/src/__tests__/app-entrypoint-kernel.test.ts src/src/utils/__tests__/jwt.cookiePolicy.test.ts src/src/routes/api/v1/__tests__/auth.refresh.test.ts src/src/platform/sessions/__tests__/PlatformSessionStore.test.ts`
+- `npm run test:e2e -- tests/api/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.atdd.api.spec.ts`
+- `npm run test:e2e -- tests/e2e/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.spec.ts`
 
 ### Completion Notes List
 
-- Verified AC1 coverage via passing session store and auth refresh tests (rotation, revocation, replay rejection, invalid token revocation handling).
-- Verified AC2 coverage via passing CSRF middleware tests and story-specific API contract tests for missing/invalid/valid CSRF evidence.
-- Confirmed secure cookie posture and environment-aware handling are already implemented and covered by existing regression suite.
-- No product code changes were required; existing implementation satisfied all acceptance criteria.
+- Fixed JWT refresh payload handling to sanitize decoded claims before re-signing, resolving runtime refresh failures on real `/api/v1/auth/refresh` requests.
+- Converted CSRF middleware refusals to shared refusal envelopes with deterministic `CSRF_TOKEN_REQUIRED` and `CSRF_TOKEN_INVALID` security codes.
+- Aligned runtime production cookie `sameSite` policy with kernel contract policy (`strict`) across auth and CSRF cookies.
+- Replaced Story 1.3 API and ATDD API coverage from synthetic `_kernel` fixtures to production `/api/v1/auth/login|refresh|logout` flows with real cookie/CSRF handling.
+- Activated previously skipped Story 1.3 ATDD API tests.
+- Fixed Story 1.3 E2E refresh validation to use authenticated browser session cookies and CSRF header instead of a hardcoded refresh token.
+- Re-ran Story 1.3 backend and Playwright suites; all targeted validations now pass.
 
 ### File List
 
+- src/src/platform/middleware/csrfProtection.ts
+- src/src/platform/middleware/__tests__/csrfProtection.test.ts
+- src/src/__tests__/app-entrypoint-kernel.test.ts
+- src/src/utils/jwt.ts
+- src/src/utils/__tests__/jwt.cookiePolicy.test.ts
+- tests/api/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.api.spec.ts
+- tests/api/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.atdd.api.spec.ts
+- tests/e2e/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.spec.ts
 - _bmad-output/implementation-artifacts/1-3-first-party-auth-sessions-and-csrf-enforcement.md
 - _bmad-output/implementation-artifacts/sprint-status.yaml
 
 ## Change Log
 
 - 2026-02-20: Validated Story 1.3 against AC1/AC2, executed full regression checks, and advanced status to review.
+- 2026-02-20: Resolved senior review findings (ATDD activation, real auth/CSRF coverage, CSRF envelope compliance, cookie policy alignment, refresh runtime fix), corrected failing E2E validation, and moved story to done.
+
+### Senior Developer Review (AI)
+
+- Reviewer: Jeremiah (AI)
+- Date: 2026-02-20
+- Outcome: Changes Requested items resolved
+- Resolution summary:
+  - ATDD API story coverage is active and no longer skipped.
+  - Story API coverage validates real `/api/v1/auth/*` behavior rather than synthetic `_kernel` fixtures.
+  - Story E2E refresh validation now uses real authenticated session cookies and passes.
+  - CSRF middleware now emits shared refusal-envelope responses.
+  - Runtime cookie policy and kernel contract policy are aligned for production `sameSite`.

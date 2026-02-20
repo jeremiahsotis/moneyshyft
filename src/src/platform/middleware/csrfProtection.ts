@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import { refusal } from '../envelopes/response';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -22,15 +23,26 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
   const csrfCookie = req.cookies?.csrf_token;
   const csrfHeader = req.header('x-csrf-token');
 
-  const isValidToken =
-    typeof csrfCookie === 'string' &&
-    csrfCookie.trim() !== '' &&
-    typeof csrfHeader === 'string' &&
-    csrfHeader.trim() !== '' &&
-    csrfCookie === csrfHeader;
+  const normalizedCookie = typeof csrfCookie === 'string' ? csrfCookie.trim() : '';
+  const normalizedHeader = typeof csrfHeader === 'string' ? csrfHeader.trim() : '';
 
-  if (!isValidToken) {
-    res.status(403).json({ error: 'CSRF token missing or invalid' });
+  if (!normalizedCookie || !normalizedHeader) {
+    refusal(res, {
+      code: 'CSRF_TOKEN_REQUIRED',
+      message: 'State-changing requests require CSRF header and proof token',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return;
+  }
+
+  if (normalizedCookie !== normalizedHeader) {
+    refusal(res, {
+      code: 'CSRF_TOKEN_INVALID',
+      message: 'CSRF header token does not match request proof token',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
     return;
   }
 
