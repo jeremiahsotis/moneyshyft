@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "subprocess": "api-tests",
+  "tests": [
+    {
+      "file": "tests/api/platform/1-4-shared-response-envelope-and-refusal-helpers.api.spec.ts",
+      "content": "import { test, expect } from '@playwright/test';\nimport { apiRequest } from '../../support/helpers/apiClient';\nimport {\n  createStory14BusinessRefusalProbe,\n  createStory14SharedEnvelopeHeaders,\n  createStory14SuccessProbe,\n  createStory14SystemErrorProbe,\n} from '../../support/factories/sharedResponseEnvelopeStory14Factory';\n\ntest.describe('Story 1.4 automate - shared response envelope and refusal helpers API coverage', () => {\n  test('[P0] emits canonical success envelope through shared serializer helpers @P0', async ({ request }) => {\n    const headers = createStory14SharedEnvelopeHeaders({\n      tenantId: 'tenant-story-1-4-success',\n      correlationId: 'corr-story-1-4-success',\n    });\n    const successProbe = createStory14SuccessProbe();\n\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/contracts/envelope/response-matrix/success',\n      headers,\n      data: successProbe.payload,\n    });\n\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: true,\n      code: successProbe.expected.code,\n      message: successProbe.expected.message,\n      correlationId: headers['x-correlation-id'],\n      tenantId: null,\n    });\n  });\n\n  test('[P0] keeps business refusals as HTTP 200 with ok=false @P0', async ({ request }) => {\n    const headers = createStory14SharedEnvelopeHeaders({\n      tenantId: 'tenant-story-1-4-refusal',\n      correlationId: 'corr-story-1-4-refusal',\n    });\n    const refusalProbe = createStory14BusinessRefusalProbe();\n\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/contracts/envelope/response-matrix/business-refusal',\n      headers,\n      data: refusalProbe.payload,\n    });\n\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: false,\n      code: refusalProbe.expected.code,\n      message: refusalProbe.expected.message,\n      refusalType: refusalProbe.expected.refusalType,\n      correlationId: headers['x-correlation-id'],\n      tenantId: null,\n    });\n  });\n\n  test('[P1] emits canonical system error envelope without stack leakage @P1', async ({ request }) => {\n    const headers = createStory14SharedEnvelopeHeaders({\n      tenantId: 'tenant-story-1-4-system-error',\n      correlationId: 'corr-story-1-4-system-error',\n    });\n    const systemErrorProbe = createStory14SystemErrorProbe();\n\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/contracts/envelope/response-matrix/system-error',\n      headers,\n      data: systemErrorProbe.payload,\n    });\n\n    expect(response.status()).toBe(500);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: false,\n      code: systemErrorProbe.expected.code,\n      message: systemErrorProbe.expected.message,\n      correlationId: headers['x-correlation-id'],\n    });\n    expect(body).not.toHaveProperty('stack');\n  });\n\n  test('[P1] keeps canonical top-level envelope keys across success, refusal, and system error paths @P1', async ({ request }) => {\n    const headers = createStory14SharedEnvelopeHeaders({\n      tenantId: 'tenant-story-1-4-envelope-keys',\n      correlationId: 'corr-story-1-4-envelope-keys',\n    });\n\n    const successResponse = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/contracts/envelope/response-matrix/success',\n      headers,\n      data: createStory14SuccessProbe().payload,\n    });\n    const refusalResponse = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/contracts/envelope/response-matrix/business-refusal',\n      headers,\n      data: createStory14BusinessRefusalProbe().payload,\n    });\n    const systemErrorResponse = await apiRequest(request, {\n      method: 'POST',\n      path: '/api/v1/platform/_kernel/contracts/envelope/response-matrix/system-error',\n      headers,\n      data: createStory14SystemErrorProbe().payload,\n    });\n\n    expect(successResponse.status()).toBe(200);\n    expect(refusalResponse.status()).toBe(200);\n    expect(systemErrorResponse.status()).toBe(500);\n\n    const successBody = await successResponse.json();\n    const refusalBody = await refusalResponse.json();\n    const systemErrorBody = await systemErrorResponse.json();\n    const requiredKeys = ['ok', 'code', 'message', 'correlationId'];\n\n    expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(successBody, key))).toBe(true);\n    expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(refusalBody, key))).toBe(true);\n    expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(systemErrorBody, key))).toBe(true);\n  });\n});\n",
+      "description": "Automated API coverage for story 1.4 shared response envelope and refusal helpers",
+      "priority_coverage": {
+        "P0": 2,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "apiClient",
+    "sharedResponseEnvelopeStory14Factory"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns"
+  ],
+  "test_count": 4,
+  "summary": "Generated 4 API tests covering success, refusal, and system-error envelope contracts for story 1.4"
+}

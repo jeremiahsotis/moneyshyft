@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-20T02:22:10Z'
+lastSaved: '2026-02-20T11:06:30Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -16,20 +16,19 @@ lastSaved: '2026-02-20T02:22:10Z'
 ### Execution Mode
 - Mode selected: **BMad-Integrated**.
 - Basis:
-  - Story artifact found: `/Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/1-3-first-party-auth-sessions-and-csrf-enforcement.md`
-  - Existing ATDD API/E2E story tests found for `1-3`.
+  - Story artifact loaded: `/Users/jeremiahotis/moneyshyft/_bmad-output/implementation-artifacts/1-4-shared-response-envelope-and-refusal-helpers.md`
+  - Existing ATDD files found for Story 1.4:
+    - `/Users/jeremiahotis/moneyshyft/tests/api/platform/1-4-shared-response-envelope-and-refusal-helpers.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/moneyshyft/tests/e2e/platform/1-4-shared-response-envelope-and-refusal-helpers.atdd.spec.ts`
 
 ### Context Loaded
-- Story with AC and technical constraints loaded (`1-3-first-party-auth-sessions-and-csrf-enforcement.md`).
-- Test framework configuration and scripts loaded (`playwright.config.ts`, root `package.json`).
+- Test framework config loaded: `/Users/jeremiahotis/moneyshyft/playwright.config.ts`.
 - Existing test structure loaded from `/Users/jeremiahotis/moneyshyft/tests`.
-- Existing related tests detected for auth/session/CSRF:
-  - `/Users/jeremiahotis/moneyshyft/tests/api/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.atdd.api.spec.ts`
-  - `/Users/jeremiahotis/moneyshyft/tests/e2e/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.atdd.spec.ts`
-  - `/Users/jeremiahotis/moneyshyft/tests/api/platform/csrf-and-parent-domain-cookie-enforcement.api.spec.ts`
-  - `/Users/jeremiahotis/moneyshyft/tests/api/platform/platform-session-store-and-refresh-rotation.api.spec.ts`
-  - `/Users/jeremiahotis/moneyshyft/tests/e2e/platform/csrf-and-parent-domain-cookie-enforcement.spec.ts`
-  - `/Users/jeremiahotis/moneyshyft/tests/e2e/platform/platform-session-store-and-refresh-rotation.spec.ts`
+- Related envelope contract and fixture assets loaded:
+  - `/Users/jeremiahotis/moneyshyft/tests/api/platform/shared-api-envelope-and-business-refusal-contract.api.spec.ts`
+  - `/Users/jeremiahotis/moneyshyft/tests/e2e/platform/shared-api-envelope-and-business-refusal-contract.spec.ts`
+  - `/Users/jeremiahotis/moneyshyft/tests/support/factories/sharedResponseEnvelopeStory14Factory.ts`
+  - `/Users/jeremiahotis/moneyshyft/tests/support/fixtures/sharedResponseEnvelopeStory14.fixture.ts`
 
 ### TEA Config Flags
 - `tea_use_playwright_utils: true`
@@ -43,7 +42,7 @@ lastSaved: '2026-02-20T02:22:10Z'
   - `selective-testing.md`
   - `ci-burn-in.md`
   - `test-quality.md`
-- Playwright Utils (enabled):
+- Playwright Utils:
   - `overview.md`
   - `api-request.md`
   - `network-recorder.md`
@@ -55,120 +54,99 @@ lastSaved: '2026-02-20T02:22:10Z'
   - `burn-in.md`
   - `network-error-monitor.md`
   - `fixtures-composition.md`
-- Playwright CLI (automation mode `auto`):
+- Additional pattern references:
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `api-testing-patterns.md`
   - `playwright-cli.md`
-- Healing fragments: not loaded (auto-heal flag not present/enabled in TEA config).
-
-### Step 1 Outcome
-- Preflight complete.
-- Workflow ready to identify target test deltas for Story 1.3.
 
 ## Step 2 - Identify Automation Targets
 
-### Browser Exploration Result
-- `playwright-cli` is not installed in this environment (`command not found`).
-- Fallback applied per workflow: code and artifact analysis only (no CLI snapshot phase).
+### Browser Exploration
+- Attempted `playwright-cli` exploration for selector validation.
+- Result: CLI browser bootstrap failed in environment (`listen EINVAL` on Playwright CLI socket).
+- Fallback applied: code and artifact-driven selector/flow analysis.
 
-### Acceptance Criteria to Scenario Mapping
-- AC1 (refresh rotation persistence + revocation):
-  - Issue refresh session persists hashed token metadata.
-  - Rotate refresh token revokes prior session and issues replacement session.
-  - Replay of rotated token is rejected deterministically.
-  - Revoked/expired refresh token is rejected.
-- AC2 (CSRF enforcement on state-changing routes):
-  - Missing CSRF header/proof is rejected.
-  - Header/proof mismatch is rejected.
-  - Matching header/proof is accepted.
+### Acceptance Criteria to Test Targets
+- AC1: Shared envelope helpers for success/refusal/system error serialization.
+- AC2: Business refusals must remain `HTTP 200` with `ok=false`.
 
-### Existing Coverage and Gap Analysis
-- Existing ATDD files for Story 1.3 are currently `test.skip(...)` and remain red-phase scaffolding.
-- Existing non-ATDD platform tests cover adjacent contract behaviors (session rotation and CSRF guard) but do not provide a dedicated Story 1.3 integrated regression file pair.
-- Gap to fill:
-  - Story-specific API regression suite (active, non-skipped).
-  - Story-specific E2E/auth workflow assertions (active, non-skipped).
-
-### Test Levels Selected
-- API: primary level for AC1/AC2 contract and refusal semantics.
-- E2E: critical user journey and authenticated posture checks.
-- Component/Unit: not generated in this workflow run (out of scope for requested `TA` path and current coverage target `critical-paths`).
+### Selected Test Levels
+- **API** (primary): enforce envelope contract semantics and payload shape.
+- **E2E** (secondary): journey-level contract confidence through story fixture composition.
 
 ### Priority Assignment
 - P0:
-  - Refresh rotate persistence + replay refusal.
-  - CSRF missing/mismatch refusal.
+  - success envelope contract
+  - business refusal transport semantics
 - P1:
-  - Valid CSRF pass path.
-  - Refresh token revoked/expired refusal path validation.
-- P2:
-  - Input validation on malformed refresh rotation payload.
+  - system error envelope no-stack hardening
+  - top-level key consistency and correlation stability
 
-### Coverage Plan (critical-paths)
-- API targets:
-  - New file: `tests/api/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.api.spec.ts`
-  - Focus: auth refresh lifecycle + CSRF guard endpoint contracts + error semantics.
-- E2E targets:
-  - New file: `tests/e2e/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.spec.ts`
-  - Focus: login posture, guarded mutation refusal/pass matrix, refresh endpoint integration.
-- Justification:
-  - Balances risk and execution speed: deep checks at API, representative critical flow at E2E.
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/1-4-shared-response-envelope-and-refusal-helpers.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/1-4-shared-response-envelope-and-refusal-helpers.spec.ts`
+- Scope: `critical-paths`
 
 ## Step 3C - Aggregate Test Generation Results
 
 ### Parallel Subprocess Execution
-- Subprocess A output: `/tmp/tea-automate-api-tests-2026-02-20T02-22-10Z.json`
-- Subprocess B output: `/tmp/tea-automate-e2e-tests-2026-02-20T02-22-10Z.json`
+- API subprocess output:
+  - `/tmp/tea-automate-api-tests-2026-02-20T11-05-01-3NZ.json`
+- E2E subprocess output:
+  - `/tmp/tea-automate-e2e-tests-2026-02-20T11-05-01-3NZ.json`
 - Verification:
-  - API output exists and `success: true`
-  - E2E output exists and `success: true`
-- Execution mode: `PARALLEL (API + E2E)`
-- Performance note: parallelized generation target achieved (~50% faster than sequential model).
+  - `success: true` for both subprocess outputs
+  - output files present and valid JSON
 
 ### Files Written to Disk
-- `tests/api/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.api.spec.ts`
-- `tests/e2e/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.spec.ts`
-- `tests/fixtures/auth.ts`
-- `tests/fixtures/data-factories.ts`
-- `tests/fixtures/network-mocks.ts`
-- `tests/fixtures/helpers.ts`
+- `tests/api/platform/1-4-shared-response-envelope-and-refusal-helpers.api.spec.ts`
+- `tests/e2e/platform/1-4-shared-response-envelope-and-refusal-helpers.spec.ts`
 
-### Aggregated Counts
-- Total tests generated: `9`
-  - API tests: `6` (1 file)
+### Fixture/Helper Aggregation
+- Reused existing fixture/helper assets:
+  - `apiClient`
+  - `sharedResponseEnvelopeStory14Factory`
+  - `sharedResponseEnvelopeStory14Fixture`
+- No new fixture infrastructure required for this story slice.
+
+### Summary Metrics
+- Total tests generated: `7`
+  - API tests: `4` (1 file)
   - E2E tests: `3` (1 file)
-- Priority breakdown:
-  - P0: `6`
-  - P1: `2`
-  - P2: `1`
+- Priority coverage:
+  - P0: `2`
+  - P1: `5`
+  - P2: `0`
   - P3: `0`
-- Summary artifact written: `/tmp/tea-automate-summary-2026-02-20T02-22-10Z.json`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-20T11-05-01-3NZ.json`
 
 ## Step 4 - Validate and Summarize
 
 ### Validation Results
-- Framework readiness: passed (`playwright.config.ts` + Playwright dependencies present).
-- Coverage mapping by AC and priority: present in Step 2.
-- Test structure and parse validation:
-  - `npx playwright test --list tests/api/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.api.spec.ts tests/e2e/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.spec.ts`
-  - Result: `9 tests in 2 files` listed successfully.
-- Fixtures/factories/helpers generated and organized under `tests/fixtures/`.
-- CLI session hygiene:
-  - No CLI browser session created (CLI unavailable in environment).
-  - No orphan browser session cleanup required.
-- Temp artifacts location:
-  - Stored under `/tmp/` and output summary retained under `_bmad-output/test-artifacts/`.
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Test quality checks on generated files:
+  - No hard waits (`waitForTimeout`) detected.
+  - No conditional visibility branching anti-patterns detected.
+- CLI session cleanup:
+  - no open session persisted (exploration did not establish a live session).
 
-### Assumptions
-- Existing platform contract endpoints remain canonical for Story 1.3 automation:
-  - `/_kernel/sessions/refresh/*`
-  - `/_kernel/security/csrf/guard`
-- Login surface retains `#email`, `#password`, and role-based login button naming.
-- Story 1.3 ATDD files remain red-phase and intentionally skipped while automate output provides active regression tests.
+### Key Assumptions
+- Story 1.4 contract endpoints remain:
+  - `/api/v1/platform/_kernel/contracts/envelope/response-matrix/success`
+  - `/api/v1/platform/_kernel/contracts/envelope/response-matrix/business-refusal`
+  - `/api/v1/platform/_kernel/contracts/envelope/response-matrix/system-error`
+- Existing Story 1.4 fixture/factory contracts are source of truth for expected payload and response semantics.
 
 ### Risks
-- E2E tests rely on environment login behavior and credentials (`TEST_EMAIL`, `TEST_PASSWORD`) and may fail if seed users differ.
-- Browser selector validation via CLI could not be executed because `playwright-cli` is not installed; selectors were inferred from existing suite patterns.
-- Generated shared fixture files are additive and may require consolidation with existing `tests/support/fixtures/*` conventions in a later cleanup pass.
+- Tests were generated from code/artifact analysis without live browser snapshot confirmation due CLI runtime issue.
+- Endpoint behavior is assumed stable against story fixture expectations; if route contracts drift, tests will fail as designed.
 
 ### Recommended Next Workflow
-- Recommended next TEA action: `[RV] Review Tests` for quality scoring and anti-flake audit.
-- Optional after review: `[TR] Trace Requirements` to map Story 1.3 ACs to exact generated/legacy test IDs for gate reporting.
+- `[RV] Review Tests` for quality gate scoring and maintainability checks.
+- `[TR] Trace Requirements` to map Story 1.4 ACs to generated automated tests.
