@@ -128,6 +128,9 @@ if ! is_http_reachable "$api_root/health" && ! is_http_reachable "$api_root/api/
 
   cleanup_pidfile_process "$BACKEND_PID_FILE" "backend"
 
+  echo "Managed runtime policy: running backend migrations"
+  (cd src && npm run migrate:latest) >/dev/null 2>&1
+
   echo "Managed runtime policy: starting backend for this test run"
   : > "$BACKEND_LOG_FILE"
   (cd src && npm run dev) >"$BACKEND_LOG_FILE" 2>&1 &

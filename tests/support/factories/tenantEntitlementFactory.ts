@@ -37,11 +37,11 @@ type InitialTenantAdminPayloadOverrides = {
 };
 
 export function createStory12Context(overrides: Story12ContextOverrides = {}) {
-  const tenantId = overrides.tenantId ?? 'tenant-a';
+  const tenantId = overrides.tenantId ?? randomUUID();
   const moduleKey = overrides.moduleKey ?? 'payroll';
   const orgUnitCode = overrides.orgUnitCode ?? `regional-ops-${randomUUID().slice(0, 8)}`;
-  const actorUserId = overrides.actorUserId ?? `actor-${randomUUID()}`;
-  const assigneeUserId = overrides.assigneeUserId ?? `assignee-${randomUUID()}`;
+  const actorUserId = overrides.actorUserId ?? randomUUID();
+  const assigneeUserId = overrides.assigneeUserId ?? randomUUID();
 
   return {
     tenantId,
@@ -60,7 +60,7 @@ export function createStory12TenantHeaders(
     tenantId: context.tenantId,
     orgUnitId: overrides.orgUnitId ?? null,
     role: overrides.role ?? 'TENANT_ADMIN',
-    userId: overrides.userId ?? context.actorUserId,
+    userId: overrides.userId ?? '',
   });
 }
 

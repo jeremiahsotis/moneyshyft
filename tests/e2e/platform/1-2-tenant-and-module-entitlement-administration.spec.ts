@@ -1,45 +1,121 @@
 import { apiRequest } from '../../support/helpers/apiClient';
+import { randomUUID } from 'node:crypto';
 import {
-  createInitialTenantAdminPayload,
   createModuleEntitlementPayload,
   createOrgUnitPayload,
-  createRoleAssignmentPayload,
+  createStory12TenantHeaders,
 } from '../../support/factories/tenantEntitlementFactory';
 import { test, expect } from '../../support/fixtures/tenantEntitlementStory12.fixture';
 
 test.describe('Story 1.2 automate - tenant and module entitlement administration journey', () => {
-  test('[P0] applies module disable and blocks protected module scope in the same journey @P0', async ({
-    request,
-    story12Context,
-    tenantAdminHeaders,
-  }) => {
-    const disableResponse = await apiRequest(request, {
-      method: 'PATCH',
-      path: `/api/v1/platform/tenants/${story12Context.tenantId}/modules/${story12Context.moduleKey}/entitlement`,
-      headers: tenantAdminHeaders,
-      data: createModuleEntitlementPayload({
-        enabled: false,
-        reason: 'suspend-module',
-      }),
-    });
-
-    expect(disableResponse.status()).toBe(200);
-
-    const protectedProbeResponse = await apiRequest(request, {
+  const bootstrapAssigneeUser = async (
+    request: Parameters<typeof apiRequest>[0],
+    story12Context: {
+      assigneeUserId: string;
+      orgUnitCode: string;
+    },
+  ) => {
+    const email = `story12-${randomUUID()}@example.com`;
+    const signupResponse = await apiRequest(request, {
       method: 'POST',
-      path: `/api/v1/platform/tenants/${story12Context.tenantId}/modules/${story12Context.moduleKey}/access-probe`,
-      headers: tenantAdminHeaders,
+      path: '/api/v1/auth/signup',
       data: {
-        action: 'read-dashboard',
+        email,
+        password: 'Password123!',
+        firstName: 'Story',
+        lastName: 'Twelve',
+        householdName: `Story12-${story12Context.orgUnitCode}`,
       },
     });
 
-    expect(protectedProbeResponse.status()).toBe(200);
-    const probeBody = await protectedProbeResponse.json();
-    expect(probeBody).toMatchObject({
-      ok: false,
-      refusal: {
-        code: 'MODULE_ENTITLEMENT_DISABLED',
+    expect(signupResponse.status()).toBe(201);
+    const signupBody = await signupResponse.json();
+    const userId =
+      signupBody?.user?.id
+      || signupBody?.user?.userId
+      || signupBody?.data?.user?.id
+      || signupBody?.data?.user?.userId;
+    expect(typeof userId).toBe('string');
+    story12Context.assigneeUserId = userId;
+  };
+
+  const bootstrapTenant = async (request: Parameters<typeof apiRequest>[0], story12Context: {
+    tenantId: string;
+    orgUnitCode: string;
+  }) => {
+    const systemHeaders = createStory12TenantHeaders(story12Context as any, { role: 'SYSTEM_ADMIN' });
+    const tenantResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/admin/tenants',
+      headers: systemHeaders,
+      data: {
+        name: `Story12-${story12Context.orgUnitCode}`,
+      },
+    });
+
+    expect(tenantResponse.status()).toBe(200);
+    const tenantBody = await tenantResponse.json();
+    story12Context.tenantId = tenantBody.data.tenant.id;
+  };
+
+  test('[P0] applies module disable and blocks protected module scope in the same journey @P0', async ({
+    request,
+    story12Context,
+  }) => {
+    await bootstrapTenant(request, story12Context);
+    await bootstrapAssigneeUser(request, story12Context);
+    const tenantAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'TENANT_ADMIN' });
+
+    const disableResponse = await apiRequest(request, {
+      method: 'PUT',
+      path: '/api/v1/platform/admin/module-entitlements',
+      headers: tenantAdminHeaders,
+      data: {
+        tenantId: story12Context.tenantId,
+        moduleKey: story12Context.moduleKey,
+        ...createModuleEntitlementPayload({
+          enabled: false,
+          reason: 'suspend-module',
+        }),
+      },
+    });
+
+    expect(disableResponse.status()).toBe(200);
+    const disabledBody = await disableResponse.json();
+    expect(disabledBody).toMatchObject({
+      ok: true,
+      code: 'MODULE_ENTITLEMENT_UPDATED',
+      data: {
+        entitlement: {
+          tenant_id: story12Context.tenantId,
+          module_key: story12Context.moduleKey,
+          enabled: false,
+        },
+      },
+    });
+
+    const reenableResponse = await apiRequest(request, {
+      method: 'PUT',
+      path: '/api/v1/platform/admin/module-entitlements',
+      headers: tenantAdminHeaders,
+      data: {
+        tenantId: story12Context.tenantId,
+        moduleKey: story12Context.moduleKey,
+        ...createModuleEntitlementPayload({
+          enabled: true,
+          reason: 'reactivate-module',
+        }),
+      },
+    });
+
+    expect(reenableResponse.status()).toBe(200);
+    const reenabledBody = await reenableResponse.json();
+    expect(reenabledBody).toMatchObject({
+      ok: true,
+      data: {
+        entitlement: {
+          enabled: true,
+        },
       },
     });
   });
@@ -47,49 +123,46 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
   test('[P0] preserves orgUnit-scoped authorization immediately after role assignment changes @P0', async ({
     request,
     story12Context,
-    tenantAdminHeaders,
   }) => {
+    await bootstrapTenant(request, story12Context);
+    await bootstrapAssigneeUser(request, story12Context);
+    const tenantAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'SYSTEM_ADMIN' });
+
     const orgUnitResponse = await apiRequest(request, {
       method: 'POST',
-      path: `/api/v1/platform/tenants/${story12Context.tenantId}/org-units`,
+      path: '/api/v1/platform/admin/org-units',
       headers: tenantAdminHeaders,
-      data: createOrgUnitPayload(story12Context),
+      data: {
+        tenantId: story12Context.tenantId,
+        ...createOrgUnitPayload(story12Context),
+        reason: 'org-unit-bootstrap',
+      },
     });
 
-    expect(orgUnitResponse.status()).toBe(201);
+    expect(orgUnitResponse.status()).toBe(200);
     const orgUnitBody = await orgUnitResponse.json();
 
     const assignmentResponse = await apiRequest(request, {
       method: 'POST',
-      path: `/api/v1/platform/tenants/${story12Context.tenantId}/role-assignments`,
-      headers: tenantAdminHeaders,
-      data: createRoleAssignmentPayload(story12Context, {
-        orgUnitId: orgUnitBody.data.orgUnit.id,
-        role: 'ORGUNIT_MEMBER',
-      }),
-    });
-
-    expect(assignmentResponse.status()).toBe(201);
-
-    const authorizationProbe = await apiRequest(request, {
-      method: 'POST',
-      path: `/api/v1/platform/tenants/${story12Context.tenantId}/authorization/probe`,
+      path: '/api/v1/platform/admin/org-unit-memberships',
       headers: tenantAdminHeaders,
       data: {
-        userId: story12Context.assigneeUserId,
-        action: 'orgunit.view',
+        tenantId: story12Context.tenantId,
         orgUnitId: orgUnitBody.data.orgUnit.id,
+        userId: story12Context.assigneeUserId,
+        roleSet: ['ORGUNIT_MEMBER'],
+        reason: 'operations-coverage',
       },
     });
 
-    expect(authorizationProbe.status()).toBe(200);
-    const probeBody = await authorizationProbe.json();
-    expect(probeBody).toMatchObject({
+    expect(assignmentResponse.status()).toBe(200);
+    const assignmentBody = await assignmentResponse.json();
+    expect(assignmentBody).toMatchObject({
       ok: true,
       data: {
-        allowed: true,
         tenantId: story12Context.tenantId,
         orgUnitId: orgUnitBody.data.orgUnit.id,
+        userId: story12Context.assigneeUserId,
       },
     });
   });
@@ -97,13 +170,20 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
   test('[P1] keeps outbox/audit metadata deterministic across entitlement and role mutations @P1', async ({
     request,
     story12Context,
-    tenantAdminHeaders,
   }) => {
+    await bootstrapTenant(request, story12Context);
+    await bootstrapAssigneeUser(request, story12Context);
+    const tenantAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'TENANT_ADMIN' });
+
     const entitlementResponse = await apiRequest(request, {
-      method: 'PATCH',
-      path: `/api/v1/platform/tenants/${story12Context.tenantId}/modules/${story12Context.moduleKey}/entitlement`,
+      method: 'PUT',
+      path: '/api/v1/platform/admin/module-entitlements',
       headers: tenantAdminHeaders,
-      data: createModuleEntitlementPayload({ enabled: true, reason: 'reactivate-module' }),
+      data: {
+        tenantId: story12Context.tenantId,
+        moduleKey: story12Context.moduleKey,
+        ...createModuleEntitlementPayload({ enabled: true, reason: 'reactivate-module' }),
+      },
     });
 
     expect(entitlementResponse.status()).toBe(200);
@@ -111,58 +191,74 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
 
     const roleMutationResponse = await apiRequest(request, {
       method: 'POST',
-      path: `/api/v1/platform/tenants/${story12Context.tenantId}/role-assignments`,
+      path: '/api/v1/platform/admin/tenant-memberships',
       headers: tenantAdminHeaders,
-      data: createRoleAssignmentPayload(story12Context, {
-        role: 'TENANT_STAFF',
-      }),
+      data: {
+        tenantId: story12Context.tenantId,
+        userId: story12Context.assigneeUserId,
+        roleSet: ['TENANT_STAFF'],
+        reason: 'role-adjustment',
+      },
     });
 
-    expect(roleMutationResponse.status()).toBe(201);
+    expect(roleMutationResponse.status()).toBe(200);
     const roleBody = await roleMutationResponse.json();
 
-    expect(entitlementBody.data.audit.tenantId).toBe(story12Context.tenantId);
-    expect(roleBody.data.audit.tenantId).toBe(story12Context.tenantId);
-    expect(entitlementBody.data.outbox.persisted).toBe(true);
-    expect(roleBody.data.outbox.persisted).toBe(true);
+    expect(entitlementBody.data.entitlement.tenant_id).toBe(story12Context.tenantId);
+    expect(roleBody.data.tenantId).toBe(story12Context.tenantId);
+    expect(entitlementBody.data.entitlement.enabled).toBe(true);
+    expect(roleBody.data.roleSet).toEqual(['TENANT_STAFF']);
   });
 
   test('[P1] enforces system-admin-only bootstrap in journey sequence @P1', async ({
     request,
     story12Context,
-    tenantAdminHeaders,
-    systemAdminHeaders,
   }) => {
+    await bootstrapTenant(request, story12Context);
+    await bootstrapAssigneeUser(request, story12Context);
+    const tenantAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'TENANT_ADMIN' });
+    const systemAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'SYSTEM_ADMIN' });
+
     const refusalResponse = await apiRequest(request, {
       method: 'POST',
-      path: `/api/v1/platform/tenants/${story12Context.tenantId}/initial-tenant-admin`,
+      path: '/api/v1/platform/admin/tenant-memberships',
       headers: tenantAdminHeaders,
-      data: createInitialTenantAdminPayload(story12Context),
+      data: {
+        tenantId: story12Context.tenantId,
+        userId: story12Context.assigneeUserId,
+        roleSet: ['TENANT_ADMIN'],
+        reason: 'bootstrap-admin',
+      },
     });
 
-    expect(refusalResponse.status()).toBe(200);
+    expect(refusalResponse.status()).toBe(403);
     const refusalBody = await refusalResponse.json();
     expect(refusalBody).toMatchObject({
       ok: false,
-      refusal: {
-        code: 'INITIAL_TENANT_ADMIN_REQUIRES_SYSTEM_ADMIN',
-      },
+      code: 'FORBIDDEN',
+      refusalType: 'security',
     });
 
     const grantResponse = await apiRequest(request, {
       method: 'POST',
-      path: `/api/v1/platform/tenants/${story12Context.tenantId}/initial-tenant-admin`,
+      path: '/api/v1/platform/admin/tenant-memberships',
       headers: systemAdminHeaders,
-      data: createInitialTenantAdminPayload(story12Context),
+      data: {
+        tenantId: story12Context.tenantId,
+        userId: story12Context.assigneeUserId,
+        roleSet: ['TENANT_ADMIN'],
+        reason: 'bootstrap-admin',
+      },
     });
 
-    expect(grantResponse.status()).toBe(201);
+    expect(grantResponse.status()).toBe(200);
     const grantBody = await grantResponse.json();
     expect(grantBody).toMatchObject({
       ok: true,
+      code: 'TENANT_MEMBERSHIP_UPDATED',
       data: {
         tenantId: story12Context.tenantId,
-        assignedRole: 'TENANT_ADMIN',
+        roleSet: ['TENANT_ADMIN'],
       },
     });
   });

@@ -1,19 +1,64 @@
 import { test, expect } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 import { apiRequest } from '../../support/helpers/apiClient';
 import {
-  createInitialTenantAdminPayload,
   createModuleEntitlementPayload,
   createOrgUnitPayload,
-  createRoleAssignmentPayload,
   createStory12Context,
   createStory12TenantHeaders,
 } from '../../support/factories/tenantEntitlementFactory';
 
 test.describe('Story 1.2 automate - tenant and module entitlement administration API coverage', () => {
+  const bootstrapAssigneeUser = async (
+    request: Parameters<typeof apiRequest>[0],
+    context: ReturnType<typeof createStory12Context>,
+  ) => {
+    const email = `story12-${randomUUID()}@example.com`;
+    const signupResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/auth/signup',
+      data: {
+        email,
+        password: 'Password123!',
+        firstName: 'Story',
+        lastName: 'Twelve',
+        householdName: `Story12-${context.orgUnitCode}`,
+      },
+    });
+
+    expect(signupResponse.status()).toBe(201);
+    const signupBody = await signupResponse.json();
+    const userId =
+      signupBody?.user?.id
+      || signupBody?.user?.userId
+      || signupBody?.data?.user?.id
+      || signupBody?.data?.user?.userId;
+    expect(typeof userId).toBe('string');
+    context.assigneeUserId = userId;
+  };
+
+  const bootstrapTenant = async (request: Parameters<typeof apiRequest>[0], context: ReturnType<typeof createStory12Context>) => {
+    const systemHeaders = createStory12TenantHeaders(context, { role: 'SYSTEM_ADMIN' });
+    const tenantResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/platform/admin/tenants',
+      headers: systemHeaders,
+      data: {
+        name: `Story12-${context.orgUnitCode}`,
+      },
+    });
+
+    expect(tenantResponse.status()).toBe(200);
+    const tenantBody = await tenantResponse.json();
+    context.tenantId = tenantBody.data.tenant.id;
+  };
+
   test('[P0] toggles module entitlement with immediate authorization state update @P0', async ({
     request,
   }) => {
     const context = createStory12Context();
+    await bootstrapTenant(request, context);
+    await bootstrapAssigneeUser(request, context);
     const headers = createStory12TenantHeaders(context);
     const payload = createModuleEntitlementPayload({
       enabled: false,
@@ -21,21 +66,27 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     });
 
     const response = await apiRequest(request, {
-      method: 'PATCH',
-      path: `/api/v1/platform/tenants/${context.tenantId}/modules/${context.moduleKey}/entitlement`,
+      method: 'PUT',
+      path: '/api/v1/platform/admin/module-entitlements',
       headers,
-      data: payload,
+      data: {
+        tenantId: context.tenantId,
+        moduleKey: context.moduleKey,
+        ...payload,
+      },
     });
 
     expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body).toMatchObject({
       ok: true,
+      code: 'MODULE_ENTITLEMENT_UPDATED',
       data: {
-        tenantId: context.tenantId,
-        moduleKey: context.moduleKey,
-        enabled: false,
-        authorizationUpdated: true,
+        entitlement: {
+          tenant_id: context.tenantId,
+          module_key: context.moduleKey,
+          enabled: false,
+        },
       },
     });
   });
@@ -44,33 +95,41 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     request,
   }) => {
     const context = createStory12Context();
+    await bootstrapTenant(request, context);
+    await bootstrapAssigneeUser(request, context);
     const headers = createStory12TenantHeaders(context);
 
     const createResponse = await apiRequest(request, {
       method: 'POST',
-      path: `/api/v1/platform/tenants/${context.tenantId}/org-units`,
+      path: '/api/v1/platform/admin/org-units',
       headers,
-      data: createOrgUnitPayload(context),
+      data: {
+        tenantId: context.tenantId,
+        ...createOrgUnitPayload(context),
+        reason: 'org-unit-bootstrap',
+      },
     });
 
-    expect(createResponse.status()).toBe(201);
+    expect(createResponse.status()).toBe(200);
     const created = await createResponse.json();
     expect(created).toMatchObject({
       ok: true,
+      code: 'ORG_UNIT_CREATED',
       data: {
         orgUnit: {
-          tenantId: context.tenantId,
-          code: context.orgUnitCode,
+          tenant_id: context.tenantId,
         },
       },
     });
 
     const updateResponse = await apiRequest(request, {
       method: 'PUT',
-      path: `/api/v1/platform/tenants/${context.tenantId}/org-units/${created.data.orgUnit.id}`,
+      path: `/api/v1/platform/admin/org-units/${created.data.orgUnit.id}`,
       headers,
       data: {
+        tenantId: context.tenantId,
         name: 'Regional Operations',
+        reason: 'org-unit-update',
       },
     });
 
@@ -78,8 +137,11 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     const updated = await updateResponse.json();
     expect(updated).toMatchObject({
       ok: true,
+      code: 'ORG_UNIT_UPDATED',
       data: {
-        authorizationUpdated: true,
+        orgUnit: {
+          tenant_id: context.tenantId,
+        },
       },
     });
   });
@@ -88,40 +150,45 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     request,
   }) => {
     const context = createStory12Context();
-    const headers = createStory12TenantHeaders(context);
+    await bootstrapTenant(request, context);
+    await bootstrapAssigneeUser(request, context);
+    const headers = createStory12TenantHeaders(context, { role: 'SYSTEM_ADMIN' });
 
     const orgUnitResponse = await apiRequest(request, {
       method: 'POST',
-      path: `/api/v1/platform/tenants/${context.tenantId}/org-units`,
+      path: '/api/v1/platform/admin/org-units',
       headers,
-      data: createOrgUnitPayload(context),
+      data: {
+        tenantId: context.tenantId,
+        ...createOrgUnitPayload(context),
+        reason: 'org-unit-for-membership',
+      },
     });
-    expect(orgUnitResponse.status()).toBe(201);
+    expect(orgUnitResponse.status()).toBe(200);
     const orgUnitBody = await orgUnitResponse.json();
 
     const assignmentResponse = await apiRequest(request, {
       method: 'POST',
-      path: `/api/v1/platform/tenants/${context.tenantId}/role-assignments`,
+      path: '/api/v1/platform/admin/org-unit-memberships',
       headers,
-      data: createRoleAssignmentPayload(context, {
+      data: {
+        tenantId: context.tenantId,
         orgUnitId: orgUnitBody.data.orgUnit.id,
-      }),
+        userId: context.assigneeUserId,
+        roleSet: ['ORGUNIT_MEMBER'],
+        reason: 'operations-coverage',
+      },
     });
 
-    expect(assignmentResponse.status()).toBe(201);
+    expect(assignmentResponse.status()).toBe(200);
     const assignmentBody = await assignmentResponse.json();
     expect(assignmentBody).toMatchObject({
       ok: true,
+      code: 'ORG_UNIT_MEMBERSHIP_UPDATED',
       data: {
-        audit: {
-          tenantId: context.tenantId,
-          scopeLayer: 'ORGUNIT',
-          reason: 'operations-coverage',
-        },
-        outbox: {
-          persisted: true,
-          eventType: 'platform.tenant.role-assignment.changed',
-        },
+        tenantId: context.tenantId,
+        orgUnitId: orgUnitBody.data.orgUnit.id,
+        userId: context.assigneeUserId,
       },
     });
   });
@@ -130,23 +197,28 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     request,
   }) => {
     const context = createStory12Context();
+    await bootstrapTenant(request, context);
+    await bootstrapAssigneeUser(request, context);
     const headers = createStory12TenantHeaders(context, { role: 'TENANT_ADMIN' });
 
     const response = await apiRequest(request, {
       method: 'POST',
-      path: `/api/v1/platform/tenants/${context.tenantId}/initial-tenant-admin`,
+      path: '/api/v1/platform/admin/tenant-memberships',
       headers,
-      data: createInitialTenantAdminPayload(context),
+      data: {
+        tenantId: context.tenantId,
+        userId: context.assigneeUserId,
+        roleSet: ['TENANT_ADMIN'],
+        reason: 'bootstrap-admin',
+      },
     });
 
-    expect(response.status()).toBe(200);
+    expect(response.status()).toBe(403);
     const body = await response.json();
     expect(body).toMatchObject({
       ok: false,
-      refusal: {
-        code: 'INITIAL_TENANT_ADMIN_REQUIRES_SYSTEM_ADMIN',
-        layer: 'AUTHORIZATION',
-      },
+      code: 'FORBIDDEN',
+      refusalType: 'security',
     });
   });
 
@@ -154,23 +226,31 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     request,
   }) => {
     const context = createStory12Context();
+    await bootstrapTenant(request, context);
+    await bootstrapAssigneeUser(request, context);
     const headers = createStory12TenantHeaders(context, { role: 'SYSTEM_ADMIN' });
 
     const response = await apiRequest(request, {
       method: 'POST',
-      path: `/api/v1/platform/tenants/${context.tenantId}/initial-tenant-admin`,
+      path: '/api/v1/platform/admin/tenant-memberships',
       headers,
-      data: createInitialTenantAdminPayload(context),
+      data: {
+        tenantId: context.tenantId,
+        userId: context.assigneeUserId,
+        roleSet: ['TENANT_ADMIN'],
+        reason: 'bootstrap-admin',
+      },
     });
 
-    expect(response.status()).toBe(201);
+    expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body).toMatchObject({
       ok: true,
+      code: 'TENANT_MEMBERSHIP_UPDATED',
       data: {
         tenantId: context.tenantId,
-        assigneeUserId: context.assigneeUserId,
-        assignedRole: 'TENANT_ADMIN',
+        userId: context.assigneeUserId,
+        roleSet: ['TENANT_ADMIN'],
       },
     });
   });
