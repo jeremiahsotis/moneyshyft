@@ -60,7 +60,7 @@ export function createStory12TenantHeaders(
     tenantId: context.tenantId,
     orgUnitId: overrides.orgUnitId ?? null,
     role: overrides.role ?? 'TENANT_ADMIN',
-    userId: overrides.userId ?? '',
+    userId: overrides.userId ?? context.actorUserId,
   });
 }
 
