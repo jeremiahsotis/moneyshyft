@@ -107,15 +107,19 @@ GPT-5 Codex
   - `tests/api/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.api.spec.ts`
   - `tests/e2e/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.spec.ts`
 - Validation commands run:
-  - `npm run test:e2e -- tests/api/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.api.spec.ts tests/e2e/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.spec.ts` (pass: 9/9)
-  - `npm run policy:check` (fails in current branch due latest commit subject format mismatch with `<story-id>: <summary>`)
+  - `npm run test:e2e -- tests/api/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.api.spec.ts tests/e2e/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.spec.ts` (pass: 11/11)
+  - `npm run policy:check` (pass)
+  - `bash scripts/branch-ensure-workflow.sh --workflow atdd --story` (fails with explicit `Missing value for --story`)
 
 ### Completion Notes List
 
 - AC1 satisfied: CI workflow enforces policy-first blocking chain (`policy -> lint -> test -> burn-in -> quality-gates`) with downstream dependency gating.
+- AC1 hardened: `backend-contracts` now depends on `quality-gates` to preserve target-state pipeline ordering.
 - AC1 satisfied: policy guard diagnostics include policy file reference and actionable remediation commands.
+- AC1 hardened: pull-request policy checks now validate commit subject from PR head (`HEAD^2`) when running on synthetic merge commits.
 - AC2 satisfied: branch workflow guard enforces story and epic branch patterns, validates required args, and rejects non-compliant inputs with explicit diagnostics.
-- Verification coverage present and passing for policy-first job graph and guard failure-mode diagnostics (API + E2E story 1.5 specs).
+- AC2 hardened: branch guard now rejects `--workflow/--story/--epic` flags when values are missing, with explicit diagnostics.
+- Verification coverage updated for backend-contract dependency gating, PR merge-subject bypass prevention, and missing-value diagnostics.
 
 ### File List
 
@@ -123,15 +127,10 @@ GPT-5 Codex
 - scripts/branch-ensure-workflow.sh
 - scripts/enforce-git-policy.sh
 - tests/api/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.api.spec.ts
-- tests/e2e/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.spec.ts
-- tests/api/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.atdd.api.spec.ts
-- tests/e2e/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.atdd.spec.ts
-- tests/support/factories/policyWorkflowGuardStory15Factory.ts
-- tests/support/fixtures/policyWorkflowGuardStory15.fixture.ts
-- tests/support/utils/branchWorkflowGuardTestHarness.ts
 - tests/support/utils/policyScriptTestHarness.ts
 - _bmad-output/implementation-artifacts/1-5-policy-gate-and-branch-workflow-guard-enforcement.md
 
 ## Change Log
 
 - 2026-02-20: Validated Story 1.5 enforcement implementation and test coverage; advanced status to `review`.
+- 2026-02-20: Addressed senior code-review findings (PR merge-subject bypass, CLI arg robustness, backend-contract dependency ordering, and gap coverage) and reconciled story file list with actual git changes.

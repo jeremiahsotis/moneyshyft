@@ -9,6 +9,8 @@ type PolicyScriptHarnessOptions = {
   headRef?: string;
   baseRef?: string;
   commitSubject?: string;
+  prMergeSubject?: string;
+  simulatePullRequestMergeCommit?: boolean;
   seedFiles?: Record<string, string>;
   env?: Record<string, string>;
 };
@@ -28,6 +30,7 @@ export function runPolicyScriptInTempRepo(
   const policyContents = readFileSync(resolve(policyFilePath), 'utf8');
   const branch = options.branch;
   const commitSubject = options.commitSubject ?? '0-9: policy harness seed';
+  const baseBranch = options.baseRef ?? 'codex/dev';
 
   try {
     mkdirSync(join(repoDir, 'docs/policies'), { recursive: true });
@@ -50,9 +53,30 @@ export function runPolicyScriptInTempRepo(
     execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
     execFileSync('git', ['config', 'user.email', 'policy-harness@example.com'], { cwd: repoDir, stdio: 'ignore' });
     execFileSync('git', ['config', 'user.name', 'Policy Harness'], { cwd: repoDir, stdio: 'ignore' });
-    execFileSync('git', ['checkout', '-b', branch], { cwd: repoDir, stdio: 'ignore' });
-    execFileSync('git', ['add', '.'], { cwd: repoDir, stdio: 'ignore' });
-    execFileSync('git', ['commit', '-m', commitSubject], { cwd: repoDir, stdio: 'ignore' });
+    if (options.simulatePullRequestMergeCommit) {
+      execFileSync('git', ['checkout', '-b', baseBranch], { cwd: repoDir, stdio: 'ignore' });
+      execFileSync('git', ['add', '.'], { cwd: repoDir, stdio: 'ignore' });
+      execFileSync('git', ['commit', '-m', '0-0: policy harness base seed'], { cwd: repoDir, stdio: 'ignore' });
+
+      execFileSync('git', ['checkout', '-b', branch], { cwd: repoDir, stdio: 'ignore' });
+      writeFileSync(join(repoDir, 'STORY_HEAD.md'), '# story head commit\n');
+      execFileSync('git', ['add', '.'], { cwd: repoDir, stdio: 'ignore' });
+      execFileSync('git', ['commit', '-m', commitSubject], { cwd: repoDir, stdio: 'ignore' });
+
+      execFileSync('git', ['checkout', baseBranch], { cwd: repoDir, stdio: 'ignore' });
+      writeFileSync(join(repoDir, 'BASE_HEAD.md'), '# base branch commit\n');
+      execFileSync('git', ['add', '.'], { cwd: repoDir, stdio: 'ignore' });
+      execFileSync('git', ['commit', '-m', '0-0: policy harness base divergence'], { cwd: repoDir, stdio: 'ignore' });
+
+      execFileSync('git', ['merge', '--no-ff', branch, '-m', options.prMergeSubject ?? `Merge pull request from ${branch}`], {
+        cwd: repoDir,
+        stdio: 'ignore',
+      });
+    } else {
+      execFileSync('git', ['checkout', '-b', branch], { cwd: repoDir, stdio: 'ignore' });
+      execFileSync('git', ['add', '.'], { cwd: repoDir, stdio: 'ignore' });
+      execFileSync('git', ['commit', '-m', commitSubject], { cwd: repoDir, stdio: 'ignore' });
+    }
 
     const env = {
       ...process.env,

@@ -42,8 +42,15 @@ function getNeeds(jobBlock: string): string[] {
     .filter(Boolean);
 }
 
+const FEATURE_STORY_SPRINT_STATUS = `development_status:
+  0-10-kernel-readiness-verification-suite: done
+course_correction:
+  cc-2026-02-18:
+    status: approved
+`;
+
 test.describe('Story 1.5 policy gate and branch workflow guard enforcement API coverage', () => {
-  test('[P0] enforces policy-first CI dependency chain for lint, test, burn-in, and quality gates @P0', async ({
+  test('[P0] enforces policy-first CI dependency chain and runs backend contracts only after quality gates @P0', async ({
     story15Context,
   }) => {
     const workflow = readFileSync(story15Context.workflowFile, 'utf8');
@@ -54,6 +61,9 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
     const qualityGatesNeeds = getNeeds(getJobBlock(workflow, 'quality-gates'));
     const qualityGatesBlockedByTestAndBurnIn =
       qualityGatesNeeds.includes('test') && qualityGatesNeeds.includes('burn-in');
+    const backendContractsNeedsQualityGates = getNeeds(getJobBlock(workflow, 'backend-contracts')).includes(
+      'quality-gates',
+    );
     const policyRunsPolicyCheck = /\n\s*run:\s*npm run policy:check\b/.test(policyJob);
 
     expect(
@@ -62,7 +72,8 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
         lintNeedsPolicy &&
         testNeedsLint &&
         burnInNeedsTest &&
-        qualityGatesBlockedByTestAndBurnIn,
+        qualityGatesBlockedByTestAndBurnIn &&
+        backendContractsNeedsQualityGates,
     ).toBe(true);
   });
 
@@ -104,6 +115,28 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
     expect(status !== 0 && hasFailurePrefix && hasExpectedPattern && hasCurrentBranch).toBe(true);
   });
 
+  test('[P0] pull_request policy checks validate PR head subject and cannot bypass with merge subject @P0', async ({
+    story15Context,
+  }) => {
+    const { output, status } = runPolicyScriptInTempRepo(story15Context.policyScript, story15Context.policyFile, {
+      branch: story15Context.storyBranch,
+      event: 'pull_request',
+      headRef: story15Context.storyBranch,
+      baseRef: 'codex/dev',
+      commitSubject: 'bad subject format',
+      simulatePullRequestMergeCommit: true,
+      prMergeSubject: 'Merge pull request #15 from codex/story-1-5-policy-gate-and-branch-workflow-guard-enforcement',
+      seedFiles: {
+        '_bmad-output/implementation-artifacts/sprint-status.yaml': FEATURE_STORY_SPRINT_STATUS,
+      },
+    });
+
+    const hasFailureHeadline = /Policy check failed: latest commit subject must match '<story-id>: <summary>'/.test(output);
+    const indicatesPrHeadSubject = /Actual \(HEAD\^2\): bad subject format/.test(output);
+
+    expect(status !== 0 && hasFailureHeadline && indicatesPrHeadSubject).toBe(true);
+  });
+
   test('[P1] rejects epic workflow branch mismatch with explicit expected epic branch diagnostic @P1', async ({
     story15Context,
   }) => {
@@ -138,6 +171,28 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
     }
 
     expect(/Story workflow requires --story/.test(output)).toBe(true);
+  });
+
+  test('[P1] rejects --story flag without value using explicit missing-value diagnostic @P1', async ({
+    story15Context,
+  }) => {
+    let output = '';
+    let status = 0;
+    try {
+      execFileSync('bash', [story15Context.branchGuardScript, '--workflow', 'automate', '--story'], {
+        env: {
+          ...process.env,
+          GITHUB_EVENT_NAME: 'local',
+        },
+        encoding: 'utf8',
+      });
+    } catch (error) {
+      const typed = error as { status?: number; stdout?: string; stderr?: string };
+      status = typed.status ?? 1;
+      output = `${typed.stdout ?? ''}${typed.stderr ?? ''}`;
+    }
+
+    expect(status !== 0 && /Missing value for --story/.test(output)).toBe(true);
   });
 
   test('[P1] rejects non-numeric epic argument with explicit epic validation diagnostic @P1', async ({

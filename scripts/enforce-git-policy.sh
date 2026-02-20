@@ -100,9 +100,20 @@ if [[ "$event" == "pull_request" ]]; then
 fi
 
 last_subject="$(git log -1 --pretty=%s 2>/dev/null || true)"
+subject_source="HEAD"
 story_branch_id=""
 if [[ "$branch" =~ ^codex/story-([0-9]+-[0-9]+)- ]]; then
   story_branch_id="${BASH_REMATCH[1]}"
+fi
+
+# GitHub pull_request runs on a synthetic merge commit. Validate commit-subject policy
+# against PR head commit subject (HEAD^2) when possible to avoid merge-subject bypass.
+if [[ "$event" == "pull_request" ]] && [[ "$last_subject" == Merge* ]]; then
+  pr_head_subject="$(git log -1 --pretty=%s HEAD^2 2>/dev/null || true)"
+  if [[ -n "$pr_head_subject" ]]; then
+    last_subject="$pr_head_subject"
+    subject_source="HEAD^2"
+  fi
 fi
 
 enforce_corrected_kernel_gate_for_story() {
@@ -154,19 +165,24 @@ if [[ -n "$story_branch_id" ]]; then
 fi
 
 if [[ -n "$last_subject" ]]; then
-  if [[ "$last_subject" != Merge* ]] && [[ "$is_default_branch" != "true" ]]; then
-    if [[ ! "$last_subject" =~ ^[0-9]+-[0-9]+:\ .+ ]]; then
-      echo "Policy check failed: latest commit subject must match '<story-id>: <summary>'"
-      echo "Actual: $last_subject"
-      exit 1
-    fi
+  if [[ "$is_default_branch" != "true" ]]; then
+    if [[ "$event" != "pull_request" ]] && [[ "$last_subject" == Merge* ]]; then
+      # Local/push mode preserves existing merge-subject exemption.
+      true
+    else
+      if [[ ! "$last_subject" =~ ^[0-9]+-[0-9]+:\ .+ ]]; then
+        echo "Policy check failed: latest commit subject must match '<story-id>: <summary>'"
+        echo "Actual ($subject_source): $last_subject"
+        exit 1
+      fi
 
-    if [[ -n "$story_branch_id" ]] && [[ ! "$last_subject" =~ ^${story_branch_id}:\ .+ ]]; then
-      echo "Policy check failed: latest commit subject must match '${story_branch_id}: <summary>' for branch $branch"
-      echo "Actual: $last_subject"
-      print_policy_context
-      print_recovery "dev-story"
-      exit 1
+      if [[ -n "$story_branch_id" ]] && [[ ! "$last_subject" =~ ^${story_branch_id}:\ .+ ]]; then
+        echo "Policy check failed: latest commit subject must match '${story_branch_id}: <summary>' for branch $branch"
+        echo "Actual ($subject_source): $last_subject"
+        print_policy_context
+        print_recovery "dev-story"
+        exit 1
+      fi
     fi
   fi
 fi
