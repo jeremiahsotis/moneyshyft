@@ -128,6 +128,69 @@ describe('platform admin routes', () => {
     });
   });
 
+  it('rejects invalid UUID input with refusal envelope', async () => {
+    const app = buildApp();
+
+    const response = await request(app)
+      .post('/api/v1/platform/admin/tenant-memberships')
+      .send({
+        tenantId: 'not-a-uuid',
+        userId: 'also-not-a-uuid',
+        roleSet: ['TENANT_ADMIN'],
+        reason: 'test',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'TENANT_MEMBERSHIP_INPUT_INVALID',
+    });
+  });
+
+  it('returns refusal envelope when module is disabled for requested action', async () => {
+    const app = buildApp();
+    mockUpsertTenantMembership.mockRejectedValue(new Error('MODULE_DISABLED:rbac'));
+
+    const response = await request(app)
+      .post('/api/v1/platform/admin/tenant-memberships')
+      .send({
+        userId: '33333333-3333-4333-8333-333333333333',
+        roleSet: ['TENANT_ADMIN'],
+        reason: 'test',
+      });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'MODULE_DISABLED',
+    });
+  });
+
+  it('ignores client-provided role headers when building actor context', async () => {
+    const app = buildApp();
+    mockCreateTenant.mockResolvedValue({
+      tenant: {
+        id: 'tenant-a',
+        name: 'Tenant A',
+        status: 'active',
+      },
+      billingAccount: null,
+    });
+
+    await request(app)
+      .post('/api/v1/platform/admin/tenants')
+      .set('x-system-role', 'SYSTEM_ADMIN')
+      .set('x-tenant-role', 'TENANT_ADMIN')
+      .set('x-orgunit-role', 'ORGUNIT_ADMIN')
+      .send({ name: 'Tenant A' });
+
+    expect(mockCreateTenant).toHaveBeenCalled();
+    const actorArg = mockCreateTenant.mock.calls[0][1];
+    expect(actorArg).toMatchObject({
+      headerRoles: [],
+    });
+  });
+
   it('returns forbidden refusal for unauthorized initial tenant-admin assignment during tenant creation', async () => {
     const app = buildApp();
     mockCreateTenant.mockRejectedValue(new Error('FORBIDDEN:platform:tenant_admin:assign'));

@@ -17,15 +17,16 @@ import {
 } from '../../../services/PlatformAdminService';
 
 const router = Router();
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const isUuid = (value: unknown): value is string => {
+  return typeof value === 'string' && UUID_PATTERN.test(value.trim());
+};
 
 const actorFromRequest = (req: Request): PlatformAdminActorContext => ({
   userId: req.user?.userId || null,
   baseRole: req.user?.role || null,
-  headerRoles: [
-    req.header('x-system-role'),
-    req.header('x-tenant-role'),
-    req.header('x-orgunit-role'),
-  ],
+  headerRoles: [],
   activeTenantId: req.user?.activeTenantId || req.user?.householdId || null,
 });
 
@@ -83,6 +84,21 @@ const handleForbiddenError = (res: Response, error: unknown, message: string): b
   return false;
 };
 
+const handleModuleDisabledError = (res: Response, error: unknown): boolean => {
+  if (error instanceof Error && error.message.startsWith('MODULE_DISABLED:')) {
+    const moduleKey = error.message.slice('MODULE_DISABLED:'.length);
+    refusal(res, {
+      code: 'MODULE_DISABLED',
+      message: `Module ${moduleKey} is disabled for this tenant`,
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return true;
+  }
+
+  return false;
+};
+
 router.use(authenticateToken);
 
 router.post('/tenants', async (req: Request, res: Response) => {
@@ -128,6 +144,8 @@ router.put('/module-entitlements', async (req: Request, res: Response) => {
   const { tenantId, moduleKey, enabled, reason } = req.body || {};
 
   if (
+    (tenantId !== undefined && !isUuid(tenantId))
+    ||
     typeof moduleKey !== 'string'
     || moduleKey.trim() === ''
     || typeof enabled !== 'boolean'
@@ -175,7 +193,12 @@ router.put('/module-entitlements', async (req: Request, res: Response) => {
 router.post('/org-units', async (req: Request, res: Response) => {
   const { tenantId, name, type, parentOrgUnitId, status, reason } = req.body || {};
 
-  if (typeof name !== 'string' || name.trim() === '') {
+  if (
+    typeof name !== 'string'
+    || name.trim() === ''
+    || (tenantId !== undefined && !isUuid(tenantId))
+    || (parentOrgUnitId !== undefined && parentOrgUnitId !== null && !isUuid(parentOrgUnitId))
+  ) {
     return refusal(res, {
       code: 'ORG_UNIT_INPUT_INVALID',
       message: 'name is required',
@@ -208,6 +231,10 @@ router.post('/org-units', async (req: Request, res: Response) => {
       return;
     }
 
+    if (handleModuleDisabledError(res, error)) {
+      return;
+    }
+
     return systemError(res, {
       code: 'ORG_UNIT_CREATE_FAILED',
       message: getMessage(error, 'Failed to create org unit'),
@@ -224,6 +251,19 @@ router.put('/org-units/:orgUnitId', async (req: Request, res: Response) => {
     return refusal(res, {
       code: 'ORG_UNIT_INPUT_INVALID',
       message: 'orgUnitId is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  if (
+    !isUuid(orgUnitId)
+    || (tenantId !== undefined && !isUuid(tenantId))
+    || (parentOrgUnitId !== undefined && parentOrgUnitId !== null && !isUuid(parentOrgUnitId))
+  ) {
+    return refusal(res, {
+      code: 'ORG_UNIT_INPUT_INVALID',
+      message: 'orgUnitId, tenantId, and parentOrgUnitId must be UUIDs when provided',
       refusalType: 'client',
       httpStatus: 400,
     });
@@ -278,6 +318,10 @@ router.put('/org-units/:orgUnitId', async (req: Request, res: Response) => {
       return;
     }
 
+    if (handleModuleDisabledError(res, error)) {
+      return;
+    }
+
     return systemError(res, {
       code: 'ORG_UNIT_UPDATE_FAILED',
       message: getMessage(error, 'Failed to update org unit'),
@@ -293,6 +337,8 @@ router.post('/tenant-memberships', async (req: Request, res: Response) => {
   if (
     typeof userId !== 'string'
     || userId.trim() === ''
+    || !isUuid(userId)
+    || (tenantId !== undefined && !isUuid(tenantId))
     || parsedRoleSet.length === 0
     || typeof reason !== 'string'
     || reason.trim() === ''
@@ -327,6 +373,10 @@ router.post('/tenant-memberships', async (req: Request, res: Response) => {
       return;
     }
 
+    if (handleModuleDisabledError(res, error)) {
+      return;
+    }
+
     return systemError(res, {
       code: 'TENANT_MEMBERSHIP_UPDATE_FAILED',
       message: getMessage(error, 'Failed to update tenant membership'),
@@ -341,6 +391,8 @@ router.delete('/tenant-memberships', async (req: Request, res: Response) => {
   if (
     typeof userId !== 'string'
     || userId.trim() === ''
+    || !isUuid(userId)
+    || (tenantId !== undefined && !isUuid(tenantId))
     || typeof reason !== 'string'
     || reason.trim() === ''
   ) {
@@ -382,6 +434,10 @@ router.delete('/tenant-memberships', async (req: Request, res: Response) => {
       return;
     }
 
+    if (handleModuleDisabledError(res, error)) {
+      return;
+    }
+
     return systemError(res, {
       code: 'TENANT_MEMBERSHIP_REVOKE_FAILED',
       message: getMessage(error, 'Failed to revoke tenant membership'),
@@ -397,8 +453,11 @@ router.post('/org-unit-memberships', async (req: Request, res: Response) => {
   if (
     typeof orgUnitId !== 'string'
     || orgUnitId.trim() === ''
+    || !isUuid(orgUnitId)
     || typeof userId !== 'string'
     || userId.trim() === ''
+    || !isUuid(userId)
+    || (tenantId !== undefined && !isUuid(tenantId))
     || parsedRoleSet.length === 0
     || typeof reason !== 'string'
     || reason.trim() === ''
@@ -443,6 +502,10 @@ router.post('/org-unit-memberships', async (req: Request, res: Response) => {
       return;
     }
 
+    if (handleModuleDisabledError(res, error)) {
+      return;
+    }
+
     return systemError(res, {
       code: 'ORG_UNIT_MEMBERSHIP_UPDATE_FAILED',
       message: getMessage(error, 'Failed to update org unit membership'),
@@ -457,8 +520,11 @@ router.delete('/org-unit-memberships', async (req: Request, res: Response) => {
   if (
     typeof orgUnitId !== 'string'
     || orgUnitId.trim() === ''
+    || !isUuid(orgUnitId)
     || typeof userId !== 'string'
     || userId.trim() === ''
+    || !isUuid(userId)
+    || (tenantId !== undefined && !isUuid(tenantId))
     || typeof reason !== 'string'
     || reason.trim() === ''
   ) {
@@ -507,6 +573,10 @@ router.delete('/org-unit-memberships', async (req: Request, res: Response) => {
     }
 
     if (handleForbiddenError(res, error, 'Insufficient permissions for org unit membership revocation')) {
+      return;
+    }
+
+    if (handleModuleDisabledError(res, error)) {
       return;
     }
 

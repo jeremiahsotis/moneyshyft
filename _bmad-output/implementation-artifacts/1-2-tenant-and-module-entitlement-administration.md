@@ -1,6 +1,6 @@
 # Story 1.2: Tenant and Module Entitlement Administration
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -118,6 +118,11 @@ GPT-5 Codex
 - Added actor/tenant/scope/reason metadata to entitlement and membership mutation event payloads, persisted via mutation wrapper event+outbox contract.
 - Enforced SYSTEM_ADMIN-only initial tenant-admin assignment gate in both tenant-create bootstrap and tenant-membership assignment path.
 - Added/updated Jest coverage for route refusal paths and migration schema contract.
+- Hardened actor context by ignoring client-controlled role headers in platform admin routes.
+- Added governance module entitlement enforcement for orgUnit and membership mutation capabilities with immediate refusal when disabled.
+- Added explicit bootstrap `platform.tenant_membership.upserted` event + outbox write when initial tenant-admin is assigned during tenant creation.
+- Added UUID client validation on platform admin mutation routes to avoid 500s from downstream mutation contract checks.
+- Added service-level tests for role matrix denial, module-disable immediate enforcement, and bootstrap audit event/outbox writes.
 
 ### File List
 
@@ -128,7 +133,21 @@ GPT-5 Codex
 - src/src/routes/api/v1/__tests__/platform-admin.test.ts
 - src/src/migrations/20260220110000_add_tenant_module_entitlements.ts
 - src/src/migrations/__tests__/tenantModuleEntitlementsMigration.test.ts
+- src/src/services/__tests__/PlatformAdminService.test.ts
 
 ### Change Log
 
 - 2026-02-20: Implemented AC1-AC3 for tenant module entitlement administration, scoped orgUnit/role mutation APIs, and initial tenant-admin enforcement with passing backend test suite.
+- 2026-02-20: Addressed senior code-review findings by removing header-role trust, enforcing module entitlements in capability checks, adding bootstrap membership audit outbox writes, adding UUID refusal validation, and expanding role/audit coverage tests.
+
+### Senior Developer Review (AI)
+
+- Reviewer: Jeremiah (AI)
+- Date: 2026-02-20
+- Outcome: Changes Requested items resolved
+- Resolution summary:
+  - Fixed role escalation risk from request headers by eliminating header role trust in actor context.
+  - Implemented immediate module entitlement enforcement for protected governance mutations (`org_units`, `rbac`).
+  - Added explicit audit event + outbox records for initial tenant-admin bootstrap membership assignment.
+  - Added UUID input validation refusals at route layer to prevent server-error leakage on bad IDs.
+  - Added service-level test coverage for role matrix denial, module-disable enforcement, and membership audit writes.

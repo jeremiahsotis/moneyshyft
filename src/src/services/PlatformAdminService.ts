@@ -86,6 +86,81 @@ const parseRoleSetJson = (value: unknown): string[] => {
 };
 
 const toRoleSetJson = (roles: ScopedRole[]): string => JSON.stringify(roles);
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const GOVERNANCE_MODULE_BY_CAPABILITY: Partial<Record<Capability, string>> = {
+  [CAPABILITIES.ORG_UNIT_CREATE]: 'org_units',
+  [CAPABILITIES.ORG_UNIT_UPDATE]: 'org_units',
+  [CAPABILITIES.TENANT_ROLE_ASSIGN]: 'rbac',
+  [CAPABILITIES.ORG_UNIT_ADMIN_ASSIGN]: 'rbac',
+  [CAPABILITIES.ORG_UNIT_MEMBERSHIP_MANAGE]: 'rbac',
+};
+
+const resolveGovernanceModuleKey = (capability: Capability): string | null => {
+  return GOVERNANCE_MODULE_BY_CAPABILITY[capability] || null;
+};
+
+const isUuid = (value: string | null | undefined): value is string => {
+  return typeof value === 'string' && UUID_PATTERN.test(value);
+};
+
+const writePlatformEventAndOutbox = async (
+  trx: Knex.Transaction,
+  event: {
+    tenantId: string;
+    actorId?: string | null;
+    eventName: string;
+    entityType: string;
+    entityId: string;
+    payload?: Record<string, unknown>;
+  }
+): Promise<void> => {
+  if (!isUuid(event.tenantId) || !isUuid(event.entityId) || (event.actorId != null && !isUuid(event.actorId))) {
+    throw new Error('Mutation contract violation: tenantId, entityId, and actorId (if present) must be UUIDs');
+  }
+
+  const occurredAtUtc = trx.fn.now();
+  const [insertedEvent] = await trx
+    .withSchema('platform')
+    .table('events')
+    .insert({
+      tenant_id: event.tenantId,
+      actor_id: event.actorId ?? null,
+      event_name: event.eventName,
+      entity_type: event.entityType,
+      entity_id: event.entityId,
+      occurred_at_utc: occurredAtUtc,
+      payload: event.payload ?? {},
+    })
+    .returning(['id']);
+
+  const eventId = insertedEvent?.id;
+  if (typeof eventId !== 'string' || eventId.trim().length === 0) {
+    throw new Error('Mutation contract violation: event write did not return an id');
+  }
+
+  const [insertedOutboxEvent] = await trx
+    .withSchema('platform')
+    .table('outbox_events')
+    .insert({
+      event_id: eventId,
+      tenant_id: event.tenantId,
+      event_name: event.eventName,
+      entity_type: event.entityType,
+      entity_id: event.entityId,
+      occurred_at_utc: occurredAtUtc,
+      payload: event.payload ?? {},
+      delivery_status: 'pending',
+      delivery_attempts: 0,
+      available_at_utc: occurredAtUtc,
+    })
+    .returning(['id']);
+
+  const outboxId = insertedOutboxEvent?.id;
+  if (typeof outboxId !== 'string' || outboxId.trim().length === 0) {
+    throw new Error('Mutation contract violation: outbox write did not return an id');
+  }
+};
 
 const ensureHouseholdShadow = async (trx: Knex.Transaction, tenantId: string, tenantName: string): Promise<void> => {
   const existing = await trx('households').where({ id: tenantId }).first();
@@ -187,11 +262,24 @@ const requireCapability = async (
     throw new Error(`FORBIDDEN:${capability}`);
   }
 
+  const moduleKey = resolveGovernanceModuleKey(capability);
+  if (moduleKey && tenantId) {
+    const entitlement = await trx
+      .withSchema('platform')
+      .table('tenant_module_entitlements')
+      .where({ tenant_id: tenantId, module_key: moduleKey })
+      .first(['enabled']);
+
+    if (entitlement && entitlement.enabled === false) {
+      throw new Error(`MODULE_DISABLED:${moduleKey}`);
+    }
+  }
+
   return roles;
 };
 
 const hasSystemRole = (actor: PlatformAdminActorContext): boolean => {
-  const inlineRoles = normalizeRoleSet([actor.baseRole, ...actor.headerRoles]);
+  const inlineRoles = normalizeRoleSet([actor.baseRole]);
   return inlineRoles.includes('SYSTEM_ADMIN');
 };
 
@@ -333,6 +421,25 @@ export const createTenant = async (
             role_set_json: toRoleSetJson(['TENANT_ADMIN']),
             updated_at_utc: trx.fn.now(),
           });
+
+        await writePlatformEventAndOutbox(trx, {
+          tenantId: tenant.id,
+          actorId,
+          eventName: 'platform.tenant_membership.upserted',
+          entityType: 'tenant_membership',
+          entityId: assignUserId,
+          payload: {
+            actorId,
+            tenantId: tenant.id,
+            scope: {
+              layer: 'TENANT',
+              tenantId: tenant.id,
+              orgUnitId: null,
+            },
+            reason,
+            roleSet: ['TENANT_ADMIN'],
+          },
+        });
       }
 
       return {
