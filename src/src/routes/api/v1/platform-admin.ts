@@ -1,180 +1,92 @@
 import { Request, Response, Router } from 'express';
-import type { Knex } from 'knex';
 import db from '../../../config/knex';
 import { authenticateToken } from '../../../middleware/auth';
-import { generateInvitationCode } from '../../../utils/invitationCode';
-import { executePlatformMutation } from '../../../platform/mutations/executePlatformMutation';
 import { refusal, success, systemError } from '../../../platform/envelopes/response';
 import {
-  CAPABILITIES,
-  Capability,
-  hasCapability,
-  normalizeRole,
-  ScopedRole,
-} from '../../../platform/rbac/capabilities';
+  createOrgUnit,
+  createTenant,
+  evaluateRequestCapabilities,
+  parseRoleSetBody,
+  PlatformAdminActorContext,
+  revokeOrgUnitMembership,
+  revokeTenantMembership,
+  upsertOrgUnitMembership,
+  upsertTenantMembership,
+  upsertTenantModuleEntitlement,
+  updateOrgUnit,
+} from '../../../services/PlatformAdminService';
 
 const router = Router();
 
-type RoleSetInput = Array<string | null | undefined>;
-
-const normalizeRoleSet = (input: RoleSetInput): ScopedRole[] => {
-  const resolved: ScopedRole[] = [];
-  const seen = new Set<string>();
-
-  input.forEach((rawRole) => {
-    const role = normalizeRole(rawRole);
-    if (!role) {
-      return;
-    }
-
-    if (!seen.has(role)) {
-      resolved.push(role);
-      seen.add(role);
-    }
-  });
-
-  return resolved;
-};
-
-const parseRoleSetJson = (value: unknown): string[] => {
-  if (Array.isArray(value)) {
-    return value.filter((entry): entry is string => typeof entry === 'string');
-  }
-
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed)
-        ? parsed.filter((entry): entry is string => typeof entry === 'string')
-        : [];
-    } catch (_error) {
-      return [];
-    }
-  }
-
-  return [];
-};
-
-const resolveMembershipRoles = async (
-  trx: Knex.Transaction,
-  userId: string,
-  tenantId?: string,
-  orgUnitId?: string
-): Promise<string[]> => {
-  const roles: string[] = [];
-
-  if (tenantId) {
-    const tenantMembership = await trx
-      .withSchema('platform')
-      .table('tenant_memberships')
-      .where({ tenant_id: tenantId, user_id: userId })
-      .first();
-
-    roles.push(...parseRoleSetJson(tenantMembership?.role_set_json));
-  }
-
-  if (orgUnitId) {
-    const orgUnitMembership = await trx
-      .withSchema('platform')
-      .table('org_unit_memberships')
-      .where({ org_unit_id: orgUnitId, user_id: userId })
-      .first();
-
-    roles.push(...parseRoleSetJson(orgUnitMembership?.role_set_json));
-  }
-
-  return roles;
-};
-
-const resolveRequestRoles = async (
-  trx: Knex.Transaction,
-  req: Request,
-  tenantId?: string,
-  orgUnitId?: string
-): Promise<ScopedRole[]> => {
-  const baseRole = req.user?.role || null;
-  const headerRoles = [
+const actorFromRequest = (req: Request): PlatformAdminActorContext => ({
+  userId: req.user?.userId || null,
+  baseRole: req.user?.role || null,
+  headerRoles: [
     req.header('x-system-role'),
     req.header('x-tenant-role'),
     req.header('x-orgunit-role'),
-  ];
+  ],
+  activeTenantId: req.user?.activeTenantId || req.user?.householdId || null,
+});
 
-  const legacyRoleAliases: Record<string, ScopedRole> = {
-    admin: 'TENANT_ADMIN',
-    member: 'ORGUNIT_MEMBER',
-  };
+const getMessage = (error: unknown, fallback: string): string => (error instanceof Error ? error.message : fallback);
 
-  const normalizedLegacy = baseRole && legacyRoleAliases[baseRole.toLowerCase()]
-    ? legacyRoleAliases[baseRole.toLowerCase()]
-    : null;
+const handleScopeErrors = (res: Response, error: unknown) => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
 
-  const membershipRoles = req.user?.userId
-    ? await resolveMembershipRoles(trx, req.user.userId, tenantId, orgUnitId)
-    : [];
+  if (error.message === 'TENANT_SCOPE_REQUIRED') {
+    refusal(res, {
+      code: 'TENANT_SCOPE_REQUIRED',
+      message: 'Active tenant context is required',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return true;
+  }
 
-  return normalizeRoleSet([
-    baseRole,
-    normalizedLegacy,
-    ...headerRoles,
-    ...membershipRoles,
-  ]);
+  if (error.message === 'TENANT_SCOPE_MISMATCH') {
+    refusal(res, {
+      code: 'TENANT_SCOPE_MISMATCH',
+      message: 'Cross-tenant mutations are not allowed for this actor',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return true;
+  }
+
+  if (error.message === 'TENANT_ID_REQUIRED') {
+    refusal(res, {
+      code: 'TENANT_ID_REQUIRED',
+      message: 'tenantId is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+    return true;
+  }
+
+  return false;
 };
 
-const requireCapability = async (
-  trx: Knex.Transaction,
-  req: Request,
-  capability: Capability,
-  tenantId?: string,
-  orgUnitId?: string
-): Promise<void> => {
-  const roles = await resolveRequestRoles(trx, req, tenantId, orgUnitId);
-
-  if (!hasCapability(roles, capability)) {
-    throw new Error(`FORBIDDEN:${capability}`);
-  }
-};
-
-const parseRoleSetBody = (value: unknown): ScopedRole[] => {
-  if (!Array.isArray(value)) {
-    return [];
+const handleForbiddenError = (res: Response, error: unknown, message: string): boolean => {
+  if (error instanceof Error && error.message.startsWith('FORBIDDEN:')) {
+    refusal(res, {
+      code: 'FORBIDDEN',
+      message,
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return true;
   }
 
-  return normalizeRoleSet(value as string[]);
-};
-
-const toRoleSetJson = (roles: ScopedRole[]): string => JSON.stringify(roles);
-
-const ensureHouseholdShadow = async (trx: Knex.Transaction, tenantId: string, tenantName: string): Promise<void> => {
-  const existing = await trx('households').where({ id: tenantId }).first();
-  if (existing) {
-    return;
-  }
-
-  let invitationCode = '';
-  for (let attempts = 0; attempts < 100; attempts += 1) {
-    const candidate = generateInvitationCode();
-    const collision = await trx('households').where({ invitation_code: candidate }).first();
-    if (!collision) {
-      invitationCode = candidate;
-      break;
-    }
-  }
-
-  if (!invitationCode) {
-    throw new Error('Unable to generate unique invitation code for tenant shadow household');
-  }
-
-  await trx('households').insert({
-    id: tenantId,
-    name: tenantName,
-    invitation_code: invitationCode,
-  });
+  return false;
 };
 
 router.use(authenticateToken);
 
 router.post('/tenants', async (req: Request, res: Response) => {
-  const { name, status = 'active', billingAccountName, assignTenantAdminUserId } = req.body || {};
+  const { name, status, billingAccountName, assignTenantAdminUserId, reason } = req.body || {};
 
   if (typeof name !== 'string' || name.trim() === '') {
     return refusal(res, {
@@ -186,78 +98,13 @@ router.post('/tenants', async (req: Request, res: Response) => {
   }
 
   try {
-    const actorId = req.user?.userId || null;
-
-    const created = await executePlatformMutation({
-      mutation: async (trx) => {
-        await requireCapability(trx, req, CAPABILITIES.TENANT_CREATE);
-
-        const [tenant] = await trx
-          .withSchema('platform')
-          .table('tenants')
-          .insert({
-            name: name.trim(),
-            status,
-          })
-          .returning(['id', 'name', 'status', 'created_at_utc']);
-
-        await ensureHouseholdShadow(trx, tenant.id, tenant.name);
-
-        let billingAccount: { id: string; name: string } | null = null;
-        if (typeof billingAccountName === 'string' && billingAccountName.trim() !== '') {
-          const [createdBilling] = await trx
-            .withSchema('platform')
-            .table('billing_accounts')
-            .insert({
-              name: billingAccountName.trim(),
-              status: 'active',
-            })
-            .returning(['id', 'name']);
-
-          await trx
-            .withSchema('platform')
-            .table('tenant_billing')
-            .insert({
-              tenant_id: tenant.id,
-              billing_account_id: createdBilling.id,
-            });
-
-          billingAccount = createdBilling;
-        }
-
-        if (typeof assignTenantAdminUserId === 'string' && assignTenantAdminUserId.trim() !== '') {
-          await trx
-            .withSchema('platform')
-            .table('tenant_memberships')
-            .insert({
-              tenant_id: tenant.id,
-              user_id: assignTenantAdminUserId.trim(),
-              role_set_json: toRoleSetJson(['TENANT_ADMIN']),
-            })
-            .onConflict(['tenant_id', 'user_id'])
-            .merge({
-              role_set_json: toRoleSetJson(['TENANT_ADMIN']),
-              updated_at_utc: trx.fn.now(),
-            });
-        }
-
-        return {
-          tenant,
-          billingAccount,
-        };
-      },
-      event: (result) => ({
-        tenantId: result.tenant.id,
-        actorId,
-        eventName: 'platform.tenant.created',
-        entityType: 'tenant',
-        entityId: result.tenant.id,
-        payload: {
-          status: result.tenant.status,
-          hasBillingAccount: !!result.billingAccount,
-        },
-      }),
-    }, db);
+    const created = await createTenant(db, actorFromRequest(req), {
+      name,
+      status,
+      billingAccountName,
+      assignTenantAdminUserId,
+      reason,
+    });
 
     return success(res, {
       code: 'TENANT_CREATED',
@@ -265,76 +112,87 @@ router.post('/tenants', async (req: Request, res: Response) => {
       data: created,
     });
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('FORBIDDEN:')) {
-      return refusal(res, {
-        code: 'FORBIDDEN',
-        message: 'Insufficient permissions for tenant creation',
-        refusalType: 'security',
-        httpStatus: 403,
-      });
+    if (handleForbiddenError(res, error, 'Insufficient permissions for tenant creation')) {
+      return;
     }
 
     return systemError(res, {
       code: 'TENANT_CREATE_FAILED',
-      message: error instanceof Error ? error.message : 'Failed to create tenant',
+      message: getMessage(error, 'Failed to create tenant'),
       httpStatus: 500,
     });
   }
 });
 
-router.post('/org-units', async (req: Request, res: Response) => {
-  const {
-    tenantId,
-    name,
-    type = 'ORG_UNIT',
-    parentOrgUnitId = null,
-    status = 'active',
-  } = req.body || {};
+router.put('/module-entitlements', async (req: Request, res: Response) => {
+  const { tenantId, moduleKey, enabled, reason } = req.body || {};
 
-  if (typeof tenantId !== 'string' || tenantId.trim() === '' || typeof name !== 'string' || name.trim() === '') {
+  if (
+    typeof moduleKey !== 'string'
+    || moduleKey.trim() === ''
+    || typeof enabled !== 'boolean'
+    || typeof reason !== 'string'
+    || reason.trim() === ''
+  ) {
     return refusal(res, {
-      code: 'ORG_UNIT_INPUT_INVALID',
-      message: 'tenantId and name are required',
+      code: 'MODULE_ENTITLEMENT_INPUT_INVALID',
+      message: 'moduleKey, enabled(boolean), and reason are required',
       refusalType: 'client',
       httpStatus: 400,
     });
   }
 
   try {
-    const actorId = req.user?.userId || null;
+    const updated = await upsertTenantModuleEntitlement(db, actorFromRequest(req), {
+      tenantId,
+      moduleKey,
+      enabled,
+      reason,
+    });
 
-    const created = await executePlatformMutation({
-      mutation: async (trx) => {
-        await requireCapability(trx, req, CAPABILITIES.ORG_UNIT_CREATE, tenantId.trim());
+    return success(res, {
+      code: 'MODULE_ENTITLEMENT_UPDATED',
+      message: 'Tenant module entitlement updated successfully',
+      data: updated,
+    });
+  } catch (error) {
+    if (handleScopeErrors(res, error)) {
+      return;
+    }
 
-        const [orgUnit] = await trx
-          .withSchema('platform')
-          .table('org_units')
-          .insert({
-            tenant_id: tenantId.trim(),
-            parent_org_unit_id: typeof parentOrgUnitId === 'string' && parentOrgUnitId.trim() !== ''
-              ? parentOrgUnitId.trim()
-              : null,
-            type,
-            name: name.trim(),
-            status,
-          })
-          .returning(['id', 'tenant_id', 'name', 'type', 'status', 'parent_org_unit_id']);
+    if (handleForbiddenError(res, error, 'Insufficient permissions for module entitlement update')) {
+      return;
+    }
 
-        return { orgUnit };
-      },
-      event: (result) => ({
-        tenantId: result.orgUnit.tenant_id,
-        actorId,
-        eventName: 'platform.org_unit.created',
-        entityType: 'org_unit',
-        entityId: result.orgUnit.id,
-        payload: {
-          type: result.orgUnit.type,
-          parentOrgUnitId: result.orgUnit.parent_org_unit_id,
-        },
-      }),
-    }, db);
+    return systemError(res, {
+      code: 'MODULE_ENTITLEMENT_UPDATE_FAILED',
+      message: getMessage(error, 'Failed to update tenant module entitlement'),
+      httpStatus: 500,
+    });
+  }
+});
+
+router.post('/org-units', async (req: Request, res: Response) => {
+  const { tenantId, name, type, parentOrgUnitId, status, reason } = req.body || {};
+
+  if (typeof name !== 'string' || name.trim() === '') {
+    return refusal(res, {
+      code: 'ORG_UNIT_INPUT_INVALID',
+      message: 'name is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  try {
+    const created = await createOrgUnit(db, actorFromRequest(req), {
+      tenantId,
+      name,
+      type,
+      parentOrgUnitId,
+      status,
+      reason,
+    });
 
     return success(res, {
       code: 'ORG_UNIT_CREATED',
@@ -342,80 +200,118 @@ router.post('/org-units', async (req: Request, res: Response) => {
       data: created,
     });
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('FORBIDDEN:')) {
-      return refusal(res, {
-        code: 'FORBIDDEN',
-        message: 'Insufficient permissions for org unit creation',
-        refusalType: 'security',
-        httpStatus: 403,
-      });
+    if (handleScopeErrors(res, error)) {
+      return;
+    }
+
+    if (handleForbiddenError(res, error, 'Insufficient permissions for org unit creation')) {
+      return;
     }
 
     return systemError(res, {
       code: 'ORG_UNIT_CREATE_FAILED',
-      message: error instanceof Error ? error.message : 'Failed to create org unit',
+      message: getMessage(error, 'Failed to create org unit'),
       httpStatus: 500,
     });
   }
 });
 
-router.post('/tenant-memberships', async (req: Request, res: Response) => {
-  const { tenantId, userId, roleSet } = req.body || {};
-  const parsedRoleSet = parseRoleSetBody(roleSet);
+router.put('/org-units/:orgUnitId', async (req: Request, res: Response) => {
+  const { tenantId, name, type, parentOrgUnitId, status, reason } = req.body || {};
+  const orgUnitId = typeof req.params.orgUnitId === 'string' ? req.params.orgUnitId.trim() : '';
 
-  if (
-    typeof tenantId !== 'string'
-    || tenantId.trim() === ''
-    || typeof userId !== 'string'
-    || userId.trim() === ''
-    || parsedRoleSet.length === 0
-  ) {
+  if (!orgUnitId) {
     return refusal(res, {
-      code: 'TENANT_MEMBERSHIP_INPUT_INVALID',
-      message: 'tenantId, userId, and roleSet[] are required',
+      code: 'ORG_UNIT_INPUT_INVALID',
+      message: 'orgUnitId is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  const hasPatch =
+    (typeof name === 'string' && name.trim() !== '')
+    || (typeof type === 'string' && type.trim() !== '')
+    || (typeof status === 'string' && status.trim() !== '')
+    || parentOrgUnitId !== undefined;
+
+  if (!hasPatch) {
+    return refusal(res, {
+      code: 'ORG_UNIT_UPDATE_INPUT_INVALID',
+      message: 'At least one patch field is required: name, type, status, parentOrgUnitId',
       refusalType: 'client',
       httpStatus: 400,
     });
   }
 
   try {
-    const actorId = req.user?.userId || null;
+    const updated = await updateOrgUnit(db, actorFromRequest(req), {
+      tenantId,
+      orgUnitId,
+      name,
+      type,
+      parentOrgUnitId,
+      status,
+      reason,
+    });
 
-    const updated = await executePlatformMutation({
-      mutation: async (trx) => {
-        await requireCapability(trx, req, CAPABILITIES.TENANT_ROLE_ASSIGN, tenantId.trim());
+    return success(res, {
+      code: 'ORG_UNIT_UPDATED',
+      message: 'OrgUnit updated successfully',
+      data: updated,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'ORG_UNIT_NOT_FOUND') {
+      return refusal(res, {
+        code: 'ORG_UNIT_NOT_FOUND',
+        message: 'OrgUnit was not found in active tenant scope',
+        refusalType: 'client',
+        httpStatus: 404,
+      });
+    }
 
-        await trx
-          .withSchema('platform')
-          .table('tenant_memberships')
-          .insert({
-            tenant_id: tenantId.trim(),
-            user_id: userId.trim(),
-            role_set_json: toRoleSetJson(parsedRoleSet),
-          })
-          .onConflict(['tenant_id', 'user_id'])
-          .merge({
-            role_set_json: toRoleSetJson(parsedRoleSet),
-            updated_at_utc: trx.fn.now(),
-          });
+    if (handleScopeErrors(res, error)) {
+      return;
+    }
 
-        return {
-          tenantId: tenantId.trim(),
-          userId: userId.trim(),
-          roleSet: parsedRoleSet,
-        };
-      },
-      event: (result) => ({
-        tenantId: result.tenantId,
-        actorId,
-        eventName: 'platform.tenant_membership.upserted',
-        entityType: 'tenant_membership',
-        entityId: result.userId,
-        payload: {
-          roleSet: result.roleSet,
-        },
-      }),
-    }, db);
+    if (handleForbiddenError(res, error, 'Insufficient permissions for org unit update')) {
+      return;
+    }
+
+    return systemError(res, {
+      code: 'ORG_UNIT_UPDATE_FAILED',
+      message: getMessage(error, 'Failed to update org unit'),
+      httpStatus: 500,
+    });
+  }
+});
+
+router.post('/tenant-memberships', async (req: Request, res: Response) => {
+  const { tenantId, userId, roleSet, reason } = req.body || {};
+  const parsedRoleSet = parseRoleSetBody(roleSet);
+
+  if (
+    typeof userId !== 'string'
+    || userId.trim() === ''
+    || parsedRoleSet.length === 0
+    || typeof reason !== 'string'
+    || reason.trim() === ''
+  ) {
+    return refusal(res, {
+      code: 'TENANT_MEMBERSHIP_INPUT_INVALID',
+      message: 'userId, roleSet[], and reason are required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  try {
+    const updated = await upsertTenantMembership(db, actorFromRequest(req), {
+      tenantId,
+      userId,
+      roleSet: parsedRoleSet,
+      reason,
+    });
 
     return success(res, {
       code: 'TENANT_MEMBERSHIP_UPDATED',
@@ -423,25 +319,79 @@ router.post('/tenant-memberships', async (req: Request, res: Response) => {
       data: updated,
     });
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('FORBIDDEN:')) {
-      return refusal(res, {
-        code: 'FORBIDDEN',
-        message: 'Insufficient permissions for tenant membership update',
-        refusalType: 'security',
-        httpStatus: 403,
-      });
+    if (handleScopeErrors(res, error)) {
+      return;
+    }
+
+    if (handleForbiddenError(res, error, 'Insufficient permissions for tenant membership update')) {
+      return;
     }
 
     return systemError(res, {
       code: 'TENANT_MEMBERSHIP_UPDATE_FAILED',
-      message: error instanceof Error ? error.message : 'Failed to update tenant membership',
+      message: getMessage(error, 'Failed to update tenant membership'),
+      httpStatus: 500,
+    });
+  }
+});
+
+router.delete('/tenant-memberships', async (req: Request, res: Response) => {
+  const { tenantId, userId, reason } = req.body || {};
+
+  if (
+    typeof userId !== 'string'
+    || userId.trim() === ''
+    || typeof reason !== 'string'
+    || reason.trim() === ''
+  ) {
+    return refusal(res, {
+      code: 'TENANT_MEMBERSHIP_INPUT_INVALID',
+      message: 'userId and reason are required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  try {
+    const revoked = await revokeTenantMembership(db, actorFromRequest(req), {
+      tenantId,
+      userId,
+      reason,
+    });
+
+    return success(res, {
+      code: 'TENANT_MEMBERSHIP_REVOKED',
+      message: 'Tenant membership revoked successfully',
+      data: revoked,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'TENANT_MEMBERSHIP_NOT_FOUND') {
+      return refusal(res, {
+        code: 'TENANT_MEMBERSHIP_NOT_FOUND',
+        message: 'Tenant membership was not found',
+        refusalType: 'client',
+        httpStatus: 404,
+      });
+    }
+
+    if (handleScopeErrors(res, error)) {
+      return;
+    }
+
+    if (handleForbiddenError(res, error, 'Insufficient permissions for tenant membership revocation')) {
+      return;
+    }
+
+    return systemError(res, {
+      code: 'TENANT_MEMBERSHIP_REVOKE_FAILED',
+      message: getMessage(error, 'Failed to revoke tenant membership'),
       httpStatus: 500,
     });
   }
 });
 
 router.post('/org-unit-memberships', async (req: Request, res: Response) => {
-  const { orgUnitId, userId, roleSet } = req.body || {};
+  const { tenantId, orgUnitId, userId, roleSet, reason } = req.body || {};
   const parsedRoleSet = parseRoleSetBody(roleSet);
 
   if (
@@ -450,65 +400,25 @@ router.post('/org-unit-memberships', async (req: Request, res: Response) => {
     || typeof userId !== 'string'
     || userId.trim() === ''
     || parsedRoleSet.length === 0
+    || typeof reason !== 'string'
+    || reason.trim() === ''
   ) {
     return refusal(res, {
       code: 'ORG_UNIT_MEMBERSHIP_INPUT_INVALID',
-      message: 'orgUnitId, userId, and roleSet[] are required',
+      message: 'orgUnitId, userId, roleSet[], and reason are required',
       refusalType: 'client',
       httpStatus: 400,
     });
   }
 
   try {
-    const actorId = req.user?.userId || null;
-
-    const updated = await executePlatformMutation({
-      mutation: async (trx) => {
-        const orgUnit = await trx
-          .withSchema('platform')
-          .table('org_units')
-          .where({ id: orgUnitId.trim() })
-          .first(['id', 'tenant_id']);
-
-        if (!orgUnit) {
-          throw new Error('ORG_UNIT_NOT_FOUND');
-        }
-
-        await requireCapability(trx, req, CAPABILITIES.ORG_UNIT_MEMBERSHIP_MANAGE, orgUnit.tenant_id, orgUnit.id);
-
-        await trx
-          .withSchema('platform')
-          .table('org_unit_memberships')
-          .insert({
-            org_unit_id: orgUnit.id,
-            user_id: userId.trim(),
-            role_set_json: toRoleSetJson(parsedRoleSet),
-          })
-          .onConflict(['org_unit_id', 'user_id'])
-          .merge({
-            role_set_json: toRoleSetJson(parsedRoleSet),
-            updated_at_utc: trx.fn.now(),
-          });
-
-        return {
-          orgUnitId: orgUnit.id,
-          tenantId: orgUnit.tenant_id,
-          userId: userId.trim(),
-          roleSet: parsedRoleSet,
-        };
-      },
-      event: (result) => ({
-        tenantId: result.tenantId,
-        actorId,
-        eventName: 'platform.org_unit_membership.upserted',
-        entityType: 'org_unit_membership',
-        entityId: result.userId,
-        payload: {
-          orgUnitId: result.orgUnitId,
-          roleSet: result.roleSet,
-        },
-      }),
-    }, db);
+    const updated = await upsertOrgUnitMembership(db, actorFromRequest(req), {
+      tenantId,
+      orgUnitId,
+      userId,
+      roleSet: parsedRoleSet,
+      reason,
+    });
 
     return success(res, {
       code: 'ORG_UNIT_MEMBERSHIP_UPDATED',
@@ -519,24 +429,90 @@ router.post('/org-unit-memberships', async (req: Request, res: Response) => {
     if (error instanceof Error && error.message === 'ORG_UNIT_NOT_FOUND') {
       return refusal(res, {
         code: 'ORG_UNIT_NOT_FOUND',
-        message: 'OrgUnit was not found',
+        message: 'OrgUnit was not found in active tenant scope',
         refusalType: 'client',
         httpStatus: 404,
       });
     }
 
-    if (error instanceof Error && error.message.startsWith('FORBIDDEN:')) {
-      return refusal(res, {
-        code: 'FORBIDDEN',
-        message: 'Insufficient permissions for org unit membership update',
-        refusalType: 'security',
-        httpStatus: 403,
-      });
+    if (handleScopeErrors(res, error)) {
+      return;
+    }
+
+    if (handleForbiddenError(res, error, 'Insufficient permissions for org unit membership update')) {
+      return;
     }
 
     return systemError(res, {
       code: 'ORG_UNIT_MEMBERSHIP_UPDATE_FAILED',
-      message: error instanceof Error ? error.message : 'Failed to update org unit membership',
+      message: getMessage(error, 'Failed to update org unit membership'),
+      httpStatus: 500,
+    });
+  }
+});
+
+router.delete('/org-unit-memberships', async (req: Request, res: Response) => {
+  const { tenantId, orgUnitId, userId, reason } = req.body || {};
+
+  if (
+    typeof orgUnitId !== 'string'
+    || orgUnitId.trim() === ''
+    || typeof userId !== 'string'
+    || userId.trim() === ''
+    || typeof reason !== 'string'
+    || reason.trim() === ''
+  ) {
+    return refusal(res, {
+      code: 'ORG_UNIT_MEMBERSHIP_INPUT_INVALID',
+      message: 'orgUnitId, userId, and reason are required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  try {
+    const revoked = await revokeOrgUnitMembership(db, actorFromRequest(req), {
+      tenantId,
+      orgUnitId,
+      userId,
+      reason,
+    });
+
+    return success(res, {
+      code: 'ORG_UNIT_MEMBERSHIP_REVOKED',
+      message: 'OrgUnit membership revoked successfully',
+      data: revoked,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'ORG_UNIT_NOT_FOUND') {
+      return refusal(res, {
+        code: 'ORG_UNIT_NOT_FOUND',
+        message: 'OrgUnit was not found in active tenant scope',
+        refusalType: 'client',
+        httpStatus: 404,
+      });
+    }
+
+    if (error instanceof Error && error.message === 'ORG_UNIT_MEMBERSHIP_NOT_FOUND') {
+      return refusal(res, {
+        code: 'ORG_UNIT_MEMBERSHIP_NOT_FOUND',
+        message: 'OrgUnit membership was not found',
+        refusalType: 'client',
+        httpStatus: 404,
+      });
+    }
+
+    if (handleScopeErrors(res, error)) {
+      return;
+    }
+
+    if (handleForbiddenError(res, error, 'Insufficient permissions for org unit membership revocation')) {
+      return;
+    }
+
+    return systemError(res, {
+      code: 'ORG_UNIT_MEMBERSHIP_REVOKE_FAILED',
+      message: getMessage(error, 'Failed to revoke org unit membership'),
       httpStatus: 500,
     });
   }
@@ -551,20 +527,17 @@ router.get('/rbac/evaluate', async (req: Request, res: Response) => {
     : undefined;
 
   try {
-    const roles = await db.transaction((trx) => resolveRequestRoles(trx, req, tenantId, orgUnitId));
+    const data = await evaluateRequestCapabilities(db, actorFromRequest(req), tenantId, orgUnitId);
 
     return success(res, {
       code: 'RBAC_EVALUATED',
       message: 'Resolved request role and capability context',
-      data: {
-        roles,
-        capabilities: Array.from(new Set(Object.values(CAPABILITIES).filter((capability) => hasCapability(roles, capability)))),
-      },
+      data,
     });
   } catch (error) {
     return systemError(res, {
       code: 'RBAC_EVALUATION_FAILED',
-      message: error instanceof Error ? error.message : 'Failed to evaluate RBAC',
+      message: getMessage(error, 'Failed to evaluate RBAC'),
       httpStatus: 500,
     });
   }

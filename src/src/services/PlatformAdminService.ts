@@ -1,0 +1,834 @@
+import type { Knex } from 'knex';
+import { generateInvitationCode } from '../utils/invitationCode';
+import { executePlatformMutation } from '../platform/mutations/executePlatformMutation';
+import {
+  CAPABILITIES,
+  Capability,
+  hasCapability,
+  normalizeRole,
+  ScopedRole,
+} from '../platform/rbac/capabilities';
+
+export interface PlatformAdminActorContext {
+  userId: string | null;
+  baseRole: string | null;
+  headerRoles: Array<string | null | undefined>;
+  activeTenantId: string | null;
+}
+
+type RoleSetInput = Array<string | null | undefined>;
+
+export interface TenantRecord {
+  id: string;
+  name: string;
+  status: string;
+  created_at_utc?: string;
+}
+
+export interface BillingAccountRecord {
+  id: string;
+  name: string;
+}
+
+export interface OrgUnitRecord {
+  id: string;
+  tenant_id: string;
+  name: string;
+  type: string;
+  status: string;
+  parent_org_unit_id: string | null;
+}
+
+const normalizeRoleSet = (input: RoleSetInput): ScopedRole[] => {
+  const resolved: ScopedRole[] = [];
+  const seen = new Set<string>();
+
+  input.forEach((rawRole) => {
+    const role = normalizeRole(rawRole);
+    if (!role) {
+      return;
+    }
+
+    if (!seen.has(role)) {
+      resolved.push(role);
+      seen.add(role);
+    }
+  });
+
+  return resolved;
+};
+
+export const parseRoleSetBody = (value: unknown): ScopedRole[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return normalizeRoleSet(value as string[]);
+};
+
+const parseRoleSetJson = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((entry): entry is string => typeof entry === 'string');
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed)
+        ? parsed.filter((entry): entry is string => typeof entry === 'string')
+        : [];
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  return [];
+};
+
+const toRoleSetJson = (roles: ScopedRole[]): string => JSON.stringify(roles);
+
+const ensureHouseholdShadow = async (trx: Knex.Transaction, tenantId: string, tenantName: string): Promise<void> => {
+  const existing = await trx('households').where({ id: tenantId }).first();
+  if (existing) {
+    return;
+  }
+
+  let invitationCode = '';
+  for (let attempts = 0; attempts < 100; attempts += 1) {
+    const candidate = generateInvitationCode();
+    const collision = await trx('households').where({ invitation_code: candidate }).first();
+    if (!collision) {
+      invitationCode = candidate;
+      break;
+    }
+  }
+
+  if (!invitationCode) {
+    throw new Error('Unable to generate unique invitation code for tenant shadow household');
+  }
+
+  await trx('households').insert({
+    id: tenantId,
+    name: tenantName,
+    invitation_code: invitationCode,
+  });
+};
+
+const resolveMembershipRoles = async (
+  trx: Knex.Transaction,
+  userId: string,
+  tenantId?: string,
+  orgUnitId?: string
+): Promise<string[]> => {
+  const roles: string[] = [];
+
+  if (tenantId) {
+    const tenantMembership = await trx
+      .withSchema('platform')
+      .table('tenant_memberships')
+      .where({ tenant_id: tenantId, user_id: userId })
+      .first();
+
+    roles.push(...parseRoleSetJson(tenantMembership?.role_set_json));
+  }
+
+  if (orgUnitId) {
+    const orgUnitMembership = await trx
+      .withSchema('platform')
+      .table('org_unit_memberships')
+      .where({ org_unit_id: orgUnitId, user_id: userId })
+      .first();
+
+    roles.push(...parseRoleSetJson(orgUnitMembership?.role_set_json));
+  }
+
+  return roles;
+};
+
+const resolveRequestRoles = async (
+  trx: Knex.Transaction,
+  actor: PlatformAdminActorContext,
+  tenantId?: string,
+  orgUnitId?: string
+): Promise<ScopedRole[]> => {
+  const baseRole = actor.baseRole || null;
+
+  const legacyRoleAliases: Record<string, ScopedRole> = {
+    admin: 'TENANT_ADMIN',
+    member: 'ORGUNIT_MEMBER',
+  };
+
+  const normalizedLegacy = baseRole && legacyRoleAliases[baseRole.toLowerCase()]
+    ? legacyRoleAliases[baseRole.toLowerCase()]
+    : null;
+
+  const membershipRoles = actor.userId
+    ? await resolveMembershipRoles(trx, actor.userId, tenantId, orgUnitId)
+    : [];
+
+  return normalizeRoleSet([
+    baseRole,
+    normalizedLegacy,
+    ...actor.headerRoles,
+    ...membershipRoles,
+  ]);
+};
+
+const requireCapability = async (
+  trx: Knex.Transaction,
+  actor: PlatformAdminActorContext,
+  capability: Capability,
+  tenantId?: string,
+  orgUnitId?: string
+): Promise<ScopedRole[]> => {
+  const roles = await resolveRequestRoles(trx, actor, tenantId, orgUnitId);
+
+  if (!hasCapability(roles, capability)) {
+    throw new Error(`FORBIDDEN:${capability}`);
+  }
+
+  return roles;
+};
+
+const hasSystemRole = (actor: PlatformAdminActorContext): boolean => {
+  const inlineRoles = normalizeRoleSet([actor.baseRole, ...actor.headerRoles]);
+  return inlineRoles.includes('SYSTEM_ADMIN');
+};
+
+const normalizeIdInput = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+export const resolveScopedTenantId = (
+  actor: PlatformAdminActorContext,
+  requestedTenantId?: string | null
+): string => {
+  const activeTenantId = normalizeIdInput(actor.activeTenantId);
+  const requested = normalizeIdInput(requestedTenantId || null);
+
+  if (hasSystemRole(actor)) {
+    const resolved = requested || activeTenantId;
+    if (!resolved) {
+      throw new Error('TENANT_ID_REQUIRED');
+    }
+
+    return resolved;
+  }
+
+  if (!activeTenantId) {
+    throw new Error('TENANT_SCOPE_REQUIRED');
+  }
+
+  if (requested && requested !== activeTenantId) {
+    throw new Error('TENANT_SCOPE_MISMATCH');
+  }
+
+  return activeTenantId;
+};
+
+const shouldGateInitialTenantAdminAssignment = (roles: ScopedRole[]): boolean => roles.includes('TENANT_ADMIN');
+
+const hasExistingTenantAdmin = async (trx: Knex.Transaction, tenantId: string): Promise<boolean> => {
+  const existing = await trx
+    .withSchema('platform')
+    .table('tenant_memberships')
+    .where({ tenant_id: tenantId })
+    .whereRaw('role_set_json @> ?::jsonb', [JSON.stringify(['TENANT_ADMIN'])])
+    .first(['user_id']);
+
+  return !!existing;
+};
+
+const ensureInitialTenantAdminAssignmentAllowed = async (
+  trx: Knex.Transaction,
+  actor: PlatformAdminActorContext,
+  tenantId: string,
+  nextRoleSet: ScopedRole[]
+): Promise<void> => {
+  if (!shouldGateInitialTenantAdminAssignment(nextRoleSet)) {
+    return;
+  }
+
+  const initialAdminExists = await hasExistingTenantAdmin(trx, tenantId);
+  if (initialAdminExists) {
+    return;
+  }
+
+  await requireCapability(trx, actor, CAPABILITIES.TENANT_ADMIN_ASSIGN, tenantId);
+};
+
+export interface CreateTenantInput {
+  name: string;
+  status?: string;
+  billingAccountName?: string;
+  assignTenantAdminUserId?: string;
+  reason?: string;
+}
+
+export const createTenant = async (
+  trxClient: Knex,
+  actor: PlatformAdminActorContext,
+  input: CreateTenantInput
+) => {
+  const actorId = actor.userId;
+  const status = input.status || 'active';
+  const reason = normalizeIdInput(input.reason || null) || 'tenant-create';
+
+  return executePlatformMutation({
+    mutation: async (trx) => {
+      await requireCapability(trx, actor, CAPABILITIES.TENANT_CREATE);
+
+      const [tenant] = await trx
+        .withSchema('platform')
+        .table('tenants')
+        .insert({
+          name: input.name.trim(),
+          status,
+        })
+        .returning(['id', 'name', 'status', 'created_at_utc']);
+
+      await ensureHouseholdShadow(trx, tenant.id, tenant.name);
+
+      let billingAccount: BillingAccountRecord | null = null;
+      if (typeof input.billingAccountName === 'string' && input.billingAccountName.trim() !== '') {
+        const [createdBilling] = await trx
+          .withSchema('platform')
+          .table('billing_accounts')
+          .insert({
+            name: input.billingAccountName.trim(),
+            status: 'active',
+          })
+          .returning(['id', 'name']);
+
+        await trx
+          .withSchema('platform')
+          .table('tenant_billing')
+          .insert({
+            tenant_id: tenant.id,
+            billing_account_id: createdBilling.id,
+          });
+
+        billingAccount = createdBilling;
+      }
+
+      const assignUserId = normalizeIdInput(input.assignTenantAdminUserId || null);
+      if (assignUserId) {
+        await requireCapability(trx, actor, CAPABILITIES.TENANT_ADMIN_ASSIGN, tenant.id);
+
+        await trx
+          .withSchema('platform')
+          .table('tenant_memberships')
+          .insert({
+            tenant_id: tenant.id,
+            user_id: assignUserId,
+            role_set_json: toRoleSetJson(['TENANT_ADMIN']),
+          })
+          .onConflict(['tenant_id', 'user_id'])
+          .merge({
+            role_set_json: toRoleSetJson(['TENANT_ADMIN']),
+            updated_at_utc: trx.fn.now(),
+          });
+      }
+
+      return {
+        tenant: tenant as TenantRecord,
+        billingAccount,
+      };
+    },
+    event: (result) => ({
+      tenantId: result.tenant.id,
+      actorId,
+      eventName: 'platform.tenant.created',
+      entityType: 'tenant',
+      entityId: result.tenant.id,
+      payload: {
+        actorId,
+        tenantId: result.tenant.id,
+        scope: {
+          layer: 'TENANT',
+          tenantId: result.tenant.id,
+          orgUnitId: null,
+        },
+        reason,
+        status: result.tenant.status,
+        hasBillingAccount: !!result.billingAccount,
+      },
+    }),
+  }, trxClient);
+};
+
+export interface UpsertTenantModuleEntitlementInput {
+  tenantId?: string;
+  moduleKey: string;
+  enabled: boolean;
+  reason: string;
+}
+
+export const upsertTenantModuleEntitlement = async (
+  trxClient: Knex,
+  actor: PlatformAdminActorContext,
+  input: UpsertTenantModuleEntitlementInput
+) => {
+  const tenantId = resolveScopedTenantId(actor, input.tenantId);
+  const actorId = actor.userId;
+
+  return executePlatformMutation({
+    mutation: async (trx) => {
+      await requireCapability(trx, actor, CAPABILITIES.MODULE_ENTITLEMENT_MANAGE, tenantId);
+
+      const [entitlement] = await trx
+        .withSchema('platform')
+        .table('tenant_module_entitlements')
+        .insert({
+          tenant_id: tenantId,
+          module_key: input.moduleKey.trim(),
+          enabled: input.enabled,
+          reason: input.reason.trim(),
+          created_by_user_id: actorId,
+          updated_by_user_id: actorId,
+        })
+        .onConflict(['tenant_id', 'module_key'])
+        .merge({
+          enabled: input.enabled,
+          reason: input.reason.trim(),
+          updated_by_user_id: actorId,
+          updated_at_utc: trx.fn.now(),
+        })
+        .returning(['id', 'tenant_id', 'module_key', 'enabled', 'reason', 'updated_at_utc']);
+
+      return { entitlement };
+    },
+    event: (result) => ({
+      tenantId,
+      actorId,
+      eventName: 'platform.tenant_module_entitlement.upserted',
+      entityType: 'tenant_module_entitlement',
+      entityId: result.entitlement.id,
+      payload: {
+        actorId,
+        tenantId,
+        scope: {
+          layer: 'TENANT',
+          tenantId,
+          orgUnitId: null,
+        },
+        reason: input.reason.trim(),
+        moduleKey: result.entitlement.module_key,
+        enabled: result.entitlement.enabled,
+      },
+    }),
+  }, trxClient);
+};
+
+export interface CreateOrgUnitInput {
+  tenantId?: string;
+  name: string;
+  type?: string;
+  parentOrgUnitId?: string | null;
+  status?: string;
+  reason?: string;
+}
+
+export const createOrgUnit = async (
+  trxClient: Knex,
+  actor: PlatformAdminActorContext,
+  input: CreateOrgUnitInput
+) => {
+  const tenantId = resolveScopedTenantId(actor, input.tenantId);
+  const actorId = actor.userId;
+  const reason = normalizeIdInput(input.reason || null) || 'org-unit-create';
+
+  return executePlatformMutation({
+    mutation: async (trx) => {
+      await requireCapability(trx, actor, CAPABILITIES.ORG_UNIT_CREATE, tenantId);
+
+      const [orgUnit] = await trx
+        .withSchema('platform')
+        .table('org_units')
+        .insert({
+          tenant_id: tenantId,
+          parent_org_unit_id: normalizeIdInput(input.parentOrgUnitId || null),
+          type: (input.type || 'ORG_UNIT').trim(),
+          name: input.name.trim(),
+          status: (input.status || 'active').trim(),
+        })
+        .returning(['id', 'tenant_id', 'name', 'type', 'status', 'parent_org_unit_id']);
+
+      return { orgUnit: orgUnit as OrgUnitRecord };
+    },
+    event: (result) => ({
+      tenantId,
+      actorId,
+      eventName: 'platform.org_unit.created',
+      entityType: 'org_unit',
+      entityId: result.orgUnit.id,
+      payload: {
+        actorId,
+        tenantId,
+        scope: {
+          layer: 'ORG_UNIT',
+          tenantId,
+          orgUnitId: result.orgUnit.id,
+        },
+        reason,
+        type: result.orgUnit.type,
+        parentOrgUnitId: result.orgUnit.parent_org_unit_id,
+      },
+    }),
+  }, trxClient);
+};
+
+export interface UpdateOrgUnitInput {
+  tenantId?: string;
+  orgUnitId: string;
+  name?: string;
+  type?: string;
+  parentOrgUnitId?: string | null;
+  status?: string;
+  reason?: string;
+}
+
+export const updateOrgUnit = async (
+  trxClient: Knex,
+  actor: PlatformAdminActorContext,
+  input: UpdateOrgUnitInput
+) => {
+  const tenantId = resolveScopedTenantId(actor, input.tenantId);
+  const actorId = actor.userId;
+  const reason = normalizeIdInput(input.reason || null) || 'org-unit-update';
+
+  return executePlatformMutation({
+    mutation: async (trx) => {
+      const orgUnit = await trx
+        .withSchema('platform')
+        .table('org_units')
+        .where({ id: input.orgUnitId.trim(), tenant_id: tenantId })
+        .first(['id', 'tenant_id', 'name', 'type', 'status', 'parent_org_unit_id']);
+
+      if (!orgUnit) {
+        throw new Error('ORG_UNIT_NOT_FOUND');
+      }
+
+      await requireCapability(trx, actor, CAPABILITIES.ORG_UNIT_UPDATE, tenantId, orgUnit.id);
+
+      const patch: Record<string, unknown> = {
+        updated_at_utc: trx.fn.now(),
+      };
+
+      if (typeof input.name === 'string' && input.name.trim() !== '') {
+        patch.name = input.name.trim();
+      }
+
+      if (typeof input.type === 'string' && input.type.trim() !== '') {
+        patch.type = input.type.trim();
+      }
+
+      if (typeof input.status === 'string' && input.status.trim() !== '') {
+        patch.status = input.status.trim();
+      }
+
+      if (input.parentOrgUnitId !== undefined) {
+        patch.parent_org_unit_id = normalizeIdInput(input.parentOrgUnitId || null);
+      }
+
+      const [updatedOrgUnit] = await trx
+        .withSchema('platform')
+        .table('org_units')
+        .where({ id: orgUnit.id, tenant_id: tenantId })
+        .update(patch)
+        .returning(['id', 'tenant_id', 'name', 'type', 'status', 'parent_org_unit_id']);
+
+      return { orgUnit: updatedOrgUnit as OrgUnitRecord };
+    },
+    event: (result) => ({
+      tenantId,
+      actorId,
+      eventName: 'platform.org_unit.updated',
+      entityType: 'org_unit',
+      entityId: result.orgUnit.id,
+      payload: {
+        actorId,
+        tenantId,
+        scope: {
+          layer: 'ORG_UNIT',
+          tenantId,
+          orgUnitId: result.orgUnit.id,
+        },
+        reason,
+        type: result.orgUnit.type,
+        parentOrgUnitId: result.orgUnit.parent_org_unit_id,
+        status: result.orgUnit.status,
+      },
+    }),
+  }, trxClient);
+};
+
+export interface UpsertTenantMembershipInput {
+  tenantId?: string;
+  userId: string;
+  roleSet: ScopedRole[];
+  reason: string;
+}
+
+export const upsertTenantMembership = async (
+  trxClient: Knex,
+  actor: PlatformAdminActorContext,
+  input: UpsertTenantMembershipInput
+) => {
+  const tenantId = resolveScopedTenantId(actor, input.tenantId);
+  const actorId = actor.userId;
+
+  return executePlatformMutation({
+    mutation: async (trx) => {
+      await requireCapability(trx, actor, CAPABILITIES.TENANT_ROLE_ASSIGN, tenantId);
+      await ensureInitialTenantAdminAssignmentAllowed(trx, actor, tenantId, input.roleSet);
+
+      await trx
+        .withSchema('platform')
+        .table('tenant_memberships')
+        .insert({
+          tenant_id: tenantId,
+          user_id: input.userId.trim(),
+          role_set_json: toRoleSetJson(input.roleSet),
+        })
+        .onConflict(['tenant_id', 'user_id'])
+        .merge({
+          role_set_json: toRoleSetJson(input.roleSet),
+          updated_at_utc: trx.fn.now(),
+        });
+
+      return {
+        tenantId,
+        userId: input.userId.trim(),
+        roleSet: input.roleSet,
+      };
+    },
+    event: (result) => ({
+      tenantId,
+      actorId,
+      eventName: 'platform.tenant_membership.upserted',
+      entityType: 'tenant_membership',
+      entityId: result.userId,
+      payload: {
+        actorId,
+        tenantId,
+        scope: {
+          layer: 'TENANT',
+          tenantId,
+          orgUnitId: null,
+        },
+        reason: input.reason.trim(),
+        roleSet: result.roleSet,
+      },
+    }),
+  }, trxClient);
+};
+
+export interface RevokeTenantMembershipInput {
+  tenantId?: string;
+  userId: string;
+  reason: string;
+}
+
+export const revokeTenantMembership = async (
+  trxClient: Knex,
+  actor: PlatformAdminActorContext,
+  input: RevokeTenantMembershipInput
+) => {
+  const tenantId = resolveScopedTenantId(actor, input.tenantId);
+  const actorId = actor.userId;
+
+  return executePlatformMutation({
+    mutation: async (trx) => {
+      await requireCapability(trx, actor, CAPABILITIES.TENANT_ROLE_ASSIGN, tenantId);
+
+      const deleted = await trx
+        .withSchema('platform')
+        .table('tenant_memberships')
+        .where({ tenant_id: tenantId, user_id: input.userId.trim() })
+        .del();
+
+      if (!deleted) {
+        throw new Error('TENANT_MEMBERSHIP_NOT_FOUND');
+      }
+
+      return {
+        tenantId,
+        userId: input.userId.trim(),
+      };
+    },
+    event: (result) => ({
+      tenantId,
+      actorId,
+      eventName: 'platform.tenant_membership.revoked',
+      entityType: 'tenant_membership',
+      entityId: result.userId,
+      payload: {
+        actorId,
+        tenantId,
+        scope: {
+          layer: 'TENANT',
+          tenantId,
+          orgUnitId: null,
+        },
+        reason: input.reason.trim(),
+      },
+    }),
+  }, trxClient);
+};
+
+export interface UpsertOrgUnitMembershipInput {
+  tenantId?: string;
+  orgUnitId: string;
+  userId: string;
+  roleSet: ScopedRole[];
+  reason: string;
+}
+
+export const upsertOrgUnitMembership = async (
+  trxClient: Knex,
+  actor: PlatformAdminActorContext,
+  input: UpsertOrgUnitMembershipInput
+) => {
+  const tenantId = resolveScopedTenantId(actor, input.tenantId);
+  const actorId = actor.userId;
+
+  return executePlatformMutation({
+    mutation: async (trx) => {
+      const orgUnit = await trx
+        .withSchema('platform')
+        .table('org_units')
+        .where({ id: input.orgUnitId.trim(), tenant_id: tenantId })
+        .first(['id', 'tenant_id']);
+
+      if (!orgUnit) {
+        throw new Error('ORG_UNIT_NOT_FOUND');
+      }
+
+      await requireCapability(trx, actor, CAPABILITIES.ORG_UNIT_MEMBERSHIP_MANAGE, tenantId, orgUnit.id);
+
+      await trx
+        .withSchema('platform')
+        .table('org_unit_memberships')
+        .insert({
+          org_unit_id: orgUnit.id,
+          user_id: input.userId.trim(),
+          role_set_json: toRoleSetJson(input.roleSet),
+        })
+        .onConflict(['org_unit_id', 'user_id'])
+        .merge({
+          role_set_json: toRoleSetJson(input.roleSet),
+          updated_at_utc: trx.fn.now(),
+        });
+
+      return {
+        orgUnitId: orgUnit.id,
+        tenantId,
+        userId: input.userId.trim(),
+        roleSet: input.roleSet,
+      };
+    },
+    event: (result) => ({
+      tenantId,
+      actorId,
+      eventName: 'platform.org_unit_membership.upserted',
+      entityType: 'org_unit_membership',
+      entityId: result.userId,
+      payload: {
+        actorId,
+        tenantId,
+        scope: {
+          layer: 'ORG_UNIT',
+          tenantId,
+          orgUnitId: result.orgUnitId,
+        },
+        reason: input.reason.trim(),
+        roleSet: result.roleSet,
+      },
+    }),
+  }, trxClient);
+};
+
+export interface RevokeOrgUnitMembershipInput {
+  tenantId?: string;
+  orgUnitId: string;
+  userId: string;
+  reason: string;
+}
+
+export const revokeOrgUnitMembership = async (
+  trxClient: Knex,
+  actor: PlatformAdminActorContext,
+  input: RevokeOrgUnitMembershipInput
+) => {
+  const tenantId = resolveScopedTenantId(actor, input.tenantId);
+  const actorId = actor.userId;
+
+  return executePlatformMutation({
+    mutation: async (trx) => {
+      const orgUnit = await trx
+        .withSchema('platform')
+        .table('org_units')
+        .where({ id: input.orgUnitId.trim(), tenant_id: tenantId })
+        .first(['id']);
+
+      if (!orgUnit) {
+        throw new Error('ORG_UNIT_NOT_FOUND');
+      }
+
+      await requireCapability(trx, actor, CAPABILITIES.ORG_UNIT_MEMBERSHIP_MANAGE, tenantId, orgUnit.id);
+
+      const deleted = await trx
+        .withSchema('platform')
+        .table('org_unit_memberships')
+        .where({ org_unit_id: orgUnit.id, user_id: input.userId.trim() })
+        .del();
+
+      if (!deleted) {
+        throw new Error('ORG_UNIT_MEMBERSHIP_NOT_FOUND');
+      }
+
+      return {
+        orgUnitId: orgUnit.id,
+        tenantId,
+        userId: input.userId.trim(),
+      };
+    },
+    event: (result) => ({
+      tenantId,
+      actorId,
+      eventName: 'platform.org_unit_membership.revoked',
+      entityType: 'org_unit_membership',
+      entityId: result.userId,
+      payload: {
+        actorId,
+        tenantId,
+        scope: {
+          layer: 'ORG_UNIT',
+          tenantId,
+          orgUnitId: result.orgUnitId,
+        },
+        reason: input.reason.trim(),
+      },
+    }),
+  }, trxClient);
+};
+
+export const evaluateRequestCapabilities = async (
+  trxClient: Knex,
+  actor: PlatformAdminActorContext,
+  tenantId?: string,
+  orgUnitId?: string
+) => {
+  const roles = await trxClient.transaction((trx) => resolveRequestRoles(trx, actor, tenantId, orgUnitId));
+
+  return {
+    roles,
+    capabilities: Array.from(new Set(Object.values(CAPABILITIES).filter((capability) => hasCapability(roles, capability)))),
+  };
+};

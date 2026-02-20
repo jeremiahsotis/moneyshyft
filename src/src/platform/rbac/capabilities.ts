@@ -18,6 +18,7 @@ export const CAPABILITIES = {
 
   ORG_UNIT_CREATE: 'tenant:org_unit:create',
   ORG_UNIT_UPDATE: 'tenant:org_unit:update',
+  MODULE_ENTITLEMENT_MANAGE: 'tenant:module_entitlement:manage',
   TENANT_ROLE_ASSIGN: 'tenant:role:assign',
   ORG_UNIT_ADMIN_ASSIGN: 'tenant:org_unit_admin:assign',
   THREAD_VIEW_ALL: 'tenant:thread:view_all',
@@ -50,6 +51,7 @@ const ROLE_CAPABILITY_MAP: Record<ScopedRole, Set<Capability>> = {
   TENANT_ADMIN: new Set<Capability>([
     CAPABILITIES.ORG_UNIT_CREATE,
     CAPABILITIES.ORG_UNIT_UPDATE,
+    CAPABILITIES.MODULE_ENTITLEMENT_MANAGE,
     CAPABILITIES.TENANT_ROLE_ASSIGN,
     CAPABILITIES.ORG_UNIT_ADMIN_ASSIGN,
     CAPABILITIES.THREAD_VIEW_ALL,
