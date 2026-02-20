@@ -8,14 +8,26 @@ epic_input=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --workflow)
+      if [[ $# -lt 2 || -z "${2-}" || "${2-}" == --* ]]; then
+        echo "Missing value for --workflow"
+        exit 1
+      fi
       workflow="$2"
       shift 2
       ;;
     --story)
+      if [[ $# -lt 2 || -z "${2-}" || "${2-}" == --* ]]; then
+        echo "Missing value for --story"
+        exit 1
+      fi
       story_input="$2"
       shift 2
       ;;
     --epic)
+      if [[ $# -lt 2 || -z "${2-}" || "${2-}" == --* ]]; then
+        echo "Missing value for --epic"
+        exit 1
+      fi
       epic_input="$2"
       shift 2
       ;;

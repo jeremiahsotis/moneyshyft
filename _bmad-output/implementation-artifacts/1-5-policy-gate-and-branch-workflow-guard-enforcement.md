@@ -1,6 +1,6 @@
 # Story 1.5: Policy Gate and Branch Workflow Guard Enforcement
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -17,15 +17,15 @@ so that branch/workflow discipline is mandatory and auditable.
 
 ## Tasks / Subtasks
 
-- [ ] Implement acceptance criterion 1 (AC: 1)
-  - [ ] Verify CI job graph places `policy` as first blocking stage and prevents downstream execution on failure.
-  - [ ] Ensure policy failure output includes actionable remediation guidance.
-- [ ] Implement acceptance criterion 2 (AC: 2)
-  - [ ] Harden branch/workflow guard command behavior for both story and epic workflows.
-  - [ ] Ensure local and CI guard behaviors are consistent and non-bypassable.
-- [ ] Add verification coverage
-  - [ ] Add/update tests for policy-first job graph and guard command enforcement behavior.
-  - [ ] Validate failure modes produce clear diagnostics.
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Verify CI job graph places `policy` as first blocking stage and prevents downstream execution on failure.
+  - [x] Ensure policy failure output includes actionable remediation guidance.
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Harden branch/workflow guard command behavior for both story and epic workflows.
+  - [x] Ensure local and CI guard behaviors are consistent and non-bypassable.
+- [x] Add verification coverage
+  - [x] Add/update tests for policy-first job graph and guard command enforcement behavior.
+  - [x] Validate failure modes produce clear diagnostics.
 
 ## Dev Notes
 
@@ -100,12 +100,37 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story preparation only; implementation logs pending.
+- Verified existing implementation and coverage in:
+  - `.github/workflows/test.yml`
+  - `scripts/enforce-git-policy.sh`
+  - `scripts/branch-ensure-workflow.sh`
+  - `tests/api/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.api.spec.ts`
+  - `tests/e2e/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.spec.ts`
+- Validation commands run:
+  - `npm run test:e2e -- tests/api/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.api.spec.ts tests/e2e/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.spec.ts` (pass: 11/11)
+  - `npm run policy:check` (pass)
+  - `bash scripts/branch-ensure-workflow.sh --workflow atdd --story` (fails with explicit `Missing value for --story`)
 
 ### Completion Notes List
 
-- Story context prepared with CI policy-first and branch-workflow guard enforcement requirements.
+- AC1 satisfied: CI workflow enforces policy-first blocking chain (`policy -> lint -> test -> burn-in -> quality-gates`) with downstream dependency gating.
+- AC1 hardened: `backend-contracts` now depends on `quality-gates` to preserve target-state pipeline ordering.
+- AC1 satisfied: policy guard diagnostics include policy file reference and actionable remediation commands.
+- AC1 hardened: pull-request policy checks now validate commit subject from PR head (`HEAD^2`) when running on synthetic merge commits.
+- AC2 satisfied: branch workflow guard enforces story and epic branch patterns, validates required args, and rejects non-compliant inputs with explicit diagnostics.
+- AC2 hardened: branch guard now rejects `--workflow/--story/--epic` flags when values are missing, with explicit diagnostics.
+- Verification coverage updated for backend-contract dependency gating, PR merge-subject bypass prevention, and missing-value diagnostics.
 
 ### File List
 
+- .github/workflows/test.yml
+- scripts/branch-ensure-workflow.sh
+- scripts/enforce-git-policy.sh
+- tests/api/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.api.spec.ts
+- tests/support/utils/policyScriptTestHarness.ts
 - _bmad-output/implementation-artifacts/1-5-policy-gate-and-branch-workflow-guard-enforcement.md
+
+## Change Log
+
+- 2026-02-20: Validated Story 1.5 enforcement implementation and test coverage; advanced status to `review`.
+- 2026-02-20: Addressed senior code-review findings (PR merge-subject bypass, CLI arg robustness, backend-contract dependency ordering, and gap coverage) and reconciled story file list with actual git changes.
