@@ -1620,6 +1620,18 @@ router.post('/_kernel/security/cookies/policy/evaluate', (req: Request, res: Res
 router.post('/_kernel/security/redaction/verify', (req: Request, res: Response) => {
   const scope = req.body?.scope;
   const auditEvent = req.body?.auditEvent;
+  let canonicalTenantId: string;
+
+  try {
+    canonicalTenantId = requireTenantId(req.tenantContext?.tenantId || req.tenantId || null);
+  } catch (_error) {
+    return refusal(res, {
+      code: 'TENANCY_CONTEXT_REQUIRED',
+      message: 'Authenticated tenant context is required for redaction verification',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+  }
 
   const tenantId = typeof scope?.tenantId === 'string' ? scope.tenantId.trim() : '';
   const actorUserId = typeof scope?.actorUserId === 'string' ? scope.actorUserId.trim() : '';
@@ -1636,9 +1648,18 @@ router.post('/_kernel/security/redaction/verify', (req: Request, res: Response) 
     });
   }
 
+  if (tenantId !== canonicalTenantId) {
+    return refusal(res, {
+      code: 'TENANT_SCOPE_VIOLATION',
+      message: 'scope.tenantId must match canonical authenticated tenant context',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+  }
+
   const normalizedPayload = {
     scope: {
-      tenantId,
+      tenantId: canonicalTenantId,
       actorUserId,
       correlationId,
     },

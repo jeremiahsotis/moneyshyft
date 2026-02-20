@@ -101,6 +101,39 @@ test.describe('Story 1.6 automate - security controls and redaction verification
     }
   });
 
+  test('[P1] operator journey validates auth logout csrf enforcement and success path @P1', async ({
+    request,
+    story16TenantHeaders,
+  }) => {
+    const missingHeader = { ...story16TenantHeaders };
+    delete missingHeader['x-csrf-token'];
+
+    const refusedResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/auth/logout',
+      headers: missingHeader,
+    });
+
+    expect(refusedResponse.status()).toBe(403);
+    const refusedBody = await refusedResponse.json();
+    expect(refusedBody).toMatchObject({
+      code: 'CSRF_TOKEN_REQUIRED',
+      refusalType: 'security',
+    });
+
+    const allowedResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/auth/logout',
+      headers: story16TenantHeaders,
+    });
+
+    expect(allowedResponse.status()).toBe(200);
+    const allowedBody = await allowedResponse.json();
+    expect(allowedBody).toMatchObject({
+      message: 'Logged out successfully',
+    });
+  });
+
   test('[P1] operator journey validates redaction-safe evidence stream with no plaintext secret exposure @P1', async ({
     request,
     story16Context,

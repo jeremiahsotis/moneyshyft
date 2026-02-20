@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 import { executePlatformMutation } from '../executePlatformMutation';
+import { REDACTED_VALUE } from '../../audit/redaction';
 
 type MutationRow = { id: string; value: string };
 type PlatformEventRow = Record<string, unknown> & { id: string };
@@ -161,6 +162,53 @@ describe('executePlatformMutation', () => {
     expect(state.mutationRows).toHaveLength(0);
     expect(state.platformEvents).toHaveLength(0);
     expect(state.outboxEvents).toHaveLength(0);
+  });
+
+  it('AC1: redacts sensitive payload fields before persisting events and outbox records', async () => {
+    const { db, state } = createFakeDb();
+
+    await executePlatformMutation(
+      {
+        mutation: async (trx) => {
+          const inserted = await (trx as any)('kernel_mutation_rows').insert({ value: 'redaction-check' });
+          return inserted[0];
+        },
+        event: {
+          tenantId: '11111111-1111-4111-8111-111111111111',
+          actorId: '22222222-2222-4222-8222-222222222222',
+          eventName: 'kernel.mutation.redaction-check',
+          entityType: 'kernel_mutation_row',
+          entityId: '33333333-3333-4333-8333-333333333333',
+          payload: {
+            accessToken: 'plain-access-token',
+            nested: {
+              apiKey: 'plain-api-key',
+            },
+            sensitive: {
+              opaqueValue: 'plain-sensitive-value',
+            },
+          },
+        },
+      },
+      db
+    );
+
+    expect(state.platformEvents).toHaveLength(1);
+    expect(state.outboxEvents).toHaveLength(1);
+    expect(state.platformEvents[0].payload).toEqual({
+      accessToken: REDACTED_VALUE,
+      nested: {
+        apiKey: REDACTED_VALUE,
+      },
+      sensitive: {
+        opaqueValue: REDACTED_VALUE,
+      },
+    });
+    expect(state.outboxEvents[0].payload).toEqual(state.platformEvents[0].payload);
+    const serialized = JSON.stringify(state.platformEvents[0].payload);
+    expect(serialized).not.toContain('plain-access-token');
+    expect(serialized).not.toContain('plain-api-key');
+    expect(serialized).not.toContain('plain-sensitive-value');
   });
 
   it('AC2: fails contract when mandatory event fields are missing', async () => {

@@ -43,6 +43,33 @@ describe('platform contracts security redaction verification', () => {
     });
   });
 
+  it('rejects redaction verification when scope tenant differs from canonical tenancy context', async () => {
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/platform/_kernel/security/redaction/verify')
+      .send({
+        scope: {
+          tenantId: 'tenant-other',
+          actorUserId: 'user-story16',
+          correlationId: 'corr-story16-redaction',
+        },
+        auditEvent: {
+          eventName: 'platform.security.redaction-verification',
+          action: 'verify-security-redaction',
+          sensitive: {
+            accessToken: 'plain-access-token-1-6',
+          },
+        },
+      });
+
+    expect(response.status).toBe(403);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'TENANT_SCOPE_VIOLATION',
+      refusalType: 'security',
+    });
+  });
+
   it('redacts sensitive fields and emits policy-compliant verification evidence', async () => {
     const app = buildApp();
     const plaintextAccessToken = 'plain-access-token-1-6';
@@ -103,5 +130,55 @@ describe('platform contracts security redaction verification', () => {
     expect(serialized).not.toContain(plaintextRefreshToken);
     expect(serialized).not.toContain(plaintextPassword);
     expect(serialized).not.toContain(plaintextApiKey);
+  });
+
+  it('redacts sensitive branch values even when child keys are non-marker names', async () => {
+    const app = buildApp();
+    const plaintextOpaqueValue = 'plain-opaque-value-1-6';
+    const plaintextNestedValue = 'plain-nested-value-1-6';
+
+    const response = await request(app)
+      .post('/api/v1/platform/_kernel/security/redaction/verify')
+      .send({
+        scope: {
+          tenantId: 'tenant-story16',
+          actorUserId: 'user-story16',
+          correlationId: 'corr-story16-redaction',
+        },
+        auditEvent: {
+          eventName: 'platform.security.redaction-verification',
+          action: 'verify-security-redaction',
+          metadata: {
+            source: 'story-1-6',
+          },
+          sensitive: {
+            opaqueValue: plaintextOpaqueValue,
+            nestedBlob: {
+              value: plaintextNestedValue,
+            },
+          },
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'SECURITY_REDACTION_VERIFIED',
+      data: {
+        redaction: {
+          allSensitiveFieldsRedacted: true,
+          redactedFields: expect.arrayContaining(['sensitive', 'opaqueValue', 'nestedBlob']),
+          redactedPaths: expect.arrayContaining([
+            'auditEvent.sensitive',
+            'auditEvent.sensitive.opaqueValue',
+            'auditEvent.sensitive.nestedBlob',
+          ]),
+        },
+      },
+    });
+
+    const serialized = JSON.stringify(response.body);
+    expect(serialized).not.toContain(plaintextOpaqueValue);
+    expect(serialized).not.toContain(plaintextNestedValue);
   });
 });

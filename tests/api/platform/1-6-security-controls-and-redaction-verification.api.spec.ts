@@ -173,6 +173,44 @@ test.describe('Story 1.6 automate - security controls and redaction verification
     });
   });
 
+  test('[P1] enforces csrf protection on auth logout path when csrf header proof is missing @P1', async ({
+    request,
+    story16TenantHeaders,
+  }) => {
+    const headers = { ...story16TenantHeaders };
+    delete headers['x-csrf-token'];
+
+    const response = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/auth/logout',
+      headers,
+    });
+
+    expect(response.status()).toBe(403);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      code: 'CSRF_TOKEN_REQUIRED',
+      refusalType: 'security',
+    });
+  });
+
+  test('[P1] allows auth logout path when csrf cookie/header proof matches @P1', async ({
+    request,
+    story16TenantHeaders,
+  }) => {
+    const response = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/auth/logout',
+      headers: story16TenantHeaders,
+    });
+
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      message: 'Logged out successfully',
+    });
+  });
+
   (['development', 'production'] as EnvironmentName[]).forEach((environment) => {
     test('[P1] validates ' + environment + ' cookie policy matrix for sibling app/api domains @P1', async ({
       request,

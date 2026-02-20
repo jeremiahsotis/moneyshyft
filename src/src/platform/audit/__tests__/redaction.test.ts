@@ -65,8 +65,43 @@ describe('platform audit redaction utility', () => {
     expect(isSensitiveKey('client-secret')).toBe(true);
     expect(isSensitiveKey('apiKey')).toBe(true);
     expect(isSensitiveKey('password')).toBe(true);
+    expect(isSensitiveKey('sensitive')).toBe(true);
     expect(isSensitiveKey('tenantId')).toBe(false);
     expect(isSensitiveKey('eventName')).toBe(false);
+  });
+
+  it('redacts sensitive branches even when nested child keys are not marker-based', () => {
+    const payload = {
+      auditEvent: {
+        sensitive: {
+          opaqueValue: 'plain-opaque-secret',
+          nestedBlob: {
+            value: 'plain-nested-secret',
+          },
+        },
+      },
+    };
+
+    const result = redactSensitivePayload(payload);
+
+    expect(result.redactedPayload).toEqual({
+      auditEvent: {
+        sensitive: {
+          opaqueValue: REDACTED_VALUE,
+          nestedBlob: REDACTED_VALUE,
+        },
+      },
+    });
+    expect(result.redactedFields).toEqual(expect.arrayContaining(['sensitive', 'opaqueValue', 'nestedBlob']));
+    expect(result.redactedPaths).toEqual(
+      expect.arrayContaining([
+        'auditEvent.sensitive',
+        'auditEvent.sensitive.opaqueValue',
+        'auditEvent.sensitive.nestedBlob',
+      ]),
+    );
+    expect(result.sensitiveMarkers).toEqual(expect.arrayContaining(['plain-opaque-secret', 'plain-nested-secret']));
+    expect(containsPlaintextMarkers(result.redactedPayload, result.sensitiveMarkers)).toBe(false);
   });
 
   it('detects plaintext leaks against collected sensitive markers', () => {

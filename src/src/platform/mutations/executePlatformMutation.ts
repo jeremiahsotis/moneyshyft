@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import { redactSensitivePayload } from '../audit/redaction';
 
 export interface PlatformMutationEvent {
   tenantId: string;
@@ -49,7 +50,7 @@ export async function executePlatformMutation<T>(
     const result = await options.mutation(trx);
     const event = resolveEvent(options.event, result);
     const occurredAtUtc = event.occurredAtUtc ?? trx.fn.now();
-    const payload = event.payload ?? {};
+    const payload = redactSensitivePayload(event.payload ?? {}).redactedPayload as Record<string, unknown>;
 
     const insertedEvents = await trx
       .withSchema('platform')

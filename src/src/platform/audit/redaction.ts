@@ -9,6 +9,7 @@ const SENSITIVE_KEY_MARKERS = Object.freeze([
   'credential',
   'cookie',
   'session',
+  'sensitive',
 ]);
 
 type RedactionAccumulator = {
@@ -58,6 +59,39 @@ const collectSensitiveMarkers = (value: unknown, markers: Set<string>): void => 
   }
 };
 
+const redactSensitiveBranch = (
+  value: unknown,
+  pathPrefix: string,
+  accumulator: RedactionAccumulator,
+): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((item, index) => {
+      const nextPath = `${pathPrefix}[${index}]`;
+      accumulator.redactedPaths.add(nextPath);
+      collectSensitiveMarkers(item, accumulator.sensitiveMarkers);
+      return REDACTED_VALUE;
+    });
+  }
+
+  if (!value || typeof value !== 'object') {
+    collectSensitiveMarkers(value, accumulator.sensitiveMarkers);
+    return REDACTED_VALUE;
+  }
+
+  const source = value as Record<string, unknown>;
+  const output: Record<string, unknown> = {};
+
+  for (const [key, current] of Object.entries(source)) {
+    const nextPath = `${pathPrefix}.${key}`;
+    accumulator.redactedFields.add(key);
+    accumulator.redactedPaths.add(nextPath);
+    collectSensitiveMarkers(current, accumulator.sensitiveMarkers);
+    output[key] = REDACTED_VALUE;
+  }
+
+  return output;
+};
+
 const redactValue = (
   value: unknown,
   pathPrefix: string,
@@ -79,8 +113,7 @@ const redactValue = (
     if (isSensitiveKey(key)) {
       accumulator.redactedFields.add(key);
       accumulator.redactedPaths.add(nextPath);
-      collectSensitiveMarkers(current, accumulator.sensitiveMarkers);
-      output[key] = REDACTED_VALUE;
+      output[key] = redactSensitiveBranch(current, nextPath, accumulator);
       continue;
     }
 
