@@ -67,6 +67,16 @@ fi
 
 event="${GITHUB_EVENT_NAME:-local}"
 branch="$(resolve_branch)"
+lane_context_args=(--format shell --branch "$branch")
+if [[ -n "${PROJECT_LANE:-}" ]]; then
+  lane_context_args+=(--lane "$PROJECT_LANE")
+fi
+if ! lane_context="$(node scripts/project-lane-context.js "${lane_context_args[@]}")"; then
+  echo "Policy check failed: unable to resolve project lane context"
+  exit 1
+fi
+eval "$lane_context"
+lane_sprint_status_file="${SPRINT_STATUS_FILE:-$LANE_SPRINT_STATUS_FILE}"
 base_branch="${GITHUB_BASE_REF:-}"
 is_default_branch=false
 if [[ "$branch" == "main" || "$branch" == "master" || "$branch" == "codex/dev" || "$branch" == "production" ]]; then
@@ -119,7 +129,7 @@ fi
 enforce_corrected_kernel_gate_for_story() {
   local story_id="$1"
   local epic_id="${story_id%%-*}"
-  local status_file="_bmad-output/implementation-artifacts/sprint-status.yaml"
+  local status_file="$lane_sprint_status_file"
   local workflow_hint="dev-story"
 
   if [[ "$event" == "pull_request" ]]; then
@@ -161,6 +171,19 @@ enforce_corrected_kernel_gate_for_story() {
 }
 
 if [[ -n "$story_branch_id" ]]; then
+  if [[ "$branch" =~ ^codex/story-${story_branch_id}-(.+)$ ]]; then
+    story_branch_slug="${BASH_REMATCH[1]}"
+    if [[ "-$story_branch_slug-" != *-"$LANE_SLUG_TOKEN"-* ]]; then
+      echo "Policy check failed: story branch slug must include project lane token '$LANE_SLUG_TOKEN'"
+      echo "Expected branch pattern: codex/story-${story_branch_id}-${LANE_SLUG_TOKEN}-<slug>"
+      echo "Current branch: $branch"
+      echo "Resolved project lane: $ACTIVE_LANE"
+      print_policy_context
+      print_recovery "dev-story"
+      exit 1
+    fi
+  fi
+
   enforce_corrected_kernel_gate_for_story "$story_branch_id"
 fi
 

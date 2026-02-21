@@ -140,6 +140,10 @@ export function runPolicyScriptInTempRepo(
       join(repoDir, 'scripts/enforce-project-lane.js'),
     );
     copyFileIfPresent(
+      join(scriptsDir, 'project-lane-context.js'),
+      join(repoDir, 'scripts/project-lane-context.js'),
+    );
+    copyFileIfPresent(
       join(docsPoliciesDir, 'project_lanes.json'),
       join(repoDir, 'docs/policies/project_lanes.json'),
     );

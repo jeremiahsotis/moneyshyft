@@ -101,7 +101,7 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
   test('[P0] rejects story workflow branch mismatch with exact expected pattern diagnostics @P0', async ({
     story15Context,
   }) => {
-    const mismatchedBranch = 'codex/story-1-4-shared-response-envelope-and-refusal-helpers';
+    const mismatchedBranch = 'codex/story-1-4-routeshyft-shared-response-envelope-and-refusal-helpers';
     const { output, status } = runBranchWorkflowGuardInTempRepo(story15Context.branchGuardScript, {
       branch: mismatchedBranch,
       workflow: '_bmad/tea/workflows/testarch/automate/workflow.yaml',
@@ -109,7 +109,7 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
     });
 
     const hasFailurePrefix = /Branch guard failed/.test(output);
-    const hasExpectedPattern = /Expected branch pattern:\s*codex\/story-1-5-<slug>/.test(output);
+    const hasExpectedPattern = /Expected branch pattern:\s*codex\/story-1-5-routeshyft-<slug>/.test(output);
     const hasCurrentBranch = new RegExp(`Current branch:\\s*${escapeRegex(mismatchedBranch)}`).test(output);
 
     expect(status !== 0 && hasFailurePrefix && hasExpectedPattern && hasCurrentBranch).toBe(true);
@@ -125,7 +125,7 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
       baseRef: 'codex/dev',
       commitSubject: 'bad subject format',
       simulatePullRequestMergeCommit: true,
-      prMergeSubject: 'Merge pull request #15 from codex/story-1-5-policy-gate-and-branch-workflow-guard-enforcement',
+      prMergeSubject: 'Merge pull request #15 from codex/story-1-5-routeshyft-policy-gate-and-branch-workflow-guard-enforcement',
       seedFiles: {
         '_bmad-output/implementation-artifacts/sprint-status.yaml': FEATURE_STORY_SPRINT_STATUS,
       },

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
@@ -25,6 +25,7 @@ export function runBranchWorkflowGuardInTempRepo(
 ): BranchWorkflowGuardHarnessResult {
   const repoDir = mkdtempSync(join(tmpdir(), 'branch-workflow-guard-harness-'));
   const branchGuardAbsolutePath = resolve(branchGuardScriptPath);
+  const sourceRepoRoot = resolve(dirname(branchGuardAbsolutePath), '..');
   const sprintStatusPath = join(repoDir, '_bmad-output/implementation-artifacts/sprint-status.yaml');
   const phase0StatusPath = join(repoDir, '_bmad-output/implementation-artifacts/phase0-readiness.json');
 
@@ -32,6 +33,20 @@ export function runBranchWorkflowGuardInTempRepo(
     writeFileSync(join(repoDir, 'README.md'), '# branch workflow guard harness\n', 'utf8');
     mkdirSync(dirname(sprintStatusPath), { recursive: true });
     mkdirSync(dirname(phase0StatusPath), { recursive: true });
+
+    const laneContextScriptSource = join(sourceRepoRoot, 'scripts/project-lane-context.js');
+    const laneContextScriptTarget = join(repoDir, 'scripts/project-lane-context.js');
+    if (existsSync(laneContextScriptSource)) {
+      mkdirSync(dirname(laneContextScriptTarget), { recursive: true });
+      copyFileSync(laneContextScriptSource, laneContextScriptTarget);
+    }
+
+    const laneConfigSource = join(sourceRepoRoot, 'docs/policies/project_lanes.json');
+    const laneConfigTarget = join(repoDir, 'docs/policies/project_lanes.json');
+    if (existsSync(laneConfigSource)) {
+      mkdirSync(dirname(laneConfigTarget), { recursive: true });
+      copyFileSync(laneConfigSource, laneConfigTarget);
+    }
 
     writeFileSync(
       sprintStatusPath,
