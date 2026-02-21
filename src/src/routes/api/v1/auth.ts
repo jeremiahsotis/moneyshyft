@@ -153,6 +153,18 @@ const ensureHarnessBaselineData = async (householdId: string): Promise<void> => 
       notes: null,
     });
   }
+
+  const household = await db('households')
+    .where({ id: householdId })
+    .first(['setup_wizard_completed']);
+  if (household && !household.setup_wizard_completed) {
+    await db('households')
+      .where({ id: householdId })
+      .update({
+        setup_wizard_completed: true,
+        setup_wizard_completed_at: db.fn.now(),
+      });
+  }
 };
 
 const ensureHarnessUser = async (email: string, password: string): Promise<void> => {

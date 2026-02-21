@@ -138,7 +138,11 @@ const displayEntries = computed(() =>
 );
 
 onMounted(async () => {
-  await extraMoneyStore.fetchPendingEntries();
+  try {
+    await extraMoneyStore.fetchPendingEntries();
+  } catch (error) {
+    console.error('Failed to load extra money entries:', error);
+  }
 });
 
 function handleAssign(entry: ExtraMoneyWithAssignments) {

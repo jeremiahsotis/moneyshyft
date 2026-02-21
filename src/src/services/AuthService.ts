@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import type { Knex } from 'knex';
 import db from '../config/knex';
 import { generateAccessToken, generateRefreshToken, JWTPayload } from '../utils/jwt';
 import { generateInvitationCode } from '../utils/invitationCode';
@@ -44,6 +45,68 @@ export interface AuthResponse {
 }
 
 class AuthService {
+  private isMissingPlatformSchemaError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const record = error as { code?: string; message?: string };
+    return record.code === '42P01' || record.code === '3F000';
+  }
+
+  private async ensurePlatformTenantBootstrap(
+    trx: Knex.Transaction,
+    householdId: string,
+    userId: string,
+    userRole: string
+  ): Promise<void> {
+    try {
+      const household = await trx('households')
+        .select('id', 'name')
+        .where({ id: householdId })
+        .first();
+
+      const tenantName = household?.name || `Tenant ${householdId.slice(0, 8)}`;
+      const roleSet = userRole === 'admin' ? ['TENANT_ADMIN'] : ['TENANT_VIEWER'];
+
+      await trx
+        .withSchema('platform')
+        .table('tenants')
+        .insert({
+          id: householdId,
+          name: tenantName,
+          status: 'active',
+          created_at_utc: trx.fn.now(),
+          updated_at_utc: trx.fn.now(),
+        })
+        .onConflict('id')
+        .ignore();
+
+      await trx
+        .withSchema('platform')
+        .table('tenant_memberships')
+        .insert({
+          tenant_id: householdId,
+          user_id: userId,
+          role_set_json: JSON.stringify(roleSet),
+          created_at_utc: trx.fn.now(),
+          updated_at_utc: trx.fn.now(),
+        })
+        .onConflict(['tenant_id', 'user_id'])
+        .ignore();
+    } catch (error) {
+      if (this.isMissingPlatformSchemaError(error)) {
+        logger.warn('Platform tenant bootstrap skipped because platform schema/tables are unavailable', {
+          householdId,
+          userId,
+        });
+        return;
+      }
+
+      throw error;
+    }
+  }
+
   /**
    * Sign up a new user
    */
@@ -159,6 +222,10 @@ class AuthService {
           role: userRole,
         })
         .returning('*');
+
+      if (householdId) {
+        await this.ensurePlatformTenantBootstrap(trx, householdId, user.id, userRole);
+      }
 
       if (householdId) {
         await AnalyticsService.recordEvent(

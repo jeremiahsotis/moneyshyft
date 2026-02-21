@@ -292,3 +292,47 @@ The delivery strategy is bounded-context, contract-first, and feature-flagged. T
 - Product brief constraints and freeze decisions are treated as non-negotiable implementation requirements.
 - API, schema, and escalation semantics are aligned with updated ConnectShyft specifications.
 - Parallel-safety requirements are explicit to protect RouteShyft during concurrent delivery.
+
+\
+Escalation Reset vs Inactivity Reset (do not conflate)\
+Escalation resets ONLY on:\
+• Claim\
+• Auto-claim created by successful bridge CONNECTED event\
+• Reopen tap from CLOSED (Call tap or Send SMS tap) resets escalation_stage to 0 and clears escalation_count\
+\
+Inactivity (engagement) timer resets ONLY on:\
+• Claim\
+• Outbound SMS send\
+• Call tap (including reopen tap from CLOSED)\
+\
+Inactivity does NOT reset on:\
+• Voicemail-only inbound\
+• Missed inbound calls\
+• Intake fallback transfer\
+\
+\
+Thread Lifecycle Transitions (locked)\
+• CLOSED → UNCLAIMED on outbound tap (Call tap OR Send SMS tap)\
+  • Audit/system event: thread_reopened_by_user\
+  • escalation_stage resets to 0; escalation_count resets to 0; next_evaluation_at_utc recalculated from now\
+  • Inactivity timer resets immediately\
+\
+Inbound Voice Routing Matrix (locked)\
+Condition | Behavior\
+---|---\
+No active thread | Forward to intake + log intake_fallback_* audit events\
+Active UNCLAIMED | Voicemail only (no direct connect)\
+Active CLAIMED | Configurable (default allow connect)\
+CLOSED | Forward to intake (no auto-reopen)\
+\
+Bridge Call (primary outbound; no WebRTC / SIP / softphone)\
+• Leg 1: system calls volunteer\
+• If volunteer answers, Leg 2: system calls neighbor\
+• CONNECTED triggers auto-claim (implicit claim)\
+• Manual retry only. No automatic redial or retry loops.\
+\
+Intake Fallback Logging (locked)\
+• If inbound call has no active thread: forward to intake and log audit event(s).\
+• If a historical thread exists: write a timeline system event on the historical thread (not inbox-visible).\
+• Intake fallback does NOT reopen a CLOSED thread and does NOT reset escalation.\
+\

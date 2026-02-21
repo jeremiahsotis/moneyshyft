@@ -241,8 +241,9 @@ async function handleSignup() {
     }
   } catch (error: any) {
     console.error('Signup error:', error);
-    if (error.response?.data?.details) {
-      validationError.value = error.response.data.details.map((d: any) => d.message).join(', ');
+    const details = error.response?.data?.data?.details || error.response?.data?.details;
+    if (Array.isArray(details)) {
+      validationError.value = details.map((d: any) => d.message).join(', ');
     }
   }
 }

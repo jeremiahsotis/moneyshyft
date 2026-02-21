@@ -107,7 +107,11 @@ const recurringStore = useRecurringStore();
 const pendingCount = recurringStore.pendingCount;
 
 onMounted(async () => {
-  await recurringStore.fetchPendingInstances(7);
+  try {
+    await recurringStore.fetchPendingInstances(7);
+  } catch (error) {
+    console.error('Failed to load recurring instances:', error);
+  }
 });
 
 async function handleApprove(id: string) {

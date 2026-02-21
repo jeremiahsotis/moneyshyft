@@ -271,3 +271,30 @@ The UX must preserve a single, stable mental model:
 3. Neighbor edit/merge governance represented with permission and provenance patterns.
 4. Scope visibility and orgUnit context rules represented in global and local navigation.
 5. Accessibility and responsive behavior requirements are implementation-testable.
+
+\
+Locked behavior: CLOSED -> UNCLAIMED on outbound tap\
+• If volunteer taps Call on a CLOSED thread:\
+  • Thread transitions immediately: CLOSED → UNCLAIMED\
+  • System/audit event: thread_reopened_by_user\
+  • escalation_stage resets immediately to 0; escalation_count resets to 0; next_evaluation_at_utc recalculated from now\
+  • Inactivity timer resets immediately\
+  • Bridge call initiates\
+  • On CONNECTED → auto-claim (implicit claim)\
+• If volunteer taps Send SMS on a CLOSED thread:\
+  • Same immediate reopen behavior: CLOSED → UNCLAIMED + thread_reopened_by_user + escalation/inactivity reset\
+  • Outbound SMS sends after reopen; successful send is treated as outbound engagement for inactivity tracking\
+\
+UI rule: preserve historical escalation timeline, but visually segment lifecycles with a system marker: --- Thread Reopened ---\
+\
+\
+Bridge Call UX (no WebRTC / SIP / softphone)\
+• Call action always uses a bridge call: the system calls the volunteer first, then the neighbor.\
+• While initiating: show banner: “We are calling you now.”\
+• If volunteer does not answer first leg: show “Missed your call back. Tap Retry Call to try again.”\
+• Manual retry only. No automatic redial or retry loops.\
+• When call reaches CONNECTED, the thread is auto-claimed.\
+\
+Voicemail-only indicator (UNCLAIMED):\
+• When thread is UNCLAIMED, inbound voice routes to voicemail only. Thread UI must display a “Voicemail only until claimed” indicator.\
+\
