@@ -18,13 +18,15 @@ export TEST_ENV="${TEST_ENV:-local}"
 export TEST_EMAIL="${TEST_EMAIL:-test@example.com}"
 export TEST_PASSWORD="${TEST_PASSWORD:-test1234}"
 export ENABLE_TEST_AUTH_HARNESS="${ENABLE_TEST_AUTH_HARNESS:-true}"
-export BASE_URL="${BASE_URL:-http://127.0.0.1:5173}"
-export API_URL="${API_URL:-http://127.0.0.1:3000}"
+export BASE_URL="${BASE_URL:-http://localhost:5174}"
+export API_URL="${API_URL:-http://localhost:3000}"
 export API_BASE_URL="${API_BASE_URL:-$API_URL}"
-export FRONTEND_URL="${FRONTEND_URL:-http://127.0.0.1:5173}"
-export VITE_API_PROXY_TARGET="${VITE_API_PROXY_TARGET:-http://127.0.0.1:3000}"
-export HOST="${HOST:-127.0.0.1}"
+export FRONTEND_URL="${FRONTEND_URL:-http://localhost:5174}"
+export VITE_API_PROXY_TARGET="${VITE_API_PROXY_TARGET:-http://localhost:3000}"
+export HOST="${HOST:-localhost}"
 export PORT="${PORT:-3000}"
+frontend_host="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.hostname);" "$BASE_URL")"
+frontend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.port || '5174');" "$BASE_URL")"
 
 print_runtime_logs() {
   echo "==== Backend log tail ===="
@@ -107,11 +109,11 @@ echo "Starting backend dev server"
 BACKEND_PID=$!
 
 echo "Starting frontend dev server"
-(cd frontend && npm run dev -- --host 127.0.0.1 --port 5173) > "$frontend_log" 2>&1 &
+(cd frontend && npm run dev -- --host "$frontend_host" --port "$frontend_port") > "$frontend_log" 2>&1 &
 FRONTEND_PID=$!
 
-wait_for_http "http://127.0.0.1:3000/health" "backend health endpoint"
-wait_for_http "http://127.0.0.1:5173/login" "frontend login page"
+wait_for_http "${API_URL%/}/health" "backend health endpoint"
+wait_for_http "${BASE_URL%/}/login" "frontend login page"
 
 echo "Running test command: $*"
 "$@"
