@@ -4,6 +4,25 @@ import api from '@/services/api';
 import type { User, SignupData, LoginData } from '@/types';
 
 export const useAuthStore = defineStore('auth', () => {
+  const unwrapPayload = <T extends Record<string, unknown>>(payload: unknown): T => {
+    if (payload && typeof payload === 'object') {
+      const record = payload as Record<string, unknown>;
+      if (record.data && typeof record.data === 'object') {
+        return record.data as T;
+      }
+
+      return record as T;
+    }
+
+    return {} as T;
+  };
+
+  const extractErrorMessage = (err: any, fallback: string): string =>
+    err?.response?.data?.message
+    || err?.response?.data?.error
+    || err?.message
+    || fallback;
+
   // State
   const user = ref<User | null>(null);
   const isLoading = ref(false);
@@ -24,9 +43,10 @@ export const useAuthStore = defineStore('auth', () => {
       console.log('Attempting signup with:', { ...data, password: '[REDACTED]' });
       const response = await api.post('/auth/signup', data);
       console.log('Signup successful:', response.data);
-      user.value = response.data.user;
+      const payload = unwrapPayload<{ user?: User; invitationCode?: string }>(response.data);
+      user.value = payload.user ?? null;
       // Return invitation code if present (new household created)
-      return response.data.invitationCode || null;
+      return payload.invitationCode ?? null;
     } catch (err: any) {
       console.error('Signup error details:', {
         message: err.message,
@@ -34,7 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
         status: err.response?.status,
         url: err.config?.url
       });
-      error.value = err.response?.data?.error || err.message || 'Signup failed';
+      error.value = extractErrorMessage(err, 'Signup failed');
       throw err;
     } finally {
       isLoading.value = false;
@@ -46,9 +66,10 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null;
     try {
       const response = await api.post('/auth/login', data);
-      user.value = response.data.user;
+      const payload = unwrapPayload<{ user?: User }>(response.data);
+      user.value = payload.user ?? null;
     } catch (err: any) {
-      error.value = err.response?.data?.error || 'Login failed';
+      error.value = extractErrorMessage(err, 'Login failed');
       throw err;
     } finally {
       isLoading.value = false;
@@ -71,7 +92,8 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true;
     try {
       const response = await api.get('/auth/me');
-      user.value = response.data.user;
+      const payload = unwrapPayload<{ user?: User }>(response.data);
+      user.value = payload.user ?? null;
     } catch (err: any) {
       // Not authenticated, that's okay
       user.value = null;

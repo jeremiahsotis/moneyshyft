@@ -162,11 +162,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { useAccessStore } from '@/stores/access';
 import { useRouter, useRoute } from 'vue-router';
 
 const authStore = useAuthStore();
+const accessStore = useAccessStore();
 const router = useRouter();
 const route = useRoute();
 
@@ -175,7 +177,7 @@ const showUserMenu = ref(false);
 const isPrivacyMode = ref(false);
 const PRIVACY_KEY = 'moneyshyft_privacy_mode';
 
-const navItems = [
+const baseNavItems = [
   { name: 'dashboard', label: 'Dashboard', icon: '📊', path: '/' },
   { name: 'accounts', label: 'Accounts', icon: '💰', path: '/accounts' },
   { name: 'transactions', label: 'Transactions', icon: '📝', path: '/transactions' },
@@ -184,6 +186,19 @@ const navItems = [
   { name: 'debts', label: 'Debts', icon: '💳', path: '/debts' },
   { name: 'goals', label: 'Goals', icon: '🎯', path: '/goals' },
 ];
+
+const adminNavPath = computed(() => (
+  accessStore.canAccessSystemAdmin ? '/admin/system' : '/admin/tenant'
+));
+
+const navItems = computed(() => {
+  const items = [...baseNavItems];
+  if (authStore.isAuthenticated && accessStore.hasAnyAdminAccess) {
+    items.push({ name: 'admin', label: 'Admin', icon: '🛡️', path: adminNavPath.value });
+  }
+
+  return items;
+});
 
 function isActive(path: string): boolean {
   return route.path === path || (path !== '/' && route.path.startsWith(path));
@@ -208,16 +223,35 @@ function togglePrivacyMode() {
   showUserMenu.value = false;
 }
 
+const refreshAccess = async (): Promise<void> => {
+  if (!authStore.isAuthenticated) {
+    accessStore.clear();
+    return;
+  }
+
+  await accessStore.refresh({ tenantId: authStore.user?.householdId || undefined });
+};
+
 onMounted(() => {
   const stored = localStorage.getItem(PRIVACY_KEY);
   if (stored === 'on') {
     applyPrivacyMode(true);
   }
+
+  void refreshAccess();
 });
+
+watch(
+  () => [authStore.isAuthenticated, authStore.user?.householdId],
+  () => {
+    void refreshAccess();
+  }
+);
 
 async function handleLogout() {
   showUserMenu.value = false;
   await authStore.logout();
+  accessStore.clear();
   router.push('/login');
 }
 

@@ -16,11 +16,16 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
+import { useAccessStore } from '@/stores/access';
 
 const route = useRoute();
+const authStore = useAuthStore();
+const accessStore = useAccessStore();
 
-const navItems = [
+const baseNavItems = [
   { name: 'dashboard', label: 'Dashboard', icon: '📊', path: '/' },
   { name: 'accounts', label: 'Accounts', icon: '💰', path: '/accounts' },
   { name: 'budget', label: 'Budget', icon: '📈', path: '/budget' },
@@ -28,9 +33,40 @@ const navItems = [
   { name: 'transactions', label: 'Activity', icon: '📝', path: '/transactions' },
 ];
 
+const navItems = computed(() => {
+  const items = [...baseNavItems];
+
+  if (authStore.isAuthenticated && accessStore.hasAnyAdminAccess) {
+    const adminPath = accessStore.canAccessSystemAdmin ? '/admin/system' : '/admin/tenant';
+    items.push({ name: 'admin', label: 'Admin', icon: '🛡️', path: adminPath });
+  }
+
+  return items;
+});
+
 function isActive(path: string): boolean {
   return route.path === path || route.path.startsWith(path + '/');
 }
+
+const refreshAccess = async (): Promise<void> => {
+  if (!authStore.isAuthenticated) {
+    accessStore.clear();
+    return;
+  }
+
+  await accessStore.refresh({ tenantId: authStore.user?.householdId || undefined });
+};
+
+onMounted(() => {
+  void refreshAccess();
+});
+
+watch(
+  () => [authStore.isAuthenticated, authStore.user?.householdId],
+  () => {
+    void refreshAccess();
+  }
+);
 </script>
 
 <style scoped>

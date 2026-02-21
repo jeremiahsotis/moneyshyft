@@ -41,7 +41,7 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   epic-1: in-progress
-  1-1-connectshyft-feature-flag-and-availability-guardrails: ready-for-dev
+  1-1-connectshyft-feature-flag-and-availability-guardrails: backlog
   1-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes: backlog
   1-3-orgunit-number-mapping-management: backlog
   1-4-escalation-baseline-and-recipient-configuration: backlog

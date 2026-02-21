@@ -543,3 +543,37 @@ So that ConnectShyft can ship in parallel with RouteShyft without cross-module r
 **When** CI executes
 **Then** `npm run policy:check` runs as first blocking gate, import-boundary checks block route/connectshyft direct imports, and RouteShyft regression lane is required
 **And** rollout controls remain feature-flag/allow-list based with documented rollback path.
+
+\
+Acceptance Criteria Additions (locked):\
+• Outbound tap on CLOSED (Call or Send SMS) reopens immediately: CLOSED → UNCLAIMED + thread_reopened_by_user.\
+• Reopen tap resets escalation_stage to 0 and resets inactivity tracking (last_engagement_at_utc).\
+• Inbound events do not reopen CLOSED threads.\
+\
+\
+Acceptance Criteria Additions (locked):\
+• Escalation reset triggers are distinct from inactivity reset triggers.\
+• Inactivity resets only on Claim, Outbound SMS send, or Call tap (including reopen tap).\
+• Voicemail-only inbound does not reset escalation or inactivity.\
+• Reopen tap from CLOSED resets escalation to Stage 0 and recalculates next_evaluation_at_utc from now.\
+\
+\
+Acceptance Criteria Additions (locked):\
+• Outbound call uses bridge call only (no WebRTC / SIP / softphone).\
+• Call state machine implemented: INITIATED, VOLUNTEER_RINGING, VOLUNTEER_NO_ANSWER, NEIGHBOR_RINGING, CONNECTED, COMPLETED.\
+• CONNECTED triggers auto-claim (implicit claim).\
+• Manual retry only. No automatic redial or retry loops.\
+• Sending SMS from CLOSED reopens immediately on send tap (CLOSED → UNCLAIMED + thread_reopened_by_user).\
+\
+\
+Acceptance Criteria Additions (locked):\
+• If inbound call has no active thread: forward to intake and log intake fallback audit event(s).\
+• If historical thread exists: write a timeline system event on the historical thread (non-inbox-visible).\
+• Intake fallback does not reopen CLOSED threads and does not reset escalation or inactivity.\
+\
+\
+Acceptance Criteria Additions (locked):\
+• Active UNCLAIMED thread inbound voice must be voicemail only (enforced deterministically).\
+• Voicemail artifacts do not reset escalation or inactivity (no last_engagement_at_utc update).\
+• CLOSED inbound voice routes to intake fallback (no auto-reopen).\
+\

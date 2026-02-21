@@ -387,15 +387,19 @@ const topGoals = computed(() => {
 
 onMounted(async () => {
   const currentMonthStr = new Date().toISOString().slice(0, 7);
-  await Promise.all([
-    accountsStore.fetchAccounts(),
-    transactionsStore.fetchTransactions(),
-    incomeStore.fetchIncomeSources(),
-    budgetsStore.fetchBudgetSummary(currentMonthStr),
-    goalsStore.fetchGoals(),
-    recurringStore.fetchPendingInstances(7),
-    extraMoneyStore.fetchPendingEntries(),
-  ]);
+  try {
+    await Promise.all([
+      accountsStore.fetchAccounts(),
+      transactionsStore.fetchTransactions(),
+      incomeStore.fetchIncomeSources(),
+      budgetsStore.fetchBudgetSummary(currentMonthStr),
+      goalsStore.fetchGoals(),
+      recurringStore.fetchPendingInstances(7),
+      extraMoneyStore.fetchPendingEntries(),
+    ]);
+  } catch (error) {
+    console.error('Failed to load dashboard data:', error);
+  }
 });
 
 async function handleRecurringSaved() {
