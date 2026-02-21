@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API_URL="${API_URL:-http://127.0.0.1:3000}"
-BASE_URL="${BASE_URL:-http://127.0.0.1:5173}"
+API_URL="${API_URL:-http://localhost:3000}"
+BASE_URL="${BASE_URL:-http://localhost:5174}"
 AUTO_START_STACK="${AUTO_START_STACK:-true}"
 RUNTIME_DIR="${RUNTIME_DIR:-tests/artifacts/runtime}"
 BACKEND_LOG_FILE="${RUNTIME_DIR}/backend.log"
@@ -21,14 +21,15 @@ FRONTEND_PID=""
 BACKEND_STARTED=false
 FRONTEND_STARTED=false
 
-validate_loopback_host() {
+validate_allowed_host() {
   local url="$1"
   local label="$2"
+  local allowed_hosts="$3"
 
   local host
   host="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.hostname);" "$url")"
-  if [[ "$host" != "127.0.0.1" ]]; then
-    echo "Playwright preflight failed: $label must use host 127.0.0.1 (got: $url)"
+  if [[ ! ",$allowed_hosts," == *",$host,"* ]]; then
+    echo "Playwright preflight failed: $label must use one of [$allowed_hosts] (got: $url)"
     exit 1
   fi
 }
@@ -114,11 +115,13 @@ on_exit() {
 }
 trap on_exit EXIT
 
-validate_loopback_host "$API_URL" "API_URL"
-validate_loopback_host "$BASE_URL" "BASE_URL"
+validate_allowed_host "$API_URL" "API_URL" "localhost,127.0.0.1"
+validate_allowed_host "$BASE_URL" "BASE_URL" "localhost"
 
 api_root="${API_URL%/}"
 frontend_root="${BASE_URL%/}"
+frontend_host="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.hostname);" "$BASE_URL")"
+frontend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.port || '5174');" "$BASE_URL")"
 
 if ! is_http_reachable "$api_root/health" && ! is_http_reachable "$api_root/api/v1/health"; then
   if [[ "$AUTO_START_STACK" != "true" ]]; then
@@ -151,7 +154,7 @@ if ! is_http_reachable "$frontend_root/login" && ! is_http_reachable "$frontend_
 
   echo "Managed runtime policy: starting frontend for this test run"
   : > "$FRONTEND_LOG_FILE"
-  (cd frontend && VITE_API_PROXY_TARGET="$API_URL" npm run dev -- --host 127.0.0.1 --port 5173 --strictPort) >"$FRONTEND_LOG_FILE" 2>&1 &
+  (cd frontend && VITE_API_PROXY_TARGET="$API_URL" npm run dev -- --host "$frontend_host" --port "$frontend_port" --strictPort) >"$FRONTEND_LOG_FILE" 2>&1 &
   FRONTEND_PID=$!
   FRONTEND_STARTED=true
   echo "$FRONTEND_PID" > "$FRONTEND_PID_FILE"
