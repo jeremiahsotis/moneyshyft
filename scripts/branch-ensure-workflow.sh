@@ -4,6 +4,7 @@ set -euo pipefail
 workflow=""
 story_input=""
 epic_input=""
+lane_override=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -29,6 +30,14 @@ while [[ $# -gt 0 ]]; do
         exit 1
       fi
       epic_input="$2"
+      shift 2
+      ;;
+    --lane)
+      if [[ $# -lt 2 || -z "${2-}" || "${2-}" == --* ]]; then
+        echo "Missing value for --lane"
+        exit 1
+      fi
+      lane_override="$2"
       shift 2
       ;;
     *)
@@ -109,11 +118,20 @@ resolve_branch() {
 
 branch="$(resolve_branch)"
 
+lane_context_args=(--format shell --branch "$branch")
+if [[ -n "$lane_override" ]]; then
+  lane_context_args+=(--lane "$lane_override")
+fi
+if ! lane_context="$(node scripts/project-lane-context.js "${lane_context_args[@]}")"; then
+  exit 1
+fi
+eval "$lane_context"
+
 story_workflow_regex='^(atdd|automate|create-story|dev-story|code-review|at|ta|ds|cr)$'
 epic_workflow_regex='^(sprint-planning|retrospective|correct-course)$'
 phase0_status_file="${PHASE0_READINESS_STATUS_FILE:-_bmad-output/implementation-artifacts/phase0-readiness.json}"
 readiness_api_spec="${PHASE0_READINESS_API_SPEC:-tests/api/platform/kernel-readiness-verification-suite.api.spec.ts}"
-sprint_status_file="${SPRINT_STATUS_FILE:-_bmad-output/implementation-artifacts/sprint-status.yaml}"
+sprint_status_file="${SPRINT_STATUS_FILE:-$LANE_SPRINT_STATUS_FILE}"
 
 normalize_story_id() {
   local raw="$1"
@@ -310,11 +328,22 @@ if [[ "$workflow_key" =~ $story_workflow_regex ]]; then
 
   ensure_corrected_kernel_gate "$story_id"
 
-  if [[ ! "$branch" =~ ^codex/story-${story_id}- ]]; then
+  if [[ ! "$branch" =~ ^codex/story-${story_id}-(.+)$ ]]; then
     echo "Branch guard failed"
     echo "Workflow key: $workflow_key"
-    echo "Expected branch pattern: codex/story-${story_id}-<slug>"
+    echo "Expected branch pattern: codex/story-${story_id}-${LANE_SLUG_TOKEN}-<slug>"
     echo "Current branch: $branch"
+    echo "Resolved project lane: $ACTIVE_LANE"
+    exit 1
+  fi
+  story_slug="${BASH_REMATCH[1]}"
+
+  if [[ "-$story_slug-" != *-"$LANE_SLUG_TOKEN"-* ]]; then
+    echo "Branch guard failed"
+    echo "Workflow key: $workflow_key"
+    echo "Expected branch pattern: codex/story-${story_id}-${LANE_SLUG_TOKEN}-<slug>"
+    echo "Current branch: $branch"
+    echo "Resolved project lane: $ACTIVE_LANE"
     exit 1
   fi
 

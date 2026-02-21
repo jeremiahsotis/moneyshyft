@@ -2,17 +2,27 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 [--allow-dirty] <story-id> <slug>"
+  echo "Usage: $0 [--allow-dirty] [--lane <lane-id>] <story-id> <slug>"
   echo "Example: $0 0-1 canonical-app-entrypoint-and-platform-middleware-chain"
+  echo "Example: $0 --lane connectshyft 1-1 admin-user-creation-ui"
   echo "Example: $0 --allow-dirty 0-1 canonical-app-entrypoint-and-platform-middleware-chain"
 }
 
 allow_dirty=false
+lane_override=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --allow-dirty)
       allow_dirty=true
       shift
+      ;;
+    --lane)
+      if [[ $# -lt 2 || -z "${2-}" || "${2-}" == --* ]]; then
+        echo "Missing value for --lane"
+        exit 1
+      fi
+      lane_override="$2"
+      shift 2
       ;;
     -h|--help)
       usage
@@ -39,7 +49,18 @@ if [[ ! "$story_id" =~ ^[0-9]+-[0-9]+$ ]]; then
 fi
 
 epic_id="${story_id%%-*}"
-status_file="_bmad-output/implementation-artifacts/sprint-status.yaml"
+current_branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+
+lane_context_args=(--format shell --branch "${current_branch:-detached}")
+if [[ -n "$lane_override" ]]; then
+  lane_context_args+=(--lane "$lane_override")
+fi
+if ! lane_context="$(node scripts/project-lane-context.js "${lane_context_args[@]}")"; then
+  exit 1
+fi
+eval "$lane_context"
+
+status_file="${SPRINT_STATUS_FILE:-$LANE_SPRINT_STATUS_FILE}"
 
 if [[ "$epic_id" != "0" ]]; then
   if [[ ! -f "$status_file" ]]; then
@@ -70,6 +91,10 @@ slug="$(echo "$slug_raw" \
 if [[ -z "$slug" ]]; then
   echo "Slug cannot be empty after normalization"
   exit 1
+fi
+
+if [[ "-$slug-" != *-"$LANE_SLUG_TOKEN"-* ]]; then
+  slug="${LANE_SLUG_TOKEN}-${slug}"
 fi
 
 branch="codex/story-${story_id}-${slug}"

@@ -128,7 +128,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
       branch: 'main',
       event: 'local',
-      headRef: 'codex/story-0-9-ignored-in-local-mode',
+      headRef: 'codex/story-0-9-routeshyft-ignored-in-local-mode',
       commitSubject: '0-9: local policy failure path',
     });
 

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { test, expect } from '../../support/fixtures/ciPolicyContext.fixture';
@@ -18,7 +18,7 @@ type BranchGuardHarnessOptions = {
 };
 
 const FEATURE_STORY_ID = '1-1';
-const FEATURE_STORY_BRANCH = 'codex/story-1-1-tenant-context-resolution-and-isolation-guardrails';
+const FEATURE_STORY_BRANCH = 'codex/story-1-1-routeshyft-tenant-context-resolution-and-isolation-guardrails';
 const FEATURE_STORY_FILE =
   '_bmad-output/implementation-artifacts/1-1-tenant-context-resolution-and-isolation-guardrails.md';
 
@@ -39,6 +39,7 @@ function runBranchGuardInTempRepo(
   const repoDir = mkdtempSync(join(tmpdir(), 'branch-guard-harness-'));
   const sprintStatusPath = join(repoDir, '_bmad-output/implementation-artifacts/sprint-status.yaml');
   const branchGuardAbsolutePath = resolve(branchGuardScript);
+  const sourceRepoRoot = resolve(dirname(branchGuardAbsolutePath), '..');
   const branch = options.branch ?? FEATURE_STORY_BRANCH;
   const workflow = options.workflow ?? 'dev-story';
   const story = options.story ?? FEATURE_STORY_FILE;
@@ -47,6 +48,20 @@ function runBranchGuardInTempRepo(
     mkdirSync(dirname(sprintStatusPath), { recursive: true });
     writeFileSync(sprintStatusPath, sprintStatusContents, 'utf8');
     writeFileSync(join(repoDir, 'README.md'), '# branch guard harness\n', 'utf8');
+
+    const laneContextScriptSource = join(sourceRepoRoot, 'scripts/project-lane-context.js');
+    const laneContextScriptTarget = join(repoDir, 'scripts/project-lane-context.js');
+    if (existsSync(laneContextScriptSource)) {
+      mkdirSync(dirname(laneContextScriptTarget), { recursive: true });
+      copyFileSync(laneContextScriptSource, laneContextScriptTarget);
+    }
+
+    const laneConfigSource = join(sourceRepoRoot, 'docs/policies/project_lanes.json');
+    const laneConfigTarget = join(repoDir, 'docs/policies/project_lanes.json');
+    if (existsSync(laneConfigSource)) {
+      mkdirSync(dirname(laneConfigTarget), { recursive: true });
+      copyFileSync(laneConfigSource, laneConfigTarget);
+    }
 
     execFileSync('git', ['init', '-b', 'main'], { cwd: repoDir, stdio: 'ignore' });
     execFileSync('git', ['config', 'user.email', 'branch-guard-harness@example.com'], { cwd: repoDir, stdio: 'ignore' });
@@ -97,7 +112,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
       branch: 'main',
       event: 'local',
-      headRef: 'codex/story-9-9-spoofed-branch',
+      headRef: 'codex/story-9-9-routeshyft-spoofed-branch',
       commitSubject: '9-9: spoof attempt',
     });
 
@@ -118,7 +133,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
         env: {
           ...process.env,
           GITHUB_EVENT_NAME: 'pull_request',
-          GITHUB_HEAD_REF: 'codex/story-0-9-ci-policy-gate-as-blocking-first-stage',
+          GITHUB_HEAD_REF: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
           GITHUB_BASE_REF: 'production',
         },
         encoding: 'utf8',
@@ -130,7 +145,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
 
     // Then output should include explicit branch and base context for remediation
     const hasFailureHeadline = /Policy check failed: story pull requests must target codex\/dev/.test(output);
-    const hasHeadBranchContext = /Head branch:\s*codex\/story-0-9-ci-policy-gate-as-blocking-first-stage/.test(
+    const hasHeadBranchContext = /Head branch:\s*codex\/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage/.test(
       output,
     );
     const hasBaseBranchContext = /Base branch:\s*production/.test(output);
@@ -175,7 +190,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
       execFileSync('bash', [ciPolicyContext.branchGuardScript, '--workflow', 'automate'], {
         env: {
           ...process.env,
-          GITHUB_HEAD_REF: 'codex/story-0-9-ci-policy-gate-as-blocking-first-stage',
+          GITHUB_HEAD_REF: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
         },
         encoding: 'utf8',
       });
@@ -192,7 +207,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     ciPolicyContext,
   }) => {
     // Given a local repository branch that does not match the requested story id
-    const mismatchedBranch = 'codex/story-0-8-centralized-time-service-and-utc-local-rendering-contract';
+    const mismatchedBranch = 'codex/story-0-8-routeshyft-centralized-time-service-and-utc-local-rendering-contract';
     const { output, status } = runBranchGuardInTempRepo(
       ciPolicyContext.branchGuardScript,
       createSprintStatus('done', 'approved'),
@@ -204,7 +219,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     );
 
     // When reading guard failure diagnostics
-    const hasExpectedPattern = /Expected branch pattern:\s*codex\/story-0-9-<slug>/.test(output);
+    const hasExpectedPattern = /Expected branch pattern:\s*codex\/story-0-9-routeshyft-<slug>/.test(output);
     const hasCurrentBranch = new RegExp(`Current branch:\\s*${mismatchedBranch}`).test(output);
 
     // Then output should include concrete branch mismatch diagnostics
@@ -222,7 +237,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
         branch: 'main',
         story: '_bmad-output/implementation-artifacts/0-9-ci-policy-gate-as-blocking-first-stage.md',
         env: {
-          GITHUB_HEAD_REF: 'codex/story-0-9-ci-policy-gate-as-blocking-first-stage',
+          GITHUB_HEAD_REF: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
         },
       },
     );
@@ -240,7 +255,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
       branch: 'codex/dev',
       event: 'local',
-      headRef: 'codex/story-0-9-ignored-in-local-mode',
+      headRef: 'codex/story-0-9-routeshyft-ignored-in-local-mode',
       commitSubject: '0-9: local default branch run',
     });
 
@@ -256,7 +271,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
   test('[P1] story branches require matching commit subject story id @P1', async ({ ciPolicyContext }) => {
     // Given a story branch with a mismatched latest commit subject story id
     const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
-      branch: 'codex/story-0-9-ci-policy-gate-as-blocking-first-stage',
+      branch: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
       event: 'local',
       commitSubject: '0-8: wrong story commit subject',
     });
@@ -285,7 +300,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     // Then CI policy should block workflow progression with explicit corrected-kernel context
     const hasGateFailureMessage = /corrected kernel gate unmet \(Story 0-10 is not done\)/.test(output);
     const hasPolicyReference = /Policy reference:\s*docs\/policies\/git_policy\.md/.test(output);
-    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-tenant-context-resolution-and-isolation-guardrails\.md/.test(
+    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-routeshyft-tenant-context-resolution-and-isolation-guardrails\.md/.test(
       output,
     );
     expect(status !== 0 && hasGateFailureMessage && hasPolicyReference && hasRemediationHint).toBe(true);
@@ -311,7 +326,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
       output,
     );
     const hasPolicyReference = /Policy reference:\s*docs\/policies\/git_policy\.md/.test(output);
-    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-tenant-context-resolution-and-isolation-guardrails\.md/.test(
+    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-routeshyft-tenant-context-resolution-and-isolation-guardrails\.md/.test(
       output,
     );
     expect(status !== 0 && hasCourseCorrectionFailure && hasPolicyReference && hasRemediationHint).toBe(true);

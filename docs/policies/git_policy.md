@@ -23,7 +23,8 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - Required guard command before execution:
   - `npm run branch:ensure-workflow -- --workflow <name-or-path> --story <story-key-or-story-file>`
 - Required story branch naming:
-  - `codex/story-<story-id>-<short-slug>`
+  - `codex/story-<story-id>-<project-lane>-<short-slug>`
+  - `<project-lane>` token must appear in slug and match resolved lane context.
 - Story branches must be created from `codex/dev` and merged back into `codex/dev`.
 - Do not run story-scoped workflows on `master` or mismatched story branches.
 - Keep all code, tests, and story artifacts for that story on the same story branch.
@@ -137,6 +138,7 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 ## 6) Project Lane Policy (Mandatory)
 
 - `project_lane` is required for planning and status artifacts.
+- Story branch lane context is resolved from `--lane`/`PROJECT_LANE`, then branch token, then `SPRINT_STATUS_FILE`, then default lane.
 - Canonical lane configuration source:
   - `docs/policies/project_lanes.json`
 - Current lane mapping:
@@ -149,6 +151,7 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - Shared implementation story files under `_bmad-output/implementation-artifacts/[epic-story].md` are cross-lane foundation artifacts and are allowed in both product repos.
 - Future modules must register a new lane in `docs/policies/project_lanes.json` before planning artifacts are created.
 - Lane enforcement is mandatory through:
+  - `scripts/project-lane-context.js`
   - `scripts/enforce-project-lane.js`
   - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
 
