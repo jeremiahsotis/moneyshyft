@@ -31,3 +31,5 @@ Epic Files Contains:                Sprint Status Contains:
 - [ ] Total count of epics matches
 - [ ] Total count of stories matches
 - [ ] All items are in the expected order (epic, stories, retrospective)
+- [ ] Stories with backend/API contracts that imply human operability include frontend/operator usability criteria in planning artifacts
+- [ ] Stories that define RBAC/admin capabilities include planned role-admin UI paths

@@ -13,6 +13,10 @@
 - [ ] Tests identified and mapped to ACs; gaps noted
 - [ ] Code quality review performed on changed files
 - [ ] Security review performed on changed files and dependencies
+- [ ] Guardrail Classification reviewed in story (`Guardrail Classification Reviewed: yes`)
+- [ ] If `Critical Capability: yes`, real-user validation evidence is present and result is pass
+- [ ] If `Access-Control Story: yes`, role-admin UI path is documented and verified
+- [ ] If `Backend/API Implies Human Operability: yes`, frontend/operator usability criteria are explicit and satisfied
 - [ ] Outcome decided (Approve/Changes Requested/Blocked)
 - [ ] Review notes appended under "Senior Developer Review (AI)"
 - [ ] Change Log updated with review entry

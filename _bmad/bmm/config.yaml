@@ -4,9 +4,11 @@
 # Date: 2026-02-17T02:32:44.127Z
 
 project_name: Shyft
+project_lane: routeshyft
 user_skill_level: beginner
 planning_artifacts: "{project-root}/_bmad-output/planning-artifacts"
 implementation_artifacts: "{project-root}/_bmad-output/implementation-artifacts"
+sprint_status_file: "{project-root}/_bmad-output/implementation-artifacts/sprint-status.yaml"
 project_knowledge: "{project-root}/docs"
 
 # Core Configuration Values

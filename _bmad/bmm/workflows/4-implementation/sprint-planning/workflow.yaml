@@ -23,6 +23,7 @@ variables:
   project_context: "**/project-context.md"
   # Project identification
   project_name: "{config_source}:project_name"
+  project_lane: "{config_source}:project_lane"
 
   # Tracking system configuration
   tracking_system: "file-system" # Options: file-system, Future will support other options from config of mcp such as jira, linear, trello
@@ -35,7 +36,7 @@ variables:
   epics_pattern: "epic*.md" # Pattern to find epic files
 
   # Output configuration
-  status_file: "{implementation_artifacts}/sprint-status.yaml"
+  status_file: "{config_source}:sprint_status_file"
 
 # Smart input file references - handles both whole docs and sharded docs
 # Priority: Whole document first, then sharded version

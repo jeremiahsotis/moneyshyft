@@ -169,14 +169,33 @@
   </step>
 
   <step n="5" goal="Update story status and sync sprint tracking">
+    <action>Read Operability Guardrails from story:
+      - Guardrail Classification Reviewed
+      - Critical Capability
+      - Access-Control Story
+      - Backend/API Implies Human Operability
+      - Frontend/Operator Usability Criteria Included
+      - Real-User Validation Evidence
+      - Real-User Validation Result
+      - Role-Admin UI Path
+      - Role-Admin UI Path Verified
+    </action>
+    <action>Compute guardrail_blockers:
+      - Block if Guardrail Classification Reviewed is not "yes"
+      - Block if Critical Capability is "yes" and real-user validation evidence/result are missing or not pass
+      - Block if Access-Control Story is "yes" and role-admin UI path is missing or not verified
+      - Block if Backend/API Implies Human Operability is "yes" and frontend/operator usability criteria are not explicit
+    </action>
+
     <!-- Determine new status based on review outcome -->
-    <check if="all HIGH and MEDIUM issues fixed AND all ACs implemented">
+    <check if="all HIGH and MEDIUM issues fixed AND all ACs implemented AND guardrail_blockers == 0">
       <action>Set {{new_status}} = "done"</action>
       <action>Update story Status field to "done"</action>
     </check>
-    <check if="HIGH or MEDIUM issues remain OR ACs not fully implemented">
+    <check if="HIGH or MEDIUM issues remain OR ACs not fully implemented OR guardrail_blockers > 0">
       <action>Set {{new_status}} = "in-progress"</action>
       <action>Update story Status field to "in-progress"</action>
+      <output>⚠️ Guardrail blockers prevent closure until operability evidence and usability coupling are complete.</output>
     </check>
     <action>Save story file</action>
 

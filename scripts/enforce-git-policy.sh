@@ -188,5 +188,8 @@ if [[ -n "$last_subject" ]]; then
 fi
 
 bash scripts/enforce-envelope-helper-guard.sh
+bash scripts/enforce-story-status-sync.sh
+node scripts/enforce-project-lane.js
+bash scripts/enforce-operability-closeout-guard.sh
 
 echo "Policy check passed"

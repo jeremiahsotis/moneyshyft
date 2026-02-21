@@ -26,6 +26,8 @@ Avoid ambiguity when multiple product streams live in the same monorepo.
   - Example: `epics-MONO-YYYY-MM-DD.md`, `epics-CS-YYYY-MM-DD.md`
 - New generated sprint status files should include stream key in filename.
   - Example: `sprint-status-mono.yaml`, `sprint-status-connectshyft.yaml`
+- Planning and sprint-status artifacts must also include explicit metadata:
+  - `project_lane: <lane-id>`
 
 ## Backward Compatibility
 - Existing files without stream key may remain.
@@ -35,3 +37,4 @@ Avoid ambiguity when multiple product streams live in the same monorepo.
 
 ## Enforcement Rule
 - Any workflow run request missing stream prefix is considered ambiguous and must be clarified before execution.
+- Lane ownership and metadata are enforced by `scripts/enforce-project-lane.js` using `docs/policies/project_lanes.json`.

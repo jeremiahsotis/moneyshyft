@@ -84,6 +84,46 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
   - `scripts/enforce-envelope-helper-guard.sh`
   - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
 
+### Story Status Sync Guardrail (Mandatory)
+
+- Story file `Status:` and `_bmad-output/implementation-artifacts/sprint-status.yaml` `development_status` must stay synchronized.
+- A status mismatch is a blocking policy violation.
+- Enforced by:
+  - `scripts/enforce-story-status-sync.sh`
+  - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+
+### Critical Capability Real-User Validation Guardrail (Mandatory)
+
+- Stories classified as `Critical Capability: yes` cannot close as `done` without real-user validation evidence.
+- Automation-only validation is insufficient for closeout on critical capabilities.
+- Required closeout evidence:
+  - `Real-User Validation Evidence` must be concrete and non-empty.
+  - `Real-User Validation Result` must be `pass`.
+- Enforced by:
+  - `scripts/enforce-operability-closeout-guard.sh`
+  - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+
+### Access-Control UI Closeout Guardrail (Mandatory)
+
+- No access-control story can close as `done` without a verified role-admin UI path.
+- Stories classified as `Access-Control Story: yes` must include:
+  - `Role-Admin UI Path` (specific path)
+  - `Role-Admin UI Path Verified: yes`
+- Stories that appear access-control related but are not classified as such must include explicit exemption rationale.
+- Enforced by:
+  - `scripts/enforce-operability-closeout-guard.sh`
+  - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+
+### Planning Operability Coupling Guardrail (Mandatory)
+
+- If a backend/API contract implies human operability, planning artifacts must include frontend/operator usability criteria.
+- Story closeout must confirm this coupling via guardrail fields:
+  - `Backend/API Implies Human Operability`
+  - `Frontend/Operator Usability Criteria Included`
+- Enforced by:
+  - planning and implementation workflow checklists
+  - `scripts/enforce-operability-closeout-guard.sh` for done-story closeout
+
 ## 5) Story Creation Inside Epics (`create-story`)
 
 - `create-story` uses sprint tracking as primary source (`sprint-status.yaml`) to choose/create the next story.
@@ -94,7 +134,25 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - It sets new story status to `ready-for-dev`.
 - It updates sprint status entry for that story to `ready-for-dev`.
 
-## 6) BMAD Safety / Artifact Boundaries
+## 6) Project Lane Policy (Mandatory)
+
+- `project_lane` is required for planning and status artifacts.
+- Canonical lane configuration source:
+  - `docs/policies/project_lanes.json`
+- Current lane mapping:
+  - `connectshyft` lane:
+    - planning artifacts include `ConnectShyft` in filename
+    - sprint status file: `_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+  - `routeshyft` lane:
+    - planning artifacts omit `ConnectShyft` token
+    - sprint status file: `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- Shared implementation story files under `_bmad-output/implementation-artifacts/[epic-story].md` are cross-lane foundation artifacts and are allowed in both product repos.
+- Future modules must register a new lane in `docs/policies/project_lanes.json` before planning artifacts are created.
+- Lane enforcement is mandatory through:
+  - `scripts/enforce-project-lane.js`
+  - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+
+## 7) BMAD Safety / Artifact Boundaries
 
 - Discover workflows via manifests; no hard-coded workflow lists.
 - Execute via deterministic harness.

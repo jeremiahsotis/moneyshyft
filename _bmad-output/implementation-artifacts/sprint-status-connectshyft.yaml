@@ -36,6 +36,7 @@
 generated: 2026-02-19
 project: ConnectShyft
 project_key: NOKEY
+project_lane: connectshyft
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 

@@ -42,6 +42,10 @@ Initialize the PRD workflow by detecting continuation state, discovering input d
 - 🚫 FORBIDDEN to look ahead to future steps or assume knowledge from them
 - 💬 Approach: Systematic setup with clear reporting to user
 - 🚪 Detect existing workflow state and handle continuation properly
+- 🛡️ Require `project_lane` selection before new document creation (`routeshyft`, `connectshyft`, or future lane)
+- 🛡️ Ensure output filename follows lane naming:
+  - ConnectShyft lane: filename must include `ConnectShyft`
+  - RouteShyft lane: filename must not include `ConnectShyft`
 
 ## EXECUTION PROTOCOLS:
 
@@ -116,6 +120,7 @@ Try to discover the following:
 
 - Copy the template from `{prdTemplate}` to `{outputFile}`
 - Initialize frontmatter with proper structure including inputDocuments array.
+- Set frontmatter `project_lane: <selected-lane>` before continuing
 
 #### C. Present Initialization Results
 

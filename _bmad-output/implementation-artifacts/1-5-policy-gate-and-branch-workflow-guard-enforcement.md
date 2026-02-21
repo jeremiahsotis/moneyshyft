@@ -1,6 +1,6 @@
 # Story 1.5: Policy Gate and Branch Workflow Guard Enforcement
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -14,6 +14,20 @@ so that branch/workflow discipline is mandatory and auditable.
 
 1. Given a pipeline run starts, when policy checks execute, then downstream quality jobs are blocked on policy failure.
 2. Branch guard commands validate story/epic workflow branch compliance.
+
+## Operability Guardrails
+
+- Guardrail Classification Reviewed: yes
+- Critical Capability: no
+- Access-Control Story: no
+- Backend/API Implies Human Operability: no
+- Frontend/Operator Usability Criteria Included: n/a
+- Operability Pairing Notes: N/A
+- Real-User Validation Evidence: N/A
+- Real-User Validation Result: n/a
+- Role-Admin UI Path: N/A
+- Role-Admin UI Path Verified: n/a
+- Access-Control Exemption Rationale: N/A
 
 ## Tasks / Subtasks
 
@@ -134,3 +148,4 @@ GPT-5 Codex
 
 - 2026-02-20: Validated Story 1.5 enforcement implementation and test coverage; advanced status to `review`.
 - 2026-02-20: Addressed senior code-review findings (PR merge-subject bypass, CLI arg robustness, backend-contract dependency ordering, and gap coverage) and reconciled story file list with actual git changes.
+- 2026-02-21: Confirmed completion after remediation and synchronized story/sprint tracking status to `done`.

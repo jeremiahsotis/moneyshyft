@@ -5,6 +5,7 @@
 # generated: {date}
 # project: {project_name}
 # project_key: {project_key}
+# project_lane: {project_lane}
 # tracking_system: {tracking_system}
 # story_location: {story_location}
 
@@ -37,6 +38,7 @@
 generated: 05-06-2-2025 21:30
 project: My Awesome Project
 project_key: NOKEY
+project_lane: routeshyft
 tracking_system: file-system
 story_location: "{story_location}"
 

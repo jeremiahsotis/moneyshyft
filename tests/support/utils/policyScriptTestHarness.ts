@@ -20,6 +20,87 @@ type PolicyScriptHarnessResult = {
   status: number;
 };
 
+function copyFileIfPresent(sourcePath: string, targetPath: string, executable = false): void {
+  if (!existsSync(sourcePath)) {
+    return;
+  }
+  const contents = readFileSync(sourcePath, 'utf8');
+  mkdirSync(dirname(targetPath), { recursive: true });
+  writeFileSync(targetPath, contents, 'utf8');
+  if (executable) {
+    chmodSync(targetPath, 0o755);
+  }
+}
+
+function ensureProjectLaneMetadata(filePath: string, lane: string): void {
+  if (!existsSync(filePath)) {
+    return;
+  }
+
+  const laneLine = `project_lane: ${lane}`;
+  const current = readFileSync(filePath, 'utf8');
+
+  if (/^\s*project_lane\s*:/im.test(current)) {
+    const updated = current.replace(/^\s*project_lane\s*:\s*[A-Za-z0-9_-]+\s*$/im, laneLine);
+    writeFileSync(filePath, updated, 'utf8');
+    return;
+  }
+
+  if (/^\s*project_key\s*:/im.test(current)) {
+    const updated = current.replace(/^\s*project_key\s*:[^\n]*$/im, (line) => `${line}\n${laneLine}`);
+    writeFileSync(filePath, updated, 'utf8');
+    return;
+  }
+
+  writeFileSync(filePath, `${laneLine}\n${current}`, 'utf8');
+}
+
+function ensureStoryFilesForActiveStatuses(repoDir: string, sprintStatusPath: string): void {
+  if (!existsSync(sprintStatusPath)) {
+    return;
+  }
+
+  const raw = readFileSync(sprintStatusPath, 'utf8');
+  const lines = raw.split(/\r?\n/);
+  let inDevelopmentStatus = false;
+
+  for (const line of lines) {
+    if (/^development_status:\s*$/.test(line)) {
+      inDevelopmentStatus = true;
+      continue;
+    }
+
+    if (inDevelopmentStatus && /^\S/.test(line)) {
+      inDevelopmentStatus = false;
+    }
+
+    if (!inDevelopmentStatus) {
+      continue;
+    }
+
+    const match = line.match(/^\s{2}([^:]+):\s*([A-Za-z0-9_-]+)\s*$/);
+    if (!match) {
+      continue;
+    }
+
+    const storyKey = match[1].trim();
+    const status = match[2].trim().toLowerCase();
+    if (!/^[0-9]+-[0-9]+-.+/.test(storyKey)) {
+      continue;
+    }
+    if (!['ready-for-dev', 'in-progress', 'review', 'done'].includes(status)) {
+      continue;
+    }
+
+    const storyPath = join(repoDir, '_bmad-output/implementation-artifacts', `${storyKey}.md`);
+    if (existsSync(storyPath)) {
+      continue;
+    }
+    mkdirSync(dirname(storyPath), { recursive: true });
+    writeFileSync(storyPath, `# Story ${storyKey}\n\nStatus: ${status}\n`, 'utf8');
+  }
+}
+
 export function runPolicyScriptInTempRepo(
   policyScriptPath: string,
   policyFilePath: string,
@@ -31,24 +112,60 @@ export function runPolicyScriptInTempRepo(
   const branch = options.branch;
   const commitSubject = options.commitSubject ?? '0-9: policy harness seed';
   const baseBranch = options.baseRef ?? 'codex/dev';
+  const scriptsDir = dirname(scriptAbsolutePath);
+  const docsPoliciesDir = resolve(scriptsDir, '../docs/policies');
 
   try {
     mkdirSync(join(repoDir, 'docs/policies'), { recursive: true });
     writeFileSync(join(repoDir, 'docs/policies/git_policy.md'), policyContents);
     writeFileSync(join(repoDir, 'README.md'), '# policy harness\n');
-    const envelopeGuardSource = join(dirname(scriptAbsolutePath), 'enforce-envelope-helper-guard.sh');
-    if (existsSync(envelopeGuardSource)) {
-      const envelopeGuardContents = readFileSync(envelopeGuardSource, 'utf8');
-      const envelopeGuardTarget = join(repoDir, 'scripts/enforce-envelope-helper-guard.sh');
-      mkdirSync(dirname(envelopeGuardTarget), { recursive: true });
-      writeFileSync(envelopeGuardTarget, envelopeGuardContents, 'utf8');
-      chmodSync(envelopeGuardTarget, 0o755);
-    }
+
+    copyFileIfPresent(
+      join(scriptsDir, 'enforce-envelope-helper-guard.sh'),
+      join(repoDir, 'scripts/enforce-envelope-helper-guard.sh'),
+      true,
+    );
+    copyFileIfPresent(
+      join(scriptsDir, 'enforce-story-status-sync.sh'),
+      join(repoDir, 'scripts/enforce-story-status-sync.sh'),
+      true,
+    );
+    copyFileIfPresent(
+      join(scriptsDir, 'enforce-operability-closeout-guard.sh'),
+      join(repoDir, 'scripts/enforce-operability-closeout-guard.sh'),
+      true,
+    );
+    copyFileIfPresent(
+      join(scriptsDir, 'enforce-project-lane.js'),
+      join(repoDir, 'scripts/enforce-project-lane.js'),
+    );
+    copyFileIfPresent(
+      join(docsPoliciesDir, 'project_lanes.json'),
+      join(repoDir, 'docs/policies/project_lanes.json'),
+    );
+
     for (const [relativePath, contents] of Object.entries(options.seedFiles ?? {})) {
       const absolutePath = join(repoDir, relativePath);
       mkdirSync(dirname(absolutePath), { recursive: true });
       writeFileSync(absolutePath, contents);
     }
+
+    const routeSprintStatusPath = join(repoDir, '_bmad-output/implementation-artifacts/sprint-status.yaml');
+    const connectSprintStatusPath = join(repoDir, '_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml');
+
+    if (!existsSync(routeSprintStatusPath)) {
+      mkdirSync(dirname(routeSprintStatusPath), { recursive: true });
+      writeFileSync(routeSprintStatusPath, 'development_status:\n', 'utf8');
+    }
+    if (!existsSync(connectSprintStatusPath)) {
+      mkdirSync(dirname(connectSprintStatusPath), { recursive: true });
+      writeFileSync(connectSprintStatusPath, 'development_status:\n', 'utf8');
+    }
+
+    ensureProjectLaneMetadata(routeSprintStatusPath, 'routeshyft');
+    ensureProjectLaneMetadata(connectSprintStatusPath, 'connectshyft');
+    ensureStoryFilesForActiveStatuses(repoDir, routeSprintStatusPath);
+    ensureStoryFilesForActiveStatuses(repoDir, connectSprintStatusPath);
 
     execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
     execFileSync('git', ['config', 'user.email', 'policy-harness@example.com'], { cwd: repoDir, stdio: 'ignore' });

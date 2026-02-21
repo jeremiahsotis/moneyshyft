@@ -325,6 +325,10 @@
     <action>Run the full regression suite (do not skip)</action>
     <action>Confirm File List includes every changed file</action>
     <action>Execute enhanced definition-of-done validation</action>
+    <action>Review Operability Guardrails section and set "Guardrail Classification Reviewed: yes"</action>
+    <action>If Critical Capability = yes, execute and document a real-user journey with evidence and set "Real-User Validation Result: pass"</action>
+    <action>If Backend/API Implies Human Operability = yes, confirm "Frontend/Operator Usability Criteria Included: yes" and include concrete operator usability notes</action>
+    <action>If Access-Control Story = yes, document "Role-Admin UI Path" and set "Role-Admin UI Path Verified: yes"</action>
     <action>Update the story Status to: "review"</action>
 
     <!-- Enhanced Definition of Done Validation -->
@@ -340,6 +344,10 @@
       - Dev Agent Record contains implementation notes
       - Change Log includes summary of changes
       - Only permitted story sections were modified
+      - Guardrail Classification Reviewed is yes
+      - Critical Capability stories include passing real-user validation evidence
+      - Access-Control stories include verified role-admin UI path evidence
+      - Backend/API human-operability stories include explicit frontend/operator usability criteria
     </action>
 
     <!-- Mark story ready for review - sprint status conditional -->

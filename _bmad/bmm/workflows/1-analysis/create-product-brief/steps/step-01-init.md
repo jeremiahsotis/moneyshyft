@@ -40,6 +40,7 @@ Initialize the product brief workflow by detecting continuation state and settin
 - 🚫 FORBIDDEN to look ahead to future steps or assume knowledge from them
 - 💬 Approach: Systematic setup with clear reporting to user
 - 📋 Detect existing workflow state and handle continuation properly
+- 🛡️ Require explicit `project_lane` selection (`routeshyft`, `connectshyft`, or future lane) before creating a new document
 
 ## EXECUTION PROTOCOLS:
 
@@ -113,6 +114,7 @@ Try to discover the following:
 **Document Setup:**
 
 - Copy the template from `{productBriefTemplate}` to `{outputFile}`, and update the frontmatter fields
+- Set `project_lane: <selected-lane>` in frontmatter before moving to the next step
 
 #### C. Present Initialization Results
 

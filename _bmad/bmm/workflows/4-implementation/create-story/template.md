@@ -14,6 +14,20 @@ so that {{benefit}}.
 
 1. [Add acceptance criteria from epics/PRD]
 
+## Operability Guardrails
+
+- Guardrail Classification Reviewed: no
+- Critical Capability: no
+- Access-Control Story: no
+- Backend/API Implies Human Operability: no
+- Frontend/Operator Usability Criteria Included: no
+- Operability Pairing Notes: N/A
+- Real-User Validation Evidence: N/A
+- Real-User Validation Result: n/a
+- Role-Admin UI Path: N/A
+- Role-Admin UI Path Verified: n/a
+- Access-Control Exemption Rationale: N/A
+
 ## Tasks / Subtasks
 
 - [ ] Task 1 (AC: #)
