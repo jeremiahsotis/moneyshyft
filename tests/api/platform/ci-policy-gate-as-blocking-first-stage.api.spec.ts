@@ -300,7 +300,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     // Then CI policy should block workflow progression with explicit corrected-kernel context
     const hasGateFailureMessage = /corrected kernel gate unmet \(Story 0-10 is not done\)/.test(output);
     const hasPolicyReference = /Policy reference:\s*docs\/policies\/git_policy\.md/.test(output);
-    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-tenant-context-resolution-and-isolation-guardrails\.md/.test(
+    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-routeshyft-tenant-context-resolution-and-isolation-guardrails\.md/.test(
       output,
     );
     expect(status !== 0 && hasGateFailureMessage && hasPolicyReference && hasRemediationHint).toBe(true);
@@ -326,7 +326,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
       output,
     );
     const hasPolicyReference = /Policy reference:\s*docs\/policies\/git_policy\.md/.test(output);
-    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-tenant-context-resolution-and-isolation-guardrails\.md/.test(
+    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-routeshyft-tenant-context-resolution-and-isolation-guardrails\.md/.test(
       output,
     );
     expect(status !== 0 && hasCourseCorrectionFailure && hasPolicyReference && hasRemediationHint).toBe(true);
