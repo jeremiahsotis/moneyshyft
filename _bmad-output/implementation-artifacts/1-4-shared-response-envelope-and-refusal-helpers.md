@@ -1,6 +1,6 @@
 # Story 1.4: Shared Response Envelope and Refusal Helpers
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -16,6 +16,20 @@ so that clients can handle business refusals deterministically.
 2. All Phase 0 platform/kernel endpoints touched in this story emit responses via shared envelope helpers, with business refusals returning `HTTP 200` and `ok=false`.
 3. A documented contract exists that all new or modified module endpoints must use shared envelope helpers, enforced by a CI policy guard.
 4. A follow-on backlog item exists to migrate legacy module endpoints incrementally; this migration is not required for Story 1.4 completion.
+
+## Operability Guardrails
+
+- Guardrail Classification Reviewed: yes
+- Critical Capability: no
+- Access-Control Story: no
+- Backend/API Implies Human Operability: no
+- Frontend/Operator Usability Criteria Included: n/a
+- Operability Pairing Notes: N/A
+- Real-User Validation Evidence: N/A
+- Real-User Validation Result: n/a
+- Role-Admin UI Path: N/A
+- Role-Admin UI Path Verified: n/a
+- Access-Control Exemption Rationale: N/A
 
 ## Tasks / Subtasks
 
@@ -155,3 +169,4 @@ GPT-5 Codex
 
 - 2026-02-20: Implemented story 1.4 shared response envelope response-matrix routes and validated refusal/system-error contract behavior with story API + e2e coverage and backend regression tests.
 - 2026-02-20: Narrowed Story 1.4 AC scope to Phase 0 platform/kernel endpoints, added envelope guardrail to blocking policy checks, hardened response-matrix determinism, and reconciled story file records with changed files.
+- 2026-02-21: Confirmed completion after remediation and synchronized story/sprint tracking status to `done`.

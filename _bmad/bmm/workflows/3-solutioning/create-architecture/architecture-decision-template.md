@@ -2,6 +2,7 @@
 stepsCompleted: []
 inputDocuments: []
 workflowType: 'architecture'
+project_lane: '{{project_lane}}'
 project_name: '{{project_name}}'
 user_name: '{{user_name}}'
 date: '{{date}}'

@@ -42,6 +42,7 @@ validation-rules:
 - [ ] **Unit Tests:** Unit tests added/updated for ALL core functionality introduced/changed by this story
 - [ ] **Integration Tests:** Integration tests added/updated for component interactions when story requirements demand them
 - [ ] **End-to-End Tests:** End-to-end tests created for critical user flows when story requirements specify them
+- [ ] **Real-User Validation:** If `Critical Capability: yes`, a real-user journey was executed and recorded in `Real-User Validation Evidence` with `Real-User Validation Result: pass`
 - [ ] **Test Coverage:** Tests cover acceptance criteria and edge cases from story Dev Notes
 - [ ] **Regression Prevention:** ALL existing tests pass (no regressions introduced)
 - [ ] **Code Quality:** Linting and static checks pass when configured in project
@@ -59,6 +60,9 @@ validation-rules:
 
 - [ ] **Story Status Updated:** Story Status set to "review"
 - [ ] **Sprint Status Updated:** Sprint status updated to "review" (when sprint tracking is used)
+- [ ] **Guardrail Classification Reviewed:** `Guardrail Classification Reviewed: yes` is set before review handoff
+- [ ] **Operability Pairing:** If `Backend/API Implies Human Operability: yes`, `Frontend/Operator Usability Criteria Included: yes` is true with concrete notes
+- [ ] **Access-Control Closeout Rule:** If `Access-Control Story: yes`, `Role-Admin UI Path` is documented and `Role-Admin UI Path Verified: yes`
 - [ ] **Quality Gates Passed:** All quality checks and validations completed successfully
 - [ ] **No HALT Conditions:** No blocking issues or incomplete work remaining
 - [ ] **User Communication Ready:** Implementation summary prepared for user review

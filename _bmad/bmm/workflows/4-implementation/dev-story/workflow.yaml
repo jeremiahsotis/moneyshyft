@@ -19,5 +19,5 @@ validation: "{installed_path}/checklist.md"
 
 story_file: "" # Explicit story path; auto-discovered if empty
 implementation_artifacts: "{config_source}:implementation_artifacts"
-sprint_status: "{implementation_artifacts}/sprint-status.yaml"
+sprint_status: "{config_source}:sprint_status_file"
 project_context: "**/project-context.md"

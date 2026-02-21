@@ -1,6 +1,7 @@
 ---
 stepsCompleted: []
 inputDocuments: []
+project_lane: '{{project_lane}}'
 ---
 
 # {{project_name}} - Epic Breakdown

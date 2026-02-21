@@ -1,6 +1,7 @@
 ---
 stepsCompleted: []
 inputDocuments: []
+project_lane: '{{project_lane}}'
 date: { system-date }
 author: { user }
 ---

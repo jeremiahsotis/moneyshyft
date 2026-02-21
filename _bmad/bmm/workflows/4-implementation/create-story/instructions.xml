@@ -191,6 +191,14 @@
     <action>Extract our story ({{epic_num}}-{{story_num}}) details:</action> **STORY FOUNDATION:** - User story statement
     (As a, I want, so that) - Detailed acceptance criteria (already BDD formatted) - Technical requirements specific to this story -
     Business context and value - Success criteria <!-- Previous story analysis for context continuity -->
+    <action>Classify guardrails for this story and record explicit values:
+      - Guardrail Classification Reviewed: yes
+      - Critical Capability: yes/no (security, auth, RBAC, money movement, compliance, or workflow-critical operations)
+      - Access-Control Story: yes/no
+      - Backend/API Implies Human Operability: yes/no
+    </action>
+    <action>If Backend/API Implies Human Operability = yes, ensure acceptance criteria include explicit frontend/operator usability outcomes (not backend-only outcomes).</action>
+    <action>If Access-Control Story = yes, ensure acceptance criteria include a verifiable role-admin UI path for creating/assigning/administering roles.</action>
     <check if="story_num > 1">
       <action>Load previous story file: {{story_dir}}/{{epic_num}}-{{previous_story_num}}-*.md</action> **PREVIOUS STORY INTELLIGENCE:** -
     Dev notes and learnings from previous story - Review feedback and corrections needed - Files that were created/modified and their
@@ -302,6 +310,11 @@
     <!-- Final status update -->
     <template-output file="{default_output_file}">
     story_completion_status</template-output>
+
+    <action>Populate the "Operability Guardrails" section with explicit yes/no values derived from analysis (never leave defaults when story file is finalized).</action>
+    <action>If Critical Capability = yes, pre-populate concrete real-user validation scenario requirements in Dev Notes so dev-story and code-review can enforce evidence.</action>
+    <action>If Access-Control Story = yes, pre-populate required Role-Admin UI Path details in Operability Guardrails and acceptance criteria.</action>
+    <action>If Backend/API Implies Human Operability = yes, set "Frontend/Operator Usability Criteria Included" to yes and add explicit usability notes.</action>
 
     <!-- CRITICAL: Set status to ready-for-dev -->
     <action>Set story Status to: "ready-for-dev"</action>

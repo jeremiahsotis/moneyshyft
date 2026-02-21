@@ -50,6 +50,10 @@ To validate that all required input documents exist and extract all requirements
 - 🚫 FORBIDDEN to start creating epics or stories in this step
 - 💬 Extract requirements from ALL available documents
 - 🚪 POPULATE the template sections exactly as needed
+- 🛡️ Require `project_lane` before output generation (`routeshyft`, `connectshyft`, or future lane)
+- 🛡️ Enforce lane naming rule:
+  - ConnectShyft lane artifacts include `ConnectShyft` in filename
+  - RouteShyft lane artifacts omit `ConnectShyft` token
 
 ## EXECUTION PROTOCOLS:
 
@@ -92,6 +96,7 @@ Search for required documents using these patterns (sharded means a large docume
 2. `{planning_artifacts}/*ux*/index.md` (sharded version)
 
 Before proceeding, Ask the user if there are any other documents to include for analysis, and if anything found should be excluded. Wait for user confirmation. Once confirmed, create the {outputFile} from the {epicsTemplate} and in the front matter list the files in the array of `inputDocuments: []`.
+Also set `project_lane: <selected-lane>` in frontmatter before continuing.
 
 ### 3. Extract Functional Requirements (FRs)
 

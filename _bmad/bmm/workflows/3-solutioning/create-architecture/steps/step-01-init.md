@@ -11,6 +11,7 @@
 - 🚪 DETECT existing workflow state and handle continuation properly
 - ⚠️ ABSOLUTELY NO TIME ESTIMATES - AI development speed has fundamentally changed
 - ✅ YOU MUST ALWAYS SPEAK OUTPUT In your Agent communication style with the config `{communication_language}`
+- 🛡️ REQUIRE explicit `project_lane` before creating a new architecture artifact (`routeshyft`, `connectshyft`, or future lane)
 
 ## EXECUTION PROTOCOLS:
 
@@ -96,6 +97,7 @@ Before proceeding, verify we have the essential inputs:
 #### C. Create Initial Document
 
 Copy the template from `{installed_path}/architecture-decision-template.md` to `{planning_artifacts}/architecture.md`
+Set frontmatter `project_lane: <selected-lane>` before proceeding.
 
 #### D. Complete Initialization and Report
 

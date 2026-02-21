@@ -96,6 +96,7 @@ development_status:
 # generated: {date}
 # project: {project_name}
 # project_key: {project_key}
+# project_lane: {project_lane}
 # tracking_system: {tracking_system}
 # story_location: {story_location}
 
@@ -131,6 +132,7 @@ development_status:
 generated: { date }
 project: { project_name }
 project_key: { project_key }
+project_lane: { project_lane }
 tracking_system: { tracking_system }
 story_location: { story_location }
 
@@ -152,6 +154,9 @@ development_status:
 - [ ] No items in {status_file} that don't exist in epic files
 - [ ] All status values are legal (match state machine definitions)
 - [ ] File is valid YAML syntax
+- [ ] `project_lane` is present and valid for this status file
+- [ ] Planning guardrail: stories with backend/API contracts that imply human operation include frontend/operator usability criteria in planning artifacts
+- [ ] Access-control guardrail: stories that define RBAC/admin capabilities include a planned role-admin UI path
 
 <action>Count totals:</action>
 
