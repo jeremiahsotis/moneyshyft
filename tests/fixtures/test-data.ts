@@ -101,3 +101,28 @@ export const connectShyftEscalationConfigData = {
     connectshyft_webhooks_enabled: true,
   },
 };
+
+export const connectShyftCapabilityEnvelopeData = {
+  tenantAlphaId: 'tenant-connectshyft-alpha',
+  tenantBravoId: 'tenant-connectshyft-bravo',
+  orgUnitAlphaEastId: 'org-connectshyft-alpha-east',
+  orgUnitAlphaWestId: 'org-connectshyft-alpha-west',
+  orgUnitBravoNorthId: 'org-connectshyft-bravo-north',
+  orgUnitAdminUserId: 'user-connectshyft-a5-orgunit-admin',
+  orgUnitMemberUserId: 'user-connectshyft-a5-orgunit-member',
+  tenantStaffUserId: 'user-connectshyft-a5-tenant-staff',
+  tenantViewerUserId: 'user-connectshyft-a5-tenant-viewer',
+  tenantAdminUserId: 'user-connectshyft-a5-tenant-admin',
+  unauthorizedUserId: 'user-connectshyft-a5-unauthorized',
+  existingMappingId: 'mapping-a5-existing-1001',
+  validPrimaryNumber: '+12605550201',
+  validUpdatedNumber: '+12605550202',
+  validEscalationBaselineHours: 8,
+  fallbackEscalationBaselineHours: 24,
+  flagsAllEnabled: {
+    connectshyft_enabled: true,
+    connectshyft_inbox_enabled: true,
+    connectshyft_escalation_enabled: true,
+    connectshyft_webhooks_enabled: true,
+  },
+};
