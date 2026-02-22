@@ -1,5 +1,8 @@
 import { Request } from 'express';
-import { resolveConnectShyftOrgUnitContext } from '../contextAccess';
+import {
+  resolveConnectShyftOrgUnitContext,
+  type ConnectShyftContextDecision,
+} from '../contextAccess';
 
 type RequestBuilderOptions = {
   tenantId?: string;
@@ -47,15 +50,23 @@ const createRequest = (options: RequestBuilderOptions = {}): Request => {
   } as unknown as Request;
 };
 
+const decisionMatches = (
+  decision: ConnectShyftContextDecision,
+  expected: Partial<ConnectShyftContextDecision>,
+): void => {
+  expect(decision).toMatchObject(expected);
+};
+
 describe('connectshyft context enforcement', () => {
   beforeEach(() => {
     delete process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
   });
 
-  it('requires orgUnit context on orgUnit-scoped routes', () => {
-    const decision = resolveConnectShyftOrgUnitContext(createRequest({ orgUnitId: null }));
+  it('requires orgUnit context on orgUnit-scoped routes', async () => {
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
+    const decision = await resolveConnectShyftOrgUnitContext(createRequest({ orgUnitId: null }));
 
-    expect(decision).toMatchObject({
+    decisionMatches(decision, {
       ok: false,
       code: 'CONNECTSHYFT_ORGUNIT_CONTEXT_REQUIRED',
       refusalType: 'business',
@@ -63,10 +74,11 @@ describe('connectshyft context enforcement', () => {
     });
   });
 
-  it('rejects invalid orgUnit context identifiers', () => {
-    const decision = resolveConnectShyftOrgUnitContext(createRequest({ orgUnitId: 'invalid-orgunit-context' }));
+  it('rejects invalid orgUnit context identifiers', async () => {
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
+    const decision = await resolveConnectShyftOrgUnitContext(createRequest({ orgUnitId: 'invalid-orgunit-context' }));
 
-    expect(decision).toMatchObject({
+    decisionMatches(decision, {
       ok: false,
       code: 'CONNECTSHYFT_ORGUNIT_CONTEXT_INVALID',
       refusalType: 'business',
@@ -74,12 +86,13 @@ describe('connectshyft context enforcement', () => {
     });
   });
 
-  it('rejects canonical orgUnit contexts that cross tenant boundaries', () => {
-    const decision = resolveConnectShyftOrgUnitContext(
+  it('rejects canonical orgUnit contexts that cross tenant boundaries', async () => {
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
+    const decision = await resolveConnectShyftOrgUnitContext(
       createRequest({ orgUnitId: 'org-connectshyft-bravo-north' }),
     );
 
-    expect(decision).toMatchObject({
+    decisionMatches(decision, {
       ok: false,
       code: 'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH',
       refusalType: 'business',
@@ -87,8 +100,9 @@ describe('connectshyft context enforcement', () => {
     });
   });
 
-  it('blocks spoofed active-org-unit headers with security refusal', () => {
-    const decision = resolveConnectShyftOrgUnitContext(
+  it('blocks spoofed active-org-unit headers with security refusal', async () => {
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
+    const decision = await resolveConnectShyftOrgUnitContext(
       createRequest({
         headers: {
           'x-active-org-unit-id': 'org-connectshyft-bravo-north',
@@ -96,7 +110,7 @@ describe('connectshyft context enforcement', () => {
       }),
     );
 
-    expect(decision).toMatchObject({
+    decisionMatches(decision, {
       ok: false,
       code: 'CONNECTSHYFT_ORGUNIT_SCOPE_VIOLATION',
       refusalType: 'security',
@@ -104,9 +118,9 @@ describe('connectshyft context enforcement', () => {
     });
   });
 
-  it('requires membership for non-privileged callers when explicit test memberships are empty', () => {
+  it('requires membership for non-privileged callers when explicit test memberships are empty', async () => {
     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
-    const decision = resolveConnectShyftOrgUnitContext(
+    const decision = await resolveConnectShyftOrgUnitContext(
       createRequest({
         role: 'ORGUNIT_MEMBER',
         userId: 'user-connectshyft-a2-non-member',
@@ -116,7 +130,7 @@ describe('connectshyft context enforcement', () => {
       }),
     );
 
-    expect(decision).toMatchObject({
+    decisionMatches(decision, {
       ok: false,
       code: 'CONNECTSHYFT_ORGUNIT_MEMBERSHIP_REQUIRED',
       refusalType: 'business',
@@ -124,9 +138,9 @@ describe('connectshyft context enforcement', () => {
     });
   });
 
-  it('accepts explicit orgUnit memberships for non-privileged callers in test mode', () => {
+  it('accepts explicit orgUnit memberships for non-privileged callers in test mode', async () => {
     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
-    const decision = resolveConnectShyftOrgUnitContext(
+    const decision = await resolveConnectShyftOrgUnitContext(
       createRequest({
         role: 'ORGUNIT_MEMBER',
         headers: {
@@ -147,8 +161,9 @@ describe('connectshyft context enforcement', () => {
     });
   });
 
-  it('bypasses orgUnit membership for tenant-privileged callers', () => {
-    const decision = resolveConnectShyftOrgUnitContext(
+  it('bypasses orgUnit membership for tenant-privileged callers in test mode', async () => {
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
+    const decision = await resolveConnectShyftOrgUnitContext(
       createRequest({
         role: 'TENANT_ADMIN',
         orgUnitId: 'org-connectshyft-alpha-west',
@@ -162,6 +177,70 @@ describe('connectshyft context enforcement', () => {
         tenantId: 'tenant-connectshyft-alpha',
         orgUnitId: 'org-connectshyft-alpha-west',
         bypassedOrgUnitMembership: true,
+      },
+    });
+  });
+
+  it('requires authoritative access resolver for UUID-based context validation', async () => {
+    const decision = await resolveConnectShyftOrgUnitContext(
+      createRequest({
+        tenantId: '11111111-1111-4111-8111-111111111111',
+        orgUnitId: '22222222-2222-4222-8222-222222222222',
+      }),
+    );
+
+    decisionMatches(decision, {
+      ok: false,
+      code: 'CONNECTSHYFT_ORGUNIT_ACCESS_VALIDATION_UNAVAILABLE',
+      refusalType: 'security',
+      httpStatus: 500,
+    });
+  });
+
+  it('maps authoritative ORG_UNIT_TENANT_MISMATCH to connectshyft mismatch refusal', async () => {
+    const decision = await resolveConnectShyftOrgUnitContext(
+      createRequest({
+        tenantId: '11111111-1111-4111-8111-111111111111',
+        orgUnitId: '22222222-2222-4222-8222-222222222222',
+      }),
+      {
+        resolveOrgUnitAccess: async () => ({
+          ok: false,
+          reason: 'ORG_UNIT_TENANT_MISMATCH',
+        }),
+      },
+    );
+
+    decisionMatches(decision, {
+      ok: false,
+      code: 'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+  });
+
+  it('uses authoritative membership decision for UUID-based context checks', async () => {
+    const decision = await resolveConnectShyftOrgUnitContext(
+      createRequest({
+        role: 'ORGUNIT_MEMBER',
+        tenantId: '11111111-1111-4111-8111-111111111111',
+        orgUnitId: '22222222-2222-4222-8222-222222222222',
+      }),
+      {
+        resolveOrgUnitAccess: async () => ({
+          ok: true,
+          bypassedOrgUnitMembership: false,
+          effectiveRoles: ['ORGUNIT_MEMBER'],
+        }),
+      },
+    );
+
+    expect(decision).toEqual({
+      ok: true,
+      context: {
+        tenantId: '11111111-1111-4111-8111-111111111111',
+        orgUnitId: '22222222-2222-4222-8222-222222222222',
+        bypassedOrgUnitMembership: false,
       },
     });
   });

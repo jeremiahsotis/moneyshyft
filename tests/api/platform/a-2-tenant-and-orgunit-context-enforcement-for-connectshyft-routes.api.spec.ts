@@ -201,5 +201,79 @@ test.describe(
         expect(body).not.toHaveProperty('data.threadId');
       },
     );
+
+    test(
+      '[P1] enforces membership guardrails on claim route for non-privileged callers @P1',
+      async ({ request, storyA2Context, storyA2NonMemberHeaders }) => {
+        const response = await apiRequest(request, {
+          method: 'POST',
+          path: storyA2Context.paths.threadClaim,
+          headers: storyA2NonMemberHeaders,
+          data: {
+            reason: 'non-member-claim-attempt',
+          },
+        });
+
+        expect(response.status()).toBe(200);
+        const body = await response.json();
+        expect(body).toMatchObject({
+          ok: false,
+          code: 'CONNECTSHYFT_ORGUNIT_MEMBERSHIP_REQUIRED',
+          refusalType: 'business',
+        });
+        expect(body).not.toHaveProperty('data.threadId');
+      },
+    );
+
+    test(
+      '[P1] enforces orgUnit context requirements on takeover route and keeps no-leak refusal envelope @P1',
+      async ({ request, storyA2Context, storyA2MissingOrgUnitHeaders }) => {
+        const response = await apiRequest(request, {
+          method: 'POST',
+          path: storyA2Context.paths.threadTakeover,
+          headers: storyA2MissingOrgUnitHeaders,
+          data: {
+            reason: 'missing-orgunit-takeover-attempt',
+          },
+        });
+
+        expect(response.status()).toBe(200);
+        const body = await response.json();
+        expect(body).toMatchObject({
+          ok: false,
+          code: 'CONNECTSHYFT_ORGUNIT_CONTEXT_REQUIRED',
+          refusalType: 'business',
+        });
+        expect(body).not.toHaveProperty('data.threadId');
+      },
+    );
+
+    test(
+      '[P1] permits tenant-privileged callers through takeover route while preserving canonical bypass metadata @P1',
+      async ({ request, storyA2Context, storyA2TenantAdminHeaders }) => {
+        const response = await apiRequest(request, {
+          method: 'POST',
+          path: storyA2Context.paths.threadTakeover,
+          headers: storyA2TenantAdminHeaders,
+          data: {
+            reason: 'tenant-admin-takeover',
+          },
+        });
+
+        expect(response.status()).toBe(200);
+        const body = await response.json();
+        expect(body).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_THREAD_TAKEOVER_READY',
+          data: {
+            context: {
+              tenantId: storyA2Context.tenantId,
+              orgUnitId: connectShyftContextEnforcementData.orgUnitAlphaWestId,
+              bypassedOrgUnitMembership: true,
+            },
+          },
+        });
+      },
+    );
   },
 );

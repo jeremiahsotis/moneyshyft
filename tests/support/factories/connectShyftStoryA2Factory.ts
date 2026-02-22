@@ -44,6 +44,8 @@ export type StoryA2Context = {
   paths: {
     inbox: string;
     threadEnsure: string;
+    threadClaim: string;
+    threadTakeover: string;
     inboxUi: string;
   };
 };
@@ -73,6 +75,8 @@ export function createStoryA2Context(
     paths: {
       inbox: '/api/v1/connectshyft/inbox',
       threadEnsure: '/api/v1/connectshyft/threads',
+      threadClaim: '/api/v1/connectshyft/threads/thread-a2-1001/claim',
+      threadTakeover: '/api/v1/connectshyft/threads/thread-a2-1001/takeover',
       inboxUi: '/app/connectshyft/inbox',
     },
   };

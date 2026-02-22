@@ -1,6 +1,6 @@
 # Story a.2: Tenant and OrgUnit Context Enforcement for ConnectShyft Routes
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -92,6 +92,10 @@ GPT-5 Codex
 - `npm test --prefix src`
 - `npm run test:e2e`
 - `npm run policy:check` (fails due pre-existing HEAD commit subject mismatch with story-id policy format)
+- `npm test --prefix src -- src/src/modules/connectshyft/__tests__/contextAccess.test.ts --runInBand`
+- `npm run test:e2e -- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts`
+- `npm run test:e2e -- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts`
+- `npm run build --prefix src`
 
 ### Completion Notes List
 
@@ -101,6 +105,8 @@ GPT-5 Codex
 - Enabled and passed story a.2 API coverage in `tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts`.
 - Preserved story a.1 behavior by validating against `tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts` after guardrail changes.
 - Executed full Playwright regression suite: 194 passed / 79 skipped.
+- Replaced token-only orgUnit membership fallback with authoritative orgUnit access resolution for UUID-based tenant/orgUnit contexts, while preserving deterministic test harness overrides.
+- Extended story a.2 API coverage to include orgUnit enforcement behavior on `/threads/:threadId/claim` and `/threads/:threadId/takeover`.
 
 ### File List
 
@@ -109,9 +115,34 @@ GPT-5 Codex
 - src/src/routes/api/v1/connectshyft.ts
 - tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts
 - tests/support/factories/connectShyftStoryA2Factory.ts
-- tests/support/fixtures/connectShyftStoryA2.fixture.ts
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 - _bmad-output/implementation-artifacts/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.md
 
 ### Change Log
 
 - 2026-02-22: Implemented ConnectShyft tenant/orgUnit context enforcement and enabled API + service-level coverage for story a.2 acceptance criteria.
+- 2026-02-22: Resolved code-review findings by enforcing authoritative membership/orgUnit validation, adding claim/takeover AC coverage, and reconciling story file list with git changes.
+
+## Senior Developer Review (AI)
+
+### Reviewer
+
+GPT-5 Codex
+
+### Findings Resolved
+
+- Replaced token/header-only membership fallback with authoritative orgUnit access checks for UUID contexts (with explicit test-harness override path only).
+- Enforced canonical orgUnit validity and tenant alignment through authoritative access decisions.
+- Added missing API enforcement tests for claim and takeover orgUnit-scoped routes.
+- Reconciled story File List with active git changes.
+
+### Validation Evidence
+
+- `npm test --prefix src -- src/src/modules/connectshyft/__tests__/contextAccess.test.ts --runInBand` (pass)
+- `npm run test:e2e -- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts` (pass)
+- `npm run test:e2e -- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts` (pass)
+- `npm run build --prefix src` (pass)
+
+### Outcome
+
+Approved. Story is ready for completion.

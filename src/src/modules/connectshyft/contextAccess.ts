@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import type { OrgUnitAccessDecision } from '../../platform/tenancy/orgUnitAccess';
 import { CAPABILITIES, hasCapability } from '../../platform/rbac/capabilities';
 import { requireTenantId, TenantScopeError } from '../../platform/tenancy/tenantScope';
 
@@ -27,6 +28,12 @@ export type ConnectShyftContextDecision = SuccessDecision | RefusalDecision;
 
 type ResolveConnectShyftContextOptions = {
   attemptedOrgUnitId?: string | null;
+  resolveOrgUnitAccess?: (input: {
+    tenantId: string;
+    orgUnitId: string;
+    userId: string;
+    baseRoles?: Array<string | null | undefined>;
+  }) => Promise<OrgUnitAccessDecision>;
 };
 
 const TENANT_PREFIX = 'tenant-connectshyft-';
@@ -85,16 +92,27 @@ const isConnectShyftOrgUnitId = (orgUnitId: string): boolean => {
   }
 
   const suffix = orgUnitId.slice(ORG_UNIT_PREFIX.length);
-  if (!SLUG_PATTERN.test(suffix)) {
-    return false;
-  }
-
-  const segments = suffix.split('-');
-  return segments.length >= 1;
+  return suffix.length > 0 && SLUG_PATTERN.test(suffix);
 };
 
+const isUuid = (value: string): boolean => UUID_PATTERN.test(value);
+
 const isValidOrgUnitContext = (orgUnitId: string): boolean => {
-  return UUID_PATTERN.test(orgUnitId) || isConnectShyftOrgUnitId(orgUnitId);
+  if (isUuid(orgUnitId)) {
+    return true;
+  }
+
+  // Legacy synthetic IDs are supported only when ConnectShyft test harness flags are enabled.
+  return isTestMembershipHeaderEnabled() && isConnectShyftOrgUnitId(orgUnitId);
+};
+
+const isValidTenantContext = (tenantId: string): boolean => {
+  if (isUuid(tenantId)) {
+    return true;
+  }
+
+  // Legacy synthetic IDs are supported only when ConnectShyft test harness flags are enabled.
+  return isTestMembershipHeaderEnabled() && isConnectShyftTenantId(tenantId);
 };
 
 const resolveConnectShyftTenantSegment = (tenantId: string): string | null => {
@@ -166,23 +184,75 @@ const isTenantPrivilegedRole = (role: string | null | undefined): boolean => {
   return hasCapability([role || null], CAPABILITIES.TENANT_READ_ALL);
 };
 
-const hasOrgUnitMembership = (
-  req: Pick<Request, 'header' | 'user'>,
-  orgUnitId: string,
-): boolean => {
-  const headerMemberships = resolveHeaderMemberships(req);
-  if (headerMemberships) {
-    return headerMemberships.has(orgUnitId);
+const mapOrgUnitAccessFailure = (
+  reason: Exclude<OrgUnitAccessDecision, { ok: true }>['reason'],
+): RefusalDecision => {
+  if (reason === 'ORG_UNIT_TENANT_MISMATCH') {
+    return refusal(
+      'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH',
+      'orgUnit context does not belong to the active tenant',
+    );
   }
 
-  const activeOrgUnitId = normalizeContextValue(req.user?.activeOrgUnitId || null);
-  return activeOrgUnitId === orgUnitId;
+  if (reason === 'ORG_UNIT_NOT_FOUND') {
+    return refusal(
+      'CONNECTSHYFT_ORGUNIT_CONTEXT_INVALID',
+      'orgUnit context is invalid for ConnectShyft routes',
+    );
+  }
+
+  return refusal(
+    'CONNECTSHYFT_ORGUNIT_MEMBERSHIP_REQUIRED',
+    'orgUnit membership is required for this ConnectShyft route',
+  );
 };
 
-export const resolveConnectShyftOrgUnitContext = (
+const resolveMembershipFromTestHeader = (
+  req: Pick<Request, 'header' | 'user'>,
+  tenantId: string,
+  orgUnitId: string,
+): ConnectShyftContextDecision | null => {
+  const memberships = resolveHeaderMemberships(req);
+  if (!memberships) {
+    return null;
+  }
+
+  if (isTenantPrivilegedRole(req.user?.role)) {
+    return {
+      ok: true,
+      context: {
+        tenantId,
+        orgUnitId,
+        bypassedOrgUnitMembership: true,
+      },
+    };
+  }
+
+  if (!memberships.has(orgUnitId)) {
+    return refusal(
+      'CONNECTSHYFT_ORGUNIT_MEMBERSHIP_REQUIRED',
+      'orgUnit membership is required for this ConnectShyft route',
+    );
+  }
+
+  return {
+    ok: true,
+    context: {
+      tenantId,
+      orgUnitId,
+      bypassedOrgUnitMembership: false,
+    },
+  };
+};
+
+const requiresAuthoritativeOrgUnitAccessCheck = (tenantId: string, orgUnitId: string): boolean => {
+  return isUuid(tenantId) && isUuid(orgUnitId);
+};
+
+export const resolveConnectShyftOrgUnitContext = async (
   req: Pick<Request, 'tenantContext' | 'tenantId' | 'orgUnitId' | 'user' | 'header'>,
   options: ResolveConnectShyftContextOptions = {},
-): ConnectShyftContextDecision => {
+): Promise<ConnectShyftContextDecision> => {
   if (!req.user?.userId) {
     return refusal(
       'CONNECTSHYFT_AUTH_CONTEXT_REQUIRED',
@@ -203,6 +273,15 @@ export const resolveConnectShyftOrgUnitContext = (
     return refusal(
       'CONNECTSHYFT_TENANT_CONTEXT_REQUIRED',
       message,
+      'security',
+      403,
+    );
+  }
+
+  if (!isValidTenantContext(tenantId)) {
+    return refusal(
+      'CONNECTSHYFT_TENANT_CONTEXT_REQUIRED',
+      'Tenant context is invalid for ConnectShyft routes',
       'security',
       403,
     );
@@ -265,30 +344,64 @@ export const resolveConnectShyftOrgUnitContext = (
     }
   }
 
-  if (isTenantPrivilegedRole(req.user.role)) {
-    return {
-      ok: true,
-      context: {
-        tenantId,
-        orgUnitId: canonicalOrgUnitId,
-        bypassedOrgUnitMembership: true,
-      },
-    };
+  const headerDecision = resolveMembershipFromTestHeader(req, tenantId, canonicalOrgUnitId);
+  if (headerDecision) {
+    return headerDecision;
   }
 
-  if (!hasOrgUnitMembership(req, canonicalOrgUnitId)) {
+  if (!requiresAuthoritativeOrgUnitAccessCheck(tenantId, canonicalOrgUnitId)) {
+    if (isTestMembershipHeaderEnabled() && isTenantPrivilegedRole(req.user.role)) {
+      return {
+        ok: true,
+        context: {
+          tenantId,
+          orgUnitId: canonicalOrgUnitId,
+          bypassedOrgUnitMembership: true,
+        },
+      };
+    }
+
     return refusal(
       'CONNECTSHYFT_ORGUNIT_MEMBERSHIP_REQUIRED',
       'orgUnit membership is required for this ConnectShyft route',
     );
   }
 
-  return {
-    ok: true,
-    context: {
+  if (!options.resolveOrgUnitAccess) {
+    return refusal(
+      'CONNECTSHYFT_ORGUNIT_ACCESS_VALIDATION_UNAVAILABLE',
+      'Unable to validate orgUnit membership for this ConnectShyft route',
+      'security',
+      500,
+    );
+  }
+
+  try {
+    const decision = await options.resolveOrgUnitAccess({
       tenantId,
       orgUnitId: canonicalOrgUnitId,
-      bypassedOrgUnitMembership: false,
-    },
-  };
+      userId: req.user.userId,
+      baseRoles: [req.user.role || null],
+    });
+
+    if (!decision.ok) {
+      return mapOrgUnitAccessFailure(decision.reason);
+    }
+
+    return {
+      ok: true,
+      context: {
+        tenantId,
+        orgUnitId: canonicalOrgUnitId,
+        bypassedOrgUnitMembership: decision.bypassedOrgUnitMembership,
+      },
+    };
+  } catch (_error) {
+    return refusal(
+      'CONNECTSHYFT_ORGUNIT_ACCESS_VALIDATION_FAILED',
+      'Unable to validate orgUnit membership for this ConnectShyft route',
+      'security',
+      500,
+    );
+  }
 };

@@ -1,4 +1,5 @@
 import { Request, Response, Router } from 'express';
+import type { Knex } from 'knex';
 import { refusal, success } from '../../../platform/envelopes/response';
 import {
   evaluateConnectShyftCapability,
@@ -7,8 +8,17 @@ import {
   type ConnectShyftFeatureFlags,
 } from '../../../modules/connectshyft/featureFlags';
 import { resolveConnectShyftOrgUnitContext } from '../../../modules/connectshyft/contextAccess';
+import {
+  createKnexOrgUnitAccessStore,
+  validateOrgUnitScopedAccess,
+} from '../../../platform/tenancy/orgUnitAccess';
 
 const router = Router();
+
+const loadPlatformDb = (): Knex => {
+  const knexModule = require('../../../config/knex') as { default: Knex };
+  return knexModule.default;
+};
 
 const enforceCapability = (
   req: Request,
@@ -30,12 +40,25 @@ const enforceCapability = (
   return null;
 };
 
-const enforceOrgUnitContext = (
+const enforceOrgUnitContext = async (
   req: Request,
   res: Response,
   attemptedOrgUnitId?: string | null,
 ) => {
-  const decision = resolveConnectShyftOrgUnitContext(req, { attemptedOrgUnitId });
+  const decision = await resolveConnectShyftOrgUnitContext(req, {
+    attemptedOrgUnitId,
+    resolveOrgUnitAccess: async ({ tenantId, orgUnitId, userId, baseRoles }) =>
+      validateOrgUnitScopedAccess(
+        createKnexOrgUnitAccessStore(loadPlatformDb()),
+        {
+          tenantId,
+          orgUnitId,
+          userId,
+          baseRoles,
+        },
+      ),
+  });
+
   if (decision.ok) {
     return decision.context;
   }
@@ -67,13 +90,13 @@ router.get('/availability', (req: Request, res: Response) => {
   });
 });
 
-router.get('/inbox', (req: Request, res: Response) => {
+router.get('/inbox', async (req: Request, res: Response) => {
   const flags = enforceCapability(req, res, 'inbox');
   if (!flags) {
     return;
   }
 
-  const context = enforceOrgUnitContext(req, res);
+  const context = await enforceOrgUnitContext(req, res);
   if (!context) {
     return;
   }
@@ -92,7 +115,7 @@ router.get('/inbox', (req: Request, res: Response) => {
   });
 });
 
-router.post('/threads', (req: Request, res: Response) => {
+router.post('/threads', async (req: Request, res: Response) => {
   if (!enforceCapability(req, res, 'inbox')) {
     return;
   }
@@ -100,7 +123,7 @@ router.post('/threads', (req: Request, res: Response) => {
   const requestedOrgUnitId = typeof req.body?.orgUnitId === 'string'
     ? req.body.orgUnitId
     : null;
-  const context = enforceOrgUnitContext(req, res, requestedOrgUnitId);
+  const context = await enforceOrgUnitContext(req, res, requestedOrgUnitId);
   if (!context) {
     return;
   }
@@ -121,12 +144,12 @@ router.post('/threads', (req: Request, res: Response) => {
   });
 });
 
-router.post('/threads/:threadId/claim', (req: Request, res: Response) => {
+router.post('/threads/:threadId/claim', async (req: Request, res: Response) => {
   if (!enforceCapability(req, res, 'escalation')) {
     return;
   }
 
-  const context = enforceOrgUnitContext(req, res);
+  const context = await enforceOrgUnitContext(req, res);
   if (!context) {
     return;
   }
@@ -142,12 +165,12 @@ router.post('/threads/:threadId/claim', (req: Request, res: Response) => {
   });
 });
 
-router.post('/threads/:threadId/takeover', (req: Request, res: Response) => {
+router.post('/threads/:threadId/takeover', async (req: Request, res: Response) => {
   if (!enforceCapability(req, res, 'escalation')) {
     return;
   }
 
-  const context = enforceOrgUnitContext(req, res);
+  const context = await enforceOrgUnitContext(req, res);
   if (!context) {
     return;
   }
