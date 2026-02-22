@@ -133,12 +133,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import {
-  DEFAULT_CONNECTSHYFT_ESCALATION_RECIPIENT_OPTIONS,
+  fetchConnectShyftEscalationRecipientOptions,
   fetchConnectShyftEscalationConfig,
   saveConnectShyftEscalationConfig,
+  type ConnectShyftEscalationRecipientOption,
 } from '@/features/connectshyft/escalation';
 
-const recipientOptions = DEFAULT_CONNECTSHYFT_ESCALATION_RECIPIENT_OPTIONS;
+const recipientOptions = ref<ConnectShyftEscalationRecipientOption[]>([]);
 
 const baselineHoursInput = ref<number | null>(24);
 const savedBaselineHours = ref(24);
@@ -213,7 +214,20 @@ const handleSave = async (): Promise<void> => {
 };
 
 onMounted(async () => {
-  const config = await fetchConnectShyftEscalationConfig();
-  syncFromServer(config.escalationBaselineHours, config.recipients);
+  clearFeedback();
+
+  try {
+    const [config, options] = await Promise.all([
+      fetchConnectShyftEscalationConfig(),
+      fetchConnectShyftEscalationRecipientOptions(),
+    ]);
+
+    recipientOptions.value = options;
+    syncFromServer(config.escalationBaselineHours, config.recipients);
+  } catch (error: unknown) {
+    validationError.value = error instanceof Error
+      ? error.message
+      : 'Unable to load escalation settings right now.';
+  }
 });
 </script>

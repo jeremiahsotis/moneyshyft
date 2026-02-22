@@ -32,6 +32,10 @@ type ConnectShyftEscalationEnvelope = {
     orgUnitId?: string;
     escalationBaselineHours?: number;
     recipients?: Partial<ConnectShyftEscalationRecipients>;
+    recipientOptions?: Array<{
+      value?: string;
+      label?: string;
+    }>;
     fieldErrors?: Array<{
       field?: string;
       reason?: string;
@@ -67,25 +71,6 @@ export const DEFAULT_CONNECTSHYFT_ESCALATION_CONFIG: ConnectShyftEscalationConfi
     tenantStaffUserId: '',
   },
 };
-
-export const DEFAULT_CONNECTSHYFT_ESCALATION_RECIPIENT_OPTIONS: ConnectShyftEscalationRecipientOption[] = [
-  {
-    value: 'user-connectshyft-a4-primary-recipient',
-    label: 'Primary OrgUnit Admin',
-  },
-  {
-    value: 'user-connectshyft-a4-secondary-recipient',
-    label: 'Secondary OrgUnit Admin',
-  },
-  {
-    value: 'user-connectshyft-a4-tenant-staff-recipient',
-    label: 'Tenant Staff Recipient',
-  },
-  {
-    value: 'user-connectshyft-a4-cross-tenant-recipient',
-    label: 'Cross-tenant recipient (invalid test option)',
-  },
-];
 
 const parseRecipients = (value: unknown): ConnectShyftEscalationRecipients => {
   if (!value || typeof value !== 'object') {
@@ -145,6 +130,39 @@ const parseFieldErrors = (payload: unknown): ConnectShyftEscalationFieldError[] 
     }));
 };
 
+const parseRecipientOptions = (payload: unknown): ConnectShyftEscalationRecipientOption[] => {
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+
+  const envelope = payload as ConnectShyftEscalationEnvelope;
+  const recipientOptions = envelope.data?.recipientOptions;
+  if (!Array.isArray(recipientOptions)) {
+    return [];
+  }
+
+  return recipientOptions
+    .filter((recipientOption) => recipientOption && typeof recipientOption === 'object')
+    .map((recipientOption) => {
+      const value = typeof recipientOption?.value === 'string'
+        ? recipientOption.value.trim()
+        : '';
+      const label = typeof recipientOption?.label === 'string'
+        ? recipientOption.label.trim()
+        : '';
+
+      if (!value) {
+        return null;
+      }
+
+      return {
+        value,
+        label: label || value,
+      };
+    })
+    .filter((recipientOption): recipientOption is ConnectShyftEscalationRecipientOption => recipientOption !== null);
+};
+
 const parseRefusalMessage = (payload: unknown, fallbackMessage: string): string => {
   const fieldErrorMessage = parseFieldErrors(payload)
     .find((fieldError) => fieldError.message.trim().length > 0)?.message;
@@ -184,13 +202,32 @@ const resolveOrgUnitIdFromQuery = (): string | null => {
 };
 
 export const fetchConnectShyftEscalationConfig = async (): Promise<ConnectShyftEscalationConfig> => {
+  const response = await api.get('/connectshyft/escalation/config', {
+    headers: buildConnectShyftTestOverrideHeaders(),
+  });
+
+  const envelope = response.data as ConnectShyftEscalationEnvelope;
+  if (envelope?.ok !== true) {
+    throw new Error(parseRefusalMessage(response.data, 'Unable to load escalation settings right now.'));
+  }
+
+  return parseEscalationConfig(response.data);
+};
+
+export const fetchConnectShyftEscalationRecipientOptions = async (): Promise<ConnectShyftEscalationRecipientOption[]> => {
   try {
-    const response = await api.get('/connectshyft/escalation/config', {
+    const response = await api.get('/connectshyft/escalation/recipients', {
       headers: buildConnectShyftTestOverrideHeaders(),
     });
-    return parseEscalationConfig(response.data);
+
+    const envelope = response.data as ConnectShyftEscalationEnvelope;
+    if (envelope?.ok !== true) {
+      return [];
+    }
+
+    return parseRecipientOptions(response.data);
   } catch (_error) {
-    return { ...DEFAULT_CONNECTSHYFT_ESCALATION_CONFIG };
+    return [];
   }
 };
 

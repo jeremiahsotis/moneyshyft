@@ -1,6 +1,17 @@
+import type { Knex } from 'knex';
+
 const DEFAULT_ESCALATION_BASELINE_HOURS = 24;
 const MIN_ESCALATION_BASELINE_HOURS = 1;
 const MAX_ESCALATION_BASELINE_HOURS = 24;
+
+const ESCALATION_RECIPIENT_SCOPES = {
+  ORG_UNIT: 'ORG_UNIT',
+  TENANT: 'TENANT',
+  TEST_ONLY: 'TEST_ONLY',
+} as const;
+
+type EscalationRecipientScope =
+  (typeof ESCALATION_RECIPIENT_SCOPES)[keyof typeof ESCALATION_RECIPIENT_SCOPES];
 
 type EscalationRecipientField =
   | 'recipients.primaryOrgUnitAdminUserId'
@@ -34,11 +45,24 @@ export type ConnectShyftEscalationConfig = {
   updatedAtUtc: string;
 };
 
-type EscalationConfigSaveInput = {
+export type ConnectShyftEscalationRecipientOption = {
+  value: string;
+  label: string;
+  scope: EscalationRecipientScope;
+};
+
+export type ConnectShyftEscalationRecipientDirectory = {
+  orgUnitRecipientIds: Set<string>;
+  tenantRecipientIds: Set<string>;
+  options: ConnectShyftEscalationRecipientOption[];
+};
+
+export type EscalationConfigSaveInput = {
   tenantId: string;
   orgUnitId: string;
   escalationBaselineHours?: unknown;
   recipients?: unknown;
+  recipientDirectory: ConnectShyftEscalationRecipientDirectory;
 };
 
 type EscalationConfigSuccessResult = {
@@ -68,10 +92,46 @@ type EscalationConfigRefusalResult = {
 
 export type EscalationConfigSaveResult = EscalationConfigSuccessResult | EscalationConfigRefusalResult;
 
+type StoredEscalationConfigRow = {
+  tenant_id: string;
+  org_unit_id: string;
+  escalation_baseline_hours: number;
+  primary_org_unit_admin_user_id: string;
+  secondary_org_unit_admin_user_id: string | null;
+  tenant_staff_user_id: string | null;
+  created_at_utc: string | Date;
+  updated_at_utc: string | Date;
+};
+
+export type ConnectShyftEscalationConfigStore = {
+  getConfig(tenantId: string, orgUnitId: string): Promise<ConnectShyftEscalationConfig | null>;
+  saveConfig(
+    tenantId: string,
+    orgUnitId: string,
+    escalationBaselineHours: number,
+    recipients: ConnectShyftEscalationRecipients,
+  ): Promise<ConnectShyftEscalationConfig>;
+};
+
 const buildTenantOrgUnitKey = (tenantId: string, orgUnitId: string): string =>
   `${tenantId}::${orgUnitId}`;
 
 const nowIsoUtc = (): string => new Date().toISOString();
+
+const toIsoUtc = (value: unknown, fallbackIsoUtc: string): string => {
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.valueOf())) {
+      return parsed.toISOString();
+    }
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.valueOf())) {
+    return value.toISOString();
+  }
+
+  return fallbackIsoUtc;
+};
 
 const normalizeRecipientValue = (value: unknown): string => {
   if (typeof value !== 'string') {
@@ -176,51 +236,93 @@ const resolveBaselineHours = (value: unknown): { ok: true; baselineHours: number
   };
 };
 
-const isRecipientOutsideScope = (
-  _tenantId: string,
-  _orgUnitId: string,
-  recipientUserId: string,
-): boolean => {
-  if (!recipientUserId) {
-    return false;
-  }
+const normalizeRecipientDirectory = (
+  input: {
+    orgUnitRecipientIds: string[];
+    tenantRecipientIds: string[];
+    options: ConnectShyftEscalationRecipientOption[];
+  },
+): ConnectShyftEscalationRecipientDirectory => {
+  const orgUnitRecipientIds = new Set(
+    input.orgUnitRecipientIds
+      .map((value) => normalizeRecipientValue(value))
+      .filter((value) => value.length > 0),
+  );
 
-  const normalized = recipientUserId.trim().toLowerCase();
-  return normalized.includes('cross-tenant') || normalized.includes('outside-scope');
+  const tenantRecipientIds = new Set(
+    input.tenantRecipientIds
+      .map((value) => normalizeRecipientValue(value))
+      .filter((value) => value.length > 0),
+  );
+
+  orgUnitRecipientIds.forEach((value) => tenantRecipientIds.add(value));
+
+  const seenOptions = new Set<string>();
+  const options = input.options
+    .map((option) => ({
+      value: normalizeRecipientValue(option.value),
+      label: typeof option.label === 'string' ? option.label.trim() : '',
+      scope: option.scope,
+    }))
+    .filter((option) => option.value.length > 0)
+    .filter((option) => {
+      if (seenOptions.has(option.value)) {
+        return false;
+      }
+      seenOptions.add(option.value);
+      return true;
+    });
+
+  return {
+    orgUnitRecipientIds,
+    tenantRecipientIds,
+    options,
+  };
 };
 
+export const createEscalationRecipientDirectory = (
+  input: {
+    orgUnitRecipientIds: string[];
+    tenantRecipientIds: string[];
+    options: ConnectShyftEscalationRecipientOption[];
+  },
+): ConnectShyftEscalationRecipientDirectory => normalizeRecipientDirectory(input);
+
 const validateRecipients = (
-  tenantId: string,
-  orgUnitId: string,
   recipients: ConnectShyftEscalationRecipients,
+  recipientDirectory: ConnectShyftEscalationRecipientDirectory,
 ): EscalationConfigRefusalResult | null => {
   if (!recipients.primaryOrgUnitAdminUserId) {
     return buildRequiredPrimaryRecipientRefusal();
   }
 
-  const recipientFields: Array<{
+  const recipientChecks: Array<{
     field: EscalationRecipientField;
     value: string;
+    isAllowed: boolean;
   }> = [
     {
       field: 'recipients.primaryOrgUnitAdminUserId',
       value: recipients.primaryOrgUnitAdminUserId,
+      isAllowed: recipientDirectory.orgUnitRecipientIds.has(recipients.primaryOrgUnitAdminUserId),
     },
     {
       field: 'recipients.secondaryOrgUnitAdminUserId',
       value: recipients.secondaryOrgUnitAdminUserId,
+      isAllowed: recipientDirectory.orgUnitRecipientIds.has(recipients.secondaryOrgUnitAdminUserId),
     },
     {
       field: 'recipients.tenantStaffUserId',
       value: recipients.tenantStaffUserId,
+      isAllowed: recipientDirectory.tenantRecipientIds.has(recipients.tenantStaffUserId),
     },
   ];
 
-  const assignmentErrors = recipientFields
-    .filter((recipientField) => recipientField.value.length > 0)
-    .filter((recipientField) => isRecipientOutsideScope(tenantId, orgUnitId, recipientField.value))
-    .map((recipientField): ConnectShyftEscalationFieldError => ({
-      field: recipientField.field,
+  const assignmentErrors = recipientChecks
+    .filter((recipientCheck) => recipientCheck.value.length > 0)
+    .filter((recipientCheck) => !recipientCheck.isAllowed)
+    .map((recipientCheck): ConnectShyftEscalationFieldError => ({
+      field: recipientCheck.field,
       reason: 'RECIPIENT_OUTSIDE_TENANT_OR_ORGUNIT_SCOPE',
       message: 'Recipient must belong to the active tenant and orgUnit scope.',
     }));
@@ -232,20 +334,37 @@ const validateRecipients = (
   return null;
 };
 
-export class InMemoryConnectShyftEscalationConfigStore {
+const mapStoredRowToConfig = (row: StoredEscalationConfigRow): ConnectShyftEscalationConfig => {
+  const fallbackNow = nowIsoUtc();
+
+  return {
+    tenantId: row.tenant_id,
+    orgUnitId: row.org_unit_id,
+    escalationBaselineHours: row.escalation_baseline_hours,
+    recipients: {
+      primaryOrgUnitAdminUserId: normalizeRecipientValue(row.primary_org_unit_admin_user_id),
+      secondaryOrgUnitAdminUserId: normalizeRecipientValue(row.secondary_org_unit_admin_user_id),
+      tenantStaffUserId: normalizeRecipientValue(row.tenant_staff_user_id),
+    },
+    createdAtUtc: toIsoUtc(row.created_at_utc, fallbackNow),
+    updatedAtUtc: toIsoUtc(row.updated_at_utc, fallbackNow),
+  };
+};
+
+export class InMemoryConnectShyftEscalationConfigStore implements ConnectShyftEscalationConfigStore {
   private configByTenantOrgUnit = new Map<string, ConnectShyftEscalationConfig>();
 
-  getConfig(tenantId: string, orgUnitId: string): ConnectShyftEscalationConfig | null {
+  async getConfig(tenantId: string, orgUnitId: string): Promise<ConnectShyftEscalationConfig | null> {
     return this.configByTenantOrgUnit.get(buildTenantOrgUnitKey(tenantId, orgUnitId)) || null;
   }
 
-  saveConfig(
+  async saveConfig(
     tenantId: string,
     orgUnitId: string,
     escalationBaselineHours: number,
     recipients: ConnectShyftEscalationRecipients,
-  ): ConnectShyftEscalationConfig {
-    const existing = this.getConfig(tenantId, orgUnitId);
+  ): Promise<ConnectShyftEscalationConfig> {
+    const existing = await this.getConfig(tenantId, orgUnitId);
     const now = nowIsoUtc();
 
     const next: ConnectShyftEscalationConfig = {
@@ -262,13 +381,73 @@ export class InMemoryConnectShyftEscalationConfigStore {
   }
 }
 
+export class KnexConnectShyftEscalationConfigStore implements ConnectShyftEscalationConfigStore {
+  constructor(private readonly resolveDb: () => Knex) {}
+
+  private table() {
+    return this.resolveDb().withSchema('connectshyft').table<StoredEscalationConfigRow>('cs_org_unit_escalation_config');
+  }
+
+  async getConfig(tenantId: string, orgUnitId: string): Promise<ConnectShyftEscalationConfig | null> {
+    const row = await this.table()
+      .where({
+        tenant_id: tenantId,
+        org_unit_id: orgUnitId,
+      })
+      .first();
+
+    return row ? mapStoredRowToConfig(row) : null;
+  }
+
+  async saveConfig(
+    tenantId: string,
+    orgUnitId: string,
+    escalationBaselineHours: number,
+    recipients: ConnectShyftEscalationRecipients,
+  ): Promise<ConnectShyftEscalationConfig> {
+    const now = nowIsoUtc();
+    const existing = await this.getConfig(tenantId, orgUnitId);
+
+    await this.table()
+      .insert({
+        tenant_id: tenantId,
+        org_unit_id: orgUnitId,
+        escalation_baseline_hours: escalationBaselineHours,
+        primary_org_unit_admin_user_id: recipients.primaryOrgUnitAdminUserId,
+        secondary_org_unit_admin_user_id: recipients.secondaryOrgUnitAdminUserId || null,
+        tenant_staff_user_id: recipients.tenantStaffUserId || null,
+        created_at_utc: existing?.createdAtUtc || now,
+        updated_at_utc: now,
+      })
+      .onConflict(['tenant_id', 'org_unit_id'])
+      .merge({
+        escalation_baseline_hours: escalationBaselineHours,
+        primary_org_unit_admin_user_id: recipients.primaryOrgUnitAdminUserId,
+        secondary_org_unit_admin_user_id: recipients.secondaryOrgUnitAdminUserId || null,
+        tenant_staff_user_id: recipients.tenantStaffUserId || null,
+        updated_at_utc: now,
+      });
+
+    return {
+      tenantId,
+      orgUnitId,
+      escalationBaselineHours,
+      recipients: {
+        ...recipients,
+      },
+      createdAtUtc: existing?.createdAtUtc || now,
+      updatedAtUtc: now,
+    };
+  }
+}
+
 export class ConnectShyftEscalationConfigService {
   constructor(
-    private readonly store: InMemoryConnectShyftEscalationConfigStore = defaultEscalationConfigStore,
+    private readonly store: ConnectShyftEscalationConfigStore,
   ) {}
 
-  getConfig(tenantId: string, orgUnitId: string): ConnectShyftEscalationConfig {
-    const stored = this.store.getConfig(tenantId, orgUnitId);
+  async getConfig(tenantId: string, orgUnitId: string): Promise<ConnectShyftEscalationConfig> {
+    const stored = await this.store.getConfig(tenantId, orgUnitId);
     if (stored) {
       return stored;
     }
@@ -288,19 +467,22 @@ export class ConnectShyftEscalationConfigService {
     };
   }
 
-  saveConfig(input: EscalationConfigSaveInput): EscalationConfigSaveResult {
+  async saveConfig(input: EscalationConfigSaveInput): Promise<EscalationConfigSaveResult> {
     const baselineResolution = resolveBaselineHours(input.escalationBaselineHours);
     if (!baselineResolution.ok) {
       return baselineResolution;
     }
 
     const recipients = parseRecipients(input.recipients);
-    const recipientValidation = validateRecipients(input.tenantId, input.orgUnitId, recipients);
+    const recipientValidation = validateRecipients(
+      recipients,
+      input.recipientDirectory,
+    );
     if (recipientValidation) {
       return recipientValidation;
     }
 
-    const persisted = this.store.saveConfig(
+    const persisted = await this.store.saveConfig(
       input.tenantId,
       input.orgUnitId,
       baselineResolution.baselineHours,
@@ -321,8 +503,4 @@ export class ConnectShyftEscalationConfigService {
   }
 }
 
-const defaultEscalationConfigStore = new InMemoryConnectShyftEscalationConfigStore();
-
-export const connectShyftEscalationConfigService = new ConnectShyftEscalationConfigService(
-  defaultEscalationConfigStore,
-);
+export const connectShyftEscalationRecipientScopes = ESCALATION_RECIPIENT_SCOPES;

@@ -8,6 +8,38 @@ test.describe(
     test.describe.configure({ mode: 'serial' });
 
     test(
+      '[P1] resolves scoped recipient options for escalation configuration @P1',
+      async ({ request, storyA4Context, storyA4AdminHeaders }) => {
+        const response = await apiRequest(request, {
+          method: 'GET',
+          path: '/api/v1/connectshyft/escalation/recipients',
+          headers: storyA4AdminHeaders,
+        });
+
+        expect(response.status()).toBe(200);
+        const body = await response.json();
+        expect(body).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_ESCALATION_RECIPIENTS_RESOLVED',
+          data: {
+            orgUnitId: storyA4Context.orgUnitId,
+            recipientOptions: expect.arrayContaining([
+              expect.objectContaining({
+                value: storyA4Context.recipients.primaryOrgUnitAdminUserId,
+              }),
+              expect.objectContaining({
+                value: storyA4Context.recipients.secondaryOrgUnitAdminUserId,
+              }),
+              expect.objectContaining({
+                value: storyA4Context.recipients.tenantStaffUserId,
+              }),
+            ]),
+          },
+        });
+      },
+    );
+
+    test(
       '[P0] persists valid escalation baseline and recipient targets for orgUnit-scoped configuration @P0',
       async ({ request, storyA4Context, storyA4AdminHeaders, storyA4ValidConfigPayload }) => {
         const response = await apiRequest(request, {
