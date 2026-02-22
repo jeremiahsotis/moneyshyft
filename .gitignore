@@ -36,6 +36,7 @@ pids
 coverage/
 .nyc_output
 tests/artifacts/
+.playwright-cli/
 
 # IDE
 .vscode/
