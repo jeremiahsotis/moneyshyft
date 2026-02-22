@@ -1,5 +1,6 @@
 ---
 stepsCompleted: [1, 2, 3, 4]
+project_lane: connectshyft
 inputDocuments:
   - /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md
   - /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md
