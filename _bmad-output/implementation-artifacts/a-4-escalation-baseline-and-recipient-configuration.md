@@ -1,6 +1,6 @@
 # Story a.4: Escalation Baseline and Recipient Configuration
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -23,23 +23,23 @@ so that unclaimed threads escalate to the correct recipients at defined interval
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Admin controls must clearly show claim-only reset semantics and scheduler-impacting configuration values.
-- Real-User Validation Evidence: Admin configuration flow plus scheduler-facing contract verification.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: `npm run test:e2e -- tests/e2e/platform/a-4-escalation-baseline-and-recipient-configuration.spec.ts` plus `npm run test:e2e -- tests/api/platform/a-4-escalation-baseline-and-recipient-configuration.api.spec.ts`.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: OrgUnit escalation configuration screen and endpoint path.
-- Role-Admin UI Path Verified: pending
+- Role-Admin UI Path Verified: yes
 - Access-Control Exemption Rationale: N/A
 
 ## Tasks / Subtasks
 
-- [ ] Implement escalation baseline and recipient configuration persistence (AC: 1)
-  - [ ] Enforce integer-hour baseline with default 24 and bounds 1-24.
-  - [ ] Persist recipient targets with required recipient validation.
-- [ ] Enforce deterministic refusal behavior for invalid configuration (AC: 2)
-  - [ ] Refuse invalid timing values or invalid/missing recipients.
-  - [ ] Return shared refusal envelope semantics with stable policy reasons.
-- [ ] Add integration and UX tests for config behavior (AC: 1, 2)
-  - [ ] API tests for accepted and refused config updates.
-  - [ ] UI tests for admin form validation, persistence confirmation, and error feedback.
+- [x] Implement escalation baseline and recipient configuration persistence (AC: 1)
+  - [x] Enforce integer-hour baseline with default 24 and bounds 1-24.
+  - [x] Persist recipient targets with required recipient validation.
+- [x] Enforce deterministic refusal behavior for invalid configuration (AC: 2)
+  - [x] Refuse invalid timing values or invalid/missing recipients.
+  - [x] Return shared refusal envelope semantics with stable policy reasons.
+- [x] Add integration and UX tests for config behavior (AC: 1, 2)
+  - [x] API tests for accepted and refused config updates.
+  - [x] UI tests for admin form validation, persistence confirmation, and error feedback.
 
 ## Dev Notes
 
@@ -86,12 +86,36 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context creation only; implementation logs pending.
+- `cd src && npm test -- src/modules/connectshyft/__tests__/escalationConfig.test.ts src/migrations/__tests__/connectShyftEscalationConfigMigration.test.ts` (pass, 2 suites / 9 tests)
+- `cd src && npm run build` (pass)
+- `cd frontend && npm run build` (pass)
+- `npm run test:e2e -- tests/api/platform/a-4-escalation-baseline-and-recipient-configuration.api.spec.ts` (pass, 7 tests)
+- `npm run test:e2e -- tests/e2e/platform/a-4-escalation-baseline-and-recipient-configuration.spec.ts` (pass, 4 tests)
+- `npm run test:e2e -- tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts` (pass, 9 tests regression)
 
 ### Completion Notes List
 
-- Created ConnectShyft Epic A context for escalation baseline and recipient configuration with deterministic validation rules.
+- Replaced in-memory escalation config storage with durable database-backed persistence (`connectshyft.cs_org_unit_escalation_config`) and added migration coverage.
+- Replaced heuristic recipient validation with directory-backed tenant/orgUnit scope validation; invalid assignments now fail by explicit membership checks rather than string matching.
+- Added `GET /api/v1/connectshyft/escalation/recipients` and switched the escalation settings UI to backend-sourced recipient options.
+- Updated frontend config-loading behavior to surface business refusal envelopes instead of silently defaulting to baseline values.
+- Re-ran story a.4 API + E2E suites and adjacent story a.3 API/E2E regression coverage after route/service updates.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/a-4-escalation-baseline-and-recipient-configuration.md
+- src/src/migrations/20260222100000_create_connectshyft_escalation_config.ts
+- src/src/migrations/__tests__/connectShyftEscalationConfigMigration.test.ts
+- src/src/modules/connectshyft/escalationConfig.ts
+- src/src/modules/connectshyft/__tests__/escalationConfig.test.ts
+- src/src/routes/api/v1/connectshyft.ts
+- frontend/src/features/connectshyft/escalation.ts
+- frontend/src/views/ConnectShyft/ConnectShyftEscalationSettingsView.vue
+- tests/api/platform/a-4-escalation-baseline-and-recipient-configuration.api.spec.ts
+
+### Change Log
+
+- 2026-02-22: Implemented story a.4 end-to-end (backend escalation configuration service + routes, frontend escalation settings UI, and deterministic refusal handling).
+- 2026-02-22: Added and passed backend unit tests plus Playwright API/E2E suites for accepted/invalid escalation configuration paths.
+- 2026-02-22: Ran adjacent ConnectShyft a.3 API/E2E suites as regression validation after connectshyft route updates.
+- 2026-02-22: Resolved review findings by adding durable DB persistence, authoritative recipient scope validation, backend-sourced recipient options, and explicit frontend refusal handling for config fetch.

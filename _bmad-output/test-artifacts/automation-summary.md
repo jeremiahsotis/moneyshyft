@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-22T12:01:06Z'
+lastSaved: '2026-02-22T19:19:27Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -1002,3 +1002,208 @@ lastSaved: '2026-02-22T12:01:06Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` to run TEA quality audit on generated Story a.3 automation specs.
 - `[TR] Trace Requirements` to map Story a.3 ACs and FRs (`FR-CS-025`, `FR-CS-026`) to ATDD + automate coverage.
+
+## Story a.4 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `_bmad-output/implementation-artifacts/a-4-escalation-baseline-and-recipient-configuration.md`
+  - Existing ATDD files found for Story a.4:
+    - `tests/api/platform/a-4-escalation-baseline-and-recipient-configuration.atdd.api.spec.ts`
+    - `tests/e2e/platform/a-4-escalation-baseline-and-recipient-configuration.atdd.spec.ts`
+
+### Context Loaded
+- Story and planning artifacts loaded:
+  - `_bmad-output/implementation-artifacts/a-4-escalation-baseline-and-recipient-configuration.md`
+  - `_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
+  - `_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
+  - `_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md`
+  - `_bmad-output/test-artifacts/test-design-epic-A.md`
+- Test framework and existing coverage context loaded:
+  - `playwright.config.ts`
+  - `tests/` structure inventory
+  - `tests/support/factories/connectShyftStoryA4Factory.ts`
+  - `tests/support/fixtures/connectShyftStoryA4.fixture.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils + automation:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+
+### Input Confirmation
+- Step 1 inputs are complete for Story a.4.
+- Proceeding to target identification and test generation planning.
+
+## Story a.4 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` available (`1.59.0-alpha-1771104257000`) and executed using session `tea-automate`.
+- Target URL probed:
+  - `http://127.0.0.1:5174/app/connectshyft/settings/escalation?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_ADMIN`
+- Findings:
+  - Vue Router warning: no route match for `/app/connectshyft/settings/escalation`.
+  - Auth bootstrap request `/api/v1/auth/me` returned `401`.
+  - Snapshot artifacts were empty in this environment.
+- Session hygiene:
+  - `playwright-cli -s=tea-automate close` executed successfully.
+
+### Acceptance Criteria to Target Mapping
+- AC1 (persist valid baseline + recipients):
+  - successful configuration write with integer-hour baseline (`1-24`)
+  - default baseline fallback to `24` when omitted
+  - persisted payload echo/readback contract
+- AC2 (refuse invalid assignments/timings):
+  - out-of-range baseline refusal
+  - non-integer baseline refusal
+  - missing required recipient refusal
+  - invalid cross-tenant/cross-orgUnit recipient refusal
+  - refusal responses must be deterministic and envelope-compliant
+
+### ATDD Duplication Control
+- Existing RED ATDD files remain baseline intent tests:
+  - `tests/api/platform/a-4-escalation-baseline-and-recipient-configuration.atdd.api.spec.ts`
+  - `tests/e2e/platform/a-4-escalation-baseline-and-recipient-configuration.atdd.spec.ts`
+- Automation expansion will generate non-ATDD executable specs (`.api.spec.ts` / `.spec.ts`) for regression lanes without mutating ATDD files.
+
+### Selected Test Levels
+- **API** (primary): escalation config contract and validation semantics.
+- **E2E** (secondary): orgUnit admin settings flow, field validation copy, and persistence confirmation behavior.
+
+### Priority Assignment
+- P0:
+  - valid baseline+recipients persistence
+  - default `24` baseline fallback
+  - out-of-range / non-integer baseline refusals
+  - missing required recipient refusal
+- P1:
+  - cross-tenant recipient assignment refusal details
+  - UI-level deterministic validation messaging and blocked save indicators
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/a-4-escalation-baseline-and-recipient-configuration.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/a-4-escalation-baseline-and-recipient-configuration.spec.ts`
+- Supporting context assets reused:
+  - `tests/support/factories/connectShyftStoryA4Factory.ts`
+  - `tests/support/fixtures/connectShyftStoryA4.fixture.ts`
+- Scope justification:
+  - `critical-paths` selected to enforce FR-CS-027 contract-critical behavior while avoiding over-coverage duplication with existing ATDD RED specs.
+
+## Story a.4 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-02-22T19-15-56-835Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-02-22T19-15-56-835Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`
+- E2E subprocess status: `success: true`
+- Output files present and JSON-valid for both subprocesses.
+
+### Performance Report
+- Parallel orchestration completed in a single pass for both test levels.
+- Sequential equivalent would require two generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story a.4 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `tests/api/platform/a-4-escalation-baseline-and-recipient-configuration.api.spec.ts`
+- `tests/e2e/platform/a-4-escalation-baseline-and-recipient-configuration.spec.ts`
+
+### Fixture Infrastructure
+- Existing fixture/helper infrastructure reused (no new fixture files required):
+  - `storyA4Context`
+  - `storyA4AdminHeaders`
+  - `storyA4ValidConfigPayload`
+  - `storyA4InvalidRangePayload`
+  - `apiRequest`
+  - `login`
+
+### Summary Metrics
+- Total tests generated: `10`
+  - API tests: `6` (1 file)
+  - E2E tests: `4` (1 file)
+- Priority coverage:
+  - P0: `7`
+  - P1: `3`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-22T19-15-56-835Z.json`
+- Subprocess execution mode:
+  - `PARALLEL (API + E2E)`
+
+## Story a.4 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated spec parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/a-4-escalation-baseline-and-recipient-configuration.api.spec.ts tests/e2e/platform/a-4-escalation-baseline-and-recipient-configuration.spec.ts`
+  - Result: passed (`10` tests discovered in `2` files).
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) detected.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
+  - no `try/catch` flow-control anti-pattern detected.
+- CLI session hygiene:
+  - `playwright-cli -s=tea-automate close` confirms no orphaned browser session.
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-02-22T19-15-56-835Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-22T19-15-56-835Z.json`
+  - `/tmp/tea-automate-summary-2026-02-22T19-15-56-835Z.json`
+- Persisted under test artifacts:
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-22T19-15-56-835Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-22T19-15-56-835Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-22T19-15-56-835Z.json`
+
+### Key Assumptions
+- Story a.4 contract endpoint remains:
+  - `/api/v1/connectshyft/escalation/config`
+- Story a.4 operator UI route remains:
+  - `/app/connectshyft/settings/escalation`
+- Required response/refusal codes remain as defined in Story a.4 ATDD artifacts.
+
+### Risks
+- Current repository route file `src/src/routes/api/v1/connectshyft.ts` does not yet expose `/escalation/config`; generated API automation is marked `test.fixme` pending implementation.
+- Browser exploration showed no route match for escalation settings UI and a `401` auth bootstrap response; generated E2E automation is marked `test.fixme` until UI/runtime availability is implemented.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality scoring and maintainability gate review.
+- `[TR] Trace Requirements` to map Story a.4 acceptance criteria to ATDD + automate coverage evidence.

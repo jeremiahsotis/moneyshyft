@@ -76,3 +76,28 @@ export const connectShyftNumberMappingData = {
     connectshyft_webhooks_enabled: true,
   },
 };
+
+export const connectShyftEscalationConfigData = {
+  tenantAlphaId: 'tenant-connectshyft-alpha',
+  tenantBravoId: 'tenant-connectshyft-bravo',
+  orgUnitAlphaEastId: 'org-connectshyft-alpha-east',
+  orgUnitAlphaWestId: 'org-connectshyft-alpha-west',
+  orgUnitBravoNorthId: 'org-connectshyft-bravo-north',
+  orgUnitAdminUserId: 'user-connectshyft-a4-orgunit-admin',
+  tenantStaffUserId: 'user-connectshyft-a4-tenant-staff',
+  primaryRecipientUserId: 'user-connectshyft-a4-primary-recipient',
+  secondaryRecipientUserId: 'user-connectshyft-a4-secondary-recipient',
+  tenantStaffRecipientUserId: 'user-connectshyft-a4-tenant-staff-recipient',
+  crossTenantRecipientUserId: 'user-connectshyft-a4-cross-tenant-recipient',
+  defaultBaselineHours: 24,
+  validBaselineHours: 6,
+  invalidBaselineLow: 0,
+  invalidBaselineHigh: 25,
+  invalidBaselineFractional: 2.5,
+  flagsAllEnabled: {
+    connectshyft_enabled: true,
+    connectshyft_inbox_enabled: true,
+    connectshyft_escalation_enabled: true,
+    connectshyft_webhooks_enabled: true,
+  },
+};
