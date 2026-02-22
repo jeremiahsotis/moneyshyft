@@ -55,3 +55,24 @@ export const connectShyftContextEnforcementData = {
     connectshyft_webhooks_enabled: true,
   },
 };
+
+export const connectShyftNumberMappingData = {
+  tenantAlphaId: 'tenant-connectshyft-alpha',
+  tenantBravoId: 'tenant-connectshyft-bravo',
+  orgUnitAlphaEastId: 'org-connectshyft-alpha-east',
+  orgUnitAlphaWestId: 'org-connectshyft-alpha-west',
+  orgUnitBravoNorthId: 'org-connectshyft-bravo-north',
+  orgUnitAdminUserId: 'user-connectshyft-a3-orgunit-admin',
+  tenantStaffUserId: 'user-connectshyft-a3-tenant-staff',
+  validPrimaryNumber: '+12605550111',
+  validSecondaryNumber: '+12605550112',
+  validUpdatedNumber: '+12605550119',
+  duplicateTenantNumber: '+12605550123',
+  invalidNonE164Number: '260-555-0111',
+  flagsAllEnabled: {
+    connectshyft_enabled: true,
+    connectshyft_inbox_enabled: true,
+    connectshyft_escalation_enabled: true,
+    connectshyft_webhooks_enabled: true,
+  },
+};

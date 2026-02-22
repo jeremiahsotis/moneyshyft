@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/a-3-orgunit-number-mapping-management.atdd.spec.ts",
+      "content": "import { test, expect } from '@playwright/test';\n\ntest.describe(\n  'Story a.3 OrgUnit Number Mapping Management (ATDD E2E RED)',\n  () => {\n    test.skip(\n      '[P0] orgUnit admin can add multiple valid E.164 mappings and sees deterministic table state after each save @P0',\n      async ({ page }) => {\n        await page.goto(\n          '/app/connectshyft/settings/numbers?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_ADMIN',\n        );\n\n        await expect(\n          page.getByRole('heading', {\n            name: 'ConnectShyft Numbers & OrgUnit Config',\n          }),\n        ).toBeVisible();\n\n        await page.getByTestId('connectshyft-number-input').fill('+12605550111');\n        await page.getByTestId('connectshyft-number-label-input').fill('Primary Dispatch');\n        const firstSaveResponse = page.waitForResponse(\n          (response) =>\n            response.url().includes('/api/v1/connectshyft/numbers')\n            && response.request().method() === 'POST',\n        );\n        await page.getByRole('button', { name: 'Save Number Mapping' }).click();\n        await firstSaveResponse;\n\n        await page.getByTestId('connectshyft-number-input').fill('+12605550112');\n        await page.getByTestId('connectshyft-number-label-input').fill('Overflow Dispatch');\n        const secondSaveResponse = page.waitForResponse(\n          (response) =>\n            response.url().includes('/api/v1/connectshyft/numbers')\n            && response.request().method() === 'POST',\n        );\n        await page.getByRole('button', { name: 'Save Number Mapping' }).click();\n        await secondSaveResponse;\n\n        await expect(\n          page.getByTestId('connectshyft-number-mapping-row').filter({\n            hasText: '+12605550111',\n          }),\n        ).toBeVisible();\n        await expect(\n          page.getByTestId('connectshyft-number-mapping-row').filter({\n            hasText: '+12605550112',\n          }),\n        ).toBeVisible();\n      },\n    );\n\n    test.skip(\n      '[P0] duplicate tenant number entry shows actionable validation feedback and blocks persistence @P0',\n      async ({ page }) => {\n        await page.goto(\n          '/app/connectshyft/settings/numbers?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-west&tenantRole=ORGUNIT_ADMIN',\n        );\n\n        await page.getByTestId('connectshyft-number-input').fill('+12605550123');\n        await page.getByTestId('connectshyft-number-label-input').fill('Duplicate Candidate');\n        const duplicateResponse = page.waitForResponse(\n          (response) =>\n            response.url().includes('/api/v1/connectshyft/numbers')\n            && response.request().method() === 'POST',\n        );\n        await page.getByRole('button', { name: 'Save Number Mapping' }).click();\n        await duplicateResponse;\n\n        await expect(\n          page.getByTestId('connectshyft-number-validation-error'),\n        ).toContainText('already mapped in this tenant');\n        await expect(\n          page.getByTestId('connectshyft-number-mapping-row').filter({\n            hasText: '+12605550123',\n          }),\n        ).toHaveCount(1);\n      },\n    );\n\n    test.skip(\n      '[P1] invalid non-E.164 input is rejected inline and preserves deterministic form and table state @P1',\n      async ({ page }) => {\n        await page.goto(\n          '/app/connectshyft/settings/numbers?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_ADMIN',\n        );\n\n        await page.getByTestId('connectshyft-number-input').fill('260-555-0111');\n        await page.getByTestId('connectshyft-number-label-input').fill('Invalid Mapping');\n        const invalidResponse = page.waitForResponse(\n          (response) =>\n            response.url().includes('/api/v1/connectshyft/numbers')\n            && response.request().method() === 'POST',\n        );\n        await page.getByRole('button', { name: 'Save Number Mapping' }).click();\n        await invalidResponse;\n\n        await expect(\n          page.getByTestId('connectshyft-number-validation-error'),\n        ).toContainText('Use a valid Twilio E.164 number');\n        await expect(\n          page.getByTestId('connectshyft-number-mapping-row').filter({\n            hasText: 'Invalid Mapping',\n          }),\n        ).toHaveCount(0);\n      },\n    );\n  },\n);\n",
+      "description": "ATDD E2E tests for Story a.3 orgUnit number mapping admin journey (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "OrgUnit admins manage multiple mapped numbers",
+        "Duplicate mapping attempts display actionable validation feedback"
+      ],
+      "priority_coverage": {
+        "P0": 2,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "connectShyftNumberMappingFormSelectors",
+    "connectShyftNumberMappingTableState"
+  ],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "test_count": 3,
+  "tdd_phase": "RED",
+  "summary": "Generated 3 FAILING E2E tests for Story a.3"
+}
