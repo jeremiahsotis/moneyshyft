@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-22T19:19:27Z'
+lastSaved: '2026-02-22T20:33:18Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -1207,3 +1207,196 @@ lastSaved: '2026-02-22T19:19:27Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability gate review.
 - `[TR] Trace Requirements` to map Story a.4 acceptance criteria to ATDD + automate coverage evidence.
+
+## Story a.5 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/a-5-capability-based-route-access-and-envelope-contract-compliance.md`
+  - Existing ATDD files found for Story a.5:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.spec.ts`
+
+### Context Loaded
+- Test framework config loaded: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts`.
+- Existing test structure loaded from `/Users/jeremiahotis/projects/connectshyft/tests`.
+- Story a.5 support assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryA5Factory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryA5.fixture.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/platform/envelopes/response.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils + automation:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+- Additional generation references:
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `api-testing-patterns.md`
+
+## Story a.5 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` executed in session `tea-automate`.
+- Target URLs probed:
+  - `http://127.0.0.1:5174/app/connectshyft/settings/numbers?...`
+  - `http://127.0.0.1:5174/app/connectshyft/settings/escalation?...`
+- Findings:
+  - Vue Router warning: no route match for both ConnectShyft settings paths.
+  - Auth bootstrap request `/api/v1/auth/me` returned `401`.
+  - Snapshot files were generated but empty due unresolved route surface.
+- Session hygiene:
+  - `playwright-cli -s=tea-automate close` executed successfully.
+
+### Acceptance Criteria to Target Mapping
+- AC1: Capability checks enforced server-side at endpoint/service boundaries.
+- AC2: Shared envelope semantics validated for success/refusal/system-error paths.
+
+### ATDD Duplication Control
+- Existing RED ATDD files retained:
+  - `tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.api.spec.ts`
+  - `tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.spec.ts`
+- Automation expansion generated non-ATDD executable coverage:
+  - `tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts`
+  - `tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.spec.ts`
+
+### Selected Test Levels
+- **API** (primary): capability enforcement and envelope contract checks.
+- **E2E** (secondary): operator-path refusal guidance and journey-level envelope assertions.
+
+### Priority Assignment
+- P0:
+  - number-mapping capability refusal for non-authorized roles
+  - blocked number-mapping writes with persistence guardrails
+  - escalation-config capability refusal with persisted-state preservation
+- P1:
+  - refusal envelope no-leak behavior on blocked claim attempts
+  - success/refusal/system-error top-level envelope key consistency
+  - operator-path refusal feedback journeys for missing UI surface readiness
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.spec.ts`
+- Scope: `critical-paths`
+
+## Story a.5 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-02-22T20-32-59-618Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-02-22T20-32-59-618Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`
+- E2E subprocess status: `success: true`
+- Output files present and JSON-valid for both subprocesses.
+
+### Performance Report
+- Parallel orchestration completed in one pass for API and E2E generation.
+- Sequential equivalent would require two generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story a.5 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts`
+- `tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper infrastructure:
+  - `storyA5Context`
+  - `storyA5OrgUnitAdminHeaders`
+  - `storyA5OrgUnitMemberHeaders`
+  - `storyA5TenantViewerHeaders`
+  - `storyA5ValidEscalationPayload`
+  - `apiRequest`
+  - `login`
+- No new shared fixture files required.
+
+### Summary Metrics
+- Total tests generated: `8`
+  - API tests: `5` (1 file)
+  - E2E tests: `3` (1 file)
+- Priority coverage:
+  - P0: `5`
+  - P1: `3`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-22T20-32-59-618Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-02-22T20-32-59-618Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-22T20-32-59-618Z.json`
+  - `/tmp/tea-automate-summary-2026-02-22T20-32-59-618Z.json`
+- Persisted under test artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-22T20-32-59-618Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-22T20-32-59-618Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-22T20-32-59-618Z.json`
+
+## Story a.5 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated spec parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.spec.ts`
+  - Result: passed (`8` tests discovered in `2` files).
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) used.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) introduced.
+  - priority tags (`@P0`, `@P1`) present for selective execution.
+- CLI sessions cleaned up:
+  - no orphaned `tea-automate` browser session.
+- Temp artifacts stored in workflow artifact path:
+  - `_bmad-output/test-artifacts/automation-temp`.
+
+### Key Assumptions
+- Story a.5 ConnectShyft API contracts align with current route implementation in `src/src/routes/api/v1/connectshyft.ts`.
+- Shared system-error envelope verification for this run uses the platform contract endpoint:
+  - `/api/v1/platform/_kernel/contracts/envelope/response-matrix/system-error`
+
+### Risks
+- ConnectShyft settings UI routes are not currently matched by frontend router in this environment; two operator-path tests are marked `test.fixme` pending route availability.
+- Full runtime execution against live backend/frontend was not run in this step; validation was parse/discovery-level.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality scoring and maintainability checks.
+- `[TR] Trace Requirements` to map Story a.5 AC coverage to generated automation and ATDD assets.
