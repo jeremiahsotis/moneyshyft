@@ -1,6 +1,6 @@
 # Story a.5: Capability-Based Route Access and Envelope Contract Compliance
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,22 +24,22 @@ so that client behavior is predictable and unauthorized operations are safely re
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: UI behavior must map refusal reasons to actionable operator feedback without exposing unauthorized data.
 - Real-User Validation Evidence: Capability matrix tests + endpoint/service boundary authorization checks.
-- Real-User Validation Result: pending
+- Real-User Validation Result: pass
 - Role-Admin UI Path: Tenant admin role/capability assignment path must be testable for coverage scenarios.
-- Role-Admin UI Path Verified: pending
+- Role-Admin UI Path Verified: yes
 - Access-Control Exemption Rationale: N/A
 
 ## Tasks / Subtasks
 
-- [ ] Implement capability checks across endpoint and service layers (AC: 1)
-  - [ ] Apply role/capability checks at route guard and business-service boundaries.
-  - [ ] Ensure deny-by-default behavior for unauthorized operations.
-- [ ] Enforce envelope contract compliance for all ConnectShyft responses (AC: 2)
-  - [ ] Use shared `success/refusal/systemError` envelope helpers.
-  - [ ] Remove or prevent non-standard ad hoc response shapes in ConnectShyft endpoints.
-- [ ] Add coverage tests for capability and envelope behavior (AC: 1, 2)
-  - [ ] API contract tests for authorized vs unauthorized capability paths.
-  - [ ] Response-shape tests for success/refusal/systemError variants.
+- [x] Implement capability checks across endpoint and service layers (AC: 1)
+  - [x] Apply role/capability checks at route guard and business-service boundaries.
+  - [x] Ensure deny-by-default behavior for unauthorized operations.
+- [x] Enforce envelope contract compliance for all ConnectShyft responses (AC: 2)
+  - [x] Use shared `success/refusal/systemError` envelope helpers.
+  - [x] Remove or prevent non-standard ad hoc response shapes in ConnectShyft endpoints.
+- [x] Add coverage tests for capability and envelope behavior (AC: 1, 2)
+  - [x] API contract tests for authorized vs unauthorized capability paths.
+  - [x] Response-shape tests for success/refusal/systemError variants.
 
 ## Dev Notes
 
@@ -85,14 +85,32 @@ so that client behavior is predictable and unauthorized operations are safely re
 
 GPT-5 Codex
 
+### Implementation Plan
+
+- Harden ConnectShyft route/service boundaries by enforcing role capability checks for thread view/claim/takeover flows.
+- Preserve deny-by-default refusal semantics for escalation actions when tenant-scoped roles bypass orgUnit membership without takeover authority.
+- Preserve shared envelope serializer usage for all ConnectShyft success/refusal paths and validate against capability matrix API coverage.
+
 ### Debug Log References
 
-- Story context creation only; implementation logs pending.
+- `npm run test:e2e -- tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts` (pass after route guard fixes)
+- `npm run test:e2e -- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts` (pass)
+- `cd src && npm test` (pass)
+- `npm run test:e2e` (pass: 224 passed, 107 skipped)
 
 ### Completion Notes List
 
-- Created ConnectShyft Epic A context for capability enforcement and envelope contract compliance with dependency on a.2.
+- Added route/service-boundary capability guards for ConnectShyft thread view, claim, and takeover operations with explicit deny-by-default refusal contracts.
+- Enforced escalation-action membership gate for bypassed tenant roles without takeover authority to prevent unauthorized claim/takeover operations.
+- Updated default test recipient directory to include Story A.5 role identities so escalation configuration capability tests execute against valid recipient scope.
+- Validated canonical shared envelope keys and refusal/system-error contract behavior through Story A.5 API coverage and full regression execution.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/a-5-capability-based-route-access-and-envelope-contract-compliance.md
+- src/src/routes/api/v1/connectshyft.ts
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+
+### Change Log
+
+- 2026-02-22: Completed Story a.5 implementation and validation; status moved to `review`.

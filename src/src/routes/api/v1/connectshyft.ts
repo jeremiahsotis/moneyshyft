@@ -134,6 +134,92 @@ const enforceEscalationConfigCapability = (
   return false;
 };
 
+const enforceThreadViewCapability = (
+  req: Request,
+  res: Response,
+): boolean => {
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (
+    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_THREAD_VIEW)
+    || hasCapability([requestedRole], CAPABILITIES.THREAD_VIEW_ALL)
+  ) {
+    return true;
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_THREAD_VIEW_FORBIDDEN',
+    message: 'Thread access requires an authorized ConnectShyft role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
+const enforceEscalationActionMembership = (
+  req: Request,
+  res: Response,
+  bypassedOrgUnitMembership: boolean,
+): boolean => {
+  if (!bypassedOrgUnitMembership) {
+    return true;
+  }
+
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (hasCapability([requestedRole], CAPABILITIES.THREAD_TAKEOVER_ALL)) {
+    return true;
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_ORGUNIT_MEMBERSHIP_REQUIRED',
+    message: 'orgUnit membership is required for this ConnectShyft route',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
+const enforceThreadClaimCapability = (
+  req: Request,
+  res: Response,
+): boolean => {
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (
+    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_THREAD_CLAIM)
+    || hasCapability([requestedRole], CAPABILITIES.THREAD_TAKEOVER_ALL)
+  ) {
+    return true;
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_THREAD_CLAIM_FORBIDDEN',
+    message: 'Thread claim requires an authorized orgUnit role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
+const enforceThreadTakeoverCapability = (
+  req: Request,
+  res: Response,
+): boolean => {
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (
+    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_THREAD_TAKEOVER)
+    || hasCapability([requestedRole], CAPABILITIES.THREAD_TAKEOVER_ALL)
+  ) {
+    return true;
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_THREAD_TAKEOVER_FORBIDDEN',
+    message: 'Thread takeover requires an authorized orgUnit role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
 const parseOrgUnitIdFromBody = (req: Request): string | null => {
   if (typeof req.body?.orgUnitId !== 'string') {
     return null;
@@ -270,11 +356,16 @@ const buildDefaultTestRecipientDirectory = (): ConnectShyftEscalationRecipientDi
     orgUnitRecipientIds: [
       'user-connectshyft-a4-primary-recipient',
       'user-connectshyft-a4-secondary-recipient',
+      'user-connectshyft-a5-orgunit-admin',
+      'user-connectshyft-a5-orgunit-member',
     ],
     tenantRecipientIds: [
       'user-connectshyft-a4-primary-recipient',
       'user-connectshyft-a4-secondary-recipient',
       'user-connectshyft-a4-tenant-staff-recipient',
+      'user-connectshyft-a5-orgunit-admin',
+      'user-connectshyft-a5-orgunit-member',
+      'user-connectshyft-a5-tenant-staff',
     ],
     options: [
       {
@@ -290,6 +381,21 @@ const buildDefaultTestRecipientDirectory = (): ConnectShyftEscalationRecipientDi
       {
         value: 'user-connectshyft-a4-tenant-staff-recipient',
         label: 'Tenant Staff Recipient',
+        scope: connectShyftEscalationRecipientScopes.TENANT,
+      },
+      {
+        value: 'user-connectshyft-a5-orgunit-admin',
+        label: 'A5 OrgUnit Admin',
+        scope: connectShyftEscalationRecipientScopes.ORG_UNIT,
+      },
+      {
+        value: 'user-connectshyft-a5-orgunit-member',
+        label: 'A5 OrgUnit Member',
+        scope: connectShyftEscalationRecipientScopes.ORG_UNIT,
+      },
+      {
+        value: 'user-connectshyft-a5-tenant-staff',
+        label: 'A5 Tenant Staff',
         scope: connectShyftEscalationRecipientScopes.TENANT,
       },
       {
@@ -477,6 +583,10 @@ router.get('/availability', (req: Request, res: Response) => {
 router.get('/inbox', async (req: Request, res: Response) => {
   const flags = enforceCapability(req, res, 'inbox');
   if (!flags) {
+    return;
+  }
+
+  if (!enforceThreadViewCapability(req, res)) {
     return;
   }
 
@@ -752,6 +862,10 @@ router.post('/threads', async (req: Request, res: Response) => {
     return;
   }
 
+  if (!enforceThreadViewCapability(req, res)) {
+    return;
+  }
+
   const requestedOrgUnitId = typeof req.body?.orgUnitId === 'string'
     ? req.body.orgUnitId
     : null;
@@ -786,6 +900,14 @@ router.post('/threads/:threadId/claim', async (req: Request, res: Response) => {
     return;
   }
 
+  if (!enforceEscalationActionMembership(req, res, context.bypassedOrgUnitMembership)) {
+    return;
+  }
+
+  if (!enforceThreadClaimCapability(req, res)) {
+    return;
+  }
+
   return success(res, {
     code: 'CONNECTSHYFT_THREAD_CLAIM_READY',
     message: 'ConnectShyft claim action accepted',
@@ -804,6 +926,14 @@ router.post('/threads/:threadId/takeover', async (req: Request, res: Response) =
 
   const context = await enforceOrgUnitContext(req, res);
   if (!context) {
+    return;
+  }
+
+  if (!enforceEscalationActionMembership(req, res, context.bypassedOrgUnitMembership)) {
+    return;
+  }
+
+  if (!enforceThreadTakeoverCapability(req, res)) {
     return;
   }
 
