@@ -1,60 +1,87 @@
 ---
 stepsCompleted: ['step-01-preflight','step-02-generate-pipeline','step-03-configure-quality-gates','step-04-validate-and-summary']
 lastStep: 'step-04-validate-and-summary'
-lastSaved: '2026-02-21T22:22:15Z'
+lastSaved: '2026-02-22T07:45:42Z'
 ---
 
-# CI Workflow Progress (connectshyft epic 1)
-
-> Team standard note: user testing and local Playwright runs are pinned to `http://localhost:5174` to avoid host/port mismatch.
+# CI Workflow Progress (ConnectShyft Epic A)
 
 ## Step 1: Preflight Checks
-- Git repository: present (`.git/` exists).
-- Git remote: configured (`origin` -> GitHub).
-- Test framework: Playwright detected (`playwright.config.ts`, `@playwright/test` in `package.json`).
-- Branch workflow guard for epic execution: passed.
-  - Command: `npm run branch:ensure-workflow -- --workflow _bmad/tea/workflows/testarch/ci/workflow.yaml --epic 1`
-- Node runtime source: `.nvmrc` found (`24`).
-- Local test gate: initially blocked in sandbox networking, now resolved.
-  - Initial failure: missing frontend deps (`vite` not installed).
-  - Resolution validation (host-level): `curl -sf http://localhost:5174/login` and `curl -sf http://localhost:3000/health` both succeeded.
-  - Preflight validation command (resolved): `BASE_URL=http://localhost:5174 API_URL=http://localhost:3000 AUTO_START_STACK=false npm run test:e2e -- --list` (exit code 0).
+- Git repository validated: `.git/` present.
+- Git remote validated: `origin` configured to GitHub.
+- Test framework validated: `playwright.config.ts` present and `@playwright/test` configured in root `package.json`.
+- Branch workflow guard validated:
+  - `npm run branch:ensure-workflow -- --workflow _bmad/tea/workflows/testarch/ci/workflow.yaml --epic 1`
+  - Result: guard passed.
+- Local test command validated:
+  - `npm run test:e2e`
+  - Result: `175 passed`, `59 skipped`, `0 failed`.
+- CI platform detection:
+  - Existing GitHub Actions workflow detected at `.github/workflows/test.yml`.
+  - Mode selected: **update existing pipeline** (non-destructive update).
+- Environment context:
+  - `.nvmrc` found with Node `24`.
+  - Package manager strategy detected: `npm` with lockfiles in root, `frontend/`, and `src/`.
+- Blocking issues: none.
 
 ## Step 2: Generate CI Pipeline
-- Existing CI pipeline detected at `/Users/jeremiahotis/projects/connectshyft/.github/workflows/test.yml`.
-- Existing workflow already includes required staged architecture:
-  - `policy` (blocking first job)
-  - `lint`
-  - `test` (4 shards, fail-fast false)
-  - `burn-in` (10 iterations)
-  - `quality-gates`
-  - `backend-contracts` (manual lane)
-  - `report`
-- Artifact collection and retention are configured across test/burn-in/quality stages.
-- Decision: no scaffold replacement needed.
+- Platform selected: GitHub Actions.
+- Strategy: update existing `.github/workflows/test.yml` (non-destructive) to align with CI/burn-in guidance and repo policy.
+- Core staged topology retained:
+  - `policy` -> `lint` -> `test` (4 shards) -> `burn-in` -> `quality-gates` -> optional `backend-contracts` -> `report`.
+- Pipeline updates applied:
+  - Added monorepo-aware `cache-dependency-path` for `actions/setup-node` across jobs:
+    - `package-lock.json`
+    - `frontend/package-lock.json`
+    - `src/package-lock.json`
+  - Split shard outputs into:
+    - **always-on gate snapshots** (`gate-snapshot-shard-*`) for downstream quality aggregation.
+    - **failure-only debug artifacts** (`test-artifacts-failure-shard-*`) to reduce unnecessary artifact volume.
+  - Updated quality-gates artifact download to consume `gate-snapshot-shard-*` into `tests/artifacts/gates/`.
+  - Changed burn-in artifact upload to `if: failure()` for failure-focused debugging capture.
+- Result: CI workflow remains functionally equivalent for required stages while improving artifact policy and cache strategy.
 
 ## Step 3: Quality Gates & Notifications
-- Loaded TEA knowledge index and `ci-burn-in` guidance.
-- Current pipeline quality gates align with TEA requirements and repo policy:
-  - P0/P1 gates enforced via `scripts/quality-gates.sh`
-  - burn-in gating configured for PR/scheduled runs
-  - report summary generated on every run
-- Failure notification hook is present via optional Slack webhook in `report` job.
+- Burn-in configuration validated against TEA knowledge (`ci-burn-in.md`):
+  - PR/scheduled burn-in job is active.
+  - Iteration count is fixed at `10` via `bash scripts/burn-in.sh 10 origin/production`.
+- Quality gate thresholds validated:
+  - `scripts/quality-gates.sh` enforces:
+    - `@P0` pass rate = `100%`
+    - `@P1` pass rate >= `95%`
+  - Pipeline blocks on quality-gate failure via job dependency graph.
+- Critical failure behavior validated:
+  - CI fails on policy, lint, test, burn-in, or quality-gates failures.
+  - Required security verification suites are enforced by `scripts/quality-gates.sh`.
+- Notifications and artifact links configured:
+  - Slack webhook notification remains enabled on failure in `report` job.
+  - CI summary now includes direct run and artifact URLs for rapid triage.
 
-## Step 4: Validate & Summary
+## Step 4: Validate & Summarize
 ### Validation Results
-- CI config file exists and is structurally valid.
-- Stages and sharding are configured.
-- Burn-in and artifact collection are configured.
-- Secrets/variables are documented in workflow env references.
-- Remaining blocker: none for localhost reachability preflight validation.
+- CI configuration file: present and updated at `.github/workflows/test.yml`.
+- Required staged topology: valid (`policy`, `lint`, `test` shards, `burn-in`, `quality-gates`, optional `backend-contracts`, `report`).
+- Parallel sharding: valid (`matrix.shard: [1,2,3,4]`, `fail-fast: false`).
+- Burn-in: valid (`10` iterations on PR/schedule).
+- Artifact strategy: valid (gate snapshots always, heavy debug artifacts on failure).
+- Quality thresholds: validated in `scripts/quality-gates.sh` (`@P0=100%`, `@P1>=95%`).
+- Documentation criteria: satisfied via:
+  - `docs/ci.md`
+  - `docs/ci-secrets-checklist.md`
+- Local validation commands:
+  - `bash scripts/lint-or-discovery.sh` -> pass.
+  - `npm run policy:check` -> fails on current HEAD commit message policy (existing repo state), not on workflow syntax.
 
 ### Completion Summary
-- CI platform: GitHub Actions
-- Config path: `/Users/jeremiahotis/projects/connectshyft/.github/workflows/test.yml`
-- Key stages enabled: policy -> lint -> test(4 shards) -> burn-in -> quality-gates -> optional backend-contracts -> report
-- Artifacts: shard artifacts, burn-in artifacts, quality-gates artifacts
-- Notifications: optional Slack webhook on failure
-
-### Recommended Next Action
-- Optional follow-up: run full suite with `BASE_URL=http://localhost:5174 npm run test:e2e`.
+- CI platform: GitHub Actions.
+- Config path: `.github/workflows/test.yml`.
+- Key improvements delivered:
+  - monorepo lockfile-aware npm cache configuration
+  - artifact policy split (always-on gate snapshots vs. failure-only debug bundles)
+  - quality-gates artifact download path aligned to snapshot artifacts
+  - report summary includes direct run + artifacts URLs
+  - CI and secret setup docs added
+- User next actions:
+  1. Commit workflow/doc/runtime updates.
+  2. Push and open/update PR to trigger CI.
+  3. If policy job fails in CI, fix branch HEAD commit subject to match repository git policy.

@@ -39,6 +39,10 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+            src/package-lock.json
       - run: npm ci
       - name: Policy gate
         run: npm run policy:check
@@ -53,6 +57,10 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+            src/package-lock.json
       - run: npm ci
       - run: npm install --prefix src --no-audit --fund=false
       - name: Lint or discovery fallback
@@ -97,6 +105,10 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+            src/package-lock.json
       - run: npm ci
       - run: npm ci --prefix frontend
       - run: npm install --prefix src --no-audit --fund=false
@@ -110,12 +122,23 @@ jobs:
           mkdir -p tests/artifacts/gates
           if [ -f tests/artifacts/test-results/results.json ]; then
             cp tests/artifacts/test-results/results.json tests/artifacts/gates/results-shard-${{ matrix.shard }}.json
+          else
+            cat > tests/artifacts/gates/results-shard-${{ matrix.shard }}.json <<'JSON'
+          {"ok":false,"error":"results.json missing for shard artifact"}
+          JSON
           fi
-      - name: Upload test artifacts
+      - name: Upload shard gate snapshot
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-artifacts-shard-${{ matrix.shard }}
+          name: gate-snapshot-shard-${{ matrix.shard }}
+          path: tests/artifacts/gates/results-shard-${{ matrix.shard }}.json
+          retention-days: 30
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-failure-shard-${{ matrix.shard }}
           path: |
             tests/artifacts/test-results/
             tests/artifacts/playwright-report/
@@ -162,6 +185,10 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+            src/package-lock.json
       - run: npm ci
       - run: npm ci --prefix frontend
       - run: npm install --prefix src --no-audit --fund=false
@@ -170,7 +197,7 @@ jobs:
       - name: Run burn-in loop
         run: bash scripts/ci-run-playwright-stack.sh bash scripts/burn-in.sh 10 origin/production
       - name: Upload burn-in artifacts
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: burn-in-artifacts
@@ -192,14 +219,18 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+            src/package-lock.json
       - run: npm ci
       - run: npm install --prefix src --no-audit --fund=false
       - name: Download shard artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: test-artifacts-shard-*
+          pattern: gate-snapshot-shard-*
           merge-multiple: true
-          path: tests/artifacts/
+          path: tests/artifacts/gates/
       - name: Run quality gates
         run: bash scripts/quality-gates.sh
       - name: Upload quality gate artifacts
@@ -228,6 +259,10 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+            src/package-lock.json
       - run: npm ci
       - run: npm install --prefix src --no-audit --fund=false
       - name: Run Epic 0 quality gates
@@ -259,6 +294,10 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+            src/package-lock.json
       - run: npm ci
       - run: npm install --prefix src --no-audit --fund=false
       - name: Install Playwright browsers
@@ -286,6 +325,8 @@ jobs:
             echo "- quality-gates: ${{ needs['quality-gates'].result }}"
             echo "- epic-0-quality: ${{ needs['epic-0-quality'].result }}"
             echo "- backend-contracts: ${{ needs['backend-contracts'].result }}"
+            echo "- run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- artifacts: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Slack failure notification
         if: failure() && env.SLACK_WEBHOOK_URL != ''
