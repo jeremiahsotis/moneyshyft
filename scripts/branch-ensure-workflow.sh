@@ -148,6 +148,80 @@ normalize_story_id() {
   echo ""
 }
 
+normalize_story_key() {
+  local raw="$1"
+  raw="$(basename "$raw")"
+  raw="${raw%.md}"
+  if [[ "$raw" =~ ^(([0-9]+|[A-Za-z])[.-]([0-9]+)-(.+))$ ]]; then
+    local epic_token="${BASH_REMATCH[2]}"
+    local story_number="${BASH_REMATCH[3]}"
+    local slug_part="${BASH_REMATCH[4]}"
+    if [[ "$epic_token" =~ ^[A-Za-z]$ ]]; then
+      epic_token="$(echo "$epic_token" | tr '[:upper:]' '[:lower:]')"
+    fi
+    echo "${epic_token}-${story_number}-${slug_part}"
+    return 0
+  fi
+  echo ""
+}
+
+load_lane_catalog() {
+  node - <<'NODE'
+const fs = require('fs');
+const configPath = 'docs/policies/project_lanes.json';
+try {
+  const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  for (const lane of parsed.lanes || []) {
+    if (!lane || !lane.id || !lane.sprintStatusFile) {
+      continue;
+    }
+    const id = String(lane.id).trim().toLowerCase();
+    const statusPath = String(lane.sprintStatusFile)
+      .trim()
+      .replace(/\\/g, '/')
+      .replace(/^\.\//, '');
+    if (!id || !statusPath) {
+      continue;
+    }
+    process.stdout.write(`${id}\t${statusPath}\n`);
+  }
+} catch (_error) {
+  // No-op fallback. Caller handles empty output.
+}
+NODE
+}
+
+detect_story_lane_from_status() {
+  local story_key="$1"
+  local lane_catalog="$2"
+  local -a matches=()
+
+  if [[ -z "$story_key" || -z "$lane_catalog" ]]; then
+    echo ""
+    return 0
+  fi
+
+  while IFS=$'\t' read -r lane_id lane_status_file; do
+    [[ -z "$lane_id" || -z "$lane_status_file" ]] && continue
+    [[ ! -f "$lane_status_file" ]] && continue
+    if grep -Eq "^[[:space:]]{2}${story_key}:[[:space:]]*" "$lane_status_file"; then
+      matches+=("$lane_id")
+    fi
+  done <<< "$lane_catalog"
+
+  if [[ "${#matches[@]}" -eq 1 ]]; then
+    echo "${matches[0]}"
+    return 0
+  fi
+
+  if [[ "${#matches[@]}" -gt 1 ]]; then
+    echo "__ambiguous__:${matches[*]}"
+    return 0
+  fi
+
+  echo ""
+}
+
 ensure_corrected_kernel_gate() {
   local story_id="$1"
   local epic_id="${story_id%%-*}"
@@ -335,6 +409,29 @@ if [[ "$workflow_key" =~ $story_workflow_regex ]]; then
   if [[ -z "$story_id" ]]; then
     echo "Could not parse story id from: $story_input"
     exit 1
+  fi
+
+  story_key="$(normalize_story_key "$story_input")"
+  if [[ -n "$story_key" ]]; then
+    lane_catalog="$(load_lane_catalog)"
+    story_lane_detected="$(detect_story_lane_from_status "$story_key" "$lane_catalog")"
+
+    if [[ "$story_lane_detected" == __ambiguous__:* ]]; then
+      echo "Lane guard failed"
+      echo "Story key '$story_key' appears in multiple lane status files: ${story_lane_detected#__ambiguous__:}"
+      echo "Provide explicit lane and retry:"
+      echo "  npm run branch:ensure-workflow -- --lane <lane-id> --workflow $workflow --story $story_input"
+      exit 1
+    fi
+
+    if [[ -n "$story_lane_detected" && "$story_lane_detected" != "$ACTIVE_LANE" ]]; then
+      echo "Lane guard failed"
+      echo "Story key '$story_key' belongs to lane '$story_lane_detected', but active lane is '$ACTIVE_LANE'"
+      echo "Current branch: $branch"
+      echo "Retry with the correct lane:"
+      echo "  npm run branch:ensure-workflow -- --lane $story_lane_detected --workflow $workflow --story $story_input"
+      exit 1
+    fi
   fi
 
   ensure_corrected_kernel_gate "$story_id"
