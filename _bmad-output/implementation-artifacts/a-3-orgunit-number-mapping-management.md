@@ -1,6 +1,6 @@
 # Story a.3: OrgUnit Number Mapping Management
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -31,15 +31,15 @@ so that inbound routing is deterministic and operationally maintainable.
 
 ## Tasks / Subtasks
 
-- [ ] Implement number mapping create/update paths for multiple orgUnit numbers (AC: 1)
-  - [ ] Support multiple mapped numbers per orgUnit.
-  - [ ] Validate Twilio E.164 format before persistence.
-- [ ] Enforce tenant-safe uniqueness constraints (AC: 2)
-  - [ ] Enforce uniqueness for `(tenant_id, twilio_number_e164)` at persistence and service layers.
-  - [ ] Return deterministic validation/refusal payloads on duplicate collisions.
-- [ ] Deliver admin UX + API parity and tests (AC: 1, 2)
-  - [ ] Add API tests for valid create/update and duplicate failure paths.
-  - [ ] Add UI tests for error feedback and deterministic state after validation failures.
+- [x] Implement number mapping create/update paths for multiple orgUnit numbers (AC: 1)
+  - [x] Support multiple mapped numbers per orgUnit.
+  - [x] Validate Twilio E.164 format before persistence.
+- [x] Enforce tenant-safe uniqueness constraints (AC: 2)
+  - [x] Enforce uniqueness for `(tenant_id, twilio_number_e164)` at persistence and service layers.
+  - [x] Return deterministic validation/refusal payloads on duplicate collisions.
+- [x] Deliver admin UX + API parity and tests (AC: 1, 2)
+  - [x] Add API tests for valid create/update and duplicate failure paths.
+  - [x] Add UI tests for error feedback and deterministic state after validation failures.
 
 ## Dev Notes
 
@@ -86,12 +86,38 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context creation only; implementation logs pending.
+- `cd src && npm test -- src/modules/connectshyft/__tests__/numberMappings.test.ts` (pass, 7 tests)
+- `cd src && npm run build` (pass)
+- `cd frontend && npm run build` (pass)
+- `npm run test:e2e -- tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts` (pass, 5 tests)
+- `npm run test:e2e -- tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts` (pass, 4 tests)
+- `cd src && npm test` (pass, 30 suites / 139 tests passed, 2 skipped)
 
 ### Completion Notes List
 
-- Created ConnectShyft Epic A context for orgUnit number mapping, uniqueness constraints, and admin UX/API parity.
+- Implemented ConnectShyft number mapping create/update/list flows on `/api/v1/connectshyft/numbers` with shared envelope contracts.
+- Added dedicated ConnectShyft number mapping service with E.164 validation and tenant-safe uniqueness checks at service and persistence layers.
+- Added deterministic duplicate and invalid-number refusal payloads (`CONNECTSHYFT_NUMBER_MAPPING_DUPLICATE`, `CONNECTSHYFT_NUMBER_MAPPING_INVALID_E164`) with actionable `fieldErrors`.
+- Added frontend Numbers & OrgUnit Config screen and route (`/app/connectshyft/settings/numbers`) with create/edit mapping workflow and deterministic validation feedback.
+- Added frontend test-context header overrides (tenant/orgUnit/role/memberships) for ConnectShyft UI automation parity.
+- Enabled and executed story `a.3` API and E2E Playwright coverage (create/update/duplicate/invalid journeys) with passing results.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/a-3-orgunit-number-mapping-management.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- src/src/modules/connectshyft/numberMappings.ts
+- src/src/modules/connectshyft/__tests__/numberMappings.test.ts
+- src/src/modules/connectshyft/contextAccess.ts
+- src/src/routes/api/v1/connectshyft.ts
+- src/src/platform/rbac/capabilities.ts
+- frontend/src/features/connectshyft/flags.ts
+- frontend/src/features/connectshyft/numbers.ts
+- frontend/src/views/ConnectShyft/ConnectShyftNumberMappingsView.vue
+- frontend/src/router/index.ts
+- tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts
+- tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts
+
+### Change Log
+
+- 2026-02-22: Implemented story a.3 end-to-end (backend number mapping APIs, tenant-safe uniqueness/validation, admin UI path, and automated API/E2E coverage).

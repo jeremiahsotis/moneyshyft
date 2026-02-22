@@ -6,7 +6,9 @@ import { connectShyftNumberMappingData } from '../../fixtures/test-data';
 test.describe(
   'Story a.3 automate - orgUnit number mapping management API coverage',
   () => {
-    test.fixme(
+    test.describe.configure({ mode: 'serial' });
+
+    test(
       '[P0] saves multiple valid E.164 mappings for one orgUnit and returns deterministic read-back payload @P0',
       async ({
         request,
@@ -51,7 +53,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] blocks duplicate tenant number mappings across orgUnits with actionable refusal and no mapping-id leakage @P0',
       async ({ request, storyA3Context }) => {
         const eastHeaders = createStoryA3Headers(storyA3Context, {
@@ -112,7 +114,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] rejects non-E.164 mapping payloads with deterministic field-level refusal details @P1',
       async ({
         request,
@@ -146,7 +148,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] enforces tenant and orgUnit boundary checks on number-mapping writes @P1',
       async ({ request, storyA3Context }) => {
         const crossTenantHeaders = createStoryA3Headers(storyA3Context, {
@@ -178,7 +180,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] updates existing mapping to a new valid E.164 value while preserving orgUnit scope metadata @P1',
       async ({ request, storyA3Context, storyA3AdminHeaders }) => {
         const response = await apiRequest(request, {

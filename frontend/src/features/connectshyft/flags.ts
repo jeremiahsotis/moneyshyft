@@ -13,6 +13,14 @@ type ConnectShyftAvailabilityEnvelope = {
   };
 };
 
+type ParsedConnectShyftContextOverride = {
+  tenantId: string | null;
+  orgUnitId: string | null;
+  role: string | null;
+  userId: string | null;
+  orgUnitMemberships: string[];
+};
+
 export const DEFAULT_CONNECTSHYFT_UI_FLAGS: ConnectShyftUiFlags = {
   connectshyft_enabled: false,
   connectshyft_inbox_enabled: false,
@@ -22,6 +30,15 @@ export const DEFAULT_CONNECTSHYFT_UI_FLAGS: ConnectShyftUiFlags = {
 
 const isConnectShyftTestHarnessEnabled = (): boolean =>
   import.meta.env.DEV && import.meta.env.VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS === 'true';
+
+const normalizeQueryValue = (value: string | null): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
 
 const parseFlagState = (value: string): boolean | null => {
   const normalized = value.trim().toLowerCase();
@@ -71,19 +88,81 @@ const parseFlagQueryForTestOverride = (rawFlagsParam: string): ConnectShyftUiFla
   return parsedFlags;
 };
 
-const buildTestOverrideHeaders = (): Record<string, string> => {
+const parseContextQueryForTestOverride = (): ParsedConnectShyftContextOverride => {
+  if (typeof window === 'undefined') {
+    return {
+      tenantId: null,
+      orgUnitId: null,
+      role: null,
+      userId: null,
+      orgUnitMemberships: [],
+    };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const contextMode = normalizeQueryValue(searchParams.get('context'));
+  const tenantId = normalizeQueryValue(searchParams.get('tenantId'));
+  const role = normalizeQueryValue(searchParams.get('tenantRole'))
+    || normalizeQueryValue(searchParams.get('role'));
+  const userId = normalizeQueryValue(searchParams.get('userId'))
+    || (role ? `user-connectshyft-ui-${role.toLowerCase()}` : null);
+
+  const requestedOrgUnitId = normalizeQueryValue(searchParams.get('orgUnitId'));
+  const orgUnitId = contextMode === 'missing-orgunit' ? null : requestedOrgUnitId;
+
+  const rawMemberships = normalizeQueryValue(searchParams.get('orgUnitMemberships'));
+  if (rawMemberships) {
+    const memberships = rawMemberships
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
+
+    return {
+      tenantId,
+      orgUnitId,
+      role,
+      userId,
+      orgUnitMemberships: memberships,
+    };
+  }
+
+  return {
+    tenantId,
+    orgUnitId,
+    role,
+    userId,
+    orgUnitMemberships: orgUnitId ? [orgUnitId] : [],
+  };
+};
+
+export const buildConnectShyftTestOverrideHeaders = (): Record<string, string> => {
   if (!isConnectShyftTestHarnessEnabled() || typeof window === 'undefined') {
     return {};
   }
 
-  const rawFlags = new URLSearchParams(window.location.search).get('flags');
-  if (!rawFlags) {
-    return {};
+  const searchParams = new URLSearchParams(window.location.search);
+  const rawFlags = normalizeQueryValue(searchParams.get('flags'));
+  const context = parseContextQueryForTestOverride();
+  const headers: Record<string, string> = {};
+
+  if (rawFlags) {
+    headers['x-test-connectshyft-flags'] = JSON.stringify(parseFlagQueryForTestOverride(rawFlags));
   }
 
-  return {
-    'x-test-connectshyft-flags': JSON.stringify(parseFlagQueryForTestOverride(rawFlags)),
-  };
+  if (context.tenantId && context.role && context.userId) {
+    headers['x-test-connectshyft-tenant-id'] = context.tenantId;
+    headers['x-test-connectshyft-role'] = context.role;
+    headers['x-test-connectshyft-user-id'] = context.userId;
+    if (context.orgUnitId) {
+      headers['x-test-connectshyft-orgunit-id'] = context.orgUnitId;
+    }
+  }
+
+  if (context.orgUnitMemberships.length > 0) {
+    headers['x-test-connectshyft-orgunit-memberships'] = JSON.stringify(context.orgUnitMemberships);
+  }
+
+  return headers;
 };
 
 const toBooleanFlag = (value: unknown): boolean => value === true;
@@ -105,7 +184,7 @@ const parseServerFlags = (payload: unknown): ConnectShyftUiFlags => {
 export const fetchConnectShyftUiFlags = async (): Promise<ConnectShyftUiFlags> => {
   try {
     const response = await api.get('/connectshyft/availability', {
-      headers: buildTestOverrideHeaders(),
+      headers: buildConnectShyftTestOverrideHeaders(),
     });
     return parseServerFlags(response.data);
   } catch (_error) {

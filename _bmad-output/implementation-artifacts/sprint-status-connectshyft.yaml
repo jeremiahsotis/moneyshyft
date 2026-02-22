@@ -44,7 +44,7 @@ development_status:
   epic-a: in-progress
   a-1-connectshyft-feature-flag-and-availability-guardrails: review
   a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes: done
-  a-3-orgunit-number-mapping-management: ready-for-dev
+  a-3-orgunit-number-mapping-management: review
   a-4-escalation-baseline-and-recipient-configuration: ready-for-dev
   a-5-capability-based-route-access-and-envelope-contract-compliance: ready-for-dev
   epic-a-retrospective: optional

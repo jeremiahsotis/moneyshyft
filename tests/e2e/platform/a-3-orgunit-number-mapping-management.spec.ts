@@ -1,17 +1,38 @@
 import { test, expect } from '../../support/fixtures/connectShyftStoryA3.fixture';
+import type { Page } from '@playwright/test';
+import { login } from '../../helpers/auth';
 
 const buildNumbersUrl = (query: string): string =>
   `/app/connectshyft/settings/numbers?flags=module:on,inbox:on,escalation:on,webhooks:on&${query}`;
 
+const saveNumberMapping = async (
+  page: Page,
+  twilioNumberE164: string,
+  label: string,
+): Promise<void> => {
+  await page.getByTestId('connectshyft-number-input').fill(twilioNumberE164);
+  await page.getByTestId('connectshyft-number-label-input').fill(label);
+  const saveResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/connectshyft/numbers')
+      && response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Save Number Mapping' }).click();
+  await saveResponse;
+};
+
 test.describe(
   'Story a.3 automate - orgUnit number mapping management operator journeys',
   () => {
-    test.fixme(
+    test.describe.configure({ mode: 'serial' });
+
+    test(
       '[P0] orgUnit admins can add multiple valid mappings and see deterministic table state after each save @P0',
       async ({ page }) => {
+        await login(page);
         await page.goto(
           buildNumbersUrl(
-            'tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_ADMIN',
+            'tenantId=tenant-connectshyft-alpha-a3m1&orgUnitId=org-connectshyft-alpha-a3m1-east&tenantRole=ORGUNIT_ADMIN',
           ),
         );
 
@@ -21,49 +42,35 @@ test.describe(
           }),
         ).toBeVisible();
 
-        await page.getByTestId('connectshyft-number-input').fill('+12605550111');
-        await page.getByTestId('connectshyft-number-label-input').fill('Primary Dispatch');
-        const firstSaveResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/connectshyft/numbers')
-            && response.request().method() === 'POST',
-        );
-        await page.getByRole('button', { name: 'Save Number Mapping' }).click();
-        await firstSaveResponse;
-
-        await page.getByTestId('connectshyft-number-input').fill('+12605550112');
-        await page.getByTestId('connectshyft-number-label-input').fill('Overflow Dispatch');
-        const secondSaveResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/connectshyft/numbers')
-            && response.request().method() === 'POST',
-        );
-        await page.getByRole('button', { name: 'Save Number Mapping' }).click();
-        await secondSaveResponse;
+        await saveNumberMapping(page, '+12605550211', 'Primary Dispatch');
+        await saveNumberMapping(page, '+12605550212', 'Overflow Dispatch');
 
         await expect(
           page.getByTestId('connectshyft-number-mapping-row').filter({
-            hasText: '+12605550111',
+            hasText: '+12605550211',
           }),
         ).toBeVisible();
         await expect(
           page.getByTestId('connectshyft-number-mapping-row').filter({
-            hasText: '+12605550112',
+            hasText: '+12605550212',
           }),
         ).toBeVisible();
       },
     );
 
-    test.fixme(
+    test(
       '[P0] duplicate tenant numbers show actionable refusal copy and do not create an extra mapping row @P0',
       async ({ page }) => {
+        await login(page);
         await page.goto(
           buildNumbersUrl(
-            'tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-west&tenantRole=ORGUNIT_ADMIN',
+            'tenantId=tenant-connectshyft-alpha-a3m2&orgUnitId=org-connectshyft-alpha-a3m2-west&tenantRole=ORGUNIT_ADMIN',
           ),
         );
 
-        await page.getByTestId('connectshyft-number-input').fill('+12605550123');
+        await saveNumberMapping(page, '+12605550223', 'Duplicate Seed');
+
+        await page.getByTestId('connectshyft-number-input').fill('+12605550223');
         await page.getByTestId('connectshyft-number-label-input').fill('Duplicate Candidate');
         const duplicateResponse = page.waitForResponse(
           (response) =>
@@ -78,18 +85,19 @@ test.describe(
         ).toContainText('already mapped in this tenant');
         await expect(
           page.getByTestId('connectshyft-number-mapping-row').filter({
-            hasText: '+12605550123',
+            hasText: '+12605550223',
           }),
         ).toHaveCount(1);
       },
     );
 
-    test.fixme(
+    test(
       '[P1] invalid non-E.164 values keep form feedback deterministic and prevent table mutation @P1',
       async ({ page }) => {
+        await login(page);
         await page.goto(
           buildNumbersUrl(
-            'tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_ADMIN',
+            'tenantId=tenant-connectshyft-alpha-a3m3&orgUnitId=org-connectshyft-alpha-a3m3-east&tenantRole=ORGUNIT_ADMIN',
           ),
         );
 
@@ -114,23 +122,27 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] mapping edit flow preserves multi-number visibility and deterministic table ordering after successful update @P1',
       async ({ page }) => {
+        await login(page);
         await page.goto(
           buildNumbersUrl(
-            'tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_ADMIN',
+            'tenantId=tenant-connectshyft-alpha-a3m4&orgUnitId=org-connectshyft-alpha-a3m4-east&tenantRole=ORGUNIT_ADMIN',
           ),
         );
+
+        await saveNumberMapping(page, '+12605550311', 'Primary Dispatch');
+        await saveNumberMapping(page, '+12605550312', 'Overflow Dispatch');
 
         await expect(page.getByTestId('connectshyft-number-mapping-row')).toHaveCount(2);
         await page
           .getByTestId('connectshyft-number-mapping-row')
-          .filter({ hasText: '+12605550111' })
+          .filter({ hasText: '+12605550311' })
           .getByRole('button', { name: 'Edit' })
           .click();
 
-        await page.getByTestId('connectshyft-number-input').fill('+12605550119');
+        await page.getByTestId('connectshyft-number-input').fill('+12605550319');
         const updateResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/connectshyft/numbers/')
@@ -141,12 +153,12 @@ test.describe(
 
         await expect(
           page.getByTestId('connectshyft-number-mapping-row').filter({
-            hasText: '+12605550119',
+            hasText: '+12605550319',
           }),
         ).toBeVisible();
         await expect(
           page.getByTestId('connectshyft-number-mapping-row').filter({
-            hasText: '+12605550112',
+            hasText: '+12605550312',
           }),
         ).toBeVisible();
       },
