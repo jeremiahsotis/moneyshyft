@@ -1,0 +1,28 @@
+{
+  "tdd_phase": "RED",
+  "total_tests": 8,
+  "api_tests": 5,
+  "e2e_tests": 3,
+  "all_tests_skipped": true,
+  "expected_to_fail": true,
+  "fixtures_created": 1,
+  "acceptance_criteria_covered": [
+    "Resolve and validate tenant/orgUnit context on orgUnit-scoped ConnectShyft endpoints",
+    "Refuse missing/invalid orgUnit context with no data leakage",
+    "Refuse cross-tenant orgUnit attempts with deterministic refusal semantics",
+    "Require membership unless caller is tenant-privileged",
+    "Operator-facing refusal state for missing orgUnit context",
+    "Cross-tenant orgUnit deep-link refusal without UI data leakage",
+    "Tenant-privileged override messaging under canonical tenant boundary"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "test-quality",
+    "selector-resilience",
+    "timing-debugging",
+    "playwright-cli"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential"
+}

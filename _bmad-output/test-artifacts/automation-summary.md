@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-22T08:34:26Z'
+lastSaved: '2026-02-22T09:52:28Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -678,3 +678,164 @@ lastSaved: '2026-02-22T08:34:26Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for maintainability and quality scoring.
 - `[TR] Trace Requirements` to map story a.1 AC coverage to generated automation artifacts.
+
+## Story a.2 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.md`
+  - Existing ATDD files found for Story a.2:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.atdd.spec.ts`
+
+### Context Loaded
+- Test framework config loaded: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts`.
+- Existing test structure loaded from `/Users/jeremiahotis/projects/connectshyft/tests`.
+- ConnectShyft story-adjacent assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.atdd.api.spec.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.atdd.spec.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/tenantRepositoryFactory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils + CLI:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+- Additional targeting references:
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `api-testing-patterns.md`
+
+## Story a.2 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` detected and available in the environment.
+- Live application endpoints were not reachable during run (`http://127.0.0.1:5174` and `http://127.0.0.1:3000/health` returned connection failure), so browser snapshot exploration was skipped.
+- Fallback applied: code/artifact-driven selector and flow analysis.
+
+### Acceptance Criteria to Test Targets
+- AC1: Resolve and validate tenant/orgUnit context for ConnectShyft orgUnit-scoped routes, with tenant-privileged bypass behavior.
+- AC2: Refuse missing/invalid/cross-tenant orgUnit contexts without leaking protected data.
+
+### Selected Test Levels
+- **API** (primary): context resolution and refusal semantics, including no-leak behavior.
+- **E2E** (secondary): operator-facing refusal UX and tenant-privileged override visibility.
+
+### Priority Assignment
+- P0:
+  - missing orgUnit context refusal
+  - invalid orgUnit context refusal
+  - cross-tenant orgUnit mismatch refusal
+- P1:
+  - non-member rejection in valid tenant context
+  - spoofed orgUnit/header rejection behavior
+  - tenant-admin bypass semantics and operator copy contracts
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.spec.ts`
+- Supporting fixture/factory targets:
+  - `tests/support/factories/connectShyftStoryA2Factory.ts`
+  - `tests/support/fixtures/connectShyftStoryA2.fixture.ts`
+- Scope: `critical-paths`
+- ATDD duplication control:
+  - Existing `.atdd.*` files retained as RED-phase baseline.
+  - Generated non-ATDD automation specs provide expanded post-ATDD regression coverage.
+
+## Story a.2 Run - Step 3C: Aggregate Test Generation Results
+
+### Parallel Subprocess Execution
+- API subprocess output:
+  - `/tmp/tea-automate-api-tests-2026-02-22T09-51-47-951Z.json`
+- E2E subprocess output:
+  - `/tmp/tea-automate-e2e-tests-2026-02-22T09-51-47-951Z.json`
+- Verification:
+  - `success: true` for both subprocess outputs
+  - output files present and valid JSON
+
+### Files Written to Disk
+- `tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts`
+- `tests/e2e/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.spec.ts`
+- `tests/support/factories/connectShyftStoryA2Factory.ts`
+- `tests/support/fixtures/connectShyftStoryA2.fixture.ts`
+
+### Fixture/Helper Aggregation
+- Added Story a.2 fixture/factory infrastructure:
+  - `connectShyftStoryA2Factory`
+  - `connectShyftStoryA2Fixture`
+- Reused shared support helpers:
+  - `apiRequest`
+  - `createTenantScopeHeaders`
+
+### Summary Metrics
+- Total tests generated: `13`
+  - API tests: `8` (1 file)
+  - E2E tests: `5` (1 file)
+- Priority coverage:
+  - P0: `5`
+  - P1: `8`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-22T09-51-47-951Z.json`
+- Persisted temp artifacts:
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-22T09-51-47-951Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-22T09-51-47-951Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-22T09-51-47-951Z.json`
+
+## Story a.2 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated spec parse validation:
+  - `npx playwright test --list tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts tests/e2e/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.spec.ts`
+  - Result: passed (13 tests discovered).
+- CLI session cleanup:
+  - no TEA browser session was created (exploration skipped due unavailable local app targets).
+- Temp artifact placement:
+  - artifacts persisted under `_bmad-output/test-artifacts/automation-temp`.
+
+### Key Assumptions
+- Story a.2 is still marked `ready-for-dev` and implementation is not complete in current backend/frontend route stack.
+- To avoid breaking default CI while preserving coverage intent, generated Story a.2 tests are encoded as `test.fixme` scenarios.
+
+### Risks
+- Until Story a.2 implementation lands, these tests act as executable intent and regression placeholders, not active pass/fail validation.
+- Browser snapshot verification was not performed against a running local application instance.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality scoring and maintainability checks.
+- `[TR] Trace Requirements` to map Story a.2 ACs to ATDD + automate coverage and confirm gate readiness.

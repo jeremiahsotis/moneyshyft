@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "subprocess": "e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.spec.ts",
+      "content": "import { test, expect } from '../../support/fixtures/connectShyftStoryA2.fixture';\n\ntest.describe(\n  'Story a.2 automate - tenant and orgUnit context enforcement for connectshyft routes operator journeys',\n  () => {\n    test.fixme(\n      '[P0] missing orgUnit context renders explainable refusal state and keeps inbox data hidden @P0',\n      async ({ page, storyA2Context }) => {\n        await page.goto(\n          `${storyA2Context.paths.inboxUi}?flags=module:on,inbox:on,escalation:on,webhooks:on&context=missing-orgunit`,\n        );\n\n        await expect(\n          page.getByTestId('connectshyft-context-refusal-state'),\n        ).toBeVisible();\n        await expect(\n          page.getByTestId('connectshyft-context-refusal-code'),\n        ).toHaveText('CONNECTSHYFT_ORGUNIT_CONTEXT_REQUIRED');\n        await expect(\n          page.getByText('Select an orgUnit context to continue.'),\n        ).toBeVisible();\n        await expect(page.getByTestId('connectshyft-inbox-list')).toBeHidden();\n      },\n    );\n\n    test.fixme(\n      '[P0] invalid orgUnit deep links surface deterministic refusal semantics and keep action controls hidden @P0',\n      async ({ page, storyA2Context }) => {\n        await page.goto(\n          `${storyA2Context.paths.inboxUi}?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=tenant-connectshyft-alpha&orgUnitId=invalid-orgunit-context`,\n        );\n\n        await expect(\n          page.getByTestId('connectshyft-context-refusal-state'),\n        ).toBeVisible();\n        await expect(\n          page.getByTestId('connectshyft-context-refusal-code'),\n        ).toHaveText('CONNECTSHYFT_ORGUNIT_CONTEXT_INVALID');\n        await expect(page.getByRole('button', { name: 'Claim thread' })).toBeHidden();\n        await expect(page.getByRole('button', { name: 'Take over thread' })).toBeHidden();\n      },\n    );\n\n    test.fixme(\n      '[P1] cross-tenant orgUnit deep links surface refusal semantics without exposing thread details @P1',\n      async ({ page, storyA2Context }) => {\n        await page.goto(\n          `${storyA2Context.paths.inboxUi}?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-bravo-north`,\n        );\n\n        await expect(\n          page.getByTestId('connectshyft-context-refusal-state'),\n        ).toBeVisible();\n        await expect(\n          page.getByTestId('connectshyft-context-refusal-code'),\n        ).toHaveText('CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH');\n        await expect(\n          page.getByText('The selected orgUnit is outside your active tenant boundary.'),\n        ).toBeVisible();\n        await expect(page.getByTestId('connectshyft-inbox-list')).toBeHidden();\n        await expect(page.getByTestId('connectshyft-thread-detail')).toBeHidden();\n      },\n    );\n\n    test.fixme(\n      '[P1] tenant-privileged operators get explicit override visibility while remaining inside tenant boundary @P1',\n      async ({ page, storyA2Context }) => {\n        await page.goto(\n          `${storyA2Context.paths.inboxUi}?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantRole=TENANT_ADMIN&tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-west`,\n        );\n\n        await expect(\n          page.getByRole('heading', { name: 'ConnectShyft Inbox' }),\n        ).toBeVisible();\n        await expect(\n          page.getByTestId('connectshyft-context-override-notice'),\n        ).toContainText('OrgUnit membership bypassed under tenant-privileged scope');\n        await expect(page.getByTestId('connectshyft-inbox-list')).toBeVisible();\n      },\n    );\n\n    test.fixme(\n      '[P1] refusal journeys provide operator-facing copy without disclosing protected tenant or orgUnit identifiers @P1',\n      async ({ page, storyA2Context }) => {\n        await page.goto(\n          `${storyA2Context.paths.inboxUi}?flags=module:on,inbox:on,escalation:on,webhooks:on&context=missing-orgunit`,\n        );\n\n        const refusalText = page.getByTestId('connectshyft-context-refusal-message');\n        await expect(refusalText).toBeVisible();\n        await expect(refusalText).toContainText('Select an orgUnit context to continue.');\n        await expect(refusalText).not.toContainText('tenant-connectshyft-alpha');\n        await expect(refusalText).not.toContainText('org-connectshyft-alpha-east');\n      },\n    );\n  },\n);\n",
+      "description": "E2E operator-journey coverage for ConnectShyft context refusal surfaces and tenant-privileged bypass messaging",
+      "priority_coverage": {
+        "P0": 2,
+        "P1": 3,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "connectShyftStoryA2Factory",
+    "connectShyftStoryA2Fixture"
+  ],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "test_count": 5,
+  "summary": "Generated 5 E2E tests for Story a.2 context-enforcement journeys"
+}

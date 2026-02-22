@@ -11,6 +11,7 @@ type PolicyScriptHarnessOptions = {
   commitSubject?: string;
   prMergeSubject?: string;
   simulatePullRequestMergeCommit?: boolean;
+  leaveWorktreeDirty?: boolean;
   seedFiles?: Record<string, string>;
   env?: Record<string, string>;
 };
@@ -197,6 +198,10 @@ export function runPolicyScriptInTempRepo(
       execFileSync('git', ['checkout', '-b', branch], { cwd: repoDir, stdio: 'ignore' });
       execFileSync('git', ['add', '.'], { cwd: repoDir, stdio: 'ignore' });
       execFileSync('git', ['commit', '-m', commitSubject], { cwd: repoDir, stdio: 'ignore' });
+    }
+
+    if (options.leaveWorktreeDirty) {
+      writeFileSync(join(repoDir, 'LOCAL_WORKTREE_DIRTY.md'), '# dirty worktree marker\n', 'utf8');
     }
 
     const env = {

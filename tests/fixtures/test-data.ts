@@ -38,3 +38,20 @@ export const connectShyftFeatureFlagData = {
     connectshyft_webhooks_enabled: false,
   },
 };
+
+export const connectShyftContextEnforcementData = {
+  tenantAlphaId: 'tenant-connectshyft-alpha',
+  tenantBravoId: 'tenant-connectshyft-bravo',
+  orgUnitAlphaEastId: 'org-connectshyft-alpha-east',
+  orgUnitAlphaWestId: 'org-connectshyft-alpha-west',
+  orgUnitBravoNorthId: 'org-connectshyft-bravo-north',
+  staffUserId: 'user-connectshyft-a2-staff',
+  nonMemberUserId: 'user-connectshyft-a2-non-member',
+  tenantAdminUserId: 'user-connectshyft-a2-tenant-admin',
+  flagsAllEnabled: {
+    connectshyft_enabled: true,
+    connectshyft_inbox_enabled: true,
+    connectshyft_escalation_enabled: true,
+    connectshyft_webhooks_enabled: true,
+  },
+};

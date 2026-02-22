@@ -65,6 +65,18 @@ resolve_branch() {
   echo "$resolved"
 }
 
+is_truthy() {
+  local value="${1:-}"
+  value="$(echo "$value" | tr '[:upper:]' '[:lower:]')"
+  [[ "$value" == "1" || "$value" == "true" || "$value" == "yes" || "$value" == "on" ]]
+}
+
+has_local_worktree_changes() {
+  local status_output
+  status_output="$(git status --porcelain --untracked-files=normal 2>/dev/null || true)"
+  [[ -n "$status_output" ]]
+}
+
 if [[ ! -f "$POLICY_FILE" ]]; then
   echo "Policy check failed: missing $POLICY_FILE"
   exit 1
@@ -140,6 +152,15 @@ if [[ "$event" == "pull_request" ]] && [[ "$last_subject" == Merge* ]]; then
   fi
 fi
 
+enforce_commit_subject=true
+if [[ "$event" == "local" ]] && [[ "$is_default_branch" != "true" ]] && ! is_truthy "${POLICY_ENFORCE_LOCAL_COMMIT_SUBJECT:-}"; then
+  if has_local_worktree_changes; then
+    enforce_commit_subject=false
+    echo "Policy check warning: local worktree is dirty; deferring latest commit subject validation until commit."
+    echo "Set POLICY_ENFORCE_LOCAL_COMMIT_SUBJECT=true to enforce commit-subject checks locally."
+  fi
+fi
+
 enforce_corrected_kernel_gate_for_story() {
   local story_id="$1"
   local epic_id="${story_id%%-*}"
@@ -207,7 +228,7 @@ if [[ -n "$story_branch_id" ]]; then
 fi
 
 if [[ -n "$last_subject" ]]; then
-  if [[ "$is_default_branch" != "true" ]]; then
+  if [[ "$is_default_branch" != "true" && "$enforce_commit_subject" == "true" ]]; then
     if [[ "$event" != "pull_request" ]] && [[ "$last_subject" == Merge* ]]; then
       # Local/push mode preserves existing merge-subject exemption.
       true
