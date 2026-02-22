@@ -5,7 +5,9 @@ import { createStoryA4Headers } from '../../support/factories/connectShyftStoryA
 test.describe(
   'Story a.4 automate - escalation baseline and recipient configuration API coverage',
   () => {
-    test.fixme(
+    test.describe.configure({ mode: 'serial' });
+
+    test(
       '[P0] persists valid escalation baseline and recipient targets for orgUnit-scoped configuration @P0',
       async ({ request, storyA4Context, storyA4AdminHeaders, storyA4ValidConfigPayload }) => {
         const response = await apiRequest(request, {
@@ -33,7 +35,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] applies default baseline of 24 hours when baseline is omitted and recipients are valid @P0',
       async ({ request, storyA4Context, storyA4AdminHeaders }) => {
         const response = await apiRequest(request, {
@@ -61,7 +63,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] refuses baseline values outside 1-24 hours with deterministic range-refusal details @P0',
       async ({ request, storyA4Context, storyA4AdminHeaders, storyA4InvalidRangePayload }) => {
         const response = await apiRequest(request, {
@@ -89,7 +91,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] refuses non-integer baseline values with deterministic field-level refusal details @P0',
       async ({ request, storyA4Context, storyA4AdminHeaders }) => {
         const response = await apiRequest(request, {
@@ -123,7 +125,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] blocks persistence when required primary recipient assignment is missing @P0',
       async ({ request, storyA4Context, storyA4AdminHeaders }) => {
         const response = await apiRequest(request, {
@@ -158,7 +160,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] refuses cross-tenant recipient assignments with deterministic refusal semantics @P1',
       async ({ request, storyA4Context }) => {
         const headers = createStoryA4Headers(storyA4Context, {

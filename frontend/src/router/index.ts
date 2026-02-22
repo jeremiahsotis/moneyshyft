@@ -52,6 +52,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/app/connectshyft/settings/escalation',
+    name: 'connectshyft-escalation-settings',
+    component: () => import('@/views/ConnectShyft/ConnectShyftEscalationSettingsView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/accounts',
     name: 'accounts',
     component: () => import('@/views/Accounts/AccountsListView.vue'),

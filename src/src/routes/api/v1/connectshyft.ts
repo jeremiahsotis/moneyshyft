@@ -11,6 +11,7 @@ import {
 } from '../../../modules/connectshyft/featureFlags';
 import { resolveConnectShyftOrgUnitContext } from '../../../modules/connectshyft/contextAccess';
 import { connectShyftNumberMappingService } from '../../../modules/connectshyft/numberMappings';
+import { connectShyftEscalationConfigService } from '../../../modules/connectshyft/escalationConfig';
 import {
   createKnexOrgUnitAccessStore,
   validateOrgUnitScopedAccess,
@@ -104,6 +105,24 @@ const enforceNumberMappingManageCapability = (
   return false;
 };
 
+const enforceEscalationConfigCapability = (
+  req: Request,
+  res: Response,
+): boolean => {
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_ESCALATION_CONFIG)) {
+    return true;
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_ESCALATION_CONFIG_FORBIDDEN',
+    message: 'Escalation configuration requires an authorized orgUnit role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
 const parseOrgUnitIdFromBody = (req: Request): string | null => {
   if (typeof req.body?.orgUnitId !== 'string') {
     return null;
@@ -117,6 +136,11 @@ const parseMappingBody = (req: Request) => ({
   twilioNumberE164: typeof req.body?.twilioNumberE164 === 'string' ? req.body.twilioNumberE164 : '',
   label: typeof req.body?.label === 'string' ? req.body.label : '',
   isActive: req.body?.isActive === undefined ? true : Boolean(req.body.isActive),
+});
+
+const parseEscalationConfigBody = (req: Request) => ({
+  escalationBaselineHours: req.body?.escalationBaselineHours,
+  recipients: req.body?.recipients,
 });
 
 router.get('/availability', (req: Request, res: Response) => {
@@ -294,6 +318,81 @@ router.put('/numbers/:mappingId', async (req: Request, res: Response) => {
       label: updated.data.label,
       isActive: updated.data.isActive,
       mappings: updated.data.mappings,
+    },
+  });
+});
+
+router.get('/escalation/config', async (req: Request, res: Response) => {
+  if (!enforceCapability(req, res, 'escalation')) {
+    return;
+  }
+
+  if (!enforceEscalationConfigCapability(req, res)) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  const config = connectShyftEscalationConfigService.getConfig(context.tenantId, context.orgUnitId);
+
+  return success(res, {
+    code: 'CONNECTSHYFT_ESCALATION_CONFIG_RESOLVED',
+    message: 'ConnectShyft escalation configuration resolved',
+    data: {
+      orgUnitId: config.orgUnitId,
+      escalationBaselineHours: config.escalationBaselineHours,
+      recipients: config.recipients,
+      updatedAtUtc: config.updatedAtUtc,
+    },
+  });
+});
+
+router.put('/escalation/config', async (req: Request, res: Response) => {
+  if (!enforceCapability(req, res, 'escalation')) {
+    return;
+  }
+
+  if (!enforceEscalationConfigCapability(req, res)) {
+    return;
+  }
+
+  const requestedOrgUnitId = parseOrgUnitIdFromBody(req);
+  const context = await enforceOrgUnitContext(req, res, requestedOrgUnitId);
+  if (!context) {
+    return;
+  }
+
+  const payload = parseEscalationConfigBody(req);
+  const saved = connectShyftEscalationConfigService.saveConfig({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    escalationBaselineHours: payload.escalationBaselineHours,
+    recipients: payload.recipients,
+  });
+
+  if (!saved.ok) {
+    refusal(res, {
+      code: saved.code,
+      message: saved.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: saved.data,
+    });
+    return;
+  }
+
+  return success(res, {
+    code: saved.code,
+    message: 'ConnectShyft escalation settings saved',
+    httpStatus: saved.httpStatus,
+    data: {
+      orgUnitId: saved.data.orgUnitId,
+      escalationBaselineHours: saved.data.escalationBaselineHours,
+      recipients: saved.data.recipients,
+      updatedAtUtc: saved.data.updatedAtUtc,
     },
   });
 });

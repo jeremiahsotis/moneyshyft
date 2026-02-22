@@ -20,7 +20,9 @@ const fillValidRecipients = async (page: Page): Promise<void> => {
 test.describe(
   'Story a.4 automate - escalation baseline and recipient configuration operator journeys',
   () => {
-    test.fixme(
+    test.describe.configure({ mode: 'serial' });
+
+    test(
       '[P0] orgUnit admin saves valid escalation baseline and recipient targets from settings screen @P0',
       async ({ page }) => {
         await login(page);
@@ -54,7 +56,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] invalid baseline values are blocked with deterministic validation feedback and no save confirmation @P0',
       async ({ page }) => {
         await login(page);
@@ -75,7 +77,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] missing required primary recipient shows deterministic refusal state and blocks persistence @P1',
       async ({ page }) => {
         await login(page);
@@ -99,7 +101,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] cross-tenant recipient selections are rejected with deterministic refusal messaging and no persisted state @P1',
       async ({ page }) => {
         await login(page);
