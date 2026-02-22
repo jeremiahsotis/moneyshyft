@@ -184,7 +184,7 @@ test.describe(
     );
 
     test(
-      '[P1] refusal responses keep canonical envelope keys and no thread-id leakage on blocked claim attempts @P1',
+      '[P1] capability refusals keep canonical envelope keys and no thread-id leakage on blocked claim attempts @P1',
       async ({ request, storyA5Context, storyA5TenantViewerHeaders }) => {
         const response = await apiRequest(request, {
           method: 'POST',
@@ -211,7 +211,7 @@ test.describe(
         ).toBe(true);
         expect(body).toMatchObject({
           ok: false,
-          code: 'CONNECTSHYFT_ORGUNIT_MEMBERSHIP_REQUIRED',
+          code: 'CONNECTSHYFT_THREAD_CLAIM_FORBIDDEN',
           refusalType: 'business',
           correlationId: expect.any(String),
           tenantId: storyA5Context.tenantId,

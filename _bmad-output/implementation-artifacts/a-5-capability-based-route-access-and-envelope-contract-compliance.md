@@ -93,24 +93,37 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `npm run test:e2e -- tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts` (pass after route guard fixes)
-- `npm run test:e2e -- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts` (pass)
-- `cd src && npm test` (pass)
-- `npm run test:e2e` (pass: 224 passed, 107 skipped)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/numberMappings.test.ts src/modules/connectshyft/__tests__/escalationConfig.test.ts` (pass)
+- `cd src && npm run build` (pass)
+- `npm run test:e2e -- tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.spec.ts tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.api.spec.ts tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.spec.ts` (pass: 17 passed, 0 skipped)
+- `npm run policy:check` (pass)
+- `POLICY_ENFORCE_NO_SKIPPED_TESTS=true npm run policy:check` (pass)
 
 ### Completion Notes List
 
-- Added route/service-boundary capability guards for ConnectShyft thread view, claim, and takeover operations with explicit deny-by-default refusal contracts.
-- Enforced escalation-action membership gate for bypassed tenant roles without takeover authority to prevent unauthorized claim/takeover operations.
-- Updated default test recipient directory to include Story A.5 role identities so escalation configuration capability tests execute against valid recipient scope.
-- Validated canonical shared envelope keys and refusal/system-error contract behavior through Story A.5 API coverage and full regression execution.
+- Added service-layer capability enforcement for number-mapping mutation paths and escalation-configuration persistence paths to close endpoint-only authorization gaps.
+- Reordered claim/takeover refusal flow to enforce capability-specific refusal contracts before membership-gate checks for bypassed tenant roles.
+- Fixed Story A.5 shared fixture contract path to use the implemented platform envelope response-matrix system-error endpoint.
+- Unskipped and stabilized all Story A.5 automated validations (2 mainline E2E + 6 ATDD API + 3 ATDD E2E) and confirmed full pass.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/a-5-capability-based-route-access-and-envelope-contract-compliance.md
-- src/src/routes/api/v1/connectshyft.ts
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- src/src/modules/connectshyft/numberMappings.ts
+- src/src/modules/connectshyft/escalationConfig.ts
+- src/src/modules/connectshyft/__tests__/numberMappings.test.ts
+- src/src/modules/connectshyft/__tests__/escalationConfig.test.ts
+- src/src/routes/api/v1/connectshyft.ts
+- tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts
+- tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.api.spec.ts
+- tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.spec.ts
+- tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.spec.ts
+- tests/fixtures/test-data.ts
+- tests/support/factories/connectShyftStoryA5Factory.ts
+- tests/support/fixtures/connectShyftStoryA5.fixture.ts
 
 ### Change Log
 
 - 2026-02-22: Completed Story a.5 implementation and validation; status moved to `review`.
+- 2026-02-22: Resolved senior review findings for service-boundary authorization, refusal-contract precedence, fixture contract path correctness, and skipped Story A.5 validations.

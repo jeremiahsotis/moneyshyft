@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { CAPABILITIES, hasCapability } from '../../platform/rbac/capabilities';
 
 const TWILIO_E164_PATTERN = /^\+[1-9]\d{1,14}$/;
 
@@ -31,6 +32,13 @@ type NumberMappingUpdateInput = {
   isActive: boolean;
 };
 
+type NumberMappingActorContext = {
+  actorRoles: Array<string | null | undefined>;
+};
+
+export type NumberMappingCreateCommand = NumberMappingCreateInput & NumberMappingActorContext;
+export type NumberMappingUpdateCommand = NumberMappingUpdateInput & NumberMappingActorContext;
+
 type NumberMappingPersistenceResult =
   | {
     ok: true;
@@ -50,6 +58,7 @@ export type NumberMappingFieldError = {
 type NumberMappingRefusalResult = {
   ok: false;
   code:
+    | 'CONNECTSHYFT_NUMBER_MAPPING_FORBIDDEN'
     | 'CONNECTSHYFT_NUMBER_MAPPING_INVALID_E164'
     | 'CONNECTSHYFT_NUMBER_MAPPING_DUPLICATE'
     | 'CONNECTSHYFT_NUMBER_MAPPING_ID_CONFLICT'
@@ -132,6 +141,12 @@ const buildNotFoundRefusal = (): NumberMappingRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_NUMBER_MAPPING_NOT_FOUND',
   message: 'Number mapping not found for this tenant and orgUnit.',
+});
+
+const buildCapabilityRefusal = (): NumberMappingRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_NUMBER_MAPPING_FORBIDDEN',
+  message: 'Number mapping management requires an authorized ConnectShyft role.',
 });
 
 export class InMemoryConnectShyftNumberMappingStore {
@@ -277,7 +292,11 @@ export class ConnectShyftNumberMappingService {
     return this.store.listByOrgUnit(tenantId, orgUnitId);
   }
 
-  createMapping(input: NumberMappingCreateInput): NumberMappingSaveResult {
+  createMapping(input: NumberMappingCreateCommand): NumberMappingSaveResult {
+    if (!hasCapability(input.actorRoles, CAPABILITIES.NUMBER_MAPPING_MANAGE)) {
+      return buildCapabilityRefusal();
+    }
+
     const twilioNumberE164 = normalizeTwilioNumber(input.twilioNumberE164);
     if (!isValidTwilioE164(twilioNumberE164)) {
       return buildInvalidE164Refusal();
@@ -288,9 +307,12 @@ export class ConnectShyftNumberMappingService {
     }
 
     const persisted = this.store.createMapping({
-      ...input,
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
       twilioNumberE164,
       label: normalizeLabel(input.label),
+      isActive: input.isActive,
+      mappingId: input.mappingId,
     });
     if (!persisted.ok) {
       if (persisted.reason === 'MAPPING_ID_CONFLICT') {
@@ -316,7 +338,11 @@ export class ConnectShyftNumberMappingService {
     };
   }
 
-  updateMapping(input: NumberMappingUpdateInput): NumberMappingSaveResult {
+  updateMapping(input: NumberMappingUpdateCommand): NumberMappingSaveResult {
+    if (!hasCapability(input.actorRoles, CAPABILITIES.NUMBER_MAPPING_MANAGE)) {
+      return buildCapabilityRefusal();
+    }
+
     const twilioNumberE164 = normalizeTwilioNumber(input.twilioNumberE164);
     if (!isValidTwilioE164(twilioNumberE164)) {
       return buildInvalidE164Refusal();
@@ -341,9 +367,12 @@ export class ConnectShyftNumberMappingService {
     }
 
     const persisted = this.store.updateMapping({
-      ...input,
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      mappingId: input.mappingId,
       twilioNumberE164,
       label: normalizeLabel(input.label),
+      isActive: input.isActive,
     });
 
     if (!persisted.ok) {

@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import { CAPABILITIES, hasCapability } from '../../platform/rbac/capabilities';
 
 const DEFAULT_ESCALATION_BASELINE_HOURS = 24;
 const MIN_ESCALATION_BASELINE_HOURS = 1;
@@ -63,6 +64,7 @@ export type EscalationConfigSaveInput = {
   escalationBaselineHours?: unknown;
   recipients?: unknown;
   recipientDirectory: ConnectShyftEscalationRecipientDirectory;
+  actorRoles: Array<string | null | undefined>;
 };
 
 type EscalationConfigSuccessResult = {
@@ -90,7 +92,16 @@ type EscalationConfigRefusalResult = {
   };
 };
 
-export type EscalationConfigSaveResult = EscalationConfigSuccessResult | EscalationConfigRefusalResult;
+type EscalationConfigCapabilityRefusalResult = {
+  ok: false;
+  code: 'CONNECTSHYFT_ESCALATION_CONFIG_FORBIDDEN';
+  message: string;
+};
+
+export type EscalationConfigSaveResult =
+  | EscalationConfigSuccessResult
+  | EscalationConfigRefusalResult
+  | EscalationConfigCapabilityRefusalResult;
 
 type StoredEscalationConfigRow = {
   tenant_id: string;
@@ -212,6 +223,12 @@ const buildInvalidRecipientAssignmentRefusal = (
   data: {
     fieldErrors,
   },
+});
+
+const buildCapabilityRefusal = (): EscalationConfigCapabilityRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_ESCALATION_CONFIG_FORBIDDEN',
+  message: 'Escalation configuration requires an authorized orgUnit role.',
 });
 
 const resolveBaselineHours = (value: unknown): { ok: true; baselineHours: number } | EscalationConfigRefusalResult => {
@@ -468,6 +485,10 @@ export class ConnectShyftEscalationConfigService {
   }
 
   async saveConfig(input: EscalationConfigSaveInput): Promise<EscalationConfigSaveResult> {
+    if (!hasCapability(input.actorRoles, CAPABILITIES.ORG_UNIT_ESCALATION_CONFIG)) {
+      return buildCapabilityRefusal();
+    }
+
     const baselineResolution = resolveBaselineHours(input.escalationBaselineHours);
     if (!baselineResolution.ok) {
       return baselineResolution;

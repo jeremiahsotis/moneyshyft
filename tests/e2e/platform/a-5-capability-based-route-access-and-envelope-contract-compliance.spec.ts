@@ -13,7 +13,7 @@ test.describe(
   () => {
     test.describe.configure({ mode: 'serial' });
 
-    test.fixme(
+    test(
       '[P0] orgUnit-member number mapping writes show deterministic refusal guidance and do not create persisted rows @P0',
       async ({ page }) => {
         await login(page);
@@ -52,7 +52,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] tenant-viewer escalation save attempts keep refusal guidance visible and hide success indicators @P0',
       async ({ page }) => {
         await login(page);
@@ -156,7 +156,7 @@ test.describe(
         });
         expect(refusalBody).toMatchObject({
           ok: false,
-          code: 'CONNECTSHYFT_ORGUNIT_MEMBERSHIP_REQUIRED',
+          code: 'CONNECTSHYFT_THREAD_CLAIM_FORBIDDEN',
           refusalType: 'business',
         });
         expect(systemErrorBody).toMatchObject({

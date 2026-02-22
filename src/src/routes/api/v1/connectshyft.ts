@@ -649,7 +649,9 @@ router.post('/numbers', async (req: Request, res: Response) => {
   }
 
   const payload = parseMappingBody(req);
+  const requestedRole = resolveConnectShyftRequestedRole(req);
   const saved = connectShyftNumberMappingService.createMapping({
+    actorRoles: [requestedRole],
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     twilioNumberE164: payload.twilioNumberE164,
@@ -658,12 +660,13 @@ router.post('/numbers', async (req: Request, res: Response) => {
   });
 
   if (!saved.ok) {
+    const refusalData = 'data' in saved ? saved.data : undefined;
     refusal(res, {
       code: saved.code,
       message: saved.message,
       refusalType: 'business',
       httpStatus: 200,
-      data: saved.data,
+      data: refusalData,
     });
     return;
   }
@@ -710,7 +713,9 @@ router.put('/numbers/:mappingId', async (req: Request, res: Response) => {
   }
 
   const payload = parseMappingBody(req);
+  const requestedRole = resolveConnectShyftRequestedRole(req);
   const updated = connectShyftNumberMappingService.updateMapping({
+    actorRoles: [requestedRole],
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     mappingId,
@@ -825,7 +830,9 @@ router.put('/escalation/config', async (req: Request, res: Response) => {
   );
 
   const payload = parseEscalationConfigBody(req);
+  const requestedRole = resolveConnectShyftRequestedRole(req);
   const saved = await connectShyftEscalationConfigService.saveConfig({
+    actorRoles: [requestedRole],
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     escalationBaselineHours: payload.escalationBaselineHours,
@@ -834,12 +841,13 @@ router.put('/escalation/config', async (req: Request, res: Response) => {
   });
 
   if (!saved.ok) {
+    const refusalData = 'data' in saved ? saved.data : undefined;
     refusal(res, {
       code: saved.code,
       message: saved.message,
       refusalType: 'business',
       httpStatus: 200,
-      data: saved.data,
+      data: refusalData,
     });
     return;
   }
@@ -895,16 +903,16 @@ router.post('/threads/:threadId/claim', async (req: Request, res: Response) => {
     return;
   }
 
+  if (!enforceThreadClaimCapability(req, res)) {
+    return;
+  }
+
   const context = await enforceOrgUnitContext(req, res);
   if (!context) {
     return;
   }
 
   if (!enforceEscalationActionMembership(req, res, context.bypassedOrgUnitMembership)) {
-    return;
-  }
-
-  if (!enforceThreadClaimCapability(req, res)) {
     return;
   }
 
@@ -924,16 +932,16 @@ router.post('/threads/:threadId/takeover', async (req: Request, res: Response) =
     return;
   }
 
+  if (!enforceThreadTakeoverCapability(req, res)) {
+    return;
+  }
+
   const context = await enforceOrgUnitContext(req, res);
   if (!context) {
     return;
   }
 
   if (!enforceEscalationActionMembership(req, res, context.bypassedOrgUnitMembership)) {
-    return;
-  }
-
-  if (!enforceThreadTakeoverCapability(req, res)) {
     return;
   }
 

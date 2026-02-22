@@ -109,7 +109,7 @@ export function createStoryA5Context(
       numbersById: `/api/v1/connectshyft/numbers/${existingMappingId}`,
       escalationConfig: '/api/v1/connectshyft/escalation/config',
       envelopeSystemErrorContract:
-        '/api/v1/connectshyft/_contracts/envelope/response-matrix/system-error',
+        '/api/v1/platform/_kernel/contracts/envelope/response-matrix/system-error',
       numbersUi: '/app/connectshyft/settings/numbers',
       escalationUi: '/app/connectshyft/settings/escalation',
     },

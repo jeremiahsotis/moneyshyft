@@ -6,11 +6,11 @@ import {
 } from '../../support/factories/connectShyftStoryA5Factory';
 
 test.describe(
-  'Story a.5 Capability-Based Route Access and Envelope Contract Compliance (ATDD API RED)',
+  'Story a.5 Capability-Based Route Access and Envelope Contract Compliance (ATDD API)',
   () => {
     const context = createStoryA5Context();
 
-    test.skip(
+    test(
       '[P0] refuses inbox route access for roles without thread-view capability at endpoint boundary @P0',
       async ({ request }) => {
         const headers = createStoryA5Headers(context, {
@@ -29,15 +29,15 @@ test.describe(
         const body = await response.json();
         expect(body).toMatchObject({
           ok: false,
-          code: 'CONNECTSHYFT_INBOX_FORBIDDEN',
+          code: 'CONNECTSHYFT_THREAD_VIEW_FORBIDDEN',
           refusalType: 'business',
-          message: expect.stringContaining('thread view'),
+          message: expect.stringContaining('authorized ConnectShyft role'),
         });
         expect(body).not.toHaveProperty('data.items');
       },
     );
 
-    test.skip(
+    test(
       '[P0] enforces claim and takeover capability checks for tenant-viewer callers @P0',
       async ({ request }) => {
         const headers = createStoryA5Headers(context, {
@@ -85,7 +85,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P0] blocks unauthorized number-mapping mutation and preserves prior state at service boundary @P0',
       async ({ request }) => {
         const adminHeaders = createStoryA5Headers(context, {
@@ -170,7 +170,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P0] blocks unauthorized escalation overwrite and preserves persisted baseline at service boundary @P0',
       async ({ request }) => {
         const adminHeaders = createStoryA5Headers(context, {
@@ -250,7 +250,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] capability refusals keep canonical envelope keys and exclude privileged payload data @P1',
       async ({ request }) => {
         const headers = createStoryA5Headers(context, {
@@ -284,7 +284,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] keeps success refusal and system-error envelope contracts consistent across ConnectShyft APIs @P1',
       async ({ request }) => {
         const adminHeaders = createStoryA5Headers(context, {

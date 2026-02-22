@@ -4,13 +4,15 @@ import {
   createStoryA5Context,
   createStoryA5Headers,
 } from '../../support/factories/connectShyftStoryA5Factory';
+import { login } from '../../helpers/auth';
 
 test.describe(
-  'Story a.5 Capability-Based Route Access and Envelope Contract Compliance (ATDD E2E RED)',
+  'Story a.5 Capability-Based Route Access and Envelope Contract Compliance (ATDD E2E)',
   () => {
-    test.skip(
+    test(
       '[P0] orgUnit-member number mapping writes are refused with deterministic operator feedback @P0',
       async ({ page }) => {
+        await login(page);
         await page.goto(
           '/app/connectshyft/settings/numbers?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_MEMBER&orgUnitMemberships=org-connectshyft-alpha-east',
         );
@@ -45,9 +47,10 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P0] tenant-viewer escalation settings access shows refusal envelope guidance and no success state @P0',
       async ({ page }) => {
+        await login(page);
         await page.goto(
           '/app/connectshyft/settings/escalation?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=TENANT_VIEWER',
         );
@@ -78,7 +81,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] journey contract preserves shared top-level envelope keys across success refusal and system-error responses @P1',
       async ({ request }) => {
         const context = createStoryA5Context();

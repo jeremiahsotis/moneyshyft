@@ -48,6 +48,7 @@ describe('connectshyft escalation config service', () => {
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       escalationBaselineHours: 6,
+      actorRoles: ['ORGUNIT_ADMIN'],
       recipients: {
         primaryOrgUnitAdminUserId: 'user-connectshyft-a4-primary-recipient',
         secondaryOrgUnitAdminUserId: 'user-connectshyft-a4-secondary-recipient',
@@ -70,6 +71,7 @@ describe('connectshyft escalation config service', () => {
     const result = await service.saveConfig({
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
+      actorRoles: ['ORGUNIT_ADMIN'],
       recipients: {
         primaryOrgUnitAdminUserId: 'user-connectshyft-a4-primary-recipient',
         secondaryOrgUnitAdminUserId: 'user-connectshyft-a4-secondary-recipient',
@@ -92,6 +94,7 @@ describe('connectshyft escalation config service', () => {
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       escalationBaselineHours: 2.5,
+      actorRoles: ['ORGUNIT_ADMIN'],
       recipients: {
         primaryOrgUnitAdminUserId: 'user-connectshyft-a4-primary-recipient',
         secondaryOrgUnitAdminUserId: 'user-connectshyft-a4-secondary-recipient',
@@ -119,6 +122,7 @@ describe('connectshyft escalation config service', () => {
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       escalationBaselineHours: 25,
+      actorRoles: ['ORGUNIT_ADMIN'],
       recipients: {
         primaryOrgUnitAdminUserId: 'user-connectshyft-a4-primary-recipient',
         secondaryOrgUnitAdminUserId: 'user-connectshyft-a4-secondary-recipient',
@@ -146,6 +150,7 @@ describe('connectshyft escalation config service', () => {
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       escalationBaselineHours: 6,
+      actorRoles: ['ORGUNIT_ADMIN'],
       recipients: {
         primaryOrgUnitAdminUserId: ' ',
         secondaryOrgUnitAdminUserId: 'user-connectshyft-a4-secondary-recipient',
@@ -173,6 +178,7 @@ describe('connectshyft escalation config service', () => {
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       escalationBaselineHours: 6,
+      actorRoles: ['ORGUNIT_ADMIN'],
       recipients: {
         primaryOrgUnitAdminUserId: 'user-connectshyft-a4-cross-tenant-recipient',
         secondaryOrgUnitAdminUserId: 'user-connectshyft-a4-secondary-recipient',
@@ -200,6 +206,7 @@ describe('connectshyft escalation config service', () => {
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       escalationBaselineHours: 6,
+      actorRoles: ['ORGUNIT_ADMIN'],
       recipients: {
         primaryOrgUnitAdminUserId: 'user-connectshyft-a4-primary-recipient',
         secondaryOrgUnitAdminUserId: 'user-connectshyft-a4-secondary-recipient',
@@ -214,6 +221,7 @@ describe('connectshyft escalation config service', () => {
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       escalationBaselineHours: 0,
+      actorRoles: ['ORGUNIT_ADMIN'],
       recipients: {
         primaryOrgUnitAdminUserId: 'user-connectshyft-a4-primary-recipient',
         secondaryOrgUnitAdminUserId: 'user-connectshyft-a4-secondary-recipient',
@@ -233,6 +241,26 @@ describe('connectshyft escalation config service', () => {
       recipients: {
         primaryOrgUnitAdminUserId: 'user-connectshyft-a4-primary-recipient',
       },
+    });
+  });
+
+  it('refuses persistence when actor lacks escalation configuration capability', async () => {
+    const result = await service.saveConfig({
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      escalationBaselineHours: 6,
+      actorRoles: ['ORGUNIT_MEMBER'],
+      recipients: {
+        primaryOrgUnitAdminUserId: 'user-connectshyft-a4-primary-recipient',
+        secondaryOrgUnitAdminUserId: 'user-connectshyft-a4-secondary-recipient',
+        tenantStaffUserId: 'user-connectshyft-a4-tenant-staff-recipient',
+      },
+      recipientDirectory: RECIPIENT_DIRECTORY,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_ESCALATION_CONFIG_FORBIDDEN',
     });
   });
 });

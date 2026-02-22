@@ -70,6 +70,17 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
   - Root npm scripts: `test:e2e`, `test:e2e:headed`, `test:e2e:debug`
 - If preflight cannot reach backend/frontend health endpoints, Playwright execution must fail immediately.
 
+### Story Validation Skip Guard (Mandatory for PR Validation)
+
+- Story-scoped platform spec files (`tests/api/platform/<story-id>-*.spec.ts`, `tests/e2e/platform/<story-id>-*.spec.ts`) must not contain `test.skip`, `describe.skip`, or `test.fixme` when a story PR is validated.
+- If ATDD red-phase artifacts are intentionally retained, they must not remain in active story-scoped spec files at PR time.
+- Enforced by:
+  - `scripts/enforce-story-no-skipped-tests.sh`
+  - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+- Local behavior:
+  - `policy:check` enforces this guard automatically in `pull_request` CI.
+  - Set `POLICY_ENFORCE_NO_SKIPPED_TESTS=true` to enforce locally before opening a PR.
+
 ### Corrected Kernel Gate (Mandatory for Feature Story Progression)
 
 - Numeric feature stories outside Epic 0 are blocked until corrected kernel acceptance criteria are complete.
@@ -97,6 +108,18 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - Enforced by:
   - `scripts/enforce-story-status-sync.sh`
   - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+
+### Story Artifact Hygiene Guardrail (Mandatory for PR Validation)
+
+- Story implementation artifacts must maintain:
+  - Complete `### File List` coverage for changed `src/`, `tests/`, and `frontend/` files in the story scope.
+  - `### Debug Log References` entries that include passing test/build command outcomes.
+- Enforced by:
+  - `scripts/enforce-story-artifact-hygiene.sh`
+  - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+- Local behavior:
+  - `policy:check` enforces this guard automatically in `pull_request` CI.
+  - Set `POLICY_ENFORCE_STORY_ARTIFACT_HYGIENE=true` to enforce locally before opening a PR.
 
 ### Critical Capability Real-User Validation Guardrail (Mandatory)
 

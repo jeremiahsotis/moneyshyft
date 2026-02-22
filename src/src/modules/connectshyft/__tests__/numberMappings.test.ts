@@ -14,6 +14,7 @@ describe('connectshyft number mapping service', () => {
 
   it('supports multiple mapped numbers per orgUnit with deterministic read-back', () => {
     const firstCreate = service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       twilioNumberE164: '+12605550111',
@@ -21,6 +22,7 @@ describe('connectshyft number mapping service', () => {
       isActive: true,
     });
     const secondCreate = service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       twilioNumberE164: '+12605550112',
@@ -44,6 +46,7 @@ describe('connectshyft number mapping service', () => {
 
   it('rejects non-E.164 number values before persistence', () => {
     const result = service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       twilioNumberE164: '260-555-0111',
@@ -67,6 +70,7 @@ describe('connectshyft number mapping service', () => {
 
   it('enforces duplicate tenant number prevention across orgUnits', () => {
     const firstCreate = service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       twilioNumberE164: '+12605550123',
@@ -75,6 +79,7 @@ describe('connectshyft number mapping service', () => {
     });
 
     const duplicateAttempt = service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-west',
       twilioNumberE164: '+12605550123',
@@ -99,6 +104,7 @@ describe('connectshyft number mapping service', () => {
 
   it('updates an existing mapping and keeps orgUnit multi-number support intact', () => {
     const created = service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       twilioNumberE164: '+12605550111',
@@ -106,6 +112,7 @@ describe('connectshyft number mapping service', () => {
       isActive: true,
     });
     service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       twilioNumberE164: '+12605550112',
@@ -118,6 +125,7 @@ describe('connectshyft number mapping service', () => {
     }
 
     const updated = service.updateMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       mappingId: created.data.mappingId,
@@ -142,6 +150,7 @@ describe('connectshyft number mapping service', () => {
 
   it('refuses update when mapping id does not exist in tenant scope', () => {
     const updated = service.updateMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
       mappingId: 'mapping-a3-1001',
@@ -153,6 +162,37 @@ describe('connectshyft number mapping service', () => {
     expect(updated).toMatchObject({
       ok: false,
       code: 'CONNECTSHYFT_NUMBER_MAPPING_NOT_FOUND',
+    });
+  });
+
+  it('refuses create and update when actor lacks number-mapping capability', () => {
+    const createResult = service.createMapping({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      twilioNumberE164: '+12605550111',
+      label: 'Primary Dispatch',
+      isActive: true,
+    });
+
+    expect(createResult).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NUMBER_MAPPING_FORBIDDEN',
+    });
+
+    const updateResult = service.updateMapping({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      mappingId: 'mapping-a3-1001',
+      twilioNumberE164: '+12605550119',
+      label: 'Seedless Update',
+      isActive: true,
+    });
+
+    expect(updateResult).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NUMBER_MAPPING_FORBIDDEN',
     });
   });
 });

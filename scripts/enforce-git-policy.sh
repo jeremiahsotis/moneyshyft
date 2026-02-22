@@ -272,6 +272,14 @@ if [[ -n "$last_subject" ]]; then
   fi
 fi
 
+if [[ -n "$story_branch_id" ]]; then
+  if [[ "$event" == "pull_request" ]] || is_truthy "${POLICY_ENFORCE_NO_SKIPPED_TESTS:-}"; then
+    bash scripts/enforce-story-no-skipped-tests.sh "$story_branch_id"
+  else
+    echo "Policy check note: skipped-test guard deferred for local run (set POLICY_ENFORCE_NO_SKIPPED_TESTS=true to enforce)."
+  fi
+fi
+
 bash scripts/enforce-envelope-helper-guard.sh
 status_sync_args=(--status-file "$lane_sprint_status_file")
 if [[ -n "$story_branch_id" && -n "${story_branch_slug:-}" ]]; then
@@ -279,10 +287,23 @@ if [[ -n "$story_branch_id" && -n "${story_branch_slug:-}" ]]; then
   status_sync_story_file="_bmad-output/implementation-artifacts/${status_sync_key}.md"
   if [[ ! -f "$status_sync_story_file" ]] && [[ "$story_branch_slug" == "${LANE_SLUG_TOKEN}-"* ]]; then
     status_sync_key="${story_branch_id}-${story_branch_slug#${LANE_SLUG_TOKEN}-}"
+    status_sync_story_file="_bmad-output/implementation-artifacts/${status_sync_key}.md"
   fi
   status_sync_args+=(--story-key "$status_sync_key")
 fi
 bash scripts/enforce-story-status-sync.sh "${status_sync_args[@]}"
+
+if [[ -n "${status_sync_story_file:-}" && -f "$status_sync_story_file" ]]; then
+  artifact_hygiene_base_ref="${base_branch:-codex/dev}"
+  if [[ "$event" == "pull_request" ]] || is_truthy "${POLICY_ENFORCE_STORY_ARTIFACT_HYGIENE:-}"; then
+    bash scripts/enforce-story-artifact-hygiene.sh \
+      --story-file "$status_sync_story_file" \
+      --base-ref "$artifact_hygiene_base_ref"
+  else
+    echo "Policy check note: story artifact hygiene guard deferred for local run (set POLICY_ENFORCE_STORY_ARTIFACT_HYGIENE=true to enforce)."
+  fi
+fi
+
 node scripts/enforce-project-lane.js
 bash scripts/enforce-operability-closeout-guard.sh
 
