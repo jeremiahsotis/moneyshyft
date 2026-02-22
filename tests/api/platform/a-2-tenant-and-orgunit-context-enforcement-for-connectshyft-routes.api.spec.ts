@@ -6,7 +6,7 @@ import { connectShyftContextEnforcementData } from '../../fixtures/test-data';
 test.describe(
   'Story a.2 automate - tenant and orgUnit context enforcement for connectshyft routes API coverage',
   () => {
-    test.fixme(
+    test(
       '[P0] refuses orgUnit-scoped inbox access when authenticated context omits orgUnit identity @P0',
       async ({ request, storyA2Context, storyA2MissingOrgUnitHeaders }) => {
         const response = await apiRequest(request, {
@@ -27,7 +27,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] refuses invalid orgUnit context values before route data can be materialized @P0',
       async ({
         request,
@@ -54,7 +54,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] blocks cross-tenant orgUnit spoof attempts with deterministic refusal and no thread leakage @P0',
       async ({
         request,
@@ -81,7 +81,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] requires orgUnit membership for non-privileged callers even when tenant context is valid @P1',
       async ({ request, storyA2Context, storyA2NonMemberHeaders }) => {
         const response = await apiRequest(request, {
@@ -101,7 +101,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] rejects spoofed active-org-unit header values when canonical context does not match requested scope @P1',
       async ({ request, storyA2Context, storyA2MemberHeaders }) => {
         const response = await apiRequest(request, {
@@ -123,7 +123,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] allows tenant-privileged callers to bypass orgUnit membership while preserving canonical context metadata @P1',
       async ({ request, storyA2Context, storyA2TenantAdminHeaders }) => {
         const response = await apiRequest(request, {
@@ -148,7 +148,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] keeps refusal payloads no-leak by excluding thread and neighbor identifiers on blocked requests @P1',
       async ({ request, storyA2Context, storyA2MissingOrgUnitHeaders }) => {
         const response = await apiRequest(request, {
@@ -172,7 +172,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] tenant-admin bypass applies only to same-tenant orgUnits and still rejects cross-tenant overrides @P1',
       async ({ request, storyA2Context }) => {
         const crossTenantAdminHeaders = createStoryA2Headers(storyA2Context, {

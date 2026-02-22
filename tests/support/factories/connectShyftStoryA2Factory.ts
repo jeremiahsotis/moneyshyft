@@ -26,6 +26,7 @@ type StoryA2HeaderOverrides = {
   correlationId?: string;
   csrfToken?: string;
   flags?: ConnectShyftFlags;
+  orgUnitMemberships?: string[];
 };
 
 export type StoryA2Context = {
@@ -90,8 +91,16 @@ export function createStoryA2Headers(
     csrfToken: overrides.csrfToken ?? context.csrfToken,
   });
 
-  return {
+  const resolvedHeaders: Record<string, string> = {
     ...headers,
     'x-test-connectshyft-flags': JSON.stringify(overrides.flags ?? context.flags),
   };
+
+  if (overrides.orgUnitMemberships) {
+    resolvedHeaders['x-test-connectshyft-orgunit-memberships'] = JSON.stringify(
+      overrides.orgUnitMemberships,
+    );
+  }
+
+  return resolvedHeaders;
 }

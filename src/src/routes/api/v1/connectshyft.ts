@@ -6,6 +6,7 @@ import {
   type ConnectShyftCapability,
   type ConnectShyftFeatureFlags,
 } from '../../../modules/connectshyft/featureFlags';
+import { resolveConnectShyftOrgUnitContext } from '../../../modules/connectshyft/contextAccess';
 
 const router = Router();
 
@@ -25,6 +26,25 @@ const enforceCapability = (
     message: evaluation.message,
     refusalType: evaluation.refusalType,
     httpStatus: 200,
+  });
+  return null;
+};
+
+const enforceOrgUnitContext = (
+  req: Request,
+  res: Response,
+  attemptedOrgUnitId?: string | null,
+) => {
+  const decision = resolveConnectShyftOrgUnitContext(req, { attemptedOrgUnitId });
+  if (decision.ok) {
+    return decision.context;
+  }
+
+  refusal(res, {
+    code: decision.code,
+    message: decision.message,
+    refusalType: decision.refusalType,
+    httpStatus: decision.httpStatus,
   });
   return null;
 };
@@ -53,10 +73,16 @@ router.get('/inbox', (req: Request, res: Response) => {
     return;
   }
 
+  const context = enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
   return success(res, {
     code: 'CONNECTSHYFT_INBOX_READY',
     message: 'ConnectShyft inbox is available for this tenant',
     data: {
+      context,
       items: [],
       actions: {
         claim: flags.connectshyft_escalation_enabled,
@@ -71,6 +97,14 @@ router.post('/threads', (req: Request, res: Response) => {
     return;
   }
 
+  const requestedOrgUnitId = typeof req.body?.orgUnitId === 'string'
+    ? req.body.orgUnitId
+    : null;
+  const context = enforceOrgUnitContext(req, res, requestedOrgUnitId);
+  if (!context) {
+    return;
+  }
+
   const fallbackThreadId = 'thread-connectshyft-generated';
   const requestedThreadId = typeof req.body?.threadId === 'string'
     ? req.body.threadId.trim()
@@ -81,7 +115,7 @@ router.post('/threads', (req: Request, res: Response) => {
     message: 'ConnectShyft thread ensured',
     data: {
       threadId: requestedThreadId || fallbackThreadId,
-      orgUnitId: typeof req.body?.orgUnitId === 'string' ? req.body.orgUnitId : null,
+      orgUnitId: context.orgUnitId,
       neighborId: typeof req.body?.neighborId === 'string' ? req.body.neighborId : null,
     },
   });
@@ -92,11 +126,17 @@ router.post('/threads/:threadId/claim', (req: Request, res: Response) => {
     return;
   }
 
+  const context = enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
   return success(res, {
     code: 'CONNECTSHYFT_THREAD_CLAIM_READY',
     message: 'ConnectShyft claim action accepted',
     data: {
       threadId: req.params.threadId,
+      context,
       reason: typeof req.body?.reason === 'string' ? req.body.reason : null,
     },
   });
@@ -107,11 +147,17 @@ router.post('/threads/:threadId/takeover', (req: Request, res: Response) => {
     return;
   }
 
+  const context = enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
   return success(res, {
     code: 'CONNECTSHYFT_THREAD_TAKEOVER_READY',
     message: 'ConnectShyft takeover action accepted',
     data: {
       threadId: req.params.threadId,
+      context,
       reason: typeof req.body?.reason === 'string' ? req.body.reason : null,
     },
   });

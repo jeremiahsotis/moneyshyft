@@ -1,0 +1,294 @@
+import { Request } from 'express';
+import { CAPABILITIES, hasCapability } from '../../platform/rbac/capabilities';
+import { requireTenantId, TenantScopeError } from '../../platform/tenancy/tenantScope';
+
+type ConnectShyftRefusalType = 'business' | 'security';
+
+type RefusalDecision = {
+  ok: false;
+  code: string;
+  message: string;
+  refusalType: ConnectShyftRefusalType;
+  httpStatus: number;
+};
+
+export type ResolvedConnectShyftContext = {
+  tenantId: string;
+  orgUnitId: string;
+  bypassedOrgUnitMembership: boolean;
+};
+
+type SuccessDecision = {
+  ok: true;
+  context: ResolvedConnectShyftContext;
+};
+
+export type ConnectShyftContextDecision = SuccessDecision | RefusalDecision;
+
+type ResolveConnectShyftContextOptions = {
+  attemptedOrgUnitId?: string | null;
+};
+
+const TENANT_PREFIX = 'tenant-connectshyft-';
+const ORG_UNIT_PREFIX = 'org-connectshyft-';
+const TEST_MEMBERSHIP_HEADER = 'x-test-connectshyft-orgunit-memberships';
+const ENABLE_TEST_CONNECTSHYFT_FLAGS_ENV = 'ENABLE_TEST_CONNECTSHYFT_FLAGS';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+const refusal = (
+  code: string,
+  message: string,
+  refusalType: ConnectShyftRefusalType = 'business',
+  httpStatus = 200,
+): RefusalDecision => ({
+  ok: false,
+  code,
+  message,
+  refusalType,
+  httpStatus,
+});
+
+const normalizeContextValue = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const parseBooleanEnv = (value: string | undefined): boolean => {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'true'
+    || normalized === '1'
+    || normalized === 'on'
+    || normalized === 'enabled';
+};
+
+const isConnectShyftTenantId = (tenantId: string): boolean => {
+  if (!tenantId.startsWith(TENANT_PREFIX)) {
+    return false;
+  }
+
+  const suffix = tenantId.slice(TENANT_PREFIX.length);
+  return suffix.length > 0 && SLUG_PATTERN.test(suffix);
+};
+
+const isConnectShyftOrgUnitId = (orgUnitId: string): boolean => {
+  if (!orgUnitId.startsWith(ORG_UNIT_PREFIX)) {
+    return false;
+  }
+
+  const suffix = orgUnitId.slice(ORG_UNIT_PREFIX.length);
+  if (!SLUG_PATTERN.test(suffix)) {
+    return false;
+  }
+
+  const segments = suffix.split('-');
+  return segments.length >= 1;
+};
+
+const isValidOrgUnitContext = (orgUnitId: string): boolean => {
+  return UUID_PATTERN.test(orgUnitId) || isConnectShyftOrgUnitId(orgUnitId);
+};
+
+const resolveConnectShyftTenantSegment = (tenantId: string): string | null => {
+  if (!isConnectShyftTenantId(tenantId)) {
+    return null;
+  }
+
+  return tenantId.slice(TENANT_PREFIX.length);
+};
+
+const resolveConnectShyftOrgUnitTenantSegment = (orgUnitId: string): string | null => {
+  if (!isConnectShyftOrgUnitId(orgUnitId)) {
+    return null;
+  }
+
+  const suffix = orgUnitId.slice(ORG_UNIT_PREFIX.length);
+  const lastDelimiterIndex = suffix.lastIndexOf('-');
+
+  if (lastDelimiterIndex <= 0) {
+    return null;
+  }
+
+  return suffix.slice(0, lastDelimiterIndex);
+};
+
+const isCrossTenantOrgUnit = (tenantId: string, orgUnitId: string): boolean => {
+  const tenantSegment = resolveConnectShyftTenantSegment(tenantId);
+  const orgUnitTenantSegment = resolveConnectShyftOrgUnitTenantSegment(orgUnitId);
+
+  if (!tenantSegment || !orgUnitTenantSegment) {
+    return false;
+  }
+
+  return tenantSegment !== orgUnitTenantSegment;
+};
+
+const isTestMembershipHeaderEnabled = (): boolean =>
+  parseBooleanEnv(process.env[ENABLE_TEST_CONNECTSHYFT_FLAGS_ENV]);
+
+const resolveHeaderMemberships = (
+  req: Pick<Request, 'header'>,
+): Set<string> | null => {
+  if (!isTestMembershipHeaderEnabled()) {
+    return null;
+  }
+
+  const rawHeader = req.header(TEST_MEMBERSHIP_HEADER);
+  if (!rawHeader) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawHeader);
+    if (!Array.isArray(parsed)) {
+      return new Set<string>();
+    }
+
+    const memberships = parsed
+      .map((entry) => normalizeContextValue(typeof entry === 'string' ? entry : null))
+      .filter((entry): entry is string => entry !== null);
+
+    return new Set(memberships);
+  } catch (_error) {
+    return new Set<string>();
+  }
+};
+
+const isTenantPrivilegedRole = (role: string | null | undefined): boolean => {
+  return hasCapability([role || null], CAPABILITIES.TENANT_READ_ALL);
+};
+
+const hasOrgUnitMembership = (
+  req: Pick<Request, 'header' | 'user'>,
+  orgUnitId: string,
+): boolean => {
+  const headerMemberships = resolveHeaderMemberships(req);
+  if (headerMemberships) {
+    return headerMemberships.has(orgUnitId);
+  }
+
+  const activeOrgUnitId = normalizeContextValue(req.user?.activeOrgUnitId || null);
+  return activeOrgUnitId === orgUnitId;
+};
+
+export const resolveConnectShyftOrgUnitContext = (
+  req: Pick<Request, 'tenantContext' | 'tenantId' | 'orgUnitId' | 'user' | 'header'>,
+  options: ResolveConnectShyftContextOptions = {},
+): ConnectShyftContextDecision => {
+  if (!req.user?.userId) {
+    return refusal(
+      'CONNECTSHYFT_AUTH_CONTEXT_REQUIRED',
+      'Authenticated user context is required for ConnectShyft orgUnit-scoped routes',
+      'security',
+      403,
+    );
+  }
+
+  let tenantId: string;
+  try {
+    tenantId = requireTenantId(req.tenantContext?.tenantId || req.tenantId || req.user.activeTenantId || req.user.householdId || null);
+  } catch (error) {
+    const message = error instanceof TenantScopeError
+      ? error.message
+      : 'Tenant context is required for ConnectShyft routes';
+
+    return refusal(
+      'CONNECTSHYFT_TENANT_CONTEXT_REQUIRED',
+      message,
+      'security',
+      403,
+    );
+  }
+
+  const canonicalOrgUnitId = normalizeContextValue(req.tenantContext?.orgUnitId || req.orgUnitId || req.user.activeOrgUnitId || null);
+
+  if (!canonicalOrgUnitId) {
+    return refusal(
+      'CONNECTSHYFT_ORGUNIT_CONTEXT_REQUIRED',
+      'orgUnit context is required for ConnectShyft orgUnit-scoped routes',
+    );
+  }
+
+  if (!isValidOrgUnitContext(canonicalOrgUnitId)) {
+    return refusal(
+      'CONNECTSHYFT_ORGUNIT_CONTEXT_INVALID',
+      'orgUnit context is invalid for ConnectShyft routes',
+    );
+  }
+
+  if (isCrossTenantOrgUnit(tenantId, canonicalOrgUnitId)) {
+    return refusal(
+      'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH',
+      'orgUnit context does not belong to the active tenant',
+    );
+  }
+
+  const spoofedHeaderOrgUnit = normalizeContextValue(req.header('x-active-org-unit-id'));
+  if (spoofedHeaderOrgUnit && spoofedHeaderOrgUnit !== canonicalOrgUnitId) {
+    return refusal(
+      'CONNECTSHYFT_ORGUNIT_SCOPE_VIOLATION',
+      'Spoofed or cross-orgUnit context overrides are not allowed',
+      'security',
+      403,
+    );
+  }
+
+  const attemptedOrgUnitId = normalizeContextValue(options.attemptedOrgUnitId || null);
+  if (attemptedOrgUnitId) {
+    if (!isValidOrgUnitContext(attemptedOrgUnitId)) {
+      return refusal(
+        'CONNECTSHYFT_ORGUNIT_CONTEXT_INVALID',
+        'orgUnit context is invalid for ConnectShyft routes',
+      );
+    }
+
+    if (isCrossTenantOrgUnit(tenantId, attemptedOrgUnitId)) {
+      return refusal(
+        'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH',
+        'orgUnit context does not belong to the active tenant',
+      );
+    }
+
+    if (attemptedOrgUnitId !== canonicalOrgUnitId) {
+      return refusal(
+        'CONNECTSHYFT_ORGUNIT_SCOPE_VIOLATION',
+        'Cross-orgUnit context overrides are not allowed for this route',
+      );
+    }
+  }
+
+  if (isTenantPrivilegedRole(req.user.role)) {
+    return {
+      ok: true,
+      context: {
+        tenantId,
+        orgUnitId: canonicalOrgUnitId,
+        bypassedOrgUnitMembership: true,
+      },
+    };
+  }
+
+  if (!hasOrgUnitMembership(req, canonicalOrgUnitId)) {
+    return refusal(
+      'CONNECTSHYFT_ORGUNIT_MEMBERSHIP_REQUIRED',
+      'orgUnit membership is required for this ConnectShyft route',
+    );
+  }
+
+  return {
+    ok: true,
+    context: {
+      tenantId,
+      orgUnitId: canonicalOrgUnitId,
+      bypassedOrgUnitMembership: false,
+    },
+  };
+};

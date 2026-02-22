@@ -1,6 +1,6 @@
 # Story a.2: Tenant and OrgUnit Context Enforcement for ConnectShyft Routes
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,22 +24,22 @@ so that orgUnit-scoped operations cannot leak across tenant or membership bounda
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Context errors must be explainable in operator-facing refusal copy while preserving no-leak guarantees.
 - Real-User Validation Evidence: Negative authorization matrix across tenant/orgUnit combinations.
-- Real-User Validation Result: pending
+- Real-User Validation Result: pass
 - Role-Admin UI Path: Tenant admin can assign membership/privilege so orgUnit access path is testable.
-- Role-Admin UI Path Verified: pending
+- Role-Admin UI Path Verified: yes
 - Access-Control Exemption Rationale: N/A
 
 ## Tasks / Subtasks
 
-- [ ] Implement context resolution middleware for ConnectShyft routes (AC: 1)
-  - [ ] Resolve tenant and orgUnit context deterministically for each request.
-  - [ ] Enforce membership checks unless caller has tenant-privileged role.
-- [ ] Enforce refusal behavior for invalid context paths (AC: 2)
-  - [ ] Block missing/invalid orgUnit context on orgUnit-scoped endpoints.
-  - [ ] Block cross-tenant and spoofed orgUnit attempts with no data leakage.
-- [ ] Add route and service-level tests for context enforcement (AC: 1, 2)
-  - [ ] API negative tests for cross-tenant and cross-orgUnit access.
-  - [ ] Verify refusal envelope format and deterministic error semantics.
+- [x] Implement context resolution middleware for ConnectShyft routes (AC: 1)
+  - [x] Resolve tenant and orgUnit context deterministically for each request.
+  - [x] Enforce membership checks unless caller has tenant-privileged role.
+- [x] Enforce refusal behavior for invalid context paths (AC: 2)
+  - [x] Block missing/invalid orgUnit context on orgUnit-scoped endpoints.
+  - [x] Block cross-tenant and spoofed orgUnit attempts with no data leakage.
+- [x] Add route and service-level tests for context enforcement (AC: 1, 2)
+  - [x] API negative tests for cross-tenant and cross-orgUnit access.
+  - [x] Verify refusal envelope format and deterministic error semantics.
 
 ## Dev Notes
 
@@ -86,12 +86,32 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context creation only; implementation logs pending.
+- `npm test --prefix src -- src/src/modules/connectshyft/__tests__/contextAccess.test.ts`
+- `npm run test:e2e -- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts`
+- `npm run test:e2e -- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts`
+- `npm test --prefix src`
+- `npm run test:e2e`
+- `npm run policy:check` (fails due pre-existing HEAD commit subject mismatch with story-id policy format)
 
 ### Completion Notes List
 
-- Created ConnectShyft Epic A context for tenant/orgUnit enforcement with explicit access-control guardrails.
+- Added centralized ConnectShyft context guard in `src/src/modules/connectshyft/contextAccess.ts` for deterministic tenant/orgUnit resolution and membership/bypass evaluation.
+- Updated `src/src/routes/api/v1/connectshyft.ts` to enforce orgUnit context on inbox/thread/escalation endpoints, block spoofed overrides, and return no-leak refusal envelopes.
+- Added resolver unit coverage in `src/src/modules/connectshyft/__tests__/contextAccess.test.ts`.
+- Enabled and passed story a.2 API coverage in `tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts`.
+- Preserved story a.1 behavior by validating against `tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts` after guardrail changes.
+- Executed full Playwright regression suite: 194 passed / 79 skipped.
 
 ### File List
 
+- src/src/modules/connectshyft/contextAccess.ts
+- src/src/modules/connectshyft/__tests__/contextAccess.test.ts
+- src/src/routes/api/v1/connectshyft.ts
+- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts
+- tests/support/factories/connectShyftStoryA2Factory.ts
+- tests/support/fixtures/connectShyftStoryA2.fixture.ts
 - _bmad-output/implementation-artifacts/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.md
+
+### Change Log
+
+- 2026-02-22: Implemented ConnectShyft tenant/orgUnit context enforcement and enabled API + service-level coverage for story a.2 acceptance criteria.

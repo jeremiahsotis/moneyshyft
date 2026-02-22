@@ -28,7 +28,11 @@ export const test = base.extend<StoryA2Fixtures>({
     await use(createStoryA2Context());
   },
   storyA2MemberHeaders: async ({ storyA2Context }, use) => {
-    await use(createStoryA2Headers(storyA2Context));
+    await use(
+      createStoryA2Headers(storyA2Context, {
+        orgUnitMemberships: [storyA2Context.orgUnitId],
+      }),
+    );
   },
   storyA2MissingOrgUnitHeaders: async ({ storyA2Context }, use) => {
     await use(
@@ -36,6 +40,7 @@ export const test = base.extend<StoryA2Fixtures>({
         orgUnitId: null,
         role: 'TENANT_STAFF',
         userId: connectShyftContextEnforcementData.staffUserId,
+        orgUnitMemberships: [],
       }),
     );
   },
@@ -45,6 +50,7 @@ export const test = base.extend<StoryA2Fixtures>({
         orgUnitId: 'invalid-orgunit-context',
         role: 'TENANT_STAFF',
         userId: connectShyftContextEnforcementData.staffUserId,
+        orgUnitMemberships: [],
       }),
     );
   },
@@ -54,6 +60,7 @@ export const test = base.extend<StoryA2Fixtures>({
         orgUnitId: connectShyftContextEnforcementData.orgUnitAlphaWestId,
         role: 'ORGUNIT_MEMBER',
         userId: connectShyftContextEnforcementData.nonMemberUserId,
+        orgUnitMemberships: [],
       }),
     );
   },
@@ -63,6 +70,7 @@ export const test = base.extend<StoryA2Fixtures>({
         orgUnitId: connectShyftContextEnforcementData.orgUnitAlphaWestId,
         role: 'TENANT_ADMIN',
         userId: connectShyftContextEnforcementData.tenantAdminUserId,
+        orgUnitMemberships: [],
       }),
     );
   },

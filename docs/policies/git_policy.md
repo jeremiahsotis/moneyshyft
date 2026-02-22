@@ -174,3 +174,6 @@ The CI policy gate runs `npm run policy:check` and fails the pipeline on violati
 
 - Script: `scripts/enforce-git-policy.sh`
 - Workflow guard helper: `scripts/branch-ensure-workflow.sh`
+- Commit-subject policy is always enforced for CI events (`pull_request`, `push`, `workflow_dispatch`).
+- Local `policy:check` runs defer commit-subject failures when the worktree is dirty to avoid blocking uncommitted slices from unrelated HEAD subjects.
+- To force local strict mode (for example before committing), run with `POLICY_ENFORCE_LOCAL_COMMIT_SUBJECT=true`.

@@ -284,6 +284,46 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     expect(status !== 0 && hasStoryMismatchMessage && hasActualSubject).toBe(true);
   });
 
+  test('[P1] local dirty worktrees defer commit-subject enforcement unless strict override is enabled @P1', async ({
+    ciPolicyContext,
+  }) => {
+    const branch = 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage';
+    const sprintStatus = `development_status:
+  0-9-ci-policy-gate-as-blocking-first-stage: in-progress
+`;
+    const deferredResult = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
+      branch,
+      event: 'local',
+      commitSubject: '0-8: wrong story commit subject',
+      leaveWorktreeDirty: true,
+      seedFiles: {
+        '_bmad-output/implementation-artifacts/sprint-status.yaml': sprintStatus,
+      },
+    });
+
+    const strictResult = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
+      branch,
+      event: 'local',
+      commitSubject: '0-8: wrong story commit subject',
+      leaveWorktreeDirty: true,
+      seedFiles: {
+        '_bmad-output/implementation-artifacts/sprint-status.yaml': sprintStatus,
+      },
+      env: {
+        POLICY_ENFORCE_LOCAL_COMMIT_SUBJECT: 'true',
+      },
+    });
+
+    const hasDeferralWarning = /Policy check warning: local worktree is dirty; deferring latest commit subject validation until commit\./.test(
+      deferredResult.output,
+    );
+    const deferredStillPasses = deferredResult.status === 0 && /Policy check passed/.test(deferredResult.output);
+    const strictModeFails = strictResult.status !== 0;
+    const strictModeShowsMismatch = /latest commit subject must match '0-9: <summary>'/.test(strictResult.output);
+
+    expect(hasDeferralWarning && deferredStillPasses && strictModeFails && strictModeShowsMismatch).toBe(true);
+  });
+
   test('[P0] policy gate blocks non-Epic-0 story branches until Story 0.10 is marked done @P0', async ({
     ciPolicyContext,
   }) => {
