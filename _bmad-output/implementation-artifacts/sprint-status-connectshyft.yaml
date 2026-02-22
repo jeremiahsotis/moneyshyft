@@ -41,48 +41,40 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  epic-1: in-progress
-  1-1-connectshyft-feature-flag-and-availability-guardrails: backlog
-  1-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes: backlog
-  1-3-orgunit-number-mapping-management: backlog
-  1-4-escalation-baseline-and-recipient-configuration: backlog
-  1-5-capability-based-route-access-and-envelope-contract-compliance: backlog
-  epic-1-retrospective: optional
-  epic-2: backlog
-  2-1-tenant-scoped-neighbor-creation-with-required-phone: backlog
-  2-2-shared-tenant-identity-and-shared-phone-indicators: backlog
-  2-3-relationship-gated-neighbor-edits-with-provenance-audit: backlog
-  2-4-role-restricted-neighbor-merge-with-irreversible-confirmation: backlog
-  epic-2-retrospective: optional
-  epic-3: in-progress
-  3-1-core-connectshyft-thread-schema-and-lifecycle-constraints: ready-for-dev
-  3-2-thread-ensure-endpoint-with-conflict-safe-idempotency: backlog
-  3-3-inbox-and-thread-detail-read-contracts: backlog
-  3-4-claim-takeover-and-close-lifecycle-actions: backlog
-  3-5-deterministic-escalation-scheduler-with-claim-only-reset: backlog
-  epic-3-retrospective: optional
-  epic-4: backlog
-  4-1-outbound-sms-call-actions-that-preserve-escalation-semantics: backlog
-  4-2-preference-override-enforcement-for-outbound-sms: backlog
-  4-3-outbound-audit-outbox-and-refusal-envelope-integration: backlog
-  4-4-operator-interaction-contracts-for-outbound-safety: backlog
-  epic-4-retrospective: optional
-  epic-5: in-progress
-  5-1-verified-webhook-ingress-and-deterministic-context-routing: ready-for-dev
-  5-2-inbound-sms-processing-with-active-thread-ensure: backlog
-  5-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: backlog
-  5-4-transcription-webhook-attachment-to-voicemail-records: backlog
-  5-5-replay-safe-webhook-receipt-ledger-and-retention-controls: backlog
-  5-6-parallel-delivery-safety-gates-for-connectshyft-rollout: backlog
-  epic-5-retrospective: optional
-
-execution_kickoff:
-  started_on: 2026-02-19
-  strategy: dependency-root-only
-  stories_started:
-    - 1-1-connectshyft-feature-flag-and-availability-guardrails
-    - 3-1-core-connectshyft-thread-schema-and-lifecycle-constraints
-    - 5-1-verified-webhook-ingress-and-deterministic-context-routing
+  epic-a: in-progress
+  a-1-connectshyft-feature-flag-and-availability-guardrails: ready-for-dev
+  a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes: ready-for-dev
+  a-3-orgunit-number-mapping-management: ready-for-dev
+  a-4-escalation-baseline-and-recipient-configuration: ready-for-dev
+  a-5-capability-based-route-access-and-envelope-contract-compliance: ready-for-dev
+  epic-a-retrospective: optional
+  epic-b: backlog
+  b-1-tenant-scoped-neighbor-creation-with-required-phone: backlog
+  b-2-shared-tenant-identity-and-shared-phone-indicators: backlog
+  b-3-relationship-gated-neighbor-edits-with-provenance-audit: backlog
+  b-4-role-restricted-neighbor-merge-with-irreversible-confirmation: backlog
+  epic-b-retrospective: optional
+  epic-c: in-progress
+  c-1-core-connectshyft-thread-schema-and-lifecycle-constraints: ready-for-dev
+  c-2-thread-ensure-endpoint-with-conflict-safe-idempotency: backlog
+  c-3-inbox-and-thread-detail-read-contracts: backlog
+  c-4-claim-takeover-and-close-lifecycle-actions: backlog
+  c-5-deterministic-escalation-scheduler-with-claim-only-reset: backlog
+  epic-c-retrospective: optional
+  epic-d: backlog
+  d-1-outbound-sms-call-actions-that-preserve-escalation-semantics: backlog
+  d-2-preference-override-enforcement-for-outbound-sms: backlog
+  d-3-outbound-audit-outbox-and-refusal-envelope-integration: backlog
+  d-4-operator-interaction-contracts-for-outbound-safety: backlog
+  epic-d-retrospective: optional
+  epic-e: in-progress
+  e-1-verified-webhook-ingress-and-deterministic-context-routing: ready-for-dev
+  e-2-inbound-sms-processing-with-active-thread-ensure: backlog
+  e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: backlog
+  e-4-transcription-webhook-attachment-to-voicemail-records: backlog
+  e-5-replay-safe-webhook-receipt-ledger-and-retention-controls: backlog
+  e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: backlog
+  epic-e-retrospective: optional
 
 change_controls:
   connectshyft_scope_lock: true
@@ -98,7 +90,7 @@ change_controls:
     integer_only: true
 
 story_traceability_overrides:
-  1-5-capability-based-route-access-and-envelope-contract-compliance:
+  a-5-capability-based-route-access-and-envelope-contract-compliance:
     fr_tags:
       - FR-CS-001
       - FR-CS-002
@@ -108,9 +100,9 @@ story_traceability_overrides:
       - NFR-CS-002
       - NFR-CS-004
     depends_on:
-      - 1-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes
+      - a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes
     parallel_lane: lane-a-platform-guards
-  4-4-operator-interaction-contracts-for-outbound-safety:
+  d-4-operator-interaction-contracts-for-outbound-safety:
     fr_tags:
       - FR-CS-016
       - FR-CS-022
@@ -118,11 +110,11 @@ story_traceability_overrides:
     nfr_tags:
       - NFR-CS-011
     depends_on:
-      - 3-3-inbox-and-thread-detail-read-contracts
-      - 4-1-outbound-sms-call-actions-that-preserve-escalation-semantics
-      - 4-2-preference-override-enforcement-for-outbound-sms
+      - c-3-inbox-and-thread-detail-read-contracts
+      - d-1-outbound-sms-call-actions-that-preserve-escalation-semantics
+      - d-2-preference-override-enforcement-for-outbound-sms
     parallel_lane: lane-d-outbound-ux
-  5-6-parallel-delivery-safety-gates-for-connectshyft-rollout:
+  e-6-parallel-delivery-safety-gates-for-connectshyft-rollout:
     fr_tags:
       - FR-CS-021
       - FR-CS-021a
@@ -131,93 +123,93 @@ story_traceability_overrides:
       - NFR-CS-004
       - NFR-CS-010
     depends_on:
-      - 1-5-capability-based-route-access-and-envelope-contract-compliance
-      - 5-1-verified-webhook-ingress-and-deterministic-context-routing
-      - 5-5-replay-safe-webhook-receipt-ledger-and-retention-controls
+      - a-5-capability-based-route-access-and-envelope-contract-compliance
+      - e-1-verified-webhook-ingress-and-deterministic-context-routing
+      - e-5-replay-safe-webhook-receipt-ledger-and-retention-controls
     parallel_lane: lane-e-release-safety
 
 story_dependencies:
-  1-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes:
-    - 1-1-connectshyft-feature-flag-and-availability-guardrails
-  1-3-orgunit-number-mapping-management:
-    - 1-1-connectshyft-feature-flag-and-availability-guardrails
-    - 1-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes
-  1-4-escalation-baseline-and-recipient-configuration:
-    - 1-1-connectshyft-feature-flag-and-availability-guardrails
-    - 1-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes
-  1-5-capability-based-route-access-and-envelope-contract-compliance:
-    - 1-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes
-  2-1-tenant-scoped-neighbor-creation-with-required-phone:
-    - 1-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes
-  2-2-shared-tenant-identity-and-shared-phone-indicators:
-    - 2-1-tenant-scoped-neighbor-creation-with-required-phone
-  2-3-relationship-gated-neighbor-edits-with-provenance-audit:
-    - 2-1-tenant-scoped-neighbor-creation-with-required-phone
-    - 3-3-inbox-and-thread-detail-read-contracts
-  2-4-role-restricted-neighbor-merge-with-irreversible-confirmation:
-    - 2-3-relationship-gated-neighbor-edits-with-provenance-audit
-  3-2-thread-ensure-endpoint-with-conflict-safe-idempotency:
-    - 3-1-core-connectshyft-thread-schema-and-lifecycle-constraints
-  3-3-inbox-and-thread-detail-read-contracts:
-    - 3-2-thread-ensure-endpoint-with-conflict-safe-idempotency
-  3-4-claim-takeover-and-close-lifecycle-actions:
-    - 3-2-thread-ensure-endpoint-with-conflict-safe-idempotency
-    - 3-3-inbox-and-thread-detail-read-contracts
-  3-5-deterministic-escalation-scheduler-with-claim-only-reset:
-    - 3-4-claim-takeover-and-close-lifecycle-actions
-    - 1-4-escalation-baseline-and-recipient-configuration
-  4-1-outbound-sms-call-actions-that-preserve-escalation-semantics:
-    - 3-3-inbox-and-thread-detail-read-contracts
-  4-2-preference-override-enforcement-for-outbound-sms:
-    - 3-3-inbox-and-thread-detail-read-contracts
-  4-3-outbound-audit-outbox-and-refusal-envelope-integration:
-    - 4-1-outbound-sms-call-actions-that-preserve-escalation-semantics
-    - 4-2-preference-override-enforcement-for-outbound-sms
-  4-4-operator-interaction-contracts-for-outbound-safety:
-    - 3-3-inbox-and-thread-detail-read-contracts
-    - 4-1-outbound-sms-call-actions-that-preserve-escalation-semantics
-    - 4-2-preference-override-enforcement-for-outbound-sms
-  5-2-inbound-sms-processing-with-active-thread-ensure:
-    - 5-1-verified-webhook-ingress-and-deterministic-context-routing
-    - 3-2-thread-ensure-endpoint-with-conflict-safe-idempotency
-  5-3-inbound-voice-webhook-to-voicemail-artifact-pipeline:
-    - 5-1-verified-webhook-ingress-and-deterministic-context-routing
-    - 3-2-thread-ensure-endpoint-with-conflict-safe-idempotency
-  5-4-transcription-webhook-attachment-to-voicemail-records:
-    - 5-3-inbound-voice-webhook-to-voicemail-artifact-pipeline
-  5-5-replay-safe-webhook-receipt-ledger-and-retention-controls:
-    - 5-1-verified-webhook-ingress-and-deterministic-context-routing
-  5-6-parallel-delivery-safety-gates-for-connectshyft-rollout:
-    - 1-5-capability-based-route-access-and-envelope-contract-compliance
-    - 5-1-verified-webhook-ingress-and-deterministic-context-routing
-    - 5-5-replay-safe-webhook-receipt-ledger-and-retention-controls
+  a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes:
+    - a-1-connectshyft-feature-flag-and-availability-guardrails
+  a-3-orgunit-number-mapping-management:
+    - a-1-connectshyft-feature-flag-and-availability-guardrails
+    - a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes
+  a-4-escalation-baseline-and-recipient-configuration:
+    - a-1-connectshyft-feature-flag-and-availability-guardrails
+    - a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes
+  a-5-capability-based-route-access-and-envelope-contract-compliance:
+    - a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes
+  b-1-tenant-scoped-neighbor-creation-with-required-phone:
+    - a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes
+  b-2-shared-tenant-identity-and-shared-phone-indicators:
+    - b-1-tenant-scoped-neighbor-creation-with-required-phone
+  b-3-relationship-gated-neighbor-edits-with-provenance-audit:
+    - b-1-tenant-scoped-neighbor-creation-with-required-phone
+    - c-3-inbox-and-thread-detail-read-contracts
+  b-4-role-restricted-neighbor-merge-with-irreversible-confirmation:
+    - b-3-relationship-gated-neighbor-edits-with-provenance-audit
+  c-2-thread-ensure-endpoint-with-conflict-safe-idempotency:
+    - c-1-core-connectshyft-thread-schema-and-lifecycle-constraints
+  c-3-inbox-and-thread-detail-read-contracts:
+    - c-2-thread-ensure-endpoint-with-conflict-safe-idempotency
+  c-4-claim-takeover-and-close-lifecycle-actions:
+    - c-2-thread-ensure-endpoint-with-conflict-safe-idempotency
+    - c-3-inbox-and-thread-detail-read-contracts
+  c-5-deterministic-escalation-scheduler-with-claim-only-reset:
+    - c-4-claim-takeover-and-close-lifecycle-actions
+    - a-4-escalation-baseline-and-recipient-configuration
+  d-1-outbound-sms-call-actions-that-preserve-escalation-semantics:
+    - c-3-inbox-and-thread-detail-read-contracts
+  d-2-preference-override-enforcement-for-outbound-sms:
+    - c-3-inbox-and-thread-detail-read-contracts
+  d-3-outbound-audit-outbox-and-refusal-envelope-integration:
+    - d-1-outbound-sms-call-actions-that-preserve-escalation-semantics
+    - d-2-preference-override-enforcement-for-outbound-sms
+  d-4-operator-interaction-contracts-for-outbound-safety:
+    - c-3-inbox-and-thread-detail-read-contracts
+    - d-1-outbound-sms-call-actions-that-preserve-escalation-semantics
+    - d-2-preference-override-enforcement-for-outbound-sms
+  e-2-inbound-sms-processing-with-active-thread-ensure:
+    - e-1-verified-webhook-ingress-and-deterministic-context-routing
+    - c-2-thread-ensure-endpoint-with-conflict-safe-idempotency
+  e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline:
+    - e-1-verified-webhook-ingress-and-deterministic-context-routing
+    - c-2-thread-ensure-endpoint-with-conflict-safe-idempotency
+  e-4-transcription-webhook-attachment-to-voicemail-records:
+    - e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline
+  e-5-replay-safe-webhook-receipt-ledger-and-retention-controls:
+    - e-1-verified-webhook-ingress-and-deterministic-context-routing
+  e-6-parallel-delivery-safety-gates-for-connectshyft-rollout:
+    - a-5-capability-based-route-access-and-envelope-contract-compliance
+    - e-1-verified-webhook-ingress-and-deterministic-context-routing
+    - e-5-replay-safe-webhook-receipt-ledger-and-retention-controls
 
 parallel_lane_rules:
   gate_rule: no_story_starts_with_unmet_dependencies
   lanes:
     lane-a-platform-guards:
-      - 1-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes
-      - 1-5-capability-based-route-access-and-envelope-contract-compliance
+      - a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes
+      - a-5-capability-based-route-access-and-envelope-contract-compliance
     lane-b-neighbor-governance:
-      - 2-1-tenant-scoped-neighbor-creation-with-required-phone
-      - 2-2-shared-tenant-identity-and-shared-phone-indicators
-      - 2-3-relationship-gated-neighbor-edits-with-provenance-audit
-      - 2-4-role-restricted-neighbor-merge-with-irreversible-confirmation
+      - b-1-tenant-scoped-neighbor-creation-with-required-phone
+      - b-2-shared-tenant-identity-and-shared-phone-indicators
+      - b-3-relationship-gated-neighbor-edits-with-provenance-audit
+      - b-4-role-restricted-neighbor-merge-with-irreversible-confirmation
     lane-c-thread-core:
-      - 3-1-core-connectshyft-thread-schema-and-lifecycle-constraints
-      - 3-2-thread-ensure-endpoint-with-conflict-safe-idempotency
-      - 3-3-inbox-and-thread-detail-read-contracts
-      - 3-4-claim-takeover-and-close-lifecycle-actions
-      - 3-5-deterministic-escalation-scheduler-with-claim-only-reset
+      - c-1-core-connectshyft-thread-schema-and-lifecycle-constraints
+      - c-2-thread-ensure-endpoint-with-conflict-safe-idempotency
+      - c-3-inbox-and-thread-detail-read-contracts
+      - c-4-claim-takeover-and-close-lifecycle-actions
+      - c-5-deterministic-escalation-scheduler-with-claim-only-reset
     lane-d-outbound-ux:
-      - 4-1-outbound-sms-call-actions-that-preserve-escalation-semantics
-      - 4-2-preference-override-enforcement-for-outbound-sms
-      - 4-3-outbound-audit-outbox-and-refusal-envelope-integration
-      - 4-4-operator-interaction-contracts-for-outbound-safety
+      - d-1-outbound-sms-call-actions-that-preserve-escalation-semantics
+      - d-2-preference-override-enforcement-for-outbound-sms
+      - d-3-outbound-audit-outbox-and-refusal-envelope-integration
+      - d-4-operator-interaction-contracts-for-outbound-safety
     lane-e-webhooks-and-release:
-      - 5-1-verified-webhook-ingress-and-deterministic-context-routing
-      - 5-2-inbound-sms-processing-with-active-thread-ensure
-      - 5-3-inbound-voice-webhook-to-voicemail-artifact-pipeline
-      - 5-4-transcription-webhook-attachment-to-voicemail-records
-      - 5-5-replay-safe-webhook-receipt-ledger-and-retention-controls
-      - 5-6-parallel-delivery-safety-gates-for-connectshyft-rollout
+      - e-1-verified-webhook-ingress-and-deterministic-context-routing
+      - e-2-inbound-sms-processing-with-active-thread-ensure
+      - e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline
+      - e-4-transcription-webhook-attachment-to-voicemail-records
+      - e-5-replay-safe-webhook-receipt-ledger-and-retention-controls
+      - e-6-parallel-delivery-safety-gates-for-connectshyft-rollout
