@@ -1,5 +1,6 @@
 ---
 stepsCompleted: [1, 2, 3, 4]
+project_lane: connectshyft
 inputDocuments:
   - /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md
   - /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md
@@ -79,88 +80,88 @@ NFR-CS-014: Unauthorized cross-conference sharing is technically blocked.
 
 ### FR Coverage Map
 
-FR-CS-001: Epic 1, Story 1.2
-FR-CS-002: Epic 1, Story 1.2
-FR-CS-003: Epic 1, Story 1.2
-FR-CS-004: Epic 2, Story 2.1
-FR-CS-004a: Epic 2, Story 2.2
-FR-CS-005: Epic 3, Story 3.3
-FR-CS-006: Epic 2, Story 2.1
-FR-CS-007: Epic 2, Story 2.1
-FR-CS-008: Epic 2, Story 2.3
-FR-CS-008a: Epic 2, Story 2.3
-FR-CS-009: Epic 2, Story 2.4
-FR-CS-010: Epic 2, Story 2.2
-FR-CS-011: Epic 3, Story 3.2
-FR-CS-012: Epic 3, Story 3.2
-FR-CS-013: Epic 3, Story 3.4
-FR-CS-014: Epic 3, Story 3.5
-FR-CS-015: Epic 3, Story 3.5
-FR-CS-016: Epic 4, Story 4.1
-FR-CS-017: Epic 3, Story 3.3
-FR-CS-018: Epic 5, Story 5.2
-FR-CS-019: Epic 5, Story 5.3
-FR-CS-020: Epic 5, Story 5.4
-FR-CS-021: Epic 5, Story 5.1
-FR-CS-021a: Epic 5, Story 5.5
-FR-CS-022: Epic 4, Story 4.2
-FR-CS-023: Epic 4, Story 4.2
-FR-CS-024: Epic 4, Story 4.3
-FR-CS-025: Epic 1, Story 1.3
-FR-CS-026: Epic 1, Story 1.3
-FR-CS-027: Epic 1, Story 1.4
+FR-CS-001: Epic a, Story a.2
+FR-CS-002: Epic a, Story a.2
+FR-CS-003: Epic a, Story a.2
+FR-CS-004: Epic b, Story b.1
+FR-CS-004a: Epic b, Story b.2
+FR-CS-005: Epic c, Story c.3
+FR-CS-006: Epic b, Story b.1
+FR-CS-007: Epic b, Story b.1
+FR-CS-008: Epic b, Story b.3
+FR-CS-008a: Epic b, Story b.3
+FR-CS-009: Epic b, Story b.4
+FR-CS-010: Epic b, Story b.2
+FR-CS-011: Epic c, Story c.2
+FR-CS-012: Epic c, Story c.2
+FR-CS-013: Epic c, Story c.4
+FR-CS-014: Epic c, Story c.5
+FR-CS-015: Epic c, Story c.5
+FR-CS-016: Epic d, Story d.1
+FR-CS-017: Epic c, Story c.3
+FR-CS-018: Epic e, Story e.2
+FR-CS-019: Epic e, Story e.3
+FR-CS-020: Epic e, Story e.4
+FR-CS-021: Epic e, Story e.1
+FR-CS-021a: Epic e, Story e.5
+FR-CS-022: Epic d, Story d.2
+FR-CS-023: Epic d, Story d.2
+FR-CS-024: Epic d, Story d.3
+FR-CS-025: Epic a, Story a.3
+FR-CS-026: Epic a, Story a.3
+FR-CS-027: Epic a, Story a.4
 
 ### Story Dependency Map (Parallel-Safe)
 
-- `1.2` depends on `1.1`
-- `1.3` depends on `1.1`, `1.2`
-- `1.4` depends on `1.1`, `1.2`
-- `1.5` depends on `1.2`
-- `2.1` depends on `1.2`
-- `2.2` depends on `2.1`
-- `2.3` depends on `2.1`, `3.3`
-- `2.4` depends on `2.3`
-- `3.2` depends on `3.1`
-- `3.3` depends on `3.2`
-- `3.4` depends on `3.2`, `3.3`
-- `3.5` depends on `3.4`, `1.4`
-- `4.1` depends on `3.3`
-- `4.2` depends on `3.3`
-- `4.3` depends on `4.1`, `4.2`
-- `4.4` depends on `3.3`, `4.1`, `4.2`
-- `5.2` depends on `5.1`, `3.2`
-- `5.3` depends on `5.1`, `3.2`
-- `5.4` depends on `5.3`
-- `5.5` depends on `5.1`
-- `5.6` depends on `1.5`, `5.1`, `5.5`
+- `a.2` depends on `a.1`
+- `a.3` depends on `a.1`, `a.2`
+- `a.4` depends on `a.1`, `a.2`
+- `a.5` depends on `a.2`
+- `b.1` depends on `a.2`
+- `b.2` depends on `b.1`
+- `b.3` depends on `b.1`, `c.3`
+- `b.4` depends on `b.3`
+- `c.2` depends on `c.1`
+- `c.3` depends on `c.2`
+- `c.4` depends on `c.2`, `c.3`
+- `c.5` depends on `c.4`, `a.4`
+- `d.1` depends on `c.3`
+- `d.2` depends on `c.3`
+- `d.3` depends on `d.1`, `d.2`
+- `d.4` depends on `c.3`, `d.1`, `d.2`
+- `e.2` depends on `e.1`, `c.2`
+- `e.3` depends on `e.1`, `c.2`
+- `e.4` depends on `e.3`
+- `e.5` depends on `e.1`
+- `e.6` depends on `a.5`, `e.1`, `e.5`
 
 ## Epic List
 
-### Epic 1: Scoped Access and Operational Configuration
+### Epic a: Scoped Access and Operational Configuration
 Enable tenant and orgUnit administrators to safely activate ConnectShyft, enforce scope boundaries, and configure numbers/escalation rules.
 **FRs covered:** FR-CS-001, FR-CS-002, FR-CS-003, FR-CS-025, FR-CS-026, FR-CS-027
 
-### Epic 2: Neighbor Identity Governance
+### Epic b: Neighbor Identity Governance
 Enable operators to create and manage tenant-scoped neighbor identity records with policy-safe edit and merge controls.
 **FRs covered:** FR-CS-004, FR-CS-004a, FR-CS-006, FR-CS-007, FR-CS-008, FR-CS-008a, FR-CS-009, FR-CS-010
 
-### Epic 3: OrgUnit Inbox and Thread Lifecycle
+### Epic c: OrgUnit Inbox and Thread Lifecycle
 Enable orgUnit communication operations with deterministic thread identity, claim semantics, and escalation progression.
 **FRs covered:** FR-CS-005, FR-CS-011, FR-CS-012, FR-CS-013, FR-CS-014, FR-CS-015, FR-CS-017
 
-### Epic 4: Policy-Safe Outbound Communication
+### Epic d: Policy-Safe Outbound Communication
 Enable outbound SMS/call execution that preserves escalation semantics, preference policy controls, and auditable refusal behavior.
 **FRs covered:** FR-CS-016, FR-CS-022, FR-CS-023, FR-CS-024
 
-### Epic 5: Inbound Webhook Reliability and Voicemail Continuity
+### Epic e: Inbound Webhook Reliability and Voicemail Continuity
 Enable secure, idempotent Twilio ingestion for SMS/voice/transcription with replay safety and parallel-delivery quality gates.
 **FRs covered:** FR-CS-018, FR-CS-019, FR-CS-020, FR-CS-021, FR-CS-021a
 
-## Epic 1: Scoped Access and Operational Configuration
+## Epic a: Scoped Access and Operational Configuration
 
 Enable tenant and orgUnit administrators to safely activate ConnectShyft, enforce scope boundaries, and configure numbers/escalation rules.
 
-### Story 1.1: ConnectShyft Feature Flag and Availability Guardrails
+### Story a.1: ConnectShyft Feature Flag and Availability Guardrails
 
 As a tenant administrator,
 I want ConnectShyft to be controlled by module and sub-feature flags,
@@ -173,7 +174,7 @@ So that rollout can be safely enabled, limited, or reversed without deployment c
 **Then** the system fails closed with controlled unavailable/refusal responses
 **And** enabling only selected sub-flags exposes only those enabled capabilities with explicit operator messaging.
 
-### Story 1.2: Tenant and OrgUnit Context Enforcement for ConnectShyft Routes
+### Story a.2: Tenant and OrgUnit Context Enforcement for ConnectShyft Routes
 
 As a platform engineer,
 I want every ConnectShyft request to resolve and validate tenant/orgUnit context,
@@ -188,7 +189,7 @@ So that orgUnit-scoped operations cannot leak across tenant or membership bounda
 **Then** tenant and orgUnit context are resolved and validated against caller membership (unless tenant-privileged)
 **And** requests with missing, invalid, or cross-tenant orgUnit context return refusal responses with no data leakage.
 
-### Story 1.3: OrgUnit Number Mapping Management
+### Story a.3: OrgUnit Number Mapping Management
 
 As an orgUnit administrator,
 I want to manage multiple Twilio numbers per orgUnit with tenant-safe uniqueness rules,
@@ -203,7 +204,7 @@ So that inbound routing is deterministic and operationally maintainable.
 **Then** multiple mappings per orgUnit are supported
 **And** duplicate `(tenant_id, twilio_number_e164)` attempts are blocked with actionable validation feedback.
 
-### Story 1.4: Escalation Baseline and Recipient Configuration
+### Story a.4: Escalation Baseline and Recipient Configuration
 
 As an orgUnit administrator,
 I want to configure escalation baseline `X` in integer hours and recipient targets,
@@ -218,7 +219,7 @@ So that unclaimed threads escalate to the correct recipients at defined interval
 **Then** configuration is persisted with validation for required recipients and valid integer-hour timings (`X` default 24, allowed 1-24)
 **And** invalid recipient assignments are blocked with deterministic refusal messaging.
 
-### Story 1.5: Capability-Based Route Access and Envelope Contract Compliance
+### Story a.5: Capability-Based Route Access and Envelope Contract Compliance
 
 As a tenant operations lead,
 I want capability checks and response envelopes to be consistent across ConnectShyft APIs,
@@ -236,11 +237,11 @@ So that client behavior is predictable and unauthorized operations are safely re
 **Then** permission checks are enforced server-side at endpoint and service boundaries
 **And** all responses use shared `success/refusal/systemError` envelope semantics.
 
-## Epic 2: Neighbor Identity Governance
+## Epic b: Neighbor Identity Governance
 
 Enable operators to create and manage tenant-scoped neighbor identity records with policy-safe edit and merge controls.
 
-### Story 2.1: Tenant-Scoped Neighbor Creation with Required Phone
+### Story b.1: Tenant-Scoped Neighbor Creation with Required Phone
 
 As an orgUnit member,
 I want to create neighbors with at least one phone number in tenant scope,
@@ -256,7 +257,7 @@ So that communications can be started with valid contact records.
 **And** the request is refused when no phone is provided
 **And** accepted records include at least one valid phone entry.
 
-### Story 2.2: Shared Tenant Identity and Shared-Phone Indicators
+### Story b.2: Shared Tenant Identity and Shared-Phone Indicators
 
 As an operator working across orgUnits in one tenant,
 I want neighbor identity updates and shared-phone markers to be consistently visible,
@@ -271,7 +272,7 @@ So that contact context remains aligned across operational teams.
 **Then** shared tenant identity updates are immediately visible
 **And** each phone entry renders persisted shared-phone indicators consistently.
 
-### Story 2.3: Relationship-Gated Neighbor Edits with Provenance Audit
+### Story b.3: Relationship-Gated Neighbor Edits with Provenance Audit
 
 As an orgUnit identity lead,
 I want neighbor edits to require relationship-based permission and orgUnit provenance logging,
@@ -286,7 +287,7 @@ So that sensitive identity updates remain governed and auditable.
 **Then** edits are permitted only for active-thread relationship users in current orgUnit or tenant-privileged roles
 **And** successful edits include originating `org_unit_id` metadata in audit/outbox events.
 
-### Story 2.4: Role-Restricted Neighbor Merge with Irreversible Confirmation
+### Story b.4: Role-Restricted Neighbor Merge with Irreversible Confirmation
 
 As a tenant operations lead,
 I want merge actions to be restricted and audited with explicit irreversible confirmation,
@@ -301,11 +302,11 @@ So that high-impact identity operations are deliberate and traceable.
 **Then** only authorized roles can complete the merge after explicit irreversible confirmation
 **And** merge outcomes emit audit/outbox records with before/after identifiers.
 
-## Epic 3: OrgUnit Inbox and Thread Lifecycle
+## Epic c: OrgUnit Inbox and Thread Lifecycle
 
 Enable orgUnit communication operations with deterministic thread identity, claim semantics, and escalation progression.
 
-### Story 3.1: Core ConnectShyft Thread Schema and Lifecycle Constraints
+### Story c.1: Core ConnectShyft Thread Schema and Lifecycle Constraints
 
 As a backend engineer,
 I want core ConnectShyft thread tables and indexes created with canonical constraints,
@@ -320,7 +321,7 @@ So that thread lifecycle behavior is enforced at the persistence layer.
 **Then** canonical state enum `UNCLAIMED | CLAIMED | CLOSED` and required metadata fields are present
 **And** partial unique constraint and scheduler indexes enforce one active thread per `(tenant_id, org_unit_id, neighbor_id)` with performant due-thread scans.
 
-### Story 3.2: Thread Ensure Endpoint with Conflict-Safe Idempotency
+### Story c.2: Thread Ensure Endpoint with Conflict-Safe Idempotency
 
 As an orgUnit operator,
 I want creating/opening a thread to return the existing active thread when one already exists,
@@ -335,7 +336,7 @@ So that duplicate active threads are never created for the same neighbor context
 **Then** exactly one active thread exists
 **And** all conflicting requests return the same active thread instance instead of creating duplicates.
 
-### Story 3.3: Inbox and Thread Detail Read Contracts
+### Story c.3: Inbox and Thread Detail Read Contracts
 
 As an orgUnit member,
 I want inbox and thread detail endpoints to return orgUnit-scoped communication records with deterministic ordering and metadata,
@@ -350,7 +351,7 @@ So that I can triage and act without ambiguity.
 **Then** results are scoped to that orgUnit and include required metadata (`last_inbound_cs_number_id`, preferred outbound number context)
 **And** inbox ordering follows deterministic escalation and recency rules defined by UX contracts.
 
-### Story 3.4: Claim, Takeover, and Close Lifecycle Actions
+### Story c.4: Claim, Takeover, and Close Lifecycle Actions
 
 As an orgUnit operator,
 I want claim/takeover/close actions to enforce canonical transitions and ownership governance,
@@ -365,7 +366,7 @@ So that lifecycle actions remain predictable and auditable.
 **Then** only valid canonical state transitions are allowed and ownership changes are enforced by policy
 **And** each successful transition emits audit/outbox records with actor, orgUnit, prior state, and new state.
 
-### Story 3.5: Deterministic Escalation Scheduler with Claim-Only Reset
+### Story c.5: Deterministic Escalation Scheduler with Claim-Only Reset
 
 As a tenant staff escalation responder,
 I want escalation progression to run deterministically and reset only on claim,
@@ -380,11 +381,11 @@ So that unclaimed threads escalate predictably and operational ownership is expl
 **Then** escalation progresses `X -> 2X -> 3X` using persisted timestamps with no in-memory timers, where `X` is integer hours (default 24, allowed 1-24)
 **And** explicit claim resets escalation and cancels pending escalation notifications.
 
-## Epic 4: Policy-Safe Outbound Communication
+## Epic d: Policy-Safe Outbound Communication
 
 Enable outbound SMS/call execution that preserves escalation semantics, preference policy controls, and auditable refusal behavior.
 
-### Story 4.1: Outbound SMS/Call Actions that Preserve Escalation Semantics
+### Story d.1: Outbound SMS/Call Actions that Preserve Escalation Semantics
 
 As an orgUnit operator,
 I want to send SMS or place calls from active threads without implicitly resetting escalation,
@@ -399,7 +400,7 @@ So that escalation behavior stays policy-compliant until explicit claim occurs.
 **Then** outbound actions execute without changing escalation stage or reset state
 **And** system behavior and operator feedback explicitly indicate escalation continues until claim.
 
-### Story 4.2: Preference Override Enforcement for Outbound SMS
+### Story d.2: Preference Override Enforcement for Outbound SMS
 
 As an operator,
 I want outbound SMS to require override reasoning when `prefers_texting=NO`,
@@ -414,7 +415,7 @@ So that policy exceptions are explicit, justified, and traceable.
 **Then** send is blocked until a required override reason is provided
 **And** approved sends persist override data and audit metadata alongside the message event.
 
-### Story 4.3: Outbound Audit, Outbox, and Refusal Envelope Integration
+### Story d.3: Outbound Audit, Outbox, and Refusal Envelope Integration
 
 As a compliance stakeholder,
 I want outbound and governance actions to emit durable audit/outbox records with consistent refusal behavior,
@@ -429,7 +430,7 @@ So that operational decisions are traceable and clients can respond deterministi
 **Then** successful critical actions write audit/outbox records atomically
 **And** refused actions use shared refusal envelopes with clear policy reasons and no partial writes.
 
-### Story 4.4: Operator Interaction Contracts for Outbound Safety
+### Story d.4: Operator Interaction Contracts for Outbound Safety
 
 As a frontline operator,
 I want outbound policy controls to be visible and accessible in desktop, tablet, and mobile thread workflows,
@@ -447,11 +448,11 @@ So that I can complete actions quickly without violating governance rules.
 **Then** policy guardrails, refusal messages, and confirmation copy are explicit and keyboard/screen-reader accessible
 **And** responsive layouts preserve thread state, escalation visibility, and action affordances without hidden policy paths.
 
-## Epic 5: Inbound Webhook Reliability and Voicemail Continuity
+## Epic e: Inbound Webhook Reliability and Voicemail Continuity
 
 Enable secure, idempotent Twilio ingestion for SMS/voice/transcription with replay safety and parallel-delivery quality gates.
 
-### Story 5.1: Verified Webhook Ingress and Deterministic Context Routing
+### Story e.1: Verified Webhook Ingress and Deterministic Context Routing
 
 As a platform operator,
 I want every inbound webhook verified and mapped to the correct tenant/orgUnit via number mapping,
@@ -466,7 +467,7 @@ So that spoofed or misrouted events cannot create operational artifacts.
 **Then** only valid signed requests are processed
 **And** each accepted webhook resolves deterministic `(tenant_id, org_unit_id)` context before downstream handling.
 
-### Story 5.2: Inbound SMS Processing with Active-Thread Ensure
+### Story e.2: Inbound SMS Processing with Active-Thread Ensure
 
 As an orgUnit operator,
 I want inbound SMS events to append to the correct active thread or create one when needed,
@@ -481,7 +482,7 @@ So that SMS timelines stay complete and context-consistent.
 **Then** the system ensures a single active thread for `(tenant_id, org_unit_id, neighbor_id)` and appends the message artifact
 **And** duplicate timeline entries are prevented by idempotent processing paths.
 
-### Story 5.3: Inbound Voice Webhook to Voicemail Artifact Pipeline
+### Story e.3: Inbound Voice Webhook to Voicemail Artifact Pipeline
 
 As a communication responder,
 I want inbound voice events to create voicemail artifacts tied to the active thread,
@@ -496,7 +497,7 @@ So that voice interactions are visible in the same operational timeline.
 **Then** a voicemail artifact is created and linked to the correct active thread
 **And** a transcription request is queued with correlation metadata for later attachment.
 
-### Story 5.4: Transcription Webhook Attachment to Voicemail Records
+### Story e.4: Transcription Webhook Attachment to Voicemail Records
 
 As an operator reviewing voice communication,
 I want transcription callbacks to attach text to the correct voicemail record,
@@ -511,7 +512,7 @@ So that voice content is searchable and actionable in-thread.
 **Then** the transcript is attached to the correct voicemail artifact and reflected in thread timeline views
 **And** missing or invalid voicemail correlation is refused with no orphaned updates.
 
-### Story 5.5: Replay-Safe Webhook Receipt Ledger and Retention Controls
+### Story e.5: Replay-Safe Webhook Receipt Ledger and Retention Controls
 
 As a reliability engineer,
 I want webhook replay protection backed by a receipt ledger with retention controls,
@@ -526,7 +527,7 @@ So that duplicate Twilio events are safely ignored and storage remains bounded.
 **Then** unique `(tenant_id, provider, sid, event_type)` receipt checks suppress duplicate domain writes
 **And** receipt retention policy is enforced by scheduled cleanup without impacting replay safety windows.
 
-### Story 5.6: Parallel Delivery Safety Gates for ConnectShyft Rollout
+### Story e.6: Parallel Delivery Safety Gates for ConnectShyft Rollout
 
 As a release maintainer,
 I want policy and regression gates enforced for ConnectShyft pull requests,
