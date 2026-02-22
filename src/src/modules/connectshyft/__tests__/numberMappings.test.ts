@@ -134,15 +134,13 @@ describe('connectshyft number mapping service', () => {
     expect(updated.code).toBe('CONNECTSHYFT_NUMBER_MAPPING_UPDATED');
     expect(updated.data.orgUnitId).toBe('org-connectshyft-alpha-east');
     expect(updated.data.mappings).toHaveLength(2);
-    expect(updated.data.mappings).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ twilioNumberE164: '+12605550112' }),
-        expect.objectContaining({ twilioNumberE164: '+12605550119' }),
-      ]),
-    );
+    expect(updated.data.mappings.map((mapping) => mapping.twilioNumberE164)).toEqual([
+      '+12605550112',
+      '+12605550119',
+    ]);
   });
 
-  it('supports PUT update semantics when mapping id does not exist yet', () => {
+  it('refuses update when mapping id does not exist in tenant scope', () => {
     const updated = service.updateMapping({
       tenantId: 'tenant-connectshyft-alpha',
       orgUnitId: 'org-connectshyft-alpha-east',
@@ -152,14 +150,10 @@ describe('connectshyft number mapping service', () => {
       isActive: true,
     });
 
-    expect(updated.ok).toBe(true);
-    if (!updated.ok) {
-      throw new Error('Expected update to succeed');
-    }
-
-    expect(updated.code).toBe('CONNECTSHYFT_NUMBER_MAPPING_UPDATED');
-    expect(updated.data.mappingId).toBe('mapping-a3-1001');
-    expect(updated.data.mappings).toHaveLength(1);
+    expect(updated).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NUMBER_MAPPING_NOT_FOUND',
+    });
   });
 });
 
@@ -225,6 +219,31 @@ describe('connectshyft number mapping persistence guards', () => {
     expect(duplicateUpdate).toEqual({
       ok: false,
       reason: 'DUPLICATE_TENANT_NUMBER',
+    });
+  });
+
+  it('rejects mapping id collisions at persistence create layer', () => {
+    const initial = store.createMapping({
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      mappingId: 'mapping-collision-a3',
+      twilioNumberE164: '+12605550901',
+      label: 'Primary',
+      isActive: true,
+    });
+    const collided = store.createMapping({
+      tenantId: 'tenant-connectshyft-bravo',
+      orgUnitId: 'org-connectshyft-bravo-north',
+      mappingId: 'mapping-collision-a3',
+      twilioNumberE164: '+12605550902',
+      label: 'Collision',
+      isActive: true,
+    });
+
+    expect(initial.ok).toBe(true);
+    expect(collided).toEqual({
+      ok: false,
+      reason: 'MAPPING_ID_CONFLICT',
     });
   });
 });

@@ -42,19 +42,13 @@ test.describe(
           }),
         ).toBeVisible();
 
-        await saveNumberMapping(page, '+12605550211', 'Primary Dispatch');
         await saveNumberMapping(page, '+12605550212', 'Overflow Dispatch');
+        await saveNumberMapping(page, '+12605550211', 'Primary Dispatch');
 
-        await expect(
-          page.getByTestId('connectshyft-number-mapping-row').filter({
-            hasText: '+12605550211',
-          }),
-        ).toBeVisible();
-        await expect(
-          page.getByTestId('connectshyft-number-mapping-row').filter({
-            hasText: '+12605550212',
-          }),
-        ).toBeVisible();
+        const rows = page.getByTestId('connectshyft-number-mapping-row');
+        await expect(rows).toHaveCount(2);
+        await expect(rows.nth(0)).toContainText('+12605550211');
+        await expect(rows.nth(1)).toContainText('+12605550212');
       },
     );
 
@@ -151,16 +145,10 @@ test.describe(
         await page.getByRole('button', { name: 'Save Number Mapping' }).click();
         await updateResponse;
 
-        await expect(
-          page.getByTestId('connectshyft-number-mapping-row').filter({
-            hasText: '+12605550319',
-          }),
-        ).toBeVisible();
-        await expect(
-          page.getByTestId('connectshyft-number-mapping-row').filter({
-            hasText: '+12605550312',
-          }),
-        ).toBeVisible();
+        const rows = page.getByTestId('connectshyft-number-mapping-row');
+        await expect(rows).toHaveCount(2);
+        await expect(rows.nth(0)).toContainText('+12605550312');
+        await expect(rows.nth(1)).toContainText('+12605550319');
       },
     );
   },

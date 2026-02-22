@@ -14,6 +14,7 @@ TEST_EMAIL="${TEST_EMAIL:-operator@example.com}"
 TEST_PASSWORD="${TEST_PASSWORD:-SecurePass123!}"
 ENABLE_TEST_AUTH_HARNESS="${ENABLE_TEST_AUTH_HARNESS:-true}"
 ENABLE_TEST_CONNECTSHYFT_FLAGS="${ENABLE_TEST_CONNECTSHYFT_FLAGS:-true}"
+PLAYWRIGHT_BACKEND_NODE_ENV="${PLAYWRIGHT_BACKEND_NODE_ENV:-test}"
 
 export API_URL
 export API_BASE_URL="$API_URL"
@@ -25,6 +26,7 @@ export TEST_EMAIL
 export TEST_PASSWORD
 export ENABLE_TEST_AUTH_HARNESS
 export ENABLE_TEST_CONNECTSHYFT_FLAGS
+export PLAYWRIGHT_BACKEND_NODE_ENV
 
 mkdir -p "$RUNTIME_DIR"
 : > "$BACKEND_LOG_FILE"
@@ -309,13 +311,13 @@ if [[ "$backend_requires_managed_start" == "true" ]]; then
   cleanup_pidfile_process "$BACKEND_PID_FILE" "backend"
 
   echo "Managed runtime policy: running backend migrations"
-  if ! (cd src && npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1; then
+  if ! (cd src && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1; then
     echo "Playwright preflight failed: backend migrations failed (see $BACKEND_LOG_FILE)."
     exit 1
   fi
 
   echo "Managed runtime policy: starting backend for this test run at $API_URL"
-  (cd src && HOST="$backend_host" PORT="$backend_port" FRONTEND_URL="$BASE_URL" TEST_ENV="$TEST_ENV" TEST_EMAIL="$TEST_EMAIL" TEST_PASSWORD="$TEST_PASSWORD" ENABLE_TEST_AUTH_HARNESS="$ENABLE_TEST_AUTH_HARNESS" ENABLE_TEST_CONNECTSHYFT_FLAGS="$ENABLE_TEST_CONNECTSHYFT_FLAGS" npm run dev) >>"$BACKEND_LOG_FILE" 2>&1 &
+  (cd src && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" HOST="$backend_host" PORT="$backend_port" FRONTEND_URL="$BASE_URL" TEST_ENV="$TEST_ENV" TEST_EMAIL="$TEST_EMAIL" TEST_PASSWORD="$TEST_PASSWORD" ENABLE_TEST_AUTH_HARNESS="$ENABLE_TEST_AUTH_HARNESS" ENABLE_TEST_CONNECTSHYFT_FLAGS="$ENABLE_TEST_CONNECTSHYFT_FLAGS" npm run dev) >>"$BACKEND_LOG_FILE" 2>&1 &
   BACKEND_PID=$!
   BACKEND_STARTED=true
   echo "$BACKEND_PID" > "$BACKEND_PID_FILE"

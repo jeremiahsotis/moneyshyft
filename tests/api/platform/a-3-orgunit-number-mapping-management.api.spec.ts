@@ -35,21 +35,21 @@ test.describe(
         expect(secondCreate.status()).toBe(201);
 
         const body = await secondCreate.json();
+        const mappedNumbers = (body.data?.mappings ?? []).map(
+          (mapping: { twilioNumberE164?: string }) => mapping.twilioNumberE164,
+        );
+
         expect(body).toMatchObject({
           ok: true,
           code: 'CONNECTSHYFT_NUMBER_MAPPING_SAVED',
           data: {
             orgUnitId: storyA3Context.orgUnitId,
-            mappings: expect.arrayContaining([
-              expect.objectContaining({
-                twilioNumberE164: storyA3Context.validPrimaryNumber,
-              }),
-              expect.objectContaining({
-                twilioNumberE164: storyA3Context.validSecondaryNumber,
-              }),
-            ]),
           },
         });
+        expect(mappedNumbers).toEqual([
+          storyA3Context.validPrimaryNumber,
+          storyA3Context.validSecondaryNumber,
+        ]);
       },
     );
 
@@ -183,9 +183,25 @@ test.describe(
     test(
       '[P1] updates existing mapping to a new valid E.164 value while preserving orgUnit scope metadata @P1',
       async ({ request, storyA3Context, storyA3AdminHeaders }) => {
+        const createResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyA3Context.paths.numbersCollection,
+          headers: storyA3AdminHeaders,
+          data: {
+            orgUnitId: storyA3Context.orgUnitId,
+            twilioNumberE164: '+12605550601',
+            label: 'Primary Dispatch',
+            isActive: true,
+          },
+        });
+        expect(createResponse.status()).toBe(201);
+        const createdBody = await createResponse.json();
+        const mappingId = createdBody?.data?.mappingId;
+        expect(typeof mappingId).toBe('string');
+
         const response = await apiRequest(request, {
           method: 'PUT',
-          path: storyA3Context.paths.numbersById,
+          path: `${storyA3Context.paths.numbersCollection}/${mappingId as string}`,
           headers: storyA3AdminHeaders,
           data: {
             orgUnitId: storyA3Context.orgUnitId,

@@ -38,7 +38,7 @@ type NumberMappingPersistenceResult =
   }
   | {
     ok: false;
-    reason: 'DUPLICATE_TENANT_NUMBER' | 'NOT_FOUND';
+    reason: 'DUPLICATE_TENANT_NUMBER' | 'MAPPING_ID_CONFLICT' | 'NOT_FOUND';
   };
 
 export type NumberMappingFieldError = {
@@ -52,6 +52,8 @@ type NumberMappingRefusalResult = {
   code:
     | 'CONNECTSHYFT_NUMBER_MAPPING_INVALID_E164'
     | 'CONNECTSHYFT_NUMBER_MAPPING_DUPLICATE'
+    | 'CONNECTSHYFT_NUMBER_MAPPING_ID_CONFLICT'
+    | 'CONNECTSHYFT_NUMBER_MAPPING_NOT_FOUND'
     | 'CONNECTSHYFT_NUMBER_MAPPING_SCOPE_VIOLATION';
   message: string;
   data?: {
@@ -120,6 +122,18 @@ const buildDuplicateRefusal = (): NumberMappingRefusalResult => ({
   },
 });
 
+const buildMappingIdConflictRefusal = (): NumberMappingRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_NUMBER_MAPPING_ID_CONFLICT',
+  message: 'Unable to save number mapping right now. Please retry.',
+});
+
+const buildNotFoundRefusal = (): NumberMappingRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_NUMBER_MAPPING_NOT_FOUND',
+  message: 'Number mapping not found for this tenant and orgUnit.',
+});
+
 export class InMemoryConnectShyftNumberMappingStore {
   private mappingsById = new Map<string, ConnectShyftNumberMapping>();
 
@@ -138,10 +152,10 @@ export class InMemoryConnectShyftNumberMappingStore {
       .map((mappingId) => this.mappingsById.get(mappingId))
       .filter((mapping): mapping is ConnectShyftNumberMapping => !!mapping)
       .sort((a, b) => {
-        if (a.createdAtUtc < b.createdAtUtc) {
+        if (a.twilioNumberE164 < b.twilioNumberE164) {
           return -1;
         }
-        if (a.createdAtUtc > b.createdAtUtc) {
+        if (a.twilioNumberE164 > b.twilioNumberE164) {
           return 1;
         }
         return a.mappingId.localeCompare(b.mappingId);
@@ -172,6 +186,13 @@ export class InMemoryConnectShyftNumberMappingStore {
     const mappingId = input.mappingId || randomUUID();
     const now = nowIsoUtc();
     const tenantNumberKey = buildTenantNumberKey(input.tenantId, input.twilioNumberE164);
+
+    if (this.mappingsById.has(mappingId)) {
+      return {
+        ok: false,
+        reason: 'MAPPING_ID_CONFLICT',
+      };
+    }
 
     if (this.mappingIdByTenantNumber.has(tenantNumberKey)) {
       return {
@@ -272,6 +293,9 @@ export class ConnectShyftNumberMappingService {
       label: normalizeLabel(input.label),
     });
     if (!persisted.ok) {
+      if (persisted.reason === 'MAPPING_ID_CONFLICT') {
+        return buildMappingIdConflictRefusal();
+      }
       return buildDuplicateRefusal();
     }
 
@@ -299,7 +323,11 @@ export class ConnectShyftNumberMappingService {
     }
 
     const existing = this.store.findById(input.tenantId, input.mappingId);
-    if (existing && existing.orgUnitId !== input.orgUnitId) {
+    if (!existing) {
+      return buildNotFoundRefusal();
+    }
+
+    if (existing.orgUnitId !== input.orgUnitId) {
       return {
         ok: false,
         code: 'CONNECTSHYFT_NUMBER_MAPPING_SCOPE_VIOLATION',
@@ -312,23 +340,19 @@ export class ConnectShyftNumberMappingService {
       return buildDuplicateRefusal();
     }
 
-    let persisted: NumberMappingPersistenceResult;
-    if (existing) {
-      persisted = this.store.updateMapping({
-        ...input,
-        twilioNumberE164,
-        label: normalizeLabel(input.label),
-      });
-    } else {
-      persisted = this.store.createMapping({
-        ...input,
-        twilioNumberE164,
-        label: normalizeLabel(input.label),
-        mappingId: input.mappingId,
-      });
-    }
+    const persisted = this.store.updateMapping({
+      ...input,
+      twilioNumberE164,
+      label: normalizeLabel(input.label),
+    });
 
     if (!persisted.ok) {
+      if (persisted.reason === 'NOT_FOUND') {
+        return buildNotFoundRefusal();
+      }
+      if (persisted.reason === 'MAPPING_ID_CONFLICT') {
+        return buildMappingIdConflictRefusal();
+      }
       return buildDuplicateRefusal();
     }
 

@@ -3,6 +3,7 @@ import type { OrgUnitAccessDecision } from '../../platform/tenancy/orgUnitAccess
 import { CAPABILITIES, hasCapability } from '../../platform/rbac/capabilities';
 import { requireTenantId, TenantScopeError } from '../../platform/tenancy/tenantScope';
 import type { JWTPayload } from '../../utils/jwt';
+import { isConnectShyftTestOverrideEnabled } from './featureFlags';
 
 type ConnectShyftRefusalType = 'business' | 'security';
 
@@ -44,7 +45,6 @@ const TEST_TENANT_HEADER = 'x-test-connectshyft-tenant-id';
 const TEST_ORG_UNIT_HEADER = 'x-test-connectshyft-orgunit-id';
 const TEST_ROLE_HEADER = 'x-test-connectshyft-role';
 const TEST_USER_HEADER = 'x-test-connectshyft-user-id';
-const ENABLE_TEST_CONNECTSHYFT_FLAGS_ENV = 'ENABLE_TEST_CONNECTSHYFT_FLAGS';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -68,18 +68,6 @@ const normalizeContextValue = (value: string | null | undefined): string | null 
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
-};
-
-const parseBooleanEnv = (value: string | undefined): boolean => {
-  if (typeof value !== 'string') {
-    return false;
-  }
-
-  const normalized = value.trim().toLowerCase();
-  return normalized === 'true'
-    || normalized === '1'
-    || normalized === 'on'
-    || normalized === 'enabled';
 };
 
 const isConnectShyftTenantId = (tenantId: string): boolean => {
@@ -155,7 +143,7 @@ const isCrossTenantOrgUnit = (tenantId: string, orgUnitId: string): boolean => {
 };
 
 const isTestMembershipHeaderEnabled = (): boolean =>
-  parseBooleanEnv(process.env[ENABLE_TEST_CONNECTSHYFT_FLAGS_ENV]);
+  isConnectShyftTestOverrideEnabled();
 
 const resolveTestHarnessUser = (
   req: Pick<Request, 'header'>,

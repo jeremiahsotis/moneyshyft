@@ -4,6 +4,7 @@ import { refusal, success } from '../../../platform/envelopes/response';
 import { CAPABILITIES, hasCapability } from '../../../platform/rbac/capabilities';
 import {
   evaluateConnectShyftCapability,
+  isConnectShyftTestOverrideEnabled,
   resolveConnectShyftFeatureFlags,
   type ConnectShyftCapability,
   type ConnectShyftFeatureFlags,
@@ -74,11 +75,22 @@ const enforceOrgUnitContext = async (
   return null;
 };
 
+const resolveConnectShyftRequestedRole = (req: Request): string | null => {
+  if (isConnectShyftTestOverrideEnabled()) {
+    const testOverrideRole = req.header('x-test-connectshyft-role');
+    if (typeof testOverrideRole === 'string' && testOverrideRole.trim().length > 0) {
+      return testOverrideRole.trim();
+    }
+  }
+
+  return req.user?.role || null;
+};
+
 const enforceNumberMappingManageCapability = (
   req: Request,
   res: Response,
 ): boolean => {
-  const requestedRole = req.header('x-test-connectshyft-role') || req.user?.role || null;
+  const requestedRole = resolveConnectShyftRequestedRole(req);
   if (hasCapability([requestedRole], CAPABILITIES.NUMBER_MAPPING_MANAGE)) {
     return true;
   }

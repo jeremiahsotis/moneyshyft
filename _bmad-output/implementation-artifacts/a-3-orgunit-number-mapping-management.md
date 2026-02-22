@@ -14,6 +14,7 @@ so that inbound routing is deterministic and operationally maintainable.
 
 1. Given an orgUnit admin creates or updates number mappings, when they save valid Twilio E.164 numbers, then multiple mappings per orgUnit are supported.
 2. Given a duplicate `(tenant_id, twilio_number_e164)` mapping attempt, when validation runs, then the operation is blocked with actionable validation feedback.
+3. Given number mappings are listed or returned after create/update, when read-back occurs, then order is deterministic using canonical sorting: `twilio_number_e164` ascending with `mappingId` ascending as tie-breaker, and API/UI present this same order.
 
 ## Operability Guardrails
 
@@ -65,6 +66,7 @@ so that inbound routing is deterministic and operationally maintainable.
 - Validate multi-number orgUnit support with deterministic read-back behavior.
 - Validate duplicate detection and stable error messaging.
 - Validate tenant-boundary isolation on number mapping operations.
+- Test-only headers (`x-test-*` tenant/orgUnit/role/membership overrides) must be ignored unless `ENABLE_TEST_CONNECTSHYFT_FLAGS` is enabled and `NODE_ENV === test`; if disabled, requests behave as if those headers are absent.
 
 ### Project Structure Notes
 
@@ -92,6 +94,10 @@ GPT-5 Codex
 - `npm run test:e2e -- tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts` (pass, 5 tests)
 - `npm run test:e2e -- tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts` (pass, 4 tests)
 - `cd src && npm test` (pass, 30 suites / 139 tests passed, 2 skipped)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/numberMappings.test.ts` (pass, 8 tests)
+- `cd src && npm run build` (pass)
+- `NODE_ENV=test npm run test:e2e -- tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts` (pass, 5 tests)
+- `NODE_ENV=test npm run test:e2e -- tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts` (pass, 4 tests)
 
 ### Completion Notes List
 
@@ -101,23 +107,28 @@ GPT-5 Codex
 - Added frontend Numbers & OrgUnit Config screen and route (`/app/connectshyft/settings/numbers`) with create/edit mapping workflow and deterministic validation feedback.
 - Added frontend test-context header overrides (tenant/orgUnit/role/memberships) for ConnectShyft UI automation parity.
 - Enabled and executed story `a.3` API and E2E Playwright coverage (create/update/duplicate/invalid journeys) with passing results.
+- Hardened test-header security gates to honor `x-test-*` overrides only when `ENABLE_TEST_CONNECTSHYFT_FLAGS` is enabled and `NODE_ENV === test`.
+- Removed unsafe PUT upsert fallback, added mapping-id collision guards, and enforced canonical mapping ordering (`twilio_number_e164`, then `mappingId`) in service read-back.
+- Strengthened API/E2E assertions to verify deterministic ordering instead of presence-only checks.
+- Added explicit `test` Knex environment config to keep Playwright preflight migrations/runtime compatible with strict test-only `x-test-*` override gating.
+- Updated Playwright preflight backend boot to default `NODE_ENV=test` so strict test-only override gating remains compatible with standard `npm run test:e2e` execution.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/a-3-orgunit-number-mapping-management.md
-- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- src/src/knexfile.ts
+- src/src/modules/connectshyft/featureFlags.ts
+- src/src/modules/connectshyft/contextAccess.ts
 - src/src/modules/connectshyft/numberMappings.ts
 - src/src/modules/connectshyft/__tests__/numberMappings.test.ts
-- src/src/modules/connectshyft/contextAccess.ts
 - src/src/routes/api/v1/connectshyft.ts
-- src/src/platform/rbac/capabilities.ts
-- frontend/src/features/connectshyft/flags.ts
-- frontend/src/features/connectshyft/numbers.ts
-- frontend/src/views/ConnectShyft/ConnectShyftNumberMappingsView.vue
-- frontend/src/router/index.ts
+- scripts/run-playwright-with-preflight.sh
 - tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts
 - tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts
 
 ### Change Log
 
 - 2026-02-22: Implemented story a.3 end-to-end (backend number mapping APIs, tenant-safe uniqueness/validation, admin UI path, and automated API/E2E coverage).
+- 2026-02-22: Resolved review findings by hardening test-header gating, removing unsafe update upsert behavior, adding mapping-id collision protection, and tightening deterministic-order test assertions.
+- 2026-02-22: Added test-environment Knex profile to support strict `x-test-*` gating during Playwright preflight/runtime.
+- 2026-02-22: Updated Playwright preflight backend runtime to default `NODE_ENV=test` for test-only override compatibility.
