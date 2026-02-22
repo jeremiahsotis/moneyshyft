@@ -9,7 +9,9 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - Branch-first is mandatory.
 - Stage only relevant files.
 - Never commit failing checks.
-- Commit format is mandatory: `<story-id>: <imperative summary>`.
+- Commit subject format is mandatory and supports either:
+  - `<story-id>: <imperative summary>` (example: `a-3: harden test override gate`)
+  - `<type>: <imperative summary>` where `<type>` is one of: `Fix`, `Docs`, `Chore`, `Feat`, `Refactor`, `Test`, `CI`, `Build`, `Perf`, `Style`, `Revert`
 - `<story-id>` format: `<epic>-<story>` where `<epic>` is numeric or a letter (examples: `0-10`, `a-1`).
 - Commit in small slices by AC/subtask scope.
 - One PR per story branch.

@@ -19,6 +19,7 @@ export TEST_EMAIL="${TEST_EMAIL:-test@example.com}"
 export TEST_PASSWORD="${TEST_PASSWORD:-test1234}"
 export ENABLE_TEST_AUTH_HARNESS="${ENABLE_TEST_AUTH_HARNESS:-true}"
 export ENABLE_TEST_CONNECTSHYFT_FLAGS="${ENABLE_TEST_CONNECTSHYFT_FLAGS:-true}"
+export PLAYWRIGHT_BACKEND_NODE_ENV="${PLAYWRIGHT_BACKEND_NODE_ENV:-test}"
 export BASE_URL="${BASE_URL:-http://localhost:5174}"
 export API_URL="${API_URL:-http://localhost:3000}"
 export API_BASE_URL="${API_BASE_URL:-$API_URL}"
@@ -104,10 +105,10 @@ const db = knexFactory({
 NODE
 
 echo "Running backend migrations"
-npm run migrate:latest --prefix src
+NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix src
 
 echo "Starting backend dev server"
-(cd src && npm run dev) > "$backend_log" 2>&1 &
+(cd src && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run dev) > "$backend_log" 2>&1 &
 BACKEND_PID=$!
 
 echo "Starting frontend dev server"

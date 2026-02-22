@@ -131,7 +131,10 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
       },
     });
 
-    const hasFailureHeadline = /Policy check failed: latest commit subject must match '<story-id>: <summary>'/.test(output);
+    const hasFailureHeadline =
+      /Policy check failed: latest commit subject must match either '<story-id>: <summary>' or '<type>: <summary>'/.test(
+        output,
+      );
     const indicatesPrHeadSubject = /Actual \(HEAD\^2\): bad subject format/.test(output);
 
     expect(status !== 0 && hasFailureHeadline && indicatesPrHeadSubject).toBe(true);

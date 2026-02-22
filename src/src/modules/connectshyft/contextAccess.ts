@@ -2,6 +2,8 @@ import { Request } from 'express';
 import type { OrgUnitAccessDecision } from '../../platform/tenancy/orgUnitAccess';
 import { CAPABILITIES, hasCapability } from '../../platform/rbac/capabilities';
 import { requireTenantId, TenantScopeError } from '../../platform/tenancy/tenantScope';
+import type { JWTPayload } from '../../utils/jwt';
+import { isConnectShyftTestOverrideEnabled } from './featureFlags';
 
 type ConnectShyftRefusalType = 'business' | 'security';
 
@@ -39,7 +41,10 @@ type ResolveConnectShyftContextOptions = {
 const TENANT_PREFIX = 'tenant-connectshyft-';
 const ORG_UNIT_PREFIX = 'org-connectshyft-';
 const TEST_MEMBERSHIP_HEADER = 'x-test-connectshyft-orgunit-memberships';
-const ENABLE_TEST_CONNECTSHYFT_FLAGS_ENV = 'ENABLE_TEST_CONNECTSHYFT_FLAGS';
+const TEST_TENANT_HEADER = 'x-test-connectshyft-tenant-id';
+const TEST_ORG_UNIT_HEADER = 'x-test-connectshyft-orgunit-id';
+const TEST_ROLE_HEADER = 'x-test-connectshyft-role';
+const TEST_USER_HEADER = 'x-test-connectshyft-user-id';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -63,18 +68,6 @@ const normalizeContextValue = (value: string | null | undefined): string | null 
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
-};
-
-const parseBooleanEnv = (value: string | undefined): boolean => {
-  if (typeof value !== 'string') {
-    return false;
-  }
-
-  const normalized = value.trim().toLowerCase();
-  return normalized === 'true'
-    || normalized === '1'
-    || normalized === 'on'
-    || normalized === 'enabled';
 };
 
 const isConnectShyftTenantId = (tenantId: string): boolean => {
@@ -150,7 +143,33 @@ const isCrossTenantOrgUnit = (tenantId: string, orgUnitId: string): boolean => {
 };
 
 const isTestMembershipHeaderEnabled = (): boolean =>
-  parseBooleanEnv(process.env[ENABLE_TEST_CONNECTSHYFT_FLAGS_ENV]);
+  isConnectShyftTestOverrideEnabled();
+
+const resolveTestHarnessUser = (
+  req: Pick<Request, 'header'>,
+): JWTPayload | null => {
+  if (!isTestMembershipHeaderEnabled()) {
+    return null;
+  }
+
+  const tenantId = normalizeContextValue(req.header(TEST_TENANT_HEADER));
+  const role = normalizeContextValue(req.header(TEST_ROLE_HEADER));
+  const userId = normalizeContextValue(req.header(TEST_USER_HEADER));
+  const orgUnitId = normalizeContextValue(req.header(TEST_ORG_UNIT_HEADER));
+
+  if (!tenantId || !role || !userId) {
+    return null;
+  }
+
+  return {
+    userId,
+    email: `${userId}@connectshyft.test`,
+    householdId: tenantId,
+    activeTenantId: tenantId,
+    activeOrgUnitId: orgUnitId,
+    role,
+  };
+};
 
 const resolveHeaderMemberships = (
   req: Pick<Request, 'header'>,
@@ -208,16 +227,17 @@ const mapOrgUnitAccessFailure = (
 };
 
 const resolveMembershipFromTestHeader = (
-  req: Pick<Request, 'header' | 'user'>,
+  req: Pick<Request, 'header'>,
   tenantId: string,
   orgUnitId: string,
+  role: string | null | undefined,
 ): ConnectShyftContextDecision | null => {
   const memberships = resolveHeaderMemberships(req);
   if (!memberships) {
     return null;
   }
 
-  if (isTenantPrivilegedRole(req.user?.role)) {
+  if (isTenantPrivilegedRole(role)) {
     return {
       ok: true,
       context: {
@@ -253,7 +273,9 @@ export const resolveConnectShyftOrgUnitContext = async (
   req: Pick<Request, 'tenantContext' | 'tenantId' | 'orgUnitId' | 'user' | 'header'>,
   options: ResolveConnectShyftContextOptions = {},
 ): Promise<ConnectShyftContextDecision> => {
-  if (!req.user?.userId) {
+  const resolvedUser = resolveTestHarnessUser(req) || req.user;
+
+  if (!resolvedUser?.userId) {
     return refusal(
       'CONNECTSHYFT_AUTH_CONTEXT_REQUIRED',
       'Authenticated user context is required for ConnectShyft orgUnit-scoped routes',
@@ -264,7 +286,13 @@ export const resolveConnectShyftOrgUnitContext = async (
 
   let tenantId: string;
   try {
-    tenantId = requireTenantId(req.tenantContext?.tenantId || req.tenantId || req.user.activeTenantId || req.user.householdId || null);
+    tenantId = requireTenantId(
+      req.tenantContext?.tenantId
+      || req.tenantId
+      || resolvedUser.activeTenantId
+      || resolvedUser.householdId
+      || null,
+    );
   } catch (error) {
     const message = error instanceof TenantScopeError
       ? error.message
@@ -287,7 +315,12 @@ export const resolveConnectShyftOrgUnitContext = async (
     );
   }
 
-  const canonicalOrgUnitId = normalizeContextValue(req.tenantContext?.orgUnitId || req.orgUnitId || req.user.activeOrgUnitId || null);
+  const canonicalOrgUnitId = normalizeContextValue(
+    req.tenantContext?.orgUnitId
+    || req.orgUnitId
+    || resolvedUser.activeOrgUnitId
+    || null,
+  );
 
   if (!canonicalOrgUnitId) {
     return refusal(
@@ -344,13 +377,18 @@ export const resolveConnectShyftOrgUnitContext = async (
     }
   }
 
-  const headerDecision = resolveMembershipFromTestHeader(req, tenantId, canonicalOrgUnitId);
+  const headerDecision = resolveMembershipFromTestHeader(
+    req,
+    tenantId,
+    canonicalOrgUnitId,
+    resolvedUser.role,
+  );
   if (headerDecision) {
     return headerDecision;
   }
 
   if (!requiresAuthoritativeOrgUnitAccessCheck(tenantId, canonicalOrgUnitId)) {
-    if (isTestMembershipHeaderEnabled() && isTenantPrivilegedRole(req.user.role)) {
+    if (isTestMembershipHeaderEnabled() && isTenantPrivilegedRole(resolvedUser.role)) {
       return {
         ok: true,
         context: {
@@ -380,8 +418,8 @@ export const resolveConnectShyftOrgUnitContext = async (
     const decision = await options.resolveOrgUnitAccess({
       tenantId,
       orgUnitId: canonicalOrgUnitId,
-      userId: req.user.userId,
-      baseRoles: [req.user.role || null],
+      userId: resolvedUser.userId,
+      baseRoles: [resolvedUser.role || null],
     });
 
     if (!decision.ok) {

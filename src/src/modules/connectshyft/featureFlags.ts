@@ -77,6 +77,8 @@ const parseBooleanEnv = (value: string | undefined): boolean => {
     || normalized === 'enabled';
 };
 
+const isNodeTestEnv = (): boolean => process.env.NODE_ENV?.trim().toLowerCase() === 'test';
+
 const parseFlags = (raw: unknown): ConnectShyftFeatureFlags => {
   if (!raw || typeof raw !== 'object') {
     return { ...DEFAULT_CONNECTSHYFT_FLAGS };
@@ -102,11 +104,11 @@ const resolveServerConnectShyftFeatureFlags = (): ConnectShyftFeatureFlags => ({
   ),
 });
 
-const isTestFlagOverrideEnabled = (): boolean =>
-  parseBooleanEnv(process.env[ENABLE_TEST_CONNECTSHYFT_FLAGS_ENV]);
+export const isConnectShyftTestOverrideEnabled = (): boolean =>
+  parseBooleanEnv(process.env[ENABLE_TEST_CONNECTSHYFT_FLAGS_ENV]) && isNodeTestEnv();
 
 const parseTestFlagOverride = (req: Pick<Request, 'header'>): ConnectShyftFeatureFlags | null => {
-  if (!isTestFlagOverrideEnabled()) {
+  if (!isConnectShyftTestOverrideEnabled()) {
     return null;
   }
 

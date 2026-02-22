@@ -2,6 +2,8 @@
 set -euo pipefail
 
 POLICY_FILE="docs/policies/git_policy.md"
+STORY_SUBJECT_PATTERN='^(([0-9]+|[A-Za-z])-[0-9]+):[[:space:]]+.+$'
+CONVENTIONAL_SUBJECT_PATTERN='^([Ff]ix|[Dd]ocs|[Cc]hore|[Ff]eat|[Rr]efactor|[Tt]est|[Cc][Ii]|[Bb]uild|[Pp]erf|[Ss]tyle|[Rr]evert)(\([^)]+\))?:[[:space:]]+.+$'
 
 print_policy_context() {
   echo "Policy reference: $POLICY_FILE"
@@ -36,6 +38,16 @@ print_recovery() {
     echo "  npm run start:story-branch -- <story-id> <story-slug>"
     echo "  npm run branch:ensure-workflow -- --workflow $workflow_hint --story <story-key-or-story-file>"
   fi
+}
+
+is_story_subject() {
+  local subject="${1:-}"
+  [[ "$subject" =~ $STORY_SUBJECT_PATTERN ]]
+}
+
+is_conventional_subject() {
+  local subject="${1:-}"
+  [[ "$subject" =~ $CONVENTIONAL_SUBJECT_PATTERN ]]
 }
 
 resolve_branch() {
@@ -233,22 +245,27 @@ if [[ -n "$last_subject" ]]; then
       # Local/push mode preserves existing merge-subject exemption.
       true
     else
-      if [[ ! "$last_subject" =~ ^(([0-9]+|[A-Za-z])-[0-9]+):\ .+ ]]; then
-        echo "Policy check failed: latest commit subject must match '<story-id>: <summary>'"
-        echo "Actual ($subject_source): $last_subject"
-        exit 1
-      fi
+      if is_story_subject "$last_subject"; then
+        commit_story_id="${BASH_REMATCH[1]}"
+        if [[ "${BASH_REMATCH[2]}" =~ ^[A-Za-z]$ ]]; then
+          commit_story_id="$(echo "$commit_story_id" | tr '[:upper:]' '[:lower:]')"
+        fi
 
-      commit_story_id="${BASH_REMATCH[1]}"
-      if [[ "${BASH_REMATCH[2]}" =~ ^[A-Za-z]$ ]]; then
-        commit_story_id="$(echo "$commit_story_id" | tr '[:upper:]' '[:lower:]')"
-      fi
-
-      if [[ -n "$story_branch_id" ]] && [[ "$commit_story_id" != "$story_branch_id" ]]; then
-        echo "Policy check failed: latest commit subject must match '${story_branch_id}: <summary>' for branch $branch"
+        if [[ -n "$story_branch_id" ]] && [[ "$commit_story_id" != "$story_branch_id" ]]; then
+          echo "Policy check failed: latest commit subject must match '${story_branch_id}: <summary>' for branch $branch"
+          echo "Actual ($subject_source): $last_subject"
+          print_policy_context
+          print_recovery "dev-story"
+          exit 1
+        fi
+      elif is_conventional_subject "$last_subject"; then
+        # Conventional commit-style prefixes are allowed repo-wide.
+        # Story traceability remains enforced by required story branch naming.
+        true
+      else
+        echo "Policy check failed: latest commit subject must match either '<story-id>: <summary>' or '<type>: <summary>'"
+        echo "Allowed <type> prefixes: Fix, Docs, Chore, Feat, Refactor, Test, CI, Build, Perf, Style, Revert"
         echo "Actual ($subject_source): $last_subject"
-        print_policy_context
-        print_recovery "dev-story"
         exit 1
       fi
     fi

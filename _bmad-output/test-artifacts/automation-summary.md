@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-22T09:52:28Z'
+lastSaved: '2026-02-22T12:01:06Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -839,3 +839,166 @@ lastSaved: '2026-02-22T09:52:28Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story a.2 ACs to ATDD + automate coverage and confirm gate readiness.
+
+## Story a.3 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `_bmad-output/implementation-artifacts/a-3-orgunit-number-mapping-management.md`
+  - Existing ATDD files found for Story a.3:
+    - `tests/api/platform/a-3-orgunit-number-mapping-management.atdd.api.spec.ts`
+    - `tests/e2e/platform/a-3-orgunit-number-mapping-management.atdd.spec.ts`
+
+### Context Loaded
+- Story-level planning/test artifacts loaded:
+  - `_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
+  - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
+  - `_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md`
+  - `_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
+  - `_bmad-output/test-artifacts/test-design-epic-A.md`
+  - `_bmad-output/test-artifacts/atdd-checklist-a-3.md`
+- Test framework/config context loaded:
+  - `playwright.config.ts`
+  - `tests/` tree and existing ConnectShyft Story a.3 factory/fixture assets
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils + automation:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+- API/E2E generation patterns:
+  - `api-testing-patterns.md`
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+
+## Story a.3 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` was available and executed in session `tea-automate`.
+- Target URL probed:
+  - `http://127.0.0.1:5174/app/connectshyft/settings/numbers?...`
+- Findings from CLI run:
+  - Vue Router warning: no route match for `/app/connectshyft/settings/numbers`.
+  - API auth bootstrap returned `401` on `/api/v1/auth/me`.
+  - Snapshot artifact was empty in this environment.
+- Result: selector discovery fell back to code/story artifact analysis.
+
+### Acceptance Criteria to Target Mapping
+- AC1 (`FR-CS-025`): multi-number create/update behavior with deterministic read-back.
+- AC2 (`FR-CS-026`): tenant-safe duplicate number rejection with actionable validation details.
+
+### Selected Test Levels
+- **API** (primary): contract behavior for save/update/duplicate/validation/tenant-boundary refusals.
+- **E2E** (secondary): operator-path validation for number mapping UI form/table behavior and actionable refusal feedback.
+
+### Priority Assignment
+- P0:
+  - multi-number save/read-back determinism
+  - duplicate tenant-number refusal semantics
+- P1:
+  - invalid E.164 refusal details
+  - cross-tenant orgUnit write refusal
+  - update-path state preservation and UI consistency
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts`
+- Scope: `critical-paths`
+- ATDD duplication handling:
+  - Existing `.atdd.*` files remain RED references.
+  - New non-ATDD specs provide automation expansion coverage for story progression.
+
+## Story a.3 Run - Step 3C: Aggregate Test Generation Results
+
+### Parallel Subprocess Outputs
+- API subprocess output:
+  - `/tmp/tea-automate-api-tests-2026-02-22T12-01-06-456Z.json`
+- E2E subprocess output:
+  - `/tmp/tea-automate-e2e-tests-2026-02-22T12-01-06-456Z.json`
+- Summary output:
+  - `/tmp/tea-automate-summary-2026-02-22T12-01-06-456Z.json`
+- Verification:
+  - Both subprocess payloads marked `success: true`.
+  - All output files were written and JSON-valid.
+
+### Files Written to Disk
+- `tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts`
+- `tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts`
+
+### Automation Temp Artifact Mirror
+- `_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-22T12-01-06-456Z.json`
+- `_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-22T12-01-06-456Z.json`
+- `_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-22T12-01-06-456Z.json`
+
+### Summary Metrics
+- Total tests generated: `9`
+  - API tests: `5` (1 file)
+  - E2E tests: `4` (1 file)
+- Priority coverage:
+  - P0: `4`
+  - P1: `5`
+  - P2: `0`
+  - P3: `0`
+- Fixture needs:
+  - `connectShyftStoryA3Factory`
+  - `connectShyftStoryA3Fixture`
+- Subprocess execution mode:
+  - `PARALLEL (API + E2E)`
+  - Estimated performance gain: `~50% faster than sequential`
+
+## Story a.3 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated specs are recognized by Playwright test discovery:
+  - `npx playwright test --list tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts`
+- Quality checks on generated files:
+  - No hard waits (`waitForTimeout`) used.
+  - No conditional visibility anti-patterns introduced.
+  - Priority tags (`@P0`, `@P1`) present for selective execution.
+- CLI session hygiene:
+  - `playwright-cli -s=tea-automate close` executed; no orphan session left.
+
+### Key Assumptions
+- Number-mapping endpoints and UI route remain target-state contracts under active implementation.
+- Refusal code semantics follow shared envelope conventions already used in Story a.2 and ATDD artifacts.
+
+### Risks
+- Since `/app/connectshyft/settings/numbers` is not currently routed and auth bootstrap returned `401`, E2E selectors are contract-targeted and not runtime-verified in this environment.
+- API routes for number mappings are not yet present in `src/src/routes/api/v1/connectshyft.ts`; generated tests are intentionally marked `test.fixme` until implementation is complete.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` to run TEA quality audit on generated Story a.3 automation specs.
+- `[TR] Trace Requirements` to map Story a.3 ACs and FRs (`FR-CS-025`, `FR-CS-026`) to ATDD + automate coverage.
