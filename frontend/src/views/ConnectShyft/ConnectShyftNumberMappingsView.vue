@@ -23,6 +23,7 @@
               type="text"
               autocomplete="off"
               placeholder="+12605550111"
+              :disabled="isSaving || isInitializing"
               class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
             >
           </label>
@@ -34,6 +35,7 @@
               type="text"
               autocomplete="off"
               placeholder="Primary Dispatch"
+              :disabled="isSaving || isInitializing"
               class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
             >
           </label>
@@ -50,7 +52,7 @@
         <div class="mt-4 flex items-center gap-3">
           <button
             type="submit"
-            :disabled="isSaving"
+            :disabled="isSaving || isInitializing"
             class="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
           >
             Save Number Mapping
@@ -111,6 +113,7 @@ import {
 const mappings = ref<ConnectShyftNumberMapping[]>([]);
 const twilioNumberE164 = ref('');
 const label = ref('');
+const isInitializing = ref(true);
 const isSaving = ref(false);
 const editingMappingId = ref<string | null>(null);
 const validationError = ref('');
@@ -129,6 +132,10 @@ const startEdit = (mapping: ConnectShyftNumberMapping): void => {
 };
 
 const handleSave = async (): Promise<void> => {
+  if (isInitializing.value) {
+    return;
+  }
+
   validationError.value = '';
   isSaving.value = true;
   const result = await saveConnectShyftNumberMapping({
@@ -149,6 +156,10 @@ const handleSave = async (): Promise<void> => {
 };
 
 onMounted(async () => {
-  mappings.value = await fetchConnectShyftNumberMappings();
+  try {
+    mappings.value = await fetchConnectShyftNumberMappings();
+  } finally {
+    isInitializing.value = false;
+  }
 });
 </script>

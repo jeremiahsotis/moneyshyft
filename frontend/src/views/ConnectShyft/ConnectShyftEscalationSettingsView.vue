@@ -25,6 +25,7 @@
             max="24"
             step="1"
             autocomplete="off"
+            :disabled="isSaving || isInitializing"
             class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
           >
         </label>
@@ -35,6 +36,7 @@
             <select
               data-testid="connectshyft-escalation-recipient-primary"
               v-model="primaryRecipientUserId"
+              :disabled="isSaving || isInitializing"
               class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
             >
               <option value="">Select recipient</option>
@@ -53,6 +55,7 @@
             <select
               data-testid="connectshyft-escalation-recipient-secondary"
               v-model="secondaryRecipientUserId"
+              :disabled="isSaving || isInitializing"
               class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
             >
               <option value="">None</option>
@@ -71,6 +74,7 @@
             <select
               data-testid="connectshyft-escalation-recipient-tenant-staff"
               v-model="tenantStaffRecipientUserId"
+              :disabled="isSaving || isInitializing"
               class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
             >
               <option value="">None</option>
@@ -119,7 +123,7 @@
         <div class="mt-4">
           <button
             type="submit"
-            :disabled="isSaving"
+            :disabled="isSaving || isInitializing"
             class="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
           >
             Save Escalation Settings
@@ -149,6 +153,7 @@ const tenantStaffRecipientUserId = ref('');
 const validationError = ref('');
 const primaryRecipientError = ref('');
 const saveSuccessMessage = ref('');
+const isInitializing = ref(true);
 const isSaving = ref(false);
 
 const clearFeedback = (): void => {
@@ -173,6 +178,10 @@ const syncFromServer = (
 };
 
 const handleSave = async (): Promise<void> => {
+  if (isInitializing.value) {
+    return;
+  }
+
   clearFeedback();
   isSaving.value = true;
 
@@ -228,6 +237,8 @@ onMounted(async () => {
     validationError.value = error instanceof Error
       ? error.message
       : 'Unable to load escalation settings right now.';
+  } finally {
+    isInitializing.value = false;
   }
 });
 </script>

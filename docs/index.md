@@ -39,6 +39,10 @@
 - [Product Roadmap](../ROADMAP.md)
 - [Git Policy](./policies/git_policy.md)
 
+## Testing Runbooks
+- [ConnectShyft Epic A User Test Runbook](./testing/connectshyft-epic-a-user-test-runbook.md)
+- [ConnectShyft Epic A User Test Session Template](./testing/connectshyft-epic-a-user-test-session-template.md)
+
 ## RouteShyft Input Docs
 - [RouteShyft docs folder](./routeshyft/)
 

@@ -98,7 +98,22 @@ function ensureStoryFilesForActiveStatuses(repoDir: string, sprintStatusPath: st
       continue;
     }
     mkdirSync(dirname(storyPath), { recursive: true });
-    writeFileSync(storyPath, `# Story ${storyKey}\n\nStatus: ${status}\n`, 'utf8');
+    writeFileSync(
+      storyPath,
+      [
+        `# Story ${storyKey}`,
+        '',
+        `Status: ${status}`,
+        '',
+        '### File List',
+        '- `docs/policies/git_policy.md`',
+        '',
+        '### Debug Log References',
+        '- `npm run policy:check` (pass)',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
   }
 }
 
@@ -129,6 +144,16 @@ export function runPolicyScriptInTempRepo(
     copyFileIfPresent(
       join(scriptsDir, 'enforce-story-status-sync.sh'),
       join(repoDir, 'scripts/enforce-story-status-sync.sh'),
+      true,
+    );
+    copyFileIfPresent(
+      join(scriptsDir, 'enforce-story-no-skipped-tests.sh'),
+      join(repoDir, 'scripts/enforce-story-no-skipped-tests.sh'),
+      true,
+    );
+    copyFileIfPresent(
+      join(scriptsDir, 'enforce-story-artifact-hygiene.sh'),
+      join(repoDir, 'scripts/enforce-story-artifact-hygiene.sh'),
       true,
     );
     copyFileIfPresent(

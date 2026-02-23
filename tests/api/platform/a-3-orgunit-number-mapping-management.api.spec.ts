@@ -1,7 +1,6 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryA3.fixture';
 import { createStoryA3Headers } from '../../support/factories/connectShyftStoryA3Factory';
-import { connectShyftNumberMappingData } from '../../fixtures/test-data';
 
 test.describe(
   'Story a.3 automate - orgUnit number mapping management API coverage',
@@ -60,14 +59,14 @@ test.describe(
           orgUnitId: storyA3Context.orgUnitId,
           orgUnitMemberships: [
             storyA3Context.orgUnitId,
-            connectShyftNumberMappingData.orgUnitAlphaWestId,
+            storyA3Context.secondaryOrgUnitId,
           ],
         });
         const westHeaders = createStoryA3Headers(storyA3Context, {
-          orgUnitId: connectShyftNumberMappingData.orgUnitAlphaWestId,
+          orgUnitId: storyA3Context.secondaryOrgUnitId,
           orgUnitMemberships: [
             storyA3Context.orgUnitId,
-            connectShyftNumberMappingData.orgUnitAlphaWestId,
+            storyA3Context.secondaryOrgUnitId,
           ],
         });
 
@@ -88,7 +87,7 @@ test.describe(
           path: storyA3Context.paths.numbersCollection,
           headers: westHeaders,
           data: {
-            orgUnitId: connectShyftNumberMappingData.orgUnitAlphaWestId,
+            orgUnitId: storyA3Context.secondaryOrgUnitId,
             twilioNumberE164: storyA3Context.duplicateTenantNumber,
             label: 'West Duplicate Candidate',
             isActive: true,

@@ -52,21 +52,58 @@ validate_allowed_host() {
 
 find_available_port() {
   local start_port="$1"
+  local max_port=$((start_port + 50))
+  local port="$start_port"
+  while [[ "$port" -le "$max_port" ]]; do
+    if ! is_port_occupied "$port"; then
+      printf '%s' "$port"
+      return 0
+    fi
+    port=$((port + 1))
+  done
+  return 1
+}
+
+is_port_occupied() {
+  local port="$1"
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+    return $?
+  fi
+
   node -e "
 const net = require('net');
-const startPort = Number(process.argv[1]);
-const maxPort = startPort + 50;
-const tryPort = (port) => {
-  if (port > maxPort) {
+const port = Number(process.argv[1]);
+const hosts = ['127.0.0.1', '::1'];
+let index = 0;
+
+const tryNextHost = () => {
+  if (index >= hosts.length) {
     process.exit(1);
   }
-  const server = net.createServer();
-  server.once('error', () => tryPort(port + 1));
-  server.once('listening', () => server.close(() => process.stdout.write(String(port))));
-  server.listen(port, '127.0.0.1');
+
+  const socket = net.connect({ host: hosts[index], port });
+  let settled = false;
+  const complete = (occupied) => {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    socket.destroy();
+    if (occupied) {
+      process.exit(0);
+    }
+    index += 1;
+    setImmediate(tryNextHost);
+  };
+
+  socket.once('connect', () => complete(true));
+  socket.once('error', () => complete(false));
+  socket.setTimeout(250, () => complete(false));
 };
-tryPort(startPort);
-" "$start_port"
+
+tryNextHost();
+" "$port" >/dev/null 2>&1
 }
 
 wait_for_http() {
@@ -173,8 +210,71 @@ is_test_auth_ready() {
   [[ "$status" == "200" ]]
 }
 
+is_connectshyft_override_ready() {
+  if [[ "$ENABLE_TEST_CONNECTSHYFT_FLAGS" != "true" ]]; then
+    return 0
+  fi
+
+  local override_a
+  local override_b
+  override_a='{"connectshyft_enabled":true,"connectshyft_inbox_enabled":false,"connectshyft_escalation_enabled":true,"connectshyft_webhooks_enabled":false}'
+  override_b='{"connectshyft_enabled":false,"connectshyft_inbox_enabled":true,"connectshyft_escalation_enabled":false,"connectshyft_webhooks_enabled":true}'
+
+  local response_a
+  local response_b
+  response_a="$(mktemp)"
+  response_b="$(mktemp)"
+
+  local status_a
+  local status_b
+  status_a="$(curl --silent --show-error --max-time 4 \
+    --output "$response_a" \
+    --write-out "%{http_code}" \
+    -H "x-test-connectshyft-flags: $override_a" \
+    "$api_root/api/v1/connectshyft/availability" || true)"
+  status_b="$(curl --silent --show-error --max-time 4 \
+    --output "$response_b" \
+    --write-out "%{http_code}" \
+    -H "x-test-connectshyft-flags: $override_b" \
+    "$api_root/api/v1/connectshyft/availability" || true)"
+
+  local ready=false
+  if [[ "$status_a" == "200" && "$status_b" == "200" ]]; then
+    if node -e "
+const fs = require('fs');
+
+const [responseAPath, responseBPath, expectedAJson, expectedBJson] = process.argv.slice(1);
+const responseA = JSON.parse(fs.readFileSync(responseAPath, 'utf8'));
+const responseB = JSON.parse(fs.readFileSync(responseBPath, 'utf8'));
+const expectedA = JSON.parse(expectedAJson);
+const expectedB = JSON.parse(expectedBJson);
+
+const sameFlags = (actual, expected) =>
+  actual
+  && actual.connectshyft_enabled === expected.connectshyft_enabled
+  && actual.connectshyft_inbox_enabled === expected.connectshyft_inbox_enabled
+  && actual.connectshyft_escalation_enabled === expected.connectshyft_escalation_enabled
+  && actual.connectshyft_webhooks_enabled === expected.connectshyft_webhooks_enabled;
+
+const flagsA = responseA?.data?.flags;
+const flagsB = responseB?.data?.flags;
+
+if (!sameFlags(flagsA, expectedA) || !sameFlags(flagsB, expectedB)) {
+  process.exit(1);
+}
+" "$response_a" "$response_b" "$override_a" "$override_b"; then
+      ready=true
+    fi
+  fi
+
+  rm -f "$response_a" "$response_b"
+  [[ "$ready" == "true" ]]
+}
+
 is_backend_ready_for_tests() {
-  is_backend_tenant_contract_ready && is_test_auth_ready
+  is_backend_tenant_contract_ready \
+    && is_test_auth_ready \
+    && is_connectshyft_override_ready
 }
 
 update_api_url_from_port() {
@@ -280,7 +380,24 @@ fi
 
 backend_requires_managed_start=false
 if is_backend_healthy; then
-  if ! is_backend_ready_for_tests; then
+  if [[ "$ENABLE_TEST_CONNECTSHYFT_FLAGS" == "true" ]]; then
+    backend_requires_managed_start=true
+    if [[ "$AUTO_START_STACK" != "true" ]]; then
+      echo "Playwright preflight failed: ConnectShyft test override mode requires an isolated managed backend and AUTO_START_STACK=false"
+      exit 1
+    fi
+    local_backend_port="$(find_available_port "$backend_port" || true)"
+    if [[ -z "${local_backend_port:-}" ]]; then
+      echo "Playwright preflight failed: unable to find an available managed backend port near $backend_port."
+      exit 1
+    fi
+    if [[ "$local_backend_port" == "$backend_port" ]]; then
+      echo "Playwright preflight failed: backend at $API_URL is occupied and no alternate port was found."
+      exit 1
+    fi
+    echo "Managed runtime policy: ConnectShyft override mode requires isolated backend; switching to managed backend on port $local_backend_port"
+    update_api_url_from_port "$local_backend_port"
+  elif ! is_backend_ready_for_tests; then
     backend_requires_managed_start=true
     if [[ "$AUTO_START_STACK" != "true" ]]; then
       echo "Playwright preflight failed: backend at $API_URL is reachable but does not satisfy test runtime contracts and AUTO_START_STACK=false"

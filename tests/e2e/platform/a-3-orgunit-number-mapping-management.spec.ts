@@ -1,9 +1,31 @@
 import { test, expect } from '../../support/fixtures/connectShyftStoryA3.fixture';
+import { randomUUID } from 'node:crypto';
 import type { Page } from '@playwright/test';
 import { login } from '../../helpers/auth';
 
-const buildNumbersUrl = (query: string): string =>
-  `/app/connectshyft/settings/numbers?flags=module:on,inbox:on,escalation:on,webhooks:on&${query}`;
+type NumberMappingScope = {
+  tenantId: string;
+  orgUnitId: string;
+};
+
+const createScopedNumbersContext = (
+  lane: string,
+  orgUnitSuffix: 'east' | 'west' = 'east',
+): NumberMappingScope => {
+  const runSuffix = randomUUID().replace(/-/g, '').slice(0, 8);
+  const tenantSegment = `alpha-${lane}-${runSuffix}`;
+
+  return {
+    tenantId: `tenant-connectshyft-${tenantSegment}`,
+    orgUnitId: `org-connectshyft-${tenantSegment}-${orgUnitSuffix}`,
+  };
+};
+
+const buildNumbersUrl = (
+  scope: NumberMappingScope,
+  tenantRole = 'ORGUNIT_ADMIN',
+): string =>
+  `/app/connectshyft/settings/numbers?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=${encodeURIComponent(scope.tenantId)}&orgUnitId=${encodeURIComponent(scope.orgUnitId)}&tenantRole=${encodeURIComponent(tenantRole)}`;
 
 const saveNumberMapping = async (
   page: Page,
@@ -29,12 +51,9 @@ test.describe(
     test(
       '[P0] orgUnit admins can add multiple valid mappings and see deterministic table state after each save @P0',
       async ({ page }) => {
+        const scope = createScopedNumbersContext('a3m1');
         await login(page);
-        await page.goto(
-          buildNumbersUrl(
-            'tenantId=tenant-connectshyft-alpha-a3m1&orgUnitId=org-connectshyft-alpha-a3m1-east&tenantRole=ORGUNIT_ADMIN',
-          ),
-        );
+        await page.goto(buildNumbersUrl(scope));
 
         await expect(
           page.getByRole('heading', {
@@ -55,12 +74,9 @@ test.describe(
     test(
       '[P0] duplicate tenant numbers show actionable refusal copy and do not create an extra mapping row @P0',
       async ({ page }) => {
+        const scope = createScopedNumbersContext('a3m2', 'west');
         await login(page);
-        await page.goto(
-          buildNumbersUrl(
-            'tenantId=tenant-connectshyft-alpha-a3m2&orgUnitId=org-connectshyft-alpha-a3m2-west&tenantRole=ORGUNIT_ADMIN',
-          ),
-        );
+        await page.goto(buildNumbersUrl(scope));
 
         await saveNumberMapping(page, '+12605550223', 'Duplicate Seed');
 
@@ -88,12 +104,9 @@ test.describe(
     test(
       '[P1] invalid non-E.164 values keep form feedback deterministic and prevent table mutation @P1',
       async ({ page }) => {
+        const scope = createScopedNumbersContext('a3m3');
         await login(page);
-        await page.goto(
-          buildNumbersUrl(
-            'tenantId=tenant-connectshyft-alpha-a3m3&orgUnitId=org-connectshyft-alpha-a3m3-east&tenantRole=ORGUNIT_ADMIN',
-          ),
-        );
+        await page.goto(buildNumbersUrl(scope));
 
         await page.getByTestId('connectshyft-number-input').fill('260-555-0111');
         await page.getByTestId('connectshyft-number-label-input').fill('Invalid Mapping');
@@ -119,12 +132,9 @@ test.describe(
     test(
       '[P1] mapping edit flow preserves multi-number visibility and deterministic table ordering after successful update @P1',
       async ({ page }) => {
+        const scope = createScopedNumbersContext('a3m4');
         await login(page);
-        await page.goto(
-          buildNumbersUrl(
-            'tenantId=tenant-connectshyft-alpha-a3m4&orgUnitId=org-connectshyft-alpha-a3m4-east&tenantRole=ORGUNIT_ADMIN',
-          ),
-        );
+        await page.goto(buildNumbersUrl(scope));
 
         await saveNumberMapping(page, '+12605550311', 'Primary Dispatch');
         await saveNumberMapping(page, '+12605550312', 'Overflow Dispatch');
