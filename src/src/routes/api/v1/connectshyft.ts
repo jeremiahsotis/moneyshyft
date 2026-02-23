@@ -5,6 +5,7 @@ import { CAPABILITIES, hasCapability } from '../../../platform/rbac/capabilities
 import {
   evaluateConnectShyftCapability,
   isConnectShyftTestOverrideEnabled,
+  mergeConnectShyftFlagsWithEntitlement,
   resolveConnectShyftFeatureFlags,
   type ConnectShyftCapability,
   type ConnectShyftFeatureFlags,
@@ -23,6 +24,10 @@ import {
   createKnexOrgUnitAccessStore,
   validateOrgUnitScopedAccess,
 } from '../../../platform/tenancy/orgUnitAccess';
+import {
+  evaluateActorTenantModuleEntitlement,
+  type PlatformAdminActorContext,
+} from '../../../services/PlatformAdminService';
 
 const router = Router();
 
@@ -35,22 +40,72 @@ const connectShyftEscalationConfigService = new ConnectShyftEscalationConfigServ
   new KnexConnectShyftEscalationConfigStore(loadPlatformDb),
 );
 
-const enforceCapability = (
+const actorFromRequest = (req: Request): PlatformAdminActorContext => ({
+  userId: req.user?.userId || null,
+  baseRole: req.user?.role || null,
+  headerRoles: [],
+  activeTenantId: req.user?.activeTenantId || req.user?.householdId || null,
+});
+
+const resolveTenantIdFromRequest = (req: Request): string | null => {
+  return req.user?.activeTenantId || req.user?.householdId || null;
+};
+
+const resolveEntitlementAwareConnectShyftFlags = async (
+  req: Request,
+): Promise<{ flags: ConnectShyftFeatureFlags; entitlementDecision: Awaited<ReturnType<typeof evaluateActorTenantModuleEntitlement>> | null }> => {
+  const resolvedFlags = resolveConnectShyftFeatureFlags(req);
+  const tenantId = resolveTenantIdFromRequest(req);
+  if (!tenantId) {
+    return {
+      flags: resolvedFlags,
+      entitlementDecision: null,
+    };
+  }
+
+  const entitlementDecision = await evaluateActorTenantModuleEntitlement(
+    loadPlatformDb(),
+    actorFromRequest(req),
+    tenantId,
+    'connectshyft',
+  );
+
+  return {
+    flags: mergeConnectShyftFlagsWithEntitlement(resolvedFlags, {
+      moduleEnabled: entitlementDecision.enabled,
+    }),
+    entitlementDecision,
+  };
+};
+
+const enforceCapability = async (
   req: Request,
   res: Response,
   capability: ConnectShyftCapability,
-): ConnectShyftFeatureFlags | null => {
-  const flags = resolveConnectShyftFeatureFlags(req);
+): Promise<ConnectShyftFeatureFlags | null> => {
+  const { flags, entitlementDecision } = await resolveEntitlementAwareConnectShyftFlags(req);
   const evaluation = evaluateConnectShyftCapability(flags, capability);
   if (evaluation.ok) {
     return flags;
   }
 
+  const moduleDeniedByEntitlement =
+    evaluation.code === 'CONNECTSHYFT_MODULE_DISABLED'
+    && entitlementDecision
+    && !entitlementDecision.enabled;
+
   refusal(res, {
-    code: evaluation.code,
-    message: evaluation.message,
+    code: moduleDeniedByEntitlement ? entitlementDecision.refusalCode : evaluation.code,
+    message: moduleDeniedByEntitlement ? entitlementDecision.message : evaluation.message,
     refusalType: evaluation.refusalType,
     httpStatus: 200,
+    data: moduleDeniedByEntitlement
+      ? {
+        moduleKey: entitlementDecision.moduleKey,
+        tenantId: entitlementDecision.tenantId,
+        reason: entitlementDecision.reason,
+      }
+      : undefined,
   });
   return null;
 };
@@ -562,14 +617,21 @@ const resolveEscalationRecipientDirectory = async (
   return buildDatabaseRecipientDirectory(tenantId, orgUnitId);
 };
 
-router.get('/availability', (req: Request, res: Response) => {
-  const flags = resolveConnectShyftFeatureFlags(req);
+router.get('/availability', async (req: Request, res: Response) => {
+  const { flags, entitlementDecision } = await resolveEntitlementAwareConnectShyftFlags(req);
 
   return success(res, {
     code: 'CONNECTSHYFT_AVAILABILITY_RESOLVED',
     message: 'ConnectShyft availability state resolved',
     data: {
       flags,
+      entitlement: entitlementDecision
+        ? {
+          moduleKey: entitlementDecision.moduleKey,
+          enabled: entitlementDecision.enabled,
+          reason: entitlementDecision.reason,
+        }
+        : null,
       capabilities: {
         module: evaluateConnectShyftCapability(flags, 'module').ok,
         inbox: evaluateConnectShyftCapability(flags, 'inbox').ok,
@@ -581,7 +643,7 @@ router.get('/availability', (req: Request, res: Response) => {
 });
 
 router.get('/inbox', async (req: Request, res: Response) => {
-  const flags = enforceCapability(req, res, 'inbox');
+  const flags = await enforceCapability(req, res, 'inbox');
   if (!flags) {
     return;
   }
@@ -610,7 +672,7 @@ router.get('/inbox', async (req: Request, res: Response) => {
 });
 
 router.get('/numbers', async (req: Request, res: Response) => {
-  if (!enforceCapability(req, res, 'module')) {
+  if (!await enforceCapability(req, res, 'module')) {
     return;
   }
 
@@ -634,7 +696,7 @@ router.get('/numbers', async (req: Request, res: Response) => {
 });
 
 router.post('/numbers', async (req: Request, res: Response) => {
-  if (!enforceCapability(req, res, 'module')) {
+  if (!await enforceCapability(req, res, 'module')) {
     return;
   }
 
@@ -687,7 +749,7 @@ router.post('/numbers', async (req: Request, res: Response) => {
 });
 
 router.put('/numbers/:mappingId', async (req: Request, res: Response) => {
-  if (!enforceCapability(req, res, 'module')) {
+  if (!await enforceCapability(req, res, 'module')) {
     return;
   }
 
@@ -751,7 +813,7 @@ router.put('/numbers/:mappingId', async (req: Request, res: Response) => {
 });
 
 router.get('/escalation/recipients', async (req: Request, res: Response) => {
-  if (!enforceCapability(req, res, 'escalation')) {
+  if (!await enforceCapability(req, res, 'escalation')) {
     return;
   }
 
@@ -781,7 +843,7 @@ router.get('/escalation/recipients', async (req: Request, res: Response) => {
 });
 
 router.get('/escalation/config', async (req: Request, res: Response) => {
-  if (!enforceCapability(req, res, 'escalation')) {
+  if (!await enforceCapability(req, res, 'escalation')) {
     return;
   }
 
@@ -809,7 +871,7 @@ router.get('/escalation/config', async (req: Request, res: Response) => {
 });
 
 router.put('/escalation/config', async (req: Request, res: Response) => {
-  if (!enforceCapability(req, res, 'escalation')) {
+  if (!await enforceCapability(req, res, 'escalation')) {
     return;
   }
 
@@ -866,7 +928,7 @@ router.put('/escalation/config', async (req: Request, res: Response) => {
 });
 
 router.post('/threads', async (req: Request, res: Response) => {
-  if (!enforceCapability(req, res, 'inbox')) {
+  if (!await enforceCapability(req, res, 'inbox')) {
     return;
   }
 
@@ -899,7 +961,7 @@ router.post('/threads', async (req: Request, res: Response) => {
 });
 
 router.post('/threads/:threadId/claim', async (req: Request, res: Response) => {
-  if (!enforceCapability(req, res, 'escalation')) {
+  if (!await enforceCapability(req, res, 'escalation')) {
     return;
   }
 
@@ -928,7 +990,7 @@ router.post('/threads/:threadId/claim', async (req: Request, res: Response) => {
 });
 
 router.post('/threads/:threadId/takeover', async (req: Request, res: Response) => {
-  if (!enforceCapability(req, res, 'escalation')) {
+  if (!await enforceCapability(req, res, 'escalation')) {
     return;
   }
 
@@ -956,8 +1018,8 @@ router.post('/threads/:threadId/takeover', async (req: Request, res: Response) =
   });
 });
 
-router.post('/webhooks/sms', (req: Request, res: Response) => {
-  if (!enforceCapability(req, res, 'webhooks')) {
+router.post('/webhooks/sms', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'webhooks')) {
     return;
   }
 

@@ -40,6 +40,18 @@ export interface OrgUnitRecord {
   parent_org_unit_id: string | null;
 }
 
+export const GOVERNED_MODULE_KEYS = ['connectshyft', 'moneyshyft'] as const;
+export type GovernedModuleKey = (typeof GOVERNED_MODULE_KEYS)[number];
+
+export type TenantModuleEntitlementDecision = {
+  tenantId: string;
+  moduleKey: GovernedModuleKey;
+  enabled: boolean;
+  reason: 'enabled' | 'disabled' | 'missing' | 'system-admin-override';
+  refusalCode: string;
+  message: string;
+};
+
 const normalizeRoleSet = (input: RoleSetInput): ScopedRole[] => {
   const resolved: ScopedRole[] = [];
   const seen = new Set<string>();
@@ -287,6 +299,81 @@ const requireCapability = async (
 const hasSystemRole = (actor: PlatformAdminActorContext): boolean => {
   const inlineRoles = normalizeRoleSet([actor.baseRole]);
   return inlineRoles.includes('SYSTEM_ADMIN');
+};
+
+const buildEntitlementDecision = (
+  tenantId: string,
+  moduleKey: GovernedModuleKey,
+  enabled: boolean,
+  reason: TenantModuleEntitlementDecision['reason']
+): TenantModuleEntitlementDecision => {
+  const moduleUpper = moduleKey.toUpperCase();
+
+  if (enabled) {
+    return {
+      tenantId,
+      moduleKey,
+      enabled: true,
+      reason,
+      refusalCode: `${moduleUpper}_ENTITLEMENT_ENABLED`,
+      message: `${moduleKey} entitlement is enabled for this tenant.`,
+    };
+  }
+
+  if (reason === 'missing') {
+    return {
+      tenantId,
+      moduleKey,
+      enabled: false,
+      reason,
+      refusalCode: `${moduleUpper}_ENTITLEMENT_MISSING`,
+      message: `${moduleKey} entitlement is not configured for this tenant.`,
+    };
+  }
+
+  return {
+    tenantId,
+    moduleKey,
+    enabled: false,
+    reason,
+    refusalCode: `${moduleUpper}_MODULE_DISABLED`,
+    message: `${moduleKey} is disabled for this tenant.`,
+  };
+};
+
+export const evaluateTenantModuleEntitlement = async (
+  trxClient: Knex,
+  tenantId: string,
+  moduleKey: GovernedModuleKey
+): Promise<TenantModuleEntitlementDecision> => {
+  const entitlement = await trxClient
+    .withSchema('platform')
+    .table('tenant_module_entitlements')
+    .where({ tenant_id: tenantId, module_key: moduleKey })
+    .first(['enabled']);
+
+  if (!entitlement) {
+    return buildEntitlementDecision(tenantId, moduleKey, false, 'missing');
+  }
+
+  if (entitlement.enabled === false) {
+    return buildEntitlementDecision(tenantId, moduleKey, false, 'disabled');
+  }
+
+  return buildEntitlementDecision(tenantId, moduleKey, true, 'enabled');
+};
+
+export const evaluateActorTenantModuleEntitlement = async (
+  trxClient: Knex,
+  actor: PlatformAdminActorContext,
+  tenantId: string,
+  moduleKey: GovernedModuleKey
+): Promise<TenantModuleEntitlementDecision> => {
+  if (hasSystemRole(actor)) {
+    return buildEntitlementDecision(tenantId, moduleKey, true, 'system-admin-override');
+  }
+
+  return evaluateTenantModuleEntitlement(trxClient, tenantId, moduleKey);
 };
 
 const normalizeIdInput = (value: unknown): string | null => {

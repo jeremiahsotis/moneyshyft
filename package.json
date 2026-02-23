@@ -10,6 +10,8 @@
     "test:contracts:backend": "bash scripts/test-contracts-backend.sh",
     "policy:check": "bash scripts/enforce-git-policy.sh",
     "branch:ensure-workflow": "bash scripts/branch-ensure-workflow.sh",
+    "story:status:set": "bash scripts/story-status-transition.sh",
+    "story:status:check": "bash scripts/enforce-story-status-sync.sh",
     "start:story-branch": "bash scripts/start-story-branch.sh",
     "quality-gates": "bash scripts/quality-gates.sh",
     "quality-gates:epic0": "bash scripts/quality-gates-epic0.sh",

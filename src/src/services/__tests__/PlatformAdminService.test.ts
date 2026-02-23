@@ -1,5 +1,10 @@
 import { executePlatformMutation } from '../../platform/mutations/executePlatformMutation';
-import { createTenant, upsertTenantMembership } from '../PlatformAdminService';
+import {
+  createTenant,
+  evaluateActorTenantModuleEntitlement,
+  evaluateTenantModuleEntitlement,
+  upsertTenantMembership,
+} from '../PlatformAdminService';
 
 jest.mock('../../platform/mutations/executePlatformMutation', () => ({
   executePlatformMutation: jest.fn(),
@@ -204,5 +209,68 @@ describe('PlatformAdminService authorization and audit coverage', () => {
 
     expect(membershipEvents).toHaveLength(1);
     expect(membershipOutbox).toHaveLength(1);
+  });
+
+  it('treats missing governed-module entitlement rows as disabled', async () => {
+    const state: FakeTrxState = {
+      inserts: [],
+      moduleEntitlements: {},
+    };
+    const trx = buildFakeTrx(state);
+
+    const decision = await evaluateTenantModuleEntitlement(trx, TEST_TENANT_ID, 'connectshyft');
+
+    expect(decision).toMatchObject({
+      tenantId: TEST_TENANT_ID,
+      moduleKey: 'connectshyft',
+      enabled: false,
+      reason: 'missing',
+      refusalCode: 'CONNECTSHYFT_ENTITLEMENT_MISSING',
+    });
+  });
+
+  it('returns disabled decision when governed-module entitlement exists and is false', async () => {
+    const state: FakeTrxState = {
+      inserts: [],
+      moduleEntitlements: {
+        [`${TEST_TENANT_ID}:moneyshyft`]: false,
+      },
+    };
+    const trx = buildFakeTrx(state);
+
+    const decision = await evaluateTenantModuleEntitlement(trx, TEST_TENANT_ID, 'moneyshyft');
+
+    expect(decision).toMatchObject({
+      tenantId: TEST_TENANT_ID,
+      moduleKey: 'moneyshyft',
+      enabled: false,
+      reason: 'disabled',
+      refusalCode: 'MONEYSHYFT_MODULE_DISABLED',
+    });
+  });
+
+  it('applies system-admin override for governed-module entitlement reads', async () => {
+    const state: FakeTrxState = {
+      inserts: [],
+      moduleEntitlements: {
+        [`${TEST_TENANT_ID}:moneyshyft`]: false,
+      },
+    };
+    const trx = buildFakeTrx(state);
+
+    const decision = await evaluateActorTenantModuleEntitlement(trx, {
+      userId: TEST_ACTOR_ID,
+      baseRole: 'SYSTEM_ADMIN',
+      headerRoles: [],
+      activeTenantId: TEST_TENANT_ID,
+    }, TEST_TENANT_ID, 'moneyshyft');
+
+    expect(decision).toMatchObject({
+      tenantId: TEST_TENANT_ID,
+      moduleKey: 'moneyshyft',
+      enabled: true,
+      reason: 'system-admin-override',
+      refusalCode: 'MONEYSHYFT_ENTITLEMENT_ENABLED',
+    });
   });
 });

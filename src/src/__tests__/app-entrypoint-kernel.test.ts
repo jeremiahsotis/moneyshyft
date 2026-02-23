@@ -108,6 +108,31 @@ describe('Story 0.1 - canonical app entrypoint and kernel middleware', () => {
         expect(routeLoader).toHaveBeenNthCalledWith(index + 1, modulePath);
       });
     });
+
+    it('wraps MoneyShyft governed paths with entitlement middleware while leaving excluded paths unwrapped', () => {
+      const app = {
+        use: jest.fn()
+      } as unknown as express.Application;
+      const routeLoader = jest.fn(() => express.Router());
+
+      registerV1RoutesWithLoader(app, routeLoader);
+
+      const accountsCall = (app.use as jest.Mock).mock.calls.find(
+        (call) => call[0] === '/api/v1/accounts'
+      );
+      const platformCall = (app.use as jest.Mock).mock.calls.find(
+        (call) => call[0] === '/api/v1/platform'
+      );
+
+      expect(accountsCall).toBeDefined();
+      expect(accountsCall).toHaveLength(3);
+      expect(typeof accountsCall![1]).toBe('function');
+      expect(typeof accountsCall![2]).toBe('function');
+
+      expect(platformCall).toBeDefined();
+      expect(platformCall).toHaveLength(2);
+      expect(typeof platformCall![1]).toBe('function');
+    });
   });
 });
 
