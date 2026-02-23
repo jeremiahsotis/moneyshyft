@@ -13,10 +13,24 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     request: Parameters<typeof apiRequest>[0],
     label: string,
   ): Promise<{ userId: string; email: string }> => {
-    const email = `story12-${label}-${randomUUID()}@example.com`;
+    const normalizedLabel = label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 16) || 'user';
+    const uniqueToken = randomUUID().replace(/-/g, '').slice(0, 12);
+    const email = `s12-${normalizedLabel}-${uniqueToken}@example.com`;
+    const requestState = await request.storageState();
+    const csrfCookie = [...requestState.cookies]
+      .reverse()
+      .find((cookie) => cookie.name === 'csrf_token');
+    const signupHeaders = csrfCookie?.value
+      ? { 'x-csrf-token': csrfCookie.value }
+      : undefined;
     const signupResponse = await apiRequest(request, {
       method: 'POST',
       path: '/api/v1/auth/signup',
+      headers: signupHeaders,
       data: {
         email,
         password: 'Password123!',

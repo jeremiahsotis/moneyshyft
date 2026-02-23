@@ -520,7 +520,7 @@ const isUserInTenantScope = async (
   const orgUnitMembership = await trx
     .withSchema('platform')
     .table('org_unit_memberships as oum')
-    .join('platform.org_units as ou', 'oum.org_unit_id', 'ou.id')
+    .join('org_units as ou', 'oum.org_unit_id', 'ou.id')
     .where('ou.tenant_id', tenantId)
     .andWhere('oum.user_id', userId)
     .first(['oum.user_id']);
@@ -928,7 +928,7 @@ export const lookupScopedUsers = async (
               trx
                 .withSchema('platform')
                 .table('org_unit_memberships as oum')
-                .join('platform.org_units as ou', 'oum.org_unit_id', 'ou.id')
+                .join('org_units as ou', 'oum.org_unit_id', 'ou.id')
                 .select(trx.raw('1'))
                 .whereRaw('oum.user_id = users.id')
                 .andWhere('ou.tenant_id', tenantId)
