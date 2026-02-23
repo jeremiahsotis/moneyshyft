@@ -24,6 +24,11 @@ const unwrapData = <T>(payload: unknown): T => {
 export type RbacEvaluation = {
   roles: string[];
   capabilities: string[];
+  tenantId?: string | null;
+  moduleEntitlements?: {
+    connectshyft?: boolean;
+    moneyshyft?: boolean;
+  };
 };
 
 export type CreateTenantInput = {
@@ -31,6 +36,14 @@ export type CreateTenantInput = {
   status?: string;
   billingAccountName?: string;
   assignTenantAdminUserId?: string;
+  assignTenantAdminUserEmail?: string;
+  assignTenantAdminFirstName?: string;
+  assignTenantAdminLastName?: string;
+  tenancyModel?: 'single-tenant' | 'multi-tenant';
+  moduleGrants?: {
+    connectshyft?: boolean;
+    moneyshyft?: boolean;
+  };
   reason?: string;
 };
 
@@ -45,7 +58,10 @@ export type CreateOrgUnitInput = {
 
 export type UpsertTenantMembershipInput = {
   tenantId?: string;
-  userId: string;
+  userId?: string;
+  userEmail?: string;
+  firstName?: string;
+  lastName?: string;
   roleSet: string[];
   reason: string;
 };
@@ -53,9 +69,45 @@ export type UpsertTenantMembershipInput = {
 export type UpsertOrgUnitMembershipInput = {
   tenantId?: string;
   orgUnitId: string;
-  userId: string;
+  userId?: string;
+  userEmail?: string;
+  firstName?: string;
+  lastName?: string;
   roleSet: string[];
   reason: string;
+};
+
+export type ScopedLookupUser = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+};
+
+export type ScopedLookupResponse = {
+  tenantId: string;
+  orgUnitId: string | null;
+  q: string;
+  page: number;
+  pageSize: number;
+  total: number;
+  users: ScopedLookupUser[];
+};
+
+export type EnsureInlineAdminUserInput = {
+  tenantId?: string;
+  userId?: string;
+  userEmail?: string;
+  firstName?: string;
+  lastName?: string;
+  reason: string;
+};
+
+export type EnsureInlineAdminUserResponse = {
+  tenantId: string;
+  userId: string;
+  email: string;
+  createdInline: boolean;
 };
 
 export const evaluateRbac = async (params: {
@@ -94,4 +146,31 @@ export const upsertOrgUnitMembership = async (
 ): Promise<Record<string, unknown>> => {
   const response = await api.post<Envelope<Record<string, unknown>>>('/platform/admin/org-unit-memberships', input);
   return unwrapData<Record<string, unknown>>(response.data);
+};
+
+export const lookupScopedUsers = async (params: {
+  tenantId?: string | null;
+  orgUnitId?: string | null;
+  q: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<ScopedLookupResponse> => {
+  const response = await api.get<Envelope<ScopedLookupResponse>>('/platform/admin/users/lookup', {
+    params: {
+      tenantId: params.tenantId || undefined,
+      orgUnitId: params.orgUnitId || undefined,
+      q: params.q,
+      page: params.page,
+      pageSize: params.pageSize,
+    },
+  });
+
+  return unwrapData<ScopedLookupResponse>(response.data);
+};
+
+export const ensureInlineAdminUser = async (
+  input: EnsureInlineAdminUserInput
+): Promise<EnsureInlineAdminUserResponse> => {
+  const response = await api.post<Envelope<EnsureInlineAdminUserResponse>>('/platform/admin/users/inline-admin', input);
+  return unwrapData<EnsureInlineAdminUserResponse>(response.data);
 };

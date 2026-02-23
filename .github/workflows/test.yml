@@ -313,11 +313,43 @@ jobs:
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     steps:
+      - name: Compute release-readiness status
+        id: release_readiness
+        run: |
+          blocked_jobs=()
+
+          if [ "${{ needs.policy.result }}" != "success" ]; then
+            blocked_jobs+=("policy")
+          fi
+          if [ "${{ needs.lint.result }}" != "success" ]; then
+            blocked_jobs+=("lint")
+          fi
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            blocked_jobs+=("test")
+          fi
+          if [ "${{ needs['burn-in'].result }}" != "success" ] && [ "${{ needs['burn-in'].result }}" != "skipped" ]; then
+            blocked_jobs+=("burn-in")
+          fi
+          if [ "${{ needs['quality-gates'].result }}" != "success" ]; then
+            blocked_jobs+=("quality-gates")
+          fi
+
+          if [ "${#blocked_jobs[@]}" -eq 0 ]; then
+            echo "status=ready" >> "$GITHUB_OUTPUT"
+            echo "blocked_jobs=none" >> "$GITHUB_OUTPUT"
+          else
+            blocked_csv="$(IFS=,; echo "${blocked_jobs[*]}")"
+            echo "status=blocked" >> "$GITHUB_OUTPUT"
+            echo "blocked_jobs=$blocked_csv" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish summary
         run: |
           {
             echo "## CI Summary"
             echo ""
+            echo "- release-readiness: ${{ steps.release_readiness.outputs.status }}"
+            echo "- release-blockers: ${{ steps.release_readiness.outputs.blocked_jobs }}"
             echo "- policy: ${{ needs.policy.result }}"
             echo "- lint: ${{ needs.lint.result }}"
             echo "- test: ${{ needs.test.result }}"
@@ -329,11 +361,11 @@ jobs:
             echo "- artifacts: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Slack failure notification
-        if: failure() && env.SLACK_WEBHOOK_URL != ''
+        if: steps.release_readiness.outputs.status == 'blocked' && env.SLACK_WEBHOOK_URL != ''
         run: |
           payload=$(cat <<JSON
           {
-            "text": "RouteShyft CI failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            "text": "RouteShyft CI release-readiness blocked (${{ steps.release_readiness.outputs.blocked_jobs }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
           JSON
           )

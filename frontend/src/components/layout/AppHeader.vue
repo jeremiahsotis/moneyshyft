@@ -177,7 +177,7 @@ const showUserMenu = ref(false);
 const isPrivacyMode = ref(false);
 const PRIVACY_KEY = 'moneyshyft_privacy_mode';
 
-const baseNavItems = [
+const moneyNavItems = [
   { name: 'dashboard', label: 'Dashboard', icon: '📊', path: '/' },
   { name: 'accounts', label: 'Accounts', icon: '💰', path: '/accounts' },
   { name: 'transactions', label: 'Transactions', icon: '📝', path: '/transactions' },
@@ -187,12 +187,26 @@ const baseNavItems = [
   { name: 'goals', label: 'Goals', icon: '🎯', path: '/goals' },
 ];
 
+const connectShyftNavItems = [
+  { name: 'connectshyft-inbox', label: 'ConnectShyft', icon: '📬', path: '/app/connectshyft/inbox' },
+  { name: 'connectshyft-availability', label: 'Availability', icon: '🛰️', path: '/app/connectshyft/settings/availability' },
+];
+
 const adminNavPath = computed(() => (
   accessStore.canAccessSystemAdmin ? '/admin/system' : '/admin/tenant'
 ));
 
 const navItems = computed(() => {
-  const items = [...baseNavItems];
+  const items: Array<{ name: string; label: string; icon: string; path: string }> = [];
+
+  if (authStore.isAuthenticated && accessStore.canAccessMoneyShyft) {
+    items.push(...moneyNavItems);
+  }
+
+  if (authStore.isAuthenticated && accessStore.canAccessConnectShyft) {
+    items.push(...connectShyftNavItems);
+  }
+
   if (authStore.isAuthenticated && accessStore.hasAnyAdminAccess) {
     items.push({ name: 'admin', label: 'Admin', icon: '🛡️', path: adminNavPath.value });
   }

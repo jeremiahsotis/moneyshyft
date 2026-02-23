@@ -5,7 +5,9 @@ import { refusal, success, systemError } from '../../../platform/envelopes/respo
 import {
   createOrgUnit,
   createTenant,
+  ensureScopedAdminUser,
   evaluateRequestCapabilities,
+  lookupScopedUsers,
   parseRoleSetBody,
   PlatformAdminActorContext,
   revokeOrgUnitMembership,
@@ -22,6 +24,11 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
 const isUuid = (value: unknown): value is string => {
   return typeof value === 'string' && UUID_PATTERN.test(value.trim());
 };
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+const isEmail = (value: unknown): value is string => typeof value === 'string' && EMAIL_PATTERN.test(value.trim());
+
+const TENANCY_MODELS = new Set(['single-tenant', 'multi-tenant']);
 
 const actorFromRequest = (req: Request): PlatformAdminActorContext => ({
   userId: req.user?.userId || null,
@@ -109,15 +116,284 @@ const handleModuleDisabledError = (res: Response, error: unknown): boolean => {
   return false;
 };
 
+const handleModuleAssignmentBoundaryError = (res: Response, error: unknown): boolean => {
+  if (error instanceof Error && error.message === 'FORBIDDEN_MODULE_ASSIGNMENT_BOUNDARY') {
+    refusal(res, {
+      code: 'MODULE_ASSIGNMENT_OUT_OF_BOUNDS',
+      message: 'Tenant actor can only assign modules already granted by system administration',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return true;
+  }
+
+  return false;
+};
+
+const handleUserResolutionError = (res: Response, error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  if (error.message === 'USER_REFERENCE_REQUIRED') {
+    refusal(res, {
+      code: 'USER_REFERENCE_REQUIRED',
+      message: 'Either userId or userEmail is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+    return true;
+  }
+
+  if (error.message === 'USER_NOT_FOUND' || error.message === 'USER_OUT_OF_SCOPE') {
+    refusal(res, {
+      code: 'ASSIGNABLE_USER_NOT_FOUND',
+      message: 'User was not found in active tenant scope',
+      refusalType: 'client',
+      httpStatus: 404,
+    });
+    return true;
+  }
+
+  if (error.message === 'USER_LOOKUP_QUERY_TOO_SHORT') {
+    refusal(res, {
+      code: 'USER_LOOKUP_QUERY_TOO_SHORT',
+      message: 'Lookup query must be at least 3 characters',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+    return true;
+  }
+
+  return false;
+};
+
+const handleOrgUnitHierarchyErrors = (res: Response, error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  if (error.message === 'ORG_UNIT_REPARENT_CONFLICT') {
+    refusal(res, {
+      code: 'ORG_UNIT_REPARENT_CONFLICT',
+      message: 'Another orgUnit hierarchy update is in progress. Retry this operation.',
+      refusalType: 'client',
+      httpStatus: 409,
+    });
+    return true;
+  }
+
+  if (error.message === 'ORG_UNIT_CYCLE_DETECTED') {
+    refusal(res, {
+      code: 'ORG_UNIT_CYCLE_DETECTED',
+      message: 'OrgUnit hierarchy update would create a cycle',
+      refusalType: 'client',
+      httpStatus: 409,
+    });
+    return true;
+  }
+
+  return false;
+};
+
 router.use(authenticateToken);
 
+router.get('/users/lookup', async (req: Request, res: Response) => {
+  const tenantId = req.query.tenantId && typeof req.query.tenantId === 'string'
+    ? req.query.tenantId
+    : undefined;
+  const orgUnitId = req.query.orgUnitId && typeof req.query.orgUnitId === 'string'
+    ? req.query.orgUnitId
+    : undefined;
+  const q = req.query.q && typeof req.query.q === 'string'
+    ? req.query.q
+    : '';
+  const page = req.query.page && typeof req.query.page === 'string'
+    ? Number.parseInt(req.query.page, 10)
+    : undefined;
+  const pageSize = req.query.pageSize && typeof req.query.pageSize === 'string'
+    ? Number.parseInt(req.query.pageSize, 10)
+    : undefined;
+
+  if ((tenantId !== undefined && !isUuid(tenantId)) || (orgUnitId !== undefined && !isUuid(orgUnitId))) {
+    return refusal(res, {
+      code: 'USER_LOOKUP_SCOPE_INVALID',
+      message: 'tenantId and orgUnitId must be UUIDs when provided',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  try {
+    const lookup = await lookupScopedUsers(db, actorFromRequest(req), {
+      tenantId,
+      orgUnitId,
+      q,
+      page,
+      pageSize,
+    });
+
+    return success(res, {
+      code: 'SCOPED_USER_LOOKUP_RESOLVED',
+      message: 'Scoped user lookup completed',
+      data: lookup,
+    });
+  } catch (error) {
+    if (handleScopeErrors(res, error) || handleUserResolutionError(res, error)) {
+      return;
+    }
+
+    if (error instanceof Error && error.message === 'ORG_UNIT_NOT_FOUND') {
+      refusal(res, {
+        code: 'ORG_UNIT_NOT_FOUND',
+        message: 'OrgUnit was not found in active tenant scope',
+        refusalType: 'client',
+        httpStatus: 404,
+      });
+      return;
+    }
+
+    if (handleForbiddenError(res, error, 'Insufficient permissions for scoped user lookup')) {
+      return;
+    }
+
+    return systemError(res, {
+      code: 'SCOPED_USER_LOOKUP_FAILED',
+      message: getMessage(error, 'Failed to execute scoped user lookup'),
+      httpStatus: 500,
+    });
+  }
+});
+
+router.post('/users/inline-admin', async (req: Request, res: Response) => {
+  const {
+    tenantId,
+    userId,
+    userEmail,
+    firstName,
+    lastName,
+    reason,
+  } = req.body || {};
+
+  const hasUserId = typeof userId === 'string' && userId.trim().length > 0;
+  const hasUserEmail = typeof userEmail === 'string' && userEmail.trim().length > 0;
+
+  if (
+    (tenantId !== undefined && !isUuid(tenantId))
+    || (hasUserId && !isUuid(userId))
+    || (hasUserEmail && !isEmail(userEmail))
+    || (!hasUserId && !hasUserEmail)
+    || typeof reason !== 'string'
+    || reason.trim() === ''
+  ) {
+    return refusal(res, {
+      code: 'INLINE_ADMIN_INPUT_INVALID',
+      message: 'tenantId (optional), reason, and either userId(UUID) or userEmail are required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  try {
+    const ensuredUser = await ensureScopedAdminUser(db, actorFromRequest(req), {
+      tenantId,
+      userId,
+      userEmail,
+      firstName,
+      lastName,
+      reason,
+    });
+
+    return success(res, {
+      code: 'INLINE_ADMIN_USER_READY',
+      message: 'Scoped admin identity resolved',
+      data: ensuredUser,
+    });
+  } catch (error) {
+    if (handleScopeErrors(res, error) || handleUserResolutionError(res, error)) {
+      return;
+    }
+
+    if (handleForbiddenError(res, error, 'Insufficient permissions for inline admin user resolution')) {
+      return;
+    }
+
+    return systemError(res, {
+      code: 'INLINE_ADMIN_USER_RESOLUTION_FAILED',
+      message: getMessage(error, 'Failed to resolve inline admin identity'),
+      httpStatus: 500,
+    });
+  }
+});
+
 router.post('/tenants', async (req: Request, res: Response) => {
-  const { name, status, billingAccountName, assignTenantAdminUserId, reason } = req.body || {};
+  const {
+    name,
+    status,
+    billingAccountName,
+    assignTenantAdminUserId,
+    assignTenantAdminUserEmail,
+    assignTenantAdminFirstName,
+    assignTenantAdminLastName,
+    tenancyModel,
+    moduleGrants,
+    reason,
+  } = req.body || {};
 
   if (typeof name !== 'string' || name.trim() === '') {
     return refusal(res, {
       code: 'TENANT_NAME_REQUIRED',
       message: 'name is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  if (assignTenantAdminUserId !== undefined && !isUuid(assignTenantAdminUserId)) {
+    return refusal(res, {
+      code: 'TENANT_ADMIN_USER_ID_INVALID',
+      message: 'assignTenantAdminUserId must be a UUID when provided',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  if (assignTenantAdminUserEmail !== undefined && !isEmail(assignTenantAdminUserEmail)) {
+    return refusal(res, {
+      code: 'TENANT_ADMIN_EMAIL_INVALID',
+      message: 'assignTenantAdminUserEmail must be a valid email when provided',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  if (tenancyModel !== undefined && (typeof tenancyModel !== 'string' || !TENANCY_MODELS.has(tenancyModel))) {
+    return refusal(res, {
+      code: 'TENANCY_MODEL_INVALID',
+      message: 'tenancyModel must be one of: single-tenant, multi-tenant',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+  }
+
+  if (
+    moduleGrants !== undefined
+    && (
+      typeof moduleGrants !== 'object'
+      || moduleGrants === null
+      || (
+        (moduleGrants as { connectshyft?: unknown; moneyshyft?: unknown }).connectshyft !== undefined
+        && typeof (moduleGrants as { connectshyft?: unknown }).connectshyft !== 'boolean'
+      )
+      || (
+        (moduleGrants as { moneyshyft?: unknown }).moneyshyft !== undefined
+        && typeof (moduleGrants as { moneyshyft?: unknown }).moneyshyft !== 'boolean'
+      )
+    )
+  ) {
+    return refusal(res, {
+      code: 'TENANT_MODULE_GRANTS_INVALID',
+      message: 'moduleGrants.connectshyft and moduleGrants.moneyshyft must be booleans when provided',
       refusalType: 'client',
       httpStatus: 400,
     });
@@ -129,6 +405,11 @@ router.post('/tenants', async (req: Request, res: Response) => {
       status,
       billingAccountName,
       assignTenantAdminUserId,
+      assignTenantAdminUserEmail,
+      assignTenantAdminFirstName,
+      assignTenantAdminLastName,
+      tenancyModel,
+      moduleGrants,
       reason,
     });
 
@@ -184,7 +465,24 @@ router.put('/module-entitlements', async (req: Request, res: Response) => {
       data: updated,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'ORG_UNIT_NOT_FOUND') {
+      return refusal(res, {
+        code: 'PARENT_ORG_UNIT_NOT_FOUND',
+        message: 'Parent orgUnit was not found in active tenant scope',
+        refusalType: 'client',
+        httpStatus: 404,
+      });
+    }
+
+    if (handleOrgUnitHierarchyErrors(res, error)) {
+      return;
+    }
+
     if (handleScopeErrors(res, error)) {
+      return;
+    }
+
+    if (handleModuleAssignmentBoundaryError(res, error)) {
       return;
     }
 
@@ -320,6 +618,10 @@ router.put('/org-units/:orgUnitId', async (req: Request, res: Response) => {
       });
     }
 
+    if (handleOrgUnitHierarchyErrors(res, error)) {
+      return;
+    }
+
     if (handleScopeErrors(res, error)) {
       return;
     }
@@ -341,13 +643,15 @@ router.put('/org-units/:orgUnitId', async (req: Request, res: Response) => {
 });
 
 router.post('/tenant-memberships', async (req: Request, res: Response) => {
-  const { tenantId, userId, roleSet, reason } = req.body || {};
+  const { tenantId, userId, userEmail, firstName, lastName, roleSet, reason } = req.body || {};
   const parsedRoleSet = parseRoleSetBody(roleSet);
+  const hasUserId = typeof userId === 'string' && userId.trim().length > 0;
+  const hasUserEmail = typeof userEmail === 'string' && userEmail.trim().length > 0;
 
   if (
-    typeof userId !== 'string'
-    || userId.trim() === ''
-    || !isUuid(userId)
+    (!hasUserId && !hasUserEmail)
+    || (hasUserId && !isUuid(userId))
+    || (hasUserEmail && !isEmail(userEmail))
     || (tenantId !== undefined && !isUuid(tenantId))
     || parsedRoleSet.length === 0
     || typeof reason !== 'string'
@@ -355,7 +659,7 @@ router.post('/tenant-memberships', async (req: Request, res: Response) => {
   ) {
     return refusal(res, {
       code: 'TENANT_MEMBERSHIP_INPUT_INVALID',
-      message: 'userId, roleSet[], and reason are required',
+      message: 'userId(UUID) or userEmail, roleSet[], and reason are required',
       refusalType: 'client',
       httpStatus: 400,
     });
@@ -365,6 +669,9 @@ router.post('/tenant-memberships', async (req: Request, res: Response) => {
     const updated = await upsertTenantMembership(db, actorFromRequest(req), {
       tenantId,
       userId,
+      userEmail,
+      firstName,
+      lastName,
       roleSet: parsedRoleSet,
       reason,
     });
@@ -375,7 +682,7 @@ router.post('/tenant-memberships', async (req: Request, res: Response) => {
       data: updated,
     });
   } catch (error) {
-    if (handleScopeErrors(res, error)) {
+    if (handleScopeErrors(res, error) || handleUserResolutionError(res, error)) {
       return;
     }
 
@@ -457,16 +764,27 @@ router.delete('/tenant-memberships', async (req: Request, res: Response) => {
 });
 
 router.post('/org-unit-memberships', async (req: Request, res: Response) => {
-  const { tenantId, orgUnitId, userId, roleSet, reason } = req.body || {};
+  const {
+    tenantId,
+    orgUnitId,
+    userId,
+    userEmail,
+    firstName,
+    lastName,
+    roleSet,
+    reason,
+  } = req.body || {};
   const parsedRoleSet = parseRoleSetBody(roleSet);
+  const hasUserId = typeof userId === 'string' && userId.trim().length > 0;
+  const hasUserEmail = typeof userEmail === 'string' && userEmail.trim().length > 0;
 
   if (
     typeof orgUnitId !== 'string'
     || orgUnitId.trim() === ''
     || !isUuid(orgUnitId)
-    || typeof userId !== 'string'
-    || userId.trim() === ''
-    || !isUuid(userId)
+    || (!hasUserId && !hasUserEmail)
+    || (hasUserId && !isUuid(userId))
+    || (hasUserEmail && !isEmail(userEmail))
     || (tenantId !== undefined && !isUuid(tenantId))
     || parsedRoleSet.length === 0
     || typeof reason !== 'string'
@@ -474,7 +792,7 @@ router.post('/org-unit-memberships', async (req: Request, res: Response) => {
   ) {
     return refusal(res, {
       code: 'ORG_UNIT_MEMBERSHIP_INPUT_INVALID',
-      message: 'orgUnitId, userId, roleSet[], and reason are required',
+      message: 'orgUnitId, userId(UUID) or userEmail, roleSet[], and reason are required',
       refusalType: 'client',
       httpStatus: 400,
     });
@@ -485,6 +803,9 @@ router.post('/org-unit-memberships', async (req: Request, res: Response) => {
       tenantId,
       orgUnitId,
       userId,
+      userEmail,
+      firstName,
+      lastName,
       roleSet: parsedRoleSet,
       reason,
     });
@@ -504,7 +825,11 @@ router.post('/org-unit-memberships', async (req: Request, res: Response) => {
       });
     }
 
-    if (handleScopeErrors(res, error)) {
+    if (handleOrgUnitHierarchyErrors(res, error)) {
+      return;
+    }
+
+    if (handleScopeErrors(res, error) || handleUserResolutionError(res, error)) {
       return;
     }
 
@@ -567,6 +892,10 @@ router.delete('/org-unit-memberships', async (req: Request, res: Response) => {
         refusalType: 'client',
         httpStatus: 404,
       });
+    }
+
+    if (handleOrgUnitHierarchyErrors(res, error)) {
+      return;
     }
 
     if (error instanceof Error && error.message === 'ORG_UNIT_MEMBERSHIP_NOT_FOUND') {

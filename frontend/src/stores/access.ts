@@ -13,6 +13,10 @@ const TENANT_ADMIN_CAPABILITIES = [
 export const useAccessStore = defineStore('access', () => {
   const roles = ref<string[]>([]);
   const capabilities = ref<string[]>([]);
+  const moduleEntitlements = ref({
+    connectshyft: false,
+    moneyshyft: false,
+  });
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
@@ -34,7 +38,32 @@ export const useAccessStore = defineStore('access', () => {
     () => canAccessSystemAdmin.value || canAccessTenantAdmin.value
   );
 
+  const canAccessConnectShyft = computed(() => moduleEntitlements.value.connectshyft === true);
+  const canAccessMoneyShyft = computed(() => moduleEntitlements.value.moneyshyft === true);
+
+  const defaultAuthorizedPath = computed(() => {
+    if (canAccessMoneyShyft.value) {
+      return '/';
+    }
+
+    if (canAccessConnectShyft.value) {
+      return '/app/connectshyft/inbox';
+    }
+
+    if (canAccessSystemAdmin.value) {
+      return '/admin/system';
+    }
+
+    if (canAccessTenantAdmin.value) {
+      return '/admin/tenant';
+    }
+
+    return '/budget/setup';
+  });
+
   const hasCapability = (capability: string): boolean => capabilitySet.value.has(capability);
+  const isModuleEnabled = (moduleKey: 'connectshyft' | 'moneyshyft'): boolean =>
+    moduleEntitlements.value[moduleKey] === true;
 
   const refresh = async (params: {
     tenantId?: string | null;
@@ -47,9 +76,17 @@ export const useAccessStore = defineStore('access', () => {
       const data = await evaluateRbac(params);
       roles.value = Array.isArray(data.roles) ? data.roles : [];
       capabilities.value = Array.isArray(data.capabilities) ? data.capabilities : [];
+      moduleEntitlements.value = {
+        connectshyft: data.moduleEntitlements?.connectshyft === true,
+        moneyshyft: data.moduleEntitlements?.moneyshyft === true,
+      };
     } catch (err: any) {
       roles.value = [];
       capabilities.value = [];
+      moduleEntitlements.value = {
+        connectshyft: false,
+        moneyshyft: false,
+      };
       error.value = err?.response?.data?.message || err?.message || 'Failed to load access capabilities';
     } finally {
       isLoading.value = false;
@@ -59,18 +96,27 @@ export const useAccessStore = defineStore('access', () => {
   const clear = (): void => {
     roles.value = [];
     capabilities.value = [];
+    moduleEntitlements.value = {
+      connectshyft: false,
+      moneyshyft: false,
+    };
     error.value = null;
   };
 
   return {
     roles,
     capabilities,
+    moduleEntitlements,
     isLoading,
     error,
     canAccessSystemAdmin,
     canAccessTenantAdmin,
+    canAccessConnectShyft,
+    canAccessMoneyShyft,
+    defaultAuthorizedPath,
     hasAnyAdminAccess,
     hasCapability,
+    isModuleEnabled,
     refresh,
     clear,
   };

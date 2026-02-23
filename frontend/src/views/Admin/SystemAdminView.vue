@@ -68,16 +68,85 @@
             </div>
 
             <div>
-              <label for="tenant-admin-user" class="block text-sm font-medium text-gray-700">
-                Initial Tenant Admin User ID (optional UUID)
+              <label for="tenant-admin-email" class="block text-sm font-medium text-gray-700">
+                Initial Tenant Admin Email (optional)
               </label>
               <input
-                id="tenant-admin-user"
+                id="tenant-admin-email"
+                v-model="assignTenantAdminUserEmail"
+                data-testid="tenant-admin-user-email-input"
+                type="email"
+                placeholder="tenant.admin@example.com"
+                class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+              />
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="tenant-admin-first-name" class="block text-sm font-medium text-gray-700">
+                  Initial Admin First Name (optional)
+                </label>
+                <input
+                  id="tenant-admin-first-name"
+                  v-model="assignTenantAdminFirstName"
+                  data-testid="tenant-admin-first-name-input"
+                  type="text"
+                  class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+
+              <div>
+                <label for="tenant-admin-last-name" class="block text-sm font-medium text-gray-700">
+                  Initial Admin Last Name (optional)
+                </label>
+                <input
+                  id="tenant-admin-last-name"
+                  v-model="assignTenantAdminLastName"
+                  data-testid="tenant-admin-last-name-input"
+                  type="text"
+                  class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label for="tenant-admin-user-id" class="block text-sm font-medium text-gray-700">
+                Existing Admin User ID (optional UUID override)
+              </label>
+              <input
+                id="tenant-admin-user-id"
                 v-model="assignTenantAdminUserId"
                 data-testid="tenant-admin-user-id-input"
                 type="text"
                 class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
               />
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="tenant-tenancy-model" class="block text-sm font-medium text-gray-700">Tenancy Model</label>
+                <select
+                  id="tenant-tenancy-model"
+                  v-model="tenancyModel"
+                  data-testid="tenant-tenancy-model-select"
+                  class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="single-tenant">single-tenant</option>
+                  <option value="multi-tenant">multi-tenant</option>
+                </select>
+              </div>
+
+              <div>
+                <p class="block text-sm font-medium text-gray-700 mb-2">Initial Module Grants</p>
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                  <input v-model="moneyshyftGrant" data-testid="tenant-grant-moneyshyft" type="checkbox" />
+                  MoneyShyft enabled
+                </label>
+                <label class="mt-2 flex items-center gap-2 text-sm text-gray-700">
+                  <input v-model="connectshyftGrant" data-testid="tenant-grant-connectshyft" type="checkbox" />
+                  ConnectShyft enabled
+                </label>
+              </div>
             </div>
 
             <div>
@@ -175,12 +244,19 @@ const tenantName = ref('');
 const tenantStatus = ref('active');
 const billingAccountName = ref('');
 const assignTenantAdminUserId = ref('');
+const assignTenantAdminUserEmail = ref('');
+const assignTenantAdminFirstName = ref('');
+const assignTenantAdminLastName = ref('');
+const tenancyModel = ref<'single-tenant' | 'multi-tenant'>('single-tenant');
+const moneyshyftGrant = ref(true);
+const connectshyftGrant = ref(false);
 const reason = ref('manual-tenant-provisioning');
 
 const isSubmitting = ref(false);
 const successMessage = ref('');
 const errorMessage = ref('');
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 
 const extractErrorMessage = (err: any): string =>
   err?.response?.data?.message
@@ -199,8 +275,14 @@ const handleCreateTenant = async (): Promise<void> => {
 
   try {
     const maybeAdminUserId = assignTenantAdminUserId.value.trim();
+    const maybeAdminEmail = assignTenantAdminUserEmail.value.trim().toLowerCase();
     if (maybeAdminUserId && !UUID_PATTERN.test(maybeAdminUserId)) {
       errorMessage.value = 'Initial Tenant Admin User ID must be a valid UUID.';
+      return;
+    }
+
+    if (maybeAdminEmail && !EMAIL_PATTERN.test(maybeAdminEmail)) {
+      errorMessage.value = 'Initial Tenant Admin Email must be valid.';
       return;
     }
 
@@ -209,6 +291,14 @@ const handleCreateTenant = async (): Promise<void> => {
       status: tenantStatus.value,
       billingAccountName: billingAccountName.value.trim() || undefined,
       assignTenantAdminUserId: maybeAdminUserId || undefined,
+      assignTenantAdminUserEmail: maybeAdminEmail || undefined,
+      assignTenantAdminFirstName: assignTenantAdminFirstName.value.trim() || undefined,
+      assignTenantAdminLastName: assignTenantAdminLastName.value.trim() || undefined,
+      tenancyModel: tenancyModel.value,
+      moduleGrants: {
+        moneyshyft: moneyshyftGrant.value,
+        connectshyft: connectshyftGrant.value,
+      },
       reason: reason.value.trim(),
     };
 
@@ -220,6 +310,9 @@ const handleCreateTenant = async (): Promise<void> => {
     tenantName.value = '';
     billingAccountName.value = '';
     assignTenantAdminUserId.value = '';
+    assignTenantAdminUserEmail.value = '';
+    assignTenantAdminFirstName.value = '';
+    assignTenantAdminLastName.value = '';
   } catch (err: any) {
     errorMessage.value = extractErrorMessage(err);
   } finally {

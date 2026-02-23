@@ -5,9 +5,18 @@ import pinia from '@/pinia';
 import type { RouteRecordRaw } from 'vue-router';
 
 type AdminScope = 'any' | 'tenant' | 'system';
+type GovernedModule = 'connectshyft' | 'moneyshyft';
 
 const resolveAdminScope = (value: unknown): AdminScope | null => {
   if (value === 'any' || value === 'tenant' || value === 'system') {
+    return value;
+  }
+
+  return null;
+};
+
+const resolveGovernedModule = (value: unknown): GovernedModule | null => {
+  if (value === 'connectshyft' || value === 'moneyshyft') {
     return value;
   }
 
@@ -31,55 +40,55 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     name: 'dashboard',
     component: () => import('@/views/DashboardView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
     path: '/app/connectshyft/inbox',
     name: 'connectshyft-inbox',
     component: () => import('@/views/ConnectShyft/ConnectShyftInboxView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
   },
   {
     path: '/app/connectshyft/settings/availability',
     name: 'connectshyft-availability',
     component: () => import('@/views/ConnectShyft/ConnectShyftAvailabilityView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
   },
   {
     path: '/app/connectshyft/settings/numbers',
     name: 'connectshyft-number-mappings',
     component: () => import('@/views/ConnectShyft/ConnectShyftNumberMappingsView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
   },
   {
     path: '/app/connectshyft/settings/escalation',
     name: 'connectshyft-escalation-settings',
     component: () => import('@/views/ConnectShyft/ConnectShyftEscalationSettingsView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
   },
   {
     path: '/accounts',
     name: 'accounts',
     component: () => import('@/views/Accounts/AccountsListView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
     path: '/transactions',
     name: 'transactions',
     component: () => import('@/views/Transactions/TransactionsListView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
     path: '/recurring-transactions',
     name: 'recurring-transactions',
     component: () => import('@/views/Transactions/RecurringTransactionsView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
     path: '/budget',
     name: 'budget',
     component: () => import('@/views/Budget/BudgetView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
     path: '/budget/setup',
@@ -91,25 +100,25 @@ const routes: RouteRecordRaw[] = [
     path: '/goals',
     name: 'goals',
     component: () => import('@/views/Goals/GoalsListView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
     path: '/debts',
     name: 'debts',
     component: () => import('@/views/Debts/DebtsView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
     path: '/extra-money',
     name: 'extra-money',
     component: () => import('@/views/ExtraMoneyView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
     path: '/settings',
     name: 'settings',
     component: () => import('@/views/Settings/HouseholdSettingsView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
     path: '/admin',
@@ -145,19 +154,19 @@ const routes: RouteRecordRaw[] = [
     path: '/scenarios',
     name: 'scenarios',
     component: () => import('@/views/Scenarios/ScenariosListView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
     path: '/scenarios/:id',
     name: 'scenario-detail',
     component: () => import('@/views/Scenarios/ScenarioDetailView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
     path: '/scenarios/:id/projection',
     name: 'scenario-projection',
     component: () => import('@/views/Scenarios/ScenarioComparisonView.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   }
 ];
 
@@ -188,27 +197,30 @@ router.beforeEach(async (to, _from, next) => {
     return;
   }
 
+  const adminScope = resolveAdminScope(to.meta.adminScope);
+  const moduleGate = resolveGovernedModule(to.meta.moduleGate);
+
+  if (authStore.isAuthenticated && (to.meta.requiresAuth || adminScope || moduleGate)) {
+    await accessStore.refresh({ tenantId: authStore.user?.householdId || undefined });
+  }
+
   if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    // Redirect to dashboard if route is for guests only and user is authenticated
-    next({ name: 'dashboard' });
+    next(accessStore.defaultAuthorizedPath);
     return;
   }
 
-  const adminScope = resolveAdminScope(to.meta.adminScope);
   if (authStore.isAuthenticated && adminScope) {
-    await accessStore.refresh({ tenantId: authStore.user?.householdId || undefined });
-
     if (adminScope === 'system' && !accessStore.canAccessSystemAdmin) {
       if (accessStore.canAccessTenantAdmin) {
         next({ name: 'admin-tenant' });
       } else {
-        next({ name: 'dashboard' });
+        next(accessStore.defaultAuthorizedPath);
       }
       return;
     }
 
     if (adminScope === 'tenant' && !accessStore.canAccessTenantAdmin) {
-      next({ name: 'dashboard' });
+      next(accessStore.defaultAuthorizedPath);
       return;
     }
 
@@ -218,10 +230,21 @@ router.beforeEach(async (to, _from, next) => {
       } else if (accessStore.canAccessTenantAdmin) {
         next({ name: 'admin-tenant' });
       } else {
-        next({ name: 'dashboard' });
+        next(accessStore.defaultAuthorizedPath);
       }
       return;
     }
+  }
+
+  if (authStore.isAuthenticated && moduleGate && !accessStore.isModuleEnabled(moduleGate)) {
+    const fallbackPath = accessStore.defaultAuthorizedPath;
+    if (to.fullPath !== fallbackPath) {
+      next(fallbackPath);
+      return;
+    }
+
+    next('/budget/setup');
+    return;
   }
 
   if (

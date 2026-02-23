@@ -2,7 +2,7 @@
 title: 'Epic A Blocker Exit Criteria Remediation'
 slug: 'epic-a-blocker-exit-criteria-remediation'
 created: '2026-02-23T07:51:54-0500'
-status: 'in-progress'
+status: 'implementation-complete'
 stepsCompleted: [1, 2, 3, 4]
 tech_stack:
   - 'TypeScript (strict mode) across backend and frontend'
@@ -236,67 +236,67 @@ If multiple failure conditions apply, return the highest-precedence refusal only
   - Action: Introduce module guard middleware for the explicit MoneyShyft route groups (`/api/v1/accounts`, `/api/v1/transactions`, `/api/v1/categories`, `/api/v1/goals`, `/api/v1/budgets`, `/api/v1/income`, `/api/v1/debts`, `/api/v1/assignments`, `/api/v1/households`, `/api/v1/recurring-transactions`, `/api/v1/extra-money`, `/api/v1/settings`, `/api/v1/scenarios`, `/api/v1/tags`) and block non-entitled tenant access.
   - Notes: Missing entitlement row is treated as disabled for governed modules; use envelope refusal pattern for business denials; do not apply this guard to `/api/v1/auth`, `/api/v1/platform/*`, `/api/v1/platform/admin/*`, or `/api/v1/connectshyft/*`.
 
-- [ ] Task 10: Extend admin API for human-friendly identity lookup and inline user creation
+- [x] Task 10: Extend admin API for human-friendly identity lookup and inline user creation
   - File: `src/src/routes/api/v1/platform-admin.ts`
   - Action: Add endpoints for scoped user lookup (`email/name`) and inline admin creation during tenant/orgUnit/subtenant assignment flows, and extend tenant creation input contract to include `tenancyModel` + initial `moduleGrants`.
   - Notes: `username` is represented by canonical `email`; no separate username field is introduced; enforce `q.length >= 3`, default `pageSize=20`, max `pageSize=25`, and deterministic ordering by `lower(email)` then `user.id` in request validation/contract; keep tenant-create backward compatible by defaulting omitted `tenancyModel`/`moduleGrants` server-side to the baseline contract.
 
-- [ ] Task 11: Implement scoped identity search + inline assignment logic in service layer
+- [x] Task 11: Implement scoped identity search + inline assignment logic in service layer
   - File: `src/src/services/PlatformAdminService.ts`
   - Action: Add tenant/orgUnit-scoped search queries, inline user creation transaction paths, assignment helpers for tenant/orgUnit admin roles, and transactional persistence for tenant `tenancyModel` plus initial module entitlements.
   - Notes: Enforce strict scope visibility (no cross-tenant leakage), anti-enumeration controls (`q.length >= 3`, default `pageSize=20`, max `pageSize=25`, deterministic order by `lower(email)` then `user.id`), and emit platform event/outbox records for both search audit and mutation flows; when tenant-create payload omits `tenancyModel`/`moduleGrants`, apply defaults transactionally (`single-tenant`, `moneyshyft=true`, `connectshyft=false`).
 
-- [ ] Task 12: Add deep hierarchy safeguards for orgUnit/subtenant delegation
+- [x] Task 12: Add deep hierarchy safeguards for orgUnit/subtenant delegation
   - File: `src/src/migrations/20260223110000_platform_admin_identity_scope_and_hierarchy_guards.ts`
   - Action: Add schema/index support for scoped lookup performance, add tenant tenancy-model persistence support, add entitlement backfill for governed modules, and add hierarchy guard helpers required for ancestry/cycle protection.
   - Notes: Keep migration additive only; do not rewrite prior migrations; include deterministic cycle detection support for re-parent operations under concurrent writes and expose deterministic conflict semantics for competing re-parent updates; this migration/backfill must ship before enabling default-deny entitlement reads.
 
-- [ ] Task 13: Expand RBAC semantics for delegated module assignment boundaries
+- [x] Task 13: Expand RBAC semantics for delegated module assignment boundaries
   - File: `src/src/platform/rbac/capabilities.ts`
   - Action: Add/refine capabilities for tenant-admin module assignment constrained to system-admin-granted module set.
   - Notes: Preserve existing role names and capability naming conventions.
 
-- [ ] Task 14: Redesign system admin UI for guided tenant bootstrap with inline admin creation
+- [x] Task 14: Redesign system admin UI for guided tenant bootstrap with inline admin creation
   - File: `frontend/src/views/Admin/SystemAdminView.vue`
   - Action: Replace UUID-only initial admin input with identity lookup + inline create controls and add allowed tenancy model option controls.
   - Notes: Keep success/error messaging explicit and test-friendly via stable `data-testid` attributes.
 
-- [ ] Task 15: Redesign tenant admin UI for scoped delegation and inline scoped admin creation
+- [x] Task 15: Redesign tenant admin UI for scoped delegation and inline scoped admin creation
   - File: `frontend/src/views/Admin/TenantAdminView.vue`
   - Action: Add orgUnit/subtenant creation workflows with parent selection, inline admin assignment, and module assignment constraints derived from granted set.
   - Notes: Prevent selection of modules outside grant boundary in both UI controls and submitted payload.
 
-- [ ] Task 16: Extend frontend admin service contracts for lookup and inline creation flows
+- [x] Task 16: Extend frontend admin service contracts for lookup and inline creation flows
   - File: `frontend/src/services/platformAdmin.ts`
   - Action: Add typed API clients for scoped user search, inline admin creation payloads, hierarchy creation, and bounded module assignment.
   - Notes: Keep envelope unwrapping behavior consistent with existing service utilities.
 
-- [ ] Task 17: Gate frontend navigation and routes by module entitlements
+- [x] Task 17: Gate frontend navigation and routes by module entitlements
   - File: `frontend/src/stores/access.ts`
   - Action: Include module entitlement state in access store refresh output and expose computed guards used by router and nav components.
   - Notes: Maintain existing admin capability computations.
 
-- [ ] Task 18: Enforce entitlement-aware route accessibility for ConnectShyft and MoneyShyft
+- [x] Task 18: Enforce entitlement-aware route accessibility for ConnectShyft and MoneyShyft
   - File: `frontend/src/router/index.ts`
   - Action: Add route meta and beforeEach checks that redirect non-entitled users away from all governed ConnectShyft routes (`/app/connectshyft/inbox`, `/app/connectshyft/settings/availability`, `/app/connectshyft/settings/numbers`, `/app/connectshyft/settings/escalation`) and all governed MoneyShyft routes (`/`, `/accounts`, `/transactions`, `/recurring-transactions`, `/budget`, `/goals`, `/debts`, `/extra-money`, `/settings`, `/scenarios`).
   - Notes: Ensure redirect targets are deterministic and avoid redirect loops; direct URL access to any governed ConnectShyft route must be blocked when entitlement is missing.
 
-- [ ] Task 19: Hide module navigation entries when entitlement is missing
+- [x] Task 19: Hide module navigation entries when entitlement is missing
   - File: `frontend/src/components/layout/AppHeader.vue`
   - Action: Update desktop nav item composition to exclude ConnectShyft/MoneyShyft links when module entitlement is disabled.
   - Notes: Keep admin nav logic intact.
 
-- [ ] Task 20: Mirror module visibility gating in mobile navigation
+- [x] Task 20: Mirror module visibility gating in mobile navigation
   - File: `frontend/src/components/layout/AppMobileNav.vue`
   - Action: Apply same entitlement-based nav filtering behavior used in desktop header.
   - Notes: Keep route parity between desktop and mobile navigation menus.
 
-- [ ] Task 21: Align ConnectShyft views with entitlement-driven availability semantics
+- [x] Task 21: Align ConnectShyft views with entitlement-driven availability semantics
   - File: `frontend/src/views/ConnectShyft/ConnectShyftInboxView.vue`
   - Action: Render inaccessible state using module-entitlement refusal data and hide operational controls when module/capability is denied.
   - Notes: Preserve current refusal messaging model and test IDs where possible.
 
-- [ ] Task 22: Align availability page with entitlement authority and refusal contracts
+- [x] Task 22: Align availability page with entitlement authority and refusal contracts
   - File: `frontend/src/views/ConnectShyft/ConnectShyftAvailabilityView.vue`
   - Action: Source displayed capability state from entitlement-backed availability response and remove env-only assumptions from UI state interpretation.
   - Notes: Keep compatibility with existing test override behavior in local/test contexts.
@@ -311,29 +311,29 @@ If multiple failure conditions apply, return the highest-precedence refusal only
   - Action: Add scenarios for automation-backed status transitions and operability gate hard-fail behavior.
   - Notes: Include both positive and negative closeout cases, plus concurrent status-transition attempts where exactly one transition succeeds and the other fails with deterministic conflict/lock-timeout semantics.
 
-- [ ] Task 25: Add backend test coverage for scoped lookup, inline creation, and delegation limits
+- [x] Task 25: Add backend test coverage for scoped lookup, inline creation, and delegation limits
   - File: `src/src/services/__tests__/PlatformAdminService.test.ts`
   - File: `src/src/modules/connectshyft/__tests__/featureFlags.test.ts`
   - Action: Add unit/service tests for scoped user search visibility, inline user creation, hierarchy guardrails, bounded module assignment, and concurrent re-parent contention scenarios; keep `featureFlags.test.ts` focused on env/test-override parsing and capability evaluation from provided flags only.
   - Notes: Cover cross-tenant leakage denial and cycle-prevention errors, including concurrent re-parent races with deterministic conflict/cycle outcomes; cover entitlement-precedence behavior in service/route tests (not in `featureFlags.test.ts`).
 
-- [ ] Task 26: Add route-layer API coverage for entitlement + admin flow overhauls
+- [x] Task 26: Add route-layer API coverage for entitlement + admin flow overhauls
   - File: `src/src/routes/api/v1/__tests__/platform-admin.test.ts`
   - Action: Add controller tests for new lookup/creation endpoints and refusal behaviors under scope/entitlement violations.
   - Notes: Validate envelope codes and HTTP status expectations.
 
-- [ ] Task 27: Expand Playwright API contracts for blocker criteria closure
+- [x] Task 27: Expand Playwright API contracts for blocker criteria closure
   - File: `tests/api/platform/1-2-tenant-and-module-entitlement-administration.api.spec.ts`
   - Action: Extend API contract tests to cover inline admin creation, scoped lookup, delegation constraints, and ConnectShyft/MoneyShyft entitlement enforcement.
   - Notes: Include explicit denied-module and out-of-scope identity scenarios; for MoneyShyft, add denied-entitlement assertions for governed API prefixes (`/api/v1/accounts`, `/api/v1/transactions`, `/api/v1/categories`, `/api/v1/goals`, `/api/v1/budgets`, `/api/v1/income`, `/api/v1/debts`, `/api/v1/assignments`, `/api/v1/households`, `/api/v1/recurring-transactions`, `/api/v1/extra-money`, `/api/v1/settings`, `/api/v1/scenarios`, `/api/v1/tags`) and include a control assertion proving excluded routes (`/api/v1/auth`, `/api/v1/platform/*`) are unaffected by the MoneyShyft entitlement gate.
 
-- [ ] Task 28: Expand E2E operator journeys for usability gate criteria
+- [x] Task 28: Expand E2E operator journeys for usability gate criteria
   - File: `tests/e2e/platform/1-2-admin-provisioning-rbac-ui.spec.ts`
   - File: `tests/e2e/platform/1-2-tenant-and-module-entitlement-administration.spec.ts`
   - Action: Add real-flow UI scenarios for system admin bootstrap and tenant admin delegation with non-UUID identity assignment.
   - Notes: Include negative UX validations for out-of-scope lookup and disallowed module assignment options; for MoneyShyft, assert nav invisibility plus direct-URL denial/redirect for governed routes (`/`, `/accounts`, `/transactions`, `/recurring-transactions`, `/budget`, `/goals`, `/debts`, `/extra-money`, `/settings`, `/scenarios`).
 
-- [ ] Task 29: Update CI gating to ensure operability evidence is release-blocking
+- [x] Task 29: Update CI gating to ensure operability evidence is release-blocking
   - File: `.github/workflows/test.yml`
   - Action: Confirm/adjust job dependencies so policy and operability guard failures block release-readiness jobs; reporting remains `always()` but must surface failed upstream status.
   - Notes: Preserve existing policy-first ordering and shard/burn-in/quality gates structure.

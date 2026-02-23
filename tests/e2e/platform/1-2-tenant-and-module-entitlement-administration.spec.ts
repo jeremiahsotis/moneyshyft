@@ -1,5 +1,6 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { randomUUID } from 'node:crypto';
+import type { Page } from '@playwright/test';
 import {
   createModuleEntitlementPayload,
   createOrgUnitPayload,
@@ -8,6 +9,33 @@ import {
 import { test, expect } from '../../support/fixtures/tenantEntitlementStory12.fixture';
 
 test.describe('Story 1.2 automate - tenant and module entitlement administration journey', () => {
+  const signupTenantAdminUiUser = async (page: Page, label: string): Promise<{ userId: string; email: string }> => {
+    const email = `story12-ui-${label}-${randomUUID()}@example.com`;
+    const signupResponse = await page.request.post('/api/v1/auth/signup', {
+      data: {
+        email,
+        password: 'Password123!',
+        firstName: 'Story',
+        lastName: 'UI',
+        householdName: `Story12-UI-${label}`,
+      },
+    });
+
+    expect(signupResponse.status()).toBe(201);
+    const body = await signupResponse.json();
+    const userId =
+      body?.user?.id
+      || body?.user?.userId
+      || body?.data?.user?.id
+      || body?.data?.user?.userId;
+    expect(typeof userId).toBe('string');
+
+    return {
+      userId: userId as string,
+      email,
+    };
+  };
+
   const bootstrapAssigneeUser = async (
     request: Parameters<typeof apiRequest>[0],
     story12Context: {
@@ -264,5 +292,36 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
         roleSet: ['TENANT_ADMIN'],
       },
     });
+  });
+
+  test('[P1] tenant-admin delegation flow accepts non-UUID email assignment in-scope @P1', async ({ page }) => {
+    const currentUser = await signupTenantAdminUiUser(page, 'email-assignment');
+
+    await page.goto('/admin/tenant');
+    await expect(page.getByTestId('tenant-admin-heading')).toBeVisible();
+
+    await page.locator('#tenant-role-user-id').fill(currentUser.email);
+    await page.locator('#tenant-role-reason').fill('story12-email-identity-assignment');
+    await page.getByRole('button', { name: 'Assign Tenant Role' }).click();
+
+    await expect(page.getByTestId('admin-form-success')).toContainText('Tenant role assigned');
+  });
+
+  test('[P1] moneyshyft-governed nav and direct URLs are blocked when entitlement is missing @P1', async ({ page }) => {
+    await signupTenantAdminUiUser(page, 'moneyshyft-deny');
+
+    await page.goto('/admin/tenant');
+    await expect(page.getByTestId('tenant-admin-heading')).toBeVisible();
+
+    await expect(page.getByRole('link', { name: /^Accounts$/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /^Transactions$/i })).toHaveCount(0);
+    await expect(page.getByTestId('tenant-grant-moneyshyft')).toHaveCount(0);
+    await expect(page.getByTestId('tenant-grant-connectshyft')).toHaveCount(0);
+
+    await page.goto('/accounts');
+    await expect(page).toHaveURL(/\/admin\/tenant$/);
+
+    await page.goto('/transactions');
+    await expect(page).toHaveURL(/\/admin\/tenant$/);
   });
 });

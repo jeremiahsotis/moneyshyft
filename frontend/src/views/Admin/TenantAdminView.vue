@@ -52,6 +52,19 @@
               </div>
 
               <div>
+                <label for="org-unit-parent-id" class="block text-sm font-medium text-gray-700">
+                  Parent OrgUnit ID (optional UUID)
+                </label>
+                <input
+                  id="org-unit-parent-id"
+                  v-model="orgUnitParentId"
+                  data-testid="org-unit-parent-id-input"
+                  type="text"
+                  class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+
+              <div>
                 <label for="org-unit-reason" class="block text-sm font-medium text-gray-700">Reason</label>
                 <input
                   id="org-unit-reason"
@@ -84,7 +97,7 @@
             <form class="mt-5 space-y-4" @submit.prevent="handleTenantRoleAssignment">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label for="tenant-role-user-id" class="block text-sm font-medium text-gray-700">User ID (UUID)</label>
+                  <label for="tenant-role-user-id" class="block text-sm font-medium text-gray-700">User Email or UUID</label>
                   <input
                     id="tenant-role-user-id"
                     v-model="tenantRoleUserId"
@@ -147,7 +160,7 @@
                 </div>
 
                 <div>
-                  <label for="org-role-user-id" class="block text-sm font-medium text-gray-700">User ID (UUID)</label>
+                  <label for="org-role-user-id" class="block text-sm font-medium text-gray-700">User Email or UUID</label>
                   <input
                     id="org-role-user-id"
                     v-model="orgRoleUserId"
@@ -316,6 +329,7 @@ const roleMatrix = [
 
 const orgUnitName = ref('');
 const orgUnitType = ref('operations');
+const orgUnitParentId = ref('');
 const orgUnitReason = ref('manual-org-unit-create');
 
 const tenantRoleUserId = ref('');
@@ -332,6 +346,7 @@ const isSubmitting = ref(false);
 const successMessage = ref('');
 const errorMessage = ref('');
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 
 const extractErrorMessage = (err: any): string =>
   err?.response?.data?.message
@@ -342,6 +357,23 @@ const extractErrorMessage = (err: any): string =>
 const clearStatus = () => {
   successMessage.value = '';
   errorMessage.value = '';
+};
+
+const resolveUserReference = (value: string): { userId?: string; userEmail?: string } | null => {
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (UUID_PATTERN.test(normalized)) {
+    return { userId: normalized };
+  }
+
+  if (EMAIL_PATTERN.test(normalized)) {
+    return { userEmail: normalized.toLowerCase() };
+  }
+
+  return null;
 };
 
 const refreshAccess = async (): Promise<void> => {
@@ -366,10 +398,17 @@ const handleCreateOrgUnit = async (): Promise<void> => {
 
   try {
     const tenantId = authStore.user?.householdId || undefined;
+    const parentOrgUnitId = orgUnitParentId.value.trim();
+    if (parentOrgUnitId && !UUID_PATTERN.test(parentOrgUnitId)) {
+      errorMessage.value = 'Parent OrgUnit ID must be a valid UUID when provided.';
+      return;
+    }
+
     const response = await createOrgUnit({
       tenantId,
       name: orgUnitName.value.trim(),
       type: orgUnitType.value.trim() || undefined,
+      parentOrgUnitId: parentOrgUnitId || undefined,
       reason: orgUnitReason.value.trim(),
     });
     const orgUnit = response.orgUnit as { id?: string; name?: string } | undefined;
@@ -377,6 +416,7 @@ const handleCreateOrgUnit = async (): Promise<void> => {
       ? `OrgUnit created: ${orgUnit.name || orgUnitName.value} (${orgUnit.id})`
       : 'OrgUnit created';
     orgUnitName.value = '';
+    orgUnitParentId.value = '';
     orgUnitReason.value = 'manual-org-unit-create';
     await refreshAccess();
   } catch (err: any) {
@@ -391,16 +431,16 @@ const handleTenantRoleAssignment = async (): Promise<void> => {
   isSubmitting.value = true;
 
   try {
-    const userId = tenantRoleUserId.value.trim();
-    if (!UUID_PATTERN.test(userId)) {
-      errorMessage.value = 'User ID must be a valid UUID.';
+    const reference = resolveUserReference(tenantRoleUserId.value);
+    if (!reference) {
+      errorMessage.value = 'User reference must be a valid email or UUID.';
       return;
     }
 
     const tenantId = authStore.user?.householdId || undefined;
     await upsertTenantMembership({
       tenantId,
-      userId,
+      ...reference,
       roleSet: [tenantRoleSelection.value],
       reason: tenantRoleReason.value.trim(),
     });
@@ -420,14 +460,14 @@ const handleOrgUnitRoleAssignment = async (): Promise<void> => {
 
   try {
     const orgUnitId = orgRoleOrgUnitId.value.trim();
-    const userId = orgRoleUserId.value.trim();
+    const reference = resolveUserReference(orgRoleUserId.value);
     if (!UUID_PATTERN.test(orgUnitId)) {
       errorMessage.value = 'OrgUnit ID must be a valid UUID.';
       return;
     }
 
-    if (!UUID_PATTERN.test(userId)) {
-      errorMessage.value = 'User ID must be a valid UUID.';
+    if (!reference) {
+      errorMessage.value = 'User reference must be a valid email or UUID.';
       return;
     }
 
@@ -435,7 +475,7 @@ const handleOrgUnitRoleAssignment = async (): Promise<void> => {
     await upsertOrgUnitMembership({
       tenantId,
       orgUnitId,
-      userId,
+      ...reference,
       roleSet: [orgRoleSelection.value],
       reason: orgRoleReason.value.trim(),
     });
