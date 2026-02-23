@@ -29,6 +29,29 @@ const buildFakeTrx = (state: FakeTrxState) => {
       },
       whereRaw: (_sql: string, _args: unknown[]) => query,
       first: async () => {
+        if (tableName === 'platform.tenants') {
+          if (whereFilters.id === TEST_TENANT_ID) {
+            return {
+              id: TEST_TENANT_ID,
+              name: 'Tenant A',
+              status: 'active',
+            };
+          }
+
+          return null;
+        }
+
+        if (tableName === 'households') {
+          if (whereFilters.id === TEST_TENANT_ID) {
+            return {
+              id: TEST_TENANT_ID,
+              name: 'Tenant A',
+            };
+          }
+
+          return null;
+        }
+
         if (tableName === 'platform.tenant_module_entitlements') {
           const tenantId = String(whereFilters.tenant_id || '');
           const moduleKey = String(whereFilters.module_key || '');

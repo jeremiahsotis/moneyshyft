@@ -228,4 +228,21 @@ describe('platform admin routes', () => {
       message: 'Insufficient permissions for tenant membership update',
     });
   });
+
+  it('returns tenant-not-found refusal when org-unit creation scope is missing', async () => {
+    const app = buildApp();
+    mockCreateOrgUnit.mockRejectedValue(new Error('TENANT_NOT_FOUND'));
+
+    const response = await request(app)
+      .post('/api/v1/platform/admin/org-units')
+      .send({
+        name: 'Ops East',
+      });
+
+    expect(response.status).toBe(404);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'TENANT_NOT_FOUND',
+    });
+  });
 });

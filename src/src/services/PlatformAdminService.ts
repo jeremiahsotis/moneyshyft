@@ -258,6 +258,10 @@ const requireCapability = async (
   tenantId?: string,
   orgUnitId?: string
 ): Promise<ScopedRole[]> => {
+  if (tenantId) {
+    await ensureScopedTenantExists(trx, tenantId);
+  }
+
   const roles = await resolveRequestRoles(trx, actor, tenantId, orgUnitId);
 
   if (!hasCapability(roles, capability)) {
@@ -292,6 +296,46 @@ const normalizeIdInput = (value: unknown): string | null => {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+};
+
+const ensureScopedTenantExists = async (
+  trx: Knex.Transaction,
+  tenantId: string
+): Promise<void> => {
+  const existingTenant = await trx
+    .withSchema('platform')
+    .table('tenants')
+    .where({ id: tenantId })
+    .first(['id']);
+
+  if (existingTenant) {
+    return;
+  }
+
+  const household = await trx('households')
+    .where({ id: tenantId })
+    .first(['id', 'name']);
+
+  if (!household) {
+    throw new Error('TENANT_NOT_FOUND');
+  }
+
+  const tenantName = typeof household.name === 'string' && household.name.trim().length > 0
+    ? household.name.trim()
+    : `Tenant ${tenantId.slice(0, 8)}`;
+
+  await trx
+    .withSchema('platform')
+    .table('tenants')
+    .insert({
+      id: tenantId,
+      name: tenantName,
+      status: 'active',
+      created_at_utc: trx.fn.now(),
+      updated_at_utc: trx.fn.now(),
+    })
+    .onConflict('id')
+    .ignore();
 };
 
 export const resolveScopedTenantId = (

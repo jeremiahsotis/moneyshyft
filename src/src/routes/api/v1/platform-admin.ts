@@ -67,6 +67,16 @@ const handleScopeErrors = (res: Response, error: unknown) => {
     return true;
   }
 
+  if (error.message === 'TENANT_NOT_FOUND') {
+    refusal(res, {
+      code: 'TENANT_NOT_FOUND',
+      message: 'Active tenant scope was not found',
+      refusalType: 'client',
+      httpStatus: 404,
+    });
+    return true;
+  }
+
   return false;
 };
 
