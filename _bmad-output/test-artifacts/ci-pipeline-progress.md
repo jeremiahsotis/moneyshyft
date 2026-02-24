@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight','step-02-generate-pipeline','step-03-configure-quality-gates','step-04-validate-and-summary']
 lastStep: 'step-04-validate-and-summary'
-lastSaved: '2026-02-24T12:14:09Z'
+lastSaved: '2026-02-24T18:44:51Z'
 ---
 
 # CI Workflow Progress (ConnectShyft Epic A)
@@ -129,3 +129,50 @@ lastSaved: '2026-02-24T12:14:09Z'
   - `tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts`
   - `tests/e2e/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.spec.ts`
 - Epic B CI workflow retry status: **ready to run in CI**.
+
+---
+
+# CI Workflow Progress (ConnectShyft Epic C)
+
+## Step 1: Preflight Checks
+- Git repository and remote validation: pass.
+- Test framework validation: pass (`playwright.config.ts` + `@playwright/test`).
+- CI platform detection: GitHub Actions (`.github/workflows/test.yml` already present).
+- Node runtime context: `.nvmrc` = `24`.
+- Local preflight command:
+  - `npm run test:e2e`
+  - Result after Epic C fixes: `282 passed`, `110 skipped`, `0 failed`.
+- Blocking issues from prior run were resolved:
+  - `tests/api/platform/b-3-relationship-gated-neighbor-edits-with-provenance-audit.api.spec.ts`
+  - `tests/e2e/platform/b-3-relationship-gated-neighbor-edits-with-provenance-audit.spec.ts`
+  - `tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.spec.ts`
+
+## Step 2: Generate CI Pipeline
+- Existing CI pipeline reviewed and retained at `.github/workflows/test.yml`.
+- Required staged topology confirmed intact:
+  - `policy` (blocking)
+  - `lint`
+  - `test` (4 shards, `fail-fast: false`)
+  - `burn-in` (PR/scheduled)
+  - `quality-gates`
+  - `backend-contracts` (optional `workflow_dispatch`)
+  - `report` (summary publishing)
+- No structural workflow changes were required for Epic C resume.
+
+## Step 3: Quality Gates & Notifications
+- Burn-in strategy remains aligned to TEA guidance:
+  - `bash scripts/burn-in.sh 10 origin/production`
+- Threshold gate remains aligned to policy:
+  - `@P0` pass rate = 100%
+  - `@P1` pass rate >= 95%
+- Notifications and report links remain configured in `report` job.
+
+## Step 4: Validate & Summary
+- Validation outcome: pass for preflight, pipeline structure, burn-in, and quality-gates alignment.
+- Epic C implementation updates were applied to support relationship-gated neighbor editing and UI provenance signals:
+  - `src/src/routes/api/v1/connectshyft.ts`
+  - `src/src/modules/connectshyft/neighbors.ts`
+  - `frontend/src/features/connectshyft/flags.ts`
+  - `frontend/src/features/connectshyft/neighbors.ts`
+  - `frontend/src/views/ConnectShyft/ConnectShyftNeighborProfileView.vue`
+- Epic C CI workflow resume status: **ready to run in CI**.
