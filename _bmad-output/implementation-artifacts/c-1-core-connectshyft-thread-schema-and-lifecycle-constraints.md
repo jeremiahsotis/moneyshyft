@@ -129,6 +129,9 @@ GPT-5 Codex
 - `docker exec -i moneyshyft-postgres-1 psql -U jeremiahotis -d moneyshyft -v ON_ERROR_STOP=1` (pass; schema/index, row-level, and EXPLAIN validation queries, outputs captured under validation evidence bundle)
 - `cd src && npm test` (pass)
 - `cd src && npm run build` (pass)
+- `DATABASE_URL=postgresql://jeremiahotis:Oiruueu12@127.0.0.1:5432/moneyshyft npm run test:e2e -- tests/e2e/platform/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.spec.ts --workers=1` (pass)
+- `DATABASE_URL=postgresql://jeremiahotis:Oiruueu12@127.0.0.1:5432/moneyshyft npm run test:e2e` (pass; 290 passed, 116 skipped)
+- `cd frontend && npm run build` (pass)
 
 ### Completion Notes List
 
@@ -138,6 +141,7 @@ GPT-5 Codex
 - Added repository/migration validation coverage for canonical state enforcement, single-active-thread behavior, lifecycle transition nullable fields, and due-ordering assumptions.
 - Verified backend regression suite and TypeScript build pass after implementation.
 - Resolved review findings by enforcing non-null scope columns, allowing nullable `next_evaluation_at_utc`, blocking lifecycle transitions through `POST /threads`, adding conflict-race metadata-update handling, and adding env-gated Postgres contract tests for concurrency/index assumptions.
+- Implemented inbox thread rendering against live due-thread data and wired `Open Conversation` to ensure-thread API so C.1 UI contract test IDs resolve in real operator flow.
 
 ### File List
 
@@ -153,6 +157,8 @@ GPT-5 Codex
 - tests/e2e/platform/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.atdd.spec.ts
 - tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.spec.ts
 - tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.spec.ts
+- frontend/src/features/connectshyft/threads.ts
+- frontend/src/views/ConnectShyft/ConnectShyftInboxView.vue
 - tests/support/factories/connectShyftStoryC1Factory.ts
 - tests/support/fixtures/connectShyftStoryC1.fixture.ts
 - _bmad-output/implementation-artifacts/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.md
