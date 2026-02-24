@@ -176,3 +176,9 @@ export const systemError = (
   const payload = buildSystemErrorEnvelope(context, params);
   return res.status(httpStatus).json(payload);
 };
+
+export const replayEnvelope = (
+  res: Response,
+  payload: unknown,
+  httpStatus = 200
+): Response => res.status(httpStatus).send(payload);

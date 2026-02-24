@@ -6,6 +6,7 @@ import { setAuthCookies, clearAuthCookies, verifyRefreshToken, generateAccessTok
 import { validateRequest } from '../../../middleware/validate';
 import { signupSchema, loginSchema } from '../../../validators/auth.validators';
 import { authenticateToken } from '../../../middleware/auth';
+import { refusal, success, systemError } from '../../../platform/envelopes/response';
 import logger from '../../../utils/logger';
 import PlatformSessionStore from '../../../platform/sessions/PlatformSessionStore';
 import { generateInvitationCode } from '../../../utils/invitationCode';
@@ -389,7 +390,12 @@ router.post('/refresh', async (req: Request, res: Response) => {
 router.post('/password/first-login-reset', authenticateToken, async (req: Request, res: Response) => {
   try {
     if (!req.user) {
-      res.status(401).json({ error: 'Not authenticated' });
+      refusal(res, {
+        code: 'AUTHENTICATION_REQUIRED',
+        message: 'Not authenticated',
+        refusalType: 'security',
+        httpStatus: 401,
+      });
       return;
     }
 
@@ -401,12 +407,22 @@ router.post('/password/first-login-reset', authenticateToken, async (req: Reques
       : '';
 
     if (!currentPassword || !newPassword) {
-      res.status(400).json({ error: 'currentPassword and newPassword are required' });
+      refusal(res, {
+        code: 'FIRST_LOGIN_RESET_INPUT_INVALID',
+        message: 'currentPassword and newPassword are required',
+        refusalType: 'client',
+        httpStatus: 400,
+      });
       return;
     }
 
     if (newPassword.length < 8) {
-      res.status(400).json({ error: 'newPassword must be at least 8 characters long' });
+      refusal(res, {
+        code: 'FIRST_LOGIN_RESET_PASSWORD_TOO_SHORT',
+        message: 'newPassword must be at least 8 characters long',
+        refusalType: 'client',
+        httpStatus: 400,
+      });
       return;
     }
 
@@ -430,26 +446,48 @@ router.post('/password/first-login-reset', authenticateToken, async (req: Reques
     const refreshToken = generateRefreshToken(payload);
     setAuthCookies(res, accessToken, refreshToken);
 
-    res.json({
+    success(res, {
+      code: 'FIRST_LOGIN_PASSWORD_RESET_COMPLETED',
       message: 'Password updated successfully',
-      user,
+      data: {
+        user,
+      },
     });
   } catch (error) {
     logger.error('First-login password reset error:', error);
     const message = error instanceof Error ? error.message : 'Failed to reset password';
     if (message === 'Current password is incorrect') {
-      res.status(400).json({ error: message });
+      refusal(res, {
+        code: 'FIRST_LOGIN_RESET_CURRENT_PASSWORD_INCORRECT',
+        message,
+        refusalType: 'client',
+        httpStatus: 400,
+      });
       return;
     }
     if (message === 'Password reset is not required') {
-      res.status(409).json({ error: message });
+      refusal(res, {
+        code: 'FIRST_LOGIN_RESET_NOT_REQUIRED',
+        message,
+        refusalType: 'business',
+        httpStatus: 409,
+      });
       return;
     }
     if (message === 'User not found') {
-      res.status(404).json({ error: message });
+      refusal(res, {
+        code: 'FIRST_LOGIN_RESET_USER_NOT_FOUND',
+        message,
+        refusalType: 'client',
+        httpStatus: 404,
+      });
       return;
     }
-    res.status(500).json({ error: 'Failed to reset password' });
+    systemError(res, {
+      code: 'FIRST_LOGIN_RESET_FAILED',
+      message: 'Failed to reset password',
+      httpStatus: 500,
+    });
   }
 });
 

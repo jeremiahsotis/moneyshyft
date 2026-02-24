@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
 import db from '../../../config/knex';
 import { authenticateToken } from '../../../middleware/auth';
-import { refusal, success, systemError } from '../../../platform/envelopes/response';
+import { refusal, replayEnvelope, success, systemError } from '../../../platform/envelopes/response';
 import { CAPABILITIES, hasCapability } from '../../../platform/rbac/capabilities';
 import {
   createOrgUnit,
@@ -315,7 +315,7 @@ const withAdminIdempotency = async (
     const statusCode = typeof existing.response_http_status === 'number'
       ? existing.response_http_status
       : 200;
-    res.status(statusCode).json(existing.response_payload);
+    replayEnvelope(res, existing.response_payload, statusCode);
     return;
   }
 
