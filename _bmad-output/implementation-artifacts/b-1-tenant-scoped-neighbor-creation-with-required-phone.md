@@ -126,14 +126,14 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `npm run branch:ensure-workflow -- --workflow dev-story --story b-1-tenant-scoped-neighbor-creation-with-required-phone`
-- `npm test -- --runInBand src/src/modules/connectshyft/__tests__/neighbors.test.ts src/src/migrations/__tests__/connectShyftNeighborsMigration.test.ts`
-- `npm run test:e2e -- tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.api.spec.ts tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.api.spec.ts`
-- `npm run test:e2e -- tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.spec.ts`
-- `npm run test:e2e -- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.atdd.api.spec.ts tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.api.spec.ts`
-- `cd src && npm test`
-- `cd src && npm run build`
-- `cd frontend && npm run build`
+- `npm run branch:ensure-workflow -- --workflow dev-story --story b-1-tenant-scoped-neighbor-creation-with-required-phone` (pass)
+- `npm test -- --runInBand src/src/modules/connectshyft/__tests__/neighbors.test.ts src/src/migrations/__tests__/connectShyftNeighborsMigration.test.ts` (pass: 2 suites, 9 tests)
+- `npm run test:e2e -- tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.api.spec.ts tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.api.spec.ts` (pass: 12 tests)
+- `npm run test:e2e -- tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.spec.ts` (pass: 7 tests)
+- `npm run test:e2e -- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.atdd.api.spec.ts tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.api.spec.ts` (pass: 22 tests, 5 skipped)
+- `cd src && npm test` (pass)
+- `cd src && npm run build` (pass)
+- `cd frontend && npm run build` (pass)
 
 ### Completion Notes List
 
@@ -155,7 +155,15 @@ GPT-5 Codex
 - src/src/migrations/__tests__/connectShyftNeighborsMigration.test.ts
 - src/src/routes/api/v1/connectshyft.ts
 - frontend/src/features/connectshyft/neighbors.ts
+- frontend/src/router/index.ts
 - frontend/src/views/ConnectShyft/ConnectShyftNeighborCreateView.vue
+- tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.api.spec.ts
+- tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.api.spec.ts
+- tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts
+- tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.spec.ts
+- tests/support/factories/connectShyftStoryB1Factory.ts
+- tests/support/fixtures/connectShyftStoryB1.fixture.ts
+- scripts/enforce-story-status-sync.sh
 - _bmad-output/implementation-artifacts/b-1-tenant-scoped-neighbor-creation-with-required-phone.md
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 
