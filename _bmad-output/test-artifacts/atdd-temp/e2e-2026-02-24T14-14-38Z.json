@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.atdd.spec.ts",
+      "content": "import { test, expect } from '@playwright/test';\nimport { login } from '../../helpers/auth';\nimport { createStoryB2Context, type StoryB2Context } from '../../support/factories/connectShyftStoryB2Factory';\n\nconst buildNeighborProfileUrl = (\n  context: StoryB2Context,\n  options: {\n    tenantId: string;\n    orgUnitId: string;\n    tenantRole: string;\n    orgUnitMemberships: string[];\n  },\n): string => {\n  const params = new URLSearchParams({\n    flags: 'module:on,inbox:on,escalation:on,webhooks:on',\n    tenantId: options.tenantId,\n    orgUnitId: options.orgUnitId,\n    tenantRole: options.tenantRole,\n    orgUnitMemberships: options.orgUnitMemberships.join(','),\n  });\n\n  return `${context.paths.neighborProfileUi}?${params.toString()}`;\n};\n\ntest.describe(\n  'Story b.2 Shared Tenant Identity and Shared-Phone Indicators (ATDD E2E RED)',\n  () => {\n    test.skip(\n      '[P0] operator updates tenant-shared profile data and sees explicit tenant-wide impact guidance before save @P0',\n      async ({ page }) => {\n        const context = createStoryB2Context();\n        await login(page);\n        await page.goto(\n          buildNeighborProfileUrl(context, {\n            tenantId: context.tenantId,\n            orgUnitId: context.primaryOrgUnitId,\n            tenantRole: 'ORGUNIT_MEMBER',\n            orgUnitMemberships: [context.primaryOrgUnitId],\n          }),\n        );\n\n        await expect(page.getByRole('heading', { name: 'Neighbor Profile' })).toBeVisible();\n        await expect(\n          page.getByText('Changes here affect all orgUnits in this tenant immediately.'),\n        ).toBeVisible();\n\n        await page.getByTestId('connectshyft-neighbor-first-name-input').fill(\n          context.updatedFirstName,\n        );\n        await page.getByTestId('connectshyft-neighbor-last-name-input').fill(\n          context.updatedLastName,\n        );\n        await page.getByTestId('connectshyft-neighbor-phone-shared-toggle-mobile').click();\n\n        const updateResponse = page.waitForResponse(\n          (response) =>\n            response.url().includes(context.paths.neighborById)\n            && response.request().method() === 'PUT',\n        );\n\n        await page.getByRole('button', { name: 'Save Neighbor Profile' }).click();\n        await updateResponse;\n\n        await expect(page.getByTestId('connectshyft-neighbor-profile-save-success')).toContainText(\n          'Neighbor profile updated',\n        );\n        await expect(\n          page.getByTestId('connectshyft-neighbor-phone-shared-indicator-mobile'),\n        ).toContainText('Shared');\n      },\n    );\n\n    test.skip(\n      '[P0] authorized operators in another orgUnit immediately see shared identity and phone indicator updates @P0',\n      async ({ page }) => {\n        const context = createStoryB2Context();\n        await login(page);\n        await page.goto(\n          buildNeighborProfileUrl(context, {\n            tenantId: context.tenantId,\n            orgUnitId: context.peerOrgUnitId,\n            tenantRole: 'ORGUNIT_MEMBER',\n            orgUnitMemberships: [context.peerOrgUnitId],\n          }),\n        );\n\n        await expect(page.getByRole('heading', { name: 'Neighbor Profile' })).toBeVisible();\n        await expect(page.getByTestId('connectshyft-neighbor-first-name-input')).toHaveValue(\n          context.updatedFirstName,\n        );\n        await expect(page.getByTestId('connectshyft-neighbor-last-name-input')).toHaveValue(\n          context.updatedLastName,\n        );\n        await expect(\n          page.getByTestId('connectshyft-neighbor-phone-shared-indicator-mobile'),\n        ).toContainText('Shared');\n      },\n    );\n\n    test.skip(\n      '[P1] cross-tenant deep links render refusal state and keep neighbor profile fields hidden @P1',\n      async ({ page }) => {\n        const context = createStoryB2Context();\n        await login(page);\n        await page.goto(\n          buildNeighborProfileUrl(context, {\n            tenantId: context.tenantId,\n            orgUnitId: context.crossTenantOrgUnitId,\n            tenantRole: 'ORGUNIT_MEMBER',\n            orgUnitMemberships: [context.crossTenantOrgUnitId],\n          }),\n        );\n\n        await expect(\n          page.getByTestId('connectshyft-neighbor-profile-refusal-state'),\n        ).toBeVisible();\n        await expect(\n          page.getByTestId('connectshyft-neighbor-profile-refusal-code'),\n        ).toHaveText('CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH');\n        await expect(page.getByTestId('connectshyft-neighbor-profile-form')).toBeHidden();\n      },\n    );\n  },\n);\n",
+      "description": "ATDD E2E tests for b.2 shared tenant identity and shared-phone indicators (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Tenant-wide identity impact copy is explicit before save",
+        "Cross-orgUnit visibility of shared identity and phone indicators",
+        "Cross-tenant profile access refusal UI with hidden form"
+      ],
+      "priority_coverage": {
+        "P0": 2,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "connectShyftStoryB2Factory"
+  ],
+  "knowledge_fragments_used": [
+    "selector-resilience",
+    "timing-debugging",
+    "playwright-cli"
+  ],
+  "test_count": 3,
+  "tdd_phase": "RED",
+  "summary": "Generated 3 FAILING E2E tests for story b.2"
+}
