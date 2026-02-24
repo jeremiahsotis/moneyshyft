@@ -703,6 +703,28 @@ router.get('/availability', async (req: Request, res: Response) => {
   });
 });
 
+router.get('/context', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  return success(res, {
+    code: 'CONNECTSHYFT_CONTEXT_RESOLVED',
+    message: 'ConnectShyft context resolved',
+    data: {
+      context: {
+        tenantId: context.tenantId,
+        orgUnitId: context.orgUnitId,
+      },
+    },
+  });
+});
+
 router.get('/inbox', async (req: Request, res: Response) => {
   const flags = await enforceCapability(req, res, 'inbox');
   if (!flags) {
@@ -758,7 +780,13 @@ router.post('/neighbors', async (req: Request, res: Response) => {
   });
 
   if (!created.ok) {
-    const refusalData = 'data' in created ? created.data : undefined;
+    const refusalData = {
+      ...('data' in created ? created.data : undefined),
+      scope: {
+        tenantId: context.tenantId,
+        orgUnitId: context.orgUnitId,
+      },
+    };
     refusal(res, {
       code: created.code,
       message: created.message,
@@ -776,6 +804,10 @@ router.post('/neighbors', async (req: Request, res: Response) => {
     data: {
       neighborId: created.data.neighbor.neighborId,
       neighbor: created.data.neighbor,
+      scope: {
+        tenantId: context.tenantId,
+        orgUnitId: context.orgUnitId,
+      },
     },
   });
 });

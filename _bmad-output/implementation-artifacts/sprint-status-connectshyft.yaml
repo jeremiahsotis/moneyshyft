@@ -49,13 +49,13 @@ development_status:
   a-5-capability-based-route-access-and-envelope-contract-compliance: review
   epic-a-retrospective: optional
   epic-b: in-progress
-  b-1-tenant-scoped-neighbor-creation-with-required-phone: review
+  b-1-tenant-scoped-neighbor-creation-with-required-phone: done
   b-2-shared-tenant-identity-and-shared-phone-indicators: ready-for-dev
   b-3-relationship-gated-neighbor-edits-with-provenance-audit: ready-for-dev
   b-4-role-restricted-neighbor-merge-with-irreversible-confirmation: ready-for-dev
   epic-b-retrospective: optional
   epic-c: in-progress
-  c-1-core-connectshyft-thread-schema-and-lifecycle-constraints: ready-for-dev
+  c-1-core-connectshyft-thread-schema-and-lifecycle-constraints: backlog
   c-2-thread-ensure-endpoint-with-conflict-safe-idempotency: backlog
   c-3-inbox-and-thread-detail-read-contracts: backlog
   c-4-claim-takeover-and-close-lifecycle-actions: backlog
@@ -68,7 +68,7 @@ development_status:
   d-4-operator-interaction-contracts-for-outbound-safety: backlog
   epic-d-retrospective: optional
   epic-e: in-progress
-  e-1-verified-webhook-ingress-and-deterministic-context-routing: ready-for-dev
+  e-1-verified-webhook-ingress-and-deterministic-context-routing: backlog
   e-2-inbound-sms-processing-with-active-thread-ensure: backlog
   e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: backlog
   e-4-transcription-webhook-attachment-to-voicemail-records: backlog

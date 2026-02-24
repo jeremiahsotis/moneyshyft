@@ -6,6 +6,7 @@ const NEIGHBOR_PHONES_TABLE = 'cs_neighbor_phones';
 
 const NEIGHBORS_TENANT_ID_UNIQUE = 'cs_neighbors_tenant_neighbor_uq';
 const NEIGHBOR_PHONES_SORT_ORDER_CHECK = 'cs_neighbor_phones_sort_order_non_negative_ck';
+const NEIGHBOR_PHONES_TENANT_NEIGHBOR_FK = 'cs_neighbor_phones_tenant_neighbor_fk';
 
 export async function up(knex: Knex): Promise<void> {
   await knex.raw('CREATE SCHEMA IF NOT EXISTS connectshyft');
@@ -76,6 +77,24 @@ export async function up(knex: Knex): Promise<void> {
         ALTER TABLE connectshyft.${NEIGHBOR_PHONES_TABLE}
           ADD CONSTRAINT ${NEIGHBOR_PHONES_SORT_ORDER_CHECK}
           CHECK (sort_order >= 0);
+      END IF;
+    END $$;
+  `);
+
+  await knex.raw(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = '${NEIGHBOR_PHONES_TENANT_NEIGHBOR_FK}'
+          AND conrelid = 'connectshyft.${NEIGHBOR_PHONES_TABLE}'::regclass
+      ) THEN
+        ALTER TABLE connectshyft.${NEIGHBOR_PHONES_TABLE}
+          ADD CONSTRAINT ${NEIGHBOR_PHONES_TENANT_NEIGHBOR_FK}
+          FOREIGN KEY (tenant_id, neighbor_id)
+          REFERENCES connectshyft.${NEIGHBORS_TABLE}(tenant_id, id)
+          ON DELETE CASCADE;
       END IF;
     END $$;
   `);

@@ -36,6 +36,7 @@ describe('20260224113000_create_connectshyft_neighbors migration', () => {
     expect(rawCalls.some((sql: string) => sql.includes('CREATE TABLE IF NOT EXISTS connectshyft.cs_neighbor_phones'))).toBe(true);
     expect(rawCalls.some((sql: string) => sql.includes('cs_neighbors_tenant_neighbor_uq'))).toBe(true);
     expect(rawCalls.some((sql: string) => sql.includes('cs_neighbor_phones_sort_order_non_negative_ck'))).toBe(true);
+    expect(rawCalls.some((sql: string) => sql.includes('cs_neighbor_phones_tenant_neighbor_fk'))).toBe(true);
   });
 
   it('drops connectshyft neighbor tables in down migration', async () => {

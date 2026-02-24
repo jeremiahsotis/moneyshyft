@@ -12,8 +12,8 @@
 
       <section class="mb-6 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
         <p class="font-medium text-slate-900">Active scope</p>
-        <p class="mt-1">Tenant: {{ scope.tenantId || 'Not provided' }}</p>
-        <p>orgUnit: {{ scope.orgUnitId || 'Not provided' }}</p>
+        <p class="mt-1">Tenant: {{ scope?.tenantId || 'Resolving from server...' }}</p>
+        <p>orgUnit: {{ scope?.orgUnitId || 'Resolving from server...' }}</p>
       </section>
 
       <form class="rounded-md border border-slate-200 p-4" novalidate @submit.prevent="handleCreate">
@@ -112,9 +112,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import {
   createConnectShyftNeighbor,
+  fetchConnectShyftNeighborScope,
+  type ConnectShyftNeighborScope,
   type ConnectShyftNeighbor,
 } from '@/features/connectshyft/neighbors';
 
@@ -126,20 +128,10 @@ const isSubmitting = ref(false);
 const validationError = ref('');
 const successMessage = ref('');
 const createdNeighbor = ref<ConnectShyftNeighbor | null>(null);
+const scope = ref<ConnectShyftNeighborScope | null>(null);
 
-const scope = computed(() => {
-  if (typeof window === 'undefined') {
-    return {
-      tenantId: '',
-      orgUnitId: '',
-    };
-  }
-
-  const search = new URLSearchParams(window.location.search);
-  return {
-    tenantId: (search.get('tenantId') || '').trim(),
-    orgUnitId: (search.get('orgUnitId') || '').trim(),
-  };
+onMounted(async () => {
+  scope.value = await fetchConnectShyftNeighborScope();
 });
 
 const handleCreate = async (): Promise<void> => {
@@ -167,10 +159,21 @@ const handleCreate = async (): Promise<void> => {
 
   if (!result.ok) {
     validationError.value = result.message;
+    if (result.scope) {
+      scope.value = result.scope;
+    }
     createdNeighbor.value = null;
     return;
   }
 
+  if (result.scope) {
+    scope.value = result.scope;
+  } else {
+    scope.value = {
+      tenantId: result.neighbor.tenantId,
+      orgUnitId: result.neighbor.orgUnitId,
+    };
+  }
   createdNeighbor.value = result.neighbor;
   successMessage.value = 'Neighbor created';
 };

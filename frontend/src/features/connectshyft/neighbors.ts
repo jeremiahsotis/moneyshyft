@@ -23,12 +23,19 @@ export type ConnectShyftNeighbor = {
   phones: ConnectShyftNeighborPhone[];
 };
 
+export type ConnectShyftNeighborScope = {
+  tenantId: string;
+  orgUnitId: string;
+};
+
 type ConnectShyftEnvelope = {
   ok?: boolean;
   code?: string;
   message?: string;
   data?: {
     neighbor?: Partial<ConnectShyftNeighbor>;
+    scope?: Partial<ConnectShyftNeighborScope>;
+    context?: Partial<ConnectShyftNeighborScope>;
     fieldErrors?: Array<{
       field?: string;
       reason?: string;
@@ -48,11 +55,13 @@ export type ConnectShyftNeighborCreateResult =
     ok: true;
     code: string;
     neighbor: ConnectShyftNeighbor;
+    scope: ConnectShyftNeighborScope | null;
   }
   | {
     ok: false;
     code: string;
     message: string;
+    scope: ConnectShyftNeighborScope | null;
   };
 
 const normalizeString = (value: unknown): string => {
@@ -96,6 +105,29 @@ const parseNeighbor = (payload: unknown): ConnectShyftNeighbor | null => {
   };
 };
 
+const parseScope = (payload: unknown): ConnectShyftNeighborScope | null => {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const envelope = payload as ConnectShyftEnvelope;
+  const candidate = envelope.data?.scope || envelope.data?.context;
+  if (!candidate || typeof candidate !== 'object') {
+    return null;
+  }
+
+  const tenantId = normalizeString(candidate.tenantId);
+  const orgUnitId = normalizeString(candidate.orgUnitId);
+  if (!tenantId || !orgUnitId) {
+    return null;
+  }
+
+  return {
+    tenantId,
+    orgUnitId,
+  };
+};
+
 const parseRefusalMessage = (payload: unknown, fallbackMessage: string): string => {
   if (!payload || typeof payload !== 'object') {
     return fallbackMessage;
@@ -117,26 +149,10 @@ const parseRefusalMessage = (payload: unknown, fallbackMessage: string): string 
   return fallbackMessage;
 };
 
-const resolveOrgUnitIdFromQuery = (): string | null => {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const query = new URLSearchParams(window.location.search);
-  const contextMode = normalizeString(query.get('context'));
-  if (contextMode.toLowerCase() === 'missing-orgunit') {
-    return null;
-  }
-
-  const orgUnitId = normalizeString(query.get('orgUnitId'));
-  return orgUnitId || null;
-};
-
 export const createConnectShyftNeighbor = async (
   input: ConnectShyftNeighborCreateInput,
 ): Promise<ConnectShyftNeighborCreateResult> => {
   const payload = {
-    orgUnitId: resolveOrgUnitIdFromQuery(),
     firstName: input.firstName,
     lastName: input.lastName,
     phones: input.phones,
@@ -156,6 +172,7 @@ export const createConnectShyftNeighbor = async (
           response.data,
           'Unable to create neighbor right now.',
         ),
+        scope: parseScope(response.data),
       };
     }
 
@@ -165,6 +182,7 @@ export const createConnectShyftNeighbor = async (
         ok: false,
         code: 'CONNECTSHYFT_NEIGHBOR_CREATE_INVALID_RESPONSE',
         message: 'Unable to create neighbor right now.',
+        scope: parseScope(response.data),
       };
     }
 
@@ -172,6 +190,7 @@ export const createConnectShyftNeighbor = async (
       ok: true,
       code: typeof envelope.code === 'string' ? envelope.code : 'CONNECTSHYFT_NEIGHBOR_CREATED',
       neighbor,
+      scope: parseScope(response.data),
     };
   } catch (error: unknown) {
     const message = parseRefusalMessage(
@@ -183,6 +202,18 @@ export const createConnectShyftNeighbor = async (
       ok: false,
       code: 'CONNECTSHYFT_NEIGHBOR_CREATE_REQUEST_FAILED',
       message,
+      scope: parseScope((error as { response?: { data?: unknown } })?.response?.data),
     };
+  }
+};
+
+export const fetchConnectShyftNeighborScope = async (): Promise<ConnectShyftNeighborScope | null> => {
+  try {
+    const response = await api.get('/connectshyft/context', {
+      headers: buildConnectShyftTestOverrideHeaders(),
+    });
+    return parseScope(response.data);
+  } catch (error: unknown) {
+    return parseScope((error as { response?: { data?: unknown } })?.response?.data);
   }
 };

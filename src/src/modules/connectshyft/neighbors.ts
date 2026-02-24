@@ -75,7 +75,8 @@ type NeighborRefusalResult = {
     | 'CONNECTSHYFT_NEIGHBOR_CREATE_FORBIDDEN'
     | 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED'
     | 'CONNECTSHYFT_NEIGHBOR_PHONE_INVALID_FORMAT'
-    | 'CONNECTSHYFT_NEIGHBOR_CREATE_CONFLICT';
+    | 'CONNECTSHYFT_NEIGHBOR_CREATE_CONFLICT'
+    | 'CONNECTSHYFT_NEIGHBOR_CREATE_PERSISTENCE_UNAVAILABLE';
   message: string;
   data?: {
     fieldErrors?: NeighborFieldError[];
@@ -178,6 +179,12 @@ const buildNeighborIdConflictRefusal = (): NeighborRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_NEIGHBOR_CREATE_CONFLICT',
   message: 'Unable to create neighbor right now. Please retry.',
+});
+
+const buildPersistenceUnavailableRefusal = (): NeighborRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_NEIGHBOR_CREATE_PERSISTENCE_UNAVAILABLE',
+  message: 'Neighbor persistence is temporarily unavailable. Please retry.',
 });
 
 const normalizePhones = (
@@ -504,7 +511,6 @@ export const connectShyftNeighborService = new ConnectShyftNeighborService(defau
 export class AsyncConnectShyftNeighborService {
   constructor(
     private readonly store: KnexConnectShyftNeighborStore = defaultKnexNeighborStore,
-    private readonly fallbackService: ConnectShyftNeighborService = connectShyftNeighborService,
   ) {}
 
   async createNeighbor(input: ConnectShyftCreateNeighborCommand): Promise<ConnectShyftCreateNeighborResult> {
@@ -544,7 +550,7 @@ export class AsyncConnectShyftNeighborService {
         throw error;
       }
 
-      return this.fallbackService.createNeighbor(input);
+      return buildPersistenceUnavailableRefusal();
     }
   }
 }

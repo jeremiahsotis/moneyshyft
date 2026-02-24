@@ -1,4 +1,5 @@
 import {
+  AsyncConnectShyftNeighborService,
   ConnectShyftNeighborService,
   InMemoryConnectShyftNeighborStore,
 } from '../neighbors';
@@ -170,5 +171,66 @@ describe('connectshyft neighbor service', () => {
       ok: false,
       code: 'CONNECTSHYFT_NEIGHBOR_CREATE_CONFLICT',
     });
+  });
+});
+
+describe('connectshyft async neighbor service', () => {
+  it('refuses create requests when persistence storage is unavailable', async () => {
+    const unavailableStore = {
+      createNeighbor: jest.fn(async () => {
+        const error = new Error('relation does not exist') as Error & { code: string };
+        error.code = '42P01';
+        throw error;
+      }),
+    };
+
+    const service = new AsyncConnectShyftNeighborService(unavailableStore as any);
+
+    const result = await service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_CREATE_PERSISTENCE_UNAVAILABLE',
+    });
+  });
+
+  it('rethrows unexpected persistence errors', async () => {
+    const unavailableStore = {
+      createNeighbor: jest.fn(async () => {
+        const error = new Error('db connection aborted') as Error & { code: string };
+        error.code = 'XX000';
+        throw error;
+      }),
+    };
+
+    const service = new AsyncConnectShyftNeighborService(unavailableStore as any);
+
+    await expect(
+      service.createNeighbor({
+        actorRoles: ['ORGUNIT_MEMBER'],
+        tenantId: 'tenant-connectshyft-alpha',
+        orgUnitId: 'org-connectshyft-alpha-east',
+        firstName: 'Mina',
+        lastName: 'Lopez',
+        phones: [
+          {
+            label: 'mobile',
+            value: '+12605550199',
+          },
+        ],
+      }),
+    ).rejects.toThrow('db connection aborted');
   });
 });
