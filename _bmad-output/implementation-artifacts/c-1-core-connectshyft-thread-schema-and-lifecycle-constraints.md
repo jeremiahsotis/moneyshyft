@@ -1,6 +1,6 @@
 # Story c.1: Core ConnectShyft Thread Schema and Lifecycle Constraints
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -31,18 +31,18 @@ so that thread lifecycle behavior is enforced at the persistence layer.
 
 ## Tasks / Subtasks
 
-- [ ] Implement core thread schema migration in ConnectShyft namespace (AC: 1, 2)
-  - [ ] Create/align `connectshyft.cs_threads` with canonical state, tenant/orgUnit scope, escalation fields, and number metadata columns.
-  - [ ] Keep migration additive-first and aligned with existing naming conventions.
-- [ ] Enforce active-thread identity and due-thread scan indexes (AC: 2)
-  - [ ] Add partial unique active-thread index for `(tenant_id, org_unit_id, neighbor_id)` where `state != 'CLOSED'`.
-  - [ ] Add scheduler index on due-evaluation access pattern.
-- [ ] Wire model/repository defaults to schema constraints (AC: 1)
-  - [ ] Ensure state transitions and nullable lifecycle fields align with database contract.
-  - [ ] Ensure writes use UTC timestamps and centralized time service patterns.
-- [ ] Add migration and repository validation coverage (AC: 1, 2)
-  - [ ] Add integration tests proving single-active-thread constraint under conflict scenarios.
-  - [ ] Add test coverage for index-backed due-thread query plan assumptions.
+- [x] Implement core thread schema migration in ConnectShyft namespace (AC: 1, 2)
+  - [x] Create/align `connectshyft.cs_threads` with canonical state, tenant/orgUnit scope, escalation fields, and number metadata columns.
+  - [x] Keep migration additive-first and aligned with existing naming conventions.
+- [x] Enforce active-thread identity and due-thread scan indexes (AC: 2)
+  - [x] Add partial unique active-thread index for `(tenant_id, org_unit_id, neighbor_id)` where `state != 'CLOSED'`.
+  - [x] Add scheduler index on due-evaluation access pattern.
+- [x] Wire model/repository defaults to schema constraints (AC: 1)
+  - [x] Ensure state transitions and nullable lifecycle fields align with database contract.
+  - [x] Ensure writes use UTC timestamps and centralized time service patterns.
+- [x] Add migration and repository validation coverage (AC: 1, 2)
+  - [x] Add integration tests proving single-active-thread constraint under conflict scenarios.
+  - [x] Add test coverage for index-backed due-thread query plan assumptions.
 
 ## Dev Notes
 
@@ -122,16 +122,30 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context generation only (no implementation commands executed).
+- `npm run branch:ensure-workflow -- --workflow dev-story --story c-1-core-connectshyft-thread-schema-and-lifecycle-constraints`
+- `cd src && npm test -- src/migrations/__tests__/connectShyftThreadsMigration.test.ts src/modules/connectshyft/__tests__/threads.test.ts`
+- `cd src && npm test`
+- `cd src && npm run build`
 
 ### Completion Notes List
 
-- Created implementation-ready Story c.1 context with canonical thread schema constraints, active-thread uniqueness, and scheduler index guardrails.
+- Added `connectshyft.cs_threads` migration with canonical lifecycle constraints, escalation metadata, additive-first column alignment, and due-thread/active-thread indexes.
+- Implemented `src/src/modules/connectshyft/threads.ts` with in-memory and Knex stores, conflict-safe active-thread ensure behavior, lifecycle transitions, and deterministic due-thread reads.
+- Wired `POST /api/v1/connectshyft/threads` to persisted thread ensure logic and added `GET /api/v1/connectshyft/internal/threads/due` for scheduler scans.
+- Added repository/migration validation coverage for canonical state enforcement, single-active-thread behavior, lifecycle transition nullable fields, and due-ordering assumptions.
+- Verified backend regression suite and TypeScript build pass after implementation.
 
 ### File List
 
+- src/src/migrations/20260224170000_create_connectshyft_threads.ts
+- src/src/migrations/__tests__/connectShyftThreadsMigration.test.ts
+- src/src/modules/connectshyft/threads.ts
+- src/src/modules/connectshyft/__tests__/threads.test.ts
+- src/src/routes/api/v1/connectshyft.ts
 - _bmad-output/implementation-artifacts/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 
 ## Change Log
 
 - 2026-02-24: Created Story c.1 ready-for-dev context document.
+- 2026-02-24: Implemented core ConnectShyft thread schema, lifecycle repository/service wiring, and C.1 migration/repository validation coverage; set story to review.
