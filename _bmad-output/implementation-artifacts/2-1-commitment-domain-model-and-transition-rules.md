@@ -156,6 +156,13 @@ GPT-5 Codex
 - src/src/modules/route/infrastructure/commitmentRepository.ts
 - src/src/routes/api/v1/__tests__/route.commitments.test.ts
 - src/src/routes/api/v1/route.ts
+- tests/api/platform/2-1-commitment-domain-model-and-transition-rules.api.spec.ts
+- tests/api/platform/2-1-commitment-domain-model-and-transition-rules.atdd.api.spec.ts
+- tests/e2e/platform/2-1-commitment-domain-model-and-transition-rules.atdd.spec.ts
+- tests/e2e/platform/2-1-commitment-domain-model-and-transition-rules.spec.ts
+- tests/fixtures/route-shyft-atdd-data.ts
+- tests/support/factories/routeShyftStory21Factory.ts
+- tests/support/fixtures/routeShyftStory21.fixture.ts
 
 ### Change Log
 
