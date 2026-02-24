@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import type { Knex } from 'knex';
 import { CAPABILITIES, hasCapability } from '../../platform/rbac/capabilities';
+import db from '../../config/knex';
 
 const TWILIO_E164_PATTERN = /^\+[1-9]\d{1,14}$/;
 
@@ -70,7 +72,7 @@ type NumberMappingRefusalResult = {
   };
 };
 
-type NumberMappingSaveResult =
+export type NumberMappingSaveResult =
   | {
     ok: true;
     code: 'CONNECTSHYFT_NUMBER_MAPPING_SAVED' | 'CONNECTSHYFT_NUMBER_MAPPING_UPDATED';
@@ -147,6 +149,37 @@ const buildCapabilityRefusal = (): NumberMappingRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_NUMBER_MAPPING_FORBIDDEN',
   message: 'Number mapping management requires an authorized ConnectShyft role.',
+});
+
+type DbNumberMappingRow = {
+  id: string;
+  tenant_id: string;
+  org_unit_id: string;
+  twilio_number_e164: string;
+  label: string;
+  is_active: boolean;
+  created_at_utc: string | Date;
+  updated_at_utc: string | Date;
+};
+
+const isMissingPersistenceError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const record = error as { code?: string };
+  return record.code === '42P01' || record.code === '3F000';
+};
+
+const mapDbRowToMapping = (row: DbNumberMappingRow): ConnectShyftNumberMapping => ({
+  mappingId: row.id,
+  tenantId: row.tenant_id,
+  orgUnitId: row.org_unit_id,
+  twilioNumberE164: row.twilio_number_e164,
+  label: row.label,
+  isActive: row.is_active,
+  createdAtUtc: row.created_at_utc instanceof Date ? row.created_at_utc.toISOString() : String(row.created_at_utc),
+  updatedAtUtc: row.updated_at_utc instanceof Date ? row.updated_at_utc.toISOString() : String(row.updated_at_utc),
 });
 
 export class InMemoryConnectShyftNumberMappingStore {
@@ -283,6 +316,177 @@ export class InMemoryConnectShyftNumberMappingStore {
   }
 }
 
+export class KnexConnectShyftNumberMappingStore {
+  constructor(private readonly knexClient: Knex = db) {}
+
+  async listByOrgUnit(tenantId: string, orgUnitId: string): Promise<ConnectShyftNumberMapping[]> {
+    const rows = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_number_mappings')
+      .where({
+        tenant_id: tenantId,
+        org_unit_id: orgUnitId,
+      })
+      .orderBy('twilio_number_e164', 'asc')
+      .orderBy('id', 'asc')
+      .select<DbNumberMappingRow[]>([
+        'id',
+        'tenant_id',
+        'org_unit_id',
+        'twilio_number_e164',
+        'label',
+        'is_active',
+        'created_at_utc',
+        'updated_at_utc',
+      ]);
+
+    return rows.map(mapDbRowToMapping);
+  }
+
+  async findById(tenantId: string, mappingId: string): Promise<ConnectShyftNumberMapping | null> {
+    const row = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_number_mappings')
+      .where({
+        id: mappingId,
+        tenant_id: tenantId,
+      })
+      .first<DbNumberMappingRow>([
+        'id',
+        'tenant_id',
+        'org_unit_id',
+        'twilio_number_e164',
+        'label',
+        'is_active',
+        'created_at_utc',
+        'updated_at_utc',
+      ]);
+
+    return row ? mapDbRowToMapping(row) : null;
+  }
+
+  async findByTenantNumber(tenantId: string, twilioNumberE164: string): Promise<ConnectShyftNumberMapping | null> {
+    const row = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_number_mappings')
+      .where({
+        tenant_id: tenantId,
+        twilio_number_e164: twilioNumberE164,
+      })
+      .first<DbNumberMappingRow>([
+        'id',
+        'tenant_id',
+        'org_unit_id',
+        'twilio_number_e164',
+        'label',
+        'is_active',
+        'created_at_utc',
+        'updated_at_utc',
+      ]);
+
+    return row ? mapDbRowToMapping(row) : null;
+  }
+
+  async createMapping(input: NumberMappingCreateInput): Promise<NumberMappingPersistenceResult> {
+    const mappingId = input.mappingId || randomUUID();
+    try {
+      const [row] = await this.knexClient
+        .withSchema('connectshyft')
+        .table('cs_number_mappings')
+        .insert({
+          id: mappingId,
+          tenant_id: input.tenantId,
+          org_unit_id: input.orgUnitId,
+          twilio_number_e164: input.twilioNumberE164,
+          label: input.label,
+          is_active: input.isActive,
+          created_at_utc: this.knexClient.fn.now(),
+          updated_at_utc: this.knexClient.fn.now(),
+        })
+        .returning<DbNumberMappingRow[]>([
+          'id',
+          'tenant_id',
+          'org_unit_id',
+          'twilio_number_e164',
+          'label',
+          'is_active',
+          'created_at_utc',
+          'updated_at_utc',
+        ]);
+
+      if (!row) {
+        return { ok: false, reason: 'MAPPING_ID_CONFLICT' };
+      }
+
+      return {
+        ok: true,
+        mapping: mapDbRowToMapping(row),
+      };
+    } catch (error) {
+      if (error && typeof error === 'object') {
+        const pg = error as { code?: string; constraint?: string };
+        if (pg.code === '23505' && pg.constraint === 'cs_number_mappings_tenant_number_uq') {
+          return { ok: false, reason: 'DUPLICATE_TENANT_NUMBER' };
+        }
+        if (pg.code === '23505') {
+          return { ok: false, reason: 'MAPPING_ID_CONFLICT' };
+        }
+      }
+      throw error;
+    }
+  }
+
+  async updateMapping(input: NumberMappingUpdateInput): Promise<NumberMappingPersistenceResult> {
+    const existing = await this.findById(input.tenantId, input.mappingId);
+    if (!existing) {
+      return { ok: false, reason: 'NOT_FOUND' };
+    }
+
+    try {
+      const [row] = await this.knexClient
+        .withSchema('connectshyft')
+        .table('cs_number_mappings')
+        .where({
+          id: input.mappingId,
+          tenant_id: input.tenantId,
+        })
+        .update({
+          twilio_number_e164: input.twilioNumberE164,
+          label: input.label,
+          is_active: input.isActive,
+          updated_at_utc: this.knexClient.fn.now(),
+        })
+        .returning<DbNumberMappingRow[]>([
+          'id',
+          'tenant_id',
+          'org_unit_id',
+          'twilio_number_e164',
+          'label',
+          'is_active',
+          'created_at_utc',
+          'updated_at_utc',
+        ]);
+
+      if (!row) {
+        return { ok: false, reason: 'NOT_FOUND' };
+      }
+
+      return {
+        ok: true,
+        mapping: mapDbRowToMapping(row),
+      };
+    } catch (error) {
+      if (error && typeof error === 'object') {
+        const pg = error as { code?: string; constraint?: string };
+        if (pg.code === '23505' && pg.constraint === 'cs_number_mappings_tenant_number_uq') {
+          return { ok: false, reason: 'DUPLICATE_TENANT_NUMBER' };
+        }
+      }
+      throw error;
+    }
+  }
+}
+
 export class ConnectShyftNumberMappingService {
   constructor(
     private readonly store: InMemoryConnectShyftNumberMappingStore = defaultNumberMappingStore,
@@ -404,7 +608,152 @@ export class ConnectShyftNumberMappingService {
 }
 
 const defaultNumberMappingStore = new InMemoryConnectShyftNumberMappingStore();
+const defaultKnexNumberMappingStore = new KnexConnectShyftNumberMappingStore();
 
 export const connectShyftNumberMappingService = new ConnectShyftNumberMappingService(
   defaultNumberMappingStore,
 );
+
+export class AsyncConnectShyftNumberMappingService {
+  constructor(
+    private readonly store: KnexConnectShyftNumberMappingStore = defaultKnexNumberMappingStore,
+    private readonly fallbackService: ConnectShyftNumberMappingService = connectShyftNumberMappingService,
+  ) {}
+
+  async listMappings(tenantId: string, orgUnitId: string): Promise<ConnectShyftNumberMapping[]> {
+    try {
+      return await this.store.listByOrgUnit(tenantId, orgUnitId);
+    } catch (error) {
+      if (isMissingPersistenceError(error)) {
+        return this.fallbackService.listMappings(tenantId, orgUnitId);
+      }
+      throw error;
+    }
+  }
+
+  async createMapping(input: NumberMappingCreateCommand): Promise<NumberMappingSaveResult> {
+    if (!hasCapability(input.actorRoles, CAPABILITIES.NUMBER_MAPPING_MANAGE)) {
+      return buildCapabilityRefusal();
+    }
+
+    const twilioNumberE164 = normalizeTwilioNumber(input.twilioNumberE164);
+    if (!isValidTwilioE164(twilioNumberE164)) {
+      return buildInvalidE164Refusal();
+    }
+
+    try {
+      const duplicate = await this.store.findByTenantNumber(input.tenantId, twilioNumberE164);
+      if (duplicate) {
+        return buildDuplicateRefusal();
+      }
+
+      const persisted = await this.store.createMapping({
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        twilioNumberE164,
+        label: normalizeLabel(input.label),
+        isActive: input.isActive,
+        mappingId: input.mappingId,
+      });
+      if (!persisted.ok) {
+        if (persisted.reason === 'MAPPING_ID_CONFLICT') {
+          return buildMappingIdConflictRefusal();
+        }
+        return buildDuplicateRefusal();
+      }
+
+      const mappings = await this.store.listByOrgUnit(input.tenantId, input.orgUnitId);
+      return {
+        ok: true,
+        code: 'CONNECTSHYFT_NUMBER_MAPPING_SAVED',
+        httpStatus: 201,
+        data: {
+          mappingId: persisted.mapping.mappingId,
+          orgUnitId: persisted.mapping.orgUnitId,
+          twilioNumberE164: persisted.mapping.twilioNumberE164,
+          label: persisted.mapping.label,
+          isActive: persisted.mapping.isActive,
+          mappings,
+        },
+      };
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+      return this.fallbackService.createMapping(input);
+    }
+  }
+
+  async updateMapping(input: NumberMappingUpdateCommand): Promise<NumberMappingSaveResult> {
+    if (!hasCapability(input.actorRoles, CAPABILITIES.NUMBER_MAPPING_MANAGE)) {
+      return buildCapabilityRefusal();
+    }
+
+    const twilioNumberE164 = normalizeTwilioNumber(input.twilioNumberE164);
+    if (!isValidTwilioE164(twilioNumberE164)) {
+      return buildInvalidE164Refusal();
+    }
+
+    try {
+      const existing = await this.store.findById(input.tenantId, input.mappingId);
+      if (!existing) {
+        return buildNotFoundRefusal();
+      }
+
+      if (existing.orgUnitId !== input.orgUnitId) {
+        return {
+          ok: false,
+          code: 'CONNECTSHYFT_NUMBER_MAPPING_SCOPE_VIOLATION',
+          message: 'Number mapping updates must stay within the active orgUnit scope.',
+        };
+      }
+
+      const collidingMapping = await this.store.findByTenantNumber(input.tenantId, twilioNumberE164);
+      if (collidingMapping && collidingMapping.mappingId !== input.mappingId) {
+        return buildDuplicateRefusal();
+      }
+
+      const persisted = await this.store.updateMapping({
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        mappingId: input.mappingId,
+        twilioNumberE164,
+        label: normalizeLabel(input.label),
+        isActive: input.isActive,
+      });
+
+      if (!persisted.ok) {
+        if (persisted.reason === 'NOT_FOUND') {
+          return buildNotFoundRefusal();
+        }
+        if (persisted.reason === 'MAPPING_ID_CONFLICT') {
+          return buildMappingIdConflictRefusal();
+        }
+        return buildDuplicateRefusal();
+      }
+
+      const mappings = await this.store.listByOrgUnit(input.tenantId, input.orgUnitId);
+
+      return {
+        ok: true,
+        code: 'CONNECTSHYFT_NUMBER_MAPPING_UPDATED',
+        httpStatus: 200,
+        data: {
+          mappingId: persisted.mapping.mappingId,
+          orgUnitId: persisted.mapping.orgUnitId,
+          twilioNumberE164: persisted.mapping.twilioNumberE164,
+          label: persisted.mapping.label,
+          isActive: persisted.mapping.isActive,
+          mappings,
+        },
+      };
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+      return this.fallbackService.updateMapping(input);
+    }
+  }
+}
+
+export const connectShyftNumberMappingServiceAsync = new AsyncConnectShyftNumberMappingService();

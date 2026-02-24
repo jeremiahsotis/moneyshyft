@@ -11,7 +11,7 @@ import {
   type ConnectShyftFeatureFlags,
 } from '../../../modules/connectshyft/featureFlags';
 import { resolveConnectShyftOrgUnitContext } from '../../../modules/connectshyft/contextAccess';
-import { connectShyftNumberMappingService } from '../../../modules/connectshyft/numberMappings';
+import { connectShyftNumberMappingServiceAsync } from '../../../modules/connectshyft/numberMappings';
 import {
   ConnectShyftEscalationConfigService,
   KnexConnectShyftEscalationConfigStore,
@@ -30,6 +30,7 @@ import {
 } from '../../../services/PlatformAdminService';
 
 const router = Router();
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const loadPlatformDb = (): Knex => {
   const knexModule = require('../../../config/knex') as { default: Knex };
@@ -51,12 +52,23 @@ const resolveTenantIdFromRequest = (req: Request): string | null => {
   return req.user?.activeTenantId || req.user?.householdId || null;
 };
 
+const shouldBypassTestHarnessEntitlementLookup = (tenantId: string): boolean => {
+  return isConnectShyftTestOverrideEnabled() && !UUID_PATTERN.test(tenantId);
+};
+
 const resolveEntitlementAwareConnectShyftFlags = async (
   req: Request,
 ): Promise<{ flags: ConnectShyftFeatureFlags; entitlementDecision: Awaited<ReturnType<typeof evaluateActorTenantModuleEntitlement>> | null }> => {
   const resolvedFlags = resolveConnectShyftFeatureFlags(req);
   const tenantId = resolveTenantIdFromRequest(req);
   if (!tenantId) {
+    return {
+      flags: resolvedFlags,
+      entitlementDecision: null,
+    };
+  }
+
+  if (shouldBypassTestHarnessEntitlementLookup(tenantId)) {
     return {
       flags: resolvedFlags,
       entitlementDecision: null,
@@ -295,7 +307,6 @@ const parseEscalationConfigBody = (req: Request) => ({
   recipients: req.body?.recipients,
 });
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TEST_RECIPIENT_DIRECTORY_HEADER = 'x-test-connectshyft-recipient-directory';
 
 const normalizeNonEmptyString = (value: unknown): string | null => {
@@ -690,7 +701,7 @@ router.get('/numbers', async (req: Request, res: Response) => {
     message: 'ConnectShyft number mappings resolved',
     data: {
       orgUnitId: context.orgUnitId,
-      mappings: connectShyftNumberMappingService.listMappings(context.tenantId, context.orgUnitId),
+      mappings: await connectShyftNumberMappingServiceAsync.listMappings(context.tenantId, context.orgUnitId),
     },
   });
 });
@@ -712,7 +723,7 @@ router.post('/numbers', async (req: Request, res: Response) => {
 
   const payload = parseMappingBody(req);
   const requestedRole = resolveConnectShyftRequestedRole(req);
-  const saved = connectShyftNumberMappingService.createMapping({
+  const saved = await connectShyftNumberMappingServiceAsync.createMapping({
     actorRoles: [requestedRole],
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
@@ -776,7 +787,7 @@ router.put('/numbers/:mappingId', async (req: Request, res: Response) => {
 
   const payload = parseMappingBody(req);
   const requestedRole = resolveConnectShyftRequestedRole(req);
-  const updated = connectShyftNumberMappingService.updateMapping({
+  const updated = await connectShyftNumberMappingServiceAsync.updateMapping({
     actorRoles: [requestedRole],
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,

@@ -37,6 +37,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresGuest: true }
   },
   {
+    path: '/auth/password/first-login-reset',
+    name: 'first-login-reset',
+    component: () => import('@/views/Auth/FirstLoginResetView.vue'),
+    meta: { requiresAuth: true, allowIncompleteSetup: true }
+  },
+  {
     path: '/',
     name: 'dashboard',
     component: () => import('@/views/DashboardView.vue'),
@@ -202,6 +208,16 @@ router.beforeEach(async (to, _from, next) => {
 
   if (authStore.isAuthenticated && (to.meta.requiresAuth || adminScope || moduleGate)) {
     await accessStore.refresh({ tenantId: authStore.user?.householdId || undefined });
+  }
+
+  if (authStore.isAuthenticated && authStore.user?.mustResetPassword === true && to.name !== 'first-login-reset') {
+    next({ name: 'first-login-reset' });
+    return;
+  }
+
+  if (authStore.isAuthenticated && authStore.user?.mustResetPassword !== true && to.name === 'first-login-reset') {
+    next(accessStore.defaultAuthorizedPath);
+    return;
   }
 
   if (to.meta.requiresGuest && authStore.isAuthenticated) {

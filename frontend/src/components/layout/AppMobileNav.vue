@@ -1,5 +1,8 @@
 <template>
-  <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-area-bottom">
+  <nav
+    v-if="!hideGlobalMobileNav"
+    class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-area-bottom"
+  >
     <div class="flex justify-around">
       <router-link
         v-for="item in navItems"
@@ -56,6 +59,8 @@ const navItems = computed(() => {
 
   return items;
 });
+
+const hideGlobalMobileNav = computed(() => route.path.startsWith('/admin/tenant'));
 
 function isActive(path: string): boolean {
   return route.path === path || route.path.startsWith(path + '/');

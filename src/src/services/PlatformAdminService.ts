@@ -359,6 +359,10 @@ export const evaluateTenantModuleEntitlement = async (
   tenantId: string,
   moduleKey: GovernedModuleKey
 ): Promise<TenantModuleEntitlementDecision> => {
+  if (!isUuid(tenantId)) {
+    return buildEntitlementDecision(tenantId, moduleKey, false, 'missing');
+  }
+
   const entitlement = await trxClient
     .withSchema('platform')
     .table('tenant_module_entitlements')
@@ -541,6 +545,8 @@ type ResolveScopedUserInput = {
   userEmail?: string;
   firstName?: string;
   lastName?: string;
+  temporaryPassword?: string;
+  forceResetOnFirstLogin?: boolean;
   allowInlineCreate?: boolean;
   strictScope?: boolean;
   reason: string;
@@ -581,7 +587,14 @@ const resolveScopedUserForAssignment = async (
       const fallbackNames = deriveNameFromEmail(normalizedEmail);
       const firstName = normalizeNamePart(input.firstName, fallbackNames.firstName);
       const lastName = normalizeNamePart(input.lastName, fallbackNames.lastName);
-      const passwordHash = await bcrypt.hash(randomUUID(), BCRYPT_ROUNDS);
+      const normalizedTemporaryPassword = typeof input.temporaryPassword === 'string'
+        ? input.temporaryPassword.trim()
+        : '';
+      const resolvedTemporaryPassword = normalizedTemporaryPassword.length > 0
+        ? normalizedTemporaryPassword
+        : randomUUID();
+      const shouldForceResetOnFirstLogin = input.forceResetOnFirstLogin !== false;
+      const passwordHash = await bcrypt.hash(resolvedTemporaryPassword, BCRYPT_ROUNDS);
 
       try {
         const [insertedUser] = await trx('users')
@@ -592,6 +605,8 @@ const resolveScopedUserForAssignment = async (
             last_name: lastName,
             household_id: tenantId,
             role: 'member',
+            must_reset_password: shouldForceResetOnFirstLogin,
+            password_set_by_admin: true,
           })
           .returning(['id', 'email', 'first_name', 'last_name', 'household_id']);
 
@@ -1016,6 +1031,8 @@ export interface EnsureScopedAdminUserInput {
   userEmail?: string;
   firstName?: string;
   lastName?: string;
+  temporaryPassword?: string;
+  forceResetOnFirstLogin?: boolean;
   reason: string;
 }
 
@@ -1034,6 +1051,8 @@ export const ensureScopedAdminUser = async (
         userEmail: input.userEmail,
         firstName: input.firstName,
         lastName: input.lastName,
+        temporaryPassword: input.temporaryPassword,
+        forceResetOnFirstLogin: input.forceResetOnFirstLogin,
         allowInlineCreate: true,
         strictScope: true,
         reason: input.reason,
@@ -1073,6 +1092,8 @@ export interface CreateTenantInput {
   assignTenantAdminUserEmail?: string;
   assignTenantAdminFirstName?: string;
   assignTenantAdminLastName?: string;
+  assignTenantAdminTemporaryPassword?: string;
+  assignTenantAdminForceResetOnFirstLogin?: boolean;
   tenancyModel?: TenancyModel;
   moduleGrants?: Partial<TenantModuleGrants>;
   reason?: string;
@@ -1136,6 +1157,8 @@ export const createTenant = async (
           userEmail: assignUserEmail,
           firstName: input.assignTenantAdminFirstName,
           lastName: input.assignTenantAdminLastName,
+          temporaryPassword: input.assignTenantAdminTemporaryPassword,
+          forceResetOnFirstLogin: input.assignTenantAdminForceResetOnFirstLogin,
           allowInlineCreate: true,
           strictScope: false,
           reason,

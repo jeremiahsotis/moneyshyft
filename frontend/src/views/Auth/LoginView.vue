@@ -86,6 +86,10 @@ async function handleLogin() {
       password: password.value,
       rememberMe: rememberMe.value,
     });
+    if (authStore.user?.mustResetPassword) {
+      router.push({ name: 'first-login-reset' });
+      return;
+    }
     router.push('/');
   } catch (error) {
     // Error is handled by the store

@@ -3,6 +3,19 @@ import { verifyAccessToken, JWTPayload } from '../utils/jwt';
 import logger from '../utils/logger';
 import { requireTenantId, TenantScopeError } from '../platform/tenancy/tenantScope';
 
+const isPasswordResetExemptRequest = (req: Request): boolean => {
+  if (req.originalUrl.startsWith('/api/v1/auth/')) {
+    return true;
+  }
+
+  // Allow client session bootstrap to determine redirect state.
+  if (req.originalUrl === '/api/v1/platform/admin/rbac/evaluate') {
+    return true;
+  }
+
+  return false;
+};
+
 /**
  * Authentication middleware
  * Verifies JWT token from cookies and attaches user info to request
@@ -26,6 +39,15 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
       payload.activeTenantId = null;
     }
     payload.activeOrgUnitId = payload.activeOrgUnitId ?? null;
+
+    if (payload.mustResetPassword === true && !isPasswordResetExemptRequest(req)) {
+      res.status(403).json({
+        code: 'PASSWORD_RESET_REQUIRED',
+        error: 'Password reset required before accessing this resource',
+      });
+      return;
+    }
+
     req.user = payload;
     next();
   } catch (error) {

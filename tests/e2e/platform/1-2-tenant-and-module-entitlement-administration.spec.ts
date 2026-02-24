@@ -96,6 +96,7 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     await bootstrapAssigneeUser(request, story12Context);
     await bootstrapTenant(request, story12Context);
     const tenantAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'TENANT_ADMIN' });
+    const systemAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'SYSTEM_ADMIN' });
 
     const disableResponse = await apiRequest(request, {
       method: 'PUT',
@@ -139,9 +140,31 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
       },
     });
 
-    expect(reenableResponse.status()).toBe(200);
-    const reenabledBody = await reenableResponse.json();
-    expect(reenabledBody).toMatchObject({
+    expect(reenableResponse.status()).toBe(403);
+    const boundedReenableBody = await reenableResponse.json();
+    expect(boundedReenableBody).toMatchObject({
+      ok: false,
+      code: 'MODULE_ASSIGNMENT_OUT_OF_BOUNDS',
+      refusalType: 'security',
+    });
+
+    const systemReenableResponse = await apiRequest(request, {
+      method: 'PUT',
+      path: '/api/v1/platform/admin/module-entitlements',
+      headers: systemAdminHeaders,
+      data: {
+        tenantId: story12Context.tenantId,
+        moduleKey: story12Context.moduleKey,
+        ...createModuleEntitlementPayload({
+          enabled: true,
+          reason: 'system-reactivate-module',
+        }),
+      },
+    });
+
+    expect(systemReenableResponse.status()).toBe(200);
+    const systemReenabledBody = await systemReenableResponse.json();
+    expect(systemReenabledBody).toMatchObject({
       ok: true,
       data: {
         entitlement: {
@@ -205,6 +228,7 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     await bootstrapAssigneeUser(request, story12Context);
     await bootstrapTenant(request, story12Context);
     const tenantAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'TENANT_ADMIN' });
+    const systemAdminHeaders = createStory12TenantHeaders(story12Context, { role: 'SYSTEM_ADMIN' });
 
     const entitlementResponse = await apiRequest(request, {
       method: 'PUT',
@@ -213,7 +237,7 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
       data: {
         tenantId: story12Context.tenantId,
         moduleKey: story12Context.moduleKey,
-        ...createModuleEntitlementPayload({ enabled: true, reason: 'reactivate-module' }),
+        ...createModuleEntitlementPayload({ enabled: false, reason: 'suspend-module' }),
       },
     });
 
@@ -223,7 +247,7 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     const roleMutationResponse = await apiRequest(request, {
       method: 'POST',
       path: '/api/v1/platform/admin/tenant-memberships',
-      headers: tenantAdminHeaders,
+      headers: systemAdminHeaders,
       data: {
         tenantId: story12Context.tenantId,
         userId: story12Context.assigneeUserId,
@@ -237,7 +261,7 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
 
     expect(entitlementBody.data.entitlement.tenant_id).toBe(story12Context.tenantId);
     expect(roleBody.data.tenantId).toBe(story12Context.tenantId);
-    expect(entitlementBody.data.entitlement.enabled).toBe(true);
+    expect(entitlementBody.data.entitlement.enabled).toBe(false);
     expect(roleBody.data.roleSet).toEqual(['TENANT_STAFF']);
   });
 
@@ -294,17 +318,47 @@ test.describe('Story 1.2 automate - tenant and module entitlement administration
     });
   });
 
-  test('[P1] tenant-admin delegation flow accepts non-UUID email assignment in-scope @P1', async ({ page }) => {
+  test('[P1] tenant-admin people flow accepts non-UUID email identity in-scope @P1', async ({ page }) => {
     const currentUser = await signupTenantAdminUiUser(page, 'email-assignment');
+    const suffix = randomUUID().slice(0, 8);
+    const inviteEmail = `story12-invite-${suffix}@example.com`;
 
     await page.goto('/admin/tenant');
     await expect(page.getByTestId('tenant-admin-heading')).toBeVisible();
 
-    await page.locator('#tenant-role-user-id').fill(currentUser.email);
-    await page.locator('#tenant-role-reason').fill('story12-email-identity-assignment');
-    await page.getByRole('button', { name: 'Assign Tenant Role' }).click();
+    await page.getByRole('button', { name: /People/ }).first().click();
+    await page.getByRole('button', { name: '+ Add Person' }).click();
+    await page.locator('#create-person-first').fill('Email');
+    await page.locator('#create-person-last').fill('Assignee');
+    await page.locator('#create-person-email').fill(inviteEmail);
+    await page.locator('#create-person-temp-password').fill('SecurePass123!');
+    const createPersonResponsePromise = page.waitForResponse((response) =>
+      response.request().method() === 'POST'
+      && response.url().includes('/api/v1/platform/admin/people'),
+    );
+    await page.getByRole('button', { name: 'Add Person' }).last().click();
 
-    await expect(page.getByTestId('admin-form-success')).toContainText('Tenant role assigned');
+    const createPersonResponse = await createPersonResponsePromise;
+    expect(createPersonResponse.status()).toBe(200);
+    const createPersonBody = await createPersonResponse.json();
+    expect(createPersonBody).toMatchObject({
+      ok: true,
+      code: 'TENANT_PERSON_CREATED',
+      data: {
+        user: {
+          email: inviteEmail.toLowerCase(),
+        },
+      },
+    });
+
+    const meResponse = await page.request.get('/api/v1/auth/me');
+    expect(meResponse.status()).toBe(200);
+    const meBody = await meResponse.json();
+    const meUserId =
+      meBody?.user?.id
+      || meBody?.data?.user?.id
+      || null;
+    expect(meUserId).toBe(currentUser.userId);
   });
 
   test('[P1] moneyshyft-governed nav and direct URLs are blocked when entitlement is missing @P1', async ({ page }) => {

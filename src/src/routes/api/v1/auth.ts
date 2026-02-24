@@ -383,6 +383,77 @@ router.post('/refresh', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/v1/auth/password/first-login-reset
+ * Complete required first-login password reset for admin-created users.
+ */
+router.post('/password/first-login-reset', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const currentPassword = typeof req.body?.currentPassword === 'string'
+      ? req.body.currentPassword
+      : '';
+    const newPassword = typeof req.body?.newPassword === 'string'
+      ? req.body.newPassword
+      : '';
+
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: 'currentPassword and newPassword are required' });
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      res.status(400).json({ error: 'newPassword must be at least 8 characters long' });
+      return;
+    }
+
+    const user = await AuthService.resetFirstLoginPassword({
+      userId: req.user.userId,
+      currentPassword,
+      newPassword,
+    });
+
+    const payload = {
+      userId: user.id,
+      email: user.email,
+      householdId: user.householdId,
+      activeTenantId: user.householdId,
+      activeOrgUnitId: null,
+      mustResetPassword: false,
+      role: user.role,
+    };
+
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+    setAuthCookies(res, accessToken, refreshToken);
+
+    res.json({
+      message: 'Password updated successfully',
+      user,
+    });
+  } catch (error) {
+    logger.error('First-login password reset error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to reset password';
+    if (message === 'Current password is incorrect') {
+      res.status(400).json({ error: message });
+      return;
+    }
+    if (message === 'Password reset is not required') {
+      res.status(409).json({ error: message });
+      return;
+    }
+    if (message === 'User not found') {
+      res.status(404).json({ error: message });
+      return;
+    }
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+/**
  * GET /api/v1/auth/me
  * Get current user info
  */

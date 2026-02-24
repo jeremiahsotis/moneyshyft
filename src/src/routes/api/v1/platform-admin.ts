@@ -1,7 +1,10 @@
 import { Request, Response, Router } from 'express';
+import { createHash, randomUUID } from 'crypto';
+import bcrypt from 'bcryptjs';
 import db from '../../../config/knex';
 import { authenticateToken } from '../../../middleware/auth';
 import { refusal, success, systemError } from '../../../platform/envelopes/response';
+import { CAPABILITIES, hasCapability } from '../../../platform/rbac/capabilities';
 import {
   createOrgUnit,
   createTenant,
@@ -17,6 +20,7 @@ import {
   upsertTenantModuleEntitlement,
   updateOrgUnit,
 } from '../../../services/PlatformAdminService';
+import adminConsoleRouter from './platform-admin-console';
 
 const router = Router();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -196,6 +200,191 @@ const handleOrgUnitHierarchyErrors = (res: Response, error: unknown): boolean =>
   return false;
 };
 
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const ADMIN_NODE_TYPES = new Set(['SUBTENANT', 'ORGUNIT', 'GROUP']);
+const ADMIN_MUTATION_IDEMPOTENCY_COLUMNS = [
+  'actor_user_id',
+  'idempotency_key',
+  'request_method',
+  'request_path',
+] as const;
+const GOVERNED_MODULES = ['connectshyft', 'moneyshyft'] as const;
+const BCRYPT_ROUNDS = 12;
+
+const isSystemAdminRequest = (req: Request): boolean => (req.user?.role || '').toUpperCase() === 'SYSTEM_ADMIN';
+
+const resolveActiveTenantId = (req: Request): string | null => {
+  const candidate = req.user?.activeTenantId || req.user?.householdId || null;
+  return typeof candidate === 'string' && candidate.trim().length > 0 ? candidate.trim() : null;
+};
+
+const normalizeNodeType = (value: unknown): 'SUBTENANT' | 'ORGUNIT' | 'GROUP' => {
+  if (typeof value !== 'string') {
+    return 'ORGUNIT';
+  }
+
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'SUBTENANT' || normalized === 'GROUP' || normalized === 'ORGUNIT') {
+    return normalized;
+  }
+
+  return 'ORGUNIT';
+};
+
+const normalizeModuleKey = (value: unknown): 'connectshyft' | 'moneyshyft' | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return (GOVERNED_MODULES as readonly string[]).includes(normalized)
+    ? normalized as 'connectshyft' | 'moneyshyft'
+    : null;
+};
+
+const buildIdempotencyRequestHash = (req: Request): string => {
+  const method = req.method.toUpperCase();
+  const path = req.path;
+  const query = JSON.stringify(req.query || {});
+  const body = JSON.stringify(req.body || {});
+  return createHash('sha256')
+    .update(`${method}:${path}:${query}:${body}`)
+    .digest('hex');
+};
+
+const withAdminIdempotency = async (
+  req: Request,
+  res: Response,
+  handler: () => Promise<void>,
+): Promise<void> => {
+  if (!WRITE_METHODS.has(req.method.toUpperCase())) {
+    await handler();
+    return;
+  }
+
+  const idempotencyKey = typeof req.header('Idempotency-Key') === 'string'
+    ? req.header('Idempotency-Key')!.trim()
+    : '';
+  if (!idempotencyKey) {
+    refusal(res, {
+      code: 'IDEMPOTENCY_KEY_REQUIRED',
+      message: 'Idempotency-Key header is required for admin write operations',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+    return;
+  }
+
+  const actorUserId = req.user?.userId || null;
+  if (!actorUserId || !isUuid(actorUserId)) {
+    refusal(res, {
+      code: 'AUTHENTICATION_REQUIRED',
+      message: 'Authenticated actor context is required',
+      refusalType: 'security',
+      httpStatus: 401,
+    });
+    return;
+  }
+
+  const requestMethod = req.method.toUpperCase();
+  const requestPath = req.path;
+  const requestHash = buildIdempotencyRequestHash(req);
+
+  const existing = await db
+    .withSchema('platform')
+    .table('idempotency_requests')
+    .where({
+      actor_user_id: actorUserId,
+      idempotency_key: idempotencyKey,
+      request_method: requestMethod,
+      request_path: requestPath,
+    })
+    .first(['request_hash', 'response_http_status', 'response_payload']);
+
+  if (existing) {
+    if (typeof existing.request_hash === 'string' && existing.request_hash !== requestHash) {
+      refusal(res, {
+        code: 'IDEMPOTENCY_KEY_CONFLICT',
+        message: 'Idempotency-Key was already used with a different request payload',
+        refusalType: 'client',
+        httpStatus: 409,
+      });
+      return;
+    }
+
+    const statusCode = typeof existing.response_http_status === 'number'
+      ? existing.response_http_status
+      : 200;
+    res.status(statusCode).json(existing.response_payload);
+    return;
+  }
+
+  const mutableRes = res as Response & {
+    status: (code: number) => Response;
+    json: (body: unknown) => Response;
+  };
+  const originalStatus = mutableRes.status.bind(res);
+  const originalJson = mutableRes.json.bind(res);
+  let capturedStatus = 200;
+  let capturedBody: unknown = undefined;
+
+  mutableRes.status = ((code: number) => {
+    capturedStatus = code;
+    return originalStatus(code);
+  }) as typeof mutableRes.status;
+
+  mutableRes.json = ((body: unknown) => {
+    capturedBody = body;
+    return originalJson(body);
+  }) as typeof mutableRes.json;
+
+  try {
+    await handler();
+  } finally {
+    mutableRes.status = originalStatus as typeof mutableRes.status;
+    mutableRes.json = originalJson as typeof mutableRes.json;
+  }
+
+  if (capturedBody === undefined) {
+    return;
+  }
+
+  try {
+    await db
+      .withSchema('platform')
+      .table('idempotency_requests')
+      .insert({
+        id: randomUUID(),
+        idempotency_key: idempotencyKey,
+        request_method: requestMethod,
+        request_path: requestPath,
+        actor_user_id: actorUserId,
+        tenant_id: resolveActiveTenantId(req),
+        request_hash: requestHash,
+        response_http_status: capturedStatus,
+        response_payload: capturedBody,
+      })
+      .onConflict(ADMIN_MUTATION_IDEMPOTENCY_COLUMNS as unknown as string[])
+      .ignore();
+  } catch (_error) {
+    // Fail-open for environments where idempotency persistence is not yet migrated.
+  }
+};
+
+const isTenantAdminContext = async (
+  req: Request,
+  tenantId: string,
+): Promise<boolean> => {
+  if (isSystemAdminRequest(req)) {
+    return true;
+  }
+
+  const evaluation = await evaluateRequestCapabilities(db, actorFromRequest(req), tenantId, undefined);
+  return hasCapability(evaluation.roles, CAPABILITIES.ORG_UNIT_CREATE)
+    || hasCapability(evaluation.roles, CAPABILITIES.TENANT_ROLE_ASSIGN)
+    || hasCapability(evaluation.roles, CAPABILITIES.TENANT_READ_ALL);
+};
+
 router.use(authenticateToken);
 
 router.get('/users/lookup', async (req: Request, res: Response) => {
@@ -272,6 +461,8 @@ router.post('/users/inline-admin', async (req: Request, res: Response) => {
     userEmail,
     firstName,
     lastName,
+    temporaryPassword,
+    forceResetOnFirstLogin,
     reason,
   } = req.body || {};
 
@@ -301,6 +492,8 @@ router.post('/users/inline-admin', async (req: Request, res: Response) => {
       userEmail,
       firstName,
       lastName,
+      temporaryPassword,
+      forceResetOnFirstLogin,
       reason,
     });
 
@@ -335,6 +528,8 @@ router.post('/tenants', async (req: Request, res: Response) => {
     assignTenantAdminUserEmail,
     assignTenantAdminFirstName,
     assignTenantAdminLastName,
+    assignTenantAdminTemporaryPassword,
+    assignTenantAdminForceResetOnFirstLogin,
     tenancyModel,
     moduleGrants,
     reason,
@@ -408,6 +603,8 @@ router.post('/tenants', async (req: Request, res: Response) => {
       assignTenantAdminUserEmail,
       assignTenantAdminFirstName,
       assignTenantAdminLastName,
+      assignTenantAdminTemporaryPassword,
+      assignTenantAdminForceResetOnFirstLogin,
       tenancyModel,
       moduleGrants,
       reason,
@@ -951,5 +1148,7 @@ router.get('/rbac/evaluate', async (req: Request, res: Response) => {
     });
   }
 });
+
+router.use(adminConsoleRouter);
 
 export default router;
