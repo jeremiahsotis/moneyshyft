@@ -9,6 +9,7 @@ const CONNECTSHYFT_CANONICAL_THREAD_STATE_SET = new Set<string>(CONNECTSHYFT_CAN
 const DEFAULT_THREAD_SOURCE = 'VOICE';
 const DEFAULT_DUE_THREAD_LIMIT = 50;
 const MAX_DUE_THREAD_LIMIT = 250;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type ConnectShyftThreadState = (typeof CONNECTSHYFT_CANONICAL_THREAD_STATES)[number];
 
@@ -208,6 +209,15 @@ const toNullableIsoUtc = (value: string | Date | null): string | null => {
   }
 
   return toIsoUtc(value);
+};
+
+const normalizeUuid = (value: unknown): string | null => {
+  const normalized = normalizeString(value);
+  if (!normalized || !UUID_PATTERN.test(normalized)) {
+    return null;
+  }
+
+  return normalized;
 };
 
 const isCanonicalThreadState = (value: string): value is ConnectShyftThreadState => {
@@ -605,6 +615,7 @@ export class KnexConnectShyftThreadStore {
   }
 
   async ensureActiveThread(input: ThreadStoreEnsureInput): Promise<ThreadPersistenceEnsureResult> {
+    const normalizedActorUserId = normalizeUuid(input.actorUserId);
     try {
       return await this.knexClient.transaction(async (trx) => {
         const existing = await trx
@@ -631,7 +642,7 @@ export class KnexConnectShyftThreadStore {
               last_inbound_cs_number_id: input.lastInboundCsNumberId,
               preferred_outbound_cs_number_id: input.preferredOutboundCsNumberId,
               next_evaluation_at_utc: input.nextEvaluationAtUtc,
-              updated_by_user_id: normalizeString(input.actorUserId) || null,
+              updated_by_user_id: normalizedActorUserId,
               updated_at_utc: trx.fn.now(),
             })
             .returning<DbThreadRow[]>(this.threadColumns());
@@ -642,7 +653,6 @@ export class KnexConnectShyftThreadStore {
           };
         }
 
-        const normalizedActorUserId = normalizeString(input.actorUserId);
         if (input.state !== 'UNCLAIMED' && !normalizedActorUserId) {
           return {
             ok: false,
@@ -721,7 +731,7 @@ export class KnexConnectShyftThreadStore {
                 last_inbound_cs_number_id: input.lastInboundCsNumberId,
                 preferred_outbound_cs_number_id: input.preferredOutboundCsNumberId,
                 next_evaluation_at_utc: input.nextEvaluationAtUtc,
-                updated_by_user_id: normalizeString(input.actorUserId) || null,
+                updated_by_user_id: normalizedActorUserId,
                 updated_at_utc: this.knexClient.fn.now(),
               })
               .returning<DbThreadRow[]>(this.threadColumns());
@@ -774,7 +784,7 @@ export class KnexConnectShyftThreadStore {
         } as ThreadPersistenceTransitionResult;
       }
 
-      const normalizedActorUserId = normalizeString(input.actorUserId);
+      const normalizedActorUserId = normalizeUuid(input.actorUserId);
       if (input.nextState !== 'UNCLAIMED' && !normalizedActorUserId) {
         return {
           ok: false,

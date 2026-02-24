@@ -129,6 +129,51 @@ describeIfDb('connectshyft threads (postgres contract)', () => {
     ).resolves.toBeDefined();
   });
 
+  it('persists ensure metadata when actor id is non-uuid without writing invalid audit UUIDs', async () => {
+    const store = new KnexConnectShyftThreadStore(db);
+    const tenantId = `${CONTRACT_TENANT_PREFIX}actor-id`;
+    const orgUnitId = 'org-contract-c1-actor-id';
+    const neighborId = 'neighbor-contract-c1-actor-id';
+    const threadId = '44444444-4444-4444-8444-444444444444';
+
+    const result = await store.ensureActiveThread({
+      tenantId,
+      orgUnitId,
+      neighborId,
+      source: 'VOICE',
+      state: 'UNCLAIMED',
+      threadId,
+      actorUserId: 'user-connectshyft-c1-operator',
+      lastInboundCsNumberId: 'cs-inbound-actor-id',
+      preferredOutboundCsNumberId: 'cs-outbound-actor-id',
+      nextEvaluationAtUtc: '2026-02-24T14:30:00.000Z',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error('Expected ensureActiveThread with non-uuid actor to succeed');
+    }
+
+    expect(result.thread.threadId).toBe(threadId);
+    expect(result.thread.escalation.nextEvaluationAtUtc).toBe('2026-02-24T14:30:00.000Z');
+
+    const persisted = await db
+      .withSchema('connectshyft')
+      .table('cs_threads')
+      .where({
+        tenant_id: tenantId,
+        id: threadId,
+      })
+      .first<{ created_by_user_id: string | null; updated_by_user_id: string | null }>(
+        'created_by_user_id',
+        'updated_by_user_id',
+      );
+
+    expect(persisted).toBeDefined();
+    expect(persisted?.created_by_user_id ?? null).toBeNull();
+    expect(persisted?.updated_by_user_id ?? null).toBeNull();
+  });
+
   it('maintains an index-backed due-thread scan contract', async () => {
     const tenantId = `${CONTRACT_TENANT_PREFIX}index`;
     const orgUnitId = 'org-contract-c1-index';
