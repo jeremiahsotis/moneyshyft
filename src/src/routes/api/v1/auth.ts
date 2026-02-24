@@ -6,7 +6,7 @@ import { setAuthCookies, clearAuthCookies, verifyRefreshToken, generateAccessTok
 import { validateRequest } from '../../../middleware/validate';
 import { signupSchema, loginSchema } from '../../../validators/auth.validators';
 import { authenticateToken } from '../../../middleware/auth';
-import { refusal, success, systemError } from '../../../platform/envelopes/response';
+import { refusal, success, error as errorEnvelope } from '../../../platform/envelopes/response';
 import logger from '../../../utils/logger';
 import PlatformSessionStore from '../../../platform/sessions/PlatformSessionStore';
 import { generateInvitationCode } from '../../../utils/invitationCode';
@@ -522,7 +522,7 @@ router.post('/password/first-login-reset', authenticateToken, async (req: Reques
       });
       return;
     }
-    systemError(res, {
+    errorEnvelope(res, {
       code: 'FIRST_LOGIN_RESET_FAILED',
       message: 'Failed to reset password',
       httpStatus: 500,

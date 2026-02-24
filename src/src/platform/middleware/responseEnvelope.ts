@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import {
   buildRefusalEnvelope,
   buildSuccessEnvelope,
-  buildSystemErrorEnvelope,
+  buildErrorEnvelope,
   EnvelopeContext,
   isEnvelopePayload
 } from '../envelopes/response';
@@ -52,7 +52,7 @@ export const responseEnvelope = (req: Request, res: Response, next: NextFunction
       const data = extractData(body);
 
       if (statusCode >= 500) {
-        const payload = buildSystemErrorEnvelope(context, {
+        const payload = buildErrorEnvelope(context, {
           code,
           message,
           ...(data !== undefined ? { data } : {})

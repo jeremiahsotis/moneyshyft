@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
 import db from '../../../config/knex';
 import { authenticateToken } from '../../../middleware/auth';
-import { refusal, replayEnvelope, success, systemError } from '../../../platform/envelopes/response';
+import { refusal, replayEnvelope, success, error as errorEnvelope } from '../../../platform/envelopes/response';
 import { CAPABILITIES, hasCapability } from '../../../platform/rbac/capabilities';
 import {
   createOrgUnit,
@@ -446,7 +446,7 @@ router.get('/users/lookup', async (req: Request, res: Response) => {
       return;
     }
 
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'SCOPED_USER_LOOKUP_FAILED',
       message: getMessage(error, 'Failed to execute scoped user lookup'),
       httpStatus: 500,
@@ -511,7 +511,7 @@ router.post('/users/inline-admin', async (req: Request, res: Response) => {
       return;
     }
 
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'INLINE_ADMIN_USER_RESOLUTION_FAILED',
       message: getMessage(error, 'Failed to resolve inline admin identity'),
       httpStatus: 500,
@@ -620,7 +620,7 @@ router.post('/tenants', async (req: Request, res: Response) => {
       return;
     }
 
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'TENANT_CREATE_FAILED',
       message: getMessage(error, 'Failed to create tenant'),
       httpStatus: 500,
@@ -687,7 +687,7 @@ router.put('/module-entitlements', async (req: Request, res: Response) => {
       return;
     }
 
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'MODULE_ENTITLEMENT_UPDATE_FAILED',
       message: getMessage(error, 'Failed to update tenant module entitlement'),
       httpStatus: 500,
@@ -740,7 +740,7 @@ router.post('/org-units', async (req: Request, res: Response) => {
       return;
     }
 
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'ORG_UNIT_CREATE_FAILED',
       message: getMessage(error, 'Failed to create org unit'),
       httpStatus: 500,
@@ -831,7 +831,7 @@ router.put('/org-units/:orgUnitId', async (req: Request, res: Response) => {
       return;
     }
 
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'ORG_UNIT_UPDATE_FAILED',
       message: getMessage(error, 'Failed to update org unit'),
       httpStatus: 500,
@@ -891,7 +891,7 @@ router.post('/tenant-memberships', async (req: Request, res: Response) => {
       return;
     }
 
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'TENANT_MEMBERSHIP_UPDATE_FAILED',
       message: getMessage(error, 'Failed to update tenant membership'),
       httpStatus: 500,
@@ -952,7 +952,7 @@ router.delete('/tenant-memberships', async (req: Request, res: Response) => {
       return;
     }
 
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'TENANT_MEMBERSHIP_REVOKE_FAILED',
       message: getMessage(error, 'Failed to revoke tenant membership'),
       httpStatus: 500,
@@ -1038,7 +1038,7 @@ router.post('/org-unit-memberships', async (req: Request, res: Response) => {
       return;
     }
 
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'ORG_UNIT_MEMBERSHIP_UPDATE_FAILED',
       message: getMessage(error, 'Failed to update org unit membership'),
       httpStatus: 500,
@@ -1116,7 +1116,7 @@ router.delete('/org-unit-memberships', async (req: Request, res: Response) => {
       return;
     }
 
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'ORG_UNIT_MEMBERSHIP_REVOKE_FAILED',
       message: getMessage(error, 'Failed to revoke org unit membership'),
       httpStatus: 500,
@@ -1141,7 +1141,7 @@ router.get('/rbac/evaluate', async (req: Request, res: Response) => {
       data,
     });
   } catch (error) {
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'RBAC_EVALUATION_FAILED',
       message: getMessage(error, 'Failed to evaluate RBAC'),
       httpStatus: 500,

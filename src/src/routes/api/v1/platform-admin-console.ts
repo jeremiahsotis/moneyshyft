@@ -2,7 +2,7 @@ import { Request, Response, Router } from 'express';
 import { createHash, randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
 import db from '../../../config/knex';
-import { refusal, success, systemError } from '../../../platform/envelopes/response';
+import { refusal, success, error as errorEnvelope } from '../../../platform/envelopes/response';
 import { CAPABILITIES, hasCapability } from '../../../platform/rbac/capabilities';
 import {
   ensureScopedAdminUser,
@@ -443,7 +443,7 @@ const ensureTenantAccess = async (
 
     return { tenantId, evaluation };
   } catch (error) {
-    systemError(res, {
+    errorEnvelope(res, {
       code: 'RBAC_EVALUATION_FAILED',
       message: error instanceof Error ? error.message : 'Failed to evaluate access',
       httpStatus: 500,
@@ -1148,7 +1148,7 @@ router.get('/tenants', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    systemError(res, {
+    errorEnvelope(res, {
       code: 'TENANTS_LIST_FAILED',
       message: error instanceof Error ? error.message : 'Failed to resolve tenants',
       httpStatus: 500,
@@ -1233,7 +1233,7 @@ router.get('/tenants/:tenantId', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    systemError(res, {
+    errorEnvelope(res, {
       code: 'TENANT_DETAIL_FAILED',
       message: error instanceof Error ? error.message : 'Failed to resolve tenant detail',
       httpStatus: 500,
@@ -1306,7 +1306,7 @@ router.patch('/tenants/:tenantId/modules', async (req: Request, res: Response) =
         },
       });
     } catch (error) {
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'TENANT_MODULES_UPDATE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to update tenant modules',
         httpStatus: 500,
@@ -1386,7 +1386,7 @@ router.patch('/tenants/:tenantId/structure-rules', async (req: Request, res: Res
         },
       });
     } catch (error) {
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'TENANT_STRUCTURE_RULES_UPDATE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to update tenant structure rules',
         httpStatus: 500,
@@ -1484,7 +1484,7 @@ router.post('/tenants/:tenantId/admins', async (req: Request, res: Response) => 
         return;
       }
 
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'TENANT_ADMIN_ASSIGN_FAILED',
         message: error instanceof Error ? error.message : 'Failed to assign tenant admin',
         httpStatus: 500,
@@ -1545,7 +1545,7 @@ router.delete('/tenants/:tenantId/admins/:userId', async (req: Request, res: Res
         data: { tenantId, userId },
       });
     } catch (error) {
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'TENANT_ADMIN_REMOVE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to remove tenant admin',
         httpStatus: 500,
@@ -1607,7 +1607,7 @@ router.get('/users/global', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    systemError(res, {
+    errorEnvelope(res, {
       code: 'GLOBAL_USERS_RESOLVE_FAILED',
       message: error instanceof Error ? error.message : 'Failed to resolve global users',
       httpStatus: 500,
@@ -1639,7 +1639,7 @@ router.get('/structure/tree', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    systemError(res, {
+    errorEnvelope(res, {
       code: 'STRUCTURE_TREE_RESOLVE_FAILED',
       message: error instanceof Error ? error.message : 'Failed to resolve structure tree',
       httpStatus: 500,
@@ -1830,7 +1830,7 @@ router.post('/structure/nodes', async (req: Request, res: Response) => {
         },
       });
     } catch (error) {
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'STRUCTURE_NODE_CREATE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to create structure node',
         httpStatus: 500,
@@ -1954,7 +1954,7 @@ router.patch('/structure/nodes/:nodeId', async (req: Request, res: Response) => 
         },
       });
     } catch (error) {
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'STRUCTURE_NODE_UPDATE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to update structure node',
         httpStatus: 500,
@@ -2078,7 +2078,7 @@ router.post('/structure/nodes/move', async (req: Request, res: Response) => {
         },
       });
     } catch (error) {
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'STRUCTURE_NODE_MOVE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to move structure nodes',
         httpStatus: 500,
@@ -2160,7 +2160,7 @@ router.post('/structure/nodes/:nodeId/archive', async (req: Request, res: Respon
         },
       });
     } catch (error) {
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'STRUCTURE_NODE_ARCHIVE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to archive node',
         httpStatus: 500,
@@ -2265,7 +2265,7 @@ router.post('/structure/nodes/:nodeId/restore', async (req: Request, res: Respon
         },
       });
     } catch (error) {
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'STRUCTURE_NODE_RESTORE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to restore node',
         httpStatus: 500,
@@ -2345,7 +2345,7 @@ router.post('/structure/nodes/:nodeId/admin', async (req: Request, res: Response
         return;
       }
 
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'STRUCTURE_NODE_ADMIN_ASSIGN_FAILED',
         message: error instanceof Error ? error.message : 'Failed to assign node admin',
         httpStatus: 500,
@@ -2429,7 +2429,7 @@ router.patch('/structure/nodes/:nodeId/modules', async (req: Request, res: Respo
         },
       });
     } catch (error) {
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'NODE_MODULE_OVERRIDE_UPDATE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to update node module override',
         httpStatus: 500,
@@ -2509,7 +2509,7 @@ router.post('/structure/nodes/modules/bulk-toggle', async (req: Request, res: Re
         },
       });
     } catch (error) {
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'BULK_MODULE_TOGGLE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to apply bulk module toggle',
         httpStatus: 500,
@@ -2625,7 +2625,7 @@ router.get('/people', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    systemError(res, {
+    errorEnvelope(res, {
       code: 'TENANT_PEOPLE_RESOLVE_FAILED',
       message: error instanceof Error ? error.message : 'Failed to resolve people',
       httpStatus: 500,
@@ -2740,7 +2740,7 @@ router.post('/people', async (req: Request, res: Response) => {
         },
       });
     } catch (error) {
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'TENANT_PERSON_CREATE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to create person',
         httpStatus: 500,
@@ -2870,7 +2870,7 @@ router.patch('/people/:userId', async (req: Request, res: Response) => {
         },
       });
     } catch (error) {
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'TENANT_PERSON_UPDATE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to update person',
         httpStatus: 500,
@@ -2926,7 +2926,7 @@ router.get('/integrity/summary', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    systemError(res, {
+    errorEnvelope(res, {
       code: 'INTEGRITY_SUMMARY_RESOLVE_FAILED',
       message: error instanceof Error ? error.message : 'Failed to resolve integrity summary',
       httpStatus: 500,
@@ -2969,7 +2969,7 @@ router.get('/integrity', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    systemError(res, {
+    errorEnvelope(res, {
       code: 'INTEGRITY_ISSUES_RESOLVE_FAILED',
       message: error instanceof Error ? error.message : 'Failed to resolve integrity issues',
       httpStatus: 500,
@@ -3175,7 +3175,7 @@ router.post('/integrity/fix', async (req: Request, res: Response) => {
         return;
       }
 
-      systemError(res, {
+      errorEnvelope(res, {
         code: 'INTEGRITY_FIX_FAILED',
         message: error instanceof Error ? error.message : 'Failed to apply integrity fix',
         httpStatus: 500,
@@ -3265,7 +3265,7 @@ router.get('/audit/events', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    systemError(res, {
+    errorEnvelope(res, {
       code: 'AUDIT_EVENTS_RESOLVE_FAILED',
       message: error instanceof Error ? error.message : 'Failed to resolve audit events',
       httpStatus: 500,

@@ -185,7 +185,7 @@ describe('Story 0.5 - shared API envelope and business refusal contract', () => 
   });
 
   describe('shared system error contract helper', () => {
-    it('returns systemError envelope with explicit error type and status', async () => {
+    it('returns error envelope with explicit error type and status', async () => {
       const app = buildApp();
 
       const response = await request(app)
