@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight','step-02-generate-pipeline','step-03-configure-quality-gates','step-04-validate-and-summary']
 lastStep: 'step-04-validate-and-summary'
-lastSaved: '2026-02-24T12:14:09Z'
+lastSaved: '2026-02-24T18:52:17Z'
 ---
 
 # CI Workflow Progress (ConnectShyft Epic A)
@@ -129,3 +129,56 @@ lastSaved: '2026-02-24T12:14:09Z'
   - `tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts`
   - `tests/e2e/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.spec.ts`
 - Epic B CI workflow retry status: **ready to run in CI**.
+
+---
+
+# CI Workflow Progress (Epic 2)
+
+## Step 1: Preflight Checks
+- Git repository validated: `.git/` present.
+- Git remote validated: `origin` configured to GitHub.
+- Test framework validated: `playwright.config.ts` present and `@playwright/test` configured in root `package.json`.
+- Branch workflow guard validated:
+  - `npm run branch:ensure-workflow -- --workflow _bmad/tea/workflows/testarch/ci/workflow.yaml --epic 2`
+  - Result: guard passed (no explicit branch rule for this workflow path).
+- Local test command validated:
+  - `npm run test:e2e`
+  - Result after selector hardening: `274 passed`, `145 skipped`, `0 failed`.
+  - Hardening applied: `frontend/src/views/Transactions/RecurringTransactionsView.vue` now uses `recurring-add-first-button` for the empty-state CTA to keep `recurring-add-button` unique.
+- CI platform detection:
+  - Existing GitHub Actions workflow detected at `.github/workflows/test.yml`.
+  - Mode selected: update in place only if required.
+- Environment context:
+  - `.nvmrc` found with Node `24`.
+  - Package manager strategy detected: `npm` with lockfile cache inputs.
+
+## Step 2: Generate CI Pipeline
+- Platform selected: GitHub Actions.
+- Existing pipeline at `.github/workflows/test.yml` already matches required staged topology for Epic 2:
+  - `policy` -> `lint` -> `test` (4 shards) -> `burn-in` -> `quality-gates` -> optional `backend-contracts` -> `report`.
+- Existing artifact and cache strategy validated and retained:
+  - lockfile-aware Node cache across root/frontend/src lockfiles.
+  - always-on gate snapshots per shard.
+  - failure-only heavy debug artifact uploads.
+- Structural workflow edits for CI were not required in this run.
+
+## Step 3: Quality Gates & Notifications
+- Burn-in configuration validated against TEA `ci-burn-in` guidance:
+  - PR/scheduled burn-in enabled.
+  - Iteration count fixed at `10` (`bash scripts/burn-in.sh 10 origin/production`).
+- Quality thresholds validated:
+  - `npm run quality-gates` output:
+    - `P0 tagged tests: 116` and `P0 pass rate: 100.00%`
+    - `P1 tagged tests: 153` and `P1 pass rate: 100.00%`
+  - Required security verification suites executed and passed.
+- Notifications and report hooks validated:
+  - `report` job publishes CI summary with run and artifact links.
+  - Slack failure notification remains configured when `SLACK_WEBHOOK_URL` is set.
+
+## Step 4: Validate & Summary
+- Validation outcome: pass for CI topology, shard configuration, burn-in, quality gates, optional contracts lane, and reporting.
+- CI config path: `.github/workflows/test.yml`.
+- Supporting docs remain aligned:
+  - `docs/ci.md`
+  - `docs/ci-secrets-checklist.md`
+- Epic 2 CI readiness status: **ready to run in GitHub Actions**.
