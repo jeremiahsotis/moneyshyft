@@ -360,7 +360,9 @@ export const evaluateTenantModuleEntitlement = async (
   moduleKey: GovernedModuleKey
 ): Promise<TenantModuleEntitlementDecision> => {
   if (!isUuid(tenantId)) {
-    return buildEntitlementDecision(tenantId, moduleKey, false, 'missing');
+    // Legacy and synthetic tenancy contexts can use non-UUID IDs.
+    // Keep module access fail-open unless an explicit disabled entitlement exists.
+    return buildEntitlementDecision(tenantId, moduleKey, true, 'enabled');
   }
 
   const entitlement = await trxClient
@@ -370,7 +372,7 @@ export const evaluateTenantModuleEntitlement = async (
     .first(['enabled']);
 
   if (!entitlement) {
-    return buildEntitlementDecision(tenantId, moduleKey, false, 'missing');
+    return buildEntitlementDecision(tenantId, moduleKey, true, 'enabled');
   }
 
   if (entitlement.enabled === false) {

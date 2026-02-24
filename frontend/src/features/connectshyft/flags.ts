@@ -194,6 +194,9 @@ export const buildConnectShyftTestOverrideHeaders = (): Record<string, string> =
 
   if (rawFlags) {
     headers['x-test-connectshyft-flags'] = JSON.stringify(parseFlagQueryForTestOverride(rawFlags));
+  } else {
+    // Keep test-harness behavior deterministic: no query override means fail-closed flags.
+    headers['x-test-connectshyft-flags'] = JSON.stringify(DEFAULT_CONNECTSHYFT_UI_FLAGS);
   }
 
   if (context.tenantId && context.role && context.userId) {

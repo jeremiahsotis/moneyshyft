@@ -128,12 +128,12 @@ const unavailableMessage = computed(() => {
     return availability.value.refusal.message;
   }
 
-  if (availability.value.entitlement && availability.value.entitlement.enabled === false) {
-    return 'ConnectShyft module entitlement is disabled for this tenant.';
-  }
-
   if (!moduleAvailable.value) {
-    return 'ConnectShyft module access is unavailable for this tenant.';
+    if (availability.value.entitlement && availability.value.entitlement.enabled === false) {
+      return 'ConnectShyft module entitlement is disabled for this tenant.';
+    }
+
+    return 'ConnectShyft is currently unavailable for this tenant. Enable connectshyft_enabled to access this module.';
   }
 
   return 'ConnectShyft inbox is currently unavailable for this tenant.';
