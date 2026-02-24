@@ -29,7 +29,7 @@ export type ConnectShyftThread = {
   updatedAtUtc: string;
   escalation: {
     stage: number;
-    nextEvaluationAtUtc: string;
+    nextEvaluationAtUtc: string | null;
   };
 };
 
@@ -48,7 +48,7 @@ type ThreadStoreEnsureInput = {
   preferredOutboundCsNumberId: string;
   threadId?: string;
   actorUserId?: string | null;
-  nextEvaluationAtUtc: string;
+  nextEvaluationAtUtc: string | null;
 };
 
 type ThreadStoreListDueInput = {
@@ -168,7 +168,7 @@ type DbThreadRow = {
   source: string;
   state: ConnectShyftThreadState;
   escalation_stage: number;
-  next_evaluation_at_utc: string | Date;
+  next_evaluation_at_utc: string | Date | null;
   last_inbound_cs_number_id: string;
   preferred_outbound_cs_number_id: string;
   claimed_by_user_id: string | null;
@@ -241,9 +241,14 @@ const normalizeDueThreadLimit = (value: number | undefined): number => {
 };
 
 const compareDueThreads = (left: ConnectShyftThread, right: ConnectShyftThread): number => {
+  const leftDue = left.escalation.nextEvaluationAtUtc
+    ? new Date(left.escalation.nextEvaluationAtUtc).getTime()
+    : Number.POSITIVE_INFINITY;
+  const rightDue = right.escalation.nextEvaluationAtUtc
+    ? new Date(right.escalation.nextEvaluationAtUtc).getTime()
+    : Number.POSITIVE_INFINITY;
   const dueDiff =
-    new Date(left.escalation.nextEvaluationAtUtc).getTime()
-    - new Date(right.escalation.nextEvaluationAtUtc).getTime();
+    leftDue - rightDue;
   if (dueDiff !== 0) {
     return dueDiff;
   }
@@ -353,7 +358,7 @@ const mapDbRowToThread = (row: DbThreadRow): ConnectShyftThread => ({
   updatedAtUtc: toIsoUtc(row.updated_at_utc),
   escalation: {
     stage: row.escalation_stage,
-    nextEvaluationAtUtc: toIsoUtc(row.next_evaluation_at_utc),
+    nextEvaluationAtUtc: toNullableIsoUtc(row.next_evaluation_at_utc),
   },
 });
 
@@ -390,6 +395,12 @@ const buildThreadTransitionCapabilityRefusal = (): ThreadRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_THREAD_TRANSITION_FORBIDDEN',
   message: 'Thread transition requires an authorized ConnectShyft role.',
+});
+
+const buildEnsureStateTransitionRefusal = (): ThreadRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_THREAD_TRANSITION_FORBIDDEN',
+  message: 'POST /threads only supports UNCLAIMED ensures. Use claim/takeover/close lifecycle actions.',
 });
 
 const buildThreadStateInvalidRefusal = (): ThreadRefusalResult => ({
@@ -449,7 +460,7 @@ export class InMemoryConnectShyftThreadStore {
           updatedAtUtc: now,
           escalation: {
             ...existing.escalation,
-            nextEvaluationAtUtc: input.nextEvaluationAtUtc,
+            nextEvaluationAtUtc: input.nextEvaluationAtUtc ?? existing.escalation.nextEvaluationAtUtc,
           },
         };
         this.threadsById.set(existing.threadId, updated);
@@ -510,7 +521,8 @@ export class InMemoryConnectShyftThreadStore {
       .filter((thread) =>
         thread.tenantId === input.tenantId
         && thread.orgUnitId === input.orgUnitId
-        && thread.state !== 'CLOSED')
+        && thread.state !== 'CLOSED'
+        && thread.escalation.nextEvaluationAtUtc !== null)
       .sort(compareDueThreads)
       .slice(0, input.limit)
       .map(cloneThread);
@@ -542,6 +554,13 @@ export class InMemoryConnectShyftThreadStore {
       closedByUserId: lifecycle.closedByUserId,
       closedAtUtc: lifecycle.closedAtUtc,
       updatedAtUtc: now,
+      escalation: {
+        ...existing.escalation,
+        nextEvaluationAtUtc:
+          input.nextState === 'UNCLAIMED'
+            ? existing.escalation.nextEvaluationAtUtc || now
+            : null,
+      },
     };
 
     const scopeKey = buildScopeKey(existing.tenantId, existing.orgUnitId, existing.neighborId);
@@ -689,9 +708,27 @@ export class KnexConnectShyftThreadStore {
             .first<DbThreadRow>(this.threadColumns());
 
           if (existing) {
+            const [updated] = await this.knexClient
+              .withSchema('connectshyft')
+              .table('cs_threads')
+              .where({
+                tenant_id: input.tenantId,
+                id: existing.id,
+              })
+              .whereNot('state', 'CLOSED')
+              .update({
+                source: input.source,
+                last_inbound_cs_number_id: input.lastInboundCsNumberId,
+                preferred_outbound_cs_number_id: input.preferredOutboundCsNumberId,
+                next_evaluation_at_utc: input.nextEvaluationAtUtc,
+                updated_by_user_id: normalizeString(input.actorUserId) || null,
+                updated_at_utc: this.knexClient.fn.now(),
+              })
+              .returning<DbThreadRow[]>(this.threadColumns());
+
             return {
               ok: true,
-              thread: mapDbRowToThread(existing),
+              thread: mapDbRowToThread(updated || existing),
             };
           }
         }
@@ -710,6 +747,7 @@ export class KnexConnectShyftThreadStore {
         org_unit_id: input.orgUnitId,
       })
       .whereNot('state', 'CLOSED')
+      .whereNotNull('next_evaluation_at_utc')
       .orderBy('next_evaluation_at_utc', 'asc')
       .orderBy('id', 'asc')
       .limit(input.limit)
@@ -755,14 +793,17 @@ export class KnexConnectShyftThreadStore {
         updatePayload.claimed_at_utc = null;
         updatePayload.closed_by_user_id = null;
         updatePayload.closed_at_utc = null;
+        updatePayload.next_evaluation_at_utc = existing.next_evaluation_at_utc || trx.fn.now();
       } else if (input.nextState === 'CLAIMED') {
         updatePayload.claimed_by_user_id = normalizedActorUserId;
         updatePayload.claimed_at_utc = trx.fn.now();
         updatePayload.closed_by_user_id = null;
         updatePayload.closed_at_utc = null;
+        updatePayload.next_evaluation_at_utc = null;
       } else {
         updatePayload.closed_by_user_id = normalizedActorUserId;
         updatePayload.closed_at_utc = trx.fn.now();
+        updatePayload.next_evaluation_at_utc = null;
       }
 
       const [updated] = await trx
@@ -796,6 +837,9 @@ export class ConnectShyftThreadService {
     const state = normalizeThreadState(input.forcedState);
     if (!state) {
       return buildThreadStateInvalidRefusal();
+    }
+    if (state !== 'UNCLAIMED') {
+      return buildEnsureStateTransitionRefusal();
     }
 
     const nextEvaluationAtUtc = normalizeString(input.nextEvaluationAtUtc) || nowIsoUtc();
@@ -901,6 +945,9 @@ export class AsyncConnectShyftThreadService {
     const state = normalizeThreadState(input.forcedState);
     if (!state) {
       return buildThreadStateInvalidRefusal();
+    }
+    if (state !== 'UNCLAIMED') {
+      return buildEnsureStateTransitionRefusal();
     }
 
     const nextEvaluationAtUtc = normalizeString(input.nextEvaluationAtUtc) || nowIsoUtc();

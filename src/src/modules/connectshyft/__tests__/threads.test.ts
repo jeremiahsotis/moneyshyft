@@ -52,9 +52,29 @@ describe('connectshyft thread service', () => {
     }
 
     expect(['UNCLAIMED', 'CLAIMED', 'CLOSED']).toContain(result.data.thread.state);
-    expect(new Date(result.data.thread.escalation.nextEvaluationAtUtc).toISOString()).toBe(
-      result.data.thread.escalation.nextEvaluationAtUtc,
-    );
+    expect(result.data.thread.escalation.nextEvaluationAtUtc).toEqual(expect.any(String));
+    const dueTimestamp = result.data.thread.escalation.nextEvaluationAtUtc as string;
+    expect(new Date(dueTimestamp).toISOString()).toBe(dueTimestamp);
+  });
+
+  it('refuses lifecycle state transitions through ensureThread even for valid canonical states', () => {
+    const result = service.ensureThread({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c1',
+      orgUnitId: 'org-connectshyft-c1-east',
+      neighborId: 'neighbor-connectshyft-c1-1001',
+      source: 'VOICE',
+      forcedState: 'CLAIMED',
+      actorUserId: 'user-connectshyft-c1-operator',
+      lastInboundCsNumberId: 'cs-inbound-c1-001',
+      preferredOutboundCsNumberId: 'cs-outbound-c1-001',
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_TRANSITION_FORBIDDEN',
+      message: expect.stringContaining('POST /threads only supports UNCLAIMED'),
+    });
   });
 
   it('keeps one active thread identity under duplicate ensure attempts for the same tenant-orgUnit-neighbor tuple', () => {
@@ -209,6 +229,7 @@ describe('connectshyft thread service', () => {
     expect(claimed.data.thread.claimedAtUtc).toEqual(expect.any(String));
     expect(claimed.data.thread.closedByUserId).toBeNull();
     expect(claimed.data.thread.closedAtUtc).toBeNull();
+    expect(claimed.data.thread.escalation.nextEvaluationAtUtc).toBeNull();
 
     const closed = service.transitionThreadState({
       actorRoles: ['ORGUNIT_MEMBER'],
@@ -225,6 +246,7 @@ describe('connectshyft thread service', () => {
     expect(closed.data.thread.state).toBe('CLOSED');
     expect(closed.data.thread.closedByUserId).toBe('user-connectshyft-c1-supervisor');
     expect(closed.data.thread.closedAtUtc).toEqual(expect.any(String));
+    expect(closed.data.thread.escalation.nextEvaluationAtUtc).toBeNull();
 
     const reopened = service.transitionThreadState({
       actorRoles: ['ORGUNIT_MEMBER'],
@@ -242,6 +264,7 @@ describe('connectshyft thread service', () => {
     expect(reopened.data.thread.claimedAtUtc).toBeNull();
     expect(reopened.data.thread.closedByUserId).toBeNull();
     expect(reopened.data.thread.closedAtUtc).toBeNull();
+    expect(reopened.data.thread.escalation.nextEvaluationAtUtc).toEqual(expect.any(String));
   });
 });
 

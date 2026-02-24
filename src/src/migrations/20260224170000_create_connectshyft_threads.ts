@@ -20,7 +20,7 @@ export async function up(knex: Knex): Promise<void> {
       source TEXT NOT NULL DEFAULT 'VOICE',
       state TEXT NOT NULL DEFAULT 'UNCLAIMED',
       escalation_stage INTEGER NOT NULL DEFAULT 0,
-      next_evaluation_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      next_evaluation_at_utc TIMESTAMPTZ DEFAULT NOW(),
       last_inbound_cs_number_id TEXT NOT NULL DEFAULT '',
       preferred_outbound_cs_number_id TEXT NOT NULL DEFAULT '',
       claimed_by_user_id UUID NULL REFERENCES users(id) ON DELETE SET NULL,
@@ -60,7 +60,7 @@ export async function up(knex: Knex): Promise<void> {
   `);
   await knex.raw(`
     ALTER TABLE IF EXISTS connectshyft.${THREADS_TABLE}
-      ADD COLUMN IF NOT EXISTS next_evaluation_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      ADD COLUMN IF NOT EXISTS next_evaluation_at_utc TIMESTAMPTZ DEFAULT NOW()
   `);
   await knex.raw(`
     ALTER TABLE IF EXISTS connectshyft.${THREADS_TABLE}
@@ -101,6 +101,34 @@ export async function up(knex: Knex): Promise<void> {
   await knex.raw(`
     ALTER TABLE IF EXISTS connectshyft.${THREADS_TABLE}
       ADD COLUMN IF NOT EXISTS updated_at_utc TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  `);
+
+  await knex.raw(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM connectshyft.${THREADS_TABLE}
+        WHERE tenant_id IS NULL
+          OR org_unit_id IS NULL
+          OR neighbor_id IS NULL
+      ) THEN
+        RAISE EXCEPTION
+          'connectshyft.cs_threads has NULL scope columns; backfill tenant_id, org_unit_id, and neighbor_id before continuing';
+      END IF;
+    END $$;
+  `);
+
+  await knex.raw(`
+    ALTER TABLE IF EXISTS connectshyft.${THREADS_TABLE}
+      ALTER COLUMN tenant_id SET NOT NULL,
+      ALTER COLUMN org_unit_id SET NOT NULL,
+      ALTER COLUMN neighbor_id SET NOT NULL
+  `);
+
+  await knex.raw(`
+    ALTER TABLE IF EXISTS connectshyft.${THREADS_TABLE}
+      ALTER COLUMN next_evaluation_at_utc DROP NOT NULL
   `);
 
   await knex.raw(`
@@ -163,9 +191,13 @@ export async function up(knex: Knex): Promise<void> {
   `);
 
   await knex.raw(`
+    DROP INDEX IF EXISTS connectshyft.${THREADS_DUE_EVAL_INDEX}
+  `);
+
+  await knex.raw(`
     CREATE INDEX IF NOT EXISTS ${THREADS_DUE_EVAL_INDEX}
     ON connectshyft.${THREADS_TABLE} (tenant_id, org_unit_id, next_evaluation_at_utc, id)
-    WHERE state <> 'CLOSED'
+    WHERE state <> 'CLOSED' AND next_evaluation_at_utc IS NOT NULL
   `);
 }
 

@@ -57,7 +57,7 @@ development_status:
   b-4-role-restricted-neighbor-merge-with-irreversible-confirmation: ready-for-dev
   epic-b-retrospective: optional
   epic-c: in-progress
-  c-1-core-connectshyft-thread-schema-and-lifecycle-constraints: review
+  c-1-core-connectshyft-thread-schema-and-lifecycle-constraints: done
   c-2-thread-ensure-endpoint-with-conflict-safe-idempotency: ready-for-dev
   c-3-inbox-and-thread-detail-read-contracts: ready-for-dev
   c-4-claim-takeover-and-close-lifecycle-actions: ready-for-dev

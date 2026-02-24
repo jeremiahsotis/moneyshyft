@@ -1,6 +1,6 @@
 # Story c.1: Core ConnectShyft Thread Schema and Lifecycle Constraints
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -23,8 +23,8 @@ so that thread lifecycle behavior is enforced at the persistence layer.
 - Backend/API Implies Human Operability: no
 - Frontend/Operator Usability Criteria Included: no
 - Operability Pairing Notes: Data integrity of thread lifecycle state is a precondition for all inbox/operator behavior.
-- Real-User Validation Evidence: Pending implementation. Validate schema and index behavior under realistic write concurrency.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-02-24 real-DB validation completed. Evidence bundle: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/validation/c-1-real-user-validation-2026-02-24` (see `06-evidence-summary.md` and artifacts `00-05`). Contract suite passed (3/3), duplicate-active check returned 0 rows, claimed/closed nullable scheduler check returned 0 rows, EXPLAIN used `cs_threads_due_eval_idx`.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Schema foundation story; no role administration surface introduced.
@@ -124,6 +124,9 @@ GPT-5 Codex
 
 - `npm run branch:ensure-workflow -- --workflow dev-story --story c-1-core-connectshyft-thread-schema-and-lifecycle-constraints`
 - `cd src && npm test -- src/migrations/__tests__/connectShyftThreadsMigration.test.ts src/modules/connectshyft/__tests__/threads.test.ts`
+- `cd src && npm test -- src/src/migrations/__tests__/connectShyftThreadsMigration.test.ts src/src/modules/connectshyft/__tests__/threads.test.ts src/src/modules/connectshyft/__tests__/threads.contract.test.ts`
+- `docker run --rm --network container:moneyshyft-postgres-1 -v /Users/jeremiahotis/projects/connectshyft:/work -w /work/src node:22-bullseye bash -lc "MONEYSHYFT_TEST_DATABASE_URL='postgresql://jeremiahotis:Oiruueu12@127.0.0.1:5432/moneyshyft' npm test -- --runInBand --verbose src/src/modules/connectshyft/__tests__/threads.contract.test.ts"`
+- `docker exec -i moneyshyft-postgres-1 psql -U jeremiahotis -d moneyshyft -v ON_ERROR_STOP=1` (schema/index, row-level, and EXPLAIN validation queries; outputs captured under validation evidence bundle)
 - `cd src && npm test`
 - `cd src && npm run build`
 
@@ -134,6 +137,7 @@ GPT-5 Codex
 - Wired `POST /api/v1/connectshyft/threads` to persisted thread ensure logic and added `GET /api/v1/connectshyft/internal/threads/due` for scheduler scans.
 - Added repository/migration validation coverage for canonical state enforcement, single-active-thread behavior, lifecycle transition nullable fields, and due-ordering assumptions.
 - Verified backend regression suite and TypeScript build pass after implementation.
+- Resolved review findings by enforcing non-null scope columns, allowing nullable `next_evaluation_at_utc`, blocking lifecycle transitions through `POST /threads`, adding conflict-race metadata-update handling, and adding env-gated Postgres contract tests for concurrency/index assumptions.
 
 ### File List
 
@@ -141,11 +145,38 @@ GPT-5 Codex
 - src/src/migrations/__tests__/connectShyftThreadsMigration.test.ts
 - src/src/modules/connectshyft/threads.ts
 - src/src/modules/connectshyft/__tests__/threads.test.ts
+- src/src/modules/connectshyft/__tests__/threads.contract.test.ts
 - src/src/routes/api/v1/connectshyft.ts
 - _bmad-output/implementation-artifacts/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.md
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- _bmad-output/implementation-artifacts/validation/c-1-real-user-validation-2026-02-24/00-db-connection.txt
+- _bmad-output/implementation-artifacts/validation/c-1-real-user-validation-2026-02-24/01-migrate-latest.txt
+- _bmad-output/implementation-artifacts/validation/c-1-real-user-validation-2026-02-24/01b-migrate-latest-explicit-dburl.txt
+- _bmad-output/implementation-artifacts/validation/c-1-real-user-validation-2026-02-24/01c-migrate-latest-escalated.txt
+- _bmad-output/implementation-artifacts/validation/c-1-real-user-validation-2026-02-24/02-threads-contract-test.txt
+- _bmad-output/implementation-artifacts/validation/c-1-real-user-validation-2026-02-24/03-schema-and-index-checks.txt
+- _bmad-output/implementation-artifacts/validation/c-1-real-user-validation-2026-02-24/04-row-level-checks.txt
+- _bmad-output/implementation-artifacts/validation/c-1-real-user-validation-2026-02-24/05-explain-due-scan.txt
+- _bmad-output/implementation-artifacts/validation/c-1-real-user-validation-2026-02-24/06-evidence-summary.md
+- _bmad-output/implementation-artifacts/validation/c-1-real-user-validation-2026-02-24/commands.env.txt
+
+## Senior Developer Review (AI)
+
+- Review date: 2026-02-24
+- Outcome: Findings resolved in code/tests; guardrail blocker cleared after real-user validation evidence captured.
+- Findings resolved:
+  - Enforced scope-column non-null guarantees in additive migration path.
+  - Removed ensure-route lifecycle mutation path (`forcedState` no longer accepted by route, ensure service limited to `UNCLAIMED`).
+  - Added Postgres contract tests for race-safe single-active-thread behavior and due-index query plan assumptions.
+  - Aligned schema/service with nullable `next_evaluation_at_utc` semantics for non-due lifecycle states.
+  - Updated conflict-retry ensure path to persist latest metadata after unique-index races.
+- Git/story reconciliation:
+  - Story File List now matches all modified source/test/artifact files from this remediation cycle.
+  - Story and sprint tracking are synchronized to `done`.
 
 ## Change Log
 
 - 2026-02-24: Created Story c.1 ready-for-dev context document.
 - 2026-02-24: Implemented core ConnectShyft thread schema, lifecycle repository/service wiring, and C.1 migration/repository validation coverage; set story to review.
+- 2026-02-24: Resolved 5 senior-review findings, added Postgres contract coverage, and moved story/sprint status to `in-progress` pending real-user validation evidence.
+- 2026-02-24: Completed real-user DB validation (contract tests + SQL evidence bundle), updated guardrail evidence/result to pass, and advanced story to `done`.

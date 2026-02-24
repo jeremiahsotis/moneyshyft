@@ -503,7 +503,6 @@ const parseThreadEnsureBody = (req: Request) => ({
   orgUnitId: parseOrgUnitIdFromBody(req),
   neighborId: typeof req.body?.neighborId === 'string' ? req.body.neighborId.trim() : '',
   threadId: typeof req.body?.threadId === 'string' ? req.body.threadId.trim() : '',
-  forcedState: typeof req.body?.forcedState === 'string' ? req.body.forcedState : undefined,
   source: typeof req.body?.source === 'string' ? req.body.source : 'VOICE',
   lastInboundCsNumberId: typeof req.body?.lastInboundCsNumberId === 'string'
     ? req.body.lastInboundCsNumberId
@@ -1611,7 +1610,6 @@ router.post('/threads', async (req: Request, res: Response) => {
     orgUnitId: context.orgUnitId,
     neighborId: payload.neighborId,
     threadId: payload.threadId || undefined,
-    forcedState: payload.forcedState,
     source: payload.source,
     lastInboundCsNumberId: payload.lastInboundCsNumberId,
     preferredOutboundCsNumberId: payload.preferredOutboundCsNumberId,
