@@ -1,3 +1,5 @@
+project_lane: connectshyft
+
 {\rtf1\ansi\ansicpg1252\cocoartf2867
 \cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
 {\colortbl;\red255\green255\blue255;}
@@ -58,7 +60,7 @@ Out of scope:\
 ## 2. Fixed Architecture Constraints\
 \
 1. Runtime remains monolithic Node/Express TypeScript app in current repository layout.\
-2. Shared envelope contracts remain platform-standard (`success`, `refusal`, `systemError`).\
+2. Shared envelope contracts remain platform-standard (`success`, `refusal`, `error`).\
 3. Hard isolation boundary is `tenant_id`; soft operational boundary is `org_unit_id`.\
 4. ConnectShyft and RouteShyft are bounded contexts with no direct cross-module imports.\
 5. Delivery must comply with `docs/policies/git_policy.md` branch/workflow/CI rules.\

@@ -75,3 +75,25 @@ ConnectShyft implementation readiness corrections approved for:
 ### Readiness Rerun Output
 - `/Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/implementation-readiness-report-ConnectShyft-2026-02-19-rerun.md`
 - Rerun status: `READY FOR DEPENDENCY-GATED IMPLEMENTATION`
+
+## 2026-02-24 - Correct Course (PM)
+- Workflow: `_bmad/bmm/workflows/4-implementation/correct-course/workflow.yaml`
+- Mode: Incremental
+- User approval: yes
+- Scope classification: Moderate
+
+### Issue Addressed
+Cross-epic ConnectShyft UX/UI remediation approved after user-testing evidence showed the interface was not workable for core users, including seniors.
+
+### Artifacts Modified/Generated
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+
+### Routing/Handoff
+- Routed to: Product Owner / Scrum Master, Product Manager, Development Team, QA.
+- Deliverables: approved sprint change proposal, backlog/sequencing updates, UX remediation story set and dependency-gated lane.
+
+### Locked Outcome Summary
+- Closed-thread outbound behavior standardized: `CLOSED -> UNCLAIMED` on call/message tap (same thread, no new thread).
+- Voicemail behavior standardized: voicemail does not reset escalation/inactivity and does not move claimed threads from Mine to Inbox.
+- Canonical UX/API envelope language reinforced: `success | refusal | error`.

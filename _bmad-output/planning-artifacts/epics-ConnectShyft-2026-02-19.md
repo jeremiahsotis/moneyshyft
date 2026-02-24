@@ -67,7 +67,7 @@ NFR-CS-014: Unauthorized cross-conference sharing is technically blocked.
 
 ### Additional Requirements
 
-- API responses must follow shared envelope semantics (`success`, `refusal`, `systemError`).
+- API responses must follow shared envelope semantics (`success`, `refusal`, `error`).
 - ConnectShyft runs as a bounded module under `src/src/modules/connectshyft` with no direct imports to or from RouteShyft.
 - ConnectShyft data lives in Postgres schema `connectshyft` with `cs_*` tables and additive-first migrations.
 - Active thread uniqueness is enforced by partial unique index on `(tenant_id, org_unit_id, neighbor_id)` where state is not `CLOSED`.
@@ -235,7 +235,7 @@ So that client behavior is predictable and unauthorized operations are safely re
 **Given** users with different role capabilities call ConnectShyft APIs
 **When** authorization and response serialization execute
 **Then** permission checks are enforced server-side at endpoint and service boundaries
-**And** all responses use shared `success/refusal/systemError` envelope semantics.
+**And** all responses use shared `success/refusal/error` envelope semantics.
 
 ## Epic b: Neighbor Identity Governance
 
@@ -349,7 +349,29 @@ So that I can triage and act without ambiguity.
 **Given** a user fetches inbox or thread detail in an active orgUnit context
 **When** records are returned
 **Then** results are scoped to that orgUnit and include required metadata (`last_inbound_cs_number_id`, preferred outbound number context)
-**And** inbox ordering follows deterministic escalation and recency rules defined by UX contracts.
+**And** inbox ordering follows deterministic server ordering:
+  - `ORDER BY priority_rank ASC, last_activity_at_utc DESC, thread_id ASC`
+  - `priority_rank` mapping: `stage>=3 -> 1`, `stage=2 -> 2`, `stage=1 -> 3`, `new_unread -> 4`, `other -> 5`.
+
+**Given** urgency states are rendered in the UI
+**When** the thread list is displayed
+**Then** urgency labels map to user language and not raw engine stages:
+  - stage 0 -> no label
+  - stage 1 -> Needs attention soon
+  - stage 2+ -> Needs urgent attention.
+
+**Given** voicemail is received on a CLAIMED thread
+**When** Mine and Inbox views are refreshed
+**Then** the claimed thread remains in Mine
+**And** voicemail indicators are shown on the Mine card (dot/icon)
+**And** voicemail does not force the thread back into Inbox.
+
+**Given** thread detail is rendered by canonical state
+**When** action controls are displayed
+**Then** state-specific action sets are enforced:
+  - UNCLAIMED: Call, Text, Claim
+  - CLAIMED: Call, Text, Close
+  - CLOSED: Call, Send Message.
 
 ### Story c.4: Claim, Takeover, and Close Lifecycle Actions
 
@@ -365,6 +387,17 @@ So that lifecycle actions remain predictable and auditable.
 **When** transition rules execute
 **Then** only valid canonical state transitions are allowed and ownership changes are enforced by policy
 **And** each successful transition emits audit/outbox records with actor, orgUnit, prior state, and new state.
+
+**Given** a thread is `CLOSED`
+**When** outbound call tap or outbound message tap is initiated
+**Then** the same thread reopens immediately as `UNCLAIMED` (no new thread creation)
+**And** `thread_reopened_by_user` is emitted
+**And** escalation and inactivity reset fields are updated according to locked lifecycle rules.
+
+**Given** a thread is `CLOSED`
+**When** inbound voice or fallback intake events arrive
+**Then** the thread does not auto-reopen
+**And** intake fallback + timeline/audit behavior follows locked routing rules.
 
 ### Story c.5: Deterministic Escalation Scheduler with Claim-Only Reset
 
@@ -400,6 +433,18 @@ So that escalation behavior stays policy-compliant until explicit claim occurs.
 **Then** outbound actions execute without changing escalation stage or reset state
 **And** system behavior and operator feedback explicitly indicate escalation continues until claim.
 
+**Given** an authorized user initiates outbound action from a `CLOSED` thread
+**When** the action starts
+**Then** the thread reopens immediately (`CLOSED -> UNCLAIMED`) on the same thread id
+**And** `thread_reopened_by_user` is emitted
+**And** escalation/inactivity reset behavior is applied before outbound execution.
+
+**Given** an outbound call action is initiated
+**When** call orchestration starts
+**Then** the implementation uses bridge-call flow only (no WebRTC/SIP/softphone path)
+**And** no automatic redial/retry loops occur
+**And** successful `CONNECTED` events auto-claim unclaimed threads.
+
 ### Story d.2: Preference Override Enforcement for Outbound SMS
 
 As an operator,
@@ -414,6 +459,11 @@ So that policy exceptions are explicit, justified, and traceable.
 **When** the user attempts to send outbound SMS
 **Then** send is blocked until a required override reason is provided
 **And** approved sends persist override data and audit metadata alongside the message event.
+
+**Given** an override reason is missing or invalid
+**When** the user submits outbound SMS
+**Then** the action is refused with explicit refusal messaging
+**And** no partial send, audit, or state-transition side effects are persisted.
 
 ### Story d.3: Outbound Audit, Outbox, and Refusal Envelope Integration
 
@@ -447,6 +497,75 @@ So that I can complete actions quickly without violating governance rules.
 **When** UI interaction patterns render
 **Then** policy guardrails, refusal messages, and confirmation copy are explicit and keyboard/screen-reader accessible
 **And** responsive layouts preserve thread state, escalation visibility, and action affordances without hidden policy paths.
+
+**Given** a thread view is rendered by state
+**When** action controls appear
+**Then** action sets are consistent and explicit:
+  - UNCLAIMED: Call, Text, Claim
+  - CLAIMED: Call, Text, Close
+  - CLOSED: Call, Send Message.
+
+## Epic UX: UX Remediation and Accessibility Hardening
+
+Deliver usability and accessibility remediation for ConnectShyft operational flows so core users can complete tasks reliably without coaching.
+**FRs covered:** FR-CS-005, FR-CS-013, FR-CS-014, FR-CS-016, FR-CS-022, FR-CS-023, FR-CS-024
+
+### Story ux-r1: Mobile-First Inbox/Mine/Thread Redesign
+
+As a frontline volunteer,
+I want Inbox, Mine, and Thread screens to use a simple mobile-first interaction model,
+So that I can understand and act without cognitive overload.
+
+**Acceptance Criteria:**
+
+**Given** operational navigation is rendered
+**When** users move between primary surfaces
+**Then** the app uses persistent bottom navigation (`Inbox`, `Mine`, `More`) with no hidden fourth primary tab
+**And** Inbox/Mine use large-card thread rows suitable for touch and readability
+**And** thread headers prioritize neighbor and conference context.
+
+### Story ux-r2: Accessibility and Language Hardening
+
+As an operator (including senior users),
+I want controls and language to be accessible and plain,
+So that I can use the system without confusion or strain.
+
+**Acceptance Criteria:**
+
+**Given** core interaction surfaces (Inbox, Mine, Thread, Add Neighbor, Close)
+**When** components render
+**Then** body text, tap-target sizing, and keyboard/screen-reader behavior satisfy locked accessibility constraints
+**And** button labels use action verbs and avoid internal RBAC/UUID jargon.
+
+### Story ux-r3: Voicemail and Indicator Behavior
+
+As a claimed thread owner,
+I want voicemail events to be reflected clearly without losing my thread context,
+So that I can follow up without inbox churn.
+
+**Acceptance Criteria:**
+
+**Given** voicemail is received on a CLAIMED thread
+**When** lists refresh
+**Then** the thread remains in Mine and shows voicemail indicators
+**And** voicemail does not reclassify the thread into Inbox.
+
+**Given** voicemail is received on an UNCLAIMED thread
+**When** lists refresh
+**Then** the thread remains in Inbox with voicemail-received labeling per UX contract.
+
+### Story ux-r4: Outbound Policy Guardrail UI
+
+As a volunteer sending messages,
+I want policy constraints to be enforced with clear UX feedback,
+So that I can complete actions safely and correctly.
+
+**Acceptance Criteria:**
+
+**Given** outbound actions are triggered
+**When** preference and lifecycle policies apply
+**Then** the UI enforces override requirements, reopen behavior, and refusal messaging consistently
+**And** envelope outcomes map to predictable UX handling (`success`, `refusal`, `error`).
 
 ## Epic e: Inbound Webhook Reliability and Voicemail Continuity
 

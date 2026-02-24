@@ -76,6 +76,43 @@
           </li>
         </ul>
 
+        <section class="mb-4 rounded border border-slate-200 bg-slate-50 p-3">
+          <h3 class="text-sm font-semibold text-slate-900">Shared identity context</h3>
+          <p class="mt-1 text-xs text-slate-600">
+            Shared-phone indicators remain consistent across orgUnits in this tenant.
+          </p>
+
+          <p
+            v-if="neighborLoadError"
+            class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+          >
+            {{ neighborLoadError }}
+          </p>
+
+          <ul v-else class="mt-3 space-y-2 text-xs text-slate-700">
+            <li
+              v-for="neighbor in neighbors"
+              :key="neighbor.neighborId"
+              class="rounded border border-slate-200 bg-white px-3 py-2"
+            >
+              <p class="font-medium text-slate-900">
+                {{ neighbor.firstName || 'Neighbor' }} {{ neighbor.lastName }}
+              </p>
+              <div class="mt-1 flex flex-wrap gap-2">
+                <span
+                  v-for="phone in neighbor.phones"
+                  :key="`${neighbor.neighborId}-${phone.phoneId}`"
+                  data-testid="connectshyft-inbox-shared-phone-indicator"
+                  class="rounded px-2 py-1 text-[11px] font-medium"
+                  :class="phone.isShared ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'"
+                >
+                  {{ phone.label }} · {{ phone.isShared ? 'Shared' : 'Not shared' }}
+                </span>
+              </div>
+            </li>
+          </ul>
+        </section>
+
         <div class="flex flex-wrap gap-3">
           <button
             type="button"
@@ -109,11 +146,32 @@ import {
   DEFAULT_CONNECTSHYFT_AVAILABILITY,
   fetchConnectShyftAvailability,
 } from '@/features/connectshyft/flags';
+import {
+  fetchConnectShyftNeighborsCollection,
+  type ConnectShyftNeighbor,
+} from '@/features/connectshyft/neighbors';
 
 const availability = ref({ ...DEFAULT_CONNECTSHYFT_AVAILABILITY });
+const neighbors = ref<ConnectShyftNeighbor[]>([]);
+const neighborLoadError = ref('');
 
 onMounted(async () => {
   availability.value = await fetchConnectShyftAvailability();
+  if (!availability.value.capabilities.inbox) {
+    neighbors.value = [];
+    neighborLoadError.value = '';
+    return;
+  }
+
+  const listResult = await fetchConnectShyftNeighborsCollection();
+  if (!listResult.ok) {
+    neighbors.value = [];
+    neighborLoadError.value = listResult.message;
+    return;
+  }
+
+  neighbors.value = listResult.neighbors;
+  neighborLoadError.value = '';
 });
 
 const moduleAvailable = computed(() => availability.value.capabilities.module);

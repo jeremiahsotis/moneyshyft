@@ -79,6 +79,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, moduleGate: 'connectshyft' }
   },
   {
+    path: '/app/connectshyft/neighbors/:neighborId',
+    name: 'connectshyft-neighbor-profile',
+    component: () => import('@/views/ConnectShyft/ConnectShyftNeighborProfileView.vue'),
+    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
+  },
+  {
     path: '/accounts',
     name: 'accounts',
     component: () => import('@/views/Accounts/AccountsListView.vue'),
