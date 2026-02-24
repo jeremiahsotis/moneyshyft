@@ -3,14 +3,75 @@ import { test, expect } from '../../support/fixtures/connectShyftStoryB2.fixture
 
 const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
 
-// Story b.2 API update/read routes are not implemented yet in connectshyft.ts.
-// Keep these as automation-ready contracts so they can be enabled with implementation.
+type SeedNeighborResult = {
+  neighborId: string;
+};
+
+const seedNeighbor = async (
+  request: Parameters<typeof apiRequest>[0],
+  context: {
+    paths: { neighborsCollection: string };
+    baseFirstName: string;
+    baseLastName: string;
+    sharedPhoneRaw: string;
+    nonSharedPhoneRaw: string;
+    tenantId: string;
+    primaryOrgUnitId: string;
+  },
+  headers: Record<string, string>,
+): Promise<SeedNeighborResult> => {
+  const createResponse = await apiRequest(request, {
+    method: 'POST',
+    path: context.paths.neighborsCollection,
+    headers,
+    data: {
+      orgUnitId: context.primaryOrgUnitId,
+      firstName: context.baseFirstName,
+      lastName: context.baseLastName,
+      phones: [
+        {
+          label: 'mobile',
+          value: context.sharedPhoneRaw,
+          isShared: true,
+          verificationStatus: 'verified',
+        },
+        {
+          label: 'home',
+          value: context.nonSharedPhoneRaw,
+          isShared: false,
+          verificationStatus: 'unverified',
+        },
+      ],
+    },
+  });
+
+  expect(createResponse.status()).toBe(201);
+  const createBody = await createResponse.json();
+  expect(createBody).toMatchObject({
+    ok: true,
+    code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
+    data: {
+      neighbor: {
+        tenantId: context.tenantId,
+        orgUnitId: context.primaryOrgUnitId,
+      },
+    },
+  });
+
+  const neighborId = createBody?.data?.neighbor?.neighborId;
+  expect(typeof neighborId).toBe('string');
+
+  return {
+    neighborId: neighborId as string,
+  };
+};
+
 test.describe(
   'Story b.2 automate - shared tenant identity and shared-phone indicator API coverage',
   () => {
     test.describe.configure({ mode: 'serial' });
 
-    test.fixme(
+    test(
       '[P0] propagates neighbor identity updates across authorized orgUnits in the same tenant immediately @P0',
       async ({
         request,
@@ -19,9 +80,15 @@ test.describe(
         storyB2PeerOrgUnitHeaders,
         storyB2IdentityUpdatePayload,
       }) => {
+        const seeded = await seedNeighbor(
+          request,
+          storyB2Context,
+          storyB2PrimaryHeaders,
+        );
+
         const updateResponse = await apiRequest(request, {
           method: 'PUT',
-          path: storyB2Context.paths.neighborById,
+          path: `/api/v1/connectshyft/neighbors/${seeded.neighborId}`,
           headers: storyB2PrimaryHeaders,
           data: storyB2IdentityUpdatePayload,
         });
@@ -33,7 +100,7 @@ test.describe(
           code: 'CONNECTSHYFT_NEIGHBOR_UPDATED',
           data: {
             neighbor: {
-              neighborId: storyB2Context.neighborId,
+              neighborId: seeded.neighborId,
               tenantId: storyB2Context.tenantId,
               firstName: storyB2Context.updatedFirstName,
               lastName: storyB2Context.updatedLastName,
@@ -43,7 +110,7 @@ test.describe(
 
         const crossOrgUnitReadResponse = await apiRequest(request, {
           method: 'GET',
-          path: storyB2Context.paths.neighborById,
+          path: `/api/v1/connectshyft/neighbors/${seeded.neighborId}`,
           headers: storyB2PeerOrgUnitHeaders,
         });
 
@@ -58,7 +125,7 @@ test.describe(
               orgUnitId: storyB2Context.peerOrgUnitId,
             },
             neighbor: {
-              neighborId: storyB2Context.neighborId,
+              neighborId: seeded.neighborId,
               tenantId: storyB2Context.tenantId,
               firstName: storyB2Context.updatedFirstName,
               lastName: storyB2Context.updatedLastName,
@@ -68,7 +135,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] persists shared-phone indicator toggles and returns consistent flags in detail and collection contracts @P0',
       async ({
         request,
@@ -77,9 +144,15 @@ test.describe(
         storyB2PeerOrgUnitHeaders,
         storyB2SharedIndicatorTogglePayload,
       }) => {
+        const seeded = await seedNeighbor(
+          request,
+          storyB2Context,
+          storyB2PrimaryHeaders,
+        );
+
         const updateResponse = await apiRequest(request, {
           method: 'PUT',
-          path: storyB2Context.paths.neighborById,
+          path: `/api/v1/connectshyft/neighbors/${seeded.neighborId}`,
           headers: storyB2PrimaryHeaders,
           data: storyB2SharedIndicatorTogglePayload,
         });
@@ -91,7 +164,7 @@ test.describe(
           code: 'CONNECTSHYFT_NEIGHBOR_UPDATED',
           data: {
             neighbor: {
-              phones: expect.arrayContaining([
+              phones: [
                 expect.objectContaining({
                   label: 'mobile',
                   value: storyB2Context.sharedPhoneNormalized,
@@ -102,14 +175,14 @@ test.describe(
                   value: storyB2Context.nonSharedPhoneNormalized,
                   isShared: true,
                 }),
-              ]),
+              ],
             },
           },
         });
 
         const detailResponse = await apiRequest(request, {
           method: 'GET',
-          path: storyB2Context.paths.neighborById,
+          path: `/api/v1/connectshyft/neighbors/${seeded.neighborId}`,
           headers: storyB2PeerOrgUnitHeaders,
         });
 
@@ -120,10 +193,10 @@ test.describe(
           code: 'CONNECTSHYFT_NEIGHBOR_RESOLVED',
           data: {
             neighbor: {
-              phones: expect.arrayContaining([
+              phones: [
                 expect.objectContaining({ label: 'mobile', isShared: false }),
                 expect.objectContaining({ label: 'home', isShared: true }),
-              ]),
+              ],
             },
           },
         });
@@ -142,11 +215,11 @@ test.describe(
           data: {
             neighbors: expect.arrayContaining([
               expect.objectContaining({
-                neighborId: storyB2Context.neighborId,
-                phones: expect.arrayContaining([
+                neighborId: seeded.neighborId,
+                phones: [
                   expect.objectContaining({ label: 'mobile', isShared: false }),
                   expect.objectContaining({ label: 'home', isShared: true }),
-                ]),
+                ],
               }),
             ]),
           },
@@ -154,12 +227,18 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] refuses cross-tenant profile reads with deterministic refusal semantics and zero identity leakage @P0',
-      async ({ request, storyB2Context, storyB2CrossTenantHeaders }) => {
+      async ({ request, storyB2Context, storyB2PrimaryHeaders, storyB2CrossTenantHeaders }) => {
+        const seeded = await seedNeighbor(
+          request,
+          storyB2Context,
+          storyB2PrimaryHeaders,
+        );
+
         const response = await apiRequest(request, {
           method: 'GET',
-          path: storyB2Context.paths.neighborById,
+          path: `/api/v1/connectshyft/neighbors/${seeded.neighborId}`,
           headers: storyB2CrossTenantHeaders,
         });
 
@@ -177,17 +256,24 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] refuses cross-tenant identity updates without leaking persisted phone metadata @P1',
       async ({
         request,
         storyB2Context,
+        storyB2PrimaryHeaders,
         storyB2CrossTenantHeaders,
         storyB2IdentityUpdatePayload,
       }) => {
+        const seeded = await seedNeighbor(
+          request,
+          storyB2Context,
+          storyB2PrimaryHeaders,
+        );
+
         const response = await apiRequest(request, {
           method: 'PUT',
-          path: storyB2Context.paths.neighborById,
+          path: `/api/v1/connectshyft/neighbors/${seeded.neighborId}`,
           headers: storyB2CrossTenantHeaders,
           data: storyB2IdentityUpdatePayload,
         });
@@ -207,7 +293,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] preserves canonical envelope keys across shared-identity success and refusal paths @P1',
       async ({
         request,
@@ -215,14 +301,20 @@ test.describe(
         storyB2PrimaryHeaders,
         storyB2CrossTenantHeaders,
       }) => {
+        const seeded = await seedNeighbor(
+          request,
+          storyB2Context,
+          storyB2PrimaryHeaders,
+        );
+
         const successResponse = await apiRequest(request, {
           method: 'GET',
-          path: storyB2Context.paths.neighborById,
+          path: `/api/v1/connectshyft/neighbors/${seeded.neighborId}`,
           headers: storyB2PrimaryHeaders,
         });
         const refusalResponse = await apiRequest(request, {
           method: 'GET',
-          path: storyB2Context.paths.neighborById,
+          path: `/api/v1/connectshyft/neighbors/${seeded.neighborId}`,
           headers: storyB2CrossTenantHeaders,
         });
 
@@ -244,5 +336,6 @@ test.describe(
         ).toBe(true);
       },
     );
+
   },
 );

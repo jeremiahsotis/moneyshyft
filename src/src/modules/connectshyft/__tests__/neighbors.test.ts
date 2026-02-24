@@ -172,6 +172,151 @@ describe('connectshyft neighbor service', () => {
       code: 'CONNECTSHYFT_NEIGHBOR_CREATE_CONFLICT',
     });
   });
+
+  it('resolves and lists neighbors tenant-wide with deterministic shared-phone indicators', () => {
+    const created = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+          isShared: true,
+        },
+        {
+          label: 'home',
+          value: '+12605550200',
+          isShared: false,
+        },
+      ],
+    });
+
+    expect(created.ok).toBe(true);
+    if (!created.ok) {
+      throw new Error('Expected neighbor create to succeed');
+    }
+
+    const resolvedFromPeerOrgUnit = service.resolveNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+    });
+    expect(resolvedFromPeerOrgUnit).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_RESOLVED',
+      data: {
+        neighbor: {
+          neighborId: created.data.neighbor.neighborId,
+          phones: [
+            expect.objectContaining({
+              label: 'mobile',
+              isShared: true,
+            }),
+            expect.objectContaining({
+              label: 'home',
+              isShared: false,
+            }),
+          ],
+        },
+      },
+    });
+
+    const listResult = service.listNeighbors({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+    });
+    expect(listResult).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBORS_RESOLVED',
+      data: {
+        neighbors: [
+          expect.objectContaining({
+            neighborId: created.data.neighbor.neighborId,
+            phones: expect.arrayContaining([
+              expect.objectContaining({
+                label: 'mobile',
+                isShared: true,
+              }),
+              expect.objectContaining({
+                label: 'home',
+                isShared: false,
+              }),
+            ]),
+          }),
+        ],
+      },
+    });
+  });
+
+  it('updates neighbor identity and shared-phone toggles for same-tenant read-through', () => {
+    const created = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+          isShared: true,
+        },
+        {
+          label: 'home',
+          value: '+12605550200',
+          isShared: false,
+        },
+      ],
+    });
+
+    if (!created.ok) {
+      throw new Error('Expected neighbor create to succeed');
+    }
+
+    const updated = service.updateNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+      firstName: 'Mina Shared',
+      lastName: 'Lopez Shared',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+          isShared: false,
+        },
+        {
+          label: 'home',
+          value: '+12605550200',
+          isShared: true,
+        },
+      ],
+    });
+
+    expect(updated).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_UPDATED',
+      data: {
+        neighbor: {
+          firstName: 'Mina Shared',
+          lastName: 'Lopez Shared',
+          phones: [
+            expect.objectContaining({
+              label: 'mobile',
+              isShared: false,
+            }),
+            expect.objectContaining({
+              label: 'home',
+              isShared: true,
+            }),
+          ],
+        },
+      },
+    });
+  });
 });
 
 describe('connectshyft async neighbor service', () => {

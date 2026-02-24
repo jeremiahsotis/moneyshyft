@@ -273,7 +273,8 @@ export const resolveConnectShyftOrgUnitContext = async (
   req: Pick<Request, 'tenantContext' | 'tenantId' | 'orgUnitId' | 'user' | 'header'>,
   options: ResolveConnectShyftContextOptions = {},
 ): Promise<ConnectShyftContextDecision> => {
-  const resolvedUser = resolveTestHarnessUser(req) || req.user;
+  const testHarnessUser = resolveTestHarnessUser(req);
+  const resolvedUser = testHarnessUser || req.user;
 
   if (!resolvedUser?.userId) {
     return refusal(
@@ -287,7 +288,8 @@ export const resolveConnectShyftOrgUnitContext = async (
   let tenantId: string;
   try {
     tenantId = requireTenantId(
-      req.tenantContext?.tenantId
+      testHarnessUser?.activeTenantId
+      || req.tenantContext?.tenantId
       || req.tenantId
       || resolvedUser.activeTenantId
       || resolvedUser.householdId
@@ -316,7 +318,8 @@ export const resolveConnectShyftOrgUnitContext = async (
   }
 
   const canonicalOrgUnitId = normalizeContextValue(
-    req.tenantContext?.orgUnitId
+    testHarnessUser?.activeOrgUnitId
+    || req.tenantContext?.orgUnitId
     || req.orgUnitId
     || resolvedUser.activeOrgUnitId
     || null,

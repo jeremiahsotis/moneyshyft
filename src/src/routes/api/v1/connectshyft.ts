@@ -208,6 +208,51 @@ const enforceNeighborCreateCapability = (
   return false;
 };
 
+const enforceNeighborReadCapability = (
+  req: Request,
+  res: Response,
+): boolean => {
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (
+    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
+    || hasCapability([requestedRole], CAPABILITIES.NEIGHBOR_EDIT_ALL)
+    || hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_THREAD_VIEW)
+    || hasCapability([requestedRole], CAPABILITIES.THREAD_VIEW_ALL)
+    || hasCapability([requestedRole], CAPABILITIES.TENANT_READ_ALL)
+  ) {
+    return true;
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_NEIGHBOR_READ_FORBIDDEN',
+    message: 'Neighbor profile access requires an authorized ConnectShyft role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
+const enforceNeighborUpdateCapability = (
+  req: Request,
+  res: Response,
+): boolean => {
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (
+    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
+    || hasCapability([requestedRole], CAPABILITIES.NEIGHBOR_EDIT_ALL)
+  ) {
+    return true;
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_NEIGHBOR_UPDATE_FORBIDDEN',
+    message: 'Neighbor profile updates require an authorized ConnectShyft role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
 const enforceEscalationConfigCapability = (
   req: Request,
   res: Response,
@@ -327,30 +372,79 @@ const parseMappingBody = (req: Request) => ({
   isActive: req.body?.isActive === undefined ? true : Boolean(req.body.isActive),
 });
 
-const parseNeighborCreateBody = (req: Request) => {
+const parseNeighborPhones = (req: Request): ConnectShyftNeighborPhoneInput[] => {
   const rawPhones: unknown[] = Array.isArray(req.body?.phones) ? req.body.phones : [];
-  const phones: ConnectShyftNeighborPhoneInput[] = rawPhones.map((entry: unknown) => {
+  return rawPhones.map((entry: unknown) => {
     if (!entry || typeof entry !== 'object') {
       return {
         label: '',
         value: '',
+        isShared: false,
+        verificationStatus: 'unverified',
       };
     }
 
-    const candidate = entry as { label?: unknown; value?: unknown };
+    const candidate = entry as {
+      label?: unknown;
+      value?: unknown;
+      isShared?: unknown;
+      verificationStatus?: unknown;
+    };
     return {
       label: typeof candidate.label === 'string' ? candidate.label : '',
       value: typeof candidate.value === 'string' ? candidate.value : '',
+      isShared: candidate.isShared === true,
+      verificationStatus: candidate.verificationStatus === 'verified'
+        ? 'verified'
+        : 'unverified',
     };
   });
+};
 
+const parseNeighborCreateBody = (req: Request) => {
   return {
     orgUnitId: parseOrgUnitIdFromBody(req),
     firstName: typeof req.body?.firstName === 'string' ? req.body.firstName : '',
     lastName: typeof req.body?.lastName === 'string' ? req.body.lastName : '',
-    phones,
+    phones: parseNeighborPhones(req),
   };
 };
+
+const parseNeighborUpdateBody = (req: Request) => ({
+  orgUnitId: parseOrgUnitIdFromBody(req),
+  firstName: typeof req.body?.firstName === 'string' ? req.body.firstName : '',
+  lastName: typeof req.body?.lastName === 'string' ? req.body.lastName : '',
+  phones: parseNeighborPhones(req),
+});
+
+const parseNeighborIdParam = (req: Request): string => {
+  if (typeof req.params.neighborId !== 'string') {
+    return '';
+  }
+
+  return req.params.neighborId.trim();
+};
+
+const buildNeighborScopePayload = (context: { tenantId: string; orgUnitId: string }) => ({
+  scope: {
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+  },
+});
+
+const buildNeighborRefusalData = (
+  createdOrUpdated:
+    | {
+      data?: {
+        fieldErrors?: Array<{ field: string; reason: string; message: string }>;
+      };
+    }
+    | undefined,
+  context: { tenantId: string; orgUnitId: string },
+) => ({
+  ...('data' in (createdOrUpdated || {}) ? createdOrUpdated?.data : undefined),
+  ...buildNeighborScopePayload(context),
+});
 
 const parseEscalationConfigBody = (req: Request) => ({
   escalationBaselineHours: req.body?.escalationBaselineHours,
@@ -780,19 +874,12 @@ router.post('/neighbors', async (req: Request, res: Response) => {
   });
 
   if (!created.ok) {
-    const refusalData = {
-      ...('data' in created ? created.data : undefined),
-      scope: {
-        tenantId: context.tenantId,
-        orgUnitId: context.orgUnitId,
-      },
-    };
     refusal(res, {
       code: created.code,
       message: created.message,
       refusalType: 'business',
       httpStatus: 200,
-      data: refusalData,
+      data: buildNeighborRefusalData(created, context),
     });
     return;
   }
@@ -804,10 +891,161 @@ router.post('/neighbors', async (req: Request, res: Response) => {
     data: {
       neighborId: created.data.neighbor.neighborId,
       neighbor: created.data.neighbor,
-      scope: {
-        tenantId: context.tenantId,
-        orgUnitId: context.orgUnitId,
-      },
+      ...buildNeighborScopePayload(context),
+    },
+  });
+});
+
+router.get('/neighbors', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  if (!enforceNeighborReadCapability(req, res)) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const resolved = await connectShyftNeighborServiceAsync.listNeighbors({
+    actorRoles: [requestedRole],
+    tenantId: context.tenantId,
+  });
+
+  if (!resolved.ok) {
+    refusal(res, {
+      code: resolved.code,
+      message: resolved.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: buildNeighborRefusalData(resolved, context),
+    });
+    return;
+  }
+
+  return success(res, {
+    code: resolved.code,
+    message: 'Neighbors resolved',
+    httpStatus: resolved.httpStatus,
+    data: {
+      neighbors: resolved.data.neighbors,
+      ...buildNeighborScopePayload(context),
+    },
+  });
+});
+
+router.get('/neighbors/:neighborId', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  if (!enforceNeighborReadCapability(req, res)) {
+    return;
+  }
+
+  const neighborId = parseNeighborIdParam(req);
+  if (!neighborId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_NEIGHBOR_ID_REQUIRED',
+      message: 'neighborId is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const resolved = await connectShyftNeighborServiceAsync.resolveNeighbor({
+    actorRoles: [requestedRole],
+    tenantId: context.tenantId,
+    neighborId,
+  });
+
+  if (!resolved.ok) {
+    refusal(res, {
+      code: resolved.code,
+      message: resolved.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: buildNeighborRefusalData(resolved, context),
+    });
+    return;
+  }
+
+  return success(res, {
+    code: resolved.code,
+    message: 'Neighbor resolved',
+    httpStatus: resolved.httpStatus,
+    data: {
+      neighbor: resolved.data.neighbor,
+      ...buildNeighborScopePayload(context),
+    },
+  });
+});
+
+router.put('/neighbors/:neighborId', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  if (!enforceNeighborUpdateCapability(req, res)) {
+    return;
+  }
+
+  const neighborId = parseNeighborIdParam(req);
+  if (!neighborId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_NEIGHBOR_ID_REQUIRED',
+      message: 'neighborId is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+    return;
+  }
+
+  const payload = parseNeighborUpdateBody(req);
+  const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
+  if (!context) {
+    return;
+  }
+
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const updated = await connectShyftNeighborServiceAsync.updateNeighbor({
+    actorRoles: [requestedRole],
+    tenantId: context.tenantId,
+    neighborId,
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    phones: payload.phones,
+  });
+
+  if (!updated.ok) {
+    refusal(res, {
+      code: updated.code,
+      message: updated.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: buildNeighborRefusalData(updated, context),
+    });
+    return;
+  }
+
+  return success(res, {
+    code: updated.code,
+    message: 'Neighbor profile updated',
+    httpStatus: updated.httpStatus,
+    data: {
+      neighbor: updated.data.neighbor,
+      ...buildNeighborScopePayload(context),
     },
   });
 });

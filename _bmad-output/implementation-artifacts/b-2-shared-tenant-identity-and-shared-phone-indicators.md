@@ -1,6 +1,6 @@
 # Story b.2: Shared Tenant Identity and Shared-Phone Indicators
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,26 +24,26 @@ so that contact context remains aligned across operational teams.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Shared-identity updates must be immediate and explicit in UI copy so operators understand tenant-wide impact before saving changes.
-- Real-User Validation Evidence: Pending implementation. Validate cross-orgUnit visibility and cross-tenant refusal paths before `review`.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-02-24 `npm run test:e2e -- tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.spec.ts` passed (4/4). Validated same-tenant cross-orgUnit visibility, shared-phone indicator persistence/rendering, and cross-tenant refusal state.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: Tenant/orgUnit role administration is required for test matrix coverage (orgUnit-scoped vs tenant-privileged visibility).
-- Role-Admin UI Path Verified: pending
+- Role-Admin UI Path Verified: yes
 - Access-Control Exemption Rationale: N/A
 
 ## Tasks / Subtasks
 
-- [ ] Implement tenant-shared identity read/write semantics (AC: 1, 3)
-  - [ ] Ensure neighbor identity storage is tenant-scoped and not duplicated per orgUnit.
-  - [ ] Ensure read APIs enforce tenant boundary while allowing authorized cross-orgUnit visibility inside tenant.
-- [ ] Implement shared-phone metadata persistence and serialization (AC: 2)
-  - [ ] Add/confirm explicit shared-phone field semantics in neighbor phone records.
-  - [ ] Include shared-phone indicators in list/detail response DTOs with deterministic ordering.
-- [ ] Deliver UI parity for shared identity visibility (AC: 1, 2)
-  - [ ] Display shared-phone badges/labels in Neighbor Profile and relevant thread/inbox surfaces.
-  - [ ] Add explicit save impact copy: tenant-wide identity update visibility.
-- [ ] Add automated coverage (AC: 1, 2, 3)
-  - [ ] API tests: orgUnit A update visible to orgUnit B in same tenant; cross-tenant refusal.
-  - [ ] E2E tests: shared-phone indicator rendering and persistence behavior.
+- [x] Implement tenant-shared identity read/write semantics (AC: 1, 3)
+  - [x] Ensure neighbor identity storage is tenant-scoped and not duplicated per orgUnit.
+  - [x] Ensure read APIs enforce tenant boundary while allowing authorized cross-orgUnit visibility inside tenant.
+- [x] Implement shared-phone metadata persistence and serialization (AC: 2)
+  - [x] Add/confirm explicit shared-phone field semantics in neighbor phone records.
+  - [x] Include shared-phone indicators in list/detail response DTOs with deterministic ordering.
+- [x] Deliver UI parity for shared identity visibility (AC: 1, 2)
+  - [x] Display shared-phone badges/labels in Neighbor Profile and relevant thread/inbox surfaces.
+  - [x] Add explicit save impact copy: tenant-wide identity update visibility.
+- [x] Add automated coverage (AC: 1, 2, 3)
+  - [x] API tests: orgUnit A update visible to orgUnit B in same tenant; cross-tenant refusal.
+  - [x] E2E tests: shared-phone indicator rendering and persistence behavior.
 
 ## Dev Notes
 
@@ -126,16 +126,43 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context generation only (no implementation commands executed).
+- `npm run branch:ensure-workflow -- --workflow dev-story --story b-2-shared-tenant-identity-and-shared-phone-indicators`
+- `cd src && npm test -- src/src/modules/connectshyft/__tests__/neighbors.test.ts src/src/modules/connectshyft/__tests__/contextAccess.test.ts src/src/migrations/__tests__/connectShyftNeighborsMigration.test.ts src/src/migrations/__tests__/connectShyftNeighborSharedPhoneMetadataMigration.test.ts`
+- `cd src && npm run build`
+- `cd frontend && npm run build`
+- `npm run test:e2e -- tests/api/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.api.spec.ts`
+- `npm run test:e2e -- tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.spec.ts`
+- Regression spot checks: `npm run test:e2e -- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts`, `npm run test:e2e -- tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.api.spec.ts`, `npm run test:e2e -- tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts`
 
 ### Completion Notes List
 
-- Created implementation-ready Story b.2 context with cross-orgUnit identity sharing guardrails, tasks, and test strategy.
+- Added tenant-scoped neighbor read/update/list APIs: `GET /connectshyft/neighbors`, `GET /connectshyft/neighbors/:neighborId`, `PUT /connectshyft/neighbors/:neighborId`.
+- Implemented shared-phone metadata (`isShared`, `verificationStatus`) normalization, persistence, serialization, and deterministic response ordering.
+- Added additive migration `20260224143000_add_shared_phone_metadata_to_connectshyft_neighbor_phones.ts` with migration unit coverage.
+- Added new ConnectShyft Neighbor Profile UI route/view with explicit tenant-wide impact save copy, shared toggles/indicators, and refusal-state rendering.
+- Added inbox shared-identity indicator rendering to keep phone-share semantics visible in operator surfaces.
+- Activated b.2 API and E2E coverage with deterministic neighbor seeding and verified all b.2 tests passing.
 
 ### File List
 
+- src/src/modules/connectshyft/neighbors.ts
+- src/src/modules/connectshyft/contextAccess.ts
+- src/src/modules/connectshyft/__tests__/neighbors.test.ts
+- src/src/routes/api/v1/connectshyft.ts
+- src/src/migrations/20260224143000_add_shared_phone_metadata_to_connectshyft_neighbor_phones.ts
+- src/src/migrations/__tests__/connectShyftNeighborSharedPhoneMetadataMigration.test.ts
+- frontend/src/features/connectshyft/neighbors.ts
+- frontend/src/views/ConnectShyft/ConnectShyftNeighborProfileView.vue
+- frontend/src/views/ConnectShyft/ConnectShyftInboxView.vue
+- frontend/src/router/index.ts
+- tests/api/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.api.spec.ts
+- tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.spec.ts
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 - _bmad-output/implementation-artifacts/b-2-shared-tenant-identity-and-shared-phone-indicators.md
 
 ## Change Log
 
 - 2026-02-24: Created Story b.2 ready-for-dev context document.
+- 2026-02-24: Implemented tenant-shared neighbor identity read/update/list semantics with shared-phone indicators and deterministic contracts.
+- 2026-02-24: Added shared-phone metadata migration and tests; added neighbor profile UI + inbox indicator parity updates.
+- 2026-02-24: Activated and passed b.2 API and E2E automation coverage; story advanced to `review`.
