@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-22T20:33:18Z'
+lastSaved: '2026-02-24T13:06:02Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -1400,3 +1400,197 @@ lastSaved: '2026-02-22T20:33:18Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story a.5 AC coverage to generated automation and ATDD assets.
+
+## Story b.1 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/b-1-tenant-scoped-neighbor-creation-with-required-phone.md`
+  - Existing ATDD files found for Story b.1:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.spec.ts`
+
+### Context Loaded
+- Test framework config loaded: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts`.
+- Existing test structure loaded from `/Users/jeremiahotis/projects/connectshyft/tests`.
+- Story b.1 support assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryB1Factory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryB1.fixture.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils + automation:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+- Additional generation references:
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `api-testing-patterns.md`
+
+## Story b.1 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` executed in session `tea-automate` against:
+  - `http://localhost:5174/app/connectshyft/neighbors/new?...`
+- Findings from CLI snapshot/console:
+  - Vue Router warning: no route match for `/app/connectshyft/neighbors/new`
+  - `GET /api/v1/auth/me` returned `500`
+  - HMR websocket connection refused at `127.0.0.1:5174`
+- Session hygiene:
+  - `playwright-cli -s=tea-automate close` executed successfully.
+
+### Acceptance Criteria to Target Mapping
+- AC1: tenant-scoped neighbor create with normalized phone output and shared envelope.
+- AC2: deterministic refusal when phone entries are missing.
+- AC3: valid phone persistence normalization and envelope consistency.
+- Expansion targets:
+  - invalid phone format refusal no-leak checks
+  - capability refusal on neighbor create mutation
+  - cross-tenant/orgUnit refusal no identity leakage
+
+### ATDD Duplication Control
+- Existing RED ATDD files retained and unchanged:
+  - `tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.api.spec.ts`
+  - `tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.spec.ts`
+- Automation expansion generated non-ATDD regression targets:
+  - `tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.api.spec.ts`
+  - `tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts`
+
+### Selected Test Levels
+- **API** (primary): scope enforcement, validation refusals, envelope contracts.
+- **E2E** (secondary): operator neighbor-create journey and validation/error states.
+
+### Priority Assignment
+- P0:
+  - valid tenant-scoped create + normalized phone contract
+  - missing-phone refusal contract
+  - cross-tenant scope refusal with no data leakage
+- P1:
+  - invalid-phone refusal contract
+  - capability denial on create mutation
+  - envelope key parity across success and refusal
+  - operator-facing refusal message journey
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts`
+- Scope: `critical-paths`
+
+## Story b.1 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-02-24T13-04-00Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-02-24T13-04-00Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`
+- E2E subprocess status: `success: true`
+- Output files present and JSON-valid for both subprocesses.
+
+### Performance Report
+- Parallel orchestration completed in one pass for API and E2E generation.
+- Sequential equivalent would require two generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story b.1 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.api.spec.ts`
+- `tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper infrastructure:
+  - `connectShyftStoryB1.fixture`
+  - `connectShyftStoryB1Factory`
+  - `apiRequest`
+  - `login`
+- No new shared fixture files required.
+
+### Summary Metrics
+- Total tests generated: `10`
+  - API tests: `6` (1 file)
+  - E2E tests: `4` (1 file)
+- Priority coverage:
+  - P0: `5`
+  - P1: `5`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-24T13-04-00Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-02-24T13-04-00Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-24T13-04-00Z.json`
+  - `/tmp/tea-automate-summary-2026-02-24T13-04-00Z.json`
+- Persisted under test artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-24T13-04-00Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-24T13-04-00Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-24T13-04-00Z.json`
+
+## Story b.1 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated spec parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.api.spec.ts tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts`
+  - Result: passed (`10` tests discovered in `2` files).
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) used.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) introduced.
+  - priority tags (`@P0`, `@P1`) present for selective execution.
+- CLI sessions cleaned up:
+  - no orphaned `tea-automate` browser session.
+- Temp artifacts stored in workflow artifact path:
+  - `_bmad-output/test-artifacts/automation-temp`.
+
+### Key Assumptions
+- Story b.1 contracts remain:
+  - `/api/v1/connectshyft/neighbors`
+  - `/app/connectshyft/neighbors/new`
+- Refusal and success codes remain aligned with Story b.1 artifact expectations and shared envelope semantics.
+
+### Risks
+- Current frontend route surface does not include `/app/connectshyft/neighbors/new`; generated E2E automation remains `test.fixme` pending UI route implementation.
+- Current backend route file `src/src/routes/api/v1/connectshyft.ts` does not expose neighbor-create endpoints; generated API automation remains `test.fixme` pending endpoint implementation.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality scoring and maintainability checks.
+- `[TR] Trace Requirements` to map Story b.1 AC coverage to ATDD + automate evidence.

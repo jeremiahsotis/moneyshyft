@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.spec.ts",
+      "content": "import { test, expect } from '@playwright/test';\nimport { login } from '../../helpers/auth';\nimport { apiRequest } from '../../support/helpers/apiClient';\nimport { createStoryB1Context, createStoryB1Headers } from '../../support/factories/connectShyftStoryB1Factory';\n\ntest.describe(\n  'Story b.1 Tenant-Scoped Neighbor Creation with Required Phone (ATDD E2E)',\n  () => {\n    test.skip(\n      '[P0] operator can submit neighbor create form with one valid phone and see normalized result state @P0',\n      async ({ page }) => {\n        await login(page);\n        await page.goto(\n          '/app/connectshyft/neighbors/new?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_MEMBER&orgUnitMemberships=org-connectshyft-alpha-east',\n        );\n\n        await expect(page.getByRole('heading', { name: 'Create Neighbor' })).toBeVisible();\n\n        await page.getByTestId('connectshyft-neighbor-first-name-input').fill('Mina');\n        await page.getByTestId('connectshyft-neighbor-last-name-input').fill('Lopez');\n        await page.getByTestId('connectshyft-neighbor-phone-input').fill('+1 (260) 555-0199');\n        await page.getByTestId('connectshyft-neighbor-phone-label-select').selectOption('mobile');\n\n        const createResponse = page.waitForResponse(\n          (response) =>\n            response.url().includes('/api/v1/connectshyft/neighbors')\n            && response.request().method() === 'POST',\n        );\n\n        await page.getByRole('button', { name: 'Create Neighbor' }).click();\n        await createResponse;\n\n        await expect(page.getByTestId('connectshyft-neighbor-create-success')).toContainText(\n          'Neighbor created',\n        );\n        await expect(page.getByTestId('connectshyft-neighbor-phone-value')).toContainText(\n          '+12605550199',\n        );\n      },\n    );\n\n    test.skip(\n      '[P0] operator sees deterministic validation refusal when submitting create flow without phone values @P0',\n      async ({ page }) => {\n        await login(page);\n        await page.goto(\n          '/app/connectshyft/neighbors/new?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_MEMBER&orgUnitMemberships=org-connectshyft-alpha-east',\n        );\n\n        await page.getByTestId('connectshyft-neighbor-first-name-input').fill('Noah');\n        await page.getByTestId('connectshyft-neighbor-last-name-input').fill('Harper');\n        await page.getByRole('button', { name: 'Create Neighbor' }).click();\n\n        await expect(page.getByTestId('connectshyft-neighbor-validation-error')).toContainText(\n          'at least one phone',\n        );\n      },\n    );\n\n    test.skip(\n      '[P1] cross-tenant or invalid-scope create attempts surface deterministic refusal envelope semantics @P1',\n      async ({ request }) => {\n        const context = createStoryB1Context();\n        const headers = createStoryB1Headers(context, {\n          role: 'ORGUNIT_MEMBER',\n          orgUnitMemberships: [context.orgUnitId],\n        });\n\n        const response = await apiRequest(request, {\n          method: 'POST',\n          path: context.paths.neighborsCollection,\n          headers,\n          data: {\n            orgUnitId: context.crossTenantOrgUnitId,\n            firstName: 'Jules',\n            lastName: 'North',\n            phones: [\n              {\n                label: 'mobile',\n                value: context.validPhoneRaw,\n              },\n            ],\n          },\n        });\n\n        expect(response.status()).toBe(200);\n        const body = await response.json();\n        expect(body).toMatchObject({\n          ok: false,\n          code: 'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH',\n          refusalType: 'business',\n          correlationId: expect.any(String),\n          tenantId: context.tenantId,\n        });\n      },\n    );\n  },\n);\n\n",
+      "description": "ATDD E2E tests for story b.1 neighbor creation journey (RED phase)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Neighbor create journey accepts at least one valid phone.",
+        "Missing phone values produce actionable deterministic validation feedback.",
+        "Cross-tenant scope attempts are refused with deterministic messaging."
+      ],
+      "priority_coverage": {
+        "P0": 2,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "connectShyftStoryB1.fixture"
+  ],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "test_count": 3,
+  "tdd_phase": "RED",
+  "summary": "Generated 3 failing E2E tests for story b.1"
+}

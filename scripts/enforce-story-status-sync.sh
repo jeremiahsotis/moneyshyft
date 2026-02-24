@@ -30,15 +30,30 @@ cleanup() {
 trap cleanup EXIT
 
 resolve_branch() {
+  local event="${GITHUB_EVENT_NAME:-local}"
   local branch_name=""
-  branch_name="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-  if [[ -z "$branch_name" || "$branch_name" == "HEAD" ]]; then
-    branch_name="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+
+  if [[ "$event" == "local" ]]; then
+    # Local checks must trust repository state, not CI-provided branch env vars.
+    branch_name="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    if [[ -z "$branch_name" || "$branch_name" == "HEAD" ]]; then
+      branch_name="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+    fi
+  else
+    branch_name="${GITHUB_HEAD_REF:-}"
+    if [[ -z "$branch_name" ]]; then
+      branch_name="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    fi
+    if [[ -z "$branch_name" || "$branch_name" == "HEAD" ]]; then
+      branch_name="${GITHUB_REF_NAME:-}"
+    fi
   fi
+
   if [[ -z "$branch_name" || "$branch_name" == "HEAD" ]]; then
     echo "detached"
     return 0
   fi
+
   echo "$branch_name"
 }
 
@@ -188,6 +203,10 @@ extract_sprint_status_from_git_ref() {
 resolve_previous_ref() {
   local file="$1"
   local rel="$file"
+  local event="${GITHUB_EVENT_NAME:-local}"
+  local pr_current_ref=""
+  local pr_previous_ref=""
+
   if [[ "$rel" == "$PWD/"* ]]; then
     rel="${rel#$PWD/}"
   fi
@@ -202,12 +221,29 @@ resolve_previous_ref() {
     return 0
   fi
 
+  if [[ "$event" == "pull_request" ]] && git rev-parse --verify --quiet HEAD^2 >/dev/null 2>&1; then
+    pr_current_ref="HEAD^2"
+    if git rev-parse --verify --quiet HEAD^2^ >/dev/null 2>&1; then
+      pr_previous_ref="HEAD^2^"
+    fi
+  fi
+
   if git diff --quiet -- "$rel"; then
+    if [[ -n "$pr_previous_ref" ]]; then
+      echo "$pr_previous_ref"
+      return 0
+    fi
+
     if git rev-parse --verify --quiet HEAD^ >/dev/null 2>&1; then
       echo "HEAD^"
       return 0
     fi
     echo ""
+    return 0
+  fi
+
+  if [[ -n "$pr_current_ref" ]]; then
+    echo "$pr_current_ref"
     return 0
   fi
 

@@ -1,0 +1,32 @@
+{
+  "tdd_phase": "RED",
+  "total_tests": 9,
+  "api_tests": 6,
+  "e2e_tests": 3,
+  "all_tests_skipped": true,
+  "expected_to_fail": true,
+  "fixtures_created": 2,
+  "acceptance_criteria_covered": [
+    "Tenant-scoped neighbor identity is stored on create.",
+    "Requests without phones are refused with deterministic refusal messaging.",
+    "Requests with valid phones return normalized values via shared envelope semantics.",
+    "Neighbor create journey accepts at least one valid phone.",
+    "Missing phone values produce actionable deterministic validation feedback.",
+    "Cross-tenant scope attempts are refused with deterministic messaging."
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns",
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential",
+  "outputs": {
+    "api_output": "/tmp/tea-atdd-api-tests-2026-02-24T12-51-26Z.json",
+    "e2e_output": "/tmp/tea-atdd-e2e-tests-2026-02-24T12-51-26Z.json",
+    "summary_output": "/tmp/tea-atdd-summary-2026-02-24T12-51-26Z.json"
+  }
+}

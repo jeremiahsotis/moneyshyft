@@ -1,0 +1,35 @@
+{
+  "success": true,
+  "subprocess": "atdd-api-tests",
+  "tests": [
+    {
+      "file": "tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.api.spec.ts",
+      "content": "import { apiRequest } from '../../support/helpers/apiClient';\nimport { test, expect } from '../../support/fixtures/connectShyftStoryB1.fixture';\n\ntest.describe(\n  'Story b.1 Tenant-Scoped Neighbor Creation with Required Phone (ATDD API)',\n  () => {\n    test.skip(\n      '[P0] creates tenant-scoped neighbor records and returns normalized phone values in success envelope @P0',\n      async ({ request, storyB1Context, storyB1AuthorizedHeaders, storyB1ValidPayload }) => {\n        const response = await apiRequest(request, {\n          method: 'POST',\n          path: storyB1Context.paths.neighborsCollection,\n          headers: storyB1AuthorizedHeaders,\n          data: storyB1ValidPayload,\n        });\n\n        expect(response.status()).toBe(201);\n        const body = await response.json();\n        expect(body).toMatchObject({\n          ok: true,\n          code: 'CONNECTSHYFT_NEIGHBOR_CREATED',\n          data: {\n            neighbor: {\n              tenantId: storyB1Context.tenantId,\n              orgUnitId: storyB1Context.orgUnitId,\n              phones: expect.arrayContaining([\n                expect.objectContaining({\n                  label: 'mobile',\n                  value: storyB1Context.validPhoneNormalized,\n                }),\n              ]),\n            },\n          },\n        });\n      },\n    );\n\n    test.skip(\n      '[P0] refuses create requests that omit phone entries with deterministic refusal messaging @P0',\n      async ({ request, storyB1Context, storyB1AuthorizedHeaders, storyB1NoPhonePayload }) => {\n        const response = await apiRequest(request, {\n          method: 'POST',\n          path: storyB1Context.paths.neighborsCollection,\n          headers: storyB1AuthorizedHeaders,\n          data: storyB1NoPhonePayload,\n        });\n\n        expect(response.status()).toBe(200);\n        const body = await response.json();\n        expect(body).toMatchObject({\n          ok: false,\n          code: 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED',\n          refusalType: 'business',\n          message: expect.stringContaining('at least one phone'),\n        });\n        expect(body).not.toHaveProperty('data.neighborId');\n      },\n    );\n\n    test.skip(\n      '[P0] refuses create requests when orgUnit scope crosses tenant boundaries @P0',\n      async ({ request, storyB1Context, storyB1AuthorizedHeaders, storyB1CrossTenantPayload }) => {\n        const response = await apiRequest(request, {\n          method: 'POST',\n          path: storyB1Context.paths.neighborsCollection,\n          headers: storyB1AuthorizedHeaders,\n          data: storyB1CrossTenantPayload,\n        });\n\n        expect(response.status()).toBe(200);\n        const body = await response.json();\n        expect(body).toMatchObject({\n          ok: false,\n          code: 'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH',\n          refusalType: 'business',\n        });\n      },\n    );\n\n    test.skip(\n      '[P1] refuses invalid phone formats with deterministic refusal code and no data leakage @P1',\n      async ({ request, storyB1Context, storyB1AuthorizedHeaders, storyB1InvalidPhonePayload }) => {\n        const response = await apiRequest(request, {\n          method: 'POST',\n          path: storyB1Context.paths.neighborsCollection,\n          headers: storyB1AuthorizedHeaders,\n          data: storyB1InvalidPhonePayload,\n        });\n\n        expect(response.status()).toBe(200);\n        const body = await response.json();\n        expect(body).toMatchObject({\n          ok: false,\n          code: 'CONNECTSHYFT_NEIGHBOR_PHONE_INVALID_FORMAT',\n          refusalType: 'business',\n          message: expect.stringContaining('phone'),\n        });\n        expect(body).not.toHaveProperty('data.normalizedPhones');\n      },\n    );\n\n    test.skip(\n      '[P1] refuses callers without neighbor-create capability before mutation processing @P1',\n      async ({ request, storyB1Context, storyB1TenantViewerHeaders, storyB1ValidPayload }) => {\n        const response = await apiRequest(request, {\n          method: 'POST',\n          path: storyB1Context.paths.neighborsCollection,\n          headers: storyB1TenantViewerHeaders,\n          data: storyB1ValidPayload,\n        });\n\n        expect(response.status()).toBe(200);\n        const body = await response.json();\n        expect(body).toMatchObject({\n          ok: false,\n          code: 'CONNECTSHYFT_NEIGHBOR_CREATE_FORBIDDEN',\n          refusalType: 'business',\n        });\n      },\n    );\n\n    test.skip(\n      '[P1] keeps canonical envelope keys across success and refusal paths for neighbor create @P1',\n      async ({ request, storyB1Context, storyB1AuthorizedHeaders, storyB1ValidPayload, storyB1NoPhonePayload }) => {\n        const successResponse = await apiRequest(request, {\n          method: 'POST',\n          path: storyB1Context.paths.neighborsCollection,\n          headers: storyB1AuthorizedHeaders,\n          data: storyB1ValidPayload,\n        });\n        const refusalResponse = await apiRequest(request, {\n          method: 'POST',\n          path: storyB1Context.paths.neighborsCollection,\n          headers: storyB1AuthorizedHeaders,\n          data: storyB1NoPhonePayload,\n        });\n\n        expect(successResponse.status()).toBe(201);\n        expect(refusalResponse.status()).toBe(200);\n\n        const successBody = await successResponse.json();\n        const refusalBody = await refusalResponse.json();\n        const requiredKeys = ['ok', 'code', 'message', 'correlationId', 'tenantId'];\n\n        expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(successBody, key))).toBe(true);\n        expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(refusalBody, key))).toBe(true);\n      },\n    );\n  },\n);\n\n",
+      "description": "ATDD API tests for story b.1 neighbor creation (RED phase)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Tenant-scoped neighbor identity is stored on create.",
+        "Requests without phones are refused with deterministic refusal messaging.",
+        "Requests with valid phones return normalized values via shared envelope semantics."
+      ],
+      "priority_coverage": {
+        "P0": 3,
+        "P1": 3,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "connectShyftStoryB1.fixture",
+    "connectShyftStoryB1Factory"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns"
+  ],
+  "test_count": 6,
+  "tdd_phase": "RED",
+  "summary": "Generated 6 failing API tests for story b.1"
+}
