@@ -109,6 +109,7 @@ so that communications can be started with valid contact records.
 
 - Keep changes scoped to ConnectShyft module and shared platform helpers.
 - Avoid broad refactors while adding neighbor-create capability.
+- Before implementation, run `npm run branch:ensure-workflow -- --workflow dev-story --story b-1-tenant-scoped-neighbor-creation-with-required-phone`.
 
 ### References
 

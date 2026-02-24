@@ -109,6 +109,7 @@ so that contact context remains aligned across operational teams.
 
 - Keep identity-sharing behavior explicit and testable at API contract boundaries.
 - Avoid introducing cross-module coupling with RouteShyft.
+- Before implementation, run `npm run branch:ensure-workflow -- --workflow dev-story --story b-2-shared-tenant-identity-and-shared-phone-indicators`.
 
 ### References
 

@@ -27,7 +27,7 @@ so that high-impact identity operations are deliberate and traceable.
 - Operability Pairing Notes: Merge UX must use irreversible confirmation language and display merge impact summary before commit.
 - Real-User Validation Evidence: Pending implementation. Validate role matrix, irreversible confirmation, and atomic merge integrity before `review`.
 - Real-User Validation Result: pending
-- Role-Admin UI Path: Role assignment path is required to validate merge permissions (`tenant`/`identity-lead` scenarios).
+- Role-Admin UI Path: Role assignment path is required to validate canonical merge role matrix (`TENANT_ADMIN` and `ORGUNIT_IDENTITY_LEAD` allowed; `ORGUNIT_MEMBER` refused).
 - Role-Admin UI Path Verified: pending
 - Access-Control Exemption Rationale: N/A
 
@@ -48,7 +48,7 @@ so that high-impact identity operations are deliberate and traceable.
   - [ ] Ensure audit/outbox persists with merge transaction semantics.
 - [ ] Add UI merge flow and automated coverage (AC: 1, 2, 3, 4)
   - [ ] Add irreversible confirmation modal with explicit impact copy.
-  - [ ] API tests for role matrix and atomicity.
+  - [ ] API tests for canonical role matrix (`TENANT_ADMIN` + `ORGUNIT_IDENTITY_LEAD` allowed, `ORGUNIT_MEMBER` refused) and atomicity.
   - [ ] E2E tests for confirmation, refusal, and success path integrity.
 
 ## Dev Notes
@@ -57,6 +57,7 @@ so that high-impact identity operations are deliberate and traceable.
 
 - FR coverage: FR-CS-009, FR-CS-024.
 - Story dependency: `b.3` relationship-gated neighbor edits should establish governance baseline before merge operations.
+- Execution gate: do not start until `b-3-relationship-gated-neighbor-edits-with-provenance-audit` is `done`; confirm upstream dependency `c-3-inbox-and-thread-detail-read-contracts` is satisfied in sprint status.
 - Merge behavior must remain fully auditable and refusal-safe.
 
 ### Architecture Compliance
@@ -116,7 +117,7 @@ so that high-impact identity operations are deliberate and traceable.
 ### Project Structure Notes
 
 - Keep merge logic isolated within ConnectShyft bounded context.
-- Ensure branch/workflow guard command is run for story-scoped implementation.
+- Before implementation, run `npm run branch:ensure-workflow -- --workflow dev-story --story b-4-role-restricted-neighbor-merge-with-irreversible-confirmation`.
 
 ### References
 

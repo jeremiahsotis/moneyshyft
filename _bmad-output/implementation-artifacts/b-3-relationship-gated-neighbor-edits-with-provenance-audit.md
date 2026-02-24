@@ -52,6 +52,7 @@ so that sensitive identity updates remain governed and auditable.
 
 - FR coverage: FR-CS-008, FR-CS-008a.
 - Story dependencies: `b.1` (neighbor identity exists) and `c.3` (thread/read contract alignment dependency) per sprint status map.
+- Execution gate: do not start this story until `c-3-inbox-and-thread-detail-read-contracts` is `done` per sprint rule `no_story_starts_with_unmet_dependencies`.
 - Treat this as a governance-critical access-control story.
 
 ### Architecture Compliance
@@ -110,6 +111,7 @@ so that sensitive identity updates remain governed and auditable.
 
 - Keep neighbor-edit policy evaluation explicit and testable.
 - Ensure cross-epic dependency with `c.3` is tracked in implementation notes and branch workflow guard usage.
+- Before implementation, run `npm run branch:ensure-workflow -- --workflow dev-story --story b-3-relationship-gated-neighbor-edits-with-provenance-audit`.
 
 ### References
 
