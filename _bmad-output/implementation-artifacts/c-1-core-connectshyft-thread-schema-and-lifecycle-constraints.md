@@ -1,6 +1,6 @@
 # Story c.1: Core ConnectShyft Thread Schema and Lifecycle Constraints
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
