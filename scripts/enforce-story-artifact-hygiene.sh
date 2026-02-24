@@ -87,7 +87,16 @@ awk '
   }
 ' "$STORY_FILE" > "$debug_refs_file"
 
-if ! rg -q '\(pass' "$debug_refs_file"; then
+contains_pass_marker() {
+  if command -v rg >/dev/null 2>&1; then
+    rg -q '\(pass' "$debug_refs_file"
+    return $?
+  fi
+
+  grep -Eq '\(pass' "$debug_refs_file"
+}
+
+if ! contains_pass_marker; then
   echo "Story artifact hygiene check failed: Debug Log References must include passing command results in $STORY_FILE"
   exit 1
 fi

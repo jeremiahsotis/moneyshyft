@@ -42,6 +42,15 @@ const isUserEmailUniqueConstraintError = (error: unknown): boolean => {
   return maybeDbError.code === '23505' && maybeDbError.constraint === 'users_email_unique';
 };
 
+const isMissingPlatformSchemaError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybeDbError = error as { code?: string };
+  return maybeDbError.code === '42P01' || maybeDbError.code === '3F000';
+};
+
 const sleep = async (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -165,6 +174,36 @@ const ensureHarnessBaselineData = async (householdId: string): Promise<void> => 
         setup_wizard_completed: true,
         setup_wizard_completed_at: db.fn.now(),
       });
+  }
+
+  try {
+    const modules = ['moneyshyft', 'connectshyft'] as const;
+    for (const moduleKey of modules) {
+      await db
+        .withSchema('platform')
+        .table('tenant_module_entitlements')
+        .insert({
+          tenant_id: householdId,
+          module_key: moduleKey,
+          enabled: true,
+          reason: 'test-auth-harness-baseline',
+          created_by_user_id: null,
+          updated_by_user_id: null,
+          created_at_utc: db.fn.now(),
+          updated_at_utc: db.fn.now(),
+        })
+        .onConflict(['tenant_id', 'module_key'])
+        .merge({
+          enabled: true,
+          reason: 'test-auth-harness-baseline',
+          updated_by_user_id: null,
+          updated_at_utc: db.fn.now(),
+        });
+    }
+  } catch (error) {
+    if (!isMissingPlatformSchemaError(error)) {
+      throw error;
+    }
   }
 };
 
