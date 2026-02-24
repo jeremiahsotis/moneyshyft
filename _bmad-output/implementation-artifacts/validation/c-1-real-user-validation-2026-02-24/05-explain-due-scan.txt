@@ -1,0 +1,9 @@
+SET
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.14..8.16 rows=1 width=24)
+   ->  Index Only Scan using cs_threads_due_eval_idx on cs_threads  (cost=0.14..8.16 rows=1 width=24)
+         Index Cond: ((tenant_id = 'tenant-contract-c1-index'::text) AND (org_unit_id = 'org-contract-c1-index'::text))
+(3 rows)
+
+RESET
