@@ -126,14 +126,14 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `npm run branch:ensure-workflow -- --workflow dev-story --story b-2-shared-tenant-identity-and-shared-phone-indicators`
-- `cd src && npm test -- src/src/modules/connectshyft/__tests__/neighbors.test.ts src/src/modules/connectshyft/__tests__/contextAccess.test.ts src/src/migrations/__tests__/connectShyftNeighborsMigration.test.ts src/src/migrations/__tests__/connectShyftNeighborSharedPhoneMetadataMigration.test.ts`
-- `cd src && npm run build`
-- `cd frontend && npm run build`
-- `npm run test:e2e -- tests/api/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.api.spec.ts`
-- `npm run test:e2e -- tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.spec.ts`
-- `cd src && npm test -- src/src/modules/connectshyft/__tests__/neighbors.test.ts src/src/migrations/__tests__/connectShyftNeighborSharedPhoneMetadataMigration.test.ts`
-- Regression spot checks: `npm run test:e2e -- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts`, `npm run test:e2e -- tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.api.spec.ts`, `npm run test:e2e -- tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts`
+- `npm run branch:ensure-workflow -- --workflow dev-story --story b-2-shared-tenant-identity-and-shared-phone-indicators` (pass)
+- `cd src && npm test -- src/src/modules/connectshyft/__tests__/neighbors.test.ts src/src/modules/connectshyft/__tests__/contextAccess.test.ts src/src/migrations/__tests__/connectShyftNeighborsMigration.test.ts src/src/migrations/__tests__/connectShyftNeighborSharedPhoneMetadataMigration.test.ts` (pass)
+- `cd src && npm run build` (pass)
+- `cd frontend && npm run build` (pass)
+- `npm run test:e2e -- tests/api/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.api.spec.ts` (pass)
+- `npm run test:e2e -- tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.spec.ts` (pass)
+- `cd src && npm test -- src/src/modules/connectshyft/__tests__/neighbors.test.ts src/src/migrations/__tests__/connectShyftNeighborSharedPhoneMetadataMigration.test.ts` (pass)
+- Regression spot checks (pass): `npm run test:e2e -- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts`, `npm run test:e2e -- tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.api.spec.ts`, `npm run test:e2e -- tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts`
 
 ### Completion Notes List
 
@@ -164,6 +164,8 @@ GPT-5 Codex
 - tests/api/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.atdd.api.spec.ts
 - tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.spec.ts
 - tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.atdd.spec.ts
+- tests/support/factories/connectShyftStoryB2Factory.ts
+- tests/support/fixtures/connectShyftStoryB2.fixture.ts
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 - _bmad-output/implementation-artifacts/b-2-shared-tenant-identity-and-shared-phone-indicators.md
 
