@@ -19,6 +19,26 @@
       </section>
 
       <section
+        v-if="contextOverrideNotice || editPolicyIndicator"
+        class="mb-6 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"
+      >
+        <p
+          v-if="contextOverrideNotice"
+          data-testid="connectshyft-context-override-notice"
+          class="font-medium"
+        >
+          {{ contextOverrideNotice }}
+        </p>
+        <p
+          v-else-if="editPolicyIndicator"
+          data-testid="connectshyft-neighbor-edit-policy-indicator"
+          class="font-medium"
+        >
+          {{ editPolicyIndicator }}
+        </p>
+      </section>
+
+      <section
         v-if="refusalState"
         data-testid="connectshyft-neighbor-profile-refusal-state"
         class="mb-6 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
@@ -28,6 +48,13 @@
           {{ refusalState.code }}
         </p>
         <p class="mt-1">{{ refusalState.message }}</p>
+        <button
+          type="button"
+          disabled
+          class="mt-3 rounded bg-slate-400 px-3 py-2 text-sm font-medium text-white"
+        >
+          Save Neighbor Profile
+        </button>
       </section>
 
       <form
@@ -117,12 +144,31 @@
         <div class="mt-4">
           <button
             type="submit"
-            :disabled="isSubmitting"
+            :disabled="isSubmitting || Boolean(refusalState)"
             class="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
           >
             Save Neighbor Profile
           </button>
         </div>
+
+        <section
+          v-if="provenanceOrgUnit || provenanceActor"
+          class="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700"
+        >
+          <p class="font-semibold text-slate-900">Last update provenance</p>
+          <p
+            data-testid="connectshyft-neighbor-provenance-orgunit"
+            class="mt-1"
+          >
+            orgUnit: {{ provenanceOrgUnit }}
+          </p>
+          <p
+            data-testid="connectshyft-neighbor-provenance-actor"
+            class="mt-1"
+          >
+            actor: {{ provenanceActor }}
+          </p>
+        </section>
       </form>
     </section>
   </main>
@@ -154,6 +200,10 @@ const firstName = ref('');
 const lastName = ref('');
 const phones = ref<ConnectShyftNeighborPhone[]>([]);
 const refusalState = ref<{ code: string; message: string } | null>(null);
+const editPolicyIndicator = ref<string | null>(null);
+const contextOverrideNotice = ref<string | null>(null);
+const provenanceOrgUnit = ref<string | null>(null);
+const provenanceActor = ref<string | null>(null);
 
 const phoneTestSuffix = (phone: ConnectShyftNeighborPhone): string => {
   const normalizedLabel = phone.label.trim().toLowerCase().replace(/\s+/g, '-');
@@ -171,6 +221,10 @@ const loadProfile = async (): Promise<void> => {
   validationError.value = '';
   successMessage.value = '';
   refusalState.value = null;
+  editPolicyIndicator.value = null;
+  contextOverrideNotice.value = null;
+  provenanceOrgUnit.value = null;
+  provenanceActor.value = null;
 
   if (!neighborId.value) {
     refusalState.value = {
@@ -197,6 +251,8 @@ const loadProfile = async (): Promise<void> => {
     scope.value = result.scope;
   }
   hydrateProfileState(result.neighbor);
+  editPolicyIndicator.value = result.editPolicy?.indicator || null;
+  contextOverrideNotice.value = result.contextOverrideNotice;
 };
 
 const toggleShared = (index: number, event: Event): void => {
@@ -239,6 +295,8 @@ const handleSave = async (): Promise<void> => {
     if (result.scope) {
       scope.value = result.scope;
     }
+    provenanceOrgUnit.value = null;
+    provenanceActor.value = null;
     return;
   }
 
@@ -247,6 +305,10 @@ const handleSave = async (): Promise<void> => {
     scope.value = result.scope;
   }
   hydrateProfileState(result.neighbor);
+  editPolicyIndicator.value = result.editPolicy?.indicator || null;
+  contextOverrideNotice.value = result.contextOverrideNotice;
+  provenanceOrgUnit.value = result.provenance?.orgUnitId || null;
+  provenanceActor.value = result.provenance?.actorUserId || null;
   successMessage.value = 'Neighbor profile updated';
 };
 
