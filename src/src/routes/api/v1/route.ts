@@ -1,0 +1,251 @@
+import { Request, Response, Router } from 'express';
+import type { Knex } from 'knex';
+import { authenticateToken } from '../../../middleware/auth';
+import { refusal, success } from '../../../platform/envelopes/response';
+import { requireTenantId, TenantScopeError } from '../../../platform/tenancy/tenantScope';
+import { CommitmentService } from '../../../modules/route/application/commitmentService';
+import { KnexCommitmentRepository } from '../../../modules/route/infrastructure/commitmentRepository';
+import { isCommitmentStatus } from '../../../modules/route/domain/commitmentLifecycle';
+
+const TEST_TENANT_HEADER = 'x-test-route-tenant-id';
+const TEST_ACTOR_HEADER = 'x-test-route-actor-id';
+
+const isNodeTestEnv = (): boolean => process.env.NODE_ENV?.trim().toLowerCase() === 'test';
+
+const loadRouteDb = (): Knex => {
+  const knexModule = require('../../../config/knex') as { default: Knex };
+  return knexModule.default;
+};
+
+const defaultCommitmentService = new CommitmentService(
+  new KnexCommitmentRepository(loadRouteDb()),
+);
+
+const normalizeNonEmptyString = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  return value.trim();
+};
+
+const resolveTenantContext = (req: Request): string | null => {
+  const resolvedTenant = normalizeNonEmptyString(
+    req.user?.activeTenantId
+    || req.user?.householdId
+    || req.tenantContext?.tenantId
+    || req.tenantId
+    || null,
+  );
+
+  if (resolvedTenant) {
+    return resolvedTenant;
+  }
+
+  if (!isNodeTestEnv()) {
+    return null;
+  }
+
+  return normalizeNonEmptyString(req.header(TEST_TENANT_HEADER)) || null;
+};
+
+const resolveActorId = (req: Request): string | null => {
+  const actorId = normalizeNonEmptyString(req.user?.userId || null);
+  if (actorId) {
+    return actorId;
+  }
+
+  if (!isNodeTestEnv()) {
+    return null;
+  }
+
+  return normalizeNonEmptyString(req.header(TEST_ACTOR_HEADER)) || null;
+};
+
+const parseCommitmentId = (req: Request): string => normalizeNonEmptyString(req.params.commitmentId || null);
+
+const parseCreateBody = (req: Request) => ({
+  sourceType: normalizeNonEmptyString(req.body?.sourceType),
+  sourceId: normalizeNonEmptyString(req.body?.sourceId),
+  orgUnitId: normalizeNonEmptyString(req.body?.orgUnitId) || null,
+  externalRef: normalizeNonEmptyString(req.body?.externalRef) || null,
+});
+
+const parseTransitionBody = (req: Request) => ({
+  nextStatus: normalizeNonEmptyString(req.body?.nextStatus),
+  reason: normalizeNonEmptyString(req.body?.reason),
+  policyExceptionCode: normalizeNonEmptyString(req.body?.policyExceptionCode) || null,
+});
+
+const resolveTenantId = (req: Request, res: Response): string | null => {
+  try {
+    const scopedTenant = requireTenantId(resolveTenantContext(req));
+    return scopedTenant;
+  } catch (error) {
+    const message = error instanceof TenantScopeError
+      ? error.message
+      : 'Tenant context is required for Route module requests.';
+
+    refusal(res, {
+      code: 'ROUTE_TENANT_CONTEXT_REQUIRED',
+      message,
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return null;
+  }
+};
+
+const applyServiceRefusal = (
+  res: Response,
+  rejected: {
+    code: string;
+    message: string;
+    refusalType: 'business' | 'client' | 'security';
+    httpStatus: number;
+    data?: Record<string, unknown>;
+  },
+): void => {
+  refusal(res, {
+    code: rejected.code,
+    message: rejected.message,
+    refusalType: rejected.refusalType,
+    httpStatus: rejected.httpStatus,
+    data: rejected.data,
+  });
+};
+
+export const createRouteRouter = (
+  commitmentService: CommitmentService = defaultCommitmentService,
+): Router => {
+  const router = Router();
+
+  router.get('/_health', (_req: Request, res: Response) => success(res, {
+    code: 'ROUTE_MODULE_HEALTHY',
+    message: 'Route module registered and healthy',
+    data: {
+      service: 'route',
+      feature: 'commitment_lifecycle',
+    },
+  }));
+
+  router.use(authenticateToken);
+
+  router.post('/commitments', async (req: Request, res: Response) => {
+    const tenantId = resolveTenantId(req, res);
+    if (!tenantId) {
+      return;
+    }
+
+    const body = parseCreateBody(req);
+    const created = await commitmentService.createCommitment({
+      tenantId,
+      actorId: resolveActorId(req),
+      sourceType: body.sourceType,
+      sourceId: body.sourceId,
+      orgUnitId: body.orgUnitId,
+      externalRef: body.externalRef,
+    });
+
+    if (!created.ok) {
+      applyServiceRefusal(res, created);
+      return;
+    }
+
+    success(res, {
+      code: created.code,
+      message: created.message,
+      httpStatus: created.httpStatus,
+      data: created.data,
+    });
+  });
+
+  router.get('/commitments/:commitmentId', async (req: Request, res: Response) => {
+    const tenantId = resolveTenantId(req, res);
+    if (!tenantId) {
+      return;
+    }
+
+    const commitmentId = parseCommitmentId(req);
+    if (!commitmentId) {
+      refusal(res, {
+        code: 'ROUTE_COMMITMENT_ID_REQUIRED',
+        message: 'commitmentId is required.',
+        refusalType: 'client',
+        httpStatus: 400,
+      });
+      return;
+    }
+
+    const resolved = await commitmentService.resolveCommitment({
+      tenantId,
+      commitmentId,
+    });
+
+    if (!resolved.ok) {
+      applyServiceRefusal(res, resolved);
+      return;
+    }
+
+    success(res, {
+      code: resolved.code,
+      message: resolved.message,
+      httpStatus: resolved.httpStatus,
+      data: resolved.data,
+    });
+  });
+
+  router.post('/commitments/:commitmentId/transitions', async (req: Request, res: Response) => {
+    const tenantId = resolveTenantId(req, res);
+    if (!tenantId) {
+      return;
+    }
+
+    const commitmentId = parseCommitmentId(req);
+    if (!commitmentId) {
+      refusal(res, {
+        code: 'ROUTE_COMMITMENT_ID_REQUIRED',
+        message: 'commitmentId is required.',
+        refusalType: 'client',
+        httpStatus: 400,
+      });
+      return;
+    }
+
+    const body = parseTransitionBody(req);
+    if (!isCommitmentStatus(body.nextStatus)) {
+      refusal(res, {
+        code: 'ROUTE_COMMITMENT_INVALID_STATUS',
+        message: 'nextStatus must be one of scheduled, in_progress, completed, canceled, or refused.',
+        refusalType: 'client',
+        httpStatus: 400,
+      });
+      return;
+    }
+
+    const transitioned = await commitmentService.transitionCommitment({
+      tenantId,
+      commitmentId,
+      actorId: resolveActorId(req),
+      nextStatus: body.nextStatus,
+      reason: body.reason,
+      policyExceptionCode: body.policyExceptionCode,
+    });
+
+    if (!transitioned.ok) {
+      applyServiceRefusal(res, transitioned);
+      return;
+    }
+
+    success(res, {
+      code: transitioned.code,
+      message: transitioned.message,
+      httpStatus: transitioned.httpStatus,
+      data: transitioned.data,
+    });
+  });
+
+  return router;
+};
+
+export default createRouteRouter();

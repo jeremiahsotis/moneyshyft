@@ -62,7 +62,7 @@ development_status:
   1-6-security-controls-and-redaction-verification: done
   epic-1-retrospective: done
   epic-2: in-progress
-  2-1-commitment-domain-model-and-transition-rules: ready-for-dev
+  2-1-commitment-domain-model-and-transition-rules: review
   2-2-donor-self-service-pickup-intake-with-capacity-check: ready-for-dev
   2-3-cashier-assisted-intake-and-voucher-delivery-scheduling: ready-for-dev
   2-4-request-to-commitment-linkage-and-terminal-enforcement: ready-for-dev
