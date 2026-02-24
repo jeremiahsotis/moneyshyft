@@ -32,12 +32,25 @@ test.describe('Debts', () => {
       const modal = page.getByTestId('debt-detail-modal');
       await expect(modal).toBeVisible();
 
+      // DebtDetailModal initializes by loading history, then resets form fields.
+      // Wait for that initialization cycle to finish to avoid racing with input resets.
+      await expect(modal.getByText('Loading payments...')).toHaveCount(0);
+      await expect(modal.getByTestId('debt-payment-amount')).toHaveValue('0');
+
       await modal.getByTestId('debt-payment-amount').fill('5.00');
       await modal.getByTestId('debt-payment-date').fill(todayISO());
       await selectFirstNonEmptyOption(modal.getByTestId('debt-payment-account'));
-      await modal.getByTestId('debt-payment-submit').click();
+      await expect(modal.getByTestId('debt-payment-amount')).toHaveValue(/^5(?:\.0+)?$/);
 
-      await expect(modal.getByText('No payments recorded yet')).toHaveCount(0);
+      const addPaymentResponse = page.waitForResponse((response) => (
+        response.url().includes('/api/v1/debts/')
+        && response.url().includes('/payments')
+        && response.request().method() === 'POST'
+      ));
+      await modal.getByTestId('debt-payment-submit').click();
+      await addPaymentResponse;
+
+      await expect(modal.getByText('No payments recorded yet')).toHaveCount(0, { timeout: 10000 });
 
       const debtsResponse = await page.request.get('/api/v1/debts');
       const debtsData = await debtsResponse.json();

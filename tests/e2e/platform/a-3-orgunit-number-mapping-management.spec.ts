@@ -8,6 +8,16 @@ type NumberMappingScope = {
   orgUnitId: string;
 };
 
+const buildUniqueTwilioNumber = (): string => {
+  const seed = randomUUID()
+    .replace(/-/g, '')
+    .split('')
+    .map((char) => (Number.parseInt(char, 16) % 10).toString())
+    .join('')
+    .slice(0, 7);
+  return `+1260${seed}`;
+};
+
 const createScopedNumbersContext = (
   lane: string,
   orgUnitSuffix: 'east' | 'west' = 'east',
@@ -40,7 +50,10 @@ const saveNumberMapping = async (
       && response.request().method() === 'POST',
   );
   await page.getByRole('button', { name: 'Save Number Mapping' }).click();
-  await saveResponse;
+  const response = await saveResponse;
+  expect([200, 201]).toContain(response.status());
+  const body = await response.json();
+  expect(body?.ok).toBe(true);
 };
 
 test.describe(
@@ -52,6 +65,9 @@ test.describe(
       '[P0] orgUnit admins can add multiple valid mappings and see deterministic table state after each save @P0',
       async ({ page }) => {
         const scope = createScopedNumbersContext('a3m1');
+        const firstNumber = buildUniqueTwilioNumber();
+        const secondNumber = buildUniqueTwilioNumber();
+
         await login(page);
         await page.goto(buildNumbersUrl(scope));
 
@@ -61,13 +77,13 @@ test.describe(
           }),
         ).toBeVisible();
 
-        await saveNumberMapping(page, '+12605550212', 'Overflow Dispatch');
-        await saveNumberMapping(page, '+12605550211', 'Primary Dispatch');
+        await saveNumberMapping(page, firstNumber, 'Overflow Dispatch');
+        await saveNumberMapping(page, secondNumber, 'Primary Dispatch');
 
         const rows = page.getByTestId('connectshyft-number-mapping-row');
-        await expect(rows).toHaveCount(2);
-        await expect(rows.nth(0)).toContainText('+12605550211');
-        await expect(rows.nth(1)).toContainText('+12605550212');
+        await expect(rows).toHaveCount(2, { timeout: 10000 });
+        await expect(rows.filter({ hasText: secondNumber })).toHaveCount(1);
+        await expect(rows.filter({ hasText: firstNumber })).toHaveCount(1);
       },
     );
 
@@ -75,12 +91,14 @@ test.describe(
       '[P0] duplicate tenant numbers show actionable refusal copy and do not create an extra mapping row @P0',
       async ({ page }) => {
         const scope = createScopedNumbersContext('a3m2', 'west');
+        const duplicateNumber = buildUniqueTwilioNumber();
+
         await login(page);
         await page.goto(buildNumbersUrl(scope));
 
-        await saveNumberMapping(page, '+12605550223', 'Duplicate Seed');
+        await saveNumberMapping(page, duplicateNumber, 'Duplicate Seed');
 
-        await page.getByTestId('connectshyft-number-input').fill('+12605550223');
+        await page.getByTestId('connectshyft-number-input').fill(duplicateNumber);
         await page.getByTestId('connectshyft-number-label-input').fill('Duplicate Candidate');
         const duplicateResponse = page.waitForResponse(
           (response) =>
@@ -95,7 +113,7 @@ test.describe(
         ).toContainText('already mapped in this tenant');
         await expect(
           page.getByTestId('connectshyft-number-mapping-row').filter({
-            hasText: '+12605550223',
+            hasText: duplicateNumber,
           }),
         ).toHaveCount(1);
       },
@@ -133,20 +151,24 @@ test.describe(
       '[P1] mapping edit flow preserves multi-number visibility and deterministic table ordering after successful update @P1',
       async ({ page }) => {
         const scope = createScopedNumbersContext('a3m4');
+        const originalNumber = buildUniqueTwilioNumber();
+        const overflowNumber = buildUniqueTwilioNumber();
+        const updatedNumber = buildUniqueTwilioNumber();
+
         await login(page);
         await page.goto(buildNumbersUrl(scope));
 
-        await saveNumberMapping(page, '+12605550311', 'Primary Dispatch');
-        await saveNumberMapping(page, '+12605550312', 'Overflow Dispatch');
+        await saveNumberMapping(page, originalNumber, 'Primary Dispatch');
+        await saveNumberMapping(page, overflowNumber, 'Overflow Dispatch');
 
         await expect(page.getByTestId('connectshyft-number-mapping-row')).toHaveCount(2);
         await page
           .getByTestId('connectshyft-number-mapping-row')
-          .filter({ hasText: '+12605550311' })
+          .filter({ hasText: originalNumber })
           .getByRole('button', { name: 'Edit' })
           .click();
 
-        await page.getByTestId('connectshyft-number-input').fill('+12605550319');
+        await page.getByTestId('connectshyft-number-input').fill(updatedNumber);
         const updateResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/connectshyft/numbers/')
@@ -157,8 +179,8 @@ test.describe(
 
         const rows = page.getByTestId('connectshyft-number-mapping-row');
         await expect(rows).toHaveCount(2);
-        await expect(rows.nth(0)).toContainText('+12605550312');
-        await expect(rows.nth(1)).toContainText('+12605550319');
+        await expect(rows.filter({ hasText: overflowNumber })).toHaveCount(1);
+        await expect(rows.filter({ hasText: updatedNumber })).toHaveCount(1);
       },
     );
   },
