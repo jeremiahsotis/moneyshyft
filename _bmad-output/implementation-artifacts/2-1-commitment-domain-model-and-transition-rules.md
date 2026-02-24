@@ -1,6 +1,6 @@
 # Story 2.1: Commitment Domain Model and Transition Rules
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,8 +24,8 @@ so that execution promises are traceable and terminal-state enforced.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Dispatcher status actions must be explicit and irreversible once terminal.
-- Real-User Validation Evidence: Dispatcher can create, transition, and view terminal commitments from Route UI/API.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-02-24 API validation passed using real signup/login cookies and CSRF proof tokens; dispatcher created commitment, transitioned `scheduled -> in_progress -> completed`, resolved terminal state, and verified post-terminal refusal (`ROUTE_COMMITMENT_TERMINAL_STATE_LOCKED`). Evidence bundle: `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/story-2-1-real-user-20260224-165031`.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story focuses commitment lifecycle semantics, not role administration.
@@ -112,6 +112,14 @@ GPT-5 Codex
   - `cd src && npm test -- src/modules/route/domain/__tests__/commitmentLifecycle.test.ts src/modules/route/application/__tests__/commitmentService.test.ts src/modules/route/infrastructure/__tests__/commitmentRepository.test.ts src/migrations/__tests__/routeCommitmentLifecycleMigration.test.ts`
   - `cd src && npm test -- src/routes/api/v1/__tests__/route.commitments.test.ts src/__tests__/app-entrypoint-kernel.test.ts`
   - `cd src && npm test`
+- Senior review remediation run:
+  - `cd src && npm test -- src/modules/route/application/__tests__/commitmentService.test.ts src/routes/api/v1/__tests__/route.commitments.test.ts src/migrations/__tests__/routeCommitmentLifecycleMigration.test.ts src/modules/route/domain/__tests__/commitmentLifecycle.test.ts src/modules/route/infrastructure/__tests__/commitmentRepository.test.ts src/__tests__/app-entrypoint-kernel.test.ts`
+  - `cd src && npm run build`
+  - `cd src && npm test`
+- Real-user validation run (local API evidence):
+  - `cd src && npm run migrate:latest`
+  - `npm run dev` (backend on `http://localhost:3000`)
+  - Auth + lifecycle validation artifacts captured under `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/story-2-1-real-user-20260224-165031`
 
 ### Completion Notes List
 
@@ -122,6 +130,10 @@ GPT-5 Codex
 - Added Route-facing endpoints for commitment create/read/transition and registered `/api/v1/route` route namespace.
 - Added migration and test coverage for transition audit schema, domain transition rules, transaction-level persistence behavior, and route contract flows.
 - Full backend Jest regression suite passed.
+- Hardened policy-exception transitions to require elevated authorization and added regression tests for unauthorized/authorized override paths.
+- Enforced create-time orgUnit scope matching to active context and added API refusal coverage for mismatched orgUnit requests.
+- Added tenant+commitment composite integrity constraint for transition-audit linkage in migration and migration tests.
+- Completed real-user API validation evidence for dispatcher commitment lifecycle and terminal lock guardrail.
 
 ### File List
 
@@ -143,3 +155,31 @@ GPT-5 Codex
 ### Change Log
 
 - 2026-02-24: Implemented commitment lifecycle domain + transition matrix, added atomic transition audit persistence, mounted `/api/v1/route` commitment endpoints, added migration and full regression-validated test coverage.
+- 2026-02-24: Senior review remediation fixed 2 High + 2 Medium findings (policy-exception authorization, orgUnit scope enforcement, audit FK tenant consistency, negative-path regression coverage). Story status set to `in-progress` pending real-user validation guardrail pass.
+- 2026-02-24: Completed real-user validation evidence capture (signup/login + CSRF-protected Route lifecycle create/transition/resolve + post-terminal refusal) and cleared critical-capability operability guardrail.
+
+## Senior Developer Review (AI)
+
+### Reviewer
+
+Jeremiah
+
+### Date
+
+2026-02-24
+
+### Outcome
+
+- Resolved all identified review findings in this pass:
+  - High: terminal policy-exception bypass risk
+  - High: client-controlled orgUnit spoofing risk
+  - Medium: audit tenant/commitment integrity gap
+  - Medium: missing negative-path tests
+- Critical-capability guardrail is satisfied with `Real-User Validation Result: pass`.
+
+### Validation Evidence
+
+- `cd src && npm test -- src/modules/route/application/__tests__/commitmentService.test.ts src/routes/api/v1/__tests__/route.commitments.test.ts src/migrations/__tests__/routeCommitmentLifecycleMigration.test.ts src/modules/route/domain/__tests__/commitmentLifecycle.test.ts src/modules/route/infrastructure/__tests__/commitmentRepository.test.ts src/__tests__/app-entrypoint-kernel.test.ts`
+- `cd src && npm run build`
+- `cd src && npm test`
+- Real-user evidence bundle: `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/story-2-1-real-user-20260224-165031`
