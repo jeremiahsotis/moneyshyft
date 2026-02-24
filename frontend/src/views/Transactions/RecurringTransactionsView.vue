@@ -60,7 +60,7 @@
           <button
             @click="showAddModal = true"
             class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium"
-            data-testid="recurring-add-button"
+            data-testid="recurring-add-first-button"
           >
             Create Your First Recurring Transaction
           </button>
