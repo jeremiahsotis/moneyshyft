@@ -379,7 +379,7 @@ As an orgUnit operator,
 I want claim/takeover/close actions to enforce canonical transitions and ownership governance,
 So that lifecycle actions remain predictable and auditable.
 
-**FRs:** FR-CS-013, FR-CS-015
+**FRs:** FR-CS-013, FR-CS-015, FR-CS-024
 
 **Acceptance Criteria:**
 
