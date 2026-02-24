@@ -106,32 +106,34 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import {
-  DEFAULT_CONNECTSHYFT_UI_FLAGS,
-  fetchConnectShyftUiFlags,
+  DEFAULT_CONNECTSHYFT_AVAILABILITY,
+  fetchConnectShyftAvailability,
 } from '@/features/connectshyft/flags';
 
-const flags = ref({ ...DEFAULT_CONNECTSHYFT_UI_FLAGS });
+const availability = ref({ ...DEFAULT_CONNECTSHYFT_AVAILABILITY });
 
 onMounted(async () => {
-  flags.value = await fetchConnectShyftUiFlags();
+  availability.value = await fetchConnectShyftAvailability();
 });
 
-const moduleAvailable = computed(() => flags.value.connectshyft_enabled);
-const inboxAvailable = computed(
-  () => moduleAvailable.value && flags.value.connectshyft_inbox_enabled,
-);
-const escalationAvailable = computed(
-  () => moduleAvailable.value && flags.value.connectshyft_escalation_enabled,
-);
-const webhooksAvailable = computed(
-  () => moduleAvailable.value && flags.value.connectshyft_webhooks_enabled,
-);
+const moduleAvailable = computed(() => availability.value.capabilities.module);
+const inboxAvailable = computed(() => availability.value.capabilities.inbox);
+const escalationAvailable = computed(() => availability.value.capabilities.escalation);
+const webhooksAvailable = computed(() => availability.value.capabilities.webhooks);
 
 const showUnavailableState = computed(() => !moduleAvailable.value || !inboxAvailable.value);
 
 const unavailableMessage = computed(() => {
+  if (availability.value.refusal?.message) {
+    return availability.value.refusal.message;
+  }
+
   if (!moduleAvailable.value) {
-    return 'Enable connectshyft_enabled to access this module.';
+    if (availability.value.entitlement && availability.value.entitlement.enabled === false) {
+      return 'ConnectShyft module entitlement is disabled for this tenant.';
+    }
+
+    return 'ConnectShyft is currently unavailable for this tenant. Enable connectshyft_enabled to access this module.';
   }
 
   return 'ConnectShyft inbox is currently unavailable for this tenant.';

@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { test, expect } from '../../support/fixtures/policyWorkflowGuardStory15.fixture';
 import { runPolicyScriptInTempRepo } from '../../support/utils/policyScriptTestHarness';
 import { runBranchWorkflowGuardInTempRepo } from '../../support/utils/branchWorkflowGuardTestHarness';
@@ -48,6 +50,192 @@ course_correction:
   cc-2026-02-18:
     status: approved
 `;
+
+function runStatusTransitionConcurrencyHarness(storyStatusTransitionScript: string): {
+  statuses: [number, number];
+  outputs: [string, string];
+  storyStatusLine: string;
+  sprintStatusLine: string;
+} {
+  const repoDir = mkdtempSync(join(tmpdir(), 'status-transition-harness-'));
+
+  try {
+    mkdirSync(join(repoDir, 'scripts'), { recursive: true });
+    mkdirSync(join(repoDir, 'docs/policies'), { recursive: true });
+    mkdirSync(join(repoDir, '_bmad-output/implementation-artifacts'), { recursive: true });
+
+    copyFileSync(storyStatusTransitionScript, join(repoDir, 'scripts/story-status-transition.sh'));
+    copyFileSync(resolve('scripts/project-lane-context.js'), join(repoDir, 'scripts/project-lane-context.js'));
+    copyFileSync(resolve('docs/policies/project_lanes.json'), join(repoDir, 'docs/policies/project_lanes.json'));
+
+    writeFileSync(
+      join(repoDir, '_bmad-output/implementation-artifacts/sprint-status.yaml'),
+      `project_lane: routeshyft
+development_status:
+  1-5-policy-gate-and-branch-workflow-guard-enforcement: review
+`,
+      'utf8',
+    );
+
+    writeFileSync(
+      join(repoDir, '_bmad-output/implementation-artifacts/1-5-policy-gate-and-branch-workflow-guard-enforcement.md'),
+      `# Story 1.5
+
+Status: review
+`,
+      'utf8',
+    );
+
+    execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.email', 'story-transition-harness@example.com'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.name', 'Story Transition Harness'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['add', '.'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['commit', '-m', 'seed story transition harness'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['checkout', '-b', 'codex/story-1-5-routeshyft-policy-harness'], { cwd: repoDir, stdio: 'ignore' });
+
+    const raceOutput = execFileSync(
+      'bash',
+      [
+        '-lc',
+        [
+          'set +e',
+          'bash scripts/story-status-transition.sh --story-key 1-5-policy-gate-and-branch-workflow-guard-enforcement --status done --lock-timeout-seconds 2 > run1.log 2>&1 &',
+          'pid1=$!',
+          'bash scripts/story-status-transition.sh --story-key 1-5-policy-gate-and-branch-workflow-guard-enforcement --status done --lock-timeout-seconds 2 > run2.log 2>&1 &',
+          'pid2=$!',
+          'wait $pid1; s1=$?',
+          'wait $pid2; s2=$?',
+          'echo "$s1,$s2"',
+        ].join('\n'),
+      ],
+      {
+        cwd: repoDir,
+        env: {
+          ...process.env,
+          GITHUB_EVENT_NAME: 'local',
+        },
+        encoding: 'utf8',
+      },
+    ).trim();
+
+    const [status1Raw, status2Raw] = raceOutput.split(',');
+    const status1 = Number.parseInt(status1Raw, 10);
+    const status2 = Number.parseInt(status2Raw, 10);
+    const output1 = readFileSync(join(repoDir, 'run1.log'), 'utf8');
+    const output2 = readFileSync(join(repoDir, 'run2.log'), 'utf8');
+    const storyStatusLine = readFileSync(
+      join(repoDir, '_bmad-output/implementation-artifacts/1-5-policy-gate-and-branch-workflow-guard-enforcement.md'),
+      'utf8',
+    )
+      .split(/\r?\n/)
+      .find((line) => line.startsWith('Status:')) ?? '';
+    const sprintStatusLine = readFileSync(
+      join(repoDir, '_bmad-output/implementation-artifacts/sprint-status.yaml'),
+      'utf8',
+    )
+      .split(/\r?\n/)
+      .find((line) => line.includes('1-5-policy-gate-and-branch-workflow-guard-enforcement:')) ?? '';
+
+    return {
+      statuses: [status1, status2],
+      outputs: [output1, output2],
+      storyStatusLine,
+      sprintStatusLine,
+    };
+  } finally {
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+}
+
+function runOperabilityCloseoutHarness(operabilityGuardScript: string): { output: string; status: number } {
+  const repoDir = mkdtempSync(join(tmpdir(), 'operability-closeout-harness-'));
+
+  try {
+    mkdirSync(join(repoDir, '_bmad-output/implementation-artifacts'), { recursive: true });
+    mkdirSync(join(repoDir, 'scripts'), { recursive: true });
+    copyFileSync(operabilityGuardScript, join(repoDir, 'scripts/enforce-operability-closeout-guard.sh'));
+
+    const storyPath = join(
+      repoDir,
+      '_bmad-output/implementation-artifacts/1-5-policy-gate-and-branch-workflow-guard-enforcement.md',
+    );
+
+    writeFileSync(
+      storyPath,
+      `# Story 1.5
+
+Status: review
+
+## Operability Guardrails
+- Guardrail Classification Reviewed: yes
+- Critical Capability: yes
+- Access-Control Story: yes
+- Backend/API Implies Human Operability: yes
+- Frontend/Operator Usability Criteria Included: yes
+- Real-User Validation Evidence: smoke walkthrough
+- Real-User Validation Result: pass
+- Role-Admin UI Path: /admin/tenant
+- Role-Admin UI Path Verified: yes
+- Access-Control Exemption Rationale: N/A
+`,
+      'utf8',
+    );
+
+    execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.email', 'operability-harness@example.com'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.name', 'Operability Harness'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['add', '.'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['commit', '-m', 'seed operability harness'], { cwd: repoDir, stdio: 'ignore' });
+
+    writeFileSync(
+      storyPath,
+      `# Story 1.5
+
+Status: done
+
+## Operability Guardrails
+- Guardrail Classification Reviewed: yes
+- Critical Capability: yes
+- Access-Control Story: yes
+- Backend/API Implies Human Operability: yes
+- Frontend/Operator Usability Criteria Included: yes
+- Real-User Validation Evidence:
+- Real-User Validation Result: fail
+- Role-Admin UI Path: /admin/tenant
+- Role-Admin UI Path Verified: yes
+- Access-Control Exemption Rationale: N/A
+`,
+      'utf8',
+    );
+    execFileSync('git', ['add', '_bmad-output/implementation-artifacts/1-5-policy-gate-and-branch-workflow-guard-enforcement.md'], {
+      cwd: repoDir,
+      stdio: 'ignore',
+    });
+    execFileSync('git', ['commit', '-m', '1-5: mark done without valid operability evidence'], {
+      cwd: repoDir,
+      stdio: 'ignore',
+    });
+
+    try {
+      const output = execFileSync('bash', ['scripts/enforce-operability-closeout-guard.sh'], {
+        cwd: repoDir,
+        encoding: 'utf8',
+      });
+      return {
+        output,
+        status: 0,
+      };
+    } catch (error) {
+      const typed = error as { stdout?: string; stderr?: string; status?: number };
+      return {
+        output: `${typed.stdout ?? ''}${typed.stderr ?? ''}`,
+        status: typed.status ?? 1,
+      };
+    }
+  } finally {
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+}
 
 test.describe('Story 1.5 policy gate and branch workflow guard enforcement API coverage', () => {
   test('[P0] enforces policy-first CI dependency chain and runs backend contracts only after quality gates @P0', async ({
@@ -138,6 +326,35 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
     const indicatesPrHeadSubject = /Actual \(HEAD\^2\): bad subject format/.test(output);
 
     expect(status !== 0 && hasFailureHeadline && indicatesPrHeadSubject).toBe(true);
+  });
+
+  test('[P0] automation-backed status transitions are single-winner under concurrency and keep sprint/story synchronized @P0', async ({
+    story15Context,
+  }) => {
+    const transitionScript = resolve(dirname(story15Context.policyScript), 'story-status-transition.sh');
+    const result = runStatusTransitionConcurrencyHarness(transitionScript);
+    const successCount = result.statuses.filter((status) => status === 0).length;
+    const conflictCount = result.outputs.filter((line) => /STATUS_TRANSITION_CONFLICT/.test(line)).length;
+
+    expect(
+      successCount === 1
+        && conflictCount === 1
+        && /Status:\s*done/.test(result.storyStatusLine)
+        && /1-5-policy-gate-and-branch-workflow-guard-enforcement:\s*done/.test(result.sprintStatusLine),
+    ).toBe(true);
+  });
+
+  test('[P0] operability closeout guard blocks done critical/access-control stories without real-user pass evidence @P0', async ({
+    story15Context,
+  }) => {
+    const operabilityScript = resolve(dirname(story15Context.policyScript), 'enforce-operability-closeout-guard.sh');
+    const { output, status } = runOperabilityCloseoutHarness(operabilityScript);
+
+    expect(
+      status !== 0
+        && /critical\/access-control but missing real-user validation evidence/.test(output)
+        && /critical\/access-control but 'Real-User Validation Result' is not 'pass'/.test(output),
+    ).toBe(true);
   });
 
   test('[P1] rejects epic workflow branch mismatch with explicit expected epic branch diagnostic @P1', async ({

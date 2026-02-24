@@ -102,6 +102,24 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function resetFirstLoginPassword(currentPassword: string, newPassword: string): Promise<void> {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      const response = await api.post('/auth/password/first-login-reset', {
+        currentPassword,
+        newPassword,
+      });
+      const payload = unwrapPayload<{ user?: User }>(response.data);
+      user.value = payload.user ?? user.value;
+    } catch (err: any) {
+      error.value = extractErrorMessage(err, 'Password reset failed');
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   function clearError(): void {
     error.value = null;
   }
@@ -119,6 +137,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     fetchCurrentUser,
+    resetFirstLoginPassword,
     clearError,
   };
 });

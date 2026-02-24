@@ -8,6 +8,7 @@ export interface JWTPayload {
   householdId: string | null;
   activeTenantId?: string | null;
   activeOrgUnitId?: string | null;
+  mustResetPassword?: boolean;
   role: string;
 }
 
@@ -34,6 +35,7 @@ const sanitizeJwtPayload = (decoded: JwtPayload | string): JWTPayload => {
         ? decoded.householdId
         : null,
     activeOrgUnitId: typeof decoded.activeOrgUnitId === 'string' ? decoded.activeOrgUnitId : null,
+    mustResetPassword: decoded.mustResetPassword === true,
     role,
   };
 };

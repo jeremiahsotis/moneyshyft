@@ -15,6 +15,8 @@ TEST_PASSWORD="${TEST_PASSWORD:-SecurePass123!}"
 ENABLE_TEST_AUTH_HARNESS="${ENABLE_TEST_AUTH_HARNESS:-true}"
 ENABLE_TEST_CONNECTSHYFT_FLAGS="${ENABLE_TEST_CONNECTSHYFT_FLAGS:-true}"
 PLAYWRIGHT_BACKEND_NODE_ENV="${PLAYWRIGHT_BACKEND_NODE_ENV:-test}"
+PLAYWRIGHT_DATABASE_URL="${PLAYWRIGHT_DATABASE_URL:-}"
+PLAYWRIGHT_POSTGRES_CONTAINER="${PLAYWRIGHT_POSTGRES_CONTAINER:-moneyshyft-postgres-1}"
 
 export API_URL
 export API_BASE_URL="$API_URL"
@@ -133,6 +135,83 @@ is_backend_healthy() {
 
 is_frontend_reachable() {
   is_http_reachable "$frontend_root/login" || is_http_reachable "$frontend_root"
+}
+
+redact_connection_url() {
+  local raw_url="$1"
+  node -e "
+const value = process.argv[1];
+try {
+  const parsed = new URL(value);
+  if (parsed.username) {
+    parsed.username = '***';
+  }
+  if (parsed.password) {
+    parsed.password = '***';
+  }
+  process.stdout.write(parsed.toString());
+} catch (_error) {
+  process.stdout.write('<invalid-connection-url>');
+}
+" "$raw_url"
+}
+
+resolve_docker_postgres_url() {
+  if ! command -v docker >/dev/null 2>&1; then
+    return 1
+  fi
+
+  if ! docker ps --format '{{.Names}}' | grep -Fxq "$PLAYWRIGHT_POSTGRES_CONTAINER"; then
+    return 1
+  fi
+
+  local container_env
+  container_env="$(docker inspect "$PLAYWRIGHT_POSTGRES_CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null || true)"
+  if [[ -z "$container_env" ]]; then
+    return 1
+  fi
+
+  local db_user db_password db_name db_port
+  db_user="$(printf '%s\n' "$container_env" | sed -n 's/^POSTGRES_USER=//p' | head -n1)"
+  db_password="$(printf '%s\n' "$container_env" | sed -n 's/^POSTGRES_PASSWORD=//p' | head -n1)"
+  db_name="$(printf '%s\n' "$container_env" | sed -n 's/^POSTGRES_DB=//p' | head -n1)"
+  db_port="$(docker inspect "$PLAYWRIGHT_POSTGRES_CONTAINER" --format '{{(index (index .NetworkSettings.Ports "5432/tcp") 0).HostPort}}' 2>/dev/null || true)"
+
+  if [[ -z "$db_user" || -z "$db_password" || -z "$db_name" || -z "$db_port" ]]; then
+    return 1
+  fi
+
+  node -e "
+const [user, password, database, port] = process.argv.slice(1);
+const encodedUser = encodeURIComponent(user);
+const encodedPassword = encodeURIComponent(password);
+const encodedDatabase = encodeURIComponent(database);
+process.stdout.write(\`postgresql://\${encodedUser}:\${encodedPassword}@127.0.0.1:\${port}/\${encodedDatabase}\`);
+" "$db_user" "$db_password" "$db_name" "$db_port"
+}
+
+run_backend_migrations() {
+  local initial_database_url="${DATABASE_URL:-$PLAYWRIGHT_DATABASE_URL}"
+  if [[ -n "$initial_database_url" ]]; then
+    export DATABASE_URL="$initial_database_url"
+  fi
+
+  if (cd src && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1; then
+    return 0
+  fi
+
+  local fallback_database_url
+  fallback_database_url="$(resolve_docker_postgres_url || true)"
+  if [[ -z "$fallback_database_url" || "${DATABASE_URL:-}" == "$fallback_database_url" ]]; then
+    return 1
+  fi
+
+  local redacted_fallback
+  redacted_fallback="$(redact_connection_url "$fallback_database_url")"
+  echo "Managed runtime policy: migration retry using docker postgres credentials ($redacted_fallback)" >>"$BACKEND_LOG_FILE"
+
+  export DATABASE_URL="$fallback_database_url"
+  (cd src && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1
 }
 
 build_tenant_probe_token() {
@@ -428,8 +507,8 @@ if [[ "$backend_requires_managed_start" == "true" ]]; then
   cleanup_pidfile_process "$BACKEND_PID_FILE" "backend"
 
   echo "Managed runtime policy: running backend migrations"
-  if ! (cd src && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1; then
-    echo "Playwright preflight failed: backend migrations failed (see $BACKEND_LOG_FILE)."
+  if ! run_backend_migrations; then
+    echo "Playwright preflight failed: backend migrations failed (see $BACKEND_LOG_FILE). You can set PLAYWRIGHT_DATABASE_URL to override."
     exit 1
   fi
 

@@ -33,7 +33,7 @@
 # - SM typically creates next story after previous one is "done" to incorporate learnings
 # - Dev moves story to "review", then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-02-19
+generated: 2026-02-24
 project: ConnectShyft
 project_key: NOKEY
 project_lane: connectshyft
@@ -48,7 +48,7 @@ development_status:
   a-4-escalation-baseline-and-recipient-configuration: review
   a-5-capability-based-route-access-and-envelope-contract-compliance: review
   epic-a-retrospective: optional
-  epic-b: backlog
+  epic-b: in-progress
   b-1-tenant-scoped-neighbor-creation-with-required-phone: backlog
   b-2-shared-tenant-identity-and-shared-phone-indicators: backlog
   b-3-relationship-gated-neighbor-edits-with-provenance-audit: backlog

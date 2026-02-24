@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 import {
   evaluateConnectShyftCapability,
+  mergeConnectShyftFlagsWithEntitlement,
   resolveConnectShyftFeatureFlags,
 } from '../featureFlags';
 
@@ -117,6 +118,24 @@ describe('connectshyft feature flag resolution', () => {
       connectshyft_webhooks_enabled: true,
     });
   });
+
+  it('coerces non-boolean override payload fields to false', () => {
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
+
+    const flags = resolveConnectShyftFeatureFlags(createRequest(JSON.stringify({
+      connectshyft_enabled: 'yes',
+      connectshyft_inbox_enabled: 1,
+      connectshyft_escalation_enabled: null,
+      connectshyft_webhooks_enabled: {},
+    })));
+
+    expect(flags).toEqual({
+      connectshyft_enabled: false,
+      connectshyft_inbox_enabled: false,
+      connectshyft_escalation_enabled: false,
+      connectshyft_webhooks_enabled: false,
+    });
+  });
 });
 
 describe('connectshyft capability evaluation', () => {
@@ -150,6 +169,62 @@ describe('connectshyft capability evaluation', () => {
       code: 'CONNECTSHYFT_ESCALATION_CAPABILITY_DISABLED',
       message: expect.stringContaining('Escalation controls'),
       refusalType: 'business',
+    });
+  });
+});
+
+describe('connectshyft entitlement merge', () => {
+  it('forces fail-closed module and capability flags when entitlement is disabled', () => {
+    const merged = mergeConnectShyftFlagsWithEntitlement({
+      connectshyft_enabled: true,
+      connectshyft_inbox_enabled: true,
+      connectshyft_escalation_enabled: true,
+      connectshyft_webhooks_enabled: true,
+    }, {
+      moduleEnabled: false,
+    });
+
+    expect(merged).toEqual({
+      connectshyft_enabled: false,
+      connectshyft_inbox_enabled: false,
+      connectshyft_escalation_enabled: false,
+      connectshyft_webhooks_enabled: false,
+    });
+  });
+
+  it('retains capability flags when entitlement and base module flags are enabled', () => {
+    const merged = mergeConnectShyftFlagsWithEntitlement({
+      connectshyft_enabled: true,
+      connectshyft_inbox_enabled: true,
+      connectshyft_escalation_enabled: false,
+      connectshyft_webhooks_enabled: true,
+    }, {
+      moduleEnabled: true,
+    });
+
+    expect(merged).toEqual({
+      connectshyft_enabled: true,
+      connectshyft_inbox_enabled: true,
+      connectshyft_escalation_enabled: false,
+      connectshyft_webhooks_enabled: true,
+    });
+  });
+
+  it('keeps module disabled when base module flag is off even if entitlement is enabled', () => {
+    const merged = mergeConnectShyftFlagsWithEntitlement({
+      connectshyft_enabled: false,
+      connectshyft_inbox_enabled: true,
+      connectshyft_escalation_enabled: true,
+      connectshyft_webhooks_enabled: true,
+    }, {
+      moduleEnabled: true,
+    });
+
+    expect(merged).toEqual({
+      connectshyft_enabled: false,
+      connectshyft_inbox_enabled: false,
+      connectshyft_escalation_enabled: false,
+      connectshyft_webhooks_enabled: false,
     });
   });
 });

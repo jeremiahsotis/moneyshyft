@@ -8,9 +8,44 @@ export type ConnectShyftUiFlags = {
 };
 
 type ConnectShyftAvailabilityEnvelope = {
+  ok?: boolean;
+  code?: string;
+  message?: string;
+  refusalType?: 'business' | 'security' | 'client' | 'system';
   data?: {
     flags?: Partial<ConnectShyftUiFlags>;
+    entitlement?: {
+      moduleKey?: string;
+      enabled?: boolean;
+      reason?: string;
+    } | null;
+    capabilities?: {
+      module?: boolean;
+      inbox?: boolean;
+      escalation?: boolean;
+      webhooks?: boolean;
+    };
   };
+};
+
+export type ConnectShyftAvailabilityState = {
+  flags: ConnectShyftUiFlags;
+  entitlement: {
+    moduleKey: string;
+    enabled: boolean;
+    reason: string;
+  } | null;
+  capabilities: {
+    module: boolean;
+    inbox: boolean;
+    escalation: boolean;
+    webhooks: boolean;
+  };
+  refusal: {
+    code: string;
+    message: string;
+    refusalType: 'business' | 'security' | 'client' | 'system';
+  } | null;
 };
 
 type ParsedConnectShyftContextOverride = {
@@ -26,6 +61,18 @@ export const DEFAULT_CONNECTSHYFT_UI_FLAGS: ConnectShyftUiFlags = {
   connectshyft_inbox_enabled: false,
   connectshyft_escalation_enabled: false,
   connectshyft_webhooks_enabled: false,
+};
+
+export const DEFAULT_CONNECTSHYFT_AVAILABILITY: ConnectShyftAvailabilityState = {
+  flags: { ...DEFAULT_CONNECTSHYFT_UI_FLAGS },
+  entitlement: null,
+  capabilities: {
+    module: false,
+    inbox: false,
+    escalation: false,
+    webhooks: false,
+  },
+  refusal: null,
 };
 
 const isConnectShyftTestHarnessEnabled = (): boolean =>
@@ -147,6 +194,9 @@ export const buildConnectShyftTestOverrideHeaders = (): Record<string, string> =
 
   if (rawFlags) {
     headers['x-test-connectshyft-flags'] = JSON.stringify(parseFlagQueryForTestOverride(rawFlags));
+  } else {
+    // Keep test-harness behavior deterministic: no query override means fail-closed flags.
+    headers['x-test-connectshyft-flags'] = JSON.stringify(DEFAULT_CONNECTSHYFT_UI_FLAGS);
   }
 
   if (context.tenantId && context.role && context.userId) {
@@ -167,27 +217,62 @@ export const buildConnectShyftTestOverrideHeaders = (): Record<string, string> =
 
 const toBooleanFlag = (value: unknown): boolean => value === true;
 
-const parseServerFlags = (payload: unknown): ConnectShyftUiFlags => {
+const parseServerAvailability = (payload: unknown): ConnectShyftAvailabilityState => {
   const envelope = (payload && typeof payload === 'object')
     ? payload as ConnectShyftAvailabilityEnvelope
     : {};
   const rawFlags = envelope.data?.flags || {};
+  const rawEntitlement = envelope.data?.entitlement;
+  const rawCapabilities = envelope.data?.capabilities;
 
-  return {
+  const flags = {
     connectshyft_enabled: toBooleanFlag(rawFlags.connectshyft_enabled),
     connectshyft_inbox_enabled: toBooleanFlag(rawFlags.connectshyft_inbox_enabled),
     connectshyft_escalation_enabled: toBooleanFlag(rawFlags.connectshyft_escalation_enabled),
     connectshyft_webhooks_enabled: toBooleanFlag(rawFlags.connectshyft_webhooks_enabled),
   };
+
+  return {
+    flags,
+    entitlement: rawEntitlement
+      ? {
+        moduleKey: typeof rawEntitlement.moduleKey === 'string' ? rawEntitlement.moduleKey : 'connectshyft',
+        enabled: rawEntitlement.enabled === true,
+        reason: typeof rawEntitlement.reason === 'string' ? rawEntitlement.reason : 'unknown',
+      }
+      : null,
+    capabilities: {
+      module: rawCapabilities?.module === true || flags.connectshyft_enabled,
+      inbox: rawCapabilities?.inbox === true || flags.connectshyft_inbox_enabled,
+      escalation: rawCapabilities?.escalation === true || flags.connectshyft_escalation_enabled,
+      webhooks: rawCapabilities?.webhooks === true || flags.connectshyft_webhooks_enabled,
+    },
+    refusal: envelope.ok === false
+      ? {
+        code: typeof envelope.code === 'string' ? envelope.code : 'CONNECTSHYFT_UNAVAILABLE',
+        message: typeof envelope.message === 'string' ? envelope.message : 'ConnectShyft is unavailable',
+        refusalType: envelope.refusalType || 'business',
+      }
+      : null,
+  };
 };
 
-export const fetchConnectShyftUiFlags = async (): Promise<ConnectShyftUiFlags> => {
+export const fetchConnectShyftAvailability = async (): Promise<ConnectShyftAvailabilityState> => {
   try {
     const response = await api.get('/connectshyft/availability', {
       headers: buildConnectShyftTestOverrideHeaders(),
     });
-    return parseServerFlags(response.data);
-  } catch (_error) {
-    return { ...DEFAULT_CONNECTSHYFT_UI_FLAGS };
+    return parseServerAvailability(response.data);
+  } catch (error: any) {
+    if (error?.response?.data) {
+      return parseServerAvailability(error.response.data);
+    }
+
+    return { ...DEFAULT_CONNECTSHYFT_AVAILABILITY };
   }
+};
+
+export const fetchConnectShyftUiFlags = async (): Promise<ConnectShyftUiFlags> => {
+  const availability = await fetchConnectShyftAvailability();
+  return availability.flags;
 };

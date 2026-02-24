@@ -10,6 +10,8 @@ const mockRevokeTenantMembership = jest.fn();
 const mockUpsertOrgUnitMembership = jest.fn();
 const mockRevokeOrgUnitMembership = jest.fn();
 const mockEvaluateRequestCapabilities = jest.fn();
+const mockLookupScopedUsers = jest.fn();
+const mockEnsureScopedAdminUser = jest.fn();
 
 jest.mock('../../../../middleware/auth', () => ({
   authenticateToken: (req: express.Request, _res: express.Response, next: express.NextFunction) => {
@@ -36,6 +38,8 @@ jest.mock('../../../../services/PlatformAdminService', () => ({
   upsertOrgUnitMembership: (...args: unknown[]) => mockUpsertOrgUnitMembership(...args),
   revokeOrgUnitMembership: (...args: unknown[]) => mockRevokeOrgUnitMembership(...args),
   evaluateRequestCapabilities: (...args: unknown[]) => mockEvaluateRequestCapabilities(...args),
+  lookupScopedUsers: (...args: unknown[]) => mockLookupScopedUsers(...args),
+  ensureScopedAdminUser: (...args: unknown[]) => mockEnsureScopedAdminUser(...args),
 }));
 
 jest.mock('../../../../config/knex', () => ({
@@ -243,6 +247,110 @@ describe('platform admin routes', () => {
     expect(response.body).toMatchObject({
       ok: false,
       code: 'TENANT_NOT_FOUND',
+    });
+  });
+
+  it('returns scoped user lookup envelope with deterministic payload shape', async () => {
+    const app = buildApp();
+    mockLookupScopedUsers.mockResolvedValue({
+      tenantId: '22222222-2222-4222-8222-222222222222',
+      orgUnitId: null,
+      q: 'ops',
+      page: 1,
+      pageSize: 20,
+      total: 1,
+      users: [{
+        id: '33333333-3333-4333-8333-333333333333',
+        email: 'ops-user@example.com',
+        firstName: 'Ops',
+        lastName: 'User',
+      }],
+    });
+
+    const response = await request(app)
+      .get('/api/v1/platform/admin/users/lookup')
+      .query({ q: 'ops' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'SCOPED_USER_LOOKUP_RESOLVED',
+      data: {
+        pageSize: 20,
+        total: 1,
+      },
+    });
+  });
+
+  it('maps short user lookup queries to refusal envelope', async () => {
+    const app = buildApp();
+    mockLookupScopedUsers.mockRejectedValue(new Error('USER_LOOKUP_QUERY_TOO_SHORT'));
+
+    const response = await request(app)
+      .get('/api/v1/platform/admin/users/lookup')
+      .query({ q: 'ab' });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'USER_LOOKUP_QUERY_TOO_SHORT',
+    });
+  });
+
+  it('accepts inline admin user resolution payload', async () => {
+    const app = buildApp();
+    mockEnsureScopedAdminUser.mockResolvedValue({
+      tenantId: '22222222-2222-4222-8222-222222222222',
+      userId: '33333333-3333-4333-8333-333333333333',
+      email: 'inline-admin@example.com',
+      createdInline: true,
+    });
+
+    const response = await request(app)
+      .post('/api/v1/platform/admin/users/inline-admin')
+      .send({
+        userEmail: 'inline-admin@example.com',
+        firstName: 'Inline',
+        lastName: 'Admin',
+        reason: 'bootstrap-inline-admin',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'INLINE_ADMIN_USER_READY',
+      data: {
+        createdInline: true,
+      },
+    });
+  });
+
+  it('accepts tenant membership assignment by email for inline create flows', async () => {
+    const app = buildApp();
+    mockUpsertTenantMembership.mockResolvedValue({
+      tenantId: '22222222-2222-4222-8222-222222222222',
+      userId: '33333333-3333-4333-8333-333333333333',
+      userEmail: 'tenant-admin@example.com',
+      roleSet: ['TENANT_ADMIN'],
+    });
+
+    const response = await request(app)
+      .post('/api/v1/platform/admin/tenant-memberships')
+      .send({
+        userEmail: 'tenant-admin@example.com',
+        firstName: 'Tenant',
+        lastName: 'Admin',
+        roleSet: ['TENANT_ADMIN'],
+        reason: 'bootstrap-admin',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'TENANT_MEMBERSHIP_UPDATED',
+      data: {
+        userEmail: 'tenant-admin@example.com',
+      },
     });
   });
 });

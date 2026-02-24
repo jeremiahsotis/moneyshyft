@@ -64,7 +64,11 @@
         data-testid="connectshyft-unavailable-state"
         class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
       >
-        Enable connectshyft_enabled to access this module.
+        {{
+          entitlementDisabled
+            ? 'ConnectShyft module entitlement is disabled for this tenant.'
+            : 'ConnectShyft module access is unavailable for this tenant.'
+        }}
       </p>
 
       <p
@@ -88,28 +92,30 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import {
-  DEFAULT_CONNECTSHYFT_UI_FLAGS,
-  fetchConnectShyftUiFlags,
+  DEFAULT_CONNECTSHYFT_AVAILABILITY,
+  fetchConnectShyftAvailability,
 } from '@/features/connectshyft/flags';
 
-const flags = ref({ ...DEFAULT_CONNECTSHYFT_UI_FLAGS });
+const availability = ref({ ...DEFAULT_CONNECTSHYFT_AVAILABILITY });
 
 onMounted(async () => {
-  flags.value = await fetchConnectShyftUiFlags();
+  availability.value = await fetchConnectShyftAvailability();
 });
 
-const moduleAvailable = computed(() => flags.value.connectshyft_enabled);
-const inboxAvailable = computed(
-  () => moduleAvailable.value && flags.value.connectshyft_inbox_enabled,
-);
-const escalationAvailable = computed(
-  () => moduleAvailable.value && flags.value.connectshyft_escalation_enabled,
-);
-const webhooksAvailable = computed(
-  () => moduleAvailable.value && flags.value.connectshyft_webhooks_enabled,
+const moduleAvailable = computed(() => availability.value.capabilities.module);
+const inboxAvailable = computed(() => availability.value.capabilities.inbox);
+const escalationAvailable = computed(() => availability.value.capabilities.escalation);
+const webhooksAvailable = computed(() => availability.value.capabilities.webhooks);
+
+const entitlementDisabled = computed(
+  () => availability.value.entitlement != null && availability.value.entitlement.enabled === false,
 );
 
 const maintenanceBanner = computed(() => {
+  if (availability.value.refusal?.message) {
+    return availability.value.refusal.message;
+  }
+
   if (!moduleAvailable.value) {
     return '';
   }

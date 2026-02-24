@@ -33,6 +33,7 @@ export interface UserResponse {
   lastName: string;
   householdId: string | null;
   role: string;
+  mustResetPassword?: boolean;
   setupWizardCompleted?: boolean;
   createdAt: Date;
 }
@@ -267,6 +268,7 @@ class AuthService {
         householdId: user.household_id,
         activeTenantId: user.household_id,
         activeOrgUnitId: null,
+        mustResetPassword: false,
         role: user.role,
       };
 
@@ -351,6 +353,7 @@ class AuthService {
       householdId: user.household_id,
       activeTenantId: user.household_id,
       activeOrgUnitId: null,
+      mustResetPassword: user.must_reset_password === true,
       role: user.role,
     };
 
@@ -387,6 +390,46 @@ class AuthService {
     return this.formatUserResponse(user);
   }
 
+  async resetFirstLoginPassword(input: {
+    userId: string;
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<UserResponse> {
+    const user = await db('users').where({ id: input.userId }).first();
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (user.must_reset_password !== true) {
+      throw new Error('Password reset is not required');
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(input.currentPassword, user.password_hash);
+    if (!isCurrentPasswordValid) {
+      throw new Error('Current password is incorrect');
+    }
+
+    const nextPasswordHash = await bcrypt.hash(input.newPassword, BCRYPT_ROUNDS);
+    await db('users')
+      .where({ id: input.userId })
+      .update({
+        password_hash: nextPasswordHash,
+        must_reset_password: false,
+        password_set_by_admin: false,
+        updated_at: db.fn.now(),
+      });
+
+    const refreshedUser = await db('users')
+      .where({ id: input.userId })
+      .first();
+
+    if (!refreshedUser) {
+      throw new Error('User not found');
+    }
+
+    return this.formatUserResponse(refreshedUser);
+  }
+
   /**
    * Format user response (remove sensitive data)
    */
@@ -408,6 +451,7 @@ class AuthService {
       lastName: user.last_name,
       householdId: user.household_id,
       role: user.role,
+      mustResetPassword: user.must_reset_password === true,
       setupWizardCompleted,
       createdAt: user.created_at,
     };

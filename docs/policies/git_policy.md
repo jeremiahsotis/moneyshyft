@@ -105,7 +105,14 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 
 - Story file `Status:` and `_bmad-output/implementation-artifacts/sprint-status.yaml` `development_status` must stay synchronized.
 - A status mismatch is a blocking policy violation.
+- Closeout transitions (`review`, `done`) must be moved through the automation command, not manual paired edits.
+- Required transition command:
+  - `npm run story:status:set -- --story-key <story-key> --status <ready-for-dev|in-progress|review|done>`
+- Optional direct-file form:
+  - `npm run story:status:set -- --story-file <story-file> --status <...>`
+- Manual status edits that bypass transition validation are invalid, even when story and sprint-status values appear to match.
 - Enforced by:
+  - `scripts/story-status-transition.sh`
   - `scripts/enforce-story-status-sync.sh`
   - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
 

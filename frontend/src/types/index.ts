@@ -5,6 +5,7 @@ export interface User {
   lastName: string;
   householdId: string | null;
   role: string;
+  mustResetPassword?: boolean;
   setupWizardCompleted?: boolean;
   createdAt: string;
 }

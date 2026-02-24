@@ -177,13 +177,18 @@ while IFS= read -r story_file; do
     continue
   fi
 
-  if [[ "$critical_capability" == "yes" ]]; then
+  requires_real_user_validation=false
+  if [[ "$critical_capability" == "yes" || "$access_control_story" == "yes" ]]; then
+    requires_real_user_validation=true
+  fi
+
+  if [[ "$requires_real_user_validation" == "true" ]]; then
     if is_blank_or_na "$real_user_evidence"; then
-      echo "Operability closeout mismatch: $story_file is critical capability but missing real-user validation evidence."
+      echo "Operability closeout mismatch: $story_file is critical/access-control but missing real-user validation evidence."
       failures=$((failures + 1))
     fi
     if [[ "$real_user_result" != "pass" ]]; then
-      echo "Operability closeout mismatch: $story_file is critical capability but 'Real-User Validation Result' is not 'pass'."
+      echo "Operability closeout mismatch: $story_file is critical/access-control but 'Real-User Validation Result' is not 'pass'."
       failures=$((failures + 1))
     fi
   fi

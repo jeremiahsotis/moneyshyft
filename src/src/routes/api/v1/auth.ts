@@ -6,6 +6,7 @@ import { setAuthCookies, clearAuthCookies, verifyRefreshToken, generateAccessTok
 import { validateRequest } from '../../../middleware/validate';
 import { signupSchema, loginSchema } from '../../../validators/auth.validators';
 import { authenticateToken } from '../../../middleware/auth';
+import { refusal, success, systemError } from '../../../platform/envelopes/response';
 import logger from '../../../utils/logger';
 import PlatformSessionStore from '../../../platform/sessions/PlatformSessionStore';
 import { generateInvitationCode } from '../../../utils/invitationCode';
@@ -39,6 +40,15 @@ const isUserEmailUniqueConstraintError = (error: unknown): boolean => {
 
   const maybeDbError = error as { code?: string; constraint?: string };
   return maybeDbError.code === '23505' && maybeDbError.constraint === 'users_email_unique';
+};
+
+const isMissingPlatformSchemaError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const maybeDbError = error as { code?: string };
+  return maybeDbError.code === '42P01' || maybeDbError.code === '3F000';
 };
 
 const sleep = async (ms: number): Promise<void> =>
@@ -164,6 +174,36 @@ const ensureHarnessBaselineData = async (householdId: string): Promise<void> => 
         setup_wizard_completed: true,
         setup_wizard_completed_at: db.fn.now(),
       });
+  }
+
+  try {
+    const modules = ['moneyshyft', 'connectshyft'] as const;
+    for (const moduleKey of modules) {
+      await db
+        .withSchema('platform')
+        .table('tenant_module_entitlements')
+        .insert({
+          tenant_id: householdId,
+          module_key: moduleKey,
+          enabled: true,
+          reason: 'test-auth-harness-baseline',
+          created_by_user_id: null,
+          updated_by_user_id: null,
+          created_at_utc: db.fn.now(),
+          updated_at_utc: db.fn.now(),
+        })
+        .onConflict(['tenant_id', 'module_key'])
+        .merge({
+          enabled: true,
+          reason: 'test-auth-harness-baseline',
+          updated_by_user_id: null,
+          updated_at_utc: db.fn.now(),
+        });
+    }
+  } catch (error) {
+    if (!isMissingPlatformSchemaError(error)) {
+      throw error;
+    }
   }
 };
 
@@ -379,6 +419,114 @@ router.post('/refresh', async (req: Request, res: Response) => {
       return;
     }
     res.status(403).json({ error: 'Invalid refresh token' });
+  }
+});
+
+/**
+ * POST /api/v1/auth/password/first-login-reset
+ * Complete required first-login password reset for admin-created users.
+ */
+router.post('/password/first-login-reset', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      refusal(res, {
+        code: 'AUTHENTICATION_REQUIRED',
+        message: 'Not authenticated',
+        refusalType: 'security',
+        httpStatus: 401,
+      });
+      return;
+    }
+
+    const currentPassword = typeof req.body?.currentPassword === 'string'
+      ? req.body.currentPassword
+      : '';
+    const newPassword = typeof req.body?.newPassword === 'string'
+      ? req.body.newPassword
+      : '';
+
+    if (!currentPassword || !newPassword) {
+      refusal(res, {
+        code: 'FIRST_LOGIN_RESET_INPUT_INVALID',
+        message: 'currentPassword and newPassword are required',
+        refusalType: 'client',
+        httpStatus: 400,
+      });
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      refusal(res, {
+        code: 'FIRST_LOGIN_RESET_PASSWORD_TOO_SHORT',
+        message: 'newPassword must be at least 8 characters long',
+        refusalType: 'client',
+        httpStatus: 400,
+      });
+      return;
+    }
+
+    const user = await AuthService.resetFirstLoginPassword({
+      userId: req.user.userId,
+      currentPassword,
+      newPassword,
+    });
+
+    const payload = {
+      userId: user.id,
+      email: user.email,
+      householdId: user.householdId,
+      activeTenantId: user.householdId,
+      activeOrgUnitId: null,
+      mustResetPassword: false,
+      role: user.role,
+    };
+
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+    setAuthCookies(res, accessToken, refreshToken);
+
+    success(res, {
+      code: 'FIRST_LOGIN_PASSWORD_RESET_COMPLETED',
+      message: 'Password updated successfully',
+      data: {
+        user,
+      },
+    });
+  } catch (error) {
+    logger.error('First-login password reset error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to reset password';
+    if (message === 'Current password is incorrect') {
+      refusal(res, {
+        code: 'FIRST_LOGIN_RESET_CURRENT_PASSWORD_INCORRECT',
+        message,
+        refusalType: 'client',
+        httpStatus: 400,
+      });
+      return;
+    }
+    if (message === 'Password reset is not required') {
+      refusal(res, {
+        code: 'FIRST_LOGIN_RESET_NOT_REQUIRED',
+        message,
+        refusalType: 'business',
+        httpStatus: 409,
+      });
+      return;
+    }
+    if (message === 'User not found') {
+      refusal(res, {
+        code: 'FIRST_LOGIN_RESET_USER_NOT_FOUND',
+        message,
+        refusalType: 'client',
+        httpStatus: 404,
+      });
+      return;
+    }
+    systemError(res, {
+      code: 'FIRST_LOGIN_RESET_FAILED',
+      message: 'Failed to reset password',
+      httpStatus: 500,
+    });
   }
 });
 

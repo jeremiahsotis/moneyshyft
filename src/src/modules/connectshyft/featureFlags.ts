@@ -9,6 +9,10 @@ export type ConnectShyftFeatureFlags = {
 
 export type ConnectShyftCapability = 'module' | 'inbox' | 'escalation' | 'webhooks';
 
+export type ConnectShyftEntitlementInput = {
+  moduleEnabled: boolean;
+};
+
 export type ConnectShyftCapabilityEvaluation =
   | { ok: true }
   | {
@@ -134,6 +138,32 @@ export const resolveConnectShyftFeatureFlags = (
   }
 
   return resolveServerConnectShyftFeatureFlags();
+};
+
+export const mergeConnectShyftFlagsWithEntitlement = (
+  flags: ConnectShyftFeatureFlags,
+  entitlement: ConnectShyftEntitlementInput | null
+): ConnectShyftFeatureFlags => {
+  if (!entitlement) {
+    return { ...flags };
+  }
+
+  const moduleEnabled = flags.connectshyft_enabled && entitlement.moduleEnabled;
+  if (!moduleEnabled) {
+    return {
+      connectshyft_enabled: false,
+      connectshyft_inbox_enabled: false,
+      connectshyft_escalation_enabled: false,
+      connectshyft_webhooks_enabled: false,
+    };
+  }
+
+  return {
+    connectshyft_enabled: true,
+    connectshyft_inbox_enabled: flags.connectshyft_inbox_enabled,
+    connectshyft_escalation_enabled: flags.connectshyft_escalation_enabled,
+    connectshyft_webhooks_enabled: flags.connectshyft_webhooks_enabled,
+  };
 };
 
 export const evaluateConnectShyftCapability = (
