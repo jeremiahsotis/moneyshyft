@@ -14,6 +14,7 @@ so that refusal is explicit, understandable, and actionable.
 
 1. Given scheduling or execution cannot proceed, when refusal is issued, then refusal reason and structured alternatives are persisted.
 2. Refusal is visible in lifecycle/audit history.
+3. Given requester or staff views a refusal outcome, when alternatives are presented, then the UI/API contract provides explicit, user-actionable next-step options.
 
 ## Operability Guardrails
 
@@ -66,9 +67,9 @@ Make refusal a first-class, policy-safe lifecycle outcome with actionable altern
 
 ### File Structure Requirements
 
-- Refusal reason/alternative contracts in `src/modules/route/domain`.
-- Refusal application service orchestration in `src/modules/route/application`.
-- History projection support in `src/modules/route/infrastructure` + `api`.
+- Refusal reason/alternative contracts in `src/src/modules/route/domain`.
+- Refusal application service orchestration in `src/src/modules/route/application`.
+- History projection support in `src/src/modules/route/infrastructure` with route handlers in `src/src/routes/api/v1/*.ts`.
 
 ### Testing Requirements
 
@@ -87,9 +88,9 @@ Make refusal a first-class, policy-safe lifecycle outcome with actionable altern
 
 ### References
 
-- /Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/epics.md
-- /Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Functional_Requirements.md
-- /Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Architecture_Document.md
+- [Source: `/Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/epics.md` (Epic 2 > Story 2.5)]
+- [Source: `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Functional_Requirements.md` (refusal outcome and alternatives requirements)]
+- [Source: `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Architecture_Document.md` (Stack, Module Layout)]
 
 ## Dev Agent Record
 
@@ -108,4 +109,3 @@ GPT-5 Codex
 ### File List
 
 - _bmad-output/implementation-artifacts/2-5-refusal-outcomes-with-structured-alternatives.md
-
