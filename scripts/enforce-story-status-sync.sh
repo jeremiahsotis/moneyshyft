@@ -30,15 +30,30 @@ cleanup() {
 trap cleanup EXIT
 
 resolve_branch() {
+  local event="${GITHUB_EVENT_NAME:-local}"
   local branch_name=""
-  branch_name="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-  if [[ -z "$branch_name" || "$branch_name" == "HEAD" ]]; then
-    branch_name="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+
+  if [[ "$event" == "local" ]]; then
+    # Local checks must trust repository state, not CI-provided branch env vars.
+    branch_name="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    if [[ -z "$branch_name" || "$branch_name" == "HEAD" ]]; then
+      branch_name="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+    fi
+  else
+    branch_name="${GITHUB_HEAD_REF:-}"
+    if [[ -z "$branch_name" ]]; then
+      branch_name="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    fi
+    if [[ -z "$branch_name" || "$branch_name" == "HEAD" ]]; then
+      branch_name="${GITHUB_REF_NAME:-}"
+    fi
   fi
+
   if [[ -z "$branch_name" || "$branch_name" == "HEAD" ]]; then
     echo "detached"
     return 0
   fi
+
   echo "$branch_name"
 }
 
