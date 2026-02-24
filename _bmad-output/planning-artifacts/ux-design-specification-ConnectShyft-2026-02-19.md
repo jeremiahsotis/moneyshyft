@@ -85,7 +85,7 @@ The UX must preserve a single, stable mental model:
 1. `UNCLAIMED` thread shows `Claim` as primary action.
 2. `CLAIMED` thread owned by another user shows `Takeover` (role/policy gated).
 3. Takeover requires reason and takeover modal includes explicit notice: "Previous owner will be notified."
-4. `CLOSED` thread is read-only unless reopen is added in future scope.
+4. `CLOSED` thread supports outbound reopen actions (`Call` and `Send Message`) that immediately transition `CLOSED -> UNCLAIMED` on the same thread.
 
 ### Flow 3: Outbound SMS with Preference Enforcement
 

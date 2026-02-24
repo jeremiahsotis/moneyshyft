@@ -75,6 +75,12 @@ development_status:
   e-5-replay-safe-webhook-receipt-ledger-and-retention-controls: backlog
   e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: backlog
   epic-e-retrospective: optional
+  epic-ux-remediation: backlog
+  ux-r1-mobile-first-inbox-mine-thread-redesign: backlog
+  ux-r2-accessibility-and-language-hardening: backlog
+  ux-r3-voicemail-and-indicator-behavior: backlog
+  ux-r4-outbound-policy-guardrail-ui: backlog
+  epic-ux-remediation-retrospective: optional
 
 change_controls:
   connectshyft_scope_lock: true
@@ -82,6 +88,26 @@ change_controls:
   approved_by: Jeremiah
   approved_via: correct-course
   scope_classification: moderate
+  ux_remediation_approved: true
+  ux_remediation_approved_on: 2026-02-24
+  ux_remediation_approved_by: Jeremiah
+  ux_remediation_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md
+  c3_contract_hardening_required: true
+  c3_contract_hardening_status: pending
+  c3_contract_hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md#41-stories
+  d_contract_hardening_required: true
+  d_contract_hardening_status: pending
+  d_contract_hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md#41-stories
+  planning_artifact_harmonization_required: true
+  planning_artifact_harmonization_status: in-progress
+  planning_artifact_harmonization_targets:
+    - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md
+    - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md
+    - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md
+    - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md
+    - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/implementation-locked-production-specification.normalized.md
+    - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/connectshyft-ux.specification.normalized.md
+    - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/full-view-flow.normalized.md
   escalation_timing_policy:
     default_x_hours: 24
     min_x_hours: 1
@@ -90,6 +116,22 @@ change_controls:
     integer_only: true
 
 story_traceability_overrides:
+  c-3-inbox-and-thread-detail-read-contracts:
+    fr_tags:
+      - FR-CS-005
+      - FR-CS-017
+    nfr_tags:
+      - NFR-CS-011
+    hardening_locked: true
+    hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md#41-stories
+    hardening_notes:
+      - Deterministic ordering with explicit priority_rank mapping
+      - Plain-language urgency labels (no raw stage exposure)
+      - Claimed-thread voicemail indicator behavior in Mine
+      - State-specific action control sets
+    depends_on:
+      - c-2-thread-ensure-endpoint-with-conflict-safe-idempotency
+    parallel_lane: lane-c-thread-core
   a-5-capability-based-route-access-and-envelope-contract-compliance:
     fr_tags:
       - FR-CS-001
@@ -109,11 +151,30 @@ story_traceability_overrides:
       - FR-CS-023
     nfr_tags:
       - NFR-CS-011
+    hardening_locked: true
+    hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md#41-stories
+    hardening_notes:
+      - State-specific action controls are explicit (UNCLAIMED/CLAIMED/CLOSED)
+      - Policy feedback must be accessible and explicit
     depends_on:
       - c-3-inbox-and-thread-detail-read-contracts
       - d-1-outbound-sms-call-actions-that-preserve-escalation-semantics
       - d-2-preference-override-enforcement-for-outbound-sms
     parallel_lane: lane-d-outbound-ux
+  d-1-outbound-sms-call-actions-that-preserve-escalation-semantics:
+    hardening_locked: true
+    hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md#41-stories
+    hardening_notes:
+      - CLOSED outbound tap reopens same thread before outbound execution
+      - Bridge-call-only outbound voice path
+      - No automatic retry/redial loops
+      - CONNECTED auto-claims unclaimed thread
+  d-2-preference-override-enforcement-for-outbound-sms:
+    hardening_locked: true
+    hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md#41-stories
+    hardening_notes:
+      - Override reason required for prefers_texting=NO
+      - Missing override uses refusal flow with no side effects
   e-6-parallel-delivery-safety-gates-for-connectshyft-rollout:
     fr_tags:
       - FR-CS-021
@@ -127,6 +188,50 @@ story_traceability_overrides:
       - e-1-verified-webhook-ingress-and-deterministic-context-routing
       - e-5-replay-safe-webhook-receipt-ledger-and-retention-controls
     parallel_lane: lane-e-release-safety
+  ux-r1-mobile-first-inbox-mine-thread-redesign:
+    fr_tags:
+      - FR-CS-005
+      - FR-CS-011
+      - FR-CS-013
+      - FR-CS-014
+    nfr_tags:
+      - NFR-CS-011
+    depends_on:
+      - c-3-inbox-and-thread-detail-read-contracts
+    parallel_lane: lane-ux-remediation
+  ux-r2-accessibility-and-language-hardening:
+    fr_tags:
+      - FR-CS-005
+    nfr_tags:
+      - NFR-CS-011
+    depends_on:
+      - ux-r1-mobile-first-inbox-mine-thread-redesign
+    parallel_lane: lane-ux-remediation
+  ux-r3-voicemail-and-indicator-behavior:
+    fr_tags:
+      - FR-CS-005
+      - FR-CS-019
+      - FR-CS-020
+    nfr_tags:
+      - NFR-CS-011
+    depends_on:
+      - c-3-inbox-and-thread-detail-read-contracts
+      - e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline
+      - e-4-transcription-webhook-attachment-to-voicemail-records
+    parallel_lane: lane-ux-remediation
+  ux-r4-outbound-policy-guardrail-ui:
+    fr_tags:
+      - FR-CS-016
+      - FR-CS-022
+      - FR-CS-023
+      - FR-CS-024
+    nfr_tags:
+      - NFR-CS-011
+    depends_on:
+      - d-1-outbound-sms-call-actions-that-preserve-escalation-semantics
+      - d-2-preference-override-enforcement-for-outbound-sms
+      - d-4-operator-interaction-contracts-for-outbound-safety
+    parallel_lane: lane-ux-remediation
 
 story_dependencies:
   a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes:
@@ -183,6 +288,18 @@ story_dependencies:
     - a-5-capability-based-route-access-and-envelope-contract-compliance
     - e-1-verified-webhook-ingress-and-deterministic-context-routing
     - e-5-replay-safe-webhook-receipt-ledger-and-retention-controls
+  ux-r1-mobile-first-inbox-mine-thread-redesign:
+    - c-3-inbox-and-thread-detail-read-contracts
+  ux-r2-accessibility-and-language-hardening:
+    - ux-r1-mobile-first-inbox-mine-thread-redesign
+  ux-r3-voicemail-and-indicator-behavior:
+    - c-3-inbox-and-thread-detail-read-contracts
+    - e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline
+    - e-4-transcription-webhook-attachment-to-voicemail-records
+  ux-r4-outbound-policy-guardrail-ui:
+    - d-1-outbound-sms-call-actions-that-preserve-escalation-semantics
+    - d-2-preference-override-enforcement-for-outbound-sms
+    - d-4-operator-interaction-contracts-for-outbound-safety
 
 parallel_lane_rules:
   gate_rule: no_story_starts_with_unmet_dependencies
@@ -213,3 +330,8 @@ parallel_lane_rules:
       - e-4-transcription-webhook-attachment-to-voicemail-records
       - e-5-replay-safe-webhook-receipt-ledger-and-retention-controls
       - e-6-parallel-delivery-safety-gates-for-connectshyft-rollout
+    lane-ux-remediation:
+      - ux-r1-mobile-first-inbox-mine-thread-redesign
+      - ux-r2-accessibility-and-language-hardening
+      - ux-r3-voicemail-and-indicator-behavior
+      - ux-r4-outbound-policy-guardrail-ui

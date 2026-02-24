@@ -121,3 +121,12 @@ course_correction:
       multi_tenant_memberships: true
       explicit_active_tenant_required: true
       global_email_uniqueness: true
+  cc-2026-02-24:
+    status: approved
+    scope: moderate
+    lane: connectshyft
+    proposal: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md
+    summary:
+      - Cross-epic ConnectShyft UX remediation approved
+      - Locked behavioral parity for closed-thread reopen, voicemail handling, and deterministic ordering
+      - UX remediation story set added to lane-specific sprint status tracker
