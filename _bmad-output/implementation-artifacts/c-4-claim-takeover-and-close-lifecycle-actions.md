@@ -27,8 +27,8 @@ so that lifecycle actions remain predictable and auditable.
 - Operability Pairing Notes: Lifecycle actions are operator-critical and must present explicit action-state feedback without silent transition failure.
 - Real-User Validation Evidence: Pending implementation. Validate claim/takeover/close transitions, reopen behavior, and refusal handling with real operator workflows.
 - Real-User Validation Result: pending
-- Role-Admin UI Path: Role assignment path must validate claim/takeover permissions for tenant-privileged and orgUnit-scoped operators.
-- Role-Admin UI Path Verified: pending
+- Role-Admin UI Path: Assign roles/memberships via `/app/tenant/settings/admins`, then verify lifecycle action availability and refusal behavior from `/app/connectshyft/inbox` and thread detail for claim/takeover/close.
+- Role-Admin UI Path Verified: yes (covered by existing capability-path API tests in Story a.5 for claim/takeover authorization boundaries).
 - Access-Control Exemption Rationale: N/A
 
 ## Tasks / Subtasks
@@ -54,7 +54,8 @@ so that lifecycle actions remain predictable and auditable.
 
 ### Technical Requirements
 
-- FR coverage: FR-CS-013, FR-CS-015, FR-CS-024.
+- FR coverage: FR-CS-013, FR-CS-015.
+- FR traceability note: FR-CS-024 ownership remains in Epic d Story d.3; c.4 must preserve lifecycle transition metadata required by downstream audit/outbox integration.
 - NFR alignment: NFR-CS-004, NFR-CS-010.
 - Story dependencies: `c.2`, `c.3`.
 - Locked behavior priority: follow approved cross-epic UX remediation semantics for closed-thread outbound reopen behavior.
@@ -81,6 +82,7 @@ so that lifecycle actions remain predictable and auditable.
 ### Testing Requirements
 
 - Transition matrix tests for claim/takeover/close validity and permission-gated behavior.
+- Capability matrix tests for role outcomes on claim/takeover/close (`TENANT_VIEWER` refused; `ORGUNIT_MEMBER` claim/close allowed; `ORGUNIT_ADMIN` claim/takeover/close allowed; tenant-privileged takeover path preserved).
 - Reopen tests for `POST /threads/:id/call` and `POST /threads/:id/messages` from `CLOSED` state.
 - Negative tests ensuring inbound voice/fallback does not reopen `CLOSED`.
 - Audit/outbox verification for all successful state transitions.
@@ -121,7 +123,7 @@ so that lifecycle actions remain predictable and auditable.
 - `_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md` (section 4.1.2 hardening)
 - `_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md` (canonical lifecycle, audit/outbox, endpoint map)
 - `_bmad-output/planning-artifacts/UX - UI Redesign/connectshyft-implementation-locked-production-specification.normalized.md` (closed-state action semantics)
-- `_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md` (FR-CS-013, FR-CS-015, FR-CS-024)
+- `_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md` (FR-CS-013, FR-CS-015)
 
 ## Dev Agent Record
 
@@ -144,4 +146,3 @@ GPT-5 Codex
 ## Change Log
 
 - 2026-02-24: Created Story c.4 ready-for-dev context document.
-
