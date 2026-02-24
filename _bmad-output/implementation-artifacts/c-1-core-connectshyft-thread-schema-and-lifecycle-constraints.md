@@ -123,12 +123,12 @@ GPT-5 Codex
 ### Debug Log References
 
 - `npm run branch:ensure-workflow -- --workflow dev-story --story c-1-core-connectshyft-thread-schema-and-lifecycle-constraints`
-- `cd src && npm test -- src/migrations/__tests__/connectShyftThreadsMigration.test.ts src/modules/connectshyft/__tests__/threads.test.ts`
-- `cd src && npm test -- src/src/migrations/__tests__/connectShyftThreadsMigration.test.ts src/src/modules/connectshyft/__tests__/threads.test.ts src/src/modules/connectshyft/__tests__/threads.contract.test.ts`
-- `docker run --rm --network container:moneyshyft-postgres-1 -v /Users/jeremiahotis/projects/connectshyft:/work -w /work/src node:22-bullseye bash -lc "MONEYSHYFT_TEST_DATABASE_URL='postgresql://jeremiahotis:Oiruueu12@127.0.0.1:5432/moneyshyft' npm test -- --runInBand --verbose src/src/modules/connectshyft/__tests__/threads.contract.test.ts"`
-- `docker exec -i moneyshyft-postgres-1 psql -U jeremiahotis -d moneyshyft -v ON_ERROR_STOP=1` (schema/index, row-level, and EXPLAIN validation queries; outputs captured under validation evidence bundle)
-- `cd src && npm test`
-- `cd src && npm run build`
+- `cd src && npm test -- src/migrations/__tests__/connectShyftThreadsMigration.test.ts src/modules/connectshyft/__tests__/threads.test.ts` (pass)
+- `cd src && npm test -- src/src/migrations/__tests__/connectShyftThreadsMigration.test.ts src/src/modules/connectshyft/__tests__/threads.test.ts src/src/modules/connectshyft/__tests__/threads.contract.test.ts` (pass; contract suite skipped locally when `MONEYSHYFT_TEST_DATABASE_URL` is unset)
+- `docker run --rm --network container:moneyshyft-postgres-1 -v /Users/jeremiahotis/projects/connectshyft:/work -w /work/src node:22-bullseye bash -lc "MONEYSHYFT_TEST_DATABASE_URL='postgresql://jeremiahotis:Oiruueu12@127.0.0.1:5432/moneyshyft' npm test -- --runInBand --verbose src/src/modules/connectshyft/__tests__/threads.contract.test.ts"` (pass)
+- `docker exec -i moneyshyft-postgres-1 psql -U jeremiahotis -d moneyshyft -v ON_ERROR_STOP=1` (pass; schema/index, row-level, and EXPLAIN validation queries, outputs captured under validation evidence bundle)
+- `cd src && npm test` (pass)
+- `cd src && npm run build` (pass)
 
 ### Completion Notes List
 
