@@ -120,6 +120,11 @@ GPT-5 Codex
   - `cd src && npm run migrate:latest`
   - `npm run dev` (backend on `http://localhost:3000`)
   - Auth + lifecycle validation artifacts captured under `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/story-2-1-real-user-20260224-165031`
+- `cd src && npm run build` (pass)
+- `cd src && npm test -- src/modules/route/application/__tests__/commitmentService.test.ts src/routes/api/v1/__tests__/route.commitments.test.ts src/migrations/__tests__/routeCommitmentLifecycleMigration.test.ts src/modules/route/domain/__tests__/commitmentLifecycle.test.ts src/modules/route/infrastructure/__tests__/commitmentRepository.test.ts src/__tests__/app-entrypoint-kernel.test.ts` (pass)
+- `cd src && npm test` (pass)
+- `npm run story:status:check` (pass)
+- `bash scripts/enforce-operability-closeout-guard.sh` (pass)
 
 ### Completion Notes List
 
