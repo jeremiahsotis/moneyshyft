@@ -1,0 +1,14 @@
+ table_schema | table_name |      column_name       | is_nullable 
+--------------+------------+------------------------+-------------
+ connectshyft | cs_threads | neighbor_id            | NO
+ connectshyft | cs_threads | next_evaluation_at_utc | YES
+ connectshyft | cs_threads | org_unit_id            | NO
+ connectshyft | cs_threads | tenant_id              | NO
+(4 rows)
+
+          indexname          |                                                                                                  indexdef                                                                                                   
+-----------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ cs_threads_active_thread_uq | CREATE UNIQUE INDEX cs_threads_active_thread_uq ON connectshyft.cs_threads USING btree (tenant_id, org_unit_id, neighbor_id) WHERE (state <> 'CLOSED'::text)
+ cs_threads_due_eval_idx     | CREATE INDEX cs_threads_due_eval_idx ON connectshyft.cs_threads USING btree (tenant_id, org_unit_id, next_evaluation_at_utc, id) WHERE ((state <> 'CLOSED'::text) AND (next_evaluation_at_utc IS NOT NULL))
+(2 rows)
+
