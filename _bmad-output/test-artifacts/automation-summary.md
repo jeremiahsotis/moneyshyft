@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-24T14:23:31Z'
+lastSaved: '2026-02-24T19:18:35Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -1786,3 +1786,219 @@ lastSaved: '2026-02-24T14:23:31Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story b.2 AC coverage to ATDD + automate evidence.
+
+## Story 2.1 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `_bmad-output/implementation-artifacts/2-1-commitment-domain-model-and-transition-rules.md`
+  - Existing ATDD files found:
+    - `tests/api/platform/2-1-commitment-domain-model-and-transition-rules.atdd.api.spec.ts`
+    - `tests/e2e/platform/2-1-commitment-domain-model-and-transition-rules.atdd.spec.ts`
+
+### Context Loaded
+- Story source context loaded from:
+  - `_bmad-output/planning-artifacts/epics.md` (Epic 2 / Story 2.1 acceptance criteria)
+  - `docs/routeshyft/RouteShyft_Architecture_Document.md`
+  - `docs/routeshyft/RouteShyft_Functional_Requirements.md`
+- Existing test structure loaded under `tests/`.
+- Existing Story 2.1 support assets loaded:
+  - `tests/support/factories/routeShyftStory21Factory.ts`
+  - `tests/support/fixtures/routeShyftStory21.fixture.ts`
+  - `tests/fixtures/route-shyft-atdd-data.ts`
+
+### Workflow Guard Verification
+- `npm run branch:ensure-workflow -- --workflow _bmad/tea/workflows/testarch/automate/workflow.yaml --story _bmad-output/implementation-artifacts/2-1-commitment-domain-model-and-transition-rules.md`
+  - Result: passed
+- `npm run policy:check`
+  - Result: passed (local warnings only; no blocking failures)
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+- Browser automation reference:
+  - `playwright-cli.md`
+- Additional generation references:
+  - `api-testing-patterns.md`
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+
+### Input Confirmation
+Inputs are sufficient to proceed with Story 2.1 automation generation.
+
+## Story 2.1 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli --version` returned `command not found`.
+- Applied documented fallback: artifact/code-driven target discovery (no CLI snapshot session).
+
+### Acceptance Criteria to Target Mapping
+- AC1 (valid lifecycle transitions):
+  - valid `draft -> scheduled` transition success envelope
+  - deterministic refusal for invalid transition attempts
+- AC2 (terminal state policy):
+  - terminal-state immutability after terminal transition
+  - explicit refusal surface for post-terminal mutation attempts
+- AC3 (explicit actionable state/refusal details):
+  - refusal details and actionable guidance in API responses
+  - dispatcher-facing UI refusal and actionable-state rendering expectations
+
+### ATDD Duplication Control
+- Existing RED ATDD files retained unchanged:
+  - `tests/api/platform/2-1-commitment-domain-model-and-transition-rules.atdd.api.spec.ts`
+  - `tests/e2e/platform/2-1-commitment-domain-model-and-transition-rules.atdd.spec.ts`
+- Automation expansion generated executable/non-ATDD coverage in:
+  - `tests/api/platform/2-1-commitment-domain-model-and-transition-rules.api.spec.ts`
+  - `tests/e2e/platform/2-1-commitment-domain-model-and-transition-rules.spec.ts`
+
+### Selected Test Levels
+- **API** (primary): lifecycle transitions, refusal semantics, audit metadata, envelope parity.
+- **E2E** (secondary): dispatcher lifecycle UI controls, terminal UI lock behavior, refusal UX clarity.
+
+### Priority Assignment
+- P0:
+  - valid transition application contract
+  - invalid transition refusal contract
+  - terminal immutability contract
+  - dispatcher lifecycle state/transition-option visibility
+  - dispatcher invalid-transition refusal UX
+- P1:
+  - missing reason refusal behavior
+  - transition audit metadata contract
+  - envelope key parity across success/refusal
+  - terminal-state disabled UI controls
+  - structured transition payload submission from UI
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/2-1-commitment-domain-model-and-transition-rules.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/2-1-commitment-domain-model-and-transition-rules.spec.ts`
+- Scope:
+  - `critical-paths`
+
+## Story 2.1 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-02-24T19-15-09Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-02-24T19-15-09Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`
+- E2E subprocess status: `success: true`
+- Both outputs present and JSON-valid.
+
+### Performance Report
+- Parallel generation completed in one orchestration pass.
+- Sequential equivalent requires two passes.
+- Expected gain target met: `~50% faster than sequential`.
+
+## Story 2.1 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `tests/api/platform/2-1-commitment-domain-model-and-transition-rules.api.spec.ts`
+- `tests/e2e/platform/2-1-commitment-domain-model-and-transition-rules.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing Story 2.1 fixture/factory stack:
+  - `tests/support/fixtures/routeShyftStory21.fixture.ts`
+  - `tests/support/factories/routeShyftStory21Factory.ts`
+  - `tests/support/helpers/apiClient.ts`
+  - `tests/helpers/auth.ts`
+- No additional shared fixture files were required.
+
+### Summary Metrics
+- Total tests generated: `10`
+  - API tests: `6` (1 file)
+  - E2E tests: `4` (1 file)
+- Priority coverage:
+  - P0: `5`
+  - P1: `5`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-24T19-15-09Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-02-24T19-15-09Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-24T19-15-09Z.json`
+  - `/tmp/tea-automate-summary-2026-02-24T19-15-09Z.json`
+- Persisted under test artifacts:
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-24T19-15-09Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-24T19-15-09Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-24T19-15-09Z.json`
+
+## Story 2.1 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated spec parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/2-1-commitment-domain-model-and-transition-rules.api.spec.ts tests/e2e/platform/2-1-commitment-domain-model-and-transition-rules.spec.ts`
+  - Result: passed (`10` tests discovered in `2` files).
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) used.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) introduced.
+  - priority tags (`@P0`, `@P1`) present for selective execution.
+- CLI session cleanup:
+  - no CLI browser session was started (CLI not installed).
+- Temp artifacts:
+  - stored in `_bmad-output/test-artifacts/automation-temp`.
+
+### Coverage Plan by Test Level and Priority
+- API (`tests/api/platform/2-1-commitment-domain-model-and-transition-rules.api.spec.ts`):
+  - P0: valid transition, invalid transition refusal, terminal immutability
+  - P1: missing reason refusal, audit metadata, envelope parity
+- E2E (`tests/e2e/platform/2-1-commitment-domain-model-and-transition-rules.spec.ts`):
+  - P0: lifecycle options visibility, invalid transition refusal UX
+  - P1: terminal immutable UI controls, structured transition payload submission
+
+### Key Assumptions
+- Story 2.1 target contracts will be served at:
+  - `POST /api/v1/route/commitments`
+  - `POST /api/v1/route/commitments/:id/transition`
+- Story 2.1 dispatcher UI target remains:
+  - `/app/route/commitments`
+
+### Risks
+- RouteShyft commitment API/UI surfaces are not present in current route registration; API tests are executable expectations that may fail until implementation is complete.
+- E2E tests are intentionally marked `test.fixme(...)` pending dispatcher commitments UI implementation/readiness.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality scoring and maintainability checks.
+- `[TR] Trace Requirements` to map Story 2.1 acceptance criteria to ATDD + automate evidence.
