@@ -3,12 +3,15 @@ import type { Knex } from 'knex';
 import { authenticateToken } from '../../../middleware/auth';
 import { refusal, success } from '../../../platform/envelopes/response';
 import { requireTenantId, TenantScopeError } from '../../../platform/tenancy/tenantScope';
+import { normalizeRole } from '../../../platform/rbac/capabilities';
 import { CommitmentService } from '../../../modules/route/application/commitmentService';
 import { KnexCommitmentRepository } from '../../../modules/route/infrastructure/commitmentRepository';
 import { isCommitmentStatus } from '../../../modules/route/domain/commitmentLifecycle';
 
 const TEST_TENANT_HEADER = 'x-test-route-tenant-id';
 const TEST_ACTOR_HEADER = 'x-test-route-actor-id';
+const TEST_ROLE_HEADER = 'x-test-route-role';
+const POLICY_EXCEPTION_ALLOWED_ROLES = new Set(['SYSTEM_ADMIN', 'TENANT_ADMIN']);
 
 const isNodeTestEnv = (): boolean => process.env.NODE_ENV?.trim().toLowerCase() === 'test';
 
@@ -62,6 +65,40 @@ const resolveActorId = (req: Request): string | null => {
   return normalizeNonEmptyString(req.header(TEST_ACTOR_HEADER)) || null;
 };
 
+const resolveRequestedRole = (req: Request): string | null => {
+  const userRole = normalizeNonEmptyString(req.user?.role || null);
+  if (userRole) {
+    return userRole;
+  }
+
+  if (!isNodeTestEnv()) {
+    return null;
+  }
+
+  return normalizeNonEmptyString(req.header(TEST_ROLE_HEADER)) || null;
+};
+
+const canApplyPolicyException = (req: Request): boolean => {
+  const role = normalizeRole(resolveRequestedRole(req));
+  if (!role) {
+    return false;
+  }
+
+  return POLICY_EXCEPTION_ALLOWED_ROLES.has(role);
+};
+
+const resolveOrgUnitContext = (req: Request): string | null => {
+  const orgUnitId = normalizeNonEmptyString(
+    req.user?.activeOrgUnitId
+    || req.authContext?.orgUnitId
+    || req.tenantContext?.orgUnitId
+    || req.orgUnitId
+    || null,
+  );
+
+  return orgUnitId || null;
+};
+
 const parseCommitmentId = (req: Request): string => normalizeNonEmptyString(req.params.commitmentId || null);
 
 const parseCreateBody = (req: Request) => ({
@@ -76,6 +113,51 @@ const parseTransitionBody = (req: Request) => ({
   reason: normalizeNonEmptyString(req.body?.reason),
   policyExceptionCode: normalizeNonEmptyString(req.body?.policyExceptionCode) || null,
 });
+
+const resolveScopedCreateOrgUnitId = (
+  req: Request,
+  res: Response,
+  requestedOrgUnitId: string | null,
+): string | null | undefined => {
+  const scopedOrgUnitId = resolveOrgUnitContext(req);
+  const scopeMode = normalizeNonEmptyString(req.scopeMode || req.authContext?.scopeMode || null);
+
+  if (requestedOrgUnitId && !scopedOrgUnitId) {
+    refusal(res, {
+      code: 'ROUTE_ORG_UNIT_CONTEXT_REQUIRED',
+      message: 'OrgUnit context is required when orgUnitId is provided.',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return undefined;
+  }
+
+  if (requestedOrgUnitId && scopedOrgUnitId && requestedOrgUnitId !== scopedOrgUnitId) {
+    refusal(res, {
+      code: 'ROUTE_ORG_UNIT_SCOPE_MISMATCH',
+      message: 'orgUnitId must match active orgUnit context.',
+      refusalType: 'security',
+      httpStatus: 403,
+      data: {
+        activeOrgUnitId: scopedOrgUnitId,
+        requestedOrgUnitId,
+      },
+    });
+    return undefined;
+  }
+
+  if (scopeMode.toUpperCase() === 'ORG_UNIT' && !scopedOrgUnitId) {
+    refusal(res, {
+      code: 'ROUTE_ORG_UNIT_CONTEXT_REQUIRED',
+      message: 'Active orgUnit context is required for orgUnit-scoped Route requests.',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return undefined;
+  }
+
+  return scopedOrgUnitId;
+};
 
 const resolveTenantId = (req: Request, res: Response): string | null => {
   try {
@@ -138,12 +220,17 @@ export const createRouteRouter = (
     }
 
     const body = parseCreateBody(req);
+    const scopedOrgUnitId = resolveScopedCreateOrgUnitId(req, res, body.orgUnitId);
+    if (scopedOrgUnitId === undefined) {
+      return;
+    }
+
     const created = await commitmentService.createCommitment({
       tenantId,
       actorId: resolveActorId(req),
       sourceType: body.sourceType,
       sourceId: body.sourceId,
-      orgUnitId: body.orgUnitId,
+      orgUnitId: scopedOrgUnitId,
       externalRef: body.externalRef,
     });
 
@@ -230,6 +317,7 @@ export const createRouteRouter = (
       nextStatus: body.nextStatus,
       reason: body.reason,
       policyExceptionCode: body.policyExceptionCode,
+      allowPolicyException: canApplyPolicyException(req),
     });
 
     if (!transitioned.ok) {

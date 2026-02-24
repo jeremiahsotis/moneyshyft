@@ -20,6 +20,7 @@ type ServiceRefusalResult = {
     | 'ROUTE_COMMITMENT_NOT_FOUND'
     | 'ROUTE_COMMITMENT_INVALID_TRANSITION'
     | 'ROUTE_COMMITMENT_TERMINAL_STATE_LOCKED'
+    | 'ROUTE_COMMITMENT_POLICY_EXCEPTION_FORBIDDEN'
     | 'ROUTE_COMMITMENT_PERSISTENCE_UNAVAILABLE';
   message: string;
   refusalType: RefusalType;
@@ -87,6 +88,7 @@ export type TransitionCommitmentCommand = {
   nextStatus: CommitmentStatus;
   reason: string;
   policyExceptionCode?: string | null;
+  allowPolicyException?: boolean;
 };
 
 const normalizeNonEmptyString = (value: unknown): string => {
@@ -246,6 +248,17 @@ export class CommitmentService {
     }
 
     const policyExceptionCode = normalizeNonEmptyString(input.policyExceptionCode || null) || null;
+    if (policyExceptionCode && !input.allowPolicyException) {
+      return toRefusal(
+        'ROUTE_COMMITMENT_POLICY_EXCEPTION_FORBIDDEN',
+        'Policy exception transitions require elevated authorization.',
+        'business',
+        200,
+        {
+          attemptedPolicyExceptionCode: policyExceptionCode,
+        },
+      );
+    }
 
     try {
       const existing = await this.repository.getCommitmentById(input.tenantId, input.commitmentId);

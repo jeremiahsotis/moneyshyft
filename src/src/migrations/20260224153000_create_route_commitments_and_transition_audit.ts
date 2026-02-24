@@ -30,6 +30,15 @@ export async function up(knex: Knex): Promise<void> {
     ADD CONSTRAINT route_commitments_status_chk
     CHECK (status IN ('scheduled', 'in_progress', 'completed', 'canceled', 'refused'))
   `);
+  await knex.raw(`
+    ALTER TABLE route.commitments
+    DROP CONSTRAINT IF EXISTS route_commitments_tenant_id_id_uniq
+  `);
+  await knex.raw(`
+    ALTER TABLE route.commitments
+    ADD CONSTRAINT route_commitments_tenant_id_id_uniq
+    UNIQUE (tenant_id, id)
+  `);
 
   await knex.raw(`
     CREATE INDEX IF NOT EXISTS route_commitments_tenant_status_idx
@@ -71,6 +80,21 @@ export async function up(knex: Knex): Promise<void> {
     ALTER TABLE route.commitment_transition_audit
     ADD CONSTRAINT route_commitment_transition_audit_new_status_chk
     CHECK (new_status IN ('scheduled', 'in_progress', 'completed', 'canceled', 'refused'))
+  `);
+  await knex.raw(`
+    ALTER TABLE route.commitment_transition_audit
+    DROP CONSTRAINT IF EXISTS commitment_transition_audit_commitment_id_fkey
+  `);
+  await knex.raw(`
+    ALTER TABLE route.commitment_transition_audit
+    DROP CONSTRAINT IF EXISTS route_commitment_transition_audit_tenant_commitment_fkey
+  `);
+  await knex.raw(`
+    ALTER TABLE route.commitment_transition_audit
+    ADD CONSTRAINT route_commitment_transition_audit_tenant_commitment_fkey
+    FOREIGN KEY (tenant_id, commitment_id)
+    REFERENCES route.commitments(tenant_id, id)
+    ON DELETE CASCADE
   `);
 
   await knex.raw(`

@@ -33,9 +33,11 @@ describe('20260224153000_create_route_commitments_and_transition_audit migration
 
     expect(rawCalls.some((sql: string) => sql.includes('CREATE TABLE IF NOT EXISTS route.commitments'))).toBe(true);
     expect(rawCalls.some((sql: string) => sql.includes('route_commitments_status_chk'))).toBe(true);
+    expect(rawCalls.some((sql: string) => sql.includes('route_commitments_tenant_id_id_uniq'))).toBe(true);
     expect(rawCalls.some((sql: string) => sql.includes('CREATE TABLE IF NOT EXISTS route.commitment_transition_audit'))).toBe(true);
     expect(rawCalls.some((sql: string) => sql.includes('route_commitment_transition_audit_previous_status_chk'))).toBe(true);
     expect(rawCalls.some((sql: string) => sql.includes('route_commitment_transition_audit_new_status_chk'))).toBe(true);
+    expect(rawCalls.some((sql: string) => sql.includes('route_commitment_transition_audit_tenant_commitment_fkey'))).toBe(true);
     expect(rawCalls.some((sql: string) => sql.includes('CREATE TRIGGER trg_route_commitments_set_updated_at'))).toBe(true);
   });
 

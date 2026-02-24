@@ -7,16 +7,18 @@ import { createRouteRouter } from '../route';
 
 jest.mock('../../../../middleware/auth', () => ({
   authenticateToken: (req: express.Request, _res: express.Response, next: express.NextFunction) => {
+    const roleOverride = req.header('x-test-route-role') || 'TENANT_STAFF';
+    const activeOrgUnitOverride = req.header('x-test-route-active-org-unit-id') || 'org-route-1';
     req.user = {
       userId: 'user-route-1',
       email: 'dispatcher@example.com',
       householdId: 'tenant-route-1',
       activeTenantId: 'tenant-route-1',
-      activeOrgUnitId: 'org-route-1',
-      role: 'TENANT_STAFF',
+      activeOrgUnitId: activeOrgUnitOverride,
+      role: roleOverride,
     };
     req.tenantId = 'tenant-route-1';
-    req.orgUnitId = 'org-route-1';
+    req.orgUnitId = activeOrgUnitOverride;
     req.scopeMode = 'ORG_UNIT';
     next();
   },
@@ -156,6 +158,131 @@ describe('route commitment api contract', () => {
         attemptedStatus: 'canceled',
         isTerminal: true,
         allowedWithPolicyExceptionTransitions: ['canceled', 'refused'],
+      },
+    });
+  });
+
+  it('refuses terminal override when actor lacks policy-exception authorization', async () => {
+    const app = buildApp();
+
+    const created = await request(app)
+      .post('/api/v1/route/commitments')
+      .send({
+        sourceType: 'route_request',
+        sourceId: 'request-api-4',
+      });
+    const commitmentId = created.body.data.commitment.commitmentId as string;
+
+    await request(app)
+      .post(`/api/v1/route/commitments/${commitmentId}/transitions`)
+      .send({
+        nextStatus: 'in_progress',
+        reason: 'Dispatch started',
+      })
+      .expect(200);
+
+    await request(app)
+      .post(`/api/v1/route/commitments/${commitmentId}/transitions`)
+      .send({
+        nextStatus: 'completed',
+        reason: 'Proof captured',
+      })
+      .expect(200);
+
+    const denied = await request(app)
+      .post(`/api/v1/route/commitments/${commitmentId}/transitions`)
+      .send({
+        nextStatus: 'canceled',
+        reason: 'Unauthorized terminal correction',
+        policyExceptionCode: 'OPS_OVERRIDE',
+      });
+
+    expect(denied.status).toBe(200);
+    expect(denied.body).toMatchObject({
+      ok: false,
+      code: 'ROUTE_COMMITMENT_POLICY_EXCEPTION_FORBIDDEN',
+      refusalType: 'business',
+      data: {
+        attemptedPolicyExceptionCode: 'OPS_OVERRIDE',
+      },
+    });
+  });
+
+  it('allows terminal override for elevated role authorization', async () => {
+    const app = buildApp();
+
+    const created = await request(app)
+      .post('/api/v1/route/commitments')
+      .set('x-test-route-role', 'TENANT_ADMIN')
+      .send({
+        sourceType: 'route_request',
+        sourceId: 'request-api-5',
+      });
+    const commitmentId = created.body.data.commitment.commitmentId as string;
+
+    await request(app)
+      .post(`/api/v1/route/commitments/${commitmentId}/transitions`)
+      .set('x-test-route-role', 'TENANT_ADMIN')
+      .send({
+        nextStatus: 'in_progress',
+        reason: 'Dispatch started',
+      })
+      .expect(200);
+
+    await request(app)
+      .post(`/api/v1/route/commitments/${commitmentId}/transitions`)
+      .set('x-test-route-role', 'TENANT_ADMIN')
+      .send({
+        nextStatus: 'completed',
+        reason: 'Proof captured',
+      })
+      .expect(200);
+
+    const overridden = await request(app)
+      .post(`/api/v1/route/commitments/${commitmentId}/transitions`)
+      .set('x-test-route-role', 'TENANT_ADMIN')
+      .send({
+        nextStatus: 'canceled',
+        reason: 'Policy exception approved',
+        policyExceptionCode: 'OPS_OVERRIDE',
+      });
+
+    expect(overridden.status).toBe(200);
+    expect(overridden.body).toMatchObject({
+      ok: true,
+      code: 'ROUTE_COMMITMENT_TRANSITION_APPLIED',
+      data: {
+        commitment: {
+          status: 'canceled',
+        },
+        transition: {
+          previousStatus: 'completed',
+          newStatus: 'canceled',
+          policyExceptionCode: 'OPS_OVERRIDE',
+        },
+      },
+    });
+  });
+
+  it('rejects commitment create when body orgUnitId mismatches active orgUnit context', async () => {
+    const app = buildApp();
+
+    const mismatched = await request(app)
+      .post('/api/v1/route/commitments')
+      .send({
+        sourceType: 'route_request',
+        sourceId: 'request-api-6',
+        orgUnitId: 'org-route-99',
+      });
+
+    expect(mismatched.status).toBe(403);
+    expect(mismatched.body).toMatchObject({
+      ok: false,
+      code: 'ROUTE_ORG_UNIT_SCOPE_MISMATCH',
+      refusalType: 'security',
+      data: {
+        activeOrgUnitId: 'org-route-1',
+        requestedOrgUnitId: 'org-route-99',
       },
     });
   });

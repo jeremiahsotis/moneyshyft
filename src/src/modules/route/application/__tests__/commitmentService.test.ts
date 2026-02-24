@@ -182,4 +182,105 @@ describe('route commitment service', () => {
       httpStatus: 200,
     });
   });
+
+  it('rejects policy-exception transitions without explicit authorization', async () => {
+    const created = await service.createCommitment({
+      tenantId: 'tenant-1',
+      actorId: 'user-1',
+      sourceType: 'route_request',
+      sourceId: 'request-6',
+    });
+    if (!created.ok) {
+      throw new Error('Expected commitment create to succeed');
+    }
+
+    await service.transitionCommitment({
+      tenantId: 'tenant-1',
+      actorId: 'user-2',
+      commitmentId: created.data.commitment.commitmentId,
+      nextStatus: 'in_progress',
+      reason: 'Dispatch started',
+    });
+
+    await service.transitionCommitment({
+      tenantId: 'tenant-1',
+      actorId: 'user-2',
+      commitmentId: created.data.commitment.commitmentId,
+      nextStatus: 'completed',
+      reason: 'Proof recorded',
+    });
+
+    const denied = await service.transitionCommitment({
+      tenantId: 'tenant-1',
+      actorId: 'user-3',
+      commitmentId: created.data.commitment.commitmentId,
+      nextStatus: 'canceled',
+      reason: 'Unauthorized terminal correction',
+      policyExceptionCode: 'OPS_OVERRIDE',
+    });
+
+    expect(denied).toMatchObject({
+      ok: false,
+      code: 'ROUTE_COMMITMENT_POLICY_EXCEPTION_FORBIDDEN',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        attemptedPolicyExceptionCode: 'OPS_OVERRIDE',
+      },
+    });
+  });
+
+  it('allows terminal correction when policy-exception authorization is granted', async () => {
+    const created = await service.createCommitment({
+      tenantId: 'tenant-1',
+      actorId: 'user-1',
+      sourceType: 'route_request',
+      sourceId: 'request-7',
+    });
+    if (!created.ok) {
+      throw new Error('Expected commitment create to succeed');
+    }
+
+    await service.transitionCommitment({
+      tenantId: 'tenant-1',
+      actorId: 'user-2',
+      commitmentId: created.data.commitment.commitmentId,
+      nextStatus: 'in_progress',
+      reason: 'Dispatch started',
+    });
+
+    await service.transitionCommitment({
+      tenantId: 'tenant-1',
+      actorId: 'user-2',
+      commitmentId: created.data.commitment.commitmentId,
+      nextStatus: 'completed',
+      reason: 'Proof recorded',
+    });
+
+    const overridden = await service.transitionCommitment({
+      tenantId: 'tenant-1',
+      actorId: 'user-9',
+      commitmentId: created.data.commitment.commitmentId,
+      nextStatus: 'canceled',
+      reason: 'Policy exception approved by incident lead',
+      policyExceptionCode: 'OPS_OVERRIDE',
+      allowPolicyException: true,
+    });
+
+    expect(overridden).toMatchObject({
+      ok: true,
+      code: 'ROUTE_COMMITMENT_TRANSITION_APPLIED',
+      data: {
+        commitment: {
+          status: 'canceled',
+        },
+        transition: {
+          reason: 'Policy exception approved by incident lead',
+          previousStatus: 'completed',
+          newStatus: 'canceled',
+          policyExceptionCode: 'OPS_OVERRIDE',
+        },
+      },
+    });
+  });
 });
