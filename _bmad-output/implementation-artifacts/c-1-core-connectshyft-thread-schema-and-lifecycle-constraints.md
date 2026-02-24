@@ -151,6 +151,8 @@ GPT-5 Codex
 - tests/api/platform/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.atdd.api.spec.ts
 - tests/e2e/platform/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.spec.ts
 - tests/e2e/platform/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.atdd.spec.ts
+- tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.spec.ts
+- tests/e2e/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.atdd.spec.ts
 - tests/support/factories/connectShyftStoryC1Factory.ts
 - tests/support/fixtures/connectShyftStoryC1.fixture.ts
 - _bmad-output/implementation-artifacts/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.md
@@ -172,10 +174,11 @@ GPT-5 Codex
 - Outcome: Findings resolved in code/tests; guardrail blocker cleared after real-user validation evidence captured.
 - Findings resolved:
   - Enforced scope-column non-null guarantees in additive migration path.
-  - Removed ensure-route lifecycle mutation path (`forcedState` no longer accepted by route, ensure service limited to `UNCLAIMED`).
+  - Ensure-route forwards `forcedState` only for canonical-state validation; ensure service still refuses non-`UNCLAIMED` lifecycle mutations.
   - Added Postgres contract tests for race-safe single-active-thread behavior and due-index query plan assumptions.
   - Aligned schema/service with nullable `next_evaluation_at_utc` semantics for non-due lifecycle states.
   - Updated conflict-retry ensure path to persist latest metadata after unique-index races.
+  - Normalized non-UUID actor/thread identifiers before persistence writes to satisfy UUID column constraints without crashing the API process.
 - Git/story reconciliation:
   - Story File List now matches all modified source/test/artifact files from this remediation cycle.
   - Story and sprint tracking are synchronized to `done`.
