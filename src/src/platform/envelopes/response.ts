@@ -20,7 +20,7 @@ type RefusalEnvelopeParams = {
   httpStatus?: number;
 };
 
-type SystemErrorEnvelopeParams = {
+type ErrorEnvelopeParams = {
   code: string;
   message: string;
   data?: unknown;
@@ -50,7 +50,7 @@ export type RefusalEnvelopePayload = {
   data?: unknown;
 };
 
-export type SystemErrorEnvelopePayload = {
+export type ErrorEnvelopePayload = {
   ok: false;
   code: string;
   message: string;
@@ -63,7 +63,7 @@ export type SystemErrorEnvelopePayload = {
 export type ApiEnvelopePayload =
   | SuccessEnvelopePayload
   | RefusalEnvelopePayload
-  | SystemErrorEnvelopePayload;
+  | ErrorEnvelopePayload;
 
 const resolveContext = (res: Response): EnvelopeContext => {
   const locals = res.locals as ResponseLocalsEnvelope;
@@ -124,10 +124,10 @@ export const buildRefusalEnvelope = (
   ...(data !== undefined ? { data } : {})
 });
 
-export const buildSystemErrorEnvelope = (
+export const buildErrorEnvelope = (
   context: EnvelopeContext,
-  { code, message, data }: Omit<SystemErrorEnvelopeParams, 'httpStatus'>
-): SystemErrorEnvelopePayload => ({
+  { code, message, data }: Omit<ErrorEnvelopeParams, 'httpStatus'>
+): ErrorEnvelopePayload => ({
   ok: false,
   code,
   message,
@@ -168,14 +168,17 @@ export const refusal = (
   return res.status(httpStatus).json(payload);
 };
 
-export const systemError = (
+export const error = (
   res: Response,
-  { httpStatus = 500, ...params }: SystemErrorEnvelopeParams
+  { httpStatus = 500, ...params }: ErrorEnvelopeParams
 ): Response => {
   const context = resolveContext(res);
-  const payload = buildSystemErrorEnvelope(context, params);
+  const payload = buildErrorEnvelope(context, params);
   return res.status(httpStatus).json(payload);
 };
+
+// Backward compatibility alias for legacy imports.
+export const systemError = error;
 
 export const replayEnvelope = (
   res: Response,

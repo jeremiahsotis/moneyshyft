@@ -8,7 +8,7 @@ import {
   buildSuccessEnvelope,
   refusal,
   success,
-  systemError,
+  error as errorEnvelope,
   type EnvelopeContext
 } from '../../../platform/envelopes/response';
 import {
@@ -275,7 +275,7 @@ const validateOrgUnitContextAccess = async (
   } catch (error) {
     return {
       ok: false,
-      response: systemError(res, {
+      response: errorEnvelope(res, {
         code: 'ORG_UNIT_ACCESS_VALIDATION_FAILED',
         message: error instanceof Error ? error.message : 'Failed to validate orgUnit access',
         httpStatus: 500,
@@ -889,7 +889,7 @@ router.post('/_kernel/contracts/envelope/system-error', (req: Request, res: Resp
     ? req.body.httpStatus
     : 500;
 
-  return systemError(res, {
+  return errorEnvelope(res, {
     code,
     message,
     data: req.body?.data,
@@ -929,12 +929,12 @@ router.post('/_kernel/contracts/envelope/response-matrix/business-refusal', (req
 router.post('/_kernel/contracts/envelope/response-matrix/system-error', (req: Request, res: Response) => {
   applyEnvelopeTenantOverride(req, res);
 
-  return systemError(res, {
+  return errorEnvelope(res, {
     code: 'ENVELOPE_SYSTEM_ERROR',
     message: 'Shared response envelope emitted system error contract',
     data: {
       probe: 'response-matrix-system-error',
-      helper: 'systemError',
+      helper: 'error',
       contractVersion: '1.4'
     },
     httpStatus: 500
@@ -1057,7 +1057,7 @@ router.get('/_kernel/contracts/identity/global-email-uniqueness', async (req: Re
       contract
     });
   } catch (error) {
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'GLOBAL_EMAIL_UNIQUENESS_CONTRACT_CHECK_FAILED',
       message: error instanceof Error ? error.message : 'Failed to evaluate global email uniqueness contract',
       httpStatus: 500
@@ -1960,7 +1960,7 @@ router.get('/_kernel/tenancy/diagnostics', async (req: Request, res: Response) =
       });
     }
 
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'TENANCY_CONTEXT_RESOLUTION_FAILED',
       message: error instanceof Error ? error.message : 'Failed to resolve tenancy context',
       httpStatus: 500,
@@ -2001,7 +2001,7 @@ router.get('/_kernel/tenancy/repository-check', async (req: Request, res: Respon
       });
     }
 
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'TENANCY_CONTEXT_RESOLUTION_FAILED',
       message: error instanceof Error ? error.message : 'Failed to resolve tenancy context',
       httpStatus: 500,
@@ -2098,7 +2098,7 @@ router.post('/_kernel/tenancy/repository-check', async (req: Request, res: Respo
       });
     }
 
-    return systemError(res, {
+    return errorEnvelope(res, {
       code: 'TENANCY_CONTEXT_RESOLUTION_FAILED',
       message: error instanceof Error ? error.message : 'Failed to resolve tenancy context',
       httpStatus: 500,
