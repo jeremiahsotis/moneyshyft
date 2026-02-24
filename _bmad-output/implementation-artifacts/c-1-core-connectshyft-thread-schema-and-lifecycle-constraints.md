@@ -147,6 +147,12 @@ GPT-5 Codex
 - src/src/modules/connectshyft/__tests__/threads.test.ts
 - src/src/modules/connectshyft/__tests__/threads.contract.test.ts
 - src/src/routes/api/v1/connectshyft.ts
+- tests/api/platform/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.api.spec.ts
+- tests/api/platform/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.atdd.api.spec.ts
+- tests/e2e/platform/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.spec.ts
+- tests/e2e/platform/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.atdd.spec.ts
+- tests/support/factories/connectShyftStoryC1Factory.ts
+- tests/support/fixtures/connectShyftStoryC1.fixture.ts
 - _bmad-output/implementation-artifacts/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.md
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 - _bmad-output/implementation-artifacts/validation/c-1-real-user-validation-2026-02-24/00-db-connection.txt
