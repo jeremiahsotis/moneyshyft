@@ -91,13 +91,13 @@ change_controls:
   ux_remediation_approved: true
   ux_remediation_approved_on: 2026-02-24
   ux_remediation_approved_by: Jeremiah
-  ux_remediation_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md
+  ux_remediation_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md
   c3_contract_hardening_required: true
   c3_contract_hardening_status: pending
-  c3_contract_hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md#41-stories
+  c3_contract_hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md#41-stories
   d_contract_hardening_required: true
   d_contract_hardening_status: pending
-  d_contract_hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md#41-stories
+  d_contract_hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md#41-stories
   planning_artifact_harmonization_required: true
   planning_artifact_harmonization_status: in-progress
   planning_artifact_harmonization_targets:
@@ -105,9 +105,9 @@ change_controls:
     - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md
     - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md
     - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md
-    - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/implementation-locked-production-specification.normalized.md
+    - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/connectshyft-implementation-locked-production-specification.normalized.md
     - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/connectshyft-ux.specification.normalized.md
-    - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/full-view-flow.normalized.md
+    - /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/connectshyft-full-view-flow.normalized.md
   escalation_timing_policy:
     default_x_hours: 24
     min_x_hours: 1
@@ -123,7 +123,7 @@ story_traceability_overrides:
     nfr_tags:
       - NFR-CS-011
     hardening_locked: true
-    hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md#41-stories
+    hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md#41-stories
     hardening_notes:
       - Deterministic ordering with explicit priority_rank mapping
       - Plain-language urgency labels (no raw stage exposure)
@@ -152,7 +152,7 @@ story_traceability_overrides:
     nfr_tags:
       - NFR-CS-011
     hardening_locked: true
-    hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md#41-stories
+    hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md#41-stories
     hardening_notes:
       - State-specific action controls are explicit (UNCLAIMED/CLAIMED/CLOSED)
       - Policy feedback must be accessible and explicit
@@ -163,7 +163,7 @@ story_traceability_overrides:
     parallel_lane: lane-d-outbound-ux
   d-1-outbound-sms-call-actions-that-preserve-escalation-semantics:
     hardening_locked: true
-    hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md#41-stories
+    hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md#41-stories
     hardening_notes:
       - CLOSED outbound tap reopens same thread before outbound execution
       - Bridge-call-only outbound voice path
@@ -171,7 +171,7 @@ story_traceability_overrides:
       - CONNECTED auto-claims unclaimed thread
   d-2-preference-override-enforcement-for-outbound-sms:
     hardening_locked: true
-    hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md#41-stories
+    hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md#41-stories
     hardening_notes:
       - Override reason required for prefers_texting=NO
       - Missing override uses refusal flow with no side effects

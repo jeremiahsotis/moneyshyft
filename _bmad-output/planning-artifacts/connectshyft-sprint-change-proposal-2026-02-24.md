@@ -1,3 +1,5 @@
+project_lane: connectshyft
+
 # Sprint Change Proposal - ConnectShyft UX/UI Course Correction
 
 **Date:** 2026-02-24  
@@ -18,8 +20,8 @@ User testing indicates ConnectShyft's current interface is not workable for core
 
 ### Evidence Sources
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/connectshyft-ux.specification.md`
-- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/full-view-flow.md`
-- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/implementation-locked production specification.md`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/connectshyft-full-view-flow.md`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/connectshyft-implementation-locked-production-specification.md`
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/connectshyft-engineering-task-breakdown.md`
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/connectshyft-openapi.md`
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/UX - UI Redesign/connectshyft-db-migration-sql.md`

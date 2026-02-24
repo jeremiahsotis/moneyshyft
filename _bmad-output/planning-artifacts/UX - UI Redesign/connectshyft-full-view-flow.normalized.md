@@ -1,3 +1,5 @@
+project_lane: connectshyft
+
 1️⃣ Full View Flow (Authoritative Behavioral Map)
 
 This is the canonical user flow for ConnectShyft MVP.

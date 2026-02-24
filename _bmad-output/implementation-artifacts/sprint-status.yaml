@@ -125,7 +125,7 @@ course_correction:
     status: approved
     scope: moderate
     lane: connectshyft
-    proposal: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md
+    proposal: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md
     summary:
       - Cross-epic ConnectShyft UX remediation approved
       - Locked behavioral parity for closed-thread reopen, voicemail handling, and deterministic ordering

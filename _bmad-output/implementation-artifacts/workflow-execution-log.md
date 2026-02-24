@@ -86,7 +86,7 @@ ConnectShyft implementation readiness corrections approved for:
 Cross-epic ConnectShyft UX/UI remediation approved after user-testing evidence showed the interface was not workable for core users, including seniors.
 
 ### Artifacts Modified/Generated
-- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-24.md`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md`
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
 
 ### Routing/Handoff
