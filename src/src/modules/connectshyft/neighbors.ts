@@ -316,7 +316,8 @@ const normalizePhones = (
 
 const hasNeighborManageCapability = (actorRoles: Array<string | null | undefined>): boolean => {
   return hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
-    || hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL);
+    || hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)
+    || hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_IDENTITY_RESOLVE);
 };
 
 const hasNeighborReadCapability = (actorRoles: Array<string | null | undefined>): boolean => {
