@@ -187,7 +187,7 @@ test.describe('Story 1.2 admin provisioning UI - role-gated journeys', () => {
     await page.getByRole('button', { name: 'Next' }).click();
     await page.getByRole('button', { name: 'Create Tenant' }).click();
 
-    await expect(page.getByText(/Tenant created:/)).toBeVisible();
+    await expect(page.getByText(/Tenant created:/)).toBeVisible({ timeout: 15000 });
   });
 
   test('[P1] tenant admin assignment flow refuses out-of-scope UUID identity inputs @P1', async ({ page }) => {

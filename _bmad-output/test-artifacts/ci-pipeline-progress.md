@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight','step-02-generate-pipeline','step-03-configure-quality-gates','step-04-validate-and-summary']
 lastStep: 'step-04-validate-and-summary'
-lastSaved: '2026-02-22T07:45:42Z'
+lastSaved: '2026-02-24T12:14:09Z'
 ---
 
 # CI Workflow Progress (ConnectShyft Epic A)
@@ -85,3 +85,47 @@ lastSaved: '2026-02-22T07:45:42Z'
   1. Commit workflow/doc/runtime updates.
   2. Push and open/update PR to trigger CI.
   3. If policy job fails in CI, fix branch HEAD commit subject to match repository git policy.
+
+---
+
+# CI Workflow Progress (ConnectShyft Epic B)
+
+## Step 1: Preflight Checks
+- Git repository and remote validation: pass.
+- Test framework validation: pass (`playwright.config.ts` + `@playwright/test`).
+- CI platform detection: GitHub Actions (`.github/workflows/test.yml` already present).
+- Node runtime context: `.nvmrc` = `24`.
+- Local preflight command:
+  - `npm run test:e2e`
+  - Final result after test hardening: `244 passed`, `96 skipped`, `0 failed`.
+- Blocking issues: resolved.
+
+## Step 2: Generate CI Pipeline
+- Existing CI pipeline reviewed and retained at `.github/workflows/test.yml`.
+- Required staged topology confirmed:
+  - `policy` (blocking)
+  - `lint`
+  - `test` (4 shards, `fail-fast: false`)
+  - `burn-in` (PR/scheduled)
+  - `quality-gates`
+  - `backend-contracts` (optional `workflow_dispatch`)
+  - `report` (summary publishing)
+- No structural workflow changes were required for Epic B retry.
+
+## Step 3: Quality Gates & Notifications
+- Burn-in strategy confirmed: `bash scripts/burn-in.sh 10 origin/production` in CI.
+- Threshold gate confirmed in `scripts/quality-gates.sh`:
+  - `@P0` pass rate = 100%
+  - `@P1` pass rate >= 95%
+- Notifications:
+  - Failure notification via Slack webhook is configured in `report` job.
+  - CI summary includes run + artifact links.
+
+## Step 4: Validate & Summary
+- Validation outcome: pass for pipeline structure, gating logic, burn-in, and reporting.
+- Retry hardening applied to flaky tests and validated:
+  - `tests/debts/payment.spec.ts`
+  - `tests/e2e/platform/1-2-admin-provisioning-rbac-ui.spec.ts`
+  - `tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts`
+  - `tests/e2e/platform/1-3-first-party-auth-sessions-and-csrf-enforcement.spec.ts`
+- Epic B CI workflow retry status: **ready to run in CI**.
