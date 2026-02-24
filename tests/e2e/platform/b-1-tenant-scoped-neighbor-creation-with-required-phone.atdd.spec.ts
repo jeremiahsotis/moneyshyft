@@ -6,7 +6,7 @@ import { createStoryB1Context, createStoryB1Headers } from '../../support/factor
 test.describe(
   'Story b.1 Tenant-Scoped Neighbor Creation with Required Phone (ATDD E2E)',
   () => {
-    test.skip(
+    test(
       '[P0] operator can submit neighbor create form with one valid phone and see normalized result state @P0',
       async ({ page }) => {
         await login(page);
@@ -39,7 +39,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P0] operator sees deterministic validation refusal when submitting create flow without phone values @P0',
       async ({ page }) => {
         await login(page);
@@ -57,7 +57,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] cross-tenant or invalid-scope create attempts surface deterministic refusal envelope semantics @P1',
       async ({ request }) => {
         const context = createStoryB1Context();

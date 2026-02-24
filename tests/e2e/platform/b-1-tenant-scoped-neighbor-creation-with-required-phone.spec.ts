@@ -11,7 +11,7 @@ test.describe(
   () => {
     test.describe.configure({ mode: 'serial' });
 
-    test.fixme(
+    test(
       '[P0] operator submits valid neighbor create form and sees normalized phone result state @P0',
       async ({ page }) => {
         await login(page);
@@ -46,7 +46,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] operator sees deterministic validation refusal when create flow omits phones @P0',
       async ({ page }) => {
         await login(page);
@@ -67,7 +67,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] tenant-viewer role is blocked with deterministic refusal messaging and no success state @P1',
       async ({ page }) => {
         await login(page);
@@ -98,7 +98,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] cross-tenant create attempts surface deterministic refusal envelope semantics @P1',
       async ({ request }) => {
         const context = createStoryB1Context();

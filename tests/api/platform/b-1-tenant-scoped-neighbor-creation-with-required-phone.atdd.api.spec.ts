@@ -4,7 +4,7 @@ import { test, expect } from '../../support/fixtures/connectShyftStoryB1.fixture
 test.describe(
   'Story b.1 Tenant-Scoped Neighbor Creation with Required Phone (ATDD API)',
   () => {
-    test.skip(
+    test(
       '[P0] creates tenant-scoped neighbor records and returns normalized phone values in success envelope @P0',
       async ({ request, storyB1Context, storyB1AuthorizedHeaders, storyB1ValidPayload }) => {
         const response = await apiRequest(request, {
@@ -35,7 +35,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P0] refuses create requests that omit phone entries with deterministic refusal messaging @P0',
       async ({ request, storyB1Context, storyB1AuthorizedHeaders, storyB1NoPhonePayload }) => {
         const response = await apiRequest(request, {
@@ -57,7 +57,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P0] refuses create requests when orgUnit scope crosses tenant boundaries @P0',
       async ({ request, storyB1Context, storyB1AuthorizedHeaders, storyB1CrossTenantPayload }) => {
         const response = await apiRequest(request, {
@@ -77,7 +77,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] refuses invalid phone formats with deterministic refusal code and no data leakage @P1',
       async ({ request, storyB1Context, storyB1AuthorizedHeaders, storyB1InvalidPhonePayload }) => {
         const response = await apiRequest(request, {
@@ -99,7 +99,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] refuses callers without neighbor-create capability before mutation processing @P1',
       async ({ request, storyB1Context, storyB1TenantViewerHeaders, storyB1ValidPayload }) => {
         const response = await apiRequest(request, {
@@ -119,7 +119,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] keeps canonical envelope keys across success and refusal paths for neighbor create @P1',
       async ({ request, storyB1Context, storyB1AuthorizedHeaders, storyB1ValidPayload, storyB1NoPhonePayload }) => {
         const successResponse = await apiRequest(request, {

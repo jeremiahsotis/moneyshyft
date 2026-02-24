@@ -1,6 +1,6 @@
 # Story b.1: Tenant-Scoped Neighbor Creation with Required Phone
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -32,18 +32,18 @@ so that communications can be started with valid contact records.
 
 ## Tasks / Subtasks
 
-- [ ] Implement tenant-scoped neighbor persistence contract (AC: 1, 3)
-  - [ ] Add or confirm `connectshyft.cs_neighbors` + `connectshyft.cs_neighbor_phones` schema and repository methods with tenant scoping.
-  - [ ] Normalize and validate phone entries before write; reject malformed entries.
-- [ ] Implement create-neighbor API behavior (AC: 1, 2, 3)
-  - [ ] Add `POST /api/v1/connectshyft/neighbors` handler using shared `success/refusal/systemError` envelope helpers.
-  - [ ] Enforce explicit orgUnit context + capability checks before mutation.
-- [ ] Add operator-facing create flow guardrails (AC: 2, 3)
-  - [ ] Surface deterministic refusal reasons for missing phone and invalid format.
-  - [ ] Confirm tenant/orgUnit scope is visible in UI during create flow.
-- [ ] Add automated regression coverage (AC: 1, 2, 3)
-  - [ ] API specs: authorized create, no-phone refusal, cross-tenant/orgUnit refusal.
-  - [ ] E2E specs: create journey with valid phone and validation failure states.
+- [x] Implement tenant-scoped neighbor persistence contract (AC: 1, 3)
+  - [x] Add or confirm `connectshyft.cs_neighbors` + `connectshyft.cs_neighbor_phones` schema and repository methods with tenant scoping.
+  - [x] Normalize and validate phone entries before write; reject malformed entries.
+- [x] Implement create-neighbor API behavior (AC: 1, 2, 3)
+  - [x] Add `POST /api/v1/connectshyft/neighbors` handler using shared `success/refusal/systemError` envelope helpers.
+  - [x] Enforce explicit orgUnit context + capability checks before mutation.
+- [x] Add operator-facing create flow guardrails (AC: 2, 3)
+  - [x] Surface deterministic refusal reasons for missing phone and invalid format.
+  - [x] Confirm tenant/orgUnit scope is visible in UI during create flow.
+- [x] Add automated regression coverage (AC: 1, 2, 3)
+  - [x] API specs: authorized create, no-phone refusal, cross-tenant/orgUnit refusal.
+  - [x] E2E specs: create journey with valid phone and validation failure states.
 
 ## Dev Notes
 
@@ -126,16 +126,39 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context generation only (no implementation commands executed).
+- `npm run branch:ensure-workflow -- --workflow dev-story --story b-1-tenant-scoped-neighbor-creation-with-required-phone`
+- `npm test -- --runInBand src/src/modules/connectshyft/__tests__/neighbors.test.ts src/src/migrations/__tests__/connectShyftNeighborsMigration.test.ts`
+- `npm run test:e2e -- tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.api.spec.ts tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.api.spec.ts`
+- `npm run test:e2e -- tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.spec.ts`
+- `cd src && npm test`
+- `cd src && npm run build`
+- `cd frontend && npm run build`
 
 ### Completion Notes List
 
-- Created implementation-ready Story b.1 context with acceptance criteria, guardrails, task breakdown, and architecture/testing constraints.
+- Implemented ConnectShyft neighbor creation domain service (`neighbors.ts`) with capability enforcement, tenant/orgUnit scoping, deterministic phone-required/invalid-format refusals, E.164 normalization, and async Knex + in-memory fallback persistence.
+- Added tenant-scoped ConnectShyft neighbor schema migration (`cs_neighbors`, `cs_neighbor_phones`) with idempotent creation and migration coverage tests.
+- Added `POST /api/v1/connectshyft/neighbors` API endpoint with shared envelope semantics and explicit orgUnit-context + role/capability checks.
+- Added ConnectShyft operator create-neighbor UI route/view and client feature API helper with visible tenant/orgUnit scope context and deterministic refusal messaging.
+- Activated b.1 API + E2E regression suites (primary + ATDD files) by removing skip/fixme markers and verified all pass.
 
 ### File List
 
+- src/src/modules/connectshyft/neighbors.ts
+- src/src/modules/connectshyft/__tests__/neighbors.test.ts
+- src/src/migrations/20260224113000_create_connectshyft_neighbors.ts
+- src/src/migrations/__tests__/connectShyftNeighborsMigration.test.ts
+- src/src/routes/api/v1/connectshyft.ts
+- frontend/src/features/connectshyft/neighbors.ts
+- frontend/src/views/ConnectShyft/ConnectShyftNeighborCreateView.vue
+- frontend/src/router/index.ts
+- tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.api.spec.ts
+- tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.api.spec.ts
+- tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts
+- tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.atdd.spec.ts
 - _bmad-output/implementation-artifacts/b-1-tenant-scoped-neighbor-creation-with-required-phone.md
 
 ## Change Log
 
 - 2026-02-24: Created Story b.1 ready-for-dev context document.
+- 2026-02-24: Implemented tenant-scoped neighbor create persistence/API/UI flows and enabled b.1 API/E2E regression coverage.

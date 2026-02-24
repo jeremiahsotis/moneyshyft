@@ -49,7 +49,7 @@ development_status:
   a-5-capability-based-route-access-and-envelope-contract-compliance: review
   epic-a-retrospective: optional
   epic-b: in-progress
-  b-1-tenant-scoped-neighbor-creation-with-required-phone: ready-for-dev
+  b-1-tenant-scoped-neighbor-creation-with-required-phone: review
   b-2-shared-tenant-identity-and-shared-phone-indicators: ready-for-dev
   b-3-relationship-gated-neighbor-edits-with-provenance-audit: ready-for-dev
   b-4-role-restricted-neighbor-merge-with-irreversible-confirmation: ready-for-dev

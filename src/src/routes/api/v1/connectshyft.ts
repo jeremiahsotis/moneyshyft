@@ -13,6 +13,10 @@ import {
 import { resolveConnectShyftOrgUnitContext } from '../../../modules/connectshyft/contextAccess';
 import { connectShyftNumberMappingServiceAsync } from '../../../modules/connectshyft/numberMappings';
 import {
+  connectShyftNeighborServiceAsync,
+  type ConnectShyftNeighborPhoneInput,
+} from '../../../modules/connectshyft/neighbors';
+import {
   ConnectShyftEscalationConfigService,
   KnexConnectShyftEscalationConfigStore,
   connectShyftEscalationRecipientScopes,
@@ -183,6 +187,27 @@ const enforceNumberMappingManageCapability = (
   return false;
 };
 
+const enforceNeighborCreateCapability = (
+  req: Request,
+  res: Response,
+): boolean => {
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (
+    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
+    || hasCapability([requestedRole], CAPABILITIES.NEIGHBOR_EDIT_ALL)
+  ) {
+    return true;
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_NEIGHBOR_CREATE_FORBIDDEN',
+    message: 'Neighbor creation requires an authorized ConnectShyft role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
 const enforceEscalationConfigCapability = (
   req: Request,
   res: Response,
@@ -301,6 +326,31 @@ const parseMappingBody = (req: Request) => ({
   label: typeof req.body?.label === 'string' ? req.body.label : '',
   isActive: req.body?.isActive === undefined ? true : Boolean(req.body.isActive),
 });
+
+const parseNeighborCreateBody = (req: Request) => {
+  const rawPhones: unknown[] = Array.isArray(req.body?.phones) ? req.body.phones : [];
+  const phones: ConnectShyftNeighborPhoneInput[] = rawPhones.map((entry: unknown) => {
+    if (!entry || typeof entry !== 'object') {
+      return {
+        label: '',
+        value: '',
+      };
+    }
+
+    const candidate = entry as { label?: unknown; value?: unknown };
+    return {
+      label: typeof candidate.label === 'string' ? candidate.label : '',
+      value: typeof candidate.value === 'string' ? candidate.value : '',
+    };
+  });
+
+  return {
+    orgUnitId: parseOrgUnitIdFromBody(req),
+    firstName: typeof req.body?.firstName === 'string' ? req.body.firstName : '',
+    lastName: typeof req.body?.lastName === 'string' ? req.body.lastName : '',
+    phones,
+  };
+};
 
 const parseEscalationConfigBody = (req: Request) => ({
   escalationBaselineHours: req.body?.escalationBaselineHours,
@@ -678,6 +728,54 @@ router.get('/inbox', async (req: Request, res: Response) => {
         claim: flags.connectshyft_escalation_enabled,
         takeover: flags.connectshyft_escalation_enabled,
       },
+    },
+  });
+});
+
+router.post('/neighbors', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  if (!enforceNeighborCreateCapability(req, res)) {
+    return;
+  }
+
+  const payload = parseNeighborCreateBody(req);
+  const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
+  if (!context) {
+    return;
+  }
+
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const created = await connectShyftNeighborServiceAsync.createNeighbor({
+    actorRoles: [requestedRole],
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    phones: payload.phones,
+  });
+
+  if (!created.ok) {
+    const refusalData = 'data' in created ? created.data : undefined;
+    refusal(res, {
+      code: created.code,
+      message: created.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: refusalData,
+    });
+    return;
+  }
+
+  return success(res, {
+    code: created.code,
+    message: 'Neighbor created',
+    httpStatus: created.httpStatus,
+    data: {
+      neighborId: created.data.neighbor.neighborId,
+      neighbor: created.data.neighbor,
     },
   });
 });
