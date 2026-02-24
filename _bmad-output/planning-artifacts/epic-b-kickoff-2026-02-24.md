@@ -2,7 +2,7 @@
 
 Date: 2026-02-24  
 Status: Opened
-project_lane: connectshyft
+project_lane: routeshyft
 
 ## Entry Gate Check
 
