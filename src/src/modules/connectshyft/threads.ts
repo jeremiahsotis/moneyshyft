@@ -661,7 +661,7 @@ export class KnexConnectShyftThreadStore {
         }
 
         const insertPayload: Record<string, unknown> = {
-          id: normalizeString(input.threadId) || randomUUID(),
+          id: normalizeUuid(input.threadId) || randomUUID(),
           tenant_id: input.tenantId,
           org_unit_id: input.orgUnitId,
           neighbor_id: input.neighborId,

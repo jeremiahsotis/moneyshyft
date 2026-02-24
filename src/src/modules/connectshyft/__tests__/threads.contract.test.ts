@@ -5,6 +5,7 @@ import { KnexConnectShyftThreadStore } from '../threads';
 const DATABASE_URL = process.env.MONEYSHYFT_TEST_DATABASE_URL;
 const shouldRun = Boolean(DATABASE_URL);
 const describeIfDb = shouldRun ? describe : describe.skip;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const CONTRACT_TENANT_PREFIX = 'tenant-contract-c1-';
 
@@ -172,6 +173,46 @@ describeIfDb('connectshyft threads (postgres contract)', () => {
     expect(persisted).toBeDefined();
     expect(persisted?.created_by_user_id ?? null).toBeNull();
     expect(persisted?.updated_by_user_id ?? null).toBeNull();
+  });
+
+  it('normalizes non-uuid threadId hints to canonical UUID thread ids', async () => {
+    const store = new KnexConnectShyftThreadStore(db);
+    const tenantId = `${CONTRACT_TENANT_PREFIX}thread-id`;
+    const orgUnitId = 'org-contract-c1-thread-id';
+    const neighborId = 'neighbor-contract-c1-thread-id';
+    const hintedThreadId = 'thread-a5-2001';
+
+    const result = await store.ensureActiveThread({
+      tenantId,
+      orgUnitId,
+      neighborId,
+      source: 'VOICE',
+      state: 'UNCLAIMED',
+      threadId: hintedThreadId,
+      lastInboundCsNumberId: 'cs-inbound-thread-id',
+      preferredOutboundCsNumberId: 'cs-outbound-thread-id',
+      nextEvaluationAtUtc: '2026-02-24T15:00:00.000Z',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error('Expected ensureActiveThread with non-uuid threadId hint to succeed');
+    }
+
+    expect(result.thread.threadId).not.toBe(hintedThreadId);
+    expect(result.thread.threadId).toMatch(UUID_PATTERN);
+
+    const persisted = await db
+      .withSchema('connectshyft')
+      .table('cs_threads')
+      .where({
+        tenant_id: tenantId,
+        org_unit_id: orgUnitId,
+        neighbor_id: neighborId,
+      })
+      .first<{ id: string }>('id');
+
+    expect(persisted?.id).toBe(result.thread.threadId);
   });
 
   it('maintains an index-backed due-thread scan contract', async () => {
