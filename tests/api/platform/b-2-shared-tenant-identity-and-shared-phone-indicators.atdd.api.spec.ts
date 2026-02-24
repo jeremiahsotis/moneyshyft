@@ -90,11 +90,13 @@ test.describe(
                   label: 'mobile',
                   value: storyB2Context.sharedPhoneNormalized,
                   isShared: false,
+                  verificationStatus: 'verified',
                 }),
                 expect.objectContaining({
                   label: 'home',
                   value: storyB2Context.nonSharedPhoneNormalized,
                   isShared: true,
+                  verificationStatus: 'verified',
                 }),
               ]),
             },
@@ -115,8 +117,16 @@ test.describe(
           data: {
             neighbor: {
               phones: expect.arrayContaining([
-                expect.objectContaining({ label: 'mobile', isShared: false }),
-                expect.objectContaining({ label: 'home', isShared: true }),
+                expect.objectContaining({
+                  label: 'mobile',
+                  isShared: false,
+                  verificationStatus: 'verified',
+                }),
+                expect.objectContaining({
+                  label: 'home',
+                  isShared: true,
+                  verificationStatus: 'verified',
+                }),
               ]),
             },
           },
@@ -138,8 +148,16 @@ test.describe(
               expect.objectContaining({
                 neighborId: storyB2Context.neighborId,
                 phones: expect.arrayContaining([
-                  expect.objectContaining({ label: 'mobile', isShared: false }),
-                  expect.objectContaining({ label: 'home', isShared: true }),
+                  expect.objectContaining({
+                    label: 'mobile',
+                    isShared: false,
+                    verificationStatus: 'verified',
+                  }),
+                  expect.objectContaining({
+                    label: 'home',
+                    isShared: true,
+                    verificationStatus: 'verified',
+                  }),
                 ]),
               }),
             ]),
@@ -161,7 +179,7 @@ test.describe(
         const body = await response.json();
         expect(body).toMatchObject({
           ok: false,
-          code: 'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH',
+          code: 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND',
           refusalType: 'business',
         });
         expect(body).not.toHaveProperty('data.neighbor');

@@ -317,6 +317,56 @@ describe('connectshyft neighbor service', () => {
       },
     });
   });
+
+  it('returns not-found for cross-tenant neighbor access attempts without revealing neighbor existence', () => {
+    const created = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+          isShared: true,
+        },
+      ],
+    });
+
+    if (!created.ok) {
+      throw new Error('Expected neighbor create to succeed');
+    }
+
+    const crossTenantResolved = service.resolveNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-bravo',
+      neighborId: created.data.neighbor.neighborId,
+    });
+    expect(crossTenantResolved).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND',
+    });
+
+    const crossTenantUpdated = service.updateNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-bravo',
+      neighborId: created.data.neighbor.neighborId,
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+          isShared: false,
+        },
+      ],
+    });
+    expect(crossTenantUpdated).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND',
+    });
+  });
 });
 
 describe('connectshyft async neighbor service', () => {
@@ -377,5 +427,87 @@ describe('connectshyft async neighbor service', () => {
         ],
       }),
     ).rejects.toThrow('db connection aborted');
+  });
+
+  it('returns persistence-unavailable refusals for schema-mismatch errors', async () => {
+    const schemaMismatchStore = {
+      createNeighbor: jest.fn(async () => {
+        const error = new Error('column does not exist') as Error & { code: string };
+        error.code = '42703';
+        throw error;
+      }),
+      resolveNeighborById: jest.fn(async () => {
+        const error = new Error('column does not exist') as Error & { code: string };
+        error.code = '42703';
+        throw error;
+      }),
+      listByTenant: jest.fn(async () => {
+        const error = new Error('column does not exist') as Error & { code: string };
+        error.code = '42703';
+        throw error;
+      }),
+      updateNeighbor: jest.fn(async () => {
+        const error = new Error('column does not exist') as Error & { code: string };
+        error.code = '42703';
+        throw error;
+      }),
+    };
+
+    const service = new AsyncConnectShyftNeighborService(schemaMismatchStore as any);
+
+    const created = await service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+        },
+      ],
+    });
+    expect(created).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_CREATE_PERSISTENCE_UNAVAILABLE',
+    });
+
+    const resolved = await service.resolveNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: 'neighbor-b2-missing-column',
+    });
+    expect(resolved).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_PERSISTENCE_UNAVAILABLE',
+    });
+
+    const listed = await service.listNeighbors({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+    });
+    expect(listed).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_PERSISTENCE_UNAVAILABLE',
+    });
+
+    const updated = await service.updateNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: 'neighbor-b2-missing-column',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+        },
+      ],
+    });
+    expect(updated).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_PERSISTENCE_UNAVAILABLE',
+    });
   });
 });

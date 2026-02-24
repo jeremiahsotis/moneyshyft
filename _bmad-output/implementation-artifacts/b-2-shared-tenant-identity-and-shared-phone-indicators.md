@@ -1,6 +1,6 @@
 # Story b.2: Shared Tenant Identity and Shared-Phone Indicators
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,7 +24,7 @@ so that contact context remains aligned across operational teams.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Shared-identity updates must be immediate and explicit in UI copy so operators understand tenant-wide impact before saving changes.
-- Real-User Validation Evidence: 2026-02-24 `npm run test:e2e -- tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.spec.ts` passed (4/4). Validated same-tenant cross-orgUnit visibility, shared-phone indicator persistence/rendering, and cross-tenant refusal state.
+- Real-User Validation Evidence: 2026-02-24 `npm run test:e2e -- tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.spec.ts` passed (6/6) and `npm run test:e2e -- tests/api/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.api.spec.ts` passed (5/5). Validated same-tenant cross-orgUnit visibility, shared-phone indicator persistence/rendering (including verification status), route reactivity, inbox no-truncation rendering, and cross-tenant refusal behavior without read-path identity leakage.
 - Real-User Validation Result: pass
 - Role-Admin UI Path: Tenant/orgUnit role administration is required for test matrix coverage (orgUnit-scoped vs tenant-privileged visibility).
 - Role-Admin UI Path Verified: yes
@@ -132,6 +132,7 @@ GPT-5 Codex
 - `cd frontend && npm run build`
 - `npm run test:e2e -- tests/api/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.api.spec.ts`
 - `npm run test:e2e -- tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.spec.ts`
+- `cd src && npm test -- src/src/modules/connectshyft/__tests__/neighbors.test.ts src/src/migrations/__tests__/connectShyftNeighborSharedPhoneMetadataMigration.test.ts`
 - Regression spot checks: `npm run test:e2e -- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts`, `npm run test:e2e -- tests/api/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.api.spec.ts`, `npm run test:e2e -- tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts`
 
 ### Completion Notes List
@@ -142,6 +143,10 @@ GPT-5 Codex
 - Added new ConnectShyft Neighbor Profile UI route/view with explicit tenant-wide impact save copy, shared toggles/indicators, and refusal-state rendering.
 - Added inbox shared-identity indicator rendering to keep phone-share semantics visible in operator surfaces.
 - Activated b.2 API and E2E coverage with deterministic neighbor seeding and verified all b.2 tests passing.
+- Hardened neighbor resolve/update semantics to return tenant-scoped not-found on read-path cross-tenant lookup attempts, avoiding neighbor-ID existence leakage.
+- Removed schema-mismatch fallback-to-memory paths in async neighbor service; schema errors now return persistence-unavailable refusals.
+- Added route-param reactive reload for Neighbor Profile view and removed inbox neighbor truncation (`slice(0, 4)`).
+- Expanded b.2 API/E2E coverage for verification-status persistence, in-app route-param transitions, and inbox no-truncation shared-indicator rendering.
 
 ### File List
 
@@ -156,9 +161,25 @@ GPT-5 Codex
 - frontend/src/views/ConnectShyft/ConnectShyftInboxView.vue
 - frontend/src/router/index.ts
 - tests/api/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.api.spec.ts
+- tests/api/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.atdd.api.spec.ts
 - tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.spec.ts
+- tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.atdd.spec.ts
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 - _bmad-output/implementation-artifacts/b-2-shared-tenant-identity-and-shared-phone-indicators.md
+
+## Senior Developer Review (AI)
+
+- Review date: 2026-02-24
+- Outcome: Changes requested issues resolved; story closure approved.
+- Findings resolved:
+  - Removed cross-tenant neighbor-ID read-path existence leakage.
+  - Removed schema-mismatch in-memory fallback behavior.
+  - Added Neighbor Profile route-param reactive reload behavior.
+  - Removed inbox shared-indicator truncation.
+  - Added missing verification-status and inbox no-truncation automation coverage.
+- Git/story reconciliation:
+  - Story File List now includes all modified b.2 source/test artifacts in this review cycle.
+  - Story status and sprint tracking were synchronized to `done`.
 
 ## Change Log
 
@@ -166,3 +187,4 @@ GPT-5 Codex
 - 2026-02-24: Implemented tenant-shared neighbor identity read/update/list semantics with shared-phone indicators and deterministic contracts.
 - 2026-02-24: Added shared-phone metadata migration and tests; added neighbor profile UI + inbox indicator parity updates.
 - 2026-02-24: Activated and passed b.2 API and E2E automation coverage; story advanced to `review`.
+- 2026-02-24: Completed senior review remediation (5 findings), expanded automation coverage, and advanced story to `done`.

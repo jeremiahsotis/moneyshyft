@@ -28,9 +28,32 @@ const buildNeighborProfileUrl = (
   return `/app/connectshyft/neighbors/${neighborId}?${params.toString()}`;
 };
 
+const buildConnectShyftInboxUrl = (
+  options: {
+    tenantId: string;
+    orgUnitId: string;
+    tenantRole: string;
+    orgUnitMemberships: string[];
+  },
+): string => {
+  const params = new URLSearchParams({
+    flags: 'module:on,inbox:on,escalation:on,webhooks:on',
+    tenantId: options.tenantId,
+    orgUnitId: options.orgUnitId,
+    tenantRole: options.tenantRole,
+    orgUnitMemberships: options.orgUnitMemberships.join(','),
+  });
+
+  return `/app/connectshyft/inbox?${params.toString()}`;
+};
+
 const seedNeighbor = async (
   request: APIRequestContext,
   context: StoryB2Context,
+  overrides: {
+    firstName?: string;
+    lastName?: string;
+  } = {},
 ): Promise<{ neighborId: string }> => {
   const headers = createStoryB2Headers(context, {
     role: 'ORGUNIT_MEMBER',
@@ -44,8 +67,8 @@ const seedNeighbor = async (
     headers,
     data: {
       orgUnitId: context.primaryOrgUnitId,
-      firstName: context.baseFirstName,
-      lastName: context.baseLastName,
+      firstName: overrides.firstName ?? context.baseFirstName,
+      lastName: overrides.lastName ?? context.baseLastName,
       phones: [
         {
           label: 'mobile',
@@ -185,6 +208,78 @@ test.describe(
     );
 
     test(
+      '[P1] neighbor profile reacts to in-app route param changes without stale identity state @P1',
+      async ({ page, request }) => {
+        const context = createStoryB2Context();
+        const firstNeighbor = await seedNeighbor(request, context, {
+          firstName: 'Ari',
+          lastName: 'First',
+        });
+        const secondNeighbor = await seedNeighbor(request, context, {
+          firstName: 'Bex',
+          lastName: 'Second',
+        });
+
+        await login(page);
+        await page.goto(
+          buildNeighborProfileUrl(context, firstNeighbor.neighborId, {
+            tenantId: context.tenantId,
+            orgUnitId: context.primaryOrgUnitId,
+            tenantRole: 'ORGUNIT_MEMBER',
+            orgUnitMemberships: [context.primaryOrgUnitId],
+          }),
+        );
+
+        await expect(page.getByRole('heading', { name: 'Neighbor Profile' })).toBeVisible();
+        await expect(page.getByTestId('connectshyft-neighbor-first-name-input')).toHaveValue('Ari');
+
+        await page.evaluate((nextUrl) => {
+          window.history.pushState({}, '', nextUrl);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }, buildNeighborProfileUrl(context, secondNeighbor.neighborId, {
+          tenantId: context.tenantId,
+          orgUnitId: context.primaryOrgUnitId,
+          tenantRole: 'ORGUNIT_MEMBER',
+          orgUnitMemberships: [context.primaryOrgUnitId],
+        }));
+
+        await expect(page.getByTestId('connectshyft-neighbor-first-name-input')).toHaveValue('Bex');
+        await expect(page.getByTestId('connectshyft-neighbor-last-name-input')).toHaveValue('Second');
+      },
+    );
+
+    test(
+      '[P1] inbox shared-identity indicators render for all neighbors (no truncation) @P1',
+      async ({ page, request }) => {
+        const tenantSegment = `b2-inbox-${Date.now()}`;
+        const context = createStoryB2Context({
+          tenantId: `tenant-connectshyft-${tenantSegment}`,
+          primaryOrgUnitId: `org-connectshyft-${tenantSegment}-east`,
+        });
+
+        await seedNeighbor(request, context, { firstName: 'Ada', lastName: 'One' });
+        await seedNeighbor(request, context, { firstName: 'Bri', lastName: 'Two' });
+        await seedNeighbor(request, context, { firstName: 'Cleo', lastName: 'Three' });
+        await seedNeighbor(request, context, { firstName: 'Dia', lastName: 'Four' });
+        await seedNeighbor(request, context, { firstName: 'Eli', lastName: 'ZZZ-Five' });
+
+        await login(page);
+        await page.goto(buildConnectShyftInboxUrl({
+          tenantId: context.tenantId,
+          orgUnitId: context.primaryOrgUnitId,
+          tenantRole: 'ORGUNIT_MEMBER',
+          orgUnitMemberships: [context.primaryOrgUnitId],
+        }));
+
+        await expect(page.getByRole('heading', { name: 'ConnectShyft Inbox' })).toBeVisible();
+        const targetNeighborRow = page.locator('li').filter({ hasText: 'Eli ZZZ-Five' }).first();
+        await expect(targetNeighborRow).toBeVisible();
+        await expect(targetNeighborRow.getByText('mobile · Shared')).toBeVisible();
+        await expect(targetNeighborRow.getByText('home · Not shared')).toBeVisible();
+      },
+    );
+
+    test(
       '[P1] cross-tenant deep links render refusal state and keep neighbor profile fields hidden @P1',
       async ({ page, request }) => {
         const context = createStoryB2Context();
@@ -205,7 +300,7 @@ test.describe(
         ).toBeVisible();
         await expect(
           page.getByTestId('connectshyft-neighbor-profile-refusal-code'),
-        ).toHaveText('CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH');
+        ).toHaveText('CONNECTSHYFT_NEIGHBOR_NOT_FOUND');
         await expect(page.getByTestId('connectshyft-neighbor-profile-form')).toBeHidden();
       },
     );

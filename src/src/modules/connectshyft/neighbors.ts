@@ -270,12 +270,6 @@ const buildNeighborNotFoundRefusal = (): NeighborRefusalResult => ({
   message: 'Neighbor profile not found for this tenant.',
 });
 
-const buildTenantMismatchRefusal = (): NeighborRefusalResult => ({
-  ok: false,
-  code: 'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH',
-  message: 'orgUnit context does not belong to the active tenant',
-});
-
 const buildCreatePersistenceUnavailableRefusal = (): NeighborRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_NEIGHBOR_CREATE_PERSISTENCE_UNAVAILABLE',
@@ -441,15 +435,6 @@ const isMissingPersistenceError = (error: unknown): boolean => {
     || candidate.code === '42703';
 };
 
-const resolvePersistenceErrorCode = (error: unknown): string | null => {
-  if (!error || typeof error !== 'object') {
-    return null;
-  }
-
-  const candidate = error as { code?: string };
-  return typeof candidate.code === 'string' ? candidate.code : null;
-};
-
 type NeighborStoreCreateInput = {
   tenantId: string;
   orgUnitId: string;
@@ -565,15 +550,6 @@ export class InMemoryConnectShyftNeighborStore {
     }
 
     return cloneNeighbor(neighbor);
-  }
-
-  findNeighborTenantById(neighborId: string): string | null {
-    const neighbor = this.neighborsById.get(neighborId);
-    if (!neighbor) {
-      return null;
-    }
-
-    return neighbor.tenantId;
   }
 
   listByTenant(tenantId: string): ConnectShyftNeighbor[] {
@@ -731,18 +707,6 @@ export class KnexConnectShyftNeighborStore {
       .select<DbNeighborPhoneRow[]>(this.neighborPhoneColumns());
 
     return mapRowsToNeighbor(neighborRow, phoneRows);
-  }
-
-  async findNeighborTenantById(neighborId: string): Promise<string | null> {
-    const row = await this.knexClient
-      .withSchema('connectshyft')
-      .table('cs_neighbors')
-      .where({
-        id: neighborId,
-      })
-      .first<{ tenant_id: string }>(['tenant_id']);
-
-    return row?.tenant_id || null;
   }
 
   async listByTenant(tenantId: string): Promise<ConnectShyftNeighbor[]> {
@@ -907,11 +871,6 @@ export class ConnectShyftNeighborService {
 
     const neighbor = this.store.resolveNeighborById(input.tenantId, input.neighborId);
     if (!neighbor) {
-      const existingTenantId = this.store.findNeighborTenantById(input.neighborId);
-      if (existingTenantId && existingTenantId !== input.tenantId) {
-        return buildTenantMismatchRefusal();
-      }
-
       return buildNeighborNotFoundRefusal();
     }
 
@@ -959,11 +918,6 @@ export class ConnectShyftNeighborService {
     });
 
     if (!updated.ok) {
-      const existingTenantId = this.store.findNeighborTenantById(input.neighborId);
-      if (existingTenantId && existingTenantId !== input.tenantId) {
-        return buildTenantMismatchRefusal();
-      }
-
       return buildNeighborNotFoundRefusal();
     }
 
@@ -986,7 +940,6 @@ export const connectShyftNeighborService = new ConnectShyftNeighborService(defau
 export class AsyncConnectShyftNeighborService {
   constructor(
     private readonly store: KnexConnectShyftNeighborStore = defaultKnexNeighborStore,
-    private readonly fallbackService: ConnectShyftNeighborService = connectShyftNeighborService,
   ) {}
 
   async createNeighbor(input: ConnectShyftCreateNeighborCommand): Promise<ConnectShyftCreateNeighborResult> {
@@ -1026,32 +979,6 @@ export class AsyncConnectShyftNeighborService {
         throw error;
       }
 
-      const code = resolvePersistenceErrorCode(error);
-      if (code === '42P01' || code === '3F000') {
-        return buildCreatePersistenceUnavailableRefusal();
-      }
-
-      const fallback = this.fallbackService.createNeighbor(input);
-      if (fallback.ok) {
-        return fallback;
-      }
-
-      if (fallback.code === 'CONNECTSHYFT_NEIGHBOR_CREATE_FORBIDDEN') {
-        return fallback;
-      }
-
-      if (fallback.code === 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED') {
-        return fallback;
-      }
-
-      if (fallback.code === 'CONNECTSHYFT_NEIGHBOR_PHONE_INVALID_FORMAT') {
-        return fallback;
-      }
-
-      if (fallback.code === 'CONNECTSHYFT_NEIGHBOR_CREATE_CONFLICT') {
-        return fallback;
-      }
-
       return buildCreatePersistenceUnavailableRefusal();
     }
   }
@@ -1064,11 +991,6 @@ export class AsyncConnectShyftNeighborService {
     try {
       const neighbor = await this.store.resolveNeighborById(input.tenantId, input.neighborId);
       if (!neighbor) {
-        const existingTenantId = await this.store.findNeighborTenantById(input.neighborId);
-        if (existingTenantId && existingTenantId !== input.tenantId) {
-          return buildTenantMismatchRefusal();
-        }
-
         return buildNeighborNotFoundRefusal();
       }
 
@@ -1083,23 +1005,6 @@ export class AsyncConnectShyftNeighborService {
     } catch (error) {
       if (!isMissingPersistenceError(error)) {
         throw error;
-      }
-
-      const fallback = this.fallbackService.resolveNeighbor(input);
-      if (fallback.ok) {
-        return fallback;
-      }
-
-      if (fallback.code === 'CONNECTSHYFT_NEIGHBOR_READ_FORBIDDEN') {
-        return fallback;
-      }
-
-      if (fallback.code === 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND') {
-        return fallback;
-      }
-
-      if (fallback.code === 'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH') {
-        return fallback;
       }
 
       return buildPersistenceUnavailableRefusal();
@@ -1126,15 +1031,6 @@ export class AsyncConnectShyftNeighborService {
         throw error;
       }
 
-      const fallback = this.fallbackService.listNeighbors(input);
-      if (fallback.ok) {
-        return fallback;
-      }
-
-      if (fallback.code === 'CONNECTSHYFT_NEIGHBOR_READ_FORBIDDEN') {
-        return fallback;
-      }
-
       return buildPersistenceUnavailableRefusal();
     }
   }
@@ -1159,11 +1055,6 @@ export class AsyncConnectShyftNeighborService {
       });
 
       if (!updated.ok) {
-        const existingTenantId = await this.store.findNeighborTenantById(input.neighborId);
-        if (existingTenantId && existingTenantId !== input.tenantId) {
-          return buildTenantMismatchRefusal();
-        }
-
         return buildNeighborNotFoundRefusal();
       }
 
@@ -1178,31 +1069,6 @@ export class AsyncConnectShyftNeighborService {
     } catch (error) {
       if (!isMissingPersistenceError(error)) {
         throw error;
-      }
-
-      const fallback = this.fallbackService.updateNeighbor(input);
-      if (fallback.ok) {
-        return fallback;
-      }
-
-      if (fallback.code === 'CONNECTSHYFT_NEIGHBOR_UPDATE_FORBIDDEN') {
-        return fallback;
-      }
-
-      if (fallback.code === 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED') {
-        return fallback;
-      }
-
-      if (fallback.code === 'CONNECTSHYFT_NEIGHBOR_PHONE_INVALID_FORMAT') {
-        return fallback;
-      }
-
-      if (fallback.code === 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND') {
-        return fallback;
-      }
-
-      if (fallback.code === 'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH') {
-        return fallback;
       }
 
       return buildPersistenceUnavailableRefusal();

@@ -116,7 +116,7 @@ test.describe(
         ).toBeVisible();
         await expect(
           page.getByTestId('connectshyft-neighbor-profile-refusal-code'),
-        ).toHaveText('CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH');
+        ).toHaveText('CONNECTSHYFT_NEIGHBOR_NOT_FOUND');
         await expect(page.getByTestId('connectshyft-neighbor-profile-form')).toBeHidden();
       },
     );

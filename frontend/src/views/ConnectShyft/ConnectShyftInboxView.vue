@@ -91,7 +91,7 @@
 
           <ul v-else class="mt-3 space-y-2 text-xs text-slate-700">
             <li
-              v-for="neighbor in neighbors.slice(0, 4)"
+              v-for="neighbor in neighbors"
               :key="neighbor.neighborId"
               class="rounded border border-slate-200 bg-white px-3 py-2"
             >
