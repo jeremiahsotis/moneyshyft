@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "subprocess": "atdd-api-tests",
+  "story_id": "c-3",
+  "tests": [
+    {
+      "file": "tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.atdd.api.spec.ts",
+      "expected_to_fail": true
+    }
+  ],
+  "fixture_needs": ["connectShyftStoryC3.fixture"],
+  "knowledge_fragments_used": ["data-factories", "test-quality", "timing-debugging", "api-request"],
+  "test_count": 5,
+  "tdd_phase": "RED",
+  "summary": "Generated 5 failing API tests for story c-3"
+}
