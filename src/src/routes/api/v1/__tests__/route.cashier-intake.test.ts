@@ -9,16 +9,17 @@ import { createRouteRouter } from '../route';
 
 jest.mock('../../../../middleware/auth', () => ({
   authenticateToken: (req: express.Request, _res: express.Response, next: express.NextFunction) => {
+    const activeOrgUnitOverride = req.header('x-test-route-active-org-unit-id') || 'org-route-intake-1';
     req.user = {
       userId: 'user-route-intake-1',
       email: 'cashier@example.com',
       householdId: 'tenant-route-intake-1',
       activeTenantId: 'tenant-route-intake-1',
-      activeOrgUnitId: 'org-route-intake-1',
+      activeOrgUnitId: activeOrgUnitOverride,
       role: req.header('x-test-route-role') || 'TENANT_STAFF',
     };
     req.tenantId = 'tenant-route-intake-1';
-    req.orgUnitId = 'org-route-intake-1';
+    req.orgUnitId = activeOrgUnitOverride;
     req.scopeMode = 'ORG_UNIT';
     next();
   },
@@ -98,6 +99,23 @@ describe('route cashier-assisted intake api contract', () => {
     expect(response.body).not.toHaveProperty('data.commitmentId');
   });
 
+  it('treats string forceRefusal=false as false and does not coerce to refusal', async () => {
+    const app = buildApp();
+
+    const response = await request(app)
+      .post('/api/v1/route/intake/cashier-requests')
+      .send({
+        ...basePayload,
+        forceRefusal: 'false',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_CASHIER_INTAKE_ACCEPTED',
+    });
+  });
+
   it('links accepted cashier-assisted requests to commitment identifiers through detail lookup', async () => {
     const app = buildApp();
 
@@ -146,25 +164,62 @@ describe('route cashier-assisted intake api contract', () => {
     });
   });
 
-  it('preserves donor/cashier parity envelope fields for equivalent intake payloads', async () => {
+  it('preserves donor/cashier parity for equivalent acceptance and refusal policy outcomes', async () => {
     const app = buildApp();
 
-    const donorResponse = await request(app)
+    const donorAcceptedResponse = await request(app)
       .post('/api/v1/route/intake/requests')
       .send(basePayload);
 
-    const cashierResponse = await request(app)
+    const cashierAcceptedResponse = await request(app)
       .post('/api/v1/route/intake/cashier-requests')
       .send(basePayload);
 
-    expect(donorResponse.status).toBe(200);
-    expect(cashierResponse.status).toBe(200);
+    expect(donorAcceptedResponse.status).toBe(200);
+    expect(cashierAcceptedResponse.status).toBe(200);
 
     const requiredKeys = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
 
-    expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(donorResponse.body, key))).toBe(true);
-    expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(cashierResponse.body, key))).toBe(true);
-    expect(donorResponse.body.ok).toBe(cashierResponse.body.ok);
+    expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(donorAcceptedResponse.body, key))).toBe(true);
+    expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(cashierAcceptedResponse.body, key))).toBe(true);
+    expect(donorAcceptedResponse.body.ok).toBe(true);
+    expect(cashierAcceptedResponse.body.ok).toBe(true);
+    expect(donorAcceptedResponse.body.data).toMatchObject({
+      status: 'Accepted',
+      scheduleMode: cashierAcceptedResponse.body.data.scheduleMode,
+      availableSlots: cashierAcceptedResponse.body.data.availableSlots,
+    });
+    expect(cashierAcceptedResponse.body.data).toMatchObject({
+      status: 'Accepted',
+    });
+
+    const refusalPayload = {
+      ...basePayload,
+      requestedWindowStartUtc: '2026-02-27T02:00:00.000Z',
+      requestedWindowEndUtc: '2026-02-27T02:30:00.000Z',
+      forceRefusal: true,
+    };
+
+    const donorRefusalResponse = await request(app)
+      .post('/api/v1/route/intake/requests')
+      .send(refusalPayload);
+
+    const cashierRefusalResponse = await request(app)
+      .post('/api/v1/route/intake/cashier-requests')
+      .send(refusalPayload);
+
+    expect(donorRefusalResponse.status).toBe(200);
+    expect(cashierRefusalResponse.status).toBe(200);
+    expect(donorRefusalResponse.body.ok).toBe(false);
+    expect(cashierRefusalResponse.body.ok).toBe(false);
+
+    expect(donorRefusalResponse.body.data).toMatchObject({
+      reasonCode: cashierRefusalResponse.body.data.reasonCode,
+      alternatives: cashierRefusalResponse.body.data.alternatives,
+      nextSteps: cashierRefusalResponse.body.data.nextSteps,
+    });
+    expect(donorRefusalResponse.body).not.toHaveProperty('data.commitmentId');
+    expect(cashierRefusalResponse.body).not.toHaveProperty('data.commitmentId');
   });
 
   it('rejects cashier intake when body orgUnitId mismatches active orgUnit context', async () => {
@@ -182,6 +237,29 @@ describe('route cashier-assisted intake api contract', () => {
       ok: false,
       code: 'ROUTE_ORG_UNIT_SCOPE_MISMATCH',
       refusalType: 'security',
+    });
+  });
+
+  it('does not resolve intake details across orgUnit boundaries in the same tenant', async () => {
+    const app = buildApp();
+
+    const createResponse = await request(app)
+      .post('/api/v1/route/intake/cashier-requests')
+      .set('x-test-route-active-org-unit-id', 'org-route-intake-1')
+      .send(basePayload);
+
+    expect(createResponse.status).toBe(200);
+    const requestId = createResponse.body?.data?.requestId;
+
+    const scopedMiss = await request(app)
+      .get(`/api/v1/route/intake/cashier-requests/${requestId}`)
+      .set('x-test-route-active-org-unit-id', 'org-route-intake-2');
+
+    expect(scopedMiss.status).toBe(200);
+    expect(scopedMiss.body).toMatchObject({
+      ok: false,
+      code: 'ROUTESHYFT_INTAKE_REQUEST_NOT_FOUND',
+      refusalType: 'business',
     });
   });
 });

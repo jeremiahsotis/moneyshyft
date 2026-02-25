@@ -4,10 +4,10 @@ import { refusal, success } from '../../../platform/envelopes/response';
 import { TenantScopeError, requireTenantId } from '../../../platform/tenancy/tenantScope';
 import { normalizeRole } from '../../../platform/rbac/capabilities';
 import { CommitmentService } from '../../../modules/route/application/commitmentService';
-import { InMemoryCommitmentRepository } from '../../../modules/route/infrastructure/commitmentRepository';
+import { KnexCommitmentRepository } from '../../../modules/route/infrastructure/commitmentRepository';
 import { isCommitmentStatus } from '../../../modules/route/domain/commitmentLifecycle';
 import { IntakeService } from '../../../modules/route/application/intakeService';
-import { InMemoryIntakeRequestRepository } from '../../../modules/route/infrastructure/intakeRequestRepository';
+import { KnexIntakeRequestRepository } from '../../../modules/route/infrastructure/intakeRequestRepository';
 import { RouteIntakeChannel, RouteIntakePayload } from '../../../modules/route/domain/intakePolicy';
 
 const TEST_TENANT_HEADER = 'x-test-route-tenant-id';
@@ -26,10 +26,10 @@ const normalizeNonEmptyString = (value: unknown): string => {
   return value.trim();
 };
 
-const defaultCommitmentService = new CommitmentService(new InMemoryCommitmentRepository());
+const defaultCommitmentService = new CommitmentService(new KnexCommitmentRepository());
 const defaultIntakeService = new IntakeService(
   defaultCommitmentService,
-  new InMemoryIntakeRequestRepository(),
+  new KnexIntakeRequestRepository(),
 );
 
 const resolveTenantContext = (req: Request): string | null => {
@@ -190,7 +190,23 @@ const parseIntakeBody = (req: Request): RouteIntakePayload => ({
   requestedWindowEndUtc: normalizeNonEmptyString(req.body?.requestedWindowEndUtc),
   channel: normalizeNonEmptyString(req.body?.channel),
   notes: normalizeNonEmptyString(req.body?.notes),
-  forceRefusal: Boolean(req.body?.forceRefusal),
+  forceRefusal: (() => {
+    if (typeof req.body?.forceRefusal === 'boolean') {
+      return req.body.forceRefusal;
+    }
+
+    if (typeof req.body?.forceRefusal === 'string') {
+      const normalized = req.body.forceRefusal.trim().toLowerCase();
+      if (normalized === 'true') {
+        return true;
+      }
+      if (normalized === 'false') {
+        return false;
+      }
+    }
+
+    return false;
+  })(),
   scheduleMode: normalizeNonEmptyString(req.body?.scheduleMode) || null,
 });
 
@@ -248,7 +264,7 @@ const resolveScopedIntakePayload = (
     ...requested,
     tenantId,
     orgUnitId: scopedOrgUnitId,
-    scheduleMode: requested.scheduleMode || 'delivery',
+    scheduleMode: requested.scheduleMode || 'pickup',
     channel: requested.channel || channel,
   };
 };
@@ -312,6 +328,16 @@ const handleResolveIntake = (
   if (!tenantId) {
     return;
   }
+  const scopedOrgUnitId = resolveOrgUnitContext(req);
+  if (!scopedOrgUnitId) {
+    refusal(res, {
+      code: 'ROUTE_ORG_UNIT_CONTEXT_REQUIRED',
+      message: 'Active orgUnit context is required for intake requests.',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return;
+  }
 
   const requestId = parseRequestId(req);
   if (!requestId) {
@@ -327,6 +353,7 @@ const handleResolveIntake = (
 
   const result = await intakeService.resolveIntake({
     tenantId,
+    orgUnitId: scopedOrgUnitId,
     requestId,
     channel,
   });

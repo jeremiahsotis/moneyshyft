@@ -58,6 +58,7 @@ describe('route intake service', () => {
 
     const resolved = await service.resolveIntake({
       tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
       requestId: result.data.requestId,
       channel: 'cashier',
     });
@@ -160,6 +161,7 @@ describe('route intake service', () => {
 
     const resolved = await service.resolveIntake({
       tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
       requestId,
       channel: 'cashier',
     });
@@ -171,6 +173,42 @@ describe('route intake service', () => {
         requestId,
         commitmentId: null,
         status: 'Refused',
+      },
+    });
+  });
+
+  it('persists pickup schedule mode for refused intake when scheduleMode is omitted', async () => {
+    const commitmentService = new CommitmentService(new InMemoryCommitmentRepository());
+    const service = new IntakeService(commitmentService, new InMemoryIntakeRequestRepository());
+
+    const result = await service.submitIntake({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      actorId: 'user-4',
+      channel: 'cashier',
+      payload: {
+        ...basePayload(),
+        scheduleMode: null,
+        forceRefusal: true,
+      },
+    });
+
+    if (result.ok) {
+      throw new Error('Expected refusal for forced refusal case');
+    }
+
+    const resolved = await service.resolveIntake({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      requestId: String((result.data as { requestId?: string }).requestId),
+      channel: 'cashier',
+    });
+
+    expect(resolved).toMatchObject({
+      ok: true,
+      data: {
+        status: 'Refused',
+        scheduleMode: 'pickup',
       },
     });
   });

@@ -1,13 +1,14 @@
 import {
   evaluateSharedIntakePolicy,
+  normalizeRouteScheduleMode,
   RouteIntakeChannel,
   RouteIntakePayload,
   RouteScheduleMode,
 } from '../domain/intakePolicy';
 import { CommitmentService } from './commitmentService';
 import {
-  InMemoryIntakeRequestRepository,
   IntakeRequestRepository,
+  KnexIntakeRequestRepository,
   RouteIntakeRecord,
 } from '../infrastructure/intakeRequestRepository';
 
@@ -53,6 +54,7 @@ export type SubmitIntakeInput = {
 
 export type ResolveIntakeInput = {
   tenantId: string;
+  orgUnitId: string;
   requestId: string;
   channel: RouteIntakeChannel;
 };
@@ -111,7 +113,7 @@ const mapDetailCode = (channel: RouteIntakeChannel, record: RouteIntakeRecord): 
 export class IntakeService {
   constructor(
     private readonly commitmentService: CommitmentService,
-    private readonly requestRepository: IntakeRequestRepository = new InMemoryIntakeRequestRepository(),
+    private readonly requestRepository: IntakeRequestRepository = new KnexIntakeRequestRepository(),
   ) {}
 
   async submitIntake(input: SubmitIntakeInput): Promise<SubmitIntakeResult> {
@@ -126,7 +128,7 @@ export class IntakeService {
         requestedAtUtc: normalizeNonEmpty(input.payload.requestedAtUtc),
         requestedWindowStartUtc: normalizeNonEmpty(input.payload.requestedWindowStartUtc),
         requestedWindowEndUtc: normalizeNonEmpty(input.payload.requestedWindowEndUtc),
-        scheduleMode: 'delivery',
+        scheduleMode: normalizeRouteScheduleMode(input.payload.scheduleMode),
         notes: normalizeNonEmpty(input.payload.notes),
         refusal: policyDecision.refusal,
         createdByUserId: input.actorId,
@@ -222,7 +224,7 @@ export class IntakeService {
   }
 
   async resolveIntake(input: ResolveIntakeInput): Promise<ResolveIntakeResult> {
-    const record = await this.requestRepository.getById(input.tenantId, input.requestId);
+    const record = await this.requestRepository.getById(input.tenantId, input.orgUnitId, input.requestId);
     if (!record || record.channel !== input.channel) {
       return refusal(
         'ROUTESHYFT_INTAKE_REQUEST_NOT_FOUND',

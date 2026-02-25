@@ -50,6 +50,15 @@ const normalizeNonEmpty = (value: unknown): string => {
   return value.trim();
 };
 
+export const normalizeRouteScheduleMode = (value: unknown): RouteScheduleMode => {
+  const normalized = normalizeNonEmpty(value).toLowerCase();
+  if (normalized === 'delivery') {
+    return 'delivery';
+  }
+
+  return 'pickup';
+};
+
 const isUtcIso = (value: string): boolean => {
   const parsed = Date.parse(value);
   if (Number.isNaN(parsed)) {
@@ -87,15 +96,6 @@ const refusal = (
   },
 });
 
-const resolveScheduleMode = (value: unknown): RouteScheduleMode => {
-  const normalized = normalizeNonEmpty(value).toLowerCase();
-  if (normalized === 'pickup') {
-    return 'pickup';
-  }
-
-  return 'delivery';
-};
-
 const buildCapacitySlots = (start: Date): string[] => {
   const first = new Date(start);
   const second = new Date(start);
@@ -109,10 +109,10 @@ const enforceDeliveryInsertionPolicy = (
   requestedWindowEnd: Date,
 ): RouteIntakePolicyDecision | null => {
   const durationMinutes = (requestedWindowEnd.getTime() - requestedWindowStart.getTime()) / (60 * 1000);
-  const startHour = requestedWindowStart.getUTCHours();
-  const endHour = requestedWindowEnd.getUTCHours();
+  const startMinutes = (requestedWindowStart.getUTCHours() * 60) + requestedWindowStart.getUTCMinutes();
+  const endMinutes = (requestedWindowEnd.getUTCHours() * 60) + requestedWindowEnd.getUTCMinutes();
 
-  const withinInsertionHours = startHour >= 9 && endHour <= 18;
+  const withinInsertionHours = startMinutes >= (9 * 60) && endMinutes <= (18 * 60);
   const withinDurationLimits = durationMinutes >= 60 && durationMinutes <= 180;
 
   if (withinInsertionHours && withinDurationLimits) {
@@ -193,7 +193,7 @@ export const evaluateSharedIntakePolicy = (
     );
   }
 
-  const scheduleMode = resolveScheduleMode(payload.scheduleMode);
+  const scheduleMode = normalizeRouteScheduleMode(payload.scheduleMode);
   if (scheduleMode === 'delivery') {
     const deliveryPolicyResult = enforceDeliveryInsertionPolicy(requestedWindowStart, requestedWindowEnd);
     if (deliveryPolicyResult) {
