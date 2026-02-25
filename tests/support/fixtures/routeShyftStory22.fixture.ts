@@ -3,6 +3,7 @@ import {
   createStory22Context,
   createStory22HappyPayload,
   createStory22Headers,
+  createStory22InvalidPayloadMissingRequired,
   createStory22RefusalPayload,
   type Story22Context,
   type Story22Payload,
@@ -13,6 +14,8 @@ type Story22Fixtures = {
   story22Headers: Record<string, string>;
   story22HappyPayload: Story22Payload;
   story22RefusalPayload: Story22Payload;
+  story22InvalidPayloadMissingRequired: Story22Payload;
+  story22RequiredUiTestIds: readonly string[];
 };
 
 export const test = base.extend<Story22Fixtures>({
@@ -27,6 +30,12 @@ export const test = base.extend<Story22Fixtures>({
   },
   story22RefusalPayload: async ({ story22Context }, use) => {
     await use(createStory22RefusalPayload(story22Context));
+  },
+  story22InvalidPayloadMissingRequired: async ({ story22Context }, use) => {
+    await use(createStory22InvalidPayloadMissingRequired(story22Context));
+  },
+  story22RequiredUiTestIds: async ({ story22Context }, use) => {
+    await use(story22Context.requiredTestIds);
   },
 });
 

@@ -10,6 +10,8 @@ export type Story22Payload = {
   channel: string;
   notes: string;
   forceRefusal: boolean;
+  itemCount?: number;
+  itemSummary?: string;
 };
 
 type Story22ContextOverrides = {
@@ -41,6 +43,7 @@ export type Story22Context = {
   commitmentId: string;
   paths: {
     resourceCollection: string;
+    detail: (requestId: string) => string;
     ui: string;
   };
   successCode: string;
@@ -62,6 +65,7 @@ export function createStory22Context(overrides: Story22ContextOverrides = {}): S
     commitmentId: 'commitment-' + randomUUID().slice(0, 8),
     paths: {
       resourceCollection: '/api/v1/route/intake/donor-requests',
+      detail: (requestId: string) => '/api/v1/route/intake/donor-requests/' + requestId,
       ui: '/app/route/intake/donor',
     },
     successCode: 'ROUTESHYFT_DONOR_INTAKE_SLOTS_AVAILABLE',
@@ -103,6 +107,8 @@ export function createStory22HappyPayload(context: Story22Context): Story22Paylo
     channel: '2-2-donor-self-service-pickup-intake-with-capacity-check',
     notes: 'ATDD 2-2 happy path payload',
     forceRefusal: false,
+    itemCount: 2,
+    itemSummary: 'Sofa and coffee table',
   };
 }
 
@@ -116,5 +122,22 @@ export function createStory22RefusalPayload(context: Story22Context): Story22Pay
     channel: '2-2-donor-self-service-pickup-intake-with-capacity-check',
     notes: 'ATDD 2-2 refusal path payload',
     forceRefusal: true,
+    itemCount: 4,
+    itemSummary: 'Large sectional and bulky items',
+  };
+}
+
+export function createStory22InvalidPayloadMissingRequired(context: Story22Context): Story22Payload {
+  return {
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    requestedAtUtc: '',
+    requestedWindowStartUtc: '',
+    requestedWindowEndUtc: '',
+    channel: '2-2-donor-self-service-pickup-intake-with-capacity-check',
+    notes: '',
+    forceRefusal: false,
+    itemCount: 0,
+    itemSummary: '',
   };
 }
