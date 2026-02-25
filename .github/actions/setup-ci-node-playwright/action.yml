@@ -31,16 +31,25 @@ runs:
           frontend/package-lock.json
           src/package-lock.json
 
+    - name: Configure npm retry behavior
+      shell: bash
+      run: |
+        npm config set fetch-retries 5
+        npm config set fetch-retry-factor 2
+        npm config set fetch-retry-mintimeout 10000
+        npm config set fetch-retry-maxtimeout 120000
+
     - name: Install root dependencies
       shell: bash
-      run: npm ci
+      run: |
+        npm ci || npm ci || npm install --no-audit --fund=false
 
     - name: Install frontend dependencies
       if: inputs.install_frontend == 'true'
       shell: bash
       run: |
         if [ -f frontend/package-lock.json ]; then
-          npm ci --prefix frontend
+          npm ci --prefix frontend || npm ci --prefix frontend || npm install --prefix frontend --no-audit --fund=false
         else
           npm install --prefix frontend --no-audit --fund=false
         fi
@@ -50,7 +59,7 @@ runs:
       shell: bash
       run: |
         if [ -f src/package-lock.json ]; then
-          npm ci --prefix src --omit=dev
+          npm ci --prefix src --omit=dev || npm ci --prefix src --omit=dev || npm install --prefix src --omit=dev --no-audit --fund=false
         else
           npm install --prefix src --omit=dev --no-audit --fund=false
         fi
