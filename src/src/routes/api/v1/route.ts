@@ -7,6 +7,9 @@ import { normalizeRole } from '../../../platform/rbac/capabilities';
 import { CommitmentService } from '../../../modules/route/application/commitmentService';
 import { KnexCommitmentRepository } from '../../../modules/route/infrastructure/commitmentRepository';
 import { isCommitmentStatus } from '../../../modules/route/domain/commitmentLifecycle';
+import { IntakeService } from '../../../modules/route/application/intakeService';
+import { KnexIntakeRequestRepository } from '../../../modules/route/infrastructure/intakeRequestRepository';
+import { RouteIntakeChannel, RouteIntakePayload } from '../../../modules/route/domain/intakePolicy';
 import { donorIntakeController } from '../../../modules/route/api/donorIntakeController';
 
 const TEST_TENANT_HEADER = 'x-test-route-tenant-id';
@@ -23,6 +26,10 @@ const loadRouteDb = (): Knex => {
 
 const defaultCommitmentService = new CommitmentService(
   new KnexCommitmentRepository(loadRouteDb()),
+);
+const defaultIntakeService = new IntakeService(
+  defaultCommitmentService,
+  new KnexIntakeRequestRepository(loadRouteDb()),
 );
 
 const normalizeNonEmptyString = (value: unknown): string => {
@@ -101,6 +108,7 @@ const resolveOrgUnitContext = (req: Request): string | null => {
 };
 
 const parseCommitmentId = (req: Request): string => normalizeNonEmptyString(req.params.commitmentId || null);
+const parseRequestId = (req: Request): string => normalizeNonEmptyString(req.params.requestId || null);
 
 const parseCreateBody = (req: Request) => ({
   sourceType: normalizeNonEmptyString(req.body?.sourceType),
@@ -113,6 +121,34 @@ const parseTransitionBody = (req: Request) => ({
   nextStatus: normalizeNonEmptyString(req.body?.nextStatus),
   reason: normalizeNonEmptyString(req.body?.reason),
   policyExceptionCode: normalizeNonEmptyString(req.body?.policyExceptionCode) || null,
+});
+
+const parseIntakeBody = (req: Request): RouteIntakePayload => ({
+  tenantId: normalizeNonEmptyString(req.body?.tenantId),
+  orgUnitId: normalizeNonEmptyString(req.body?.orgUnitId),
+  requestedAtUtc: normalizeNonEmptyString(req.body?.requestedAtUtc),
+  requestedWindowStartUtc: normalizeNonEmptyString(req.body?.requestedWindowStartUtc),
+  requestedWindowEndUtc: normalizeNonEmptyString(req.body?.requestedWindowEndUtc),
+  channel: normalizeNonEmptyString(req.body?.channel),
+  notes: normalizeNonEmptyString(req.body?.notes),
+  forceRefusal: (() => {
+    if (typeof req.body?.forceRefusal === 'boolean') {
+      return req.body.forceRefusal;
+    }
+
+    if (typeof req.body?.forceRefusal === 'string') {
+      const normalized = req.body.forceRefusal.trim().toLowerCase();
+      if (normalized === 'true') {
+        return true;
+      }
+      if (normalized === 'false') {
+        return false;
+      }
+    }
+
+    return false;
+  })(),
+  scheduleMode: normalizeNonEmptyString(req.body?.scheduleMode) || null,
 });
 
 const resolveScopedCreateOrgUnitId = (
@@ -179,6 +215,65 @@ const resolveTenantId = (req: Request, res: Response): string | null => {
   }
 };
 
+const resolveScopedIntakePayload = (
+  req: Request,
+  res: Response,
+  tenantId: string,
+  channel: RouteIntakeChannel,
+): RouteIntakePayload | null => {
+  const requested = parseIntakeBody(req);
+  const scopedOrgUnitId = resolveOrgUnitContext(req);
+
+  if (requested.tenantId && requested.tenantId !== tenantId) {
+    refusal(res, {
+      code: 'ROUTE_TENANT_SCOPE_MISMATCH',
+      message: 'tenantId must match active tenant context.',
+      refusalType: 'security',
+      httpStatus: 403,
+      data: {
+        activeTenantId: tenantId,
+        requestedTenantId: requested.tenantId,
+      },
+    });
+
+    return null;
+  }
+
+  if (requested.orgUnitId && scopedOrgUnitId && requested.orgUnitId !== scopedOrgUnitId) {
+    refusal(res, {
+      code: 'ROUTE_ORG_UNIT_SCOPE_MISMATCH',
+      message: 'orgUnitId must match active orgUnit context.',
+      refusalType: 'security',
+      httpStatus: 403,
+      data: {
+        activeOrgUnitId: scopedOrgUnitId,
+        requestedOrgUnitId: requested.orgUnitId,
+      },
+    });
+
+    return null;
+  }
+
+  if (!scopedOrgUnitId) {
+    refusal(res, {
+      code: 'ROUTE_ORG_UNIT_CONTEXT_REQUIRED',
+      message: 'Active orgUnit context is required for intake requests.',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+
+    return null;
+  }
+
+  return {
+    ...requested,
+    tenantId,
+    orgUnitId: scopedOrgUnitId,
+    scheduleMode: requested.scheduleMode || 'pickup',
+    channel: requested.channel || channel,
+  };
+};
+
 const applyServiceRefusal = (
   res: Response,
   rejected: {
@@ -186,7 +281,7 @@ const applyServiceRefusal = (
     message: string;
     refusalType: 'business' | 'client' | 'security';
     httpStatus: number;
-    data?: Record<string, unknown>;
+    data?: unknown;
   },
 ): void => {
   refusal(res, {
@@ -198,8 +293,96 @@ const applyServiceRefusal = (
   });
 };
 
+const handleSubmitIntake = (
+  intakeService: IntakeService,
+  channel: RouteIntakeChannel,
+) => async (req: Request, res: Response): Promise<void> => {
+  const tenantId = resolveTenantId(req, res);
+  if (!tenantId) {
+    return;
+  }
+
+  const payload = resolveScopedIntakePayload(req, res, tenantId, channel);
+  if (!payload) {
+    return;
+  }
+
+  const result = await intakeService.submitIntake({
+    tenantId,
+    orgUnitId: payload.orgUnitId,
+    actorId: resolveActorId(req),
+    channel,
+    payload,
+  });
+
+  if (!result.ok) {
+    applyServiceRefusal(res, result);
+    return;
+  }
+
+  success(res, {
+    code: result.code,
+    message: result.message,
+    httpStatus: result.httpStatus,
+    data: result.data,
+  });
+};
+
+const handleResolveIntake = (
+  intakeService: IntakeService,
+  channel: RouteIntakeChannel,
+) => async (req: Request, res: Response): Promise<void> => {
+  const tenantId = resolveTenantId(req, res);
+  if (!tenantId) {
+    return;
+  }
+
+  const scopedOrgUnitId = resolveOrgUnitContext(req);
+  if (!scopedOrgUnitId) {
+    refusal(res, {
+      code: 'ROUTE_ORG_UNIT_CONTEXT_REQUIRED',
+      message: 'Active orgUnit context is required for intake requests.',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return;
+  }
+
+  const requestId = parseRequestId(req);
+  if (!requestId) {
+    refusal(res, {
+      code: 'ROUTESHYFT_INTAKE_REQUEST_ID_REQUIRED',
+      message: 'requestId is required.',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+
+    return;
+  }
+
+  const result = await intakeService.resolveIntake({
+    tenantId,
+    orgUnitId: scopedOrgUnitId,
+    requestId,
+    channel,
+  });
+
+  if (!result.ok) {
+    applyServiceRefusal(res, result);
+    return;
+  }
+
+  success(res, {
+    code: result.code,
+    message: result.message,
+    httpStatus: result.httpStatus,
+    data: result.data,
+  });
+};
+
 export const createRouteRouter = (
   commitmentService: CommitmentService = defaultCommitmentService,
+  intakeService: IntakeService = defaultIntakeService,
 ): Router => {
   const router = Router();
 
@@ -374,6 +557,11 @@ export const createRouteRouter = (
       data: transitioned.data,
     });
   });
+
+  router.post('/intake/requests', handleSubmitIntake(intakeService, 'donor'));
+  router.get('/intake/requests/:requestId', handleResolveIntake(intakeService, 'donor'));
+  router.post('/intake/cashier-requests', handleSubmitIntake(intakeService, 'cashier'));
+  router.get('/intake/cashier-requests/:requestId', handleResolveIntake(intakeService, 'cashier'));
 
   return router;
 };
