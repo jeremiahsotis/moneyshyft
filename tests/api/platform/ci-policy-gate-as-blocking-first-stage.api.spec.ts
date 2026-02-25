@@ -137,6 +137,8 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
           GITHUB_EVENT_NAME: 'pull_request',
           GITHUB_HEAD_REF: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
           GITHUB_BASE_REF: 'production',
+          GITHUB_REF_NAME: '',
+          GITHUB_REF: '',
         },
         encoding: 'utf8',
       });
@@ -166,6 +168,8 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
           GITHUB_EVENT_NAME: 'pull_request',
           GITHUB_HEAD_REF: 'main',
           GITHUB_BASE_REF: 'production',
+          GITHUB_REF_NAME: '',
+          GITHUB_REF: '',
         },
         encoding: 'utf8',
       });

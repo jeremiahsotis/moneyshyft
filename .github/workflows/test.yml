@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [production, codex/dev]
   push:
-    branches: [production]
+    branches: [production, codex/dev]
   merge_group:
   workflow_dispatch:
     inputs:

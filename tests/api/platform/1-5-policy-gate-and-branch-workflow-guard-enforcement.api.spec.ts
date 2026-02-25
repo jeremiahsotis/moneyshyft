@@ -113,6 +113,7 @@ Status: review
         env: {
           ...process.env,
           GITHUB_EVENT_NAME: 'local',
+          TMPDIR: repoDir,
         },
         encoding: 'utf8',
       },
@@ -268,11 +269,11 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
 
     expect(
       policyJob.length > 0 &&
-        policyRunsPolicyCheck &&
-        lintNeedsPolicy &&
-        testNeedsLint &&
-        backendContractsNeedsQualityGates &&
-        (inlineBurnInGraph || splitBurnInGraph),
+      policyRunsPolicyCheck &&
+      lintNeedsPolicy &&
+      testNeedsLint &&
+      backendContractsNeedsQualityGates &&
+      (inlineBurnInGraph || splitBurnInGraph),
     ).toBe(true);
   });
 
@@ -349,9 +350,9 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
 
     expect(
       successCount === 1
-        && conflictCount === 1
-        && /Status:\s*done/.test(result.storyStatusLine)
-        && /1-5-policy-gate-and-branch-workflow-guard-enforcement:\s*done/.test(result.sprintStatusLine),
+      && conflictCount === 1
+      && /Status:\s*done/.test(result.storyStatusLine)
+      && /1-5-policy-gate-and-branch-workflow-guard-enforcement:\s*done/.test(result.sprintStatusLine),
     ).toBe(true);
   });
 
@@ -363,8 +364,8 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
 
     expect(
       status !== 0
-        && /critical\/access-control but missing real-user validation evidence/.test(output)
-        && /critical\/access-control but 'Real-User Validation Result' is not 'pass'/.test(output),
+      && /critical\/access-control but missing real-user validation evidence/.test(output)
+      && /critical\/access-control but 'Real-User Validation Result' is not 'pass'/.test(output),
     ).toBe(true);
   });
 
