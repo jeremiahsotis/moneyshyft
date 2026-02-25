@@ -14,6 +14,7 @@ so that no request is lost in undefined state.
 
 1. Given a request lifecycle starts, when it is processed, then it reaches an explicit terminal request state.
 2. Linked commitments independently reach terminal commitment states.
+3. Given operations staff review unresolved work, when terminal enforcement or linkage failures occur, then UI/API views expose clear reconciliation actions and current lifecycle status.
 
 ## Operability Guardrails
 
@@ -66,10 +67,10 @@ Ensure intake lifecycle integrity by preventing requests from drifting into ambi
 
 ### File Structure Requirements
 
-- Request lifecycle rules in `src/modules/route/domain`.
-- Linkage orchestration in `src/modules/route/application`.
-- Persistence/reconciliation queries in `src/modules/route/infrastructure`.
-- Operational endpoints in `src/modules/route/api`.
+- Request lifecycle rules in `src/src/modules/route/domain`.
+- Linkage orchestration in `src/src/modules/route/application`.
+- Persistence/reconciliation queries in `src/src/modules/route/infrastructure`.
+- Operational endpoints in `src/src/routes/api/v1/*.ts` delegating into route services.
 
 ### Testing Requirements
 
@@ -88,9 +89,9 @@ Ensure intake lifecycle integrity by preventing requests from drifting into ambi
 
 ### References
 
-- /Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/epics.md
-- /Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Functional_Requirements.md
-- /Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Architecture_Document.md
+- [Source: `/Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/epics.md` (Epic 2 > Story 2.4)]
+- [Source: `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Functional_Requirements.md` (request lifecycle and terminal-state requirements)]
+- [Source: `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Architecture_Document.md` (Stack, Module Layout)]
 
 ## Dev Agent Record
 
@@ -109,4 +110,3 @@ GPT-5 Codex
 ### File List
 
 - _bmad-output/implementation-artifacts/2-4-request-to-commitment-linkage-and-terminal-enforcement.md
-

@@ -1,7 +1,8 @@
 import { Request, Response, Router } from 'express';
+import type { Knex } from 'knex';
 import { authenticateToken } from '../../../middleware/auth';
 import { refusal, success } from '../../../platform/envelopes/response';
-import { TenantScopeError, requireTenantId } from '../../../platform/tenancy/tenantScope';
+import { requireTenantId, TenantScopeError } from '../../../platform/tenancy/tenantScope';
 import { normalizeRole } from '../../../platform/rbac/capabilities';
 import { CommitmentService } from '../../../modules/route/application/commitmentService';
 import { KnexCommitmentRepository } from '../../../modules/route/infrastructure/commitmentRepository';
@@ -9,14 +10,27 @@ import { isCommitmentStatus } from '../../../modules/route/domain/commitmentLife
 import { IntakeService } from '../../../modules/route/application/intakeService';
 import { KnexIntakeRequestRepository } from '../../../modules/route/infrastructure/intakeRequestRepository';
 import { RouteIntakeChannel, RouteIntakePayload } from '../../../modules/route/domain/intakePolicy';
+import { donorIntakeController } from '../../../modules/route/api/donorIntakeController';
 
 const TEST_TENANT_HEADER = 'x-test-route-tenant-id';
 const TEST_ACTOR_HEADER = 'x-test-route-actor-id';
 const TEST_ROLE_HEADER = 'x-test-route-role';
-
 const POLICY_EXCEPTION_ALLOWED_ROLES = new Set(['SYSTEM_ADMIN', 'TENANT_ADMIN']);
 
 const isNodeTestEnv = (): boolean => process.env.NODE_ENV?.trim().toLowerCase() === 'test';
+
+const loadRouteDb = (): Knex => {
+  const knexModule = require('../../../config/knex') as { default: Knex };
+  return knexModule.default;
+};
+
+const defaultCommitmentService = new CommitmentService(
+  new KnexCommitmentRepository(loadRouteDb()),
+);
+const defaultIntakeService = new IntakeService(
+  defaultCommitmentService,
+  new KnexIntakeRequestRepository(loadRouteDb()),
+);
 
 const normalizeNonEmptyString = (value: unknown): string => {
   if (typeof value !== 'string') {
@@ -26,19 +40,13 @@ const normalizeNonEmptyString = (value: unknown): string => {
   return value.trim();
 };
 
-const defaultCommitmentService = new CommitmentService(new KnexCommitmentRepository());
-const defaultIntakeService = new IntakeService(
-  defaultCommitmentService,
-  new KnexIntakeRequestRepository(),
-);
-
 const resolveTenantContext = (req: Request): string | null => {
   const resolvedTenant = normalizeNonEmptyString(
     req.user?.activeTenantId
-      || req.user?.householdId
-      || req.tenantContext?.tenantId
-      || req.tenantId
-      || null,
+    || req.user?.householdId
+    || req.tenantContext?.tenantId
+    || req.tenantId
+    || null,
   );
 
   if (resolvedTenant) {
@@ -90,32 +98,13 @@ const canApplyPolicyException = (req: Request): boolean => {
 const resolveOrgUnitContext = (req: Request): string | null => {
   const orgUnitId = normalizeNonEmptyString(
     req.user?.activeOrgUnitId
-      || req.authContext?.orgUnitId
-      || req.tenantContext?.orgUnitId
-      || req.orgUnitId
-      || null,
+    || req.authContext?.orgUnitId
+    || req.tenantContext?.orgUnitId
+    || req.orgUnitId
+    || null,
   );
 
   return orgUnitId || null;
-};
-
-const resolveTenantId = (req: Request, res: Response): string | null => {
-  try {
-    return requireTenantId(resolveTenantContext(req));
-  } catch (error) {
-    const message = error instanceof TenantScopeError
-      ? error.message
-      : 'Tenant context is required for Route module requests.';
-
-    refusal(res, {
-      code: 'ROUTE_TENANT_CONTEXT_REQUIRED',
-      message,
-      refusalType: 'security',
-      httpStatus: 403,
-    });
-
-    return null;
-  }
 };
 
 const parseCommitmentId = (req: Request): string => normalizeNonEmptyString(req.params.commitmentId || null);
@@ -133,54 +122,6 @@ const parseTransitionBody = (req: Request) => ({
   reason: normalizeNonEmptyString(req.body?.reason),
   policyExceptionCode: normalizeNonEmptyString(req.body?.policyExceptionCode) || null,
 });
-
-const resolveScopedCreateOrgUnitId = (
-  req: Request,
-  res: Response,
-  requestedOrgUnitId: string | null,
-): string | null | undefined => {
-  const scopedOrgUnitId = resolveOrgUnitContext(req);
-  const scopeMode = normalizeNonEmptyString(req.scopeMode || req.authContext?.scopeMode || null);
-
-  if (requestedOrgUnitId && !scopedOrgUnitId) {
-    refusal(res, {
-      code: 'ROUTE_ORG_UNIT_CONTEXT_REQUIRED',
-      message: 'OrgUnit context is required when orgUnitId is provided.',
-      refusalType: 'security',
-      httpStatus: 403,
-    });
-
-    return undefined;
-  }
-
-  if (requestedOrgUnitId && scopedOrgUnitId && requestedOrgUnitId !== scopedOrgUnitId) {
-    refusal(res, {
-      code: 'ROUTE_ORG_UNIT_SCOPE_MISMATCH',
-      message: 'orgUnitId must match active orgUnit context.',
-      refusalType: 'security',
-      httpStatus: 403,
-      data: {
-        activeOrgUnitId: scopedOrgUnitId,
-        requestedOrgUnitId,
-      },
-    });
-
-    return undefined;
-  }
-
-  if (scopeMode.toUpperCase() === 'ORG_UNIT' && !scopedOrgUnitId) {
-    refusal(res, {
-      code: 'ROUTE_ORG_UNIT_CONTEXT_REQUIRED',
-      message: 'Active orgUnit context is required for orgUnit-scoped Route requests.',
-      refusalType: 'security',
-      httpStatus: 403,
-    });
-
-    return undefined;
-  }
-
-  return scopedOrgUnitId;
-};
 
 const parseIntakeBody = (req: Request): RouteIntakePayload => ({
   tenantId: normalizeNonEmptyString(req.body?.tenantId),
@@ -209,6 +150,70 @@ const parseIntakeBody = (req: Request): RouteIntakePayload => ({
   })(),
   scheduleMode: normalizeNonEmptyString(req.body?.scheduleMode) || null,
 });
+
+const resolveScopedCreateOrgUnitId = (
+  req: Request,
+  res: Response,
+  requestedOrgUnitId: string | null,
+): string | null | undefined => {
+  const scopedOrgUnitId = resolveOrgUnitContext(req);
+  const scopeMode = normalizeNonEmptyString(req.scopeMode || req.authContext?.scopeMode || null);
+
+  if (requestedOrgUnitId && !scopedOrgUnitId) {
+    refusal(res, {
+      code: 'ROUTE_ORG_UNIT_CONTEXT_REQUIRED',
+      message: 'OrgUnit context is required when orgUnitId is provided.',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return undefined;
+  }
+
+  if (requestedOrgUnitId && scopedOrgUnitId && requestedOrgUnitId !== scopedOrgUnitId) {
+    refusal(res, {
+      code: 'ROUTE_ORG_UNIT_SCOPE_MISMATCH',
+      message: 'orgUnitId must match active orgUnit context.',
+      refusalType: 'security',
+      httpStatus: 403,
+      data: {
+        activeOrgUnitId: scopedOrgUnitId,
+        requestedOrgUnitId,
+      },
+    });
+    return undefined;
+  }
+
+  if (scopeMode.toUpperCase() === 'ORG_UNIT' && !scopedOrgUnitId) {
+    refusal(res, {
+      code: 'ROUTE_ORG_UNIT_CONTEXT_REQUIRED',
+      message: 'Active orgUnit context is required for orgUnit-scoped Route requests.',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return undefined;
+  }
+
+  return scopedOrgUnitId;
+};
+
+const resolveTenantId = (req: Request, res: Response): string | null => {
+  try {
+    const scopedTenant = requireTenantId(resolveTenantContext(req));
+    return scopedTenant;
+  } catch (error) {
+    const message = error instanceof TenantScopeError
+      ? error.message
+      : 'Tenant context is required for Route module requests.';
+
+    refusal(res, {
+      code: 'ROUTE_TENANT_CONTEXT_REQUIRED',
+      message,
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return null;
+  }
+};
 
 const resolveScopedIntakePayload = (
   req: Request,
@@ -269,13 +274,16 @@ const resolveScopedIntakePayload = (
   };
 };
 
-const applyServiceRefusal = (res: Response, rejected: {
-  code: string;
-  message: string;
-  refusalType: 'business' | 'client' | 'security';
-  httpStatus: number;
-  data?: unknown;
-}): void => {
+const applyServiceRefusal = (
+  res: Response,
+  rejected: {
+    code: string;
+    message: string;
+    refusalType: 'business' | 'client' | 'security';
+    httpStatus: number;
+    data?: unknown;
+  },
+): void => {
   refusal(res, {
     code: rejected.code,
     message: rejected.message,
@@ -328,6 +336,7 @@ const handleResolveIntake = (
   if (!tenantId) {
     return;
   }
+
   const scopedOrgUnitId = resolveOrgUnitContext(req);
   if (!scopedOrgUnitId) {
     refusal(res, {
@@ -377,14 +386,55 @@ export const createRouteRouter = (
 ): Router => {
   const router = Router();
 
-  router.get('/_health', (_req, res) => success(res, {
+  router.get('/_health', (_req: Request, res: Response) => success(res, {
     code: 'ROUTE_MODULE_HEALTHY',
     message: 'Route module registered and healthy',
     data: {
       service: 'route',
-      feature: 'intake_and_commitment_lifecycle',
+      feature: 'commitment_lifecycle',
     },
   }));
+
+  // Donor self-service intake is public and uses business refusal envelopes for outcome semantics.
+  router.post('/intake/donor-requests', (req: Request, res: Response) => {
+    const result = donorIntakeController.submit(req);
+
+    if (result.ok) {
+      return success(res, {
+        code: result.code,
+        message: result.message,
+        data: result.data,
+      });
+    }
+
+    return refusal(res, {
+      code: result.code,
+      message: result.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: result.data,
+    });
+  });
+
+  router.get('/intake/donor-requests/:requestId', (req: Request, res: Response) => {
+    const result = donorIntakeController.detail(req);
+
+    if (result.ok) {
+      return success(res, {
+        code: result.code,
+        message: result.message,
+        data: result.data,
+      });
+    }
+
+    return refusal(res, {
+      code: result.code,
+      message: result.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: result.data,
+    });
+  });
 
   router.use(authenticateToken);
 
@@ -436,7 +486,6 @@ export const createRouteRouter = (
         refusalType: 'client',
         httpStatus: 400,
       });
-
       return;
     }
 
@@ -472,7 +521,6 @@ export const createRouteRouter = (
         refusalType: 'client',
         httpStatus: 400,
       });
-
       return;
     }
 
@@ -484,7 +532,6 @@ export const createRouteRouter = (
         refusalType: 'client',
         httpStatus: 400,
       });
-
       return;
     }
 
@@ -513,7 +560,6 @@ export const createRouteRouter = (
 
   router.post('/intake/requests', handleSubmitIntake(intakeService, 'donor'));
   router.get('/intake/requests/:requestId', handleResolveIntake(intakeService, 'donor'));
-
   router.post('/intake/cashier-requests', handleSubmitIntake(intakeService, 'cashier'));
   router.get('/intake/cashier-requests/:requestId', handleResolveIntake(intakeService, 'cashier'));
 

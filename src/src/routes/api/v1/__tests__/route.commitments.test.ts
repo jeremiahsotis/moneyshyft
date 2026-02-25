@@ -9,7 +9,6 @@ jest.mock('../../../../middleware/auth', () => ({
   authenticateToken: (req: express.Request, _res: express.Response, next: express.NextFunction) => {
     const roleOverride = req.header('x-test-route-role') || 'TENANT_STAFF';
     const activeOrgUnitOverride = req.header('x-test-route-active-org-unit-id') || 'org-route-1';
-
     req.user = {
       userId: 'user-route-1',
       email: 'dispatcher@example.com',
@@ -26,14 +25,12 @@ jest.mock('../../../../middleware/auth', () => ({
 }));
 
 describe('route commitment api contract', () => {
-  const buildApp = (): express.Express => {
+  const buildApp = () => {
     const app = express();
     app.use(express.json());
     app.use(responseEnvelope);
-
     const service = new CommitmentService(new InMemoryCommitmentRepository());
     app.use('/api/v1/route', createRouteRouter(service));
-
     return app;
   };
 
@@ -59,7 +56,7 @@ describe('route commitment api contract', () => {
       },
     });
 
-    const commitmentId = created.body.data.commitment.commitmentId;
+    const commitmentId = created.body.data.commitment.commitmentId as string;
 
     const transitioned = await request(app)
       .post(`/api/v1/route/commitments/${commitmentId}/transitions`)
@@ -95,8 +92,7 @@ describe('route commitment api contract', () => {
         sourceType: 'route_request',
         sourceId: 'request-api-2',
       });
-
-    const commitmentId = created.body.data.commitment.commitmentId;
+    const commitmentId = created.body.data.commitment.commitmentId as string;
 
     const refused = await request(app)
       .post(`/api/v1/route/commitments/${commitmentId}/transitions`)
@@ -127,8 +123,7 @@ describe('route commitment api contract', () => {
         sourceType: 'route_request',
         sourceId: 'request-api-3',
       });
-
-    const commitmentId = created.body.data.commitment.commitmentId;
+    const commitmentId = created.body.data.commitment.commitmentId as string;
 
     await request(app)
       .post(`/api/v1/route/commitments/${commitmentId}/transitions`)
@@ -176,8 +171,7 @@ describe('route commitment api contract', () => {
         sourceType: 'route_request',
         sourceId: 'request-api-4',
       });
-
-    const commitmentId = created.body.data.commitment.commitmentId;
+    const commitmentId = created.body.data.commitment.commitmentId as string;
 
     await request(app)
       .post(`/api/v1/route/commitments/${commitmentId}/transitions`)
@@ -224,8 +218,7 @@ describe('route commitment api contract', () => {
         sourceType: 'route_request',
         sourceId: 'request-api-5',
       });
-
-    const commitmentId = created.body.data.commitment.commitmentId;
+    const commitmentId = created.body.data.commitment.commitmentId as string;
 
     await request(app)
       .post(`/api/v1/route/commitments/${commitmentId}/transitions`)

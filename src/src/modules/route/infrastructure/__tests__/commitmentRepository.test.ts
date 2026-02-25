@@ -36,7 +36,6 @@ describe('knex route commitment repository', () => {
       returning: jest.fn(),
       first: jest.fn(),
     };
-
     commitmentTable.where.mockReturnValue(commitmentTable);
     commitmentTable.update.mockReturnValue(commitmentTable);
     commitmentTable.returning.mockResolvedValue([updatedCommitment]);
@@ -45,7 +44,6 @@ describe('knex route commitment repository', () => {
       insert: jest.fn(),
       returning: jest.fn(),
     };
-
     auditTable.insert.mockReturnValue(auditTable);
     auditTable.returning.mockResolvedValue([insertedAudit]);
 
@@ -69,10 +67,10 @@ describe('knex route commitment repository', () => {
     };
 
     const knexClient = {
-      transaction: jest.fn(async (callback: (transactionClient: typeof trx) => Promise<unknown>) => callback(trx)),
-    };
+      transaction: jest.fn(async (callback: (transaction: any) => Promise<unknown>) => callback(trx)),
+    } as any;
 
-    const repository = new KnexCommitmentRepository(knexClient as never);
+    const repository = new KnexCommitmentRepository(knexClient);
 
     const result = await repository.transitionCommitment({
       tenantId: 'tenant-1',

@@ -1,7 +1,7 @@
 import {
-  TERMINAL_COMMITMENT_STATUSES,
   evaluateCommitmentTransition,
   listAllowedCommitmentTransitions,
+  TERMINAL_COMMITMENT_STATUSES,
 } from '../commitmentLifecycle';
 
 describe('route commitment lifecycle domain rules', () => {

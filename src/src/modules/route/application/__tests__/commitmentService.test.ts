@@ -41,7 +41,6 @@ describe('route commitment service', () => {
       sourceType: 'route_request',
       sourceId: 'request-2',
     });
-
     if (!created.ok) {
       throw new Error('Expected commitment create to succeed');
     }
@@ -78,7 +77,6 @@ describe('route commitment service', () => {
       sourceType: 'route_request',
       sourceId: 'request-3',
     });
-
     if (!created.ok) {
       throw new Error('Expected commitment create to succeed');
     }
@@ -111,7 +109,6 @@ describe('route commitment service', () => {
       sourceType: 'route_request',
       sourceId: 'request-4',
     });
-
     if (!created.ok) {
       throw new Error('Expected commitment create to succeed');
     }
@@ -123,7 +120,6 @@ describe('route commitment service', () => {
       nextStatus: 'in_progress',
       reason: 'Dispatch started',
     });
-
     if (!first.ok) {
       throw new Error('Expected transition to in_progress to succeed');
     }
@@ -135,7 +131,6 @@ describe('route commitment service', () => {
       nextStatus: 'completed',
       reason: 'Proof recorded',
     });
-
     if (!second.ok) {
       throw new Error('Expected transition to completed to succeed');
     }
@@ -168,7 +163,6 @@ describe('route commitment service', () => {
       sourceType: 'route_request',
       sourceId: 'request-5',
     });
-
     if (!created.ok) {
       throw new Error('Expected commitment create to succeed');
     }
@@ -196,7 +190,6 @@ describe('route commitment service', () => {
       sourceType: 'route_request',
       sourceId: 'request-6',
     });
-
     if (!created.ok) {
       throw new Error('Expected commitment create to succeed');
     }
@@ -244,7 +237,6 @@ describe('route commitment service', () => {
       sourceType: 'route_request',
       sourceId: 'request-7',
     });
-
     if (!created.ok) {
       throw new Error('Expected commitment create to succeed');
     }

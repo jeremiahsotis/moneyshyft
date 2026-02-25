@@ -1,35 +1,72 @@
 import {
-  CommitmentStatus,
+  type CommitmentStatus,
   describeCommitmentState,
   evaluateCommitmentTransition,
   isCommitmentStatus,
 } from '../domain/commitmentLifecycle';
-import {
-  CommitmentRecord,
-  CommitmentRepository,
-  InMemoryCommitmentRepository,
-} from '../infrastructure/commitmentRepository';
+import type { CommitmentRepository } from '../infrastructure/commitmentRepository';
+import { InMemoryCommitmentRepository } from '../infrastructure/commitmentRepository';
 
 type RefusalType = 'business' | 'client' | 'security';
 
-export type CommitmentServiceSuccess<TData> = {
-  ok: true;
-  code: string;
-  message: string;
-  httpStatus: number;
-  data: TData;
-};
-
-export type CommitmentServiceRefusal = {
+type ServiceRefusalResult = {
   ok: false;
-  code: string;
+  code:
+    | 'ROUTE_COMMITMENT_SOURCE_TYPE_REQUIRED'
+    | 'ROUTE_COMMITMENT_SOURCE_ID_REQUIRED'
+    | 'ROUTE_COMMITMENT_CREATE_INVALID_INITIAL_STATUS'
+    | 'ROUTE_COMMITMENT_REASON_REQUIRED'
+    | 'ROUTE_COMMITMENT_INVALID_STATUS'
+    | 'ROUTE_COMMITMENT_NOT_FOUND'
+    | 'ROUTE_COMMITMENT_INVALID_TRANSITION'
+    | 'ROUTE_COMMITMENT_TERMINAL_STATE_LOCKED'
+    | 'ROUTE_COMMITMENT_POLICY_EXCEPTION_FORBIDDEN'
+    | 'ROUTE_COMMITMENT_PERSISTENCE_UNAVAILABLE';
   message: string;
   refusalType: RefusalType;
   httpStatus: number;
-  data?: unknown;
+  data?: Record<string, unknown>;
 };
 
-export type CreateCommitmentInput = {
+type CreateCommitmentSuccess = {
+  ok: true;
+  code: 'ROUTE_COMMITMENT_CREATED';
+  message: string;
+  httpStatus: 201;
+  data: {
+    commitment: Awaited<ReturnType<CommitmentRepository['createCommitment']>>;
+    state: ReturnType<typeof describeCommitmentState>;
+  };
+};
+
+type ResolveCommitmentSuccess = {
+  ok: true;
+  code: 'ROUTE_COMMITMENT_RESOLVED';
+  message: string;
+  httpStatus: 200;
+  data: {
+    commitment: NonNullable<Awaited<ReturnType<CommitmentRepository['getCommitmentById']>>>;
+    state: ReturnType<typeof describeCommitmentState>;
+  };
+};
+
+type TransitionCommitmentSuccess = {
+  ok: true;
+  code: 'ROUTE_COMMITMENT_TRANSITION_APPLIED';
+  message: string;
+  httpStatus: 200;
+  data: {
+    commitment: NonNullable<Awaited<ReturnType<CommitmentRepository['getCommitmentById']>>>;
+    transition: NonNullable<Extract<Awaited<ReturnType<CommitmentRepository['transitionCommitment']>>, { ok: true }>>['transitionAudit'];
+    state: ReturnType<typeof describeCommitmentState>;
+  };
+};
+
+export type CreateCommitmentResult = CreateCommitmentSuccess | ServiceRefusalResult;
+export type ResolveCommitmentResult = ResolveCommitmentSuccess | ServiceRefusalResult;
+export type TransitionCommitmentResult = TransitionCommitmentSuccess | ServiceRefusalResult;
+
+export type CreateCommitmentCommand = {
   tenantId: string;
   actorId: string | null;
   sourceType: string;
@@ -39,12 +76,12 @@ export type CreateCommitmentInput = {
   initialStatus?: CommitmentStatus;
 };
 
-export type ResolveCommitmentInput = {
+export type ResolveCommitmentCommand = {
   tenantId: string;
   commitmentId: string;
 };
 
-export type TransitionCommitmentInput = {
+export type TransitionCommitmentCommand = {
   tenantId: string;
   commitmentId: string;
   actorId: string | null;
@@ -53,32 +90,6 @@ export type TransitionCommitmentInput = {
   policyExceptionCode?: string | null;
   allowPolicyException?: boolean;
 };
-
-export type CreateCommitmentResult =
-  | CommitmentServiceSuccess<{ commitment: CommitmentRecord; state: ReturnType<typeof describeCommitmentState> }>
-  | CommitmentServiceRefusal;
-
-export type ResolveCommitmentResult =
-  | CommitmentServiceSuccess<{ commitment: CommitmentRecord; state: ReturnType<typeof describeCommitmentState> }>
-  | CommitmentServiceRefusal;
-
-export type TransitionCommitmentResult =
-  | CommitmentServiceSuccess<{
-    commitment: CommitmentRecord;
-    transition: {
-      transitionAuditId: string;
-      tenantId: string;
-      commitmentId: string;
-      actorId: string | null;
-      reason: string;
-      previousStatus: CommitmentStatus;
-      newStatus: CommitmentStatus;
-      policyExceptionCode: string | null;
-      occurredAtUtc: string;
-    };
-    state: ReturnType<typeof describeCommitmentState>;
-  }>
-  | CommitmentServiceRefusal;
 
 const normalizeNonEmptyString = (value: unknown): string => {
   if (typeof value !== 'string') {
@@ -89,12 +100,12 @@ const normalizeNonEmptyString = (value: unknown): string => {
 };
 
 const toRefusal = (
-  code: string,
+  code: ServiceRefusalResult['code'],
   message: string,
   refusalType: RefusalType = 'business',
   httpStatus = 200,
-  data?: unknown,
-): CommitmentServiceRefusal => ({
+  data?: Record<string, unknown>,
+): ServiceRefusalResult => ({
   ok: false,
   code,
   message,
@@ -108,8 +119,7 @@ const isMissingPersistenceError = (error: unknown): boolean => {
     return false;
   }
 
-  const candidate = error as { code?: unknown };
-
+  const candidate = error as { code?: string };
   return candidate.code === '42P01'
     || candidate.code === '3F000'
     || candidate.code === '42703';
@@ -118,7 +128,7 @@ const isMissingPersistenceError = (error: unknown): boolean => {
 export class CommitmentService {
   constructor(private readonly repository: CommitmentRepository = new InMemoryCommitmentRepository()) {}
 
-  async createCommitment(input: CreateCommitmentInput): Promise<CreateCommitmentResult> {
+  async createCommitment(input: CreateCommitmentCommand): Promise<CreateCommitmentResult> {
     const sourceType = normalizeNonEmptyString(input.sourceType);
     if (!sourceType) {
       return toRefusal(
@@ -185,7 +195,7 @@ export class CommitmentService {
     }
   }
 
-  async resolveCommitment(input: ResolveCommitmentInput): Promise<ResolveCommitmentResult> {
+  async resolveCommitment(input: ResolveCommitmentCommand): Promise<ResolveCommitmentResult> {
     try {
       const commitment = await this.repository.getCommitmentById(input.tenantId, input.commitmentId);
       if (!commitment) {
@@ -217,7 +227,7 @@ export class CommitmentService {
     }
   }
 
-  async transitionCommitment(input: TransitionCommitmentInput): Promise<TransitionCommitmentResult> {
+  async transitionCommitment(input: TransitionCommitmentCommand): Promise<TransitionCommitmentResult> {
     const reason = normalizeNonEmptyString(input.reason);
     if (!reason) {
       return toRefusal(

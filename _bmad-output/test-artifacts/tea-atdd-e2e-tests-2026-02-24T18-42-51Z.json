@@ -1,0 +1,35 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/2-3-cashier-assisted-intake-and-voucher-delivery-scheduling.atdd.spec.ts",
+      "content": "import { test, expect } from '../../support/fixtures/routeShyftStory23.fixture';\nimport { login } from '../../helpers/auth';\n\ntest.describe('Story 2-3 Cashier-Assisted Intake and Voucher Delivery Scheduling (ATDD E2E RED)', () => {\n  test.skip('[P1] cashier sees immediate actionable feedback and accepted outcome details after submit @P1', async ({ page, story23Context }) => {\n    await login(page);\n\n    const loadResponse = page.waitForResponse(\n      (response) => response.url().includes(story23Context.paths.resourceCollection) && response.request().method() === 'GET',\n    );\n\n    await page.goto(story23Context.paths.ui + '?tenantId=' + story23Context.tenantId + '&orgUnitId=' + story23Context.orgUnitId);\n    await loadResponse;\n\n    await expect(page.getByRole('heading', { name: 'Cashier Intake' })).toBeVisible();\n    await expect(page.getByTestId('routeshyft-cashier-intake-outcome')).toBeVisible();\n    await expect(page.getByTestId('routeshyft-cashier-intake-next-steps')).toBeVisible();\n  });\n\n  test.skip('[P1] cashier sees parity-aligned refusal reasons and alternatives for invalid or constrained submissions @P1', async ({ page, story23Context }) => {\n    await login(page);\n\n    const submitResponse = page.waitForResponse(\n      (response) => response.url().includes(story23Context.paths.resourceCollection) && response.request().method() === 'POST',\n    );\n\n    await page.goto(story23Context.paths.ui + '?tenantId=' + story23Context.tenantId + '&orgUnitId=' + story23Context.orgUnitId);\n    await page.getByRole('button', { name: 'Create Intake Request' }).click();\n    await submitResponse;\n\n    await expect(page.getByTestId('routeshyft-cashier-intake-refusal-banner')).toBeVisible();\n    await expect(page.getByTestId('routeshyft-cashier-intake-refusal-code')).toHaveText(story23Context.refusalCode);\n    await expect(page.getByTestId('routeshyft-cashier-intake-alternatives')).toBeVisible();\n  });\n});\n",
+      "description": "ATDD E2E tests for Story 2-3 Cashier-Assisted Intake and Voucher Delivery Scheduling (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Given staff enters intake/scheduling details, when they submit, then the same validation, capacity, and refusal rules as public intake apply.",
+        "Resulting requests link to commitments or refusal outcomes.",
+        "Given cashier staff submit or correct intake details, when validation/refusal occurs, then operator-facing feedback is immediate, actionable, and parity-aligned with donor flow."
+      ],
+      "priority_coverage": {
+        "P0": 0,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "routeShyftStory23.fixture.ts"
+  ],
+  "knowledge_fragments_used": [
+    "selector-resilience",
+    "timing-debugging",
+    "network-first",
+    "fixture-architecture"
+  ],
+  "test_count": 2,
+  "tdd_phase": "RED",
+  "summary": "Generated 2 FAILING E2E tests for Story 2-3"
+}

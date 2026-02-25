@@ -1,0 +1,6 @@
+
+> moneyshyft@0.3.6 migrate:latest
+> ts-node ./node_modules/.bin/knex --knexfile src/knexfile.ts migrate:latest
+
+Working directory changed to ~/projects/connectshyft/src/src
+Using environment: development

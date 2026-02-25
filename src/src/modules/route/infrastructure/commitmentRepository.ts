@@ -1,54 +1,39 @@
 import { randomUUID } from 'node:crypto';
 import type { Knex } from 'knex';
-import knex from '../../../config/knex';
+import db from '../../../config/knex';
 import {
-  CommitmentStatus,
+  type CommitmentStatus,
+  type CommitmentTransitionAudit,
   isTerminalCommitmentStatus,
+  type RouteCommitment,
 } from '../domain/commitmentLifecycle';
 
-const toIsoUtc = (value: unknown): string | null => {
-  if (value === null || value === undefined) {
-    return null;
-  }
-
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-
-  const parsed = new Date(String(value));
-  if (!Number.isNaN(parsed.valueOf())) {
-    return parsed.toISOString();
-  }
-
-  return String(value);
-};
-
-export type CommitmentRecord = {
-  commitmentId: string;
-  tenantId: string;
-  orgUnitId: string | null;
-  sourceType: string;
-  sourceId: string;
-  externalRef: string | null;
+type DbCommitmentRow = {
+  id: string;
+  tenant_id: string;
+  org_unit_id: string | null;
+  source_type: string;
+  source_id: string;
+  external_ref: string | null;
   status: CommitmentStatus;
-  createdByUserId: string | null;
-  updatedByUserId: string | null;
-  terminalAtUtc: string | null;
-  terminalReason: string | null;
-  createdAtUtc: string;
-  updatedAtUtc: string;
+  created_by_user_id: string | null;
+  updated_by_user_id: string | null;
+  terminal_at_utc: string | Date | null;
+  terminal_reason: string | null;
+  created_at_utc: string | Date;
+  updated_at_utc: string | Date;
 };
 
-export type CommitmentTransitionAuditRecord = {
-  transitionAuditId: string;
-  tenantId: string;
-  commitmentId: string;
-  actorId: string | null;
+type DbTransitionAuditRow = {
+  id: string;
+  tenant_id: string;
+  commitment_id: string;
+  actor_id: string | null;
   reason: string;
-  previousStatus: CommitmentStatus;
-  newStatus: CommitmentStatus;
-  policyExceptionCode: string | null;
-  occurredAtUtc: string;
+  previous_status: CommitmentStatus;
+  new_status: CommitmentStatus;
+  policy_exception_code: string | null;
+  occurred_at_utc: string | Date;
 };
 
 export type CreateCommitmentInput = {
@@ -61,7 +46,7 @@ export type CreateCommitmentInput = {
   initialStatus: CommitmentStatus;
 };
 
-export type TransitionCommitmentInput = {
+export type PersistCommitmentTransitionInput = {
   tenantId: string;
   commitmentId: string;
   actorId: string | null;
@@ -71,11 +56,11 @@ export type TransitionCommitmentInput = {
   policyExceptionCode: string | null;
 };
 
-export type TransitionCommitmentResult =
+export type PersistCommitmentTransitionResult =
   | {
     ok: true;
-    commitment: CommitmentRecord;
-    transitionAudit: CommitmentTransitionAuditRecord;
+    commitment: RouteCommitment;
+    transitionAudit: CommitmentTransitionAudit;
   }
   | {
     ok: false;
@@ -83,48 +68,66 @@ export type TransitionCommitmentResult =
   };
 
 export interface CommitmentRepository {
-  createCommitment(input: CreateCommitmentInput): Promise<CommitmentRecord>;
-  getCommitmentById(tenantId: string, commitmentId: string): Promise<CommitmentRecord | null>;
-  transitionCommitment(input: TransitionCommitmentInput): Promise<TransitionCommitmentResult>;
+  createCommitment(input: CreateCommitmentInput): Promise<RouteCommitment>;
+  getCommitmentById(tenantId: string, commitmentId: string): Promise<RouteCommitment | null>;
+  transitionCommitment(input: PersistCommitmentTransitionInput): Promise<PersistCommitmentTransitionResult>;
 }
 
-const mapCommitmentRow = (row: Record<string, unknown>): CommitmentRecord => ({
-  commitmentId: String(row.id),
-  tenantId: String(row.tenant_id),
-  orgUnitId: row.org_unit_id === null ? null : String(row.org_unit_id),
-  sourceType: String(row.source_type),
-  sourceId: String(row.source_id),
-  externalRef: row.external_ref === null ? null : String(row.external_ref),
-  status: String(row.status) as CommitmentStatus,
-  createdByUserId: row.created_by_user_id === null ? null : String(row.created_by_user_id),
-  updatedByUserId: row.updated_by_user_id === null ? null : String(row.updated_by_user_id),
+const toIsoUtc = (value: string | Date | null): string | null => {
+  if (value === null) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.valueOf())) {
+    return parsed.toISOString();
+  }
+
+  return value;
+};
+
+const mapCommitmentRow = (row: DbCommitmentRow): RouteCommitment => ({
+  commitmentId: row.id,
+  tenantId: row.tenant_id,
+  orgUnitId: row.org_unit_id,
+  sourceType: row.source_type,
+  sourceId: row.source_id,
+  externalRef: row.external_ref,
+  status: row.status,
+  createdByUserId: row.created_by_user_id,
+  updatedByUserId: row.updated_by_user_id,
   terminalAtUtc: toIsoUtc(row.terminal_at_utc),
-  terminalReason: row.terminal_reason === null ? null : String(row.terminal_reason),
+  terminalReason: row.terminal_reason,
   createdAtUtc: toIsoUtc(row.created_at_utc) || '',
   updatedAtUtc: toIsoUtc(row.updated_at_utc) || '',
 });
 
-const mapTransitionAuditRow = (row: Record<string, unknown>): CommitmentTransitionAuditRecord => ({
-  transitionAuditId: String(row.id),
-  tenantId: String(row.tenant_id),
-  commitmentId: String(row.commitment_id),
-  actorId: row.actor_id === null ? null : String(row.actor_id),
-  reason: String(row.reason),
-  previousStatus: String(row.previous_status) as CommitmentStatus,
-  newStatus: String(row.new_status) as CommitmentStatus,
-  policyExceptionCode: row.policy_exception_code === null ? null : String(row.policy_exception_code),
+const mapTransitionAuditRow = (row: DbTransitionAuditRow): CommitmentTransitionAudit => ({
+  transitionAuditId: row.id,
+  tenantId: row.tenant_id,
+  commitmentId: row.commitment_id,
+  actorId: row.actor_id,
+  reason: row.reason,
+  previousStatus: row.previous_status,
+  newStatus: row.new_status,
+  policyExceptionCode: row.policy_exception_code,
   occurredAtUtc: toIsoUtc(row.occurred_at_utc) || '',
 });
 
 export class InMemoryCommitmentRepository implements CommitmentRepository {
-  private readonly commitmentsById = new Map<string, CommitmentRecord>();
-  private readonly transitionAuditsByCommitmentId = new Map<string, CommitmentTransitionAuditRecord[]>();
+  private readonly commitmentsById = new Map<string, RouteCommitment>();
 
-  async createCommitment(input: CreateCommitmentInput): Promise<CommitmentRecord> {
+  private readonly transitionAuditsByCommitmentId = new Map<string, CommitmentTransitionAudit[]>();
+
+  async createCommitment(input: CreateCommitmentInput): Promise<RouteCommitment> {
     const now = new Date().toISOString();
     const commitmentId = randomUUID();
 
-    const commitment: CommitmentRecord = {
+    const commitment: RouteCommitment = {
       commitmentId,
       tenantId: input.tenantId,
       orgUnitId: input.orgUnitId,
@@ -142,11 +145,10 @@ export class InMemoryCommitmentRepository implements CommitmentRepository {
 
     this.commitmentsById.set(commitmentId, commitment);
     this.transitionAuditsByCommitmentId.set(commitmentId, []);
-
     return { ...commitment };
   }
 
-  async getCommitmentById(tenantId: string, commitmentId: string): Promise<CommitmentRecord | null> {
+  async getCommitmentById(tenantId: string, commitmentId: string): Promise<RouteCommitment | null> {
     const commitment = this.commitmentsById.get(commitmentId);
     if (!commitment || commitment.tenantId !== tenantId) {
       return null;
@@ -155,7 +157,7 @@ export class InMemoryCommitmentRepository implements CommitmentRepository {
     return { ...commitment };
   }
 
-  async transitionCommitment(input: TransitionCommitmentInput): Promise<TransitionCommitmentResult> {
+  async transitionCommitment(input: PersistCommitmentTransitionInput): Promise<PersistCommitmentTransitionResult> {
     const existing = this.commitmentsById.get(input.commitmentId);
     if (!existing || existing.tenantId !== input.tenantId) {
       return {
@@ -172,7 +174,7 @@ export class InMemoryCommitmentRepository implements CommitmentRepository {
     }
 
     const now = new Date().toISOString();
-    const updated: CommitmentRecord = {
+    const updated: RouteCommitment = {
       ...existing,
       status: input.newStatus,
       updatedByUserId: input.actorId,
@@ -181,7 +183,7 @@ export class InMemoryCommitmentRepository implements CommitmentRepository {
       terminalReason: isTerminalCommitmentStatus(input.newStatus) ? input.reason : null,
     };
 
-    const transitionAudit: CommitmentTransitionAuditRecord = {
+    const transitionAudit: CommitmentTransitionAudit = {
       transitionAuditId: randomUUID(),
       tenantId: input.tenantId,
       commitmentId: input.commitmentId,
@@ -195,7 +197,10 @@ export class InMemoryCommitmentRepository implements CommitmentRepository {
 
     this.commitmentsById.set(input.commitmentId, updated);
     const audits = this.transitionAuditsByCommitmentId.get(input.commitmentId) || [];
-    this.transitionAuditsByCommitmentId.set(input.commitmentId, [...audits, transitionAudit]);
+    this.transitionAuditsByCommitmentId.set(input.commitmentId, [
+      ...audits,
+      transitionAudit,
+    ]);
 
     return {
       ok: true,
@@ -206,7 +211,7 @@ export class InMemoryCommitmentRepository implements CommitmentRepository {
 }
 
 export class KnexCommitmentRepository implements CommitmentRepository {
-  constructor(private readonly knexClient: Knex = knex) {}
+  constructor(private readonly knexClient: Knex = db) {}
 
   private commitmentReturningColumns(): string[] {
     return [
@@ -240,7 +245,7 @@ export class KnexCommitmentRepository implements CommitmentRepository {
     ];
   }
 
-  async createCommitment(input: CreateCommitmentInput): Promise<CommitmentRecord> {
+  async createCommitment(input: CreateCommitmentInput): Promise<RouteCommitment> {
     const [inserted] = await this.knexClient
       .withSchema('route')
       .table('commitments')
@@ -258,12 +263,12 @@ export class KnexCommitmentRepository implements CommitmentRepository {
         created_at_utc: this.knexClient.fn.now(),
         updated_at_utc: this.knexClient.fn.now(),
       })
-      .returning(this.commitmentReturningColumns());
+      .returning<DbCommitmentRow[]>(this.commitmentReturningColumns());
 
-    return mapCommitmentRow(inserted as Record<string, unknown>);
+    return mapCommitmentRow(inserted);
   }
 
-  async getCommitmentById(tenantId: string, commitmentId: string): Promise<CommitmentRecord | null> {
+  async getCommitmentById(tenantId: string, commitmentId: string): Promise<RouteCommitment | null> {
     const row = await this.knexClient
       .withSchema('route')
       .table('commitments')
@@ -271,16 +276,16 @@ export class KnexCommitmentRepository implements CommitmentRepository {
         tenant_id: tenantId,
         id: commitmentId,
       })
-      .first(this.commitmentReturningColumns());
+      .first<DbCommitmentRow>(this.commitmentReturningColumns());
 
     if (!row) {
       return null;
     }
 
-    return mapCommitmentRow(row as Record<string, unknown>);
+    return mapCommitmentRow(row);
   }
 
-  async transitionCommitment(input: TransitionCommitmentInput): Promise<TransitionCommitmentResult> {
+  async transitionCommitment(input: PersistCommitmentTransitionInput): Promise<PersistCommitmentTransitionResult> {
     return this.knexClient.transaction(async (trx) => {
       const [updatedRow] = await trx
         .withSchema('route')
@@ -297,7 +302,7 @@ export class KnexCommitmentRepository implements CommitmentRepository {
           terminal_at_utc: isTerminalCommitmentStatus(input.newStatus) ? trx.fn.now() : null,
           terminal_reason: isTerminalCommitmentStatus(input.newStatus) ? input.reason : null,
         })
-        .returning(this.commitmentReturningColumns());
+        .returning<DbCommitmentRow[]>(this.commitmentReturningColumns());
 
       if (!updatedRow) {
         const existing = await trx
@@ -312,13 +317,13 @@ export class KnexCommitmentRepository implements CommitmentRepository {
         if (!existing) {
           return {
             ok: false,
-            reason: 'COMMITMENT_NOT_FOUND' as const,
+            reason: 'COMMITMENT_NOT_FOUND',
           };
         }
 
         return {
           ok: false,
-          reason: 'STATUS_MISMATCH' as const,
+          reason: 'STATUS_MISMATCH',
         };
       }
 
@@ -335,12 +340,12 @@ export class KnexCommitmentRepository implements CommitmentRepository {
           policy_exception_code: input.policyExceptionCode,
           occurred_at_utc: trx.fn.now(),
         })
-        .returning(this.transitionAuditReturningColumns());
+        .returning<DbTransitionAuditRow[]>(this.transitionAuditReturningColumns());
 
       return {
         ok: true,
-        commitment: mapCommitmentRow(updatedRow as Record<string, unknown>),
-        transitionAudit: mapTransitionAuditRow(auditRow as Record<string, unknown>),
+        commitment: mapCommitmentRow(updatedRow),
+        transitionAudit: mapTransitionAuditRow(auditRow),
       };
     });
   }

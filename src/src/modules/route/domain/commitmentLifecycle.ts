@@ -14,9 +14,7 @@ export const TERMINAL_COMMITMENT_STATUSES = new Set<CommitmentStatus>([
   'refused',
 ]);
 
-type TransitionMatrix = Record<CommitmentStatus, readonly CommitmentStatus[]>;
-
-const STANDARD_TRANSITION_MATRIX: TransitionMatrix = {
+const STANDARD_TRANSITION_MATRIX: Record<CommitmentStatus, CommitmentStatus[]> = {
   scheduled: ['in_progress', 'canceled', 'refused'],
   in_progress: ['completed', 'canceled', 'refused'],
   completed: [],
@@ -24,16 +22,44 @@ const STANDARD_TRANSITION_MATRIX: TransitionMatrix = {
   refused: [],
 };
 
-const POLICY_EXCEPTION_TERMINAL_TARGETS: readonly CommitmentStatus[] = ['canceled', 'refused'];
+const POLICY_EXCEPTION_TERMINAL_TARGETS: CommitmentStatus[] = ['canceled', 'refused'];
+
+export type RouteCommitment = {
+  commitmentId: string;
+  tenantId: string;
+  orgUnitId: string | null;
+  sourceType: string;
+  sourceId: string;
+  externalRef: string | null;
+  status: CommitmentStatus;
+  createdByUserId: string | null;
+  updatedByUserId: string | null;
+  terminalAtUtc: string | null;
+  terminalReason: string | null;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+};
+
+export type CommitmentTransitionAudit = {
+  transitionAuditId: string;
+  tenantId: string;
+  commitmentId: string;
+  actorId: string | null;
+  reason: string;
+  previousStatus: CommitmentStatus;
+  newStatus: CommitmentStatus;
+  policyExceptionCode: string | null;
+  occurredAtUtc: string;
+};
 
 export type CommitmentStateDescriptor = {
   status: CommitmentStatus;
   isTerminal: boolean;
-  availableTransitions: readonly CommitmentStatus[];
-  allowedWithPolicyExceptionTransitions: readonly CommitmentStatus[];
+  availableTransitions: CommitmentStatus[];
+  allowedWithPolicyExceptionTransitions: CommitmentStatus[];
 };
 
-export type CommitmentTransitionAllowed = {
+export type CommitmentTransitionAccepted = {
   ok: true;
   data: {
     previousStatus: CommitmentStatus;
@@ -45,22 +71,25 @@ export type CommitmentTransitionAllowed = {
 
 export type CommitmentTransitionRefused = {
   ok: false;
-  code: 'ROUTE_COMMITMENT_TERMINAL_STATE_LOCKED' | 'ROUTE_COMMITMENT_INVALID_TRANSITION';
+  code:
+    | 'ROUTE_COMMITMENT_INVALID_TRANSITION'
+    | 'ROUTE_COMMITMENT_TERMINAL_STATE_LOCKED';
   message: string;
   data: {
     currentStatus: CommitmentStatus;
     attemptedStatus: CommitmentStatus;
     isTerminal: boolean;
-    allowedTransitions: readonly CommitmentStatus[];
-    allowedWithPolicyExceptionTransitions: readonly CommitmentStatus[];
+    allowedTransitions: CommitmentStatus[];
+    allowedWithPolicyExceptionTransitions: CommitmentStatus[];
   };
 };
 
-export type CommitmentTransitionDecision = CommitmentTransitionAllowed | CommitmentTransitionRefused;
+export type CommitmentTransitionEvaluation =
+  | CommitmentTransitionAccepted
+  | CommitmentTransitionRefused;
 
 const buildStateDescriptor = (status: CommitmentStatus): CommitmentStateDescriptor => {
   const isTerminal = TERMINAL_COMMITMENT_STATUSES.has(status);
-
   return {
     status,
     isTerminal,
@@ -71,27 +100,25 @@ const buildStateDescriptor = (status: CommitmentStatus): CommitmentStateDescript
   };
 };
 
-export const describeCommitmentState = (status: CommitmentStatus): CommitmentStateDescriptor => {
-  return buildStateDescriptor(status);
-};
+export const describeCommitmentState = (status: CommitmentStatus): CommitmentStateDescriptor =>
+  buildStateDescriptor(status);
 
 export const isCommitmentStatus = (value: unknown): value is CommitmentStatus => {
   if (typeof value !== 'string') {
     return false;
   }
 
-  return COMMITMENT_STATUSES.includes(value as CommitmentStatus);
+  return (COMMITMENT_STATUSES as readonly string[]).includes(value);
 };
 
-export const isTerminalCommitmentStatus = (status: CommitmentStatus): boolean => {
-  return TERMINAL_COMMITMENT_STATUSES.has(status);
-};
+export const isTerminalCommitmentStatus = (status: CommitmentStatus): boolean =>
+  TERMINAL_COMMITMENT_STATUSES.has(status);
 
 export const listAllowedCommitmentTransitions = (
   currentStatus: CommitmentStatus,
   policyExceptionCode?: string | null,
-): readonly CommitmentStatus[] => {
-  if (isTerminalCommitmentStatus(currentStatus) && typeof policyExceptionCode === 'string' && policyExceptionCode.trim() !== '') {
+): CommitmentStatus[] => {
+  if (isTerminalCommitmentStatus(currentStatus) && policyExceptionCode) {
     return POLICY_EXCEPTION_TERMINAL_TARGETS;
   }
 
@@ -102,7 +129,7 @@ export const evaluateCommitmentTransition = (input: {
   currentStatus: CommitmentStatus;
   nextStatus: CommitmentStatus;
   policyExceptionCode?: string | null;
-}): CommitmentTransitionDecision => {
+}): CommitmentTransitionEvaluation => {
   const currentState = buildStateDescriptor(input.currentStatus);
   const policyExceptionCode = typeof input.policyExceptionCode === 'string'
     ? input.policyExceptionCode.trim()

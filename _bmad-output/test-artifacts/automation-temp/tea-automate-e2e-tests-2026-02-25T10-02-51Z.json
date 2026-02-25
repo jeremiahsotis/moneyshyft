@@ -1,0 +1,29 @@
+{
+  "success": true,
+  "subprocess": "e2e-tests",
+  "tests": [
+    {
+      "file": "/Users/jeremiahotis/projects/routeshyft/tests/e2e/platform/2-2-donor-self-service-pickup-intake-with-capacity-check.automate.spec.ts",
+      "content": "import { test, expect } from '../../support/fixtures/routeShyftStory22.fixture';\nimport { login } from '../../helpers/auth';\n\ntest.describe('Story 2-2 Donor Self-Service Pickup Intake with Capacity Check (Automate E2E Expansion)', () => {\n  test.skip('[P1] keeps submit disabled until donor intake required fields are complete @P1', async ({ page, story22Context }) => {\n    await login(page);\n\n    await page.goto(story22Context.paths.ui + '?tenantId=' + story22Context.tenantId + '&orgUnitId=' + story22Context.orgUnitId);\n\n    await expect(page.getByTestId('routeshyft-donor-intake-submit')).toBeDisabled();\n    await page.getByTestId('routeshyft-donor-intake-item-summary').fill('Sofa and lamp');\n    await page.getByTestId('routeshyft-donor-intake-window-start').fill('2026-02-27T14:00');\n    await page.getByTestId('routeshyft-donor-intake-window-end').fill('2026-02-27T16:00');\n    await expect(page.getByTestId('routeshyft-donor-intake-submit')).toBeEnabled();\n  });\n\n  test.skip('[P1] renders schedulable slot outcomes with next-step guidance and no refusal banner @P1', async ({ page, story22Context }) => {\n    await login(page);\n\n    const submitResponse = page.waitForResponse(\n      (response) => response.url().includes(story22Context.paths.resourceCollection) && response.request().method() === 'POST',\n    );\n\n    await page.goto(story22Context.paths.ui + '?tenantId=' + story22Context.tenantId + '&orgUnitId=' + story22Context.orgUnitId);\n    await page.getByTestId('routeshyft-donor-intake-submit').click();\n    await submitResponse;\n\n    await expect(page.getByTestId('routeshyft-donor-intake-slot-list')).toBeVisible();\n    await expect(page.getByTestId('routeshyft-donor-intake-next-steps')).toBeVisible();\n    await expect(page.getByTestId('routeshyft-donor-intake-refusal-banner')).toBeHidden();\n  });\n\n  test.skip('[P1] renders refusal alternatives and reason code when capacity rejects the intake @P1', async ({ page, story22Context }) => {\n    await login(page);\n\n    const submitResponse = page.waitForResponse(\n      (response) => response.url().includes(story22Context.paths.resourceCollection) && response.request().method() === 'POST',\n    );\n\n    await page.goto(story22Context.paths.ui + '?tenantId=' + story22Context.tenantId + '&orgUnitId=' + story22Context.orgUnitId + '&forceRefusal=true');\n    await page.getByTestId('routeshyft-donor-intake-submit').click();\n    await submitResponse;\n\n    await expect(page.getByTestId('routeshyft-donor-intake-refusal-banner')).toBeVisible();\n    await expect(page.getByTestId('routeshyft-donor-intake-refusal-code')).toHaveText(story22Context.refusalCode);\n    await expect(page.getByTestId('routeshyft-donor-intake-alternatives')).toBeVisible();\n  });\n\n  test.skip('[P2] prevents duplicate submissions when donor double-clicks submit during request in-flight @P2', async ({ page, story22Context }) => {\n    await login(page);\n\n    let submitCount = 0;\n    await page.route('**' + story22Context.paths.resourceCollection + '**', async (route) => {\n      if (route.request().method() === 'POST') {\n        submitCount += 1;\n      }\n      await route.continue();\n    });\n\n    await page.goto(story22Context.paths.ui + '?tenantId=' + story22Context.tenantId + '&orgUnitId=' + story22Context.orgUnitId);\n    const submitButton = page.getByTestId('routeshyft-donor-intake-submit');\n    await submitButton.dblclick();\n\n    await expect.poll(() => submitCount, { timeout: 5000 }).toBeLessThanOrEqual(1);\n  });\n});\n",
+      "description": "Story 2.2 E2E automation expansion for donor intake journey",
+      "priority_coverage": {
+        "P0": 0,
+        "P1": 3,
+        "P2": 1,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "story22Context",
+    "story22RequiredUiTestIds",
+    "networkRouteGuard"
+  ],
+  "knowledge_fragments_used": [
+    "selector-resilience",
+    "test-quality",
+    "playwright-cli"
+  ],
+  "test_count": 4,
+  "summary": "Generated 4 E2E expansion tests for story 2.2"
+}

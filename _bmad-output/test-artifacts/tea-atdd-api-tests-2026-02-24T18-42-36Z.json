@@ -1,0 +1,36 @@
+{
+  "success": true,
+  "subprocess": "atdd-api-tests",
+  "tests": [
+    {
+      "file": "tests/api/platform/2-2-donor-self-service-pickup-intake-with-capacity-check.atdd.api.spec.ts",
+      "content": "import { apiRequest } from '../../support/helpers/apiClient';\nimport { test, expect } from '../../support/fixtures/routeShyftStory22.fixture';\n\nfunction detailPath(resourceCollection: string, requestId: string): string {\n  return resourceCollection + '/' + requestId;\n}\n\ntest.describe('Story 2-2 Donor Self-Service Pickup Intake with Capacity Check (ATDD API RED)', () => {\n  test.skip('[P0] returns schedulable slots for eligible donor intake and capacity pass @P0', async ({ request, story22Context, story22Headers, story22HappyPayload }) => {\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: story22Context.paths.resourceCollection,\n      headers: story22Headers,\n      data: story22HappyPayload,\n    });\n\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: true,\n      code: story22Context.successCode,\n      data: {\n        requestId: expect.any(String),\n        status: story22Context.statusLabel,\n      },\n    });\n  });\n\n  test.skip('[P0] returns explicit refusal with structured alternatives when capacity fails @P0', async ({ request, story22Context, story22Headers, story22RefusalPayload }) => {\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: story22Context.paths.resourceCollection,\n      headers: story22Headers,\n      data: story22RefusalPayload,\n    });\n\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: false,\n      refusalType: 'business',\n      code: story22Context.refusalCode,\n      data: {\n        alternatives: expect.any(Array),\n        nextSteps: expect.anything(),\n      },\n    });\n  });\n\n  test.skip('[P0] creates and returns request-to-commitment linkage for accepted intake outcomes @P0', async ({ request, story22Context, story22Headers, story22HappyPayload }) => {\n    const createResponse = await apiRequest(request, {\n      method: 'POST',\n      path: story22Context.paths.resourceCollection,\n      headers: story22Headers,\n      data: story22HappyPayload,\n    });\n    const createBody = await createResponse.json();\n    const requestId = createBody?.data?.requestId ?? story22Context.requestId;\n\n    const response = await apiRequest(request, {\n      method: 'GET',\n      path: detailPath(story22Context.paths.resourceCollection, requestId),\n      headers: story22Headers,\n    });\n\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: true,\n      code: story22Context.linkageCode,\n      data: {\n        requestId,\n        commitmentId: expect.any(String),\n      },\n    });\n  });\n\n  test.skip('[P1] includes actionable next steps in both schedulable and refusal outcomes @P1', async ({ request, story22Context, story22Headers, story22RefusalPayload }) => {\n    const response = await apiRequest(request, {\n      method: 'POST',\n      path: story22Context.paths.resourceCollection,\n      headers: story22Headers,\n      data: story22RefusalPayload,\n    });\n\n    expect(response.status()).toBe(200);\n    const body = await response.json();\n    expect(body).toMatchObject({\n      ok: false,\n      code: story22Context.refusalCode,\n      data: {\n        nextSteps: expect.anything(),\n      },\n    });\n  });\n\n  test.skip('[P1] keeps envelope keys stable for donor intake success and refusal outcomes @P1', async ({ request, story22Context, story22Headers, story22HappyPayload, story22RefusalPayload }) => {\n    const successResponse = await apiRequest(request, {\n      method: 'POST',\n      path: story22Context.paths.resourceCollection,\n      headers: story22Headers,\n      data: story22HappyPayload,\n    });\n    const refusalResponse = await apiRequest(request, {\n      method: 'POST',\n      path: story22Context.paths.resourceCollection,\n      headers: story22Headers,\n      data: story22RefusalPayload,\n    });\n\n    expect(successResponse.status()).toBe(200);\n    expect(refusalResponse.status()).toBe(200);\n\n    const successBody = await successResponse.json();\n    const refusalBody = await refusalResponse.json();\n    const requiredKeys = ['ok', 'code', 'message', 'correlationId', 'tenantId'];\n\n    expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(successBody, key))).toBe(true);\n    expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(refusalBody, key))).toBe(true);\n  });\n});\n",
+      "description": "ATDD API tests for Story 2-2 Donor Self-Service Pickup Intake with Capacity Check (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Given a donor submits eligibility and item details, when capacity is evaluated, then the system returns schedulable slots or explicit refusal with alternatives.",
+        "Accepted requests create linked commitments.",
+        "Given a donor receives a schedulable or refusal outcome, when they review the result, then next steps and reasons are clearly visible in UI/API payloads."
+      ],
+      "priority_coverage": {
+        "P0": 3,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "routeShyftStory22.fixture.ts",
+    "routeShyftStory22Factory.ts"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns",
+    "test-quality"
+  ],
+  "test_count": 5,
+  "tdd_phase": "RED",
+  "summary": "Generated 5 FAILING API tests for Story 2-2"
+}

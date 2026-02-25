@@ -34,6 +34,17 @@ export type ConnectShyftNeighborScope = {
   orgUnitId: string;
 };
 
+export type ConnectShyftNeighborEditPolicy = {
+  path: string;
+  indicator: string | null;
+};
+
+export type ConnectShyftNeighborProvenance = {
+  orgUnitId: string;
+  actorUserId: string;
+  policyPath: string;
+};
+
 type ConnectShyftEnvelope = {
   ok?: boolean;
   code?: string;
@@ -43,6 +54,25 @@ type ConnectShyftEnvelope = {
     neighbors?: Partial<ConnectShyftNeighbor>[];
     scope?: Partial<ConnectShyftNeighborScope>;
     context?: Partial<ConnectShyftNeighborScope>;
+    editPolicy?: {
+      path?: string;
+      indicator?: string | null;
+    };
+    contextOverrideNotice?: string;
+    audit?: {
+      metadata?: {
+        org_unit_id?: string;
+        actor_user_id?: string;
+        policy_path?: string;
+      };
+    };
+    outbox?: {
+      metadata?: {
+        org_unit_id?: string;
+        actor_user_id?: string;
+        policy_path?: string;
+      };
+    };
     fieldErrors?: Array<{
       field?: string;
       reason?: string;
@@ -77,6 +107,8 @@ export type ConnectShyftNeighborResolveResult =
     code: string;
     neighbor: ConnectShyftNeighbor;
     scope: ConnectShyftNeighborScope | null;
+    editPolicy: ConnectShyftNeighborEditPolicy | null;
+    contextOverrideNotice: string | null;
   }
   | {
     ok: false;
@@ -98,6 +130,9 @@ export type ConnectShyftNeighborUpdateResult =
     code: string;
     neighbor: ConnectShyftNeighbor;
     scope: ConnectShyftNeighborScope | null;
+    editPolicy: ConnectShyftNeighborEditPolicy | null;
+    contextOverrideNotice: string | null;
+    provenance: ConnectShyftNeighborProvenance | null;
   }
   | {
     ok: false;
@@ -240,6 +275,73 @@ const parseScope = (payload: unknown): ConnectShyftNeighborScope | null => {
   };
 };
 
+const parseEditPolicy = (payload: unknown): ConnectShyftNeighborEditPolicy | null => {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const envelope = payload as ConnectShyftEnvelope;
+  const candidate = envelope.data?.editPolicy;
+  if (!candidate || typeof candidate !== 'object') {
+    return null;
+  }
+
+  const path = normalizeString(candidate.path);
+  if (!path) {
+    return null;
+  }
+
+  const indicatorCandidate = candidate.indicator;
+  return {
+    path,
+    indicator: typeof indicatorCandidate === 'string' && indicatorCandidate.trim().length > 0
+      ? indicatorCandidate.trim()
+      : null,
+  };
+};
+
+const parseContextOverrideNotice = (payload: unknown): string | null => {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const envelope = payload as ConnectShyftEnvelope;
+  const notice = envelope.data?.contextOverrideNotice;
+  if (typeof notice !== 'string') {
+    return null;
+  }
+
+  const normalized = notice.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const parseProvenance = (payload: unknown): ConnectShyftNeighborProvenance | null => {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const envelope = payload as ConnectShyftEnvelope;
+  const auditMetadata = envelope.data?.audit?.metadata;
+  const outboxMetadata = envelope.data?.outbox?.metadata;
+  const metadata = auditMetadata || outboxMetadata;
+  if (!metadata || typeof metadata !== 'object') {
+    return null;
+  }
+
+  const orgUnitId = normalizeString(metadata.org_unit_id);
+  const actorUserId = normalizeString(metadata.actor_user_id);
+  const policyPath = normalizeString(metadata.policy_path);
+  if (!orgUnitId || !actorUserId || !policyPath) {
+    return null;
+  }
+
+  return {
+    orgUnitId,
+    actorUserId,
+    policyPath,
+  };
+};
+
 const parseRefusalMessage = (payload: unknown, fallbackMessage: string): string => {
   if (!payload || typeof payload !== 'object') {
     return fallbackMessage;
@@ -376,6 +478,8 @@ export const fetchConnectShyftNeighborProfile = async (
       code: parseCode(response.data, 'CONNECTSHYFT_NEIGHBOR_RESOLVED'),
       neighbor,
       scope: parseScope(response.data),
+      editPolicy: parseEditPolicy(response.data),
+      contextOverrideNotice: parseContextOverrideNotice(response.data),
     };
   } catch (error: unknown) {
     const responseData = (error as { response?: { data?: unknown } })?.response?.data;
@@ -432,6 +536,9 @@ export const updateConnectShyftNeighborProfile = async (
       code: parseCode(response.data, 'CONNECTSHYFT_NEIGHBOR_UPDATED'),
       neighbor,
       scope: parseScope(response.data),
+      editPolicy: parseEditPolicy(response.data),
+      contextOverrideNotice: parseContextOverrideNotice(response.data),
+      provenance: parseProvenance(response.data),
     };
   } catch (error: unknown) {
     const responseData = (error as { response?: { data?: unknown } })?.response?.data;

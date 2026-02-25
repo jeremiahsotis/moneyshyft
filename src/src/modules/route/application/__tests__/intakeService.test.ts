@@ -1,4 +1,8 @@
-import { CommitmentService } from '../commitmentService';
+import {
+  CommitmentService,
+  CreateCommitmentCommand,
+  CreateCommitmentResult,
+} from '../commitmentService';
 import { IntakeService } from '../intakeService';
 import { InMemoryCommitmentRepository } from '../../infrastructure/commitmentRepository';
 import { InMemoryIntakeRequestRepository } from '../../infrastructure/intakeRequestRepository';
@@ -17,12 +21,12 @@ const basePayload = (): RouteIntakePayload => ({
 });
 
 class CommitmentAlwaysFailsService extends CommitmentService {
-  async createCommitment() {
+  async createCommitment(_input: CreateCommitmentCommand): Promise<CreateCommitmentResult> {
     return {
-      ok: false as const,
+      ok: false,
       code: 'ROUTE_COMMITMENT_PERSISTENCE_UNAVAILABLE',
       message: 'Commitment persistence is unavailable. Retry after route schema migration.',
-      refusalType: 'business' as const,
+      refusalType: 'business',
       httpStatus: 200,
     };
   }
