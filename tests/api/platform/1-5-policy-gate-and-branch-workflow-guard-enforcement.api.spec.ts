@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { randomUUID } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { test, expect } from '../../support/fixtures/policyWorkflowGuardStory15.fixture';
 import { runPolicyScriptInTempRepo } from '../../support/utils/policyScriptTestHarness';
@@ -343,6 +344,8 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
   test('[P0] automation-backed status transitions are single-winner under concurrency and keep sprint/story synchronized @P0', async ({
     story15Context,
   }) => {
+    const repoDir = join(__dirname, '../../artifacts', `1-5-concurrency-repo-${randomUUID()}`);
+    mkdirSync(repoDir, { recursive: true });
     const transitionScript = resolve(dirname(story15Context.policyScript), 'story-status-transition.sh');
     const result = runStatusTransitionConcurrencyHarness(transitionScript);
     const successCount = result.statuses.filter((status) => status === 0).length;
