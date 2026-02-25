@@ -4,7 +4,11 @@ import { responseEnvelope } from '../../../../platform/middleware/responseEnvelo
 import { CommitmentService } from '../../../../modules/route/application/commitmentService';
 import { IntakeService } from '../../../../modules/route/application/intakeService';
 import { InMemoryCommitmentRepository } from '../../../../modules/route/infrastructure/commitmentRepository';
-import { InMemoryIntakeRequestRepository } from '../../../../modules/route/infrastructure/intakeRequestRepository';
+import {
+  InMemoryIntakeRequestRepository,
+  IntakeRequestRepository,
+  RouteIntakeRecord,
+} from '../../../../modules/route/infrastructure/intakeRequestRepository';
 import { createRouteRouter } from '../route';
 
 jest.mock('../../../../middleware/auth', () => ({
@@ -38,7 +42,7 @@ const basePayload = {
 };
 
 describe('route cashier-assisted intake api contract', () => {
-  const buildApp = (): express.Express => {
+  const buildApp = (requestRepository?: IntakeRequestRepository): express.Express => {
     const app = express();
     app.use(express.json());
     app.use(responseEnvelope);
@@ -46,13 +50,32 @@ describe('route cashier-assisted intake api contract', () => {
     const commitmentService = new CommitmentService(new InMemoryCommitmentRepository());
     const intakeService = new IntakeService(
       commitmentService,
-      new InMemoryIntakeRequestRepository(),
+      requestRepository || new InMemoryIntakeRequestRepository(),
     );
 
     app.use('/api/v1/route', createRouteRouter(commitmentService, intakeService));
 
     return app;
   };
+
+  const unresolvedRecord = (): RouteIntakeRecord => ({
+    requestId: 'request-unresolved-api-1',
+    tenantId: 'tenant-route-intake-1',
+    orgUnitId: 'org-route-intake-1',
+    channel: 'cashier',
+    requestedAtUtc: '2026-02-26T14:00:00.000Z',
+    requestedWindowStartUtc: '2026-02-27T14:00:00.000Z',
+    requestedWindowEndUtc: '2026-02-27T16:00:00.000Z',
+    scheduleMode: 'pickup',
+    notes: 'unresolved linkage via api test',
+    status: 'Accepted',
+    requestLifecycleStatus: 'pending',
+    commitmentId: null,
+    refusal: null,
+    createdByUserId: 'user-route-intake-1',
+    createdAtUtc: '2026-02-20T14:00:00.000Z',
+    updatedAtUtc: '2026-02-20T14:00:00.000Z',
+  });
 
   it('applies donor-equivalent validation and capacity rules for cashier-assisted intake', async () => {
     const app = buildApp();
@@ -260,6 +283,76 @@ describe('route cashier-assisted intake api contract', () => {
       ok: false,
       code: 'ROUTESHYFT_INTAKE_REQUEST_NOT_FOUND',
       refusalType: 'business',
+    });
+  });
+
+  it('exposes reconciliation queue with lifecycle status and operator actions', async () => {
+    const requestRepository: IntakeRequestRepository = {
+      createAccepted: jest.fn(),
+      createRefused: jest.fn(),
+      getById: jest.fn(),
+      listUnresolved: jest.fn(async () => [unresolvedRecord()]),
+    } as never;
+    const app = buildApp(requestRepository);
+
+    const response = await request(app)
+      .get('/api/v1/route/intake/reconciliation/unresolved?staleMinutes=60');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_INTAKE_RECONCILIATION_QUEUE',
+      data: {
+        staleThresholdMinutes: 60,
+        guardrailStatus: 'action_required',
+        items: [
+          expect.objectContaining({
+            requestId: 'request-unresolved-api-1',
+            requestLifecycleStatus: 'pending',
+            issueCode: 'ROUTESHYFT_REQUEST_TERMINAL_STATE_MISSING',
+            issueSummary: 'Request has not reached a valid terminal lifecycle state.',
+            reconciliationActions: [
+              'Link request to a valid commitment or record explicit cancellation/refusal.',
+              'Reprocess intake if linkage prerequisites were missing at submission time.',
+            ],
+            stale: true,
+          }),
+        ],
+      },
+    });
+  });
+
+  it('maintains committed request terminal state while linked commitment transitions', async () => {
+    const app = buildApp();
+
+    const createResponse = await request(app)
+      .post('/api/v1/route/intake/cashier-requests')
+      .send(basePayload);
+
+    expect(createResponse.status).toBe(200);
+    const requestId = createResponse.body?.data?.requestId as string;
+    const commitmentId = createResponse.body?.data?.commitmentId as string;
+
+    await request(app)
+      .post(`/api/v1/route/commitments/${commitmentId}/transitions`)
+      .send({
+        nextStatus: 'in_progress',
+        reason: 'Dispatch started from integration test',
+      })
+      .expect(200);
+
+    const detailResponse = await request(app)
+      .get(`/api/v1/route/intake/cashier-requests/${requestId}`);
+
+    expect(detailResponse.status).toBe(200);
+    expect(detailResponse.body).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_CASHIER_INTAKE_COMMITMENT_LINKED',
+      data: {
+        requestId,
+        requestLifecycleStatus: 'committed',
+        commitmentLifecycleStatus: 'in_progress',
+      },
     });
   });
 });

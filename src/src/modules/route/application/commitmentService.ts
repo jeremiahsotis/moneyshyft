@@ -1,3 +1,4 @@
+import type { Knex } from 'knex';
 import {
   type CommitmentStatus,
   describeCommitmentState,
@@ -5,7 +6,7 @@ import {
   isCommitmentStatus,
 } from '../domain/commitmentLifecycle';
 import type { CommitmentRepository } from '../infrastructure/commitmentRepository';
-import { InMemoryCommitmentRepository } from '../infrastructure/commitmentRepository';
+import { InMemoryCommitmentRepository, KnexCommitmentRepository } from '../infrastructure/commitmentRepository';
 
 type RefusalType = 'business' | 'client' | 'security';
 
@@ -74,11 +75,13 @@ export type CreateCommitmentCommand = {
   orgUnitId?: string | null;
   externalRef?: string | null;
   initialStatus?: CommitmentStatus;
+  dbClient?: Knex | Knex.Transaction;
 };
 
 export type ResolveCommitmentCommand = {
   tenantId: string;
   commitmentId: string;
+  dbClient?: Knex | Knex.Transaction;
 };
 
 export type TransitionCommitmentCommand = {
@@ -89,6 +92,7 @@ export type TransitionCommitmentCommand = {
   reason: string;
   policyExceptionCode?: string | null;
   allowPolicyException?: boolean;
+  dbClient?: Knex | Knex.Transaction;
 };
 
 const normalizeNonEmptyString = (value: unknown): string => {
@@ -127,6 +131,10 @@ const isMissingPersistenceError = (error: unknown): boolean => {
 
 export class CommitmentService {
   constructor(private readonly repository: CommitmentRepository = new InMemoryCommitmentRepository()) {}
+
+  supportsExternalTransaction(): boolean {
+    return this.repository instanceof KnexCommitmentRepository;
+  }
 
   async createCommitment(input: CreateCommitmentCommand): Promise<CreateCommitmentResult> {
     const sourceType = normalizeNonEmptyString(input.sourceType);
@@ -171,7 +179,7 @@ export class CommitmentService {
         externalRef: normalizeNonEmptyString(input.externalRef || null) || null,
         actorId: normalizeNonEmptyString(input.actorId || null) || null,
         initialStatus,
-      });
+      }, input.dbClient);
 
       return {
         ok: true,
@@ -197,7 +205,11 @@ export class CommitmentService {
 
   async resolveCommitment(input: ResolveCommitmentCommand): Promise<ResolveCommitmentResult> {
     try {
-      const commitment = await this.repository.getCommitmentById(input.tenantId, input.commitmentId);
+      const commitment = await this.repository.getCommitmentById(
+        input.tenantId,
+        input.commitmentId,
+        input.dbClient,
+      );
       if (!commitment) {
         return toRefusal(
           'ROUTE_COMMITMENT_NOT_FOUND',
@@ -261,7 +273,11 @@ export class CommitmentService {
     }
 
     try {
-      const existing = await this.repository.getCommitmentById(input.tenantId, input.commitmentId);
+      const existing = await this.repository.getCommitmentById(
+        input.tenantId,
+        input.commitmentId,
+        input.dbClient,
+      );
       if (!existing) {
         return toRefusal(
           'ROUTE_COMMITMENT_NOT_FOUND',
@@ -296,7 +312,7 @@ export class CommitmentService {
         previousStatus: existing.status,
         newStatus: transitionDecision.data.newStatus,
         policyExceptionCode,
-      });
+      }, input.dbClient);
 
       if (!persisted.ok) {
         if (persisted.reason === 'COMMITMENT_NOT_FOUND') {
@@ -306,7 +322,11 @@ export class CommitmentService {
           );
         }
 
-        const current = await this.repository.getCommitmentById(input.tenantId, input.commitmentId);
+        const current = await this.repository.getCommitmentById(
+          input.tenantId,
+          input.commitmentId,
+          input.dbClient,
+        );
         if (!current) {
           return toRefusal(
             'ROUTE_COMMITMENT_NOT_FOUND',

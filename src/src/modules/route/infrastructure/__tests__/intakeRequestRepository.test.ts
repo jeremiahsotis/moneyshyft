@@ -74,4 +74,21 @@ describe('route intake request repository', () => {
       status: 'Accepted',
     });
   });
+
+  it('requires commitment linkage for accepted request persistence', async () => {
+    const repository = new InMemoryIntakeRequestRepository();
+
+    await expect(repository.createAccepted({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      channel: 'cashier',
+      requestedAtUtc: '2026-02-26T14:00:00.000Z',
+      requestedWindowStartUtc: '2026-02-27T14:00:00.000Z',
+      requestedWindowEndUtc: '2026-02-27T16:00:00.000Z',
+      scheduleMode: 'pickup',
+      notes: 'missing commitment linkage test',
+      commitmentId: '',
+      createdByUserId: 'user-1',
+    })).rejects.toThrow('ROUTE_REQUEST_COMMITMENT_LINKAGE_REQUIRED');
+  });
 });

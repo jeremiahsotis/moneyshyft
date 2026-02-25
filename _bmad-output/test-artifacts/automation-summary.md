@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-25T13:10:14Z'
+lastSaved: '2026-02-25T14:03:59Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -2171,11 +2171,19 @@ lastSaved: '2026-02-25T13:10:14Z'
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story c.3 AC coverage to ATDD + automate evidence.
 
+<<<<<<< HEAD
 ## Story c.4 Run - Step 1: Preflight and Context
 
 ### Framework Verification
 - Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
 - Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+=======
+## Story 2.4 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/routeshyft/package.json`:
+>>>>>>> b59e969 (chore: add Story 2.4 automate test slice)
   - `@playwright/test`
   - `playwright`
 - Result: Framework readiness check passed.
@@ -2183,6 +2191,7 @@ lastSaved: '2026-02-25T13:10:14Z'
 ### Execution Mode
 - Mode selected: **BMad-Integrated**.
 - Basis:
+<<<<<<< HEAD
   - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/c-4-claim-takeover-and-close-lifecycle-actions.md`
   - Existing ATDD files found for Story c.4:
     - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.api.spec.ts`
@@ -2196,6 +2205,21 @@ lastSaved: '2026-02-25T13:10:14Z'
   - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryC4.fixture.ts`
 - Implementation surface reviewed:
   - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts`
+=======
+  - Story artifact loaded: `/Users/jeremiahotis/projects/routeshyft/_bmad-output/implementation-artifacts/2-4-request-to-commitment-linkage-and-terminal-enforcement.md`.
+
+### Context Loaded
+- Planning and requirements artifacts loaded:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/epics.md`
+  - `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Functional_Requirements.md`
+  - `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Architecture_Document.md`
+- Existing test baseline loaded:
+  - `/Users/jeremiahotis/projects/routeshyft/tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.api.spec.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.spec.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/support/fixtures/routeShyftStory24.fixture.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/support/factories/routeShyftStory24Factory.ts`
+- Route API surface reviewed in `/Users/jeremiahotis/projects/routeshyft/src/src/routes/api/v1/route.ts`.
+>>>>>>> b59e969 (chore: add Story 2.4 automate test slice)
 
 ### TEA Config Flags
 - `tea_use_playwright_utils: true`
@@ -2205,6 +2229,7 @@ lastSaved: '2026-02-25T13:10:14Z'
 - Core:
   - `test-levels-framework.md`
   - `test-priorities-matrix.md`
+<<<<<<< HEAD
   - `test-quality.md`
   - `ci-burn-in.md`
 - Additional generation references:
@@ -2268,12 +2293,95 @@ lastSaved: '2026-02-25T13:10:14Z'
   - `/tmp/tea-automate-api-tests-2026-02-25T13-10-14Z.json`
 - E2E subprocess output target:
   - `/tmp/tea-automate-e2e-tests-2026-02-25T13-10-14Z.json`
+=======
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils + automation:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+
+### Browser Exploration Status
+- `playwright-cli` is not installed in this environment (`command not found`).
+- Step 2 will use code/artifact analysis fallback for target discovery.
+
+## Story 2.4 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `tea_browser_automation` is `auto`, but `playwright-cli` is unavailable (`command not found`).
+- Fallback used: code + artifact analysis (no browser session created).
+
+### Acceptance Criteria to Target Mapping
+- AC1: every request must end in explicit terminal status (`refused`, `cancelled`, or linked commitment terminalization path).
+- AC2: linked commitments keep independent lifecycle transitions after request terminalization.
+- AC3: reconciliation actions and lifecycle state visibility must be present in API and operator UI contracts.
+
+### ATDD Duplication Control
+- Existing RED ATDD files retained and unchanged:
+  - `tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.api.spec.ts`
+  - `tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.spec.ts`
+- Automation expansion scope focuses on additional hardening scenarios:
+  - undefined terminal-state rejection guardrails
+  - refusal-path non-leakage (`commitmentId` absent when refused)
+  - post-terminal commitment transition independence checks
+  - cross-tenant refusal/no-leakage checks
+
+### Selected Test Levels
+- **API** (primary): terminal-state policy, linkage semantics, refusal/no-leakage, independent commitment transitions.
+- **E2E** (secondary): operator reconciliation journey and lifecycle visibility contract.
+
+### Priority Assignment
+- P0:
+  - terminal-state enforcement and canonical linkage behavior
+  - independent commitment transition behavior after request terminalization
+- P1:
+  - refusal reconciliation metadata + no-linkage leakage
+  - cross-tenant refusal/no-leakage behavior
+  - lifecycle UI test-id contract and reconciliation affordances
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
+- Scope: `critical-paths`
+- Implementation readiness finding:
+  - API route `/api/v1/route/requests` is not present in `/src/src/routes/api/v1/route.ts`.
+  - UI route `/app/route/requests` selectors/views are not present in `/frontend/src`.
+  - Generated automate tests will be `test.fixme`-guarded until story implementation lands.
+
+## Story 2.4 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-02-25T14-02-37Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-02-25T14-02-37Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-02-25T14-02-37Z.json`
+>>>>>>> b59e969 (chore: add Story 2.4 automate test slice)
 - Execution mode:
   - `PARALLEL (API + E2E)`
 
 ### Completion Verification
+<<<<<<< HEAD
 - API subprocess status: `success: true`, `test_count: 7`
 - E2E subprocess status: `success: true`, `test_count: 7`
+=======
+- API subprocess status: `success: true`, `test_count: 6`
+- E2E subprocess status: `success: true`, `test_count: 3`
+>>>>>>> b59e969 (chore: add Story 2.4 automate test slice)
 - Both output files present and JSON-valid.
 
 ### Performance Report
@@ -2281,6 +2389,7 @@ lastSaved: '2026-02-25T13:10:14Z'
 - Sequential equivalent would require two independent generation passes.
 - Performance gain target met: `~50% faster than sequential`.
 
+<<<<<<< HEAD
 ## Story c.4 Run - Step 3C: Aggregate Test Generation Results
 
 ### Files Written to Disk
@@ -2318,11 +2427,51 @@ lastSaved: '2026-02-25T13:10:14Z'
   - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-25T13-10-14Z.json`
 
 ## Story c.4 Run - Step 4: Validate and Summarize
+=======
+## Story 2.4 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts`
+- `tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper infrastructure:
+  - `routeShyftStory24.fixture`
+  - `routeShyftStory24Factory`
+  - `apiRequest`
+  - `login`
+- No new shared fixture files required for this story slice.
+
+### Summary Metrics
+- Total tests generated: `9`
+  - API tests: `6` (1 file)
+  - E2E tests: `3` (1 file)
+- Priority coverage:
+  - P0: `3`
+  - P1: `6`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-25T14-02-37Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-02-25T14-02-37Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-25T14-02-37Z.json`
+  - `/tmp/tea-automate-summary-2026-02-25T14-02-37Z.json`
+- Persisted under test artifacts:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-25T14-02-37Z.json`
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-25T14-02-37Z.json`
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-25T14-02-37Z.json`
+
+## Story 2.4 Run - Step 4: Validate and Summarize
+>>>>>>> b59e969 (chore: add Story 2.4 automate test slice)
 
 ### Validation Results
 - Framework readiness: passed.
 - Coverage mapping by AC and priority: passed.
 - Generated spec parse/discovery validation:
+<<<<<<< HEAD
   - `npx playwright test --list tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts`
   - Result: passed (`14` tests discovered in `2` files).
 - Quality checks on generated files:
@@ -2350,3 +2499,44 @@ lastSaved: '2026-02-25T13:10:14Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story c.4 AC coverage to ATDD + automate evidence.
+=======
+  - `npx playwright test --list tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
+  - Result: passed (`9` tests discovered in `2` files).
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) detected.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
+  - no `try/catch` flow-control anti-pattern detected.
+  - priority tags (`@P0`, `@P1`) present for selective execution.
+- CLI session cleanup:
+  - no CLI session created (`playwright-cli` unavailable), therefore no orphaned browser sessions.
+- Temp artifacts storage:
+  - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-temp`.
+
+### Coverage Summary
+- API coverage file:
+  - `tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts`
+  - `6` tests (`P0: 3`, `P1: 3`)
+- E2E coverage file:
+  - `tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
+  - `3` tests (`P1: 3`)
+- Total generated tests: `9`
+
+### Key Assumptions
+- Story 2.4 contract endpoints will be implemented as specified in story artifacts:
+  - `POST /api/v1/route/requests`
+  - `GET /api/v1/route/requests/:requestId`
+- Commitment transition endpoint remains available for lifecycle independence checks:
+  - `POST /api/v1/route/commitments/:commitmentId/transitions`
+- Story 2.4 operator UI route and test-id contract will be implemented:
+  - `/app/route/requests`
+  - `routeshyft-request-*` lifecycle/reconciliation test ids from `routeShyftStory24Factory`.
+
+### Risks
+- Current backend route surface does not expose `/api/v1/route/requests` endpoints; generated API automate tests are intentionally `test.fixme`.
+- Current frontend route/view surface does not expose `/app/route/requests`; generated E2E automate tests are intentionally `test.fixme`.
+- Until Story 2.4 implementation lands, these tests provide executable contract intent rather than green runtime validation.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality scoring and maintainability checks.
+- `[TR] Trace Requirements` to map Story 2.4 AC coverage to ATDD + automate evidence.
+>>>>>>> b59e969 (chore: add Story 2.4 automate test slice)

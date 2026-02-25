@@ -65,7 +65,7 @@ development_status:
   2-1-commitment-domain-model-and-transition-rules: ready-for-dev
   2-2-donor-self-service-pickup-intake-with-capacity-check: ready-for-dev
   2-3-cashier-assisted-intake-and-voucher-delivery-scheduling: done
-  2-4-request-to-commitment-linkage-and-terminal-enforcement: ready-for-dev
+  2-4-request-to-commitment-linkage-and-terminal-enforcement: done
   2-5-refusal-outcomes-with-structured-alternatives: ready-for-dev
   2-6-canonical-timezone-processing-across-intake-and-scheduling: ready-for-dev
   epic-2-retrospective: optional
