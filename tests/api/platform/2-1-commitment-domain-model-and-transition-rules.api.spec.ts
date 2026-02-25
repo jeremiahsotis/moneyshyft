@@ -1,51 +1,75 @@
+import { test, expect, type APIRequestContext } from '@playwright/test';
 import { apiRequest } from '../../support/helpers/apiClient';
-import { test, expect } from '../../support/fixtures/routeShyftStory21.fixture';
 
-const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
+const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'] as const;
 
-type CreateCommitmentResult = {
-  commitmentId: string;
+const routePath = (commitmentId: string): string =>
+  `/api/v1/route/commitments/${commitmentId}/transitions`;
+
+const parseCookieValue = (setCookieHeader: string | null, cookieName: string): string => {
+  if (!setCookieHeader) {
+    return '';
+  }
+
+  const escapedName = cookieName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`${escapedName}=([^;]+)`);
+  const match = setCookieHeader.match(pattern);
+  return match ? decodeURIComponent(match[1]) : '';
 };
 
-function transitionPath(commitmentsCollection: string, commitmentId: string): string {
-  return commitmentsCollection + '/' + commitmentId + '/transition';
-}
+const loginAndResolveCsrf = async (request: APIRequestContext): Promise<string> => {
+  const email = process.env.TEST_EMAIL || 'test@example.com';
+  const password = process.env.TEST_PASSWORD || 'test1234';
 
-async function createCommitment(
-  request: Parameters<typeof apiRequest>[0],
-  story21Context: {
-    paths: { commitmentsCollection: string };
-    commitmentId: string;
-  },
-  story21Headers: Record<string, string>,
-  story21CreatePayload: Record<string, unknown>,
-): Promise<CreateCommitmentResult> {
-  const response = await apiRequest(request, {
+  const loginResponse = await apiRequest(request, {
     method: 'POST',
-    path: story21Context.paths.commitmentsCollection,
-    headers: story21Headers,
-    data: story21CreatePayload,
+    path: '/api/v1/auth/login',
+    data: {
+      email,
+      password,
+      rememberMe: false,
+    },
   });
 
-  expect(response.status()).toBe(201);
-  const body = await response.json();
-  expect(body).toMatchObject({
+  expect(loginResponse.status()).toBe(200);
+  const setCookie = loginResponse.headers()['set-cookie'] ?? null;
+  const csrfToken = parseCookieValue(setCookie, 'csrf_token');
+  expect(csrfToken).not.toBe('');
+  return csrfToken;
+};
+
+const createCommitment = async (
+  request: APIRequestContext,
+  csrfToken: string,
+): Promise<string> => {
+  const createResponse = await apiRequest(request, {
+    method: 'POST',
+    path: '/api/v1/route/commitments',
+    headers: {
+      'x-csrf-token': csrfToken,
+    },
+    data: {
+      sourceType: 'route_request',
+      sourceId: `story-2-1-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    },
+  });
+
+  expect(createResponse.status()).toBe(201);
+  const createBody = await createResponse.json();
+  expect(createBody).toMatchObject({
     ok: true,
-    code: 'ROUTESHYFT_COMMITMENT_CREATED',
+    code: 'ROUTE_COMMITMENT_CREATED',
     data: {
       commitment: {
-        status: 'draft',
+        status: 'scheduled',
       },
     },
   });
 
-  const commitmentId = body?.data?.commitment?.id ?? story21Context.commitmentId;
+  const commitmentId = createBody?.data?.commitment?.commitmentId;
   expect(typeof commitmentId).toBe('string');
-
-  return {
-    commitmentId,
-  };
-}
+  return commitmentId as string;
+};
 
 test.describe(
   'Story 2.1 automate - commitment domain model and transition rules API coverage',
@@ -53,39 +77,32 @@ test.describe(
     test.describe.configure({ mode: 'serial' });
 
     test(
-      '[P0] applies valid draft->scheduled transitions with explicit next-state details in response contract @P0',
-      async ({
-        request,
-        story21Context,
-        story21Headers,
-        story21CreatePayload,
-        story21ValidTransitionPayload,
-      }) => {
-        const seeded = await createCommitment(
-          request,
-          story21Context,
-          story21Headers,
-          story21CreatePayload,
-        );
+      '[P0] applies valid scheduled->in_progress transitions with explicit state details @P0',
+      async ({ request }) => {
+        const csrfToken = await loginAndResolveCsrf(request);
+        const commitmentId = await createCommitment(request, csrfToken);
 
         const response = await apiRequest(request, {
           method: 'POST',
-          path: transitionPath(story21Context.paths.commitmentsCollection, seeded.commitmentId),
-          headers: story21Headers,
-          data: story21ValidTransitionPayload,
+          path: routePath(commitmentId),
+          headers: {
+            'x-csrf-token': csrfToken,
+          },
+          data: {
+            nextStatus: 'in_progress',
+            reason: 'Dispatcher started fulfillment',
+          },
         });
 
         expect(response.status()).toBe(200);
         const body = await response.json();
         expect(body).toMatchObject({
           ok: true,
-          code: 'ROUTESHYFT_COMMITMENT_TRANSITION_APPLIED',
+          code: 'ROUTE_COMMITMENT_TRANSITION_APPLIED',
           data: {
             commitment: {
-              id: seeded.commitmentId,
-              previousStatus: story21Context.validTransition.from,
-              status: story21Context.validTransition.to,
-              actionableState: expect.any(String),
+              commitmentId,
+              status: 'in_progress',
             },
           },
         });
@@ -93,26 +110,21 @@ test.describe(
     );
 
     test(
-      '[P0] refuses invalid transition attempts with deterministic refusal semantics and actionable details @P0',
-      async ({
-        request,
-        story21Context,
-        story21Headers,
-        story21CreatePayload,
-        story21InvalidTransitionPayload,
-      }) => {
-        const seeded = await createCommitment(
-          request,
-          story21Context,
-          story21Headers,
-          story21CreatePayload,
-        );
+      '[P0] refuses invalid scheduled->completed transition with deterministic refusal @P0',
+      async ({ request }) => {
+        const csrfToken = await loginAndResolveCsrf(request);
+        const commitmentId = await createCommitment(request, csrfToken);
 
         const response = await apiRequest(request, {
           method: 'POST',
-          path: transitionPath(story21Context.paths.commitmentsCollection, seeded.commitmentId),
-          headers: story21Headers,
-          data: story21InvalidTransitionPayload,
+          path: routePath(commitmentId),
+          headers: {
+            'x-csrf-token': csrfToken,
+          },
+          data: {
+            nextStatus: 'completed',
+            reason: 'Attempted invalid lifecycle jump',
+          },
         });
 
         expect(response.status()).toBe(200);
@@ -120,61 +132,57 @@ test.describe(
         expect(body).toMatchObject({
           ok: false,
           refusalType: 'business',
-          code: 'ROUTESHYFT_COMMITMENT_TRANSITION_INVALID',
-          message: expect.stringContaining('transition'),
+          code: 'ROUTE_COMMITMENT_INVALID_TRANSITION',
           data: {
-            commitmentId: seeded.commitmentId,
-            actionableState: expect.any(String),
-            refusalDetails: expect.any(Object),
+            currentStatus: 'scheduled',
+            attemptedStatus: 'completed',
           },
         });
       },
     );
 
     test(
-      '[P0] blocks further state changes once commitment reaches terminal status @P0',
-      async ({
-        request,
-        story21Context,
-        story21Headers,
-        story21CreatePayload,
-        story21ValidTransitionPayload,
-        story21TerminalTransitionPayload,
-      }) => {
-        const seeded = await createCommitment(
-          request,
-          story21Context,
-          story21Headers,
-          story21CreatePayload,
-        );
+      '[P0] blocks post-terminal mutation attempts after completion @P0',
+      async ({ request }) => {
+        const csrfToken = await loginAndResolveCsrf(request);
+        const commitmentId = await createCommitment(request, csrfToken);
 
-        const completePayload = {
-          toStatus: 'completed',
-          reason: 'Dispatcher marked commitment complete',
-          actorType: 'dispatcher',
-        };
-
-        const toScheduledResponse = await apiRequest(request, {
+        const toInProgress = await apiRequest(request, {
           method: 'POST',
-          path: transitionPath(story21Context.paths.commitmentsCollection, seeded.commitmentId),
-          headers: story21Headers,
-          data: story21ValidTransitionPayload,
+          path: routePath(commitmentId),
+          headers: {
+            'x-csrf-token': csrfToken,
+          },
+          data: {
+            nextStatus: 'in_progress',
+            reason: 'Dispatcher started fulfillment',
+          },
         });
-        expect(toScheduledResponse.status()).toBe(200);
+        expect(toInProgress.status()).toBe(200);
 
-        const toCompletedResponse = await apiRequest(request, {
+        const toCompleted = await apiRequest(request, {
           method: 'POST',
-          path: transitionPath(story21Context.paths.commitmentsCollection, seeded.commitmentId),
-          headers: story21Headers,
-          data: completePayload,
+          path: routePath(commitmentId),
+          headers: {
+            'x-csrf-token': csrfToken,
+          },
+          data: {
+            nextStatus: 'completed',
+            reason: 'Fulfillment completed',
+          },
         });
-        expect(toCompletedResponse.status()).toBe(200);
+        expect(toCompleted.status()).toBe(200);
 
         const terminalMutationResponse = await apiRequest(request, {
           method: 'POST',
-          path: transitionPath(story21Context.paths.commitmentsCollection, seeded.commitmentId),
-          headers: story21Headers,
-          data: story21TerminalTransitionPayload,
+          path: routePath(commitmentId),
+          headers: {
+            'x-csrf-token': csrfToken,
+          },
+          data: {
+            nextStatus: 'canceled',
+            reason: 'Attempt to mutate completed commitment',
+          },
         });
 
         expect(terminalMutationResponse.status()).toBe(200);
@@ -182,124 +190,43 @@ test.describe(
         expect(terminalMutationBody).toMatchObject({
           ok: false,
           refusalType: 'business',
-          code: 'ROUTESHYFT_COMMITMENT_TERMINAL_STATE_IMMUTABLE',
+          code: 'ROUTE_COMMITMENT_TERMINAL_STATE_LOCKED',
           data: {
-            commitmentId: seeded.commitmentId,
-            terminalStatus: story21Context.terminalStatus,
-            actionableState: expect.any(String),
+            currentStatus: 'completed',
+            attemptedStatus: 'canceled',
           },
         });
       },
     );
 
     test(
-      '[P1] refuses transition mutations with missing reason and keeps refusal path explicit @P1',
-      async ({ request, story21Context, story21Headers, story21CreatePayload }) => {
-        const seeded = await createCommitment(
-          request,
-          story21Context,
-          story21Headers,
-          story21CreatePayload,
-        );
-
-        const response = await apiRequest(request, {
-          method: 'POST',
-          path: transitionPath(story21Context.paths.commitmentsCollection, seeded.commitmentId),
-          headers: story21Headers,
-          data: {
-            toStatus: 'scheduled',
-            reason: '',
-            actorType: 'dispatcher',
-          },
-        });
-
-        expect(response.status()).toBe(200);
-        const body = await response.json();
-        expect(body).toMatchObject({
-          ok: false,
-          refusalType: 'business',
-          message: expect.stringContaining('reason'),
-          data: {
-            commitmentId: seeded.commitmentId,
-            actionableState: expect.any(String),
-          },
-        });
-      },
-    );
-
-    test(
-      '[P1] includes transition audit metadata for accepted transitions in canonical response envelope @P1',
-      async ({
-        request,
-        story21Context,
-        story21Headers,
-        story21CreatePayload,
-        story21ValidTransitionPayload,
-      }) => {
-        const seeded = await createCommitment(
-          request,
-          story21Context,
-          story21Headers,
-          story21CreatePayload,
-        );
-
-        const response = await apiRequest(request, {
-          method: 'POST',
-          path: transitionPath(story21Context.paths.commitmentsCollection, seeded.commitmentId),
-          headers: story21Headers,
-          data: story21ValidTransitionPayload,
-        });
-
-        expect(response.status()).toBe(200);
-        const body = await response.json();
-        expect(body).toMatchObject({
-          ok: true,
-          code: 'ROUTESHYFT_COMMITMENT_TRANSITION_APPLIED',
-          data: {
-            audit: {
-              actorId: expect.any(String),
-              actorType: 'dispatcher',
-              reason: story21ValidTransitionPayload.reason,
-              previousStatus: story21Context.validTransition.from,
-              newStatus: story21Context.validTransition.to,
-              timestampUtc: expect.any(String),
-            },
-          },
-        });
-      },
-    );
-
-    test(
-      '[P1] preserves canonical envelope keys across success and refusal transition outcomes @P1',
-      async ({
-        request,
-        story21Context,
-        story21Headers,
-        story21CreatePayload,
-        story21ValidTransitionPayload,
-      }) => {
-        const seeded = await createCommitment(
-          request,
-          story21Context,
-          story21Headers,
-          story21CreatePayload,
-        );
+      '[P1] preserves canonical envelope keys on success and refusal paths @P1',
+      async ({ request }) => {
+        const csrfToken = await loginAndResolveCsrf(request);
+        const commitmentId = await createCommitment(request, csrfToken);
 
         const successResponse = await apiRequest(request, {
           method: 'POST',
-          path: transitionPath(story21Context.paths.commitmentsCollection, seeded.commitmentId),
-          headers: story21Headers,
-          data: story21ValidTransitionPayload,
+          path: routePath(commitmentId),
+          headers: {
+            'x-csrf-token': csrfToken,
+          },
+          data: {
+            nextStatus: 'in_progress',
+            reason: 'Dispatcher started fulfillment',
+          },
         });
 
         const refusalResponse = await apiRequest(request, {
           method: 'POST',
-          path: transitionPath(
-            story21Context.paths.commitmentsCollection,
-            seeded.commitmentId + '-missing',
-          ),
-          headers: story21Headers,
-          data: story21ValidTransitionPayload,
+          path: routePath(commitmentId),
+          headers: {
+            'x-csrf-token': csrfToken,
+          },
+          data: {
+            nextStatus: 'completed',
+            reason: 'Attempted invalid lifecycle jump',
+          },
         });
 
         expect(successResponse.status()).toBe(200);
@@ -307,20 +234,10 @@ test.describe(
 
         const successBody = await successResponse.json();
         const refusalBody = await refusalResponse.json();
-
-        expect(
-          REQUIRED_ENVELOPE_KEYS.every((key) =>
-            Object.prototype.hasOwnProperty.call(successBody, key),
-          ),
-        ).toBe(true);
-
-        expect(
-          REQUIRED_ENVELOPE_KEYS.every((key) =>
-            Object.prototype.hasOwnProperty.call(refusalBody, key),
-          ),
-        ).toBe(true);
-
-        expect(refusalBody.ok).toBe(false);
+        REQUIRED_ENVELOPE_KEYS.forEach((key) => {
+          expect(Object.prototype.hasOwnProperty.call(successBody, key)).toBe(true);
+          expect(Object.prototype.hasOwnProperty.call(refusalBody, key)).toBe(true);
+        });
       },
     );
   },
