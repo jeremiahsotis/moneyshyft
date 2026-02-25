@@ -175,6 +175,8 @@ GPT-5 Codex
 - tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts
 - tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.spec.ts
 - tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts
+- tests/support/factories/connectShyftStoryC4Factory.ts
+- tests/support/fixtures/connectShyftStoryC4.fixture.ts
 
 ## Change Log
 
