@@ -1,6 +1,6 @@
 # Story 2.4: Request-to-Commitment Linkage and Terminal Enforcement
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -110,6 +110,9 @@ GPT-5 Codex
 - `npm --prefix src test -- --runInBand src/src/routes/api/v1/__tests__/route.cashier-intake.test.ts src/src/modules/route/application/__tests__/intakeService.test.ts src/src/modules/route/infrastructure/__tests__/intakeRequestRepository.test.ts` (pass)
 - `npm --prefix src test -- --runInBand` (pass)
 - `npm --prefix src run build` (pass)
+- `npm --prefix src test -- --runInBand src/src/modules/route/application/__tests__/intakeService.test.ts src/src/modules/route/infrastructure/__tests__/intakeRequestRepository.test.ts src/src/routes/api/v1/__tests__/route.cashier-intake.test.ts` (pass)
+- `npm --prefix src test -- --runInBand` (pass)
+- `npm --prefix src run build` (pass)
 
 ### Completion Notes List
 
@@ -119,6 +122,20 @@ GPT-5 Codex
 - Exposed request lifecycle status plus linked commitment lifecycle status in intake resolution so commitment transitions remain independent from terminal request state.
 - Added unresolved-request reconciliation query path in repository/application layers with stale-threshold guardrail classification and operator action guidance.
 - Added authenticated route endpoint `/api/v1/route/intake/reconciliation/unresolved` and API regression coverage for reconciliation plus commitment-independence behavior.
+- Addressed review gaps by running commitment creation and accepted-request persistence inside shared Knex transactions when repositories are Knex-backed.
+- Ensured linkage failures close requests with explicit `cancelled` lifecycle semantics (`ROUTESHYFT_INTAKE_LINKAGE_CANCELLED`) and expose upstream linkage failure context.
+- Updated unresolved reconciliation queries to return all unresolved requests and classify stale state in the service response.
+- Strengthened reconciliation API and application tests with explicit lifecycle/action assertions and transactional linkage coverage.
+
+### Senior Developer Review (AI)
+
+- Review date: 2026-02-25
+- Outcome: Approved after fixes
+- Resolved findings:
+  - Atomic linkage consistency: commitment and accepted-request writes now execute in one transaction for Knex-backed route repositories.
+  - Reconciliation completeness: unresolved query now returns fresh and stale pending requests; stale is computed in service output.
+  - Cancelled terminal-path reachability: linkage failures now persist explicit cancellation outcome mapped to `requestLifecycleStatus: cancelled`.
+  - Reconciliation evidence quality: API tests now assert lifecycle status, issue code/summary, reconciliation actions, and stale classification.
 
 ### File List
 
@@ -127,8 +144,10 @@ GPT-5 Codex
 - src/src/modules/route/domain/requestLifecycle.ts
 - src/src/modules/route/domain/__tests__/requestLifecycle.test.ts
 - src/src/modules/route/application/intakeService.ts
+- src/src/modules/route/application/commitmentService.ts
 - src/src/modules/route/application/__tests__/intakeService.test.ts
 - src/src/modules/route/infrastructure/intakeRequestRepository.ts
+- src/src/modules/route/infrastructure/commitmentRepository.ts
 - src/src/modules/route/infrastructure/__tests__/intakeRequestRepository.test.ts
 - src/src/routes/api/v1/route.ts
 - src/src/routes/api/v1/__tests__/route.cashier-intake.test.ts
@@ -138,3 +157,4 @@ GPT-5 Codex
 - 2026-02-25: Implemented request terminal-state domain policy and transition enforcement for `pending -> refused|cancelled|committed`.
 - 2026-02-25: Enforced canonical request-to-commitment linkage and exposed independent request/commitment lifecycle status in intake detail resolution.
 - 2026-02-25: Added unresolved reconciliation query controls with stale guardrails and new operator endpoint `/api/v1/route/intake/reconciliation/unresolved`, plus regression/integration tests.
+- 2026-02-25: Patched Story 2.4 review findings with atomic Knex transaction linkage writes, explicit linkage-cancelled lifecycle closure, full unresolved-query coverage, and stronger reconciliation assertions in service/API tests.

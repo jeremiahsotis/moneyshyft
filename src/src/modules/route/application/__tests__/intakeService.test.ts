@@ -5,7 +5,13 @@ import {
 } from '../commitmentService';
 import { IntakeService } from '../intakeService';
 import { InMemoryCommitmentRepository } from '../../infrastructure/commitmentRepository';
-import { InMemoryIntakeRequestRepository } from '../../infrastructure/intakeRequestRepository';
+import {
+  CreateAcceptedIntakeInput,
+  CreateRefusedIntakeInput,
+  InMemoryIntakeRequestRepository,
+  KnexIntakeRequestRepository,
+  ListUnresolvedIntakeInput,
+} from '../../infrastructure/intakeRequestRepository';
 import { RouteIntakePayload } from '../../domain/intakePolicy';
 import type { RouteIntakeRecord } from '../../infrastructure/intakeRequestRepository';
 
@@ -30,6 +36,129 @@ class CommitmentAlwaysFailsService extends CommitmentService {
       refusalType: 'business',
       httpStatus: 200,
     };
+  }
+}
+
+class TransactionAwareCommitmentService extends CommitmentService {
+  readonly createCalls: CreateCommitmentCommand[] = [];
+
+  override supportsExternalTransaction(): boolean {
+    return true;
+  }
+
+  async createCommitment(input: CreateCommitmentCommand): Promise<CreateCommitmentResult> {
+    this.createCalls.push(input);
+
+    return {
+      ok: true,
+      code: 'ROUTE_COMMITMENT_CREATED',
+      message: 'Commitment created',
+      httpStatus: 201,
+      data: {
+        commitment: {
+          commitmentId: 'commitment-atomic-1',
+          tenantId: 'tenant-1',
+          orgUnitId: 'org-1',
+          sourceType: 'route_intake_request',
+          sourceId: 'cashier:2026-02-26T14:00:00.000Z',
+          externalRef: 'cashier',
+          status: 'scheduled',
+          createdByUserId: 'user-1',
+          updatedByUserId: 'user-1',
+          terminalAtUtc: null,
+          terminalReason: null,
+          createdAtUtc: '2026-02-26T14:00:00.000Z',
+          updatedAtUtc: '2026-02-26T14:00:00.000Z',
+        },
+        state: {
+          status: 'scheduled',
+          label: 'Scheduled',
+          terminal: false,
+        } as never,
+      },
+    };
+  }
+}
+
+class RecordingKnexIntakeRequestRepository extends KnexIntakeRequestRepository {
+  readonly createAcceptedCalls: Array<{
+    input: CreateAcceptedIntakeInput;
+    dbClient?: unknown;
+  }> = [];
+
+  constructor() {
+    super({
+      withSchema: jest.fn(),
+      fn: {
+        now: () => new Date('2026-02-26T14:00:00.000Z'),
+      },
+    } as never);
+  }
+
+  override async createAccepted(
+    input: CreateAcceptedIntakeInput,
+    dbClient?: unknown,
+  ): Promise<RouteIntakeRecord> {
+    this.createAcceptedCalls.push({ input, dbClient });
+
+    return {
+      requestId: 'request-atomic-1',
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      channel: input.channel,
+      requestedAtUtc: input.requestedAtUtc,
+      requestedWindowStartUtc: input.requestedWindowStartUtc,
+      requestedWindowEndUtc: input.requestedWindowEndUtc,
+      scheduleMode: input.scheduleMode,
+      notes: input.notes,
+      status: 'Accepted',
+      requestLifecycleStatus: 'committed',
+      commitmentId: input.commitmentId,
+      refusal: null,
+      createdByUserId: input.createdByUserId,
+      createdAtUtc: '2026-02-26T14:00:00.000Z',
+      updatedAtUtc: '2026-02-26T14:00:00.000Z',
+    };
+  }
+
+  override async createRefused(
+    input: CreateRefusedIntakeInput,
+    _dbClient?: unknown,
+  ): Promise<RouteIntakeRecord> {
+    return {
+      requestId: 'request-refused-1',
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      channel: input.channel,
+      requestedAtUtc: input.requestedAtUtc,
+      requestedWindowStartUtc: input.requestedWindowStartUtc,
+      requestedWindowEndUtc: input.requestedWindowEndUtc,
+      scheduleMode: input.scheduleMode,
+      notes: input.notes,
+      status: 'Refused',
+      requestLifecycleStatus: 'refused',
+      commitmentId: null,
+      refusal: input.refusal,
+      createdByUserId: input.createdByUserId,
+      createdAtUtc: '2026-02-26T14:00:00.000Z',
+      updatedAtUtc: '2026-02-26T14:00:00.000Z',
+    };
+  }
+
+  override async getById(
+    _tenantId: string,
+    _orgUnitId: string,
+    _requestId: string,
+    _dbClient?: unknown,
+  ): Promise<RouteIntakeRecord | null> {
+    return null;
+  }
+
+  override async listUnresolved(
+    _input: ListUnresolvedIntakeInput,
+    _dbClient?: unknown,
+  ): Promise<RouteIntakeRecord[]> {
+    return [];
   }
 }
 
@@ -173,7 +302,8 @@ describe('route intake service', () => {
       code: 'ROUTESHYFT_CASHIER_INTAKE_REFUSED',
       data: {
         requestId: expect.any(String),
-        reasonCode: 'ROUTE_COMMITMENT_PERSISTENCE_UNAVAILABLE',
+        reasonCode: 'ROUTESHYFT_INTAKE_LINKAGE_CANCELLED',
+        linkageErrorCode: 'ROUTE_COMMITMENT_PERSISTENCE_UNAVAILABLE',
       },
     });
 
@@ -197,6 +327,7 @@ describe('route intake service', () => {
         requestId,
         commitmentId: null,
         status: 'Refused',
+        requestLifecycleStatus: 'cancelled',
       },
     });
   });
@@ -315,5 +446,83 @@ describe('route intake service', () => {
         ],
       },
     });
+  });
+
+  it('includes non-stale unresolved requests while preserving stale classification', async () => {
+    const repository = {
+      createAccepted: jest.fn(),
+      createRefused: jest.fn(),
+      getById: jest.fn(),
+      listUnresolved: jest.fn(async () => ([
+        unresolvedRecord(),
+        {
+          ...unresolvedRecord(),
+          requestId: 'request-unresolved-fresh-1',
+          updatedAtUtc: '2026-02-26T13:45:00.000Z',
+        },
+      ])),
+    };
+
+    const service = new IntakeService(
+      new CommitmentService(new InMemoryCommitmentRepository()),
+      repository as never,
+    );
+
+    const result = await service.listUnresolvedRequests({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      staleMinutes: 60,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        guardrailStatus: 'action_required',
+      },
+    });
+
+    expect(result.data.items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        requestId: 'request-unresolved-1',
+        stale: true,
+      }),
+      expect.objectContaining({
+        requestId: 'request-unresolved-fresh-1',
+        stale: false,
+      }),
+    ]));
+  });
+
+  it('runs commitment and request linkage writes inside a shared transaction for knex-backed repositories', async () => {
+    const commitmentService = new TransactionAwareCommitmentService(new InMemoryCommitmentRepository());
+    const requestRepository = new RecordingKnexIntakeRequestRepository();
+    const transactionCalls: unknown[] = [];
+    const fakeTrx = { tag: 'trx-atomic-linkage' };
+    const service = new IntakeService(
+      commitmentService,
+      requestRepository,
+      async (handler) => {
+        transactionCalls.push('called');
+        return handler(fakeTrx as never);
+      },
+    );
+
+    const result = await service.submitIntake({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      actorId: 'user-1',
+      channel: 'cashier',
+      payload: basePayload(),
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_CASHIER_INTAKE_ACCEPTED',
+    });
+    expect(transactionCalls).toHaveLength(1);
+    expect(commitmentService.createCalls).toHaveLength(1);
+    expect(commitmentService.createCalls[0]?.dbClient).toBe(fakeTrx);
+    expect(requestRepository.createAcceptedCalls).toHaveLength(1);
+    expect(requestRepository.createAcceptedCalls[0]?.dbClient).toBe(fakeTrx);
   });
 });

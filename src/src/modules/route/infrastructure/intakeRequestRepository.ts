@@ -61,14 +61,27 @@ export type CreateRefusedIntakeInput = {
 export type ListUnresolvedIntakeInput = {
   tenantId: string;
   orgUnitId: string | null;
-  staleBeforeUtc: string;
 };
 
 export interface IntakeRequestRepository {
-  createAccepted(input: CreateAcceptedIntakeInput): Promise<RouteIntakeRecord>;
-  createRefused(input: CreateRefusedIntakeInput): Promise<RouteIntakeRecord>;
-  getById(tenantId: string, orgUnitId: string, requestId: string): Promise<RouteIntakeRecord | null>;
-  listUnresolved(input: ListUnresolvedIntakeInput): Promise<RouteIntakeRecord[]>;
+  createAccepted(
+    input: CreateAcceptedIntakeInput,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteIntakeRecord>;
+  createRefused(
+    input: CreateRefusedIntakeInput,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteIntakeRecord>;
+  getById(
+    tenantId: string,
+    orgUnitId: string,
+    requestId: string,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteIntakeRecord | null>;
+  listUnresolved(
+    input: ListUnresolvedIntakeInput,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteIntakeRecord[]>;
 }
 
 const CANCELLATION_REASON_CODES = new Set([
@@ -95,7 +108,10 @@ const resolveRequestLifecycleStatus = (
 export class InMemoryIntakeRequestRepository implements IntakeRequestRepository {
   private readonly requestsById = new Map<string, RouteIntakeRecord>();
 
-  async createAccepted(input: CreateAcceptedIntakeInput): Promise<RouteIntakeRecord> {
+  async createAccepted(
+    input: CreateAcceptedIntakeInput,
+    _dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteIntakeRecord> {
     const commitmentId = input.commitmentId.trim();
     if (!commitmentId) {
       throw new Error('ROUTE_REQUEST_COMMITMENT_LINKAGE_REQUIRED');
@@ -128,7 +144,10 @@ export class InMemoryIntakeRequestRepository implements IntakeRequestRepository 
     return { ...record };
   }
 
-  async createRefused(input: CreateRefusedIntakeInput): Promise<RouteIntakeRecord> {
+  async createRefused(
+    input: CreateRefusedIntakeInput,
+    _dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteIntakeRecord> {
     const now = new Date().toISOString();
     const requestId = randomUUID();
 
@@ -156,7 +175,12 @@ export class InMemoryIntakeRequestRepository implements IntakeRequestRepository 
     return { ...record };
   }
 
-  async getById(tenantId: string, orgUnitId: string, requestId: string): Promise<RouteIntakeRecord | null> {
+  async getById(
+    tenantId: string,
+    orgUnitId: string,
+    requestId: string,
+    _dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteIntakeRecord | null> {
     const record = this.requestsById.get(requestId);
     if (!record || record.tenantId !== tenantId || record.orgUnitId !== orgUnitId) {
       return null;
@@ -165,9 +189,10 @@ export class InMemoryIntakeRequestRepository implements IntakeRequestRepository 
     return { ...record };
   }
 
-  async listUnresolved(input: ListUnresolvedIntakeInput): Promise<RouteIntakeRecord[]> {
-    const staleBeforeMillis = new Date(input.staleBeforeUtc).getTime();
-
+  async listUnresolved(
+    input: ListUnresolvedIntakeInput,
+    _dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteIntakeRecord[]> {
     return [...this.requestsById.values()]
       .filter((record) => {
         if (record.tenantId !== input.tenantId) {
@@ -180,13 +205,6 @@ export class InMemoryIntakeRequestRepository implements IntakeRequestRepository 
 
         if (record.requestLifecycleStatus !== 'pending') {
           return false;
-        }
-
-        if (!Number.isNaN(staleBeforeMillis)) {
-          const updatedAtMillis = new Date(record.updatedAtUtc).getTime();
-          if (!Number.isNaN(updatedAtMillis) && updatedAtMillis > staleBeforeMillis) {
-            return false;
-          }
         }
 
         return true;
@@ -269,6 +287,10 @@ const mapRecord = (row: Record<string, unknown>): RouteIntakeRecord => {
 export class KnexIntakeRequestRepository implements IntakeRequestRepository {
   constructor(private readonly knexClient: Knex = knex) {}
 
+  private resolveClient(dbClient?: Knex | Knex.Transaction): Knex | Knex.Transaction {
+    return dbClient || this.knexClient;
+  }
+
   private returningColumns(): string[] {
     return [
       'id',
@@ -292,13 +314,17 @@ export class KnexIntakeRequestRepository implements IntakeRequestRepository {
     ];
   }
 
-  async createAccepted(input: CreateAcceptedIntakeInput): Promise<RouteIntakeRecord> {
+  async createAccepted(
+    input: CreateAcceptedIntakeInput,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteIntakeRecord> {
+    const client = this.resolveClient(dbClient);
     const commitmentId = input.commitmentId.trim();
     if (!commitmentId) {
       throw new Error('ROUTE_REQUEST_COMMITMENT_LINKAGE_REQUIRED');
     }
 
-    const [inserted] = await this.knexClient
+    const [inserted] = await client
       .withSchema('route')
       .table('intake_requests')
       .insert({
@@ -317,16 +343,20 @@ export class KnexIntakeRequestRepository implements IntakeRequestRepository {
         refusal_alternatives: null,
         refusal_next_steps: null,
         created_by_user_id: input.createdByUserId,
-        created_at_utc: this.knexClient.fn.now(),
-        updated_at_utc: this.knexClient.fn.now(),
+        created_at_utc: client.fn.now(),
+        updated_at_utc: client.fn.now(),
       })
       .returning(this.returningColumns());
 
     return mapRecord(inserted as Record<string, unknown>);
   }
 
-  async createRefused(input: CreateRefusedIntakeInput): Promise<RouteIntakeRecord> {
-    const [inserted] = await this.knexClient
+  async createRefused(
+    input: CreateRefusedIntakeInput,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteIntakeRecord> {
+    const client = this.resolveClient(dbClient);
+    const [inserted] = await client
       .withSchema('route')
       .table('intake_requests')
       .insert({
@@ -345,16 +375,22 @@ export class KnexIntakeRequestRepository implements IntakeRequestRepository {
         refusal_alternatives: JSON.stringify(input.refusal.alternatives || []),
         refusal_next_steps: input.refusal.nextSteps,
         created_by_user_id: input.createdByUserId,
-        created_at_utc: this.knexClient.fn.now(),
-        updated_at_utc: this.knexClient.fn.now(),
+        created_at_utc: client.fn.now(),
+        updated_at_utc: client.fn.now(),
       })
       .returning(this.returningColumns());
 
     return mapRecord(inserted as Record<string, unknown>);
   }
 
-  async getById(tenantId: string, orgUnitId: string, requestId: string): Promise<RouteIntakeRecord | null> {
-    const row = await this.knexClient
+  async getById(
+    tenantId: string,
+    orgUnitId: string,
+    requestId: string,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteIntakeRecord | null> {
+    const client = this.resolveClient(dbClient);
+    const row = await client
       .withSchema('route')
       .table('intake_requests')
       .where({
@@ -371,16 +407,19 @@ export class KnexIntakeRequestRepository implements IntakeRequestRepository {
     return mapRecord(row as Record<string, unknown>);
   }
 
-  async listUnresolved(input: ListUnresolvedIntakeInput): Promise<RouteIntakeRecord[]> {
-    const query = this.knexClient
+  async listUnresolved(
+    input: ListUnresolvedIntakeInput,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteIntakeRecord[]> {
+    const client = this.resolveClient(dbClient);
+    const query = client
       .withSchema('route')
       .table('intake_requests')
       .where({
         tenant_id: input.tenantId,
         status: 'Accepted',
       })
-      .whereNull('commitment_id')
-      .andWhere('updated_at_utc', '<=', input.staleBeforeUtc);
+      .whereNull('commitment_id');
 
     if (input.orgUnitId) {
       query.andWhere('org_unit_id', input.orgUnitId);

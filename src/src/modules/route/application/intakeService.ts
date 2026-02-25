@@ -1,3 +1,4 @@
+import type { Knex } from 'knex';
 import {
   evaluateSharedIntakePolicy,
   normalizeRouteScheduleMode,
@@ -13,6 +14,7 @@ import {
   RouteIntakeRecord,
 } from '../infrastructure/intakeRequestRepository';
 import type { RouteRequestLifecycleStatus } from '../domain/requestLifecycle';
+import routeDb from '../../../config/knex';
 
 const CHANNEL_RESPONSE_CODES = {
   donor: {
@@ -138,11 +140,79 @@ const mapDetailCode = (channel: RouteIntakeChannel, record: RouteIntakeRecord): 
   return CHANNEL_RESPONSE_CODES[channel].refused;
 };
 
+const LINKAGE_CANCELLED_REASON_CODE = 'ROUTESHYFT_INTAKE_LINKAGE_CANCELLED';
+
+type LinkageCancellationInput = {
+  tenantId: string;
+  orgUnitId: string;
+  actorId: string | null;
+  channel: RouteIntakeChannel;
+  requestedAtUtc: string;
+  requestedWindowStartUtc: string;
+  requestedWindowEndUtc: string;
+  scheduleMode: RouteScheduleMode;
+  notes: string;
+  responseCode: string;
+  linkageErrorCode: string;
+  linkageErrorMessage: string;
+  dbClient?: Knex | Knex.Transaction;
+};
+
+type TransactionExecutor = <T>(
+  handler: (trx: Knex.Transaction) => Promise<T>,
+) => Promise<T>;
+
 export class IntakeService {
   constructor(
     private readonly commitmentService: CommitmentService,
     private readonly requestRepository: IntakeRequestRepository = new KnexIntakeRequestRepository(),
+    private readonly transactionExecutor: TransactionExecutor = async (handler) => routeDb.transaction(handler),
   ) {}
+
+  private supportsAtomicLinkageTransaction(): boolean {
+    return this.requestRepository instanceof KnexIntakeRequestRepository
+      && this.commitmentService.supportsExternalTransaction();
+  }
+
+  private async createLinkageCancellationRefusal(
+    input: LinkageCancellationInput,
+  ): Promise<IntakeRefusal> {
+    const commitmentRefusalRecord = await this.requestRepository.createRefused({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      channel: input.channel,
+      requestedAtUtc: input.requestedAtUtc,
+      requestedWindowStartUtc: input.requestedWindowStartUtc,
+      requestedWindowEndUtc: input.requestedWindowEndUtc,
+      scheduleMode: input.scheduleMode,
+      notes: input.notes,
+      refusal: {
+        reasonCode: LINKAGE_CANCELLED_REASON_CODE,
+        message: 'Commitment linkage could not be completed and intake was cancelled.',
+        alternatives: [
+          'Retry commitment linkage once persistence is available',
+          'Escalate unresolved intake for operator reconciliation',
+        ],
+        nextSteps: `Linkage failure [${input.linkageErrorCode}]: ${input.linkageErrorMessage}`,
+      },
+      createdByUserId: input.actorId,
+    }, input.dbClient);
+
+    return refusal(
+      input.responseCode,
+      'Intake was cancelled because commitment linkage could not be completed.',
+      'business',
+      200,
+      {
+        requestId: commitmentRefusalRecord.requestId,
+        status: commitmentRefusalRecord.status,
+        alternatives: commitmentRefusalRecord.refusal?.alternatives || [],
+        nextSteps: commitmentRefusalRecord.refusal?.nextSteps || null,
+        reasonCode: commitmentRefusalRecord.refusal?.reasonCode || LINKAGE_CANCELLED_REASON_CODE,
+        linkageErrorCode: input.linkageErrorCode,
+      },
+    );
+  }
 
   async submitIntake(input: SubmitIntakeInput): Promise<SubmitIntakeResult> {
     const policyDecision = evaluateSharedIntakePolicy(input.payload);
@@ -177,17 +247,38 @@ export class IntakeService {
       );
     }
 
-    const commitmentResult = await this.commitmentService.createCommitment({
-      tenantId: input.tenantId,
-      actorId: input.actorId,
-      sourceType: 'route_intake_request',
-      sourceId: `${input.channel}:${policyDecision.normalized.requestedAtUtc}`,
-      orgUnitId: input.orgUnitId,
-      externalRef: input.channel,
-    });
+    const persistWithLinkage = async (
+      dbClient?: Knex | Knex.Transaction,
+    ): Promise<SubmitIntakeResult> => {
+      const commitmentResult = await this.commitmentService.createCommitment({
+        tenantId: input.tenantId,
+        actorId: input.actorId,
+        sourceType: 'route_intake_request',
+        sourceId: `${input.channel}:${policyDecision.normalized.requestedAtUtc}`,
+        orgUnitId: input.orgUnitId,
+        externalRef: input.channel,
+        dbClient,
+      });
 
-    if (!commitmentResult.ok) {
-      const commitmentRefusalRecord = await this.requestRepository.createRefused({
+      if (!commitmentResult.ok) {
+        return this.createLinkageCancellationRefusal({
+          tenantId: input.tenantId,
+          orgUnitId: input.orgUnitId,
+          actorId: input.actorId,
+          channel: input.channel,
+          requestedAtUtc: policyDecision.normalized.requestedAtUtc,
+          requestedWindowStartUtc: policyDecision.normalized.requestedWindowStartUtc,
+          requestedWindowEndUtc: policyDecision.normalized.requestedWindowEndUtc,
+          scheduleMode: policyDecision.normalized.scheduleMode,
+          notes: policyDecision.normalized.notes,
+          responseCode: responseCodes.refused,
+          linkageErrorCode: commitmentResult.code,
+          linkageErrorMessage: commitmentResult.message,
+          dbClient,
+        });
+      }
+
+      const acceptedRecord = await this.requestRepository.createAccepted({
         tenantId: input.tenantId,
         orgUnitId: input.orgUnitId,
         channel: input.channel,
@@ -196,59 +287,30 @@ export class IntakeService {
         requestedWindowEndUtc: policyDecision.normalized.requestedWindowEndUtc,
         scheduleMode: policyDecision.normalized.scheduleMode,
         notes: policyDecision.normalized.notes,
-        refusal: {
-          reasonCode: commitmentResult.code,
-          message: commitmentResult.message,
-          alternatives: [
-            'Retry commitment linkage once persistence is available',
-            'Switch to refusal path and communicate alternatives',
-          ],
-          nextSteps: 'Escalate to route operations and retry when linkage dependency recovers.',
-        },
+        commitmentId: commitmentResult.data.commitment.commitmentId,
         createdByUserId: input.actorId,
-      });
+      }, dbClient);
 
-      return refusal(
-        responseCodes.refused,
-        'Intake was refused because commitment linkage could not be completed.',
-        'business',
-        200,
-        {
-          requestId: commitmentRefusalRecord.requestId,
-          status: commitmentRefusalRecord.status,
-          alternatives: commitmentRefusalRecord.refusal?.alternatives || [],
-          nextSteps: commitmentRefusalRecord.refusal?.nextSteps || null,
-          reasonCode: commitmentRefusalRecord.refusal?.reasonCode || commitmentResult.code,
+      return {
+        ok: true,
+        code: responseCodes.accepted,
+        message: 'Intake accepted and commitment linked.',
+        httpStatus: 200,
+        data: {
+          requestId: acceptedRecord.requestId,
+          commitmentId: acceptedRecord.commitmentId || '',
+          status: 'Accepted',
+          scheduleMode: acceptedRecord.scheduleMode,
+          availableSlots: policyDecision.availableSlots,
         },
-      );
+      };
+    };
+
+    if (this.supportsAtomicLinkageTransaction()) {
+      return this.transactionExecutor(async (trx) => persistWithLinkage(trx));
     }
 
-    const acceptedRecord = await this.requestRepository.createAccepted({
-      tenantId: input.tenantId,
-      orgUnitId: input.orgUnitId,
-      channel: input.channel,
-      requestedAtUtc: policyDecision.normalized.requestedAtUtc,
-      requestedWindowStartUtc: policyDecision.normalized.requestedWindowStartUtc,
-      requestedWindowEndUtc: policyDecision.normalized.requestedWindowEndUtc,
-      scheduleMode: policyDecision.normalized.scheduleMode,
-      notes: policyDecision.normalized.notes,
-      commitmentId: commitmentResult.data.commitment.commitmentId,
-      createdByUserId: input.actorId,
-    });
-
-    return {
-      ok: true,
-      code: responseCodes.accepted,
-      message: 'Intake accepted and commitment linked.',
-      httpStatus: 200,
-      data: {
-        requestId: acceptedRecord.requestId,
-        commitmentId: acceptedRecord.commitmentId || '',
-        status: 'Accepted',
-        scheduleMode: acceptedRecord.scheduleMode,
-        availableSlots: policyDecision.availableSlots,
-      },
-    };
+    return persistWithLinkage();
   }
 
   async resolveIntake(input: ResolveIntakeInput): Promise<ResolveIntakeResult> {
@@ -305,7 +367,6 @@ export class IntakeService {
     const queryInput: ListUnresolvedIntakeInput = {
       tenantId: input.tenantId,
       orgUnitId: input.orgUnitId,
-      staleBeforeUtc,
     };
 
     const unresolvedRecords = await this.requestRepository.listUnresolved(queryInput);

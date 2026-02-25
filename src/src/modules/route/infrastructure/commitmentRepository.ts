@@ -68,9 +68,19 @@ export type PersistCommitmentTransitionResult =
   };
 
 export interface CommitmentRepository {
-  createCommitment(input: CreateCommitmentInput): Promise<RouteCommitment>;
-  getCommitmentById(tenantId: string, commitmentId: string): Promise<RouteCommitment | null>;
-  transitionCommitment(input: PersistCommitmentTransitionInput): Promise<PersistCommitmentTransitionResult>;
+  createCommitment(
+    input: CreateCommitmentInput,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteCommitment>;
+  getCommitmentById(
+    tenantId: string,
+    commitmentId: string,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteCommitment | null>;
+  transitionCommitment(
+    input: PersistCommitmentTransitionInput,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<PersistCommitmentTransitionResult>;
 }
 
 const toIsoUtc = (value: string | Date | null): string | null => {
@@ -123,7 +133,10 @@ export class InMemoryCommitmentRepository implements CommitmentRepository {
 
   private readonly transitionAuditsByCommitmentId = new Map<string, CommitmentTransitionAudit[]>();
 
-  async createCommitment(input: CreateCommitmentInput): Promise<RouteCommitment> {
+  async createCommitment(
+    input: CreateCommitmentInput,
+    _dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteCommitment> {
     const now = new Date().toISOString();
     const commitmentId = randomUUID();
 
@@ -148,7 +161,11 @@ export class InMemoryCommitmentRepository implements CommitmentRepository {
     return { ...commitment };
   }
 
-  async getCommitmentById(tenantId: string, commitmentId: string): Promise<RouteCommitment | null> {
+  async getCommitmentById(
+    tenantId: string,
+    commitmentId: string,
+    _dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteCommitment | null> {
     const commitment = this.commitmentsById.get(commitmentId);
     if (!commitment || commitment.tenantId !== tenantId) {
       return null;
@@ -157,7 +174,10 @@ export class InMemoryCommitmentRepository implements CommitmentRepository {
     return { ...commitment };
   }
 
-  async transitionCommitment(input: PersistCommitmentTransitionInput): Promise<PersistCommitmentTransitionResult> {
+  async transitionCommitment(
+    input: PersistCommitmentTransitionInput,
+    _dbClient?: Knex | Knex.Transaction,
+  ): Promise<PersistCommitmentTransitionResult> {
     const existing = this.commitmentsById.get(input.commitmentId);
     if (!existing || existing.tenantId !== input.tenantId) {
       return {
@@ -213,6 +233,15 @@ export class InMemoryCommitmentRepository implements CommitmentRepository {
 export class KnexCommitmentRepository implements CommitmentRepository {
   constructor(private readonly knexClient: Knex = db) {}
 
+  private resolveClient(dbClient?: Knex | Knex.Transaction): Knex | Knex.Transaction {
+    return dbClient || this.knexClient;
+  }
+
+  private isTransactionClient(client: Knex | Knex.Transaction): client is Knex.Transaction {
+    return typeof (client as Knex.Transaction).commit === 'function'
+      && typeof (client as Knex.Transaction).rollback === 'function';
+  }
+
   private commitmentReturningColumns(): string[] {
     return [
       'id',
@@ -245,8 +274,12 @@ export class KnexCommitmentRepository implements CommitmentRepository {
     ];
   }
 
-  async createCommitment(input: CreateCommitmentInput): Promise<RouteCommitment> {
-    const [inserted] = await this.knexClient
+  async createCommitment(
+    input: CreateCommitmentInput,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteCommitment> {
+    const client = this.resolveClient(dbClient);
+    const [inserted] = await client
       .withSchema('route')
       .table('commitments')
       .insert({
@@ -258,18 +291,23 @@ export class KnexCommitmentRepository implements CommitmentRepository {
         status: input.initialStatus,
         created_by_user_id: input.actorId,
         updated_by_user_id: input.actorId,
-        terminal_at_utc: isTerminalCommitmentStatus(input.initialStatus) ? this.knexClient.fn.now() : null,
+        terminal_at_utc: isTerminalCommitmentStatus(input.initialStatus) ? client.fn.now() : null,
         terminal_reason: null,
-        created_at_utc: this.knexClient.fn.now(),
-        updated_at_utc: this.knexClient.fn.now(),
+        created_at_utc: client.fn.now(),
+        updated_at_utc: client.fn.now(),
       })
       .returning<DbCommitmentRow[]>(this.commitmentReturningColumns());
 
     return mapCommitmentRow(inserted);
   }
 
-  async getCommitmentById(tenantId: string, commitmentId: string): Promise<RouteCommitment | null> {
-    const row = await this.knexClient
+  async getCommitmentById(
+    tenantId: string,
+    commitmentId: string,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteCommitment | null> {
+    const client = this.resolveClient(dbClient);
+    const row = await client
       .withSchema('route')
       .table('commitments')
       .where({
@@ -285,8 +323,12 @@ export class KnexCommitmentRepository implements CommitmentRepository {
     return mapCommitmentRow(row);
   }
 
-  async transitionCommitment(input: PersistCommitmentTransitionInput): Promise<PersistCommitmentTransitionResult> {
-    return this.knexClient.transaction(async (trx) => {
+  async transitionCommitment(
+    input: PersistCommitmentTransitionInput,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<PersistCommitmentTransitionResult> {
+    const client = this.resolveClient(dbClient);
+    const runTransition = async (trx: Knex.Transaction): Promise<PersistCommitmentTransitionResult> => {
       const [updatedRow] = await trx
         .withSchema('route')
         .table('commitments')
@@ -347,6 +389,12 @@ export class KnexCommitmentRepository implements CommitmentRepository {
         commitment: mapCommitmentRow(updatedRow),
         transitionAudit: mapTransitionAuditRow(auditRow),
       };
-    });
+    };
+
+    if (this.isTransactionClient(client)) {
+      return runTransition(client);
+    }
+
+    return client.transaction(runTransition);
   }
 }
