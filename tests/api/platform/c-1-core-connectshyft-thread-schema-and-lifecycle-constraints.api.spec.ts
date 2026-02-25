@@ -147,6 +147,16 @@ test.describe(
           neighborId: uniqueNeighborId,
         });
         expect(activeThreadCount).toBe(1);
+
+        await connectShyftDb
+          .withSchema('connectshyft')
+          .table('cs_threads')
+          .where({
+            tenant_id: storyC1Context.tenantId,
+            org_unit_id: storyC1Context.orgUnitId,
+            neighbor_id: uniqueNeighborId,
+          })
+          .del();
       },
     );
 

@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 import { login } from '../../helpers/auth';
 import { apiRequest } from '../../support/helpers/apiClient';
 import {
@@ -9,7 +10,22 @@ import {
 
 const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
 
-const buildInboxUrl = (context: StoryC1Context, actorUserId: string): string => {
+const createIsolatedStoryC1Context = (): StoryC1Context => {
+  const suffix = randomUUID().slice(0, 8);
+  return createStoryC1Context({
+    neighborId: `neighbor-connectshyft-c1-${suffix}`,
+  });
+};
+
+const buildInboxUrl = (
+  context: StoryC1Context,
+  actorUserId: string,
+  threadContext?: {
+    neighborId: string;
+    lastInboundCsNumberId: string;
+    preferredOutboundCsNumberId: string;
+  },
+): string => {
   const params = new URLSearchParams({
     flags: 'module:on,inbox:on,escalation:on,webhooks:on',
     tenantId: context.tenantId,
@@ -17,12 +33,35 @@ const buildInboxUrl = (context: StoryC1Context, actorUserId: string): string => 
     tenantRole: 'ORGUNIT_MEMBER',
     orgUnitMemberships: context.orgUnitId,
     actorUserId,
+    neighborId: threadContext?.neighborId || context.neighborId,
+    lastInboundCsNumberId: threadContext?.lastInboundCsNumberId || context.inboundCsNumberId,
+    preferredOutboundCsNumberId:
+      threadContext?.preferredOutboundCsNumberId || context.preferredOutboundCsNumberId,
   });
 
   return context.paths.inboxUi + '?' + params.toString();
 };
 
-const ensureThread = async (request: APIRequestContext, context: StoryC1Context): Promise<void> => {
+const ensureThread = async (
+  request: APIRequestContext,
+  context: StoryC1Context,
+  threadContext?: {
+    neighborId?: string;
+    lastInboundCsNumberId?: string;
+    preferredOutboundCsNumberId?: string;
+  },
+): Promise<{
+  neighborId: string;
+  lastInboundCsNumberId: string;
+  preferredOutboundCsNumberId: string;
+}> => {
+  const resolvedThreadContext = {
+    neighborId: threadContext?.neighborId || context.neighborId,
+    lastInboundCsNumberId: threadContext?.lastInboundCsNumberId || context.inboundCsNumberId,
+    preferredOutboundCsNumberId:
+      threadContext?.preferredOutboundCsNumberId || context.preferredOutboundCsNumberId,
+  };
+
   const operatorHeaders = createStoryC1Headers(context, {
     orgUnitMemberships: [context.orgUnitId],
   });
@@ -33,14 +72,15 @@ const ensureThread = async (request: APIRequestContext, context: StoryC1Context)
     headers: operatorHeaders,
     data: {
       orgUnitId: context.orgUnitId,
-      neighborId: context.neighborId,
+      neighborId: resolvedThreadContext.neighborId,
       source: 'VOICE',
-      lastInboundCsNumberId: context.inboundCsNumberId,
-      preferredOutboundCsNumberId: context.preferredOutboundCsNumberId,
+      lastInboundCsNumberId: resolvedThreadContext.lastInboundCsNumberId,
+      preferredOutboundCsNumberId: resolvedThreadContext.preferredOutboundCsNumberId,
     },
   });
 
   expect(ensureResponse.status()).toBe(201);
+  return resolvedThreadContext;
 };
 
 test.describe(
@@ -51,43 +91,67 @@ test.describe(
     test(
       '[P0] inbox renders canonical UNCLAIMED thread state with required number metadata after ensure flow @P0',
       async ({ page, request }) => {
-        const context = createStoryC1Context();
-        await ensureThread(request, context);
+        const context = createIsolatedStoryC1Context();
+        const suffix = randomUUID().slice(0, 8);
+        const threadContext = await ensureThread(request, context, {
+          lastInboundCsNumberId: `cs-inbound-c1-${suffix}`,
+          preferredOutboundCsNumberId: `cs-outbound-c1-${suffix}`,
+        });
 
         await login(page);
-        await page.goto(buildInboxUrl(context, context.userId));
+        await page.goto(buildInboxUrl(context, context.userId, threadContext));
 
         await expect(page.getByRole('heading', { name: 'ConnectShyft Inbox' })).toBeVisible();
-        await expect(page.getByTestId('connectshyft-thread-card')).toContainText('UNCLAIMED');
-        await expect(page.getByTestId('connectshyft-thread-last-inbound-number')).toContainText(
-          context.inboundCsNumberId,
-        );
-        await expect(page.getByTestId('connectshyft-thread-preferred-outbound-number')).toContainText(
-          context.preferredOutboundCsNumberId,
-        );
+        const targetCard = page
+          .getByTestId('connectshyft-thread-card')
+          .filter({ hasText: threadContext.lastInboundCsNumberId });
+        await expect(targetCard).toHaveCount(1);
+        await expect(targetCard).toContainText('UNCLAIMED');
+        await expect(
+          targetCard.getByTestId('connectshyft-thread-last-inbound-number'),
+        ).toContainText(threadContext.lastInboundCsNumberId);
+        await expect(
+          targetCard.getByTestId('connectshyft-thread-preferred-outbound-number'),
+        ).toContainText(threadContext.preferredOutboundCsNumberId);
       },
     );
 
     test(
       '[P0] duplicate open interactions keep a single active thread card for the same neighbor tuple @P0',
-      async ({ page }) => {
-        const context = createStoryC1Context();
+      async ({ page, request }) => {
+        const context = createIsolatedStoryC1Context();
+        const suffix = randomUUID().slice(0, 8);
+        const threadContext = await ensureThread(request, context, {
+          lastInboundCsNumberId: `cs-inbound-c1-${suffix}`,
+          preferredOutboundCsNumberId: `cs-outbound-c1-${suffix}`,
+        });
         await login(page);
 
-        await page.goto(buildInboxUrl(context, context.userId));
+        await page.goto(buildInboxUrl(context, context.userId, threadContext));
         await page.getByRole('button', { name: 'Open Conversation' }).click();
         await page.reload();
         await page.getByRole('button', { name: 'Open Conversation' }).click();
 
-        await expect(page.getByTestId('connectshyft-thread-card')).toHaveCount(1);
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+        const targetCard = page
+          .getByTestId('connectshyft-thread-card')
+          .filter({ hasText: threadContext.lastInboundCsNumberId });
+        await expect(targetCard).toHaveCount(1);
+        await expect(
+          targetCard.getByTestId('connectshyft-thread-state-chip'),
+        ).toHaveText('UNCLAIMED');
       },
     );
 
     test(
       '[P1] journey-level contracts keep canonical envelope keys across ensure refusal and due-thread scheduler paths @P1',
       async ({ request }) => {
-        const context = createStoryC1Context();
+        const context = createIsolatedStoryC1Context();
+        const suffix = randomUUID().slice(0, 8);
+        const threadContext = {
+          neighborId: context.neighborId,
+          lastInboundCsNumberId: `cs-inbound-c1-${suffix}`,
+          preferredOutboundCsNumberId: `cs-outbound-c1-${suffix}`,
+        };
 
         const operatorHeaders = createStoryC1Headers(context, {
           orgUnitMemberships: [context.orgUnitId],
@@ -107,10 +171,10 @@ test.describe(
           headers: operatorHeaders,
           data: {
             orgUnitId: context.orgUnitId,
-            neighborId: context.neighborId,
+            neighborId: threadContext.neighborId,
             source: 'VOICE',
-            lastInboundCsNumberId: context.inboundCsNumberId,
-            preferredOutboundCsNumberId: context.preferredOutboundCsNumberId,
+            lastInboundCsNumberId: threadContext.lastInboundCsNumberId,
+            preferredOutboundCsNumberId: threadContext.preferredOutboundCsNumberId,
           },
         });
         const refusalResponse = await apiRequest(request, {
@@ -119,7 +183,7 @@ test.describe(
           headers: operatorHeaders,
           data: {
             orgUnitId: context.orgUnitId,
-            neighborId: context.neighborId,
+            neighborId: threadContext.neighborId,
             forcedState: 'PAUSED',
             source: 'VOICE',
           },
