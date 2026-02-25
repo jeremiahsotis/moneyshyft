@@ -38,12 +38,22 @@ runs:
     - name: Install frontend dependencies
       if: inputs.install_frontend == 'true'
       shell: bash
-      run: npm ci --prefix frontend
+      run: |
+        if [ -f frontend/package-lock.json ]; then
+          npm ci --prefix frontend
+        else
+          npm install --prefix frontend --no-audit --fund=false
+        fi
 
     - name: Install backend dependencies
       if: inputs.install_src == 'true'
       shell: bash
-      run: npm ci --prefix src
+      run: |
+        if [ -f src/package-lock.json ]; then
+          npm ci --prefix src
+        else
+          npm install --prefix src --no-audit --fund=false
+        fi
 
     - name: Cache Playwright browsers (fallback)
       if: inputs.ensure_playwright == 'true'
