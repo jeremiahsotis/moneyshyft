@@ -245,23 +245,34 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
     const policyJob = getJobBlock(workflow, 'policy');
     const lintNeedsPolicy = getNeeds(getJobBlock(workflow, 'lint')).includes('policy');
     const testNeedsLint = getNeeds(getJobBlock(workflow, 'test')).includes('lint');
-    const burnInNeedsTest = getNeeds(getJobBlock(workflow, 'burn-in')).includes('test');
+    const inlineBurnInNeedsTest = getNeeds(getJobBlock(workflow, 'burn-in')).includes('test');
     const qualityGatesNeeds = getNeeds(getJobBlock(workflow, 'quality-gates'));
-    const qualityGatesBlockedByTestAndBurnIn =
-      qualityGatesNeeds.includes('test') && qualityGatesNeeds.includes('burn-in');
+    const qualityGatesNeedsTest = qualityGatesNeeds.includes('test');
+    const qualityGatesNeedsBurnIn = qualityGatesNeeds.includes('burn-in');
     const backendContractsNeedsQualityGates = getNeeds(getJobBlock(workflow, 'backend-contracts')).includes(
       'quality-gates',
     );
     const policyRunsPolicyCheck = /\n\s*run:\s*npm run policy:check\b/.test(policyJob);
+    const splitBurnInWorkflow = readFileSync('.github/workflows/burn-in.yml', 'utf8');
+    const splitBurnInWorkflowRunTrigger =
+      /workflow_run:\s*\n\s*workflows:\s*\['RouteShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);
+    const splitBurnInNeedsPrepare = getNeeds(getJobBlock(splitBurnInWorkflow, 'burn-in')).includes('prepare');
+
+    const inlineBurnInGraph =
+      inlineBurnInNeedsTest && qualityGatesNeedsTest && qualityGatesNeedsBurnIn;
+    const splitBurnInGraph =
+      !qualityGatesNeedsBurnIn &&
+      qualityGatesNeedsTest &&
+      splitBurnInWorkflowRunTrigger &&
+      splitBurnInNeedsPrepare;
 
     expect(
       policyJob.length > 0 &&
         policyRunsPolicyCheck &&
         lintNeedsPolicy &&
         testNeedsLint &&
-        burnInNeedsTest &&
-        qualityGatesBlockedByTestAndBurnIn &&
-        backendContractsNeedsQualityGates,
+        backendContractsNeedsQualityGates &&
+        (inlineBurnInGraph || splitBurnInGraph),
     ).toBe(true);
   });
 

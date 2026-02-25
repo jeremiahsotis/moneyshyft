@@ -44,14 +44,19 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
   test('[P0] defines required policy-first quality-stage jobs in the CI graph @P0', async ({ ciPolicyContext }) => {
     // Given the CI workflow graph definition
     const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');
+    const splitBurnInWorkflow = readFileSync('.github/workflows/burn-in.yml', 'utf8');
 
     // When evaluating required stage presence and policy gate command
     const policyJob = getJobBlock(workflow, 'policy');
     const lintJob = getJobBlock(workflow, 'lint');
     const testJob = getJobBlock(workflow, 'test');
     const burnInJob = getJobBlock(workflow, 'burn-in');
+    const splitBurnInJob = getJobBlock(splitBurnInWorkflow, 'burn-in');
     const qualityGatesJob = getJobBlock(workflow, 'quality-gates');
     const policyRunsGate = /\n\s*run:\s*npm run policy:check\b/.test(policyJob);
+    const splitBurnInWorkflowRunTrigger =
+      /workflow_run:\s*\n\s*workflows:\s*\['RouteShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);
+    const burnInDefined = burnInJob.length > 0 || (splitBurnInJob.length > 0 && splitBurnInWorkflowRunTrigger);
     const pullRequestIncludesProduction = /pull_request:\s*\n\s*branches:\s*\[[^\]]*\bproduction\b/.test(workflow);
     const pullRequestIncludesCodexDev = /pull_request:\s*\n\s*branches:\s*\[[^\]]*\bcodex\/dev\b/.test(workflow);
 
@@ -60,7 +65,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
       policyJob.length > 0 &&
         lintJob.length > 0 &&
         testJob.length > 0 &&
-        burnInJob.length > 0 &&
+        burnInDefined &&
         qualityGatesJob.length > 0 &&
         policyRunsGate &&
         pullRequestIncludesProduction &&
@@ -73,17 +78,27 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
   }) => {
     // Given the CI workflow graph definition
     const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');
+    const splitBurnInWorkflow = readFileSync('.github/workflows/burn-in.yml', 'utf8');
 
     // When evaluating dependency relationships for quality stages
     const lintNeedsPolicy = getNeeds(getJobBlock(workflow, 'lint')).includes('policy');
     const testNeedsLint = getNeeds(getJobBlock(workflow, 'test')).includes('lint');
-    const burnInNeedsTest = getNeeds(getJobBlock(workflow, 'burn-in')).includes('test');
+    const inlineBurnInNeedsTest = getNeeds(getJobBlock(workflow, 'burn-in')).includes('test');
     const qualityGateNeeds = getNeeds(getJobBlock(workflow, 'quality-gates'));
-    const qualityGatesNeedsTestAndBurnIn =
-      qualityGateNeeds.includes('test') && qualityGateNeeds.includes('burn-in');
+    const qualityGatesNeedsTest = qualityGateNeeds.includes('test');
+    const qualityGatesNeedsBurnIn = qualityGateNeeds.includes('burn-in');
+    const splitBurnInWorkflowRunTrigger =
+      /workflow_run:\s*\n\s*workflows:\s*\['RouteShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);
+    const splitBurnInNeedsPrepare = getNeeds(getJobBlock(splitBurnInWorkflow, 'burn-in')).includes('prepare');
+    const inlineBurnInGraph = inlineBurnInNeedsTest && qualityGatesNeedsTest && qualityGatesNeedsBurnIn;
+    const splitBurnInGraph =
+      qualityGatesNeedsTest &&
+      !qualityGatesNeedsBurnIn &&
+      splitBurnInWorkflowRunTrigger &&
+      splitBurnInNeedsPrepare;
 
     // Then lint/test/burn-in/gates should not proceed when policy fails
-    expect(lintNeedsPolicy && testNeedsLint && burnInNeedsTest && qualityGatesNeedsTestAndBurnIn).toBe(true);
+    expect(lintNeedsPolicy && testNeedsLint && (inlineBurnInGraph || splitBurnInGraph)).toBe(true);
   });
 
   test('[P1] quality-gates execution condition enforces successful upstream dependencies @P1', async ({
@@ -91,16 +106,23 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
   }) => {
     // Given quality gate job definition in CI workflow
     const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');
+    const splitBurnInWorkflow = readFileSync('.github/workflows/burn-in.yml', 'utf8');
+    const qualityGatesJob = getJobBlock(workflow, 'quality-gates');
 
     // When checking quality-gates conditional execution criteria
     const hasAlwaysGateCondition =
-      /quality-gates:\s*[\s\S]*?\n\s*if:\s*always\(\)\s*&&\s*needs\.test\.result\s*==\s*'success'/.test(workflow);
-    const hasBurnInSuccessOrSkipped = /\(\s*needs\['burn-in'\]\.result\s*==\s*'success'\s*\|\|\s*needs\['burn-in'\]\.result\s*==\s*'skipped'\s*\)/.test(
-      workflow,
-    );
+      /if:\s*always\(\)\s*&&\s*\(needs\.test\.result\s*==\s*'success'/.test(qualityGatesJob);
+    const hasInlineBurnInCondition = /needs\['burn-in'\]\.result/.test(qualityGatesJob);
+    const splitBurnInWorkflowRunTrigger =
+      /workflow_run:\s*\n\s*workflows:\s*\['RouteShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);
+    const splitBurnInRequiresCiSuccess = /run\.conclusion !== 'success'/.test(splitBurnInWorkflow);
+    const splitBurnInCondition =
+      splitBurnInWorkflowRunTrigger &&
+      splitBurnInRequiresCiSuccess &&
+      !hasInlineBurnInCondition;
 
     // Then quality gates should only execute after required successful upstream quality stages
-    expect(hasAlwaysGateCondition && hasBurnInSuccessOrSkipped).toBe(true);
+    expect(hasAlwaysGateCondition && (hasInlineBurnInCondition || splitBurnInCondition)).toBe(true);
   });
 
   test('[P1] report stage always publishes policy and downstream status lines in CI summary @P1', async ({
