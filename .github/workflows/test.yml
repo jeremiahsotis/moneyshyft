@@ -73,7 +73,7 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup-ci-node-playwright
         with:
-          install_src: 'false'
+          install_src: 'true'
           install_frontend: 'false'
           ensure_playwright: 'false'
       - name: Policy gate

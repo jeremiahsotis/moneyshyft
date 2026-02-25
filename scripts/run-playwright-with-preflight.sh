@@ -447,8 +447,8 @@ backend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.writ
 frontend_host="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.hostname);" "$BASE_URL")"
 frontend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.port || '5174');" "$BASE_URL")"
 
-if [[ ! -x "src/node_modules/.bin/ts-node-dev" ]]; then
-  echo "Playwright preflight failed: backend dependencies are missing. Run 'npm install --prefix src' and retry."
+if [[ ! -x "src/node_modules/.bin/ts-node-dev" && ! -x "src/node_modules/.bin/ts-node" ]]; then
+  echo "Playwright preflight failed: backend runtime dependencies are missing. Run 'npm install --prefix src' and retry."
   exit 1
 fi
 

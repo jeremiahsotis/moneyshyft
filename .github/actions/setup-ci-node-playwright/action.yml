@@ -50,9 +50,9 @@ runs:
       shell: bash
       run: |
         if [ -f src/package-lock.json ]; then
-          npm ci --prefix src
+          npm ci --prefix src --omit=dev
         else
-          npm install --prefix src --no-audit --fund=false
+          npm install --prefix src --omit=dev --no-audit --fund=false
         fi
 
     - name: Cache Playwright browsers (fallback)
