@@ -127,6 +127,12 @@ GPT-5 Codex
 - src/src/modules/route/__tests__/capacityPolicy.test.ts
 - src/src/api/registerRoutes.ts
 - src/src/__tests__/app-entrypoint-kernel.test.ts
+- tests/api/platform/2-2-donor-self-service-pickup-intake-with-capacity-check.atdd.api.spec.ts
+- tests/api/platform/2-2-donor-self-service-pickup-intake-with-capacity-check.automate.api.spec.ts
+- tests/e2e/platform/2-2-donor-self-service-pickup-intake-with-capacity-check.atdd.spec.ts
+- tests/e2e/platform/2-2-donor-self-service-pickup-intake-with-capacity-check.automate.spec.ts
+- tests/support/factories/routeShyftStory22Factory.ts
+- tests/support/fixtures/routeShyftStory22.fixture.ts
 - _bmad-output/implementation-artifacts/2-2-donor-self-service-pickup-intake-with-capacity-check.md
 - _bmad-output/implementation-artifacts/sprint-status.yaml
 
