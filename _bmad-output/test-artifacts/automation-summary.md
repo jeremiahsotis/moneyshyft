@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-25T10:10:38Z'
+lastSaved: '2026-02-25T13:10:14Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -2170,3 +2170,183 @@ lastSaved: '2026-02-25T10:10:38Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story c.3 AC coverage to ATDD + automate evidence.
+
+## Story c.4 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/c-4-claim-takeover-and-close-lifecycle-actions.md`
+  - Existing ATDD files found for Story c.4:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.spec.ts`
+
+### Context Loaded
+- Test framework config loaded: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts`.
+- Existing test structure reviewed under `/Users/jeremiahotis/projects/connectshyft/tests`.
+- Story c.4 support assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryC4Factory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryC4.fixture.ts`
+- Implementation surface reviewed:
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `test-quality.md`
+  - `ci-burn-in.md`
+- Additional generation references:
+  - `api-testing-patterns.md`
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `playwright-cli.md`
+
+## Story c.4 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` executed in session `tea-automate` against:
+  - `http://127.0.0.1:5174/app/connectshyft/inbox?...`
+- Result:
+  - `net::ERR_CONNECTION_REFUSED` during page open.
+  - No app DOM snapshot available from runtime browser exploration in this run.
+- Session hygiene:
+  - `playwright-cli -s=tea-automate close` executed successfully.
+
+### Acceptance Criteria to Target Mapping
+- AC1: canonical lifecycle transition gate coverage for claim/takeover/close policy paths.
+- AC2: audit/outbox provenance assertions for successful lifecycle transitions.
+- AC3: CLOSED outbound reopen semantics for call/message flows.
+- AC4: CLOSED inbound no-auto-reopen behavior for inbound/fallback events.
+
+### ATDD Duplication Control
+- Existing RED ATDD files retained and unchanged:
+  - `tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.api.spec.ts`
+  - `tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.spec.ts`
+- Automation expansion generated non-ATDD regression targets:
+  - `tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts`
+  - `tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts`
+
+### Selected Test Levels
+- **API** (primary): lifecycle action contract semantics, refusal shape, and provenance expectations.
+- **E2E** (secondary): operator lifecycle action-state journeys and closed-thread behavior UX.
+
+### Priority Assignment
+- P0:
+  - claim and takeover canonical contract envelopes for authorized operators.
+  - visible lifecycle action set expectations for critical operator thread states.
+- P1:
+  - refusal envelopes, membership gating, close/audit provenance, outbound reopen semantics.
+- P2:
+  - closed-thread inbound/fallback no-auto-reopen guardrails and viewer refusal UX hardening.
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts`
+- Scope: `critical-paths`
+
+## Story c.4 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-02-25T13-10-14Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-02-25T13-10-14Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-02-25T13-10-14Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 7`
+- E2E subprocess status: `success: true`, `test_count: 7`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed in one pass for both test levels.
+- Sequential equivalent would require two independent generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story c.4 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts`
+- `tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper infrastructure:
+  - `connectShyftStoryC4.fixture`
+  - `connectShyftStoryC4Factory`
+  - `apiRequest`
+  - `login`
+- No new shared fixture files required.
+
+### Summary Metrics
+- Total tests generated: `14`
+  - API tests: `7` (1 file)
+  - E2E tests: `7` (1 file)
+- Priority coverage:
+  - P0: `4`
+  - P1: `8`
+  - P2: `2`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-25T13-10-14Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-02-25T13-10-14Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-25T13-10-14Z.json`
+  - `/tmp/tea-automate-summary-2026-02-25T13-10-14Z.json`
+- Persisted under test artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-25T13-10-14Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-25T13-10-14Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-25T13-10-14Z.json`
+
+## Story c.4 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated spec parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts`
+  - Result: passed (`14` tests discovered in `2` files).
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) detected.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
+  - no `try/catch` flow-control anti-pattern introduced.
+  - priority tags (`@P0`, `@P1`, `@P2`) present for selective execution.
+- CLI sessions cleaned up:
+  - no orphaned `tea-automate` browser session.
+- Temp artifacts stored in workflow artifact path:
+  - `_bmad-output/test-artifacts/automation-temp`.
+
+### Key Assumptions
+- Story c.4 contract endpoints will be implemented/extended to align with artifact expectations:
+  - `POST /api/v1/connectshyft/threads/:threadId/close`
+  - `POST /api/v1/connectshyft/threads/:threadId/call`
+  - `POST /api/v1/connectshyft/threads/:threadId/messages`
+  - `POST /api/v1/connectshyft/webhooks/inbound`
+- Existing claim/takeover routes continue returning deterministic envelopes while lifecycle persistence evolves.
+
+### Risks
+- Browser exploration could not reach local app host during this run (`ERR_CONNECTION_REFUSED`), so selector validation relied on existing story artifacts and current fixture conventions.
+- Close/reopen endpoint surface is not fully present in current route implementation; generated c.4 automate tests remain `test.skip` until c.4 implementation lands.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality scoring and maintainability checks.
+- `[TR] Trace Requirements` to map Story c.4 AC coverage to ATDD + automate evidence.
