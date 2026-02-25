@@ -101,6 +101,9 @@ GPT-5 Codex
 - Story context prepared from Epic 2 planning artifacts.
 - Branch workflow guard remains blocked by `scripts/branch-ensure-workflow.sh` phase-0 readiness check despite presence of `phase0-readiness.json`; local implementation and verification proceeded with passing backend tests.
 - Senior code review remediation applied for durability defaults, orgUnit-scoped intake resolution, pickup-first scheduling defaults, minute-level delivery guardrails, and stronger donor/cashier parity assertions.
+- `npm --prefix src test -- --runInBand src/src/routes/api/v1/__tests__/route.cashier-intake.test.ts src/src/routes/api/v1/__tests__/route.commitments.test.ts src/src/routes/api/v1/__tests__/route.test.ts src/src/modules/route/application/__tests__/intakeService.test.ts src/src/modules/route/application/__tests__/commitmentService.test.ts src/src/modules/route/domain/__tests__/intakePolicy.test.ts src/src/modules/route/domain/__tests__/commitmentLifecycle.test.ts src/src/modules/route/infrastructure/__tests__/intakeRequestRepository.test.ts src/src/modules/route/infrastructure/__tests__/commitmentRepository.test.ts` (pass)
+- `npm --prefix src run build` (pass)
+- `npm --prefix src run migrate:latest` (pass, already up to date)
 
 ### Implementation Plan
 
