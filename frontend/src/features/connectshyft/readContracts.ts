@@ -13,6 +13,7 @@ export type ConnectShyftThreadSummary = {
   threadId: string;
   orgUnitId: string;
   state: ConnectShyftThreadState;
+  claimedByUserId: string | null;
   bucket: ConnectShyftInboxBucket;
   escalationStage: number;
   priorityRank: number;
@@ -30,6 +31,9 @@ export type ConnectShyftThreadSummary = {
 
 export type ConnectShyftThreadDetail = ConnectShyftThreadSummary & {
   actions: string[];
+  lifecycle: {
+    reopenedByInbound: boolean;
+  };
 };
 
 type ConnectShyftEnvelope = {
@@ -141,6 +145,8 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
     threadId?: unknown;
     orgUnitId?: unknown;
     state?: unknown;
+    claimedByUserId?: unknown;
+    claimed_by_user_id?: unknown;
     bucket?: unknown;
     escalationStage?: unknown;
     priorityRank?: unknown;
@@ -169,6 +175,9 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
     threadId,
     orgUnitId: normalizeString(candidate.orgUnitId),
     state: normalizeState(candidate.state),
+    claimedByUserId: normalizeString(
+      candidate.claimedByUserId ?? candidate.claimed_by_user_id,
+    ) || null,
     bucket: normalizeBucket(candidate.bucket),
     escalationStage: normalizeStage(candidate.escalationStage),
     priorityRank: normalizePriorityRank(candidate.priorityRank),
@@ -198,6 +207,9 @@ const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null =>
 
   const candidate = payload as {
     actions?: unknown;
+    lifecycle?: {
+      reopenedByInbound?: unknown;
+    };
   };
 
   const actions = Array.isArray(candidate.actions)
@@ -209,6 +221,9 @@ const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null =>
   return {
     ...summary,
     actions,
+    lifecycle: {
+      reopenedByInbound: candidate.lifecycle?.reopenedByInbound === true,
+    },
   };
 };
 

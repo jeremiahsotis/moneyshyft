@@ -2,6 +2,7 @@ import {
   AsyncConnectShyftThreadService,
   ConnectShyftThreadService,
   InMemoryConnectShyftThreadStore,
+  evaluateConnectShyftLifecyclePolicy,
 } from '../threads';
 
 describe('connectshyft thread service', () => {
@@ -266,6 +267,86 @@ describe('connectshyft thread service', () => {
     expect(reopened.data.thread.closedByUserId).toBeNull();
     expect(reopened.data.thread.closedAtUtc).toBeNull();
     expect(reopened.data.thread.escalation.nextEvaluationAtUtc).toEqual(expect.any(String));
+  });
+});
+
+describe('connectshyft lifecycle policy matrix', () => {
+  it('allows claim only from UNCLAIMED to CLAIMED', () => {
+    const allowed = evaluateConnectShyftLifecyclePolicy({
+      action: 'claim',
+      currentState: 'UNCLAIMED',
+      claimedByUserId: null,
+      actorUserId: 'user-connectshyft-c4-member',
+      actorRoles: ['ORGUNIT_MEMBER'],
+    });
+
+    expect(allowed).toEqual({
+      ok: true,
+      nextState: 'CLAIMED',
+    });
+
+    const refused = evaluateConnectShyftLifecyclePolicy({
+      action: 'claim',
+      currentState: 'CLOSED',
+      claimedByUserId: null,
+      actorUserId: 'user-connectshyft-c4-member',
+      actorRoles: ['ORGUNIT_MEMBER'],
+    });
+
+    expect(refused).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_TRANSITION_INVALID',
+    });
+  });
+
+  it('refuses close when actor is not owner and lacks takeover capability', () => {
+    const result = evaluateConnectShyftLifecyclePolicy({
+      action: 'close',
+      currentState: 'CLAIMED',
+      claimedByUserId: 'user-connectshyft-c4-owner',
+      actorUserId: 'user-connectshyft-c4-member',
+      actorRoles: ['ORGUNIT_MEMBER'],
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_OWNERSHIP_REQUIRED',
+    });
+  });
+
+  it('allows close when actor has takeover authority', () => {
+    const result = evaluateConnectShyftLifecyclePolicy({
+      action: 'close',
+      currentState: 'CLAIMED',
+      claimedByUserId: 'user-connectshyft-c4-owner',
+      actorUserId: 'user-connectshyft-c4-admin',
+      actorRoles: ['ORGUNIT_ADMIN'],
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      nextState: 'CLOSED',
+    });
+  });
+
+  it('requires actor attribution for claim, takeover, and close', () => {
+    const actions: Array<'claim' | 'takeover' | 'close'> = ['claim', 'takeover', 'close'];
+
+    actions.forEach((action) => {
+      const currentState = action === 'claim' ? 'UNCLAIMED' : 'CLAIMED';
+      const result = evaluateConnectShyftLifecyclePolicy({
+        action,
+        currentState,
+        claimedByUserId: action === 'claim' ? null : 'user-connectshyft-c4-owner',
+        actorUserId: '',
+        actorRoles: ['ORGUNIT_ADMIN'],
+      });
+
+      expect(result).toMatchObject({
+        ok: false,
+        code: 'CONNECTSHYFT_THREAD_TRANSITION_INVALID',
+      });
+    });
   });
 });
 

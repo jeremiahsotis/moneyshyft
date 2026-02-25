@@ -27,7 +27,7 @@ const buildThreadUrl = (
 };
 
 test.describe('Story c.4 Claim Takeover and Close Lifecycle Actions (ATDD E2E RED)', () => {
-  test.skip(
+  test(
     '[P0] thread detail enforces claim takeover and close actions with deterministic state feedback for authorized roles @P0',
     async ({ page }) => {
       const context = createStoryC4Context();
@@ -60,7 +60,7 @@ test.describe('Story c.4 Claim Takeover and Close Lifecycle Actions (ATDD E2E RE
     },
   );
 
-  test.skip(
+  test(
     '[P0] outbound actions from CLOSED thread reopen same thread in-place and surface thread_reopened_by_user confirmation @P0',
     async ({ page }) => {
       const context = createStoryC4Context();
@@ -88,7 +88,7 @@ test.describe('Story c.4 Claim Takeover and Close Lifecycle Actions (ATDD E2E RE
     },
   );
 
-  test.skip(
+  test(
     '[P1] inbound voicemail on CLOSED thread does not auto-reopen and action set stays in closed-state contract @P1',
     async ({ page }) => {
       const context = createStoryC4Context();

@@ -31,7 +31,7 @@ test.describe(
   () => {
     test.describe.configure({ mode: 'serial' });
 
-    test.skip(
+    test(
       '[P0] unclaimed thread detail shows Claim action and transitions to CLAIMED with deterministic operator feedback @P0',
       async ({ page }) => {
         const context = createStoryC4Context();
@@ -60,7 +60,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P0] claimed thread detail for orgUnit admin shows takeover and close actions with ownership indicator context @P0',
       async ({ page }) => {
         const context = createStoryC4Context();
@@ -81,7 +81,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] close action prompts deterministic confirmation content before lifecycle mutation is submitted @P1',
       async ({ page }) => {
         const context = createStoryC4Context();
@@ -104,7 +104,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] outbound call from CLOSED thread reopens the same thread id in-place and surfaces thread_reopened_by_user feedback @P1',
       async ({ page }) => {
         const context = createStoryC4Context();
@@ -138,7 +138,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] outbound message from CLOSED thread reopens in-place and resets locked escalation/inactivity indicators @P1',
       async ({ page }) => {
         const context = createStoryC4Context();
@@ -168,7 +168,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] inbound voicemail and fallback events on CLOSED thread do not auto-reopen and preserve closed-state action contract @P1',
       async ({ page }) => {
         const context = createStoryC4Context();
@@ -190,7 +190,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P2] tenant-viewer thread detail surface shows deterministic refusal guidance and hides lifecycle action controls @P2',
       async ({ page }) => {
         const context = createStoryC4Context();

@@ -2,7 +2,7 @@ import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryC4.fixture';
 
 test.describe('Story c.4 Claim Takeover and Close Lifecycle Actions (ATDD API RED)', () => {
-  test.skip(
+  test(
     '[P0] allows only canonical claim takeover and close transitions with policy-enforced ownership checks @P0',
     async ({
       request,
@@ -48,7 +48,7 @@ test.describe('Story c.4 Claim Takeover and Close Lifecycle Actions (ATDD API RE
     },
   );
 
-  test.skip(
+  test(
     '[P0] successful transitions emit audit and outbox records with actor orgUnit prior-state and new-state metadata @P0',
     async ({
       request,
@@ -96,7 +96,7 @@ test.describe('Story c.4 Claim Takeover and Close Lifecycle Actions (ATDD API RE
     },
   );
 
-  test.skip(
+  test(
     '[P0] outbound call or message from CLOSED reopens the same thread as UNCLAIMED and emits thread_reopened_by_user event @P0',
     async ({
       request,
@@ -138,7 +138,7 @@ test.describe('Story c.4 Claim Takeover and Close Lifecycle Actions (ATDD API RE
     },
   );
 
-  test.skip(
+  test(
     '[P1] inbound voice or fallback events on CLOSED threads do not auto-reopen and preserve terminal state guarantees @P1',
     async ({
       request,
@@ -172,7 +172,7 @@ test.describe('Story c.4 Claim Takeover and Close Lifecycle Actions (ATDD API RE
     },
   );
 
-  test.skip(
+  test(
     '[P1] unauthorized lifecycle actions return deterministic refusal contracts with no state-mutation side effects @P1',
     async ({ request, storyC4Context, storyC4ViewerHeaders, storyC4ClaimPayload }) => {
       const response = await apiRequest(request, {

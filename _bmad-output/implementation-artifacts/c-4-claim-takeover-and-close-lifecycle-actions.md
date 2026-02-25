@@ -1,6 +1,6 @@
 # Story c.4: Claim, Takeover, and Close Lifecycle Actions
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -33,22 +33,22 @@ so that lifecycle actions remain predictable and auditable.
 
 ## Tasks / Subtasks
 
-- [ ] Implement canonical claim/takeover/close transitions (AC: 1, 2)
-  - [ ] Enforce transition matrix and ownership policy in service layer.
-  - [ ] Refuse invalid transitions with deterministic refusal envelopes.
-- [ ] Implement lifecycle audit/outbox side effects (AC: 2)
-  - [ ] Emit transition audit/outbox events with actor and orgUnit provenance.
-  - [ ] Ensure mutation + outbox writes are transactionally coupled.
-- [ ] Implement `CLOSED` outbound reopen semantics (AC: 3)
-  - [ ] Reopen same thread id as `UNCLAIMED` before outbound execution.
-  - [ ] Emit `thread_reopened_by_user` and reset escalation/inactivity fields per locked behavior.
-- [ ] Enforce inbound-to-closed no-auto-reopen rules (AC: 4)
-  - [ ] Keep inbound voice/fallback handling from auto-reopening closed threads.
-  - [ ] Ensure timeline/audit events are still captured for fallback outcomes.
-- [ ] Add lifecycle and policy matrix coverage (AC: 1, 2, 3, 4)
-  - [ ] API tests for valid/invalid transition matrix and ownership gating.
-  - [ ] API tests for reopen-on-outbound + no-reopen-on-inbound behavior.
-  - [ ] E2E tests for state-specific action behavior and operator messaging.
+- [x] Implement canonical claim/takeover/close transitions (AC: 1, 2)
+  - [x] Enforce transition matrix and ownership policy in service layer.
+  - [x] Refuse invalid transitions with deterministic refusal envelopes.
+- [x] Implement lifecycle audit/outbox side effects (AC: 2)
+  - [x] Emit transition audit/outbox events with actor and orgUnit provenance.
+  - [x] Ensure mutation + outbox writes are transactionally coupled.
+- [x] Implement `CLOSED` outbound reopen semantics (AC: 3)
+  - [x] Reopen same thread id as `UNCLAIMED` before outbound execution.
+  - [x] Emit `thread_reopened_by_user` and reset escalation/inactivity fields per locked behavior.
+- [x] Enforce inbound-to-closed no-auto-reopen rules (AC: 4)
+  - [x] Keep inbound voice/fallback handling from auto-reopening closed threads.
+  - [x] Ensure timeline/audit events are still captured for fallback outcomes.
+- [x] Add lifecycle and policy matrix coverage (AC: 1, 2, 3, 4)
+  - [x] API tests for valid/invalid transition matrix and ownership gating.
+  - [x] API tests for reopen-on-outbound + no-reopen-on-inbound behavior.
+  - [x] E2E tests for state-specific action behavior and operator messaging.
 
 ## Dev Notes
 
@@ -109,7 +109,7 @@ so that lifecycle actions remain predictable and auditable.
 
 ### Story Completion Status
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
+- Lifecycle action implementation completed, validated, and moved to review.
 
 ### Project Structure Notes
 
@@ -133,16 +133,45 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context generation only (no implementation commands executed).
+- `npm run branch:ensure-workflow -- --workflow dev-story --story c-4-claim-takeover-and-close-lifecycle-actions`
+- `cd src && npm test -- src/modules/connectshyft/__tests__/threads.test.ts` (pass)
+- `cd src && npm run build` (pass)
+- `cd frontend && npm run build` (pass)
+- `npm run test:e2e -- tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.api.spec.ts tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts` (initial run failed due UUID cast on synthetic IDs; fixed)
+- `npm run test:e2e -- tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.api.spec.ts tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts` (pass, 12/12)
+- `npm run test:e2e -- tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.spec.ts tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts` (pass, 10/10)
 
 ### Completion Notes List
 
-- Created implementation-ready Story c.4 context with transition governance, auditable lifecycle actions, and locked reopen behavior.
+- Added ConnectShyft lifecycle policy evaluation in service layer with canonical `claim`, `takeover`, `close` matrix enforcement and ownership gating.
+- Extended backend thread contracts and synthetic read seed data for c.4 with claimed owner metadata and lifecycle state context used by API and UI tests.
+- Implemented lifecycle endpoints and state transitions in ConnectShyft API routes:
+  - `POST /threads/:threadId/claim`
+  - `POST /threads/:threadId/takeover`
+  - `POST /threads/:threadId/close`
+  - `POST /threads/:threadId/call`
+  - `POST /threads/:threadId/messages`
+  - `POST /webhooks/inbound`
+- Added closed-thread outbound reopen semantics (`thread_reopened_by_user`) and locked inbound behavior that preserves `CLOSED` state for voice/fallback events.
+- Updated Thread Detail frontend to render lifecycle-aware controls, deterministic refusal messaging, close confirmation modal, and reopened-thread feedback chips/toast.
+- Enabled and expanded c.4 API and E2E automation suites (ATDD + automate), and added direct unit coverage for lifecycle policy decisions.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/c-4-claim-takeover-and-close-lifecycle-actions.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- src/src/modules/connectshyft/readContracts.ts
+- src/src/modules/connectshyft/threads.ts
+- src/src/modules/connectshyft/__tests__/threads.test.ts
+- src/src/routes/api/v1/connectshyft.ts
+- frontend/src/features/connectshyft/readContracts.ts
+- frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
+- tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.api.spec.ts
+- tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts
+- tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.spec.ts
+- tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts
 
 ## Change Log
 
 - 2026-02-24: Created Story c.4 ready-for-dev context document.
+- 2026-02-25: Implemented c.4 lifecycle actions and policy enforcement across backend and thread-detail UI, enabled c.4 API/E2E suites, and moved story status to review.

@@ -13,7 +13,7 @@ test.describe(
   () => {
     test.describe.configure({ mode: 'serial' });
 
-    test.skip(
+    test(
       '[P0] claim action returns canonical envelope keys and orgUnit-scoped context for authorized members @P0',
       async ({ request, storyC4Context, storyC4MemberHeaders, storyC4ClaimPayload }) => {
         const response = await apiRequest(request, {
@@ -40,7 +40,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P0] takeover action returns canonical envelope keys, explicit reason, and takeover-ready context @P0',
       async ({ request, storyC4Context, storyC4AdminHeaders, storyC4TakeoverPayload }) => {
         const response = await apiRequest(request, {
@@ -68,7 +68,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] tenant-viewer claim attempts are refused with deterministic refusal envelope and no thread mutation payload @P1',
       async ({ request, storyC4Context, storyC4ViewerHeaders, storyC4ClaimPayload }) => {
         const response = await apiRequest(request, {
@@ -91,20 +91,15 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] orgUnit admins without membership are refused lifecycle action execution unless tenant-privileged override applies @P1',
-      async ({ request, storyC4Context, storyC4ClaimPayload }) => {
+      async ({ request, storyC4Context, storyC4AdminHeaders, storyC4ClaimPayload }) => {
         const response = await apiRequest(request, {
           method: 'POST',
           path: `${storyC4Context.paths.threads}/${storyC4Context.threadIds.unclaimed}/claim`,
           headers: {
-            'x-test-connectshyft-role': 'ORGUNIT_ADMIN',
-            'x-test-connectshyft-user-id': storyC4Context.adminUserId,
+            ...storyC4AdminHeaders,
             'x-test-connectshyft-orgunit-memberships': JSON.stringify([]),
-            'x-tenant-id': storyC4Context.tenantId,
-            'x-org-unit-id': storyC4Context.orgUnitId,
-            'x-correlation-id': storyC4Context.correlationId,
-            'x-csrf-token': storyC4Context.csrfToken,
           },
           data: storyC4ClaimPayload,
         });
@@ -121,7 +116,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] close action transitions CLAIMED to CLOSED with audit and outbox provenance metadata when close endpoint lands @P1',
       async ({ request, storyC4Context, storyC4AdminHeaders, storyC4ClosePayload }) => {
         const response = await apiRequest(request, {
@@ -162,7 +157,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] outbound call and message actions from CLOSED thread reopen same thread to UNCLAIMED and emit thread_reopened_by_user @P1',
       async ({ request, storyC4Context, storyC4MemberHeaders, storyC4OutboundMessagePayload }) => {
         const callResponse = await apiRequest(request, {
@@ -199,7 +194,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P2] inbound voice and fallback intake events preserve CLOSED state and do not trigger auto-reopen side effects @P2',
       async ({ request, storyC4Context, storyC4AdminHeaders, storyC4InboundVoicePayload }) => {
         const voiceResponse = await apiRequest(request, {

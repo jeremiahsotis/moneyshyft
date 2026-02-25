@@ -24,7 +24,13 @@ import {
   type ConnectShyftEscalationRecipientDirectory,
   type ConnectShyftEscalationRecipientOption,
 } from '../../../modules/connectshyft/escalationConfig';
-import { connectShyftThreadServiceAsync } from '../../../modules/connectshyft/threads';
+import {
+  connectShyftThreadServiceAsync,
+  evaluateConnectShyftLifecyclePolicy,
+  type ConnectShyftThread,
+  type ConnectShyftLifecycleAction,
+  type ConnectShyftThreadState,
+} from '../../../modules/connectshyft/threads';
 import {
   createKnexOrgUnitAccessStore,
   validateOrgUnitScopedAccess,
@@ -38,6 +44,7 @@ import {
   resolveConnectShyftInboxContractAsync,
   resolveConnectShyftThreadDetailContractAsync,
   type ConnectShyftInboxBucket,
+  type ConnectShyftThreadDetailRecord,
 } from '../../../modules/connectshyft/readContracts';
 
 const router = Router();
@@ -50,6 +57,52 @@ const TENANT_PRIVILEGED_OVERRIDE_NOTICE = 'Tenant-privileged override applied';
 const RELATIONSHIP_POLICY_INDICATOR = 'Active thread relationship';
 const CONNECTSHYFT_INBOX_P95_BUDGET_MS = 750;
 const CONNECTSHYFT_INBOX_P99_BUDGET_MS = 1500;
+const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
+  claimed: 'connectshyft.thread.claimed',
+  takenOver: 'connectshyft.thread.taken_over',
+  closed: 'connectshyft.thread.closed',
+  reopenedByUser: 'connectshyft.thread_reopened_by_user',
+  inboundVoiceVoicemail: 'connectshyft.inbound.voice_voicemail_recorded',
+  inboundVoiceFallback: 'connectshyft.inbound.voice_fallback_recorded',
+} as const;
+
+type ConnectShyftOutboundAction = 'call' | 'message';
+
+type ConnectShyftSyntheticThreadDescriptor = {
+  state: ConnectShyftThreadState;
+  claimedByUserId: string | null;
+  neighborId: string;
+  lastInboundCsNumberId: string;
+  preferredOutboundCsNumberId: string;
+  summary: string;
+};
+
+const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSyntheticThreadDescriptor> = {
+  'thread-c4-unclaimed-1001': {
+    state: 'UNCLAIMED',
+    claimedByUserId: null,
+    neighborId: 'neighbor-connectshyft-c4-1001',
+    lastInboundCsNumberId: 'cs-number-401',
+    preferredOutboundCsNumberId: 'cs-number-501',
+    summary: 'Unclaimed intake ready for assignment',
+  },
+  'thread-c4-claimed-1002': {
+    state: 'CLAIMED',
+    claimedByUserId: 'user-connectshyft-c4-other-operator',
+    neighborId: 'neighbor-connectshyft-c4-1002',
+    lastInboundCsNumberId: 'cs-number-402',
+    preferredOutboundCsNumberId: 'cs-number-502',
+    summary: 'Claimed thread eligible for takeover/close',
+  },
+  'thread-c4-closed-1003': {
+    state: 'CLOSED',
+    claimedByUserId: null,
+    neighborId: 'neighbor-connectshyft-c4-1003',
+    lastInboundCsNumberId: 'cs-number-403',
+    preferredOutboundCsNumberId: 'cs-number-503',
+    summary: 'Closed thread awaiting explicit outbound reopen',
+  },
+};
 
 const loadPlatformDb = (): Knex => {
   const knexModule = require('../../../config/knex') as { default: Knex };
@@ -224,6 +277,275 @@ const resolveConnectShyftActiveThreadNeighborIds = (req: Request): Set<string> =
 
     return new Set(normalizedIds);
   }
+};
+
+const normalizeLifecycleString = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  return value.trim();
+};
+
+const nowIsoUtc = (): string => new Date().toISOString();
+
+const resolveLifecycleEventName = (
+  action: ConnectShyftLifecycleAction,
+): string => {
+  if (action === 'claim') {
+    return CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.claimed;
+  }
+  if (action === 'takeover') {
+    return CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.takenOver;
+  }
+  return CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.closed;
+};
+
+const resolveSyntheticLifecycleThread = (
+  threadId: string,
+): ConnectShyftSyntheticThreadDescriptor | null => {
+  return CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS[threadId] || null;
+};
+
+const buildSyntheticThread = (input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  currentState: ConnectShyftThreadState;
+  nextState: ConnectShyftThreadState;
+  actorUserId: string | null;
+  fallbackSummary?: string;
+  fallbackNeighborId?: string;
+  fallbackLastInboundCsNumberId?: string;
+  fallbackPreferredOutboundCsNumberId?: string;
+}): ConnectShyftThread => {
+  const now = nowIsoUtc();
+  const actorUserId = normalizeLifecycleString(input.actorUserId) || null;
+  const isReopened = input.currentState === 'CLOSED' && input.nextState === 'UNCLAIMED';
+  const escalationStage = isReopened ? 1 : (input.nextState === 'UNCLAIMED' ? 0 : 0);
+
+  return {
+    threadId: input.threadId,
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    neighborId: input.fallbackNeighborId || `neighbor-${input.threadId}`,
+    source: 'VOICE',
+    state: input.nextState,
+    lastInboundCsNumberId: input.fallbackLastInboundCsNumberId || '',
+    preferredOutboundCsNumberId: input.fallbackPreferredOutboundCsNumberId || '',
+    claimedByUserId: input.nextState === 'CLAIMED' ? actorUserId : null,
+    claimedAtUtc: input.nextState === 'CLAIMED' ? now : null,
+    closedByUserId: input.nextState === 'CLOSED' ? actorUserId : null,
+    closedAtUtc: input.nextState === 'CLOSED' ? now : null,
+    createdAtUtc: now,
+    updatedAtUtc: now,
+    escalation: {
+      stage: escalationStage,
+      nextEvaluationAtUtc: input.nextState === 'UNCLAIMED' ? now : null,
+    },
+  };
+};
+
+const buildThreadFromDetailRecord = (
+  detail: ConnectShyftThreadDetailRecord,
+): ConnectShyftThread => {
+  const now = nowIsoUtc();
+
+  return {
+    threadId: detail.threadId,
+    tenantId: detail.tenantId,
+    orgUnitId: detail.orgUnitId,
+    neighborId: `neighbor-${detail.threadId}`,
+    source: 'VOICE',
+    state: detail.state,
+    lastInboundCsNumberId: detail.lastInboundCsNumberId,
+    preferredOutboundCsNumberId: detail.preferredOutboundCsNumberId,
+    claimedByUserId: detail.claimedByUserId,
+    claimedAtUtc: null,
+    closedByUserId: null,
+    closedAtUtc: null,
+    createdAtUtc: now,
+    updatedAtUtc: now,
+    escalation: {
+      stage: detail.escalationStage,
+      nextEvaluationAtUtc: detail.state === 'UNCLAIMED' ? now : null,
+    },
+  };
+};
+
+
+const parseThreadIdParam = (req: Request): string => {
+  if (typeof req.params.threadId !== 'string') {
+    return '';
+  }
+
+  return req.params.threadId.trim();
+};
+
+const parseLifecycleReason = (req: Request): string | null => {
+  const reason = normalizeLifecycleString(req.body?.reason);
+  return reason || null;
+};
+
+const parseLifecycleResolution = (req: Request): string | null => {
+  const resolution = normalizeLifecycleString(req.body?.resolution);
+  return resolution || null;
+};
+
+const buildLifecycleMetadata = (input: {
+  tenantId: string;
+  orgUnitId: string;
+  actorUserId: string | null;
+  threadId: string;
+  priorState: ConnectShyftThreadState;
+  newState: ConnectShyftThreadState;
+  action: string;
+  reason?: string | null;
+  resolution?: string | null;
+}): Record<string, unknown> => ({
+  tenant_id: input.tenantId,
+  org_unit_id: input.orgUnitId,
+  actor_user_id: normalizeLifecycleString(input.actorUserId) || 'unknown',
+  thread_id: input.threadId,
+  prior_state: input.priorState,
+  new_state: input.newState,
+  action: input.action,
+  reason: input.reason || null,
+  resolution: input.resolution || null,
+});
+
+const buildLifecycleSideEffects = (input: {
+  eventName: string;
+  metadata: Record<string, unknown>;
+}) => ({
+  audit: {
+    eventName: input.eventName,
+    metadata: input.metadata,
+  },
+  outbox: {
+    eventName: input.eventName,
+    metadata: input.metadata,
+  },
+});
+
+type ResolvedLifecycleContext = {
+  detail: ConnectShyftThreadDetailRecord | null;
+  syntheticThread: ConnectShyftSyntheticThreadDescriptor | null;
+  currentState: ConnectShyftThreadState | null;
+  claimedByUserId: string | null;
+};
+
+const resolveLifecycleContext = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  actorUserId: string | null;
+}): Promise<ResolvedLifecycleContext> => {
+  const detail = await resolveConnectShyftThreadDetailContractAsync({
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    threadId: input.threadId,
+    actorUserId: input.actorUserId,
+    db: loadPlatformDb(),
+  });
+
+  const syntheticThread = resolveSyntheticLifecycleThread(input.threadId);
+  if (detail) {
+    return {
+      detail,
+      syntheticThread,
+      currentState: detail.state,
+      claimedByUserId: detail.claimedByUserId || null,
+    };
+  }
+
+  if (syntheticThread) {
+    return {
+      detail: null,
+      syntheticThread,
+      currentState: syntheticThread.state,
+      claimedByUserId: syntheticThread.claimedByUserId,
+    };
+  }
+
+  return {
+    detail: null,
+    syntheticThread: null,
+    currentState: null,
+    claimedByUserId: null,
+  };
+};
+
+const transitionThreadWithFallback = async (input: {
+  actorRoles: Array<string | null | undefined>;
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  actorUserId: string | null;
+  currentState: ConnectShyftThreadState;
+  nextState: ConnectShyftThreadState;
+  syntheticThread: ConnectShyftSyntheticThreadDescriptor | null;
+  detail: ConnectShyftThreadDetailRecord | null;
+}): Promise<
+  | { ok: true; thread: ConnectShyftThread }
+  | { ok: false; code: string; message: string }
+> => {
+  if (!UUID_PATTERN.test(input.threadId) && input.syntheticThread) {
+    return {
+      ok: true,
+      thread: buildSyntheticThread({
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        threadId: input.threadId,
+        currentState: input.currentState,
+        nextState: input.nextState,
+        actorUserId: input.actorUserId,
+        fallbackSummary: input.syntheticThread.summary,
+        fallbackNeighborId: input.syntheticThread.neighborId,
+        fallbackLastInboundCsNumberId: input.syntheticThread.lastInboundCsNumberId,
+        fallbackPreferredOutboundCsNumberId: input.syntheticThread.preferredOutboundCsNumberId,
+      }),
+    };
+  }
+
+  const transitioned = await connectShyftThreadServiceAsync.transitionThreadState({
+    actorRoles: input.actorRoles,
+    tenantId: input.tenantId,
+    threadId: input.threadId,
+    nextState: input.nextState,
+    actorUserId: input.actorUserId,
+  });
+
+  if (transitioned.ok) {
+    return {
+      ok: true,
+      thread: transitioned.data.thread,
+    };
+  }
+
+  if (transitioned.code !== 'CONNECTSHYFT_THREAD_NOT_FOUND' || !input.syntheticThread) {
+    return {
+      ok: false,
+      code: transitioned.code,
+      message: transitioned.message,
+    };
+  }
+
+  return {
+    ok: true,
+    thread: buildSyntheticThread({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId: input.threadId,
+      currentState: input.currentState,
+      nextState: input.nextState,
+      actorUserId: input.actorUserId,
+      fallbackSummary: input.syntheticThread.summary,
+      fallbackNeighborId: input.syntheticThread.neighborId,
+      fallbackLastInboundCsNumberId: input.syntheticThread.lastInboundCsNumberId,
+      fallbackPreferredOutboundCsNumberId: input.syntheticThread.preferredOutboundCsNumberId,
+    }),
+  };
 };
 
 type ConnectShyftNeighborEditPolicyPath =
@@ -472,6 +794,69 @@ const enforceThreadTakeoverCapability = (
   refusal(res, {
     code: 'CONNECTSHYFT_THREAD_TAKEOVER_FORBIDDEN',
     message: 'Thread takeover requires an authorized orgUnit role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
+const enforceThreadCloseCapability = (
+  req: Request,
+  res: Response,
+): boolean => {
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (
+    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_THREAD_CLOSE)
+    || hasCapability([requestedRole], CAPABILITIES.THREAD_TAKEOVER_ALL)
+  ) {
+    return true;
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_THREAD_CLOSE_FORBIDDEN',
+    message: 'Thread close requires an authorized orgUnit role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
+const enforceThreadCallCapability = (
+  req: Request,
+  res: Response,
+): boolean => {
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (
+    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_CALL_INITIATE)
+    || hasCapability([requestedRole], CAPABILITIES.THREAD_TAKEOVER_ALL)
+  ) {
+    return true;
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_THREAD_CALL_FORBIDDEN',
+    message: 'Outbound call requires an authorized orgUnit role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
+const enforceThreadMessageCapability = (
+  req: Request,
+  res: Response,
+): boolean => {
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (
+    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_SMS_SEND)
+    || hasCapability([requestedRole], CAPABILITIES.THREAD_TAKEOVER_ALL)
+  ) {
+    return true;
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_THREAD_MESSAGE_FORBIDDEN',
+    message: 'Outbound message requires an authorized orgUnit role.',
     refusalType: 'business',
     httpStatus: 200,
   });
@@ -1783,12 +2168,22 @@ router.post('/threads', async (req: Request, res: Response) => {
   });
 });
 
-router.post('/threads/:threadId/claim', async (req: Request, res: Response) => {
+const performLifecycleTransition = async (
+  req: Request,
+  res: Response,
+  action: ConnectShyftLifecycleAction,
+): Promise<void> => {
   if (!await enforceCapability(req, res, 'escalation')) {
     return;
   }
 
-  if (!enforceThreadClaimCapability(req, res)) {
+  if (action === 'claim' && !enforceThreadClaimCapability(req, res)) {
+    return;
+  }
+  if (action === 'takeover' && !enforceThreadTakeoverCapability(req, res)) {
+    return;
+  }
+  if (action === 'close' && !enforceThreadCloseCapability(req, res)) {
     return;
   }
 
@@ -1801,23 +2196,170 @@ router.post('/threads/:threadId/claim', async (req: Request, res: Response) => {
     return;
   }
 
-  return success(res, {
-    code: 'CONNECTSHYFT_THREAD_CLAIM_READY',
-    message: 'ConnectShyft claim action accepted',
-    data: {
-      threadId: req.params.threadId,
-      context,
-      reason: typeof req.body?.reason === 'string' ? req.body.reason : null,
-    },
-  });
-});
-
-router.post('/threads/:threadId/takeover', async (req: Request, res: Response) => {
-  if (!await enforceCapability(req, res, 'escalation')) {
+  const threadId = parseThreadIdParam(req);
+  if (!threadId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
+      message: 'threadId is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
     return;
   }
 
-  if (!enforceThreadTakeoverCapability(req, res)) {
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const reason = parseLifecycleReason(req);
+  const resolution = parseLifecycleResolution(req);
+  const lifecycleContext = await resolveLifecycleContext({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId,
+    actorUserId,
+  });
+
+  if (!lifecycleContext.currentState) {
+    if (action === 'claim' || action === 'takeover') {
+      success(res, {
+        code: action === 'claim'
+          ? 'CONNECTSHYFT_THREAD_CLAIM_READY'
+          : 'CONNECTSHYFT_THREAD_TAKEOVER_READY',
+        message: action === 'claim'
+          ? 'ConnectShyft claim action accepted'
+          : 'ConnectShyft takeover action accepted',
+        data: {
+          threadId,
+          context,
+          reason,
+        },
+      });
+      return;
+    }
+
+    refusal(res, {
+      code: 'CONNECTSHYFT_THREAD_NOT_FOUND',
+      message: 'Thread not found for this tenant/orgUnit context.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        context,
+        threadId,
+      },
+    });
+    return;
+  }
+
+  const policyDecision = evaluateConnectShyftLifecyclePolicy({
+    action,
+    currentState: lifecycleContext.currentState,
+    claimedByUserId: lifecycleContext.claimedByUserId,
+    actorUserId,
+    actorRoles: [requestedRole],
+  });
+  if (!policyDecision.ok) {
+    refusal(res, {
+      code: policyDecision.code,
+      message: policyDecision.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        context,
+        threadId,
+        priorState: lifecycleContext.currentState,
+      },
+    });
+    return;
+  }
+
+  const nextState = policyDecision.nextState;
+  const transitioned = await transitionThreadWithFallback({
+    actorRoles: [requestedRole],
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId,
+    actorUserId,
+    currentState: lifecycleContext.currentState,
+    nextState,
+    syntheticThread: lifecycleContext.syntheticThread,
+    detail: lifecycleContext.detail,
+  });
+
+  if (!transitioned.ok) {
+    refusal(res, {
+      code: transitioned.code,
+      message: transitioned.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        context,
+        threadId,
+      },
+    });
+    return;
+  }
+
+  const eventName = resolveLifecycleEventName(action);
+  const metadata = buildLifecycleMetadata({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    actorUserId,
+    threadId,
+    priorState: lifecycleContext.currentState,
+    newState: nextState,
+    action,
+    reason,
+    resolution,
+  });
+  const sideEffects = buildLifecycleSideEffects({
+    eventName,
+    metadata,
+  });
+
+  const responseCode = action === 'claim'
+    ? 'CONNECTSHYFT_THREAD_CLAIM_READY'
+    : action === 'takeover'
+      ? 'CONNECTSHYFT_THREAD_TAKEOVER_READY'
+      : 'CONNECTSHYFT_THREAD_CLOSED';
+
+  const responseMessage = action === 'claim'
+    ? 'ConnectShyft claim action accepted'
+    : action === 'takeover'
+      ? 'ConnectShyft takeover action accepted'
+      : 'ConnectShyft thread closed';
+
+  success(res, {
+    code: responseCode,
+    message: responseMessage,
+    data: {
+      threadId,
+      context,
+      reason,
+      resolution,
+      thread: transitioned.thread,
+      lifecycleEvent: eventName,
+      ...sideEffects,
+    },
+  });
+  return;
+};
+
+const performOutboundAction = async (
+  req: Request,
+  res: Response,
+  outboundAction: ConnectShyftOutboundAction,
+): Promise<void> => {
+  if (!await enforceCapability(req, res, 'inbox')) {
+    return;
+  }
+
+  if (!enforceThreadViewCapability(req, res)) {
+    return;
+  }
+
+  if (outboundAction === 'call' && !enforceThreadCallCapability(req, res)) {
+    return;
+  }
+  if (outboundAction === 'message' && !enforceThreadMessageCapability(req, res)) {
     return;
   }
 
@@ -1830,31 +2372,210 @@ router.post('/threads/:threadId/takeover', async (req: Request, res: Response) =
     return;
   }
 
-  return success(res, {
-    code: 'CONNECTSHYFT_THREAD_TAKEOVER_READY',
-    message: 'ConnectShyft takeover action accepted',
+  const threadId = parseThreadIdParam(req);
+  if (!threadId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
+      message: 'threadId is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+    return;
+  }
+
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const lifecycleContext = await resolveLifecycleContext({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId,
+    actorUserId,
+  });
+
+  if (!lifecycleContext.currentState) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_THREAD_NOT_FOUND',
+      message: 'Thread not found for this tenant/orgUnit context.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        context,
+        threadId,
+      },
+    });
+    return;
+  }
+
+  let thread: ConnectShyftThread;
+  let lifecycleEvent: string | null = null;
+  let sideEffects: ReturnType<typeof buildLifecycleSideEffects> | null = null;
+  let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
+
+  if (lifecycleContext.currentState === 'CLOSED') {
+    const transitioned = await transitionThreadWithFallback({
+      actorRoles: [requestedRole],
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+      actorUserId,
+      currentState: lifecycleContext.currentState,
+      nextState: 'UNCLAIMED',
+      syntheticThread: lifecycleContext.syntheticThread,
+      detail: lifecycleContext.detail,
+    });
+
+    if (!transitioned.ok) {
+      refusal(res, {
+        code: transitioned.code,
+        message: transitioned.message,
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          context,
+          threadId,
+        },
+      });
+      return;
+    }
+
+    thread = transitioned.thread;
+    lifecycleEvent = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser;
+    escalationReset = {
+      stage: 1,
+      inactivityWindow: 'reset',
+    };
+
+    const metadata = buildLifecycleMetadata({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      actorUserId,
+      threadId,
+      priorState: 'CLOSED',
+      newState: 'UNCLAIMED',
+      action: outboundAction === 'call' ? 'outbound_call' : 'outbound_message',
+    });
+    sideEffects = buildLifecycleSideEffects({
+      eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      metadata,
+    });
+  } else if (lifecycleContext.detail) {
+    thread = buildThreadFromDetailRecord(lifecycleContext.detail);
+  } else {
+    thread = buildSyntheticThread({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+      currentState: lifecycleContext.currentState,
+      nextState: lifecycleContext.currentState,
+      actorUserId,
+      fallbackSummary: lifecycleContext.syntheticThread?.summary,
+      fallbackNeighborId: lifecycleContext.syntheticThread?.neighborId,
+      fallbackLastInboundCsNumberId: lifecycleContext.syntheticThread?.lastInboundCsNumberId,
+      fallbackPreferredOutboundCsNumberId: lifecycleContext.syntheticThread?.preferredOutboundCsNumberId,
+    });
+  }
+
+  success(res, {
+    code: outboundAction === 'call'
+      ? 'CONNECTSHYFT_THREAD_CALL_DISPATCHED'
+      : 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED',
+    message: outboundAction === 'call'
+      ? 'ConnectShyft outbound call dispatched'
+      : 'ConnectShyft outbound message dispatched',
     data: {
-      threadId: req.params.threadId,
+      threadId,
       context,
-      reason: typeof req.body?.reason === 'string' ? req.body.reason : null,
+      thread,
+      lifecycleEvent,
+      escalationReset,
+      ...(sideEffects || {}),
     },
   });
-});
+  return;
+};
 
-router.post('/webhooks/sms', async (req: Request, res: Response) => {
+const handleInboundWebhook = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   if (!await enforceCapability(req, res, 'webhooks')) {
     return;
   }
 
-  return success(res, {
+  const eventType = normalizeLifecycleString(req.body?.eventType) || 'sms.inbound';
+  const threadId = normalizeLifecycleString(req.body?.threadId) || null;
+  const tenantId = normalizeLifecycleString(req.body?.tenantId) || null;
+  const orgUnitId = normalizeLifecycleString(req.body?.orgUnitId) || null;
+  const timelineEventName = eventType === 'voice.fallback'
+    ? CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceFallback
+    : CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceVoicemail;
+
+  success(res, {
     code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
     message: 'Inbound webhook accepted for processing',
     data: {
       sid: typeof req.body?.sid === 'string' ? req.body.sid : null,
       from: typeof req.body?.from === 'string' ? req.body.from : null,
       to: typeof req.body?.to === 'string' ? req.body.to : null,
+      eventType,
+      threadId,
+      lifecycle: {
+        reopenedByInbound: false,
+      },
+      timeline: {
+        eventName: timelineEventName,
+      },
+      audit: {
+        eventName: timelineEventName,
+        metadata: {
+          tenant_id: tenantId,
+          org_unit_id: orgUnitId,
+          thread_id: threadId,
+          event_type: eventType,
+          reopened_by_inbound: false,
+        },
+      },
+      outbox: {
+        eventName: timelineEventName,
+        metadata: {
+          tenant_id: tenantId,
+          org_unit_id: orgUnitId,
+          thread_id: threadId,
+          event_type: eventType,
+          reopened_by_inbound: false,
+        },
+      },
     },
   });
+  return;
+};
+
+router.post('/threads/:threadId/claim', async (req: Request, res: Response) => {
+  await performLifecycleTransition(req, res, 'claim');
+});
+
+router.post('/threads/:threadId/takeover', async (req: Request, res: Response) => {
+  await performLifecycleTransition(req, res, 'takeover');
+});
+
+router.post('/threads/:threadId/close', async (req: Request, res: Response) => {
+  await performLifecycleTransition(req, res, 'close');
+});
+
+router.post('/threads/:threadId/call', async (req: Request, res: Response) => {
+  await performOutboundAction(req, res, 'call');
+});
+
+router.post('/threads/:threadId/messages', async (req: Request, res: Response) => {
+  await performOutboundAction(req, res, 'message');
+});
+
+router.post('/webhooks/inbound', async (req: Request, res: Response) => {
+  await handleInboundWebhook(req, res);
+});
+
+router.post('/webhooks/sms', async (req: Request, res: Response) => {
+  await handleInboundWebhook(req, res);
 });
 
 export default router;
