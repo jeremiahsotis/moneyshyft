@@ -48,6 +48,57 @@ describe('connectshyft read contracts', () => {
     ]);
   });
 
+  it('derives inbox and mine buckets from actor ownership for claimed threads', () => {
+    const operatorInbox = resolveConnectShyftInboxContract({
+      tenantId: 'tenant-connectshyft-c3',
+      orgUnitId: 'org-connectshyft-c3-east',
+      bucket: 'inbox',
+      actorUserId: 'user-connectshyft-c3-operator',
+    });
+    const operatorMine = resolveConnectShyftInboxContract({
+      tenantId: 'tenant-connectshyft-c3',
+      orgUnitId: 'org-connectshyft-c3-east',
+      bucket: 'mine',
+      actorUserId: 'user-connectshyft-c3-operator',
+    });
+    const otherOperatorInbox = resolveConnectShyftInboxContract({
+      tenantId: 'tenant-connectshyft-c3',
+      orgUnitId: 'org-connectshyft-c3-east',
+      bucket: 'inbox',
+      actorUserId: 'user-connectshyft-c3-other-operator',
+    });
+    const otherOperatorMine = resolveConnectShyftInboxContract({
+      tenantId: 'tenant-connectshyft-c3',
+      orgUnitId: 'org-connectshyft-c3-east',
+      bucket: 'mine',
+      actorUserId: 'user-connectshyft-c3-other-operator',
+    });
+
+    expect(operatorInbox.some((item) => item.threadId === 'thread-c3-claimed-voicemail-1004')).toBe(false);
+    expect(operatorMine.map((item) => item.threadId)).toEqual(['thread-c3-claimed-voicemail-1004']);
+
+    expect(otherOperatorInbox.some((item) => item.threadId === 'thread-c3-claimed-voicemail-1004')).toBe(true);
+    expect(otherOperatorMine.map((item) => item.threadId)).toEqual(['thread-c3-claimed-1002']);
+  });
+
+  it('returns thread-detail bucket from actor perspective for claimed threads', () => {
+    const claimedOwner = resolveConnectShyftThreadDetailContract({
+      tenantId: 'tenant-connectshyft-c3',
+      orgUnitId: 'org-connectshyft-c3-east',
+      threadId: 'thread-c3-claimed-voicemail-1004',
+      actorUserId: 'user-connectshyft-c3-operator',
+    });
+    const differentActor = resolveConnectShyftThreadDetailContract({
+      tenantId: 'tenant-connectshyft-c3',
+      orgUnitId: 'org-connectshyft-c3-east',
+      threadId: 'thread-c3-claimed-voicemail-1004',
+      actorUserId: 'user-connectshyft-c3-other-operator',
+    });
+
+    expect(claimedOwner?.bucket).toBe('mine');
+    expect(differentActor?.bucket).toBe('inbox');
+  });
+
   it('resolves canonical thread-detail action sets by lifecycle state', () => {
     const unclaimed = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-c3',

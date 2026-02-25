@@ -1,3 +1,5 @@
+import type { Knex } from 'knex';
+
 export type ConnectShyftInboxBucket = 'inbox' | 'mine';
 export type ConnectShyftThreadState = 'UNCLAIMED' | 'CLAIMED' | 'CLOSED';
 export type ConnectShyftThreadAction = 'Call' | 'Text' | 'Claim' | 'Close' | 'Send Message';
@@ -34,9 +36,12 @@ export type ConnectShyftThreadDetailRecord = ConnectShyftThreadSummaryRecord & {
 };
 
 type ConnectShyftThreadSeed = {
+  tenantId: string;
+  orgUnitId: string;
   threadId: string;
   state: ConnectShyftThreadState;
   bucket: ConnectShyftInboxBucket;
+  claimedByUserId: string | null;
   escalationStage: number;
   isNewUnread: boolean;
   lastActivityAtUtc: string;
@@ -45,6 +50,34 @@ type ConnectShyftThreadSeed = {
   preferredOutboundLabel: string;
   voicemailIndicator: boolean;
   summary: string;
+};
+
+type ConnectShyftThreadDbRow = {
+  thread_id: string;
+  tenant_id: string;
+  org_unit_id: string;
+  state: string;
+  claimed_by_user_id?: string | null;
+  escalation_stage?: number | string | null;
+  is_new_unread?: boolean | number | string | null;
+  new_unread?: boolean | number | string | null;
+  last_activity_at_utc: string | Date;
+  last_inbound_cs_number_id?: string | null;
+  preferred_outbound_cs_number_id?: string | null;
+  preferred_outbound_label?: string | null;
+  outbound_label?: string | null;
+  voicemail_waiting?: boolean | number | string | null;
+  voicemail_indicator?: boolean | number | string | null;
+  unread_voicemail_count?: number | string | null;
+  unread_voicemail_count_mine?: number | string | null;
+  summary?: string | null;
+  preview?: string | null;
+  last_message_preview?: string | null;
+};
+
+type ConnectShyftDbSelectableColumns = {
+  select: string[];
+  threadIdColumn: string;
 };
 
 const CONNECTSHYFT_URGENCY_LABELS = {
@@ -62,11 +95,23 @@ const CONNECTSHYFT_THREAD_ACTIONS: Record<
   CLOSED: ['Call', 'Send Message'],
 };
 
+const CONNECTSHYFT_SCHEMA = 'connectshyft';
+const CONNECTSHYFT_THREADS_TABLE = 'cs_threads';
+let cachedDbSelectableColumns: ConnectShyftDbSelectableColumns | null = null;
+let cachedDbSelectableColumnsPromise: Promise<ConnectShyftDbSelectableColumns | null> | null = null;
+const CONNECTSHYFT_DEFAULT_SCOPE = {
+  tenantId: 'tenant-connectshyft-c3',
+  orgUnitId: 'org-connectshyft-c3-east',
+} as const;
+
 const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
+    tenantId: CONNECTSHYFT_DEFAULT_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId,
     threadId: 'thread-c3-claimed-1002',
     state: 'CLAIMED',
     bucket: 'inbox',
+    claimedByUserId: 'user-connectshyft-c3-other-operator',
     escalationStage: 3,
     isNewUnread: false,
     lastActivityAtUtc: '2026-02-24T19:30:00.000Z',
@@ -77,9 +122,12 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
     summary: 'Operator follow-up required',
   },
   {
+    tenantId: CONNECTSHYFT_DEFAULT_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId,
     threadId: 'thread-c3-unclaimed-1001',
     state: 'UNCLAIMED',
     bucket: 'inbox',
+    claimedByUserId: null,
     escalationStage: 2,
     isNewUnread: false,
     lastActivityAtUtc: '2026-02-24T19:20:00.000Z',
@@ -90,9 +138,12 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
     summary: 'Pending escalation review',
   },
   {
+    tenantId: CONNECTSHYFT_DEFAULT_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId,
     threadId: 'thread-c3-unclaimed-1006',
     state: 'UNCLAIMED',
     bucket: 'inbox',
+    claimedByUserId: null,
     escalationStage: 2,
     isNewUnread: false,
     lastActivityAtUtc: '2026-02-24T19:20:00.000Z',
@@ -103,9 +154,12 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
     summary: 'Secondary triage queue',
   },
   {
+    tenantId: CONNECTSHYFT_DEFAULT_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId,
     threadId: 'thread-c3-closed-1003',
     state: 'CLOSED',
     bucket: 'inbox',
+    claimedByUserId: null,
     escalationStage: 1,
     isNewUnread: false,
     lastActivityAtUtc: '2026-02-24T19:10:00.000Z',
@@ -116,9 +170,12 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
     summary: 'Waiting for outbound follow-up',
   },
   {
+    tenantId: CONNECTSHYFT_DEFAULT_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId,
     threadId: 'thread-c3-new-unread-1005',
     state: 'UNCLAIMED',
     bucket: 'inbox',
+    claimedByUserId: null,
     escalationStage: 0,
     isNewUnread: true,
     lastActivityAtUtc: '2026-02-24T19:00:00.000Z',
@@ -129,9 +186,12 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
     summary: 'New unread message',
   },
   {
+    tenantId: CONNECTSHYFT_DEFAULT_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId,
     threadId: 'thread-c3-claimed-voicemail-1004',
     state: 'CLAIMED',
     bucket: 'mine',
+    claimedByUserId: 'user-connectshyft-c3-operator',
     escalationStage: 0,
     isNewUnread: false,
     lastActivityAtUtc: '2026-02-24T18:50:00.000Z',
@@ -221,9 +281,78 @@ export const sortConnectShyftThreadSummaries = (
   });
 };
 
+const normalizeString = (value: unknown): string => {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value).trim();
+};
+
+const normalizeOptionalString = (value: unknown): string | null => {
+  const normalized = normalizeString(value);
+  return normalized.length > 0 ? normalized : null;
+};
+
+const normalizeFiniteNumber = (value: unknown, fallback = 0): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return fallback;
+};
+
+const normalizeBoolean = (value: unknown): boolean => {
+  if (value === true) {
+    return true;
+  }
+
+  if (typeof value === 'number') {
+    return value > 0;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+  }
+
+  return false;
+};
+
+const normalizeUtcTimestamp = (value: unknown): string => {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  const normalized = normalizeString(value);
+  return normalized.length > 0 ? normalized : '1970-01-01T00:00:00.000Z';
+};
+
+const normalizeThreadState = (
+  value: unknown,
+): ConnectShyftThreadState | null => {
+  const normalized = normalizeString(value).toUpperCase();
+  if (normalized === 'UNCLAIMED' || normalized === 'CLAIMED' || normalized === 'CLOSED') {
+    return normalized;
+  }
+
+  return null;
+};
+
 const toSummaryRecord = (
   seed: ConnectShyftThreadSeed,
-  scope: { tenantId: string; orgUnitId: string },
+  bucket: ConnectShyftInboxBucket,
 ): ConnectShyftThreadSummaryRecord => {
   const priorityRank = resolveConnectShyftPriorityRank({
     escalationStage: seed.escalationStage,
@@ -233,10 +362,10 @@ const toSummaryRecord = (
   const urgencyLabel = resolveConnectShyftUrgencyLabel(seed.escalationStage);
   return {
     threadId: seed.threadId,
-    tenantId: scope.tenantId,
-    orgUnitId: scope.orgUnitId,
+    tenantId: seed.tenantId,
+    orgUnitId: seed.orgUnitId,
     state: seed.state,
-    bucket: seed.bucket,
+    bucket,
     escalationStage: seed.escalationStage,
     isNewUnread: seed.isNewUnread,
     priorityRank,
@@ -259,38 +388,419 @@ const toSummaryRecord = (
   };
 };
 
-const resolveAllThreadSummaries = (scope: {
+const resolveSeedPerspectiveBucket = (
+  seed: Pick<ConnectShyftThreadSeed, 'state' | 'claimedByUserId'>,
+  actorUserId?: string | null,
+): ConnectShyftInboxBucket => {
+  if (
+    seed.state === 'CLAIMED'
+    && actorUserId
+    && seed.claimedByUserId === actorUserId
+  ) {
+    return 'mine';
+  }
+
+  return 'inbox';
+};
+
+const resolveSeedBucketMatch = (
+  seed: ConnectShyftThreadSeed,
+  bucket: ConnectShyftInboxBucket,
+  actorUserId?: string | null,
+): boolean => {
+  return resolveSeedPerspectiveBucket(seed, actorUserId) === bucket;
+};
+
+const resolveAllSeedThreadSummaries = (scope: {
   tenantId: string;
   orgUnitId: string;
+  bucket: ConnectShyftInboxBucket;
+  actorUserId?: string | null;
 }): ConnectShyftThreadSummaryRecord[] => {
-  return CONNECTSHYFT_THREAD_SEED_DATA.map((seed) => toSummaryRecord(seed, scope));
+  return CONNECTSHYFT_THREAD_SEED_DATA
+    .filter((seed) =>
+      seed.tenantId === scope.tenantId
+      && seed.orgUnitId === scope.orgUnitId
+      && resolveSeedBucketMatch(seed, scope.bucket, scope.actorUserId))
+    .map((seed) => toSummaryRecord(seed, resolveSeedPerspectiveBucket(seed, scope.actorUserId)));
 };
 
 export const resolveConnectShyftInboxContract = (scope: {
   tenantId: string;
   orgUnitId: string;
   bucket: ConnectShyftInboxBucket;
+  actorUserId?: string | null;
 }): ConnectShyftThreadSummaryRecord[] => {
-  const filtered = resolveAllThreadSummaries(scope).filter(
-    (record) => record.bucket === scope.bucket,
-  );
-  return sortConnectShyftThreadSummaries(filtered);
+  const items = resolveAllSeedThreadSummaries(scope);
+  return sortConnectShyftThreadSummaries(items);
 };
 
 export const resolveConnectShyftThreadDetailContract = (input: {
   tenantId: string;
   orgUnitId: string;
   threadId: string;
+  actorUserId?: string | null;
 }): ConnectShyftThreadDetailRecord | null => {
   const normalizedThreadId = input.threadId.trim();
   if (!normalizedThreadId) {
     return null;
   }
 
-  const summary = resolveAllThreadSummaries(input).find(
-    (candidate) => candidate.threadId === normalizedThreadId,
+  const matchedSeed = CONNECTSHYFT_THREAD_SEED_DATA.find((seed) => (
+    seed.tenantId === input.tenantId
+    && seed.orgUnitId === input.orgUnitId
+    && seed.threadId === normalizedThreadId
+  ));
+
+  if (!matchedSeed) {
+    return null;
+  }
+
+  const summary = toSummaryRecord(
+    matchedSeed,
+    resolveSeedPerspectiveBucket(matchedSeed, input.actorUserId),
   );
 
+  return {
+    ...summary,
+    actions: resolveConnectShyftThreadActions(summary.state),
+  };
+};
+
+const resolveThreadColumnInfo = async (
+  db: Knex,
+): Promise<Record<string, Knex.ColumnInfo> | null> => {
+  try {
+    return await db
+      .withSchema(CONNECTSHYFT_SCHEMA)
+      .table(CONNECTSHYFT_THREADS_TABLE)
+      .columnInfo();
+  } catch (_error) {
+    return null;
+  }
+};
+
+const hasColumn = (
+  columnInfo: Record<string, Knex.ColumnInfo>,
+  columnName: string,
+): boolean => Object.prototype.hasOwnProperty.call(columnInfo, columnName);
+
+const resolveExistingColumn = (
+  columnInfo: Record<string, Knex.ColumnInfo>,
+  candidateColumns: readonly string[],
+): string | null => {
+  const matched = candidateColumns.find((candidate) => hasColumn(columnInfo, candidate));
+  return matched || null;
+};
+
+const resolveDbSelectableColumns = (
+  columnInfo: Record<string, Knex.ColumnInfo>,
+): ConnectShyftDbSelectableColumns | null => {
+  const threadIdColumn = resolveExistingColumn(columnInfo, ['id', 'thread_id']);
+  const lastActivityColumn = resolveExistingColumn(columnInfo, [
+    'last_activity_at_utc',
+    'last_activity_at',
+  ]);
+
+  if (
+    !threadIdColumn
+    || !lastActivityColumn
+    || !hasColumn(columnInfo, 'tenant_id')
+    || !hasColumn(columnInfo, 'org_unit_id')
+    || !hasColumn(columnInfo, 'state')
+  ) {
+    return null;
+  }
+
+  const selectedColumns: string[] = [
+    `${threadIdColumn} as thread_id`,
+    'tenant_id',
+    'org_unit_id',
+    'state',
+    `${lastActivityColumn} as last_activity_at_utc`,
+  ];
+
+  const optionalColumns = [
+    'claimed_by_user_id',
+    'escalation_stage',
+    'is_new_unread',
+    'new_unread',
+    'last_inbound_cs_number_id',
+    'preferred_outbound_cs_number_id',
+    'preferred_outbound_label',
+    'outbound_label',
+    'voicemail_waiting',
+    'voicemail_indicator',
+    'unread_voicemail_count',
+    'unread_voicemail_count_mine',
+    'summary',
+    'preview',
+    'last_message_preview',
+  ];
+
+  optionalColumns.forEach((optionalColumn) => {
+    if (hasColumn(columnInfo, optionalColumn)) {
+      selectedColumns.push(optionalColumn);
+    }
+  });
+
+  return {
+    select: selectedColumns,
+    threadIdColumn,
+  };
+};
+
+const resolveCachedDbSelectableColumns = async (
+  db: Knex,
+): Promise<ConnectShyftDbSelectableColumns | null> => {
+  if (cachedDbSelectableColumns) {
+    return cachedDbSelectableColumns;
+  }
+
+  if (cachedDbSelectableColumnsPromise) {
+    return cachedDbSelectableColumnsPromise;
+  }
+
+  cachedDbSelectableColumnsPromise = (async () => {
+    const columnInfo = await resolveThreadColumnInfo(db);
+    if (!columnInfo) {
+      return null;
+    }
+
+    const selectableColumns = resolveDbSelectableColumns(columnInfo);
+    if (selectableColumns) {
+      cachedDbSelectableColumns = selectableColumns;
+    }
+
+    return selectableColumns;
+  })();
+
+  try {
+    return await cachedDbSelectableColumnsPromise;
+  } finally {
+    cachedDbSelectableColumnsPromise = null;
+  }
+};
+
+const resolveDbThreadRows = async (
+  db: Knex,
+  scope: {
+    tenantId: string;
+    orgUnitId: string;
+    threadId?: string | null;
+  },
+): Promise<ConnectShyftThreadDbRow[] | null> => {
+  const selectableColumns = await resolveCachedDbSelectableColumns(db);
+  if (!selectableColumns) {
+    return null;
+  }
+
+  try {
+    const query = db
+      .withSchema(CONNECTSHYFT_SCHEMA)
+      .table(CONNECTSHYFT_THREADS_TABLE)
+      .where('tenant_id', scope.tenantId)
+      .andWhere('org_unit_id', scope.orgUnitId);
+
+    if (scope.threadId) {
+      query.andWhere(selectableColumns.threadIdColumn, scope.threadId);
+    }
+
+    const rows = await query
+      .select(selectableColumns.select);
+
+    return rows as ConnectShyftThreadDbRow[];
+  } catch (_error) {
+    return null;
+  }
+};
+
+const mapDbRowToSummary = (
+  row: ConnectShyftThreadDbRow,
+  bucket: ConnectShyftInboxBucket,
+): ConnectShyftThreadSummaryRecord | null => {
+  const state = normalizeThreadState(row.state);
+  if (!state) {
+    return null;
+  }
+
+  const threadId = normalizeString(row.thread_id);
+  const tenantId = normalizeString(row.tenant_id);
+  const orgUnitId = normalizeString(row.org_unit_id);
+  if (!threadId || !tenantId || !orgUnitId) {
+    return null;
+  }
+
+  const escalationStage = normalizeFiniteNumber(row.escalation_stage, 0);
+  const isNewUnread = normalizeBoolean(row.is_new_unread ?? row.new_unread);
+  const priorityRank = resolveConnectShyftPriorityRank({
+    escalationStage,
+    isNewUnread,
+  });
+
+  const preferredOutboundCsNumberId = normalizeString(
+    row.preferred_outbound_cs_number_id,
+  );
+  const preferredOutboundLabel = normalizeString(
+    row.preferred_outbound_label ?? row.outbound_label,
+  );
+  const unreadVoicemailCount = normalizeFiniteNumber(row.unread_voicemail_count, 0);
+  const unreadVoicemailCountMine = normalizeFiniteNumber(row.unread_voicemail_count_mine, 0);
+
+  const voicemailIndicator = normalizeBoolean(row.voicemail_indicator)
+    || normalizeBoolean(row.voicemail_waiting)
+    || unreadVoicemailCount > 0
+    || unreadVoicemailCountMine > 0;
+
+  return {
+    threadId,
+    tenantId,
+    orgUnitId,
+    state,
+    bucket,
+    escalationStage,
+    isNewUnread,
+    priorityRank,
+    urgencyLabel: resolveConnectShyftUrgencyLabel(escalationStage),
+    lastActivityAtUtc: normalizeUtcTimestamp(row.last_activity_at_utc),
+    lastInboundCsNumberId: normalizeString(row.last_inbound_cs_number_id),
+    last_inbound_cs_number_id: normalizeString(row.last_inbound_cs_number_id),
+    preferredOutboundCsNumberId,
+    preferred_outbound_cs_number_id: preferredOutboundCsNumberId,
+    preferredOutboundContext: {
+      csNumberId: preferredOutboundCsNumberId,
+      label: preferredOutboundLabel,
+    },
+    preferred_outbound_context: {
+      cs_number_id: preferredOutboundCsNumberId,
+      label: preferredOutboundLabel,
+    },
+    voicemailIndicator,
+    summary: normalizeString(row.summary ?? row.preview ?? row.last_message_preview),
+  };
+};
+
+const filterRowsForBucket = (
+  rows: readonly ConnectShyftThreadDbRow[],
+  scope: {
+    bucket: ConnectShyftInboxBucket;
+    actorUserId?: string | null;
+  },
+): ConnectShyftThreadDbRow[] => {
+  return rows.filter((row) => {
+    const state = normalizeThreadState(row.state);
+    if (!state) {
+      return false;
+    }
+
+    const claimedByUserId = normalizeOptionalString(row.claimed_by_user_id);
+
+    if (scope.bucket === 'mine') {
+      if (state !== 'CLAIMED') {
+        return false;
+      }
+
+      if (scope.actorUserId) {
+        return claimedByUserId === scope.actorUserId;
+      }
+
+      return true;
+    }
+
+    if (scope.actorUserId && state === 'CLAIMED' && claimedByUserId === scope.actorUserId) {
+      return false;
+    }
+
+    return true;
+  });
+};
+
+export const resolveConnectShyftInboxContractAsync = async (scope: {
+  tenantId: string;
+  orgUnitId: string;
+  bucket: ConnectShyftInboxBucket;
+  actorUserId?: string | null;
+  db: Knex;
+}): Promise<ConnectShyftThreadSummaryRecord[]> => {
+  const rows = await resolveDbThreadRows(scope.db, {
+    tenantId: scope.tenantId,
+    orgUnitId: scope.orgUnitId,
+  });
+
+  if (!rows) {
+    return resolveConnectShyftInboxContract({
+      tenantId: scope.tenantId,
+      orgUnitId: scope.orgUnitId,
+      bucket: scope.bucket,
+      actorUserId: scope.actorUserId,
+    });
+  }
+
+  const filteredRows = filterRowsForBucket(rows, {
+    bucket: scope.bucket,
+    actorUserId: scope.actorUserId,
+  });
+
+  const mapped = filteredRows
+    .map((row) => mapDbRowToSummary(row, scope.bucket))
+    .filter((row): row is ConnectShyftThreadSummaryRecord => row !== null);
+
+  return sortConnectShyftThreadSummaries(mapped);
+};
+
+const resolveBucketFromDbRow = (
+  row: ConnectShyftThreadDbRow,
+  actorUserId?: string | null,
+): ConnectShyftInboxBucket => {
+  const state = normalizeThreadState(row.state);
+  if (state === 'CLAIMED' && actorUserId) {
+    const claimedByUserId = normalizeOptionalString(row.claimed_by_user_id);
+    if (claimedByUserId === actorUserId) {
+      return 'mine';
+    }
+  }
+
+  return 'inbox';
+};
+
+export const resolveConnectShyftThreadDetailContractAsync = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  actorUserId?: string | null;
+  db: Knex;
+}): Promise<ConnectShyftThreadDetailRecord | null> => {
+  const normalizedThreadId = input.threadId.trim();
+  if (!normalizedThreadId) {
+    return null;
+  }
+
+  const rows = await resolveDbThreadRows(input.db, {
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    threadId: normalizedThreadId,
+  });
+
+  if (!rows) {
+    return resolveConnectShyftThreadDetailContract({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId: normalizedThreadId,
+      actorUserId: input.actorUserId,
+    });
+  }
+
+  const row = rows.find(
+    (candidate) => normalizeString(candidate.thread_id) === normalizedThreadId,
+  );
+  if (!row) {
+    return null;
+  }
+
+  const summary = mapDbRowToSummary(
+    row,
+    resolveBucketFromDbRow(row, input.actorUserId),
+  );
   if (!summary) {
     return null;
   }

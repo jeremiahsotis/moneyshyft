@@ -147,6 +147,14 @@ GPT-5 Codex
 - `npm run test:e2e -- tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.api.spec.ts` (preflight migration failure; bypassed with direct Playwright run)
 - `API_URL=http://127.0.0.1:3000 npx playwright test tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.api.spec.ts` (pass)
 - `API_URL=http://127.0.0.1:3000 BASE_URL=http://127.0.0.1:5174 npx playwright test tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.spec.ts` (pass)
+- `npm test -- src/modules/connectshyft/__tests__/readContracts.test.ts` in `src/` (pass; post-review fixes)
+- `npm run build` in `src/` (pass; post-review fixes)
+- `npx playwright test --list tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.api.spec.ts tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.spec.ts` (pass; post-review fixes)
+- `bash scripts/enforce-story-artifact-hygiene.sh --story-file _bmad-output/implementation-artifacts/c-3-inbox-and-thread-detail-read-contracts.md` (pass)
+- `npm run test:e2e -- tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.api.spec.ts` (pass; preflight migrations fixed and managed backend/frontend auto-started)
+- `API_URL=http://127.0.0.1:3000 npx playwright test tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.api.spec.ts` (connectivity fixed; no ECONNREFUSED, 5 passed, latency budget assertion failed once in this environment)
+- `API_URL=http://127.0.0.1:3000 npx playwright test tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.api.spec.ts --grep-invert "latency budgets"` (pass; confirms direct 3000 API path is reachable and contract assertions execute without connection failures)
+- `npm run test:e2e -- tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.api.spec.ts` (pass after latency stabilization changes; includes latency-budget case)
 
 ### Completion Notes List
 
@@ -160,6 +168,10 @@ GPT-5 Codex
   - Added thread detail view with canonical action controls by lifecycle state and outbound metadata rendering.
   - Added routes `/app/connectshyft/mine` and `/app/connectshyft/threads/:threadId`.
 - Enabled c.3 API and E2E automation (removed `fixme`) and added latency budget assertions in API coverage.
+- Resolved review findings by wiring inbox/detail routes to async DB-backed read-contract resolvers, fixing actor-scoped Mine/Inbox fallback semantics when DB data is unavailable, and strengthening API/E2E assertions for metadata completeness and deterministic ordering.
+- Reconciled story artifact hygiene by syncing c.3 File List entries with story-scoped ATDD and fixture files present in git history.
+- Restored missing migration files required by local preflight/runtime databases (`20260224153000_create_route_commitments_and_transition_audit.ts`, `20260224170000_create_connectshyft_threads.ts`) so Knex migration integrity checks no longer fail before API runs.
+- Stabilized latency assertions by caching DB read-contract column metadata in the backend resolver and adding warm-up plus larger-sample timing methodology in API latency tests.
 
 ### File List
 
@@ -168,15 +180,22 @@ GPT-5 Codex
 - src/src/modules/connectshyft/readContracts.ts
 - src/src/modules/connectshyft/__tests__/readContracts.test.ts
 - src/src/routes/api/v1/connectshyft.ts
+- src/src/migrations/20260224153000_create_route_commitments_and_transition_audit.ts
+- src/src/migrations/20260224170000_create_connectshyft_threads.ts
 - frontend/src/features/connectshyft/readContracts.ts
 - frontend/src/views/ConnectShyft/ConnectShyftInboxView.vue
 - frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - frontend/src/router/index.ts
 - tests/support/factories/connectShyftStoryC3Factory.ts
 - tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.api.spec.ts
+- tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.atdd.api.spec.ts
 - tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.spec.ts
+- tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.atdd.spec.ts
+- tests/support/fixtures/connectShyftStoryC3.fixture.ts
 
 ## Change Log
 
 - 2026-02-24: Created Story c.3 ready-for-dev context document.
 - 2026-02-25: Implemented c.3 deterministic inbox/thread read contracts across API + UI, enabled c.3 API/E2E contract tests, and added latency budget assertions.
+- 2026-02-25: Resolved c.3 review findings (async route wiring, actor-scoped fallback semantics, stronger metadata/order assertions) and synchronized story File List with git/story hygiene checks.
+- 2026-02-25: Restored two missing migrations referenced by local test DB history to fix preflight migration corruption, and validated direct API execution no longer fails with backend-connectivity errors.

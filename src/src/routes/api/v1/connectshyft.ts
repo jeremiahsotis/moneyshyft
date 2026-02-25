@@ -34,8 +34,8 @@ import {
 } from '../../../services/PlatformAdminService';
 import {
   parseConnectShyftInboxBucket,
-  resolveConnectShyftInboxContract,
-  resolveConnectShyftThreadDetailContract,
+  resolveConnectShyftInboxContractAsync,
+  resolveConnectShyftThreadDetailContractAsync,
   type ConnectShyftInboxBucket,
 } from '../../../modules/connectshyft/readContracts';
 
@@ -1007,10 +1007,13 @@ router.get('/inbox', async (req: Request, res: Response) => {
 
   const requestedBucket = parseInboxBucketFromQuery(req.query?.bucket);
   const resolvedBucket: ConnectShyftInboxBucket = requestedBucket || 'inbox';
-  const items = resolveConnectShyftInboxContract({
+  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const items = await resolveConnectShyftInboxContractAsync({
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     bucket: resolvedBucket,
+    actorUserId,
+    db: loadPlatformDb(),
   });
 
   const responseCode = requestedBucket
@@ -1566,10 +1569,13 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
     return;
   }
 
-  const thread = resolveConnectShyftThreadDetailContract({
+  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const thread = await resolveConnectShyftThreadDetailContractAsync({
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     threadId,
+    actorUserId,
+    db: loadPlatformDb(),
   });
 
   if (!thread) {

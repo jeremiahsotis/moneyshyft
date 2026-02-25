@@ -63,7 +63,26 @@ test.describe(
         );
 
         await expect(page.getByTestId('connectshyft-inbox-list')).toBeVisible();
-        await expect(page.getByTestId('connectshyft-inbox-item-priority-rank').first()).toHaveText('1');
+        const orderedThreadIds = await page
+          .locator('[data-testid^="connectshyft-thread-card-"]')
+          .evaluateAll((nodes) => nodes
+            .map((node) => node.getAttribute('data-testid') || '')
+            .filter((value) => value.length > 0)
+            .map((value) => value.replace('connectshyft-thread-card-', '')));
+        expect(orderedThreadIds).toEqual([
+          context.threadIds.claimed,
+          context.threadIds.unclaimed,
+          'thread-c3-unclaimed-1006',
+          context.threadIds.closed,
+          'thread-c3-new-unread-1005',
+        ]);
+
+        const orderedPriorityRanks = (await page
+          .getByTestId('connectshyft-inbox-item-priority-rank')
+          .allTextContents())
+          .map((value) => value.trim());
+        expect(orderedPriorityRanks).toEqual(['1', '2', '2', '3', '4']);
+
         await expect(page.getByText(context.urgencyLabels.stage1)).toBeVisible();
         await expect(page.getByText(context.urgencyLabels.stage2Plus).first()).toBeVisible();
       },
