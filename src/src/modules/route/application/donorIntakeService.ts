@@ -15,6 +15,9 @@ export type DonorIntakePayloadInput = {
   requestedAtUtc?: unknown;
   requestedWindowStartUtc?: unknown;
   requestedWindowEndUtc?: unknown;
+  donorEligibilityConfirmed?: unknown;
+  pickupAddress?: unknown;
+  zipCode?: unknown;
   channel?: unknown;
   notes?: unknown;
   forceRefusal?: unknown;
@@ -39,6 +42,9 @@ type DonorIntakeNormalizedPayload = {
   requestedAtUtc: string;
   requestedWindowStartUtc: string;
   requestedWindowEndUtc: string;
+  donorEligibilityConfirmed: boolean;
+  pickupAddress: string;
+  zipCode: string;
   channel: string;
   notes: string;
   forceRefusal: boolean;
@@ -116,6 +122,17 @@ const normalizeString = (value: unknown): string =>
 
 const parseBoolean = (value: unknown): boolean => value === true;
 
+const ZIP_CODE_PATTERN = /^\d{5}$/;
+
+const SERVICEABLE_ZIPS_BY_TENANT_AND_ORG_UNIT: Record<string, Record<string, string[]>> = {
+  'tenant-routeshyft-alpha': {
+    'org-routeshyft-alpha-ops': ['46802', '46803', '46805', '46807'],
+  },
+  'tenant-routeshyft-bravo': {
+    'org-routeshyft-bravo-ops': ['46774', '46725'],
+  },
+};
+
 const parseItemCount = (value: unknown): number => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return Math.trunc(value);
@@ -155,6 +172,9 @@ const validatePayload = (
     requestedAtUtc: normalizeString(input.requestedAtUtc),
     requestedWindowStartUtc: normalizeString(input.requestedWindowStartUtc),
     requestedWindowEndUtc: normalizeString(input.requestedWindowEndUtc),
+    donorEligibilityConfirmed: parseBoolean(input.donorEligibilityConfirmed),
+    pickupAddress: normalizeString(input.pickupAddress),
+    zipCode: normalizeString(input.zipCode),
     channel: normalizeString(input.channel),
     notes: normalizeString(input.notes),
     forceRefusal: parseBoolean(input.forceRefusal),
@@ -179,6 +199,12 @@ const validatePayload = (
   if (payload.requestedWindowEndUtc.length === 0) {
     pushRequiredFieldError(fieldErrors, 'requestedWindowEndUtc');
   }
+  if (payload.pickupAddress.length === 0) {
+    pushRequiredFieldError(fieldErrors, 'pickupAddress');
+  }
+  if (payload.zipCode.length === 0) {
+    pushRequiredFieldError(fieldErrors, 'zipCode');
+  }
   if (payload.channel.length === 0) {
     pushRequiredFieldError(fieldErrors, 'channel');
   }
@@ -190,6 +216,20 @@ const validatePayload = (
       field: 'itemCount',
       reason: 'invalid',
       message: 'itemCount must be greater than 0',
+    });
+  }
+  if (!payload.donorEligibilityConfirmed) {
+    fieldErrors.push({
+      field: 'donorEligibilityConfirmed',
+      reason: 'ineligible',
+      message: 'Donor eligibility must be confirmed before pickup intake.',
+    });
+  }
+  if (payload.zipCode.length > 0 && !ZIP_CODE_PATTERN.test(payload.zipCode)) {
+    fieldErrors.push({
+      field: 'zipCode',
+      reason: 'invalid',
+      message: 'zipCode must be a 5-digit value',
     });
   }
 
@@ -242,6 +282,23 @@ const validatePayload = (
       field: 'orgUnitId',
       reason: 'scope_mismatch',
       message: 'orgUnitId must match authenticated orgUnit context',
+    });
+  }
+
+  const tenantServiceability = SERVICEABLE_ZIPS_BY_TENANT_AND_ORG_UNIT[payload.tenantId];
+  const orgUnitServiceableZips = tenantServiceability?.[payload.orgUnitId];
+
+  if (!orgUnitServiceableZips) {
+    fieldErrors.push({
+      field: 'orgUnitId',
+      reason: 'unknown_org_unit',
+      message: 'orgUnitId is not configured for donor self-service intake',
+    });
+  } else if (ZIP_CODE_PATTERN.test(payload.zipCode) && !orgUnitServiceableZips.includes(payload.zipCode)) {
+    fieldErrors.push({
+      field: 'zipCode',
+      reason: 'not_serviceable',
+      message: 'zipCode is outside the configured donor pickup service area',
     });
   }
 
@@ -303,8 +360,15 @@ export class DonorIntakeService {
       ? idempotencyKey.trim()
       : null;
 
+    const idempotencyTenantId = normalizeString(input.tenantId) || context.tenantId;
+    const idempotencyOrgUnitId = normalizeString(input.orgUnitId) || context.orgUnitId || '';
+
     if (normalizedIdempotencyKey) {
-      const existing = this.store.findByIdempotency(context.tenantId, context.orgUnitId || '', normalizedIdempotencyKey);
+      const existing = this.store.findByIdempotency(
+        idempotencyTenantId,
+        idempotencyOrgUnitId,
+        normalizedIdempotencyKey,
+      );
       if (existing) {
         return toSubmissionResultFromRequest(existing);
       }

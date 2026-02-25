@@ -10,6 +10,9 @@ export type DonorRequestRecord = {
   requestedAtUtc: string;
   requestedWindowStartUtc: string;
   requestedWindowEndUtc: string;
+  donorEligibilityConfirmed: boolean;
+  pickupAddress: string;
+  zipCode: string;
   channel: string;
   notes: string;
   itemCount: number;
@@ -42,6 +45,9 @@ export type CreatePendingRequestInput = {
   requestedAtUtc: string;
   requestedWindowStartUtc: string;
   requestedWindowEndUtc: string;
+  donorEligibilityConfirmed: boolean;
+  pickupAddress: string;
+  zipCode: string;
   channel: string;
   notes: string;
   itemCount: number;
@@ -93,6 +99,9 @@ export class InMemoryRouteIntakeStore {
       requestedAtUtc: input.requestedAtUtc,
       requestedWindowStartUtc: input.requestedWindowStartUtc,
       requestedWindowEndUtc: input.requestedWindowEndUtc,
+      donorEligibilityConfirmed: input.donorEligibilityConfirmed,
+      pickupAddress: input.pickupAddress,
+      zipCode: input.zipCode,
       channel: input.channel,
       notes: input.notes,
       itemCount: input.itemCount,
