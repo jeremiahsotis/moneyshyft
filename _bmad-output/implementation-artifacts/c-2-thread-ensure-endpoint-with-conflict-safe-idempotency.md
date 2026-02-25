@@ -1,6 +1,6 @@
 # Story c.2: Thread Ensure Endpoint with Conflict-Safe Idempotency
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -23,7 +23,7 @@ so that duplicate active threads are never created for the same neighbor context
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Existing-thread reuse must be deterministic and non-disruptive so operators do not see duplicate conversations.
-- Real-User Validation Evidence: Pending implementation. Validate concurrent create/open behavior from UI and API clients.
+- Real-User Validation Evidence: Pending critical-capability validation run. Record concrete UI/API operator evidence before closeout.
 - Real-User Validation Result: pending
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
@@ -136,4 +136,3 @@ GPT-5 Codex
 ## Change Log
 
 - 2026-02-24: Created Story c.2 ready-for-dev context document.
-

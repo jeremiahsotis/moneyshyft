@@ -101,7 +101,6 @@ test.describe(
           headers: storyA5OrgUnitAdminHeaders,
           data: {
             orgUnitId: storyA5Context.orgUnitId,
-            threadId: storyA5Context.threadId,
             neighborId: 'neighbor-a5-envelope-success',
           },
         });

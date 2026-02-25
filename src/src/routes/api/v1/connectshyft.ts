@@ -499,10 +499,18 @@ const parseThreadDueLimit = (req: Request): number => {
   return Math.min(Math.trunc(rawLimit), 250);
 };
 
+const parseThreadIdFromBody = (req: Request): string | null => {
+  if (typeof req.body?.threadId !== 'string') {
+    return null;
+  }
+
+  const normalized = req.body.threadId.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
 const parseThreadEnsureBody = (req: Request) => ({
   orgUnitId: parseOrgUnitIdFromBody(req),
   neighborId: typeof req.body?.neighborId === 'string' ? req.body.neighborId.trim() : '',
-  threadId: typeof req.body?.threadId === 'string' ? req.body.threadId.trim() : '',
   source: typeof req.body?.source === 'string' ? req.body.source : 'VOICE',
   forcedState: typeof req.body?.forcedState === 'string' ? req.body.forcedState : undefined,
   lastInboundCsNumberId: typeof req.body?.lastInboundCsNumberId === 'string'
@@ -1604,13 +1612,32 @@ router.post('/threads', async (req: Request, res: Response) => {
     return;
   }
 
+  const requestedThreadId = parseThreadIdFromBody(req);
+  if (requestedThreadId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_THREAD_ID_FORBIDDEN',
+      message: 'threadId is server-assigned and cannot be provided.',
+      refusalType: 'client',
+      httpStatus: 400,
+      data: {
+        fieldErrors: [
+          {
+            field: 'threadId',
+            reason: 'FORBIDDEN',
+            message: 'threadId is server-assigned and cannot be provided.',
+          },
+        ],
+      },
+    });
+    return;
+  }
+
   const requestedRole = resolveConnectShyftRequestedRole(req);
   const ensured = await connectShyftThreadServiceAsync.ensureThread({
     actorRoles: [requestedRole],
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     neighborId: payload.neighborId,
-    threadId: payload.threadId || undefined,
     source: payload.source,
     forcedState: payload.forcedState,
     lastInboundCsNumberId: payload.lastInboundCsNumberId,

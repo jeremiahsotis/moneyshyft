@@ -102,7 +102,6 @@ test.describe(
           headers: adminHeaders,
           data: {
             orgUnitId: context.orgUnitId,
-            threadId: context.threadId,
             neighborId: 'neighbor-a5-envelope-success',
           },
         });
