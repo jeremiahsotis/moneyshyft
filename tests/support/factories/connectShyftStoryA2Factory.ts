@@ -16,6 +16,7 @@ type StoryA2ContextOverrides = {
   userId?: string;
   correlationId?: string;
   csrfToken?: string;
+  threadId?: string;
 };
 
 type StoryA2HeaderOverrides = {
@@ -37,6 +38,7 @@ export type StoryA2Context = {
   userId: string;
   correlationId: string;
   csrfToken: string;
+  threadId: string;
   crossTenantOrgUnitId: string;
   nonMemberUserId: string;
   tenantAdminUserId: string;
@@ -53,6 +55,8 @@ export type StoryA2Context = {
 export function createStoryA2Context(
   overrides: StoryA2ContextOverrides = {},
 ): StoryA2Context {
+  const threadId = overrides.threadId ?? 'thread-a2-1001';
+
   return {
     storyId: 'a-2',
     tenantId: overrides.tenantId ?? connectShyftContextEnforcementData.tenantAlphaId,
@@ -68,6 +72,7 @@ export function createStoryA2Context(
     csrfToken:
       overrides.csrfToken
       ?? `csrf-story-a2-${randomUUID().slice(0, 8)}`,
+    threadId,
     crossTenantOrgUnitId: connectShyftContextEnforcementData.orgUnitBravoNorthId,
     nonMemberUserId: connectShyftContextEnforcementData.nonMemberUserId,
     tenantAdminUserId: connectShyftContextEnforcementData.tenantAdminUserId,
@@ -75,8 +80,8 @@ export function createStoryA2Context(
     paths: {
       inbox: '/api/v1/connectshyft/inbox',
       threadEnsure: '/api/v1/connectshyft/threads',
-      threadClaim: '/api/v1/connectshyft/threads/thread-a2-1001/claim',
-      threadTakeover: '/api/v1/connectshyft/threads/thread-a2-1001/takeover',
+      threadClaim: `/api/v1/connectshyft/threads/${threadId}/claim`,
+      threadTakeover: `/api/v1/connectshyft/threads/${threadId}/takeover`,
       inboxUi: '/app/connectshyft/inbox',
     },
   };

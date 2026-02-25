@@ -12,6 +12,18 @@ const MAX_DUE_THREAD_LIMIT = 250;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type ConnectShyftThreadState = (typeof CONNECTSHYFT_CANONICAL_THREAD_STATES)[number];
+export type ConnectShyftLifecycleAction = 'claim' | 'takeover' | 'close';
+
+export type ConnectShyftLifecyclePolicyDecision =
+  | {
+    ok: true;
+    nextState: ConnectShyftThreadState;
+  }
+  | {
+    ok: false;
+    code: 'CONNECTSHYFT_THREAD_TRANSITION_INVALID' | 'CONNECTSHYFT_THREAD_OWNERSHIP_REQUIRED';
+    message: string;
+  };
 
 export type ConnectShyftThread = {
   threadId: string;
@@ -449,6 +461,79 @@ const buildPersistenceUnavailableRefusal = (): ThreadRefusalResult => ({
   message: 'Thread persistence is temporarily unavailable. Please retry.',
 });
 
+const resolveLifecycleNextState = (action: ConnectShyftLifecycleAction): ConnectShyftThreadState => {
+  if (action === 'close') {
+    return 'CLOSED';
+  }
+
+  return 'CLAIMED';
+};
+
+const isLifecycleTransitionAllowed = (
+  action: ConnectShyftLifecycleAction,
+  state: ConnectShyftThreadState,
+): boolean => {
+  if (action === 'claim') {
+    return state === 'UNCLAIMED';
+  }
+
+  if (action === 'takeover') {
+    return state === 'CLAIMED';
+  }
+
+  return state === 'CLAIMED';
+};
+
+const canBypassCloseOwnership = (actorRoles: Array<string | null | undefined>): boolean => {
+  return hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_TAKEOVER)
+    || hasCapability(actorRoles, CAPABILITIES.THREAD_TAKEOVER_ALL);
+};
+
+export const evaluateConnectShyftLifecyclePolicy = (input: {
+  action: ConnectShyftLifecycleAction;
+  currentState: ConnectShyftThreadState;
+  claimedByUserId: string | null;
+  actorUserId: string | null | undefined;
+  actorRoles: Array<string | null | undefined>;
+}): ConnectShyftLifecyclePolicyDecision => {
+  const actorUserId = normalizeString(input.actorUserId);
+  if (!actorUserId) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_TRANSITION_INVALID',
+      message: 'Lifecycle actions require actor attribution.',
+    };
+  }
+
+  if (!isLifecycleTransitionAllowed(input.action, input.currentState)) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_TRANSITION_INVALID',
+      message: `Lifecycle action "${input.action}" is invalid from state ${input.currentState}.`,
+    };
+  }
+
+  const claimedByUserId = normalizeString(input.claimedByUserId);
+  if (
+    input.action === 'close'
+    && input.currentState === 'CLAIMED'
+    && claimedByUserId
+    && claimedByUserId !== actorUserId
+    && !canBypassCloseOwnership(input.actorRoles)
+  ) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_OWNERSHIP_REQUIRED',
+      message: 'Only the claimed owner or takeover-authorized role may close this thread.',
+    };
+  }
+
+  return {
+    ok: true,
+    nextState: resolveLifecycleNextState(input.action),
+  };
+};
+
 export class InMemoryConnectShyftThreadStore {
   private threadsById = new Map<string, ConnectShyftThread>();
 
@@ -566,6 +651,10 @@ export class InMemoryConnectShyftThreadStore {
       updatedAtUtc: now,
       escalation: {
         ...existing.escalation,
+        stage:
+          input.nextState === 'UNCLAIMED' || input.nextState === 'CLAIMED'
+            ? 0
+            : existing.escalation.stage,
         nextEvaluationAtUtc:
           input.nextState === 'UNCLAIMED'
             ? existing.escalation.nextEvaluationAtUtc || now
@@ -799,12 +888,14 @@ export class KnexConnectShyftThreadStore {
       };
 
       if (input.nextState === 'UNCLAIMED') {
+        updatePayload.escalation_stage = 0;
         updatePayload.claimed_by_user_id = null;
         updatePayload.claimed_at_utc = null;
         updatePayload.closed_by_user_id = null;
         updatePayload.closed_at_utc = null;
         updatePayload.next_evaluation_at_utc = existing.next_evaluation_at_utc || trx.fn.now();
       } else if (input.nextState === 'CLAIMED') {
+        updatePayload.escalation_stage = 0;
         updatePayload.claimed_by_user_id = normalizedActorUserId;
         updatePayload.claimed_at_utc = trx.fn.now();
         updatePayload.closed_by_user_id = null;

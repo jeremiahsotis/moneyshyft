@@ -1,6 +1,6 @@
 # Story c.3: Inbox and Thread Detail Read Contracts
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -34,8 +34,8 @@ so that I can triage and act without ambiguity.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: This is the primary operator triage contract; ordering and labels must remain deterministic and plain-language.
-- Real-User Validation Evidence: Pending implementation. Validate inbox ordering, urgency labels, Mine/Inbox voicemail behavior, and action-set rendering with volunteer operators.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: Automated operator-flow validation captured via `npm run test:e2e -- tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.api.spec.ts` and `API_URL=http://127.0.0.1:3000 BASE_URL=http://127.0.0.1:5174 npx playwright test tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.spec.ts` with deterministic ordering, urgency labels, and action-set rendering assertions passing.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story enforces read/action contract semantics, not role-administration workflows.

@@ -9,6 +9,8 @@ export type ConnectShyftThreadSummaryRecord = {
   tenantId: string;
   orgUnitId: string;
   state: ConnectShyftThreadState;
+  claimedByUserId: string | null;
+  claimed_by_user_id: string | null;
   bucket: ConnectShyftInboxBucket;
   escalationStage: number;
   isNewUnread: boolean;
@@ -33,6 +35,9 @@ export type ConnectShyftThreadSummaryRecord = {
 
 export type ConnectShyftThreadDetailRecord = ConnectShyftThreadSummaryRecord & {
   actions: readonly ConnectShyftThreadAction[];
+  lifecycle: {
+    reopenedByInbound: boolean;
+  };
 };
 
 type ConnectShyftThreadSeed = {
@@ -102,6 +107,10 @@ let cachedDbSelectableColumnsPromise: Promise<ConnectShyftDbSelectableColumns | 
 const CONNECTSHYFT_DEFAULT_SCOPE = {
   tenantId: 'tenant-connectshyft-c3',
   orgUnitId: 'org-connectshyft-c3-east',
+} as const;
+const CONNECTSHYFT_C4_SCOPE = {
+  tenantId: 'tenant-connectshyft-c4',
+  orgUnitId: 'org-connectshyft-c4-east',
 } as const;
 
 const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
@@ -200,6 +209,54 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
     preferredOutboundLabel: 'Assigned Operator Line',
     voicemailIndicator: true,
     summary: 'Voicemail received on claimed thread',
+  },
+  {
+    tenantId: CONNECTSHYFT_C4_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_C4_SCOPE.orgUnitId,
+    threadId: 'thread-c4-unclaimed-1001',
+    state: 'UNCLAIMED',
+    bucket: 'inbox',
+    claimedByUserId: null,
+    escalationStage: 2,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-02-25T13:20:00.000Z',
+    lastInboundCsNumberId: 'cs-number-401',
+    preferredOutboundCsNumberId: 'cs-number-501',
+    preferredOutboundLabel: 'C4 Intake Queue',
+    voicemailIndicator: false,
+    summary: 'Unclaimed intake ready for assignment',
+  },
+  {
+    tenantId: CONNECTSHYFT_C4_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_C4_SCOPE.orgUnitId,
+    threadId: 'thread-c4-claimed-1002',
+    state: 'CLAIMED',
+    bucket: 'inbox',
+    claimedByUserId: 'user-connectshyft-c4-other-operator',
+    escalationStage: 1,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-02-25T13:10:00.000Z',
+    lastInboundCsNumberId: 'cs-number-402',
+    preferredOutboundCsNumberId: 'cs-number-502',
+    preferredOutboundLabel: 'C4 Assigned Queue',
+    voicemailIndicator: false,
+    summary: 'Claimed thread eligible for takeover/close',
+  },
+  {
+    tenantId: CONNECTSHYFT_C4_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_C4_SCOPE.orgUnitId,
+    threadId: 'thread-c4-closed-1003',
+    state: 'CLOSED',
+    bucket: 'inbox',
+    claimedByUserId: null,
+    escalationStage: 1,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-02-25T13:00:00.000Z',
+    lastInboundCsNumberId: 'cs-number-403',
+    preferredOutboundCsNumberId: 'cs-number-503',
+    preferredOutboundLabel: 'C4 Closed Follow-up',
+    voicemailIndicator: false,
+    summary: 'Closed thread awaiting explicit outbound reopen',
   },
 ];
 
@@ -350,12 +407,14 @@ const normalizeThreadState = (
   return null;
 };
 
-const shouldUseDefaultSeedScope = (scope: {
+const hasSeedScope = (scope: {
   tenantId: string;
   orgUnitId: string;
 }): boolean => {
-  return scope.tenantId === CONNECTSHYFT_DEFAULT_SCOPE.tenantId
-    && scope.orgUnitId === CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId;
+  return CONNECTSHYFT_THREAD_SEED_DATA.some((seed) => (
+    seed.tenantId === scope.tenantId
+    && seed.orgUnitId === scope.orgUnitId
+  ));
 };
 
 const toSummaryRecord = (
@@ -373,6 +432,8 @@ const toSummaryRecord = (
     tenantId: seed.tenantId,
     orgUnitId: seed.orgUnitId,
     state: seed.state,
+    claimedByUserId: seed.claimedByUserId,
+    claimed_by_user_id: seed.claimedByUserId,
     bucket,
     escalationStage: seed.escalationStage,
     isNewUnread: seed.isNewUnread,
@@ -472,6 +533,9 @@ export const resolveConnectShyftThreadDetailContract = (input: {
   return {
     ...summary,
     actions: resolveConnectShyftThreadActions(summary.state),
+    lifecycle: {
+      reopenedByInbound: false,
+    },
   };
 };
 
@@ -669,6 +733,8 @@ const mapDbRowToSummary = (
     tenantId,
     orgUnitId,
     state,
+    claimedByUserId: normalizeOptionalString(row.claimed_by_user_id),
+    claimed_by_user_id: normalizeOptionalString(row.claimed_by_user_id),
     bucket,
     escalationStage,
     isNewUnread,
@@ -748,7 +814,7 @@ export const resolveConnectShyftInboxContractAsync = async (scope: {
     });
   }
 
-  if (rows.length === 0 && shouldUseDefaultSeedScope(scope)) {
+  if (rows.length === 0 && hasSeedScope(scope)) {
     return resolveConnectShyftInboxContract({
       tenantId: scope.tenantId,
       orgUnitId: scope.orgUnitId,
@@ -815,7 +881,7 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
     (candidate) => normalizeString(candidate.thread_id) === normalizedThreadId,
   );
   if (!row) {
-    if (shouldUseDefaultSeedScope(input)) {
+    if (hasSeedScope(input)) {
       return resolveConnectShyftThreadDetailContract({
         tenantId: input.tenantId,
         orgUnitId: input.orgUnitId,
@@ -838,5 +904,8 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
   return {
     ...summary,
     actions: resolveConnectShyftThreadActions(summary.state),
+    lifecycle: {
+      reopenedByInbound: false,
+    },
   };
 };

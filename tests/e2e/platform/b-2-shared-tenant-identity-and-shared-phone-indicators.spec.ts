@@ -243,8 +243,12 @@ test.describe(
           orgUnitMemberships: [context.primaryOrgUnitId],
         }));
 
-        await expect(page.getByTestId('connectshyft-neighbor-first-name-input')).toHaveValue('Bex');
-        await expect(page.getByTestId('connectshyft-neighbor-last-name-input')).toHaveValue('Second');
+        await expect.poll(async () =>
+          page.getByTestId('connectshyft-neighbor-first-name-input').inputValue(),
+        ).toBe('Bex');
+        await expect.poll(async () =>
+          page.getByTestId('connectshyft-neighbor-last-name-input').inputValue(),
+        ).toBe('Second');
       },
     );
 

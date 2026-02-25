@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "story_id": "c-4",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.spec.ts",
+      "expected_to_fail": true
+    }
+  ],
+  "fixture_needs": ["connectShyftStoryC4Factory"],
+  "knowledge_fragments_used": ["selector-resilience", "network-first", "playwright-cli"],
+  "test_count": 3,
+  "tdd_phase": "RED",
+  "summary": "Generated 3 failing E2E tests for story c-4"
+}
