@@ -262,4 +262,56 @@ describe('route cashier-assisted intake api contract', () => {
       refusalType: 'business',
     });
   });
+
+  it('exposes reconciliation queue with lifecycle status and operator actions', async () => {
+    const app = buildApp();
+
+    const response = await request(app)
+      .get('/api/v1/route/intake/reconciliation/unresolved?staleMinutes=60');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_INTAKE_RECONCILIATION_QUEUE',
+      data: {
+        staleThresholdMinutes: 60,
+        guardrailStatus: expect.any(String),
+        items: expect.any(Array),
+      },
+    });
+  });
+
+  it('maintains committed request terminal state while linked commitment transitions', async () => {
+    const app = buildApp();
+
+    const createResponse = await request(app)
+      .post('/api/v1/route/intake/cashier-requests')
+      .send(basePayload);
+
+    expect(createResponse.status).toBe(200);
+    const requestId = createResponse.body?.data?.requestId as string;
+    const commitmentId = createResponse.body?.data?.commitmentId as string;
+
+    await request(app)
+      .post(`/api/v1/route/commitments/${commitmentId}/transitions`)
+      .send({
+        nextStatus: 'in_progress',
+        reason: 'Dispatch started from integration test',
+      })
+      .expect(200);
+
+    const detailResponse = await request(app)
+      .get(`/api/v1/route/intake/cashier-requests/${requestId}`);
+
+    expect(detailResponse.status).toBe(200);
+    expect(detailResponse.body).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_CASHIER_INTAKE_COMMITMENT_LINKED',
+      data: {
+        requestId,
+        requestLifecycleStatus: 'committed',
+        commitmentLifecycleStatus: 'in_progress',
+      },
+    });
+  });
 });

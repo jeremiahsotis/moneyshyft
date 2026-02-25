@@ -123,6 +123,20 @@ const parseTransitionBody = (req: Request) => ({
   policyExceptionCode: normalizeNonEmptyString(req.body?.policyExceptionCode) || null,
 });
 
+const parseStaleMinutes = (req: Request): number => {
+  const raw = normalizeNonEmptyString(req.query?.staleMinutes || null);
+  if (!raw) {
+    return 30;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return 30;
+  }
+
+  return Math.min(parsed, 24 * 60);
+};
+
 const parseIntakeBody = (req: Request): RouteIntakePayload => ({
   tenantId: normalizeNonEmptyString(req.body?.tenantId),
   orgUnitId: normalizeNonEmptyString(req.body?.orgUnitId),
@@ -562,6 +576,36 @@ export const createRouteRouter = (
   router.get('/intake/requests/:requestId', handleResolveIntake(intakeService, 'donor'));
   router.post('/intake/cashier-requests', handleSubmitIntake(intakeService, 'cashier'));
   router.get('/intake/cashier-requests/:requestId', handleResolveIntake(intakeService, 'cashier'));
+  router.get('/intake/reconciliation/unresolved', async (req: Request, res: Response) => {
+    const tenantId = resolveTenantId(req, res);
+    if (!tenantId) {
+      return;
+    }
+
+    const scopedOrgUnitId = resolveOrgUnitContext(req);
+    if (!scopedOrgUnitId) {
+      refusal(res, {
+        code: 'ROUTE_ORG_UNIT_CONTEXT_REQUIRED',
+        message: 'Active orgUnit context is required for intake requests.',
+        refusalType: 'security',
+        httpStatus: 403,
+      });
+      return;
+    }
+
+    const reconciled = await intakeService.listUnresolvedRequests({
+      tenantId,
+      orgUnitId: scopedOrgUnitId,
+      staleMinutes: parseStaleMinutes(req),
+    });
+
+    success(res, {
+      code: reconciled.code,
+      message: reconciled.message,
+      httpStatus: reconciled.httpStatus,
+      data: reconciled.data,
+    });
+  });
 
   return router;
 };

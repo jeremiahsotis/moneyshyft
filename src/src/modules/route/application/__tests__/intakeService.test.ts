@@ -7,6 +7,7 @@ import { IntakeService } from '../intakeService';
 import { InMemoryCommitmentRepository } from '../../infrastructure/commitmentRepository';
 import { InMemoryIntakeRequestRepository } from '../../infrastructure/intakeRequestRepository';
 import { RouteIntakePayload } from '../../domain/intakePolicy';
+import type { RouteIntakeRecord } from '../../infrastructure/intakeRequestRepository';
 
 const basePayload = (): RouteIntakePayload => ({
   tenantId: 'tenant-1',
@@ -31,6 +32,25 @@ class CommitmentAlwaysFailsService extends CommitmentService {
     };
   }
 }
+
+const unresolvedRecord = (): RouteIntakeRecord => ({
+  requestId: 'request-unresolved-1',
+  tenantId: 'tenant-1',
+  orgUnitId: 'org-1',
+  channel: 'cashier',
+  requestedAtUtc: '2026-02-26T14:00:00.000Z',
+  requestedWindowStartUtc: '2026-02-27T14:00:00.000Z',
+  requestedWindowEndUtc: '2026-02-27T16:00:00.000Z',
+  scheduleMode: 'pickup',
+  notes: 'unresolved linkage',
+  status: 'Accepted',
+  requestLifecycleStatus: 'pending',
+  commitmentId: null,
+  refusal: null,
+  createdByUserId: 'user-ops-1',
+  createdAtUtc: '2026-02-20T14:00:00.000Z',
+  updatedAtUtc: '2026-02-20T14:00:00.000Z',
+});
 
 describe('route intake service', () => {
   it('accepts cashier intake and links to commitment', async () => {
@@ -213,6 +233,86 @@ describe('route intake service', () => {
       data: {
         status: 'Refused',
         scheduleMode: 'pickup',
+      },
+    });
+  });
+
+  it('keeps request lifecycle terminal while linked commitment transitions independently', async () => {
+    const commitmentService = new CommitmentService(new InMemoryCommitmentRepository());
+    const requestRepository = new InMemoryIntakeRequestRepository();
+    const service = new IntakeService(commitmentService, requestRepository);
+
+    const created = await service.submitIntake({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      actorId: 'user-1',
+      channel: 'cashier',
+      payload: basePayload(),
+    });
+
+    if (!created.ok) {
+      throw new Error('Expected accepted intake result');
+    }
+
+    await commitmentService.transitionCommitment({
+      tenantId: 'tenant-1',
+      commitmentId: created.data.commitmentId,
+      actorId: 'user-2',
+      nextStatus: 'in_progress',
+      reason: 'Dispatching linked commitment',
+    });
+
+    const resolved = await service.resolveIntake({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      requestId: created.data.requestId,
+      channel: 'cashier',
+    });
+
+    expect(resolved).toMatchObject({
+      ok: true,
+      data: {
+        requestId: created.data.requestId,
+        requestLifecycleStatus: 'committed',
+        commitmentLifecycleStatus: 'in_progress',
+      },
+    });
+  });
+
+  it('returns reconciliation actions for unresolved stale request states', async () => {
+    const repository = {
+      createAccepted: jest.fn(),
+      createRefused: jest.fn(),
+      getById: jest.fn(),
+      listUnresolved: jest.fn(async () => [unresolvedRecord()]),
+    };
+
+    const service = new IntakeService(
+      new CommitmentService(new InMemoryCommitmentRepository()),
+      repository as never,
+    );
+
+    const result = await service.listUnresolvedRequests({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      staleMinutes: 60,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_INTAKE_RECONCILIATION_QUEUE',
+      data: {
+        staleThresholdMinutes: 60,
+        guardrailStatus: 'action_required',
+        items: [
+          expect.objectContaining({
+            requestId: 'request-unresolved-1',
+            requestLifecycleStatus: 'pending',
+            issueCode: 'ROUTESHYFT_REQUEST_TERMINAL_STATE_MISSING',
+            reconciliationActions: expect.any(Array),
+            stale: true,
+          }),
+        ],
       },
     });
   });

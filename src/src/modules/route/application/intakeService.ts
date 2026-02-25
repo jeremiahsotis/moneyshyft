@@ -9,8 +9,10 @@ import { CommitmentService } from './commitmentService';
 import {
   IntakeRequestRepository,
   KnexIntakeRequestRepository,
+  ListUnresolvedIntakeInput,
   RouteIntakeRecord,
 } from '../infrastructure/intakeRequestRepository';
+import type { RouteRequestLifecycleStatus } from '../domain/requestLifecycle';
 
 const CHANNEL_RESPONSE_CODES = {
   donor: {
@@ -59,6 +61,12 @@ export type ResolveIntakeInput = {
   channel: RouteIntakeChannel;
 };
 
+export type ListUnresolvedRequestsInput = {
+  tenantId: string;
+  orgUnitId: string | null;
+  staleMinutes?: number;
+};
+
 export type SubmitIntakeResult =
   | IntakeSuccess<{
     requestId: string;
@@ -74,10 +82,30 @@ export type ResolveIntakeResult =
     requestId: string;
     commitmentId: string | null;
     status: 'Accepted' | 'Refused';
+    requestLifecycleStatus: RouteRequestLifecycleStatus;
+    commitmentLifecycleStatus: string | null;
     refusal: RouteIntakeRecord['refusal'];
     scheduleMode: RouteScheduleMode;
   }>
   | IntakeRefusal;
+
+export type ListUnresolvedRequestsResult = IntakeSuccess<{
+  generatedAtUtc: string;
+  staleThresholdMinutes: number;
+  guardrailStatus: 'clear' | 'action_required';
+  items: Array<{
+    requestId: string;
+    channel: RouteIntakeChannel;
+    status: RouteIntakeRecord['status'];
+    requestLifecycleStatus: RouteRequestLifecycleStatus;
+    commitmentId: string | null;
+    issueCode: 'ROUTESHYFT_REQUEST_TERMINAL_STATE_MISSING';
+    issueSummary: string;
+    stale: boolean;
+    updatedAtUtc: string;
+    reconciliationActions: string[];
+  }>;
+}>;
 
 const normalizeNonEmpty = (value: unknown): string => {
   if (typeof value !== 'string') {
@@ -234,6 +262,18 @@ export class IntakeService {
       );
     }
 
+    let commitmentLifecycleStatus: string | null = null;
+    if (record.commitmentId) {
+      const linkedCommitment = await this.commitmentService.resolveCommitment({
+        tenantId: input.tenantId,
+        commitmentId: record.commitmentId,
+      });
+
+      if (linkedCommitment.ok) {
+        commitmentLifecycleStatus = linkedCommitment.data.commitment.status;
+      }
+    }
+
     return {
       ok: true,
       code: mapDetailCode(input.channel, record),
@@ -245,8 +285,63 @@ export class IntakeService {
         requestId: record.requestId,
         commitmentId: record.commitmentId,
         status: record.status,
+        requestLifecycleStatus: record.requestLifecycleStatus,
+        commitmentLifecycleStatus,
         refusal: record.refusal,
         scheduleMode: record.scheduleMode,
+      },
+    };
+  }
+
+  async listUnresolvedRequests(input: ListUnresolvedRequestsInput): Promise<ListUnresolvedRequestsResult> {
+    const staleThresholdMinutes = Number.isInteger(input.staleMinutes) && (input.staleMinutes as number) > 0
+      ? Math.min(input.staleMinutes as number, 24 * 60)
+      : 30;
+    const generatedAtUtc = new Date().toISOString();
+    const staleBeforeUtc = new Date(
+      new Date(generatedAtUtc).getTime() - (staleThresholdMinutes * 60 * 1000),
+    ).toISOString();
+
+    const queryInput: ListUnresolvedIntakeInput = {
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      staleBeforeUtc,
+    };
+
+    const unresolvedRecords = await this.requestRepository.listUnresolved(queryInput);
+    const staleBeforeMillis = new Date(staleBeforeUtc).getTime();
+
+    const items = unresolvedRecords.map((record) => {
+      const updatedAtMillis = new Date(record.updatedAtUtc).getTime();
+      const stale = Number.isNaN(updatedAtMillis) ? true : updatedAtMillis <= staleBeforeMillis;
+
+      return {
+        requestId: record.requestId,
+        channel: record.channel,
+        status: record.status,
+        requestLifecycleStatus: record.requestLifecycleStatus,
+        commitmentId: record.commitmentId,
+        issueCode: 'ROUTESHYFT_REQUEST_TERMINAL_STATE_MISSING' as const,
+        issueSummary: 'Request has not reached a valid terminal lifecycle state.',
+        stale,
+        updatedAtUtc: record.updatedAtUtc,
+        reconciliationActions: [
+          'Link request to a valid commitment or record explicit cancellation/refusal.',
+          'Reprocess intake if linkage prerequisites were missing at submission time.',
+        ],
+      };
+    });
+
+    return {
+      ok: true,
+      code: 'ROUTESHYFT_INTAKE_RECONCILIATION_QUEUE',
+      message: 'Reconciliation queue generated for unresolved intake requests.',
+      httpStatus: 200,
+      data: {
+        generatedAtUtc,
+        staleThresholdMinutes,
+        guardrailStatus: items.length > 0 ? 'action_required' : 'clear',
+        items,
       },
     };
   }
