@@ -11,12 +11,12 @@ on:
       run_backend_contracts:
         description: 'Run backend-connected contract tests'
         required: false
-        default: false
+        default: 'false'
         type: boolean
       run_epic0_quality:
         description: 'Run Epic 0 quality gate checks'
         required: false
-        default: false
+        default: 'false'
         type: boolean
 
 concurrency:

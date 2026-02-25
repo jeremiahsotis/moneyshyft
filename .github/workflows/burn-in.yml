@@ -26,7 +26,7 @@ on:
       advisory:
         description: 'Advisory mode (non-blocking) for manual runs'
         required: false
-        default: false
+        default: 'false'
         type: boolean
 
 concurrency:
