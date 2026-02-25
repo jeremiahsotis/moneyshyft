@@ -145,6 +145,12 @@ GPT-5 Codex
 - src/src/migrations/20260224153000_create_route_commitments_and_transition_audit.ts
 - src/src/migrations/20260224170000_create_connectshyft_threads.ts
 - src/src/migrations/20260225120000_create_route_commitments_and_intake_requests.ts
+- tests/api/platform/2-3-cashier-assisted-intake-and-voucher-delivery-scheduling.api.spec.ts
+- tests/api/platform/2-3-cashier-assisted-intake-and-voucher-delivery-scheduling.atdd.api.spec.ts
+- tests/e2e/platform/2-3-cashier-assisted-intake-and-voucher-delivery-scheduling.atdd.spec.ts
+- tests/e2e/platform/2-3-cashier-assisted-intake-and-voucher-delivery-scheduling.spec.ts
+- tests/support/factories/routeShyftStory23Factory.ts
+- tests/support/fixtures/routeShyftStory23.fixture.ts
 
 ## Senior Developer Review (AI)
 
