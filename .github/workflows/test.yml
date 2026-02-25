@@ -87,7 +87,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-ci-node-playwright
         with:
-          install_src: 'true'
+          install_src: 'false'
           install_frontend: 'false'
           ensure_playwright: 'false'
       - name: Lint or discovery fallback
