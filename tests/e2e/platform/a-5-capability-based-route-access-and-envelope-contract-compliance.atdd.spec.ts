@@ -102,7 +102,6 @@ test.describe(
           headers: adminHeaders,
           data: {
             orgUnitId: context.orgUnitId,
-            threadId: context.threadId,
             neighborId: 'neighbor-a5-envelope-success',
           },
         });
@@ -125,7 +124,7 @@ test.describe(
           },
         });
 
-        expect(successResponse.status()).toBe(200);
+        expect(successResponse.status()).toBe(201);
         expect(refusalResponse.status()).toBe(200);
         expect(systemErrorResponse.status()).toBe(500);
 

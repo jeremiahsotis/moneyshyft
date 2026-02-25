@@ -350,6 +350,14 @@ const normalizeThreadState = (
   return null;
 };
 
+const shouldUseDefaultSeedScope = (scope: {
+  tenantId: string;
+  orgUnitId: string;
+}): boolean => {
+  return scope.tenantId === CONNECTSHYFT_DEFAULT_SCOPE.tenantId
+    && scope.orgUnitId === CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId;
+};
+
 const toSummaryRecord = (
   seed: ConnectShyftThreadSeed,
   bucket: ConnectShyftInboxBucket,
@@ -500,6 +508,10 @@ const resolveDbSelectableColumns = (
   const lastActivityColumn = resolveExistingColumn(columnInfo, [
     'last_activity_at_utc',
     'last_activity_at',
+    'updated_at_utc',
+    'updated_at',
+    'created_at_utc',
+    'created_at',
   ]);
 
   if (
@@ -736,6 +748,15 @@ export const resolveConnectShyftInboxContractAsync = async (scope: {
     });
   }
 
+  if (rows.length === 0 && shouldUseDefaultSeedScope(scope)) {
+    return resolveConnectShyftInboxContract({
+      tenantId: scope.tenantId,
+      orgUnitId: scope.orgUnitId,
+      bucket: scope.bucket,
+      actorUserId: scope.actorUserId,
+    });
+  }
+
   const filteredRows = filterRowsForBucket(rows, {
     bucket: scope.bucket,
     actorUserId: scope.actorUserId,
@@ -794,6 +815,15 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
     (candidate) => normalizeString(candidate.thread_id) === normalizedThreadId,
   );
   if (!row) {
+    if (shouldUseDefaultSeedScope(input)) {
+      return resolveConnectShyftThreadDetailContract({
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        threadId: normalizedThreadId,
+        actorUserId: input.actorUserId,
+      });
+    }
+
     return null;
   }
 

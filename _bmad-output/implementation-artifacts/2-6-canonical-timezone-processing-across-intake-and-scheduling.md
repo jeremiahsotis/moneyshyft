@@ -87,10 +87,10 @@ Deliver reliable, user-centric time behavior across Epic 2 intake and scheduling
 
 ### References
 
-- /Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/epics.md
-- /Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Functional_Requirements.md
-- /Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Non_Functional_Requirements.md
-- /Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Architecture_Document.md
+- [Source: `/Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/epics.md` (Epic 2 > Story 2.6)]
+- [Source: `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Functional_Requirements.md` (timezone-local rendering requirements)]
+- [Source: `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Non_Functional_Requirements.md` (time accuracy and consistency constraints)]
+- [Source: `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Architecture_Document.md` (Stack, Module Layout)]
 
 ## Dev Agent Record
 
@@ -109,4 +109,3 @@ GPT-5 Codex
 ### File List
 
 - _bmad-output/implementation-artifacts/2-6-canonical-timezone-processing-across-intake-and-scheduling.md
-

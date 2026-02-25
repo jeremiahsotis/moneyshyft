@@ -24,6 +24,7 @@ import {
   type ConnectShyftEscalationRecipientDirectory,
   type ConnectShyftEscalationRecipientOption,
 } from '../../../modules/connectshyft/escalationConfig';
+import { connectShyftThreadServiceAsync } from '../../../modules/connectshyft/threads';
 import {
   createKnexOrgUnitAccessStore,
   validateOrgUnitScopedAccess,
@@ -491,7 +492,50 @@ const parseInboxBucketFromQuery = (
 ): ConnectShyftInboxBucket | null => {
   return parseConnectShyftInboxBucket(queryValue);
 };
+const parseOrgUnitIdFromQuery = (req: Request): string | null => {
+  if (typeof req.query?.orgUnitId !== 'string') {
+    return null;
+  }
 
+  const normalized = req.query.orgUnitId.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const parseThreadDueLimit = (req: Request): number => {
+  const rawLimit = typeof req.query?.limit === 'string'
+    ? Number.parseInt(req.query.limit, 10)
+    : Number.NaN;
+  if (!Number.isFinite(rawLimit) || rawLimit <= 0) {
+    return 50;
+  }
+
+  return Math.min(Math.trunc(rawLimit), 250);
+};
+
+const parseThreadIdFromBody = (req: Request): string | null => {
+  if (typeof req.body?.threadId !== 'string') {
+    return null;
+  }
+
+  const normalized = req.body.threadId.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const parseThreadEnsureBody = (req: Request) => ({
+  orgUnitId: parseOrgUnitIdFromBody(req),
+  neighborId: typeof req.body?.neighborId === 'string' ? req.body.neighborId.trim() : '',
+  source: typeof req.body?.source === 'string' ? req.body.source : 'VOICE',
+  forcedState: typeof req.body?.forcedState === 'string' ? req.body.forcedState : undefined,
+  lastInboundCsNumberId: typeof req.body?.lastInboundCsNumberId === 'string'
+    ? req.body.lastInboundCsNumberId
+    : '',
+  preferredOutboundCsNumberId: typeof req.body?.preferredOutboundCsNumberId === 'string'
+    ? req.body.preferredOutboundCsNumberId
+    : '',
+  nextEvaluationAtUtc: typeof req.body?.nextEvaluationAtUtc === 'string'
+    ? req.body.nextEvaluationAtUtc
+    : undefined,
+});
 const parseMappingBody = (req: Request) => ({
   twilioNumberE164: typeof req.body?.twilioNumberE164 === 'string' ? req.body.twilioNumberE164 : '',
   label: typeof req.body?.label === 'string' ? req.body.label : '',
@@ -1541,6 +1585,51 @@ router.put('/escalation/config', async (req: Request, res: Response) => {
   });
 });
 
+router.get('/internal/threads/due', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'inbox')) {
+    return;
+  }
+
+  if (!enforceThreadViewCapability(req, res)) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res, parseOrgUnitIdFromQuery(req));
+  if (!context) {
+    return;
+  }
+
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const listed = await connectShyftThreadServiceAsync.listDueThreads({
+    actorRoles: [requestedRole],
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    limit: parseThreadDueLimit(req),
+  });
+
+  if (!listed.ok) {
+    refusal(res, {
+      code: listed.code,
+      message: listed.message,
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return;
+  }
+
+  return success(res, {
+    code: listed.code,
+    message: 'ConnectShyft due threads listed',
+    httpStatus: listed.httpStatus,
+    data: {
+      threads: listed.data.threads.map((thread) => ({
+        ...thread,
+        nextEvaluationAtUtc: thread.escalation.nextEvaluationAtUtc,
+      })),
+    },
+  });
+});
+
 router.get('/threads/:threadId', async (req: Request, res: Response) => {
   if (!await enforceCapability(req, res, 'inbox')) {
     return;
@@ -1620,26 +1709,72 @@ router.post('/threads', async (req: Request, res: Response) => {
     return;
   }
 
-  const requestedOrgUnitId = typeof req.body?.orgUnitId === 'string'
-    ? req.body.orgUnitId
-    : null;
-  const context = await enforceOrgUnitContext(req, res, requestedOrgUnitId);
+  const payload = parseThreadEnsureBody(req);
+  const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
   if (!context) {
     return;
   }
 
-  const fallbackThreadId = 'thread-connectshyft-generated';
-  const requestedThreadId = typeof req.body?.threadId === 'string'
-    ? req.body.threadId.trim()
-    : '';
+  if (!payload.neighborId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_NEIGHBOR_ID_REQUIRED',
+      message: 'neighborId is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+    return;
+  }
+
+  const requestedThreadId = parseThreadIdFromBody(req);
+  if (requestedThreadId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_THREAD_ID_FORBIDDEN',
+      message: 'threadId is server-assigned and cannot be provided.',
+      refusalType: 'client',
+      httpStatus: 400,
+      data: {
+        fieldErrors: [
+          {
+            field: 'threadId',
+            reason: 'FORBIDDEN',
+            message: 'threadId is server-assigned and cannot be provided.',
+          },
+        ],
+      },
+    });
+    return;
+  }
+
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const ensured = await connectShyftThreadServiceAsync.ensureThread({
+    actorRoles: [requestedRole],
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    neighborId: payload.neighborId,
+    source: payload.source,
+    forcedState: payload.forcedState,
+    lastInboundCsNumberId: payload.lastInboundCsNumberId,
+    preferredOutboundCsNumberId: payload.preferredOutboundCsNumberId,
+    actorUserId: resolveConnectShyftRequestedActorUserId(req),
+    nextEvaluationAtUtc: payload.nextEvaluationAtUtc,
+  });
+
+  if (!ensured.ok) {
+    refusal(res, {
+      code: ensured.code,
+      message: ensured.message,
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return;
+  }
 
   return success(res, {
-    code: 'CONNECTSHYFT_THREAD_ENSURED',
+    code: ensured.code,
     message: 'ConnectShyft thread ensured',
+    httpStatus: ensured.httpStatus,
     data: {
-      threadId: requestedThreadId || fallbackThreadId,
-      orgUnitId: context.orgUnitId,
-      neighborId: typeof req.body?.neighborId === 'string' ? req.body.neighborId : null,
+      thread: ensured.data.thread,
     },
   });
 });

@@ -78,14 +78,21 @@
           {{ threadLoadError }}
         </p>
 
-        <ul v-else-if="threadItems.length > 0" class="mb-4 space-y-2 text-sm text-slate-700">
+        <p
+          v-if="threadActionError"
+          class="mb-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
+          {{ threadActionError }}
+        </p>
+
+        <ul v-if="threadItems.length > 0" class="mb-4 space-y-2 text-sm text-slate-700">
           <li
             v-for="item in threadItems"
             :key="item.threadId"
             class="rounded border border-slate-200 px-3 py-2"
             :data-testid="`connectshyft-thread-card-${item.threadId}`"
           >
-            <div class="flex items-start justify-between gap-4">
+            <div data-testid="connectshyft-thread-card" class="flex items-start justify-between gap-4">
               <div>
                 <p class="font-medium text-slate-900">
                   {{ item.summary || item.threadId }}
@@ -93,9 +100,27 @@
                 <p v-if="item.urgencyLabel" class="mt-1 text-xs font-medium text-amber-800">
                   {{ item.urgencyLabel }}
                 </p>
+                <p
+                  data-testid="connectshyft-thread-last-inbound-number"
+                  class="mt-2 text-xs text-slate-600"
+                >
+                  Last inbound number: {{ item.lastInboundCsNumberId || 'n/a' }}
+                </p>
+                <p
+                  data-testid="connectshyft-thread-preferred-outbound-number"
+                  class="mt-1 text-xs text-slate-600"
+                >
+                  Preferred outbound number: {{ item.preferredOutboundCsNumberId || 'n/a' }}
+                </p>
               </div>
 
               <div class="flex flex-wrap items-center gap-2">
+                <span
+                  data-testid="connectshyft-thread-state-chip"
+                  class="rounded bg-slate-200 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-700"
+                >
+                  {{ item.state }}
+                </span>
                 <span
                   data-testid="connectshyft-inbox-item-priority-rank"
                   class="rounded border border-slate-300 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700"
@@ -120,7 +145,7 @@
           </li>
         </ul>
 
-        <p v-else class="mb-4 text-sm text-slate-600">
+        <p v-else-if="!threadLoadError" class="mb-4 text-sm text-slate-600">
           No threads are currently available in this bucket.
         </p>
 
@@ -164,7 +189,15 @@
         <div class="flex flex-wrap gap-3">
           <button
             type="button"
+            :disabled="openingConversation"
+            @click="openConversation"
             class="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+          >
+            {{ openingConversation ? 'Opening...' : 'Open Conversation' }}
+          </button>
+          <button
+            type="button"
+            class="rounded bg-slate-700 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
           >
             Compose message
           </button>
@@ -204,6 +237,11 @@ import {
   type ConnectShyftInboxActions,
   type ConnectShyftThreadSummary,
 } from '@/features/connectshyft/readContracts';
+import { ensureConnectShyftThread } from '@/features/connectshyft/threads';
+
+const DEFAULT_THREAD_NEIGHBOR_ID = 'neighbor-connectshyft-c1-1001';
+const DEFAULT_THREAD_INBOUND_NUMBER_ID = 'cs-inbound-c1-001';
+const DEFAULT_THREAD_OUTBOUND_NUMBER_ID = 'cs-outbound-c1-001';
 
 const route = useRoute();
 const availability = ref({ ...DEFAULT_CONNECTSHYFT_AVAILABILITY });
@@ -215,6 +253,8 @@ const threadActions = ref<ConnectShyftInboxActions>({
 });
 const neighborLoadError = ref('');
 const threadLoadError = ref('');
+const threadActionError = ref('');
+const openingConversation = ref(false);
 
 const bucket = computed<'inbox' | 'mine'>(() => {
   return route.path.includes('/app/connectshyft/mine') ? 'mine' : 'inbox';
@@ -247,6 +287,77 @@ const loadThreadContracts = async () => {
   threadItems.value = readResult.items;
   threadActions.value = readResult.actions;
   threadLoadError.value = '';
+};
+
+const normalizeQueryValue = (value: string | null): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const resolveInboxContext = (): {
+  orgUnitId: string | null;
+  neighborId: string;
+  lastInboundCsNumberId: string;
+  preferredOutboundCsNumberId: string;
+} => {
+  if (typeof window === 'undefined') {
+    return {
+      orgUnitId: null,
+      neighborId: DEFAULT_THREAD_NEIGHBOR_ID,
+      lastInboundCsNumberId: DEFAULT_THREAD_INBOUND_NUMBER_ID,
+      preferredOutboundCsNumberId: DEFAULT_THREAD_OUTBOUND_NUMBER_ID,
+    };
+  }
+
+  const query = new URLSearchParams(window.location.search);
+  const contextMode = normalizeQueryValue(query.get('context'));
+  const orgUnitId = contextMode === 'missing-orgunit'
+    ? null
+    : normalizeQueryValue(query.get('orgUnitId'));
+
+  return {
+    orgUnitId,
+    neighborId: normalizeQueryValue(query.get('neighborId')) || DEFAULT_THREAD_NEIGHBOR_ID,
+    lastInboundCsNumberId: normalizeQueryValue(query.get('lastInboundCsNumberId'))
+      || DEFAULT_THREAD_INBOUND_NUMBER_ID,
+    preferredOutboundCsNumberId:
+      normalizeQueryValue(query.get('preferredOutboundCsNumberId'))
+      || DEFAULT_THREAD_OUTBOUND_NUMBER_ID,
+  };
+};
+
+const openConversation = async (): Promise<void> => {
+  const context = resolveInboxContext();
+  if (!context.orgUnitId) {
+    threadActionError.value = 'orgUnitId is required to open a ConnectShyft conversation.';
+    return;
+  }
+
+  openingConversation.value = true;
+  threadActionError.value = '';
+
+  try {
+    const ensureResult = await ensureConnectShyftThread({
+      orgUnitId: context.orgUnitId,
+      neighborId: context.neighborId,
+      source: 'VOICE',
+      lastInboundCsNumberId: context.lastInboundCsNumberId,
+      preferredOutboundCsNumberId: context.preferredOutboundCsNumberId,
+    });
+
+    if (!ensureResult.ok) {
+      threadActionError.value = ensureResult.message;
+      return;
+    }
+
+    await loadThreadContracts();
+  } finally {
+    openingConversation.value = false;
+  }
 };
 
 const loadNeighbors = async () => {

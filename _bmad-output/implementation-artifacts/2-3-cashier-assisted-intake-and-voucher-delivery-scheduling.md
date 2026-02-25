@@ -14,6 +14,7 @@ so that low-tech users and recipients get consistent in-system outcomes.
 
 1. Given staff enters intake/scheduling details, when they submit, then the same validation, capacity, and refusal rules as public intake apply.
 2. Resulting requests link to commitments or refusal outcomes.
+3. Given cashier staff submit or correct intake details, when validation/refusal occurs, then operator-facing feedback is immediate, actionable, and parity-aligned with donor flow.
 
 ## Operability Guardrails
 
@@ -66,9 +67,9 @@ Provide staff-assisted intake without introducing policy divergence from donor s
 
 ### File Structure Requirements
 
-- Cashier route/controller in `src/modules/route/api`.
-- Shared intake services in `src/modules/route/application`.
-- Policy logic in `src/modules/route/domain`.
+- Cashier route/controller in `src/src/routes/api/v1/*.ts` delegating into route services.
+- Shared intake services in `src/src/modules/route/application`.
+- Policy logic in `src/src/modules/route/domain`.
 
 ### Testing Requirements
 
@@ -86,9 +87,9 @@ Provide staff-assisted intake without introducing policy divergence from donor s
 
 ### References
 
-- /Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/epics.md
-- /Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Functional_Requirements.md
-- /Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Architecture_Document.md
+- [Source: `/Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/epics.md` (Epic 2 > Story 2.3)]
+- [Source: `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Functional_Requirements.md` (cashier intake and voucher scheduling requirements)]
+- [Source: `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Architecture_Document.md` (Stack, Module Layout)]
 
 ## Dev Agent Record
 
@@ -107,4 +108,3 @@ GPT-5 Codex
 ### File List
 
 - _bmad-output/implementation-artifacts/2-3-cashier-assisted-intake-and-voucher-delivery-scheduling.md
-
