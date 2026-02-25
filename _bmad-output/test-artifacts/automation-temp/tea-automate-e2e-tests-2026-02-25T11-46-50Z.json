@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "subprocess": "e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/2-3-cashier-assisted-intake-and-voucher-delivery-scheduling.spec.ts",
+      "content": "import { test, expect } from '../../support/fixtures/routeShyftStory23.fixture';\nimport { login } from '../../helpers/auth';\n\nconst CASHIER_UI_IMPLEMENTATION_GAP =\n  \"Story 2.3 cashier UI route ('/app/route/intake/cashier') is not implemented yet.\";\n\ntest.describe('Story 2.3 automate - cashier-assisted intake operator journeys', () => {\n  test.describe.configure({ mode: 'serial' });\n\n  test.fixme(\n    '[P1] cashier sees immediate actionable accepted-outcome feedback after intake submit @P1',\n    async ({ page, story23Context }) => {\n      await login(page);\n\n      const submitResponse = page.waitForResponse(\n        (response) =>\n          response.url().includes(story23Context.paths.resourceCollection)\n          && response.request().method() === 'POST',\n      );\n\n      await page.goto(\n        story23Context.paths.ui\n          + '?tenantId='\n          + story23Context.tenantId\n          + '&orgUnitId='\n          + story23Context.orgUnitId,\n      );\n\n      await page.getByTestId('routeshyft-cashier-intake-submit').click();\n      await submitResponse;\n\n      await expect(page.getByTestId('routeshyft-cashier-intake-outcome')).toBeVisible();\n      await expect(page.getByTestId('routeshyft-cashier-intake-next-steps')).toBeVisible();\n    },\n  );\n\n  test.fixme(\n    '[P1] cashier sees deterministic refusal code and alternatives for constrained delivery requests @P1',\n    async ({ page, story23Context }) => {\n      await login(page);\n\n      const submitResponse = page.waitForResponse(\n        (response) =>\n          response.url().includes(story23Context.paths.resourceCollection)\n          && response.request().method() === 'POST',\n      );\n\n      await page.goto(\n        story23Context.paths.ui\n          + '?tenantId='\n          + story23Context.tenantId\n          + '&orgUnitId='\n          + story23Context.orgUnitId,\n      );\n\n      await page.getByTestId('routeshyft-cashier-intake-submit').click();\n      await submitResponse;\n\n      await expect(page.getByTestId('routeshyft-cashier-intake-refusal-banner')).toBeVisible();\n      await expect(page.getByTestId('routeshyft-cashier-intake-refusal-code')).toContainText(\n        story23Context.refusalCode,\n      );\n      await expect(page.getByTestId('routeshyft-cashier-intake-alternatives')).toBeVisible();\n    },\n  );\n\n  test.fixme(\n    '[P1] cashier journey preserves required parity test-id contract across success and refusal states @P1',\n    async ({ page, story23Context }) => {\n      await login(page);\n      await page.goto(\n        story23Context.paths.ui\n          + '?tenantId='\n          + story23Context.tenantId\n          + '&orgUnitId='\n          + story23Context.orgUnitId,\n      );\n\n      for (const testId of story23Context.requiredTestIds) {\n        await expect(page.getByTestId(testId)).toHaveCount(1);\n      }\n    },\n  );\n});\n",
+      "description": "E2E automation coverage for Story 2.3 cashier operator intake/refusal UI parity behaviors",
+      "priority_coverage": {
+        "P0": 0,
+        "P1": 3,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "routeShyftStory23.fixture",
+    "auth.login helper"
+  ],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "test_count": 3,
+  "summary": "Generated 3 E2E tests for Story 2.3 with fixme guards until cashier UI route is implemented."
+}
