@@ -33,6 +33,12 @@ import {
   evaluateActorTenantModuleEntitlement,
   type PlatformAdminActorContext,
 } from '../../../services/PlatformAdminService';
+import {
+  parseConnectShyftInboxBucket,
+  resolveConnectShyftInboxContractAsync,
+  resolveConnectShyftThreadDetailContractAsync,
+  type ConnectShyftInboxBucket,
+} from '../../../modules/connectshyft/readContracts';
 
 const router = Router();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -42,6 +48,8 @@ const NEIGHBOR_RELATIONSHIP_REQUIRED_CODE = 'CONNECTSHYFT_NEIGHBOR_EDIT_RELATION
 const NEIGHBOR_RELATIONSHIP_REQUIRED_MESSAGE = 'This edit requires an active thread relationship or tenant-privileged role.';
 const TENANT_PRIVILEGED_OVERRIDE_NOTICE = 'Tenant-privileged override applied';
 const RELATIONSHIP_POLICY_INDICATOR = 'Active thread relationship';
+const CONNECTSHYFT_INBOX_P95_BUDGET_MS = 750;
+const CONNECTSHYFT_INBOX_P99_BUDGET_MS = 1500;
 
 const loadPlatformDb = (): Knex => {
   const knexModule = require('../../../config/knex') as { default: Knex };
@@ -479,6 +487,11 @@ const parseOrgUnitIdFromBody = (req: Request): string | null => {
   return normalized.length > 0 ? normalized : null;
 };
 
+const parseInboxBucketFromQuery = (
+  queryValue: unknown,
+): ConnectShyftInboxBucket | null => {
+  return parseConnectShyftInboxBucket(queryValue);
+};
 const parseOrgUnitIdFromQuery = (req: Request): string | null => {
   if (typeof req.query?.orgUnitId !== 'string') {
     return null;
@@ -523,7 +536,6 @@ const parseThreadEnsureBody = (req: Request) => ({
     ? req.body.nextEvaluationAtUtc
     : undefined,
 });
-
 const parseMappingBody = (req: Request) => ({
   twilioNumberE164: typeof req.body?.twilioNumberE164 === 'string' ? req.body.twilioNumberE164 : '',
   label: typeof req.body?.label === 'string' ? req.body.label : '',
@@ -1017,6 +1029,7 @@ router.get('/context', async (req: Request, res: Response) => {
       context: {
         tenantId: context.tenantId,
         orgUnitId: context.orgUnitId,
+        bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
       },
     },
   });
@@ -1037,15 +1050,47 @@ router.get('/inbox', async (req: Request, res: Response) => {
     return;
   }
 
+  const requestedBucket = parseInboxBucketFromQuery(req.query?.bucket);
+  const resolvedBucket: ConnectShyftInboxBucket = requestedBucket || 'inbox';
+  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const items = await resolveConnectShyftInboxContractAsync({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    bucket: resolvedBucket,
+    actorUserId,
+    db: loadPlatformDb(),
+  });
+
+  const responseCode = requestedBucket
+    ? (resolvedBucket === 'mine'
+      ? 'CONNECTSHYFT_MINE_LISTED'
+      : 'CONNECTSHYFT_INBOX_LISTED')
+    : 'CONNECTSHYFT_INBOX_READY';
+
+  const responseMessage = requestedBucket
+    ? (resolvedBucket === 'mine'
+      ? 'ConnectShyft mine threads listed'
+      : 'ConnectShyft inbox threads listed')
+    : 'ConnectShyft inbox is available for this tenant';
+
   return success(res, {
-    code: 'CONNECTSHYFT_INBOX_READY',
-    message: 'ConnectShyft inbox is available for this tenant',
+    code: responseCode,
+    message: responseMessage,
     data: {
-      context,
-      items: [],
+      context: {
+        tenantId: context.tenantId,
+        orgUnitId: context.orgUnitId,
+        bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
+      },
+      bucket: resolvedBucket,
+      items,
       actions: {
         claim: flags.connectshyft_escalation_enabled,
         takeover: flags.connectshyft_escalation_enabled,
+      },
+      latencyBudgetsMs: {
+        p95: CONNECTSHYFT_INBOX_P95_BUDGET_MS,
+        p99: CONNECTSHYFT_INBOX_P99_BUDGET_MS,
       },
     },
   });
@@ -1583,6 +1628,78 @@ router.get('/internal/threads/due', async (req: Request, res: Response) => {
         ...thread,
         nextEvaluationAtUtc: thread.escalation.nextEvaluationAtUtc,
       })),
+    },
+  });
+});
+
+router.get('/threads/:threadId', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'inbox')) {
+    return;
+  }
+
+  if (!enforceThreadViewCapability(req, res)) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  const threadId = typeof req.params.threadId === 'string'
+    ? req.params.threadId.trim()
+    : '';
+
+  if (!threadId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
+      message: 'threadId is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+    return;
+  }
+
+  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const thread = await resolveConnectShyftThreadDetailContractAsync({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId,
+    actorUserId,
+    db: loadPlatformDb(),
+  });
+
+  if (!thread) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_THREAD_NOT_FOUND',
+      message: 'Thread detail is unavailable for the requested orgUnit context.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        context: {
+          tenantId: context.tenantId,
+          orgUnitId: context.orgUnitId,
+          bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
+        },
+      },
+    });
+    return;
+  }
+
+  return success(res, {
+    code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+    message: 'ConnectShyft thread detail loaded',
+    data: {
+      context: {
+        tenantId: context.tenantId,
+        orgUnitId: context.orgUnitId,
+        bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
+      },
+      thread,
+      latencyBudgetsMs: {
+        p95: CONNECTSHYFT_INBOX_P95_BUDGET_MS,
+        p99: CONNECTSHYFT_INBOX_P99_BUDGET_MS,
+      },
     },
   });
 });
