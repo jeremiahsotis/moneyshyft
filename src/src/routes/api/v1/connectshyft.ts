@@ -1029,6 +1029,7 @@ router.get('/context', async (req: Request, res: Response) => {
       context: {
         tenantId: context.tenantId,
         orgUnitId: context.orgUnitId,
+        bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
       },
     },
   });
@@ -1079,6 +1080,7 @@ router.get('/inbox', async (req: Request, res: Response) => {
       context: {
         tenantId: context.tenantId,
         orgUnitId: context.orgUnitId,
+        bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
       },
       bucket: resolvedBucket,
       items,
@@ -1677,6 +1679,7 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
         context: {
           tenantId: context.tenantId,
           orgUnitId: context.orgUnitId,
+          bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
         },
       },
     });
@@ -1690,6 +1693,7 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
       context: {
         tenantId: context.tenantId,
         orgUnitId: context.orgUnitId,
+        bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
       },
       thread,
       latencyBudgetsMs: {
