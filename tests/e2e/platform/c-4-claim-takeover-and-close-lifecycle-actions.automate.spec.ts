@@ -163,7 +163,7 @@ test.describe(
         await messageResponse;
 
         await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
-        await expect(page.getByTestId('connectshyft-thread-escalation-chip')).toContainText(/stage 1/i);
+        await expect(page.getByTestId('connectshyft-thread-escalation-chip')).toContainText(/stage 0/i);
         await expect(page.getByTestId('connectshyft-thread-inactivity-chip')).toContainText(/reset/i);
       },
     );

@@ -651,6 +651,10 @@ export class InMemoryConnectShyftThreadStore {
       updatedAtUtc: now,
       escalation: {
         ...existing.escalation,
+        stage:
+          input.nextState === 'UNCLAIMED' || input.nextState === 'CLAIMED'
+            ? 0
+            : existing.escalation.stage,
         nextEvaluationAtUtc:
           input.nextState === 'UNCLAIMED'
             ? existing.escalation.nextEvaluationAtUtc || now
@@ -884,12 +888,14 @@ export class KnexConnectShyftThreadStore {
       };
 
       if (input.nextState === 'UNCLAIMED') {
+        updatePayload.escalation_stage = 0;
         updatePayload.claimed_by_user_id = null;
         updatePayload.claimed_at_utc = null;
         updatePayload.closed_by_user_id = null;
         updatePayload.closed_at_utc = null;
         updatePayload.next_evaluation_at_utc = existing.next_evaluation_at_utc || trx.fn.now();
       } else if (input.nextState === 'CLAIMED') {
+        updatePayload.escalation_stage = 0;
         updatePayload.claimed_by_user_id = normalizedActorUserId;
         updatePayload.claimed_at_utc = trx.fn.now();
         updatePayload.closed_by_user_id = null;

@@ -25,12 +25,15 @@ import {
   type ConnectShyftEscalationRecipientOption,
 } from '../../../modules/connectshyft/escalationConfig';
 import {
+  AsyncConnectShyftThreadService,
+  KnexConnectShyftThreadStore,
   connectShyftThreadServiceAsync,
   evaluateConnectShyftLifecyclePolicy,
   type ConnectShyftThread,
   type ConnectShyftLifecycleAction,
   type ConnectShyftThreadState,
 } from '../../../modules/connectshyft/threads';
+import { executePlatformMutation } from '../../../platform/mutations/executePlatformMutation';
 import {
   createKnexOrgUnitAccessStore,
   validateOrgUnitScopedAccess,
@@ -322,7 +325,7 @@ const buildSyntheticThread = (input: {
   const now = nowIsoUtc();
   const actorUserId = normalizeLifecycleString(input.actorUserId) || null;
   const isReopened = input.currentState === 'CLOSED' && input.nextState === 'UNCLAIMED';
-  const escalationStage = isReopened ? 1 : (input.nextState === 'UNCLAIMED' ? 0 : 0);
+  const escalationStage = isReopened ? 0 : (input.nextState === 'UNCLAIMED' ? 0 : 0);
 
   return {
     threadId: input.threadId,
@@ -435,6 +438,21 @@ type ResolvedLifecycleContext = {
   claimedByUserId: string | null;
 };
 
+type LifecycleTransitionSideEffects = {
+  eventName: string;
+  metadata: Record<string, unknown>;
+};
+
+class LifecycleTransitionRefusalError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'LifecycleTransitionRefusalError';
+  }
+}
+
 const resolveLifecycleContext = async (input: {
   tenantId: string;
   orgUnitId: string;
@@ -476,7 +494,33 @@ const resolveLifecycleContext = async (input: {
   };
 };
 
-const transitionThreadWithFallback = async (input: {
+const resolveMutationActorUserId = (actorUserId: string | null): string | null => {
+  const normalized = normalizeLifecycleString(actorUserId);
+  if (!normalized) {
+    return null;
+  }
+
+  return UUID_PATTERN.test(normalized) ? normalized : null;
+};
+
+const canPersistLifecycleSideEffects = (input: {
+  tenantId: string;
+  threadId: string;
+  syntheticThread: ConnectShyftSyntheticThreadDescriptor | null;
+  sideEffects?: LifecycleTransitionSideEffects;
+}): boolean => {
+  if (!input.sideEffects) {
+    return false;
+  }
+
+  if (input.syntheticThread) {
+    return false;
+  }
+
+  return UUID_PATTERN.test(input.tenantId) && UUID_PATTERN.test(input.threadId);
+};
+
+const transitionThreadWithSideEffects = async (input: {
   actorRoles: Array<string | null | undefined>;
   tenantId: string;
   orgUnitId: string;
@@ -486,10 +530,68 @@ const transitionThreadWithFallback = async (input: {
   nextState: ConnectShyftThreadState;
   syntheticThread: ConnectShyftSyntheticThreadDescriptor | null;
   detail: ConnectShyftThreadDetailRecord | null;
+  sideEffects?: LifecycleTransitionSideEffects;
 }): Promise<
-  | { ok: true; thread: ConnectShyftThread }
+  | { ok: true; thread: ConnectShyftThread; sideEffectsPersisted: boolean }
   | { ok: false; code: string; message: string }
 > => {
+  if (canPersistLifecycleSideEffects({
+    tenantId: input.tenantId,
+    threadId: input.threadId,
+    syntheticThread: input.syntheticThread,
+    sideEffects: input.sideEffects,
+  })) {
+    try {
+      const thread = await executePlatformMutation({
+        mutation: async (trx) => {
+          const txThreadService = new AsyncConnectShyftThreadService(
+            new KnexConnectShyftThreadStore(trx as unknown as Knex),
+          );
+          const transitioned = await txThreadService.transitionThreadState({
+            actorRoles: input.actorRoles,
+            tenantId: input.tenantId,
+            threadId: input.threadId,
+            nextState: input.nextState,
+            actorUserId: input.actorUserId,
+          });
+          if (!transitioned.ok) {
+            throw new LifecycleTransitionRefusalError(transitioned.code, transitioned.message);
+          }
+
+          return transitioned.data.thread;
+        },
+        event: {
+          tenantId: input.tenantId,
+          actorId: resolveMutationActorUserId(input.actorUserId),
+          eventName: input.sideEffects!.eventName,
+          entityType: 'connectshyft.thread',
+          entityId: input.threadId,
+          payload: input.sideEffects!.metadata,
+        },
+      }, loadPlatformDb());
+
+      return {
+        ok: true,
+        thread,
+        sideEffectsPersisted: true,
+      };
+    } catch (error: unknown) {
+      if (error instanceof LifecycleTransitionRefusalError) {
+        return {
+          ok: false,
+          code: error.code,
+          message: error.message,
+        };
+      }
+
+      return {
+        ok: false,
+        code: 'CONNECTSHYFT_LIFECYCLE_SIDE_EFFECTS_UNAVAILABLE',
+        message: 'Lifecycle transition side effects are temporarily unavailable. Please retry.',
+      };
+    }
+  }
+
   if (!UUID_PATTERN.test(input.threadId) && input.syntheticThread) {
     return {
       ok: true,
@@ -505,6 +607,7 @@ const transitionThreadWithFallback = async (input: {
         fallbackLastInboundCsNumberId: input.syntheticThread.lastInboundCsNumberId,
         fallbackPreferredOutboundCsNumberId: input.syntheticThread.preferredOutboundCsNumberId,
       }),
+      sideEffectsPersisted: false,
     };
   }
 
@@ -520,6 +623,7 @@ const transitionThreadWithFallback = async (input: {
     return {
       ok: true,
       thread: transitioned.data.thread,
+      sideEffectsPersisted: false,
     };
   }
 
@@ -545,6 +649,7 @@ const transitionThreadWithFallback = async (input: {
       fallbackLastInboundCsNumberId: input.syntheticThread.lastInboundCsNumberId,
       fallbackPreferredOutboundCsNumberId: input.syntheticThread.preferredOutboundCsNumberId,
     }),
+    sideEffectsPersisted: false,
   };
 };
 
@@ -2219,23 +2324,6 @@ const performLifecycleTransition = async (
   });
 
   if (!lifecycleContext.currentState) {
-    if (action === 'claim' || action === 'takeover') {
-      success(res, {
-        code: action === 'claim'
-          ? 'CONNECTSHYFT_THREAD_CLAIM_READY'
-          : 'CONNECTSHYFT_THREAD_TAKEOVER_READY',
-        message: action === 'claim'
-          ? 'ConnectShyft claim action accepted'
-          : 'ConnectShyft takeover action accepted',
-        data: {
-          threadId,
-          context,
-          reason,
-        },
-      });
-      return;
-    }
-
     refusal(res, {
       code: 'CONNECTSHYFT_THREAD_NOT_FOUND',
       message: 'Thread not found for this tenant/orgUnit context.',
@@ -2272,7 +2360,19 @@ const performLifecycleTransition = async (
   }
 
   const nextState = policyDecision.nextState;
-  const transitioned = await transitionThreadWithFallback({
+  const eventName = resolveLifecycleEventName(action);
+  const metadata = buildLifecycleMetadata({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    actorUserId,
+    threadId,
+    priorState: lifecycleContext.currentState,
+    newState: nextState,
+    action,
+    reason,
+    resolution,
+  });
+  const transitioned = await transitionThreadWithSideEffects({
     actorRoles: [requestedRole],
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
@@ -2282,6 +2382,10 @@ const performLifecycleTransition = async (
     nextState,
     syntheticThread: lifecycleContext.syntheticThread,
     detail: lifecycleContext.detail,
+    sideEffects: {
+      eventName,
+      metadata,
+    },
   });
 
   if (!transitioned.ok) {
@@ -2298,18 +2402,6 @@ const performLifecycleTransition = async (
     return;
   }
 
-  const eventName = resolveLifecycleEventName(action);
-  const metadata = buildLifecycleMetadata({
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    actorUserId,
-    threadId,
-    priorState: lifecycleContext.currentState,
-    newState: nextState,
-    action,
-    reason,
-    resolution,
-  });
   const sideEffects = buildLifecycleSideEffects({
     eventName,
     metadata,
@@ -2337,6 +2429,7 @@ const performLifecycleTransition = async (
       resolution,
       thread: transitioned.thread,
       lifecycleEvent: eventName,
+      sideEffectsPersisted: transitioned.sideEffectsPersisted,
       ...sideEffects,
     },
   });
@@ -2409,10 +2502,20 @@ const performOutboundAction = async (
   let thread: ConnectShyftThread;
   let lifecycleEvent: string | null = null;
   let sideEffects: ReturnType<typeof buildLifecycleSideEffects> | null = null;
+  let sideEffectsPersisted = false;
   let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
 
   if (lifecycleContext.currentState === 'CLOSED') {
-    const transitioned = await transitionThreadWithFallback({
+    const metadata = buildLifecycleMetadata({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      actorUserId,
+      threadId,
+      priorState: 'CLOSED',
+      newState: 'UNCLAIMED',
+      action: outboundAction === 'call' ? 'outbound_call' : 'outbound_message',
+    });
+    const transitioned = await transitionThreadWithSideEffects({
       actorRoles: [requestedRole],
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
@@ -2422,6 +2525,10 @@ const performOutboundAction = async (
       nextState: 'UNCLAIMED',
       syntheticThread: lifecycleContext.syntheticThread,
       detail: lifecycleContext.detail,
+      sideEffects: {
+        eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+        metadata,
+      },
     });
 
     if (!transitioned.ok) {
@@ -2439,21 +2546,12 @@ const performOutboundAction = async (
     }
 
     thread = transitioned.thread;
+    sideEffectsPersisted = transitioned.sideEffectsPersisted;
     lifecycleEvent = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser;
     escalationReset = {
-      stage: 1,
+      stage: 0,
       inactivityWindow: 'reset',
     };
-
-    const metadata = buildLifecycleMetadata({
-      tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      actorUserId,
-      threadId,
-      priorState: 'CLOSED',
-      newState: 'UNCLAIMED',
-      action: outboundAction === 'call' ? 'outbound_call' : 'outbound_message',
-    });
     sideEffects = buildLifecycleSideEffects({
       eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
       metadata,
@@ -2488,6 +2586,7 @@ const performOutboundAction = async (
       thread,
       lifecycleEvent,
       escalationReset,
+      sideEffectsPersisted,
       ...(sideEffects || {}),
     },
   });
@@ -2503,12 +2602,37 @@ const handleInboundWebhook = async (
   }
 
   const eventType = normalizeLifecycleString(req.body?.eventType) || 'sms.inbound';
+  const normalizedEventType = eventType.toLowerCase();
   const threadId = normalizeLifecycleString(req.body?.threadId) || null;
   const tenantId = normalizeLifecycleString(req.body?.tenantId) || null;
   const orgUnitId = normalizeLifecycleString(req.body?.orgUnitId) || null;
-  const timelineEventName = eventType === 'voice.fallback'
-    ? CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceFallback
-    : CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceVoicemail;
+  const isVoiceEvent = normalizedEventType.startsWith('voice');
+  let threadState: ConnectShyftThreadState | null = null;
+
+  if (tenantId && orgUnitId && threadId) {
+    const lifecycleContext = await resolveLifecycleContext({
+      tenantId,
+      orgUnitId,
+      threadId,
+      actorUserId: null,
+    });
+    threadState = lifecycleContext.currentState;
+  }
+
+  let routingDecision: 'voicemail_only' | 'intake_fallback' | 'accepted' = 'accepted';
+  let timelineEventName: string = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceVoicemail;
+  if (normalizedEventType === 'voice.fallback') {
+    timelineEventName = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceFallback;
+    routingDecision = 'intake_fallback';
+  } else if (isVoiceEvent) {
+    if (!threadState || threadState === 'CLOSED') {
+      timelineEventName = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceFallback;
+      routingDecision = 'intake_fallback';
+    } else {
+      timelineEventName = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceVoicemail;
+      routingDecision = 'voicemail_only';
+    }
+  }
 
   success(res, {
     code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
@@ -2519,11 +2643,13 @@ const handleInboundWebhook = async (
       to: typeof req.body?.to === 'string' ? req.body.to : null,
       eventType,
       threadId,
+      threadState,
       lifecycle: {
         reopenedByInbound: false,
       },
       timeline: {
         eventName: timelineEventName,
+        routingDecision,
       },
       audit: {
         eventName: timelineEventName,
@@ -2531,7 +2657,9 @@ const handleInboundWebhook = async (
           tenant_id: tenantId,
           org_unit_id: orgUnitId,
           thread_id: threadId,
+          thread_state: threadState,
           event_type: eventType,
+          routing_decision: routingDecision,
           reopened_by_inbound: false,
         },
       },
@@ -2541,7 +2669,9 @@ const handleInboundWebhook = async (
           tenant_id: tenantId,
           org_unit_id: orgUnitId,
           thread_id: threadId,
+          thread_state: threadState,
           event_type: eventType,
+          routing_decision: routingDecision,
           reopened_by_inbound: false,
         },
       },

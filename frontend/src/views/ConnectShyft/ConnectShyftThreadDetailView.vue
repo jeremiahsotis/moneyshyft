@@ -401,7 +401,7 @@ const executeThreadAction = async (action: string): Promise<void> => {
       lifecycleToast.value = 'thread_reopened_by_user';
       inactivityReset.value = true;
       if (threadDetail.value) {
-        threadDetail.value.escalationStage = 1;
+        threadDetail.value.escalationStage = 0;
       }
     } else {
       inactivityReset.value = false;
