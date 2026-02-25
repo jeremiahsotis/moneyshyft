@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-24T19:42:53Z'
+lastSaved: '2026-02-25T10:02:51Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -2172,3 +2172,111 @@ lastSaved: '2026-02-24T19:42:53Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story c.1 AC coverage to ATDD + automate evidence.
+
+## Story 2.2 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies confirmed in `/Users/jeremiahotis/projects/routeshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+  - `@faker-js/faker`
+- Result: framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Story artifact loaded:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/implementation-artifacts/2-2-donor-self-service-pickup-intake-with-capacity-check.md`
+- Existing ATDD inputs detected:
+  - `/Users/jeremiahotis/projects/routeshyft/tests/api/platform/2-2-donor-self-service-pickup-intake-with-capacity-check.atdd.api.spec.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/e2e/platform/2-2-donor-self-service-pickup-intake-with-capacity-check.atdd.spec.ts`
+
+### TEA Flags and Knowledge
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+- Loaded core + Playwright Utils + Playwright CLI knowledge fragments for automate workflow execution.
+
+## Story 2.2 Run - Step 2: Identify Automation Targets
+
+### Target Mapping
+- AC1 mapped to:
+  - schedulable slot outcome contract
+  - explicit refusal with structured alternatives contract
+  - validation refusal edge paths
+- AC2 mapped to:
+  - request-to-commitment linkage
+  - idempotent replay lineage consistency
+
+### Duplicate Avoidance
+- Existing Story 2.2 ATDD RED files retained as-is.
+- Expansion coverage generated in separate automate files to avoid overwriting ATDD baselines.
+
+### Browser Exploration
+- `playwright-cli` unavailable in this environment (`command not found`).
+- Fallback used: artifact + code-driven selector and contract analysis.
+
+### Coverage Plan
+- **API**:
+  - P0: accepted slot contract, refusal alternatives contract, idempotent linkage replay
+  - P1: missing-required-field refusal metadata, cross-tenant linkage access refusal
+- **E2E**:
+  - P1: required-field gating, success-view outcome rendering, refusal-view rendering
+  - P2: duplicate-submit prevention under in-flight request
+
+## Story 2.2 Run - Step 3: Parallel Subprocess Generation
+
+### Subprocess Outputs
+- API subprocess output:
+  - `/tmp/tea-automate-api-tests-2026-02-25T10-02-51Z.json`
+- E2E subprocess output:
+  - `/tmp/tea-automate-e2e-tests-2026-02-25T10-02-51Z.json`
+- Both subprocess outputs valid (`success: true`).
+
+### Performance
+- Execution mode: `PARALLEL (API + E2E)`.
+- Expected gain: `~50%` versus sequential generation.
+
+## Story 2.2 Run - Step 3C: Aggregate Results
+
+### Files Created/Updated
+- Created:
+  - `/Users/jeremiahotis/projects/routeshyft/tests/api/platform/2-2-donor-self-service-pickup-intake-with-capacity-check.automate.api.spec.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/e2e/platform/2-2-donor-self-service-pickup-intake-with-capacity-check.automate.spec.ts`
+- Updated fixture infrastructure:
+  - `/Users/jeremiahotis/projects/routeshyft/tests/support/factories/routeShyftStory22Factory.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/support/fixtures/routeShyftStory22.fixture.ts`
+
+### Summary Metrics
+- Total tests generated: `9`
+  - API: `5`
+  - E2E: `4`
+- Priority coverage:
+  - P0: `3`
+  - P1: `5`
+  - P2: `1`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-25T10-02-51Z.json`
+
+### Temp Artifact Persistence
+- Persisted under:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-25T10-02-51Z.json`
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-25T10-02-51Z.json`
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-25T10-02-51Z.json`
+
+## Story 2.2 Run - Step 4: Validate and Summarize
+
+### Validation Snapshot
+- Framework readiness: passed.
+- Coverage mapping and priority tagging: passed.
+- Generated files conform to RED automation staging for `ready-for-dev` story status (`test.skip` used deliberately).
+- CLI session cleanup: no `tea-automate` session opened (CLI unavailable).
+- Temp artifacts are persisted in `_bmad-output/test-artifacts/automation-temp`.
+
+### Risks and Assumptions
+- Story 2.2 implementation endpoints/UI are still pre-dev; generated tests are intentionally non-executing until implementation is available.
+- API contract details (slot shape, refusal metadata field names) may need alignment once backend implementation hardens.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` to quality-check generated Story 2.2 automation files.
+- `[TR] Trace Requirements` to map Story 2.2 ACs across ATDD + automate expansions.
