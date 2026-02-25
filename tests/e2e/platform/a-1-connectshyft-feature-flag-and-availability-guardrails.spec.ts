@@ -6,7 +6,10 @@ const loginAsOperator = async (page: Page) => {
   await page.fill('#email', process.env.TEST_EMAIL || 'operator@example.com');
   await page.fill('#password', process.env.TEST_PASSWORD || 'SecurePass123!');
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
+  await page.waitForURL(/\/($|[#?])/, { timeout: 15000 });
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({
+    timeout: 15000,
+  });
 };
 
 test.describe(

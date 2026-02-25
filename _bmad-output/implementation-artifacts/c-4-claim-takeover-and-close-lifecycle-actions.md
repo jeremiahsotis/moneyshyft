@@ -171,11 +171,18 @@ GPT-5 Codex
 - src/src/routes/api/v1/connectshyft.ts
 - frontend/src/features/connectshyft/readContracts.ts
 - frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
+- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts
+- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts
+- tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.spec.ts
+- tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.spec.ts
 - tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.api.spec.ts
 - tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts
 - tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.spec.ts
 - tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts
+- tests/support/factories/connectShyftStoryA1Factory.ts
+- tests/support/factories/connectShyftStoryA2Factory.ts
 - tests/support/factories/connectShyftStoryC4Factory.ts
+- tests/support/helpers/connectShyftDbActor.ts
 - tests/support/fixtures/connectShyftStoryC4.fixture.ts
 
 ## Change Log
