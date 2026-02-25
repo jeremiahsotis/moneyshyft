@@ -151,6 +151,8 @@ GPT-5 Codex
 - src/src/modules/route/infrastructure/__tests__/intakeRequestRepository.test.ts
 - src/src/routes/api/v1/route.ts
 - src/src/routes/api/v1/__tests__/route.cashier-intake.test.ts
+- src/package.json
+- src/src/types/bcryptjs.d.ts
 - tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts
 - tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.api.spec.ts
 - tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.spec.ts
