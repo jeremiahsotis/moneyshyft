@@ -181,8 +181,8 @@ jobs:
     name: burn-in
     runs-on: ubuntu-latest
     needs: prepare
-  if: needs.prepare.outputs.should_run == 'true'
-  container:
+    if: needs.prepare.outputs.should_run == 'true'
+    container:
       image: mcr.microsoft.com/playwright:v1.57.0-jammy
     services:
       postgres:
