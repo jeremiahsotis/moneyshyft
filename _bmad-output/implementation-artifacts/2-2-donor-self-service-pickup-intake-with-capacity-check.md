@@ -1,6 +1,6 @@
 # Story 2.2: Donor Self-Service Pickup Intake with Capacity Check
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -32,17 +32,17 @@ so that I get a definitive commitment or refusal outcome.
 
 ## Tasks / Subtasks
 
-- [ ] Implement donor pickup intake endpoint and validation (AC: 1)
-  - [ ] Validate eligibility, address/serviceability, and required item metadata.
-  - [ ] Normalize intake payload and persist request lifecycle start.
-- [ ] Implement capacity evaluation and outcome engine (AC: 1)
-  - [ ] Return schedulable slots when capacity constraints pass.
-  - [ ] Return refusal with structured alternatives when capacity fails.
-- [ ] Link accepted requests to commitments (AC: 2)
-  - [ ] Create commitment record atomically with accepted request outcome.
-  - [ ] Preserve request-to-commitment lineage ids.
-- [ ] Add deterministic test coverage (AC: 1, 2)
-  - [ ] API tests for slot path, refusal path, and linked commitment creation.
+- [x] Implement donor pickup intake endpoint and validation (AC: 1)
+  - [x] Validate eligibility, address/serviceability, and required item metadata.
+  - [x] Normalize intake payload and persist request lifecycle start.
+- [x] Implement capacity evaluation and outcome engine (AC: 1)
+  - [x] Return schedulable slots when capacity constraints pass.
+  - [x] Return refusal with structured alternatives when capacity fails.
+- [x] Link accepted requests to commitments (AC: 2)
+  - [x] Create commitment record atomically with accepted request outcome.
+  - [x] Preserve request-to-commitment lineage ids.
+- [x] Add deterministic test coverage (AC: 1, 2)
+  - [x] API tests for slot path, refusal path, and linked commitment creation.
 
 ## Dev Notes
 
@@ -101,12 +101,28 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context prepared from Epic 2 planning artifacts.
+- `cd src && npm test -- --runInBand src/src/modules/route/__tests__/capacityPolicy.test.ts src/src/routes/api/v1/__tests__/route.test.ts`
+- `cd src && npm test -- --runInBand`
 
 ### Completion Notes List
 
-- Story created and set to `ready-for-dev`.
+- Implemented RouteShyft donor intake backend in `src/src/modules/route` with separated application/domain/infrastructure/api layers.
+- Added deterministic capacity policy with explicit refusal alternatives and no-overbooking slot checks.
+- Added donor self-service route controller and v1 route adapter at `/api/v1/route/intake/donor-requests` with unified business refusal envelope behavior.
+- Added atomic accepted-path request-to-commitment linkage persistence with lineage IDs and idempotency-key replay support.
+- Added backend automated coverage for accepted slot path, refusal path, linked commitment detail retrieval, validation refusal behavior, cross-tenant scope enforcement, and idempotent replay.
+- Updated kernel route-registration contract expectation to include the new `/api/v1/route` module mount.
 
 ### File List
 
+- src/src/modules/route/domain/capacityPolicy.ts
+- src/src/modules/route/infrastructure/inMemoryRouteIntakeStore.ts
+- src/src/modules/route/application/donorIntakeService.ts
+- src/src/modules/route/api/donorIntakeController.ts
+- src/src/routes/api/v1/route.ts
+- src/src/routes/api/v1/__tests__/route.test.ts
+- src/src/modules/route/__tests__/capacityPolicy.test.ts
+- src/src/api/registerRoutes.ts
+- src/src/__tests__/app-entrypoint-kernel.test.ts
 - _bmad-output/implementation-artifacts/2-2-donor-self-service-pickup-intake-with-capacity-check.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml

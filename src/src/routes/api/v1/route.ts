@@ -7,6 +7,7 @@ import { normalizeRole } from '../../../platform/rbac/capabilities';
 import { CommitmentService } from '../../../modules/route/application/commitmentService';
 import { KnexCommitmentRepository } from '../../../modules/route/infrastructure/commitmentRepository';
 import { isCommitmentStatus } from '../../../modules/route/domain/commitmentLifecycle';
+import { donorIntakeController } from '../../../modules/route/api/donorIntakeController';
 
 const TEST_TENANT_HEADER = 'x-test-route-tenant-id';
 const TEST_ACTOR_HEADER = 'x-test-route-actor-id';
@@ -210,6 +211,47 @@ export const createRouteRouter = (
       feature: 'commitment_lifecycle',
     },
   }));
+
+  // Donor self-service intake is public and uses business refusal envelopes for outcome semantics.
+  router.post('/intake/donor-requests', (req: Request, res: Response) => {
+    const result = donorIntakeController.submit(req);
+
+    if (result.ok) {
+      return success(res, {
+        code: result.code,
+        message: result.message,
+        data: result.data,
+      });
+    }
+
+    return refusal(res, {
+      code: result.code,
+      message: result.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: result.data,
+    });
+  });
+
+  router.get('/intake/donor-requests/:requestId', (req: Request, res: Response) => {
+    const result = donorIntakeController.detail(req);
+
+    if (result.ok) {
+      return success(res, {
+        code: result.code,
+        message: result.message,
+        data: result.data,
+      });
+    }
+
+    return refusal(res, {
+      code: result.code,
+      message: result.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: result.data,
+    });
+  });
 
   router.use(authenticateToken);
 
