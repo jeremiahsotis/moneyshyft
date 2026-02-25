@@ -63,6 +63,9 @@ test.describe(
         );
 
         await expect(page.getByTestId('connectshyft-inbox-list')).toBeVisible();
+        await expect(
+          page.getByTestId(`connectshyft-thread-card-${context.threadIds.claimed}`),
+        ).toBeVisible();
         const orderedThreadIds = await page
           .locator('[data-testid^="connectshyft-thread-card-"]')
           .evaluateAll((nodes) => nodes

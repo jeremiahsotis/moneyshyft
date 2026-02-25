@@ -58,7 +58,7 @@
               data-testid="connectshyft-thread-escalation-chip"
               class="rounded-full border border-slate-300 bg-slate-100 px-2 py-1 text-slate-800"
             >
-              Stage {{ threadDetail.escalationStage }}
+              {{ escalationChipLabel }}
             </span>
             <span
               data-testid="connectshyft-thread-inactivity-chip"
@@ -213,6 +213,18 @@ const unavailableMessage = computed(() => {
 
 const inactivityChipLabel = computed(() => {
   return inactivityReset.value ? 'Inactivity reset' : 'Inactivity stable';
+});
+
+const escalationChipLabel = computed(() => {
+  if (!threadDetail.value || threadDetail.value.escalationStage <= 0) {
+    return 'Monitoring';
+  }
+
+  if (threadDetail.value.escalationStage === 1) {
+    return 'Needs attention soon';
+  }
+
+  return 'Needs urgent attention';
 });
 
 const allThreadActions = computed<string[]>(() => {

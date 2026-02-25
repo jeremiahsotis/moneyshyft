@@ -1,4 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { apiRequest } from '../../support/helpers/apiClient';
+import {
+  ensureConnectShyftDbActorUser,
+} from '../../support/helpers/connectShyftDbActor';
 import { test, expect } from '../../support/fixtures/connectShyftStoryA2.fixture';
 import { createStoryA2Headers } from '../../support/factories/connectShyftStoryA2Factory';
 import { connectShyftContextEnforcementData } from '../../fixtures/test-data';
@@ -251,10 +255,53 @@ test.describe(
     test(
       '[P1] permits tenant-privileged callers through takeover route while preserving canonical bypass metadata @P1',
       async ({ request, storyA2Context, storyA2TenantAdminHeaders }) => {
+        const lifecycleActorUserId = randomUUID();
+        await ensureConnectShyftDbActorUser(lifecycleActorUserId);
+        const lifecycleHeaders = {
+          ...storyA2TenantAdminHeaders,
+          'x-test-connectshyft-user-id': lifecycleActorUserId,
+        };
+        const neighborId = `neighbor-a2-tenant-admin-${Date.now()}`;
+        const ensureResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyA2Context.paths.threadEnsure,
+          headers: lifecycleHeaders,
+          data: {
+            orgUnitId: connectShyftContextEnforcementData.orgUnitAlphaWestId,
+            neighborId,
+          },
+        });
+
+        expect([200, 201]).toContain(ensureResponse.status());
+        const ensureBody = await ensureResponse.json();
+        expect(ensureBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_THREAD_ENSURED',
+        });
+
+        const ensuredThreadId = String(ensureBody?.data?.thread?.threadId ?? '');
+        expect(ensuredThreadId.length).toBeGreaterThan(0);
+
+        const claimResponse = await apiRequest(request, {
+          method: 'POST',
+          path: `/api/v1/connectshyft/threads/${encodeURIComponent(ensuredThreadId)}/claim`,
+          headers: lifecycleHeaders,
+          data: {
+            reason: 'tenant-admin-preclaim',
+          },
+        });
+
+        expect(claimResponse.status()).toBe(200);
+        const claimBody = await claimResponse.json();
+        expect(claimBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_THREAD_CLAIM_READY',
+        });
+
         const response = await apiRequest(request, {
           method: 'POST',
-          path: storyA2Context.paths.threadTakeover,
-          headers: storyA2TenantAdminHeaders,
+          path: `/api/v1/connectshyft/threads/${encodeURIComponent(ensuredThreadId)}/takeover`,
+          headers: lifecycleHeaders,
           data: {
             reason: 'tenant-admin-takeover',
           },
