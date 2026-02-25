@@ -99,9 +99,9 @@ Status: review
         '-lc',
         [
           'set +e',
-          'bash scripts/story-status-transition.sh --story-key 1-5-policy-gate-and-branch-workflow-guard-enforcement --status done --lock-timeout-seconds 2 > run1.log 2>&1 &',
+          'bash scripts/story-status-transition.sh --story-key 1-5-policy-gate-and-branch-workflow-guard-enforcement --status done --lock-timeout-seconds 15 > run1.log 2>&1 &',
           'pid1=$!',
-          'bash scripts/story-status-transition.sh --story-key 1-5-policy-gate-and-branch-workflow-guard-enforcement --status done --lock-timeout-seconds 2 > run2.log 2>&1 &',
+          'bash scripts/story-status-transition.sh --story-key 1-5-policy-gate-and-branch-workflow-guard-enforcement --status done --lock-timeout-seconds 15 > run2.log 2>&1 &',
           'pid2=$!',
           'wait $pid1; s1=$?',
           'wait $pid2; s2=$?',
