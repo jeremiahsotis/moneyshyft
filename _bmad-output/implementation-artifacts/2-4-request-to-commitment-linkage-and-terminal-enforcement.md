@@ -155,8 +155,10 @@ GPT-5 Codex
 - src/package-lock.json
 - src/package.json
 - src/src/types/bcryptjs.d.ts
+- tests/api/platform/1-5-policy-gate-and-branch-workflow-guard-enforcement.api.spec.ts
 - tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts
 - tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.api.spec.ts
+- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts
 - tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.spec.ts
 - tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts
 - tests/support/factories/routeShyftStory24Factory.ts
