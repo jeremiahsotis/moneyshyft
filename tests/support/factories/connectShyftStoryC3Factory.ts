@@ -56,6 +56,7 @@ export type StoryC3Context = {
   paths: {
     inbox: string;
     threadDetail: string;
+    threadDetailUi: string;
     inboxUi: string;
     mineUi: string;
   };
@@ -101,6 +102,7 @@ export function createStoryC3Context(
     paths: {
       inbox: '/api/v1/connectshyft/inbox',
       threadDetail: '/api/v1/connectshyft/threads',
+      threadDetailUi: '/app/connectshyft/threads',
       inboxUi: '/app/connectshyft/inbox',
       mineUi: '/app/connectshyft/mine',
     },

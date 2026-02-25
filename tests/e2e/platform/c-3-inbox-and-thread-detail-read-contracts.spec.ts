@@ -40,7 +40,7 @@ const buildThreadDetailUrl = (
     orgUnitMemberships: context.orgUnitId,
   });
 
-  return `${context.paths.threadDetail}/${threadId}?${params.toString()}`;
+  return `${context.paths.threadDetailUi}/${threadId}?${params.toString()}`;
 };
 
 test.describe(
@@ -48,7 +48,7 @@ test.describe(
   () => {
     test.describe.configure({ mode: 'serial' });
 
-    test.fixme(
+    test(
       '[P0] inbox list shows deterministic priority ordering and plain-language urgency labels for operators @P0',
       async ({ page }) => {
         const context = createStoryC3Context();
@@ -65,11 +65,11 @@ test.describe(
         await expect(page.getByTestId('connectshyft-inbox-list')).toBeVisible();
         await expect(page.getByTestId('connectshyft-inbox-item-priority-rank').first()).toHaveText('1');
         await expect(page.getByText(context.urgencyLabels.stage1)).toBeVisible();
-        await expect(page.getByText(context.urgencyLabels.stage2Plus)).toBeVisible();
+        await expect(page.getByText(context.urgencyLabels.stage2Plus).first()).toBeVisible();
       },
     );
 
-    test.fixme(
+    test(
       '[P0] claimed voicemail thread stays in Mine with voicemail indicator and no forced inbox relocation banner @P0',
       async ({ page }) => {
         const context = createStoryC3Context();
@@ -93,7 +93,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] thread detail action controls match canonical UNCLAIMED CLAIMED and CLOSED contract sets @P1',
       async ({ page }) => {
         const context = createStoryC3Context();
@@ -114,7 +114,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] thread detail renders outbound-context metadata while hiding raw escalation stage internals @P1',
       async ({ page }) => {
         const context = createStoryC3Context();

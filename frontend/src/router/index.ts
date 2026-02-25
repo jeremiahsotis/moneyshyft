@@ -55,6 +55,18 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, moduleGate: 'connectshyft' }
   },
   {
+    path: '/app/connectshyft/mine',
+    name: 'connectshyft-mine',
+    component: () => import('@/views/ConnectShyft/ConnectShyftInboxView.vue'),
+    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
+  },
+  {
+    path: '/app/connectshyft/threads/:threadId',
+    name: 'connectshyft-thread-detail',
+    component: () => import('@/views/ConnectShyft/ConnectShyftThreadDetailView.vue'),
+    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
+  },
+  {
     path: '/app/connectshyft/settings/availability',
     name: 'connectshyft-availability',
     component: () => import('@/views/ConnectShyft/ConnectShyftAvailabilityView.vue'),

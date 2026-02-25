@@ -8,7 +8,7 @@ test.describe(
   () => {
     test.describe.configure({ mode: 'serial' });
 
-    test.fixme(
+    test(
       '[P0] inbox responses enforce deterministic priority ordering with thread-id tie break and orgUnit-scoped metadata @P0',
       async ({ request, storyC3Context, storyC3MemberHeaders, storyC3InboxQuery }) => {
         const response = await apiRequest(request, {
@@ -57,7 +57,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] thread detail payloads include canonical action sets for UNCLAIMED CLAIMED and CLOSED states @P0',
       async ({ request, storyC3Context, storyC3MemberHeaders }) => {
         const unclaimedResponse = await apiRequest(request, {
@@ -100,7 +100,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] urgency labels map to operator-safe language and never leak raw stage internals @P1',
       async ({ request, storyC3Context, storyC3MemberHeaders, storyC3InboxQuery }) => {
         const response = await apiRequest(request, {
@@ -126,7 +126,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] voicemail on claimed threads remains in Mine with voicemail indicator and no inbox bounce @P1',
       async ({ request, storyC3Context, storyC3MemberHeaders, storyC3MineQuery }) => {
         const response = await apiRequest(request, {
@@ -158,7 +158,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] inbox and thread detail success envelopes preserve canonical top-level keys @P1',
       async ({ request, storyC3Context, storyC3MemberHeaders, storyC3InboxQuery }) => {
         const inboxResponse = await apiRequest(request, {
@@ -188,6 +188,50 @@ test.describe(
             Object.prototype.hasOwnProperty.call(detailBody, key),
           ),
         ).toBe(true);
+      },
+    );
+
+    test(
+      '[P1] inbox and thread detail stay within hardened latency budgets when measured in the API harness @P1',
+      async ({ request, storyC3Context, storyC3MemberHeaders, storyC3InboxQuery }) => {
+        const inboxDurations: number[] = [];
+        const detailDurations: number[] = [];
+
+        for (let run = 0; run < 8; run += 1) {
+          const inboxStartedAt = Date.now();
+          const inboxResponse = await apiRequest(request, {
+            method: 'GET',
+            path: `${storyC3Context.paths.inbox}${storyC3InboxQuery}`,
+            headers: storyC3MemberHeaders,
+          });
+          inboxDurations.push(Date.now() - inboxStartedAt);
+          expect(inboxResponse.status()).toBe(200);
+
+          const detailStartedAt = Date.now();
+          const detailResponse = await apiRequest(request, {
+            method: 'GET',
+            path: `${storyC3Context.paths.threadDetail}/${storyC3Context.threadIds.claimed}`,
+            headers: storyC3MemberHeaders,
+          });
+          detailDurations.push(Date.now() - detailStartedAt);
+          expect(detailResponse.status()).toBe(200);
+        }
+
+        const resolvePercentile = (durations: number[], percentile: number): number => {
+          const sorted = [...durations].sort((a, b) => a - b);
+          const index = Math.max(0, Math.ceil(percentile * sorted.length) - 1);
+          return sorted[index] ?? Number.MAX_SAFE_INTEGER;
+        };
+
+        const inboxP95 = resolvePercentile(inboxDurations, 0.95);
+        const inboxP99 = resolvePercentile(inboxDurations, 0.99);
+        const detailP95 = resolvePercentile(detailDurations, 0.95);
+        const detailP99 = resolvePercentile(detailDurations, 0.99);
+
+        expect(inboxP95).toBeLessThanOrEqual(750);
+        expect(inboxP99).toBeLessThanOrEqual(1500);
+        expect(detailP95).toBeLessThanOrEqual(750);
+        expect(detailP99).toBeLessThanOrEqual(1500);
       },
     );
   },
