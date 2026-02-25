@@ -1,4 +1,5 @@
 import {
+  AsyncConnectShyftThreadService,
   ConnectShyftThreadService,
   InMemoryConnectShyftThreadStore,
 } from '../threads';
@@ -315,5 +316,35 @@ describe('connectshyft thread persistence guards', () => {
     }
 
     expect(second.data.thread.threadId).toBe('thread-c1-second');
+  });
+});
+
+describe('connectshyft async thread service persistence guards', () => {
+  it('returns persistence unavailable refusal instead of in-memory ensure success when storage is missing', async () => {
+    const missingSchemaError = Object.assign(new Error('relation does not exist'), {
+      code: '42P01',
+    });
+    const store = {
+      ensureActiveThread: jest.fn().mockRejectedValue(missingSchemaError),
+      listDueThreads: jest.fn(),
+      transitionThreadState: jest.fn(),
+    } as any;
+
+    const service = new AsyncConnectShyftThreadService(store);
+    const result = await service.ensureThread({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c1',
+      orgUnitId: 'org-connectshyft-c1-east',
+      neighborId: 'neighbor-connectshyft-c1-5001',
+      source: 'VOICE',
+      lastInboundCsNumberId: 'cs-inbound-c1-5001',
+      preferredOutboundCsNumberId: 'cs-outbound-c1-5001',
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_ENSURE_PERSISTENCE_UNAVAILABLE',
+    });
+    expect(store.ensureActiveThread).toHaveBeenCalledTimes(1);
   });
 });

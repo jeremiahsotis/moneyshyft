@@ -2,11 +2,56 @@ import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryC1.fixture';
 
 const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
+const createConnectShyftDbClient = () => {
+  const knexFactory = require('../../../src/node_modules/knex');
+  return knexFactory({
+    client: 'postgresql',
+    connection: {
+      host: process.env.TEST_DB_HOST || '127.0.0.1',
+      port: Number(process.env.TEST_DB_PORT || 5432),
+      database: process.env.TEST_DB_NAME || 'moneyshyft',
+      user: process.env.TEST_DB_USER || 'jeremiahotis',
+      password: process.env.TEST_DB_PASSWORD || 'Oiurueu12',
+    },
+    pool: {
+      min: 0,
+      max: 2,
+    },
+  });
+};
+const connectShyftDb = createConnectShyftDbClient();
+
+const countActiveThreadsForIdentity = async ({
+  tenantId,
+  orgUnitId,
+  neighborId,
+}: {
+  tenantId: string;
+  orgUnitId: string;
+  neighborId: string;
+}): Promise<number> => {
+  const counted = await connectShyftDb
+    .withSchema('connectshyft')
+    .table('cs_threads')
+    .where({
+      tenant_id: tenantId,
+      org_unit_id: orgUnitId,
+      neighbor_id: neighborId,
+    })
+    .andWhere('state', '<>', 'CLOSED')
+    .count<{ count: string | number }>({ count: '*' })
+    .first();
+
+  return Number(counted?.count ?? 0);
+};
 
 test.describe(
   'Story c.1 automate - core ConnectShyft thread schema and lifecycle API coverage',
   () => {
     test.describe.configure({ mode: 'serial' });
+    test.afterAll(async () => {
+      await connectShyftDb.destroy();
+    });
 
     test(
       '[P0] ensures thread create responses expose canonical UNCLAIMED state and required lifecycle metadata fields @P0',
@@ -51,18 +96,28 @@ test.describe(
         storyC1CreatePayload,
         storyC1DuplicatePayload,
       }) => {
+        const uniqueNeighborId = `${storyC1CreatePayload.neighborId}-contention-${Date.now().toString(36)}`;
+        const firstEnsurePayload = {
+          ...storyC1CreatePayload,
+          neighborId: uniqueNeighborId,
+        };
+        const secondEnsurePayload = {
+          ...storyC1DuplicatePayload,
+          neighborId: uniqueNeighborId,
+        };
+
         const [firstResponse, secondResponse] = await Promise.all([
           apiRequest(request, {
             method: 'POST',
             path: storyC1Context.paths.threadsCollection,
             headers: storyC1OperatorHeaders,
-            data: storyC1CreatePayload,
+            data: firstEnsurePayload,
           }),
           apiRequest(request, {
             method: 'POST',
             path: storyC1Context.paths.threadsCollection,
             headers: storyC1OperatorHeaders,
-            data: storyC1DuplicatePayload,
+            data: secondEnsurePayload,
           }),
         ]);
 
@@ -74,6 +129,13 @@ test.describe(
 
         expect(firstBody.data.thread.threadId).toBe(secondBody.data.thread.threadId);
         expect(secondBody.data.thread.state).toBe('UNCLAIMED');
+
+        const activeThreadCount = await countActiveThreadsForIdentity({
+          tenantId: storyC1Context.tenantId,
+          orgUnitId: storyC1Context.orgUnitId,
+          neighborId: uniqueNeighborId,
+        });
+        expect(activeThreadCount).toBe(1);
       },
     );
 
@@ -133,6 +195,39 @@ test.describe(
         });
         expect(body).not.toHaveProperty('data.sqlState');
         expect(body).not.toHaveProperty('data.constraint');
+      },
+    );
+
+    test(
+      '[P1] rejects client-supplied threadId to prevent caller-controlled thread identity assignment @P1',
+      async ({ request, storyC1Context, storyC1OperatorHeaders, storyC1CreatePayload }) => {
+        const response = await apiRequest(request, {
+          method: 'POST',
+          path: storyC1Context.paths.threadsCollection,
+          headers: storyC1OperatorHeaders,
+          data: {
+            ...storyC1CreatePayload,
+            neighborId: `${storyC1CreatePayload.neighborId}-threadid-${Date.now().toString(36)}`,
+            threadId: '11111111-1111-4111-8111-111111111111',
+          },
+        });
+
+        expect(response.status()).toBe(400);
+        const body = await response.json();
+        expect(body).toMatchObject({
+          ok: false,
+          code: 'CONNECTSHYFT_THREAD_ID_FORBIDDEN',
+          refusalType: 'client',
+          data: {
+            fieldErrors: [
+              expect.objectContaining({
+                field: 'threadId',
+                reason: 'FORBIDDEN',
+              }),
+            ],
+          },
+        });
+        expect(body).not.toHaveProperty('data.thread');
       },
     );
 
