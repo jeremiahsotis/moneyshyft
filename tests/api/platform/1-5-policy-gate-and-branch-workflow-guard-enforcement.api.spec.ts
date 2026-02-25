@@ -96,7 +96,7 @@ Status: review
     const raceOutput = execFileSync(
       'bash',
       [
-        '-lc',
+        '-c',
         [
           'set +e',
           'bash scripts/story-status-transition.sh --story-key 1-5-policy-gate-and-branch-workflow-guard-enforcement --status done --lock-timeout-seconds 15 > run1.log 2>&1 &',
