@@ -14,6 +14,7 @@ so that I get a definitive commitment or refusal outcome.
 
 1. Given a donor submits eligibility and item details, when capacity is evaluated, then the system returns schedulable slots or explicit refusal with alternatives.
 2. Accepted requests create linked commitments.
+3. Given a donor receives a schedulable or refusal outcome, when they review the result, then next steps and reasons are clearly visible in UI/API payloads.
 
 ## Operability Guardrails
 
@@ -66,10 +67,10 @@ Enable donor self-service intake that always resolves to a schedulable path or e
 
 ### File Structure Requirements
 
-- Intake service/use case in `src/modules/route/application`.
-- Capacity policy logic in `src/modules/route/domain`.
-- Persistence adapters in `src/modules/route/infrastructure`.
-- Donor intake route/controller in `src/modules/route/api`.
+- Intake service/use case in `src/src/modules/route/application`.
+- Capacity policy logic in `src/src/modules/route/domain`.
+- Persistence adapters in `src/src/modules/route/infrastructure`.
+- Donor intake route/controller in `src/src/routes/api/v1/*.ts` delegating into route application services.
 
 ### Testing Requirements
 
@@ -88,9 +89,9 @@ Enable donor self-service intake that always resolves to a schedulable path or e
 
 ### References
 
-- /Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/epics.md
-- /Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Functional_Requirements.md
-- /Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Architecture_Document.md
+- [Source: `/Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/epics.md` (Epic 2 > Story 2.2)]
+- [Source: `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Functional_Requirements.md` (intake, capacity, refusal requirements)]
+- [Source: `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Architecture_Document.md` (Stack, Module Layout)]
 
 ## Dev Agent Record
 
@@ -109,4 +110,3 @@ GPT-5 Codex
 ### File List
 
 - _bmad-output/implementation-artifacts/2-2-donor-self-service-pickup-intake-with-capacity-check.md
-

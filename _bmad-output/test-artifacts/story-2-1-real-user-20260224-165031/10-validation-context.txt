@@ -1,0 +1,7 @@
+BASE_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:5173/login
+ADMIN_EMAIL=tenant-admin-1771969831@example.com
+USER_EMAIL=dispatcher-1771969831@example.com
+COMMITMENT_ID=dd801b05-2085-4cf5-9cdd-3e55e988eff8
+INVITE_CODE=83SUR5
+RUN_AT_UTC=2026-02-24T21:50:32Z
