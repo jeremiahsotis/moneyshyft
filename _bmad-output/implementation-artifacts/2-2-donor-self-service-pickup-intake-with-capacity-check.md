@@ -101,9 +101,9 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `cd src && npm test -- --runInBand src/src/modules/route/__tests__/capacityPolicy.test.ts src/src/routes/api/v1/__tests__/route.test.ts`
-- `cd src && npm test -- --runInBand`
-- `cd src && npm test -- --runInBand src/src/routes/api/v1/__tests__/route.test.ts`
+- `cd src && npm test -- --runInBand src/src/modules/route/__tests__/capacityPolicy.test.ts src/src/routes/api/v1/__tests__/route.test.ts` (pass: 2 suites, 10 tests)
+- `cd src && npm test -- --runInBand` (pass: 45 suites, 232 tests; 2 suites/7 tests skipped)
+- `cd src && npm test -- --runInBand src/src/routes/api/v1/__tests__/route.test.ts` (pass: route intake suite)
 
 ### Completion Notes List
 
