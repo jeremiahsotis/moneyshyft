@@ -173,6 +173,7 @@ GPT-5 Codex
 - frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts
 - tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts
+- tests/e2e/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.spec.ts
 - tests/e2e/platform/b-2-shared-tenant-identity-and-shared-phone-indicators.spec.ts
 - tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.spec.ts
 - tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.api.spec.ts
