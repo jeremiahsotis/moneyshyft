@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-detect-mode','step-02-load-context','step-03-risk-and-testability','step-04-coverage-plan','step-05-generate-output']
 lastStep: 'step-05-generate-output'
-lastSaved: '2026-02-24'
+lastSaved: '2026-02-25'
 ---
 
 # Test Design Workflow Progress
@@ -538,3 +538,97 @@ lastSaved: '2026-02-24'
   - Epic C acceptance criteria and sprint hardening updates remain stable during implementation.
   - `a.4` escalation config dependency remains available for c.5 scheduler behavior.
   - Shared envelope/context/capability contracts remain authoritative for all Epic C endpoints.
+
+## 2026-02-25 Run - Step 1 Output - Detect Mode & Prerequisites (Epic UX)
+- Mode selected: **Epic-Level**.
+- Mode rationale: user intent explicitly requested `testarch-test-design ConnectShyft Epic UX`.
+- Scope anchor: `Epic UX: UX Remediation and Accessibility Hardening` from:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/ux-r1-mobile-first-inbox-mine-thread-redesign.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/ux-r2-accessibility-and-language-hardening.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/ux-r3-voicemail-and-indicator-behavior.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/ux-r4-outbound-policy-guardrail-ui.md`
+- Prerequisite validation:
+  - Epic/story ACs are present and testable for all four UX stories.
+  - Architecture/PRD context is present.
+  - Dependency readiness gap identified for unrestricted completion:
+    - Missing dependency story files for `d-1`, `d-2`, `d-4`, `e-3`, `e-4`.
+    - `ux-r3` and `ux-r4` remain dependency-gated in current sprint status.
+
+## 2026-02-25 Run - Step 2 Output - Load Context & Knowledge Base (Epic UX)
+- Config loaded from `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/config.yaml`:
+  - `tea_use_playwright_utils: true`
+  - `tea_browser_automation: auto`
+  - `test_artifacts: /Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts`
+- Epic-level artifacts loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+  - UX remediation story docs (`ux-r1`..`ux-r4`) and validation summary.
+- Existing test coverage scan summary:
+  - Active C-lane coverage exists for `c-3` and `c-4` API/E2E suites.
+  - Significant skipped-test concentration in `c-3`/`c-4` ATDD/automate suites increases regression escape risk.
+  - No dedicated `ux-r1`..`ux-r4` test files currently exist in `tests/api/platform` or `tests/e2e/platform`.
+  - No dedicated `d-1`/`d-2`/`d-4` or `e-3`/`e-4` test files currently exist.
+- Required knowledge fragments loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/risk-governance.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/probability-impact.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/test-levels-framework.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/test-priorities-matrix.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/playwright-cli.md`
+- Browser exploration note:
+  - Workflow configured for CLI/auto, but no target runtime URL/session was available for this run; analysis proceeded with artifact and code evidence.
+
+## 2026-02-25 Run - Step 3 Output - Risk Assessment (Epic UX)
+- System-level testability subsection not applicable (epic-level mode).
+- Risk matrix generated with TEA scoring (`probability x impact`) and category mapping.
+- Highest risks:
+  - `R-UX-002` action-matrix drift by thread state (score 9).
+  - `R-UX-004` override enforcement bypass for `prefers_texting=NO` (score 9).
+  - `R-UX-001`/`R-UX-003`/`R-UX-005`/`R-UX-006`/`R-UX-007`/`R-UX-008`/`R-UX-009`/`R-UX-010` as high-priority contract, dependency, and reliability risks.
+- Risk prioritization order:
+  1. Safety/policy and lifecycle invariants.
+  2. Voicemail placement/timer semantics and deterministic feedback behavior.
+  3. Dependency gate and skipped-coverage debt reduction.
+
+## 2026-02-25 Run - Step 4 Output - Coverage Plan & Execution Strategy (Epic UX)
+- Coverage matrix created for `ux-r1`..`ux-r4` with explicit risk links and test-level assignment.
+- Priority model applied:
+  - P0: core operator safety and no-workaround contract invariants.
+  - P1: accessibility/usability hardening and dependency gate enforcement.
+  - P2: performance/responsive drift hardening.
+  - P3: exploratory usability and burn-in confidence checks.
+- Execution strategy defined as simple PR / Nightly / Weekly:
+  - PR: P0 + key P1 merge blockers
+  - Nightly: full P1/P2 and performance/accessibility matrix
+  - Weekly: P3 and cross-epic burn-in
+- Interval-only estimates:
+  - P0: ~32-50 hours
+  - P1: ~24-40 hours
+  - P2: ~12-24 hours
+  - P3: ~4-8 hours
+  - Total: ~72-122 hours (~2.5-4 weeks)
+- Quality gates set:
+  - P0 pass rate = 100%
+  - P1 pass rate >=95%
+  - High-priority mitigations complete or explicitly waived
+  - Automated coverage target >=80% for unblocked scope
+
+## 2026-02-25 Run - Step 5 Output - Generate Outputs & Validate (Epic UX)
+- Mode used: **Epic-Level**
+- Epic selected: **Epic UX** (`ux-r1`..`ux-r4`)
+- Output generated:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-epic-UX.md`
+- Validation summary against workflow checklist:
+  - Risk matrix complete with IDs/category/P-I-score/mitigation/owner/timeline.
+  - Coverage matrix complete with priority + level + risk linkage and non-duplicate intent.
+  - Execution strategy uses PR/Nightly/Weekly model without redundant tier restatement.
+  - Resource estimates are range-based (no false precision).
+  - Quality gates and accountability sections included (not-in-scope, entry/exit criteria, assumptions/dependencies, interworking).
+  - Artifacts saved under `_bmad-output/test-artifacts/`.
+- Official documentation cross-check references:
+  - Playwright docs: `https://playwright.dev/docs/best-practices`, `https://playwright.dev/docs/test-parallel`
+  - Cypress docs: `https://docs.cypress.io/app/core-concepts/test-isolation`
+  - Pact docs: `https://docs.pact.io/getting_started/provider_verification`
+  - GitHub Actions docs: `https://docs.github.com/en/actions/concepts/workflows-and-actions`
