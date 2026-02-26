@@ -43,41 +43,56 @@ const seedNeighbor = async (
     orgUnitMemberships: [context.primaryOrgUnitId],
   });
 
-  const createResponse = await apiRequest(request, {
-    method: 'POST',
-    path: context.paths.neighborsCollection,
-    headers: seedHeaders,
-    data: {
-      orgUnitId: context.primaryOrgUnitId,
-      firstName: context.baseFirstName,
-      lastName: context.baseLastName,
-      phones: [
-        {
-          label: 'mobile',
-          value: context.sharedPhoneRaw,
-          isShared: true,
-          verificationStatus: 'verified',
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const createResponse = await apiRequest(request, {
+        method: 'POST',
+        path: context.paths.neighborsCollection,
+        headers: seedHeaders,
+        data: {
+          orgUnitId: context.primaryOrgUnitId,
+          firstName: context.baseFirstName,
+          lastName: context.baseLastName,
+          phones: [
+            {
+              label: 'mobile',
+              value: context.sharedPhoneRaw,
+              isShared: true,
+              verificationStatus: 'verified',
+            },
+            {
+              label: 'home',
+              value: context.nonSharedPhoneRaw,
+              isShared: false,
+              verificationStatus: 'unverified',
+            },
+          ],
         },
-        {
-          label: 'home',
-          value: context.nonSharedPhoneRaw,
-          isShared: false,
-          verificationStatus: 'unverified',
-        },
-      ],
-    },
-  });
+      });
 
-  expect(createResponse.status()).toBe(201);
-  const createBody = await createResponse.json();
-  expect(createBody).toMatchObject({
-    ok: true,
-    code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
-  });
+      expect(createResponse.status()).toBe(201);
+      const createBody = await createResponse.json();
+      expect(createBody).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
+      });
 
-  const neighborId = createBody?.data?.neighbor?.neighborId;
-  expect(typeof neighborId).toBe('string');
-  return { neighborId: neighborId as string };
+      const neighborId = createBody?.data?.neighbor?.neighborId;
+      expect(typeof neighborId).toBe('string');
+      return { neighborId: neighborId as string };
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      const shouldRetry = attempt < 2 && message.includes('ECONNRESET');
+      if (!shouldRetry) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+  }
+
+  throw lastError;
 };
 
 test.describe(

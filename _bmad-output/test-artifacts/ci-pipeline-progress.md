@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight','step-02-generate-pipeline','step-03-configure-quality-gates','step-04-validate-and-summary']
 lastStep: 'step-04-validate-and-summary'
-lastSaved: '2026-02-24T18:44:51Z'
+lastSaved: '2026-02-25T17:32:09Z'
 ---
 
 # CI Workflow Progress (ConnectShyft Epic A)
@@ -176,3 +176,66 @@ lastSaved: '2026-02-24T18:44:51Z'
   - `frontend/src/features/connectshyft/neighbors.ts`
   - `frontend/src/views/ConnectShyft/ConnectShyftNeighborProfileView.vue`
 - Epic C CI workflow resume status: **ready to run in CI**.
+
+---
+
+# CI Workflow Progress (ConnectShyft Epic UX)
+
+## Step 1: Preflight Checks
+- Git repository and remote validation: pass.
+- Test framework validation: pass (`playwright.config.ts` + `@playwright/test`).
+- CI platform detection: GitHub Actions (existing `.github/workflows/test.yml`).
+- Node runtime context: `.nvmrc` = `24`.
+- Local preflight command:
+  - `npm run test:e2e`
+  - Final result after stabilization fixes: `306 passed`, `173 skipped`, `0 failed`.
+- Blocking issues resolved during preflight:
+  - `tests/extra-money/reserve-goals.spec.ts`
+  - `tests/extra-money/assign.spec.ts`
+  - `tests/extra-money/multi-assign.spec.ts`
+  - transient `ECONNRESET` during b.3 neighbor seeding (retry hardening applied)
+
+## Step 2: Generate CI Pipeline
+- Existing CI workflow retained at `.github/workflows/test.yml`.
+- Required stage topology confirmed intact:
+  - `policy` -> `lint` -> `test` (4 shards) -> `burn-in` -> `quality-gates` -> optional `backend-contracts` -> `report`.
+- Existing implementation already includes:
+  - shard matrix with `fail-fast: false`
+  - dependency caching across root/frontend/src lockfiles
+  - burn-in loop trigger on PR/schedule
+  - artifact uploads for gate snapshots and failure diagnostics
+  - release-readiness report summary
+
+## Step 3: Quality Gates & Notifications
+- Burn-in strategy verified against TEA guidance:
+  - `bash scripts/burn-in.sh 10 origin/production`.
+- Quality threshold enforcement verified in `scripts/quality-gates.sh`:
+  - `@P0` pass rate = `100%`
+  - `@P1` pass rate >= `95%`
+- Notifications verified:
+  - report summary includes run + artifacts links
+  - Slack failure notification configured in `report` job via `SLACK_WEBHOOK_URL`.
+
+## Step 4: Validate & Summary
+- Validation outcome: pass.
+- CI config path: `.github/workflows/test.yml`.
+- Additional hardening merged to reduce flaky preflight failures:
+  - robust post-create synchronization in extra-money specs via API polling + entry-id targeting
+  - targeted retry for `ECONNRESET` during b.3 seed API call
+- Epic UX CI status: **ready to run in CI**.
+
+### Resume Update (2026-02-25)
+- During resumed full preflight run, a new flake surfaced in:
+  - `tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.spec.ts`
+  - Failure mode: list assertion read before inbox thread cards finished async render.
+- Fix applied:
+  - Replaced immediate list assertions with `expect.poll` for ordered thread IDs and priority ranks.
+- Re-validation:
+  - `npm run test:e2e -- tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.spec.ts --repeat-each=3` -> `12 passed`.
+  - `npm run test:e2e` -> `306 passed`, `173 skipped`, `0 failed`.
+  - `bash scripts/quality-gates.sh` -> pass (`P0=100%`, `P1=100%`).
+- Policy gate note:
+  - `npm run policy:check` remains blocked by existing operability closeout state in:
+    - `_bmad-output/implementation-artifacts/c-3-inbox-and-thread-detail-read-contracts.md`
+    - mismatch: `Real-User Validation Result` is `pending` while story status is `done`.
+- Resume status: **suite and quality gates are green locally; policy gate requires artifact closeout decision**.
