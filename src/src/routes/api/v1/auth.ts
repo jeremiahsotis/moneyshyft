@@ -393,7 +393,12 @@ router.post('/refresh', async (req: Request, res: Response) => {
 
     const currentUser = await AuthService.getUserById(payload.userId);
     if (!currentUser) {
-      res.status(403).json({ error: 'Refresh token rejected' });
+      refusal(res, {
+        code: 'REFRESH_TOKEN_REJECTED',
+        message: 'Refresh token rejected',
+        refusalType: 'security',
+        httpStatus: 403,
+      });
       return;
     }
 
