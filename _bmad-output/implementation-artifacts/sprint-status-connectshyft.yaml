@@ -53,7 +53,7 @@ development_status:
   epic-b: in-progress
   b-1-tenant-scoped-neighbor-creation-with-required-phone: done
   b-2-shared-tenant-identity-and-shared-phone-indicators: done
-  b-3-relationship-gated-neighbor-edits-with-provenance-audit: ready-for-dev
+  b-3-relationship-gated-neighbor-edits-with-provenance-audit: in-progress
   b-4-role-restricted-neighbor-merge-with-irreversible-confirmation: ready-for-dev
   epic-b-retrospective: optional
   epic-c: in-progress
