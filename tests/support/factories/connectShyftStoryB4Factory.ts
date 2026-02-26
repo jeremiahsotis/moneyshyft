@@ -79,6 +79,11 @@ export type StoryB4Context = {
 export function createStoryB4Context(
   overrides: StoryB4ContextOverrides = {},
 ): StoryB4Context {
+  const tenantId = overrides.tenantId ?? randomUUID();
+  const primaryOrgUnitId = overrides.primaryOrgUnitId ?? randomUUID();
+  const peerOrgUnitId = randomUUID();
+  const crossTenantId = randomUUID();
+  const crossTenantOrgUnitId = randomUUID();
   const sourceNeighborId = overrides.sourceNeighborId
     ?? `neighbor-b4-source-${randomUUID().slice(0, 8)}`;
   const survivorNeighborId = overrides.survivorNeighborId
@@ -86,13 +91,11 @@ export function createStoryB4Context(
 
   return {
     storyId: 'b-4',
-    tenantId: overrides.tenantId ?? connectShyftContextEnforcementData.tenantAlphaId,
-    primaryOrgUnitId:
-      overrides.primaryOrgUnitId
-      ?? connectShyftContextEnforcementData.orgUnitAlphaEastId,
-    peerOrgUnitId: connectShyftContextEnforcementData.orgUnitAlphaWestId,
-    crossTenantId: connectShyftContextEnforcementData.tenantBravoId,
-    crossTenantOrgUnitId: connectShyftContextEnforcementData.orgUnitBravoNorthId,
+    tenantId,
+    primaryOrgUnitId,
+    peerOrgUnitId,
+    crossTenantId,
+    crossTenantOrgUnitId,
     role: overrides.role ?? 'ORGUNIT_IDENTITY_LEAD',
     userId:
       overrides.userId
@@ -129,12 +132,17 @@ export function createStoryB4Headers(
   context: StoryB4Context,
   overrides: StoryB4HeaderOverrides = {},
 ): Record<string, string> {
+  const resolvedTenantId = overrides.tenantId ?? context.tenantId;
+  const resolvedOrgUnitId =
+    overrides.orgUnitId === undefined ? context.primaryOrgUnitId : overrides.orgUnitId;
+  const resolvedRole = overrides.role ?? context.role;
+  const resolvedUserId = overrides.userId ?? context.userId;
+
   const headers = createTenantScopeHeaders({
-    tenantId: overrides.tenantId ?? context.tenantId,
-    orgUnitId:
-      overrides.orgUnitId === undefined ? context.primaryOrgUnitId : overrides.orgUnitId,
-    role: overrides.role ?? context.role,
-    userId: overrides.userId ?? context.userId,
+    tenantId: resolvedTenantId,
+    orgUnitId: resolvedOrgUnitId,
+    role: resolvedRole,
+    userId: resolvedUserId,
     correlationId: overrides.correlationId ?? context.correlationId,
     csrfToken: overrides.csrfToken ?? context.csrfToken,
   });
@@ -142,7 +150,14 @@ export function createStoryB4Headers(
   const resolvedHeaders: Record<string, string> = {
     ...headers,
     'x-test-connectshyft-flags': JSON.stringify(overrides.flags ?? context.flags),
+    'x-test-connectshyft-tenant-id': resolvedTenantId,
+    'x-test-connectshyft-role': resolvedRole,
+    'x-test-connectshyft-user-id': resolvedUserId,
   };
+
+  if (typeof resolvedOrgUnitId === 'string' && resolvedOrgUnitId.trim().length > 0) {
+    resolvedHeaders['x-test-connectshyft-orgunit-id'] = resolvedOrgUnitId;
+  }
 
   if (overrides.orgUnitMemberships) {
     resolvedHeaders['x-test-connectshyft-orgunit-memberships'] = JSON.stringify(

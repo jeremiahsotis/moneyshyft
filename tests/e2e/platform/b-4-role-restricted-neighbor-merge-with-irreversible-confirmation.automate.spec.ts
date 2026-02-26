@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { login } from '../../helpers/auth';
 import { apiRequest } from '../../support/helpers/apiClient';
+import { ensureConnectShyftDbHousehold } from '../../support/helpers/connectShyftDbActor';
 import {
   createStoryB4Context,
   createStoryB4Headers,
@@ -57,8 +58,12 @@ const seedNeighbor = async (
     },
   });
 
-  expect(response.status()).toBe(201);
+  expect([200, 201]).toContain(response.status());
   const body = await response.json();
+  expect(body).toMatchObject({
+    ok: true,
+    code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
+  });
   const neighborId = body?.data?.neighbor?.neighborId;
   expect(typeof neighborId).toBe('string');
   return neighborId as string;
@@ -68,6 +73,7 @@ const seedNeighborPair = async (
   request: Parameters<typeof apiRequest>[0],
   context: StoryB4Context,
 ): Promise<{ sourceNeighborId: string; survivorNeighborId: string }> => {
+  await ensureConnectShyftDbHousehold(context.tenantId);
   const seedHeaders = createStoryB4Headers(context, {
     role: 'TENANT_ADMIN',
     userId: context.tenantAdminUserId,
@@ -259,7 +265,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P2] orgUnit member without scoped membership sees deterministic refusal guidance and no actionable merge control @P2',
       async ({ page, request }) => {
         const context = createStoryB4Context();

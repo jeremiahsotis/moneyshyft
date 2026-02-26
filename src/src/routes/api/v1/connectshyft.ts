@@ -202,8 +202,19 @@ const resolveConnectShyftFallbackOrgUnitId = async (
   return normalizeNonEmptyString((tenantOrgUnitRows[0] as { id?: unknown }).id);
 };
 
-const shouldBypassTestHarnessEntitlementLookup = (tenantId: string): boolean => {
-  return isConnectShyftTestOverrideEnabled() && !UUID_PATTERN.test(tenantId);
+const TEST_TENANT_OVERRIDE_HEADER = 'x-test-connectshyft-tenant-id';
+
+const shouldBypassTestHarnessEntitlementLookup = (req: Request, tenantId: string): boolean => {
+  if (!isConnectShyftTestOverrideEnabled()) {
+    return false;
+  }
+
+  if (!UUID_PATTERN.test(tenantId)) {
+    return true;
+  }
+
+  const testTenantOverride = req.header(TEST_TENANT_OVERRIDE_HEADER);
+  return typeof testTenantOverride === 'string' && testTenantOverride.trim().length > 0;
 };
 
 const resolveEntitlementAwareConnectShyftFlags = async (
@@ -218,7 +229,7 @@ const resolveEntitlementAwareConnectShyftFlags = async (
     };
   }
 
-  if (shouldBypassTestHarnessEntitlementLookup(tenantId)) {
+  if (shouldBypassTestHarnessEntitlementLookup(req, tenantId)) {
     return {
       flags: resolvedFlags,
       entitlementDecision: null,
@@ -1288,13 +1299,14 @@ const parseNeighborMergeBody = (req: Request): {
   };
   reason: string;
   simulateFailureStage?: ConnectShyftNeighborMergeFailureStage;
-} => {
+  } => {
   const rawConfirmation = req.body?.irreversibleConfirmation;
   const confirmation = rawConfirmation && typeof rawConfirmation === 'object'
     ? rawConfirmation as { acknowledged?: unknown; phrase?: unknown }
     : null;
 
-  const rawFailureStage = typeof req.body?.simulateFailureStage === 'string'
+  const rawFailureStage = isConnectShyftTestOverrideEnabled()
+    && typeof req.body?.simulateFailureStage === 'string'
     ? req.body.simulateFailureStage
     : '';
 
@@ -1642,30 +1654,10 @@ const mergeNeighborWithSideEffects = async (input: {
     sourceNeighborId: input.sourceNeighborId,
     survivorNeighborId: input.survivorNeighborId,
   })) {
-    if (input.simulateFailureStage === 'after-dependent-repoint') {
-      return {
-        ok: false,
-        code: NEIGHBOR_MERGE_TRANSACTION_ABORTED_CODE,
-        message: NEIGHBOR_MERGE_TRANSACTION_ABORTED_MESSAGE,
-      };
-    }
-
-    const merged = await connectShyftNeighborServiceAsync.mergeNeighbor(command);
-    if (!merged.ok) {
-      return {
-        ok: false,
-        code: merged.code,
-        message: merged.message,
-      };
-    }
-
     return {
-      ok: true,
-      code: merged.code,
-      httpStatus: merged.httpStatus,
-      merge: merged.data.merge,
-      neighbor: merged.data.neighbor,
-      sideEffectsPersisted: false,
+      ok: false,
+      code: NEIGHBOR_MERGE_TRANSACTION_ABORTED_CODE,
+      message: NEIGHBOR_MERGE_TRANSACTION_ABORTED_MESSAGE,
     };
   }
 

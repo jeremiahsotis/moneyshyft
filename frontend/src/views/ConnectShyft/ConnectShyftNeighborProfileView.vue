@@ -220,7 +220,7 @@
             </p>
           </div>
 
-          <div class="mt-3">
+          <div v-if="!mergeActiveRefusalState" class="mt-3">
             <button
               type="button"
               data-testid="connectshyft-neighbor-merge-action"

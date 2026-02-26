@@ -519,6 +519,26 @@ describe('connectshyft neighbor service', () => {
     });
   });
 
+  it('refuses merge for tenant staff role', () => {
+    const merged = service.mergeNeighbor({
+      actorRoles: ['TENANT_STAFF'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      sourceNeighborId: 'neighbor-source',
+      survivorNeighborId: 'neighbor-survivor',
+      irreversibleConfirmation: {
+        acknowledged: true,
+        phrase: 'IRREVERSIBLE MERGE',
+      },
+      reason: 'tenant-staff-role-probe',
+    });
+
+    expect(merged).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_MERGE_FORBIDDEN',
+    });
+  });
+
   it('refuses merge when irreversible confirmation phrase is malformed', () => {
     const merged = service.mergeNeighbor({
       actorRoles: ['TENANT_ADMIN'],

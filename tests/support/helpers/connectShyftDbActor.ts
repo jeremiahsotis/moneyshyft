@@ -30,6 +30,9 @@ const createConnectShyftDbClient = () => {
 const connectShyftDb = createConnectShyftDbClient();
 let connectShyftDbDestroyed = false;
 
+const buildInvitationCode = (tenantId: string): string =>
+  tenantId.replace(/-/g, '').slice(0, 10).toUpperCase();
+
 export const ensureConnectShyftDbActorUser = async (userId: string): Promise<void> => {
   const existingUser = await connectShyftDb('users')
     .where({ id: userId })
@@ -46,6 +49,24 @@ export const ensureConnectShyftDbActorUser = async (userId: string): Promise<voi
       first_name: 'ConnectShyft',
       last_name: 'Actor',
       role: 'member',
+    })
+    .onConflict('id')
+    .ignore();
+};
+
+export const ensureConnectShyftDbHousehold = async (tenantId: string): Promise<void> => {
+  const existingHousehold = await connectShyftDb('households')
+    .where({ id: tenantId })
+    .first<{ id: string }>('id');
+  if (existingHousehold) {
+    return;
+  }
+
+  await connectShyftDb('households')
+    .insert({
+      id: tenantId,
+      name: `ConnectShyft ${tenantId.slice(0, 8)}`,
+      invitation_code: buildInvitationCode(tenantId),
     })
     .onConflict('id')
     .ignore();

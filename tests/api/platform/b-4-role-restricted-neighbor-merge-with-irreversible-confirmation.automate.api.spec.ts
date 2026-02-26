@@ -1,5 +1,6 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { createStoryB4Headers } from '../../support/factories/connectShyftStoryB4Factory';
+import { ensureConnectShyftDbHousehold } from '../../support/helpers/connectShyftDbActor';
 import { test, expect } from '../../support/fixtures/connectShyftStoryB4.fixture';
 
 const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
@@ -39,8 +40,12 @@ const seedNeighbor = async (
     },
   });
 
-  expect(response.status()).toBe(201);
+  expect([200, 201]).toContain(response.status());
   const body = await response.json();
+  expect(body).toMatchObject({
+    ok: true,
+    code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
+  });
   const neighborId = body?.data?.neighbor?.neighborId;
   expect(typeof neighborId).toBe('string');
   return neighborId as string;
@@ -51,6 +56,7 @@ const seedNeighborPair = async (
   context: Parameters<typeof createStoryB4Headers>[0],
   headers: Record<string, string>,
 ): Promise<SeededNeighborPair> => {
+  await ensureConnectShyftDbHousehold(context.tenantId);
   const suffix = Date.now().toString(36);
   const sourceNeighborId = await seedNeighbor(
     request,
@@ -214,11 +220,53 @@ test.describe(
           ok: true,
           code: 'CONNECTSHYFT_NEIGHBOR_MERGED',
         });
+        expect(successBody?.data?.sideEffectsPersisted).toBe(true);
         expect(refusalBody).toMatchObject({
           ok: false,
           code: storyB4Context.refusalCodes.mergeForbidden,
           refusalType: 'business',
         });
+      },
+    );
+
+    test(
+      '[P1] tenant staff role is refused for merge with deterministic forbidden code @P1',
+      async ({
+        request,
+        storyB4Context,
+        storyB4TenantAdminHeaders,
+      }) => {
+        const seeded = await seedNeighborPair(
+          request,
+          storyB4Context,
+          storyB4TenantAdminHeaders,
+        );
+        const tenantStaffHeaders = createStoryB4Headers(storyB4Context, {
+          role: 'TENANT_STAFF',
+          userId: `user-story-b4-tenant-staff-${Date.now().toString(36)}`,
+          orgUnitId: storyB4Context.primaryOrgUnitId,
+          orgUnitMemberships: [storyB4Context.primaryOrgUnitId],
+        });
+
+        const response = await apiRequest(request, {
+          method: 'POST',
+          path: storyB4Context.paths.neighborMerge,
+          headers: tenantStaffHeaders,
+          data: buildMergePayload(storyB4Context, seeded, {
+            reason: 'tenant-staff-role-probe',
+          }),
+        });
+
+        expect(response.status()).toBe(200);
+        const body = await response.json();
+        expect(hasRequiredEnvelopeKeys(body)).toBe(true);
+        expect(body).toMatchObject({
+          ok: false,
+          code: storyB4Context.refusalCodes.mergeForbidden,
+          refusalType: 'business',
+          message: expect.any(String),
+        });
+        expect(body).not.toHaveProperty('data.merge');
       },
     );
 
@@ -252,6 +300,7 @@ test.describe(
           ok: true,
           code: 'CONNECTSHYFT_NEIGHBOR_MERGED',
           data: {
+            sideEffectsPersisted: true,
             audit: {
               metadata: expect.objectContaining({
                 before_neighbor_id: seeded.sourceNeighborId,
@@ -331,6 +380,97 @@ test.describe(
         });
         expect(firstBody).not.toHaveProperty('data.merge');
         expect(secondBody).not.toHaveProperty('data.merge');
+      },
+    );
+
+    test(
+      '[P1] rollback simulation after dependent repoint is deterministic and preserves both neighbors @P1',
+      async ({
+        request,
+        storyB4Context,
+        storyB4TenantAdminHeaders,
+        storyB4IdentityLeadHeaders,
+      }) => {
+        const seeded = await seedNeighborPair(
+          request,
+          storyB4Context,
+          storyB4TenantAdminHeaders,
+        );
+
+        const rollbackPayload = buildMergePayload(storyB4Context, seeded, {
+          reason: 'rollback-verification',
+          simulateFailureStage: 'after-dependent-repoint',
+        });
+
+        const firstAttempt = await apiRequest(request, {
+          method: 'POST',
+          path: storyB4Context.paths.neighborMerge,
+          headers: storyB4IdentityLeadHeaders,
+          data: rollbackPayload,
+        });
+        const secondAttempt = await apiRequest(request, {
+          method: 'POST',
+          path: storyB4Context.paths.neighborMerge,
+          headers: storyB4IdentityLeadHeaders,
+          data: rollbackPayload,
+        });
+
+        expect(firstAttempt.status()).toBe(200);
+        expect(secondAttempt.status()).toBe(200);
+
+        const firstBody = await firstAttempt.json();
+        const secondBody = await secondAttempt.json();
+
+        expect(hasRequiredEnvelopeKeys(firstBody)).toBe(true);
+        expect(hasRequiredEnvelopeKeys(secondBody)).toBe(true);
+        expect(firstBody).toMatchObject({
+          ok: false,
+          code: storyB4Context.refusalCodes.transactionAborted,
+          refusalType: 'business',
+          message: expect.any(String),
+        });
+        expect(secondBody).toMatchObject({
+          ok: false,
+          code: storyB4Context.refusalCodes.transactionAborted,
+          refusalType: 'business',
+          message: firstBody.message,
+        });
+        expect(firstBody).not.toHaveProperty('data.merge');
+        expect(secondBody).not.toHaveProperty('data.merge');
+
+        const sourceProbe = await apiRequest(request, {
+          method: 'GET',
+          path: `${storyB4Context.paths.neighborsCollection}/${seeded.sourceNeighborId}`,
+          headers: storyB4TenantAdminHeaders,
+        });
+        const survivorProbe = await apiRequest(request, {
+          method: 'GET',
+          path: `${storyB4Context.paths.neighborsCollection}/${seeded.survivorNeighborId}`,
+          headers: storyB4TenantAdminHeaders,
+        });
+
+        expect(sourceProbe.status()).toBe(200);
+        expect(survivorProbe.status()).toBe(200);
+        const sourceBody = await sourceProbe.json();
+        const survivorBody = await survivorProbe.json();
+        expect(sourceBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_NEIGHBOR_RESOLVED',
+          data: {
+            neighbor: {
+              neighborId: seeded.sourceNeighborId,
+            },
+          },
+        });
+        expect(survivorBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_NEIGHBOR_RESOLVED',
+          data: {
+            neighbor: {
+              neighborId: seeded.survivorNeighborId,
+            },
+          },
+        });
       },
     );
   },
