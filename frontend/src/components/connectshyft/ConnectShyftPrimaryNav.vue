@@ -9,7 +9,8 @@
         :key="item.path"
         :to="item.path"
         :data-testid="item.testId"
-        class="inline-flex min-h-[44px] min-w-[96px] items-center justify-center rounded-lg px-3 text-sm font-semibold transition"
+        :aria-label="item.ariaLabel"
+        class="inline-flex min-h-[44px] min-w-[96px] items-center justify-center rounded-lg px-3 text-base font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
         :class="isActive(item.path) ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'"
       >
         {{ item.label }}
@@ -26,16 +27,19 @@ const route = useRoute();
 const navItems = [
   {
     label: 'Inbox',
+    ariaLabel: 'Open Inbox',
     path: '/app/connectshyft/inbox',
     testId: 'connectshyft-bottom-nav-inbox',
   },
   {
     label: 'Mine',
+    ariaLabel: 'Open Mine',
     path: '/app/connectshyft/mine',
     testId: 'connectshyft-bottom-nav-mine',
   },
   {
     label: 'More',
+    ariaLabel: 'Open More',
     path: '/app/connectshyft/more',
     testId: 'connectshyft-bottom-nav-more',
   },

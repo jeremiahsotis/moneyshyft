@@ -1,6 +1,6 @@
 # Story ux-r2: Accessibility and Language Hardening
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -33,18 +33,18 @@ so that I can use the system without confusion or strain.
 
 ## Tasks / Subtasks
 
-- [ ] Implement accessibility lock enforcement across core surfaces (AC: 1, 3)
-  - [ ] Apply minimum typography and tap-target standards to key ConnectShyft controls.
-  - [ ] Ensure visible, high-clarity focus indicators and keyboard traversal parity.
-- [ ] Implement plain-language and action-verb copy contract (AC: 2, 4)
-  - [ ] Replace ambiguous or internal terminology with operator-safe wording.
-  - [ ] Ensure refusal messaging is actionable and policy-specific without internal identifiers.
-- [ ] Add reusable accessibility and language helpers (AC: 1, 2, 3, 4)
-  - [ ] Centralize reusable label/copy patterns for ConnectShyft actions.
-  - [ ] Prevent per-view copy drift by reusing shared mappings.
-- [ ] Add regression coverage for accessibility and copy locks (AC: 1, 2, 3, 4)
-  - [ ] E2E checks for keyboard navigation and focus behavior in core flows.
-  - [ ] E2E/API checks for deterministic envelope-to-feedback mapping.
+- [x] Implement accessibility lock enforcement across core surfaces (AC: 1, 3)
+  - [x] Apply minimum typography and tap-target standards to key ConnectShyft controls.
+  - [x] Ensure visible, high-clarity focus indicators and keyboard traversal parity.
+- [x] Implement plain-language and action-verb copy contract (AC: 2, 4)
+  - [x] Replace ambiguous or internal terminology with operator-safe wording.
+  - [x] Ensure refusal messaging is actionable and policy-specific without internal identifiers.
+- [x] Add reusable accessibility and language helpers (AC: 1, 2, 3, 4)
+  - [x] Centralize reusable label/copy patterns for ConnectShyft actions.
+  - [x] Prevent per-view copy drift by reusing shared mappings.
+- [x] Add regression coverage for accessibility and copy locks (AC: 1, 2, 3, 4)
+  - [x] E2E checks for keyboard navigation and focus behavior in core flows.
+  - [x] E2E/API checks for deterministic envelope-to-feedback mapping.
 
 ## Dev Notes
 
@@ -126,17 +126,29 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `git branch --show-current` (pass)
-- `rg -n "^Status: ready-for-dev$" _bmad-output/implementation-artifacts/ux-r2-accessibility-and-language-hardening.md` (pass)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story ux-r2-accessibility-and-language-hardening` (failed: story id parser rejects `ux-r2` token shape)
+- `cd frontend && npm run build` (pass)
+- `npm run test:e2e -- tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts` (pass; 5/5)
 
 ### Completion Notes List
 
-- Created implementation-ready Story ux-r2 context document with accessibility locks, language hardening, and deterministic feedback requirements.
+- Added shared ConnectShyft accessibility/copy contracts (`uiContracts.ts`) for focus-ring classes, action labels, forbidden-token sanitization, and `success|refusal|error` feedback mapping.
+- Hardened Inbox/Thread/Nav UI with 16px body copy, 44px targets, explicit aria labels, and deterministic live-region/status feedback hooks.
+- Added thread-level Add Neighbor interaction with taxonomy-aligned feedback states and plain-language refusal/error messaging.
+- Enabled UX-R2 e2e coverage and aligned scenario factory with seeded tenant/orgUnit/story fixtures; stabilized keyboard traversal assertions and taxonomy flow checks.
 
 ### File List
 
+- frontend/src/features/connectshyft/uiContracts.ts
+- frontend/src/components/connectshyft/ConnectShyftPrimaryNav.vue
+- frontend/src/views/ConnectShyft/ConnectShyftInboxView.vue
+- frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
+- tests/support/factories/connectShyftStoryUxR2Factory.ts
+- tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts
 - _bmad-output/implementation-artifacts/ux-r2-accessibility-and-language-hardening.md
 
 ## Change Log
 
 - 2026-02-25: Created Story ux-r2 ready-for-dev context document.
+- 2026-02-26: Implemented accessibility and language hardening contracts across ConnectShyft Inbox/Thread/Nav with shared helpers.
+- 2026-02-26: Activated and stabilized UX-R2 e2e coverage for readability, plain-language copy, keyboard traversal, and taxonomy feedback outcomes.

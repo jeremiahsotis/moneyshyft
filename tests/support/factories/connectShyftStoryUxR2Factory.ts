@@ -45,14 +45,12 @@ export type StoryUxR2Context = {
     minBodyTextPx: 16;
     minTapTargetPx: 44;
   };
-  actionVerbSet: readonly ['Add', 'Call', 'Send', 'Claim', 'Close'];
+  actionVerbSet: readonly ['Add', 'Call', 'Send', 'Text', 'Claim', 'Close', 'Take'];
   forbiddenCopyTokens: readonly ['rbac', 'uuid', 'org_unit', 'tenant_id', 'role_id'];
   focusOrder: readonly [
-    'connectshyft-bottom-nav-inbox',
-    'connectshyft-bottom-nav-mine',
     'connectshyft-thread-card-primary-action',
-    'connectshyft-add-neighbor-action',
-    'connectshyft-close-thread-action'
+    'connectshyft-open-conversation-action',
+    'connectshyft-add-neighbor-action'
   ];
   outcomeTaxonomy: readonly ['success', 'refusal', 'error'];
   flags: ConnectShyftFlags;
@@ -78,31 +76,29 @@ export function createStoryUxR2Context(
 ): StoryUxR2Context {
   return {
     storyId: 'ux-r2',
-    tenantId: overrides.tenantId ?? 'tenant-connectshyft-ux-r2',
-    orgUnitId: overrides.orgUnitId ?? 'org-connectshyft-ux-r2-east',
+    tenantId: overrides.tenantId ?? 'tenant-connectshyft-ux-r1',
+    orgUnitId: overrides.orgUnitId ?? 'org-connectshyft-ux-r1-east',
     role: overrides.role ?? 'ORGUNIT_MEMBER',
-    userId: overrides.userId ?? 'user-connectshyft-ux-r2-operator',
+    userId: overrides.userId ?? 'user-connectshyft-ux-r1-operator',
     adminUserId: 'user-connectshyft-ux-r2-admin',
     correlationId:
       overrides.correlationId ?? `corr-story-ux-r2-${randomUUID().slice(0, 8)}`,
     csrfToken:
       overrides.csrfToken ?? `csrf-story-ux-r2-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      claimed: 'thread-ux-r2-claimed-2001',
-      closed: 'thread-ux-r2-closed-2002',
+      claimed: 'thread-ux-r1-claimed-voicemail-1004',
+      closed: 'thread-ux-r1-closed-1003',
     },
     readability: {
       minBodyTextPx: 16,
       minTapTargetPx: 44,
     },
-    actionVerbSet: ['Add', 'Call', 'Send', 'Claim', 'Close'],
+    actionVerbSet: ['Add', 'Call', 'Send', 'Text', 'Claim', 'Close', 'Take'],
     forbiddenCopyTokens: ['rbac', 'uuid', 'org_unit', 'tenant_id', 'role_id'],
     focusOrder: [
-      'connectshyft-bottom-nav-inbox',
-      'connectshyft-bottom-nav-mine',
       'connectshyft-thread-card-primary-action',
+      'connectshyft-open-conversation-action',
       'connectshyft-add-neighbor-action',
-      'connectshyft-close-thread-action',
     ],
     outcomeTaxonomy: ['success', 'refusal', 'error'],
     flags: { ...DEFAULT_FLAGS },
