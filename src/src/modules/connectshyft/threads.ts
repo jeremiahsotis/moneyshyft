@@ -66,7 +66,7 @@ type ThreadStoreEnsureInput = {
   preferredOutboundCsNumberId: string;
   threadId?: string;
   actorUserId?: string | null;
-  nextEvaluationAtUtc: string | null;
+  nextEvaluationAtUtc?: string | null;
 };
 
 type ThreadStoreListDueInput = {
@@ -756,7 +756,7 @@ export class InMemoryConnectShyftThreadStore {
       updatedAtUtc: now,
       escalation: {
         stage: 0,
-        nextEvaluationAtUtc: input.nextEvaluationAtUtc,
+        nextEvaluationAtUtc: input.nextEvaluationAtUtc ?? now,
       },
     };
 
@@ -928,6 +928,18 @@ export class KnexConnectShyftThreadStore {
           .first<DbThreadRow>(this.threadColumns());
 
         if (existing) {
+          const updatePayload: Record<string, unknown> = {
+            source: input.source,
+            last_inbound_cs_number_id: input.lastInboundCsNumberId,
+            preferred_outbound_cs_number_id: input.preferredOutboundCsNumberId,
+            updated_by_user_id: normalizedActorUserId,
+            updated_at_utc: trx.fn.now(),
+          };
+
+          if (input.nextEvaluationAtUtc !== undefined) {
+            updatePayload.next_evaluation_at_utc = input.nextEvaluationAtUtc;
+          }
+
           const [updated] = await trx
             .withSchema('connectshyft')
             .table('cs_threads')
@@ -935,14 +947,7 @@ export class KnexConnectShyftThreadStore {
               tenant_id: input.tenantId,
               id: existing.id,
             })
-            .update({
-              source: input.source,
-              last_inbound_cs_number_id: input.lastInboundCsNumberId,
-              preferred_outbound_cs_number_id: input.preferredOutboundCsNumberId,
-              next_evaluation_at_utc: input.nextEvaluationAtUtc,
-              updated_by_user_id: normalizedActorUserId,
-              updated_at_utc: trx.fn.now(),
-            })
+            .update(updatePayload)
             .returning<DbThreadRow[]>(this.threadColumns());
 
           return {
@@ -966,7 +971,7 @@ export class KnexConnectShyftThreadStore {
           source: input.source,
           state: input.state,
           escalation_stage: 0,
-          next_evaluation_at_utc: input.nextEvaluationAtUtc,
+          next_evaluation_at_utc: input.nextEvaluationAtUtc ?? trx.fn.now(),
           last_inbound_cs_number_id: input.lastInboundCsNumberId,
           preferred_outbound_cs_number_id: input.preferredOutboundCsNumberId,
           created_by_user_id: normalizedActorUserId || null,
@@ -1016,6 +1021,18 @@ export class KnexConnectShyftThreadStore {
             .first<DbThreadRow>(this.threadColumns());
 
           if (existing) {
+            const updatePayload: Record<string, unknown> = {
+              source: input.source,
+              last_inbound_cs_number_id: input.lastInboundCsNumberId,
+              preferred_outbound_cs_number_id: input.preferredOutboundCsNumberId,
+              updated_by_user_id: normalizedActorUserId,
+              updated_at_utc: this.knexClient.fn.now(),
+            };
+
+            if (input.nextEvaluationAtUtc !== undefined) {
+              updatePayload.next_evaluation_at_utc = input.nextEvaluationAtUtc;
+            }
+
             const [updated] = await this.knexClient
               .withSchema('connectshyft')
               .table('cs_threads')
@@ -1024,14 +1041,7 @@ export class KnexConnectShyftThreadStore {
                 id: existing.id,
               })
               .whereNot('state', 'CLOSED')
-              .update({
-                source: input.source,
-                last_inbound_cs_number_id: input.lastInboundCsNumberId,
-                preferred_outbound_cs_number_id: input.preferredOutboundCsNumberId,
-                next_evaluation_at_utc: input.nextEvaluationAtUtc,
-                updated_by_user_id: normalizedActorUserId,
-                updated_at_utc: this.knexClient.fn.now(),
-              })
+              .update(updatePayload)
               .returning<DbThreadRow[]>(this.threadColumns());
 
             return {
@@ -1217,8 +1227,11 @@ export class ConnectShyftThreadService {
       return buildEnsureStateTransitionRefusal();
     }
 
-    const nextEvaluationAtUtc = normalizeString(input.nextEvaluationAtUtc) || nowIsoUtc();
-    if (!isStrictUtcIsoTimestamp(nextEvaluationAtUtc)) {
+    const requestedNextEvaluationAtUtc = normalizeString(input.nextEvaluationAtUtc);
+    if (
+      requestedNextEvaluationAtUtc.length > 0
+      && !isStrictUtcIsoTimestamp(requestedNextEvaluationAtUtc)
+    ) {
       return buildNextEvaluationInvalidRefusal();
     }
 
@@ -1232,7 +1245,10 @@ export class ConnectShyftThreadService {
       preferredOutboundCsNumberId: normalizeString(input.preferredOutboundCsNumberId),
       threadId: input.threadId,
       actorUserId: input.actorUserId,
-      nextEvaluationAtUtc,
+      nextEvaluationAtUtc:
+        requestedNextEvaluationAtUtc.length > 0
+          ? requestedNextEvaluationAtUtc
+          : undefined,
     });
 
     if (!persisted.ok) {
@@ -1368,8 +1384,11 @@ export class AsyncConnectShyftThreadService {
       return buildEnsureStateTransitionRefusal();
     }
 
-    const nextEvaluationAtUtc = normalizeString(input.nextEvaluationAtUtc) || nowIsoUtc();
-    if (!isStrictUtcIsoTimestamp(nextEvaluationAtUtc)) {
+    const requestedNextEvaluationAtUtc = normalizeString(input.nextEvaluationAtUtc);
+    if (
+      requestedNextEvaluationAtUtc.length > 0
+      && !isStrictUtcIsoTimestamp(requestedNextEvaluationAtUtc)
+    ) {
       return buildNextEvaluationInvalidRefusal();
     }
 
@@ -1384,7 +1403,10 @@ export class AsyncConnectShyftThreadService {
         preferredOutboundCsNumberId: normalizeString(input.preferredOutboundCsNumberId),
         threadId: input.threadId,
         actorUserId: input.actorUserId,
-        nextEvaluationAtUtc,
+        nextEvaluationAtUtc:
+          requestedNextEvaluationAtUtc.length > 0
+            ? requestedNextEvaluationAtUtc
+            : undefined,
       });
 
       if (!persisted.ok) {

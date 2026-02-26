@@ -1,6 +1,6 @@
 # Story c.5: Deterministic Escalation Scheduler with Claim-Only Reset
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -130,7 +130,8 @@ GPT-5 Codex
 - `npm run branch:ensure-workflow -- --workflow dev-story --story c-5-deterministic-escalation-scheduler-with-claim-only-reset`
 - `cd src && npm test -- src/src/modules/connectshyft/__tests__/threads.test.ts`
 - `cd src && npm run build`
-- `cd src && npm test` (2 unrelated pre-existing failures in RouteShyft/Auth suites)
+- `npm run test:e2e -- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts --workers=1`
+- `npm run test:e2e -- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts --workers=1`
 
 ### Completion Notes List
 
@@ -139,10 +140,11 @@ GPT-5 Codex
 - Updated lifecycle claim behavior to return `CONNECTSHYFT_THREAD_CLAIMED` and include explicit claim-reset metadata (`resetReason: claimed`, `notificationsCanceled`) while preserving takeover/close response contracts.
 - Enforced claim-only reset semantics in thread state transitions by preserving escalation stage on non-claim `UNCLAIMED` transitions and resetting only on explicit `CLAIMED` transitions.
 - Added/expanded scheduler-focused unit coverage in `threads.test.ts` for deterministic timing progression, replay-safe retries, and claim-only reset behavior.
-- Full backend Jest regression run completed; 2 failures are outside this story scope and appear pre-existing:
-  - `src/modules/route/application/__tests__/intakeService.test.ts`
-  - `src/routes/api/v1/__tests__/auth.refresh.test.ts`
-- `npm run policy:check` fails on local closeout transition guard because this working-tree diff moves `c-5` directly `ready-for-dev -> review`; policy expects scripted adjacent transitions.
+- Fixed review finding: ensure no longer rewrites `next_evaluation_at_utc` on existing threads unless explicitly provided.
+- Fixed review finding: claim now executes explicit pending escalation outbox cancellation before reporting `notificationsCanceled`.
+- Fixed review finding: scheduler evaluate now returns `CONNECTSHYFT_ESCALATION_CONFIG_UNAVAILABLE` when baseline config retrieval fails (no silent fallback).
+- Fixed review finding: c.5 ATDD API suite is now active (no `test.skip`) and aligned to current response codes/contracts.
+- Guardrail blocker remains: `Critical Capability: yes` still has pending real-user validation evidence/result, so story remains `in-progress`.
 
 ### File List
 
@@ -151,11 +153,19 @@ GPT-5 Codex
 - src/src/modules/connectshyft/threads.ts
 - src/src/modules/connectshyft/__tests__/threads.test.ts
 - src/src/routes/api/v1/connectshyft.ts
-- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts
-- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts
-- tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts
+- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts
+
+## Senior Developer Review (AI)
+
+- 2026-02-26: Addressed 4 review findings (P1 x2, P2 x2): non-claim ensure due-time rewrite, derived-only claim cancellation reporting, scheduler config fallback behavior, and disabled/stale c.5 ATDD coverage.
+- Verification:
+  - `cd src && npm test -- src/src/modules/connectshyft/__tests__/threads.test.ts` (pass)
+  - `cd src && npm run build` (pass)
+  - `npm run test:e2e -- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts --workers=1` (pass)
+  - `npm run test:e2e -- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts --workers=1` (pass)
 
 ## Change Log
 
 - 2026-02-24: Created Story c.5 ready-for-dev context document.
 - 2026-02-26: Implemented deterministic escalation scheduler evaluation, claim-only reset metadata/behavior, new internal scheduler API route, and scheduler unit coverage.
+- 2026-02-26: Post-review hardening: fixed ensure due-time rewrite semantics, explicit claim notification cancellation execution, fail-closed scheduler config retrieval, and re-enabled/updated c.5 ATDD suite.

@@ -125,6 +125,42 @@ describe('connectshyft thread service', () => {
     expect(dueThreads.data.threads).toHaveLength(1);
   });
 
+  it('preserves existing escalation due timestamp on non-claim ensure updates when nextEvaluationAtUtc is omitted', () => {
+    const first = service.ensureThread({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c1',
+      orgUnitId: 'org-connectshyft-c1-east',
+      neighborId: 'neighbor-connectshyft-c1-1002',
+      source: 'VOICE',
+      threadId: 'thread-c1-preserve-due',
+      nextEvaluationAtUtc: '2026-02-24T14:30:00.000Z',
+      lastInboundCsNumberId: 'cs-inbound-c1-101',
+      preferredOutboundCsNumberId: 'cs-outbound-c1-101',
+    });
+
+    const second = service.ensureThread({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c1',
+      orgUnitId: 'org-connectshyft-c1-east',
+      neighborId: 'neighbor-connectshyft-c1-1002',
+      source: 'VOICE',
+      threadId: 'thread-c1-preserve-due-secondary',
+      lastInboundCsNumberId: 'cs-inbound-c1-102',
+      preferredOutboundCsNumberId: 'cs-outbound-c1-102',
+    });
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    if (!first.ok || !second.ok) {
+      throw new Error('Expected both ensure attempts to succeed');
+    }
+
+    expect(second.data.thread.threadId).toBe(first.data.thread.threadId);
+    expect(second.data.thread.escalation.nextEvaluationAtUtc).toBe(
+      first.data.thread.escalation.nextEvaluationAtUtc,
+    );
+  });
+
   it('rejects non-canonical forced state values with deterministic refusal contracts', () => {
     const result = service.ensureThread({
       actorRoles: ['ORGUNIT_MEMBER'],

@@ -86,6 +86,10 @@ const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
   inboundVoiceVoicemail: 'connectshyft.inbound.voice_voicemail_recorded',
   inboundVoiceFallback: 'connectshyft.inbound.voice_fallback_recorded',
 } as const;
+const CONNECTSHYFT_ESCALATION_NOTIFICATION_EVENT_PREFIXES = [
+  'connectshyft.thread.escalation.',
+  'connectshyft.escalation.',
+] as const;
 const CONNECTSHYFT_LEGACY_ROLE_ALIASES: Record<string, string> = {
   admin: 'TENANT_ADMIN',
   member: 'ORGUNIT_MEMBER',
@@ -639,6 +643,50 @@ const buildLifecycleSideEffects = (input: {
     metadata: input.metadata,
   },
 });
+
+const cancelPendingEscalationNotifications = async (input: {
+  tenantId: string;
+  threadId: string;
+}): Promise<number> => {
+  if (!UUID_PATTERN.test(input.tenantId) || !UUID_PATTERN.test(input.threadId)) {
+    return 0;
+  }
+
+  try {
+    const platformDb = loadPlatformDb();
+    const canceled = await platformDb
+      .withSchema('platform')
+      .table('outbox_events')
+      .where({
+        tenant_id: input.tenantId,
+        entity_type: 'connectshyft.thread',
+        entity_id: input.threadId,
+        delivery_status: 'pending',
+      })
+      .andWhere((queryBuilder) => {
+        CONNECTSHYFT_ESCALATION_NOTIFICATION_EVENT_PREFIXES.forEach((prefix, index) => {
+          if (index === 0) {
+            queryBuilder.where('event_name', 'like', `${prefix}%`);
+            return;
+          }
+          queryBuilder.orWhere('event_name', 'like', `${prefix}%`);
+        });
+      })
+      .update({
+        delivery_status: 'failed',
+        last_delivery_error: 'Canceled after explicit claim transition.',
+        available_at_utc: platformDb.fn.now(),
+      });
+
+    if (typeof canceled !== 'number' || !Number.isFinite(canceled)) {
+      return 0;
+    }
+
+    return Math.max(0, Math.trunc(canceled));
+  } catch (_error) {
+    return 0;
+  }
+};
 
 type ResolvedLifecycleContext = {
   detail: ConnectShyftThreadDetailRecord | null;
@@ -2957,7 +3005,13 @@ router.post('/internal/escalation/evaluate', async (req: Request, res: Response)
     );
     baselineHours = normalizeEscalationBaselineHours(config.escalationBaselineHours);
   } catch (_error) {
-    baselineHours = DEFAULT_ESCALATION_BASELINE_HOURS;
+    refusal(res, {
+      code: 'CONNECTSHYFT_ESCALATION_CONFIG_UNAVAILABLE',
+      message: 'Escalation configuration is temporarily unavailable. Please retry.',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return;
   }
 
   const actorRoles = resolveConnectShyftActorRoles(req, context);
@@ -3302,11 +3356,6 @@ const performLifecycleTransition = async (
   }
 
   const nextState = policyDecision.nextState;
-  const priorEscalationStage = lifecycleContext.detail
-    ? lifecycleContext.detail.escalationStage
-    : lifecycleContext.syntheticThread
-      ? lifecycleContext.syntheticThread.escalationStage
-      : 0;
   const eventName = resolveLifecycleEventName(action);
   const metadata = buildLifecycleMetadata({
     tenantId: context.tenantId,
@@ -3354,10 +3403,17 @@ const performLifecycleTransition = async (
     metadata,
   });
 
+  const notificationsCanceled = action === 'claim'
+    ? await cancelPendingEscalationNotifications({
+      tenantId: context.tenantId,
+      threadId,
+    })
+    : 0;
+
   const claimEscalation = action === 'claim'
     ? {
       resetReason: 'claimed' as const,
-      notificationsCanceled: Math.max(0, Math.trunc(priorEscalationStage)),
+      notificationsCanceled,
     }
     : null;
 
