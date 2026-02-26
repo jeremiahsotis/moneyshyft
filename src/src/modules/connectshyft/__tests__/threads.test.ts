@@ -429,3 +429,218 @@ describe('connectshyft async thread service persistence guards', () => {
     expect(store.ensureActiveThread).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('connectshyft deterministic escalation scheduler', () => {
+  let store: InMemoryConnectShyftThreadStore;
+  let service: ConnectShyftThreadService;
+
+  beforeEach(() => {
+    store = new InMemoryConnectShyftThreadStore();
+    service = new ConnectShyftThreadService(store);
+  });
+
+  it('progresses due unclaimed threads using deterministic X -> 2X -> 3X offsets from persisted due timestamps', () => {
+    const ensured = service.ensureThread({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c5',
+      orgUnitId: 'org-connectshyft-c5-east',
+      neighborId: 'neighbor-connectshyft-c5-1001',
+      source: 'VOICE',
+      threadId: 'thread-c5-1001',
+      nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+      lastInboundCsNumberId: 'cs-inbound-c5-001',
+      preferredOutboundCsNumberId: 'cs-outbound-c5-001',
+    });
+    expect(ensured.ok).toBe(true);
+
+    const first = service.evaluateEscalations({
+      actorRoles: ['TENANT_STAFF'],
+      tenantId: 'tenant-connectshyft-c5',
+      orgUnitId: 'org-connectshyft-c5-east',
+      asOfUtc: '2026-03-01T00:00:00.000Z',
+      baselineHours: 6,
+      limit: 50,
+    });
+    expect(first).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_ESCALATION_EVALUATED',
+      data: {
+        baselineHours: 6,
+        effects: {
+          emittedCount: 1,
+        },
+      },
+    });
+    if (!first.ok) {
+      throw new Error('Expected first scheduler evaluation to succeed');
+    }
+
+    expect(first.data.transitions).toEqual([
+      expect.objectContaining({
+        threadId: 'thread-c5-1001',
+        previousStage: 0,
+        stage: 1,
+        dueAtUtc: '2026-03-01T00:00:00.000Z',
+        nextDueOffsetHours: 6,
+        nextDueAtUtc: '2026-03-01T06:00:00.000Z',
+      }),
+    ]);
+
+    const second = service.evaluateEscalations({
+      actorRoles: ['TENANT_STAFF'],
+      tenantId: 'tenant-connectshyft-c5',
+      orgUnitId: 'org-connectshyft-c5-east',
+      asOfUtc: '2026-03-01T06:00:00.000Z',
+      baselineHours: 6,
+      limit: 50,
+    });
+    expect(second.ok).toBe(true);
+    if (!second.ok) {
+      throw new Error('Expected second scheduler evaluation to succeed');
+    }
+    expect(second.data.transitions).toEqual([
+      expect.objectContaining({
+        threadId: 'thread-c5-1001',
+        previousStage: 1,
+        stage: 2,
+        dueAtUtc: '2026-03-01T06:00:00.000Z',
+        nextDueOffsetHours: 12,
+        nextDueAtUtc: '2026-03-01T18:00:00.000Z',
+      }),
+    ]);
+
+    const third = service.evaluateEscalations({
+      actorRoles: ['TENANT_STAFF'],
+      tenantId: 'tenant-connectshyft-c5',
+      orgUnitId: 'org-connectshyft-c5-east',
+      asOfUtc: '2026-03-01T18:00:00.000Z',
+      baselineHours: 6,
+      limit: 50,
+    });
+    expect(third.ok).toBe(true);
+    if (!third.ok) {
+      throw new Error('Expected third scheduler evaluation to succeed');
+    }
+    expect(third.data.transitions).toEqual([
+      expect.objectContaining({
+        threadId: 'thread-c5-1001',
+        previousStage: 2,
+        stage: 3,
+        dueAtUtc: '2026-03-01T18:00:00.000Z',
+        nextDueOffsetHours: 18,
+        nextDueAtUtc: '2026-03-02T12:00:00.000Z',
+      }),
+    ]);
+  });
+
+  it('is replay-safe for repeated due-window evaluation calls', () => {
+    const ensured = service.ensureThread({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c5',
+      orgUnitId: 'org-connectshyft-c5-east',
+      neighborId: 'neighbor-connectshyft-c5-2001',
+      source: 'VOICE',
+      threadId: 'thread-c5-2001',
+      nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+      lastInboundCsNumberId: 'cs-inbound-c5-002',
+      preferredOutboundCsNumberId: 'cs-outbound-c5-002',
+    });
+    expect(ensured.ok).toBe(true);
+
+    const first = service.evaluateEscalations({
+      actorRoles: ['TENANT_STAFF'],
+      tenantId: 'tenant-connectshyft-c5',
+      orgUnitId: 'org-connectshyft-c5-east',
+      asOfUtc: '2026-03-01T00:00:00.000Z',
+      baselineHours: 6,
+      limit: 50,
+    });
+    const second = service.evaluateEscalations({
+      actorRoles: ['TENANT_STAFF'],
+      tenantId: 'tenant-connectshyft-c5',
+      orgUnitId: 'org-connectshyft-c5-east',
+      asOfUtc: '2026-03-01T00:00:00.000Z',
+      baselineHours: 6,
+      limit: 50,
+    });
+
+    expect(first.ok).toBe(true);
+    expect(second).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_ESCALATION_EVALUATED',
+      data: {
+        replaySafe: true,
+        skippedAlreadyProcessed: true,
+        effects: {
+          emittedCount: 0,
+        },
+      },
+    });
+  });
+
+  it('resets escalation state only on explicit claim transitions', () => {
+    const ensured = service.ensureThread({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c5',
+      orgUnitId: 'org-connectshyft-c5-east',
+      neighborId: 'neighbor-connectshyft-c5-3001',
+      source: 'VOICE',
+      threadId: 'thread-c5-3001',
+      nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+      lastInboundCsNumberId: 'cs-inbound-c5-003',
+      preferredOutboundCsNumberId: 'cs-outbound-c5-003',
+    });
+    if (!ensured.ok) {
+      throw new Error('Expected ensureThread to succeed');
+    }
+
+    const escalated = service.evaluateEscalations({
+      actorRoles: ['TENANT_STAFF'],
+      tenantId: 'tenant-connectshyft-c5',
+      orgUnitId: 'org-connectshyft-c5-east',
+      asOfUtc: '2026-03-01T00:00:00.000Z',
+      baselineHours: 6,
+      limit: 50,
+    });
+    expect(escalated.ok).toBe(true);
+
+    const closed = service.transitionThreadState({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c5',
+      threadId: ensured.data.thread.threadId,
+      nextState: 'CLOSED',
+      actorUserId: 'user-connectshyft-c5-operator',
+    });
+    expect(closed.ok).toBe(true);
+    if (!closed.ok) {
+      throw new Error('Expected close transition to succeed');
+    }
+    expect(closed.data.thread.escalation.stage).toBe(1);
+
+    const reopened = service.transitionThreadState({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c5',
+      threadId: ensured.data.thread.threadId,
+      nextState: 'UNCLAIMED',
+    });
+    expect(reopened.ok).toBe(true);
+    if (!reopened.ok) {
+      throw new Error('Expected reopen transition to succeed');
+    }
+    expect(reopened.data.thread.escalation.stage).toBe(1);
+
+    const claimed = service.transitionThreadState({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c5',
+      threadId: ensured.data.thread.threadId,
+      nextState: 'CLAIMED',
+      actorUserId: 'user-connectshyft-c5-operator',
+    });
+    expect(claimed.ok).toBe(true);
+    if (!claimed.ok) {
+      throw new Error('Expected claim transition to succeed');
+    }
+    expect(claimed.data.thread.escalation.stage).toBe(0);
+    expect(claimed.data.thread.escalation.nextEvaluationAtUtc).toBeNull();
+  });
+});

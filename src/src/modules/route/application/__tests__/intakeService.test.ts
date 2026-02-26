@@ -449,6 +449,8 @@ describe('route intake service', () => {
   });
 
   it('includes non-stale unresolved requests while preserving stale classification', async () => {
+    const freshUpdatedAtUtc = new Date(Date.now() - (10 * 60 * 1000)).toISOString();
+
     const repository = {
       createAccepted: jest.fn(),
       createRefused: jest.fn(),
@@ -458,7 +460,7 @@ describe('route intake service', () => {
         {
           ...unresolvedRecord(),
           requestId: 'request-unresolved-fresh-1',
-          updatedAtUtc: '2026-02-26T13:45:00.000Z',
+          updatedAtUtc: freshUpdatedAtUtc,
         },
       ])),
     };

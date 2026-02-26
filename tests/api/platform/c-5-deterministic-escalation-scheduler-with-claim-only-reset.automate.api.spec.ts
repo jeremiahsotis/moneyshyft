@@ -102,7 +102,7 @@ test.describe(
       }) => {
         const configAdminHeaders = createStoryC5Headers(storyC5Context, {
           role: 'ORGUNIT_ADMIN',
-          userId: `${storyC5Context.userId}-admin`,
+          userId: storyC5Context.schedulerUserId,
           orgUnitMemberships: [storyC5Context.orgUnitId],
         });
 
@@ -117,7 +117,7 @@ test.describe(
           path: storyC5Context.paths.escalationConfig,
           headers: configAdminHeaders,
           data: {
-            orgUnitId: storyC5Context.orgUnitId,
+            ...storyC5ValidBaselinePayload,
             escalationBaselineHours: storyC5Context.escalationBaselineHours.invalidLow,
           },
         });
@@ -126,7 +126,7 @@ test.describe(
           path: storyC5Context.paths.escalationConfig,
           headers: configAdminHeaders,
           data: {
-            orgUnitId: storyC5Context.orgUnitId,
+            ...storyC5ValidBaselinePayload,
             escalationBaselineHours: storyC5Context.escalationBaselineHours.invalidHigh,
           },
         });
@@ -135,7 +135,7 @@ test.describe(
           path: storyC5Context.paths.escalationConfig,
           headers: configAdminHeaders,
           data: {
-            orgUnitId: storyC5Context.orgUnitId,
+            ...storyC5ValidBaselinePayload,
             escalationBaselineHours: storyC5Context.escalationBaselineHours.invalidFractional,
           },
         });
@@ -232,7 +232,7 @@ test.describe(
       async ({ request, storyC5Context, storyC5ClaimPayload }) => {
         const nonMemberHeaders = createStoryC5Headers(storyC5Context, {
           role: 'ORGUNIT_MEMBER',
-          userId: `${storyC5Context.userId}-no-membership`,
+          userId: storyC5Context.schedulerUserId,
           orgUnitMemberships: [],
         });
 

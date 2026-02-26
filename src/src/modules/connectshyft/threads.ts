@@ -9,6 +9,11 @@ const CONNECTSHYFT_CANONICAL_THREAD_STATE_SET = new Set<string>(CONNECTSHYFT_CAN
 const DEFAULT_THREAD_SOURCE = 'VOICE';
 const DEFAULT_DUE_THREAD_LIMIT = 50;
 const MAX_DUE_THREAD_LIMIT = 250;
+const DEFAULT_ESCALATION_BASELINE_HOURS = 24;
+const MIN_ESCALATION_BASELINE_HOURS = 1;
+const MAX_ESCALATION_BASELINE_HOURS = 24;
+const MAX_ESCALATION_STAGE = 3;
+const HOUR_MS = 60 * 60 * 1000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type ConnectShyftThreadState = (typeof CONNECTSHYFT_CANONICAL_THREAD_STATES)[number];
@@ -70,12 +75,32 @@ type ThreadStoreListDueInput = {
   limit: number;
 };
 
+type ThreadStoreEvaluateInput = {
+  tenantId: string;
+  orgUnitId: string;
+  asOfUtc: string;
+  limit: number;
+  baselineHours: number;
+  actorUserId?: string | null;
+};
+
 type ThreadStoreTransitionInput = {
   tenantId: string;
   threadId: string;
   nextState: ConnectShyftThreadState;
   actorUserId?: string | null;
 };
+
+export type ConnectShyftEscalationTransition = {
+  threadId: string;
+  previousStage: number;
+  stage: number;
+  dueAtUtc: string;
+  nextDueAtUtc: string;
+  nextDueOffsetHours: number;
+};
+
+type ThreadEscalationTransition = ConnectShyftEscalationTransition;
 
 type ThreadPersistenceEnsureResult =
   | {
@@ -104,6 +129,9 @@ type ThreadRefusalResult = {
     | 'CONNECTSHYFT_THREAD_TRANSITION_FORBIDDEN'
     | 'CONNECTSHYFT_THREAD_STATE_INVALID'
     | 'CONNECTSHYFT_THREAD_NEXT_EVALUATION_INVALID'
+    | 'CONNECTSHYFT_ESCALATION_AS_OF_INVALID'
+    | 'CONNECTSHYFT_ESCALATION_BASELINE_INVALID_INTEGER'
+    | 'CONNECTSHYFT_ESCALATION_BASELINE_INVALID_RANGE'
     | 'CONNECTSHYFT_THREAD_TRANSITION_INVALID'
     | 'CONNECTSHYFT_THREAD_NOT_FOUND'
     | 'CONNECTSHYFT_THREAD_ENSURE_PERSISTENCE_UNAVAILABLE'
@@ -130,6 +158,16 @@ export type ConnectShyftListDueThreadsCommand = {
   tenantId: string;
   orgUnitId: string;
   limit?: number;
+};
+
+export type ConnectShyftEvaluateEscalationsCommand = {
+  actorRoles: Array<string | null | undefined>;
+  tenantId: string;
+  orgUnitId: string;
+  asOfUtc?: string;
+  limit?: number;
+  baselineHours?: number;
+  actorUserId?: string | null;
 };
 
 export type ConnectShyftTransitionThreadStateCommand = {
@@ -169,6 +207,24 @@ export type ConnectShyftTransitionThreadStateResult =
     httpStatus: 200;
     data: {
       thread: ConnectShyftThread;
+    };
+  }
+  | ThreadRefusalResult;
+
+export type ConnectShyftEvaluateEscalationsResult =
+  | {
+    ok: true;
+    code: 'CONNECTSHYFT_ESCALATION_EVALUATED';
+    httpStatus: 200;
+    data: {
+      asOfUtc: string;
+      baselineHours: number;
+      transitions: ConnectShyftEscalationTransition[];
+      effects: {
+        emittedCount: number;
+      };
+      replaySafe: boolean;
+      skippedAlreadyProcessed: boolean;
     };
   }
   | ThreadRefusalResult;
@@ -260,6 +316,92 @@ const normalizeDueThreadLimit = (value: number | undefined): number => {
   }
 
   return Math.min(normalized, MAX_DUE_THREAD_LIMIT);
+};
+
+const normalizeEscalationBaselineHours = (
+  value: number | undefined,
+): { ok: true; baselineHours: number } | ThreadRefusalResult => {
+  if (value === undefined) {
+    return {
+      ok: true,
+      baselineHours: DEFAULT_ESCALATION_BASELINE_HOURS,
+    };
+  }
+
+  if (!Number.isFinite(value) || !Number.isInteger(value)) {
+    return buildEscalationBaselineInvalidIntegerRefusal();
+  }
+
+  if (value < MIN_ESCALATION_BASELINE_HOURS || value > MAX_ESCALATION_BASELINE_HOURS) {
+    return buildEscalationBaselineInvalidRangeRefusal();
+  }
+
+  return {
+    ok: true,
+    baselineHours: value,
+  };
+};
+
+const resolveEscalationAsOfUtc = (
+  value: string | undefined,
+): { ok: true; asOfUtc: string } | ThreadRefusalResult => {
+  const normalized = normalizeString(value) || nowIsoUtc();
+  if (!isStrictUtcIsoTimestamp(normalized)) {
+    return buildEscalationAsOfInvalidRefusal();
+  }
+
+  return {
+    ok: true,
+    asOfUtc: normalized,
+  };
+};
+
+const normalizeEscalationStage = (value: number): number => {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.trunc(value));
+};
+
+const resolveEscalationDueTimeMs = (dueAtUtc: string, asOfUtc: string): number => {
+  const dueAtMs = Date.parse(dueAtUtc);
+  if (!Number.isNaN(dueAtMs)) {
+    return dueAtMs;
+  }
+
+  const asOfMs = Date.parse(asOfUtc);
+  if (!Number.isNaN(asOfMs)) {
+    return asOfMs;
+  }
+
+  return Date.now();
+};
+
+const buildEscalationTransition = (input: {
+  threadId: string;
+  previousStage: number;
+  dueAtUtc: string;
+  asOfUtc: string;
+  baselineHours: number;
+}): ThreadEscalationTransition => {
+  const nextStage = Math.min(
+    Math.max(normalizeEscalationStage(input.previousStage), 0) + 1,
+    MAX_ESCALATION_STAGE,
+  );
+  const nextDueOffsetHours = input.baselineHours * nextStage;
+  const nextDueAtUtc = new Date(
+    resolveEscalationDueTimeMs(input.dueAtUtc, input.asOfUtc) + (nextDueOffsetHours * HOUR_MS),
+  ).toISOString();
+
+  return {
+    threadId: input.threadId,
+    previousStage: normalizeEscalationStage(input.previousStage),
+    stage: nextStage,
+    dueAtUtc: input.dueAtUtc,
+    nextDueAtUtc,
+    nextDueOffsetHours,
+  };
 };
 
 const compareDueThreads = (left: ConnectShyftThread, right: ConnectShyftThread): number => {
@@ -435,6 +577,24 @@ const buildNextEvaluationInvalidRefusal = (): ThreadRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_THREAD_NEXT_EVALUATION_INVALID',
   message: 'nextEvaluationAtUtc must be a strict UTC ISO-8601 timestamp.',
+});
+
+const buildEscalationAsOfInvalidRefusal = (): ThreadRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_ESCALATION_AS_OF_INVALID',
+  message: 'asOfUtc must be a strict UTC ISO-8601 timestamp.',
+});
+
+const buildEscalationBaselineInvalidIntegerRefusal = (): ThreadRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_ESCALATION_BASELINE_INVALID_INTEGER',
+  message: 'Use whole hours between 1 and 24.',
+});
+
+const buildEscalationBaselineInvalidRangeRefusal = (): ThreadRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_ESCALATION_BASELINE_INVALID_RANGE',
+  message: 'Use whole hours between 1 and 24.',
 });
 
 const buildTransitionInvalidRefusal = (): ThreadRefusalResult => ({
@@ -652,7 +812,7 @@ export class InMemoryConnectShyftThreadStore {
       escalation: {
         ...existing.escalation,
         stage:
-          input.nextState === 'UNCLAIMED' || input.nextState === 'CLAIMED'
+          input.nextState === 'CLAIMED'
             ? 0
             : existing.escalation.stage,
         nextEvaluationAtUtc:
@@ -676,6 +836,55 @@ export class InMemoryConnectShyftThreadStore {
       ok: true,
       thread: cloneThread(transitioned),
     };
+  }
+
+  evaluateDueEscalations(input: ThreadStoreEvaluateInput): ThreadEscalationTransition[] {
+    const asOfMs = Date.parse(input.asOfUtc);
+    if (Number.isNaN(asOfMs)) {
+      return [];
+    }
+
+    const dueThreads = Array.from(this.threadsById.values())
+      .filter((thread) =>
+        thread.tenantId === input.tenantId
+        && thread.orgUnitId === input.orgUnitId
+        && thread.state === 'UNCLAIMED'
+        && thread.claimedByUserId === null
+        && thread.escalation.nextEvaluationAtUtc !== null)
+      .filter((thread) => {
+        const dueAtMs = Date.parse(thread.escalation.nextEvaluationAtUtc as string);
+        return !Number.isNaN(dueAtMs) && dueAtMs <= asOfMs;
+      })
+      .sort(compareDueThreads)
+      .slice(0, input.limit);
+
+    const now = nowIsoUtc();
+    const transitions: ThreadEscalationTransition[] = [];
+
+    dueThreads.forEach((thread) => {
+      const dueAtUtc = thread.escalation.nextEvaluationAtUtc as string;
+      const transition = buildEscalationTransition({
+        threadId: thread.threadId,
+        previousStage: thread.escalation.stage,
+        dueAtUtc,
+        asOfUtc: input.asOfUtc,
+        baselineHours: input.baselineHours,
+      });
+
+      const updated: ConnectShyftThread = {
+        ...thread,
+        updatedAtUtc: now,
+        escalation: {
+          stage: transition.stage,
+          nextEvaluationAtUtc: transition.nextDueAtUtc,
+        },
+      };
+
+      this.threadsById.set(thread.threadId, updated);
+      transitions.push(transition);
+    });
+
+    return transitions;
   }
 }
 
@@ -888,7 +1097,7 @@ export class KnexConnectShyftThreadStore {
       };
 
       if (input.nextState === 'UNCLAIMED') {
-        updatePayload.escalation_stage = 0;
+        updatePayload.escalation_stage = existing.escalation_stage;
         updatePayload.claimed_by_user_id = null;
         updatePayload.claimed_at_utc = null;
         updatePayload.closed_by_user_id = null;
@@ -921,6 +1130,71 @@ export class KnexConnectShyftThreadStore {
         ok: true,
         thread: mapDbRowToThread(updated),
       };
+    });
+  }
+
+  async evaluateDueEscalations(input: ThreadStoreEvaluateInput): Promise<ThreadEscalationTransition[]> {
+    return this.knexClient.transaction(async (trx) => {
+      const dueRows = await trx
+        .withSchema('connectshyft')
+        .table('cs_threads')
+        .where({
+          tenant_id: input.tenantId,
+          org_unit_id: input.orgUnitId,
+          state: 'UNCLAIMED',
+        })
+        .whereNull('claimed_by_user_id')
+        .whereNotNull('next_evaluation_at_utc')
+        .andWhere('next_evaluation_at_utc', '<=', input.asOfUtc)
+        .orderBy('next_evaluation_at_utc', 'asc')
+        .orderBy('id', 'asc')
+        .limit(input.limit)
+        .forUpdate()
+        .skipLocked()
+        .select<DbThreadRow[]>(this.threadColumns());
+
+      const normalizedActorUserId = normalizeUuid(input.actorUserId);
+      const transitions: ThreadEscalationTransition[] = [];
+
+      for (const row of dueRows) {
+        const dueAtUtc = toNullableIsoUtc(row.next_evaluation_at_utc);
+        if (!dueAtUtc) {
+          continue;
+        }
+
+        const transition = buildEscalationTransition({
+          threadId: row.id,
+          previousStage: normalizeEscalationStage(row.escalation_stage),
+          dueAtUtc,
+          asOfUtc: input.asOfUtc,
+          baselineHours: input.baselineHours,
+        });
+
+        const [updated] = await trx
+          .withSchema('connectshyft')
+          .table('cs_threads')
+          .where({
+            tenant_id: input.tenantId,
+            id: row.id,
+            state: 'UNCLAIMED',
+            escalation_stage: row.escalation_stage,
+          })
+          .whereNull('claimed_by_user_id')
+          .where('next_evaluation_at_utc', row.next_evaluation_at_utc as Date | string)
+          .update({
+            escalation_stage: transition.stage,
+            next_evaluation_at_utc: transition.nextDueAtUtc,
+            updated_by_user_id: normalizedActorUserId,
+            updated_at_utc: trx.fn.now(),
+          })
+          .returning<DbThreadRow[]>(this.threadColumns());
+
+        if (updated) {
+          transitions.push(transition);
+        }
+      }
+
+      return transitions;
     });
   }
 }
@@ -992,6 +1266,49 @@ export class ConnectShyftThreadService {
       httpStatus: 200,
       data: {
         threads,
+      },
+    };
+  }
+
+  evaluateEscalations(
+    input: ConnectShyftEvaluateEscalationsCommand,
+  ): ConnectShyftEvaluateEscalationsResult {
+    if (!hasThreadViewCapability(input.actorRoles)) {
+      return buildThreadViewCapabilityRefusal();
+    }
+
+    const asOfResolution = resolveEscalationAsOfUtc(input.asOfUtc);
+    if (!asOfResolution.ok) {
+      return asOfResolution;
+    }
+
+    const baselineResolution = normalizeEscalationBaselineHours(input.baselineHours);
+    if (!baselineResolution.ok) {
+      return baselineResolution;
+    }
+
+    const transitions = this.store.evaluateDueEscalations({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      asOfUtc: asOfResolution.asOfUtc,
+      limit: normalizeDueThreadLimit(input.limit),
+      baselineHours: baselineResolution.baselineHours,
+      actorUserId: input.actorUserId,
+    });
+
+    return {
+      ok: true,
+      code: 'CONNECTSHYFT_ESCALATION_EVALUATED',
+      httpStatus: 200,
+      data: {
+        asOfUtc: asOfResolution.asOfUtc,
+        baselineHours: baselineResolution.baselineHours,
+        transitions,
+        effects: {
+          emittedCount: transitions.length,
+        },
+        replaySafe: transitions.length === 0,
+        skippedAlreadyProcessed: transitions.length === 0,
       },
     };
   }
@@ -1111,6 +1428,57 @@ export class AsyncConnectShyftThreadService {
         httpStatus: 200,
         data: {
           threads: threads.sort(compareDueThreads),
+        },
+      };
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return buildPersistenceUnavailableRefusal();
+    }
+  }
+
+  async evaluateEscalations(
+    input: ConnectShyftEvaluateEscalationsCommand,
+  ): Promise<ConnectShyftEvaluateEscalationsResult> {
+    if (!hasThreadViewCapability(input.actorRoles)) {
+      return buildThreadViewCapabilityRefusal();
+    }
+
+    const asOfResolution = resolveEscalationAsOfUtc(input.asOfUtc);
+    if (!asOfResolution.ok) {
+      return asOfResolution;
+    }
+
+    const baselineResolution = normalizeEscalationBaselineHours(input.baselineHours);
+    if (!baselineResolution.ok) {
+      return baselineResolution;
+    }
+
+    try {
+      const transitions = await this.store.evaluateDueEscalations({
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        asOfUtc: asOfResolution.asOfUtc,
+        limit: normalizeDueThreadLimit(input.limit),
+        baselineHours: baselineResolution.baselineHours,
+        actorUserId: input.actorUserId,
+      });
+
+      return {
+        ok: true,
+        code: 'CONNECTSHYFT_ESCALATION_EVALUATED',
+        httpStatus: 200,
+        data: {
+          asOfUtc: asOfResolution.asOfUtc,
+          baselineHours: baselineResolution.baselineHours,
+          transitions,
+          effects: {
+            emittedCount: transitions.length,
+          },
+          replaySafe: transitions.length === 0,
+          skippedAlreadyProcessed: transitions.length === 0,
         },
       };
     } catch (error) {

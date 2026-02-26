@@ -215,7 +215,7 @@ test.describe(
       });
       expect(claimBody).toMatchObject({
         ok: true,
-        code: 'CONNECTSHYFT_THREAD_CLAIM_READY',
+        code: 'CONNECTSHYFT_THREAD_CLAIMED',
       });
       expect(takeoverBody).toMatchObject({
         ok: true,

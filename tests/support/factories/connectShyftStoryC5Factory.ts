@@ -28,6 +28,12 @@ type StoryC5HeaderOverrides = {
   orgUnitMemberships?: string[];
 };
 
+type StoryC5Recipients = {
+  primaryOrgUnitAdminUserId: string;
+  secondaryOrgUnitAdminUserId: string;
+  tenantStaffUserId: string;
+};
+
 export type StoryC5Context = {
   storyId: 'c-5';
   tenantId: string;
@@ -45,6 +51,7 @@ export type StoryC5Context = {
     invalidLow: 0;
     invalidHigh: 25;
   };
+  recipients: StoryC5Recipients;
   flags: ConnectShyftFlags;
   paths: {
     schedulerEvaluate: string;
@@ -86,6 +93,11 @@ export function createStoryC5Context(
       invalidFractional: 2.5,
       invalidLow: 0,
       invalidHigh: 25,
+    },
+    recipients: {
+      primaryOrgUnitAdminUserId: 'user-connectshyft-a4-primary-recipient',
+      secondaryOrgUnitAdminUserId: 'user-connectshyft-a4-secondary-recipient',
+      tenantStaffUserId: 'user-connectshyft-a4-tenant-staff-recipient',
     },
     flags: { ...DEFAULT_FLAGS },
     paths: {
