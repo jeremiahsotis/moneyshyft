@@ -1,12 +1,95 @@
+import { randomUUID } from 'node:crypto';
+import { test, expect, type APIRequestContext } from '@playwright/test';
 import { apiRequest } from '../../support/helpers/apiClient';
-import { test, expect } from '../../support/fixtures/routeShyftStory24.fixture';
+import type { Story24Payload } from '../../support/factories/routeShyftStory24Factory';
 
-const REQUEST_ROUTE_IMPLEMENTATION_GAP =
-  "Story 2.4 API implementation is not present yet ('/api/v1/route/requests').";
-const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
+type AuthScope = {
+  csrfToken: string;
+  tenantId: string | null;
+  orgUnitId: string | null;
+};
 
-function detailPath(resourceCollection: string, requestId: string): string {
-  return resourceCollection + '/' + requestId;
+const INTAKE_COLLECTION_PATH = '/api/v1/route/intake/requests';
+const RECONCILIATION_QUEUE_PATH = '/api/v1/route/intake/reconciliation/unresolved?staleMinutes=60';
+const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'] as const;
+
+function parseCookieValue(setCookieHeader: string | null, cookieName: string): string {
+  if (!setCookieHeader) {
+    return '';
+  }
+
+  const escapedName = cookieName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(escapedName + '=([^;]+)');
+  const match = setCookieHeader.match(pattern);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+async function loginAndResolveScope(request: APIRequestContext): Promise<AuthScope> {
+  const email = process.env.TEST_EMAIL || 'test@example.com';
+  const password = process.env.TEST_PASSWORD || 'test1234';
+
+  const loginResponse = await apiRequest(request, {
+    method: 'POST',
+    path: '/api/v1/auth/login',
+    data: {
+      email,
+      password,
+      rememberMe: false,
+    },
+  });
+
+  expect(loginResponse.status()).toBe(200);
+
+  const setCookie = loginResponse.headers()['set-cookie'] ?? null;
+  const csrfToken = parseCookieValue(setCookie, 'csrf_token');
+  expect(csrfToken).not.toBe('');
+
+  const body = await loginResponse.json();
+  const user = body?.user ?? {};
+
+  return {
+    csrfToken,
+    tenantId: typeof user?.activeTenantId === 'string'
+      ? user.activeTenantId
+      : (typeof user?.householdId === 'string' ? user.householdId : null),
+    orgUnitId: typeof user?.activeOrgUnitId === 'string' ? user.activeOrgUnitId : null,
+  };
+}
+
+function requireScopedContext(scope: AuthScope): { tenantId: string; orgUnitId: string } {
+  test.skip(
+    !scope.tenantId || !scope.orgUnitId,
+    'Story 2.4 API automation requires authenticated tenant and org-unit scope.',
+  );
+
+  return {
+    tenantId: scope.tenantId || '',
+    orgUnitId: scope.orgUnitId || '',
+  };
+}
+
+function buildPayload(
+  scoped: { tenantId: string; orgUnitId: string },
+  forceRefusal: boolean,
+): Story24Payload {
+  return {
+    tenantId: scoped.tenantId,
+    orgUnitId: scoped.orgUnitId,
+    requestedAtUtc: '2026-02-26T14:00:00.000Z',
+    requestedWindowStartUtc: forceRefusal
+      ? '2026-02-27T02:00:00.000Z'
+      : '2026-02-27T14:00:00.000Z',
+    requestedWindowEndUtc: forceRefusal
+      ? '2026-02-27T02:30:00.000Z'
+      : '2026-02-27T16:00:00.000Z',
+    channel: '2-4-request-to-commitment-linkage-and-terminal-enforcement',
+    notes: 'Story 2.4 automate payload ' + randomUUID().slice(0, 8),
+    forceRefusal,
+  };
+}
+
+function detailPath(requestId: string): string {
+  return INTAKE_COLLECTION_PATH + '/' + requestId;
 }
 
 function commitmentTransitionPath(commitmentId: string): string {
@@ -16,199 +99,269 @@ function commitmentTransitionPath(commitmentId: string): string {
 test.describe('Story 2.4 automate - request-to-commitment linkage API coverage', () => {
   test.describe.configure({ mode: 'serial' });
 
-  test.fixme(
-    '[P0] enforces explicit terminal outcomes and rejects undefined request terminal states @P0',
-    async ({ request, story24Context, story24Headers, story24HappyPayload }) => {
-      const response = await apiRequest(request, {
-        method: 'POST',
-        path: story24Context.paths.resourceCollection,
-        headers: story24Headers,
-        data: story24HappyPayload,
-      });
+  test('[P0] enforces explicit terminal lifecycle state and canonical linkage for accepted intake @P0', async ({ request }) => {
+    const scope = await loginAndResolveScope(request);
+    const scoped = requireScopedContext(scope);
 
-      expect(REQUEST_ROUTE_IMPLEMENTATION_GAP).toContain('/api/v1/route/requests');
-      expect(response.status()).toBe(200);
-      const body = await response.json();
-      expect(body).toMatchObject({
-        ok: true,
-        code: story24Context.successCode,
-        data: {
-          requestId: expect.any(String),
-          status: story24Context.statusLabel,
-        },
-      });
-      expect(body?.data?.terminalOutcome).toEqual(
-        expect.stringMatching(/^(refused|cancelled|committed)$/),
-      );
-    },
-  );
+    const createResponse = await apiRequest(request, {
+      method: 'POST',
+      path: INTAKE_COLLECTION_PATH,
+      headers: {
+        'x-csrf-token': scope.csrfToken,
+        'x-correlation-id': 'story24-create-' + randomUUID().slice(0, 8),
+      },
+      data: buildPayload(scoped, false),
+    });
 
-  test.fixme(
-    '[P0] links accepted request outcomes to canonical commitment identifiers retrievable by request detail @P0',
-    async ({ request, story24Context, story24Headers, story24HappyPayload }) => {
-      const createResponse = await apiRequest(request, {
-        method: 'POST',
-        path: story24Context.paths.resourceCollection,
-        headers: story24Headers,
-        data: story24HappyPayload,
-      });
+    expect(createResponse.status()).toBe(200);
+    const createBody = await createResponse.json();
+    expect(createBody).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_DONOR_INTAKE_ACCEPTED',
+      data: {
+        requestId: expect.any(String),
+        commitmentId: expect.any(String),
+        status: 'Accepted',
+      },
+    });
 
-      expect(createResponse.status()).toBe(200);
-      const createBody = await createResponse.json();
-      const requestId = createBody?.data?.requestId ?? story24Context.requestId;
-      const commitmentId = createBody?.data?.commitmentId ?? story24Context.commitmentId;
+    const requestId = createBody?.data?.requestId as string;
+    const commitmentId = createBody?.data?.commitmentId as string;
 
-      expect(commitmentId).toEqual(expect.any(String));
+    const detailResponse = await apiRequest(request, {
+      method: 'GET',
+      path: detailPath(requestId),
+      headers: {
+        'x-correlation-id': 'story24-detail-' + randomUUID().slice(0, 8),
+      },
+    });
 
-      const detailResponse = await apiRequest(request, {
-        method: 'GET',
-        path: detailPath(story24Context.paths.resourceCollection, requestId),
-        headers: story24Headers,
-      });
+    expect(detailResponse.status()).toBe(200);
+    const detailBody = await detailResponse.json();
+    expect(detailBody).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_DONOR_INTAKE_COMMITMENT_LINKED',
+      data: {
+        requestId,
+        commitmentId,
+        requestLifecycleStatus: 'committed',
+      },
+    });
+    expect(typeof detailBody?.data?.commitmentLifecycleStatus).toBe('string');
+  });
 
-      expect(detailResponse.status()).toBe(200);
-      const detailBody = await detailResponse.json();
-      expect(detailBody).toMatchObject({
-        ok: true,
-        code: story24Context.linkageCode,
-        data: {
-          requestId,
+  test('[P0] preserves independent commitment transitions after request terminalization @P0', async ({ request }) => {
+    const scope = await loginAndResolveScope(request);
+    const scoped = requireScopedContext(scope);
+
+    const createResponse = await apiRequest(request, {
+      method: 'POST',
+      path: INTAKE_COLLECTION_PATH,
+      headers: {
+        'x-csrf-token': scope.csrfToken,
+        'x-correlation-id': 'story24-transition-create-' + randomUUID().slice(0, 8),
+      },
+      data: buildPayload(scoped, false),
+    });
+
+    expect(createResponse.status()).toBe(200);
+    const createBody = await createResponse.json();
+
+    const requestId = createBody?.data?.requestId as string;
+    const commitmentId = createBody?.data?.commitmentId as string;
+
+    const transitionResponse = await apiRequest(request, {
+      method: 'POST',
+      path: commitmentTransitionPath(commitmentId),
+      headers: {
+        'x-csrf-token': scope.csrfToken,
+        'x-correlation-id': 'story24-transition-' + randomUUID().slice(0, 8),
+      },
+      data: {
+        nextStatus: 'in_progress',
+        reason: 'Story 2.4 lifecycle independence check',
+      },
+    });
+
+    expect(transitionResponse.status()).toBe(200);
+    const transitionBody = await transitionResponse.json();
+    expect(transitionBody).toMatchObject({
+      ok: true,
+      code: 'ROUTE_COMMITMENT_TRANSITION_APPLIED',
+      data: {
+        commitment: {
           commitmentId,
+          status: 'in_progress',
         },
-      });
-    },
-  );
+      },
+    });
 
-  test.fixme(
-    '[P0] preserves independent commitment lifecycle transitions after request terminalization @P0',
-    async ({ request, story24Context, story24Headers, story24HappyPayload }) => {
-      const createResponse = await apiRequest(request, {
-        method: 'POST',
-        path: story24Context.paths.resourceCollection,
-        headers: story24Headers,
-        data: story24HappyPayload,
-      });
+    const detailResponse = await apiRequest(request, {
+      method: 'GET',
+      path: detailPath(requestId),
+    });
 
-      expect(createResponse.status()).toBe(200);
-      const createBody = await createResponse.json();
-      const commitmentId = createBody?.data?.commitmentId ?? story24Context.commitmentId;
+    expect(detailResponse.status()).toBe(200);
+    const detailBody = await detailResponse.json();
+    expect(detailBody).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_DONOR_INTAKE_COMMITMENT_LINKED',
+      data: {
+        requestId,
+        requestLifecycleStatus: 'committed',
+        commitmentLifecycleStatus: 'in_progress',
+      },
+    });
+  });
 
-      const transitionResponse = await apiRequest(request, {
-        method: 'POST',
-        path: commitmentTransitionPath(commitmentId),
-        headers: story24Headers,
-        data: {
-          nextStatus: 'completed',
-          reason: 'story-2-4-terminal-independence-check',
-        },
-      });
+  test('[P0] returns explicit refusal outcomes with terminal lifecycle semantics and no linkage leakage @P0', async ({ request }) => {
+    const scope = await loginAndResolveScope(request);
+    const scoped = requireScopedContext(scope);
 
-      expect(transitionResponse.status()).toBe(200);
-      const transitionBody = await transitionResponse.json();
-      expect(transitionBody).toMatchObject({
-        ok: true,
-        data: {
-          commitmentId,
-          status: 'completed',
-        },
-      });
-    },
-  );
+    const refusalResponse = await apiRequest(request, {
+      method: 'POST',
+      path: INTAKE_COLLECTION_PATH,
+      headers: {
+        'x-csrf-token': scope.csrfToken,
+        'x-correlation-id': 'story24-refusal-' + randomUUID().slice(0, 8),
+      },
+      data: buildPayload(scoped, true),
+    });
 
-  test.fixme(
-    '[P1] returns reconciliation metadata for refusal outcomes and omits commitment linkage identifiers @P1',
-    async ({ request, story24Context, story24Headers, story24RefusalPayload }) => {
-      const response = await apiRequest(request, {
-        method: 'POST',
-        path: story24Context.paths.resourceCollection,
-        headers: story24Headers,
-        data: story24RefusalPayload,
-      });
+    expect(refusalResponse.status()).toBe(200);
+    const refusalBody = await refusalResponse.json();
+    expect(refusalBody).toMatchObject({
+      ok: false,
+      refusalType: 'business',
+      code: 'ROUTESHYFT_DONOR_INTAKE_REFUSED',
+      data: {
+        requestId: expect.any(String),
+        alternatives: expect.any(Array),
+        nextSteps: expect.any(String),
+      },
+    });
+    expect(refusalBody).not.toHaveProperty('data.commitmentId');
 
-      expect(response.status()).toBe(200);
-      const body = await response.json();
-      expect(body).toMatchObject({
-        ok: false,
-        refusalType: 'business',
-        code: story24Context.refusalCode,
-        data: {
-          reconciliationActions: expect.anything(),
-          lifecycleStatus: expect.any(String),
-        },
-      });
-      expect(body).not.toHaveProperty('data.commitmentId');
-    },
-  );
+    const requestId = refusalBody?.data?.requestId as string;
 
-  test.fixme(
-    '[P1] refuses cross-tenant request detail access without leaking commitment linkage data @P1',
-    async ({ request, story24Context, story24Headers, story24HappyPayload }) => {
-      const createResponse = await apiRequest(request, {
-        method: 'POST',
-        path: story24Context.paths.resourceCollection,
-        headers: story24Headers,
-        data: story24HappyPayload,
-      });
-      const createBody = await createResponse.json();
-      const requestId = createBody?.data?.requestId ?? story24Context.requestId;
+    const detailResponse = await apiRequest(request, {
+      method: 'GET',
+      path: detailPath(requestId),
+    });
 
-      const crossTenantHeaders = {
-        ...story24Headers,
-        'x-tenant-id': 'tenant-routeshyft-bravo',
-      };
+    expect(detailResponse.status()).toBe(200);
+    const detailBody = await detailResponse.json();
+    expect(detailBody).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_DONOR_INTAKE_REFUSED',
+      data: {
+        requestId,
+        commitmentId: null,
+        requestLifecycleStatus: expect.stringMatching(/^(refused|cancelled)$/),
+      },
+    });
+  });
 
-      const detailResponse = await apiRequest(request, {
-        method: 'GET',
-        path: detailPath(story24Context.paths.resourceCollection, requestId),
-        headers: crossTenantHeaders,
-      });
+  test('[P1] exposes unresolved reconciliation queue shape with lifecycle and action guidance @P1', async ({ request }) => {
+    const scope = await loginAndResolveScope(request);
+    const scoped = requireScopedContext(scope);
 
-      expect(detailResponse.status()).toBe(200);
-      const detailBody = await detailResponse.json();
-      expect(detailBody).toMatchObject({
-        ok: false,
-        refusalType: 'business',
-      });
-      expect(detailBody?.data?.commitmentId).toBeUndefined();
-    },
-  );
+    const response = await apiRequest(request, {
+      method: 'GET',
+      path: RECONCILIATION_QUEUE_PATH,
+      headers: {
+        'x-correlation-id': 'story24-reconciliation-' + randomUUID().slice(0, 8),
+      },
+    });
 
-  test.fixme(
-    '[P1] preserves canonical top-level envelope keys across success refusal and detail contract responses @P1',
-    async ({ request, story24Context, story24Headers, story24HappyPayload, story24RefusalPayload }) => {
-      const successResponse = await apiRequest(request, {
-        method: 'POST',
-        path: story24Context.paths.resourceCollection,
-        headers: story24Headers,
-        data: story24HappyPayload,
-      });
-      const refusalResponse = await apiRequest(request, {
-        method: 'POST',
-        path: story24Context.paths.resourceCollection,
-        headers: story24Headers,
-        data: story24RefusalPayload,
-      });
+    expect(response.status()).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_INTAKE_RECONCILIATION_QUEUE',
+      data: {
+        staleThresholdMinutes: 60,
+        guardrailStatus: expect.stringMatching(/^(clear|action_required)$/),
+        items: expect.any(Array),
+      },
+    });
 
-      const successBody = await successResponse.json();
-      const refusalBody = await refusalResponse.json();
-      const detailRequestId = successBody?.data?.requestId ?? story24Context.requestId;
+    for (const item of body?.data?.items as Array<Record<string, unknown>>) {
+      expect(item.tenantId).toBeUndefined();
+      expect(item.issueCode).toBe('ROUTESHYFT_REQUEST_TERMINAL_STATE_MISSING');
+      expect(typeof item.requestLifecycleStatus).toBe('string');
+      expect(Array.isArray(item.reconciliationActions)).toBe(true);
+    }
 
-      const detailResponse = await apiRequest(request, {
-        method: 'GET',
-        path: detailPath(story24Context.paths.resourceCollection, detailRequestId),
-        headers: story24Headers,
-      });
-      const detailBody = await detailResponse.json();
+    expect(scoped.tenantId).not.toBe('');
+  });
 
-      expect(successResponse.status()).toBe(200);
-      expect(refusalResponse.status()).toBe(200);
-      expect(detailResponse.status()).toBe(200);
+  test('[P1] rejects tenant-scope mismatched intake submissions with security refusal @P1', async ({ request }) => {
+    const scope = await loginAndResolveScope(request);
+    const scoped = requireScopedContext(scope);
 
-      for (const payload of [successBody, refusalBody, detailBody]) {
-        expect(
-          REQUIRED_ENVELOPE_KEYS.every((key) => Object.prototype.hasOwnProperty.call(payload, key)),
-        ).toBe(true);
-      }
-    },
-  );
+    const response = await apiRequest(request, {
+      method: 'POST',
+      path: INTAKE_COLLECTION_PATH,
+      headers: {
+        'x-csrf-token': scope.csrfToken,
+      },
+      data: {
+        ...buildPayload(scoped, false),
+        tenantId: 'tenant-routeshyft-bravo',
+      },
+    });
+
+    expect(response.status()).toBe(403);
+    const body = await response.json();
+    expect(body).toMatchObject({
+      ok: false,
+      code: 'ROUTE_TENANT_SCOPE_MISMATCH',
+      refusalType: 'security',
+    });
+  });
+
+  test('[P1] preserves canonical top-level envelope keys across success refusal and detail responses @P1', async ({ request }) => {
+    const scope = await loginAndResolveScope(request);
+    const scoped = requireScopedContext(scope);
+
+    const successResponse = await apiRequest(request, {
+      method: 'POST',
+      path: INTAKE_COLLECTION_PATH,
+      headers: {
+        'x-csrf-token': scope.csrfToken,
+      },
+      data: buildPayload(scoped, false),
+    });
+
+    const refusalResponse = await apiRequest(request, {
+      method: 'POST',
+      path: INTAKE_COLLECTION_PATH,
+      headers: {
+        'x-csrf-token': scope.csrfToken,
+      },
+      data: buildPayload(scoped, true),
+    });
+
+    expect(successResponse.status()).toBe(200);
+    expect(refusalResponse.status()).toBe(200);
+
+    const successBody = await successResponse.json();
+    const refusalBody = await refusalResponse.json();
+    const detailRequestId = successBody?.data?.requestId as string;
+
+    const detailResponse = await apiRequest(request, {
+      method: 'GET',
+      path: detailPath(detailRequestId),
+    });
+
+    expect(detailResponse.status()).toBe(200);
+    const detailBody = await detailResponse.json();
+
+    for (const payload of [successBody, refusalBody, detailBody]) {
+      expect(
+        REQUIRED_ENVELOPE_KEYS.every((key) => Object.prototype.hasOwnProperty.call(payload, key)),
+      ).toBe(true);
+    }
+  });
 });
