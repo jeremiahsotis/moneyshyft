@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "subprocess": "atdd-api-tests",
+  "tests": [
+    {
+      "file": "tests/api/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.atdd.api.spec.ts",
+      "content": "import { apiRequest } from '../../support/helpers/apiClient';\nimport { test, expect } from '../../support/fixtures/connectShyftStoryUxR1.fixture';\n\ntest.describe('Story ux-r1 Mobile-First Inbox/Mine/Thread Redesign (ATDD API RED)', () => {\n  test.skip(\n    '[P0] inbox and mine contracts expose exactly three primary navigation surfaces with no hidden fourth tab @P0',\n    async ({ request, storyUxR1Context, storyUxR1MemberHeaders, storyUxR1InboxQuery, storyUxR1MineQuery }) => {\n      const inboxResponse = await apiRequest(request, {\n        method: 'GET',\n        path: `${storyUxR1Context.paths.inbox}${storyUxR1InboxQuery}`,\n        headers: storyUxR1MemberHeaders,\n      });\n      const mineResponse = await apiRequest(request, {\n        method: 'GET',\n        path: `${storyUxR1Context.paths.inbox}${storyUxR1MineQuery}`,\n        headers: storyUxR1MemberHeaders,\n      });\n\n      expect(inboxResponse.status()).toBe(200);\n      expect(mineResponse.status()).toBe(200);\n\n      const inboxBody = await inboxResponse.json();\n      const mineBody = await mineResponse.json();\n\n      expect(inboxBody).toMatchObject({\n        ok: true,\n        data: {\n          navigation: {\n            primaryTabs: [...storyUxR1Context.navModel.primaryTabs],\n          },\n        },\n      });\n      expect(mineBody).toMatchObject({\n        ok: true,\n        data: {\n          navigation: {\n            primaryTabs: [...storyUxR1Context.navModel.primaryTabs],\n          },\n        },\n      });\n\n      const inboxPrimaryTabs = inboxBody?.data?.navigation?.primaryTabs ?? [];\n      const minePrimaryTabs = mineBody?.data?.navigation?.primaryTabs ?? [];\n      expect(Array.isArray(inboxPrimaryTabs)).toBe(true);\n      expect(Array.isArray(minePrimaryTabs)).toBe(true);\n      expect(inboxPrimaryTabs.length).toBe(3);\n      expect(minePrimaryTabs.length).toBe(3);\n    },\n  );\n\n  test.skip(\n    '[P0] inbox and mine card contracts publish minimum readability and tap-target thresholds for large-card hierarchy @P0',\n    async ({ request, storyUxR1Context, storyUxR1MemberHeaders, storyUxR1InboxQuery }) => {\n      const response = await apiRequest(request, {\n        method: 'GET',\n        path: `${storyUxR1Context.paths.inbox}${storyUxR1InboxQuery}`,\n        headers: storyUxR1MemberHeaders,\n      });\n\n      expect(response.status()).toBe(200);\n      const body = await response.json();\n\n      const cardContract = body?.data?.layout?.cardContract;\n      expect(cardContract).toMatchObject({\n        hierarchy: 'large-card',\n      });\n      expect(Number(cardContract?.minBodyTextPx)).toBeGreaterThanOrEqual(\n        storyUxR1Context.readability.minBodyTextPx,\n      );\n      expect(Number(cardContract?.primaryActionMinTapTargetPx)).toBeGreaterThanOrEqual(\n        storyUxR1Context.readability.minTapTargetPx,\n      );\n    },\n  );\n\n  test.skip(\n    '[P0] thread detail action matrix remains state explicit across unclaimed claimed and closed contracts @P0',\n    async ({ request, storyUxR1Context, storyUxR1MemberHeaders }) => {\n      const unclaimedResponse = await apiRequest(request, {\n        method: 'GET',\n        path: `${storyUxR1Context.paths.threadDetail}/${storyUxR1Context.threadIds.unclaimed}`,\n        headers: storyUxR1MemberHeaders,\n      });\n      const claimedResponse = await apiRequest(request, {\n        method: 'GET',\n        path: `${storyUxR1Context.paths.threadDetail}/${storyUxR1Context.threadIds.claimed}`,\n        headers: storyUxR1MemberHeaders,\n      });\n      const closedResponse = await apiRequest(request, {\n        method: 'GET',\n        path: `${storyUxR1Context.paths.threadDetail}/${storyUxR1Context.threadIds.closed}`,\n        headers: storyUxR1MemberHeaders,\n      });\n\n      expect(unclaimedResponse.status()).toBe(200);\n      expect(claimedResponse.status()).toBe(200);\n      expect(closedResponse.status()).toBe(200);\n\n      const unclaimedBody = await unclaimedResponse.json();\n      const claimedBody = await claimedResponse.json();\n      const closedBody = await closedResponse.json();\n\n      expect(unclaimedBody?.data?.thread?.actions).toEqual(storyUxR1Context.actionSets.UNCLAIMED);\n      expect(claimedBody?.data?.thread?.actions).toEqual(storyUxR1Context.actionSets.CLAIMED);\n      expect(closedBody?.data?.thread?.actions).toEqual(storyUxR1Context.actionSets.CLOSED);\n    },\n  );\n\n  test.skip(\n    '[P1] thread detail and mine contracts preserve neighbor conference and voicemail discoverability across responsive modes @P1',\n    async ({ request, storyUxR1Context, storyUxR1MemberHeaders, storyUxR1MineQuery }) => {\n      const mineResponse = await apiRequest(request, {\n        method: 'GET',\n        path: `${storyUxR1Context.paths.inbox}${storyUxR1MineQuery}`,\n        headers: storyUxR1MemberHeaders,\n      });\n      const detailResponse = await apiRequest(request, {\n        method: 'GET',\n        path: `${storyUxR1Context.paths.threadDetail}/${storyUxR1Context.threadIds.claimed}`,\n        headers: storyUxR1MemberHeaders,\n      });\n\n      expect(mineResponse.status()).toBe(200);\n      expect(detailResponse.status()).toBe(200);\n\n      const mineBody = await mineResponse.json();\n      const detailBody = await detailResponse.json();\n\n      const voicemailThread = (mineBody?.data?.items ?? []).find(\n        (item: { threadId?: string }) => item.threadId === storyUxR1Context.threadIds.voicemailClaimed,\n      );\n\n      expect(voicemailThread).toMatchObject({\n        threadId: storyUxR1Context.threadIds.voicemailClaimed,\n        voicemailIndicator: true,\n        bucket: 'mine',\n      });\n      expect(detailBody).toMatchObject({\n        ok: true,\n        data: {\n          thread: {\n            context: {\n              neighbor: expect.objectContaining({\n                id: expect.any(String),\n              }),\n              conference: expect.objectContaining({\n                id: expect.any(String),\n              }),\n            },\n          },\n          responsiveBreakpoints: {\n            mobile: expect.objectContaining({\n              preservesActionDiscoverability: true,\n            }),\n            tablet: expect.objectContaining({\n              preservesActionDiscoverability: true,\n            }),\n            desktop: expect.objectContaining({\n              preservesActionDiscoverability: true,\n            }),\n          },\n        },\n      });\n    },\n  );\n});\n",
+      "description": "ATDD API tests for Story ux-r1 Mobile-First Inbox/Mine/Thread Redesign (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Given operational navigation is rendered, when users move between primary surfaces, then the app uses persistent bottom navigation (Inbox, Mine, More) with no hidden fourth primary tab.",
+        "Given Inbox and Mine lists render, when cards are displayed, then thread rows use large-card hierarchy with minimum 16px body text and 44px tap targets for primary actions.",
+        "Given thread detail renders, when context and actions are displayed, then header information prioritizes neighbor and conference context and action sets remain state-explicit for UNCLAIMED, CLAIMED, and CLOSED.",
+        "Given desktop, tablet, and mobile breakpoints, when the same thread is viewed, then responsive layout preserves thread context, voicemail indicators, and action discoverability without hidden policy paths."
+      ],
+      "priority_coverage": {
+        "P0": 3,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "tests/support/factories/connectShyftStoryUxR1Factory.ts",
+    "tests/support/fixtures/connectShyftStoryUxR1.fixture.ts"
+  ],
+  "knowledge_fragments_used": [
+    "data-factories",
+    "component-tdd",
+    "test-quality",
+    "test-healing-patterns",
+    "selector-resilience",
+    "timing-debugging",
+    "overview",
+    "api-request",
+    "network-recorder",
+    "auth-session",
+    "intercept-network-call",
+    "recurse",
+    "log",
+    "file-utils",
+    "network-error-monitor",
+    "fixtures-composition",
+    "playwright-cli",
+    "test-levels-framework"
+  ],
+  "test_count": 4,
+  "tdd_phase": "RED",
+  "summary": "Generated 4 FAILING API tests for Story ux-r1"
+}
