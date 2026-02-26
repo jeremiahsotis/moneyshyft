@@ -1,6 +1,6 @@
 # Story b.4: Role-Restricted Neighbor Merge with Irreversible Confirmation
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,31 +25,31 @@ so that high-impact identity operations are deliberate and traceable.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Merge UX must use irreversible confirmation language and display merge impact summary before commit.
-- Real-User Validation Evidence: Pending implementation. Validate role matrix, irreversible confirmation, and atomic merge integrity before `review`.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-02-26 targeted Playwright validation passed for API merge contracts (`tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.api.spec.ts`, 7/7) and operator UI merge journeys (`tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.spec.ts`, 5/5).
+- Real-User Validation Result: pass
 - Role-Admin UI Path: Role assignment path is required to validate canonical merge role matrix (`TENANT_ADMIN` and `ORGUNIT_IDENTITY_LEAD` allowed; `ORGUNIT_MEMBER` refused).
-- Role-Admin UI Path Verified: pending
+- Role-Admin UI Path Verified: yes
 - Access-Control Exemption Rationale: N/A
 
 ## Tasks / Subtasks
 
-- [ ] Implement role-restricted merge authorization (AC: 1, 4)
-  - [ ] Enforce merge capability checks at route and service layers.
-  - [ ] Deny by default with deterministic refusal payloads.
-- [ ] Implement irreversible confirmation contract (AC: 2, 4)
-  - [ ] Require explicit confirmation field/value on merge endpoint payload.
-  - [ ] Refuse requests lacking valid confirmation with stable refusal code.
-- [ ] Implement transactional merge operation (AC: 3, 4)
-  - [ ] Merge duplicate identity records into canonical neighbor record with transaction boundaries.
-  - [ ] Repoint dependent records (thread/communication associations) atomically.
-  - [ ] Prevent partial writes on any failure path.
-- [ ] Implement audit/outbox emission for merge (AC: 3)
-  - [ ] Emit before/after neighbor IDs, actor, orgUnit context, and reason metadata.
-  - [ ] Ensure audit/outbox persists with merge transaction semantics.
-- [ ] Add UI merge flow and automated coverage (AC: 1, 2, 3, 4)
-  - [ ] Add irreversible confirmation modal with explicit impact copy.
-  - [ ] API tests for canonical role matrix (`TENANT_ADMIN` + `ORGUNIT_IDENTITY_LEAD` allowed, `ORGUNIT_MEMBER` refused) and atomicity.
-  - [ ] E2E tests for confirmation, refusal, and success path integrity.
+- [x] Implement role-restricted merge authorization (AC: 1, 4)
+  - [x] Enforce merge capability checks at route and service layers.
+  - [x] Deny by default with deterministic refusal payloads.
+- [x] Implement irreversible confirmation contract (AC: 2, 4)
+  - [x] Require explicit confirmation field/value on merge endpoint payload.
+  - [x] Refuse requests lacking valid confirmation with stable refusal code.
+- [x] Implement transactional merge operation (AC: 3, 4)
+  - [x] Merge duplicate identity records into canonical neighbor record with transaction boundaries.
+  - [x] Repoint dependent records (thread/communication associations) atomically.
+  - [x] Prevent partial writes on any failure path.
+- [x] Implement audit/outbox emission for merge (AC: 3)
+  - [x] Emit before/after neighbor IDs, actor, orgUnit context, and reason metadata.
+  - [x] Ensure audit/outbox persists with merge transaction semantics.
+- [x] Add UI merge flow and automated coverage (AC: 1, 2, 3, 4)
+  - [x] Add irreversible confirmation modal with explicit impact copy.
+  - [x] API tests for canonical role matrix (`TENANT_ADMIN` + `ORGUNIT_IDENTITY_LEAD` allowed, `ORGUNIT_MEMBER` refused) and atomicity.
+  - [x] E2E tests for confirmation, refusal, and success path integrity.
 
 ## Dev Notes
 
@@ -134,16 +134,70 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context generation only (no implementation commands executed).
+- `npm run branch:ensure-workflow -- --workflow dev-story --story b-4-role-restricted-neighbor-merge-with-irreversible-confirmation` (pass)
+- `npm run build` (backend TypeScript compile) in `src/` (pass)
+- `npm run build` (frontend `vue-tsc` + `vite build`) in `frontend/` (pass)
+- `npm test -- --runInBand src/src/modules/connectshyft/__tests__/neighbors.test.ts` in `src/` (pass)
+- `npm run test:e2e -- tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.api.spec.ts` (pass)
+- `npm run test:e2e -- tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.spec.ts` (pass)
 
 ### Completion Notes List
 
-- Created implementation-ready Story b.4 context with merge-governance, irreversible confirmation, and transactional safety guardrails.
+- Added route-level merge endpoint `POST /api/v1/connectshyft/neighbors/merge` with capability enforcement, deterministic refusal envelopes, and shared scope payloads.
+- Implemented service/store neighbor-merge behavior in `src/src/modules/connectshyft/neighbors.ts` for both in-memory and Knex paths, including irreversible confirmation enforcement and transactional thread repointing.
+- Added atomic side-effect wrapping for merge audit/outbox emission using `executePlatformMutation` with deterministic transaction-abort refusal handling and rollback simulation stage support.
+- Implemented operator merge UX in `frontend/src/views/ConnectShyft/ConnectShyftNeighborProfileView.vue` with irreversible confirmation modal, refusal/success states, and before/after audit chips.
+- Added frontend merge client contract in `frontend/src/features/connectshyft/neighbors.ts`.
+- Activated and updated B4 automate API and E2E specs with seeded-neighbor setup and passing assertions for permission, confirmation, envelope stability, success auditing, and refusal determinism.
+- Added backend unit coverage for merge authorization, confirmation validation, and successful merge data behavior.
+- Tightened role matrix enforcement by removing merge capability from `TENANT_STAFF` and adding explicit refusal coverage for that role.
+- Removed merge success fallback when audit/outbox side effects cannot persist; merge now fails closed with deterministic transaction-aborted refusal and no writes.
+- Restricted `simulateFailureStage` to ConnectShyft test-harness mode only.
+- Completed previously skipped scoped-membership refusal E2E case and removed actionable merge control when refusal state is present.
+- Reconciled story documentation and sprint tracking to match the final code/test diff.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- src/src/modules/connectshyft/__tests__/neighbors.test.ts
+- src/src/modules/connectshyft/neighbors.ts
+- src/src/platform/rbac/capabilities.ts
+- src/src/routes/api/v1/connectshyft.ts
+- frontend/src/features/connectshyft/neighbors.ts
+- frontend/src/views/ConnectShyft/ConnectShyftNeighborProfileView.vue
+- tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.api.spec.ts
+- tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.atdd.api.spec.ts
+- tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.spec.ts
+- tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.atdd.spec.ts
+- tests/support/fixtures/connectShyftStoryB4.fixture.ts
+- tests/support/factories/connectShyftStoryB4Factory.ts
+- tests/support/helpers/connectShyftDbActor.ts
 
 ## Change Log
 
 - 2026-02-24: Created Story b.4 ready-for-dev context document.
+- 2026-02-26: Implemented role-restricted neighbor merge endpoint + service merge semantics, irreversible confirmation UX, and B4 automate API/E2E coverage; status advanced to `in-progress` via policy-compliant transition workflow.
+- 2026-02-26: Senior review fixes applied: canonical role matrix hardened (`TENANT_STAFF` refused), merge side-effects path made fail-closed, B4 API suite expanded (7/7), scoped-membership E2E refusal activated (5/5), and story/file-list/sprint-status discrepancies resolved.
+
+## Senior Developer Review (AI)
+
+### Reviewer
+
+Jeremiah (Codex)
+
+### Date
+
+2026-02-26
+
+### Outcome
+
+Approved
+
+### Findings Resolved
+
+- [Resolved] Merge authorization narrowed to canonical matrix by removing `TENANT_STAFF` merge capability and adding regression tests.
+- [Resolved] Merge no longer succeeds when audit/outbox side effects cannot persist; deterministic aborted refusal now blocks partial/non-audited writes.
+- [Resolved] API automation now asserts side-effect persistence and rollback determinism, plus explicit `TENANT_STAFF` refusal coverage.
+- [Resolved] Scoped-membership merge refusal E2E case is active (no longer `fixme`) and verifies no actionable merge control.
+- [Resolved] Story and git/file discrepancies reconciled (file list + sprint status synchronized).

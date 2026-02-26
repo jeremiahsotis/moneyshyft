@@ -61,6 +61,10 @@ const TEST_ACTIVE_THREAD_NEIGHBOR_IDS_HEADER = 'x-test-connectshyft-active-threa
 const TEST_USER_ID_HEADER = 'x-test-connectshyft-user-id';
 const NEIGHBOR_RELATIONSHIP_REQUIRED_CODE = 'CONNECTSHYFT_NEIGHBOR_EDIT_RELATIONSHIP_REQUIRED';
 const NEIGHBOR_RELATIONSHIP_REQUIRED_MESSAGE = 'This edit requires an active thread relationship or tenant-privileged role.';
+const NEIGHBOR_MERGE_FORBIDDEN_CODE = 'CONNECTSHYFT_NEIGHBOR_MERGE_FORBIDDEN';
+const NEIGHBOR_MERGE_FORBIDDEN_MESSAGE = 'Neighbor merge requires an authorized role.';
+const NEIGHBOR_MERGE_TRANSACTION_ABORTED_CODE = 'CONNECTSHYFT_NEIGHBOR_MERGE_TRANSACTION_ABORTED';
+const NEIGHBOR_MERGE_TRANSACTION_ABORTED_MESSAGE = 'Neighbor merge aborted and no changes were persisted.';
 const TENANT_PRIVILEGED_OVERRIDE_NOTICE = 'Tenant-privileged override applied';
 const RELATIONSHIP_POLICY_INDICATOR = 'Active thread relationship';
 const CONNECTSHYFT_INBOX_P95_BUDGET_MS = 750;
@@ -79,6 +83,7 @@ const CONNECTSHYFT_LEGACY_ROLE_ALIASES: Record<string, string> = {
 };
 
 type ConnectShyftOutboundAction = 'call' | 'message';
+type ConnectShyftNeighborMergeFailureStage = 'before-commit' | 'after-dependent-repoint';
 
 type ConnectShyftSyntheticThreadDescriptor = {
   state: ConnectShyftThreadState;
@@ -197,8 +202,19 @@ const resolveConnectShyftFallbackOrgUnitId = async (
   return normalizeNonEmptyString((tenantOrgUnitRows[0] as { id?: unknown }).id);
 };
 
-const shouldBypassTestHarnessEntitlementLookup = (tenantId: string): boolean => {
-  return isConnectShyftTestOverrideEnabled() && !UUID_PATTERN.test(tenantId);
+const TEST_TENANT_OVERRIDE_HEADER = 'x-test-connectshyft-tenant-id';
+
+const shouldBypassTestHarnessEntitlementLookup = (req: Request, tenantId: string): boolean => {
+  if (!isConnectShyftTestOverrideEnabled()) {
+    return false;
+  }
+
+  if (!UUID_PATTERN.test(tenantId)) {
+    return true;
+  }
+
+  const testTenantOverride = req.header(TEST_TENANT_OVERRIDE_HEADER);
+  return typeof testTenantOverride === 'string' && testTenantOverride.trim().length > 0;
 };
 
 const resolveEntitlementAwareConnectShyftFlags = async (
@@ -213,7 +229,7 @@ const resolveEntitlementAwareConnectShyftFlags = async (
     };
   }
 
-  if (shouldBypassTestHarnessEntitlementLookup(tenantId)) {
+  if (shouldBypassTestHarnessEntitlementLookup(req, tenantId)) {
     return {
       flags: resolvedFlags,
       entitlementDecision: null,
@@ -971,6 +987,25 @@ const enforceNeighborUpdateCapability = (
   return false;
 };
 
+const enforceNeighborMergeCapability = (
+  req: Request,
+  res: Response,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
+): boolean => {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  if (hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_MERGE)) {
+    return true;
+  }
+
+  refusal(res, {
+    code: NEIGHBOR_MERGE_FORBIDDEN_CODE,
+    message: NEIGHBOR_MERGE_FORBIDDEN_MESSAGE,
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
 const enforceEscalationConfigCapability = (
   req: Request,
   res: Response,
@@ -1254,6 +1289,49 @@ const parseNeighborUpdateBody = (req: Request) => ({
   phones: parseNeighborPhones(req),
 });
 
+const parseNeighborMergeBody = (req: Request): {
+  orgUnitId: string | null;
+  sourceNeighborId: string;
+  survivorNeighborId: string;
+  irreversibleConfirmation: {
+    acknowledged: boolean;
+    phrase: string;
+  };
+  reason: string;
+  simulateFailureStage?: ConnectShyftNeighborMergeFailureStage;
+  } => {
+  const rawConfirmation = req.body?.irreversibleConfirmation;
+  const confirmation = rawConfirmation && typeof rawConfirmation === 'object'
+    ? rawConfirmation as { acknowledged?: unknown; phrase?: unknown }
+    : null;
+
+  const rawFailureStage = isConnectShyftTestOverrideEnabled()
+    && typeof req.body?.simulateFailureStage === 'string'
+    ? req.body.simulateFailureStage
+    : '';
+
+  const simulateFailureStage: ConnectShyftNeighborMergeFailureStage | undefined =
+    rawFailureStage === 'before-commit' || rawFailureStage === 'after-dependent-repoint'
+      ? rawFailureStage
+      : undefined;
+
+  return {
+    orgUnitId: parseOrgUnitIdFromBody(req),
+    sourceNeighborId: typeof req.body?.sourceNeighborId === 'string'
+      ? req.body.sourceNeighborId.trim()
+      : '',
+    survivorNeighborId: typeof req.body?.survivorNeighborId === 'string'
+      ? req.body.survivorNeighborId.trim()
+      : '',
+    irreversibleConfirmation: {
+      acknowledged: confirmation?.acknowledged === true,
+      phrase: typeof confirmation?.phrase === 'string' ? confirmation.phrase : '',
+    },
+    reason: typeof req.body?.reason === 'string' ? req.body.reason.trim() : '',
+    simulateFailureStage,
+  };
+};
+
 const parseNeighborIdParam = (req: Request): string => {
   if (typeof req.params.neighborId !== 'string') {
     return '';
@@ -1329,6 +1407,43 @@ const buildNeighborEditProvenancePayload = (
 };
 
 type NeighborEditProvenancePayload = ReturnType<typeof buildNeighborEditProvenancePayload>;
+type NeighborMergeProvenancePayload = ReturnType<typeof buildNeighborMergeProvenancePayload>;
+
+const buildNeighborMergeProvenancePayload = (
+  context: { tenantId: string; orgUnitId: string },
+  actorUserId: string | null,
+  sourceNeighborId: string,
+  survivorNeighborId: string,
+  reason: string,
+) => {
+  const resolvedActorUserId = actorUserId || 'unknown';
+  const metadata = {
+    tenant_id: context.tenantId,
+    org_unit_id: context.orgUnitId,
+    actor_user_id: resolvedActorUserId,
+    before_neighbor_id: sourceNeighborId,
+    after_neighbor_id: survivorNeighborId,
+    reason: reason || null,
+  };
+
+  return {
+    audit: {
+      eventName: 'connectshyft.neighbor.merged',
+      metadata,
+    },
+    outbox: {
+      eventName: 'connectshyft.neighbor.merged',
+      metadata: {
+        tenant_id: context.tenantId,
+        org_unit_id: context.orgUnitId,
+        actor_user_id: resolvedActorUserId,
+        before_neighbor_id: sourceNeighborId,
+        after_neighbor_id: survivorNeighborId,
+        reason: reason || null,
+      },
+    },
+  };
+};
 
 const canPersistNeighborEditSideEffects = (input: {
   tenantId: string;
@@ -1459,6 +1574,140 @@ const updateNeighborWithSideEffects = async (input: {
       ok: false,
       code: 'CONNECTSHYFT_NEIGHBOR_UPDATE_SIDE_EFFECTS_UNAVAILABLE',
       message: 'Neighbor update side effects are temporarily unavailable. Please retry.',
+    };
+  }
+};
+
+const canPersistNeighborMergeSideEffects = (input: {
+  tenantId: string;
+  sourceNeighborId: string;
+  survivorNeighborId: string;
+}): boolean => {
+  return UUID_PATTERN.test(input.tenantId)
+    && UUID_PATTERN.test(input.sourceNeighborId)
+    && UUID_PATTERN.test(input.survivorNeighborId);
+};
+
+class NeighborMergeRefusalError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'NeighborMergeRefusalError';
+  }
+}
+
+const mergeNeighborWithSideEffects = async (input: {
+  actorRoles: string[];
+  tenantId: string;
+  orgUnitId: string;
+  sourceNeighborId: string;
+  survivorNeighborId: string;
+  actorUserId: string | null;
+  irreversibleConfirmation: {
+    acknowledged: boolean;
+    phrase: string;
+  };
+  reason: string;
+  simulateFailureStage?: ConnectShyftNeighborMergeFailureStage;
+  provenance: NeighborMergeProvenancePayload;
+}): Promise<
+  | {
+    ok: true;
+    code: 'CONNECTSHYFT_NEIGHBOR_MERGED';
+    httpStatus: 200;
+    merge: {
+      sourceNeighborId: string;
+      survivorNeighborId: string;
+      irreversibleConfirmed: true;
+    };
+    neighbor: unknown;
+    sideEffectsPersisted: boolean;
+  }
+  | {
+    ok: false;
+    code: string;
+    message: string;
+  }
+> => {
+  if (input.simulateFailureStage === 'before-commit') {
+    return {
+      ok: false,
+      code: NEIGHBOR_MERGE_TRANSACTION_ABORTED_CODE,
+      message: NEIGHBOR_MERGE_TRANSACTION_ABORTED_MESSAGE,
+    };
+  }
+
+  const command = {
+    actorRoles: input.actorRoles,
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    sourceNeighborId: input.sourceNeighborId,
+    survivorNeighborId: input.survivorNeighborId,
+    irreversibleConfirmation: input.irreversibleConfirmation,
+    reason: input.reason,
+  };
+
+  if (!canPersistNeighborMergeSideEffects({
+    tenantId: input.tenantId,
+    sourceNeighborId: input.sourceNeighborId,
+    survivorNeighborId: input.survivorNeighborId,
+  })) {
+    return {
+      ok: false,
+      code: NEIGHBOR_MERGE_TRANSACTION_ABORTED_CODE,
+      message: NEIGHBOR_MERGE_TRANSACTION_ABORTED_MESSAGE,
+    };
+  }
+
+  try {
+    const merged = await executePlatformMutation({
+      mutation: async (trx) => {
+        const txNeighborService = new AsyncConnectShyftNeighborService(
+          new KnexConnectShyftNeighborStore(trx as unknown as Knex),
+        );
+        const mergedResult = await txNeighborService.mergeNeighbor(command);
+        if (!mergedResult.ok) {
+          throw new NeighborMergeRefusalError(mergedResult.code, mergedResult.message);
+        }
+        if (input.simulateFailureStage === 'after-dependent-repoint') {
+          throw new Error(NEIGHBOR_MERGE_TRANSACTION_ABORTED_MESSAGE);
+        }
+
+        return mergedResult.data;
+      },
+      event: {
+        tenantId: input.tenantId,
+        actorId: resolveMutationActorUserId(input.actorUserId),
+        eventName: input.provenance.audit.eventName,
+        entityType: 'connectshyft.neighbor',
+        entityId: input.survivorNeighborId,
+        payload: input.provenance.audit.metadata,
+      },
+    }, loadPlatformDb());
+
+    return {
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_MERGED',
+      httpStatus: 200,
+      merge: merged.merge,
+      neighbor: merged.neighbor,
+      sideEffectsPersisted: true,
+    };
+  } catch (error: unknown) {
+    if (error instanceof NeighborMergeRefusalError) {
+      return {
+        ok: false,
+        code: error.code,
+        message: error.message,
+      };
+    }
+
+    return {
+      ok: false,
+      code: NEIGHBOR_MERGE_TRANSACTION_ABORTED_CODE,
+      message: NEIGHBOR_MERGE_TRANSACTION_ABORTED_MESSAGE,
     };
   }
 };
@@ -2152,6 +2401,78 @@ router.put('/neighbors/:neighborId', async (req: Request, res: Response) => {
       ...buildNeighborEditPolicyPayload(policyDecision),
       ...provenance,
       sideEffectsPersisted: updated.sideEffectsPersisted,
+    },
+  });
+});
+
+router.post('/neighbors/merge', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const payload = parseNeighborMergeBody(req);
+  const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
+  if (!context) {
+    return;
+  }
+
+  if (!enforceNeighborMergeCapability(req, res, context)) {
+    return;
+  }
+
+  if (!payload.sourceNeighborId || !payload.survivorNeighborId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_NEIGHBOR_MERGE_INVALID',
+      message: 'sourceNeighborId and survivorNeighborId are required.',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+    return;
+  }
+
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const provenance = buildNeighborMergeProvenancePayload(
+    context,
+    actorUserId,
+    payload.sourceNeighborId,
+    payload.survivorNeighborId,
+    payload.reason,
+  );
+  const merged = await mergeNeighborWithSideEffects({
+    actorRoles,
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    sourceNeighborId: payload.sourceNeighborId,
+    survivorNeighborId: payload.survivorNeighborId,
+    actorUserId,
+    irreversibleConfirmation: payload.irreversibleConfirmation,
+    reason: payload.reason,
+    simulateFailureStage: payload.simulateFailureStage,
+    provenance,
+  });
+
+  if (!merged.ok) {
+    refusal(res, {
+      code: merged.code,
+      message: merged.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: buildNeighborScopePayload(context),
+    });
+    return;
+  }
+
+  return success(res, {
+    code: merged.code,
+    message: 'Neighbor merge complete',
+    httpStatus: merged.httpStatus,
+    data: {
+      ...buildNeighborScopePayload(context),
+      merge: merged.merge,
+      audit: provenance.audit,
+      outbox: provenance.outbox,
+      sideEffectsPersisted: merged.sideEffectsPersisted,
     },
   });
 });

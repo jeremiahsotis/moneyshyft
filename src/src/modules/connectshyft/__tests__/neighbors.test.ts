@@ -410,6 +410,154 @@ describe('connectshyft neighbor service', () => {
       code: 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND',
     });
   });
+
+  it('merges source neighbor into survivor for authorized roles with exact irreversible confirmation', () => {
+    const sourceCreated = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Source',
+      lastName: 'Neighbor',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+          isShared: true,
+        },
+      ],
+    });
+    const survivorCreated = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Survivor',
+      lastName: 'Neighbor',
+      phones: [
+        {
+          label: 'home',
+          value: '+12605550200',
+          isShared: false,
+        },
+      ],
+    });
+
+    if (!sourceCreated.ok || !survivorCreated.ok) {
+      throw new Error('Expected seed neighbors to be created');
+    }
+
+    const merged = service.mergeNeighbor({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      sourceNeighborId: sourceCreated.data.neighbor.neighborId,
+      survivorNeighborId: survivorCreated.data.neighbor.neighborId,
+      irreversibleConfirmation: {
+        acknowledged: true,
+        phrase: 'IRREVERSIBLE MERGE',
+      },
+      reason: 'duplicate-identity',
+    });
+
+    expect(merged).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_MERGED',
+      data: {
+        merge: {
+          sourceNeighborId: sourceCreated.data.neighbor.neighborId,
+          survivorNeighborId: survivorCreated.data.neighbor.neighborId,
+          irreversibleConfirmed: true,
+        },
+      },
+    });
+
+    const sourceAfter = service.resolveNeighbor({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: sourceCreated.data.neighbor.neighborId,
+    });
+    expect(sourceAfter).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND',
+    });
+
+    const survivorAfter = service.resolveNeighbor({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: survivorCreated.data.neighbor.neighborId,
+    });
+    expect(survivorAfter).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_RESOLVED',
+      data: {
+        neighbor: {
+          phones: expect.arrayContaining([
+            expect.objectContaining({ value: '+12605550199' }),
+            expect.objectContaining({ value: '+12605550200' }),
+          ]),
+        },
+      },
+    });
+  });
+
+  it('refuses merge for unauthorized roles', () => {
+    const merged = service.mergeNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      sourceNeighborId: 'neighbor-source',
+      survivorNeighborId: 'neighbor-survivor',
+      irreversibleConfirmation: {
+        acknowledged: true,
+        phrase: 'IRREVERSIBLE MERGE',
+      },
+      reason: 'unauthorized-probe',
+    });
+
+    expect(merged).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_MERGE_FORBIDDEN',
+    });
+  });
+
+  it('refuses merge for tenant staff role', () => {
+    const merged = service.mergeNeighbor({
+      actorRoles: ['TENANT_STAFF'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      sourceNeighborId: 'neighbor-source',
+      survivorNeighborId: 'neighbor-survivor',
+      irreversibleConfirmation: {
+        acknowledged: true,
+        phrase: 'IRREVERSIBLE MERGE',
+      },
+      reason: 'tenant-staff-role-probe',
+    });
+
+    expect(merged).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_MERGE_FORBIDDEN',
+    });
+  });
+
+  it('refuses merge when irreversible confirmation phrase is malformed', () => {
+    const merged = service.mergeNeighbor({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      sourceNeighborId: 'neighbor-source',
+      survivorNeighborId: 'neighbor-survivor',
+      irreversibleConfirmation: {
+        acknowledged: true,
+        phrase: ' irreversible merge ',
+      },
+      reason: 'confirmation-probe',
+    });
+
+    expect(merged).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_MERGE_CONFIRMATION_REQUIRED',
+    });
+  });
 });
 
 describe('connectshyft async neighbor service', () => {

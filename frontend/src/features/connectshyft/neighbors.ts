@@ -45,6 +45,20 @@ export type ConnectShyftNeighborProvenance = {
   policyPath: string;
 };
 
+export type ConnectShyftNeighborMerge = {
+  sourceNeighborId: string;
+  survivorNeighborId: string;
+  irreversibleConfirmed: boolean;
+};
+
+export type ConnectShyftNeighborMergeAudit = {
+  beforeNeighborId: string;
+  afterNeighborId: string;
+  actorUserId: string;
+  orgUnitId: string;
+  reason: string | null;
+};
+
 type ConnectShyftEnvelope = {
   ok?: boolean;
   code?: string;
@@ -64,6 +78,9 @@ type ConnectShyftEnvelope = {
         org_unit_id?: string;
         actor_user_id?: string;
         policy_path?: string;
+        before_neighbor_id?: string;
+        after_neighbor_id?: string;
+        reason?: string | null;
       };
     };
     outbox?: {
@@ -71,7 +88,15 @@ type ConnectShyftEnvelope = {
         org_unit_id?: string;
         actor_user_id?: string;
         policy_path?: string;
+        before_neighbor_id?: string;
+        after_neighbor_id?: string;
+        reason?: string | null;
       };
+    };
+    merge?: {
+      sourceNeighborId?: string;
+      survivorNeighborId?: string;
+      irreversibleConfirmed?: boolean;
     };
     fieldErrors?: Array<{
       field?: string;
@@ -147,6 +172,33 @@ export type ConnectShyftNeighborListResult =
     code: string;
     neighbors: ConnectShyftNeighbor[];
     scope: ConnectShyftNeighborScope | null;
+  }
+  | {
+    ok: false;
+    code: string;
+    message: string;
+    scope: ConnectShyftNeighborScope | null;
+  };
+
+export type ConnectShyftNeighborMergeInput = {
+  orgUnitId?: string;
+  sourceNeighborId: string;
+  survivorNeighborId: string;
+  irreversibleConfirmation: {
+    acknowledged: boolean;
+    phrase: string;
+  };
+  reason: string;
+  simulateFailureStage?: 'before-commit' | 'after-dependent-repoint';
+};
+
+export type ConnectShyftNeighborMergeResult =
+  | {
+    ok: true;
+    code: string;
+    scope: ConnectShyftNeighborScope | null;
+    merge: ConnectShyftNeighborMerge;
+    audit: ConnectShyftNeighborMergeAudit | null;
   }
   | {
     ok: false;
@@ -361,6 +413,62 @@ const parseRefusalMessage = (payload: unknown, fallbackMessage: string): string 
   }
 
   return fallbackMessage;
+};
+
+const parseMerge = (payload: unknown): ConnectShyftNeighborMerge | null => {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const envelope = payload as ConnectShyftEnvelope;
+  const merge = envelope.data?.merge;
+  if (!merge || typeof merge !== 'object') {
+    return null;
+  }
+
+  const sourceNeighborId = normalizeString(merge.sourceNeighborId);
+  const survivorNeighborId = normalizeString(merge.survivorNeighborId);
+  if (!sourceNeighborId || !survivorNeighborId) {
+    return null;
+  }
+
+  return {
+    sourceNeighborId,
+    survivorNeighborId,
+    irreversibleConfirmed: merge.irreversibleConfirmed === true,
+  };
+};
+
+const parseMergeAudit = (payload: unknown): ConnectShyftNeighborMergeAudit | null => {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const envelope = payload as ConnectShyftEnvelope;
+  const metadata = envelope.data?.audit?.metadata || envelope.data?.outbox?.metadata;
+  if (!metadata || typeof metadata !== 'object') {
+    return null;
+  }
+
+  const beforeNeighborId = normalizeString(metadata.before_neighbor_id);
+  const afterNeighborId = normalizeString(metadata.after_neighbor_id);
+  const actorUserId = normalizeString(metadata.actor_user_id);
+  const orgUnitId = normalizeString(metadata.org_unit_id);
+  if (!beforeNeighborId || !afterNeighborId || !actorUserId || !orgUnitId) {
+    return null;
+  }
+
+  const reason = typeof metadata.reason === 'string' && metadata.reason.trim().length > 0
+    ? metadata.reason.trim()
+    : null;
+
+  return {
+    beforeNeighborId,
+    afterNeighborId,
+    actorUserId,
+    orgUnitId,
+    reason,
+  };
 };
 
 const parseCode = (payload: unknown, fallbackCode: string): string => {
@@ -581,6 +689,64 @@ export const fetchConnectShyftNeighborsCollection = async (): Promise<ConnectShy
       ok: false,
       code: parseCode(responseData, 'CONNECTSHYFT_NEIGHBOR_LIST_REQUEST_FAILED'),
       message: parseRefusalMessage(responseData, 'Unable to load neighbors.'),
+      scope: parseScope(responseData),
+    };
+  }
+};
+
+export const mergeConnectShyftNeighborProfiles = async (
+  input: ConnectShyftNeighborMergeInput,
+): Promise<ConnectShyftNeighborMergeResult> => {
+  try {
+    const response = await api.post(
+      '/connectshyft/neighbors/merge',
+      {
+        orgUnitId: input.orgUnitId,
+        sourceNeighborId: input.sourceNeighborId,
+        survivorNeighborId: input.survivorNeighborId,
+        irreversibleConfirmation: input.irreversibleConfirmation,
+        reason: input.reason,
+        simulateFailureStage: input.simulateFailureStage,
+      },
+      {
+        headers: buildConnectShyftTestOverrideHeaders(),
+      },
+    );
+
+    const envelope = response.data as ConnectShyftEnvelope;
+    if (envelope?.ok !== true) {
+      return {
+        ok: false,
+        code: parseCode(response.data, 'CONNECTSHYFT_NEIGHBOR_MERGE_REFUSED'),
+        message: parseRefusalMessage(response.data, 'Unable to merge neighbors right now.'),
+        scope: parseScope(response.data),
+      };
+    }
+
+    const merge = parseMerge(response.data);
+    if (!merge) {
+      return {
+        ok: false,
+        code: 'CONNECTSHYFT_NEIGHBOR_MERGE_INVALID_RESPONSE',
+        message: 'Unable to merge neighbors right now.',
+        scope: parseScope(response.data),
+      };
+    }
+
+    return {
+      ok: true,
+      code: parseCode(response.data, 'CONNECTSHYFT_NEIGHBOR_MERGED'),
+      scope: parseScope(response.data),
+      merge,
+      audit: parseMergeAudit(response.data),
+    };
+  } catch (error: unknown) {
+    const responseData = (error as { response?: { data?: unknown } })?.response?.data;
+
+    return {
+      ok: false,
+      code: parseCode(responseData, 'CONNECTSHYFT_NEIGHBOR_MERGE_REQUEST_FAILED'),
+      message: parseRefusalMessage(responseData, 'Unable to merge neighbors right now.'),
       scope: parseScope(responseData),
     };
   }
