@@ -12,17 +12,18 @@
         <p
           v-if="showUnavailableState"
           data-testid="connectshyft-unavailable-state"
-          class="mt-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          :style="bodyTextStyle"
+          class="mt-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
         >
           {{ unavailableMessage }}
         </p>
       </header>
 
       <section class="mb-6 rounded-md border border-slate-200 p-4">
-        <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h2 class="mb-3 text-base font-semibold uppercase tracking-wide text-slate-500">
           Capability Status
         </h2>
-        <dl class="grid grid-cols-1 gap-3 text-sm text-slate-700 md:grid-cols-3">
+        <dl class="grid grid-cols-1 gap-3 text-base text-slate-700 md:grid-cols-3">
           <div class="rounded border border-slate-200 p-3">
             <dt>Inbox</dt>
             <dd
@@ -56,7 +57,8 @@
       <p
         v-if="maintenanceBanner"
         data-testid="connectshyft-capability-maintenance-banner"
-        class="mb-6 rounded-md border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700"
+        :style="bodyTextStyle"
+        class="mb-6 rounded-md border border-slate-200 bg-slate-100 px-4 py-3 text-base text-slate-700"
       >
         {{ maintenanceBanner }}
       </p>
@@ -66,7 +68,7 @@
         data-testid="connectshyft-inbox-list"
         class="rounded-md border border-slate-200 p-4"
       >
-        <div data-testid="connectshyft-inbox-surface">
+        <div data-testid="connectshyft-inbox-surface" :style="bodyTextStyle">
           <h2 class="mb-3 text-base font-semibold text-slate-900">
             {{ bucketTitle }} threads
           </h2>
@@ -121,20 +123,20 @@
                 <div class="flex flex-wrap items-center gap-2 sm:justify-end">
                   <span
                     data-testid="connectshyft-thread-state-chip"
-                    class="rounded-md bg-slate-200 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700"
+                    class="rounded-md bg-slate-200 px-2 py-1 text-base font-semibold uppercase tracking-wide text-slate-700"
                   >
                     {{ item.state }}
                   </span>
                   <span
                     data-testid="connectshyft-inbox-item-priority-rank"
-                    class="rounded-md border border-slate-300 bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700"
+                    class="rounded-md border border-slate-300 bg-slate-100 px-2 py-1 text-base font-semibold text-slate-700"
                   >
                     {{ item.priorityRank }}
                   </span>
                   <span
                     v-if="item.voicemailIndicator"
                     :data-testid="`connectshyft-voicemail-indicator-${item.threadId}`"
-                    class="rounded-md bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700"
+                    class="rounded-md bg-blue-100 px-2 py-1 text-base font-semibold text-blue-700"
                   >
                     Voicemail waiting
                   </span>
@@ -142,6 +144,7 @@
                     :to="buildThreadDetailPath(item.threadId)"
                     data-testid="connectshyft-thread-card-primary-action"
                     :aria-label="`Open thread detail for ${item.summary || 'selected thread'}`"
+                    :style="tapTargetStyle"
                     :class="[
                       'inline-flex min-h-[44px] min-w-[88px] items-center justify-center rounded-lg bg-slate-900 px-4 text-base font-semibold text-white',
                       focusRingClass,
@@ -160,18 +163,18 @@
 
           <section class="mb-4 rounded border border-slate-200 bg-slate-50 p-3">
             <h3 class="text-base font-semibold text-slate-900">Shared identity context</h3>
-            <p class="mt-1 text-sm text-slate-600">
+            <p class="mt-1 text-base text-slate-600">
               Shared-phone indicators remain consistent across orgUnits in this tenant.
             </p>
 
             <p
               v-if="neighborLoadError"
-              class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+              class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
             >
               {{ neighborLoadError }}
             </p>
 
-            <ul v-else class="mt-3 space-y-2 text-sm text-slate-700">
+            <ul v-else class="mt-3 space-y-2 text-base text-slate-700">
               <li
                 v-for="neighbor in neighbors"
                 :key="neighbor.neighborId"
@@ -185,7 +188,7 @@
                     v-for="phone in neighbor.phones"
                     :key="`${neighbor.neighborId}-${phone.phoneId}`"
                     data-testid="connectshyft-inbox-shared-phone-indicator"
-                    class="rounded px-2 py-1 text-[11px] font-medium"
+                    class="rounded px-2 py-1 text-base font-medium"
                     :class="phone.isShared ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'"
                   >
                     {{ phone.label }} · {{ phone.isShared ? 'Shared' : 'Not shared' }}
@@ -202,6 +205,7 @@
               :aria-label="inboxActionCopy.openConversation.ariaLabel"
               :disabled="openingConversation"
               @click="openConversation"
+              :style="tapTargetStyle"
               :class="[
                 'min-h-[44px] rounded bg-slate-900 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400',
                 focusRingClass,
@@ -214,6 +218,7 @@
               :to="buildNeighborCreatePath()"
               :data-testid="inboxActionCopy.addNeighbor.testId"
               :aria-label="inboxActionCopy.addNeighbor.ariaLabel"
+              :style="tapTargetStyle"
               :class="[
                 'inline-flex min-h-[44px] items-center justify-center rounded bg-emerald-700 px-4 py-2 text-base font-medium text-white',
                 focusRingClass,
@@ -225,6 +230,7 @@
               type="button"
               :data-testid="inboxActionCopy.composeMessage.testId"
               :aria-label="inboxActionCopy.composeMessage.ariaLabel"
+              :style="tapTargetStyle"
               :class="[
                 'min-h-[44px] rounded bg-slate-700 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400',
                 focusRingClass,
@@ -237,6 +243,7 @@
               :data-testid="inboxActionCopy.claimThread.testId"
               :aria-label="inboxActionCopy.claimThread.ariaLabel"
               :disabled="!canClaimThread"
+              :style="tapTargetStyle"
               :class="[
                 'min-h-[44px] rounded bg-blue-600 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400',
                 focusRingClass,
@@ -249,6 +256,7 @@
               :data-testid="inboxActionCopy.takeoverThread.testId"
               :aria-label="inboxActionCopy.takeoverThread.ariaLabel"
               :disabled="!canTakeoverThread"
+              :style="tapTargetStyle"
               :class="[
                 'min-h-[44px] rounded bg-indigo-600 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400',
                 focusRingClass,
@@ -292,6 +300,7 @@ import {
 } from '@/features/connectshyft/readContracts';
 import { ensureConnectShyftThread } from '@/features/connectshyft/threads';
 import {
+  CONNECTSHYFT_ACCESSIBILITY_LOCKS,
   CONNECTSHYFT_FOCUS_RING_CLASS,
   CONNECTSHYFT_INBOX_ACTION_COPY,
   sanitizeConnectShyftOperatorCopy,
@@ -313,6 +322,7 @@ const neighborLoadError = ref('');
 const threadLoadError = ref('');
 const threadActionError = ref('');
 const openingConversation = ref(false);
+const resolvedInboxOrgUnitId = ref<string | null>(null);
 
 const bucket = computed<'inbox' | 'mine'>(() => {
   return route.path.includes('/app/connectshyft/mine') ? 'mine' : 'inbox';
@@ -330,6 +340,12 @@ const role = computed(() => {
 const isViewerRole = computed(() => role.value === 'TENANT_VIEWER');
 const focusRingClass = CONNECTSHYFT_FOCUS_RING_CLASS;
 const inboxActionCopy = CONNECTSHYFT_INBOX_ACTION_COPY;
+const bodyTextStyle = {
+  fontSize: `${CONNECTSHYFT_ACCESSIBILITY_LOCKS.minBodyTextPx}px`,
+};
+const tapTargetStyle = {
+  minHeight: `${CONNECTSHYFT_ACCESSIBILITY_LOCKS.minTapTargetPx}px`,
+};
 
 const loadThreadContracts = async () => {
   if (!availability.value.capabilities.inbox) {
@@ -338,6 +354,7 @@ const loadThreadContracts = async () => {
       claim: false,
       takeover: false,
     };
+    resolvedInboxOrgUnitId.value = null;
     threadLoadError.value = '';
     return;
   }
@@ -349,6 +366,7 @@ const loadThreadContracts = async () => {
       claim: false,
       takeover: false,
     };
+    resolvedInboxOrgUnitId.value = null;
     threadLoadError.value = sanitizeConnectShyftOperatorCopy(
       readResult.message,
       'Unable to load ConnectShyft threads.',
@@ -358,6 +376,9 @@ const loadThreadContracts = async () => {
 
   threadItems.value = readResult.items;
   threadActions.value = readResult.actions;
+  resolvedInboxOrgUnitId.value = readResult.context?.orgUnitId
+    || readResult.items[0]?.orgUnitId
+    || null;
   threadLoadError.value = '';
 };
 
@@ -376,20 +397,17 @@ const resolveInboxContext = (): {
   lastInboundCsNumberId: string;
   preferredOutboundCsNumberId: string;
 } => {
-  if (typeof window === 'undefined') {
-    return {
-      orgUnitId: null,
-      neighborId: DEFAULT_THREAD_NEIGHBOR_ID,
-      lastInboundCsNumberId: DEFAULT_THREAD_INBOUND_NUMBER_ID,
-      preferredOutboundCsNumberId: DEFAULT_THREAD_OUTBOUND_NUMBER_ID,
-    };
-  }
-
-  const query = new URLSearchParams(window.location.search);
+  const query = typeof window === 'undefined'
+    ? new URLSearchParams()
+    : new URLSearchParams(window.location.search);
   const contextMode = normalizeQueryValue(query.get('context'));
-  const orgUnitId = contextMode === 'missing-orgunit'
+  const queryOrgUnitId = contextMode === 'missing-orgunit'
     ? null
     : normalizeQueryValue(query.get('orgUnitId'));
+  const orgUnitId = queryOrgUnitId
+    || resolvedInboxOrgUnitId.value
+    || threadItems.value[0]?.orgUnitId
+    || null;
 
   return {
     orgUnitId,
@@ -494,7 +512,7 @@ const unavailableMessage = computed(() => {
       return 'ConnectShyft module entitlement is disabled for this tenant.';
     }
 
-    return 'ConnectShyft is currently unavailable for this tenant. Enable connectshyft_enabled to access this module.';
+    return 'ConnectShyft is currently unavailable for this tenant. Contact an administrator to restore access.';
   }
 
   return 'ConnectShyft inbox is currently unavailable for this tenant.';

@@ -11,7 +11,8 @@
 
         <p
           v-if="showUnavailableState"
-          class="mt-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          :style="bodyTextStyle"
+          class="mt-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
         >
           {{ unavailableMessage }}
         </p>
@@ -22,7 +23,7 @@
         data-testid="connectshyft-thread-detail"
         class="rounded-md border border-slate-200 p-4"
       >
-        <div data-testid="connectshyft-thread-surface" class="space-y-4">
+        <div data-testid="connectshyft-thread-surface" class="space-y-4" :style="bodyTextStyle">
           <p
             v-if="feedbackBanner"
             data-testid="connectshyft-feedback-banner"
@@ -69,7 +70,7 @@
                 </p>
               </div>
 
-              <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <div class="mt-3 flex flex-wrap items-center gap-2 text-base">
                 <span
                   data-testid="connectshyft-thread-id-chip"
                   class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
@@ -154,6 +155,7 @@
                   'min-h-[44px] rounded bg-slate-900 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
                   focusRingClass,
                 ]"
+                :style="tapTargetStyle"
                 :disabled="actionPending"
                 @click="handleThreadAction(action)"
               >
@@ -171,6 +173,7 @@
                   'min-h-[44px] rounded bg-emerald-700 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
                   focusRingClass,
                 ]"
+                :style="tapTargetStyle"
                 :disabled="actionPending || addNeighborSubmitting"
                 @click="toggleAddNeighborForm"
               >
@@ -200,6 +203,7 @@
                   'mt-2 min-h-[44px] w-full rounded border border-slate-300 px-3 py-2 text-base text-slate-900',
                   focusRingClass,
                 ]"
+                :style="tapTargetStyle"
                 :disabled="addNeighborSubmitting || actionPending"
               >
               <div class="mt-3 flex gap-2">
@@ -210,6 +214,7 @@
                     'min-h-[44px] rounded bg-emerald-700 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
                     focusRingClass,
                   ]"
+                  :style="tapTargetStyle"
                   :disabled="addNeighborSubmitting || actionPending"
                   @click="submitAddNeighbor"
                 >
@@ -221,6 +226,7 @@
                     'min-h-[44px] rounded border border-slate-300 px-4 py-2 text-base font-medium text-slate-700',
                     focusRingClass,
                   ]"
+                  :style="tapTargetStyle"
                   :disabled="addNeighborSubmitting || actionPending"
                   @click="closeAddNeighborForm"
                 >
@@ -244,6 +250,7 @@
                     'min-h-[44px] rounded bg-slate-900 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
                     focusRingClass,
                   ]"
+                  :style="tapTargetStyle"
                   :disabled="actionPending"
                   @click="confirmCloseThread"
                 >
@@ -255,6 +262,7 @@
                     'min-h-[44px] rounded border border-slate-300 px-4 py-2 text-base font-medium text-slate-700',
                     focusRingClass,
                   ]"
+                  :style="tapTargetStyle"
                   :disabled="actionPending"
                   @click="closeModalOpen = false"
                 >
@@ -289,6 +297,7 @@ import {
   type ConnectShyftThreadDetail,
 } from '@/features/connectshyft/readContracts';
 import {
+  CONNECTSHYFT_ACCESSIBILITY_LOCKS,
   CONNECTSHYFT_FOCUS_RING_CLASS,
   createConnectShyftFeedback,
   resolveConnectShyftThreadActionContract,
@@ -311,6 +320,12 @@ const addNeighborFormOpen = ref(false);
 const addNeighborPhone = ref('');
 const addNeighborSubmitting = ref(false);
 const focusRingClass = CONNECTSHYFT_FOCUS_RING_CLASS;
+const bodyTextStyle = {
+  fontSize: `${CONNECTSHYFT_ACCESSIBILITY_LOCKS.minBodyTextPx}px`,
+};
+const tapTargetStyle = {
+  minHeight: `${CONNECTSHYFT_ACCESSIBILITY_LOCKS.minTapTargetPx}px`,
+};
 
 const role = computed(() => {
   const rawRole = typeof route.query.tenantRole === 'string'
@@ -341,7 +356,7 @@ const unavailableMessage = computed(() => {
   }
 
   if (!moduleAvailable.value) {
-    return 'ConnectShyft is currently unavailable for this tenant. Enable connectshyft_enabled to access this module.';
+    return 'ConnectShyft is currently unavailable for this tenant. Contact an administrator to restore access.';
   }
 
   return 'ConnectShyft inbox is currently unavailable for this tenant.';
@@ -593,7 +608,7 @@ const executeThreadAction = async (action: string): Promise<void> => {
       : '';
 
     if (lifecycleEvent.includes('thread_reopened_by_user')) {
-      lifecycleToast.value = 'thread_reopened_by_user';
+      lifecycleToast.value = 'Conversation reopened. Escalation and inactivity timers were reset.';
       inactivityReset.value = true;
       if (threadDetail.value) {
         threadDetail.value.escalationStage = 0;

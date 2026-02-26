@@ -150,15 +150,23 @@ export const validateOrgUnitScopedAccess = async (
     return { ok: false, reason: 'ORG_UNIT_TENANT_MISMATCH' };
   }
 
+  const orgUnitMembership = await store.findOrgUnitMembership(input.orgUnitId, input.userId);
+  const orgUnitMembershipRoles = orgUnitMembership
+    ? parseRoleSetJson(orgUnitMembership.roleSetJson)
+    : [];
+  const effectiveRolesWithOrgUnitMembership = normalizeRoles([
+    ...effectiveRoles,
+    ...orgUnitMembershipRoles,
+  ]);
+
   if (isTenantPrivileged(effectiveRoles)) {
     return {
       ok: true,
       bypassedOrgUnitMembership: true,
-      effectiveRoles,
+      effectiveRoles: effectiveRolesWithOrgUnitMembership,
     };
   }
 
-  const orgUnitMembership = await store.findOrgUnitMembership(input.orgUnitId, input.userId);
   if (!orgUnitMembership) {
     return { ok: false, reason: 'ORG_UNIT_MEMBERSHIP_REQUIRED' };
   }
@@ -166,6 +174,6 @@ export const validateOrgUnitScopedAccess = async (
   return {
     ok: true,
     bypassedOrgUnitMembership: false,
-    effectiveRoles,
+    effectiveRoles: effectiveRolesWithOrgUnitMembership,
   };
 };

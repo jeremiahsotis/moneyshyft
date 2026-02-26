@@ -190,32 +190,38 @@ test.describe('Story ux-r2 automate - accessibility and language hardening opera
         }),
       );
 
-      const expectedFocusOrder = context.focusOrder.slice(1);
-      const [firstControlId, secondControlId] = expectedFocusOrder;
+      const expectedFocusOrder = [...context.focusOrder];
+      const resolveFocusTarget = (testId: string): Locator => page.getByTestId(testId).first();
+      const firstStepTarget = page.getByTestId(expectedFocusOrder[0]).last();
+      for (const testId of expectedFocusOrder) {
+        if (testId === expectedFocusOrder[0]) {
+          await expect(firstStepTarget).toBeVisible();
+          continue;
+        }
+        await expect(resolveFocusTarget(testId)).toBeVisible();
+      }
 
-      const firstControl = page.getByTestId(firstControlId);
-      const secondControl = page.getByTestId(secondControlId);
-
-      await expect(firstControl).toBeVisible();
-      await expect(secondControl).toBeVisible();
-
-      await firstControl.focus();
+      await firstStepTarget.focus();
       await expect
         .poll(() => readActiveDataTestId(page))
-        .toBe(firstControlId);
+        .toBe(expectedFocusOrder[0]);
 
-      await page.keyboard.press('Tab');
-      await expect
-        .poll(() => readActiveDataTestId(page))
-        .toBe(secondControlId);
+      for (const testId of expectedFocusOrder.slice(1)) {
+        await page.keyboard.press('Tab');
+        await expect
+          .poll(() => readActiveDataTestId(page))
+          .toBe(testId);
+      }
 
-      await page.keyboard.press('Shift+Tab');
-      await expect
-        .poll(() => readActiveDataTestId(page))
-        .toBe(firstControlId);
+      for (const testId of expectedFocusOrder.slice(0, -1).reverse()) {
+        await page.keyboard.press('Shift+Tab');
+        await expect
+          .poll(() => readActiveDataTestId(page))
+          .toBe(testId);
+      }
 
       for (const testId of expectedFocusOrder) {
-        const locator = page.getByTestId(testId);
+        const locator = resolveFocusTarget(testId);
         await expect(locator).toHaveAttribute('aria-label', /.+/);
         const className = await locator.getAttribute('class');
         expect(className || '').toContain('focus-visible');

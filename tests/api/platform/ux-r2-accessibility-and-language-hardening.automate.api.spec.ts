@@ -1,6 +1,12 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryUxR2.fixture';
 import { createStoryUxR2Headers } from '../../support/factories/connectShyftStoryUxR2Factory';
+import {
+  createStory14BusinessRefusalProbe,
+  createStory14SharedEnvelopeHeaders,
+  createStory14SuccessProbe,
+  createStory14SystemErrorProbe,
+} from '../../support/factories/sharedResponseEnvelopeStory14Factory';
 
 const UX_R2_API_IMPLEMENTATION_GAP =
   'Story ux-r2 accessibility and language contracts are not fully implemented yet (a11y metadata, copy taxonomy, role-safe labels).';
@@ -23,6 +29,18 @@ const readFeedbackMessage = (payload: Record<string, unknown>): string => {
   const data = (payload.data ?? {}) as Record<string, unknown>;
   const feedback = (data.feedback ?? {}) as Record<string, unknown>;
   return String(feedback.message ?? payload.message ?? '').trim();
+};
+
+const resolveEnvelopeTaxonomy = (statusCode: number, payload: Record<string, unknown>): 'success' | 'refusal' | 'error' => {
+  if (payload.ok === true) {
+    return 'success';
+  }
+
+  if (statusCode >= 500 || payload.errorType === 'system') {
+    return 'error';
+  }
+
+  return 'refusal';
 };
 
 test.describe(
@@ -251,6 +269,79 @@ test.describe(
         expect(feedbackMessages[2]).toMatch(/^Error:/i);
 
         for (const message of feedbackMessages) {
+          expect(hasForbiddenToken(message, storyUxR2Context.forbiddenCopyTokens)).toBe(false);
+        }
+      },
+    );
+
+    test(
+      '[P1] api envelopes deterministically map to success refusal error taxonomy for ux-r2 feedback contracts @P1',
+      async ({
+        request,
+        storyUxR2Context,
+      }) => {
+        const envelopeHeaders = createStory14SharedEnvelopeHeaders({
+          tenantId: storyUxR2Context.tenantId,
+          correlationId: storyUxR2Context.correlationId,
+          csrfToken: storyUxR2Context.csrfToken,
+        });
+
+        const closeSuccessResponse = await apiRequest(request, {
+          method: 'POST',
+          path: '/api/v1/platform/_kernel/contracts/envelope/response-matrix/success',
+          headers: envelopeHeaders,
+          data: createStory14SuccessProbe({
+            operationName: 'ux-r2-envelope-success-mapping',
+          }).payload,
+        });
+        const addNeighborRefusalResponse = await apiRequest(request, {
+          method: 'POST',
+          path: '/api/v1/platform/_kernel/contracts/envelope/response-matrix/business-refusal',
+          headers: envelopeHeaders,
+          data: createStory14BusinessRefusalProbe({
+            code: 'UX_R2_PLAIN_LANGUAGE_REFUSAL',
+            message: 'Action could not be completed. Try a different option.',
+          }).payload,
+        });
+        const systemErrorResponse = await apiRequest(request, {
+          method: 'POST',
+          path: '/api/v1/platform/_kernel/contracts/envelope/response-matrix/system-error',
+          headers: envelopeHeaders,
+          data: createStory14SystemErrorProbe({
+            operationName: 'ux-r2-envelope-system-error-mapping',
+          }).payload,
+        });
+
+        expect(closeSuccessResponse.status()).toBe(200);
+        expect(addNeighborRefusalResponse.status()).toBe(200);
+        expect(systemErrorResponse.status()).toBeGreaterThanOrEqual(500);
+
+        const closeSuccessBody = await closeSuccessResponse.json();
+        const addNeighborRefusalBody = await addNeighborRefusalResponse.json();
+        const systemErrorBody = await systemErrorResponse.json();
+
+        expect(hasRequiredEnvelopeKeys(closeSuccessBody)).toBe(true);
+        expect(hasRequiredEnvelopeKeys(addNeighborRefusalBody)).toBe(true);
+        expect(hasRequiredEnvelopeKeys(systemErrorBody)).toBe(true);
+
+        expect(
+          resolveEnvelopeTaxonomy(closeSuccessResponse.status(), closeSuccessBody),
+        ).toBe(storyUxR2Context.outcomeTaxonomy[0]);
+        expect(
+          resolveEnvelopeTaxonomy(addNeighborRefusalResponse.status(), addNeighborRefusalBody),
+        ).toBe(storyUxR2Context.outcomeTaxonomy[1]);
+        expect(
+          resolveEnvelopeTaxonomy(systemErrorResponse.status(), systemErrorBody),
+        ).toBe(storyUxR2Context.outcomeTaxonomy[2]);
+
+        const messages = [
+          String(closeSuccessBody.message ?? ''),
+          String(addNeighborRefusalBody.message ?? ''),
+          String(systemErrorBody.message ?? ''),
+        ];
+
+        for (const message of messages) {
+          expect(message.trim().length).toBeGreaterThan(0);
           expect(hasForbiddenToken(message, storyUxR2Context.forbiddenCopyTokens)).toBe(false);
         }
       },

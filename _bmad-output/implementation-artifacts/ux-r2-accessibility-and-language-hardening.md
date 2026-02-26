@@ -129,6 +129,8 @@ GPT-5 Codex
 - `npm run branch:ensure-workflow -- --workflow dev-story --story ux-r2-accessibility-and-language-hardening` (failed: story id parser rejects `ux-r2` token shape)
 - `cd frontend && npm run build` (pass)
 - `npm run test:e2e -- tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts` (pass; 5/5)
+- `npm run test:e2e -- tests/api/platform/ux-r2-accessibility-and-language-hardening.automate.api.spec.ts` (pass; 1 active, 5 fixme)
+- `npm run test:e2e -- tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts` (pass; 6/6, includes legacy `admin` role alias regression check)
 
 ### Completion Notes List
 
@@ -136,15 +138,34 @@ GPT-5 Codex
 - Hardened Inbox/Thread/Nav UI with 16px body copy, 44px targets, explicit aria labels, and deterministic live-region/status feedback hooks.
 - Added thread-level Add Neighbor interaction with taxonomy-aligned feedback states and plain-language refusal/error messaging.
 - Enabled UX-R2 e2e coverage and aligned scenario factory with seeded tenant/orgUnit/story fixtures; stabilized keyboard traversal assertions and taxonomy flow checks.
+- Removed internal flag/token leakage from operator-facing unavailable and lifecycle feedback copy.
+- Enforced 16px baseline typography on core thread/inbox supporting text and chips that previously rendered below lock thresholds.
+- Activated ux-r2 API envelope-taxonomy mapping coverage for deterministic success/refusal/error contract checks.
+- Added ConnectShyft legacy role alias handling (`admin` -> `TENANT_ADMIN`, `member` -> `ORGUNIT_MEMBER`) across route capability gates and orgUnit context privilege checks to prevent false-negative refusals for authenticated tenant-admin sessions.
+- Added ConnectShyft orgUnit fallback resolution for authenticated requests missing explicit orgUnit context, using deterministic orgUnit membership lookup to unblock `/app/connectshyft/inbox` without query-param context.
+- Hardened auth token lifecycle to resolve and persist `activeOrgUnitId` during login, refresh-token rotation, and first-login password reset flows.
+- Suppressed guest-route session bootstrap noise by skipping `/auth/me` preflight on login/signup when no auth cookie exists.
+- Expanded ConnectShyft orgUnit context resolution to surface authoritative effective roles, and updated capability gates to evaluate effective role-sets instead of JWT base role only.
+- Included orgUnit membership role-set union in tenant-scope access validation so orgUnit-admin capabilities (escalation config/number mapping) resolve correctly for tenant-admin sessions.
+- Updated inbox thread-open flow to use server-resolved orgUnit context when URL query context is absent, preventing false “Select an orgUnit” action refusals on `/app/connectshyft/inbox`.
 
 ### File List
 
-- frontend/src/features/connectshyft/uiContracts.ts
 - frontend/src/components/connectshyft/ConnectShyftPrimaryNav.vue
 - frontend/src/views/ConnectShyft/ConnectShyftInboxView.vue
 - frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
-- tests/support/factories/connectShyftStoryUxR2Factory.ts
 - tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts
+- tests/api/platform/ux-r2-accessibility-and-language-hardening.automate.api.spec.ts
+- src/src/routes/api/v1/connectshyft.ts
+- src/src/modules/connectshyft/contextAccess.ts
+- tests/api/platform/a-5-capability-based-route-access-and-envelope-contract-compliance.api.spec.ts
+- src/src/services/AuthService.ts
+- src/src/routes/api/v1/auth.ts
+- frontend/src/router/index.ts
+- frontend/src/features/connectshyft/readContracts.ts
+- src/src/platform/tenancy/orgUnitAccess.ts
+- src/src/platform/tenancy/__tests__/orgUnitAccess.test.ts
+- src/src/modules/connectshyft/__tests__/contextAccess.test.ts
 - _bmad-output/implementation-artifacts/ux-r2-accessibility-and-language-hardening.md
 
 ## Change Log
@@ -152,3 +173,9 @@ GPT-5 Codex
 - 2026-02-25: Created Story ux-r2 ready-for-dev context document.
 - 2026-02-26: Implemented accessibility and language hardening contracts across ConnectShyft Inbox/Thread/Nav with shared helpers.
 - 2026-02-26: Activated and stabilized UX-R2 e2e coverage for readability, plain-language copy, keyboard traversal, and taxonomy feedback outcomes.
+- 2026-02-26: Applied code-review hardening fixes for plain-language leakage, 16px/44px lock enforcement, deterministic focus traversal, and active API envelope-to-taxonomy checks.
+- 2026-02-26: Added legacy auth role alias normalization for ConnectShyft capability + orgUnit context checks and regression coverage for `admin` JWT role inbox access.
+- 2026-02-26: Added ConnectShyft orgUnit context fallback derivation from platform memberships for authenticated sessions with missing active orgUnit scope.
+- 2026-02-26: Added active-orgUnit token hydration in auth login/refresh/first-login-reset flows to eliminate null orgUnit context in standard ConnectShyft sessions.
+- 2026-02-26: Updated router session-bootstrap guard to avoid guest-route `/auth/me` 401 noise when no auth cookie is present.
+- 2026-02-26: Hardened effective-role propagation across ConnectShyft orgUnit context + route capability checks and aligned inbox thread-open context fallback with server-resolved orgUnit scope.
