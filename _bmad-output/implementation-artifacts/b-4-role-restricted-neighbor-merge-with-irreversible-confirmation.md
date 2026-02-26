@@ -161,11 +161,16 @@ GPT-5 Codex
 - _bmad-output/implementation-artifacts/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.md
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 - src/src/modules/connectshyft/__tests__/neighbors.test.ts
+- src/src/modules/connectshyft/neighbors.ts
 - src/src/platform/rbac/capabilities.ts
 - src/src/routes/api/v1/connectshyft.ts
+- frontend/src/features/connectshyft/neighbors.ts
 - frontend/src/views/ConnectShyft/ConnectShyftNeighborProfileView.vue
 - tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.api.spec.ts
+- tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.atdd.api.spec.ts
 - tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.spec.ts
+- tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.atdd.spec.ts
+- tests/support/fixtures/connectShyftStoryB4.fixture.ts
 - tests/support/factories/connectShyftStoryB4Factory.ts
 - tests/support/helpers/connectShyftDbActor.ts
 
