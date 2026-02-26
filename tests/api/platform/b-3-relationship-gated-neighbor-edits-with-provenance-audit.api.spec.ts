@@ -99,6 +99,17 @@ const unrelatedActorHeadersForNeighbor = (
     activeThreadNeighborIds: [],
   });
 
+const orgUnitMemberHeadersForNeighbor = (
+  context: StoryB3Context,
+): Record<string, string> =>
+  createStoryB3Headers(context, {
+    role: 'ORGUNIT_MEMBER',
+    userId: `user-connectshyft-b3-member-${Date.now()}`,
+    orgUnitId: context.primaryOrgUnitId,
+    orgUnitMemberships: [context.primaryOrgUnitId],
+    activeThreadNeighborIds: [],
+  });
+
 test.describe(
   'Story b.3 automate - relationship-gated neighbor edits API coverage',
   () => {
@@ -320,6 +331,67 @@ test.describe(
             Object.prototype.hasOwnProperty.call(refusalBody, key),
           ),
         ).toBe(true);
+      },
+    );
+
+    test(
+      '[P1] refuses orgUnit members without active thread relationship even when route capability checks pass @P1',
+      async ({
+        request,
+        storyB3Context,
+        storyB3RelatedUpdatePayload,
+      }) => {
+        const seeded = await seedNeighbor(request, storyB3Context);
+        const response = await apiRequest(request, {
+          method: 'PUT',
+          path: `/api/v1/connectshyft/neighbors/${seeded.neighborId}`,
+          headers: orgUnitMemberHeadersForNeighbor(storyB3Context),
+          data: storyB3RelatedUpdatePayload,
+        });
+
+        expect(response.status()).toBe(200);
+        const body = await response.json();
+        expect(body).toMatchObject({
+          ok: false,
+          code: storyB3Context.refusalCodes.relationshipRequired,
+          refusalType: 'business',
+          message: expect.stringContaining('active thread relationship'),
+        });
+      },
+    );
+
+    test(
+      '[P1] returns deterministic side-effect persistence indicators for relationship-gated edits @P1',
+      async ({ request, storyB3Context, storyB3RelatedUpdatePayload }) => {
+        const seeded = await seedNeighbor(request, storyB3Context);
+        const response = await apiRequest(request, {
+          method: 'PUT',
+          path: `/api/v1/connectshyft/neighbors/${seeded.neighborId}`,
+          headers: relatedActorHeadersForNeighbor(storyB3Context, seeded.neighborId),
+          data: storyB3RelatedUpdatePayload,
+        });
+
+        expect(response.status()).toBe(200);
+        const body = await response.json();
+        expect(body).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_NEIGHBOR_UPDATED',
+          data: {
+            sideEffectsPersisted: expect.any(Boolean),
+            audit: {
+              metadata: expect.objectContaining({
+                org_unit_id: storyB3Context.primaryOrgUnitId,
+                policy_path: 'relationship-gated',
+              }),
+            },
+            outbox: {
+              metadata: expect.objectContaining({
+                org_unit_id: storyB3Context.primaryOrgUnitId,
+                policy_path: 'relationship-gated',
+              }),
+            },
+          },
+        });
       },
     );
   },

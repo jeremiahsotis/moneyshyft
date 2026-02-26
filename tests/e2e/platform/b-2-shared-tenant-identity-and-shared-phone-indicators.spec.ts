@@ -15,6 +15,7 @@ const buildNeighborProfileUrl = (
     orgUnitId: string;
     tenantRole: string;
     orgUnitMemberships: string[];
+    activeThreadNeighborIds?: string[];
   },
 ): string => {
   const params = new URLSearchParams({
@@ -23,6 +24,7 @@ const buildNeighborProfileUrl = (
     orgUnitId: options.orgUnitId,
     tenantRole: options.tenantRole,
     orgUnitMemberships: options.orgUnitMemberships.join(','),
+    activeThreadNeighborIds: (options.activeThreadNeighborIds || []).join(','),
   });
 
   return `/app/connectshyft/neighbors/${neighborId}?${params.toString()}`;
@@ -116,6 +118,7 @@ test.describe(
             orgUnitId: context.primaryOrgUnitId,
             tenantRole: 'ORGUNIT_MEMBER',
             orgUnitMemberships: [context.primaryOrgUnitId],
+            activeThreadNeighborIds: [seeded.neighborId],
           }),
         );
 
@@ -157,6 +160,7 @@ test.describe(
           orgUnitId: context.primaryOrgUnitId,
           orgUnitMemberships: [context.primaryOrgUnitId],
         });
+        updateHeaders['x-test-connectshyft-active-thread-neighbor-ids'] = JSON.stringify([seeded.neighborId]);
 
         const updateResponse = await apiRequest(request, {
           method: 'PUT',

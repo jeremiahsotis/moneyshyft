@@ -7,6 +7,14 @@ type SeedNeighborResult = {
   neighborId: string;
 };
 
+const withActiveThreadRelationshipHeader = (
+  headers: Record<string, string>,
+  neighborId: string,
+): Record<string, string> => ({
+  ...headers,
+  'x-test-connectshyft-active-thread-neighbor-ids': JSON.stringify([neighborId]),
+});
+
 const seedNeighbor = async (
   request: Parameters<typeof apiRequest>[0],
   context: {
@@ -89,7 +97,7 @@ test.describe(
         const updateResponse = await apiRequest(request, {
           method: 'PUT',
           path: `/api/v1/connectshyft/neighbors/${seeded.neighborId}`,
-          headers: storyB2PrimaryHeaders,
+          headers: withActiveThreadRelationshipHeader(storyB2PrimaryHeaders, seeded.neighborId),
           data: storyB2IdentityUpdatePayload,
         });
 
@@ -153,7 +161,7 @@ test.describe(
         const updateResponse = await apiRequest(request, {
           method: 'PUT',
           path: `/api/v1/connectshyft/neighbors/${seeded.neighborId}`,
-          headers: storyB2PrimaryHeaders,
+          headers: withActiveThreadRelationshipHeader(storyB2PrimaryHeaders, seeded.neighborId),
           data: storyB2SharedIndicatorTogglePayload,
         });
 

@@ -74,6 +74,7 @@ export type ConnectShyftUpdateNeighborCommand = NeighborActorContext & {
   firstName: string;
   lastName: string;
   phones: ConnectShyftNeighborPhoneInput[];
+  relationshipValidated?: boolean;
 };
 
 type NeighborFieldError = {
@@ -98,6 +99,7 @@ type NeighborRefusalResult = {
     | 'CONNECTSHYFT_NEIGHBOR_CREATE_FORBIDDEN'
     | 'CONNECTSHYFT_NEIGHBOR_READ_FORBIDDEN'
     | 'CONNECTSHYFT_NEIGHBOR_UPDATE_FORBIDDEN'
+    | 'CONNECTSHYFT_NEIGHBOR_EDIT_RELATIONSHIP_REQUIRED'
     | 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED'
     | 'CONNECTSHYFT_NEIGHBOR_PHONE_INVALID_FORMAT'
     | 'CONNECTSHYFT_NEIGHBOR_CREATE_CONFLICT'
@@ -258,6 +260,12 @@ const buildUpdateCapabilityRefusal = (): NeighborRefusalResult => ({
   message: 'Neighbor profile updates require an authorized ConnectShyft role.',
 });
 
+const buildRelationshipRequiredRefusal = (): NeighborRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_NEIGHBOR_EDIT_RELATIONSHIP_REQUIRED',
+  message: 'This edit requires an active thread relationship or tenant-privileged role.',
+});
+
 const buildNeighborIdConflictRefusal = (): NeighborRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_NEIGHBOR_CREATE_CONFLICT',
@@ -319,6 +327,10 @@ const hasNeighborManageCapability = (actorRoles: Array<string | null | undefined
     || hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)
     || hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_IDENTITY_RESOLVE);
 };
+
+const hasTenantPrivilegedNeighborCapability = (
+  actorRoles: Array<string | null | undefined>,
+): boolean => hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL);
 
 const hasNeighborReadCapability = (actorRoles: Array<string | null | undefined>): boolean => {
   return hasNeighborManageCapability(actorRoles)
@@ -904,6 +916,9 @@ export class ConnectShyftNeighborService {
     if (!hasNeighborManageCapability(input.actorRoles)) {
       return buildUpdateCapabilityRefusal();
     }
+    if (!hasTenantPrivilegedNeighborCapability(input.actorRoles) && input.relationshipValidated !== true) {
+      return buildRelationshipRequiredRefusal();
+    }
 
     const normalizedPhones = normalizePhones(input.phones);
     if (!normalizedPhones.ok) {
@@ -1039,6 +1054,9 @@ export class AsyncConnectShyftNeighborService {
   async updateNeighbor(input: ConnectShyftUpdateNeighborCommand): Promise<ConnectShyftUpdateNeighborResult> {
     if (!hasNeighborManageCapability(input.actorRoles)) {
       return buildUpdateCapabilityRefusal();
+    }
+    if (!hasTenantPrivilegedNeighborCapability(input.actorRoles) && input.relationshipValidated !== true) {
+      return buildRelationshipRequiredRefusal();
     }
 
     const normalizedPhones = normalizePhones(input.phones);

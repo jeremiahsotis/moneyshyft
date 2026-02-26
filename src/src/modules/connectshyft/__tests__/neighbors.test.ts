@@ -280,6 +280,7 @@ describe('connectshyft neighbor service', () => {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-alpha',
       neighborId: created.data.neighbor.neighborId,
+      relationshipValidated: true,
       firstName: 'Mina Shared',
       lastName: 'Lopez Shared',
       phones: [
@@ -318,6 +319,47 @@ describe('connectshyft neighbor service', () => {
     });
   });
 
+  it('requires relationship validation for non-tenant-privileged updates', () => {
+    const created = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+          isShared: true,
+        },
+      ],
+    });
+
+    if (!created.ok) {
+      throw new Error('Expected neighbor create to succeed');
+    }
+
+    const updated = service.updateNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+          isShared: true,
+        },
+      ],
+    });
+
+    expect(updated).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_EDIT_RELATIONSHIP_REQUIRED',
+    });
+  });
+
   it('returns not-found for cross-tenant neighbor access attempts without revealing neighbor existence', () => {
     const created = service.createNeighbor({
       actorRoles: ['ORGUNIT_MEMBER'],
@@ -352,6 +394,7 @@ describe('connectshyft neighbor service', () => {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-bravo',
       neighborId: created.data.neighbor.neighborId,
+      relationshipValidated: true,
       firstName: 'Mina',
       lastName: 'Lopez',
       phones: [
@@ -496,6 +539,7 @@ describe('connectshyft async neighbor service', () => {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-alpha',
       neighborId: 'neighbor-b2-missing-column',
+      relationshipValidated: true,
       firstName: 'Mina',
       lastName: 'Lopez',
       phones: [
