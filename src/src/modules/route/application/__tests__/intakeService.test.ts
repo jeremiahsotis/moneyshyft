@@ -181,6 +181,8 @@ const unresolvedRecord = (): RouteIntakeRecord => ({
   updatedAtUtc: '2026-02-20T14:00:00.000Z',
 });
 
+const thirtyMinutesAgoUtc = (): string => new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
 describe('route intake service', () => {
   it('accepts cashier intake and links to commitment', async () => {
     const commitmentService = new CommitmentService(new InMemoryCommitmentRepository());
@@ -458,7 +460,7 @@ describe('route intake service', () => {
         {
           ...unresolvedRecord(),
           requestId: 'request-unresolved-fresh-1',
-          updatedAtUtc: '2026-02-26T13:45:00.000Z',
+          updatedAtUtc: thirtyMinutesAgoUtc(),
         },
       ])),
     };

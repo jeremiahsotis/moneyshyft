@@ -113,6 +113,10 @@ GPT-5 Codex
 - `npm --prefix src test -- --runInBand src/src/modules/route/application/__tests__/intakeService.test.ts src/src/modules/route/infrastructure/__tests__/intakeRequestRepository.test.ts src/src/routes/api/v1/__tests__/route.cashier-intake.test.ts` (pass)
 - `npm --prefix src test -- --runInBand` (pass)
 - `npm --prefix src run build` (pass)
+- `npm --prefix src install --include=dev` (pass)
+- `npm --prefix src test -- --runInBand src/src/modules/route/application/__tests__/intakeService.test.ts` (pass)
+- `npm --prefix src test -- --runInBand` (pass)
+- `npm --prefix src run build` (pass)
 
 ### Completion Notes List
 
@@ -126,6 +130,7 @@ GPT-5 Codex
 - Ensured linkage failures close requests with explicit `cancelled` lifecycle semantics (`ROUTESHYFT_INTAKE_LINKAGE_CANCELLED`) and expose upstream linkage failure context.
 - Updated unresolved reconciliation queries to return all unresolved requests and classify stale state in the service response.
 - Strengthened reconciliation API and application tests with explicit lifecycle/action assertions and transactional linkage coverage.
+- Post-completion stabilization: replaced hard-coded unresolved "fresh" test timestamp with a relative 30-minute offset to keep stale classification assertions deterministic across execution dates.
 
 ### Senior Developer Review (AI)
 
@@ -170,3 +175,4 @@ GPT-5 Codex
 - 2026-02-25: Enforced canonical request-to-commitment linkage and exposed independent request/commitment lifecycle status in intake detail resolution.
 - 2026-02-25: Added unresolved reconciliation query controls with stale guardrails and new operator endpoint `/api/v1/route/intake/reconciliation/unresolved`, plus regression/integration tests.
 - 2026-02-25: Patched Story 2.4 review findings with atomic Knex transaction linkage writes, explicit linkage-cancelled lifecycle closure, full unresolved-query coverage, and stronger reconciliation assertions in service/API tests.
+- 2026-02-26: Post-completion stabilization updated `src/src/modules/route/application/__tests__/intakeService.test.ts` to use a relative unresolved "fresh" timestamp (30 minutes ago) so stale/non-stale reconciliation expectations remain deterministic.
