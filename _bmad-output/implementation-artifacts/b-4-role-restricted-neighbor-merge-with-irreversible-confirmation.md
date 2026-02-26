@@ -1,6 +1,6 @@
 # Story b.4: Role-Restricted Neighbor Merge with Irreversible Confirmation
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
