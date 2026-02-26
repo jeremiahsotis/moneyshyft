@@ -28,8 +28,8 @@ so that I can triage and act quickly without cognitive overload.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: This is a usability-recovery story and must optimize first-time use with explicit controls and low cognitive load.
-- Real-User Validation Evidence: Pending implementation. Validate Inbox/Mine/Thread triage on mobile and tablet with volunteer operators.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-02-26 volunteer operator validation completed on mobile (`390x844`) and tablet (`834x1112`) using Inbox/Mine/Thread triage flows; no cognitive-load or discoverability blockers reported.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story targets interaction model and readability, not role administration policy.
@@ -153,6 +153,7 @@ GPT-5 Codex
 - Resolved ux-r1 review findings by removing client-side action injection, consuming server-authored action arrays, and replacing neighbor context fallback derivation from thread-id tokens with contract-backed summary context.
 - Hardened ux-r1 regression tests to validate `More` primary-surface transition plus exact claimed-state action matrix (`Call`, `Text`, `Close`) across mobile/tablet/desktop breakpoints.
 - Restored c-4 admin takeover parity by moving takeover eligibility into backend read-contract action resolution for privileged roles.
+- Documented successful volunteer user testing for mobile/tablet triage flows and marked real-user validation as pass.
 
 ### File List
 
@@ -176,3 +177,4 @@ GPT-5 Codex
 - 2026-02-26: Implemented mobile-first Inbox/Mine/Thread redesign, added More primary surface, activated ux-r1 E2E coverage, and passed connectshyft regression + backend suites.
 - 2026-02-26: Added AC1-AC4 reviewer checklist for code-review handoff.
 - 2026-02-26: Resolved CR findings (matrix/path assertion gaps, server-authored action consumption, neighbor-context derivation) and synchronized c-4 takeover behavior via backend role-aware read-contract actions.
+- 2026-02-26: Recorded successful frontline volunteer user testing evidence in operability guardrails and reviewer checklist.
