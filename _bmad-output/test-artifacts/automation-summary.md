@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-25T14:03:59Z'
+lastSaved: '2026-02-26T09:53:21Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -2171,19 +2171,11 @@ lastSaved: '2026-02-25T14:03:59Z'
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story c.3 AC coverage to ATDD + automate evidence.
 
-<<<<<<< HEAD
 ## Story c.4 Run - Step 1: Preflight and Context
 
 ### Framework Verification
 - Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
 - Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
-=======
-## Story 2.4 Run - Step 1: Preflight and Context
-
-### Framework Verification
-- Framework detected: `playwright.config.ts` exists at repository root.
-- Test dependencies detected in `/Users/jeremiahotis/projects/routeshyft/package.json`:
->>>>>>> b59e969 (chore: add Story 2.4 automate test slice)
   - `@playwright/test`
   - `playwright`
 - Result: Framework readiness check passed.
@@ -2191,7 +2183,6 @@ lastSaved: '2026-02-25T14:03:59Z'
 ### Execution Mode
 - Mode selected: **BMad-Integrated**.
 - Basis:
-<<<<<<< HEAD
   - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/c-4-claim-takeover-and-close-lifecycle-actions.md`
   - Existing ATDD files found for Story c.4:
     - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.api.spec.ts`
@@ -2205,21 +2196,6 @@ lastSaved: '2026-02-25T14:03:59Z'
   - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryC4.fixture.ts`
 - Implementation surface reviewed:
   - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts`
-=======
-  - Story artifact loaded: `/Users/jeremiahotis/projects/routeshyft/_bmad-output/implementation-artifacts/2-4-request-to-commitment-linkage-and-terminal-enforcement.md`.
-
-### Context Loaded
-- Planning and requirements artifacts loaded:
-  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/epics.md`
-  - `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Functional_Requirements.md`
-  - `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Architecture_Document.md`
-- Existing test baseline loaded:
-  - `/Users/jeremiahotis/projects/routeshyft/tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.api.spec.ts`
-  - `/Users/jeremiahotis/projects/routeshyft/tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.spec.ts`
-  - `/Users/jeremiahotis/projects/routeshyft/tests/support/fixtures/routeShyftStory24.fixture.ts`
-  - `/Users/jeremiahotis/projects/routeshyft/tests/support/factories/routeShyftStory24Factory.ts`
-- Route API surface reviewed in `/Users/jeremiahotis/projects/routeshyft/src/src/routes/api/v1/route.ts`.
->>>>>>> b59e969 (chore: add Story 2.4 automate test slice)
 
 ### TEA Config Flags
 - `tea_use_playwright_utils: true`
@@ -2229,7 +2205,6 @@ lastSaved: '2026-02-25T14:03:59Z'
 - Core:
   - `test-levels-framework.md`
   - `test-priorities-matrix.md`
-<<<<<<< HEAD
   - `test-quality.md`
   - `ci-burn-in.md`
 - Additional generation references:
@@ -2293,95 +2268,12 @@ lastSaved: '2026-02-25T14:03:59Z'
   - `/tmp/tea-automate-api-tests-2026-02-25T13-10-14Z.json`
 - E2E subprocess output target:
   - `/tmp/tea-automate-e2e-tests-2026-02-25T13-10-14Z.json`
-=======
-  - `data-factories.md`
-  - `selective-testing.md`
-  - `ci-burn-in.md`
-  - `test-quality.md`
-- Playwright Utils + automation:
-  - `overview.md`
-  - `api-request.md`
-  - `network-recorder.md`
-  - `auth-session.md`
-  - `intercept-network-call.md`
-  - `recurse.md`
-  - `log.md`
-  - `file-utils.md`
-  - `burn-in.md`
-  - `network-error-monitor.md`
-  - `fixtures-composition.md`
-  - `playwright-cli.md`
-
-### Browser Exploration Status
-- `playwright-cli` is not installed in this environment (`command not found`).
-- Step 2 will use code/artifact analysis fallback for target discovery.
-
-## Story 2.4 Run - Step 2: Identify Automation Targets
-
-### Browser Exploration
-- `tea_browser_automation` is `auto`, but `playwright-cli` is unavailable (`command not found`).
-- Fallback used: code + artifact analysis (no browser session created).
-
-### Acceptance Criteria to Target Mapping
-- AC1: every request must end in explicit terminal status (`refused`, `cancelled`, or linked commitment terminalization path).
-- AC2: linked commitments keep independent lifecycle transitions after request terminalization.
-- AC3: reconciliation actions and lifecycle state visibility must be present in API and operator UI contracts.
-
-### ATDD Duplication Control
-- Existing RED ATDD files retained and unchanged:
-  - `tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.api.spec.ts`
-  - `tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.spec.ts`
-- Automation expansion scope focuses on additional hardening scenarios:
-  - undefined terminal-state rejection guardrails
-  - refusal-path non-leakage (`commitmentId` absent when refused)
-  - post-terminal commitment transition independence checks
-  - cross-tenant refusal/no-leakage checks
-
-### Selected Test Levels
-- **API** (primary): terminal-state policy, linkage semantics, refusal/no-leakage, independent commitment transitions.
-- **E2E** (secondary): operator reconciliation journey and lifecycle visibility contract.
-
-### Priority Assignment
-- P0:
-  - terminal-state enforcement and canonical linkage behavior
-  - independent commitment transition behavior after request terminalization
-- P1:
-  - refusal reconciliation metadata + no-linkage leakage
-  - cross-tenant refusal/no-leakage behavior
-  - lifecycle UI test-id contract and reconciliation affordances
-
-### Coverage Plan
-- API target file:
-  - `tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts`
-- E2E target file:
-  - `tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
-- Scope: `critical-paths`
-- Implementation readiness finding:
-  - API route `/api/v1/route/requests` is not present in `/src/src/routes/api/v1/route.ts`.
-  - UI route `/app/route/requests` selectors/views are not present in `/frontend/src`.
-  - Generated automate tests will be `test.fixme`-guarded until story implementation lands.
-
-## Story 2.4 Run - Step 3: Parallel Test Generation Orchestration
-
-### Subprocess Launch
-- Timestamp:
-  - `2026-02-25T14-02-37Z`
-- API subprocess output target:
-  - `/tmp/tea-automate-api-tests-2026-02-25T14-02-37Z.json`
-- E2E subprocess output target:
-  - `/tmp/tea-automate-e2e-tests-2026-02-25T14-02-37Z.json`
->>>>>>> b59e969 (chore: add Story 2.4 automate test slice)
 - Execution mode:
   - `PARALLEL (API + E2E)`
 
 ### Completion Verification
-<<<<<<< HEAD
 - API subprocess status: `success: true`, `test_count: 7`
 - E2E subprocess status: `success: true`, `test_count: 7`
-=======
-- API subprocess status: `success: true`, `test_count: 6`
-- E2E subprocess status: `success: true`, `test_count: 3`
->>>>>>> b59e969 (chore: add Story 2.4 automate test slice)
 - Both output files present and JSON-valid.
 
 ### Performance Report
@@ -2389,7 +2281,6 @@ lastSaved: '2026-02-25T14:03:59Z'
 - Sequential equivalent would require two independent generation passes.
 - Performance gain target met: `~50% faster than sequential`.
 
-<<<<<<< HEAD
 ## Story c.4 Run - Step 3C: Aggregate Test Generation Results
 
 ### Files Written to Disk
@@ -2427,51 +2318,11 @@ lastSaved: '2026-02-25T14:03:59Z'
   - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-25T13-10-14Z.json`
 
 ## Story c.4 Run - Step 4: Validate and Summarize
-=======
-## Story 2.4 Run - Step 3C: Aggregate Test Generation Results
-
-### Files Written to Disk
-- `tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts`
-- `tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
-
-### Fixture Infrastructure
-- Reused existing fixture/helper infrastructure:
-  - `routeShyftStory24.fixture`
-  - `routeShyftStory24Factory`
-  - `apiRequest`
-  - `login`
-- No new shared fixture files required for this story slice.
-
-### Summary Metrics
-- Total tests generated: `9`
-  - API tests: `6` (1 file)
-  - E2E tests: `3` (1 file)
-- Priority coverage:
-  - P0: `3`
-  - P1: `6`
-  - P2: `0`
-  - P3: `0`
-- Summary artifact:
-  - `/tmp/tea-automate-summary-2026-02-25T14-02-37Z.json`
-
-### Artifact Persistence
-- Runtime subprocess artifacts:
-  - `/tmp/tea-automate-api-tests-2026-02-25T14-02-37Z.json`
-  - `/tmp/tea-automate-e2e-tests-2026-02-25T14-02-37Z.json`
-  - `/tmp/tea-automate-summary-2026-02-25T14-02-37Z.json`
-- Persisted under test artifacts:
-  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-25T14-02-37Z.json`
-  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-25T14-02-37Z.json`
-  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-25T14-02-37Z.json`
-
-## Story 2.4 Run - Step 4: Validate and Summarize
->>>>>>> b59e969 (chore: add Story 2.4 automate test slice)
 
 ### Validation Results
 - Framework readiness: passed.
 - Coverage mapping by AC and priority: passed.
 - Generated spec parse/discovery validation:
-<<<<<<< HEAD
   - `npx playwright test --list tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts`
   - Result: passed (`14` tests discovered in `2` files).
 - Quality checks on generated files:
@@ -2499,8 +2350,169 @@ lastSaved: '2026-02-25T14:03:59Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story c.4 AC coverage to ATDD + automate evidence.
-=======
-  - `npx playwright test --list tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
+
+## Story ux-r1 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/ux-r1-mobile-first-inbox-mine-thread-redesign.md`
+  - Existing ATDD files found for Story ux-r1:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.atdd.spec.ts`
+
+### Context Loaded
+- Test framework config loaded: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts`.
+- Existing test structure reviewed under `/Users/jeremiahotis/projects/connectshyft/tests`.
+- Story ux-r1 support assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryUxR1Factory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryUxR1.fixture.ts`
+- Planning/test-design context loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-epic-UX.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils + automation:
+  - `overview.md`
+  - `api-request.md`
+  - `playwright-cli.md`
+- Additional generation references:
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+
+## Story ux-r1 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` executed in session `tea-automate` against:
+  - `http://127.0.0.1:5174/app/connectshyft/inbox?...`
+- Result:
+  - browser launched successfully
+  - page load failed with `ERR_CONNECTION_REFUSED` (local app host unavailable)
+  - snapshot step could not proceed due no reachable page/session socket conflict after failed open
+- Session hygiene:
+  - `playwright-cli -s=tea-automate close` confirmed no lingering open session.
+
+### Acceptance Criteria to Target Mapping
+- AC1: persistent bottom-nav contract (`Inbox`, `Mine`, `More`) with no hidden fourth primary tab.
+- AC2: Inbox/Mine large-card readability and tap-target thresholds (`>=16px` body text, `>=44px` primary targets).
+- AC3: thread-detail state-action contract parity by lifecycle state.
+- AC4: responsive discoverability contract (neighbor/conference context, voicemail visibility, no hidden policy path).
+
+### ATDD Duplication Control
+- Existing RED ATDD files retained and unchanged:
+  - `tests/api/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.atdd.api.spec.ts`
+  - `tests/e2e/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.atdd.spec.ts`
+- Automation expansion generated non-ATDD regression targets:
+  - `tests/api/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.api.spec.ts`
+  - `tests/e2e/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.spec.ts`
+
+### Selected Test Levels
+- **API** (primary): contract verification for nav/card/readability/action-matrix/responsive metadata.
+- **E2E** (secondary): operator journeys for mobile-first nav/readability/discoverability behavior.
+
+### Priority Assignment
+- P0:
+  - bottom-nav primary-surface contract
+  - large-card readability/tap-target contract
+  - state-action matrix parity
+- P1:
+  - responsive discoverability metadata and voicemail/context visibility
+  - envelope key parity hardening
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.spec.ts`
+- Scope: `critical-paths`
+- Implementation readiness finding:
+  - story status is `ready-for-dev`; ux-r1 selectors/contract fields are not fully implemented yet.
+  - generated automate tests are intentionally `test.fixme`-gated until ux-r1 implementation lands.
+
+## Story ux-r1 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-02-26T09-53-21Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-02-26T09-53-21Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-02-26T09-53-21Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 5`
+- E2E subprocess status: `success: true`, `test_count: 4`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed in one pass for both test levels.
+- Sequential equivalent would require two independent generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story ux-r1 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `tests/api/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.api.spec.ts`
+- `tests/e2e/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper infrastructure:
+  - `connectShyftStoryUxR1.fixture`
+  - `connectShyftStoryUxR1Factory`
+  - `apiRequest`
+  - `login`
+- No new shared fixture files required for this story slice.
+
+### Summary Metrics
+- Total tests generated: `9`
+  - API tests: `5` (1 file)
+  - E2E tests: `4` (1 file)
+- Priority coverage:
+  - P0: `6`
+  - P1: `3`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-26T09-53-21Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-02-26T09-53-21Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-26T09-53-21Z.json`
+  - `/tmp/tea-automate-summary-2026-02-26T09-53-21Z.json`
+- Persisted under test artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-26T09-53-21Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-26T09-53-21Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-26T09-53-21Z.json`
+
+## Story ux-r1 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated spec parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.api.spec.ts tests/e2e/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.spec.ts`
   - Result: passed (`9` tests discovered in `2` files).
 - Quality checks on generated files:
   - no hard waits (`waitForTimeout`) detected.
@@ -2508,35 +2520,30 @@ lastSaved: '2026-02-25T14:03:59Z'
   - no `try/catch` flow-control anti-pattern detected.
   - priority tags (`@P0`, `@P1`) present for selective execution.
 - CLI session cleanup:
-  - no CLI session created (`playwright-cli` unavailable), therefore no orphaned browser sessions.
+  - `playwright-cli -s=tea-automate close` confirmed no active lingering session.
 - Temp artifacts storage:
   - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-temp`.
 
 ### Coverage Summary
 - API coverage file:
-  - `tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts`
-  - `6` tests (`P0: 3`, `P1: 3`)
+  - `tests/api/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.api.spec.ts`
+  - `5` tests (`P0: 3`, `P1: 2`)
 - E2E coverage file:
-  - `tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
-  - `3` tests (`P1: 3`)
+  - `tests/e2e/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.spec.ts`
+  - `4` tests (`P0: 3`, `P1: 1`)
 - Total generated tests: `9`
 
 ### Key Assumptions
-- Story 2.4 contract endpoints will be implemented as specified in story artifacts:
-  - `POST /api/v1/route/requests`
-  - `GET /api/v1/route/requests/:requestId`
-- Commitment transition endpoint remains available for lifecycle independence checks:
-  - `POST /api/v1/route/commitments/:commitmentId/transitions`
-- Story 2.4 operator UI route and test-id contract will be implemented:
-  - `/app/route/requests`
-  - `routeshyft-request-*` lifecycle/reconciliation test ids from `routeShyftStory24Factory`.
+- ux-r1 contract extensions will be implemented as specified in the story and locked UX artifacts:
+  - bottom-nav test-id contract for `Inbox`, `Mine`, `More`
+  - card readability/tap-target metadata contracts
+  - thread header context discoverability selectors
+  - responsive discoverability and hidden-policy-path guards
 
 ### Risks
-- Current backend route surface does not expose `/api/v1/route/requests` endpoints; generated API automate tests are intentionally `test.fixme`.
-- Current frontend route/view surface does not expose `/app/route/requests`; generated E2E automate tests are intentionally `test.fixme`.
-- Until Story 2.4 implementation lands, these tests provide executable contract intent rather than green runtime validation.
+- Local browser exploration could not connect to app host (`ERR_CONNECTION_REFUSED`), so selector verification relied on story artifacts and source analysis.
+- Current UX story status is `ready-for-dev`; generated automate tests are intentionally `test.fixme`-gated until implementation lands.
 
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
-- `[TR] Trace Requirements` to map Story 2.4 AC coverage to ATDD + automate evidence.
->>>>>>> b59e969 (chore: add Story 2.4 automate test slice)
+- `[TR] Trace Requirements` to map Story ux-r1 AC coverage to ATDD + automate evidence.
