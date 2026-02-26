@@ -2,7 +2,7 @@ import type { Knex } from 'knex';
 
 export type ConnectShyftInboxBucket = 'inbox' | 'mine';
 export type ConnectShyftThreadState = 'UNCLAIMED' | 'CLAIMED' | 'CLOSED';
-export type ConnectShyftThreadAction = 'Call' | 'Text' | 'Claim' | 'Close' | 'Send Message';
+export type ConnectShyftThreadAction = 'Call' | 'Text' | 'Claim' | 'Close' | 'Send Message' | 'Take Over';
 
 export type ConnectShyftThreadSummaryRecord = {
   threadId: string;
@@ -99,6 +99,12 @@ const CONNECTSHYFT_THREAD_ACTIONS: Record<
   CLAIMED: ['Call', 'Text', 'Close'],
   CLOSED: ['Call', 'Send Message'],
 };
+const CONNECTSHYFT_TAKEOVER_ROLES = new Set([
+  'ORGUNIT_ADMIN',
+  'TENANT_ADMIN',
+  'TENANT_STAFF',
+  'SYSTEM_ADMIN',
+]);
 
 const CONNECTSHYFT_SCHEMA = 'connectshyft';
 const CONNECTSHYFT_THREADS_TABLE = 'cs_threads';
@@ -386,7 +392,17 @@ export const resolveConnectShyftUrgencyLabel = (
 
 export const resolveConnectShyftThreadActions = (
   state: ConnectShyftThreadState,
-): readonly ConnectShyftThreadAction[] => CONNECTSHYFT_THREAD_ACTIONS[state];
+  options: {
+    requestedRole?: string | null;
+  } = {},
+): readonly ConnectShyftThreadAction[] => {
+  const role = normalizeString(options.requestedRole).toUpperCase();
+  if (state === 'CLAIMED' && CONNECTSHYFT_TAKEOVER_ROLES.has(role)) {
+    return ['Call', 'Take Over', 'Text', 'Close'];
+  }
+
+  return CONNECTSHYFT_THREAD_ACTIONS[state];
+};
 
 export const sortConnectShyftThreadSummaries = (
   items: readonly ConnectShyftThreadSummaryRecord[],
@@ -577,6 +593,7 @@ export const resolveConnectShyftThreadDetailContract = (input: {
   orgUnitId: string;
   threadId: string;
   actorUserId?: string | null;
+  requestedRole?: string | null;
 }): ConnectShyftThreadDetailRecord | null => {
   const normalizedThreadId = input.threadId.trim();
   if (!normalizedThreadId) {
@@ -600,7 +617,9 @@ export const resolveConnectShyftThreadDetailContract = (input: {
 
   return {
     ...summary,
-    actions: resolveConnectShyftThreadActions(summary.state),
+    actions: resolveConnectShyftThreadActions(summary.state, {
+      requestedRole: input.requestedRole,
+    }),
     lifecycle: {
       reopenedByInbound: false,
     },
@@ -923,6 +942,7 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
   orgUnitId: string;
   threadId: string;
   actorUserId?: string | null;
+  requestedRole?: string | null;
   db: Knex;
 }): Promise<ConnectShyftThreadDetailRecord | null> => {
   const normalizedThreadId = input.threadId.trim();
@@ -942,6 +962,7 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
       orgUnitId: input.orgUnitId,
       threadId: normalizedThreadId,
       actorUserId: input.actorUserId,
+      requestedRole: input.requestedRole,
     });
   }
 
@@ -955,6 +976,7 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
         orgUnitId: input.orgUnitId,
         threadId: normalizedThreadId,
         actorUserId: input.actorUserId,
+        requestedRole: input.requestedRole,
       });
     }
 
@@ -971,7 +993,9 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
 
   return {
     ...summary,
-    actions: resolveConnectShyftThreadActions(summary.state),
+    actions: resolveConnectShyftThreadActions(summary.state, {
+      requestedRole: input.requestedRole,
+    }),
     lifecycle: {
       reopenedByInbound: false,
     },

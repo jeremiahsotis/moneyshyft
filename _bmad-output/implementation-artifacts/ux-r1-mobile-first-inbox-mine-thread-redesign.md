@@ -138,6 +138,8 @@ GPT-5 Codex
 - `cd frontend && npm run build` (pass)
 - `cd src && npm run build` (pass)
 - `cd src && npm test` (pass)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/readContracts.test.ts` (pass)
+- `npm run test:e2e -- tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts` (pass)
 
 ### Completion Notes List
 
@@ -148,6 +150,9 @@ GPT-5 Codex
 - Added `/app/connectshyft/more` primary-surface route/view for operational secondary actions.
 - Added UX-R1 fallback read-contract seed data for deterministic ux-r1 test contexts and updated UX-R1 automate tests from `fixme` to active assertions.
 - Adjusted c-3 ordering assertion selector filtering to ignore new ux-r1 sub-element test IDs while preserving ordering assertions.
+- Resolved ux-r1 review findings by removing client-side action injection, consuming server-authored action arrays, and replacing neighbor context fallback derivation from thread-id tokens with contract-backed summary context.
+- Hardened ux-r1 regression tests to validate `More` primary-surface transition plus exact claimed-state action matrix (`Call`, `Text`, `Close`) across mobile/tablet/desktop breakpoints.
+- Restored c-4 admin takeover parity by moving takeover eligibility into backend read-contract action resolution for privileged roles.
 
 ### File List
 
@@ -160,6 +165,8 @@ GPT-5 Codex
 - frontend/src/views/ConnectShyft/ConnectShyftMoreView.vue
 - frontend/src/router/index.ts
 - src/src/modules/connectshyft/readContracts.ts
+- src/src/modules/connectshyft/__tests__/readContracts.test.ts
+- src/src/routes/api/v1/connectshyft.ts
 - tests/e2e/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.spec.ts
 - tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.spec.ts
 
@@ -168,3 +175,4 @@ GPT-5 Codex
 - 2026-02-25: Created Story ux-r1 ready-for-dev context document.
 - 2026-02-26: Implemented mobile-first Inbox/Mine/Thread redesign, added More primary surface, activated ux-r1 E2E coverage, and passed connectshyft regression + backend suites.
 - 2026-02-26: Added AC1-AC4 reviewer checklist for code-review handoff.
+- 2026-02-26: Resolved CR findings (matrix/path assertion gaps, server-authored action consumption, neighbor-context derivation) and synchronized c-4 takeover behavior via backend role-aware read-contract actions.

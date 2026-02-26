@@ -76,6 +76,10 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
       await expect(page.getByTestId('connectshyft-bottom-nav-more')).toBeVisible();
       await expect(page.getByTestId('connectshyft-bottom-nav-hidden-primary-tab')).toHaveCount(0);
 
+      await page.getByTestId('connectshyft-bottom-nav-more').click();
+      await expect(page).toHaveURL(/\/app\/connectshyft\/more/);
+      await expect(page.getByRole('heading', { name: 'ConnectShyft More' })).toBeVisible();
+
       await page.getByTestId('connectshyft-bottom-nav-mine').click();
       await expect(page).toHaveURL(/\/app\/connectshyft\/mine/);
       await page.getByTestId('connectshyft-bottom-nav-inbox').click();
@@ -208,11 +212,20 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
         await expect(page.getByTestId('connectshyft-thread-header-conference-context')).toBeVisible();
         await expect(page.getByTestId('connectshyft-voicemail-indicator')).toBeVisible();
         await expect(page.getByTestId('connectshyft-thread-actions')).toBeVisible();
-        await expect(page.getByTestId('connectshyft-hidden-policy-path')).toHaveCount(0);
+        const actionLabels = (await page
+          .getByTestId('connectshyft-thread-actions')
+          .locator('button')
+          .allTextContents())
+          .map((value) => value.trim());
+        expect(actionLabels).toEqual(['Call', 'Text', 'Close']);
 
         await test.step(`action discoverability remains explicit on ${viewport.label}`, async () => {
           await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
           await expect(page.getByRole('button', { name: 'Text' })).toBeVisible();
+          await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
+          await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
+          await expect(page.getByRole('button', { name: 'Send Message' })).toHaveCount(0);
+          await expect(page.getByRole('button', { name: 'Take Over' })).toHaveCount(0);
         });
       }
     },

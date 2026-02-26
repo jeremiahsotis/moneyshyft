@@ -2150,12 +2150,14 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
     return;
   }
 
+  const requestedRole = resolveConnectShyftRequestedRole(req);
   const actorUserId = resolveConnectShyftRequestedActorUserId(req);
   const thread = await resolveConnectShyftThreadDetailContractAsync({
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     threadId,
     actorUserId,
+    requestedRole,
     db: loadPlatformDb(),
   });
 

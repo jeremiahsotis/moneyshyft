@@ -187,7 +187,6 @@ import {
 import {
   fetchConnectShyftThreadDetail,
   type ConnectShyftThreadDetail,
-  type ConnectShyftThreadState,
 } from '@/features/connectshyft/readContracts';
 
 const route = useRoute();
@@ -210,12 +209,6 @@ const role = computed(() => {
 });
 
 const isViewerRole = computed(() => role.value === 'TENANT_VIEWER');
-const canShowTakeover = computed(() => [
-  'ORGUNIT_ADMIN',
-  'TENANT_ADMIN',
-  'TENANT_STAFF',
-  'SYSTEM_ADMIN',
-].includes(role.value));
 
 const threadId = computed(() => {
   const rawValue = route.params.threadId;
@@ -254,29 +247,12 @@ const escalationChipLabel = computed(() => {
   return 'Needs urgent attention';
 });
 
-const allThreadActions = computed<string[]>(() => {
-  if (!threadDetail.value) {
-    return [];
-  }
-
-  const actions = [...threadDetail.value.actions];
-  if (
-    threadDetail.value.state === 'CLAIMED'
-    && canShowTakeover.value
-    && !actions.includes('Take Over')
-  ) {
-    actions.splice(1, 0, 'Take Over');
-  }
-
-  return actions;
-});
-
 const visibleActions = computed<string[]>(() => {
   if (isViewerRole.value) {
     return [];
   }
 
-  return allThreadActions.value;
+  return threadDetail.value ? [...threadDetail.value.actions] : [];
 });
 
 const showActionRefusalBanner = computed(() => {
@@ -296,8 +272,12 @@ const neighborContextLabel = computed(() => {
     return 'Neighbor context unavailable';
   }
 
-  const neighborToken = threadDetail.value.threadId.split('-').slice(-2).join('-');
-  return `Neighbor context: ${neighborToken || threadDetail.value.threadId}`;
+  const summary = threadDetail.value.summary.trim();
+  if (summary.length > 0) {
+    return `Neighbor context: ${summary}`;
+  }
+
+  return 'Neighbor context: Active thread';
 });
 
 const conferenceContextLabel = computed(() => {
@@ -311,19 +291,18 @@ const conferenceContextLabel = computed(() => {
   return `Conference context: ${label}`;
 });
 
-const actionSetForState = (state: ConnectShyftThreadState): string[] => {
-  const byState: Record<ConnectShyftThreadState, string[]> = {
-    UNCLAIMED: ['Call', 'Text', 'Claim'],
-    CLAIMED: ['Call', 'Text', 'Close'],
-    CLOSED: ['Call', 'Send Message'],
-  };
-
-  const actions = [...byState[state]];
-  if (state === 'CLAIMED' && canShowTakeover.value && !actions.includes('Take Over')) {
-    actions.splice(1, 0, 'Take Over');
+const parseThreadActions = (value: unknown): string[] | null => {
+  if (!Array.isArray(value)) {
+    return null;
   }
 
-  return actions;
+  return value
+    .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+    .filter((entry) => entry.length > 0);
+};
+
+const isThreadState = (value: unknown): value is ConnectShyftThreadDetail['state'] => {
+  return value === 'UNCLAIMED' || value === 'CLAIMED' || value === 'CLOSED';
 };
 
 const applyThreadUpdate = (payload: unknown): void => {
@@ -342,11 +321,15 @@ const applyThreadUpdate = (payload: unknown): void => {
     last_inbound_cs_number_id?: unknown;
     preferredOutboundCsNumberId?: unknown;
     preferred_outbound_cs_number_id?: unknown;
+    actions?: unknown;
   };
 
   const current = threadDetail.value;
-  const nextState = typeof candidate.state === 'string'
-    ? candidate.state.trim().toUpperCase() as ConnectShyftThreadState
+  const nextStateCandidate = typeof candidate.state === 'string'
+    ? candidate.state.trim().toUpperCase()
+    : current.state;
+  const nextState = isThreadState(nextStateCandidate)
+    ? nextStateCandidate
     : current.state;
 
   const claimedByUserId = typeof candidate.claimedByUserId === 'string'
@@ -358,6 +341,7 @@ const applyThreadUpdate = (payload: unknown): void => {
   const escalationStage = typeof candidate.escalation?.stage === 'number'
     ? candidate.escalation.stage
     : current.escalationStage;
+  const nextActions = parseThreadActions(candidate.actions);
 
   threadDetail.value = {
     ...current,
@@ -374,7 +358,7 @@ const applyThreadUpdate = (payload: unknown): void => {
       : typeof candidate.preferred_outbound_cs_number_id === 'string'
         ? candidate.preferred_outbound_cs_number_id
         : current.preferredOutboundCsNumberId,
-    actions: actionSetForState(nextState),
+    actions: nextActions || current.actions,
     lifecycle: {
       reopenedByInbound: current.lifecycle?.reopenedByInbound === true,
     },
@@ -506,7 +490,6 @@ const refreshThreadDetail = async () => {
 
   threadDetail.value = {
     ...detailResult.thread,
-    actions: actionSetForState(detailResult.thread.state),
   };
   detailLoadError.value = '';
   lifecycleToast.value = '';
