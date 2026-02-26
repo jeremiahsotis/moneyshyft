@@ -134,12 +134,12 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `npm run branch:ensure-workflow -- --workflow dev-story --story b-4-role-restricted-neighbor-merge-with-irreversible-confirmation`
-- `npm run build` (backend TypeScript compile) in `src/`
-- `npm run build` (frontend `vue-tsc` + `vite build`) in `frontend/`
-- `npm test -- --runInBand src/src/modules/connectshyft/__tests__/neighbors.test.ts` in `src/`
-- `npm run test:e2e -- tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.api.spec.ts`
-- `npm run test:e2e -- tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.spec.ts`
+- `npm run branch:ensure-workflow -- --workflow dev-story --story b-4-role-restricted-neighbor-merge-with-irreversible-confirmation` (pass)
+- `npm run build` (backend TypeScript compile) in `src/` (pass)
+- `npm run build` (frontend `vue-tsc` + `vite build`) in `frontend/` (pass)
+- `npm test -- --runInBand src/src/modules/connectshyft/__tests__/neighbors.test.ts` in `src/` (pass)
+- `npm run test:e2e -- tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.api.spec.ts` (pass)
+- `npm run test:e2e -- tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.spec.ts` (pass)
 
 ### Completion Notes List
 
