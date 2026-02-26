@@ -9,6 +9,12 @@ export type ConnectShyftInboxActions = {
   takeover: boolean;
 };
 
+export type ConnectShyftInboxContext = {
+  tenantId: string;
+  orgUnitId: string;
+  bypassedOrgUnitMembership: boolean;
+};
+
 export type ConnectShyftThreadSummary = {
   threadId: string;
   orgUnitId: string;
@@ -43,6 +49,11 @@ type ConnectShyftEnvelope = {
   data?: {
     items?: unknown[];
     thread?: unknown;
+    context?: {
+      tenantId?: unknown;
+      orgUnitId?: unknown;
+      bypassedOrgUnitMembership?: unknown;
+    };
     actions?: {
       claim?: boolean;
       takeover?: boolean;
@@ -57,6 +68,7 @@ export type ConnectShyftBucketReadResult =
     message: string;
     items: ConnectShyftThreadSummary[];
     actions: ConnectShyftInboxActions;
+    context: ConnectShyftInboxContext | null;
   }
   | {
     ok: false;
@@ -267,6 +279,30 @@ const parseBucketActions = (payload: unknown): ConnectShyftInboxActions => {
   };
 };
 
+const parseInboxContext = (payload: unknown): ConnectShyftInboxContext | null => {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const envelope = payload as ConnectShyftEnvelope;
+  const context = envelope.data?.context;
+  if (!context || typeof context !== 'object') {
+    return null;
+  }
+
+  const tenantId = normalizeString(context.tenantId);
+  const orgUnitId = normalizeString(context.orgUnitId);
+  if (!tenantId || !orgUnitId) {
+    return null;
+  }
+
+  return {
+    tenantId,
+    orgUnitId,
+    bypassedOrgUnitMembership: context.bypassedOrgUnitMembership === true,
+  };
+};
+
 export const fetchConnectShyftThreadBucket = async (
   bucket: ConnectShyftInboxBucket,
 ): Promise<ConnectShyftBucketReadResult> => {
@@ -291,6 +327,7 @@ export const fetchConnectShyftThreadBucket = async (
       message: parseEnvelopeMessage(response.data, 'ConnectShyft threads loaded'),
       items: parseBucketItems(response.data),
       actions: parseBucketActions(response.data),
+      context: parseInboxContext(response.data),
     };
   } catch (error: unknown) {
     const payload = (error as { response?: { data?: unknown } })?.response?.data;

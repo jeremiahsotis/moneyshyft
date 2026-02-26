@@ -211,13 +211,26 @@ const router = createRouter({
   routes
 });
 
+const hasAuthCookie = (): boolean => {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  return /(?:^|;\s*)access_token=/.test(document.cookie || '');
+};
+
 // Navigation guards
 router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore(pinia);
   const accessStore = useAccessStore(pinia);
 
   // Try to load user if not already loaded
-  if (!authStore.user && !authStore.isLoading) {
+  const shouldBootstrapSession =
+    !authStore.user
+    && !authStore.isLoading
+    && (to.meta.requiresAuth === true || hasAuthCookie());
+
+  if (shouldBootstrapSession) {
     try {
       await authStore.fetchCurrentUser();
     } catch (_error) {

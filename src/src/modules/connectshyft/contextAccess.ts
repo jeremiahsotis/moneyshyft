@@ -19,6 +19,7 @@ export type ResolvedConnectShyftContext = {
   tenantId: string;
   orgUnitId: string;
   bypassedOrgUnitMembership: boolean;
+  effectiveRoles: string[];
 };
 
 type SuccessDecision = {
@@ -47,6 +48,10 @@ const TEST_ROLE_HEADER = 'x-test-connectshyft-role';
 const TEST_USER_HEADER = 'x-test-connectshyft-user-id';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const CONNECTSHYFT_LEGACY_ROLE_ALIASES: Record<string, string> = {
+  admin: 'TENANT_ADMIN',
+  member: 'ORGUNIT_MEMBER',
+};
 
 const refusal = (
   code: string,
@@ -68,6 +73,29 @@ const normalizeContextValue = (value: string | null | undefined): string | null 
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+};
+
+const normalizeConnectShyftRole = (role: string | null | undefined): string | null => {
+  if (typeof role !== 'string') {
+    return null;
+  }
+
+  const normalized = role.trim();
+  if (normalized.length === 0) {
+    return null;
+  }
+
+  return CONNECTSHYFT_LEGACY_ROLE_ALIASES[normalized.toLowerCase()] || normalized;
+};
+
+const normalizeConnectShyftRoles = (
+  roles: Array<string | null | undefined>,
+): string[] => {
+  const normalized = roles
+    .map((role) => normalizeConnectShyftRole(role))
+    .filter((role): role is string => role !== null);
+
+  return Array.from(new Set(normalized));
 };
 
 const isConnectShyftTenantId = (tenantId: string): boolean => {
@@ -200,7 +228,7 @@ const resolveHeaderMemberships = (
 };
 
 const isTenantPrivilegedRole = (role: string | null | undefined): boolean => {
-  return hasCapability([role || null], CAPABILITIES.TENANT_READ_ALL);
+  return hasCapability([normalizeConnectShyftRole(role)], CAPABILITIES.TENANT_READ_ALL);
 };
 
 const mapOrgUnitAccessFailure = (
@@ -237,6 +265,8 @@ const resolveMembershipFromTestHeader = (
     return null;
   }
 
+  const effectiveRoles = normalizeConnectShyftRoles([role]);
+
   if (isTenantPrivilegedRole(role)) {
     return {
       ok: true,
@@ -244,6 +274,7 @@ const resolveMembershipFromTestHeader = (
         tenantId,
         orgUnitId,
         bypassedOrgUnitMembership: true,
+        effectiveRoles,
       },
     };
   }
@@ -261,6 +292,7 @@ const resolveMembershipFromTestHeader = (
       tenantId,
       orgUnitId,
       bypassedOrgUnitMembership: false,
+      effectiveRoles,
     },
   };
 };
@@ -398,6 +430,7 @@ export const resolveConnectShyftOrgUnitContext = async (
           tenantId,
           orgUnitId: canonicalOrgUnitId,
           bypassedOrgUnitMembership: true,
+          effectiveRoles: normalizeConnectShyftRoles([resolvedUser.role || null]),
         },
       };
     }
@@ -435,6 +468,7 @@ export const resolveConnectShyftOrgUnitContext = async (
         tenantId,
         orgUnitId: canonicalOrgUnitId,
         bypassedOrgUnitMembership: decision.bypassedOrgUnitMembership,
+        effectiveRoles: normalizeConnectShyftRoles(decision.effectiveRoles),
       },
     };
   } catch (_error) {

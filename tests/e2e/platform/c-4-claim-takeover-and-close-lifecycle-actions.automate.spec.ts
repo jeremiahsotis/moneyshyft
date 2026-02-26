@@ -133,7 +133,7 @@ test.describe(
           context.threadIds.closed,
         );
         await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toContainText(
-          'thread_reopened_by_user',
+          'Conversation reopened',
         );
       },
     );

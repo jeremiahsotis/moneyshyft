@@ -157,6 +157,7 @@ describe('connectshyft context enforcement', () => {
         tenantId: 'tenant-connectshyft-alpha',
         orgUnitId: 'org-connectshyft-alpha-east',
         bypassedOrgUnitMembership: false,
+        effectiveRoles: ['ORGUNIT_MEMBER'],
       },
     });
   });
@@ -177,6 +178,7 @@ describe('connectshyft context enforcement', () => {
         tenantId: 'tenant-connectshyft-alpha',
         orgUnitId: 'org-connectshyft-alpha-west',
         bypassedOrgUnitMembership: true,
+        effectiveRoles: ['TENANT_ADMIN'],
       },
     });
   });
@@ -241,6 +243,7 @@ describe('connectshyft context enforcement', () => {
         tenantId: '11111111-1111-4111-8111-111111111111',
         orgUnitId: '22222222-2222-4222-8222-222222222222',
         bypassedOrgUnitMembership: false,
+        effectiveRoles: ['ORGUNIT_MEMBER'],
       },
     });
   });

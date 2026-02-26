@@ -79,7 +79,7 @@ development_status:
   epic-e-retrospective: optional
   epic-ux-remediation: in-progress
   ux-r1-mobile-first-inbox-mine-thread-redesign: review
-  ux-r2-accessibility-and-language-hardening: ready-for-dev
+  ux-r2-accessibility-and-language-hardening: review
   ux-r3-voicemail-and-indicator-behavior: ready-for-dev
   ux-r4-outbound-policy-guardrail-ui: ready-for-dev
   epic-ux-remediation-retrospective: optional

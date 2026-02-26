@@ -10,7 +10,10 @@ import {
   type ConnectShyftCapability,
   type ConnectShyftFeatureFlags,
 } from '../../../modules/connectshyft/featureFlags';
-import { resolveConnectShyftOrgUnitContext } from '../../../modules/connectshyft/contextAccess';
+import {
+  resolveConnectShyftOrgUnitContext,
+  type ResolvedConnectShyftContext,
+} from '../../../modules/connectshyft/contextAccess';
 import { connectShyftNumberMappingServiceAsync } from '../../../modules/connectshyft/numberMappings';
 import {
   connectShyftNeighborServiceAsync,
@@ -68,6 +71,10 @@ const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
   inboundVoiceVoicemail: 'connectshyft.inbound.voice_voicemail_recorded',
   inboundVoiceFallback: 'connectshyft.inbound.voice_fallback_recorded',
 } as const;
+const CONNECTSHYFT_LEGACY_ROLE_ALIASES: Record<string, string> = {
+  admin: 'TENANT_ADMIN',
+  member: 'ORGUNIT_MEMBER',
+};
 
 type ConnectShyftOutboundAction = 'call' | 'message';
 
@@ -125,6 +132,67 @@ const actorFromRequest = (req: Request): PlatformAdminActorContext => ({
 
 const resolveTenantIdFromRequest = (req: Request): string | null => {
   return req.user?.activeTenantId || req.user?.householdId || null;
+};
+
+const resolveConnectShyftFallbackOrgUnitId = async (
+  req: Request,
+): Promise<string | null> => {
+  if (req.tenantContext?.orgUnitId || req.orgUnitId || req.user?.activeOrgUnitId) {
+    return null;
+  }
+
+  const actorUserId = req.user?.userId || null;
+  const tenantId = resolveTenantIdFromRequest(req);
+  if (!actorUserId || !tenantId || !UUID_PATTERN.test(tenantId)) {
+    return null;
+  }
+
+  const db = loadPlatformDb();
+
+  const directMembershipRows = await db
+    .withSchema('platform')
+    .table('org_unit_memberships as om')
+    .join('org_units as ou', 'ou.id', 'om.org_unit_id')
+    .where('om.user_id', actorUserId)
+    .andWhere('ou.tenant_id', tenantId)
+    .select('om.org_unit_id as orgUnitId')
+    .orderBy('om.org_unit_id', 'asc');
+
+  const directMembershipOrgUnitIds = Array.from(
+    new Set(
+      directMembershipRows
+        .map((row) => normalizeNonEmptyString((row as { orgUnitId?: unknown }).orgUnitId))
+        .filter((value): value is string => value !== null),
+    ),
+  );
+
+  if (directMembershipOrgUnitIds.length === 1) {
+    return directMembershipOrgUnitIds[0];
+  }
+
+  if (directMembershipOrgUnitIds.length > 1) {
+    return null;
+  }
+
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const isTenantPrivileged = hasCapability([requestedRole], CAPABILITIES.TENANT_READ_ALL);
+  if (!isTenantPrivileged) {
+    return null;
+  }
+
+  const tenantOrgUnitRows = await db
+    .withSchema('platform')
+    .table('org_units')
+    .where('tenant_id', tenantId)
+    .select('id')
+    .orderBy('id', 'asc')
+    .limit(2);
+
+  if (tenantOrgUnitRows.length !== 1) {
+    return null;
+  }
+
+  return normalizeNonEmptyString((tenantOrgUnitRows[0] as { id?: unknown }).id);
 };
 
 const shouldBypassTestHarnessEntitlementLookup = (tenantId: string): boolean => {
@@ -202,6 +270,17 @@ const enforceOrgUnitContext = async (
   res: Response,
   attemptedOrgUnitId?: string | null,
 ) => {
+  const fallbackOrgUnitId = await resolveConnectShyftFallbackOrgUnitId(req);
+  if (fallbackOrgUnitId) {
+    req.orgUnitId = fallbackOrgUnitId;
+    req.tenantContext = {
+      tenantId: req.tenantContext?.tenantId || req.tenantId || req.user?.activeTenantId || req.user?.householdId || 'public',
+      orgUnitId: fallbackOrgUnitId,
+      scopeMode: 'ORG_UNIT',
+      source: req.tenantContext?.source || 'auth',
+    };
+  }
+
   const decision = await resolveConnectShyftOrgUnitContext(req, {
     attemptedOrgUnitId,
     resolveOrgUnitAccess: async ({ tenantId, orgUnitId, userId, baseRoles }) =>
@@ -230,14 +309,29 @@ const enforceOrgUnitContext = async (
 };
 
 const resolveConnectShyftRequestedRole = (req: Request): string | null => {
+  const normalizeConnectShyftRequestedRole = (inputRole: unknown): string | null => {
+    if (typeof inputRole !== 'string' || inputRole.trim().length === 0) {
+      return null;
+    }
+
+    const normalizedBaseRole = inputRole.trim();
+    const legacyAlias = CONNECTSHYFT_LEGACY_ROLE_ALIASES[normalizedBaseRole.toLowerCase()];
+    if (legacyAlias) {
+      return legacyAlias;
+    }
+
+    return normalizedBaseRole;
+  };
+
   if (isConnectShyftTestOverrideEnabled()) {
     const testOverrideRole = req.header('x-test-connectshyft-role');
-    if (typeof testOverrideRole === 'string' && testOverrideRole.trim().length > 0) {
-      return testOverrideRole.trim();
+    const resolvedOverrideRole = normalizeConnectShyftRequestedRole(testOverrideRole);
+    if (resolvedOverrideRole) {
+      return resolvedOverrideRole;
     }
   }
 
-  return req.user?.role || null;
+  return normalizeConnectShyftRequestedRole(req.user?.role);
 };
 
 const resolveConnectShyftRequestedActorUserId = (req: Request): string | null => {
@@ -675,10 +769,10 @@ type ConnectShyftNeighborEditPolicyDecision =
 
 const evaluateNeighborEditPolicy = (
   req: Request,
-  requestedRole: string | null,
+  actorRoles: Array<string | null | undefined>,
   neighborId: string,
 ): ConnectShyftNeighborEditPolicyDecision => {
-  if (hasCapability([requestedRole], CAPABILITIES.NEIGHBOR_EDIT_ALL)) {
+  if (hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)) {
     return {
       ok: true,
       policyPath: 'tenant-privileged',
@@ -687,8 +781,10 @@ const evaluateNeighborEditPolicy = (
     };
   }
 
-  const normalizedRole = (requestedRole || '').trim().toUpperCase();
-  if (normalizedRole === 'ORGUNIT_IDENTITY_LEAD') {
+  const isIdentityLead = actorRoles.some(
+    (role) => typeof role === 'string' && role.trim().toUpperCase() === 'ORGUNIT_IDENTITY_LEAD',
+  );
+  if (isIdentityLead) {
     const activeThreadNeighborIds = resolveConnectShyftActiveThreadNeighborIds(req);
     if (!activeThreadNeighborIds.has(neighborId)) {
       return {
@@ -716,12 +812,33 @@ const evaluateNeighborEditPolicy = (
   };
 };
 
+const resolveConnectShyftActorRoles = (
+  req: Request,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
+): string[] => {
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const contextRoles = Array.isArray(context?.effectiveRoles)
+    ? context.effectiveRoles
+      .filter((role): role is string => typeof role === 'string')
+      .map((role) => role.trim())
+      .filter((role) => role.length > 0)
+    : [];
+  const deduped = Array.from(new Set(contextRoles));
+
+  if (requestedRole && !deduped.includes(requestedRole)) {
+    deduped.push(requestedRole);
+  }
+
+  return deduped;
+};
+
 const enforceNumberMappingManageCapability = (
   req: Request,
   res: Response,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
 ): boolean => {
-  const requestedRole = resolveConnectShyftRequestedRole(req);
-  if (hasCapability([requestedRole], CAPABILITIES.NUMBER_MAPPING_MANAGE)) {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  if (hasCapability(actorRoles, CAPABILITIES.NUMBER_MAPPING_MANAGE)) {
     return true;
   }
 
@@ -737,11 +854,12 @@ const enforceNumberMappingManageCapability = (
 const enforceNeighborCreateCapability = (
   req: Request,
   res: Response,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
 ): boolean => {
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   if (
-    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
-    || hasCapability([requestedRole], CAPABILITIES.NEIGHBOR_EDIT_ALL)
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
+    || hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)
   ) {
     return true;
   }
@@ -758,14 +876,15 @@ const enforceNeighborCreateCapability = (
 const enforceNeighborReadCapability = (
   req: Request,
   res: Response,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
 ): boolean => {
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   if (
-    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
-    || hasCapability([requestedRole], CAPABILITIES.NEIGHBOR_EDIT_ALL)
-    || hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_THREAD_VIEW)
-    || hasCapability([requestedRole], CAPABILITIES.THREAD_VIEW_ALL)
-    || hasCapability([requestedRole], CAPABILITIES.TENANT_READ_ALL)
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
+    || hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)
+    || hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_VIEW)
+    || hasCapability(actorRoles, CAPABILITIES.THREAD_VIEW_ALL)
+    || hasCapability(actorRoles, CAPABILITIES.TENANT_READ_ALL)
   ) {
     return true;
   }
@@ -782,12 +901,13 @@ const enforceNeighborReadCapability = (
 const enforceNeighborUpdateCapability = (
   req: Request,
   res: Response,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
 ): boolean => {
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   if (
-    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
-    || hasCapability([requestedRole], CAPABILITIES.NEIGHBOR_EDIT_ALL)
-    || hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_IDENTITY_RESOLVE)
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
+    || hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)
+    || hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_IDENTITY_RESOLVE)
   ) {
     return true;
   }
@@ -804,9 +924,10 @@ const enforceNeighborUpdateCapability = (
 const enforceEscalationConfigCapability = (
   req: Request,
   res: Response,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
 ): boolean => {
-  const requestedRole = resolveConnectShyftRequestedRole(req);
-  if (hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_ESCALATION_CONFIG)) {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  if (hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_ESCALATION_CONFIG)) {
     return true;
   }
 
@@ -822,11 +943,12 @@ const enforceEscalationConfigCapability = (
 const enforceThreadViewCapability = (
   req: Request,
   res: Response,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
 ): boolean => {
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   if (
-    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_THREAD_VIEW)
-    || hasCapability([requestedRole], CAPABILITIES.THREAD_VIEW_ALL)
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_VIEW)
+    || hasCapability(actorRoles, CAPABILITIES.THREAD_VIEW_ALL)
   ) {
     return true;
   }
@@ -843,14 +965,14 @@ const enforceThreadViewCapability = (
 const enforceEscalationActionMembership = (
   req: Request,
   res: Response,
-  bypassedOrgUnitMembership: boolean,
+  context: Pick<ResolvedConnectShyftContext, 'bypassedOrgUnitMembership' | 'effectiveRoles'>,
 ): boolean => {
-  if (!bypassedOrgUnitMembership) {
+  if (!context.bypassedOrgUnitMembership) {
     return true;
   }
 
-  const requestedRole = resolveConnectShyftRequestedRole(req);
-  if (hasCapability([requestedRole], CAPABILITIES.THREAD_TAKEOVER_ALL)) {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  if (hasCapability(actorRoles, CAPABILITIES.THREAD_TAKEOVER_ALL)) {
     return true;
   }
 
@@ -866,11 +988,12 @@ const enforceEscalationActionMembership = (
 const enforceThreadClaimCapability = (
   req: Request,
   res: Response,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
 ): boolean => {
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   if (
-    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_THREAD_CLAIM)
-    || hasCapability([requestedRole], CAPABILITIES.THREAD_TAKEOVER_ALL)
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_CLAIM)
+    || hasCapability(actorRoles, CAPABILITIES.THREAD_TAKEOVER_ALL)
   ) {
     return true;
   }
@@ -887,11 +1010,12 @@ const enforceThreadClaimCapability = (
 const enforceThreadTakeoverCapability = (
   req: Request,
   res: Response,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
 ): boolean => {
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   if (
-    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_THREAD_TAKEOVER)
-    || hasCapability([requestedRole], CAPABILITIES.THREAD_TAKEOVER_ALL)
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_TAKEOVER)
+    || hasCapability(actorRoles, CAPABILITIES.THREAD_TAKEOVER_ALL)
   ) {
     return true;
   }
@@ -908,11 +1032,12 @@ const enforceThreadTakeoverCapability = (
 const enforceThreadCloseCapability = (
   req: Request,
   res: Response,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
 ): boolean => {
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   if (
-    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_THREAD_CLOSE)
-    || hasCapability([requestedRole], CAPABILITIES.THREAD_TAKEOVER_ALL)
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_CLOSE)
+    || hasCapability(actorRoles, CAPABILITIES.THREAD_TAKEOVER_ALL)
   ) {
     return true;
   }
@@ -929,11 +1054,12 @@ const enforceThreadCloseCapability = (
 const enforceThreadCallCapability = (
   req: Request,
   res: Response,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
 ): boolean => {
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   if (
-    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_CALL_INITIATE)
-    || hasCapability([requestedRole], CAPABILITIES.THREAD_TAKEOVER_ALL)
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_CALL_INITIATE)
+    || hasCapability(actorRoles, CAPABILITIES.THREAD_TAKEOVER_ALL)
   ) {
     return true;
   }
@@ -950,11 +1076,12 @@ const enforceThreadCallCapability = (
 const enforceThreadMessageCapability = (
   req: Request,
   res: Response,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
 ): boolean => {
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   if (
-    hasCapability([requestedRole], CAPABILITIES.ORG_UNIT_SMS_SEND)
-    || hasCapability([requestedRole], CAPABILITIES.THREAD_TAKEOVER_ALL)
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_SMS_SEND)
+    || hasCapability(actorRoles, CAPABILITIES.THREAD_TAKEOVER_ALL)
   ) {
     return true;
   }
@@ -1591,19 +1718,19 @@ router.post('/neighbors', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceNeighborCreateCapability(req, res)) {
-    return;
-  }
-
   const payload = parseNeighborCreateBody(req);
   const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
   if (!context) {
     return;
   }
 
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (!enforceNeighborCreateCapability(req, res, context)) {
+    return;
+  }
+
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   const created = await connectShyftNeighborServiceAsync.createNeighbor({
-    actorRoles: [requestedRole],
+    actorRoles,
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     firstName: payload.firstName,
@@ -1639,18 +1766,18 @@ router.get('/neighbors', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceNeighborReadCapability(req, res)) {
-    return;
-  }
-
   const context = await enforceOrgUnitContext(req, res);
   if (!context) {
     return;
   }
 
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (!enforceNeighborReadCapability(req, res, context)) {
+    return;
+  }
+
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   const resolved = await connectShyftNeighborServiceAsync.listNeighbors({
-    actorRoles: [requestedRole],
+    actorRoles,
     tenantId: context.tenantId,
   });
 
@@ -1681,10 +1808,6 @@ router.get('/neighbors/:neighborId', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceNeighborReadCapability(req, res)) {
-    return;
-  }
-
   const neighborId = parseNeighborIdParam(req);
   if (!neighborId) {
     refusal(res, {
@@ -1701,8 +1824,12 @@ router.get('/neighbors/:neighborId', async (req: Request, res: Response) => {
     return;
   }
 
-  const requestedRole = resolveConnectShyftRequestedRole(req);
-  const policyDecision = evaluateNeighborEditPolicy(req, requestedRole, neighborId);
+  if (!enforceNeighborReadCapability(req, res, context)) {
+    return;
+  }
+
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  const policyDecision = evaluateNeighborEditPolicy(req, actorRoles, neighborId);
   if (!policyDecision.ok) {
     refusal(res, {
       code: policyDecision.code,
@@ -1715,7 +1842,7 @@ router.get('/neighbors/:neighborId', async (req: Request, res: Response) => {
   }
 
   const resolved = await connectShyftNeighborServiceAsync.resolveNeighbor({
-    actorRoles: [requestedRole],
+    actorRoles,
     tenantId: context.tenantId,
     neighborId,
   });
@@ -1748,10 +1875,6 @@ router.put('/neighbors/:neighborId', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceNeighborUpdateCapability(req, res)) {
-    return;
-  }
-
   const neighborId = parseNeighborIdParam(req);
   if (!neighborId) {
     refusal(res, {
@@ -1769,8 +1892,12 @@ router.put('/neighbors/:neighborId', async (req: Request, res: Response) => {
     return;
   }
 
-  const requestedRole = resolveConnectShyftRequestedRole(req);
-  const policyDecision = evaluateNeighborEditPolicy(req, requestedRole, neighborId);
+  if (!enforceNeighborUpdateCapability(req, res, context)) {
+    return;
+  }
+
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  const policyDecision = evaluateNeighborEditPolicy(req, actorRoles, neighborId);
   if (!policyDecision.ok) {
     refusal(res, {
       code: policyDecision.code,
@@ -1784,7 +1911,7 @@ router.put('/neighbors/:neighborId', async (req: Request, res: Response) => {
 
   const actorUserId = resolveConnectShyftRequestedActorUserId(req);
   const updated = await connectShyftNeighborServiceAsync.updateNeighbor({
-    actorRoles: [requestedRole],
+    actorRoles,
     tenantId: context.tenantId,
     neighborId,
     firstName: payload.firstName,
@@ -1826,12 +1953,12 @@ router.get('/numbers', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceNumberMappingManageCapability(req, res)) {
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
     return;
   }
 
-  const context = await enforceOrgUnitContext(req, res);
-  if (!context) {
+  if (!enforceNumberMappingManageCapability(req, res, context)) {
     return;
   }
 
@@ -1850,20 +1977,20 @@ router.post('/numbers', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceNumberMappingManageCapability(req, res)) {
-    return;
-  }
-
   const requestedOrgUnitId = parseOrgUnitIdFromBody(req);
   const context = await enforceOrgUnitContext(req, res, requestedOrgUnitId);
   if (!context) {
     return;
   }
 
+  if (!enforceNumberMappingManageCapability(req, res, context)) {
+    return;
+  }
+
   const payload = parseMappingBody(req);
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   const saved = await connectShyftNumberMappingServiceAsync.createMapping({
-    actorRoles: [requestedRole],
+    actorRoles,
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     twilioNumberE164: payload.twilioNumberE164,
@@ -1903,10 +2030,6 @@ router.put('/numbers/:mappingId', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceNumberMappingManageCapability(req, res)) {
-    return;
-  }
-
   const mappingId = typeof req.params.mappingId === 'string' ? req.params.mappingId.trim() : '';
   if (!mappingId) {
     refusal(res, {
@@ -1924,10 +2047,14 @@ router.put('/numbers/:mappingId', async (req: Request, res: Response) => {
     return;
   }
 
+  if (!enforceNumberMappingManageCapability(req, res, context)) {
+    return;
+  }
+
   const payload = parseMappingBody(req);
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   const updated = await connectShyftNumberMappingServiceAsync.updateMapping({
-    actorRoles: [requestedRole],
+    actorRoles,
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     mappingId,
@@ -1967,12 +2094,12 @@ router.get('/escalation/recipients', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceEscalationConfigCapability(req, res)) {
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
     return;
   }
 
-  const context = await enforceOrgUnitContext(req, res);
-  if (!context) {
+  if (!enforceEscalationConfigCapability(req, res, context)) {
     return;
   }
 
@@ -1997,12 +2124,12 @@ router.get('/escalation/config', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceEscalationConfigCapability(req, res)) {
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
     return;
   }
 
-  const context = await enforceOrgUnitContext(req, res);
-  if (!context) {
+  if (!enforceEscalationConfigCapability(req, res, context)) {
     return;
   }
 
@@ -2025,13 +2152,13 @@ router.put('/escalation/config', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceEscalationConfigCapability(req, res)) {
-    return;
-  }
-
   const requestedOrgUnitId = parseOrgUnitIdFromBody(req);
   const context = await enforceOrgUnitContext(req, res, requestedOrgUnitId);
   if (!context) {
+    return;
+  }
+
+  if (!enforceEscalationConfigCapability(req, res, context)) {
     return;
   }
 
@@ -2042,9 +2169,9 @@ router.put('/escalation/config', async (req: Request, res: Response) => {
   );
 
   const payload = parseEscalationConfigBody(req);
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   const saved = await connectShyftEscalationConfigService.saveConfig({
-    actorRoles: [requestedRole],
+    actorRoles,
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     escalationBaselineHours: payload.escalationBaselineHours,
@@ -2082,18 +2209,18 @@ router.get('/internal/threads/due', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceThreadViewCapability(req, res)) {
-    return;
-  }
-
   const context = await enforceOrgUnitContext(req, res, parseOrgUnitIdFromQuery(req));
   if (!context) {
     return;
   }
 
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  if (!enforceThreadViewCapability(req, res, context)) {
+    return;
+  }
+
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   const listed = await connectShyftThreadServiceAsync.listDueThreads({
-    actorRoles: [requestedRole],
+    actorRoles,
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     limit: parseThreadDueLimit(req),
@@ -2201,13 +2328,13 @@ router.post('/threads', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceThreadViewCapability(req, res)) {
-    return;
-  }
-
   const payload = parseThreadEnsureBody(req);
   const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
   if (!context) {
+    return;
+  }
+
+  if (!enforceThreadViewCapability(req, res, context)) {
     return;
   }
 
@@ -2241,9 +2368,9 @@ router.post('/threads', async (req: Request, res: Response) => {
     return;
   }
 
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   const ensured = await connectShyftThreadServiceAsync.ensureThread({
-    actorRoles: [requestedRole],
+    actorRoles,
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     neighborId: payload.neighborId,
@@ -2284,22 +2411,22 @@ const performLifecycleTransition = async (
     return;
   }
 
-  if (action === 'claim' && !enforceThreadClaimCapability(req, res)) {
-    return;
-  }
-  if (action === 'takeover' && !enforceThreadTakeoverCapability(req, res)) {
-    return;
-  }
-  if (action === 'close' && !enforceThreadCloseCapability(req, res)) {
-    return;
-  }
-
   const context = await enforceOrgUnitContext(req, res);
   if (!context) {
     return;
   }
 
-  if (!enforceEscalationActionMembership(req, res, context.bypassedOrgUnitMembership)) {
+  if (action === 'claim' && !enforceThreadClaimCapability(req, res, context)) {
+    return;
+  }
+  if (action === 'takeover' && !enforceThreadTakeoverCapability(req, res, context)) {
+    return;
+  }
+  if (action === 'close' && !enforceThreadCloseCapability(req, res, context)) {
+    return;
+  }
+
+  if (!enforceEscalationActionMembership(req, res, context)) {
     return;
   }
 
@@ -2314,7 +2441,7 @@ const performLifecycleTransition = async (
     return;
   }
 
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   const actorUserId = resolveConnectShyftRequestedActorUserId(req);
   const reason = parseLifecycleReason(req);
   const resolution = parseLifecycleResolution(req);
@@ -2344,7 +2471,7 @@ const performLifecycleTransition = async (
     currentState: lifecycleContext.currentState,
     claimedByUserId: lifecycleContext.claimedByUserId,
     actorUserId,
-    actorRoles: [requestedRole],
+    actorRoles,
   });
   if (!policyDecision.ok) {
     refusal(res, {
@@ -2375,7 +2502,7 @@ const performLifecycleTransition = async (
     resolution,
   });
   const transitioned = await transitionThreadWithSideEffects({
-    actorRoles: [requestedRole],
+    actorRoles,
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     threadId,
@@ -2447,23 +2574,23 @@ const performOutboundAction = async (
     return;
   }
 
-  if (!enforceThreadViewCapability(req, res)) {
-    return;
-  }
-
-  if (outboundAction === 'call' && !enforceThreadCallCapability(req, res)) {
-    return;
-  }
-  if (outboundAction === 'message' && !enforceThreadMessageCapability(req, res)) {
-    return;
-  }
-
   const context = await enforceOrgUnitContext(req, res);
   if (!context) {
     return;
   }
 
-  if (!enforceEscalationActionMembership(req, res, context.bypassedOrgUnitMembership)) {
+  if (!enforceThreadViewCapability(req, res, context)) {
+    return;
+  }
+
+  if (outboundAction === 'call' && !enforceThreadCallCapability(req, res, context)) {
+    return;
+  }
+  if (outboundAction === 'message' && !enforceThreadMessageCapability(req, res, context)) {
+    return;
+  }
+
+  if (!enforceEscalationActionMembership(req, res, context)) {
     return;
   }
 
@@ -2478,7 +2605,7 @@ const performOutboundAction = async (
     return;
   }
 
-  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
   const actorUserId = resolveConnectShyftRequestedActorUserId(req);
   const lifecycleContext = await resolveLifecycleContext({
     tenantId: context.tenantId,
@@ -2518,7 +2645,7 @@ const performOutboundAction = async (
       action: outboundAction === 'call' ? 'outbound_call' : 'outbound_message',
     });
     const transitioned = await transitionThreadWithSideEffects({
-      actorRoles: [requestedRole],
+      actorRoles,
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
       threadId,

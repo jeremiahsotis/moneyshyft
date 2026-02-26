@@ -128,9 +128,26 @@ test.describe(
         await login(page);
 
         await page.goto(buildInboxUrl(context, context.userId, threadContext));
-        await page.getByRole('button', { name: 'Open Conversation' }).click();
+        const openConversationAction = page.getByTestId('connectshyft-open-conversation-action');
+        await expect(openConversationAction).toBeVisible();
+
+        const waitForEnsureResponse = () =>
+          page.waitForResponse(
+            (response) =>
+              response.url().includes(context.paths.threadsCollection)
+              && response.request().method() === 'POST',
+          );
+
+        const firstEnsureResponse = waitForEnsureResponse();
+        await openConversationAction.click();
+        expect((await firstEnsureResponse).status()).toBe(201);
+
         await page.reload();
-        await page.getByRole('button', { name: 'Open Conversation' }).click();
+        await expect(openConversationAction).toBeVisible();
+
+        const secondEnsureResponse = waitForEnsureResponse();
+        await openConversationAction.click();
+        expect((await secondEnsureResponse).status()).toBe(201);
 
         const targetCard = page
           .getByTestId('connectshyft-thread-card')
