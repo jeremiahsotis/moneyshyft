@@ -35,7 +35,7 @@
 # - Do not set development_status to "blocked"; policy scripts enforce a fixed status set.
 # - Track blocked stories in blocked_story_registry and maintain next_unblocked_queue.
 
-generated: 2026-02-24
+generated: 2026-02-26
 project: ConnectShyft
 project_key: NOKEY
 project_lane: connectshyft
@@ -53,7 +53,7 @@ development_status:
   epic-b: in-progress
   b-1-tenant-scoped-neighbor-creation-with-required-phone: done
   b-2-shared-tenant-identity-and-shared-phone-indicators: done
-  b-3-relationship-gated-neighbor-edits-with-provenance-audit: in-progress
+  b-3-relationship-gated-neighbor-edits-with-provenance-audit: review
   b-4-role-restricted-neighbor-merge-with-irreversible-confirmation: ready-for-dev
   epic-b-retrospective: optional
   epic-c: in-progress
@@ -340,19 +340,17 @@ parallel_lane_rules:
 
 blocked_story_registry:
   b-3-relationship-gated-neighbor-edits-with-provenance-audit:
-    blocked: true
+    blocked: false
     noted_on: 2026-02-24
-    reason: "Unmet dependency c-3-inbox-and-thread-detail-read-contracts per lane gate no_story_starts_with_unmet_dependencies."
+    resolved_on: 2026-02-26
+    reason: "Dependency c-3-inbox-and-thread-detail-read-contracts reached done and b-3 remediation completed; story moved to review."
     blocked_on:
       - c-3-inbox-and-thread-detail-read-contracts
     unblock_queue_ref: _bmad-output/implementation-artifacts/next-unblocked-queue-connectshyft.md
 
 next_unblocked_queue:
-  generated_on: 2026-02-24
-  focus: "Unblock b-3-relationship-gated-neighbor-edits-with-provenance-audit"
+  generated_on: 2026-02-26
+  focus: "Close b-3 review and unlock b-4 start"
   ordered_story_keys:
-    - c-1-core-connectshyft-thread-schema-and-lifecycle-constraints
-    - c-2-thread-ensure-endpoint-with-conflict-safe-idempotency
-    - c-3-inbox-and-thread-detail-read-contracts
     - b-3-relationship-gated-neighbor-edits-with-provenance-audit
     - b-4-role-restricted-neighbor-merge-with-irreversible-confirmation

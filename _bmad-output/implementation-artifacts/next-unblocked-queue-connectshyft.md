@@ -1,16 +1,16 @@
 # ConnectShyft Next Unblocked Queue
 
 Generated: 2026-02-26
-Focus: Resume lane-b implementation after dependency gate clear
+Focus: Close b-3 review and unlock b-4 start
 
 ## Immediate Queue
 
 1. `b-3-relationship-gated-neighbor-edits-with-provenance-audit`
-   - Status: `in-progress`
-   - Gate: cleared (`c-3-inbox-and-thread-detail-read-contracts: done`)
+   - Status: `review`
+   - Next action: final closeout transition to `done`
 2. `b-4-role-restricted-neighbor-merge-with-irreversible-confirmation`
    - Status: `ready-for-dev`
-   - Depends on: `b-3-relationship-gated-neighbor-edits-with-provenance-audit`
+   - Dependency status: `b-3-relationship-gated-neighbor-edits-with-provenance-audit: review` (start only after `done`)
 
 ## Notes
 

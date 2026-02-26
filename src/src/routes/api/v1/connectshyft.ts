@@ -16,6 +16,8 @@ import {
 } from '../../../modules/connectshyft/contextAccess';
 import { connectShyftNumberMappingServiceAsync } from '../../../modules/connectshyft/numberMappings';
 import {
+  AsyncConnectShyftNeighborService,
+  KnexConnectShyftNeighborStore,
   connectShyftNeighborServiceAsync,
   type ConnectShyftNeighborPhoneInput,
 } from '../../../modules/connectshyft/neighbors';
@@ -345,14 +347,14 @@ const resolveConnectShyftRequestedActorUserId = (req: Request): string | null =>
   return req.user?.userId || null;
 };
 
-const resolveConnectShyftActiveThreadNeighborIds = (req: Request): Set<string> => {
+const resolveConnectShyftActiveThreadNeighborIds = (req: Request): Set<string> | null => {
   if (!isConnectShyftTestOverrideEnabled()) {
-    return new Set<string>();
+    return null;
   }
 
   const rawHeader = req.header(TEST_ACTIVE_THREAD_NEIGHBOR_IDS_HEADER);
   if (!rawHeader) {
-    return new Set<string>();
+    return null;
   }
 
   try {
@@ -373,6 +375,35 @@ const resolveConnectShyftActiveThreadNeighborIds = (req: Request): Set<string> =
       .filter((entry) => entry.length > 0);
 
     return new Set(normalizedIds);
+  }
+};
+
+const hasPersistedNeighborEditRelationship = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  neighborId: string;
+  actorUserId: string | null;
+}): Promise<boolean> => {
+  if (!input.actorUserId || !UUID_PATTERN.test(input.actorUserId)) {
+    return false;
+  }
+
+  try {
+    const relationship = await loadPlatformDb()
+      .withSchema('connectshyft')
+      .table('cs_threads')
+      .where({
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+        neighbor_id: input.neighborId,
+        claimed_by_user_id: input.actorUserId,
+      })
+      .whereNot('state', 'CLOSED')
+      .first<{ id: string }>(['id']);
+
+    return Boolean(relationship?.id);
+  } catch (_error) {
+    return false;
   }
 };
 
@@ -758,6 +789,7 @@ type ConnectShyftNeighborEditPolicyDecision =
     policyPath: ConnectShyftNeighborEditPolicyPath;
     indicator: string | null;
     contextOverrideNotice: string | null;
+    relationshipValidated: boolean;
   }
   | {
     ok: false;
@@ -767,48 +799,66 @@ type ConnectShyftNeighborEditPolicyDecision =
     httpStatus: 200;
   };
 
-const evaluateNeighborEditPolicy = (
-  req: Request,
-  actorRoles: Array<string | null | undefined>,
-  neighborId: string,
-): ConnectShyftNeighborEditPolicyDecision => {
+const evaluateNeighborEditPolicy = async (input: {
+  req: Request;
+  actorRoles: Array<string | null | undefined>;
+  tenantId: string;
+  orgUnitId: string;
+  neighborId: string;
+  actorUserId: string | null;
+  scope: 'read' | 'edit';
+}): Promise<ConnectShyftNeighborEditPolicyDecision> => {
+  const { req, actorRoles, tenantId, orgUnitId, neighborId, actorUserId, scope } = input;
+
   if (hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)) {
     return {
       ok: true,
       policyPath: 'tenant-privileged',
       indicator: null,
       contextOverrideNotice: TENANT_PRIVILEGED_OVERRIDE_NOTICE,
+      relationshipValidated: true,
     };
   }
 
-  const isIdentityLead = actorRoles.some(
+  const requiresRelationship = scope === 'edit' || actorRoles.some(
     (role) => typeof role === 'string' && role.trim().toUpperCase() === 'ORGUNIT_IDENTITY_LEAD',
   );
-  if (isIdentityLead) {
-    const activeThreadNeighborIds = resolveConnectShyftActiveThreadNeighborIds(req);
-    if (!activeThreadNeighborIds.has(neighborId)) {
-      return {
-        ok: false,
-        code: NEIGHBOR_RELATIONSHIP_REQUIRED_CODE,
-        message: NEIGHBOR_RELATIONSHIP_REQUIRED_MESSAGE,
-        refusalType: 'business',
-        httpStatus: 200,
-      };
-    }
-
+  if (!requiresRelationship) {
     return {
       ok: true,
-      policyPath: 'relationship-gated',
-      indicator: RELATIONSHIP_POLICY_INDICATOR,
+      policyPath: 'role-capability',
+      indicator: null,
       contextOverrideNotice: null,
+      relationshipValidated: false,
+    };
+  }
+
+  const activeThreadNeighborIds = resolveConnectShyftActiveThreadNeighborIds(req);
+  const hasRelationship = activeThreadNeighborIds
+    ? activeThreadNeighborIds.has(neighborId)
+    : await hasPersistedNeighborEditRelationship({
+      tenantId,
+      orgUnitId,
+      neighborId,
+      actorUserId,
+    });
+
+  if (!hasRelationship) {
+    return {
+      ok: false,
+      code: NEIGHBOR_RELATIONSHIP_REQUIRED_CODE,
+      message: NEIGHBOR_RELATIONSHIP_REQUIRED_MESSAGE,
+      refusalType: 'business',
+      httpStatus: 200,
     };
   }
 
   return {
     ok: true,
-    policyPath: 'role-capability',
-    indicator: null,
+    policyPath: 'relationship-gated',
+    indicator: RELATIONSHIP_POLICY_INDICATOR,
     contextOverrideNotice: null,
+    relationshipValidated: true,
   };
 };
 
@@ -1276,6 +1326,141 @@ const buildNeighborEditProvenancePayload = (
       },
     },
   };
+};
+
+type NeighborEditProvenancePayload = ReturnType<typeof buildNeighborEditProvenancePayload>;
+
+const canPersistNeighborEditSideEffects = (input: {
+  tenantId: string;
+  neighborId: string;
+}): boolean => {
+  return UUID_PATTERN.test(input.tenantId) && UUID_PATTERN.test(input.neighborId);
+};
+
+class NeighborUpdateRefusalError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+    readonly data?: {
+      fieldErrors?: Array<{ field: string; reason: string; message: string }>;
+    },
+  ) {
+    super(message);
+    this.name = 'NeighborUpdateRefusalError';
+  }
+}
+
+const updateNeighborWithSideEffects = async (input: {
+  actorRoles: string[];
+  tenantId: string;
+  orgUnitId: string;
+  neighborId: string;
+  actorUserId: string | null;
+  firstName: string;
+  lastName: string;
+  phones: ConnectShyftNeighborPhoneInput[];
+  policy: Extract<ConnectShyftNeighborEditPolicyDecision, { ok: true }>;
+  provenance: NeighborEditProvenancePayload;
+}): Promise<
+  | {
+    ok: true;
+    code: 'CONNECTSHYFT_NEIGHBOR_UPDATED';
+    httpStatus: 200;
+    neighbor: unknown;
+    sideEffectsPersisted: boolean;
+  }
+  | {
+    ok: false;
+    code: string;
+    message: string;
+    data?: {
+      fieldErrors?: Array<{ field: string; reason: string; message: string }>;
+    };
+  }
+> => {
+  const command = {
+    actorRoles: input.actorRoles,
+    tenantId: input.tenantId,
+    neighborId: input.neighborId,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    phones: input.phones,
+    relationshipValidated: input.policy.relationshipValidated,
+  };
+
+  if (!canPersistNeighborEditSideEffects({
+    tenantId: input.tenantId,
+    neighborId: input.neighborId,
+  })) {
+    const updated = await connectShyftNeighborServiceAsync.updateNeighbor(command);
+    if (!updated.ok) {
+      return {
+        ok: false,
+        code: updated.code,
+        message: updated.message,
+        data: 'data' in updated ? updated.data : undefined,
+      };
+    }
+
+    return {
+      ok: true,
+      code: updated.code,
+      httpStatus: updated.httpStatus,
+      neighbor: updated.data.neighbor,
+      sideEffectsPersisted: false,
+    };
+  }
+
+  try {
+    const neighbor = await executePlatformMutation({
+      mutation: async (trx) => {
+        const txNeighborService = new AsyncConnectShyftNeighborService(
+          new KnexConnectShyftNeighborStore(trx as unknown as Knex),
+        );
+        const updated = await txNeighborService.updateNeighbor(command);
+        if (!updated.ok) {
+          throw new NeighborUpdateRefusalError(
+            updated.code,
+            updated.message,
+            'data' in updated ? updated.data : undefined,
+          );
+        }
+
+        return updated.data.neighbor;
+      },
+      event: {
+        tenantId: input.tenantId,
+        actorId: resolveMutationActorUserId(input.actorUserId),
+        eventName: input.provenance.audit.eventName,
+        entityType: 'connectshyft.neighbor',
+        entityId: input.neighborId,
+        payload: input.provenance.audit.metadata,
+      },
+    }, loadPlatformDb());
+
+    return {
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_UPDATED',
+      httpStatus: 200,
+      neighbor,
+      sideEffectsPersisted: true,
+    };
+  } catch (error) {
+    if (error instanceof NeighborUpdateRefusalError) {
+      return {
+        ok: false,
+        code: error.code,
+        message: error.message,
+        data: error.data,
+      };
+    }
+
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_UPDATE_SIDE_EFFECTS_UNAVAILABLE',
+      message: 'Neighbor update side effects are temporarily unavailable. Please retry.',
+    };
+  }
 };
 
 const parseEscalationConfigBody = (req: Request) => ({
@@ -1829,7 +2014,16 @@ router.get('/neighbors/:neighborId', async (req: Request, res: Response) => {
   }
 
   const actorRoles = resolveConnectShyftActorRoles(req, context);
-  const policyDecision = evaluateNeighborEditPolicy(req, actorRoles, neighborId);
+  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const policyDecision = await evaluateNeighborEditPolicy({
+    req,
+    actorRoles,
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    neighborId,
+    actorUserId,
+    scope: 'read',
+  });
   if (!policyDecision.ok) {
     refusal(res, {
       code: policyDecision.code,
@@ -1897,7 +2091,16 @@ router.put('/neighbors/:neighborId', async (req: Request, res: Response) => {
   }
 
   const actorRoles = resolveConnectShyftActorRoles(req, context);
-  const policyDecision = evaluateNeighborEditPolicy(req, actorRoles, neighborId);
+  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const policyDecision = await evaluateNeighborEditPolicy({
+    req,
+    actorRoles,
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    neighborId,
+    actorUserId,
+    scope: 'edit',
+  });
   if (!policyDecision.ok) {
     refusal(res, {
       code: policyDecision.code,
@@ -1909,14 +2112,23 @@ router.put('/neighbors/:neighborId', async (req: Request, res: Response) => {
     return;
   }
 
-  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
-  const updated = await connectShyftNeighborServiceAsync.updateNeighbor({
+  const provenance = buildNeighborEditProvenancePayload(
+    context,
+    policyDecision,
+    neighborId,
+    actorUserId,
+  );
+  const updated = await updateNeighborWithSideEffects({
     actorRoles,
     tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
     neighborId,
+    actorUserId,
     firstName: payload.firstName,
     lastName: payload.lastName,
     phones: payload.phones,
+    policy: policyDecision,
+    provenance,
   });
 
   if (!updated.ok) {
@@ -1935,15 +2147,11 @@ router.put('/neighbors/:neighborId', async (req: Request, res: Response) => {
     message: 'Neighbor profile updated',
     httpStatus: updated.httpStatus,
     data: {
-      neighbor: updated.data.neighbor,
+      neighbor: updated.neighbor,
       ...buildNeighborScopePayload(context),
       ...buildNeighborEditPolicyPayload(policyDecision),
-      ...buildNeighborEditProvenancePayload(
-        context,
-        policyDecision,
-        neighborId,
-        actorUserId,
-      ),
+      ...provenance,
+      sideEffectsPersisted: updated.sideEffectsPersisted,
     },
   });
 });
