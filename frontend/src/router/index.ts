@@ -49,6 +49,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
+    path: '/app/route/requests',
+    name: 'routeshyft-request-lifecycle',
+    component: () => import('@/views/RouteShyft/RouteRequestLifecycleView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/app/connectshyft/inbox',
     name: 'connectshyft-inbox',
     component: () => import('@/views/ConnectShyft/ConnectShyftInboxView.vue'),
