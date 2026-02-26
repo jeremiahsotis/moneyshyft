@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-26T19:45:11Z'
+lastSaved: '2026-02-26T21:17:13Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -2949,3 +2949,188 @@ lastSaved: '2026-02-26T19:45:11Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story b.4 AC coverage to ATDD + automate evidence.
+
+## Story c.5 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/c-5-deterministic-escalation-scheduler-with-claim-only-reset.md`
+  - Existing ATDD files found for Story c.5:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.spec.ts`
+
+### Context Loaded
+- Test framework config loaded: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts`.
+- Story support assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryC5.fixture.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryC5Factory.ts`
+- Supporting planning/test context loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-epic-C.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Browser Exploration
+- `playwright-cli` is installed (`1.59.0-alpha-1771104257000`).
+- Browser exploration executed with session `tea-automate-c5`.
+- Target inbox route redirected to login due unauthenticated session:
+  - URL: `http://localhost:5174/login?redirect=/app/connectshyft/inbox?...`
+- Selector snapshot captured from login surface:
+  - Email textbox `e12`, password textbox `e15`, log in button `e19`.
+- Snapshot artifact:
+  - `/Users/jeremiahotis/projects/connectshyft/.playwright-cli/page-2026-02-26T21-12-10-481Z.yml`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils and automation references:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+  - `api-testing-patterns.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+
+## Story c.5 Run - Step 2: Identify Automation Targets
+
+### Acceptance Criteria to Test Targets
+- AC1 (`X -> 2X -> 3X` deterministic progression):
+  - API: scheduler envelope, transition multipliers, replay-safe reruns, baseline range/integer validation.
+  - E2E: scheduler-run UI timeline/stage chips and rerun summary behavior.
+- AC2 (claim-only reset + notification suppression):
+  - API: explicit claim reset semantics, non-member refusal with no mutation payload.
+  - E2E: claim interaction resets stage and clears pending-notification indicator.
+
+### Existing ATDD Gap Analysis
+- Existing c.5 ATDD coverage is `test.skip` and focuses on primary red-phase contract targets.
+- Automation expansion added edge/negative coverage:
+  - refusal path without orgUnit membership
+  - strict baseline low/high/fractional validation split
+  - deterministic transition uniqueness checks
+  - replay-safe duplicate side-effect suppression assertions
+  - viewer action-visibility guards in E2E
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.spec.ts`
+- Scope: `critical-paths`
+- Priority allocation:
+  - `P0`: 4 tests
+  - `P1`: 5 tests
+  - `P2/P3`: 0 tests
+
+## Story c.5 Run - Step 3: Parallel Subprocess Orchestration
+
+### Subprocess Outputs
+- API subprocess output:
+  - `/tmp/tea-automate-api-tests-2026-02-26T21-15-52Z.json`
+- E2E subprocess output:
+  - `/tmp/tea-automate-e2e-tests-2026-02-26T21-15-52Z.json`
+- Both subprocess outputs report `success: true`.
+
+### Performance Report
+- Execution mode: `PARALLEL (API + E2E)`
+- Sequential equivalent: two separate generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story c.5 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts`
+- `tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper infrastructure:
+  - `connectShyftStoryC5.fixture`
+  - `connectShyftStoryC5Factory`
+  - `apiClient`
+  - `login`
+- No new shared fixture files required for this story slice.
+
+### Summary Metrics
+- Total tests generated: `9`
+  - API tests: `5` (1 file)
+  - E2E tests: `4` (1 file)
+- Priority coverage:
+  - P0: `4`
+  - P1: `5`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-26T21-15-52Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-02-26T21-15-52Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-26T21-15-52Z.json`
+  - `/tmp/tea-automate-summary-2026-02-26T21-15-52Z.json`
+- Persisted under test artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-26T21-15-52Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-26T21-15-52Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-26T21-15-52Z.json`
+
+## Story c.5 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated spec parse/discovery validation:
+  - `npx playwright test tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts --list`
+  - `npx playwright test tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.spec.ts --list`
+  - Result: passed (`9` tests discovered across `2` files).
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) detected.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
+  - no `try/catch` flow-control anti-pattern detected.
+  - priority tags (`@P0`, `@P1`) present for selective execution.
+
+### Coverage Summary
+- API coverage file:
+  - `tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts`
+  - `5` tests (`P0: 2`, `P1: 3`)
+- E2E coverage file:
+  - `tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.spec.ts`
+  - `4` tests (`P0: 2`, `P1: 2`)
+- Total generated tests: `9`
+
+### Key Assumptions
+- Story c.5 contract targets remain centered on:
+  - deterministic scheduler progression (`X -> 2X -> 3X`)
+  - replay-safe due-window processing
+  - claim-only reset + notification suppression semantics
+- Existing C5 factory/fixture endpoint paths remain source of truth for scheduler and claim endpoints.
+
+### Risks
+- Browser exploration reached authenticated-login boundary only; inbox/thread UI selectors are based on existing story fixtures/spec conventions.
+- `c.5` implementation is not yet merged in current branch head, so generated automate tests are expected to be red until scheduler/reset runtime behavior lands.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality scoring and maintainability checks.
+- `[TR] Trace Requirements` to map Story c.5 AC coverage to ATDD + automate evidence.
