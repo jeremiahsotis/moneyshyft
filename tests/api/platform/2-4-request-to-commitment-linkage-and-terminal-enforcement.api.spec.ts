@@ -2,11 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import { apiRequest } from '../../support/helpers/apiClient';
 import type { Story24Payload } from '../../support/factories/routeShyftStory24Factory';
+import { createTenantScopeHeaders } from '../../support/factories/tenantRepositoryFactory';
 
 type AuthScope = {
-  csrfToken: string;
-  tenantId: string | null;
-  orgUnitId: string | null;
+  tenantId: string;
+  orgUnitId: string;
+  authHeaders: Record<string, string>;
 };
 
 const INTAKE_COLLECTION_PATH = '/api/v1/route/intake/requests';
@@ -24,13 +25,90 @@ function parseCookieValue(setCookieHeader: string | null, cookieName: string): s
   return match ? decodeURIComponent(match[1]) : '';
 }
 
+async function resolveOrgUnitIdForTenant(
+  request: APIRequestContext,
+  tenantId: string,
+  authCookie: string,
+  csrfToken: string,
+): Promise<string> {
+  const treeResponse = await apiRequest(request, {
+    method: 'GET',
+    path: '/api/v1/platform/admin/structure/tree?tenantId=' + encodeURIComponent(tenantId),
+    headers: {
+      cookie: authCookie,
+      'x-correlation-id': 'story24-tree-' + randomUUID().slice(0, 8),
+    },
+  });
+
+  if (treeResponse.status() !== 200) {
+    throw new Error('Story 2.4 API automation failed to resolve org-unit tree context.');
+  }
+
+  const treeBody = await treeResponse.json();
+  const flatNodes = Array.isArray(treeBody?.data?.flat) ? treeBody.data.flat : [];
+  const firstNode = flatNodes.find((node: Record<string, unknown>) => typeof node?.id === 'string');
+  if (typeof firstNode?.id === 'string') {
+    return firstNode.id;
+  }
+
+  const nodeName = 'Route Story 2.4 Ops ' + randomUUID().slice(0, 8);
+  const bootstrapResponse = await apiRequest(request, {
+    method: 'POST',
+    path: '/api/v1/platform/admin/structure/nodes',
+    headers: {
+      cookie: authCookie,
+      'x-csrf-token': csrfToken,
+      'x-correlation-id': 'story24-node-' + randomUUID().slice(0, 8),
+      'idempotency-key': 'story24-node-' + randomUUID(),
+    },
+    data: {
+      tenantId,
+      name: nodeName,
+      type: 'ORGUNIT',
+      reason: 'story24-test-bootstrap',
+    },
+  });
+
+  if (bootstrapResponse.status() === 200) {
+    const bootstrapBody = await bootstrapResponse.json();
+    const nodeId = bootstrapBody?.data?.node?.id;
+    if (typeof nodeId === 'string' && nodeId.length > 0) {
+      return nodeId;
+    }
+  }
+
+  // Parallel workers can race creating the first node in a tenant.
+  // Re-read tree state before failing to tolerate create conflicts.
+  const finalTreeResponse = await apiRequest(request, {
+    method: 'GET',
+    path: '/api/v1/platform/admin/structure/tree?tenantId=' + encodeURIComponent(tenantId),
+    headers: {
+      cookie: authCookie,
+      'x-correlation-id': 'story24-tree-retry-' + randomUUID().slice(0, 8),
+    },
+  });
+  if (finalTreeResponse.status() === 200) {
+    const finalTreeBody = await finalTreeResponse.json();
+    const finalFlatNodes = Array.isArray(finalTreeBody?.data?.flat) ? finalTreeBody.data.flat : [];
+    const discoveredNode = finalFlatNodes.find((node: Record<string, unknown>) => typeof node?.id === 'string');
+    if (typeof discoveredNode?.id === 'string' && discoveredNode.id.length > 0) {
+      return discoveredNode.id;
+    }
+  }
+
+  throw new Error(`Story 2.4 API automation failed to bootstrap org-unit context (status ${bootstrapResponse.status()}).`);
+}
+
 async function loginAndResolveScope(request: APIRequestContext): Promise<AuthScope> {
-  const email = process.env.TEST_EMAIL || 'test@example.com';
-  const password = process.env.TEST_PASSWORD || 'test1234';
+  const email = process.env.TEST_EMAIL || 'operator@example.com';
+  const password = process.env.TEST_PASSWORD || 'SecurePass123!';
 
   const loginResponse = await apiRequest(request, {
     method: 'POST',
     path: '/api/v1/auth/login',
+    headers: {
+      cookie: '',
+    },
     data: {
       email,
       password,
@@ -42,29 +120,51 @@ async function loginAndResolveScope(request: APIRequestContext): Promise<AuthSco
 
   const setCookie = loginResponse.headers()['set-cookie'] ?? null;
   const csrfToken = parseCookieValue(setCookie, 'csrf_token');
+  const accessToken = parseCookieValue(setCookie, 'access_token');
   expect(csrfToken).not.toBe('');
+  expect(accessToken).not.toBe('');
 
   const body = await loginResponse.json();
-  const user = body?.user ?? {};
+  const user = body?.user ?? body?.data?.user ?? {};
+  const userId = typeof user?.userId === 'string'
+    ? user.userId
+    : (typeof user?.id === 'string' ? user.id : '');
+  expect(userId, 'Story 2.4 API automation requires a user id from /auth/login.').toBeTruthy();
+
+  const tenantId = process.env.TEST_ROUTE_TENANT_ID
+    || (typeof user?.activeTenantId === 'string'
+      ? user.activeTenantId
+      : (typeof user?.householdId === 'string' ? user.householdId : ''));
+  expect(tenantId, 'Story 2.4 API automation requires tenant scope from login or TEST_ROUTE_TENANT_ID.').toBeTruthy();
+
+  const authCookie = `access_token=${accessToken}; csrf_token=${csrfToken}`;
+  const orgUnitId = process.env.TEST_ROUTE_ORG_UNIT_ID
+    || (typeof user?.activeOrgUnitId === 'string' && user.activeOrgUnitId.trim().length > 0
+      ? user.activeOrgUnitId
+      : await resolveOrgUnitIdForTenant(request, tenantId, authCookie, csrfToken));
+  const role = typeof user?.role === 'string' ? user.role : 'DISPATCHER';
 
   return {
-    csrfToken,
-    tenantId: typeof user?.activeTenantId === 'string'
-      ? user.activeTenantId
-      : (typeof user?.householdId === 'string' ? user.householdId : null),
-    orgUnitId: typeof user?.activeOrgUnitId === 'string' ? user.activeOrgUnitId : null,
+    tenantId,
+    orgUnitId,
+    authHeaders: createTenantScopeHeaders({
+      tenantId,
+      orgUnitId,
+      role,
+      userId: userId as string,
+      csrfToken,
+    }),
   };
 }
 
-function requireScopedContext(scope: AuthScope): { tenantId: string; orgUnitId: string } {
-  test.skip(
-    !scope.tenantId || !scope.orgUnitId,
-    'Story 2.4 API automation requires authenticated tenant and org-unit scope.',
-  );
+function requireScopedContext(scope: AuthScope): { tenantId: string; orgUnitId: string; authHeaders: Record<string, string> } {
+  expect(scope.tenantId, 'Story 2.4 API automation requires authenticated tenant scope.').toBeTruthy();
+  expect(scope.orgUnitId, 'Story 2.4 API automation requires authenticated org-unit scope.').toBeTruthy();
 
   return {
-    tenantId: scope.tenantId || '',
-    orgUnitId: scope.orgUnitId || '',
+    tenantId: scope.tenantId,
+    orgUnitId: scope.orgUnitId,
+    authHeaders: scope.authHeaders,
   };
 }
 
@@ -107,7 +207,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
       method: 'POST',
       path: INTAKE_COLLECTION_PATH,
       headers: {
-        'x-csrf-token': scope.csrfToken,
+        ...scoped.authHeaders,
         'x-correlation-id': 'story24-create-' + randomUUID().slice(0, 8),
       },
       data: buildPayload(scoped, false),
@@ -132,6 +232,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
       method: 'GET',
       path: detailPath(requestId),
       headers: {
+        ...scoped.authHeaders,
         'x-correlation-id': 'story24-detail-' + randomUUID().slice(0, 8),
       },
     });
@@ -158,7 +259,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
       method: 'POST',
       path: INTAKE_COLLECTION_PATH,
       headers: {
-        'x-csrf-token': scope.csrfToken,
+        ...scoped.authHeaders,
         'x-correlation-id': 'story24-transition-create-' + randomUUID().slice(0, 8),
       },
       data: buildPayload(scoped, false),
@@ -174,7 +275,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
       method: 'POST',
       path: commitmentTransitionPath(commitmentId),
       headers: {
-        'x-csrf-token': scope.csrfToken,
+        ...scoped.authHeaders,
         'x-correlation-id': 'story24-transition-' + randomUUID().slice(0, 8),
       },
       data: {
@@ -199,6 +300,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
     const detailResponse = await apiRequest(request, {
       method: 'GET',
       path: detailPath(requestId),
+      headers: scoped.authHeaders,
     });
 
     expect(detailResponse.status()).toBe(200);
@@ -222,7 +324,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
       method: 'POST',
       path: INTAKE_COLLECTION_PATH,
       headers: {
-        'x-csrf-token': scope.csrfToken,
+        ...scoped.authHeaders,
         'x-correlation-id': 'story24-refusal-' + randomUUID().slice(0, 8),
       },
       data: buildPayload(scoped, true),
@@ -247,6 +349,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
     const detailResponse = await apiRequest(request, {
       method: 'GET',
       path: detailPath(requestId),
+      headers: scoped.authHeaders,
     });
 
     expect(detailResponse.status()).toBe(200);
@@ -270,6 +373,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
       method: 'GET',
       path: RECONCILIATION_QUEUE_PATH,
       headers: {
+        ...scoped.authHeaders,
         'x-correlation-id': 'story24-reconciliation-' + randomUUID().slice(0, 8),
       },
     });
@@ -304,7 +408,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
       method: 'POST',
       path: INTAKE_COLLECTION_PATH,
       headers: {
-        'x-csrf-token': scope.csrfToken,
+        ...scoped.authHeaders,
       },
       data: {
         ...buildPayload(scoped, false),
@@ -328,18 +432,14 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
     const successResponse = await apiRequest(request, {
       method: 'POST',
       path: INTAKE_COLLECTION_PATH,
-      headers: {
-        'x-csrf-token': scope.csrfToken,
-      },
+      headers: scoped.authHeaders,
       data: buildPayload(scoped, false),
     });
 
     const refusalResponse = await apiRequest(request, {
       method: 'POST',
       path: INTAKE_COLLECTION_PATH,
-      headers: {
-        'x-csrf-token': scope.csrfToken,
-      },
+      headers: scoped.authHeaders,
       data: buildPayload(scoped, true),
     });
 
@@ -353,6 +453,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
     const detailResponse = await apiRequest(request, {
       method: 'GET',
       path: detailPath(detailRequestId),
+      headers: scoped.authHeaders,
     });
 
     expect(detailResponse.status()).toBe(200);

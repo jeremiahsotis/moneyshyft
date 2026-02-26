@@ -5,61 +5,168 @@ function detailPath(resourceCollection: string, requestId: string): string {
   return resourceCollection + '/' + requestId;
 }
 
-test.describe('Story 2-4 Request-to-Commitment Linkage and Terminal Enforcement (ATDD API RED)', () => {
-  test.skip('[P0] enforces explicit request terminal states and rejects undefined terminal outcomes @P0', async ({ request, story24Context, story24Headers, story24HappyPayload }) => {
-    const response = await apiRequest(request, {
-      method: 'POST',
-      path: story24Context.paths.resourceCollection,
-      headers: story24Headers,
-      data: story24HappyPayload,
-    });
+function transitionPath(commitmentId: string): string {
+  return `/api/v1/route/commitments/${commitmentId}/transitions`;
+}
 
-    expect(response.status()).toBe(200);
-    const body = await response.json();
-    expect(body).toMatchObject({
-      ok: true,
-      code: story24Context.successCode,
-      data: {
-        requestId: expect.any(String),
-        status: story24Context.statusLabel,
-      },
-    });
-  });
-
-  test.skip('[P0] maintains canonical request-to-commitment linkage for accepted request outcomes @P0', async ({ request, story24Context, story24Headers, story24RefusalPayload }) => {
-    const response = await apiRequest(request, {
-      method: 'POST',
-      path: story24Context.paths.resourceCollection,
-      headers: story24Headers,
-      data: story24RefusalPayload,
-    });
-
-    expect(response.status()).toBe(200);
-    const body = await response.json();
-    expect(body).toMatchObject({
-      ok: false,
-      refusalType: 'business',
-      code: story24Context.refusalCode,
-      data: {
-        alternatives: expect.any(Array),
-        reconciliationActions: expect.anything(),
-      },
-    });
-  });
-
-  test.skip('[P0] preserves independent commitment lifecycle state after request terminalization @P0', async ({ request, story24Context, story24Headers, story24HappyPayload }) => {
+test.describe('Story 2-4 Request-to-Commitment Linkage and Terminal Enforcement (ATDD API)', () => {
+  test('[P0] enforces explicit request terminal states with canonical commitment linkage @P0', async ({
+    request,
+    story24Context,
+    story24Headers,
+    story24HappyPayload,
+  }) => {
     const createResponse = await apiRequest(request, {
       method: 'POST',
       path: story24Context.paths.resourceCollection,
       headers: story24Headers,
       data: story24HappyPayload,
     });
-    const createBody = await createResponse.json();
-    const requestId = createBody?.data?.requestId ?? story24Context.requestId;
 
-    const response = await apiRequest(request, {
+    expect(createResponse.status()).toBe(200);
+    const createBody = await createResponse.json();
+    expect(createBody).toMatchObject({
+      ok: true,
+      code: story24Context.successCode,
+      data: {
+        requestId: expect.any(String),
+        commitmentId: expect.any(String),
+        status: story24Context.statusLabel,
+      },
+    });
+
+    const requestId = createBody?.data?.requestId as string;
+
+    const detailResponse = await apiRequest(request, {
       method: 'GET',
       path: detailPath(story24Context.paths.resourceCollection, requestId),
+      headers: story24Headers,
+    });
+
+    expect(detailResponse.status()).toBe(200);
+    const detailBody = await detailResponse.json();
+    expect(detailBody).toMatchObject({
+      ok: true,
+      code: story24Context.linkageCode,
+      data: {
+        requestId,
+        requestLifecycleStatus: 'committed',
+        commitmentLifecycleStatus: 'scheduled',
+      },
+    });
+  });
+
+  test('[P0] returns explicit refusal outcomes and terminal lifecycle semantics without commitment leakage @P0', async ({
+    request,
+    story24Context,
+    story24Headers,
+    story24RefusalPayload,
+  }) => {
+    const refusalResponse = await apiRequest(request, {
+      method: 'POST',
+      path: story24Context.paths.resourceCollection,
+      headers: story24Headers,
+      data: story24RefusalPayload,
+    });
+
+    expect(refusalResponse.status()).toBe(200);
+    const refusalBody = await refusalResponse.json();
+    expect(refusalBody).toMatchObject({
+      ok: false,
+      refusalType: 'business',
+      code: story24Context.refusalCode,
+      data: {
+        requestId: expect.any(String),
+        alternatives: expect.any(Array),
+        nextSteps: expect.any(String),
+      },
+    });
+    expect(refusalBody).not.toHaveProperty('data.commitmentId');
+
+    const requestId = refusalBody?.data?.requestId as string;
+    const detailResponse = await apiRequest(request, {
+      method: 'GET',
+      path: detailPath(story24Context.paths.resourceCollection, requestId),
+      headers: story24Headers,
+    });
+
+    expect(detailResponse.status()).toBe(200);
+    const detailBody = await detailResponse.json();
+    expect(detailBody).toMatchObject({
+      ok: true,
+      code: story24Context.refusalCode,
+      data: {
+        requestId,
+        commitmentId: null,
+        requestLifecycleStatus: expect.stringMatching(/^(refused|cancelled)$/),
+      },
+    });
+  });
+
+  test('[P0] preserves independent commitment lifecycle state after request terminalization @P0', async ({
+    request,
+    story24Context,
+    story24Headers,
+    story24HappyPayload,
+  }) => {
+    const createResponse = await apiRequest(request, {
+      method: 'POST',
+      path: story24Context.paths.resourceCollection,
+      headers: story24Headers,
+      data: story24HappyPayload,
+    });
+    expect(createResponse.status()).toBe(200);
+    const createBody = await createResponse.json();
+    const requestId = createBody?.data?.requestId as string;
+    const commitmentId = createBody?.data?.commitmentId as string;
+
+    const transitionResponse = await apiRequest(request, {
+      method: 'POST',
+      path: transitionPath(commitmentId),
+      headers: story24Headers,
+      data: {
+        nextStatus: 'in_progress',
+        reason: 'Story 2.4 ATDD commitment lifecycle independence',
+      },
+    });
+    expect(transitionResponse.status()).toBe(200);
+    const transitionBody = await transitionResponse.json();
+    expect(transitionBody).toMatchObject({
+      ok: true,
+      code: 'ROUTE_COMMITMENT_TRANSITION_APPLIED',
+      data: {
+        commitment: {
+          commitmentId,
+          status: 'in_progress',
+        },
+      },
+    });
+
+    const detailResponse = await apiRequest(request, {
+      method: 'GET',
+      path: detailPath(story24Context.paths.resourceCollection, requestId),
+      headers: story24Headers,
+    });
+    expect(detailResponse.status()).toBe(200);
+    const detailBody = await detailResponse.json();
+    expect(detailBody).toMatchObject({
+      ok: true,
+      code: story24Context.linkageCode,
+      data: {
+        requestId,
+        requestLifecycleStatus: 'committed',
+        commitmentLifecycleStatus: 'in_progress',
+      },
+    });
+  });
+
+  test('[P1] exposes reconciliation actions and lifecycle status via unresolved queue endpoint @P1', async ({
+    request,
+    story24Headers,
+  }) => {
+    const response = await apiRequest(request, {
+      method: 'GET',
+      path: '/api/v1/route/intake/reconciliation/unresolved?staleMinutes=60',
       headers: story24Headers,
     });
 
@@ -67,34 +174,22 @@ test.describe('Story 2-4 Request-to-Commitment Linkage and Terminal Enforcement 
     const body = await response.json();
     expect(body).toMatchObject({
       ok: true,
-      code: story24Context.linkageCode,
+      code: 'ROUTESHYFT_INTAKE_RECONCILIATION_QUEUE',
       data: {
-        requestId,
-        commitmentId: expect.any(String),
+        staleThresholdMinutes: 60,
+        guardrailStatus: expect.stringMatching(/^(clear|action_required)$/),
+        items: expect.any(Array),
       },
     });
   });
 
-  test.skip('[P1] returns reconciliation action guidance for linkage or terminal-enforcement failures @P1', async ({ request, story24Context, story24Headers, story24RefusalPayload }) => {
-    const response = await apiRequest(request, {
-      method: 'POST',
-      path: story24Context.paths.resourceCollection,
-      headers: story24Headers,
-      data: story24RefusalPayload,
-    });
-
-    expect(response.status()).toBe(200);
-    const body = await response.json();
-    expect(body).toMatchObject({
-      ok: false,
-      code: story24Context.refusalCode,
-      data: {
-        reconciliationActions: expect.anything(),
-      },
-    });
-  });
-
-  test.skip('[P1] keeps envelope keys stable for terminalization success and refusal outcomes @P1', async ({ request, story24Context, story24Headers, story24HappyPayload, story24RefusalPayload }) => {
+  test('[P1] keeps envelope keys stable for success refusal and detail outcomes @P1', async ({
+    request,
+    story24Context,
+    story24Headers,
+    story24HappyPayload,
+    story24RefusalPayload,
+  }) => {
     const successResponse = await apiRequest(request, {
       method: 'POST',
       path: story24Context.paths.resourceCollection,
@@ -113,9 +208,18 @@ test.describe('Story 2-4 Request-to-Commitment Linkage and Terminal Enforcement 
 
     const successBody = await successResponse.json();
     const refusalBody = await refusalResponse.json();
+    const detailRequestId = successBody?.data?.requestId as string;
+    const detailResponse = await apiRequest(request, {
+      method: 'GET',
+      path: detailPath(story24Context.paths.resourceCollection, detailRequestId),
+      headers: story24Headers,
+    });
+    expect(detailResponse.status()).toBe(200);
+    const detailBody = await detailResponse.json();
     const requiredKeys = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
 
-    expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(successBody, key))).toBe(true);
-    expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(refusalBody, key))).toBe(true);
+    for (const payload of [successBody, refusalBody, detailBody]) {
+      expect(requiredKeys.every((key) => Object.prototype.hasOwnProperty.call(payload, key))).toBe(true);
+    }
   });
 });
