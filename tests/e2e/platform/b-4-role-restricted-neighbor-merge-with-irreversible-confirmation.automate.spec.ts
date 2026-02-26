@@ -1,12 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { login } from '../../helpers/auth';
+import { apiRequest } from '../../support/helpers/apiClient';
 import {
   createStoryB4Context,
+  createStoryB4Headers,
   type StoryB4Context,
 } from '../../support/factories/connectShyftStoryB4Factory';
 
 const buildNeighborProfileUrl = (
   context: StoryB4Context,
+  seeded: { sourceNeighborId: string; survivorNeighborId: string },
   options: {
     tenantId: string;
     orgUnitId: string;
@@ -21,11 +24,76 @@ const buildNeighborProfileUrl = (
     orgUnitId: options.orgUnitId,
     tenantRole: options.tenantRole,
     orgUnitMemberships: options.orgUnitMemberships.join(','),
+    activeThreadNeighborIds: seeded.survivorNeighborId,
     actorUserId: options.actorUserId,
-    mergeCandidateNeighborId: context.sourceNeighborId,
+    mergeCandidateNeighborId: seeded.sourceNeighborId,
   });
 
-  return `${context.paths.neighborProfileUi}?${params.toString()}`;
+  return `/app/connectshyft/neighbors/${seeded.survivorNeighborId}?${params.toString()}`;
+};
+
+const seedNeighbor = async (
+  request: Parameters<typeof apiRequest>[0],
+  path: string,
+  headers: Record<string, string>,
+  firstName: string,
+  lastName: string,
+): Promise<string> => {
+  const response = await apiRequest(request, {
+    method: 'POST',
+    path,
+    headers,
+    data: {
+      firstName,
+      lastName,
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+          isShared: true,
+          verificationStatus: 'verified',
+        },
+      ],
+    },
+  });
+
+  expect(response.status()).toBe(201);
+  const body = await response.json();
+  const neighborId = body?.data?.neighbor?.neighborId;
+  expect(typeof neighborId).toBe('string');
+  return neighborId as string;
+};
+
+const seedNeighborPair = async (
+  request: Parameters<typeof apiRequest>[0],
+  context: StoryB4Context,
+): Promise<{ sourceNeighborId: string; survivorNeighborId: string }> => {
+  const seedHeaders = createStoryB4Headers(context, {
+    role: 'TENANT_ADMIN',
+    userId: context.tenantAdminUserId,
+    orgUnitId: context.primaryOrgUnitId,
+    orgUnitMemberships: [context.primaryOrgUnitId],
+  });
+  const suffix = Date.now().toString(36);
+  const sourceNeighborId = await seedNeighbor(
+    request,
+    context.paths.neighborsCollection,
+    seedHeaders,
+    `Source-${suffix}`,
+    'Neighbor',
+  );
+  const survivorNeighborId = await seedNeighbor(
+    request,
+    context.paths.neighborsCollection,
+    seedHeaders,
+    `Survivor-${suffix}`,
+    'Neighbor',
+  );
+
+  return {
+    sourceNeighborId,
+    survivorNeighborId,
+  };
 };
 
 test.describe(
@@ -33,14 +101,15 @@ test.describe(
   () => {
     test.describe.configure({ mode: 'serial' });
 
-    test.fixme(
+    test(
       '[P0] merge modal shows irreversible language, before/after impact summary, and blocked submit before valid confirmation @P0',
-      async ({ page }) => {
+      async ({ page, request }) => {
         const context = createStoryB4Context();
+        const seeded = await seedNeighborPair(request, context);
         await login(page);
 
         await page.goto(
-          buildNeighborProfileUrl(context, {
+          buildNeighborProfileUrl(context, seeded, {
             tenantId: context.tenantId,
             orgUnitId: context.primaryOrgUnitId,
             tenantRole: 'ORGUNIT_IDENTITY_LEAD',
@@ -56,20 +125,21 @@ test.describe(
         await expect(modal).toContainText(/irreversible/i);
         await expect(
           page.getByTestId('connectshyft-neighbor-merge-impact-summary'),
-        ).toContainText(context.sourceNeighborId);
+        ).toContainText(seeded.sourceNeighborId);
         await expect(
           page.getByTestId('connectshyft-neighbor-merge-impact-summary'),
-        ).toContainText(context.survivorNeighborId);
+        ).toContainText(seeded.survivorNeighborId);
         await expect(
           page.getByTestId('connectshyft-neighbor-merge-confirmation-submit'),
         ).toBeDisabled();
       },
     );
 
-    test.fixme(
+    test(
       '[P1] canceling the irreversible confirmation modal closes merge flow without emitting a merge POST request @P1',
-      async ({ page }) => {
+      async ({ page, request }) => {
         const context = createStoryB4Context();
+        const seeded = await seedNeighborPair(request, context);
         let mergeRequestCount = 0;
         page.on('request', (request) => {
           if (
@@ -82,7 +152,7 @@ test.describe(
 
         await login(page);
         await page.goto(
-          buildNeighborProfileUrl(context, {
+          buildNeighborProfileUrl(context, seeded, {
             tenantId: context.tenantId,
             orgUnitId: context.primaryOrgUnitId,
             tenantRole: 'TENANT_ADMIN',
@@ -105,10 +175,11 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] surrounding whitespace and case drift in confirmation phrase remain invalid and prevent request dispatch @P1',
-      async ({ page }) => {
+      async ({ page, request }) => {
         const context = createStoryB4Context();
+        const seeded = await seedNeighborPair(request, context);
         let mergeRequestCount = 0;
         page.on('request', (request) => {
           if (
@@ -121,7 +192,7 @@ test.describe(
 
         await login(page);
         await page.goto(
-          buildNeighborProfileUrl(context, {
+          buildNeighborProfileUrl(context, seeded, {
             tenantId: context.tenantId,
             orgUnitId: context.primaryOrgUnitId,
             tenantRole: 'TENANT_ADMIN',
@@ -145,14 +216,15 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] successful merge keeps operator on survivor profile and surfaces before/after audit chips for continuity evidence @P1',
-      async ({ page }) => {
+      async ({ page, request }) => {
         const context = createStoryB4Context();
+        const seeded = await seedNeighborPair(request, context);
         await login(page);
 
         await page.goto(
-          buildNeighborProfileUrl(context, {
+          buildNeighborProfileUrl(context, seeded, {
             tenantId: context.tenantId,
             orgUnitId: context.primaryOrgUnitId,
             tenantRole: 'TENANT_ADMIN',
@@ -174,27 +246,28 @@ test.describe(
         await page.getByTestId('connectshyft-neighbor-merge-confirmation-submit').click();
         await mergeResponse;
 
-        await expect(page).toHaveURL(new RegExp(context.survivorNeighborId));
+        await expect(page).toHaveURL(new RegExp(seeded.survivorNeighborId));
         await expect(page.getByTestId('connectshyft-neighbor-merge-success')).toContainText(
           'Neighbor merge complete',
         );
         await expect(page.getByTestId('connectshyft-neighbor-merge-audit-before-id')).toContainText(
-          context.sourceNeighborId,
+          seeded.sourceNeighborId,
         );
         await expect(page.getByTestId('connectshyft-neighbor-merge-audit-after-id')).toContainText(
-          context.survivorNeighborId,
+          seeded.survivorNeighborId,
         );
       },
     );
 
     test.fixme(
       '[P2] orgUnit member without scoped membership sees deterministic refusal guidance and no actionable merge control @P2',
-      async ({ page }) => {
+      async ({ page, request }) => {
         const context = createStoryB4Context();
+        const seeded = await seedNeighborPair(request, context);
         await login(page);
 
         await page.goto(
-          buildNeighborProfileUrl(context, {
+          buildNeighborProfileUrl(context, seeded, {
             tenantId: context.tenantId,
             orgUnitId: context.primaryOrgUnitId,
             tenantRole: 'ORGUNIT_MEMBER',
