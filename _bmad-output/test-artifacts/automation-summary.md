@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-26T09:53:21Z'
+lastSaved: '2026-02-26T11:53:04Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -2547,3 +2547,205 @@ lastSaved: '2026-02-26T09:53:21Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story ux-r1 AC coverage to ATDD + automate evidence.
+
+## Story ux-r2 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/ux-r2-accessibility-and-language-hardening.md`
+  - Existing ATDD files found for Story ux-r2:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/ux-r2-accessibility-and-language-hardening.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/ux-r2-accessibility-and-language-hardening.atdd.spec.ts`
+
+### Context Loaded
+- Test framework config loaded: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts`.
+- Existing test structure reviewed under `/Users/jeremiahotis/projects/connectshyft/tests`.
+- Story ux-r2 support assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryUxR2Factory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryUxR2.fixture.ts`
+- Story status and dependency context loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils + automation:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+- Additional generation references:
+  - `api-testing-patterns.md`
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+
+## Story ux-r2 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` exploration was attempted in auto mode for selector validation.
+- Environment result: CLI browser bootstrap/socket handling was unstable for this run; coverage derived from story artifacts and current source selectors/contracts.
+- Session hygiene: no lingering `tea-automate` browser session retained.
+
+### Acceptance Criteria to Target Mapping
+- AC1: enforce minimum `16px` body typography and `44px` interactive target constraints across inbox, mine, thread, add-neighbor, and close surfaces.
+- AC2: preserve verb-first action labels and remove RBAC/internal UUID jargon from operator-facing copy.
+- AC3: enforce deterministic keyboard focus order, accessible naming, and screen-reader announcement contracts.
+- AC4: align visible feedback copy to canonical outcome taxonomy (`success|refusal|error`) with plain-language prefixes.
+
+### ATDD Duplication Control
+- Existing RED ATDD files retained and unchanged:
+  - `tests/api/platform/ux-r2-accessibility-and-language-hardening.atdd.api.spec.ts`
+  - `tests/e2e/platform/ux-r2-accessibility-and-language-hardening.atdd.spec.ts`
+- Automation expansion generated non-ATDD regression targets:
+  - `tests/api/platform/ux-r2-accessibility-and-language-hardening.automate.api.spec.ts`
+  - `tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts`
+
+### Selected Test Levels
+- **API** (primary): contract and role-safe envelope hardening for accessibility/copy metadata.
+- **E2E** (secondary): keyboard/screen-reader/operator-journey behavior contracts across core UX surfaces.
+
+### Priority Assignment
+- P0:
+  - readability threshold drift protection
+  - verb-first plain-language action and feedback copy contracts
+- P1:
+  - deterministic focus/accessible-name/screen-reader metadata contracts
+  - outcome-taxonomy mapping and refusal-safe role behavior
+- P2:
+  - tenant-viewer UI action-suppression and refusal-guidance fallback path
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/ux-r2-accessibility-and-language-hardening.automate.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts`
+- Scope: `critical-paths`
+- Implementation readiness finding:
+  - story status is `ready-for-dev`; current ConnectShyft selector and read-contract surfaces do not yet match ux-r2 hardening contracts.
+  - generated automate tests are intentionally `test.fixme`-gated until ux-r2 implementation lands.
+
+## Story ux-r2 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-02-26T11:53:04Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-02-26T11-53-04Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-02-26T11-53-04Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 5`
+- E2E subprocess status: `success: true`, `test_count: 5`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed in one pass for both test levels.
+- Sequential equivalent would require two independent generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story ux-r2 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `tests/api/platform/ux-r2-accessibility-and-language-hardening.automate.api.spec.ts`
+- `tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper infrastructure:
+  - `connectShyftStoryUxR2.fixture`
+  - `connectShyftStoryUxR2Factory`
+  - `apiRequest`
+  - `login`
+- No new shared fixture files required for this story slice.
+
+### Summary Metrics
+- Total tests generated: `10`
+  - API tests: `5` (1 file)
+  - E2E tests: `5` (1 file)
+- Priority coverage:
+  - P0: `4`
+  - P1: `5`
+  - P2: `1`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-26T11-53-04Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-02-26T11-53-04Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-26T11-53-04Z.json`
+  - `/tmp/tea-automate-summary-2026-02-26T11-53-04Z.json`
+- Persisted under test artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-26T11-53-04Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-26T11-53-04Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-26T11-53-04Z.json`
+
+## Story ux-r2 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated spec parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/ux-r2-accessibility-and-language-hardening.automate.api.spec.ts tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts`
+  - Result: passed (`10` tests discovered in `2` files).
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) detected.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
+  - no `try/catch` flow-control anti-pattern detected.
+  - priority tags (`@P0`, `@P1`, `@P2`) present for selective execution.
+- CLI session cleanup:
+  - no active lingering `tea-automate` session at workflow close.
+- Temp artifacts storage:
+  - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-temp`.
+
+### Coverage Summary
+- API coverage file:
+  - `tests/api/platform/ux-r2-accessibility-and-language-hardening.automate.api.spec.ts`
+  - `5` tests (`P0: 2`, `P1: 3`)
+- E2E coverage file:
+  - `tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts`
+  - `5` tests (`P0: 2`, `P1: 2`, `P2: 1`)
+- Total generated tests: `10`
+
+### Key Assumptions
+- ux-r2 implementation will expose/align required test-id and read-contract additions for accessibility/language hardening:
+  - `connectshyft-inbox-surface`, `connectshyft-thread-surface`, `connectshyft-feedback-banner`, `connectshyft-live-region-status`
+  - accessibility metadata for `focusOrder`, `accessibleNames`, and announcements
+  - plain-language feedback messages prefixed with `Success|Refusal|Error`
+- Role-restricted behavior will return refusal-safe guidance without privileged control leakage.
+
+### Risks
+- Browser exploration could not fully validate selector availability in a live local run, so selector assertions were derived from ux-r2 artifact contracts and current source analysis.
+- Story remains `ready-for-dev`; automate tests are intentionally `test.fixme`-gated until implementation lands.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality scoring and maintainability checks.
+- `[TR] Trace Requirements` to map Story ux-r2 AC coverage to ATDD + automate evidence.

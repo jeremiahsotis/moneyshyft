@@ -1,0 +1,29 @@
+{
+  "success": true,
+  "subprocess": "automate-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts",
+      "description": "Automate E2E expansion for ux-r2 accessibility and language hardening",
+      "priority_coverage": {
+        "P0": 2,
+        "P1": 2,
+        "P2": 1,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "connectShyftStoryUxR2Factory",
+    "connectShyftStoryUxR2.fixture",
+    "login"
+  ],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience",
+    "playwright-cli"
+  ],
+  "test_count": 5,
+  "summary": "Generated 5 E2E automate tests for Story ux-r2"
+}
