@@ -72,7 +72,8 @@ test.describe(
             .evaluateAll((nodes) => nodes
               .map((node) => node.getAttribute('data-testid') || '')
               .filter((value) => value.length > 0)
-              .map((value) => value.replace('connectshyft-thread-card-', ''))),
+              .map((value) => value.replace('connectshyft-thread-card-', ''))
+              .filter((value) => value.startsWith('thread-'))),
         ).toEqual([
           context.threadIds.claimed,
           context.threadIds.unclaimed,

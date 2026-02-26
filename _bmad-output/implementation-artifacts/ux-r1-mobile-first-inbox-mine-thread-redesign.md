@@ -1,6 +1,6 @@
 # Story ux-r1: Mobile-First Inbox/Mine/Thread Redesign
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -36,18 +36,18 @@ so that I can triage and act quickly without cognitive overload.
 
 ## Tasks / Subtasks
 
-- [ ] Implement mobile-first navigation shell (AC: 1, 4)
-  - [ ] Implement persistent bottom navigation for `Inbox`, `Mine`, `More`.
-  - [ ] Remove hidden fourth-primary-tab behavior from ConnectShyft operational flow.
-- [ ] Implement Inbox/Mine large-card contract (AC: 2)
-  - [ ] Update thread cards for readable hierarchy and touch-safe action targets.
-  - [ ] Preserve plain-language urgency labels and voicemail signal prominence.
-- [ ] Implement thread header and action discoverability updates (AC: 3, 4)
-  - [ ] Prioritize neighbor and conference context in thread header layout.
-  - [ ] Preserve explicit state-based action sets across breakpoints.
-- [ ] Add regression coverage for responsive and behavioral parity (AC: 1, 2, 3, 4)
-  - [ ] E2E coverage for navigation persistence and primary-surface transitions.
-  - [ ] E2E coverage for action discoverability and state-action matrix visibility.
+- [x] Implement mobile-first navigation shell (AC: 1, 4)
+  - [x] Implement persistent bottom navigation for `Inbox`, `Mine`, `More`.
+  - [x] Remove hidden fourth-primary-tab behavior from ConnectShyft operational flow.
+- [x] Implement Inbox/Mine large-card contract (AC: 2)
+  - [x] Update thread cards for readable hierarchy and touch-safe action targets.
+  - [x] Preserve plain-language urgency labels and voicemail signal prominence.
+- [x] Implement thread header and action discoverability updates (AC: 3, 4)
+  - [x] Prioritize neighbor and conference context in thread header layout.
+  - [x] Preserve explicit state-based action sets across breakpoints.
+- [x] Add regression coverage for responsive and behavioral parity (AC: 1, 2, 3, 4)
+  - [x] E2E coverage for navigation persistence and primary-surface transitions.
+  - [x] E2E coverage for action discoverability and state-action matrix visibility.
 
 ## Dev Notes
 
@@ -131,15 +131,40 @@ GPT-5 Codex
 
 - `git branch --show-current` (pass)
 - `rg -n "^Status: ready-for-dev$" _bmad-output/implementation-artifacts/ux-r1-mobile-first-inbox-mine-thread-redesign.md` (pass)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story ux-r1-mobile-first-inbox-mine-thread-redesign.md` (fails story-id parser for ux-r1 naming)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story u-1-connectshyft-mobile-first-inbox-mine-thread-redesign.md` (pass)
+- `npm run test:e2e -- tests/e2e/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.spec.ts` (pass)
+- `npm run test:e2e -- tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.spec.ts tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts` (pass)
+- `cd frontend && npm run build` (pass)
+- `cd src && npm run build` (pass)
+- `cd src && npm test` (pass)
 
 ### Completion Notes List
 
 - Created implementation-ready Story ux-r1 context document with mobile-first structure, readability constraints, and state-action discoverability guardrails.
+- Implemented ConnectShyft primary-bottom-nav shell (`Inbox`, `Mine`, `More`) with no hidden fourth-primary-tab selector/path.
+- Updated Inbox/Mine cards to large-card readability contract with `connectshyft-thread-card-body` (`>=16px`) and `connectshyft-thread-card-primary-action` (`>=44px` tap target).
+- Updated thread detail header to prioritize neighbor/conference context and added discoverability selectors for voicemail and action group visibility.
+- Added `/app/connectshyft/more` primary-surface route/view for operational secondary actions.
+- Added UX-R1 fallback read-contract seed data for deterministic ux-r1 test contexts and updated UX-R1 automate tests from `fixme` to active assertions.
+- Adjusted c-3 ordering assertion selector filtering to ignore new ux-r1 sub-element test IDs while preserving ordering assertions.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/ux-r1-mobile-first-inbox-mine-thread-redesign.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- _bmad-output/implementation-artifacts/ux-r1-reviewer-checklist.md
+- frontend/src/components/connectshyft/ConnectShyftPrimaryNav.vue
+- frontend/src/views/ConnectShyft/ConnectShyftInboxView.vue
+- frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
+- frontend/src/views/ConnectShyft/ConnectShyftMoreView.vue
+- frontend/src/router/index.ts
+- src/src/modules/connectshyft/readContracts.ts
+- tests/e2e/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.spec.ts
+- tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.spec.ts
 
 ## Change Log
 
 - 2026-02-25: Created Story ux-r1 ready-for-dev context document.
+- 2026-02-26: Implemented mobile-first Inbox/Mine/Thread redesign, added More primary surface, activated ux-r1 E2E coverage, and passed connectshyft regression + backend suites.
+- 2026-02-26: Added AC1-AC4 reviewer checklist for code-review handoff.

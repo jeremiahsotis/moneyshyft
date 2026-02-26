@@ -5,9 +5,6 @@ import {
   type StoryUxR1Context,
 } from '../../support/factories/connectShyftStoryUxR1Factory';
 
-const UX_R1_UI_IMPLEMENTATION_GAP =
-  'Story ux-r1 mobile-first selector and layout contract is not fully implemented yet.';
-
 const buildSurfaceUrl = (
   context: StoryUxR1Context,
   options: {
@@ -52,7 +49,7 @@ const buildThreadDetailUrl = (
 test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator journeys', () => {
   test.describe.configure({ mode: 'serial' });
 
-  test.fixme(
+  test(
     '[P0] persistent bottom navigation keeps Inbox Mine More visible without hidden fourth primary tab @P0',
     async ({ page }) => {
       const context = createStoryUxR1Context();
@@ -73,7 +70,6 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
       );
       await inboxRequest;
 
-      expect(UX_R1_UI_IMPLEMENTATION_GAP).toContain('ux-r1');
       await expect(page.getByTestId('connectshyft-bottom-nav')).toBeVisible();
       await expect(page.getByTestId('connectshyft-bottom-nav-inbox')).toBeVisible();
       await expect(page.getByTestId('connectshyft-bottom-nav-mine')).toBeVisible();
@@ -87,7 +83,7 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
     },
   );
 
-  test.fixme(
+  test(
     '[P0] inbox and mine cards enforce large-card readability with >=16px body text and >=44px primary tap targets @P0',
     async ({ page }) => {
       const context = createStoryUxR1Context();
@@ -135,7 +131,7 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
     },
   );
 
-  test.fixme(
+  test(
     '[P0] thread detail prioritizes neighbor and conference context while preserving exact state action matrix @P0',
     async ({ page }) => {
       const context = createStoryUxR1Context();
@@ -179,7 +175,7 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
     },
   );
 
-  test.fixme(
+  test(
     '[P1] responsive breakpoints preserve context voicemail indicators and action discoverability without hidden policy paths @P1',
     async ({ page }) => {
       const context = createStoryUxR1Context();

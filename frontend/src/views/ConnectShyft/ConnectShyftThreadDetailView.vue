@@ -1,5 +1,5 @@
 <template>
-  <main class="min-h-screen bg-slate-50 px-4 py-8">
+  <main class="min-h-screen bg-slate-50 px-4 py-6 pb-32 sm:py-8">
     <section class="mx-auto max-w-3xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <header class="mb-6">
         <h1 v-if="showUnavailableState" class="text-2xl font-semibold text-slate-900">
@@ -30,43 +30,67 @@
         </p>
 
         <template v-else-if="threadDetail">
-          <p class="text-sm font-medium text-slate-900">
-            {{ threadDetail.summary || threadDetail.threadId }}
-          </p>
+          <header class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p class="text-base font-semibold text-slate-900">
+              {{ threadDetail.summary || threadDetail.threadId }}
+            </p>
 
-          <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
-            <span
-              data-testid="connectshyft-thread-id-chip"
-              class="rounded-full border border-slate-300 bg-slate-100 px-2 py-1 text-slate-800"
-            >
-              Thread {{ threadDetail.threadId }}
-            </span>
-            <span
-              data-testid="connectshyft-thread-state-chip"
-              class="rounded-full border border-slate-300 bg-slate-100 px-2 py-1 text-slate-800"
-            >
-              {{ threadDetail.state }}
-            </span>
-            <span
-              v-if="threadDetail.state === 'CLAIMED'"
-              data-testid="connectshyft-thread-owner-chip"
-              class="rounded-full border border-slate-300 bg-slate-100 px-2 py-1 text-slate-800"
-            >
-              Owner: {{ threadDetail.claimedByUserId || 'unassigned' }}
-            </span>
-            <span
-              data-testid="connectshyft-thread-escalation-chip"
-              class="rounded-full border border-slate-300 bg-slate-100 px-2 py-1 text-slate-800"
-            >
-              {{ escalationChipLabel }}
-            </span>
-            <span
-              data-testid="connectshyft-thread-inactivity-chip"
-              class="rounded-full border border-slate-300 bg-slate-100 px-2 py-1 text-slate-800"
-            >
-              {{ inactivityChipLabel }}
-            </span>
-          </div>
+            <div class="mt-3 grid gap-2 sm:grid-cols-2">
+              <p
+                data-testid="connectshyft-thread-header-neighbor-context"
+                class="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              >
+                {{ neighborContextLabel }}
+              </p>
+              <p
+                data-testid="connectshyft-thread-header-conference-context"
+                class="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              >
+                {{ conferenceContextLabel }}
+              </p>
+            </div>
+
+            <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span
+                data-testid="connectshyft-thread-id-chip"
+                class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
+              >
+                Thread {{ threadDetail.threadId }}
+              </span>
+              <span
+                data-testid="connectshyft-thread-state-chip"
+                class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
+              >
+                {{ threadDetail.state }}
+              </span>
+              <span
+                v-if="threadDetail.state === 'CLAIMED'"
+                data-testid="connectshyft-thread-owner-chip"
+                class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
+              >
+                Owner: {{ threadDetail.claimedByUserId || 'unassigned' }}
+              </span>
+              <span
+                data-testid="connectshyft-thread-escalation-chip"
+                class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
+              >
+                {{ escalationChipLabel }}
+              </span>
+              <span
+                data-testid="connectshyft-thread-inactivity-chip"
+                class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
+              >
+                {{ inactivityChipLabel }}
+              </span>
+              <span
+                v-if="threadDetail.voicemailIndicator"
+                data-testid="connectshyft-voicemail-indicator"
+                class="rounded-full border border-blue-200 bg-blue-100 px-2 py-1 font-semibold text-blue-800"
+              >
+                Voicemail waiting
+              </span>
+            </div>
+          </header>
 
           <p
             data-testid="connectshyft-thread-metadata-last-inbound-number"
@@ -100,12 +124,12 @@
             {{ lifecycleToast }}
           </p>
 
-          <div class="mt-4 flex flex-wrap gap-2">
+          <div data-testid="connectshyft-thread-actions" class="mt-4 flex flex-wrap gap-2">
             <button
               v-for="action in visibleActions"
               :key="action"
               type="button"
-              class="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+              class="min-h-[44px] rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="actionPending"
               @click="handleThreadAction(action)"
             >
@@ -145,12 +169,15 @@
         <p v-else class="text-sm text-slate-600">Loading thread detail...</p>
       </section>
     </section>
+
+    <ConnectShyftPrimaryNav />
   </main>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
 import api from '@/services/api';
 import {
   DEFAULT_CONNECTSHYFT_AVAILABILITY,
@@ -262,6 +289,26 @@ const actionBannerMessage = computed(() => {
   }
 
   return actionError.value;
+});
+
+const neighborContextLabel = computed(() => {
+  if (!threadDetail.value) {
+    return 'Neighbor context unavailable';
+  }
+
+  const neighborToken = threadDetail.value.threadId.split('-').slice(-2).join('-');
+  return `Neighbor context: ${neighborToken || threadDetail.value.threadId}`;
+});
+
+const conferenceContextLabel = computed(() => {
+  if (!threadDetail.value) {
+    return 'Conference context unavailable';
+  }
+
+  const label = threadDetail.value.preferredOutboundContext.label
+    || threadDetail.value.preferredOutboundCsNumberId
+    || 'Unassigned outbound conference line';
+  return `Conference context: ${label}`;
 });
 
 const actionSetForState = (state: ConnectShyftThreadState): string[] => {
