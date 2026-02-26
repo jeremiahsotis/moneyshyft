@@ -2,7 +2,7 @@ import type { Knex } from 'knex';
 
 export type ConnectShyftInboxBucket = 'inbox' | 'mine';
 export type ConnectShyftThreadState = 'UNCLAIMED' | 'CLAIMED' | 'CLOSED';
-export type ConnectShyftThreadAction = 'Call' | 'Text' | 'Claim' | 'Close' | 'Send Message';
+export type ConnectShyftThreadAction = 'Call' | 'Text' | 'Claim' | 'Close' | 'Send Message' | 'Take Over';
 
 export type ConnectShyftThreadSummaryRecord = {
   threadId: string;
@@ -99,6 +99,12 @@ const CONNECTSHYFT_THREAD_ACTIONS: Record<
   CLAIMED: ['Call', 'Text', 'Close'],
   CLOSED: ['Call', 'Send Message'],
 };
+const CONNECTSHYFT_TAKEOVER_ROLES = new Set([
+  'ORGUNIT_ADMIN',
+  'TENANT_ADMIN',
+  'TENANT_STAFF',
+  'SYSTEM_ADMIN',
+]);
 
 const CONNECTSHYFT_SCHEMA = 'connectshyft';
 const CONNECTSHYFT_THREADS_TABLE = 'cs_threads';
@@ -111,6 +117,10 @@ const CONNECTSHYFT_DEFAULT_SCOPE = {
 const CONNECTSHYFT_C4_SCOPE = {
   tenantId: 'tenant-connectshyft-c4',
   orgUnitId: 'org-connectshyft-c4-east',
+} as const;
+const CONNECTSHYFT_UX_R1_SCOPE = {
+  tenantId: 'tenant-connectshyft-ux-r1',
+  orgUnitId: 'org-connectshyft-ux-r1-east',
 } as const;
 
 const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
@@ -258,6 +268,70 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
     voicemailIndicator: false,
     summary: 'Closed thread awaiting explicit outbound reopen',
   },
+  {
+    tenantId: CONNECTSHYFT_UX_R1_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_UX_R1_SCOPE.orgUnitId,
+    threadId: 'thread-ux-r1-unclaimed-1001',
+    state: 'UNCLAIMED',
+    bucket: 'inbox',
+    claimedByUserId: null,
+    escalationStage: 2,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-02-25T14:20:00.000Z',
+    lastInboundCsNumberId: 'cs-number-ux-r1-401',
+    preferredOutboundCsNumberId: 'cs-number-ux-r1-501',
+    preferredOutboundLabel: 'Conference East Response',
+    voicemailIndicator: false,
+    summary: 'Neighbor requested urgent callback',
+  },
+  {
+    tenantId: CONNECTSHYFT_UX_R1_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_UX_R1_SCOPE.orgUnitId,
+    threadId: 'thread-ux-r1-claimed-1002',
+    state: 'CLAIMED',
+    bucket: 'inbox',
+    claimedByUserId: 'user-connectshyft-ux-r1-other-operator',
+    escalationStage: 1,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-02-25T14:10:00.000Z',
+    lastInboundCsNumberId: 'cs-number-ux-r1-402',
+    preferredOutboundCsNumberId: 'cs-number-ux-r1-502',
+    preferredOutboundLabel: 'Conference Follow-up Line',
+    voicemailIndicator: false,
+    summary: 'Claimed thread with active follow-up',
+  },
+  {
+    tenantId: CONNECTSHYFT_UX_R1_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_UX_R1_SCOPE.orgUnitId,
+    threadId: 'thread-ux-r1-closed-1003',
+    state: 'CLOSED',
+    bucket: 'inbox',
+    claimedByUserId: null,
+    escalationStage: 1,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-02-25T14:00:00.000Z',
+    lastInboundCsNumberId: 'cs-number-ux-r1-403',
+    preferredOutboundCsNumberId: 'cs-number-ux-r1-503',
+    preferredOutboundLabel: 'Conference Closure Queue',
+    voicemailIndicator: false,
+    summary: 'Closed thread pending outbound confirmation',
+  },
+  {
+    tenantId: CONNECTSHYFT_UX_R1_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_UX_R1_SCOPE.orgUnitId,
+    threadId: 'thread-ux-r1-claimed-voicemail-1004',
+    state: 'CLAIMED',
+    bucket: 'mine',
+    claimedByUserId: 'user-connectshyft-ux-r1-operator',
+    escalationStage: 0,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-02-25T13:50:00.000Z',
+    lastInboundCsNumberId: 'cs-number-ux-r1-404',
+    preferredOutboundCsNumberId: 'cs-number-ux-r1-504',
+    preferredOutboundLabel: 'Conference Assigned Operator Line',
+    voicemailIndicator: true,
+    summary: 'Voicemail retained on claimed operator thread',
+  },
 ];
 
 export const parseConnectShyftInboxBucket = (
@@ -318,7 +392,17 @@ export const resolveConnectShyftUrgencyLabel = (
 
 export const resolveConnectShyftThreadActions = (
   state: ConnectShyftThreadState,
-): readonly ConnectShyftThreadAction[] => CONNECTSHYFT_THREAD_ACTIONS[state];
+  options: {
+    requestedRole?: string | null;
+  } = {},
+): readonly ConnectShyftThreadAction[] => {
+  const role = normalizeString(options.requestedRole).toUpperCase();
+  if (state === 'CLAIMED' && CONNECTSHYFT_TAKEOVER_ROLES.has(role)) {
+    return ['Call', 'Take Over', 'Text', 'Close'];
+  }
+
+  return CONNECTSHYFT_THREAD_ACTIONS[state];
+};
 
 export const sortConnectShyftThreadSummaries = (
   items: readonly ConnectShyftThreadSummaryRecord[],
@@ -509,6 +593,7 @@ export const resolveConnectShyftThreadDetailContract = (input: {
   orgUnitId: string;
   threadId: string;
   actorUserId?: string | null;
+  requestedRole?: string | null;
 }): ConnectShyftThreadDetailRecord | null => {
   const normalizedThreadId = input.threadId.trim();
   if (!normalizedThreadId) {
@@ -532,7 +617,9 @@ export const resolveConnectShyftThreadDetailContract = (input: {
 
   return {
     ...summary,
-    actions: resolveConnectShyftThreadActions(summary.state),
+    actions: resolveConnectShyftThreadActions(summary.state, {
+      requestedRole: input.requestedRole,
+    }),
     lifecycle: {
       reopenedByInbound: false,
     },
@@ -855,6 +942,7 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
   orgUnitId: string;
   threadId: string;
   actorUserId?: string | null;
+  requestedRole?: string | null;
   db: Knex;
 }): Promise<ConnectShyftThreadDetailRecord | null> => {
   const normalizedThreadId = input.threadId.trim();
@@ -874,6 +962,7 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
       orgUnitId: input.orgUnitId,
       threadId: normalizedThreadId,
       actorUserId: input.actorUserId,
+      requestedRole: input.requestedRole,
     });
   }
 
@@ -887,6 +976,7 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
         orgUnitId: input.orgUnitId,
         threadId: normalizedThreadId,
         actorUserId: input.actorUserId,
+        requestedRole: input.requestedRole,
       });
     }
 
@@ -903,7 +993,9 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
 
   return {
     ...summary,
-    actions: resolveConnectShyftThreadActions(summary.state),
+    actions: resolveConnectShyftThreadActions(summary.state, {
+      requestedRole: input.requestedRole,
+    }),
     lifecycle: {
       reopenedByInbound: false,
     },

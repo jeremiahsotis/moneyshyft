@@ -120,4 +120,22 @@ describe('connectshyft read contracts', () => {
     expect(claimed?.actions).toEqual(['Call', 'Text', 'Close']);
     expect(closed?.actions).toEqual(['Call', 'Send Message']);
   });
+
+  it('adds takeover action for privileged roles on claimed threads via contract output', () => {
+    const claimedAdmin = resolveConnectShyftThreadDetailContract({
+      tenantId: 'tenant-connectshyft-c4',
+      orgUnitId: 'org-connectshyft-c4-east',
+      threadId: 'thread-c4-claimed-1002',
+      requestedRole: 'ORGUNIT_ADMIN',
+    });
+    const claimedMember = resolveConnectShyftThreadDetailContract({
+      tenantId: 'tenant-connectshyft-c4',
+      orgUnitId: 'org-connectshyft-c4-east',
+      threadId: 'thread-c4-claimed-1002',
+      requestedRole: 'ORGUNIT_MEMBER',
+    });
+
+    expect(claimedAdmin?.actions).toEqual(['Call', 'Take Over', 'Text', 'Close']);
+    expect(claimedMember?.actions).toEqual(['Call', 'Text', 'Close']);
+  });
 });

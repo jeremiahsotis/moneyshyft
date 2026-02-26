@@ -1,0 +1,38 @@
+{
+  "tdd_phase": "RED",
+  "story_id": "ux-r1",
+  "total_tests": 8,
+  "api_tests": 4,
+  "e2e_tests": 4,
+  "all_tests_skipped": true,
+  "expected_to_fail": true,
+  "fixtures_created": 2,
+  "acceptance_criteria_covered": [
+    "Given operational navigation is rendered, when users move between primary surfaces, then the app uses persistent bottom navigation (Inbox, Mine, More) with no hidden fourth primary tab.",
+    "Given Inbox and Mine lists render, when cards are displayed, then thread rows use large-card hierarchy with minimum 16px body text and 44px tap targets for primary actions.",
+    "Given thread detail renders, when context and actions are displayed, then header information prioritizes neighbor and conference context and action sets remain state-explicit for UNCLAIMED, CLAIMED, and CLOSED.",
+    "Given desktop, tablet, and mobile breakpoints, when the same thread is viewed, then responsive layout preserves thread context, voicemail indicators, and action discoverability without hidden policy paths."
+  ],
+  "knowledge_fragments_used": [
+    "data-factories",
+    "component-tdd",
+    "test-quality",
+    "test-healing-patterns",
+    "selector-resilience",
+    "timing-debugging",
+    "overview",
+    "api-request",
+    "network-recorder",
+    "auth-session",
+    "intercept-network-call",
+    "recurse",
+    "log",
+    "file-utils",
+    "network-error-monitor",
+    "fixtures-composition",
+    "playwright-cli",
+    "test-levels-framework"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential"
+}
