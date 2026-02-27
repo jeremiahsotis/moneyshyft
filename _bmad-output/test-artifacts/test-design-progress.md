@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-detect-mode','step-02-load-context','step-03-risk-and-testability','step-04-coverage-plan','step-05-generate-output']
 lastStep: 'step-05-generate-output'
-lastSaved: '2026-02-25'
+lastSaved: '2026-02-27'
 ---
 
 # Test Design Workflow Progress
@@ -628,6 +628,119 @@ lastSaved: '2026-02-25'
   - Quality gates and accountability sections included (not-in-scope, entry/exit criteria, assumptions/dependencies, interworking).
   - Artifacts saved under `_bmad-output/test-artifacts/`.
 - Official documentation cross-check references:
+  - Playwright docs: `https://playwright.dev/docs/best-practices`, `https://playwright.dev/docs/test-parallel`
+  - Cypress docs: `https://docs.cypress.io/app/core-concepts/test-isolation`
+  - Pact docs: `https://docs.pact.io/getting_started/provider_verification`
+  - GitHub Actions docs: `https://docs.github.com/en/actions/concepts/workflows-and-actions`
+
+## 2026-02-27 Run - Step 1 Output - Detect Mode & Prerequisites (Epic D)
+- Mode selected: **Epic-Level Mode**.
+- Selection reason: user input explicitly targeted `testarch-test-design Epic D`.
+- Prerequisite check result: passed.
+  - Epic/AC source available in:
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/d-2-preference-override-enforcement-for-outbound-sms.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/d-3-outbound-audit-outbox-and-refusal-envelope-integration.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/d-4-operator-interaction-contracts-for-outbound-safety.md`
+  - Architecture/PRD context available:
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
+  - Sprint/dependency context available:
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+
+## 2026-02-27 Run - Step 2 Output - Load Context & Knowledge Base (Epic D)
+- Config loaded from `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/config.yaml`:
+  - `tea_use_playwright_utils: true`
+  - `tea_browser_automation: auto`
+  - `test_artifacts: /Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts`
+- Loaded epic-level artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/d-2-preference-override-enforcement-for-outbound-sms.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/d-3-outbound-audit-outbox-and-refusal-envelope-integration.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/d-4-operator-interaction-contracts-for-outbound-safety.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+- Loaded prior design outputs for context:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-architecture.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-qa.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-epic-C.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-epic-UX.md`
+- Existing test coverage scan summary:
+  - Existing lifecycle baseline exists in `c-4` API/E2E suites (reopen and refusal behavior coverage present).
+  - No dedicated Epic D API/E2E suite files currently exist (`d-1..d-4`).
+  - Route code includes outbound reopen hooks and refusal helpers, but explicit Epic D policy/override suite coverage is missing.
+  - High skipped-test concentration across platform ATDD/E2E indicates elevated regression escape risk if D-lane tests are not isolated and required.
+- Browser exploration note:
+  - Runtime target check to `http://127.0.0.1:3000/` failed (`connection refused`), so browser exploration was skipped and this run used artifact/code evidence.
+- Knowledge fragments loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/risk-governance.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/probability-impact.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/test-levels-framework.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/test-priorities-matrix.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/playwright-cli.md`
+
+## 2026-02-27 Run - Step 3 Output - Risk Assessment (Epic D)
+- System-level testability subsection not applicable (epic-level mode).
+- Risk matrix generated using TEA probability-impact scoring (`score = probability x impact`).
+- Highest risks:
+  - `R-D-001` closed-thread semantic drift (`same-thread reopen` vs `new thread`) - score 9
+  - `R-D-004` `prefers_texting=NO` override bypass - score 9
+  - `R-D-005` refusal path partial-write side effects - score 9
+- Additional high-priority risks:
+  - `R-D-002` escalation reset drift on unclaimed outbound
+  - `R-D-003` non-bridge/auto-retry call orchestration drift
+  - `R-D-006` non-atomic audit/outbox persistence
+  - `R-D-007` UI action-matrix drift by breakpoint/state
+  - `R-D-008` missing dedicated Epic D automated lane
+- Priority order:
+  1. Policy/data safety invariants (`R-D-001`, `R-D-004`, `R-D-005`)
+  2. Deterministic lifecycle and provenance contracts (`R-D-002`, `R-D-003`, `R-D-006`)
+  3. Operator-safe UX and delivery governance (`R-D-007`, `R-D-008`, `R-D-010`)
+
+## 2026-02-27 Run - Step 4 Output - Coverage Plan & Execution Strategy (Epic D)
+- Coverage matrix produced for stories `d-1` through `d-4` with explicit risk links.
+- Test level assignment follows framework guidance:
+  - API/Integration for policy enforcement, lifecycle semantics, and atomic persistence
+  - E2E for state-action matrix and accessibility-visible behavior
+  - CI contract checks for dependency/sequence gating
+- Priority model applied:
+  - P0: policy/lifecycle safety paths with no workaround
+  - P1: operator UX and deterministic contract behavior
+  - P2: robustness/performance hardening
+  - P3: exploratory and burn-in confidence checks
+- Execution strategy set to simple PR / Nightly / Weekly model:
+  - PR: P0 + P1 + fast P2 functional suites
+  - Nightly: full P2 and replay/performance checks
+  - Weekly: P3 burn-in and manual operability checks
+- Interval-only effort estimates:
+  - P0: ~28-44 hours
+  - P1: ~22-36 hours
+  - P2: ~10-22 hours
+  - P3: ~4-10 hours
+  - Total: ~64-112 hours (~2-4 weeks)
+- Quality gates defined:
+  - P0 pass rate = 100%
+  - P1 pass rate >=95%
+  - High-risk mitigations complete or explicit waiver
+  - Coverage target >=80%
+
+## 2026-02-27 Run - Step 5 Output - Generate Outputs & Validate (Epic D)
+- Mode used: **Epic-Level**
+- Epic selected: **Epic D** (`d-1`..`d-4`)
+- Output generated:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-epic-D.md`
+- Validation summary against checklist:
+  - Risk matrix includes IDs, category, P/I scores, mitigation, owner, and timeline.
+  - Coverage plan includes P0-P3 priorities, risk links, and level selection without duplicate intent.
+  - Execution strategy follows simplified PR/Nightly/Weekly structure.
+  - Estimates are range-based only; no false precision values used.
+  - Quality gates and accountability sections are present (not-in-scope, entry/exit criteria, assumptions/dependencies, interworking).
+  - Output saved under `_bmad-output/test-artifacts/`.
+- Official documentation cross-check references used for recommendation alignment:
   - Playwright docs: `https://playwright.dev/docs/best-practices`, `https://playwright.dev/docs/test-parallel`
   - Cypress docs: `https://docs.cypress.io/app/core-concepts/test-isolation`
   - Pact docs: `https://docs.pact.io/getting_started/provider_verification`
