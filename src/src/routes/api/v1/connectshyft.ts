@@ -1,5 +1,4 @@
 import { Request, Response, Router } from 'express';
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Knex } from 'knex';
 import { refusal, success } from '../../../platform/envelopes/response';
 import { CAPABILITIES, hasCapability } from '../../../platform/rbac/capabilities';
@@ -45,6 +44,10 @@ import {
   type ConnectShyftResolvedSmsPreference,
   type ConnectShyftValidatedSmsOverride,
 } from '../../../modules/connectshyft/smsPreferenceOverrides';
+import {
+  resolveConnectShyftProviderAdapter,
+  resolveConnectShyftRequestedProviderKey,
+} from '../../../modules/connectshyft/providerRegistry';
 import { executePlatformMutation } from '../../../platform/mutations/executePlatformMutation';
 import {
   createKnexOrgUnitAccessStore,
@@ -67,8 +70,6 @@ const router = Router();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TEST_ACTIVE_THREAD_NEIGHBOR_IDS_HEADER = 'x-test-connectshyft-active-thread-neighbor-ids';
 const TEST_USER_ID_HEADER = 'x-test-connectshyft-user-id';
-const CONNECTSHYFT_WEBHOOK_SIGNATURE_HEADER = 'x-twilio-signature';
-const CONNECTSHYFT_TWILIO_AUTH_TOKEN_ENV = 'TWILIO_AUTH_TOKEN';
 const CONNECTSHYFT_SYSTEM_ACTOR_USER_ID = '00000000-0000-4000-8000-000000000001';
 const NEIGHBOR_RELATIONSHIP_REQUIRED_CODE = 'CONNECTSHYFT_NEIGHBOR_EDIT_RELATIONSHIP_REQUIRED';
 const NEIGHBOR_RELATIONSHIP_REQUIRED_MESSAGE = 'This edit requires an active thread relationship or tenant-privileged role.';
@@ -258,6 +259,42 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     lastInboundCsNumberId: 'cs-number-405',
     preferredOutboundCsNumberId: 'cs-number-505',
     summary: 'Closed thread with prefers_texting=NO policy.',
+  },
+  'thread-f1-unclaimed-1001': {
+    tenantId: 'tenant-connectshyft-f1',
+    orgUnitId: 'org-connectshyft-f1-east',
+    state: 'UNCLAIMED',
+    claimedByUserId: null,
+    escalationStage: 0,
+    nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+    neighborId: 'neighbor-connectshyft-f1-1001',
+    lastInboundCsNumberId: 'cs-number-f1-401',
+    preferredOutboundCsNumberId: 'cs-number-f1-501',
+    summary: 'F1 unclaimed thread for provider adapter registry contracts.',
+  },
+  'thread-f1-claimed-1002': {
+    tenantId: 'tenant-connectshyft-f1',
+    orgUnitId: 'org-connectshyft-f1-east',
+    state: 'CLAIMED',
+    claimedByUserId: 'user-connectshyft-f1-other-operator',
+    escalationStage: 0,
+    nextEvaluationAtUtc: null,
+    neighborId: 'neighbor-connectshyft-f1-1002',
+    lastInboundCsNumberId: 'cs-number-f1-402',
+    preferredOutboundCsNumberId: 'cs-number-f1-502',
+    summary: 'F1 claimed thread for provider disabled refusal validation.',
+  },
+  'thread-f1-closed-1003': {
+    tenantId: 'tenant-connectshyft-f1',
+    orgUnitId: 'org-connectshyft-f1-east',
+    state: 'CLOSED',
+    claimedByUserId: null,
+    escalationStage: 0,
+    nextEvaluationAtUtc: null,
+    neighborId: 'neighbor-connectshyft-f1-1003',
+    lastInboundCsNumberId: 'cs-number-f1-403',
+    preferredOutboundCsNumberId: 'cs-number-f1-503',
+    summary: 'F1 closed thread for same-thread reopen provider dispatch validation.',
   },
 };
 
@@ -992,6 +1029,16 @@ const resolveLifecycleContext = async (input: {
   threadId: string;
   actorUserId: string | null;
 }): Promise<ResolvedLifecycleContext> => {
+  const syntheticThread = resolveSyntheticLifecycleThread(input.threadId);
+  if (syntheticThread) {
+    return {
+      detail: null,
+      syntheticThread,
+      currentState: syntheticThread.state,
+      claimedByUserId: syntheticThread.claimedByUserId,
+    };
+  }
+
   const detail = await resolveConnectShyftThreadDetailContractAsync({
     tenantId: input.tenantId,
     orgUnitId: input.orgUnitId,
@@ -1000,22 +1047,12 @@ const resolveLifecycleContext = async (input: {
     db: loadPlatformDb(),
   });
 
-  const syntheticThread = resolveSyntheticLifecycleThread(input.threadId);
   if (detail) {
     return {
       detail,
-      syntheticThread,
+      syntheticThread: null,
       currentState: detail.state,
       claimedByUserId: detail.claimedByUserId || null,
-    };
-  }
-
-  if (syntheticThread) {
-    return {
-      detail: null,
-      syntheticThread,
-      currentState: syntheticThread.state,
-      claimedByUserId: syntheticThread.claimedByUserId,
     };
   }
 
@@ -1866,105 +1903,6 @@ const enforceOutboundCallPolicyRequest = (req: Request, res: Response): boolean 
         retryCount: callPolicy.retryCount,
         allowedRedialPolicy: CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_REDIAL_POLICY,
       },
-    });
-    return false;
-  }
-
-  return true;
-};
-
-const resolveWebhookRequestUrl = (req: Request): string => {
-  const forwardedProto = normalizeLifecycleString(req.header('x-forwarded-proto'));
-  const forwardedHost = normalizeLifecycleString(req.header('x-forwarded-host'));
-  const host = forwardedHost || normalizeLifecycleString(req.header('host')) || 'localhost';
-  const protocol = forwardedProto
-    ? forwardedProto.split(',')[0].trim()
-    : (normalizeLifecycleString(req.protocol) || 'http');
-  const path = req.originalUrl || req.url;
-  return `${protocol}://${host}${path}`;
-};
-
-const serializeWebhookPayloadForSignature = (payload: unknown): string => {
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    return '';
-  }
-
-  const body = payload as Record<string, unknown>;
-  return Object.keys(body)
-    .sort((a, b) => a.localeCompare(b))
-    .map((key) => {
-      const rawValue = body[key];
-      if (rawValue === null || rawValue === undefined) {
-        return `${key}`;
-      }
-      if (typeof rawValue === 'string') {
-        return `${key}${rawValue}`;
-      }
-      if (typeof rawValue === 'number' || typeof rawValue === 'boolean') {
-        return `${key}${String(rawValue)}`;
-      }
-      return `${key}${JSON.stringify(rawValue)}`;
-    })
-    .join('');
-};
-
-const computeWebhookSignature = (input: {
-  authToken: string;
-  requestUrl: string;
-  payload: unknown;
-}): string => {
-  const base = `${input.requestUrl}${serializeWebhookPayloadForSignature(input.payload)}`;
-  return createHmac('sha1', input.authToken).update(base).digest('base64');
-};
-
-const secureCompareSignature = (actual: string, expected: string): boolean => {
-  const actualBuffer = Buffer.from(actual);
-  const expectedBuffer = Buffer.from(expected);
-  if (actualBuffer.length !== expectedBuffer.length) {
-    return false;
-  }
-
-  return timingSafeEqual(actualBuffer, expectedBuffer);
-};
-
-const enforceWebhookSignature = (req: Request, res: Response): boolean => {
-  if (isConnectShyftTestOverrideEnabled()) {
-    return true;
-  }
-
-  const authToken = normalizeLifecycleString(process.env[CONNECTSHYFT_TWILIO_AUTH_TOKEN_ENV]);
-  if (!authToken) {
-    refusal(res, {
-      code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED',
-      message: 'Webhook signature validation is not configured.',
-      refusalType: 'business',
-      httpStatus: 503,
-    });
-    return false;
-  }
-
-  const incomingSignature = normalizeLifecycleString(req.header(CONNECTSHYFT_WEBHOOK_SIGNATURE_HEADER));
-  if (!incomingSignature) {
-    refusal(res, {
-      code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING',
-      message: 'Webhook signature header is required.',
-      refusalType: 'client',
-      httpStatus: 401,
-    });
-    return false;
-  }
-
-  const expectedSignature = computeWebhookSignature({
-    authToken,
-    requestUrl: resolveWebhookRequestUrl(req),
-    payload: req.body,
-  });
-  if (!secureCompareSignature(incomingSignature, expectedSignature)) {
-    refusal(res, {
-      code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',
-      message: 'Webhook signature validation failed.',
-      refusalType: 'client',
-      httpStatus: 401,
     });
     return false;
   }
@@ -4016,6 +3954,26 @@ const performOutboundAction = async (
     return;
   }
 
+  const providerSelection = resolveConnectShyftProviderAdapter({
+    req,
+    operation: outboundAction,
+    requestedProvider: resolveConnectShyftRequestedProviderKey(req),
+  });
+  if (!providerSelection.ok) {
+    refusal(res, {
+      code: providerSelection.refusal.code,
+      message: providerSelection.refusal.message,
+      refusalType: providerSelection.refusal.refusalType,
+      httpStatus: providerSelection.refusal.httpStatus,
+      data: {
+        ...providerSelection.refusal.data,
+        context,
+        threadId,
+      },
+    });
+    return;
+  }
+
   const actorRoles = resolveConnectShyftActorRoles(req, context);
   const actorUserId = resolveConnectShyftRequestedActorUserId(req);
   const outboundMessagePolicy = outboundAction === 'message'
@@ -4260,6 +4218,18 @@ const performOutboundAction = async (
     })
     : null;
 
+  const providerDispatch = outboundAction === 'call'
+    ? await providerSelection.adapter.dispatchOutboundCall({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+    })
+    : await providerSelection.adapter.dispatchOutboundMessage({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+    });
+
   const operatorFeedback = priorState === 'CLOSED'
     ? 'Conversation reopened on the same thread before outbound dispatch. Escalation and inactivity timers were reset.'
     : priorState === 'UNCLAIMED'
@@ -4312,6 +4282,12 @@ const performOutboundAction = async (
       uiFeedback,
       escalationReset,
       sideEffectsPersisted,
+      providerResolution: {
+        ...providerSelection.providerResolution,
+        adapterInterfaceVersion: providerSelection.adapter.adapterInterfaceVersion,
+        providerBranchingInDomain: false,
+      },
+      dispatch: providerDispatch,
       ...(outboundAction === 'call'
         ? {
             call: CONNECTSHYFT_OUTBOUND_CALL_POLICY,
@@ -4363,11 +4339,38 @@ const handleInboundWebhook = async (
     return;
   }
 
-  if (!enforceWebhookSignature(req, res)) {
+  const providerSelection = resolveConnectShyftProviderAdapter({
+    req,
+    operation: 'webhook',
+    requestedProvider: resolveConnectShyftRequestedProviderKey(req),
+  });
+  if (!providerSelection.ok) {
+    refusal(res, {
+      code: providerSelection.refusal.code,
+      message: providerSelection.refusal.message,
+      refusalType: providerSelection.refusal.refusalType,
+      httpStatus: providerSelection.refusal.httpStatus,
+      data: providerSelection.refusal.data,
+    });
     return;
   }
 
-  const eventType = normalizeLifecycleString(req.body?.eventType) || 'sms.inbound';
+  const signatureDecision = providerSelection.adapter.validateInboundWebhookSignature({ req });
+  if (!signatureDecision.ok) {
+    refusal(res, {
+      code: signatureDecision.refusal.code,
+      message: signatureDecision.refusal.message,
+      refusalType: signatureDecision.refusal.refusalType,
+      httpStatus: signatureDecision.refusal.httpStatus,
+    });
+    return;
+  }
+
+  const canonicalTranslation = providerSelection.adapter.toCanonicalEvent({
+    rawEventType: normalizeLifecycleString(req.body?.eventType) || 'sms.inbound',
+    payload: req.body,
+  });
+  const eventType = canonicalTranslation.eventType;
   const normalizedEventType = eventType.toLowerCase();
   const isConnectedCallEvent = CONNECTSHYFT_CONNECTED_CALL_EVENT_TYPES.has(normalizedEventType);
   const threadId = normalizeLifecycleString(req.body?.threadId) || null;
@@ -4496,6 +4499,11 @@ const handleInboundWebhook = async (
       from: typeof req.body?.from === 'string' ? req.body.from : null,
       to: typeof req.body?.to === 'string' ? req.body.to : null,
       eventType,
+      providerResolution: {
+        ...providerSelection.providerResolution,
+        adapterInvoked: true,
+      },
+      canonicalTranslation,
       threadId,
       threadState,
       thread,

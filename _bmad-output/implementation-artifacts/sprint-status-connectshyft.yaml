@@ -78,7 +78,7 @@ development_status:
   e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: backlog
   epic-e-retrospective: optional
   epic-f: in-progress
-  f-1-provider-adapter-interface-and-provider-registry: ready-for-dev
+  f-1-provider-adapter-interface-and-provider-registry: review
   f-2-canonical-comms-event-model-and-event-store: ready-for-dev
   f-3-provider-leg-message-correlation-fallback-mapping: ready-for-dev
   f-4-telnyx-adapter-implementation-and-cutover-guardrails: ready-for-dev

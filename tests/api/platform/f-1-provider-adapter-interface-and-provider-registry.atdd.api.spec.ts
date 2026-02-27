@@ -4,7 +4,7 @@ import { test, expect } from '../../support/fixtures/connectShyftStoryF1.fixture
 test.describe(
   'Story f.1 Provider Adapter Interface and Provider Registry (ATDD API RED)',
   () => {
-    test.skip(
+    test(
       '[P0] outbound call dispatch resolves enabled provider deterministically through adapter registry @P0',
       async ({
         request,
@@ -41,7 +41,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P0] inbound webhook processing routes through provider adapter translation with deterministic provider resolution @P0',
       async ({
         request,
@@ -77,7 +77,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P0] disabled provider requests fail closed with refusal and no partial writes @P0',
       async ({
         request,
@@ -115,7 +115,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] missing provider requests return actionable refusal metadata with explicit no-hidden-mutation evidence @P1',
       async ({
         request,
@@ -158,7 +158,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] outbound response contracts remain provider-neutral and do not leak twilio-specific branch fields @P1',
       async ({
         request,
