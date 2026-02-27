@@ -127,11 +127,11 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `npm run branch:ensure-workflow -- --workflow dev-story --story c-5-deterministic-escalation-scheduler-with-claim-only-reset`
-- `cd src && npm test -- src/src/modules/connectshyft/__tests__/threads.test.ts`
-- `cd src && npm run build`
-- `npm run test:e2e -- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts --workers=1`
-- `npm run test:e2e -- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts --workers=1`
+- `npm run branch:ensure-workflow -- --workflow dev-story --story c-5-deterministic-escalation-scheduler-with-claim-only-reset` (pass)
+- `cd src && npm test -- src/src/modules/connectshyft/__tests__/threads.test.ts` (pass)
+- `cd src && npm run build` (pass)
+- `npm run test:e2e -- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts --workers=1` (pass)
+- `npm run test:e2e -- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts --workers=1` (pass)
 
 ### Completion Notes List
 
