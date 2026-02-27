@@ -63,11 +63,11 @@ development_status:
   c-4-claim-takeover-and-close-lifecycle-actions: done
   c-5-deterministic-escalation-scheduler-with-claim-only-reset: in-progress
   epic-c-retrospective: optional
-  epic-d: backlog
-  d-1-outbound-sms-call-actions-that-preserve-escalation-semantics: backlog
-  d-2-preference-override-enforcement-for-outbound-sms: backlog
-  d-3-outbound-audit-outbox-and-refusal-envelope-integration: backlog
-  d-4-operator-interaction-contracts-for-outbound-safety: backlog
+  epic-d: in-progress
+  d-1-outbound-sms-call-actions-that-preserve-escalation-semantics: ready-for-dev
+  d-2-preference-override-enforcement-for-outbound-sms: ready-for-dev
+  d-3-outbound-audit-outbox-and-refusal-envelope-integration: ready-for-dev
+  d-4-operator-interaction-contracts-for-outbound-safety: ready-for-dev
   epic-d-retrospective: optional
   epic-e: in-progress
   e-1-verified-webhook-ingress-and-deterministic-context-routing: backlog
