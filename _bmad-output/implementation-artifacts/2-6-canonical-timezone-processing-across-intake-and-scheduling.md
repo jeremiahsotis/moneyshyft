@@ -108,11 +108,11 @@ GPT-5 Codex
 - Updated lifecycle payload sanitization fallback to render UTC strings using API-resolved timezone context when available.
 - Expanded timezone regression coverage for DST boundary conversion and half-hour offset timezone rendering.
 - Validation commands:
-  - `cd src && npm test -- src/src/routes/api/v1/__tests__/route.timezone.test.ts`
-  - `cd src && npm test -- src/src/routes/api/v1/__tests__/route.test.ts src/src/routes/api/v1/__tests__/route.cashier-intake.test.ts src/src/routes/api/v1/__tests__/route.commitments.test.ts`
-  - `cd src && npm test`
-  - `cd src && npm run build`
-  - `cd frontend && npm run build`
+  - `cd src && npm test -- src/src/routes/api/v1/__tests__/route.timezone.test.ts` (pass: 6 tests)
+  - `cd src && npm test -- src/src/routes/api/v1/__tests__/route.test.ts src/src/routes/api/v1/__tests__/route.cashier-intake.test.ts src/src/routes/api/v1/__tests__/route.commitments.test.ts` (pass: 22 tests)
+  - `cd src && npm test` (pass: 56 suites, 310 tests)
+  - `cd src && npm run build` (pass)
+  - `cd frontend && npm run build` (pass)
 
 ### Completion Notes List
 
