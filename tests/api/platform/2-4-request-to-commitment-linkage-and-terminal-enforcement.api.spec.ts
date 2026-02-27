@@ -13,6 +13,7 @@ type AuthScope = {
 const INTAKE_COLLECTION_PATH = '/api/v1/route/intake/requests';
 const RECONCILIATION_QUEUE_PATH = '/api/v1/route/intake/reconciliation/unresolved?staleMinutes=60';
 const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'] as const;
+const RAW_UTC_ISO_PATTERN = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z/;
 
 function parseCookieValue(setCookieHeader: string | null, cookieName: string): string {
   if (!setCookieHeader) {
@@ -464,5 +465,79 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
         REQUIRED_ENVELOPE_KEYS.every((key) => Object.prototype.hasOwnProperty.call(payload, key)),
       ).toBe(true);
     }
+  });
+
+  test('[P1] localizes intake and scheduling timestamps with no raw UTC leakage in API payloads @P1', async ({ request }) => {
+    const scope = await loginAndResolveScope(request);
+    const scoped = requireScopedContext(scope);
+
+    const timezoneHeaders = {
+      ...scoped.authHeaders,
+      'x-user-timezone': 'America/Los_Angeles',
+      'x-tenant-timezone': 'America/Chicago',
+      'x-system-timezone': 'UTC',
+    };
+
+    const createResponse = await apiRequest(request, {
+      method: 'POST',
+      path: INTAKE_COLLECTION_PATH,
+      headers: timezoneHeaders,
+      data: buildPayload(scoped, false),
+    });
+
+    expect(createResponse.status()).toBe(200);
+    const createBody = await createResponse.json();
+    expect(createBody).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_DONOR_INTAKE_ACCEPTED',
+      data: {
+        timezone: 'America/Los_Angeles',
+        timezoneSource: 'user',
+      },
+    });
+    expect(JSON.stringify(createBody?.data || {})).not.toMatch(RAW_UTC_ISO_PATTERN);
+
+    const commitmentId = createBody?.data?.commitmentId as string;
+    const transitionResponse = await apiRequest(request, {
+      method: 'POST',
+      path: commitmentTransitionPath(commitmentId),
+      headers: timezoneHeaders,
+      data: {
+        nextStatus: 'in_progress',
+        reason: 'story24-timezone-contract',
+      },
+    });
+
+    expect(transitionResponse.status()).toBe(200);
+    const transitionBody = await transitionResponse.json();
+    expect(transitionBody).toMatchObject({
+      ok: true,
+      code: 'ROUTE_COMMITMENT_TRANSITION_APPLIED',
+      data: {
+        timezoneSource: 'user',
+        transition: {
+          occurredAtLocal: expect.any(String),
+        },
+      },
+    });
+    expect(JSON.stringify(transitionBody?.data || {})).not.toMatch(RAW_UTC_ISO_PATTERN);
+
+    const reconciliationResponse = await apiRequest(request, {
+      method: 'GET',
+      path: RECONCILIATION_QUEUE_PATH,
+      headers: timezoneHeaders,
+    });
+
+    expect(reconciliationResponse.status()).toBe(200);
+    const reconciliationBody = await reconciliationResponse.json();
+    expect(reconciliationBody).toMatchObject({
+      ok: true,
+      code: 'ROUTESHYFT_INTAKE_RECONCILIATION_QUEUE',
+      data: {
+        timezoneSource: 'user',
+      },
+    });
+    expect(reconciliationBody).not.toHaveProperty('data.generatedAtUtc');
+    expect(JSON.stringify(reconciliationBody?.data || {})).not.toMatch(RAW_UTC_ISO_PATTERN);
   });
 });

@@ -1,6 +1,6 @@
 # Story 2.6: Canonical Timezone Processing Across Intake and Scheduling
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -31,17 +31,17 @@ so that scheduling decisions are accurate and no user sees raw UTC.
 
 ## Tasks / Subtasks
 
-- [ ] Implement canonical timezone resolution strategy (AC: 1)
-  - [ ] Resolve timezone via deterministic fallback (`user -> tenant -> system`).
-  - [ ] Centralize timezone resolver for route intake and scheduling surfaces.
-- [ ] Enforce UTC-at-rest persistence and localized read rendering (AC: 1)
-  - [ ] Validate all persistence paths store UTC timestamps.
-  - [ ] Ensure API serializers/UI adapters convert to resolved local timezone.
-- [ ] Prevent raw UTC leakage on operational surfaces (AC: 2)
-  - [ ] Audit key response payloads and rendered fields for raw UTC strings.
-  - [ ] Add guards against accidental pass-through of UTC formatted timestamps.
-- [ ] Add deterministic cross-timezone tests (AC: 1, 2)
-  - [ ] API and UI contract tests for locale rendering and UTC suppression.
+- [x] Implement canonical timezone resolution strategy (AC: 1)
+  - [x] Resolve timezone via deterministic fallback (`user -> tenant -> system`).
+  - [x] Centralize timezone resolver for route intake and scheduling surfaces.
+- [x] Enforce UTC-at-rest persistence and localized read rendering (AC: 1)
+  - [x] Validate all persistence paths store UTC timestamps.
+  - [x] Ensure API serializers/UI adapters convert to resolved local timezone.
+- [x] Prevent raw UTC leakage on operational surfaces (AC: 2)
+  - [x] Audit key response payloads and rendered fields for raw UTC strings.
+  - [x] Add guards against accidental pass-through of UTC formatted timestamps.
+- [x] Add deterministic cross-timezone tests (AC: 1, 2)
+  - [x] API and UI contract tests for locale rendering and UTC suppression.
 
 ## Dev Notes
 
@@ -101,11 +101,43 @@ GPT-5 Codex
 ### Debug Log References
 
 - Story context prepared from Epic 2 planning artifacts.
+- Added shared route timezone adapter and wired localized serialization in `src/src/routes/api/v1/route.ts`.
+- Added frontend timezone request header and UTC leakage guard in Route lifecycle view adapter.
+- Added cross-timezone API/UI contract coverage for Story 2.6.
+- Hardened route system-timezone fallback to trusted server configuration (`ROUTESHYFT_SYSTEM_TIMEZONE`/`SYSTEM_TIMEZONE`/`TZ`) with UTC default; `x-system-timezone` request overrides are no longer honored in route APIs.
+- Updated lifecycle payload sanitization fallback to render UTC strings using API-resolved timezone context when available.
+- Expanded timezone regression coverage for DST boundary conversion and half-hour offset timezone rendering.
+- Validation commands:
+  - `cd src && npm test -- src/src/routes/api/v1/__tests__/route.timezone.test.ts`
+  - `cd src && npm test -- src/src/routes/api/v1/__tests__/route.test.ts src/src/routes/api/v1/__tests__/route.cashier-intake.test.ts src/src/routes/api/v1/__tests__/route.commitments.test.ts`
+  - `cd src && npm test`
+  - `cd src && npm run build`
+  - `cd frontend && npm run build`
 
 ### Completion Notes List
 
-- Story created and set to `ready-for-dev`.
+- Implemented deterministic timezone context resolution for route intake/scheduling (`user -> tenant -> system`) with safe system default fallback.
+- Enforced localized API presentation adapter for operational route responses; UTC fields are converted to `*Local` and guarded against raw UTC pass-through.
+- Preserved UTC-at-rest persistence paths; added tests that verify stored canonical timestamps remain UTC while read responses are localized.
+- Added API contract coverage for timezone fallback + UTC suppression and UI journey assertions that operational details do not show raw UTC ISO strings.
+- Removed client control of route-level system timezone fallback by sourcing system timezone from trusted server environment defaults.
+- Corrected frontend UTC sanitization fallback to align with API-resolved timezone context instead of browser-local timezone.
+- Added deterministic DST boundary and offset-edge tests (`America/Los_Angeles` DST jump, `Asia/Kolkata` half-hour offset) for localized rendering guarantees.
+- Story status advanced to `review`; sprint status updated to `review`.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/2-6-canonical-timezone-processing-across-intake-and-scheduling.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+- src/src/modules/route/api/timezoneAdapter.ts
+- src/src/routes/api/v1/route.ts
+- src/src/routes/api/v1/__tests__/route.timezone.test.ts
+- frontend/src/services/api.ts
+- frontend/src/views/RouteShyft/RouteRequestLifecycleView.vue
+- tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts
+- tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts
+
+## Change Log
+
+- 2026-02-27: Implemented canonical timezone processing across route intake/scheduling serializers and UI adapters; added deterministic timezone fallback + UTC leakage contract tests; updated sprint/story status to `review`.
+- 2026-02-27: Addressed review remediation by removing request-header control of system fallback timezone, aligning UI fallback formatting with API timezone context, and adding DST/offset regression tests.

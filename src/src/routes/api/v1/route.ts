@@ -11,6 +11,10 @@ import { IntakeService } from '../../../modules/route/application/intakeService'
 import { KnexIntakeRequestRepository } from '../../../modules/route/infrastructure/intakeRequestRepository';
 import { RouteIntakeChannel, RouteIntakePayload } from '../../../modules/route/domain/intakePolicy';
 import { createRouteRouter as createRouteRefusalRouter } from '../../../modules/route/api/router';
+import {
+  localizeRouteOperationalData,
+  resolveRouteTimezoneContext,
+} from '../../../modules/route/api/timezoneAdapter';
 
 const TEST_TENANT_HEADER = 'x-test-route-tenant-id';
 const TEST_ACTOR_HEADER = 'x-test-route-actor-id';
@@ -381,6 +385,11 @@ const applyServiceRefusal = (
   });
 };
 
+const localizeRouteResponseData = (req: Request, data: unknown): Record<string, unknown> => {
+  const timezoneContext = resolveRouteTimezoneContext(req);
+  return localizeRouteOperationalData(data, timezoneContext);
+};
+
 const handleSubmitIntake = (
   intakeService: IntakeService,
   channel: RouteIntakeChannel,
@@ -412,7 +421,7 @@ const handleSubmitIntake = (
     code: result.code,
     message: result.message,
     httpStatus: result.httpStatus,
-    data: result.data,
+    data: localizeRouteResponseData(req, result.data),
   });
 };
 
@@ -464,7 +473,7 @@ const handleResolveIntake = (
     code: result.code,
     message: result.message,
     httpStatus: result.httpStatus,
-    data: result.data,
+    data: localizeRouteResponseData(req, result.data),
   });
 };
 
@@ -505,7 +514,7 @@ const handleSubmitDonorIntake = (
     code: result.code,
     message: result.message,
     httpStatus: result.httpStatus,
-    data: result.data,
+    data: localizeRouteResponseData(req, result.data),
   });
 };
 
@@ -549,7 +558,7 @@ const handleResolveDonorIntake = (
     code: result.code,
     message: result.message,
     httpStatus: result.httpStatus,
-    data: result.data,
+    data: localizeRouteResponseData(req, result.data),
   });
 };
 
@@ -603,7 +612,7 @@ export const createRouteRouter = (
       code: created.code,
       message: created.message,
       httpStatus: created.httpStatus,
-      data: created.data,
+      data: localizeRouteResponseData(req, created.data),
     });
   });
 
@@ -638,7 +647,7 @@ export const createRouteRouter = (
       code: resolved.code,
       message: resolved.message,
       httpStatus: resolved.httpStatus,
-      data: resolved.data,
+      data: localizeRouteResponseData(req, resolved.data),
     });
   });
 
@@ -689,7 +698,7 @@ export const createRouteRouter = (
       code: transitioned.code,
       message: transitioned.message,
       httpStatus: transitioned.httpStatus,
-      data: transitioned.data,
+      data: localizeRouteResponseData(req, transitioned.data),
     });
   });
 
@@ -724,7 +733,7 @@ export const createRouteRouter = (
       code: reconciled.code,
       message: reconciled.message,
       httpStatus: reconciled.httpStatus,
-      data: reconciled.data,
+      data: localizeRouteResponseData(req, reconciled.data),
     });
   });
 
