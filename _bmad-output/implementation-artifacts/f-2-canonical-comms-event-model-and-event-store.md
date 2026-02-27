@@ -15,6 +15,7 @@ so that downstream ConnectShyft behavior remains stable regardless of provider.
 1. Given outbound actions or provider webhook events occur, when Comms Core persists events, then canonical event records include aggregate id/type, event type, payload, and UTC timestamp with consistent schema.
 2. Given downstream thread and lifecycle handlers consume events, when provider-specific payload differences exist, then canonical event translation shields domain handlers from provider-specific fields.
 3. Given canonical events are queried for debugging and status endpoints, when filtered by aggregate id or event type, then responses are deterministic and provider-neutral.
+4. Given operators consume ConnectShyft thread/status contracts, when canonical events drive those responses, then event-derived state and timeline outputs remain provider-neutral, stable, and deterministically ordered.
 
 ## Operability Guardrails
 
@@ -22,7 +23,7 @@ so that downstream ConnectShyft behavior remains stable regardless of provider.
 - Critical Capability: yes
 - Access-Control Story: no
 - Backend/API Implies Human Operability: yes
-- Frontend/Operator Usability Criteria Included: no
+- Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Canonical events are the operational truth source for call/message state and must remain stable across providers.
 - Real-User Validation Evidence: Pending event-stream validation run using API and webhook replay fixtures.
 - Real-User Validation Result: pending
@@ -41,9 +42,13 @@ so that downstream ConnectShyft behavior remains stable regardless of provider.
 - [ ] Integrate canonical translation into inbound/outbound flows (AC: 1, 2)
   - [ ] Route all provider webhook payloads through canonical translation before domain handlers.
   - [ ] Ensure outbound initiation emits canonical start/queued events.
-- [ ] Add test coverage for canonicalization invariants (AC: 1, 2, 3)
+- [ ] Preserve operator-consumable provider-neutral outputs (AC: 4)
+  - [ ] Ensure read/status contracts expose canonical event-derived fields without provider-specific naming leakage.
+  - [ ] Ensure timeline ordering remains deterministic under mixed inbound/outbound provider event sequences.
+- [ ] Add test coverage for canonicalization invariants (AC: 1, 2, 3, 4)
   - [ ] Unit tests for provider payload to canonical event mapping.
   - [ ] API tests for deterministic event retrieval and filtering.
+  - [ ] Contract tests for provider-neutral state/timeline outputs consumed by ConnectShyft clients.
 
 ## Dev Notes
 
@@ -70,6 +75,7 @@ so that downstream ConnectShyft behavior remains stable regardless of provider.
 - Validate canonical event shape for outbound call/message initiation.
 - Validate webhook payload normalization for call/message/transcription event families.
 - Validate deterministic query behavior for event retrieval paths.
+- Validate provider-neutral, deterministically ordered timeline/status outputs for operator clients.
 
 ### Project Structure Notes
 

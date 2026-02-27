@@ -15,6 +15,7 @@ so that webhook handling remains deterministic even if metadata is incomplete.
 1. Given outbound calls/messages are dispatched, when provider identifiers are returned, then provider leg/message identifiers are persisted with unique provider-scoped constraints.
 2. Given inbound callbacks arrive without expected metadata, when correlation resolution executes, then fallback lookup by provider identifier can recover internal call/message identity or refuse deterministically.
 3. Given duplicate provider identifiers are received, when persistence or lookup executes, then unique constraints and replay-safe handling prevent duplicate domain writes.
+4. Given fallback correlation resolves or refuses a callback, when ConnectShyft contracts are queried, then operator-visible thread/timeline outcomes are deterministic, duplicate-safe, and free of phantom lifecycle updates.
 
 ## Operability Guardrails
 
@@ -22,7 +23,7 @@ so that webhook handling remains deterministic even if metadata is incomplete.
 - Critical Capability: yes
 - Access-Control Story: no
 - Backend/API Implies Human Operability: yes
-- Frontend/Operator Usability Criteria Included: no
+- Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Correlation fallback protects operator timelines from data loss when provider metadata is missing or malformed.
 - Real-User Validation Evidence: Pending webhook replay simulation demonstrating fallback resolution and deterministic refusal paths.
 - Real-User Validation Result: pending
@@ -38,12 +39,16 @@ so that webhook handling remains deterministic even if metadata is incomplete.
 - [ ] Implement fallback correlation resolution path (AC: 2)
   - [ ] Attempt metadata-first correlation, then provider identifier fallback lookup.
   - [ ] Return deterministic refusal when correlation cannot be resolved safely.
+- [ ] Preserve operator-visible deterministic outcomes on fallback paths (AC: 4)
+  - [ ] Ensure unresolved correlation emits auditable deterministic refusal outcomes surfaced through existing ConnectShyft contracts.
+  - [ ] Ensure resolved fallback emits exactly one canonical domain mutation per provider event.
 - [ ] Integrate replay-safe uniqueness controls (AC: 3)
   - [ ] Enforce unique constraints for provider ID mappings.
   - [ ] Ensure duplicate callbacks do not create duplicate message/voicemail/thread events.
-- [ ] Add correlation and replay test coverage (AC: 1, 2, 3)
+- [ ] Add correlation and replay test coverage (AC: 1, 2, 3, 4)
   - [ ] Unit tests for metadata-present and metadata-missing paths.
   - [ ] Integration tests for duplicate callbacks and deterministic refusal outcomes.
+  - [ ] Contract tests for deterministic operator-visible timeline/state outcomes after fallback resolution/refusal.
 
 ## Dev Notes
 
@@ -62,7 +67,7 @@ so that webhook handling remains deterministic even if metadata is incomplete.
 ### File Structure Requirements
 
 - Correlation mapping logic in ConnectShyft comms core modules under `src/src/modules/connectshyft/`.
-- Schema/migration updates under `src/db/migrations/connectshyft/` if mapping tables evolve.
+- Schema/migration updates under `src/src/migrations/` if mapping tables evolve.
 - Tests in `src/src/modules/connectshyft/__tests__/` and API webhook suites.
 
 ### Testing Requirements
@@ -70,6 +75,7 @@ so that webhook handling remains deterministic even if metadata is incomplete.
 - Validate provider ID mapping insert/read behavior for call and message flows.
 - Validate fallback correlation path when metadata is absent.
 - Validate duplicate provider callback suppression across repeated events.
+- Validate deterministic operator-visible timeline/state outcomes for fallback resolve and refusal paths.
 
 ### Project Structure Notes
 
