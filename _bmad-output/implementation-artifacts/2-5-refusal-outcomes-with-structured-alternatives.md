@@ -109,9 +109,10 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context prepared from Epic 2 planning artifacts.
-- Implemented Route refusal domain/application/infrastructure/api flow in `src/src/modules/route/*`.
-- Full regression run: `cd src && npm test` (39 passed, 1 skipped).
+- Story context prepared from Epic 2 planning artifacts (pass: context loaded and mapped to ACs/tasks).
+- Implemented Route refusal domain/application/infrastructure/api flow in `src/src/modules/route/*` (pass: modules compile and endpoint contracts resolve).
+- Focused remediation regression: `cd src && npm test -- src/modules/route/__tests__/refusalContracts.test.ts src/modules/route/__tests__/refusalService.test.ts src/routes/api/v1/__tests__/route.refusal.test.ts src/__tests__/app-entrypoint-kernel.test.ts` (pass: 4/4 suites, 22/22 tests).
+- Backend compile validation: `cd src && npm run build` (pass: TypeScript build succeeded).
 
 ### Implementation Plan
 
@@ -136,12 +137,65 @@ GPT-5 Codex
 
 - _bmad-output/implementation-artifacts/2-5-refusal-outcomes-with-structured-alternatives.md
 - _bmad-output/implementation-artifacts/sprint-status.yaml
+- frontend/src/features/connectshyft/uiContracts.ts
+- frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
+- src/src/migrations/20260227123000_create_connectshyft_sms_preference_overrides.ts
+- src/src/migrations/20260227150000_add_connectshyft_sms_override_reason_constraint.ts
+- src/src/migrations/20260227170000_create_route_refusal_persistence.ts
+- src/src/modules/connectshyft/__tests__/readContracts.test.ts
+- src/src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts
+- src/src/modules/connectshyft/__tests__/threads.test.ts
+- src/src/modules/connectshyft/readContracts.ts
+- src/src/modules/connectshyft/smsPreferenceOverrides.ts
+- src/src/modules/connectshyft/threads.ts
+- src/src/modules/route/__tests__/refusalContracts.test.ts
 - src/src/modules/route/__tests__/refusalService.test.ts
 - src/src/modules/route/api/router.ts
 - src/src/modules/route/application/refusalService.ts
+- src/src/modules/route/domain/refusal.ts
 - src/src/modules/route/infrastructure/refusalStore.ts
-- src/src/migrations/20260227170000_create_route_refusal_persistence.ts
+- src/src/platform/mutations/__tests__/executePlatformMutation.test.ts
+- src/src/platform/mutations/executePlatformMutation.ts
+- src/src/routes/api/v1/__tests__/auth.refresh.test.ts
 - src/src/routes/api/v1/__tests__/route.refusal.test.ts
+- src/src/routes/api/v1/connectshyft.ts
+- src/src/routes/api/v1/route.ts
+- tests/api/platform/2-5-refusal-outcomes-with-structured-alternatives.api.spec.ts
+- tests/api/platform/2-5-refusal-outcomes-with-structured-alternatives.atdd.api.spec.ts
+- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts
+- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts
+- tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts
+- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts
+- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts
+- tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.atdd.api.spec.ts
+- tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts
+- tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.atdd.api.spec.ts
+- tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts
+- tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.atdd.api.spec.ts
+- tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts
+- tests/api/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.api.spec.ts
+- tests/e2e/platform/2-5-refusal-outcomes-with-structured-alternatives.atdd.spec.ts
+- tests/e2e/platform/2-5-refusal-outcomes-with-structured-alternatives.spec.ts
+- tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.spec.ts
+- tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.spec.ts
+- tests/e2e/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.atdd.spec.ts
+- tests/e2e/platform/d-2-preference-override-enforcement-for-outbound-sms.atdd.spec.ts
+- tests/e2e/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.atdd.spec.ts
+- tests/e2e/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.spec.ts
+- tests/support/factories/connectShyftStoryC5Factory.ts
+- tests/support/factories/connectShyftStoryD1Factory.ts
+- tests/support/factories/connectShyftStoryD2Factory.ts
+- tests/support/factories/connectShyftStoryD3Factory.ts
+- tests/support/factories/connectShyftStoryD4Factory.ts
+- tests/support/factories/connectShyftStoryDFactory.ts
+- tests/support/factories/routeShyftStory25Factory.ts
+- tests/support/fixtures/connectShyftStoryC5.fixture.ts
+- tests/support/fixtures/connectShyftStoryD.fixture.ts
+- tests/support/fixtures/connectShyftStoryD1.fixture.ts
+- tests/support/fixtures/connectShyftStoryD2.fixture.ts
+- tests/support/fixtures/connectShyftStoryD3.fixture.ts
+- tests/support/fixtures/connectShyftStoryD4.fixture.ts
+- tests/support/fixtures/routeShyftStory25.fixture.ts
 
 ## Senior Developer Review (AI)
 
