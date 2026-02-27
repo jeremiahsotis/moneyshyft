@@ -42,7 +42,7 @@ classification:
 
 ## Executive Summary
 
-ConnectShyft is the communication operations module for the Shyft monolith. It provides orgUnit-scoped inbox, thread, escalation, and Twilio-integrated SMS/voice workflows while preserving strict tenant isolation and platform-kernel guarantees. ConnectShyft must be implemented in parallel with RouteShyft development without introducing cross-module regressions, scope leaks, or policy violations.
+ConnectShyft is the communication operations module for the Shyft monolith. It provides orgUnit-scoped inbox, thread, escalation, and provider-agnostic Comms Core SMS/voice workflows (Telnyx adapter for V1) while preserving strict tenant isolation and platform-kernel guarantees. ConnectShyft must be implemented in parallel with RouteShyft development without introducing cross-module regressions, scope leaks, or policy violations.
 
 The delivery strategy is bounded-context, contract-first, and feature-flagged. The module is governed by explicit workflow/branch rules, additive-first schema changes, and mandatory regression gates against RouteShyft.
 
@@ -91,14 +91,14 @@ The delivery strategy is bounded-context, contract-first, and feature-flagged. T
 3. Tenant-scoped neighbor registry and phone records.
 4. OrgUnit-scoped inbox and thread lifecycle (ensure, claim, takeover, close).
 5. Outbound SMS/call actions with preference enforcement.
-6. Twilio SMS/voice/transcription webhook handling with signature validation.
+6. Provider webhook handling for SMS/voice/transcription (Telnyx adapter for V1) with signature validation.
 7. Escalation timers (`X -> 2X -> 3X`) with claim-only reset; default `X` is 24 hours and orgUnit-configurable range is 1-24 hours (integer hours only).
 
 ### Post-MVP
 
 1. Identity merge enhancements.
 2. Additional governance/admin controls.
-3. Broader channel orchestration beyond Twilio.
+3. Additional provider adapters and routing policies beyond the initial Telnyx adapter.
 
 ## Users and Roles
 
@@ -127,7 +127,7 @@ The delivery strategy is bounded-context, contract-first, and feature-flagged. T
 
 ### Journey A: Inbound to Owned Thread
 
-1. Twilio inbound webhook arrives.
+1. Provider inbound webhook arrives (Telnyx for V1).
 2. System validates signature and resolves `(tenant, orgUnit)` from number mapping.
 3. System ensures single active thread for `(tenant_id, org_unit_id, neighbor_id)`.
 4. Operator claims thread.
@@ -182,8 +182,8 @@ The delivery strategy is bounded-context, contract-first, and feature-flagged. T
 18. **FR-CS-018**: Inbound SMS webhook appends message and ensures active thread.
 19. **FR-CS-019**: Inbound voice webhook creates voicemail artifact and transcription request.
 20. **FR-CS-020**: Transcription webhook attaches transcript to voicemail record.
-21. **FR-CS-021**: All Twilio webhooks must validate signatures before processing.
-22. **FR-CS-021a**: Webhook handlers must implement replay-safe idempotency using Twilio SID keys (message/call/transcription) to prevent duplicate processing.
+21. **FR-CS-021**: All provider webhooks for enabled adapters must validate signatures before processing.
+22. **FR-CS-021a**: Webhook handlers must implement replay-safe idempotency using provider event identifiers (message/call/transcription equivalents) to prevent duplicate processing.
 
 ### Preference and Audit Enforcement
 
@@ -193,7 +193,7 @@ The delivery strategy is bounded-context, contract-first, and feature-flagged. T
 
 ### Number Mapping and Configuration
 
-26. **FR-CS-025**: OrgUnit supports multiple mapped Twilio numbers.
+26. **FR-CS-025**: OrgUnit supports multiple mapped provider numbers/endpoints.
 27. **FR-CS-026**: Number mapping uniqueness is enforced per tenant for phone number.
 28. **FR-CS-027**: OrgUnit escalation config supports `X` baseline in integer hours (default 24, allowed 1-24) and recipient targets.
 
@@ -213,7 +213,7 @@ The delivery strategy is bounded-context, contract-first, and feature-flagged. T
 2. `cs_number_id` is metadata, not uniqueness dimension for active thread identity.
 3. `cs_threads` includes `last_inbound_cs_number_id` (nullable FK).
 4. `cs_threads` includes `preferred_outbound_cs_number_id` (nullable FK) or equivalent derived policy.
-5. `cs_numbers` unique mapping `(tenant_id, twilio_number_e164)`.
+5. `cs_numbers` unique mapping `(tenant_id, provider_name, provider_number_e164)`.
 6. Canonical thread state enum in persistence and API is `UNCLAIMED | CLAIMED | CLOSED`.
 
 ### Retention
@@ -226,14 +226,14 @@ The delivery strategy is bounded-context, contract-first, and feature-flagged. T
 
 1. Strict tenant isolation on all data access paths.
 2. OrgUnit-scoped enforcement for operational records.
-3. Twilio webhook signature validation is mandatory.
+3. Provider webhook signature validation is mandatory.
 4. Immutable audit trail for critical actions.
 
 ### Reliability and Integrity
 
 5. Deterministic inbound routing from number mapping.
 6. Idempotent thread ensure behavior.
-7. Webhook replay protection must ensure duplicate Twilio SID events do not create duplicate messages, voicemails, or thread transitions.
+7. Webhook replay protection must ensure duplicate provider events do not create duplicate messages, voicemails, or thread transitions.
 8. Escalation evaluation must be event-scheduled per thread using persisted `next_evaluation_at_utc`; no in-memory timers.
 9. Escalation engine behavior must remain consistent across retries and process restarts.
 10. No silent state transitions outside audited paths.
@@ -278,7 +278,7 @@ The delivery strategy is bounded-context, contract-first, and feature-flagged. T
 1. Final UI wireframes.
 2. Email templates.
 3. Conference list and district escalation recipient list.
-4. Twilio credentials and deployment environment decisions.
+4. Provider credentials (Telnyx for V1) and deployment environment decisions.
 
 ## Acceptance Gates for Implementation Start
 

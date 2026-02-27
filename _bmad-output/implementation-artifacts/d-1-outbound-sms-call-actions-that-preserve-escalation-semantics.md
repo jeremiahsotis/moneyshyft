@@ -106,19 +106,19 @@ so that escalation behavior stays policy-compliant until explicit claim occurs.
 
 ### Latest Technical Information
 
-- Continue using Twilio-request signature validation and replay-safe event processing as locked in ConnectShyft architecture and PRD.
+- Use provider-adapter signature validation and replay-safe event processing as locked in the updated ConnectShyft planning artifacts.
 - Bridge-call implementation should track callback lifecycle (`initiated`, `ringing`, `answered/completed`) and keep retry decisions operator-driven.
 - References:
-  - https://www.twilio.com/docs/usage/webhooks/webhooks-security
-  - https://www.twilio.com/docs/voice/twiml/client
-  - https://www.twilio.com/docs/voice/twiml
+  - `/Users/jeremiahotis/projects/connectshyft/provider_adapter.md`
+  - `/Users/jeremiahotis/projects/connectshyft/openapi.yaml`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-27.md`
 
 ### Project Context Reference
 
 - `_bmad-output/project-context.md`
 - `docs/policies/git_policy.md`
 - `_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
-- `_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-27.md`
 
 ### Story Completion Status
 
@@ -136,7 +136,7 @@ so that escalation behavior stays policy-compliant until explicit claim occurs.
 - `_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md` (FR-CS-016 and locked lifecycle additions)
 - `_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md` (AD-02, AD-05, AD-09, Sections 5-7)
 - `_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md` (Flow 2, locked closed-thread reopen behavior, bridge call UX)
-- `_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md` (Section 4.1.2)
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-27.md` (Section 4.1 Stories / 4.3 Architecture)
 - `src/src/routes/api/v1/connectshyft.ts` (outbound + lifecycle route contracts)
 
 ## Dev Agent Record

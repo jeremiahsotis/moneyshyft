@@ -7,14 +7,14 @@ Status: review
 ## Story
 
 As an orgUnit administrator,
-I want to manage multiple Twilio numbers per orgUnit with tenant-safe uniqueness rules,
+I want to manage multiple provider numbers per orgUnit with tenant-safe uniqueness rules,
 so that inbound routing is deterministic and operationally maintainable.
 
 ## Acceptance Criteria
 
-1. Given an orgUnit admin creates or updates number mappings, when they save valid Twilio E.164 numbers, then multiple mappings per orgUnit are supported.
-2. Given a duplicate `(tenant_id, twilio_number_e164)` mapping attempt, when validation runs, then the operation is blocked with actionable validation feedback.
-3. Given number mappings are listed or returned after create/update, when read-back occurs, then order is deterministic using canonical sorting: `twilio_number_e164` ascending with `mappingId` ascending as tie-breaker, and API/UI present this same order.
+1. Given an orgUnit admin creates or updates number mappings, when they save valid provider E.164 numbers, then multiple mappings per orgUnit are supported.
+2. Given a duplicate `(tenant_id, provider_name, provider_number_e164)` mapping attempt, when validation runs, then the operation is blocked with actionable validation feedback.
+3. Given number mappings are listed or returned after create/update, when read-back occurs, then order is deterministic using canonical sorting: `provider_number_e164` ascending with `mappingId` ascending as tie-breaker, and API/UI present this same order.
 
 ## Operability Guardrails
 
@@ -34,9 +34,9 @@ so that inbound routing is deterministic and operationally maintainable.
 
 - [x] Implement number mapping create/update paths for multiple orgUnit numbers (AC: 1)
   - [x] Support multiple mapped numbers per orgUnit.
-  - [x] Validate Twilio E.164 format before persistence.
+  - [x] Validate provider E.164 format before persistence.
 - [x] Enforce tenant-safe uniqueness constraints (AC: 2)
-  - [x] Enforce uniqueness for `(tenant_id, twilio_number_e164)` at persistence and service layers.
+  - [x] Enforce uniqueness for `(tenant_id, provider_name, provider_number_e164)` at persistence and service layers.
   - [x] Return deterministic validation/refusal payloads on duplicate collisions.
 - [x] Deliver admin UX + API parity and tests (AC: 1, 2)
   - [x] Add API tests for valid create/update and duplicate failure paths.
@@ -108,7 +108,7 @@ GPT-5 Codex
 - Added frontend test-context header overrides (tenant/orgUnit/role/memberships) for ConnectShyft UI automation parity.
 - Enabled and executed story `a.3` API and E2E Playwright coverage (create/update/duplicate/invalid journeys) with passing results.
 - Hardened test-header security gates to honor `x-test-*` overrides only when `ENABLE_TEST_CONNECTSHYFT_FLAGS` is enabled and `NODE_ENV === test`.
-- Removed unsafe PUT upsert fallback, added mapping-id collision guards, and enforced canonical mapping ordering (`twilio_number_e164`, then `mappingId`) in service read-back.
+- Removed unsafe PUT upsert fallback, added mapping-id collision guards, and enforced canonical mapping ordering (`provider_number_e164`, then `mappingId`) in service read-back.
 - Strengthened API/E2E assertions to verify deterministic ordering instead of presence-only checks.
 - Added explicit `test` Knex environment config to keep Playwright preflight migrations/runtime compatible with strict test-only `x-test-*` override gating.
 - Updated Playwright preflight backend boot to default `NODE_ENV=test` so strict test-only override gating remains compatible with standard `npm run test:e2e` execution.
