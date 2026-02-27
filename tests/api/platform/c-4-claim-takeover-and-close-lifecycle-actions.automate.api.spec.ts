@@ -84,7 +84,7 @@ test.describe(
         expect(hasRequiredEnvelopeKeys(body)).toBe(true);
         expect(body).toMatchObject({
           ok: true,
-          code: 'CONNECTSHYFT_THREAD_CLAIM_READY',
+          code: 'CONNECTSHYFT_THREAD_CLAIMED',
           data: {
             threadId: storyC4Context.threadIds.unclaimed,
             context: {
@@ -277,7 +277,7 @@ test.describe(
         const claimBody = await claimResponse.json();
         expect(claimBody).toMatchObject({
           ok: true,
-          code: 'CONNECTSHYFT_THREAD_CLAIM_READY',
+          code: 'CONNECTSHYFT_THREAD_CLAIMED',
           data: {
             thread: {
               state: 'CLAIMED',

@@ -1,6 +1,6 @@
 # Story d.2: Preference Override Enforcement for Outbound SMS
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -32,22 +32,28 @@ so that policy exceptions are explicit, justified, and traceable.
 
 ## Tasks / Subtasks
 
-- [ ] Add outbound SMS preference policy evaluation (AC: 1, 2)
-  - [ ] Resolve canonical `prefers_texting` value (`UNKNOWN | YES | NO`) for target neighbor/thread context.
-  - [ ] Block outbound SMS for `NO` unless valid override reason is supplied.
-- [ ] Persist override and audit metadata on approved sends (AC: 1)
-  - [ ] Store structured override reason and optional note in durable preference-override records.
-  - [ ] Emit auditable metadata linking actor, thread, reason, and message event.
-- [ ] Enforce no-side-effect refusal semantics (AC: 2)
-  - [ ] Return refusal envelopes for missing/invalid override data.
-  - [ ] Guarantee refusal path does not persist outbound message, audit entry, or lifecycle mutation.
-- [ ] Integrate with closed-thread outbound reopen path (AC: 3)
-  - [ ] Ensure reopen-on-outbound happens before message send attempt.
-  - [ ] Ensure override checks still execute after reopen and before dispatch.
-- [ ] Add test coverage for override and refusal paths (AC: 1, 2, 3)
-  - [ ] Contract tests for refusal messaging and no partial writes.
-  - [ ] Positive-path tests for persisted override + audit linkage.
-  - [ ] Reopen + override interaction tests for `CLOSED` outbound SMS.
+- [x] Add outbound SMS preference policy evaluation (AC: 1, 2)
+  - [x] Resolve canonical `prefers_texting` value (`UNKNOWN | YES | NO`) for target neighbor/thread context.
+  - [x] Block outbound SMS for `NO` unless valid override reason is supplied.
+- [x] Persist override and audit metadata on approved sends (AC: 1)
+  - [x] Store structured override reason and optional note in durable preference-override records.
+  - [x] Emit auditable metadata linking actor, thread, reason, and message event.
+- [x] Enforce no-side-effect refusal semantics (AC: 2)
+  - [x] Return refusal envelopes for missing/invalid override data.
+  - [x] Guarantee refusal path does not persist outbound message, audit entry, or lifecycle mutation.
+- [x] Integrate with closed-thread outbound reopen path (AC: 3)
+  - [x] Ensure reopen-on-outbound happens before message send attempt.
+  - [x] Ensure override checks still execute after reopen and before dispatch.
+- [x] Add test coverage for override and refusal paths (AC: 1, 2, 3)
+  - [x] Contract tests for refusal messaging and no partial writes.
+  - [x] Positive-path tests for persisted override + audit linkage.
+  - [x] Reopen + override interaction tests for `CLOSED` outbound SMS.
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][HIGH] Replaced synthetic `neighbor-${threadId}` fallback with canonical resolver trigger (`neighborId: null` for non-synthetic contexts) so FR-CS-023 enforcement applies to DB-backed threads. [src/src/routes/api/v1/connectshyft.ts:3838]
+- [x] [AI-Review][MEDIUM] Added API coverage for UUID-backed thread/neighbor preference paths validating refusal and success behavior through real `cs_threads -> cs_neighbors` lookup. [tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts:153]
+- [x] [AI-Review][MEDIUM] Added persistence-level override reason canonical-value constraint and upgrade-safe migration coverage. [src/src/migrations/20260227123000_create_connectshyft_sms_preference_overrides.ts:36]
 
 ## Dev Notes
 
@@ -143,15 +149,56 @@ GPT-5 Codex
 
 - `rg -n "FR-CS-022|FR-CS-023" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md` (pass)
 - `rg -n "prefers_texting|override" _bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md` (pass)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story d-2-preference-override-enforcement-for-outbound-sms` (pass)
+- `npm run test:e2e -- tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts` (pass)
+- `npm run test:e2e -- tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts` (pass)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts` (pass)
+- `cd src && npm run build` (pass)
 
 ### Completion Notes List
 
-- Created implementation-ready Story d.2 context with required override enforcement, refusal no-side-effect guarantees, and reopen-path integration.
+- Implemented server-authoritative SMS preference enforcement for outbound message actions with canonical `prefers_texting` resolution (`UNKNOWN | YES | NO`).
+- Added required/invalid override refusal envelopes for `prefers_texting=NO` with explicit no-side-effect indicators (`messageDispatched=false`, `lifecycleMutationApplied=false`, `auditPersisted=false`).
+- Added approved override persistence path with structured override reason/note plus audit-linked metadata payloads.
+- Preserved closed-thread reopen behavior for approved outbound SMS and ensured override policy enforcement runs before dispatch.
+- Added migration for durable override records and neighbor `prefers_texting` canonical values.
+- Added automated API and module-level tests covering refusal, success, and CLOSED reopen + override interaction paths.
+- Fixed DB-backed outbound preference enforcement to resolve neighbor preference from canonical thread data for non-synthetic thread contexts.
+- Added upgrade-safe override-reason CHECK constraint enforcement for `connectshyft.cs_sms_preference_overrides`.
+- Added DB-backed UUID thread/neighbor API regression coverage to prevent preference-override enforcement bypass regressions.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/d-2-preference-override-enforcement-for-outbound-sms.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- src/src/routes/api/v1/connectshyft.ts
+- src/src/migrations/20260227123000_create_connectshyft_sms_preference_overrides.ts
+- src/src/migrations/20260227150000_add_connectshyft_sms_override_reason_constraint.ts
+- src/src/modules/connectshyft/smsPreferenceOverrides.ts
+- src/src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts
+- tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts
+- tests/support/factories/connectShyftStoryDFactory.ts
+
+## Senior Developer Review (AI)
+
+- 2026-02-27: Completed adversarial code review. Outcome: **Changes Requested** (1 HIGH, 2 MEDIUM).
+- Key findings:
+  - HIGH: SMS preference enforcement can be bypassed for non-synthetic thread detail contexts because outbound policy resolution passes `neighbor-${threadId}` instead of allowing canonical DB neighbor lookup.
+  - MEDIUM: Story d.2 API tests only target seeded synthetic thread IDs and do not cover UUID-backed production lookup paths.
+  - MEDIUM: Override reason canonical values are enforced in service logic but not at DB constraint level.
+- Guardrail blocker: `Critical Capability: yes` with `Real-User Validation Evidence` still pending and `Real-User Validation Result: pending`; closure remains blocked.
+- Verification rerun during review:
+  - `cd src && npm test -- src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts` (pass)
+  - `npm run test:e2e -- tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts` (pass)
+- 2026-02-27: Implemented all review-requested fixes (1 HIGH, 2 MEDIUM) and resolved story/git discrepancy tracking.
+- Verification after fixes:
+  - `cd src && npm test -- src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts` (pass)
+  - `cd src && npm run build` (pass)
+  - `npm run test:e2e -- tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts` (pass)
 
 ## Change Log
 
 - 2026-02-27: Created Story d.2 ready-for-dev context document.
+- 2026-02-27: Implemented outbound SMS `prefers_texting=NO` override enforcement, durable override metadata persistence, refusal no-side-effect semantics, and d.2 API/module automated tests.
+- 2026-02-27: Senior Developer Review (AI) completed; status moved to in-progress with review follow-up tasks added.
+- 2026-02-27: Resolved all AI review findings, added DB-backed regression coverage, and synced story file list with git changes.
