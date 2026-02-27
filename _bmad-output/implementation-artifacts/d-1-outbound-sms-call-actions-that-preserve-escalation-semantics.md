@@ -171,6 +171,8 @@ GPT-5 Codex
 - src/src/routes/api/v1/connectshyft.ts
 - frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts
+- tests/support/factories/connectShyftStoryDFactory.ts
+- tests/support/fixtures/connectShyftStoryD.fixture.ts
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 
 ## Change Log
