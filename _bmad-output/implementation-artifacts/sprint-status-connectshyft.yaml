@@ -66,7 +66,7 @@ development_status:
   epic-d: in-progress
   d-1-outbound-sms-call-actions-that-preserve-escalation-semantics: review
   d-2-preference-override-enforcement-for-outbound-sms: in-progress
-  d-3-outbound-audit-outbox-and-refusal-envelope-integration: ready-for-dev
+  d-3-outbound-audit-outbox-and-refusal-envelope-integration: review
   d-4-operator-interaction-contracts-for-outbound-safety: ready-for-dev
   epic-d-retrospective: optional
   epic-e: in-progress

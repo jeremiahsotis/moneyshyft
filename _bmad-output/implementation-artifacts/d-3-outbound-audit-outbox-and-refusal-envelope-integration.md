@@ -1,6 +1,6 @@
 # Story d.3: Outbound Audit, Outbox, and Refusal Envelope Integration
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -32,22 +32,22 @@ so that operational decisions are traceable and clients can respond deterministi
 
 ## Tasks / Subtasks
 
-- [ ] Consolidate outbound/governance mutation persistence into atomic write flows (AC: 1)
-  - [ ] Ensure audit + outbox records persist in same transaction boundary as successful state mutation.
-  - [ ] Include canonical metadata (tenant/orgUnit/thread/actor/action/prior/new state).
-- [ ] Standardize refusal envelope taxonomy for outbound/governance paths (AC: 2)
-  - [ ] Use shared refusal helpers and policy-specific reason codes/messages.
-  - [ ] Guarantee refused operations perform no partial write of domain, audit, or outbox data.
-- [ ] Preserve lifecycle lineage for reopen-on-outbound paths (AC: 3)
-  - [ ] Ensure `thread_reopened_by_user` and related lifecycle metadata are propagated to audit/outbox payloads.
-  - [ ] Ensure reopened transitions carry prior/new-state provenance.
-- [ ] Add developer-facing guardrails for envelope and event consistency (AC: 1, 2, 3)
-  - [ ] Document required event names, payload fields, and refusal contract expectations.
-  - [ ] Prevent one-off route-specific envelope drift.
-- [ ] Add integration and contract tests for traceability semantics (AC: 1, 2, 3)
-  - [ ] Success-path tests verifying atomic domain + audit + outbox persistence.
-  - [ ] Refusal-path tests verifying no side effects.
-  - [ ] Reopen-path tests verifying lifecycle lineage metadata in emitted artifacts.
+- [x] Consolidate outbound/governance mutation persistence into atomic write flows (AC: 1)
+  - [x] Ensure audit + outbox records persist in same transaction boundary as successful state mutation.
+  - [x] Include canonical metadata (tenant/orgUnit/thread/actor/action/prior/new state).
+- [x] Standardize refusal envelope taxonomy for outbound/governance paths (AC: 2)
+  - [x] Use shared refusal helpers and policy-specific reason codes/messages.
+  - [x] Guarantee refused operations perform no partial write of domain, audit, or outbox data.
+- [x] Preserve lifecycle lineage for reopen-on-outbound paths (AC: 3)
+  - [x] Ensure `thread_reopened_by_user` and related lifecycle metadata are propagated to audit/outbox payloads.
+  - [x] Ensure reopened transitions carry prior/new-state provenance.
+- [x] Add developer-facing guardrails for envelope and event consistency (AC: 1, 2, 3)
+  - [x] Document required event names, payload fields, and refusal contract expectations.
+  - [x] Prevent one-off route-specific envelope drift.
+- [x] Add integration and contract tests for traceability semantics (AC: 1, 2, 3)
+  - [x] Success-path tests verifying atomic domain + audit + outbox persistence.
+  - [x] Refusal-path tests verifying no side effects.
+  - [x] Reopen-path tests verifying lifecycle lineage metadata in emitted artifacts.
 
 ## Dev Notes
 
@@ -140,15 +140,38 @@ GPT-5 Codex
 
 - `rg -n "audit|outbox|refusal" src/src/routes/api/v1/connectshyft.ts` (pass)
 - `rg -n "FR-CS-024" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md` (pass)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story d-3-outbound-audit-outbox-and-refusal-envelope-integration` (pass)
+- `API_URL=http://127.0.0.1:3000 API_BASE_URL=http://127.0.0.1:3000 npx playwright test tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts` (pass)
+- `API_URL=http://127.0.0.1:3000 API_BASE_URL=http://127.0.0.1:3000 npx playwright test tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts` (pass)
+- `cd src && npm run build` (pass)
+- `npm run policy:check` (fail: status sync guard reports ready-for-dev -> review closeout transition in a single working-tree diff)
+- `cd src && npm test -- src/platform/mutations/__tests__/executePlatformMutation.test.ts --runInBand` (pass)
+- `cd src && npm run build` (pass)
+- `npm run policy:check` (pass)
+- `npx playwright test --list tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts` (pass)
+- `API_URL=http://127.0.0.1:3000 API_BASE_URL=http://127.0.0.1:3000 npx playwright test tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts` (fail: local API server unavailable in current session)
 
 ### Completion Notes List
 
-- Created implementation-ready Story d.3 context with atomic audit/outbox persistence requirements and refusal no-side-effect guarantees.
+- Added outbound dispatch side-effect persistence via `executePlatformMutation` for db-backed active-thread outbound actions with canonical audit/outbox metadata.
+- Added shared outbound/governance refusal helpers (`respondConnectShyftBusinessRefusal`, `respondConnectShyftClientRefusal`) and applied them to lifecycle/outbound handlers for deterministic envelope taxonomy.
+- Hardened reopen-on-outbound metadata with explicit `thread_reopened_by_user` and `lifecycle_lineage` payload fields.
+- Added developer guardrail documentation for outbound event naming, metadata requirements, and refusal envelope consistency expectations.
+- Added d.3 automate API tests validating atomic persistence, refusal no-side-effects, and reopen lineage semantics.
+- Review remediation: closed-thread outbound actions now emit both reopen and outbound-dispatch side effects atomically; d.3 tests now validate policy-refusal no-side-effect behavior and dual-event persistence.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/d-3-outbound-audit-outbox-and-refusal-envelope-integration.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- src/src/routes/api/v1/connectshyft.ts
+- src/src/platform/mutations/executePlatformMutation.ts
+- src/src/platform/mutations/__tests__/executePlatformMutation.test.ts
+- tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts
+- docs/connectshyft-outbound-audit-guardrails.md
 
 ## Change Log
 
 - 2026-02-27: Created Story d.3 ready-for-dev context document.
+- 2026-02-27: Implemented outbound audit/outbox persistence, refusal helper standardization, reopen lineage metadata hardening, and d.3 automate API coverage.
+- 2026-02-27: Applied review remediation for closed-thread outbound dispatch audit/outbox parity, refusal-path no-side-effect coverage, and story/file-list synchronization.
