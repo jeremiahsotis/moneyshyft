@@ -62,4 +62,20 @@ describe('connectshyft sms preference overrides', () => {
       source: 'thread-map',
     });
   });
+
+  it('resolves d-4 synthetic NO preferences for outbound policy UX flows', async () => {
+    const service = new AsyncConnectShyftSmsPreferenceOverrideService();
+
+    const resolved = await service.resolvePreference({
+      tenantId: 'tenant-connectshyft-d4',
+      orgUnitId: 'org-connectshyft-d4-east',
+      threadId: 'thread-d4-unclaimed-prefers-no-1004',
+    });
+
+    expect(resolved).toEqual({
+      prefersTexting: 'NO',
+      neighborId: null,
+      source: 'thread-map',
+    });
+  });
 });

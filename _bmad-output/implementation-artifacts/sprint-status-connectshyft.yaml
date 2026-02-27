@@ -67,7 +67,7 @@ development_status:
   d-1-outbound-sms-call-actions-that-preserve-escalation-semantics: review
   d-2-preference-override-enforcement-for-outbound-sms: in-progress
   d-3-outbound-audit-outbox-and-refusal-envelope-integration: review
-  d-4-operator-interaction-contracts-for-outbound-safety: ready-for-dev
+  d-4-operator-interaction-contracts-for-outbound-safety: in-progress
   epic-d-retrospective: optional
   epic-e: in-progress
   e-1-verified-webhook-ingress-and-deterministic-context-routing: backlog
