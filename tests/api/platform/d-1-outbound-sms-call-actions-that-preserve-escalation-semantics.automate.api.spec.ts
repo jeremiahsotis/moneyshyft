@@ -122,7 +122,13 @@ test.describe(
 
     test(
       '[P1] outbound call orchestration is bridge-only with no auto-redial, and CONNECTED transitions auto-claim only from allowed call path @P1',
-      async ({ request, storyDContext, storyDMemberHeaders, storyDCallPayload }) => {
+      async ({
+        request,
+        storyDContext,
+        storyDMemberHeaders,
+        storyDAdminHeaders,
+        storyDCallPayload,
+      }) => {
         const response = await apiRequest(request, {
           method: 'POST',
           path: `${storyDContext.paths.threads}/${storyDContext.threadIds.unclaimed}/call`,
@@ -146,6 +152,104 @@ test.describe(
               trigger: 'CONNECTED',
               appliesToState: 'UNCLAIMED',
               nextState: 'CLAIMED',
+            },
+          },
+        });
+
+        const unsupportedTransportResponse = await apiRequest(request, {
+          method: 'POST',
+          path: `${storyDContext.paths.threads}/${storyDContext.threadIds.unclaimed}/call`,
+          headers: storyDMemberHeaders,
+          data: {
+            ...storyDCallPayload,
+            call: {
+              transport: 'sip',
+            },
+          },
+        });
+        expect(unsupportedTransportResponse.status()).toBe(200);
+        const unsupportedTransportBody = await unsupportedTransportResponse.json();
+        expect(unsupportedTransportBody).toMatchObject({
+          ok: false,
+          code: 'CONNECTSHYFT_OUTBOUND_CALL_TRANSPORT_UNSUPPORTED',
+        });
+
+        const retryForbiddenResponse = await apiRequest(request, {
+          method: 'POST',
+          path: `${storyDContext.paths.threads}/${storyDContext.threadIds.unclaimed}/call`,
+          headers: storyDMemberHeaders,
+          data: {
+            ...storyDCallPayload,
+            call: {
+              autoRetry: true,
+              retryCount: 2,
+            },
+          },
+        });
+        expect(retryForbiddenResponse.status()).toBe(200);
+        const retryForbiddenBody = await retryForbiddenResponse.json();
+        expect(retryForbiddenBody).toMatchObject({
+          ok: false,
+          code: 'CONNECTSHYFT_OUTBOUND_CALL_RETRY_FORBIDDEN',
+        });
+
+        const connectedResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyDContext.paths.inboundWebhook,
+          headers: storyDAdminHeaders,
+          data: {
+            eventType: 'voice.connected',
+            threadId: storyDContext.threadIds.unclaimed,
+            orgUnitId: storyDContext.orgUnitId,
+            tenantId: storyDContext.tenantId,
+            actorUserId: '00000000-0000-4000-8000-000000000042',
+            transport: 'bridge',
+          },
+        });
+        expect(connectedResponse.status()).toBe(200);
+        const connectedBody = await connectedResponse.json();
+        expect(connectedBody).toMatchObject({
+          ok: true,
+          data: {
+            thread: {
+              threadId: storyDContext.threadIds.unclaimed,
+              state: 'CLAIMED',
+            },
+            lifecycle: {
+              autoClaimedByConnectedEvent: true,
+            },
+            autoClaim: {
+              attempted: true,
+              applied: true,
+              lifecycleEvent: 'connectshyft.thread.claimed',
+            },
+          },
+        });
+
+        const disallowedConnectedResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyDContext.paths.inboundWebhook,
+          headers: storyDAdminHeaders,
+          data: {
+            eventType: 'voice.connected',
+            threadId: storyDContext.threadIds.unclaimed,
+            orgUnitId: storyDContext.orgUnitId,
+            tenantId: storyDContext.tenantId,
+            transport: 'sip',
+          },
+        });
+        expect(disallowedConnectedResponse.status()).toBe(200);
+        const disallowedConnectedBody = await disallowedConnectedResponse.json();
+        expect(disallowedConnectedBody).toMatchObject({
+          ok: true,
+          data: {
+            lifecycle: {
+              autoClaimedByConnectedEvent: false,
+            },
+            autoClaim: {
+              attempted: true,
+              applied: false,
+              reason: 'unsupported_transport',
             },
           },
         });
