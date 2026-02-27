@@ -34,6 +34,7 @@ import {
   KnexConnectShyftThreadStore,
   connectShyftThreadServiceAsync,
   evaluateConnectShyftLifecyclePolicy,
+  type ConnectShyftEscalationTransition,
   type ConnectShyftThread,
   type ConnectShyftLifecycleAction,
   type ConnectShyftThreadState,
@@ -54,6 +55,7 @@ import {
   type ConnectShyftInboxBucket,
   type ConnectShyftThreadDetailRecord,
 } from '../../../modules/connectshyft/readContracts';
+import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService';
 
 const router = Router();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -69,6 +71,13 @@ const TENANT_PRIVILEGED_OVERRIDE_NOTICE = 'Tenant-privileged override applied';
 const RELATIONSHIP_POLICY_INDICATOR = 'Active thread relationship';
 const CONNECTSHYFT_INBOX_P95_BUDGET_MS = 750;
 const CONNECTSHYFT_INBOX_P99_BUDGET_MS = 1500;
+const DEFAULT_ESCALATION_BASELINE_HOURS = 24;
+const MIN_ESCALATION_BASELINE_HOURS = 1;
+const MAX_ESCALATION_BASELINE_HOURS = 24;
+const MAX_ESCALATION_STAGE = 3;
+const DEFAULT_SCHEDULER_LIMIT = 50;
+const MAX_SCHEDULER_LIMIT = 250;
+const HOUR_MS = 60 * 60 * 1000;
 const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
   claimed: 'connectshyft.thread.claimed',
   takenOver: 'connectshyft.thread.taken_over',
@@ -77,6 +86,10 @@ const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
   inboundVoiceVoicemail: 'connectshyft.inbound.voice_voicemail_recorded',
   inboundVoiceFallback: 'connectshyft.inbound.voice_fallback_recorded',
 } as const;
+const CONNECTSHYFT_ESCALATION_NOTIFICATION_EVENT_PREFIXES = [
+  'connectshyft.thread.escalation.',
+  'connectshyft.escalation.',
+] as const;
 const CONNECTSHYFT_LEGACY_ROLE_ALIASES: Record<string, string> = {
   admin: 'TENANT_ADMIN',
   member: 'ORGUNIT_MEMBER',
@@ -86,8 +99,12 @@ type ConnectShyftOutboundAction = 'call' | 'message';
 type ConnectShyftNeighborMergeFailureStage = 'before-commit' | 'after-dependent-repoint';
 
 type ConnectShyftSyntheticThreadDescriptor = {
+  tenantId: string;
+  orgUnitId: string;
   state: ConnectShyftThreadState;
   claimedByUserId: string | null;
+  escalationStage: number;
+  nextEvaluationAtUtc: string | null;
   neighborId: string;
   lastInboundCsNumberId: string;
   preferredOutboundCsNumberId: string;
@@ -96,28 +113,52 @@ type ConnectShyftSyntheticThreadDescriptor = {
 
 const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSyntheticThreadDescriptor> = {
   'thread-c4-unclaimed-1001': {
+    tenantId: 'tenant-connectshyft-c4',
+    orgUnitId: 'org-connectshyft-c4-east',
     state: 'UNCLAIMED',
     claimedByUserId: null,
+    escalationStage: 2,
+    nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
     neighborId: 'neighbor-connectshyft-c4-1001',
     lastInboundCsNumberId: 'cs-number-401',
     preferredOutboundCsNumberId: 'cs-number-501',
     summary: 'Unclaimed intake ready for assignment',
   },
   'thread-c4-claimed-1002': {
+    tenantId: 'tenant-connectshyft-c4',
+    orgUnitId: 'org-connectshyft-c4-east',
     state: 'CLAIMED',
     claimedByUserId: 'user-connectshyft-c4-other-operator',
+    escalationStage: 0,
+    nextEvaluationAtUtc: null,
     neighborId: 'neighbor-connectshyft-c4-1002',
     lastInboundCsNumberId: 'cs-number-402',
     preferredOutboundCsNumberId: 'cs-number-502',
     summary: 'Claimed thread eligible for takeover/close',
   },
   'thread-c4-closed-1003': {
+    tenantId: 'tenant-connectshyft-c4',
+    orgUnitId: 'org-connectshyft-c4-east',
     state: 'CLOSED',
     claimedByUserId: null,
+    escalationStage: 0,
+    nextEvaluationAtUtc: null,
     neighborId: 'neighbor-connectshyft-c4-1003',
     lastInboundCsNumberId: 'cs-number-403',
     preferredOutboundCsNumberId: 'cs-number-503',
     summary: 'Closed thread awaiting explicit outbound reopen',
+  },
+  'thread-c5-unclaimed-1001': {
+    tenantId: 'tenant-connectshyft-c5',
+    orgUnitId: 'org-connectshyft-c5-east',
+    state: 'UNCLAIMED',
+    claimedByUserId: null,
+    escalationStage: 0,
+    nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+    neighborId: 'neighbor-connectshyft-c5-1001',
+    lastInboundCsNumberId: 'cs-number-601',
+    preferredOutboundCsNumberId: 'cs-number-701',
+    summary: 'Unclaimed thread pending deterministic escalation evaluation',
   },
 };
 
@@ -451,6 +492,21 @@ const resolveSyntheticLifecycleThread = (
   return CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS[threadId] || null;
 };
 
+const updateSyntheticLifecycleThread = (thread: ConnectShyftThread): void => {
+  const descriptor = CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS[thread.threadId];
+  if (!descriptor) {
+    return;
+  }
+
+  descriptor.state = thread.state;
+  descriptor.claimedByUserId = thread.claimedByUserId;
+  descriptor.escalationStage = thread.escalation.stage;
+  descriptor.nextEvaluationAtUtc = thread.escalation.nextEvaluationAtUtc;
+  descriptor.neighborId = thread.neighborId;
+  descriptor.lastInboundCsNumberId = thread.lastInboundCsNumberId;
+  descriptor.preferredOutboundCsNumberId = thread.preferredOutboundCsNumberId;
+};
+
 const buildSyntheticThread = (input: {
   tenantId: string;
   orgUnitId: string;
@@ -462,11 +518,19 @@ const buildSyntheticThread = (input: {
   fallbackNeighborId?: string;
   fallbackLastInboundCsNumberId?: string;
   fallbackPreferredOutboundCsNumberId?: string;
+  fallbackEscalationStage?: number;
+  fallbackNextEvaluationAtUtc?: string | null;
 }): ConnectShyftThread => {
   const now = nowIsoUtc();
   const actorUserId = normalizeLifecycleString(input.actorUserId) || null;
-  const isReopened = input.currentState === 'CLOSED' && input.nextState === 'UNCLAIMED';
-  const escalationStage = isReopened ? 0 : (input.nextState === 'UNCLAIMED' ? 0 : 0);
+  const fallbackEscalationStage = Number.isFinite(input.fallbackEscalationStage)
+    ? Math.max(0, Math.trunc(input.fallbackEscalationStage as number))
+    : 0;
+  const fallbackNextEvaluationAtUtc = normalizeLifecycleString(input.fallbackNextEvaluationAtUtc || null) || null;
+  const escalationStage = input.nextState === 'CLAIMED' ? 0 : fallbackEscalationStage;
+  const nextEvaluationAtUtc = input.nextState === 'UNCLAIMED'
+    ? (fallbackNextEvaluationAtUtc || now)
+    : null;
 
   return {
     threadId: input.threadId,
@@ -485,10 +549,18 @@ const buildSyntheticThread = (input: {
     updatedAtUtc: now,
     escalation: {
       stage: escalationStage,
-      nextEvaluationAtUtc: input.nextState === 'UNCLAIMED' ? now : null,
+      nextEvaluationAtUtc,
     },
   };
 };
+
+const buildLifecycleThreadResponse = (
+  thread: ConnectShyftThread,
+): ConnectShyftThread & { escalationStage: number; nextEvaluationAtUtc: string | null } => ({
+  ...thread,
+  escalationStage: thread.escalation.stage,
+  nextEvaluationAtUtc: thread.escalation.nextEvaluationAtUtc,
+});
 
 const buildThreadFromDetailRecord = (
   detail: ConnectShyftThreadDetailRecord,
@@ -571,6 +643,50 @@ const buildLifecycleSideEffects = (input: {
     metadata: input.metadata,
   },
 });
+
+const cancelPendingEscalationNotifications = async (input: {
+  tenantId: string;
+  threadId: string;
+}): Promise<number> => {
+  if (!UUID_PATTERN.test(input.tenantId) || !UUID_PATTERN.test(input.threadId)) {
+    return 0;
+  }
+
+  try {
+    const platformDb = loadPlatformDb();
+    const canceled = await platformDb
+      .withSchema('platform')
+      .table('outbox_events')
+      .where({
+        tenant_id: input.tenantId,
+        entity_type: 'connectshyft.thread',
+        entity_id: input.threadId,
+        delivery_status: 'pending',
+      })
+      .andWhere((queryBuilder) => {
+        CONNECTSHYFT_ESCALATION_NOTIFICATION_EVENT_PREFIXES.forEach((prefix, index) => {
+          if (index === 0) {
+            queryBuilder.where('event_name', 'like', `${prefix}%`);
+            return;
+          }
+          queryBuilder.orWhere('event_name', 'like', `${prefix}%`);
+        });
+      })
+      .update({
+        delivery_status: 'failed',
+        last_delivery_error: 'Canceled after explicit claim transition.',
+        available_at_utc: platformDb.fn.now(),
+      });
+
+    if (typeof canceled !== 'number' || !Number.isFinite(canceled)) {
+      return 0;
+    }
+
+    return Math.max(0, Math.trunc(canceled));
+  } catch (_error) {
+    return 0;
+  }
+};
 
 type ResolvedLifecycleContext = {
   detail: ConnectShyftThreadDetailRecord | null;
@@ -734,20 +850,25 @@ const transitionThreadWithSideEffects = async (input: {
   }
 
   if (!UUID_PATTERN.test(input.threadId) && input.syntheticThread) {
+    const thread = buildSyntheticThread({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId: input.threadId,
+      currentState: input.currentState,
+      nextState: input.nextState,
+      actorUserId: input.actorUserId,
+      fallbackSummary: input.syntheticThread.summary,
+      fallbackNeighborId: input.syntheticThread.neighborId,
+      fallbackLastInboundCsNumberId: input.syntheticThread.lastInboundCsNumberId,
+      fallbackPreferredOutboundCsNumberId: input.syntheticThread.preferredOutboundCsNumberId,
+      fallbackEscalationStage: input.syntheticThread.escalationStage,
+      fallbackNextEvaluationAtUtc: input.syntheticThread.nextEvaluationAtUtc,
+    });
+    updateSyntheticLifecycleThread(thread);
+
     return {
       ok: true,
-      thread: buildSyntheticThread({
-        tenantId: input.tenantId,
-        orgUnitId: input.orgUnitId,
-        threadId: input.threadId,
-        currentState: input.currentState,
-        nextState: input.nextState,
-        actorUserId: input.actorUserId,
-        fallbackSummary: input.syntheticThread.summary,
-        fallbackNeighborId: input.syntheticThread.neighborId,
-        fallbackLastInboundCsNumberId: input.syntheticThread.lastInboundCsNumberId,
-        fallbackPreferredOutboundCsNumberId: input.syntheticThread.preferredOutboundCsNumberId,
-      }),
+      thread,
       sideEffectsPersisted: false,
     };
   }
@@ -776,20 +897,25 @@ const transitionThreadWithSideEffects = async (input: {
     };
   }
 
+  const thread = buildSyntheticThread({
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    threadId: input.threadId,
+    currentState: input.currentState,
+    nextState: input.nextState,
+    actorUserId: input.actorUserId,
+    fallbackSummary: input.syntheticThread.summary,
+    fallbackNeighborId: input.syntheticThread.neighborId,
+    fallbackLastInboundCsNumberId: input.syntheticThread.lastInboundCsNumberId,
+    fallbackPreferredOutboundCsNumberId: input.syntheticThread.preferredOutboundCsNumberId,
+    fallbackEscalationStage: input.syntheticThread.escalationStage,
+    fallbackNextEvaluationAtUtc: input.syntheticThread.nextEvaluationAtUtc,
+  });
+  updateSyntheticLifecycleThread(thread);
+
   return {
     ok: true,
-    thread: buildSyntheticThread({
-      tenantId: input.tenantId,
-      orgUnitId: input.orgUnitId,
-      threadId: input.threadId,
-      currentState: input.currentState,
-      nextState: input.nextState,
-      actorUserId: input.actorUserId,
-      fallbackSummary: input.syntheticThread.summary,
-      fallbackNeighborId: input.syntheticThread.neighborId,
-      fallbackLastInboundCsNumberId: input.syntheticThread.lastInboundCsNumberId,
-      fallbackPreferredOutboundCsNumberId: input.syntheticThread.preferredOutboundCsNumberId,
-    }),
+    thread,
     sideEffectsPersisted: false,
   };
 };
@@ -1212,6 +1338,118 @@ const parseThreadDueLimit = (req: Request): number => {
   }
 
   return Math.min(Math.trunc(rawLimit), 250);
+};
+
+const normalizeSchedulerLimit = (value: unknown): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return DEFAULT_SCHEDULER_LIMIT;
+  }
+
+  const normalized = Math.trunc(value);
+  if (normalized <= 0) {
+    return DEFAULT_SCHEDULER_LIMIT;
+  }
+
+  return Math.min(normalized, MAX_SCHEDULER_LIMIT);
+};
+
+const parseSchedulerEvaluateBody = (req: Request): {
+  orgUnitId: string | null;
+  asOfUtc: string | null;
+  limit: number;
+} => {
+  const asOfCandidate = typeof req.body?.asOfUtc === 'string' ? req.body.asOfUtc.trim() : '';
+  return {
+    orgUnitId: parseOrgUnitIdFromBody(req),
+    asOfUtc: asOfCandidate.length > 0 ? asOfCandidate : null,
+    limit: normalizeSchedulerLimit(req.body?.limit),
+  };
+};
+
+const normalizeEscalationBaselineHours = (value: number): number => {
+  if (!Number.isFinite(value) || !Number.isInteger(value)) {
+    return DEFAULT_ESCALATION_BASELINE_HOURS;
+  }
+
+  return Math.min(
+    MAX_ESCALATION_BASELINE_HOURS,
+    Math.max(MIN_ESCALATION_BASELINE_HOURS, Math.trunc(value)),
+  );
+};
+
+const buildSyntheticSchedulerTransition = (input: {
+  threadId: string;
+  previousStage: number;
+  dueAtUtc: string;
+  baselineHours: number;
+}): ConnectShyftEscalationTransition => {
+  const previousStage = Math.max(0, Math.trunc(input.previousStage));
+  const stage = Math.min(previousStage + 1, MAX_ESCALATION_STAGE);
+  const nextDueOffsetHours = input.baselineHours * stage;
+  const dueAtMs = Date.parse(input.dueAtUtc);
+  const nextDueAtUtc = new Date(
+    (Number.isNaN(dueAtMs) ? Date.now() : dueAtMs) + (nextDueOffsetHours * HOUR_MS),
+  ).toISOString();
+
+  return {
+    threadId: input.threadId,
+    previousStage,
+    stage,
+    dueAtUtc: input.dueAtUtc,
+    nextDueAtUtc,
+    nextDueOffsetHours,
+  };
+};
+
+const evaluateSyntheticEscalations = (input: {
+  tenantId: string;
+  orgUnitId: string;
+  asOfUtc: string;
+  baselineHours: number;
+  limit: number;
+}): ConnectShyftEscalationTransition[] => {
+  const asOfMs = Date.parse(input.asOfUtc);
+  if (Number.isNaN(asOfMs)) {
+    return [];
+  }
+
+  const dueSyntheticThreads = Object.entries(CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS)
+    .filter(([, descriptor]) =>
+      descriptor.tenantId === input.tenantId
+      && descriptor.orgUnitId === input.orgUnitId
+      && descriptor.state === 'UNCLAIMED'
+      && descriptor.claimedByUserId === null
+      && typeof descriptor.nextEvaluationAtUtc === 'string')
+    .map(([threadId, descriptor]) => ({
+      threadId,
+      descriptor,
+      dueAtMs: Date.parse(descriptor.nextEvaluationAtUtc as string),
+    }))
+    .filter((candidate) => !Number.isNaN(candidate.dueAtMs) && candidate.dueAtMs <= asOfMs)
+    .sort((left, right) => {
+      if (left.dueAtMs !== right.dueAtMs) {
+        return left.dueAtMs - right.dueAtMs;
+      }
+      return left.threadId.localeCompare(right.threadId);
+    })
+    .slice(0, input.limit);
+
+  const transitions: ConnectShyftEscalationTransition[] = [];
+  dueSyntheticThreads.forEach((candidate) => {
+    const dueAtUtc = candidate.descriptor.nextEvaluationAtUtc as string;
+    const transition = buildSyntheticSchedulerTransition({
+      threadId: candidate.threadId,
+      previousStage: candidate.descriptor.escalationStage,
+      dueAtUtc,
+      baselineHours: input.baselineHours,
+    });
+
+    candidate.descriptor.escalationStage = transition.stage;
+    candidate.descriptor.nextEvaluationAtUtc = transition.nextDueAtUtc;
+    transitions.push(transition);
+  });
+
+  return transitions;
 };
 
 const parseThreadIdFromBody = (req: Request): string | null => {
@@ -2733,6 +2971,106 @@ router.put('/escalation/config', async (req: Request, res: Response) => {
   });
 });
 
+router.post('/internal/escalation/evaluate', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'escalation')) {
+    return;
+  }
+
+  const payload = parseSchedulerEvaluateBody(req);
+  const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
+  if (!context) {
+    return;
+  }
+
+  if (!enforceThreadViewCapability(req, res, context)) {
+    return;
+  }
+
+  const asOfUtc = payload.asOfUtc || nowIsoUtc();
+  if (!isStrictUtcIsoTimestamp(asOfUtc)) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_ESCALATION_AS_OF_INVALID',
+      message: 'asOfUtc must be a strict UTC ISO-8601 timestamp.',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return;
+  }
+
+  let baselineHours = DEFAULT_ESCALATION_BASELINE_HOURS;
+  try {
+    const config = await connectShyftEscalationConfigService.getConfig(
+      context.tenantId,
+      context.orgUnitId,
+    );
+    baselineHours = normalizeEscalationBaselineHours(config.escalationBaselineHours);
+  } catch (_error) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_ESCALATION_CONFIG_UNAVAILABLE',
+      message: 'Escalation configuration is temporarily unavailable. Please retry.',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return;
+  }
+
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  const evaluated = await connectShyftThreadServiceAsync.evaluateEscalations({
+    actorRoles,
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    asOfUtc,
+    limit: payload.limit,
+    baselineHours,
+    actorUserId: resolveConnectShyftRequestedActorUserId(req),
+  });
+
+  if (!evaluated.ok) {
+    refusal(res, {
+      code: evaluated.code,
+      message: evaluated.message,
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return;
+  }
+
+  const syntheticOverrideMode = isConnectShyftTestOverrideEnabled()
+    && !UUID_PATTERN.test(context.tenantId);
+  let transitions = syntheticOverrideMode ? [] : evaluated.data.transitions;
+
+  if (isConnectShyftTestOverrideEnabled()) {
+    const syntheticTransitions = evaluateSyntheticEscalations({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      asOfUtc,
+      baselineHours,
+      limit: payload.limit,
+    });
+    if (syntheticTransitions.length > 0) {
+      transitions = syntheticOverrideMode
+        ? syntheticTransitions
+        : [...transitions, ...syntheticTransitions];
+    }
+  }
+
+  return success(res, {
+    code: evaluated.code,
+    message: 'ConnectShyft escalation scheduler evaluated due threads',
+    httpStatus: evaluated.httpStatus,
+    data: {
+      asOfUtc,
+      baselineHours,
+      transitions,
+      effects: {
+        emittedCount: transitions.length,
+      },
+      replaySafe: transitions.length === 0,
+      skippedAlreadyProcessed: transitions.length === 0,
+    },
+  });
+});
+
 router.get('/internal/threads/due', async (req: Request, res: Response) => {
   if (!await enforceCapability(req, res, 'inbox')) {
     return;
@@ -3065,8 +3403,22 @@ const performLifecycleTransition = async (
     metadata,
   });
 
+  const notificationsCanceled = action === 'claim'
+    ? await cancelPendingEscalationNotifications({
+      tenantId: context.tenantId,
+      threadId,
+    })
+    : 0;
+
+  const claimEscalation = action === 'claim'
+    ? {
+      resetReason: 'claimed' as const,
+      notificationsCanceled,
+    }
+    : null;
+
   const responseCode = action === 'claim'
-    ? 'CONNECTSHYFT_THREAD_CLAIM_READY'
+    ? 'CONNECTSHYFT_THREAD_CLAIMED'
     : action === 'takeover'
       ? 'CONNECTSHYFT_THREAD_TAKEOVER_READY'
       : 'CONNECTSHYFT_THREAD_CLOSED';
@@ -3085,9 +3437,10 @@ const performLifecycleTransition = async (
       context,
       reason,
       resolution,
-      thread: transitioned.thread,
+      thread: buildLifecycleThreadResponse(transitioned.thread),
       lifecycleEvent: eventName,
       sideEffectsPersisted: transitioned.sideEffectsPersisted,
+      escalation: claimEscalation,
       ...sideEffects,
     },
   });
@@ -3228,6 +3581,8 @@ const performOutboundAction = async (
       fallbackNeighborId: lifecycleContext.syntheticThread?.neighborId,
       fallbackLastInboundCsNumberId: lifecycleContext.syntheticThread?.lastInboundCsNumberId,
       fallbackPreferredOutboundCsNumberId: lifecycleContext.syntheticThread?.preferredOutboundCsNumberId,
+      fallbackEscalationStage: lifecycleContext.syntheticThread?.escalationStage,
+      fallbackNextEvaluationAtUtc: lifecycleContext.syntheticThread?.nextEvaluationAtUtc,
     });
   }
 

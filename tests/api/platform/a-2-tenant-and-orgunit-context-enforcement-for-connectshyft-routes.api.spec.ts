@@ -295,7 +295,7 @@ test.describe(
         const claimBody = await claimResponse.json();
         expect(claimBody).toMatchObject({
           ok: true,
-          code: 'CONNECTSHYFT_THREAD_CLAIM_READY',
+          code: 'CONNECTSHYFT_THREAD_CLAIMED',
         });
 
         const response = await apiRequest(request, {
