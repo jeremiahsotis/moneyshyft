@@ -749,6 +749,9 @@ type LifecycleTransitionSideEffects = {
   eventName: string;
   metadata: Record<string, unknown>;
 };
+type LifecycleTransitionSideEffectInput =
+  | LifecycleTransitionSideEffects
+  | LifecycleTransitionSideEffects[];
 
 class LifecycleTransitionRefusalError extends Error {
   constructor(
@@ -814,7 +817,7 @@ const canPersistLifecycleSideEffects = (input: {
   tenantId: string;
   threadId: string;
   syntheticThread: ConnectShyftSyntheticThreadDescriptor | null;
-  sideEffects?: LifecycleTransitionSideEffects;
+  sideEffects?: LifecycleTransitionSideEffectInput;
 }): boolean => {
   if (!input.sideEffects) {
     return false;
@@ -837,7 +840,7 @@ const transitionThreadWithSideEffects = async (input: {
   nextState: ConnectShyftThreadState;
   syntheticThread: ConnectShyftSyntheticThreadDescriptor | null;
   detail: ConnectShyftThreadDetailRecord | null;
-  sideEffects?: LifecycleTransitionSideEffects;
+  sideEffects?: LifecycleTransitionSideEffectInput;
 }): Promise<
   | { ok: true; thread: ConnectShyftThread; sideEffectsPersisted: boolean }
   | { ok: false; code: string; message: string }
@@ -849,6 +852,9 @@ const transitionThreadWithSideEffects = async (input: {
     sideEffects: input.sideEffects,
   })) {
     try {
+      const lifecycleSideEffects = Array.isArray(input.sideEffects)
+        ? input.sideEffects
+        : [input.sideEffects!];
       const thread = await executePlatformMutation({
         mutation: async (trx) => {
           const txThreadService = new AsyncConnectShyftThreadService(
@@ -867,14 +873,14 @@ const transitionThreadWithSideEffects = async (input: {
 
           return transitioned.data.thread;
         },
-        event: {
+        event: lifecycleSideEffects.map((sideEffect) => ({
           tenantId: input.tenantId,
           actorId: resolveMutationActorUserId(input.actorUserId),
-          eventName: input.sideEffects!.eventName,
+          eventName: sideEffect.eventName,
           entityType: 'connectshyft.thread',
           entityId: input.threadId,
-          payload: input.sideEffects!.metadata,
-        },
+          payload: sideEffect.metadata,
+        })),
       }, loadPlatformDb());
 
       return {
@@ -3315,16 +3321,32 @@ const performOutboundAction = async (
   let thread: ConnectShyftThread;
   let lifecycleEvent: string | null = null;
   let sideEffects: ReturnType<typeof buildLifecycleSideEffects> | null = null;
+  let outboundDispatch: ReturnType<typeof buildLifecycleSideEffects> | null = null;
   let sideEffectsPersisted = false;
   let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
 
   if (lifecycleContext.currentState === 'CLOSED') {
-    const metadata = buildLifecycleMetadata({
+    const reopenedMetadata = buildLifecycleMetadata({
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
       actorUserId,
       threadId,
       priorState: 'CLOSED',
+      newState: 'UNCLAIMED',
+      action: outboundLifecycleAction,
+      threadReopenedByUser: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      lifecycleLineage: {
+        prior_state: 'CLOSED',
+        new_state: 'UNCLAIMED',
+        thread_reopened_by_user: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      },
+    });
+    const outboundDispatchMetadata = buildLifecycleMetadata({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      actorUserId,
+      threadId,
+      priorState: 'UNCLAIMED',
       newState: 'UNCLAIMED',
       action: outboundLifecycleAction,
       threadReopenedByUser: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
@@ -3344,10 +3366,16 @@ const performOutboundAction = async (
       nextState: 'UNCLAIMED',
       syntheticThread: lifecycleContext.syntheticThread,
       detail: lifecycleContext.detail,
-      sideEffects: {
-        eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-        metadata,
-      },
+      sideEffects: [
+        {
+          eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+          metadata: reopenedMetadata,
+        },
+        {
+          eventName: resolveOutboundDispatchEventName(outboundAction),
+          metadata: outboundDispatchMetadata,
+        },
+      ],
     });
 
     if (!transitioned.ok) {
@@ -3371,7 +3399,11 @@ const performOutboundAction = async (
     };
     sideEffects = buildLifecycleSideEffects({
       eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-      metadata,
+      metadata: reopenedMetadata,
+    });
+    outboundDispatch = buildLifecycleSideEffects({
+      eventName: resolveOutboundDispatchEventName(outboundAction),
+      metadata: outboundDispatchMetadata,
     });
   } else if (lifecycleContext.detail) {
     thread = buildThreadFromDetailRecord(lifecycleContext.detail);
@@ -3421,6 +3453,7 @@ const performOutboundAction = async (
 
     sideEffectsPersisted = persistedDispatch.sideEffectsPersisted;
     sideEffects = persistedDispatch.sideEffects;
+    outboundDispatch = persistedDispatch.sideEffects;
   }
 
   success(res, {
@@ -3438,6 +3471,7 @@ const performOutboundAction = async (
       escalationReset,
       sideEffectsPersisted,
       ...(sideEffects || {}),
+      ...(outboundDispatch ? { outboundDispatch } : {}),
     },
   });
   return;

@@ -145,6 +145,11 @@ GPT-5 Codex
 - `API_URL=http://127.0.0.1:3000 API_BASE_URL=http://127.0.0.1:3000 npx playwright test tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts` (pass)
 - `cd src && npm run build` (pass)
 - `npm run policy:check` (fail: status sync guard reports ready-for-dev -> review closeout transition in a single working-tree diff)
+- `cd src && npm test -- src/platform/mutations/__tests__/executePlatformMutation.test.ts --runInBand` (pass)
+- `cd src && npm run build` (pass)
+- `npm run policy:check` (pass)
+- `npx playwright test --list tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts` (pass)
+- `API_URL=http://127.0.0.1:3000 API_BASE_URL=http://127.0.0.1:3000 npx playwright test tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts` (fail: local API server unavailable in current session)
 
 ### Completion Notes List
 
@@ -153,11 +158,15 @@ GPT-5 Codex
 - Hardened reopen-on-outbound metadata with explicit `thread_reopened_by_user` and `lifecycle_lineage` payload fields.
 - Added developer guardrail documentation for outbound event naming, metadata requirements, and refusal envelope consistency expectations.
 - Added d.3 automate API tests validating atomic persistence, refusal no-side-effects, and reopen lineage semantics.
+- Review remediation: closed-thread outbound actions now emit both reopen and outbound-dispatch side effects atomically; d.3 tests now validate policy-refusal no-side-effect behavior and dual-event persistence.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/d-3-outbound-audit-outbox-and-refusal-envelope-integration.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 - src/src/routes/api/v1/connectshyft.ts
+- src/src/platform/mutations/executePlatformMutation.ts
+- src/src/platform/mutations/__tests__/executePlatformMutation.test.ts
 - tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts
 - docs/connectshyft-outbound-audit-guardrails.md
 
@@ -165,3 +174,4 @@ GPT-5 Codex
 
 - 2026-02-27: Created Story d.3 ready-for-dev context document.
 - 2026-02-27: Implemented outbound audit/outbox persistence, refusal helper standardization, reopen lineage metadata hardening, and d.3 automate API coverage.
+- 2026-02-27: Applied review remediation for closed-thread outbound dispatch audit/outbox parity, refusal-path no-side-effect coverage, and story/file-list synchronization.

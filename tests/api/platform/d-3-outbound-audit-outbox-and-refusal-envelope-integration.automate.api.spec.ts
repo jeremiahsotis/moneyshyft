@@ -20,7 +20,7 @@ const resolveConnectShyftDbConnection = () => {
     port: Number(process.env.TEST_DB_PORT || 5432),
     database: process.env.TEST_DB_NAME || 'moneyshyft',
     user: process.env.TEST_DB_USER || 'jeremiahotis',
-    password: process.env.TEST_DB_PASSWORD || 'Oiurueu12',
+    password: process.env.TEST_DB_PASSWORD,
   };
 };
 
@@ -107,7 +107,7 @@ const countThreadSideEffects = async (
   return { events, outbox };
 };
 
-const latestThreadEvent = async (tenantId: string, threadId: string) => {
+const listThreadEvents = async (tenantId: string, threadId: string) => {
   return connectShyftDb
     .withSchema('platform')
     .table('events')
@@ -118,10 +118,10 @@ const latestThreadEvent = async (tenantId: string, threadId: string) => {
     })
     .orderBy('occurred_at_utc', 'desc')
     .orderBy('id', 'desc')
-    .first<{
+    .select<{
       event_name: string;
       payload: Record<string, unknown>;
-    }>(['event_name', 'payload']);
+    }[]>(['event_name', 'payload']);
 };
 
 const buildDbBackedContext = () => {
@@ -318,18 +318,38 @@ test.describe('Story d.3 outbound audit outbox and refusal envelope integration 
               thread_reopened_by_user: 'connectshyft.thread_reopened_by_user',
             },
           },
+          outboundDispatch: {
+            metadata: {
+              prior_state: 'UNCLAIMED',
+              new_state: 'UNCLAIMED',
+              action: 'outbound_call',
+              thread_reopened_by_user: 'connectshyft.thread_reopened_by_user',
+            },
+          },
         },
       });
 
       const afterCounts = await countThreadSideEffects(context.tenantId, threadId);
-      expect(afterCounts.events).toBe(beforeCounts.events + 1);
-      expect(afterCounts.outbox).toBe(beforeCounts.outbox + 1);
+      expect(afterCounts.events).toBe(beforeCounts.events + 2);
+      expect(afterCounts.outbox).toBe(beforeCounts.outbox + 2);
 
-      const latestEvent = await latestThreadEvent(context.tenantId, threadId);
-      expect(latestEvent).toBeDefined();
-      expect(latestEvent?.event_name).toBe('connectshyft.thread_reopened_by_user');
-      expect(latestEvent?.payload).toEqual(expect.objectContaining({
+      const threadEvents = await listThreadEvents(context.tenantId, threadId);
+      expect(threadEvents.map((event) => event.event_name)).toEqual(expect.arrayContaining([
+        'connectshyft.thread_reopened_by_user',
+        'connectshyft.thread.outbound_call_dispatched',
+      ]));
+
+      const reopenedEvent = threadEvents.find((event) => event.event_name === 'connectshyft.thread_reopened_by_user');
+      expect(reopenedEvent?.payload).toEqual(expect.objectContaining({
         prior_state: 'CLOSED',
+        new_state: 'UNCLAIMED',
+        action: 'outbound_call',
+        thread_reopened_by_user: 'connectshyft.thread_reopened_by_user',
+      }));
+
+      const dispatchedEvent = threadEvents.find((event) => event.event_name === 'connectshyft.thread.outbound_call_dispatched');
+      expect(dispatchedEvent?.payload).toEqual(expect.objectContaining({
+        prior_state: 'UNCLAIMED',
         new_state: 'UNCLAIMED',
         action: 'outbound_call',
         thread_reopened_by_user: 'connectshyft.thread_reopened_by_user',
@@ -367,6 +387,42 @@ test.describe('Story d.3 outbound audit outbox and refusal envelope integration 
       expect(body).not.toHaveProperty('data.outbox');
 
       const afterCounts = await countThreadSideEffects(context.tenantId, missingThreadId);
+      expect(afterCounts.events).toBe(beforeCounts.events);
+      expect(afterCounts.outbox).toBe(beforeCounts.outbox);
+    },
+  );
+
+  test(
+    '[P1] policy refusals on outbound call preserve deterministic envelope and do not write side effects @P1',
+    async ({ request }) => {
+      const { context, headers, actorUserId } = buildDbBackedContext();
+      await ensureDbTenant(context.tenantId);
+      await ensureDbActorUser(actorUserId, context.tenantId);
+
+      const threadId = await ensureDbThread(request, context, headers);
+      const beforeCounts = await countThreadSideEffects(context.tenantId, threadId);
+
+      const response = await apiRequest(request, {
+        method: 'POST',
+        path: `${context.paths.threads}/${threadId}/call`,
+        headers: {
+          ...headers,
+          'x-test-connectshyft-orgunit-memberships': JSON.stringify([]),
+        },
+        data: {
+          orgUnitId: context.orgUnitId,
+        },
+      });
+
+      expect(response.status()).toBe(200);
+      const body = await response.json();
+      expect(body).toMatchObject({
+        ok: false,
+        code: 'CONNECTSHYFT_ORGUNIT_MEMBERSHIP_REQUIRED',
+        refusalType: 'business',
+      });
+
+      const afterCounts = await countThreadSideEffects(context.tenantId, threadId);
       expect(afterCounts.events).toBe(beforeCounts.events);
       expect(afterCounts.outbox).toBe(beforeCounts.outbox);
     },
