@@ -1,6 +1,6 @@
 # Story d.3: Outbound Audit, Outbox, and Refusal Envelope Integration
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
