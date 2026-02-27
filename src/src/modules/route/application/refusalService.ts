@@ -1,9 +1,11 @@
 import {
   type RouteRefusalValidationError,
+  type RouteRefusalPayload,
   validateRouteRefusalPayload,
 } from '../domain/refusal';
 import {
-  InMemoryRouteRefusalStore,
+  KnexRouteRefusalStore,
+  RouteIdempotencyKeyConflictError,
   type RouteRefusalScope,
   type RouteRefusalStore,
 } from '../infrastructure/refusalStore';
@@ -32,7 +34,7 @@ type RouteRefusalServiceSuccessResult = {
   data: Record<string, unknown>;
 };
 
-type RouteRefusalServiceResult =
+export type RouteRefusalServiceResult =
   | RouteRefusalServiceRefusalResult
   | RouteRefusalServiceSuccessResult;
 
@@ -110,12 +112,12 @@ const validateTenantAndScope = (
   return null;
 };
 
-const validateRefusalPayloadByStage = (
+const validateParsedRefusalPayload = (
   stage: 'intake' | 'execution',
   reasonCode: unknown,
   reasonMessage: unknown,
   alternatives: unknown,
-): RouteRefusalServiceRefusalResult | null => {
+): { ok: true; value: RouteRefusalPayload } | { ok: false; refusal: RouteRefusalServiceRefusalResult } => {
   const validation = validateRouteRefusalPayload({
     stage,
     reasonCode,
@@ -124,17 +126,20 @@ const validateRefusalPayloadByStage = (
   });
 
   if (validation.ok) {
-    return null;
+    return { ok: true, value: validation.value };
   }
 
   return {
     ok: false,
-    code: 'ROUTE_REFUSAL_VALIDATION_FAILED',
-    message: 'Refusal payload must include canonical reason and structured alternatives.',
-    refusalType: 'business',
-    httpStatus: 200,
-    data: {
-      fieldErrors: validation.errors,
+    refusal: {
+      ok: false,
+      code: 'ROUTE_REFUSAL_VALIDATION_FAILED',
+      message: 'Refusal payload must include canonical reason and structured alternatives.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        fieldErrors: validation.errors,
+      },
     },
   };
 };
@@ -142,7 +147,7 @@ const validateRefusalPayloadByStage = (
 export class RouteRefusalService {
   constructor(private readonly store: RouteRefusalStore) {}
 
-  issueRequestRefusal(command: RequestRefusalCommand): RouteRefusalServiceResult {
+  async issueRequestRefusal(command: RequestRefusalCommand): Promise<RouteRefusalServiceResult> {
     const tenantId = normalizeString(command.tenantId);
     const requestId = normalizeString(command.requestId);
     const scopeValidation = validateTenantAndScope(tenantId, 'requestId', requestId);
@@ -150,65 +155,50 @@ export class RouteRefusalService {
       return scopeValidation;
     }
 
-    const payloadValidation = validateRefusalPayloadByStage(
+    const payload = validateParsedRefusalPayload(
       'intake',
       command.reasonCode,
       command.reasonMessage,
       command.alternatives,
     );
-    if (payloadValidation) {
-      return payloadValidation;
+    if (!payload.ok) {
+      return payload.refusal;
     }
 
-    const parsed = validateRouteRefusalPayload({
-      stage: 'intake',
-      reasonCode: command.reasonCode,
-      reasonMessage: command.reasonMessage,
-      alternatives: command.alternatives,
-    });
-    if (!parsed.ok) {
+    try {
+      const persisted = await this.store.persistRefusal({
+        tenantId,
+        scope: 'request',
+        scopeId: requestId,
+        stage: 'intake',
+        reasonCode: payload.value.reasonCode,
+        reasonMessage: payload.value.reasonMessage,
+        alternatives: payload.value.alternatives,
+        actorUserId: command.actorUserId,
+        requestId,
+        commitmentId: null,
+        idempotencyKey: normalizeString(command.idempotencyKey) || null,
+      });
+
       return {
-        ok: false,
-        code: 'ROUTE_REFUSAL_VALIDATION_FAILED',
-        message: 'Refusal payload must include canonical reason and structured alternatives.',
-        refusalType: 'business',
-        httpStatus: 200,
+        ok: true,
+        code: 'ROUTE_REQUEST_REFUSAL_RECORDED',
+        message: persisted.replayed
+          ? 'Request refusal already recorded for this idempotency context'
+          : 'Request refusal recorded with structured alternatives',
+        httpStatus: persisted.replayed ? 200 : 201,
         data: {
-          fieldErrors: parsed.errors,
+          requestId,
+          replayed: persisted.replayed,
+          outcome: persisted.outcome,
         },
       };
+    } catch (error) {
+      return this.mapStoreError(error);
     }
-
-    const persisted = this.store.persistRefusal({
-      tenantId,
-      scope: 'request',
-      scopeId: requestId,
-      stage: 'intake',
-      reasonCode: parsed.value.reasonCode,
-      reasonMessage: parsed.value.reasonMessage,
-      alternatives: parsed.value.alternatives,
-      actorUserId: command.actorUserId,
-      requestId,
-      commitmentId: null,
-      idempotencyKey: normalizeString(command.idempotencyKey) || null,
-    });
-
-    return {
-      ok: true,
-      code: 'ROUTE_REQUEST_REFUSAL_RECORDED',
-      message: persisted.replayed
-        ? 'Request refusal already recorded for this idempotency context'
-        : 'Request refusal recorded with structured alternatives',
-      httpStatus: persisted.replayed ? 200 : 201,
-      data: {
-        requestId,
-        replayed: persisted.replayed,
-        outcome: persisted.outcome,
-      },
-    };
   }
 
-  issueCommitmentRefusal(command: CommitmentRefusalCommand): RouteRefusalServiceResult {
+  async issueCommitmentRefusal(command: CommitmentRefusalCommand): Promise<RouteRefusalServiceResult> {
     const tenantId = normalizeString(command.tenantId);
     const commitmentId = normalizeString(command.commitmentId);
     const requestId = normalizeString(command.requestId) || null;
@@ -217,66 +207,51 @@ export class RouteRefusalService {
       return scopeValidation;
     }
 
-    const payloadValidation = validateRefusalPayloadByStage(
+    const payload = validateParsedRefusalPayload(
       'execution',
       command.reasonCode,
       command.reasonMessage,
       command.alternatives,
     );
-    if (payloadValidation) {
-      return payloadValidation;
+    if (!payload.ok) {
+      return payload.refusal;
     }
 
-    const parsed = validateRouteRefusalPayload({
-      stage: 'execution',
-      reasonCode: command.reasonCode,
-      reasonMessage: command.reasonMessage,
-      alternatives: command.alternatives,
-    });
-    if (!parsed.ok) {
+    try {
+      const persisted = await this.store.persistRefusal({
+        tenantId,
+        scope: 'commitment',
+        scopeId: commitmentId,
+        stage: 'execution',
+        reasonCode: payload.value.reasonCode,
+        reasonMessage: payload.value.reasonMessage,
+        alternatives: payload.value.alternatives,
+        actorUserId: command.actorUserId,
+        requestId,
+        commitmentId,
+        idempotencyKey: normalizeString(command.idempotencyKey) || null,
+      });
+
       return {
-        ok: false,
-        code: 'ROUTE_REFUSAL_VALIDATION_FAILED',
-        message: 'Refusal payload must include canonical reason and structured alternatives.',
-        refusalType: 'business',
-        httpStatus: 200,
+        ok: true,
+        code: 'ROUTE_COMMITMENT_REFUSAL_RECORDED',
+        message: persisted.replayed
+          ? 'Commitment refusal already recorded for this idempotency context'
+          : 'Commitment refusal recorded with structured alternatives',
+        httpStatus: persisted.replayed ? 200 : 201,
         data: {
-          fieldErrors: parsed.errors,
+          commitmentId,
+          requestId,
+          replayed: persisted.replayed,
+          outcome: persisted.outcome,
         },
       };
+    } catch (error) {
+      return this.mapStoreError(error);
     }
-
-    const persisted = this.store.persistRefusal({
-      tenantId,
-      scope: 'commitment',
-      scopeId: commitmentId,
-      stage: 'execution',
-      reasonCode: parsed.value.reasonCode,
-      reasonMessage: parsed.value.reasonMessage,
-      alternatives: parsed.value.alternatives,
-      actorUserId: command.actorUserId,
-      requestId,
-      commitmentId,
-      idempotencyKey: normalizeString(command.idempotencyKey) || null,
-    });
-
-    return {
-      ok: true,
-      code: 'ROUTE_COMMITMENT_REFUSAL_RECORDED',
-      message: persisted.replayed
-        ? 'Commitment refusal already recorded for this idempotency context'
-        : 'Commitment refusal recorded with structured alternatives',
-      httpStatus: persisted.replayed ? 200 : 201,
-      data: {
-        commitmentId,
-        requestId,
-        replayed: persisted.replayed,
-        outcome: persisted.outcome,
-      },
-    };
   }
 
-  getRequestHistory(query: Omit<HistoryQuery, 'scope'>): RouteRefusalServiceResult {
+  async getRequestHistory(query: Omit<HistoryQuery, 'scope'>): Promise<RouteRefusalServiceResult> {
     const tenantId = normalizeString(query.tenantId);
     const requestId = normalizeString(query.scopeId);
     const scopeValidation = validateTenantAndScope(tenantId, 'requestId', requestId);
@@ -284,20 +259,24 @@ export class RouteRefusalService {
       return scopeValidation;
     }
 
-    const history = this.store.listHistory(tenantId, 'request', requestId);
-    return {
-      ok: true,
-      code: 'ROUTE_REQUEST_HISTORY_RESOLVED',
-      message: 'Route request history resolved',
-      httpStatus: 200,
-      data: {
-        requestId,
-        events: history,
-      },
-    };
+    try {
+      const history = await this.store.listHistory(tenantId, 'request', requestId);
+      return {
+        ok: true,
+        code: 'ROUTE_REQUEST_HISTORY_RESOLVED',
+        message: 'Route request history resolved',
+        httpStatus: 200,
+        data: {
+          requestId,
+          events: history,
+        },
+      };
+    } catch (error) {
+      return this.mapStoreError(error);
+    }
   }
 
-  getCommitmentHistory(query: Omit<HistoryQuery, 'scope'>): RouteRefusalServiceResult {
+  async getCommitmentHistory(query: Omit<HistoryQuery, 'scope'>): Promise<RouteRefusalServiceResult> {
     const tenantId = normalizeString(query.tenantId);
     const commitmentId = normalizeString(query.scopeId);
     const scopeValidation = validateTenantAndScope(tenantId, 'commitmentId', commitmentId);
@@ -305,24 +284,54 @@ export class RouteRefusalService {
       return scopeValidation;
     }
 
-    const history = this.store.listHistory(tenantId, 'commitment', commitmentId);
+    try {
+      const history = await this.store.listHistory(tenantId, 'commitment', commitmentId);
+      return {
+        ok: true,
+        code: 'ROUTE_COMMITMENT_HISTORY_RESOLVED',
+        message: 'Route commitment history resolved',
+        httpStatus: 200,
+        data: {
+          commitmentId,
+          events: history,
+        },
+      };
+    } catch (error) {
+      return this.mapStoreError(error);
+    }
+  }
+
+  private mapStoreError(error: unknown): RouteRefusalServiceRefusalResult {
+    if (error instanceof RouteIdempotencyKeyConflictError) {
+      return {
+        ok: false,
+        code: 'ROUTE_IDEMPOTENCY_KEY_PAYLOAD_CONFLICT',
+        message: 'Idempotency-Key cannot be reused with a different refusal payload.',
+        refusalType: 'client',
+        httpStatus: 409,
+        data: {
+          idempotencyKey: error.idempotencyKey,
+        },
+      };
+    }
+
     return {
-      ok: true,
-      code: 'ROUTE_COMMITMENT_HISTORY_RESOLVED',
-      message: 'Route commitment history resolved',
-      httpStatus: 200,
-      data: {
-        commitmentId,
-        events: history,
-      },
+      ok: false,
+      code: 'ROUTE_REFUSAL_PERSISTENCE_ERROR',
+      message: error instanceof Error
+        ? error.message
+        : 'Unable to persist route refusal outcome',
+      refusalType: 'security',
+      httpStatus: 500,
     };
   }
 }
 
-const defaultRouteRefusalStore = new InMemoryRouteRefusalStore();
-
-export const routeRefusalService = new RouteRefusalService(defaultRouteRefusalStore);
-
-export const resetRouteRefusalState = (): void => {
-  defaultRouteRefusalStore.reset();
+export const createRouteRefusalService = (store?: RouteRefusalStore): RouteRefusalService => {
+  if (store) {
+    return new RouteRefusalService(store);
+  }
+  return new RouteRefusalService(new KnexRouteRefusalStore());
 };
+
+export const routeRefusalService = createRouteRefusalService();

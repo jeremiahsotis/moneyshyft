@@ -10,8 +10,8 @@ describe('route refusal service', () => {
     service = new RouteRefusalService(store);
   });
 
-  it('persists intake refusal outcomes for requests and records lifecycle history', () => {
-    const result = service.issueRequestRefusal({
+  it('persists intake refusal outcomes for requests and records lifecycle history', async () => {
+    const result = await service.issueRequestRefusal({
       tenantId: 'tenant-route-alpha',
       requestId: 'request-route-100',
       reasonCode: 'CAPACITY_FULL',
@@ -33,7 +33,7 @@ describe('route refusal service', () => {
       throw new Error('Expected refusal to persist');
     }
 
-    const history = service.getRequestHistory({
+    const history = await service.getRequestHistory({
       tenantId: 'tenant-route-alpha',
       scopeId: 'request-route-100',
     });
@@ -54,8 +54,8 @@ describe('route refusal service', () => {
     });
   });
 
-  it('persists execution-stage commitment refusals and links them into request history', () => {
-    const result = service.issueCommitmentRefusal({
+  it('persists execution-stage commitment refusals and links them into request history', async () => {
+    const result = await service.issueCommitmentRefusal({
       tenantId: 'tenant-route-alpha',
       commitmentId: 'commitment-route-901',
       requestId: 'request-route-901',
@@ -77,7 +77,7 @@ describe('route refusal service', () => {
       throw new Error('Expected commitment refusal to persist');
     }
 
-    const commitmentHistory = service.getCommitmentHistory({
+    const commitmentHistory = await service.getCommitmentHistory({
       tenantId: 'tenant-route-alpha',
       scopeId: 'commitment-route-901',
     });
@@ -95,7 +95,7 @@ describe('route refusal service', () => {
       },
     });
 
-    const requestHistory = service.getRequestHistory({
+    const requestHistory = await service.getRequestHistory({
       tenantId: 'tenant-route-alpha',
       scopeId: 'request-route-901',
     });
@@ -113,8 +113,8 @@ describe('route refusal service', () => {
     });
   });
 
-  it('treats duplicate writes with identical idempotency key as replay without additional history rows', () => {
-    const first = service.issueRequestRefusal({
+  it('treats duplicate writes with identical idempotency key as replay without additional history rows', async () => {
+    const first = await service.issueRequestRefusal({
       tenantId: 'tenant-route-alpha',
       requestId: 'request-route-200',
       reasonCode: 'DAY_PART_NOT_AVAILABLE',
@@ -130,7 +130,7 @@ describe('route refusal service', () => {
       actorUserId: 'user-staff-9',
       idempotencyKey: 'idem-route-200',
     });
-    const replay = service.issueRequestRefusal({
+    const replay = await service.issueRequestRefusal({
       tenantId: 'tenant-route-alpha',
       requestId: 'request-route-200',
       reasonCode: 'DAY_PART_NOT_AVAILABLE',
@@ -160,7 +160,7 @@ describe('route refusal service', () => {
       },
     });
 
-    const history = service.getRequestHistory({
+    const history = await service.getRequestHistory({
       tenantId: 'tenant-route-alpha',
       scopeId: 'request-route-200',
     });
@@ -177,8 +177,8 @@ describe('route refusal service', () => {
     expect((history.data.events as unknown[]).length).toBe(1);
   });
 
-  it('returns business refusal envelope metadata when payload validation fails', () => {
-    const result = service.issueCommitmentRefusal({
+  it('returns business refusal envelope metadata when payload validation fails', async () => {
+    const result = await service.issueCommitmentRefusal({
       tenantId: 'tenant-route-alpha',
       commitmentId: 'commitment-route-300',
       requestId: null,
@@ -200,6 +200,48 @@ describe('route refusal service', () => {
       code: 'ROUTE_REFUSAL_VALIDATION_FAILED',
       refusalType: 'business',
       httpStatus: 200,
+    });
+  });
+
+  it('returns deterministic conflict when idempotency key is reused with a different payload', async () => {
+    await service.issueRequestRefusal({
+      tenantId: 'tenant-route-alpha',
+      requestId: 'request-route-400',
+      reasonCode: 'CAPACITY_FULL',
+      reasonMessage: 'Capacity is full.',
+      alternatives: [
+        {
+          type: 'RESCHEDULE_WINDOW',
+          dateLocal: '2026-03-10',
+          dayPart: 'afternoon',
+          status: 'open',
+        },
+      ],
+      actorUserId: 'user-staff-10',
+      idempotencyKey: 'idem-route-400',
+    });
+
+    const conflict = await service.issueRequestRefusal({
+      tenantId: 'tenant-route-alpha',
+      requestId: 'request-route-400',
+      reasonCode: 'DAY_PART_NOT_AVAILABLE',
+      reasonMessage: 'Different payload with same key.',
+      alternatives: [
+        {
+          type: 'CALLBACK_PATH',
+          queue: 'dispatch-review',
+          expectedWithinHours: 24,
+        },
+      ],
+      actorUserId: 'user-staff-10',
+      idempotencyKey: 'idem-route-400',
+    });
+
+    expect(conflict).toMatchObject({
+      ok: false,
+      code: 'ROUTE_IDEMPOTENCY_KEY_PAYLOAD_CONFLICT',
+      refusalType: 'client',
+      httpStatus: 409,
     });
   });
 });

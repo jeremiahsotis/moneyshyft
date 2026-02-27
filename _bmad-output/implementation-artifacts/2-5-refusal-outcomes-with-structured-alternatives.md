@@ -1,6 +1,6 @@
 # Story 2.5: Refusal Outcomes with Structured Alternatives
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -42,6 +42,15 @@ so that refusal is explicit, understandable, and actionable.
   - [x] Preserve envelope semantics for refusal responses.
 - [x] Add contract and regression tests (AC: 1, 2)
   - [x] Validate refusal persistence and alternatives schema consistency.
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][HIGH] Replace `InMemoryRouteRefusalStore` with durable persistence (DB-backed repository) so refusal outcomes and history survive process restarts and meet AC1 persistence expectations. [src/src/modules/route/application/refusalService.ts]
+- [x] [AI-Review][HIGH] Add authentication + capability enforcement on `/api/v1/route/staff/*` refusal/history endpoints; current handlers accept unauthenticated requests. [src/src/modules/route/api/router.ts]
+- [x] [AI-Review][HIGH] Remove tenant spoof path from refusal endpoints by rejecting `x-tenant-id` fallback when authenticated tenant context is absent. [src/src/modules/route/api/router.ts]
+- [x] [AI-Review][HIGH] Emit durable audit/event-outbox records for refusal writes instead of in-memory timeline-only events to satisfy auditable write requirements. [src/src/modules/route/infrastructure/refusalStore.ts]
+- [x] [AI-Review][MEDIUM] Enforce idempotency-key payload consistency (return refusal/conflict on key reuse with different payload) instead of replaying first write silently. [src/src/modules/route/infrastructure/refusalStore.ts]
+- [x] [AI-Review][MEDIUM] Add API tests covering unauthenticated refusal attempts and tenant-header spoof attempts to lock security behavior. [src/src/routes/api/v1/__tests__/route.refusal.test.ts]
 
 ## Dev Notes
 
@@ -117,22 +126,32 @@ GPT-5 Codex
 - Added route API endpoints for request refusal, commitment refusal, request history, and commitment history.
 - Preserved business-refusal envelope semantics (`HTTP 200`, `ok=false`) for refusal validation failures.
 - Added unit tests (contracts + service), API contract/regression tests, and updated route registration tests.
+- Replaced refusal persistence with durable Knex-backed storage and added migration for route refusal outcomes, lifecycle events, idempotency keys, and outbox records.
+- Hardened route refusal staff endpoints with authentication + RBAC capability checks and removed `x-tenant-id` fallback trust path.
+- Added deterministic idempotency-key payload conflict handling (`409`) and regression coverage for key-reuse mismatch.
+- Added API security regression coverage for unauthenticated refusal attempts and tenant-header spoof attempts.
 
 ### File List
 
-- _bmad-output/implementation-artifacts/sprint-status.yaml
 - _bmad-output/implementation-artifacts/2-5-refusal-outcomes-with-structured-alternatives.md
-- src/src/__tests__/app-entrypoint-kernel.test.ts
-- src/src/api/registerRoutes.ts
-- src/src/modules/route/__tests__/refusalContracts.test.ts
+- _bmad-output/implementation-artifacts/sprint-status.yaml
 - src/src/modules/route/__tests__/refusalService.test.ts
 - src/src/modules/route/api/router.ts
 - src/src/modules/route/application/refusalService.ts
-- src/src/modules/route/domain/refusal.ts
 - src/src/modules/route/infrastructure/refusalStore.ts
+- src/src/migrations/20260227170000_create_route_refusal_persistence.ts
 - src/src/routes/api/v1/__tests__/route.refusal.test.ts
-- src/src/routes/api/v1/route.ts
+
+## Senior Developer Review (AI)
+
+- Reviewer: Jeremiah (AI)
+- Date: 2026-02-27
+- Outcome: Resolved
+- Summary: Original review found 4 High, 2 Medium, 0 Low issues. All six findings are now remediated in code and tests.
+- Validation: `cd src && npm test -- src/modules/route/__tests__/refusalContracts.test.ts src/modules/route/__tests__/refusalService.test.ts src/routes/api/v1/__tests__/route.refusal.test.ts src/__tests__/app-entrypoint-kernel.test.ts` (4/4 suites passed, 22/22 tests passed after remediation).
 
 ## Change Log
 
 - 2026-02-27: Implemented Story 2.5 refusal outcomes with structured alternatives, idempotent refusal persistence, lifecycle history endpoints, and contract/regression test coverage.
+- 2026-02-27: Senior Developer Review (AI) completed; added 6 follow-up action items and set story status to in-progress pending security/persistence/audit fixes.
+- 2026-02-27: Resolved all 6 review findings: durable refusal persistence + outbox, auth/capability enforcement, tenant spoof hardening, idempotency conflict handling, and security regression tests.
