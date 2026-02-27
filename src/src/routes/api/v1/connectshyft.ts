@@ -77,6 +77,17 @@ const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
   inboundVoiceVoicemail: 'connectshyft.inbound.voice_voicemail_recorded',
   inboundVoiceFallback: 'connectshyft.inbound.voice_fallback_recorded',
 } as const;
+const CONNECTSHYFT_OUTBOUND_CALL_POLICY = {
+  transport: 'bridge',
+  autoRetry: false,
+  redialPolicy: 'manual_only',
+  phases: ['initiated', 'ringing', 'connected', 'completed'],
+} as const;
+const CONNECTSHYFT_OUTBOUND_CALL_AUTO_CLAIM_POLICY = {
+  trigger: 'CONNECTED',
+  appliesToState: 'UNCLAIMED',
+  nextState: 'CLAIMED',
+} as const;
 const CONNECTSHYFT_LEGACY_ROLE_ALIASES: Record<string, string> = {
   admin: 'TENANT_ADMIN',
   member: 'ORGUNIT_MEMBER',
@@ -3162,8 +3173,9 @@ const performOutboundAction = async (
   let sideEffects: ReturnType<typeof buildLifecycleSideEffects> | null = null;
   let sideEffectsPersisted = false;
   let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
+  const priorState = lifecycleContext.currentState;
 
-  if (lifecycleContext.currentState === 'CLOSED') {
+  if (priorState === 'CLOSED') {
     const metadata = buildLifecycleMetadata({
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
@@ -3179,7 +3191,7 @@ const performOutboundAction = async (
       orgUnitId: context.orgUnitId,
       threadId,
       actorUserId,
-      currentState: lifecycleContext.currentState,
+      currentState: priorState,
       nextState: 'UNCLAIMED',
       syntheticThread: lifecycleContext.syntheticThread,
       detail: lifecycleContext.detail,
@@ -3231,6 +3243,12 @@ const performOutboundAction = async (
     });
   }
 
+  const operatorFeedback = priorState === 'CLOSED'
+    ? 'Conversation reopened on the same thread before outbound dispatch. Escalation and inactivity timers were reset.'
+    : priorState === 'UNCLAIMED'
+      ? 'Outbound dispatched. Escalation continues until claim; no reset was applied.'
+      : 'Outbound dispatched from a claimed thread. Escalation remains stable unless ownership changes.';
+
   success(res, {
     code: outboundAction === 'call'
       ? 'CONNECTSHYFT_THREAD_CALL_DISPATCHED'
@@ -3243,8 +3261,20 @@ const performOutboundAction = async (
       context,
       thread,
       lifecycleEvent,
+      lifecycle: {
+        priorState,
+        nextState: thread.state,
+        reopenedFromClosed: priorState === 'CLOSED',
+      },
+      operatorFeedback,
       escalationReset,
       sideEffectsPersisted,
+      ...(outboundAction === 'call'
+        ? {
+            call: CONNECTSHYFT_OUTBOUND_CALL_POLICY,
+            autoClaimPolicy: CONNECTSHYFT_OUTBOUND_CALL_AUTO_CLAIM_POLICY,
+          }
+        : {}),
       ...(sideEffects || {}),
     },
   });

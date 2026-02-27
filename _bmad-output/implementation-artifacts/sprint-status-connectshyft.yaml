@@ -64,7 +64,7 @@ development_status:
   c-5-deterministic-escalation-scheduler-with-claim-only-reset: ready-for-dev
   epic-c-retrospective: optional
   epic-d: in-progress
-  d-1-outbound-sms-call-actions-that-preserve-escalation-semantics: ready-for-dev
+  d-1-outbound-sms-call-actions-that-preserve-escalation-semantics: review
   d-2-preference-override-enforcement-for-outbound-sms: ready-for-dev
   d-3-outbound-audit-outbox-and-refusal-envelope-integration: ready-for-dev
   d-4-operator-interaction-contracts-for-outbound-safety: ready-for-dev

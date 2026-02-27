@@ -1,15 +1,12 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryD.fixture';
 
-const D1_IMPLEMENTATION_GAP =
-  'Story d.1 remains ready-for-dev: escalation-preserving outbound semantics and bridge-call orchestration contracts are not fully implemented.';
-
 test.describe(
   'Story d.1 outbound sms/call actions that preserve escalation semantics (Automate API Expansion)',
   () => {
     test.describe.configure({ mode: 'serial' });
 
-    test.fixme(
+    test(
       '[P0] outbound call/message on UNCLAIMED preserves escalation stage and returns explicit claim-only reset guidance @P0',
       async ({
         request,
@@ -18,8 +15,6 @@ test.describe(
         storyDCallPayload,
         storyDOutboundMessagePayload,
       }) => {
-        expect(D1_IMPLEMENTATION_GAP).toContain('ready-for-dev');
-
         const detailResponse = await apiRequest(request, {
           method: 'GET',
           path: `${storyDContext.paths.threads}/${storyDContext.threadIds.unclaimed}`,
@@ -76,7 +71,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P0] outbound actions from CLOSED reopen same thread id, emit thread_reopened_by_user, and reset inactivity/escalation before dispatch @P0',
       async ({
         request,
@@ -125,7 +120,7 @@ test.describe(
       },
     );
 
-    test.fixme(
+    test(
       '[P1] outbound call orchestration is bridge-only with no auto-redial, and CONNECTED transitions auto-claim only from allowed call path @P1',
       async ({ request, storyDContext, storyDMemberHeaders, storyDCallPayload }) => {
         const response = await apiRequest(request, {
@@ -145,17 +140,19 @@ test.describe(
               transport: 'bridge',
               autoRetry: false,
               redialPolicy: 'manual_only',
+              phases: ['initiated', 'ringing', 'connected', 'completed'],
             },
             autoClaimPolicy: {
               trigger: 'CONNECTED',
               appliesToState: 'UNCLAIMED',
+              nextState: 'CLAIMED',
             },
           },
         });
       },
     );
 
-    test.fixme(
+    test(
       '[P1] inbound voice/fallback events on CLOSED preserve CLOSED lifecycle and do not auto-reopen @P1',
       async ({
         request,
