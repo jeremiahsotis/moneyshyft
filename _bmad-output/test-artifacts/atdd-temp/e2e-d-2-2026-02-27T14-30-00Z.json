@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "story_id": "d-2",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/d-2-preference-override-enforcement-for-outbound-sms.atdd.spec.ts",
+      "expected_to_fail": true,
+      "priority_coverage": { "P0": 2, "P1": 2, "P2": 0, "P3": 0 }
+    }
+  ],
+  "fixture_needs": ["override-policy-modal", "policy-refusal-banner"],
+  "knowledge_fragments_used": ["selector-resilience", "timing-debugging", "test-quality"],
+  "test_count": 4,
+  "tdd_phase": "RED",
+  "summary": "Generated 4 failing E2E tests for story d-2."
+}

@@ -35,7 +35,7 @@
 # - Do not set development_status to "blocked"; policy scripts enforce a fixed status set.
 # - Track blocked stories in blocked_story_registry and maintain next_unblocked_queue.
 
-generated: 2026-02-26
+generated: 2026-02-27
 project: ConnectShyft
 project_key: NOKEY
 project_lane: connectshyft
@@ -67,7 +67,7 @@ development_status:
   d-1-outbound-sms-call-actions-that-preserve-escalation-semantics: review
   d-2-preference-override-enforcement-for-outbound-sms: in-progress
   d-3-outbound-audit-outbox-and-refusal-envelope-integration: review
-  d-4-operator-interaction-contracts-for-outbound-safety: ready-for-dev
+  d-4-operator-interaction-contracts-for-outbound-safety: review
   epic-d-retrospective: optional
   epic-e: in-progress
   e-1-verified-webhook-ingress-and-deterministic-context-routing: backlog
@@ -98,7 +98,7 @@ change_controls:
   c3_contract_hardening_status: pending
   c3_contract_hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md#41-stories
   d_contract_hardening_required: true
-  d_contract_hardening_status: pending
+  d_contract_hardening_status: in-progress
   d_contract_hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md#41-stories
   planning_artifact_harmonization_required: true
   planning_artifact_harmonization_status: in-progress

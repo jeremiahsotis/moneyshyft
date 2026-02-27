@@ -175,6 +175,54 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-503',
     summary: 'Closed thread awaiting explicit outbound reopen',
   },
+  'thread-d4-unclaimed-1001': {
+    tenantId: 'tenant-connectshyft-d4',
+    orgUnitId: 'org-connectshyft-d4-east',
+    state: 'UNCLAIMED',
+    claimedByUserId: null,
+    escalationStage: 2,
+    nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+    neighborId: 'neighbor-connectshyft-d4-1001',
+    lastInboundCsNumberId: 'cs-number-d4-401',
+    preferredOutboundCsNumberId: 'cs-number-d4-501',
+    summary: 'Unclaimed intake ready for policy-safe outbound action',
+  },
+  'thread-d4-claimed-1002': {
+    tenantId: 'tenant-connectshyft-d4',
+    orgUnitId: 'org-connectshyft-d4-east',
+    state: 'CLAIMED',
+    claimedByUserId: 'user-connectshyft-d4-other-operator',
+    escalationStage: 1,
+    nextEvaluationAtUtc: null,
+    neighborId: 'neighbor-connectshyft-d4-1002',
+    lastInboundCsNumberId: 'cs-number-d4-402',
+    preferredOutboundCsNumberId: 'cs-number-d4-502',
+    summary: 'Claimed thread eligible for close action',
+  },
+  'thread-d4-closed-1003': {
+    tenantId: 'tenant-connectshyft-d4',
+    orgUnitId: 'org-connectshyft-d4-east',
+    state: 'CLOSED',
+    claimedByUserId: null,
+    escalationStage: 0,
+    nextEvaluationAtUtc: null,
+    neighborId: 'neighbor-connectshyft-d4-1003',
+    lastInboundCsNumberId: 'cs-number-d4-403',
+    preferredOutboundCsNumberId: 'cs-number-d4-503',
+    summary: 'Closed thread awaiting explicit same-thread reopen',
+  },
+  'thread-d4-unclaimed-prefers-no-1004': {
+    tenantId: 'tenant-connectshyft-d4',
+    orgUnitId: 'org-connectshyft-d4-east',
+    state: 'UNCLAIMED',
+    claimedByUserId: null,
+    escalationStage: 1,
+    nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+    neighborId: 'neighbor-connectshyft-d4-pref-no-1004',
+    lastInboundCsNumberId: 'cs-number-d4-404',
+    preferredOutboundCsNumberId: 'cs-number-d4-504',
+    summary: 'Unclaimed thread with prefers_texting=NO policy.',
+  },
   'thread-c5-unclaimed-1001': {
     tenantId: 'tenant-connectshyft-c5',
     orgUnitId: 'org-connectshyft-c5-east',
@@ -3668,6 +3716,7 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
         bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
       },
       thread,
+      actions: thread.actions,
       latencyBudgetsMs: {
         p95: CONNECTSHYFT_INBOX_P95_BUDGET_MS,
         p99: CONNECTSHYFT_INBOX_P99_BUDGET_MS,
@@ -4010,8 +4059,9 @@ const performOutboundAction = async (
     });
 
     if (!overrideValidation.ok) {
+      const isOverrideRequired = overrideValidation.reason === 'required';
       refusal(res, {
-        code: overrideValidation.reason === 'required'
+        code: isOverrideRequired
           ? 'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED'
           : 'CONNECTSHYFT_SMS_OVERRIDE_REASON_INVALID',
         message: overrideValidation.message,
@@ -4026,6 +4076,17 @@ const performOutboundAction = async (
             overrideRequired: smsPreferenceDecision.prefersTexting === 'NO',
             overrideAccepted: false,
             allowedOverrideReasons: overrideValidation.allowedReasons,
+          },
+          uiFeedback: {
+            severity: 'warning',
+            ariaLive: 'assertive',
+            messageKey: isOverrideRequired
+              ? 'connectshyft.override.required'
+              : 'connectshyft.override.invalid',
+            requiresAction: true,
+            actionLabel: 'Add override reason',
+            accessibilityHint: 'Open override reason selector and resubmit the outbound message.',
+            message: overrideValidation.message,
           },
           sideEffects: {
             messageDispatched: false,
@@ -4204,6 +4265,27 @@ const performOutboundAction = async (
     : priorState === 'UNCLAIMED'
       ? 'Outbound dispatched. Escalation continues until claim; no reset was applied.'
       : 'Outbound dispatched from a claimed thread. Escalation remains stable unless ownership changes.';
+  const operatorFeedbackHeading = priorState === 'CLOSED'
+    ? 'Conversation reopened before outbound dispatch.'
+    : 'Outbound dispatch completed.';
+  const uiFeedbackMessage = outboundAction === 'message'
+    && smsPreferenceDecision?.prefersTexting === 'NO'
+    && validatedSmsOverride
+    ? 'Override applied. Outbound message dispatched.'
+    : operatorFeedback;
+  const uiFeedbackMessageKey = priorState === 'CLOSED'
+    ? 'connectshyft.thread.reopened_dispatch_success'
+    : outboundAction === 'call'
+      ? 'connectshyft.outbound.call.dispatched'
+      : 'connectshyft.outbound.message.dispatched';
+  const uiFeedback = {
+    severity: 'success' as const,
+    ariaLive: 'polite' as const,
+    messageKey: uiFeedbackMessageKey,
+    message: uiFeedbackMessage,
+    heading: operatorFeedbackHeading,
+    hiddenTransition: false,
+  };
 
   success(res, {
     code: outboundAction === 'call'
@@ -4223,6 +4305,11 @@ const performOutboundAction = async (
         reopenedFromClosed: priorState === 'CLOSED',
       },
       operatorFeedback,
+      operatorFeedbackMeta: {
+        heading: operatorFeedbackHeading,
+        hiddenTransition: false,
+      },
+      uiFeedback,
       escalationReset,
       sideEffectsPersisted,
       ...(outboundAction === 'call'

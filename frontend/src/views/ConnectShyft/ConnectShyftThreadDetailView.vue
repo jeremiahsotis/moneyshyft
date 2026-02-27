@@ -129,6 +129,14 @@
             </p>
 
             <p
+              v-if="showPreferenceOverrideRequiredChip"
+              data-testid="connectshyft-preference-override-required-chip"
+              class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
+            >
+              Override required for outbound SMS. Add an approved reason before sending.
+            </p>
+
+            <p
               v-if="showActionRefusalBanner"
               data-testid="connectshyft-thread-action-refusal-banner"
               class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
@@ -137,11 +145,47 @@
             </p>
 
             <p
+              v-if="policyRefusalBanner"
+              data-testid="connectshyft-policy-refusal-banner"
+              role="alert"
+              aria-live="assertive"
+              class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
+            >
+              {{ policyRefusalBanner }}
+            </p>
+
+            <p
+              v-if="policySuccessBanner"
+              data-testid="connectshyft-policy-success-banner"
+              role="status"
+              aria-live="polite"
+              class="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-base text-emerald-900"
+            >
+              {{ policySuccessBanner }}
+            </p>
+
+            <p
+              v-if="policySuccessAuditReason"
+              data-testid="connectshyft-preference-override-audit-chip"
+              class="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-base font-medium text-emerald-900"
+            >
+              Override reason: {{ policySuccessAuditReason }}
+            </p>
+
+            <p
               v-if="lifecycleToast"
               data-testid="connectshyft-thread-reopened-toast"
               class="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-base text-emerald-900"
             >
               {{ lifecycleToast }}
+            </p>
+
+            <p
+              v-if="hiddenTransitionWarning"
+              data-testid="connectshyft-hidden-transition-warning"
+              class="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-base text-rose-900"
+            >
+              Hidden lifecycle transition detected. Refresh thread context and retry.
             </p>
 
             <div data-testid="connectshyft-thread-actions" class="flex flex-wrap gap-2">
@@ -236,6 +280,100 @@
             </section>
 
             <section
+              v-if="preferenceOverrideModalOpen"
+              data-testid="connectshyft-preference-override-modal"
+              class="rounded border border-slate-300 bg-slate-50 p-4"
+            >
+              <p class="text-base text-slate-900">
+                Outbound SMS policy requires an approved override reason.
+              </p>
+              <label
+                class="mt-3 block text-base text-slate-700"
+                for="connectshyft-preference-override-reason-select"
+              >
+                Override reason
+              </label>
+              <select
+                id="connectshyft-preference-override-reason-select"
+                v-model="preferenceOverrideReason"
+                data-testid="connectshyft-preference-override-reason-select"
+                aria-label="Override reason"
+                :class="[
+                  'mt-2 min-h-[44px] w-full rounded border border-slate-300 px-3 py-2 text-base text-slate-900',
+                  focusRingClass,
+                ]"
+                :style="tapTargetStyle"
+                :disabled="actionPending"
+              >
+                <option value="">Select override reason</option>
+                <option
+                  v-for="reason in preferenceOverrideReasonOptions"
+                  :key="reason"
+                  :value="reason"
+                >
+                  {{ formatOverrideReason(reason) }}
+                </option>
+              </select>
+
+              <label
+                class="mt-3 block text-base text-slate-700"
+                for="connectshyft-preference-override-note-input"
+              >
+                Override note (optional)
+              </label>
+              <textarea
+                id="connectshyft-preference-override-note-input"
+                v-model="preferenceOverrideNote"
+                data-testid="connectshyft-preference-override-note-input"
+                rows="3"
+                :class="[
+                  'mt-2 min-h-[44px] w-full rounded border border-slate-300 px-3 py-2 text-base text-slate-900',
+                  focusRingClass,
+                ]"
+                :style="tapTargetStyle"
+                :disabled="actionPending"
+              />
+
+              <p
+                v-if="preferenceOverrideError"
+                data-testid="connectshyft-preference-override-error"
+                role="alert"
+                aria-live="assertive"
+                class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
+              >
+                {{ preferenceOverrideError }}
+              </p>
+
+              <div class="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  data-testid="connectshyft-preference-override-submit"
+                  :class="[
+                    'min-h-[44px] rounded bg-slate-900 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
+                    focusRingClass,
+                  ]"
+                  :style="tapTargetStyle"
+                  :disabled="preferenceOverrideSubmitDisabled"
+                  @click="submitPreferenceOverride"
+                >
+                  {{ actionPending ? 'Sending...' : 'Send with override' }}
+                </button>
+                <button
+                  type="button"
+                  :class="[
+                    'min-h-[44px] rounded border border-slate-300 px-4 py-2 text-base font-medium text-slate-700',
+                    focusRingClass,
+                  ]"
+                  :style="tapTargetStyle"
+                  :disabled="actionPending"
+                  @click="closePreferenceOverrideModal"
+                >
+                  Cancel
+                </button>
+              </div>
+            </section>
+
+            <section
               v-if="closeModalOpen"
               data-testid="connectshyft-close-thread-modal"
               class="rounded border border-slate-300 bg-slate-50 p-4"
@@ -298,9 +436,11 @@ import {
 } from '@/features/connectshyft/readContracts';
 import {
   CONNECTSHYFT_ACCESSIBILITY_LOCKS,
+  CONNECTSHYFT_DEFAULT_SMS_OVERRIDE_REASONS,
   CONNECTSHYFT_FOCUS_RING_CLASS,
   createConnectShyftFeedback,
   resolveConnectShyftThreadActionContract,
+  resolveSafeVisibleThreadActions,
   sanitizeConnectShyftOperatorCopy,
   type ConnectShyftFeedback,
   type ConnectShyftFeedbackTaxonomy,
@@ -312,10 +452,20 @@ const threadDetail = ref<ConnectShyftThreadDetail | null>(null);
 const detailLoadError = ref('');
 const lifecycleToast = ref('');
 const actionError = ref('');
+const hiddenTransitionWarning = ref(false);
 const actionPending = ref(false);
 const closeModalOpen = ref(false);
 const inactivityReset = ref(false);
 const feedbackBanner = ref<ConnectShyftFeedback | null>(null);
+const policyRefusalBanner = ref('');
+const policySuccessBanner = ref('');
+const policySuccessAuditReason = ref('');
+const preferenceOverrideModalOpen = ref(false);
+const preferenceOverrideReason = ref('');
+const preferenceOverrideNote = ref('');
+const preferenceOverrideError = ref('');
+const preferenceOverrideAllowedReasons = ref<string[]>([]);
+const pendingPreferenceOverrideAction = ref<'Text' | 'Send Message' | null>(null);
 const addNeighborFormOpen = ref(false);
 const addNeighborPhone = ref('');
 const addNeighborSubmitting = ref(false);
@@ -326,6 +476,12 @@ const bodyTextStyle = {
 const tapTargetStyle = {
   minHeight: `${CONNECTSHYFT_ACCESSIBILITY_LOCKS.minTapTargetPx}px`,
 };
+
+const CONNECTSHYFT_OVERRIDE_REFUSAL_CODES = new Set([
+  'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED',
+  'CONNECTSHYFT_SMS_OVERRIDE_REASON_INVALID',
+  'CONNECTSHYFT_OUTBOUND_OVERRIDE_REASON_REQUIRED',
+]);
 
 const role = computed(() => {
   const rawRole = typeof route.query.tenantRole === 'string'
@@ -374,6 +530,51 @@ const clearFeedbackBanner = (): void => {
   feedbackBanner.value = null;
 };
 
+const clearPolicyBanners = (): void => {
+  policyRefusalBanner.value = '';
+  policySuccessBanner.value = '';
+  policySuccessAuditReason.value = '';
+};
+
+const resetPreferenceOverrideState = (): void => {
+  preferenceOverrideReason.value = '';
+  preferenceOverrideNote.value = '';
+  preferenceOverrideError.value = '';
+  preferenceOverrideAllowedReasons.value = [];
+};
+
+const closePreferenceOverrideModal = (): void => {
+  preferenceOverrideModalOpen.value = false;
+  pendingPreferenceOverrideAction.value = null;
+  resetPreferenceOverrideState();
+};
+
+const formatOverrideReason = (reason: string): string => {
+  return reason
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (token) => token.toUpperCase());
+};
+
+const showPreferenceOverrideRequiredChip = computed(() => {
+  return preferenceOverrideModalOpen.value
+    || pendingPreferenceOverrideAction.value !== null
+    || preferenceOverrideError.value.length > 0;
+});
+
+const preferenceOverrideReasonOptions = computed<string[]>(() => {
+  if (preferenceOverrideAllowedReasons.value.length > 0) {
+    return [...preferenceOverrideAllowedReasons.value];
+  }
+
+  return [...CONNECTSHYFT_DEFAULT_SMS_OVERRIDE_REASONS];
+});
+
+const preferenceOverrideSubmitDisabled = computed(() => {
+  return actionPending.value || preferenceOverrideReason.value.trim().length === 0;
+});
+
 const inactivityChipLabel = computed(() => {
   return inactivityReset.value ? 'Inactivity reset' : 'Inactivity stable';
 });
@@ -395,7 +596,14 @@ const visibleActions = computed<string[]>(() => {
     return [];
   }
 
-  return threadDetail.value ? [...threadDetail.value.actions] : [];
+  if (!threadDetail.value) {
+    return [];
+  }
+
+  return resolveSafeVisibleThreadActions({
+    state: threadDetail.value.state,
+    rawActions: threadDetail.value.actions,
+  });
 });
 
 const showActionRefusalBanner = computed(() => {
@@ -501,6 +709,10 @@ const applyThreadUpdate = (payload: unknown): void => {
     ? candidate.escalation.stage
     : current.escalationStage;
   const nextActions = parseThreadActions(candidate.actions);
+  const resolvedActions = resolveSafeVisibleThreadActions({
+    state: nextState,
+    rawActions: nextActions || current.actions,
+  });
 
   threadDetail.value = {
     ...current,
@@ -517,16 +729,83 @@ const applyThreadUpdate = (payload: unknown): void => {
       : typeof candidate.preferred_outbound_cs_number_id === 'string'
         ? candidate.preferred_outbound_cs_number_id
         : current.preferredOutboundCsNumberId,
-    actions: nextActions || current.actions,
+    actions: resolvedActions,
     lifecycle: {
       reopenedByInbound: current.lifecycle?.reopenedByInbound === true,
     },
   };
 };
 
-const executeThreadAction = async (action: string): Promise<void> => {
+const resolveOverrideAllowedReasons = (payload: unknown): string[] => {
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+
+  const candidate = payload as {
+    preferencePolicy?: {
+      allowedOverrideReasons?: unknown;
+    };
+    allowedOverrideReasons?: unknown;
+  };
+
+  const fromPolicy = Array.isArray(candidate.preferencePolicy?.allowedOverrideReasons)
+    ? candidate.preferencePolicy?.allowedOverrideReasons
+    : Array.isArray(candidate.allowedOverrideReasons)
+      ? candidate.allowedOverrideReasons
+      : [];
+
+  return fromPolicy
+    .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+    .filter((entry) => entry.length > 0);
+};
+
+const isPreferenceOverrideRefusal = (payload: {
+  code?: unknown;
+  data?: unknown;
+}): boolean => {
+  const code = typeof payload.code === 'string' ? payload.code : '';
+  if (CONNECTSHYFT_OVERRIDE_REFUSAL_CODES.has(code)) {
+    return true;
+  }
+
+  if (!payload.data || typeof payload.data !== 'object') {
+    return false;
+  }
+
+  const data = payload.data as {
+    preferencePolicy?: {
+      overrideRequired?: unknown;
+    };
+  };
+
+  return data.preferencePolicy?.overrideRequired === true;
+};
+
+const openPreferenceOverrideModal = (input: {
+  action: 'Text' | 'Send Message';
+  message: string;
+  allowedReasons: string[];
+}): void => {
+  if (pendingPreferenceOverrideAction.value !== input.action) {
+    preferenceOverrideReason.value = '';
+    preferenceOverrideNote.value = '';
+  }
+
+  pendingPreferenceOverrideAction.value = input.action;
+  preferenceOverrideModalOpen.value = true;
+  preferenceOverrideError.value = input.message;
+  preferenceOverrideAllowedReasons.value = input.allowedReasons;
+};
+
+const executeThreadAction = async (
+  action: string,
+  options: {
+    overrideReason?: string | null;
+    overrideNote?: string | null;
+  } = {},
+): Promise<boolean> => {
   if (!threadDetail.value || !threadId.value) {
-    return;
+    return false;
   }
 
   if (isViewerRole.value) {
@@ -536,7 +815,7 @@ const executeThreadAction = async (action: string): Promise<void> => {
       actionError.value,
       'Lifecycle actions are unavailable for your access level.',
     );
-    return;
+    return false;
   }
 
   const basePath = `/connectshyft/threads/${encodeURIComponent(threadId.value)}`;
@@ -567,13 +846,17 @@ const executeThreadAction = async (action: string): Promise<void> => {
       ...payload,
       channel: 'sms',
       body: 'Operator outbound message.',
+      overrideReason: options.overrideReason || undefined,
+      overrideNote: options.overrideNote || undefined,
     };
   } else {
     actionError.value = `Unsupported action: ${action}`;
     setFeedbackBanner('error', actionError.value, 'Unsupported thread action.');
-    return;
+    return false;
   }
 
+  clearPolicyBanners();
+  hiddenTransitionWarning.value = false;
   actionPending.value = true;
   try {
     const response = await api.post(path, payload, {
@@ -582,25 +865,60 @@ const executeThreadAction = async (action: string): Promise<void> => {
 
     const envelope = (response.data || {}) as {
       ok?: boolean;
+      code?: unknown;
       message?: string;
       data?: {
         thread?: unknown;
         lifecycleEvent?: unknown;
         operatorFeedback?: unknown;
+        operatorFeedbackMeta?: unknown;
+        preferencePolicy?: {
+          override?: {
+            reason?: unknown;
+          };
+        };
+        uiFeedback?: {
+          message?: unknown;
+          heading?: unknown;
+          hiddenTransition?: unknown;
+        };
       };
     };
 
     if (envelope.ok !== true) {
-      actionError.value = sanitizeConnectShyftOperatorCopy(
+      const refusalMessage = sanitizeConnectShyftOperatorCopy(
         envelope.message,
         'Unable to complete that thread action.',
       );
-      setFeedbackBanner('refusal', actionError.value, 'Unable to complete that thread action.');
-      return;
+      const requiresOverride = isPreferenceOverrideRefusal({
+        code: envelope.code,
+        data: envelope.data,
+      });
+
+      if (requiresOverride && (action === 'Send Message' || action === 'Text')) {
+        const nextStepMessage = `${refusalMessage} Add override reason and submit again.`;
+        actionError.value = '';
+        policyRefusalBanner.value = nextStepMessage;
+        setFeedbackBanner('refusal', refusalMessage, 'Override reason required before sending SMS.');
+        openPreferenceOverrideModal({
+          action,
+          message: refusalMessage,
+          allowedReasons: resolveOverrideAllowedReasons(envelope.data),
+        });
+        return false;
+      }
+
+      actionError.value = refusalMessage;
+      if (action === 'Send Message' || action === 'Text') {
+        policyRefusalBanner.value = refusalMessage;
+      }
+      setFeedbackBanner('refusal', refusalMessage, 'Unable to complete that thread action.');
+      return false;
     }
 
     actionError.value = '';
     lifecycleToast.value = '';
+    preferenceOverrideError.value = '';
 
     applyThreadUpdate(envelope.data?.thread);
 
@@ -608,8 +926,29 @@ const executeThreadAction = async (action: string): Promise<void> => {
       ? envelope.data.lifecycleEvent
       : '';
 
+    const operatorFeedbackMeta = envelope.data?.operatorFeedbackMeta
+      && typeof envelope.data.operatorFeedbackMeta === 'object'
+      ? envelope.data.operatorFeedbackMeta as {
+        heading?: unknown;
+        hiddenTransition?: unknown;
+      }
+      : envelope.data?.uiFeedback
+        && typeof envelope.data.uiFeedback === 'object'
+        ? envelope.data.uiFeedback as {
+          heading?: unknown;
+          hiddenTransition?: unknown;
+        }
+        : null;
+
+    const hiddenTransitionDetected = operatorFeedbackMeta?.hiddenTransition === true;
+    hiddenTransitionWarning.value = hiddenTransitionDetected;
+
     if (lifecycleEvent.includes('thread_reopened_by_user')) {
-      lifecycleToast.value = 'Conversation reopened. Escalation and inactivity timers were reset.';
+      const reopenHeading = sanitizeConnectShyftOperatorCopy(
+        operatorFeedbackMeta?.heading,
+        'Conversation reopened. Escalation and inactivity timers were reset.',
+      );
+      lifecycleToast.value = reopenHeading;
       inactivityReset.value = true;
       if (threadDetail.value) {
         threadDetail.value.escalationStage = 0;
@@ -621,22 +960,64 @@ const executeThreadAction = async (action: string): Promise<void> => {
     const operatorFeedback = typeof envelope.data?.operatorFeedback === 'string'
       ? envelope.data.operatorFeedback
       : '';
+    const uiFeedbackMessage = sanitizeConnectShyftOperatorCopy(
+      envelope.data?.uiFeedback?.message,
+      operatorFeedback || envelope.message || 'Thread action completed.',
+    );
+
+    const overrideReason = typeof envelope.data?.preferencePolicy?.override?.reason === 'string'
+      ? envelope.data.preferencePolicy.override.reason
+      : '';
+    if (overrideReason) {
+      policySuccessAuditReason.value = overrideReason.toUpperCase();
+      policySuccessBanner.value = 'Override applied. Outbound message dispatched.';
+      preferenceOverrideModalOpen.value = false;
+      pendingPreferenceOverrideAction.value = null;
+      resetPreferenceOverrideState();
+    } else if (action === 'Send Message' || action === 'Text' || action === 'Call') {
+      policySuccessBanner.value = uiFeedbackMessage;
+    }
 
     setFeedbackBanner(
       'success',
-      operatorFeedback || envelope.message,
+      uiFeedbackMessage,
       'Thread action completed.',
     );
+    return true;
   } catch (error: unknown) {
     const payload = (error as { response?: { data?: { message?: unknown } } })?.response?.data;
     actionError.value = sanitizeConnectShyftOperatorCopy(
       payload?.message,
       'Unable to complete that thread action.',
     );
+    if (action === 'Send Message' || action === 'Text') {
+      policyRefusalBanner.value = `${actionError.value} Retry after confirming override details.`;
+    }
     setFeedbackBanner('error', actionError.value, 'Unable to complete that thread action.');
+    return false;
   } finally {
     actionPending.value = false;
   }
+};
+
+const submitPreferenceOverride = async (): Promise<void> => {
+  const pendingAction = pendingPreferenceOverrideAction.value;
+  if (!pendingAction) {
+    return;
+  }
+
+  const normalizedReason = preferenceOverrideReason.value.trim();
+  if (!normalizedReason) {
+    preferenceOverrideError.value = 'Override reason is required before sending SMS.';
+    policyRefusalBanner.value = 'Override reason required. Select a reason and submit again.';
+    return;
+  }
+
+  preferenceOverrideError.value = '';
+  await executeThreadAction(pendingAction, {
+    overrideReason: normalizedReason,
+    overrideNote: preferenceOverrideNote.value.trim() || null,
+  });
 };
 
 const closeAddNeighborForm = (): void => {
@@ -719,6 +1100,15 @@ const handleThreadAction = (action: string): void => {
     return;
   }
 
+  if (
+    (action === 'Send Message' || action === 'Text')
+    && pendingPreferenceOverrideAction.value !== null
+    && !preferenceOverrideModalOpen.value
+  ) {
+    preferenceOverrideModalOpen.value = true;
+    return;
+  }
+
   void executeThreadAction(action);
 };
 
@@ -728,6 +1118,8 @@ const refreshThreadDetail = async () => {
     threadDetail.value = null;
     detailLoadError.value = '';
     closeAddNeighborForm();
+    closePreferenceOverrideModal();
+    clearPolicyBanners();
     clearFeedbackBanner();
     return;
   }
@@ -745,18 +1137,27 @@ const refreshThreadDetail = async () => {
       'Unable to load thread detail.',
     );
     closeAddNeighborForm();
+    closePreferenceOverrideModal();
+    clearPolicyBanners();
     return;
   }
 
   threadDetail.value = {
     ...detailResult.thread,
+    actions: resolveSafeVisibleThreadActions({
+      state: detailResult.thread.state,
+      rawActions: detailResult.thread.actions,
+    }),
   };
   detailLoadError.value = '';
   lifecycleToast.value = '';
   actionError.value = '';
+  hiddenTransitionWarning.value = false;
   closeModalOpen.value = false;
   inactivityReset.value = false;
   closeAddNeighborForm();
+  closePreferenceOverrideModal();
+  clearPolicyBanners();
   clearFeedbackBanner();
 };
 

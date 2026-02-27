@@ -6,6 +6,8 @@ export type ConnectShyftFeedback = {
   announcement: string;
 };
 
+export type ConnectShyftCanonicalThreadState = 'UNCLAIMED' | 'CLAIMED' | 'CLOSED';
+
 type ConnectShyftActionContract = {
   label: string;
   ariaLabel: string;
@@ -28,8 +30,28 @@ export const CONNECTSHYFT_FORBIDDEN_COPY_TOKENS = [
   'role_id',
 ] as const;
 
+const CONNECTSHYFT_CANONICAL_STATE_ACTIONS: Record<
+  ConnectShyftCanonicalThreadState,
+  readonly string[]
+> = {
+  UNCLAIMED: ['Call', 'Text', 'Claim'],
+  CLAIMED: ['Call', 'Text', 'Close'],
+  CLOSED: ['Call', 'Send Message'],
+};
+
+export const CONNECTSHYFT_DEFAULT_SMS_OVERRIDE_REASONS = [
+  'safety-follow-up',
+  'care-plan-exception',
+  'documented-consent',
+  'critical-service-update',
+] as const;
+
 const CONNECTSHYFT_UUID_PATTERN =
   /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
+
+const isCanonicalThreadState = (value: unknown): value is ConnectShyftCanonicalThreadState => {
+  return value === 'UNCLAIMED' || value === 'CLAIMED' || value === 'CLOSED';
+};
 
 const FEEDBACK_PREFIX: Record<ConnectShyftFeedbackTaxonomy, string> = {
   success: 'Success',
@@ -164,4 +186,35 @@ export const resolveConnectShyftThreadActionContract = (
       ? `connectshyft-thread-action-${slug}`
       : 'connectshyft-thread-action-custom',
   };
+};
+
+export const resolveCanonicalStateActions = (
+  state: unknown,
+): readonly string[] => {
+  if (!isCanonicalThreadState(state)) {
+    return [];
+  }
+
+  return CONNECTSHYFT_CANONICAL_STATE_ACTIONS[state];
+};
+
+export const resolveSafeVisibleThreadActions = (input: {
+  state: unknown;
+  rawActions: readonly string[];
+}): string[] => {
+  const canonicalActions = resolveCanonicalStateActions(input.state);
+  if (!canonicalActions.length) {
+    return [];
+  }
+
+  const normalizedRawActions = input.rawActions
+    .map((action) => action.trim())
+    .filter((action) => action.length > 0);
+  const rawActionSet = new Set(normalizedRawActions);
+
+  if (input.state === 'CLAIMED' && rawActionSet.has('Take Over')) {
+    return ['Call', 'Take Over', 'Text', 'Close'];
+  }
+
+  return [...canonicalActions];
 };

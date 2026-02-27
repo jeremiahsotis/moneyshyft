@@ -121,6 +121,31 @@ describe('connectshyft read contracts', () => {
     expect(closed?.actions).toEqual(['Call', 'Send Message']);
   });
 
+  it('resolves d-4 seeded thread-detail action matrix without hidden fallback actions', () => {
+    const unclaimed = resolveConnectShyftThreadDetailContract({
+      tenantId: 'tenant-connectshyft-d4',
+      orgUnitId: 'org-connectshyft-d4-east',
+      threadId: 'thread-d4-unclaimed-1001',
+      requestedRole: 'ORGUNIT_MEMBER',
+    });
+    const claimed = resolveConnectShyftThreadDetailContract({
+      tenantId: 'tenant-connectshyft-d4',
+      orgUnitId: 'org-connectshyft-d4-east',
+      threadId: 'thread-d4-claimed-1002',
+      requestedRole: 'ORGUNIT_MEMBER',
+    });
+    const closed = resolveConnectShyftThreadDetailContract({
+      tenantId: 'tenant-connectshyft-d4',
+      orgUnitId: 'org-connectshyft-d4-east',
+      threadId: 'thread-d4-closed-1003',
+      requestedRole: 'ORGUNIT_MEMBER',
+    });
+
+    expect(unclaimed?.actions).toEqual(['Call', 'Text', 'Claim']);
+    expect(claimed?.actions).toEqual(['Call', 'Text', 'Close']);
+    expect(closed?.actions).toEqual(['Call', 'Send Message']);
+  });
+
   it('adds takeover action for privileged roles on claimed threads via contract output', () => {
     const claimedAdmin = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-c4',
