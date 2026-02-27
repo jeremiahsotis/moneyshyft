@@ -32,8 +32,10 @@
 # - Stories can be worked in parallel if team capacity allows
 # - SM typically creates next story after previous one is "done" to incorporate learnings
 # - Dev moves story to "review", then runs code-review (fresh context, different LLM recommended)
+# - Do not set development_status to "blocked"; policy scripts enforce a fixed status set.
+# - Track blocked stories in blocked_story_registry and maintain next_unblocked_queue.
 
-generated: 2026-02-24
+generated: 2026-02-27
 project: ConnectShyft
 project_key: NOKEY
 project_lane: connectshyft
@@ -41,31 +43,31 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  epic-a: in-progress
-  a-1-connectshyft-feature-flag-and-availability-guardrails: review
+  epic-a: done
+  a-1-connectshyft-feature-flag-and-availability-guardrails: done
   a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes: done
   a-3-orgunit-number-mapping-management: review
   a-4-escalation-baseline-and-recipient-configuration: review
-  a-5-capability-based-route-access-and-envelope-contract-compliance: review
-  epic-a-retrospective: optional
+  a-5-capability-based-route-access-and-envelope-contract-compliance: done
+  epic-a-retrospective: done
   epic-b: in-progress
   b-1-tenant-scoped-neighbor-creation-with-required-phone: done
   b-2-shared-tenant-identity-and-shared-phone-indicators: done
-  b-3-relationship-gated-neighbor-edits-with-provenance-audit: ready-for-dev
-  b-4-role-restricted-neighbor-merge-with-irreversible-confirmation: ready-for-dev
+  b-3-relationship-gated-neighbor-edits-with-provenance-audit: done
+  b-4-role-restricted-neighbor-merge-with-irreversible-confirmation: done
   epic-b-retrospective: optional
   epic-c: in-progress
-  c-1-core-connectshyft-thread-schema-and-lifecycle-constraints: backlog
-  c-2-thread-ensure-endpoint-with-conflict-safe-idempotency: backlog
-  c-3-inbox-and-thread-detail-read-contracts: backlog
-  c-4-claim-takeover-and-close-lifecycle-actions: backlog
-  c-5-deterministic-escalation-scheduler-with-claim-only-reset: backlog
+  c-1-core-connectshyft-thread-schema-and-lifecycle-constraints: done
+  c-2-thread-ensure-endpoint-with-conflict-safe-idempotency: in-progress
+  c-3-inbox-and-thread-detail-read-contracts: done
+  c-4-claim-takeover-and-close-lifecycle-actions: done
+  c-5-deterministic-escalation-scheduler-with-claim-only-reset: in-progress
   epic-c-retrospective: optional
-  epic-d: backlog
-  d-1-outbound-sms-call-actions-that-preserve-escalation-semantics: backlog
-  d-2-preference-override-enforcement-for-outbound-sms: backlog
-  d-3-outbound-audit-outbox-and-refusal-envelope-integration: backlog
-  d-4-operator-interaction-contracts-for-outbound-safety: backlog
+  epic-d: in-progress
+  d-1-outbound-sms-call-actions-that-preserve-escalation-semantics: review
+  d-2-preference-override-enforcement-for-outbound-sms: in-progress
+  d-3-outbound-audit-outbox-and-refusal-envelope-integration: review
+  d-4-operator-interaction-contracts-for-outbound-safety: review
   epic-d-retrospective: optional
   epic-e: in-progress
   e-1-verified-webhook-ingress-and-deterministic-context-routing: backlog
@@ -75,11 +77,17 @@ development_status:
   e-5-replay-safe-webhook-receipt-ledger-and-retention-controls: backlog
   e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: backlog
   epic-e-retrospective: optional
-  epic-ux-remediation: backlog
-  ux-r1-mobile-first-inbox-mine-thread-redesign: backlog
-  ux-r2-accessibility-and-language-hardening: backlog
-  ux-r3-voicemail-and-indicator-behavior: backlog
-  ux-r4-outbound-policy-guardrail-ui: backlog
+  epic-f: in-progress
+  f-1-provider-adapter-interface-and-provider-registry: ready-for-dev
+  f-2-canonical-comms-event-model-and-event-store: ready-for-dev
+  f-3-provider-leg-message-correlation-fallback-mapping: ready-for-dev
+  f-4-telnyx-adapter-implementation-and-cutover-guardrails: ready-for-dev
+  epic-f-retrospective: optional
+  epic-ux-remediation: in-progress
+  ux-r1-mobile-first-inbox-mine-thread-redesign: done
+  ux-r2-accessibility-and-language-hardening: done
+  ux-r3-voicemail-and-indicator-behavior: ready-for-dev
+  ux-r4-outbound-policy-guardrail-ui: ready-for-dev
   epic-ux-remediation-retrospective: optional
 
 change_controls:
@@ -87,16 +95,46 @@ change_controls:
   approved_on: 2026-02-19
   approved_by: Jeremiah
   approved_via: correct-course
-  scope_classification: moderate
+  scope_classification: major
   ux_remediation_approved: true
   ux_remediation_approved_on: 2026-02-24
   ux_remediation_approved_by: Jeremiah
   ux_remediation_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md
+  comms_provider_abstraction_approved: true
+  comms_provider_abstraction_approved_on: 2026-02-27
+  comms_provider_abstraction_approved_by: Jeremiah
+  comms_provider_abstraction_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md
+  comms_provider_strategy: provider-agnostic-comms-core
+  comms_provider_v1_selected: telnyx
+  comms_provider_deprecated: twilio
+  provider_revalidation_required_stories:
+    - a-3-orgunit-number-mapping-management
+    - d-1-outbound-sms-call-actions-that-preserve-escalation-semantics
+    - d-3-outbound-audit-outbox-and-refusal-envelope-integration
+    - e-1-verified-webhook-ingress-and-deterministic-context-routing
+    - e-2-inbound-sms-processing-with-active-thread-ensure
+    - e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline
+    - e-4-transcription-webhook-attachment-to-voicemail-records
+    - e-5-replay-safe-webhook-receipt-ledger-and-retention-controls
+  provider_revalidation_merge_freeze: true
+  provider_revalidation_merge_freeze_on: 2026-02-27
+  provider_revalidation_merge_freeze_reason: Twilio-coupled contracts must be rebaselined to provider-agnostic Comms Core before merge.
+  provider_abstraction_handoff:
+    scope: major
+    routed_to:
+      - product-manager
+      - architect
+      - product-owner
+      - scrum-master
+      - backend-dev
+      - frontend-dev
+      - qa-test-engineering
+    approved_on: 2026-02-27
   c3_contract_hardening_required: true
   c3_contract_hardening_status: pending
   c3_contract_hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md#41-stories
   d_contract_hardening_required: true
-  d_contract_hardening_status: pending
+  d_contract_hardening_status: in-progress
   d_contract_hardening_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md#41-stories
   planning_artifact_harmonization_required: true
   planning_artifact_harmonization_status: in-progress
@@ -188,6 +226,56 @@ story_traceability_overrides:
       - e-1-verified-webhook-ingress-and-deterministic-context-routing
       - e-5-replay-safe-webhook-receipt-ledger-and-retention-controls
     parallel_lane: lane-e-release-safety
+  f-1-provider-adapter-interface-and-provider-registry:
+    fr_tags:
+      - FR-CS-021
+      - FR-CS-021a
+      - FR-CS-025
+    nfr_tags:
+      - NFR-CS-003
+      - NFR-CS-007
+      - NFR-CS-012
+    parallel_lane: lane-f-comms-core-abstraction
+  f-2-canonical-comms-event-model-and-event-store:
+    fr_tags:
+      - FR-CS-018
+      - FR-CS-019
+      - FR-CS-020
+      - FR-CS-024
+    nfr_tags:
+      - NFR-CS-007
+      - NFR-CS-012
+      - NFR-CS-013
+    depends_on:
+      - f-1-provider-adapter-interface-and-provider-registry
+    parallel_lane: lane-f-comms-core-abstraction
+  f-3-provider-leg-message-correlation-fallback-mapping:
+    fr_tags:
+      - FR-CS-021a
+    nfr_tags:
+      - NFR-CS-007
+      - NFR-CS-012
+    depends_on:
+      - f-1-provider-adapter-interface-and-provider-registry
+      - f-2-canonical-comms-event-model-and-event-store
+    parallel_lane: lane-f-comms-core-abstraction
+  f-4-telnyx-adapter-implementation-and-cutover-guardrails:
+    fr_tags:
+      - FR-CS-016
+      - FR-CS-018
+      - FR-CS-019
+      - FR-CS-020
+      - FR-CS-021
+      - FR-CS-021a
+    nfr_tags:
+      - NFR-CS-003
+      - NFR-CS-007
+      - NFR-CS-012
+    depends_on:
+      - f-1-provider-adapter-interface-and-provider-registry
+      - f-2-canonical-comms-event-model-and-event-store
+      - f-3-provider-leg-message-correlation-fallback-mapping
+    parallel_lane: lane-f-comms-core-abstraction
   ux-r1-mobile-first-inbox-mine-thread-redesign:
     fr_tags:
       - FR-CS-005
@@ -284,10 +372,22 @@ story_dependencies:
     - e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline
   e-5-replay-safe-webhook-receipt-ledger-and-retention-controls:
     - e-1-verified-webhook-ingress-and-deterministic-context-routing
+    - f-1-provider-adapter-interface-and-provider-registry
+    - f-2-canonical-comms-event-model-and-event-store
   e-6-parallel-delivery-safety-gates-for-connectshyft-rollout:
     - a-5-capability-based-route-access-and-envelope-contract-compliance
     - e-1-verified-webhook-ingress-and-deterministic-context-routing
     - e-5-replay-safe-webhook-receipt-ledger-and-retention-controls
+    - f-4-telnyx-adapter-implementation-and-cutover-guardrails
+  f-2-canonical-comms-event-model-and-event-store:
+    - f-1-provider-adapter-interface-and-provider-registry
+  f-3-provider-leg-message-correlation-fallback-mapping:
+    - f-1-provider-adapter-interface-and-provider-registry
+    - f-2-canonical-comms-event-model-and-event-store
+  f-4-telnyx-adapter-implementation-and-cutover-guardrails:
+    - f-1-provider-adapter-interface-and-provider-registry
+    - f-2-canonical-comms-event-model-and-event-store
+    - f-3-provider-leg-message-correlation-fallback-mapping
   ux-r1-mobile-first-inbox-mine-thread-redesign:
     - c-3-inbox-and-thread-detail-read-contracts
   ux-r2-accessibility-and-language-hardening:
@@ -330,8 +430,94 @@ parallel_lane_rules:
       - e-4-transcription-webhook-attachment-to-voicemail-records
       - e-5-replay-safe-webhook-receipt-ledger-and-retention-controls
       - e-6-parallel-delivery-safety-gates-for-connectshyft-rollout
+    lane-f-comms-core-abstraction:
+      - f-1-provider-adapter-interface-and-provider-registry
+      - f-2-canonical-comms-event-model-and-event-store
+      - f-3-provider-leg-message-correlation-fallback-mapping
+      - f-4-telnyx-adapter-implementation-and-cutover-guardrails
     lane-ux-remediation:
       - ux-r1-mobile-first-inbox-mine-thread-redesign
       - ux-r2-accessibility-and-language-hardening
       - ux-r3-voicemail-and-indicator-behavior
       - ux-r4-outbound-policy-guardrail-ui
+
+blocked_story_registry:
+  b-3-relationship-gated-neighbor-edits-with-provenance-audit:
+    blocked: false
+    noted_on: 2026-02-24
+    resolved_on: 2026-02-26
+    reason: "Dependency c-3-inbox-and-thread-detail-read-contracts reached done and b-3 remediation completed; story moved to review."
+    blocked_on:
+      - c-3-inbox-and-thread-detail-read-contracts
+    unblock_queue_ref: _bmad-output/implementation-artifacts/next-unblocked-queue-connectshyft.md
+  a-3-orgunit-number-mapping-management:
+    blocked: true
+    noted_on: 2026-02-27
+    reason: "Provider-agnostic rebaseline completed on 2026-02-27; merge remains frozen until Epic F foundation is in place."
+    blocked_on:
+      - f-1-provider-adapter-interface-and-provider-registry
+  d-1-outbound-sms-call-actions-that-preserve-escalation-semantics:
+    blocked: true
+    noted_on: 2026-02-27
+    reason: "Provider-agnostic rebaseline completed on 2026-02-27; merge remains frozen until Epic F abstraction prerequisites are complete."
+    blocked_on:
+      - f-1-provider-adapter-interface-and-provider-registry
+      - f-2-canonical-comms-event-model-and-event-store
+  d-3-outbound-audit-outbox-and-refusal-envelope-integration:
+    blocked: true
+    noted_on: 2026-02-27
+    reason: "Provider-agnostic rebaseline completed on 2026-02-27; merge remains frozen until Epic F abstraction prerequisites are complete."
+    blocked_on:
+      - f-1-provider-adapter-interface-and-provider-registry
+      - f-2-canonical-comms-event-model-and-event-store
+  e-1-verified-webhook-ingress-and-deterministic-context-routing:
+    blocked: true
+    noted_on: 2026-02-27
+    reason: "Frozen until provider abstraction foundation is implemented and webhook contract is rebaselined."
+    blocked_on:
+      - f-1-provider-adapter-interface-and-provider-registry
+      - f-2-canonical-comms-event-model-and-event-store
+      - f-4-telnyx-adapter-implementation-and-cutover-guardrails
+  e-2-inbound-sms-processing-with-active-thread-ensure:
+    blocked: true
+    noted_on: 2026-02-27
+    reason: "Frozen until provider abstraction foundation is implemented and webhook contract is rebaselined."
+    blocked_on:
+      - e-1-verified-webhook-ingress-and-deterministic-context-routing
+      - f-1-provider-adapter-interface-and-provider-registry
+      - f-2-canonical-comms-event-model-and-event-store
+  e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline:
+    blocked: true
+    noted_on: 2026-02-27
+    reason: "Frozen until provider abstraction foundation is implemented and webhook contract is rebaselined."
+    blocked_on:
+      - e-1-verified-webhook-ingress-and-deterministic-context-routing
+      - f-1-provider-adapter-interface-and-provider-registry
+      - f-2-canonical-comms-event-model-and-event-store
+  e-4-transcription-webhook-attachment-to-voicemail-records:
+    blocked: true
+    noted_on: 2026-02-27
+    reason: "Frozen until provider abstraction foundation is implemented and webhook contract is rebaselined."
+    blocked_on:
+      - e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline
+      - f-1-provider-adapter-interface-and-provider-registry
+      - f-2-canonical-comms-event-model-and-event-store
+  e-5-replay-safe-webhook-receipt-ledger-and-retention-controls:
+    blocked: true
+    noted_on: 2026-02-27
+    reason: "Frozen until provider abstraction foundation is implemented and webhook contract is rebaselined."
+    blocked_on:
+      - e-1-verified-webhook-ingress-and-deterministic-context-routing
+      - f-1-provider-adapter-interface-and-provider-registry
+      - f-2-canonical-comms-event-model-and-event-store
+      - f-3-provider-leg-message-correlation-fallback-mapping
+
+next_unblocked_queue:
+  generated_on: 2026-02-27
+  focus: "Provider abstraction first: complete Epic F foundation before webhook/provider-coupled stories"
+  ordered_story_keys:
+    - f-1-provider-adapter-interface-and-provider-registry
+    - f-2-canonical-comms-event-model-and-event-store
+    - f-3-provider-leg-message-correlation-fallback-mapping
+    - f-4-telnyx-adapter-implementation-and-cutover-guardrails
+    - e-1-verified-webhook-ingress-and-deterministic-context-routing

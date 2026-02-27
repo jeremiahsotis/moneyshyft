@@ -55,6 +55,102 @@ class AuthService {
     return record.code === '42P01' || record.code === '3F000';
   }
 
+  private parseRoleSetJson(value: unknown): string[] {
+    if (Array.isArray(value)) {
+      return value.filter((entry): entry is string => typeof entry === 'string');
+    }
+
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed)
+          ? parsed.filter((entry): entry is string => typeof entry === 'string')
+          : [];
+      } catch (_error) {
+        return [];
+      }
+    }
+
+    return [];
+  }
+
+  async resolveActiveOrgUnitIdForSession(
+    userId: string,
+    tenantId: string | null | undefined,
+    baseRole: string | null | undefined,
+    trxOrDb: Knex | Knex.Transaction = db,
+  ): Promise<string | null> {
+    if (!tenantId) {
+      return null;
+    }
+
+    try {
+      const membershipRows = await trxOrDb
+        .withSchema('platform')
+        .table('org_unit_memberships as om')
+        .join('org_units as ou', 'ou.id', 'om.org_unit_id')
+        .where('om.user_id', userId)
+        .andWhere('ou.tenant_id', tenantId)
+        .andWhere('ou.status', 'active')
+        .select('om.org_unit_id as orgUnitId')
+        .orderBy('om.org_unit_id', 'asc');
+
+      const orgUnitIds = Array.from(new Set(
+        membershipRows
+          .map((row) => (typeof row.orgUnitId === 'string' ? row.orgUnitId.trim() : ''))
+          .filter((entry) => entry.length > 0),
+      ));
+
+      if (orgUnitIds.length === 1) {
+        return orgUnitIds[0];
+      }
+
+      if (orgUnitIds.length > 1) {
+        return null;
+      }
+
+      const tenantMembership = await trxOrDb
+        .withSchema('platform')
+        .table('tenant_memberships')
+        .where({ tenant_id: tenantId, user_id: userId })
+        .first(['role_set_json']);
+
+      const roleSet = this.parseRoleSetJson(tenantMembership?.role_set_json);
+      const normalizedBaseRole = typeof baseRole === 'string'
+        ? baseRole.trim().toUpperCase()
+        : '';
+      const isTenantPrivileged = roleSet.includes('TENANT_ADMIN')
+        || roleSet.includes('TENANT_STAFF')
+        || normalizedBaseRole === 'TENANT_ADMIN'
+        || normalizedBaseRole === 'TENANT_STAFF'
+        || normalizedBaseRole === 'ADMIN';
+
+      if (!isTenantPrivileged) {
+        return null;
+      }
+
+      const tenantOrgUnits = await trxOrDb
+        .withSchema('platform')
+        .table('org_units')
+        .where({ tenant_id: tenantId, status: 'active' })
+        .select('id')
+        .orderBy('id', 'asc')
+        .limit(2);
+
+      if (tenantOrgUnits.length === 1 && typeof tenantOrgUnits[0].id === 'string') {
+        return tenantOrgUnits[0].id;
+      }
+
+      return null;
+    } catch (error) {
+      if (this.isMissingPlatformSchemaError(error)) {
+        return null;
+      }
+
+      throw error;
+    }
+  }
+
   private async ensurePlatformTenantBootstrap(
     trx: Knex.Transaction,
     householdId: string,
@@ -267,7 +363,12 @@ class AuthService {
         email: user.email,
         householdId: user.household_id,
         activeTenantId: user.household_id,
-        activeOrgUnitId: null,
+        activeOrgUnitId: await this.resolveActiveOrgUnitIdForSession(
+          user.id,
+          user.household_id,
+          user.role,
+          trx,
+        ),
         mustResetPassword: false,
         role: user.role,
       };
@@ -352,7 +453,11 @@ class AuthService {
       email: user.email,
       householdId: user.household_id,
       activeTenantId: user.household_id,
-      activeOrgUnitId: null,
+      activeOrgUnitId: await this.resolveActiveOrgUnitIdForSession(
+        user.id,
+        user.household_id,
+        user.role,
+      ),
       mustResetPassword: user.must_reset_password === true,
       role: user.role,
     };

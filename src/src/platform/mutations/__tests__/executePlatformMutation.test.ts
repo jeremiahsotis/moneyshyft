@@ -136,6 +136,47 @@ describe('executePlatformMutation', () => {
     expect(state.outboxEvents[0].tenant_id).toBe('11111111-1111-4111-8111-111111111111');
   });
 
+  it('AC1: writes multiple events and outbox records atomically when event array is provided', async () => {
+    const { db, state } = createFakeDb();
+
+    const result = await executePlatformMutation(
+      {
+        mutation: async (trx) => {
+          const inserted = await (trx as any)('kernel_mutation_rows').insert({ value: 'accepted-multi' });
+          return inserted[0];
+        },
+        event: [
+          {
+            tenantId: '11111111-1111-4111-8111-111111111111',
+            actorId: '22222222-2222-4222-8222-222222222222',
+            eventName: 'kernel.mutation.accepted.first',
+            entityType: 'kernel_mutation_row',
+            entityId: '33333333-3333-4333-8333-333333333333',
+            payload: { order: 1 },
+          },
+          {
+            tenantId: '11111111-1111-4111-8111-111111111111',
+            actorId: '22222222-2222-4222-8222-222222222222',
+            eventName: 'kernel.mutation.accepted.second',
+            entityType: 'kernel_mutation_row',
+            entityId: '33333333-3333-4333-8333-333333333333',
+            payload: { order: 2 },
+          },
+        ],
+      },
+      db
+    );
+
+    expect(result).toEqual({ id: 'mut-1', value: 'accepted-multi' });
+    expect(state.mutationRows).toHaveLength(1);
+    expect(state.platformEvents).toHaveLength(2);
+    expect(state.outboxEvents).toHaveLength(2);
+    expect(state.platformEvents.map((row) => row.event_name)).toEqual([
+      'kernel.mutation.accepted.first',
+      'kernel.mutation.accepted.second',
+    ]);
+  });
+
   it('AC1: rolls back domain write when outbox insert fails', async () => {
     const { db, state } = createFakeDb({ failOutboxInsert: true });
 

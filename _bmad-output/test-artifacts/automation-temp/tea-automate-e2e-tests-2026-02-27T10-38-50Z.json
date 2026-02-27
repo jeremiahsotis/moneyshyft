@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "subprocess": "e2e-tests",
+  "tests": [
+    {"file": "tests/e2e/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.spec.ts", "description": "Story d.1 E2E automate coverage", "priority_coverage": {"P0": 2, "P1": 2, "P2": 0, "P3": 0}},
+    {"file": "tests/e2e/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.spec.ts", "description": "Story d.2 E2E automate coverage", "priority_coverage": {"P0": 2, "P1": 2, "P2": 0, "P3": 0}},
+    {"file": "tests/e2e/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.spec.ts", "description": "Story d.3 E2E automate coverage", "priority_coverage": {"P0": 2, "P1": 2, "P2": 0, "P3": 0}},
+    {"file": "tests/e2e/platform/d-4-operator-interaction-contracts-for-outbound-safety.automate.spec.ts", "description": "Story d.4 E2E automate coverage", "priority_coverage": {"P0": 2, "P1": 2, "P2": 0, "P3": 0}}
+  ],
+  "fixture_needs": ["buildThreadUrl", "storyDContext", "storyD-action-matrix"],
+  "knowledge_fragments_used": ["selector-resilience", "network-first", "fixture-architecture", "playwright-cli"],
+  "test_count": 16,
+  "summary": "Generated 16 E2E tests for stories d-1 through d-4"
+}

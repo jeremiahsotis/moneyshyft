@@ -1,0 +1,38 @@
+{
+  "tdd_phase": "RED",
+  "story_id": "2-6",
+  "total_tests": 7,
+  "api_tests": 5,
+  "e2e_tests": 2,
+  "all_tests_skipped": true,
+  "expected_to_fail": true,
+  "fixtures_created": 2,
+  "acceptance_criteria_covered": [
+    "Given a user with explicit timezone preference (or tenant/system fallback), when date/time fields are created, updated, or rendered, then timestamps are persisted in UTC and displayed in local timezone with deterministic fallback order (user -> tenant -> system).",
+    "UI/API contract tests confirm raw UTC strings are not shown on operational screens."
+  ],
+  "knowledge_fragments_used": [
+    "data-factories",
+    "component-tdd",
+    "test-quality",
+    "test-healing-patterns",
+    "selector-resilience",
+    "timing-debugging",
+    "overview",
+    "api-request",
+    "network-recorder",
+    "auth-session",
+    "intercept-network-call",
+    "recurse",
+    "log",
+    "file-utils",
+    "network-error-monitor",
+    "fixtures-composition",
+    "playwright-cli",
+    "fixture-architecture",
+    "network-first",
+    "test-levels-framework"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential"
+}

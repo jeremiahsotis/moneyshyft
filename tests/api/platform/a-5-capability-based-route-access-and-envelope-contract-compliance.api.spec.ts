@@ -1,5 +1,6 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryA5.fixture';
+import { createStoryA5Headers } from '../../support/factories/connectShyftStoryA5Factory';
 
 test.describe(
   'Story a.5 automate - capability-based route access and envelope contract API coverage',
@@ -24,6 +25,36 @@ test.describe(
           message: expect.stringContaining('authorized ConnectShyft role'),
         });
         expect(body).not.toHaveProperty('data.mappings');
+      },
+    );
+
+    test(
+      '[P1] legacy jwt role aliases map admin to tenant-admin capabilities for inbox access @P1',
+      async ({ request, storyA5Context }) => {
+        const legacyAdminHeaders = createStoryA5Headers(storyA5Context, {
+          role: 'admin',
+          userId: storyA5Context.tenantAdminUserId,
+          orgUnitMemberships: [storyA5Context.orgUnitId],
+        });
+
+        const response = await apiRequest(request, {
+          method: 'GET',
+          path: storyA5Context.paths.inbox,
+          headers: legacyAdminHeaders,
+        });
+
+        expect(response.status()).toBe(200);
+        const body = await response.json();
+        expect(body).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_INBOX_READY',
+          tenantId: storyA5Context.tenantId,
+          data: {
+            context: {
+              orgUnitId: storyA5Context.orgUnitId,
+            },
+          },
+        });
       },
     );
 

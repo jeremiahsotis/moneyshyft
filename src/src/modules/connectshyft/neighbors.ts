@@ -6,6 +6,7 @@ import db from '../../config/knex';
 const E164_PHONE_PATTERN = /^\+[1-9]\d{1,14}$/;
 const REMOVABLE_PHONE_CHARS_PATTERN = /[\s().-]/g;
 const INVALID_PHONE_CHAR_PATTERN = /[A-Za-z]/;
+export const CONNECTSHYFT_NEIGHBOR_MERGE_CONFIRMATION_PHRASE = 'IRREVERSIBLE MERGE';
 
 export type ConnectShyftNeighborPhoneInput = {
   label: string;
@@ -74,6 +75,21 @@ export type ConnectShyftUpdateNeighborCommand = NeighborActorContext & {
   firstName: string;
   lastName: string;
   phones: ConnectShyftNeighborPhoneInput[];
+  relationshipValidated?: boolean;
+};
+
+export type ConnectShyftNeighborMergeConfirmation = {
+  acknowledged: boolean;
+  phrase: string;
+};
+
+export type ConnectShyftMergeNeighborCommand = NeighborActorContext & {
+  tenantId: string;
+  orgUnitId: string;
+  sourceNeighborId: string;
+  survivorNeighborId: string;
+  irreversibleConfirmation: ConnectShyftNeighborMergeConfirmation;
+  reason?: string;
 };
 
 type NeighborFieldError = {
@@ -92,16 +108,35 @@ type NeighborPersistenceResult =
     reason: 'NEIGHBOR_ID_CONFLICT' | 'NEIGHBOR_NOT_FOUND';
   };
 
+type NeighborMergePersistenceResult =
+  | {
+    ok: true;
+    neighbor: ConnectShyftNeighbor;
+    merge: {
+      sourceNeighborId: string;
+      survivorNeighborId: string;
+      irreversibleConfirmed: true;
+    };
+  }
+  | {
+    ok: false;
+    reason: 'NEIGHBOR_NOT_FOUND' | 'MERGE_INVALID';
+  };
+
 type NeighborRefusalResult = {
   ok: false;
   code:
     | 'CONNECTSHYFT_NEIGHBOR_CREATE_FORBIDDEN'
     | 'CONNECTSHYFT_NEIGHBOR_READ_FORBIDDEN'
     | 'CONNECTSHYFT_NEIGHBOR_UPDATE_FORBIDDEN'
+    | 'CONNECTSHYFT_NEIGHBOR_EDIT_RELATIONSHIP_REQUIRED'
     | 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED'
     | 'CONNECTSHYFT_NEIGHBOR_PHONE_INVALID_FORMAT'
     | 'CONNECTSHYFT_NEIGHBOR_CREATE_CONFLICT'
     | 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND'
+    | 'CONNECTSHYFT_NEIGHBOR_MERGE_FORBIDDEN'
+    | 'CONNECTSHYFT_NEIGHBOR_MERGE_CONFIRMATION_REQUIRED'
+    | 'CONNECTSHYFT_NEIGHBOR_MERGE_INVALID'
     | 'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH'
     | 'CONNECTSHYFT_NEIGHBOR_CREATE_PERSISTENCE_UNAVAILABLE'
     | 'CONNECTSHYFT_NEIGHBOR_PERSISTENCE_UNAVAILABLE';
@@ -151,6 +186,22 @@ export type ConnectShyftUpdateNeighborResult =
     httpStatus: 200;
     data: {
       neighbor: ConnectShyftNeighbor;
+    };
+  }
+  | NeighborRefusalResult;
+
+export type ConnectShyftMergeNeighborResult =
+  | {
+    ok: true;
+    code: 'CONNECTSHYFT_NEIGHBOR_MERGED';
+    httpStatus: 200;
+    data: {
+      neighbor: ConnectShyftNeighbor;
+      merge: {
+        sourceNeighborId: string;
+        survivorNeighborId: string;
+        irreversibleConfirmed: true;
+      };
     };
   }
   | NeighborRefusalResult;
@@ -258,6 +309,30 @@ const buildUpdateCapabilityRefusal = (): NeighborRefusalResult => ({
   message: 'Neighbor profile updates require an authorized ConnectShyft role.',
 });
 
+const buildMergeCapabilityRefusal = (): NeighborRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_NEIGHBOR_MERGE_FORBIDDEN',
+  message: 'Neighbor merge requires an authorized role.',
+});
+
+const buildMergeConfirmationRequiredRefusal = (): NeighborRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_NEIGHBOR_MERGE_CONFIRMATION_REQUIRED',
+  message: 'Neighbor merge requires explicit irreversible confirmation.',
+});
+
+const buildMergeInvalidRefusal = (): NeighborRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_NEIGHBOR_MERGE_INVALID',
+  message: 'Neighbor merge request is invalid.',
+});
+
+const buildRelationshipRequiredRefusal = (): NeighborRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_NEIGHBOR_EDIT_RELATIONSHIP_REQUIRED',
+  message: 'This edit requires an active thread relationship or tenant-privileged role.',
+});
+
 const buildNeighborIdConflictRefusal = (): NeighborRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_NEIGHBOR_CREATE_CONFLICT',
@@ -316,14 +391,30 @@ const normalizePhones = (
 
 const hasNeighborManageCapability = (actorRoles: Array<string | null | undefined>): boolean => {
   return hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
-    || hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL);
+    || hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)
+    || hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_IDENTITY_RESOLVE);
 };
+
+const hasTenantPrivilegedNeighborCapability = (
+  actorRoles: Array<string | null | undefined>,
+): boolean => hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL);
 
 const hasNeighborReadCapability = (actorRoles: Array<string | null | undefined>): boolean => {
   return hasNeighborManageCapability(actorRoles)
     || hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_VIEW)
     || hasCapability(actorRoles, CAPABILITIES.THREAD_VIEW_ALL)
     || hasCapability(actorRoles, CAPABILITIES.TENANT_READ_ALL);
+};
+
+const hasNeighborMergeCapability = (actorRoles: Array<string | null | undefined>): boolean => {
+  return hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_MERGE);
+};
+
+const hasValidMergeConfirmation = (
+  confirmation: ConnectShyftNeighborMergeConfirmation | null | undefined,
+): boolean => {
+  return confirmation?.acknowledged === true
+    && confirmation.phrase === CONNECTSHYFT_NEIGHBOR_MERGE_CONFIRMATION_PHRASE;
 };
 
 type DbNeighborRow = {
@@ -373,6 +464,43 @@ const sortPhones = (phoneRows: DbNeighborPhoneRow[]): DbNeighborPhoneRow[] => {
 
       return a.id.localeCompare(b.id);
     });
+};
+
+const mergePhoneRows = (
+  survivorPhoneRows: DbNeighborPhoneRow[],
+  sourcePhoneRows: DbNeighborPhoneRow[],
+): NormalizedConnectShyftNeighborPhoneInput[] => {
+  const merged: NormalizedConnectShyftNeighborPhoneInput[] = [];
+  const seen = new Set<string>();
+
+  [...sortPhones(survivorPhoneRows), ...sortPhones(sourcePhoneRows)].forEach((phone) => {
+    const label = normalizePhoneLabel(phone.label);
+    const value = normalizeNonEmptyString(phone.value_e164);
+    if (!value) {
+      return;
+    }
+
+    const dedupeKey = `${label.toLowerCase()}::${value}`;
+    if (seen.has(dedupeKey)) {
+      return;
+    }
+    seen.add(dedupeKey);
+
+    merged.push({
+      label,
+      value,
+      sortOrder: merged.length,
+      isPrimary: merged.length === 0,
+      isShared: phone.is_shared === true,
+      verificationStatus: normalizeVerificationStatus(phone.verification_status),
+    });
+  });
+
+  return merged.map((phone, index) => ({
+    ...phone,
+    sortOrder: index,
+    isPrimary: index === 0,
+  }));
 };
 
 const sortNeighbors = (neighbors: ConnectShyftNeighbor[]): ConnectShyftNeighbor[] => {
@@ -450,6 +578,12 @@ type NeighborStoreUpdateInput = {
   firstName: string;
   lastName: string;
   phones: NormalizedConnectShyftNeighborPhoneInput[];
+};
+
+type NeighborStoreMergeInput = {
+  tenantId: string;
+  sourceNeighborId: string;
+  survivorNeighborId: string;
 };
 
 export class InMemoryConnectShyftNeighborStore {
@@ -540,6 +674,98 @@ export class InMemoryConnectShyftNeighborStore {
     return {
       ok: true,
       neighbor: cloneNeighbor(updated),
+    };
+  }
+
+  mergeNeighbors(input: NeighborStoreMergeInput): NeighborMergePersistenceResult {
+    if (input.sourceNeighborId === input.survivorNeighborId) {
+      return {
+        ok: false,
+        reason: 'MERGE_INVALID',
+      };
+    }
+
+    const sourceNeighbor = this.neighborsById.get(input.sourceNeighborId);
+    const survivorNeighbor = this.neighborsById.get(input.survivorNeighborId);
+    if (
+      !sourceNeighbor
+      || !survivorNeighbor
+      || sourceNeighbor.tenantId !== input.tenantId
+      || survivorNeighbor.tenantId !== input.tenantId
+    ) {
+      return {
+        ok: false,
+        reason: 'NEIGHBOR_NOT_FOUND',
+      };
+    }
+
+    const mergedPhones = mergePhoneRows(
+      survivorNeighbor.phones.map((phone) => ({
+        id: phone.phoneId,
+        neighbor_id: survivorNeighbor.neighborId,
+        tenant_id: survivorNeighbor.tenantId,
+        label: phone.label,
+        value_e164: phone.value,
+        sort_order: phone.sortOrder,
+        is_primary: phone.isPrimary,
+        is_shared: phone.isShared,
+        verification_status: phone.verificationStatus,
+        created_at_utc: phone.createdAtUtc,
+        updated_at_utc: phone.updatedAtUtc,
+      })),
+      sourceNeighbor.phones.map((phone) => ({
+        id: phone.phoneId,
+        neighbor_id: sourceNeighbor.neighborId,
+        tenant_id: sourceNeighbor.tenantId,
+        label: phone.label,
+        value_e164: phone.value,
+        sort_order: phone.sortOrder,
+        is_primary: phone.isPrimary,
+        is_shared: phone.isShared,
+        verification_status: phone.verificationStatus,
+        created_at_utc: phone.createdAtUtc,
+        updated_at_utc: phone.updatedAtUtc,
+      })),
+    );
+
+    const now = nowIsoUtc();
+    const mergedNeighbor: ConnectShyftNeighbor = {
+      ...survivorNeighbor,
+      updatedAtUtc: now,
+      phones: mergedPhones.map((phone) => ({
+        phoneId: randomUUID(),
+        label: phone.label,
+        value: phone.value,
+        sortOrder: phone.sortOrder,
+        isPrimary: phone.isPrimary,
+        isShared: phone.isShared,
+        verificationStatus: phone.verificationStatus,
+        createdAtUtc: now,
+        updatedAtUtc: now,
+      })),
+    };
+
+    this.neighborsById.set(input.survivorNeighborId, mergedNeighbor);
+    this.neighborsById.delete(input.sourceNeighborId);
+
+    const sourceScopeKey = buildTenantOrgUnitKey(sourceNeighbor.tenantId, sourceNeighbor.orgUnitId);
+    const sourceScopedIds = this.neighborIdsByScope.get(sourceScopeKey);
+    sourceScopedIds?.delete(input.sourceNeighborId);
+    if (sourceScopedIds && sourceScopedIds.size === 0) {
+      this.neighborIdsByScope.delete(sourceScopeKey);
+    }
+
+    const tenantIds = this.neighborIdsByTenant.get(input.tenantId);
+    tenantIds?.delete(input.sourceNeighborId);
+
+    return {
+      ok: true,
+      neighbor: cloneNeighbor(mergedNeighbor),
+      merge: {
+        sourceNeighborId: input.sourceNeighborId,
+        survivorNeighborId: input.survivorNeighborId,
+        irreversibleConfirmed: true,
+      },
     };
   }
 
@@ -824,6 +1050,156 @@ export class KnexConnectShyftNeighborStore {
       throw error;
     }
   }
+
+  async mergeNeighbors(input: NeighborStoreMergeInput): Promise<NeighborMergePersistenceResult> {
+    if (input.sourceNeighborId === input.survivorNeighborId) {
+      return {
+        ok: false,
+        reason: 'MERGE_INVALID',
+      };
+    }
+
+    return this.knexClient.transaction(async (trx) => {
+      const neighborRows = await trx
+        .withSchema('connectshyft')
+        .table('cs_neighbors')
+        .where({
+          tenant_id: input.tenantId,
+        })
+        .whereIn('id', [input.sourceNeighborId, input.survivorNeighborId])
+        .select<DbNeighborRow[]>([
+          'id',
+          'tenant_id',
+          'org_unit_id',
+          'first_name',
+          'last_name',
+          'created_at_utc',
+          'updated_at_utc',
+        ]);
+
+      const sourceRow = neighborRows.find((row) => row.id === input.sourceNeighborId);
+      const survivorRow = neighborRows.find((row) => row.id === input.survivorNeighborId);
+
+      if (!sourceRow || !survivorRow) {
+        return {
+          ok: false,
+          reason: 'NEIGHBOR_NOT_FOUND',
+        } as NeighborMergePersistenceResult;
+      }
+
+      const phoneRows = await trx
+        .withSchema('connectshyft')
+        .table('cs_neighbor_phones')
+        .where({
+          tenant_id: input.tenantId,
+        })
+        .whereIn('neighbor_id', [input.sourceNeighborId, input.survivorNeighborId])
+        .select<DbNeighborPhoneRow[]>(this.neighborPhoneColumns());
+
+      const mergedPhones = mergePhoneRows(
+        phoneRows.filter((row) => row.neighbor_id === input.survivorNeighborId),
+        phoneRows.filter((row) => row.neighbor_id === input.sourceNeighborId),
+      );
+
+      await trx
+        .withSchema('connectshyft')
+        .table('cs_threads')
+        .where({
+          tenant_id: input.tenantId,
+          neighbor_id: input.sourceNeighborId,
+        })
+        .update({
+          neighbor_id: input.survivorNeighborId,
+          updated_at_utc: trx.fn.now(),
+        });
+
+      await trx
+        .withSchema('connectshyft')
+        .table('cs_neighbor_phones')
+        .where({
+          tenant_id: input.tenantId,
+          neighbor_id: input.survivorNeighborId,
+        })
+        .delete();
+
+      const insertedPhones = mergedPhones.length > 0
+        ? await trx
+          .withSchema('connectshyft')
+          .table('cs_neighbor_phones')
+          .insert(
+            mergedPhones.map((phone) => ({
+              id: randomUUID(),
+              neighbor_id: input.survivorNeighborId,
+              tenant_id: input.tenantId,
+              label: phone.label,
+              value_e164: phone.value,
+              sort_order: phone.sortOrder,
+              is_primary: phone.isPrimary,
+              is_shared: phone.isShared,
+              verification_status: phone.verificationStatus,
+              created_at_utc: trx.fn.now(),
+              updated_at_utc: trx.fn.now(),
+            })),
+          )
+          .returning<DbNeighborPhoneRow[]>(this.neighborPhoneColumns())
+        : [];
+
+      await trx
+        .withSchema('connectshyft')
+        .table('cs_neighbor_phones')
+        .where({
+          tenant_id: input.tenantId,
+          neighbor_id: input.sourceNeighborId,
+        })
+        .delete();
+
+      await trx
+        .withSchema('connectshyft')
+        .table('cs_neighbors')
+        .where({
+          tenant_id: input.tenantId,
+          id: input.sourceNeighborId,
+        })
+        .delete();
+
+      const [updatedSurvivor] = await trx
+        .withSchema('connectshyft')
+        .table('cs_neighbors')
+        .where({
+          tenant_id: input.tenantId,
+          id: input.survivorNeighborId,
+        })
+        .update({
+          updated_at_utc: trx.fn.now(),
+        })
+        .returning<DbNeighborRow[]>([
+          'id',
+          'tenant_id',
+          'org_unit_id',
+          'first_name',
+          'last_name',
+          'created_at_utc',
+          'updated_at_utc',
+        ]);
+
+      if (!updatedSurvivor) {
+        return {
+          ok: false,
+          reason: 'NEIGHBOR_NOT_FOUND',
+        } as NeighborMergePersistenceResult;
+      }
+
+      return {
+        ok: true,
+        neighbor: mapRowsToNeighbor(updatedSurvivor, insertedPhones),
+        merge: {
+          sourceNeighborId: input.sourceNeighborId,
+          survivorNeighborId: input.survivorNeighborId,
+          irreversibleConfirmed: true,
+        },
+      } as NeighborMergePersistenceResult;
+    });
+  }
 }
 
 export class ConnectShyftNeighborService {
@@ -903,6 +1279,9 @@ export class ConnectShyftNeighborService {
     if (!hasNeighborManageCapability(input.actorRoles)) {
       return buildUpdateCapabilityRefusal();
     }
+    if (!hasTenantPrivilegedNeighborCapability(input.actorRoles) && input.relationshipValidated !== true) {
+      return buildRelationshipRequiredRefusal();
+    }
 
     const normalizedPhones = normalizePhones(input.phones);
     if (!normalizedPhones.ok) {
@@ -927,6 +1306,45 @@ export class ConnectShyftNeighborService {
       httpStatus: 200,
       data: {
         neighbor: updated.neighbor,
+      },
+    };
+  }
+
+  mergeNeighbor(input: ConnectShyftMergeNeighborCommand): ConnectShyftMergeNeighborResult {
+    if (!hasNeighborMergeCapability(input.actorRoles)) {
+      return buildMergeCapabilityRefusal();
+    }
+    if (!hasValidMergeConfirmation(input.irreversibleConfirmation)) {
+      return buildMergeConfirmationRequiredRefusal();
+    }
+    if (
+      normalizeNonEmptyString(input.sourceNeighborId) === ''
+      || normalizeNonEmptyString(input.survivorNeighborId) === ''
+      || input.sourceNeighborId === input.survivorNeighborId
+    ) {
+      return buildMergeInvalidRefusal();
+    }
+
+    const merged = this.store.mergeNeighbors({
+      tenantId: input.tenantId,
+      sourceNeighborId: input.sourceNeighborId,
+      survivorNeighborId: input.survivorNeighborId,
+    });
+
+    if (!merged.ok) {
+      if (merged.reason === 'MERGE_INVALID') {
+        return buildMergeInvalidRefusal();
+      }
+      return buildNeighborNotFoundRefusal();
+    }
+
+    return {
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_MERGED',
+      httpStatus: 200,
+      data: {
+        neighbor: merged.neighbor,
+        merge: merged.merge,
       },
     };
   }
@@ -1039,6 +1457,9 @@ export class AsyncConnectShyftNeighborService {
     if (!hasNeighborManageCapability(input.actorRoles)) {
       return buildUpdateCapabilityRefusal();
     }
+    if (!hasTenantPrivilegedNeighborCapability(input.actorRoles) && input.relationshipValidated !== true) {
+      return buildRelationshipRequiredRefusal();
+    }
 
     const normalizedPhones = normalizePhones(input.phones);
     if (!normalizedPhones.ok) {
@@ -1064,6 +1485,53 @@ export class AsyncConnectShyftNeighborService {
         httpStatus: 200,
         data: {
           neighbor: updated.neighbor,
+        },
+      };
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return buildPersistenceUnavailableRefusal();
+    }
+  }
+
+  async mergeNeighbor(input: ConnectShyftMergeNeighborCommand): Promise<ConnectShyftMergeNeighborResult> {
+    if (!hasNeighborMergeCapability(input.actorRoles)) {
+      return buildMergeCapabilityRefusal();
+    }
+    if (!hasValidMergeConfirmation(input.irreversibleConfirmation)) {
+      return buildMergeConfirmationRequiredRefusal();
+    }
+    if (
+      normalizeNonEmptyString(input.sourceNeighborId) === ''
+      || normalizeNonEmptyString(input.survivorNeighborId) === ''
+      || input.sourceNeighborId === input.survivorNeighborId
+    ) {
+      return buildMergeInvalidRefusal();
+    }
+
+    try {
+      const merged = await this.store.mergeNeighbors({
+        tenantId: input.tenantId,
+        sourceNeighborId: input.sourceNeighborId,
+        survivorNeighborId: input.survivorNeighborId,
+      });
+
+      if (!merged.ok) {
+        if (merged.reason === 'MERGE_INVALID') {
+          return buildMergeInvalidRefusal();
+        }
+        return buildNeighborNotFoundRefusal();
+      }
+
+      return {
+        ok: true,
+        code: 'CONNECTSHYFT_NEIGHBOR_MERGED',
+        httpStatus: 200,
+        data: {
+          neighbor: merged.neighbor,
+          merge: merged.merge,
         },
       };
     } catch (error) {

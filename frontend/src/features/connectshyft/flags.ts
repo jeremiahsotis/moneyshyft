@@ -54,6 +54,7 @@ type ParsedConnectShyftContextOverride = {
   role: string | null;
   userId: string | null;
   orgUnitMemberships: string[];
+  activeThreadNeighborIds: string[];
 };
 
 export const DEFAULT_CONNECTSHYFT_UI_FLAGS: ConnectShyftUiFlags = {
@@ -143,6 +144,7 @@ const parseContextQueryForTestOverride = (): ParsedConnectShyftContextOverride =
       role: null,
       userId: null,
       orgUnitMemberships: [],
+      activeThreadNeighborIds: [],
     };
   }
 
@@ -151,8 +153,18 @@ const parseContextQueryForTestOverride = (): ParsedConnectShyftContextOverride =
   const tenantId = normalizeQueryValue(searchParams.get('tenantId'));
   const role = normalizeQueryValue(searchParams.get('tenantRole'))
     || normalizeQueryValue(searchParams.get('role'));
-  const userId = normalizeQueryValue(searchParams.get('userId'))
+  const userId = normalizeQueryValue(searchParams.get('actorUserId'))
+    || normalizeQueryValue(searchParams.get('userId'))
     || (role ? `user-connectshyft-ui-${role.toLowerCase()}` : null);
+  const rawActiveThreadNeighborIds = normalizeQueryValue(
+    searchParams.get('activeThreadNeighborIds'),
+  );
+  const activeThreadNeighborIds = rawActiveThreadNeighborIds
+    ? rawActiveThreadNeighborIds
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0)
+    : [];
 
   const requestedOrgUnitId = normalizeQueryValue(searchParams.get('orgUnitId'));
   const orgUnitId = contextMode === 'missing-orgunit' ? null : requestedOrgUnitId;
@@ -170,6 +182,7 @@ const parseContextQueryForTestOverride = (): ParsedConnectShyftContextOverride =
       role,
       userId,
       orgUnitMemberships: memberships,
+      activeThreadNeighborIds,
     };
   }
 
@@ -179,6 +192,7 @@ const parseContextQueryForTestOverride = (): ParsedConnectShyftContextOverride =
     role,
     userId,
     orgUnitMemberships: orgUnitId ? [orgUnitId] : [],
+    activeThreadNeighborIds,
   };
 };
 
@@ -210,6 +224,12 @@ export const buildConnectShyftTestOverrideHeaders = (): Record<string, string> =
 
   if (context.orgUnitMemberships.length > 0) {
     headers['x-test-connectshyft-orgunit-memberships'] = JSON.stringify(context.orgUnitMemberships);
+  }
+
+  if (context.activeThreadNeighborIds.length > 0) {
+    headers['x-test-connectshyft-active-thread-neighbor-ids'] = JSON.stringify(
+      context.activeThreadNeighborIds,
+    );
   }
 
   return headers;

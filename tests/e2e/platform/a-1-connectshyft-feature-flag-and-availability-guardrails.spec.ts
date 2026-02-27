@@ -6,7 +6,10 @@ const loginAsOperator = async (page: Page) => {
   await page.fill('#email', process.env.TEST_EMAIL || 'operator@example.com');
   await page.fill('#password', process.env.TEST_PASSWORD || 'SecurePass123!');
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
+  await page.waitForURL(/\/($|[#?])/, { timeout: 15000 });
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({
+    timeout: 15000,
+  });
 };
 
 test.describe(
@@ -26,11 +29,11 @@ test.describe(
       await expect(
         page.getByRole('heading', { name: 'ConnectShyft unavailable' }),
       ).toBeVisible();
-      await expect(
-        page.getByText('Enable connectshyft_enabled to access this module.'),
-      ).toBeVisible();
+      await expect(page.getByTestId('connectshyft-unavailable-state')).toContainText(
+        /unavailable|disabled/i,
+      );
       await expect(page.getByTestId('connectshyft-inbox-list')).toBeHidden();
-      await expect(page.getByRole('button', { name: 'Claim thread' })).toBeHidden();
+      await expect(page.getByTestId('connectshyft-open-conversation-action')).toHaveCount(0);
     });
 
     test('[P1] partial-flag journey exposes inbox while escalation controls stay unavailable @P1', async ({
@@ -51,8 +54,8 @@ test.describe(
       await expect(
         page.getByTestId('connectshyft-capability-maintenance-banner'),
       ).toContainText('Escalation controls are temporarily unavailable');
-      await expect(page.getByRole('button', { name: 'Claim thread' })).toBeDisabled();
-      await expect(page.getByRole('button', { name: 'Take over thread' })).toBeDisabled();
+      await expect(page.getByTestId('connectshyft-claim-thread-action').first()).toBeDisabled();
+      await expect(page.getByTestId('connectshyft-take-over-thread-action').first()).toBeDisabled();
     });
 
     test('[P1] inbox-disabled journey keeps inbox list hidden and explains capability-specific unavailability @P1', async ({

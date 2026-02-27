@@ -1,0 +1,69 @@
+name: Branch Protection Drift Check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 7 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production-required-checks:
+    name: verify-production-required-checks
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.BRANCH_PROTECTION_TOKEN || github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify merge_group trigger is enabled in core CI
+        run: |
+          if ! grep -Eq "^  merge_group:" .github/workflows/test.yml; then
+            echo "merge_group trigger missing from .github/workflows/test.yml"
+            exit 1
+          fi
+
+      - name: Verify production branch protection required checks
+        run: |
+          set -euo pipefail
+
+          repo="${GITHUB_REPOSITORY}"
+          contexts_json="$(gh api "repos/${repo}/branches/production/protection" --jq '.required_status_checks.contexts')"
+
+          expected_checks=(
+            "policy"
+            "lint"
+            "test (shard 1)"
+            "test (shard 2)"
+            "test (shard 3)"
+            "test (shard 4)"
+            "quality-gates"
+            "burn-in"
+          )
+
+          mapfile -t actual_checks < <(jq -r '.[]' <<<"$contexts_json")
+          missing_checks=()
+
+          for check in "${expected_checks[@]}"; do
+            if ! printf '%s\n' "${actual_checks[@]}" | grep -Fxq "$check"; then
+              missing_checks+=("$check")
+            fi
+          done
+
+          {
+            echo "## Branch Protection Drift Check"
+            echo ""
+            echo "- branch: production"
+            echo "- expected-required-checks: ${#expected_checks[@]}"
+            echo "- actual-required-checks: ${#actual_checks[@]}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${#missing_checks[@]}" -gt 0 ]; then
+            echo ""
+            echo "Missing required checks from production branch protection:"
+            printf ' - %s\n' "${missing_checks[@]}"
+            exit 1
+          fi
+
+          echo "Production branch protection required checks match policy."

@@ -73,6 +73,7 @@ export function createStoryA1Context(
 ): StoryA1Context {
   const tenantId = overrides.tenantId ?? connectShyftFeatureFlagData.tenantId;
   const orgUnitId = overrides.orgUnitId ?? connectShyftFeatureFlagData.orgUnitId;
+  const threadId = overrides.threadId ?? 'thread-a-1001';
 
   return {
     storyId: 'a-1',
@@ -83,12 +84,12 @@ export function createStoryA1Context(
     correlationId:
       overrides.correlationId ?? `corr-story-a1-${randomUUID().slice(0, 8)}`,
     csrfToken: overrides.csrfToken ?? `csrf-story-a1-${randomUUID().slice(0, 8)}`,
-    threadId: overrides.threadId ?? 'thread-a-1001',
+    threadId,
     paths: {
       inbox: '/api/v1/connectshyft/inbox',
       threadEnsure: '/api/v1/connectshyft/threads',
-      threadClaim: '/api/v1/connectshyft/threads/thread-a-1001/claim',
-      threadTakeover: '/api/v1/connectshyft/threads/thread-a-1001/takeover',
+      threadClaim: `/api/v1/connectshyft/threads/${threadId}/claim`,
+      threadTakeover: `/api/v1/connectshyft/threads/${threadId}/takeover`,
       webhookSms: '/api/v1/connectshyft/webhooks/sms',
       inboxUi: '/app/connectshyft/inbox',
       availabilityUi: '/app/connectshyft/settings/availability',

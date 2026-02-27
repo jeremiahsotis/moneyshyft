@@ -39,12 +39,12 @@ FR-CS-017: Thread supports metadata fields `last_inbound_cs_number_id` and `pref
 FR-CS-018: Inbound SMS webhook appends message and ensures active thread.
 FR-CS-019: Inbound voice webhook creates voicemail artifact and transcription request.
 FR-CS-020: Transcription webhook attaches transcript to voicemail record.
-FR-CS-021: All Twilio webhooks must validate signatures before processing.
-FR-CS-021a: Webhook handlers must implement replay-safe idempotency using Twilio SID keys (message/call/transcription) to prevent duplicate processing.
+FR-CS-021: All provider webhooks for enabled adapters must validate signatures before processing.
+FR-CS-021a: Webhook handlers must implement replay-safe idempotency using provider event identifiers (message/call/transcription equivalents) to prevent duplicate processing.
 FR-CS-022: `prefers_texting` enum values must be `UNKNOWN | YES | NO`.
 FR-CS-023: Outbound SMS when `NO` requires override reason; override is persisted and audited.
 FR-CS-024: Critical state transitions and governance actions emit audit/outbox records.
-FR-CS-025: OrgUnit supports multiple mapped Twilio numbers.
+FR-CS-025: OrgUnit supports multiple mapped provider numbers/endpoints.
 FR-CS-026: Number mapping uniqueness is enforced per tenant for phone number.
 FR-CS-027: OrgUnit escalation config supports integer-hour `X` baseline (default 24, range 1-24) and recipient targets.
 
@@ -52,11 +52,11 @@ FR-CS-027: OrgUnit escalation config supports integer-hour `X` baseline (default
 
 NFR-CS-001: Strict tenant isolation on all data access paths.
 NFR-CS-002: OrgUnit-scoped enforcement for operational records.
-NFR-CS-003: Twilio webhook signature validation is mandatory.
+NFR-CS-003: Provider webhook signature validation is mandatory.
 NFR-CS-004: Immutable audit trail for critical actions.
 NFR-CS-005: Deterministic inbound routing from number mapping.
 NFR-CS-006: Idempotent thread ensure behavior.
-NFR-CS-007: Webhook replay protection must ensure duplicate Twilio SID events do not create duplicate messages, voicemails, or thread transitions.
+NFR-CS-007: Webhook replay protection must ensure duplicate provider events do not create duplicate messages, voicemails, or thread transitions.
 NFR-CS-008: Escalation evaluation must be event-scheduled per thread using persisted `next_evaluation_at_utc`; no in-memory timers.
 NFR-CS-009: Escalation engine behavior must remain consistent across retries and process restarts.
 NFR-CS-010: No silent state transitions outside audited paths.
@@ -154,8 +154,12 @@ Enable outbound SMS/call execution that preserves escalation semantics, preferen
 **FRs covered:** FR-CS-016, FR-CS-022, FR-CS-023, FR-CS-024
 
 ### Epic e: Inbound Webhook Reliability and Voicemail Continuity
-Enable secure, idempotent Twilio ingestion for SMS/voice/transcription with replay safety and parallel-delivery quality gates.
+Enable secure, idempotent provider ingestion for SMS/voice/transcription (Telnyx adapter for V1) with replay safety and parallel-delivery quality gates.
 **FRs covered:** FR-CS-018, FR-CS-019, FR-CS-020, FR-CS-021, FR-CS-021a
+
+### Epic f: Comms Core Provider Abstraction and Telnyx Cutover
+Introduce a provider-agnostic Comms Core adapter boundary so provider changes do not require domain-level rewrites.
+**FRs covered:** FR-CS-016, FR-CS-018, FR-CS-019, FR-CS-020, FR-CS-021, FR-CS-021a, FR-CS-024, FR-CS-025
 
 ## Epic a: Scoped Access and Operational Configuration
 
@@ -192,7 +196,7 @@ So that orgUnit-scoped operations cannot leak across tenant or membership bounda
 ### Story a.3: OrgUnit Number Mapping Management
 
 As an orgUnit administrator,
-I want to manage multiple Twilio numbers per orgUnit with tenant-safe uniqueness rules,
+I want to manage multiple provider numbers per orgUnit with tenant-safe uniqueness rules,
 So that inbound routing is deterministic and operationally maintainable.
 
 **FRs:** FR-CS-025, FR-CS-026
@@ -200,9 +204,9 @@ So that inbound routing is deterministic and operationally maintainable.
 **Acceptance Criteria:**
 
 **Given** an orgUnit admin creates or updates number mappings
-**When** they save valid Twilio E.164 numbers
+**When** they save valid provider E.164 numbers
 **Then** multiple mappings per orgUnit are supported
-**And** duplicate `(tenant_id, twilio_number_e164)` attempts are blocked with actionable validation feedback.
+**And** duplicate `(tenant_id, provider_name, provider_number_e164)` attempts are blocked with actionable validation feedback.
 
 ### Story a.4: Escalation Baseline and Recipient Configuration
 
@@ -569,7 +573,7 @@ So that I can complete actions safely and correctly.
 
 ## Epic e: Inbound Webhook Reliability and Voicemail Continuity
 
-Enable secure, idempotent Twilio ingestion for SMS/voice/transcription with replay safety and parallel-delivery quality gates.
+Enable secure, idempotent provider ingestion for SMS/voice/transcription (Telnyx adapter for V1) with replay safety and parallel-delivery quality gates.
 
 ### Story e.1: Verified Webhook Ingress and Deterministic Context Routing
 
@@ -581,7 +585,7 @@ So that spoofed or misrouted events cannot create operational artifacts.
 
 **Acceptance Criteria:**
 
-**Given** Twilio webhook requests reach ConnectShyft endpoints
+**Given** provider webhook requests reach ConnectShyft endpoints for enabled adapters
 **When** signature validation and number mapping resolution run
 **Then** only valid signed requests are processed
 **And** each accepted webhook resolves deterministic `(tenant_id, org_unit_id)` context before downstream handling.
@@ -635,13 +639,13 @@ So that voice content is searchable and actionable in-thread.
 
 As a reliability engineer,
 I want webhook replay protection backed by a receipt ledger with retention controls,
-So that duplicate Twilio events are safely ignored and storage remains bounded.
+So that duplicate provider events are safely ignored and storage remains bounded.
 
 **FRs:** FR-CS-021a
 
 **Acceptance Criteria:**
 
-**Given** webhook events identified by Twilio SID and event type
+**Given** webhook events identified by provider event identifiers and event type
 **When** the same event is received again
 **Then** unique `(tenant_id, provider, sid, event_type)` receipt checks suppress duplicate domain writes
 **And** receipt retention policy is enforced by scheduled cleanup without impacting replay safety windows.
@@ -663,6 +667,74 @@ So that ConnectShyft can ship in parallel with RouteShyft without cross-module r
 **When** CI executes
 **Then** `npm run policy:check` runs as first blocking gate, import-boundary checks block route/connectshyft direct imports, and RouteShyft regression lane is required
 **And** rollout controls remain feature-flag/allow-list based with documented rollback path.
+
+## Epic f: Comms Core Provider Abstraction and Telnyx Cutover
+
+Introduce a provider-agnostic Comms Core adapter boundary so provider changes do not require domain-level rewrites.
+
+### Story f.1: Provider Adapter Interface and Registry
+
+As a platform engineer,
+I want a provider adapter interface and provider registry,
+So that outbound and inbound communication flows can run without provider-specific branching in domain logic.
+
+**Acceptance Criteria:**
+
+**Given** Comms Core executes outbound or inbound operations
+**When** provider resolution runs
+**Then** operations dispatch through a provider adapter interface with deterministic selection for enabled providers.
+
+**Given** a provider is disabled or missing
+**When** a comms operation is attempted
+**Then** the system returns a deterministic refusal with no partial writes.
+
+### Story f.2: Canonical Comms Event Model and Event Store
+
+As a reliability engineer,
+I want provider events normalized into canonical call/message events,
+So that downstream ConnectShyft behavior remains stable regardless of provider.
+
+**Acceptance Criteria:**
+
+**Given** outbound actions or provider webhook events occur
+**When** Comms Core persists events
+**Then** canonical event records include aggregate id/type, event type, payload, and UTC timestamp with consistent schema.
+
+**Given** downstream thread and lifecycle handlers consume events
+**When** provider-specific payload differences exist
+**Then** canonical event translation shields domain handlers from provider-specific fields.
+
+### Story f.3: Provider Leg and Message Correlation Fallback Mapping
+
+As a backend engineer,
+I want fallback correlation mapping between provider IDs and internal IDs,
+So that webhook handling remains deterministic even if metadata is incomplete.
+
+**Acceptance Criteria:**
+
+**Given** outbound calls/messages are dispatched
+**When** provider identifiers are returned
+**Then** provider leg/message identifiers are persisted with unique provider-scoped constraints.
+
+**Given** inbound callbacks arrive without expected metadata
+**When** correlation resolution executes
+**Then** fallback lookup by provider identifier can recover internal call/message identity or refuse deterministically.
+
+### Story f.4: Telnyx Adapter Implementation and Cutover Guardrails
+
+As a release maintainer,
+I want Telnyx implemented behind the provider adapter and guarded by cutover rules,
+So that Twilio-dependent paths are retired without breaking lifecycle behavior.
+
+**Acceptance Criteria:**
+
+**Given** the Telnyx adapter is enabled for ConnectShyft
+**When** outbound and inbound comms flows execute
+**Then** behavior remains consistent with locked lifecycle/escalation rules and canonical envelope contracts.
+
+**Given** a Twilio-coupled implementation path is invoked in ConnectShyft lanes
+**When** CI and policy checks run
+**Then** the change is blocked unless routed through approved adapter abstraction contracts.
 
 \
 Acceptance Criteria Additions (locked):\

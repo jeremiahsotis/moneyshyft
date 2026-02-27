@@ -1,4 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { apiRequest } from '../../support/helpers/apiClient';
+import {
+  ensureConnectShyftDbActorUser,
+} from '../../support/helpers/connectShyftDbActor';
 import { test, expect } from '../../support/fixtures/connectShyftStoryA1.fixture';
 
 test.describe(
@@ -129,16 +133,36 @@ test.describe(
       storyA1Context,
       storyA1AllEnabledHeaders,
     }) => {
+      const lifecycleActorUserId = randomUUID();
+      await ensureConnectShyftDbActorUser(lifecycleActorUserId);
+      const lifecycleHeaders = {
+        ...storyA1AllEnabledHeaders,
+        'x-test-connectshyft-user-id': lifecycleActorUserId,
+      };
+      const neighborId = `neighbor-a1-all-enabled-${Date.now()}`;
       const inboxResponse = await apiRequest(request, {
         method: 'GET',
         path: storyA1Context.paths.inbox,
         headers: storyA1AllEnabledHeaders,
       });
 
+      const ensureResponse = await apiRequest(request, {
+        method: 'POST',
+        path: storyA1Context.paths.threadEnsure,
+        headers: lifecycleHeaders,
+        data: {
+          orgUnitId: storyA1Context.orgUnitId,
+          neighborId,
+        },
+      });
+
+      const ensureBody = await ensureResponse.json();
+      const ensuredThreadId = String(ensureBody?.data?.thread?.threadId ?? '');
+
       const claimResponse = await apiRequest(request, {
         method: 'POST',
-        path: storyA1Context.paths.threadClaim,
-        headers: storyA1AllEnabledHeaders,
+        path: `/api/v1/connectshyft/threads/${encodeURIComponent(ensuredThreadId)}/claim`,
+        headers: lifecycleHeaders,
         data: {
           reason: 'operator-claim',
         },
@@ -146,8 +170,8 @@ test.describe(
 
       const takeoverResponse = await apiRequest(request, {
         method: 'POST',
-        path: storyA1Context.paths.threadTakeover,
-        headers: storyA1AllEnabledHeaders,
+        path: `/api/v1/connectshyft/threads/${encodeURIComponent(ensuredThreadId)}/takeover`,
+        headers: lifecycleHeaders,
         data: {
           reason: 'operator-takeover',
         },
@@ -166,11 +190,17 @@ test.describe(
       });
 
       expect(inboxResponse.status()).toBe(200);
+      expect([200, 201]).toContain(ensureResponse.status());
       expect(claimResponse.status()).toBe(200);
       expect(takeoverResponse.status()).toBe(200);
       expect(webhookResponse.status()).toBe(200);
 
       const inboxBody = await inboxResponse.json();
+      expect(ensureBody).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_THREAD_ENSURED',
+      });
+      expect(ensuredThreadId.length).toBeGreaterThan(0);
       const claimBody = await claimResponse.json();
       const takeoverBody = await takeoverResponse.json();
       const webhookBody = await webhookResponse.json();
@@ -185,7 +215,7 @@ test.describe(
       });
       expect(claimBody).toMatchObject({
         ok: true,
-        code: 'CONNECTSHYFT_THREAD_CLAIM_READY',
+        code: 'CONNECTSHYFT_THREAD_CLAIMED',
       });
       expect(takeoverBody).toMatchObject({
         ok: true,

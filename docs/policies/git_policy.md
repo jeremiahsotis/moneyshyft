@@ -209,3 +209,18 @@ The CI policy gate runs `npm run policy:check` and fails the pipeline on violati
 - Commit-subject policy is always enforced for CI events (`pull_request`, `push`, `workflow_dispatch`).
 - Local `policy:check` runs defer commit-subject failures when the worktree is dirty to avoid blocking uncommitted slices from unrelated HEAD subjects.
 - To force local strict mode (for example before committing), run with `POLICY_ENFORCE_LOCAL_COMMIT_SUBJECT=true`.
+
+## Branch Protection + Merge Queue Required Checks (Mandatory)
+
+- `production` branch protection and merge-queue policy must require all of the following check contexts:
+  - `policy`
+  - `lint`
+  - `test (shard 1)`
+  - `test (shard 2)`
+  - `test (shard 3)`
+  - `test (shard 4)`
+  - `quality-gates`
+  - `burn-in`
+- `merge_group` events must remain enabled in core CI and produce the same required check contexts used by branch protection.
+- Burn-in remains advisory for pull_request validation but blocking for merge-group and production-protection paths.
+- Drift must be monitored through workflow: `.github/workflows/branch-protection-drift-check.yml`.

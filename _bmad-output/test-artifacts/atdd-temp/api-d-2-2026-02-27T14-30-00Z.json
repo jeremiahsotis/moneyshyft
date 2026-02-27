@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "subprocess": "atdd-api-tests",
+  "story_id": "d-2",
+  "tests": [
+    {
+      "file": "tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.atdd.api.spec.ts",
+      "expected_to_fail": true,
+      "priority_coverage": { "P0": 3, "P1": 2, "P2": 0, "P3": 0 }
+    }
+  ],
+  "fixture_needs": [
+    "tests/support/factories/connectShyftStoryD2Factory.ts",
+    "tests/support/fixtures/connectShyftStoryD2.fixture.ts"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "test-quality",
+    "test-priorities"
+  ],
+  "test_count": 5,
+  "tdd_phase": "RED",
+  "summary": "Generated 5 failing API tests for story d-2."
+}

@@ -49,9 +49,33 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
+    path: '/app/route/requests',
+    name: 'routeshyft-request-lifecycle',
+    component: () => import('@/views/RouteShyft/RouteRequestLifecycleView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/app/connectshyft/inbox',
     name: 'connectshyft-inbox',
     component: () => import('@/views/ConnectShyft/ConnectShyftInboxView.vue'),
+    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
+  },
+  {
+    path: '/app/connectshyft/mine',
+    name: 'connectshyft-mine',
+    component: () => import('@/views/ConnectShyft/ConnectShyftInboxView.vue'),
+    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
+  },
+  {
+    path: '/app/connectshyft/more',
+    name: 'connectshyft-more',
+    component: () => import('@/views/ConnectShyft/ConnectShyftMoreView.vue'),
+    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
+  },
+  {
+    path: '/app/connectshyft/threads/:threadId',
+    name: 'connectshyft-thread-detail',
+    component: () => import('@/views/ConnectShyft/ConnectShyftThreadDetailView.vue'),
     meta: { requiresAuth: true, moduleGate: 'connectshyft' }
   },
   {
@@ -193,13 +217,26 @@ const router = createRouter({
   routes
 });
 
+const hasAuthCookie = (): boolean => {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  return /(?:^|;\s*)access_token=/.test(document.cookie || '');
+};
+
 // Navigation guards
 router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore(pinia);
   const accessStore = useAccessStore(pinia);
 
   // Try to load user if not already loaded
-  if (!authStore.user && !authStore.isLoading) {
+  const shouldBootstrapSession =
+    !authStore.user
+    && !authStore.isLoading
+    && (to.meta.requiresAuth === true || hasAuthCookie());
+
+  if (shouldBootstrapSession) {
     try {
       await authStore.fetchCurrentUser();
     } catch (_error) {

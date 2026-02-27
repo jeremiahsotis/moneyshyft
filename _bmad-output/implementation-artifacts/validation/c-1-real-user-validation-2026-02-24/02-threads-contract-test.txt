@@ -1,0 +1,20 @@
+
+> moneyshyft@0.3.6 test
+> jest --runInBand --verbose src/src/modules/connectshyft/__tests__/threads.contract.test.ts
+
+PASS src/modules/connectshyft/__tests__/threads.contract.test.ts (11.002 s)
+  connectshyft threads (postgres contract)
+    ✓ enforces single-active-thread identity under write races and preserves latest ensure metadata (107 ms)
+    ✓ supports nullable next_evaluation_at_utc for non-due lifecycle states (5 ms)
+    ✓ maintains an index-backed due-thread scan contract (7 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       3 passed, 3 total
+Snapshots:   0 total
+Time:        11.48 s
+Ran all test suites matching /src\/src\/modules\/connectshyft\/__tests__\/threads.contract.test.ts/i.
+npm notice
+npm notice New major version of npm available! 10.9.4 -> 11.10.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.10.1
+npm notice To update run: npm install -g npm@11.10.1
+npm notice

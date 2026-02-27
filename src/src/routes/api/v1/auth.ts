@@ -391,9 +391,34 @@ router.post('/refresh', async (req: Request, res: Response) => {
       return;
     }
 
+    const currentUser = await AuthService.getUserById(payload.userId);
+    if (!currentUser) {
+      refusal(res, {
+        code: 'REFRESH_TOKEN_REJECTED',
+        message: 'Refresh token rejected',
+        refusalType: 'security',
+        httpStatus: 403,
+      });
+      return;
+    }
+
+    const refreshedPayload = {
+      userId: payload.userId,
+      email: payload.email,
+      householdId: currentUser.householdId,
+      activeTenantId: tenantId,
+      activeOrgUnitId: await AuthService.resolveActiveOrgUnitIdForSession(
+        payload.userId,
+        tenantId,
+        currentUser.role,
+      ),
+      mustResetPassword: currentUser.mustResetPassword === true,
+      role: currentUser.role,
+    };
+
     const rememberMe = storedSession.rememberMe;
-    const newAccessToken = generateAccessToken(payload, rememberMe);
-    const newRefreshToken = generateRefreshToken(payload, rememberMe);
+    const newAccessToken = generateAccessToken(refreshedPayload, rememberMe);
+    const newRefreshToken = generateRefreshToken(refreshedPayload, rememberMe);
 
     await PlatformSessionStore.rotateSession(refreshToken, newRefreshToken, tenantId);
 
@@ -476,7 +501,11 @@ router.post('/password/first-login-reset', authenticateToken, async (req: Reques
       email: user.email,
       householdId: user.householdId,
       activeTenantId: user.householdId,
-      activeOrgUnitId: null,
+      activeOrgUnitId: await AuthService.resolveActiveOrgUnitIdForSession(
+        user.id,
+        user.householdId,
+        user.role,
+      ),
       mustResetPassword: false,
       role: user.role,
     };

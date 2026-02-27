@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "subprocess": "atdd-api-tests",
+  "story_id": "c-4",
+  "tests": [
+    {
+      "file": "tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.api.spec.ts",
+      "expected_to_fail": true
+    }
+  ],
+  "fixture_needs": ["connectShyftStoryC4.fixture"],
+  "knowledge_fragments_used": ["data-factories", "test-quality", "api-request", "error-handling"],
+  "test_count": 5,
+  "tdd_phase": "RED",
+  "summary": "Generated 5 failing API tests for story c-4"
+}

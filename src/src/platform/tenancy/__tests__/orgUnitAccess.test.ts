@@ -75,6 +75,32 @@ describe('orgUnit access validation', () => {
     });
   });
 
+  it('includes orgunit role-set capabilities in effective roles when membership exists', async () => {
+    const store = createStore({
+      findTenantMembership: jest.fn(async () => ({
+        roleSetJson: JSON.stringify(['TENANT_ADMIN']),
+      })),
+      findOrgUnitMembership: jest.fn(async () => ({
+        roleSetJson: JSON.stringify(['ORGUNIT_ADMIN']),
+      })),
+    });
+
+    await expect(validateOrgUnitScopedAccess(store, {
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      userId: 'user-1',
+      baseRoles: ['ORGUNIT_MEMBER'],
+    })).resolves.toMatchObject({
+      ok: true,
+      bypassedOrgUnitMembership: true,
+      effectiveRoles: expect.arrayContaining([
+        'TENANT_ADMIN',
+        'ORGUNIT_MEMBER',
+        'ORGUNIT_ADMIN',
+      ]),
+    });
+  });
+
   it('requires orgunit membership for non-privileged tenant scope', async () => {
     const store = createStore({
       findTenantMembership: jest.fn(async () => ({
