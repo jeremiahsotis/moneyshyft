@@ -745,3 +745,125 @@ lastSaved: '2026-02-27'
   - Cypress docs: `https://docs.cypress.io/app/core-concepts/test-isolation`
   - Pact docs: `https://docs.pact.io/getting_started/provider_verification`
   - GitHub Actions docs: `https://docs.github.com/en/actions/concepts/workflows-and-actions`
+
+## 2026-02-27 Run - Step 1 Output - Detect Mode & Prerequisites (Epic F)
+- Mode selected: **Epic-Level Mode**.
+- Selection reason: user input explicitly targeted `testarch-test-design Epic F`.
+- Epic-level prerequisite check passed.
+  - Epic scope and AC source loaded from:
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (Epic f)
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/f-1-provider-adapter-interface-and-provider-registry.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/f-2-canonical-comms-event-model-and-event-store.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/f-3-provider-leg-message-correlation-fallback-mapping.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/f-4-telnyx-adapter-implementation-and-cutover-guardrails.md`
+  - Architecture/PRD/change-control context available:
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md`
+  - Dependency/sprint context available:
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+- No blocker found for progression to Step 2.
+
+## 2026-02-27 Run - Step 2 Output - Load Context & Knowledge Base (Epic F)
+- Config loaded from `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/config.yaml`:
+  - `tea_use_playwright_utils: true`
+  - `tea_browser_automation: auto`
+  - `test_artifacts: /Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts`
+- Loaded epic-level artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/f-1-provider-adapter-interface-and-provider-registry.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/f-2-canonical-comms-event-model-and-event-store.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/f-3-provider-leg-message-correlation-fallback-mapping.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/f-4-telnyx-adapter-implementation-and-cutover-guardrails.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+  - `/Users/jeremiahotis/projects/connectshyft/provider_adapter.md`
+  - `/Users/jeremiahotis/projects/connectshyft/event_schema.md`
+  - `/Users/jeremiahotis/projects/connectshyft/openapi.yaml`
+- Loaded prior system-level outputs (context only):
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-architecture.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-qa.md`
+- Existing coverage scan summary:
+  - Strong coverage exists for epic lanes A-D and UX across `tests/api/platform` and `tests/e2e/platform`.
+  - No dedicated Epic F (`f-1`..`f-4`) API/E2E suite files currently exist.
+  - Current ConnectShyft route/module code still contains provider-coupled terms (`x-twilio-signature`, `twilioNumberE164`), which confirms abstraction debt and increases regression risk during cutover.
+- Browser exploration note:
+  - Workflow is in `auto` browser mode, but no active target runtime was available during this run; analysis proceeded using artifact and code evidence.
+- Knowledge fragments loaded from TEA index:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/risk-governance.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/probability-impact.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/test-levels-framework.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/test-priorities-matrix.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/playwright-cli.md`
+
+## 2026-02-27 Run - Step 3 Output - Risk Assessment (Epic F)
+- System-level testability subsection is not applicable (epic-level mode).
+- Risk matrix generated with TEA probability-impact scoring (`score = probability x impact`).
+- Highest risks:
+  - `R-F-001` provider abstraction remains Twilio-coupled in route/module contracts (score 9).
+  - `R-F-002` disabled/missing provider flow can cause partial writes before refusal (score 9).
+  - `R-F-004` metadata-missing callbacks can mis-correlate and mutate wrong lifecycle/timeline state (score 9).
+  - `R-F-005` replay duplicates can bypass dedupe semantics and create duplicate domain writes (score 9).
+- Additional high-priority risks:
+  - `R-F-003` canonical event schema drift,
+  - `R-F-006` signature-validation inconsistency,
+  - `R-F-007` cutover lifecycle parity drift,
+  - `R-F-008` CI/policy failure to block non-adapter provider coupling.
+- Medium/low risks captured for performance, observability, migration ordering, and copy consistency (`R-F-009`..`R-F-012`).
+- Mitigation priority order:
+  1. Abstraction and fail-closed safety (`R-F-001`, `R-F-002`)
+  2. Correlation and replay integrity (`R-F-004`, `R-F-005`)
+  3. Cutover and governance reliability (`R-F-003`, `R-F-006`, `R-F-007`, `R-F-008`)
+
+## 2026-02-27 Run - Step 4 Output - Coverage Plan & Execution Strategy (Epic F)
+- Coverage matrix built for stories `f-1` through `f-4` with explicit risk links.
+- Test-level assignment follows framework guidance:
+  - API/Integration for adapter dispatch, canonical events, correlation fallback, replay safety, and cutover parity
+  - Unit/contract/static checks for provider neutrality and schema drift
+  - CI-contract checks for anti-coupling policy enforcement
+  - Targeted E2E/regression checks for operator-visible lifecycle parity where needed
+- Priority model applied:
+  - P0: abstraction and data-safety invariants with no workaround
+  - P1: high-impact cutover and policy/contract behavior
+  - P2: robustness/perf/observability hardening
+  - P3: exploratory future-provider and burn-in confidence checks
+- Execution strategy set to simple PR / Nightly / Weekly:
+  - PR: P0 + P1 + fast P2 suites
+  - Nightly: full P2 including replay/perf and migration checks
+  - Weekly: P3 exploratory and long-running diagnostics
+- Interval-only effort estimates:
+  - P0: ~32-50 hours
+  - P1: ~26-42 hours
+  - P2: ~12-24 hours
+  - P3: ~4-10 hours
+  - Total: ~74-126 hours (~2.5-4 weeks)
+- Quality gates set:
+  - P0 pass rate = 100%
+  - P1 pass rate >=95%
+  - High-risk mitigations complete or explicitly waived
+  - Zero non-adapter provider coupling violations in CI policy/static checks
+  - Coverage target >=80%
+
+## 2026-02-27 Run - Step 5 Output - Generate Outputs & Validate (Epic F)
+- Mode used: **Epic-Level**
+- Epic selected: **Epic F** (`f-1`..`f-4`)
+- Output generated:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-epic-F.md`
+- Validation summary against checklist:
+  - Risk matrix includes IDs, category, P/I scores, mitigation, owner, and timeline.
+  - Coverage plan includes P0-P3 priorities with non-duplicate level intent and explicit risk links.
+  - Priority sections are risk/criticality only; execution timing is isolated to execution strategy.
+  - Execution strategy follows simple PR/Nightly/Weekly model.
+  - Estimates are interval-based only (no false precision).
+  - Accountability sections included: not-in-scope, entry/exit criteria, assumptions/dependencies, interworking.
+  - Artifacts saved under `_bmad-output/test-artifacts/`.
+- External documentation cross-check used for recommendation alignment:
+  - Playwright docs: best practices + parallelization
+  - Cypress docs: test isolation
+  - Pact docs: provider verification
+  - GitHub Actions docs: workflow/job model
+- Key release risks/thresholds in final output:
+  - Highest risks: `R-F-001`, `R-F-002`, `R-F-004`, `R-F-005`
+  - Gate thresholds: P0=100%, P1>=95%, high-risk mitigations complete, coverage >=80%, zero non-adapter provider coupling violations

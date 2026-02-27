@@ -101,16 +101,16 @@ so that operational decisions are traceable and clients can respond deterministi
 - Keep event delivery and duplicate-suppression behavior aligned with replay-safe architecture assumptions and provider webhook best practices.
 - Ensure transport/provider failures still map to deterministic refusal/error envelopes for clients.
 - References:
-  - https://www.twilio.com/docs/events/event-delivery-and-duplication
-  - https://www.twilio.com/docs/usage/webhooks/webhooks-security
-  - https://www.twilio.com/docs/messaging/guides/webhook-request
+  - `/Users/jeremiahotis/projects/connectshyft/provider_adapter.md`
+  - `/Users/jeremiahotis/projects/connectshyft/event_schema.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md`
 
 ### Project Context Reference
 
 - `_bmad-output/project-context.md`
 - `docs/policies/git_policy.md`
 - `_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
-- `_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md`
 
 ### Story Completion Status
 
@@ -127,7 +127,7 @@ so that operational decisions are traceable and clients can respond deterministi
 - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (Epic d, Story d.3)
 - `_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md` (FR-CS-024, API contract requirements, non-functional governance controls)
 - `_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md` (Section 4.5, API contract rules, mutation/audit/outbox guidance)
-- `_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md` (Sections 4.1.2 and 4.2)
+- `_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md` (Section 4.1 Stories / 4.5 Evidence Package)
 - `src/src/routes/api/v1/connectshyft.ts` (lifecycle side-effects and outbound route handling)
 
 ## Dev Agent Record

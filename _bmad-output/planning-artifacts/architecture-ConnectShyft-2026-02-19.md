@@ -44,7 +44,7 @@ ConnectShyft adds communication operations (SMS/voice/thread/escalation) inside 
 \
 In scope:\
 1. ConnectShyft domain model and APIs.\
-2. Twilio webhook ingestion and replay-safe idempotency.\
+2. Provider webhook ingestion through adapter layer (Telnyx adapter for V1) and replay-safe idempotency.\
 3. Escalation scheduling and claim semantics.\
 4. Tenant/orgUnit enforcement and governance controls.\
 5. Feature-flagged rollout with CI and policy gates.\
@@ -133,8 +133,8 @@ Rationale:\
 ### AD-06: Webhook Security and Dedupe\
 \
 Decision:\
-1. All Twilio webhooks must pass signature validation before processing.\
-2. Handlers must be replay-safe/idempotent using Twilio SID keys.\
+1. All provider webhooks for enabled adapters must pass signature validation before processing.\
+2. Handlers must be replay-safe/idempotent using provider event identifiers (message/call/transcription equivalents).\
 3. Duplicate webhook events must not create duplicate domain timeline entries.\
 \
 Rationale:\
@@ -165,14 +165,14 @@ Rationale:\
 ### AD-09: Inbound Voice Routing via Active-Thread + Intake Fallback (LOCKED)\
 \
 Decision:\
-1. The central intake number `(260) 456-3561` remains in Teams (not ported to Twilio).\
-2. Conferences use ConnectShyft (Twilio) for outbound voice/SMS and for inbound routing on Conference Twilio numbers.\
-3. Inbound calls to a **Conference Twilio number** are routed by **caller ID match** and **active-thread state**:\
+1. The central intake number `(260) 456-3561` remains in Teams (not ported to ConnectShyft provider telephony).\
+2. Conferences use ConnectShyft Comms Core (Telnyx adapter for V1) for outbound voice/SMS and for inbound routing on Conference provider numbers.\
+3. Inbound calls to a **Conference provider number** are routed by **caller ID match** and **active-thread state**:\
    1. If no active thread exists for `(tenant_id, org_unit_id, neighbor_id)` -> **intake fallback transfer** to `(260) 456-3561`.\
    2. If active thread state is `UNCLAIMED` -> **voicemail only** (no ring to an individual).\
    3. If active thread state is `CLAIMED` -> route per orgUnit configuration: `voicemail_only | ring_group | bridge`.\
 4. Intake fallback transfers must be recorded as audit events and appear as system timeline events on the most recent related thread when a neighbor is identified.\
-5. Webhook handlers return **HTTP 403** on invalid Twilio signatures (fail closed). (Plan exists to switch to `200` only if Twilio retry storms become a problem.)\
+5. Webhook handlers return **HTTP 403** on invalid provider signatures (fail closed). (Plan exists to switch to `200` only if provider retry storms become a problem.)\
 \
 Rationale:\
 - Preserves call center control while allowing Conferences to execute follow-up and continuity.\
@@ -236,7 +236,7 @@ Minimum contract fields:\
 1. Partial unique active-thread index:\
    1. `(tenant_id, org_unit_id, neighbor_id)` where `state != 'CLOSED'`.\
 2. Inbound number uniqueness:\
-   1. `(tenant_id, twilio_number_e164)` on `cs_numbers`.\
+   1. `(tenant_id, provider_name, provider_number_e164)` on `cs_numbers`.\
 3. Scheduler index:\
    1. `(state, next_evaluation_at_utc, org_unit_id)` for due-thread scans.\
 4. Webhook receipt dedupe unique index:\
@@ -324,9 +324,9 @@ Decision:\
 \
 ### 7.1 Pipeline\
 \
-1. Verify Twilio signature.\
-2. Extract canonical event identity (`MessageSid`, `CallSid`, transcription SID).\
-3. Deduplicate by SID key using `connectshyft.cs_webhook_receipts`.\
+1. Resolve provider adapter and verify provider signature.\
+2. Extract canonical event identity (provider message/call/transcription identifiers).\
+3. Deduplicate by provider event identity key using `connectshyft.cs_webhook_receipts`.\
 4. Resolve `(tenant, orgUnit)` through number mapping.\
 5. Ensure active thread.\
 6. Persist message/voicemail artifacts.\
@@ -334,7 +334,7 @@ Decision:\
 \
 \
 \
-#### Inbound voice call routing (Conference Twilio numbers)\
+#### Inbound voice call routing (Conference provider numbers)\
 \
 After signature validation + idempotency receipt insert:\
 1. Resolve `(tenant_id, org_unit_id)` by number mapping.\
@@ -442,7 +442,7 @@ Selected default:\
 2. Single active thread partial unique constraint in place.\
 3. Ensure endpoint idempotency validated under concurrency.\
 4. Escalation scheduling uses persisted `next_evaluation_at_utc` with no in-memory timers.\
-5. Twilio signature + SID dedupe enforced via `connectshyft.cs_webhook_receipts`.\
+5. Provider signature + event-id dedupe enforced via `connectshyft.cs_webhook_receipts`.\
 6. No direct ConnectShyft-to-RouteShyft imports (and vice versa), enforced in CI.\
 7. Feature flags + rollout + rollback controls implemented.\
 8. PRD and UX frozen constraints trace to tests and code paths.\
