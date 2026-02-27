@@ -10,7 +10,6 @@ import { isCommitmentStatus } from '../../../modules/route/domain/commitmentLife
 import { IntakeService } from '../../../modules/route/application/intakeService';
 import { KnexIntakeRequestRepository } from '../../../modules/route/infrastructure/intakeRequestRepository';
 import { RouteIntakeChannel, RouteIntakePayload } from '../../../modules/route/domain/intakePolicy';
-import { donorIntakeController } from '../../../modules/route/api/donorIntakeController';
 
 const TEST_TENANT_HEADER = 'x-test-route-tenant-id';
 const TEST_ACTOR_HEADER = 'x-test-route-actor-id';
@@ -229,6 +228,80 @@ const resolveTenantId = (req: Request, res: Response): string | null => {
   }
 };
 
+const resolveDonorScopedContext = (
+  req: Request,
+  res: Response,
+  requestedTenantId: string,
+  requestedOrgUnitId: string,
+): { tenantId: string; orgUnitId: string } | null => {
+  const scopedTenantId = resolveTenantContext(req);
+  const scopedOrgUnitId = resolveOrgUnitContext(req);
+  const hasProtectedTenantScope = Boolean(
+    scopedTenantId && scopedTenantId.trim().toLowerCase() !== 'public',
+  );
+
+  if (requestedTenantId && hasProtectedTenantScope && requestedTenantId !== scopedTenantId) {
+    refusal(res, {
+      code: 'ROUTE_TENANT_SCOPE_MISMATCH',
+      message: 'tenantId must match active tenant context.',
+      refusalType: 'security',
+      httpStatus: 403,
+      data: {
+        activeTenantId: scopedTenantId,
+        requestedTenantId,
+      },
+    });
+    return null;
+  }
+
+  const candidateTenantId = hasProtectedTenantScope ? (scopedTenantId || '') : requestedTenantId;
+  try {
+    requireTenantId(candidateTenantId || null);
+  } catch (error) {
+    const message = error instanceof TenantScopeError
+      ? error.message
+      : 'Tenant context is required for Route module requests.';
+
+    refusal(res, {
+      code: 'ROUTE_TENANT_CONTEXT_REQUIRED',
+      message,
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return null;
+  }
+
+  if (requestedOrgUnitId && hasProtectedTenantScope && scopedOrgUnitId && requestedOrgUnitId !== scopedOrgUnitId) {
+    refusal(res, {
+      code: 'ROUTE_ORG_UNIT_SCOPE_MISMATCH',
+      message: 'orgUnitId must match active orgUnit context.',
+      refusalType: 'security',
+      httpStatus: 403,
+      data: {
+        activeOrgUnitId: scopedOrgUnitId,
+        requestedOrgUnitId,
+      },
+    });
+    return null;
+  }
+
+  const resolvedOrgUnitId = (hasProtectedTenantScope ? scopedOrgUnitId : null) || requestedOrgUnitId;
+  if (!resolvedOrgUnitId) {
+    refusal(res, {
+      code: 'ROUTE_ORG_UNIT_CONTEXT_REQUIRED',
+      message: 'Active orgUnit context is required for intake requests.',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
+    return null;
+  }
+
+  return {
+    tenantId: candidateTenantId || '',
+    orgUnitId: resolvedOrgUnitId,
+  };
+};
+
 const resolveScopedIntakePayload = (
   req: Request,
   res: Response,
@@ -394,6 +467,91 @@ const handleResolveIntake = (
   });
 };
 
+const handleSubmitDonorIntake = (
+  intakeService: IntakeService,
+) => async (req: Request, res: Response): Promise<void> => {
+  const requested = parseIntakeBody(req);
+  const donorScope = resolveDonorScopedContext(
+    req,
+    res,
+    normalizeNonEmptyString(requested.tenantId || null),
+    normalizeNonEmptyString(requested.orgUnitId || null),
+  );
+  if (!donorScope) {
+    return;
+  }
+
+  const result = await intakeService.submitIntake({
+    tenantId: donorScope.tenantId,
+    orgUnitId: donorScope.orgUnitId,
+    actorId: resolveActorId(req),
+    channel: 'donor',
+    payload: {
+      ...requested,
+      tenantId: donorScope.tenantId,
+      orgUnitId: donorScope.orgUnitId,
+      scheduleMode: requested.scheduleMode || 'pickup',
+      channel: requested.channel || 'donor',
+    },
+  });
+
+  if (!result.ok) {
+    applyServiceRefusal(res, result);
+    return;
+  }
+
+  success(res, {
+    code: result.code,
+    message: result.message,
+    httpStatus: result.httpStatus,
+    data: result.data,
+  });
+};
+
+const handleResolveDonorIntake = (
+  intakeService: IntakeService,
+) => async (req: Request, res: Response): Promise<void> => {
+  const donorScope = resolveDonorScopedContext(
+    req,
+    res,
+    normalizeNonEmptyString(req.query?.tenantId || null),
+    normalizeNonEmptyString(req.query?.orgUnitId || null),
+  );
+  if (!donorScope) {
+    return;
+  }
+
+  const requestId = parseRequestId(req);
+  if (!requestId) {
+    refusal(res, {
+      code: 'ROUTESHYFT_INTAKE_REQUEST_ID_REQUIRED',
+      message: 'requestId is required.',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+    return;
+  }
+
+  const result = await intakeService.resolveIntake({
+    tenantId: donorScope.tenantId,
+    orgUnitId: donorScope.orgUnitId,
+    requestId,
+    channel: 'donor',
+  });
+
+  if (!result.ok) {
+    applyServiceRefusal(res, result);
+    return;
+  }
+
+  success(res, {
+    code: result.code,
+    message: result.message,
+    httpStatus: result.httpStatus,
+    data: result.data,
+  });
+};
+
 export const createRouteRouter = (
   commitmentService: CommitmentService = defaultCommitmentService,
   intakeService: IntakeService = defaultIntakeService,
@@ -409,46 +567,8 @@ export const createRouteRouter = (
     },
   }));
 
-  // Donor self-service intake is public and uses business refusal envelopes for outcome semantics.
-  router.post('/intake/donor-requests', (req: Request, res: Response) => {
-    const result = donorIntakeController.submit(req);
-
-    if (result.ok) {
-      return success(res, {
-        code: result.code,
-        message: result.message,
-        data: result.data,
-      });
-    }
-
-    return refusal(res, {
-      code: result.code,
-      message: result.message,
-      refusalType: 'business',
-      httpStatus: 200,
-      data: result.data,
-    });
-  });
-
-  router.get('/intake/donor-requests/:requestId', (req: Request, res: Response) => {
-    const result = donorIntakeController.detail(req);
-
-    if (result.ok) {
-      return success(res, {
-        code: result.code,
-        message: result.message,
-        data: result.data,
-      });
-    }
-
-    return refusal(res, {
-      code: result.code,
-      message: result.message,
-      refusalType: 'business',
-      httpStatus: 200,
-      data: result.data,
-    });
-  });
+  router.post('/intake/donor-requests', handleSubmitDonorIntake(intakeService));
+  router.get('/intake/donor-requests/:requestId', handleResolveDonorIntake(intakeService));
 
   router.use(authenticateToken);
 

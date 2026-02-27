@@ -106,6 +106,7 @@ describe('auth refresh route', () => {
     mockGenerateRefreshToken.mockReturnValue('refresh-next');
     mockGetUserById.mockResolvedValue({
       id: 'user-123',
+      email: 'user-123@example.com',
       householdId: 'house-123',
       role: 'member',
       mustResetPassword: false,

@@ -181,6 +181,8 @@ const unresolvedRecord = (): RouteIntakeRecord => ({
   updatedAtUtc: '2026-02-20T14:00:00.000Z',
 });
 
+const thirtyMinutesAgoUtc = (): string => new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
 describe('route intake service', () => {
   it('accepts cashier intake and links to commitment', async () => {
     const commitmentService = new CommitmentService(new InMemoryCommitmentRepository());
@@ -449,21 +451,16 @@ describe('route intake service', () => {
   });
 
   it('includes non-stale unresolved requests while preserving stale classification', async () => {
-    const staleUpdatedAt = new Date(Date.now() - (2 * 60 * 60 * 1000)).toISOString();
-    const freshUpdatedAt = new Date(Date.now() - (15 * 60 * 1000)).toISOString();
     const repository = {
       createAccepted: jest.fn(),
       createRefused: jest.fn(),
       getById: jest.fn(),
       listUnresolved: jest.fn(async () => ([
-        {
-          ...unresolvedRecord(),
-          updatedAtUtc: staleUpdatedAt,
-        },
+        unresolvedRecord(),
         {
           ...unresolvedRecord(),
           requestId: 'request-unresolved-fresh-1',
-          updatedAtUtc: freshUpdatedAt,
+          updatedAtUtc: thirtyMinutesAgoUtc(),
         },
       ])),
     };

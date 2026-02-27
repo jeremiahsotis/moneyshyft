@@ -1,6 +1,6 @@
 # Story c.5: Deterministic Escalation Scheduler with Claim-Only Reset
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -31,21 +31,21 @@ so that unclaimed threads escalate predictably and operational ownership is expl
 
 ## Tasks / Subtasks
 
-- [ ] Implement deterministic due-thread scheduler loop (AC: 1)
-  - [ ] Select due unclaimed threads by persisted `next_evaluation_at_utc`.
-  - [ ] Process in bounded batches using row-level locking and re-validation before mutation.
-- [ ] Implement escalation progression math with orgUnit-configured baseline `X` (AC: 1)
-  - [ ] Enforce integer-hour baseline range `1-24` with default `24`.
-  - [ ] Advance stage/count and compute next due timestamp deterministically (`X -> 2X -> 3X`).
-- [ ] Implement claim-only reset and notification suppression semantics (AC: 2)
-  - [ ] Reset escalation stage/count and clear/recompute scheduler fields only on explicit claim paths.
-  - [ ] Ensure pending escalation notifications are suppressed/canceled after claim.
-- [ ] Implement resilience and replay-safe processing behavior (AC: 1, 2)
-  - [ ] Ensure behavior remains correct across retries and process restarts.
-  - [ ] Avoid any in-memory authoritative timers.
-- [ ] Add scheduler and lifecycle integration coverage (AC: 1, 2)
-  - [ ] API/integration tests for progression timing and claim reset semantics.
-  - [ ] Failure/retry tests proving deterministic behavior and no duplicate escalation side effects.
+- [x] Implement deterministic due-thread scheduler loop (AC: 1)
+  - [x] Select due unclaimed threads by persisted `next_evaluation_at_utc`.
+  - [x] Process in bounded batches using row-level locking and re-validation before mutation.
+- [x] Implement escalation progression math with orgUnit-configured baseline `X` (AC: 1)
+  - [x] Enforce integer-hour baseline range `1-24` with default `24`.
+  - [x] Advance stage/count and compute next due timestamp deterministically (`X -> 2X -> 3X`).
+- [x] Implement claim-only reset and notification suppression semantics (AC: 2)
+  - [x] Reset escalation stage/count and clear/recompute scheduler fields only on explicit claim paths.
+  - [x] Ensure pending escalation notifications are suppressed/canceled after claim.
+- [x] Implement resilience and replay-safe processing behavior (AC: 1, 2)
+  - [x] Ensure behavior remains correct across retries and process restarts.
+  - [x] Avoid any in-memory authoritative timers.
+- [x] Add scheduler and lifecycle integration coverage (AC: 1, 2)
+  - [x] API/integration tests for progression timing and claim reset semantics.
+  - [x] Failure/retry tests proving deterministic behavior and no duplicate escalation side effects.
 
 ## Dev Notes
 
@@ -127,16 +127,65 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context generation only (no implementation commands executed).
+- `npm run branch:ensure-workflow -- --workflow dev-story --story c-5-deterministic-escalation-scheduler-with-claim-only-reset` (pass)
+- `cd src && npm test -- src/src/modules/connectshyft/__tests__/threads.test.ts` (pass)
+- `cd src && npm run build` (pass)
+- `npm run test:e2e -- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts --workers=1` (pass)
+- `npm run test:e2e -- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts --workers=1` (pass)
 
 ### Completion Notes List
 
-- Created implementation-ready Story c.5 context with deterministic scheduler semantics, claim-only reset behavior, and resilience test guardrails.
+- Added deterministic escalation scheduler evaluation to ConnectShyft thread services (sync + async) with persisted due-time progression `X -> 2X -> 3X`, baseline validation (`1-24`, default `24`), bounded batching, replay-safe output metadata, and row-locking/re-validation updates in Knex persistence.
+- Added new `POST /api/v1/connectshyft/internal/escalation/evaluate` route with capability/context enforcement, orgUnit baseline resolution from escalation config, and deterministic evaluation response contract.
+- Updated lifecycle claim behavior to return `CONNECTSHYFT_THREAD_CLAIMED` and include explicit claim-reset metadata (`resetReason: claimed`, `notificationsCanceled`) while preserving takeover/close response contracts.
+- Enforced claim-only reset semantics in thread state transitions by preserving escalation stage on non-claim `UNCLAIMED` transitions and resetting only on explicit `CLAIMED` transitions.
+- Added/expanded scheduler-focused unit coverage in `threads.test.ts` for deterministic timing progression, replay-safe retries, and claim-only reset behavior.
+- Fixed review finding: ensure no longer rewrites `next_evaluation_at_utc` on existing threads unless explicitly provided.
+- Fixed review finding: claim now executes explicit pending escalation outbox cancellation before reporting `notificationsCanceled`.
+- Fixed review finding: scheduler evaluate now returns `CONNECTSHYFT_ESCALATION_CONFIG_UNAVAILABLE` when baseline config retrieval fails (no silent fallback).
+- Fixed review finding: c.5 ATDD API suite is now active (no `test.skip`) and aligned to current response codes/contracts.
+- Guardrail blocker remains: `Critical Capability: yes` still has pending real-user validation evidence/result, so story remains `in-progress`.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/c-5-deterministic-escalation-scheduler-with-claim-only-reset.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- frontend/src/router/index.ts
+- frontend/src/views/RouteShyft/RouteRequestLifecycleView.vue
+- src/src/modules/connectshyft/threads.ts
+- src/src/modules/connectshyft/__tests__/threads.test.ts
+- src/src/modules/route/application/__tests__/intakeService.test.ts
+- src/src/routes/api/v1/connectshyft.ts
+- src/src/routes/api/v1/__tests__/auth.refresh.test.ts
+- src/src/routes/api/v1/__tests__/route.test.ts
+- src/src/routes/api/v1/route.ts
+- tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts
+- tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.api.spec.ts
+- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts
+- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts
+- tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts
+- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts
+- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts
+- tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.spec.ts
+- tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts
+- tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.spec.ts
+- tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.spec.ts
+- tests/support/factories/connectShyftStoryC5Factory.ts
+- tests/support/factories/routeShyftStory24Factory.ts
+- tests/support/fixtures/connectShyftStoryC5.fixture.ts
+- tests/support/fixtures/routeShyftStory24.fixture.ts
+
+## Senior Developer Review (AI)
+
+- 2026-02-26: Addressed 4 review findings (P1 x2, P2 x2): non-claim ensure due-time rewrite, derived-only claim cancellation reporting, scheduler config fallback behavior, and disabled/stale c.5 ATDD coverage.
+- Verification:
+  - `cd src && npm test -- src/src/modules/connectshyft/__tests__/threads.test.ts` (pass)
+  - `cd src && npm run build` (pass)
+  - `npm run test:e2e -- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts --workers=1` (pass)
+  - `npm run test:e2e -- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts --workers=1` (pass)
 
 ## Change Log
 
 - 2026-02-24: Created Story c.5 ready-for-dev context document.
+- 2026-02-26: Implemented deterministic escalation scheduler evaluation, claim-only reset metadata/behavior, new internal scheduler API route, and scheduler unit coverage.
+- 2026-02-26: Post-review hardening: fixed ensure due-time rewrite semantics, explicit claim notification cancellation execution, fail-closed scheduler config retrieval, and re-enabled/updated c.5 ATDD suite.
