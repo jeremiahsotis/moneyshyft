@@ -43,17 +43,17 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  epic-a: in-progress
-  a-1-connectshyft-feature-flag-and-availability-guardrails: review
+  epic-a: done
+  a-1-connectshyft-feature-flag-and-availability-guardrails: done
   a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes: done
   a-3-orgunit-number-mapping-management: review
   a-4-escalation-baseline-and-recipient-configuration: review
-  a-5-capability-based-route-access-and-envelope-contract-compliance: review
-  epic-a-retrospective: optional
+  a-5-capability-based-route-access-and-envelope-contract-compliance: done
+  epic-a-retrospective: done
   epic-b: in-progress
   b-1-tenant-scoped-neighbor-creation-with-required-phone: done
   b-2-shared-tenant-identity-and-shared-phone-indicators: done
-  b-3-relationship-gated-neighbor-edits-with-provenance-audit: review
+  b-3-relationship-gated-neighbor-edits-with-provenance-audit: done
   b-4-role-restricted-neighbor-merge-with-irreversible-confirmation: done
   epic-b-retrospective: optional
   epic-c: in-progress
@@ -78,8 +78,8 @@ development_status:
   e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: backlog
   epic-e-retrospective: optional
   epic-ux-remediation: in-progress
-  ux-r1-mobile-first-inbox-mine-thread-redesign: review
-  ux-r2-accessibility-and-language-hardening: review
+  ux-r1-mobile-first-inbox-mine-thread-redesign: done
+  ux-r2-accessibility-and-language-hardening: done
   ux-r3-voicemail-and-indicator-behavior: ready-for-dev
   ux-r4-outbound-policy-guardrail-ui: ready-for-dev
   epic-ux-remediation-retrospective: optional

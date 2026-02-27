@@ -1,6 +1,6 @@
 # Story ux-r2: Accessibility and Language Hardening
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
