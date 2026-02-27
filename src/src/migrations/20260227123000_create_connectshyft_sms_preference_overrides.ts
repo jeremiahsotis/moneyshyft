@@ -6,6 +6,7 @@ const SMS_OVERRIDE_TABLE = 'cs_sms_preference_overrides';
 
 const NEIGHBORS_PREFERS_TEXTING_CHECK = 'cs_neighbors_prefers_texting_canonical_ck';
 const SMS_OVERRIDE_PREFERENCE_CHECK = 'cs_sms_pref_override_pref_value_ck';
+const SMS_OVERRIDE_REASON_CHECK = 'cs_sms_pref_override_reason_ck';
 const SMS_OVERRIDE_SCOPE_INDEX = 'cs_sms_pref_override_scope_idx';
 const SMS_OVERRIDE_REASON_INDEX = 'cs_sms_pref_override_reason_idx';
 
@@ -63,6 +64,29 @@ export async function up(knex: Knex): Promise<void> {
         ALTER TABLE connectshyft.${SMS_OVERRIDE_TABLE}
           ADD CONSTRAINT ${SMS_OVERRIDE_PREFERENCE_CHECK}
           CHECK (preference_value = 'NO');
+      END IF;
+    END $$;
+  `);
+
+  await knex.raw(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = '${SMS_OVERRIDE_REASON_CHECK}'
+          AND conrelid = 'connectshyft.${SMS_OVERRIDE_TABLE}'::regclass
+      ) THEN
+        ALTER TABLE connectshyft.${SMS_OVERRIDE_TABLE}
+          ADD CONSTRAINT ${SMS_OVERRIDE_REASON_CHECK}
+          CHECK (
+            override_reason IN (
+              'safety-follow-up',
+              'care-plan-exception',
+              'documented-consent',
+              'critical-service-update'
+            )
+          );
       END IF;
     END $$;
   `);

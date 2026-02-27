@@ -3835,8 +3835,7 @@ const performOutboundAction = async (
   let smsPreferenceDecision: ConnectShyftResolvedSmsPreference | null = null;
   let validatedSmsOverride: ConnectShyftValidatedSmsOverride | null = null;
   if (outboundAction === 'message' && outboundMessagePolicy) {
-    const preferenceNeighborId = lifecycleContext.syntheticThread?.neighborId
-      || (lifecycleContext.detail ? `neighbor-${lifecycleContext.detail.threadId}` : null);
+    const preferenceNeighborId = lifecycleContext.syntheticThread?.neighborId || null;
     smsPreferenceDecision = await connectShyftSmsPreferenceOverrideService.resolvePreference({
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
