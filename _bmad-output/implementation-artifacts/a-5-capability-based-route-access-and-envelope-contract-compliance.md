@@ -1,6 +1,6 @@
 # Story a.5: Capability-Based Route Access and Envelope Contract Compliance
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
