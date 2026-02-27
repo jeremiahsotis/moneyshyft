@@ -1,4 +1,5 @@
 import { Request, Response, Router } from 'express';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Knex } from 'knex';
 import { refusal, success } from '../../../platform/envelopes/response';
 import { CAPABILITIES, hasCapability } from '../../../platform/rbac/capabilities';
@@ -61,6 +62,9 @@ const router = Router();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TEST_ACTIVE_THREAD_NEIGHBOR_IDS_HEADER = 'x-test-connectshyft-active-thread-neighbor-ids';
 const TEST_USER_ID_HEADER = 'x-test-connectshyft-user-id';
+const CONNECTSHYFT_WEBHOOK_SIGNATURE_HEADER = 'x-twilio-signature';
+const CONNECTSHYFT_TWILIO_AUTH_TOKEN_ENV = 'TWILIO_AUTH_TOKEN';
+const CONNECTSHYFT_SYSTEM_ACTOR_USER_ID = '00000000-0000-4000-8000-000000000001';
 const NEIGHBOR_RELATIONSHIP_REQUIRED_CODE = 'CONNECTSHYFT_NEIGHBOR_EDIT_RELATIONSHIP_REQUIRED';
 const NEIGHBOR_RELATIONSHIP_REQUIRED_MESSAGE = 'This edit requires an active thread relationship or tenant-privileged role.';
 const NEIGHBOR_MERGE_FORBIDDEN_CODE = 'CONNECTSHYFT_NEIGHBOR_MERGE_FORBIDDEN';
@@ -86,6 +90,20 @@ const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
   inboundVoiceVoicemail: 'connectshyft.inbound.voice_voicemail_recorded',
   inboundVoiceFallback: 'connectshyft.inbound.voice_fallback_recorded',
 } as const;
+const CONNECTSHYFT_OUTBOUND_CALL_POLICY = {
+  transport: 'bridge',
+  autoRetry: false,
+  redialPolicy: 'manual_only',
+  phases: ['initiated', 'ringing', 'connected', 'completed'],
+} as const;
+const CONNECTSHYFT_OUTBOUND_CALL_AUTO_CLAIM_POLICY = {
+  trigger: 'CONNECTED',
+  appliesToState: 'UNCLAIMED',
+  nextState: 'CLAIMED',
+} as const;
+const CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT = CONNECTSHYFT_OUTBOUND_CALL_POLICY.transport;
+const CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_REDIAL_POLICY = CONNECTSHYFT_OUTBOUND_CALL_POLICY.redialPolicy;
+const CONNECTSHYFT_CONNECTED_CALL_EVENT_TYPES = new Set(['voice.connected', 'call.connected']);
 const CONNECTSHYFT_ESCALATION_NOTIFICATION_EVENT_PREFIXES = [
   'connectshyft.thread.escalation.',
   'connectshyft.escalation.',
@@ -527,9 +545,21 @@ const buildSyntheticThread = (input: {
     ? Math.max(0, Math.trunc(input.fallbackEscalationStage as number))
     : 0;
   const fallbackNextEvaluationAtUtc = normalizeLifecycleString(input.fallbackNextEvaluationAtUtc || null) || null;
-  const escalationStage = input.nextState === 'CLAIMED' ? 0 : fallbackEscalationStage;
+  const isReopened = input.currentState === 'CLOSED' && input.nextState === 'UNCLAIMED';
+  const isNoopState = input.currentState === input.nextState;
+  const escalationStage = isReopened
+    ? 0
+    : isNoopState
+      ? fallbackEscalationStage
+      : input.nextState === 'UNCLAIMED' || input.nextState === 'CLAIMED'
+        ? 0
+        : fallbackEscalationStage;
   const nextEvaluationAtUtc = input.nextState === 'UNCLAIMED'
-    ? (fallbackNextEvaluationAtUtc || now)
+    ? (
+      isNoopState
+        ? (fallbackNextEvaluationAtUtc || now)
+        : now
+    )
     : null;
 
   return {
@@ -1459,6 +1489,241 @@ const parseThreadIdFromBody = (req: Request): string | null => {
 
   const normalized = req.body.threadId.trim();
   return normalized.length > 0 ? normalized : null;
+};
+
+const parseOptionalBoolean = (value: unknown): boolean | null => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') {
+      return true;
+    }
+    if (normalized === 'false') {
+      return false;
+    }
+  }
+
+  return null;
+};
+
+const parseOptionalNonNegativeInteger = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
+    return Math.trunc(value);
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return Math.trunc(parsed);
+    }
+  }
+
+  return null;
+};
+
+const parseOutboundCallRequestPolicy = (req: Request): {
+  transport: string | null;
+  autoRetry: boolean | null;
+  redialPolicy: string | null;
+  retryCount: number | null;
+} => {
+  const rawBody = req.body && typeof req.body === 'object'
+    ? req.body as Record<string, unknown>
+    : {};
+  const rawCall = rawBody.call && typeof rawBody.call === 'object'
+    ? rawBody.call as Record<string, unknown>
+    : {};
+
+  const resolveField = (field: string): unknown => {
+    if (rawCall[field] !== undefined) {
+      return rawCall[field];
+    }
+    return rawBody[field];
+  };
+
+  const transport = normalizeLifecycleString(resolveField('transport')).toLowerCase();
+  const redialPolicy = normalizeLifecycleString(resolveField('redialPolicy')).toLowerCase();
+
+  return {
+    transport: transport || null,
+    autoRetry: parseOptionalBoolean(resolveField('autoRetry')),
+    redialPolicy: redialPolicy || null,
+    retryCount:
+      parseOptionalNonNegativeInteger(resolveField('retryCount'))
+      ?? parseOptionalNonNegativeInteger(resolveField('maxRetries')),
+  };
+};
+
+const enforceOutboundCallPolicyRequest = (req: Request, res: Response): boolean => {
+  const callPolicy = parseOutboundCallRequestPolicy(req);
+
+  if (
+    callPolicy.transport
+    && callPolicy.transport !== CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT
+  ) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_OUTBOUND_CALL_TRANSPORT_UNSUPPORTED',
+      message: 'Outbound calls require bridge transport only.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        allowedTransport: CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT,
+        requestedTransport: callPolicy.transport,
+      },
+    });
+    return false;
+  }
+
+  const requestedRetry =
+    callPolicy.autoRetry === true
+    || (callPolicy.retryCount !== null && callPolicy.retryCount > 0)
+    || (
+      callPolicy.redialPolicy !== null
+      && callPolicy.redialPolicy !== CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_REDIAL_POLICY
+    );
+
+  if (requestedRetry) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_OUTBOUND_CALL_RETRY_FORBIDDEN',
+      message: 'Automatic redial/retry is disabled. Operators must re-initiate calls manually.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        autoRetry: callPolicy.autoRetry,
+        redialPolicy: callPolicy.redialPolicy,
+        retryCount: callPolicy.retryCount,
+        allowedRedialPolicy: CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_REDIAL_POLICY,
+      },
+    });
+    return false;
+  }
+
+  return true;
+};
+
+const resolveWebhookRequestUrl = (req: Request): string => {
+  const forwardedProto = normalizeLifecycleString(req.header('x-forwarded-proto'));
+  const forwardedHost = normalizeLifecycleString(req.header('x-forwarded-host'));
+  const host = forwardedHost || normalizeLifecycleString(req.header('host')) || 'localhost';
+  const protocol = forwardedProto
+    ? forwardedProto.split(',')[0].trim()
+    : (normalizeLifecycleString(req.protocol) || 'http');
+  const path = req.originalUrl || req.url;
+  return `${protocol}://${host}${path}`;
+};
+
+const serializeWebhookPayloadForSignature = (payload: unknown): string => {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return '';
+  }
+
+  const body = payload as Record<string, unknown>;
+  return Object.keys(body)
+    .sort((a, b) => a.localeCompare(b))
+    .map((key) => {
+      const rawValue = body[key];
+      if (rawValue === null || rawValue === undefined) {
+        return `${key}`;
+      }
+      if (typeof rawValue === 'string') {
+        return `${key}${rawValue}`;
+      }
+      if (typeof rawValue === 'number' || typeof rawValue === 'boolean') {
+        return `${key}${String(rawValue)}`;
+      }
+      return `${key}${JSON.stringify(rawValue)}`;
+    })
+    .join('');
+};
+
+const computeWebhookSignature = (input: {
+  authToken: string;
+  requestUrl: string;
+  payload: unknown;
+}): string => {
+  const base = `${input.requestUrl}${serializeWebhookPayloadForSignature(input.payload)}`;
+  return createHmac('sha1', input.authToken).update(base).digest('base64');
+};
+
+const secureCompareSignature = (actual: string, expected: string): boolean => {
+  const actualBuffer = Buffer.from(actual);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(actualBuffer, expectedBuffer);
+};
+
+const enforceWebhookSignature = (req: Request, res: Response): boolean => {
+  if (isConnectShyftTestOverrideEnabled()) {
+    return true;
+  }
+
+  const authToken = normalizeLifecycleString(process.env[CONNECTSHYFT_TWILIO_AUTH_TOKEN_ENV]);
+  if (!authToken) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED',
+      message: 'Webhook signature validation is not configured.',
+      refusalType: 'business',
+      httpStatus: 503,
+    });
+    return false;
+  }
+
+  const incomingSignature = normalizeLifecycleString(req.header(CONNECTSHYFT_WEBHOOK_SIGNATURE_HEADER));
+  if (!incomingSignature) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING',
+      message: 'Webhook signature header is required.',
+      refusalType: 'client',
+      httpStatus: 401,
+    });
+    return false;
+  }
+
+  const expectedSignature = computeWebhookSignature({
+    authToken,
+    requestUrl: resolveWebhookRequestUrl(req),
+    payload: req.body,
+  });
+  if (!secureCompareSignature(incomingSignature, expectedSignature)) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',
+      message: 'Webhook signature validation failed.',
+      refusalType: 'client',
+      httpStatus: 401,
+    });
+    return false;
+  }
+
+  return true;
+};
+
+const resolveWebhookActorUserId = (req: Request): string => {
+  const rawBody = req.body && typeof req.body === 'object'
+    ? req.body as Record<string, unknown>
+    : {};
+  const actorCandidates = [
+    rawBody.actorUserId,
+    rawBody.userId,
+    rawBody.claimedByUserId,
+  ];
+
+  for (const candidate of actorCandidates) {
+    if (typeof candidate !== 'string') {
+      continue;
+    }
+    const normalized = candidate.trim();
+    if (UUID_PATTERN.test(normalized)) {
+      return normalized;
+    }
+  }
+
+  return CONNECTSHYFT_SYSTEM_ACTOR_USER_ID;
 };
 
 const parseThreadEnsureBody = (req: Request) => ({
@@ -3487,6 +3752,10 @@ const performOutboundAction = async (
     return;
   }
 
+  if (outboundAction === 'call' && !enforceOutboundCallPolicyRequest(req, res)) {
+    return;
+  }
+
   const actorRoles = resolveConnectShyftActorRoles(req, context);
   const actorUserId = resolveConnectShyftRequestedActorUserId(req);
   const lifecycleContext = await resolveLifecycleContext({
@@ -3515,8 +3784,9 @@ const performOutboundAction = async (
   let sideEffects: ReturnType<typeof buildLifecycleSideEffects> | null = null;
   let sideEffectsPersisted = false;
   let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
+  const priorState = lifecycleContext.currentState;
 
-  if (lifecycleContext.currentState === 'CLOSED') {
+  if (priorState === 'CLOSED') {
     const metadata = buildLifecycleMetadata({
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
@@ -3532,7 +3802,7 @@ const performOutboundAction = async (
       orgUnitId: context.orgUnitId,
       threadId,
       actorUserId,
-      currentState: lifecycleContext.currentState,
+      currentState: priorState,
       nextState: 'UNCLAIMED',
       syntheticThread: lifecycleContext.syntheticThread,
       detail: lifecycleContext.detail,
@@ -3586,6 +3856,12 @@ const performOutboundAction = async (
     });
   }
 
+  const operatorFeedback = priorState === 'CLOSED'
+    ? 'Conversation reopened on the same thread before outbound dispatch. Escalation and inactivity timers were reset.'
+    : priorState === 'UNCLAIMED'
+      ? 'Outbound dispatched. Escalation continues until claim; no reset was applied.'
+      : 'Outbound dispatched from a claimed thread. Escalation remains stable unless ownership changes.';
+
   success(res, {
     code: outboundAction === 'call'
       ? 'CONNECTSHYFT_THREAD_CALL_DISPATCHED'
@@ -3598,8 +3874,20 @@ const performOutboundAction = async (
       context,
       thread,
       lifecycleEvent,
+      lifecycle: {
+        priorState,
+        nextState: thread.state,
+        reopenedFromClosed: priorState === 'CLOSED',
+      },
+      operatorFeedback,
       escalationReset,
       sideEffectsPersisted,
+      ...(outboundAction === 'call'
+        ? {
+            call: CONNECTSHYFT_OUTBOUND_CALL_POLICY,
+            autoClaimPolicy: CONNECTSHYFT_OUTBOUND_CALL_AUTO_CLAIM_POLICY,
+          }
+        : {}),
       ...(sideEffects || {}),
     },
   });
@@ -3614,16 +3902,35 @@ const handleInboundWebhook = async (
     return;
   }
 
+  if (!enforceWebhookSignature(req, res)) {
+    return;
+  }
+
   const eventType = normalizeLifecycleString(req.body?.eventType) || 'sms.inbound';
   const normalizedEventType = eventType.toLowerCase();
+  const isConnectedCallEvent = CONNECTSHYFT_CONNECTED_CALL_EVENT_TYPES.has(normalizedEventType);
   const threadId = normalizeLifecycleString(req.body?.threadId) || null;
   const tenantId = normalizeLifecycleString(req.body?.tenantId) || null;
   const orgUnitId = normalizeLifecycleString(req.body?.orgUnitId) || null;
   const isVoiceEvent = normalizedEventType.startsWith('voice');
+  const callPolicy = parseOutboundCallRequestPolicy(req);
+  const callTransport = callPolicy.transport || CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT;
+  const canApplyAutoClaimForTransport = callTransport === CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT;
   let threadState: ConnectShyftThreadState | null = null;
+  let lifecycleContext: ResolvedLifecycleContext | null = null;
+  let thread: ConnectShyftThread | null = null;
+  let autoClaim:
+    | null
+    | {
+      attempted: boolean;
+      applied: boolean;
+      reason: string | null;
+      lifecycleEvent: string | null;
+      sideEffectsPersisted: boolean;
+    } = null;
 
   if (tenantId && orgUnitId && threadId) {
-    const lifecycleContext = await resolveLifecycleContext({
+    lifecycleContext = await resolveLifecycleContext({
       tenantId,
       orgUnitId,
       threadId,
@@ -3632,12 +3939,85 @@ const handleInboundWebhook = async (
     threadState = lifecycleContext.currentState;
   }
 
+  if (isConnectedCallEvent) {
+    autoClaim = {
+      attempted: true,
+      applied: false,
+      reason: null,
+      lifecycleEvent: null,
+      sideEffectsPersisted: false,
+    };
+
+    if (!lifecycleContext || !tenantId || !orgUnitId || !threadId || !lifecycleContext.currentState) {
+      autoClaim.reason = 'thread_not_found';
+    } else if (lifecycleContext.currentState !== 'UNCLAIMED') {
+      autoClaim.reason = `state_${lifecycleContext.currentState.toLowerCase()}`;
+    } else if (!canApplyAutoClaimForTransport) {
+      autoClaim.reason = 'unsupported_transport';
+    } else {
+      const actorUserId = resolveWebhookActorUserId(req);
+      const metadata = buildLifecycleMetadata({
+        tenantId,
+        orgUnitId,
+        actorUserId,
+        threadId,
+        priorState: 'UNCLAIMED',
+        newState: 'CLAIMED',
+        action: 'auto_claim_connected_call',
+      });
+      const transitioned = await transitionThreadWithSideEffects({
+        actorRoles: ['SYSTEM_ADMIN'],
+        tenantId,
+        orgUnitId,
+        threadId,
+        actorUserId,
+        currentState: 'UNCLAIMED',
+        nextState: 'CLAIMED',
+        syntheticThread: lifecycleContext.syntheticThread,
+        detail: lifecycleContext.detail,
+        sideEffects: {
+          eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.claimed,
+          metadata,
+        },
+      });
+
+      if (!transitioned.ok) {
+        refusal(res, {
+          code: transitioned.code,
+          message: transitioned.message,
+          refusalType: 'business',
+          httpStatus: 200,
+          data: {
+            tenantId,
+            orgUnitId,
+            threadId,
+            eventType,
+          },
+        });
+        return;
+      }
+
+      thread = transitioned.thread;
+      threadState = transitioned.thread.state;
+      autoClaim = {
+        attempted: true,
+        applied: true,
+        reason: null,
+        lifecycleEvent: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.claimed,
+        sideEffectsPersisted: transitioned.sideEffectsPersisted,
+      };
+    }
+  }
+
   let routingDecision: 'voicemail_only' | 'intake_fallback' | 'accepted' = 'accepted';
-  let timelineEventName: string = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceVoicemail;
+  let timelineEventName: string =
+    autoClaim?.applied === true
+      ? CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.claimed
+      : CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceVoicemail;
   if (normalizedEventType === 'voice.fallback') {
     timelineEventName = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceFallback;
     routingDecision = 'intake_fallback';
-  } else if (isVoiceEvent) {
+  } else if (isVoiceEvent && !isConnectedCallEvent) {
     if (!threadState || threadState === 'CLOSED') {
       timelineEventName = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceFallback;
       routingDecision = 'intake_fallback';
@@ -3657,8 +4037,16 @@ const handleInboundWebhook = async (
       eventType,
       threadId,
       threadState,
+      thread,
       lifecycle: {
         reopenedByInbound: false,
+        autoClaimedByConnectedEvent: autoClaim?.applied === true,
+      },
+      autoClaim,
+      callPolicy: {
+        transport: callTransport,
+        autoRetry: false,
+        redialPolicy: CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_REDIAL_POLICY,
       },
       timeline: {
         eventName: timelineEventName,
@@ -3673,6 +4061,10 @@ const handleInboundWebhook = async (
           thread_state: threadState,
           event_type: eventType,
           routing_decision: routingDecision,
+          auto_claim_attempted: autoClaim?.attempted === true,
+          auto_claim_applied: autoClaim?.applied === true,
+          auto_claim_reason: autoClaim?.reason || null,
+          call_transport: callTransport,
           reopened_by_inbound: false,
         },
       },
@@ -3685,6 +4077,10 @@ const handleInboundWebhook = async (
           thread_state: threadState,
           event_type: eventType,
           routing_decision: routingDecision,
+          auto_claim_attempted: autoClaim?.attempted === true,
+          auto_claim_applied: autoClaim?.applied === true,
+          auto_claim_reason: autoClaim?.reason || null,
+          call_transport: callTransport,
           reopened_by_inbound: false,
         },
       },

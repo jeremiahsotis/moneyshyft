@@ -586,6 +586,7 @@ const executeThreadAction = async (action: string): Promise<void> => {
       data?: {
         thread?: unknown;
         lifecycleEvent?: unknown;
+        operatorFeedback?: unknown;
       };
     };
 
@@ -617,9 +618,13 @@ const executeThreadAction = async (action: string): Promise<void> => {
       inactivityReset.value = false;
     }
 
+    const operatorFeedback = typeof envelope.data?.operatorFeedback === 'string'
+      ? envelope.data.operatorFeedback
+      : '';
+
     setFeedbackBanner(
       'success',
-      envelope.message,
+      operatorFeedback || envelope.message,
       'Thread action completed.',
     );
   } catch (error: unknown) {
