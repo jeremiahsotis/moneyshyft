@@ -10,13 +10,17 @@ const mockGenerateRefreshToken = jest.fn();
 const mockSetAuthCookies = jest.fn();
 const mockRevokeSessionById = jest.fn();
 const mockRevokeSessionByRefreshToken = jest.fn();
+const mockGetUserById = jest.fn();
+const mockResolveActiveOrgUnitIdForSession = jest.fn();
 
 jest.mock('../../../../services/AuthService', () => ({
   __esModule: true,
   default: {
     signup: jest.fn(),
     login: jest.fn(),
-    getUserById: jest.fn(),
+    getUserById: (...args: unknown[]) => mockGetUserById(...args),
+    resolveActiveOrgUnitIdForSession: (...args: unknown[]) =>
+      mockResolveActiveOrgUnitIdForSession(...args),
   },
 }));
 
@@ -100,6 +104,13 @@ describe('auth refresh route', () => {
     mockVerifyRefreshToken.mockReturnValue(refreshPayload);
     mockGenerateAccessToken.mockReturnValue('access-next');
     mockGenerateRefreshToken.mockReturnValue('refresh-next');
+    mockGetUserById.mockResolvedValue({
+      id: 'user-123',
+      householdId: 'house-123',
+      role: 'member',
+      mustResetPassword: false,
+    });
+    mockResolveActiveOrgUnitIdForSession.mockResolvedValue(null);
   });
 
   it('rejects replayed refresh token reuse after a successful rotation', async () => {
