@@ -150,10 +150,30 @@ GPT-5 Codex
 
 - _bmad-output/implementation-artifacts/c-5-deterministic-escalation-scheduler-with-claim-only-reset.md
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- frontend/src/router/index.ts
+- frontend/src/views/RouteShyft/RouteRequestLifecycleView.vue
 - src/src/modules/connectshyft/threads.ts
 - src/src/modules/connectshyft/__tests__/threads.test.ts
+- src/src/modules/route/application/__tests__/intakeService.test.ts
 - src/src/routes/api/v1/connectshyft.ts
+- src/src/routes/api/v1/__tests__/auth.refresh.test.ts
+- src/src/routes/api/v1/__tests__/route.test.ts
+- src/src/routes/api/v1/route.ts
+- tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts
+- tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.api.spec.ts
+- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts
+- tests/api/platform/a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes.api.spec.ts
+- tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts
 - tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts
+- tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts
+- tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.spec.ts
+- tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts
+- tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.spec.ts
+- tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.spec.ts
+- tests/support/factories/connectShyftStoryC5Factory.ts
+- tests/support/factories/routeShyftStory24Factory.ts
+- tests/support/fixtures/connectShyftStoryC5.fixture.ts
+- tests/support/fixtures/routeShyftStory24.fixture.ts
 
 ## Senior Developer Review (AI)
 
