@@ -1,6 +1,6 @@
 # Story c.5: Deterministic Escalation Scheduler with Claim-Only Reset
 
-Status: done
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
