@@ -1,6 +1,6 @@
 # Story 2.5: Refusal Outcomes with Structured Alternatives
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -31,17 +31,17 @@ so that refusal is explicit, understandable, and actionable.
 
 ## Tasks / Subtasks
 
-- [ ] Define refusal taxonomy and alternative payload contract (AC: 1)
-  - [ ] Standardize refusal reason codes and explanation fields.
-  - [ ] Define structured alternatives schema (reschedule windows, partner referral, callback path, etc.).
-- [ ] Persist refusal outcomes across intake and execution stages (AC: 1)
-  - [ ] Support refusal issuance before commitment creation and after commitment lifecycle starts.
-  - [ ] Ensure refusal writes are idempotent and auditable.
-- [ ] Expose refusal history in lifecycle/audit views (AC: 2)
-  - [ ] Include refusal metadata in request and commitment history endpoints.
-  - [ ] Preserve envelope semantics for refusal responses.
-- [ ] Add contract and regression tests (AC: 1, 2)
-  - [ ] Validate refusal persistence and alternatives schema consistency.
+- [x] Define refusal taxonomy and alternative payload contract (AC: 1)
+  - [x] Standardize refusal reason codes and explanation fields.
+  - [x] Define structured alternatives schema (reschedule windows, partner referral, callback path, etc.).
+- [x] Persist refusal outcomes across intake and execution stages (AC: 1)
+  - [x] Support refusal issuance before commitment creation and after commitment lifecycle starts.
+  - [x] Ensure refusal writes are idempotent and auditable.
+- [x] Expose refusal history in lifecycle/audit views (AC: 2)
+  - [x] Include refusal metadata in request and commitment history endpoints.
+  - [x] Preserve envelope semantics for refusal responses.
+- [x] Add contract and regression tests (AC: 1, 2)
+  - [x] Validate refusal persistence and alternatives schema consistency.
 
 ## Dev Notes
 
@@ -100,12 +100,39 @@ GPT-5 Codex
 ### Debug Log References
 
 - Story context prepared from Epic 2 planning artifacts.
+- Implemented Route refusal domain/application/infrastructure/api flow in `src/src/modules/route/*`.
+- Full regression run: `cd src && npm test` (39 passed, 1 skipped).
+
+### Implementation Plan
+
+- Introduce canonical refusal taxonomy + structured alternatives validation in route domain.
+- Persist refusal outcomes via shared route refusal store with idempotency and lifecycle event projection.
+- Expose request/commitment refusal issuance + history endpoints under `/api/v1/route/staff/*`.
+- Add unit/service/API regression tests and wire route registration into v1 route registry.
 
 ### Completion Notes List
 
-- Story created and set to `ready-for-dev`.
+- Added canonical refusal reason taxonomy and stage-aware structured alternative contract validation.
+- Added refusal persistence service with idempotent replay support and lifecycle/audit event projection.
+- Added route API endpoints for request refusal, commitment refusal, request history, and commitment history.
+- Preserved business-refusal envelope semantics (`HTTP 200`, `ok=false`) for refusal validation failures.
+- Added unit tests (contracts + service), API contract/regression tests, and updated route registration tests.
 
 ### File List
 
+- _bmad-output/implementation-artifacts/sprint-status.yaml
 - _bmad-output/implementation-artifacts/2-5-refusal-outcomes-with-structured-alternatives.md
+- src/src/__tests__/app-entrypoint-kernel.test.ts
+- src/src/api/registerRoutes.ts
+- src/src/modules/route/__tests__/refusalContracts.test.ts
+- src/src/modules/route/__tests__/refusalService.test.ts
+- src/src/modules/route/api/router.ts
+- src/src/modules/route/application/refusalService.ts
+- src/src/modules/route/domain/refusal.ts
+- src/src/modules/route/infrastructure/refusalStore.ts
+- src/src/routes/api/v1/__tests__/route.refusal.test.ts
+- src/src/routes/api/v1/route.ts
 
+## Change Log
+
+- 2026-02-27: Implemented Story 2.5 refusal outcomes with structured alternatives, idempotent refusal persistence, lifecycle history endpoints, and contract/regression test coverage.
