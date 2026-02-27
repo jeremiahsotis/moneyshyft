@@ -1,6 +1,6 @@
 # Story d.4: Operator Interaction Contracts for Outbound Safety
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
