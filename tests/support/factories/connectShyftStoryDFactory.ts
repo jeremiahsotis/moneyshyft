@@ -42,6 +42,8 @@ export type StoryDContext = {
     unclaimed: string;
     claimed: string;
     closed: string;
+    prefersNoUnclaimed: string;
+    prefersNoClosed: string;
   };
   paths: {
     threads: string;
@@ -89,6 +91,8 @@ export function createStoryDContext(
       unclaimed: 'thread-c4-unclaimed-1001',
       claimed: 'thread-c4-claimed-1002',
       closed: 'thread-c4-closed-1003',
+      prefersNoUnclaimed: 'thread-c4-unclaimed-pref-no-1004',
+      prefersNoClosed: 'thread-c4-closed-pref-no-1005',
     },
     paths: {
       threads: '/api/v1/connectshyft/threads',
