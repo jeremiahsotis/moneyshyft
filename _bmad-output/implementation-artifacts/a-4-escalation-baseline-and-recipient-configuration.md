@@ -1,6 +1,6 @@
 # Story a.4: Escalation Baseline and Recipient Configuration
 
-Status: done
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
