@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-24T14:23:31Z'
+lastSaved: '2026-02-27T18:08:45Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -1786,3 +1786,266 @@ lastSaved: '2026-02-24T14:23:31Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story b.2 AC coverage to ATDD + automate evidence.
+
+## Story 2.5 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/routeshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact provided and loaded: `/Users/jeremiahotis/projects/routeshyft/_bmad-output/implementation-artifacts/2-5-refusal-outcomes-with-structured-alternatives.md`
+  - Existing Story 2.5 ATDD baselines detected:
+    - `/Users/jeremiahotis/projects/routeshyft/tests/api/platform/2-5-refusal-outcomes-with-structured-alternatives.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/routeshyft/tests/e2e/platform/2-5-refusal-outcomes-with-structured-alternatives.atdd.spec.ts`
+
+### Context Loaded
+- Story artifact loaded with acceptance criteria and implementation notes:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/implementation-artifacts/2-5-refusal-outcomes-with-structured-alternatives.md`
+- PRD context loaded:
+  - `/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/RouteShyft_Monolith_PRD.md`
+- Test-design context loaded:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/test-design-progress.md`
+- Existing Story 2.5 ATDD and support assets loaded for coverage-gap analysis:
+  - `/Users/jeremiahotis/projects/routeshyft/tests/api/platform/2-5-refusal-outcomes-with-structured-alternatives.atdd.api.spec.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/e2e/platform/2-5-refusal-outcomes-with-structured-alternatives.atdd.spec.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/support/fixtures/routeShyftStory25.fixture.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/support/factories/routeShyftStory25Factory.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/atdd-checklist-2-5.md`
+- Framework/test structure loaded:
+  - `/Users/jeremiahotis/projects/routeshyft/playwright.config.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests` tree
+- Tech-spec note:
+  - No Story 2.5-specific tech-spec found; PRD + story + test-design artifacts used as authoritative context.
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+- Browser automation reference:
+  - `playwright-cli.md`
+
+### Conditional Fragment Decisions
+- Traditional patterns (`fixture-architecture.md`, `network-first.md`) were not loaded because `tea_use_playwright_utils` is enabled and Step 1 directs utility-path knowledge first.
+- Healing fragments (`test-healing-patterns.md`, `selector-resilience.md`, `timing-debugging.md`) were not loaded in Step 1 because auto-heal enablement is not active in current workflow context.
+
+### Step 1 Confirmation Summary
+- Inputs confirmed.
+- Framework readiness confirmed.
+- BMad-integrated context and mandatory knowledge base are loaded for Step 2 target identification.
+
+## Story 2.5 Run - Step 2: Identify Automation Targets
+
+### Target Determination (BMad-Integrated)
+- Story acceptance criteria mapped to automation scenarios from:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/implementation-artifacts/2-5-refusal-outcomes-with-structured-alternatives.md`
+- Existing ATDD baselines detected and reserved as RED-phase references:
+  - `/Users/jeremiahotis/projects/routeshyft/tests/api/platform/2-5-refusal-outcomes-with-structured-alternatives.atdd.api.spec.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/e2e/platform/2-5-refusal-outcomes-with-structured-alternatives.atdd.spec.ts`
+- Duplication control decision:
+  - Keep `.atdd.*` tests unchanged.
+  - Generate executable non-ATDD regression coverage in parallel files (`.api.spec.ts` and `.spec.ts`).
+  - Expand beyond ATDD with edge/negative scenarios (idempotency, envelope stability, refusal/audit no-leak behavior).
+
+### Browser Exploration (`tea_browser_automation=auto`)
+- `playwright-cli` detected at `/opt/homebrew/bin/playwright-cli`.
+- Exploration sequence executed:
+  1. `playwright-cli -s=tea-automate open http://127.0.0.1:5174/app/route/refusals?...`
+  2. `playwright-cli -s=tea-automate snapshot`
+  3. `playwright-cli -s=tea-automate close`
+- Outcome:
+  - Browser session opened successfully.
+  - Target URL returned `ERR_CONNECTION_REFUSED`.
+  - Snapshot captured browser error page (`chrome-error://chromewebdata/`) with no Story 2.5 UI surface available.
+- Fallback applied per workflow:
+  - Code/doc + fixture analysis used for target selection.
+
+### Test Level Selection (using `test-levels-framework.md`)
+- **API (Primary):** refusal persistence contract, structured alternatives schema, lifecycle/audit visibility, envelope invariants.
+- **E2E (Secondary):** requester/staff visibility of refusal reason, alternatives, and audit timeline behavior.
+- **Component/Unit:** deferred for this story run because RouteShyft refusal UI/API implementation surfaces are not yet present in source (`/app/route/refusals`, `/api/v1/route/refusals`).
+
+### Priority Assignment (using `test-priorities-matrix.md`)
+- **P0 (critical path / high impact):**
+  - refusal issuance persists reason + structured alternatives (pre-commitment and post-commitment paths)
+  - refusal outcomes are visible in lifecycle/audit history
+  - business refusal transport remains deterministic (`HTTP 200`, `ok=false`) with stable refusal typing
+- **P1 (important robustness / medium-high impact):**
+  - refusal writes are idempotent for repeated issuance attempts
+  - actionable alternatives contract includes stable machine-readable fields (not free-text-only)
+  - envelope key parity remains consistent across success/refusal and refusal-history retrieval responses
+  - cross-scope/no-record retrieval paths preserve refusal semantics without sensitive leakage
+- **P2/P3:** not selected for this run (`coverage_target=critical-paths`).
+
+### Coverage Plan
+- API automation target:
+  - `tests/api/platform/2-5-refusal-outcomes-with-structured-alternatives.api.spec.ts`
+- E2E automation target:
+  - `tests/e2e/platform/2-5-refusal-outcomes-with-structured-alternatives.spec.ts`
+- Shared fixture/factory reuse:
+  - `tests/support/fixtures/routeShyftStory25.fixture.ts`
+  - `tests/support/factories/routeShyftStory25Factory.ts`
+- Scope justification:
+  - `critical-paths` selected to prioritize refusal persistence + audit visibility outcomes required by AC1/AC2 and operability guardrail behavior.
+
+### External Documentation Cross-Check (official sources)
+- Playwright best practices and isolation guidance aligned with selected deterministic API-first strategy.
+- Playwright API testing guidance aligned with primary API-level coverage selection.
+- Cypress isolation reference aligns with independent-test/no-shared-state requirements.
+- Pact provider verification guidance aligns with contract-first refusal envelope checks.
+- GitHub Actions `jobs.<job_id>.needs` guidance aligns with CI dependency and gate sequencing used in repo policy.
+
+### Step 2 Confirmation Summary
+- Targets identified without ATDD duplication.
+- Test levels and priorities assigned.
+- Coverage plan finalized for Step 3 generation.
+
+## Story 2.5 Run - Step 3C: Aggregate Test Generation Results
+
+### Subprocess Outputs Read
+- API subprocess output:
+  - `/tmp/tea-automate-api-tests-2026-02-27T17-24-27-003Z.json`
+- E2E subprocess output:
+  - `/tmp/tea-automate-e2e-tests-2026-02-27T17-24-27-003Z.json`
+- Verification:
+  - `api.success === true`
+  - `e2e.success === true`
+  - both files present and JSON-valid
+
+### Test Files Written to Disk
+- `tests/api/platform/2-5-refusal-outcomes-with-structured-alternatives.api.spec.ts`
+- `tests/e2e/platform/2-5-refusal-outcomes-with-structured-alternatives.spec.ts`
+
+### Fixture Need Aggregation
+- Aggregated fixture needs from both subprocesses:
+  - `story25ContextFixture`
+  - `story25HeadersFixture`
+  - `story25PayloadFactory`
+  - `apiRequestClient`
+  - `authenticatedSessionFixture`
+  - `routeShyftStory25Factory`
+  - `routeRefusalNetworkWaitHelpers`
+- Infrastructure decision:
+  - Existing Story 2.5 fixture/factory assets already satisfy current generated test requirements.
+  - No additional shared fixture files were created in this aggregation pass.
+
+### Summary Statistics
+- Total tests generated: `8`
+  - API tests: `5` (`1` file)
+  - E2E tests: `3` (`1` file)
+- Priority coverage:
+  - P0: `3`
+  - P1: `5`
+  - P2: `0`
+  - P3: `0`
+- Knowledge fragments used (union):
+  - `api-request`
+  - `data-factories`
+  - `api-testing-patterns`
+  - `fixture-architecture`
+  - `network-first`
+  - `selector-resilience`
+- Subprocess execution mode: `PARALLEL (API + E2E)`
+- Performance: `~50% faster than sequential`
+
+### Summary Artifact
+- Runtime summary:
+  - `/tmp/tea-automate-summary-2026-02-27T17-24-27-003Z.json`
+- Persisted summary copy:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/tea-automate-summary-2026-02-27T17-24-27-003Z.json`
+
+### Temp Artifact Persistence
+- Persisted API subprocess output:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/tea-automate-api-tests-2026-02-27T17-24-27-003Z.json`
+- Persisted E2E subprocess output:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/tea-automate-e2e-tests-2026-02-27T17-24-27-003Z.json`
+- Persisted summary output:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/tea-automate-summary-2026-02-27T17-24-27-003Z.json`
+
+### Step 3C Completion Summary
+- Aggregation completed successfully.
+- Generated files and summary artifacts are ready for Step 4 validation.
+
+## Story 2.5 Run - Step 4: Validate and Summarize
+
+### Validation Results (Checklist-Gated)
+- Framework readiness: passed (`playwright.config.ts` present; Playwright dependencies present in root `package.json`).
+- Coverage mapping validation: passed.
+  - API coverage: `3x P0`, `2x P1` refusal outcome contract scenarios.
+  - E2E coverage: `3x P1` requester/staff refusal visibility and audit scenarios.
+- Test structure/quality validation: passed.
+  - Both generated files discovered by Playwright test listing.
+  - Total discovered tests: `8` across `2` files.
+  - No forbidden hard waits (`waitForTimeout`) detected.
+  - No conditional-visibility anti-pattern (`if (await ...isVisible())`) detected.
+- Fixture/factory/helper validation: passed.
+  - Reused existing Story 2.5 assets without introducing duplicate infrastructure:
+    - `/Users/jeremiahotis/projects/routeshyft/tests/support/fixtures/routeShyftStory25.fixture.ts`
+    - `/Users/jeremiahotis/projects/routeshyft/tests/support/factories/routeShyftStory25Factory.ts`
+- CLI session cleanup: passed.
+  - `playwright-cli -s=tea-automate close` confirmed no orphaned browser session.
+- Temp artifact persistence: passed.
+  - API subprocess output persisted to test artifacts folder.
+  - E2E subprocess output persisted to test artifacts folder.
+  - Aggregated summary persisted to test artifacts folder.
+
+### Coverage Plan (Final, by Level and Priority)
+- **API**
+  - `[P0]` refusal issuance stores taxonomy + structured alternatives
+  - `[P0]` refusal persistence across pre/post-commitment lifecycle
+  - `[P0]` refusal history lifecycle event visibility
+  - `[P1]` actionable alternative schema stability
+  - `[P1]` canonical envelope key parity across refusal and history retrieval
+- **E2E**
+  - `[P1]` requester/staff refusal outcome panel and alternatives visibility
+  - `[P1]` refusal timeline determinism after submit flow
+  - `[P1]` deep-link retrieval failure handling with no sensitive commitment leakage
+
+### Files Created/Updated in This Story 2.5 Run
+- Created:
+  - `/Users/jeremiahotis/projects/routeshyft/tests/api/platform/2-5-refusal-outcomes-with-structured-alternatives.api.spec.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/e2e/platform/2-5-refusal-outcomes-with-structured-alternatives.spec.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/tea-automate-api-tests-2026-02-27T17-24-27-003Z.json`
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/tea-automate-e2e-tests-2026-02-27T17-24-27-003Z.json`
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/tea-automate-summary-2026-02-27T17-24-27-003Z.json`
+- Updated:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/automation-summary.md`
+
+### Key Assumptions
+- Story 2.5 implementation surfaces are pending in source and will eventually provide:
+  - API: refusal issue/history contract routes under `/api/v1/route/refusals`
+  - UI: refusal outcomes journey under `/app/route/refusals`
+- Existing Story 2.5 fixture/factory contracts remain authoritative for expected refusal payload and envelope semantics.
+
+### Risks
+- Current codebase does not expose the target Story 2.5 RouteShyft surfaces yet; generated tests remain `test.fixme` and are intentionally non-executable until implementation lands.
+- Browser exploration reached only an error surface (`ERR_CONNECTION_REFUSED`) for target URL; selector assumptions rely on story/test-design artifacts and fixture contracts.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality scoring, maintainability, and priority gate checks.
+- `[TR] Trace Requirements` to map Story 2.5 ACs to generated automate coverage artifacts.
