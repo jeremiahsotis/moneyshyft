@@ -40,6 +40,11 @@ import {
   type ConnectShyftLifecycleAction,
   type ConnectShyftThreadState,
 } from '../../../modules/connectshyft/threads';
+import {
+  connectShyftSmsPreferenceOverrideServiceAsync,
+  type ConnectShyftResolvedSmsPreference,
+  type ConnectShyftValidatedSmsOverride,
+} from '../../../modules/connectshyft/smsPreferenceOverrides';
 import { executePlatformMutation } from '../../../platform/mutations/executePlatformMutation';
 import {
   createKnexOrgUnitAccessStore,
@@ -178,6 +183,30 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-701',
     summary: 'Unclaimed thread pending deterministic escalation evaluation',
   },
+  'thread-c4-unclaimed-pref-no-1004': {
+    tenantId: 'tenant-connectshyft-c4',
+    orgUnitId: 'org-connectshyft-c4-east',
+    state: 'UNCLAIMED',
+    claimedByUserId: null,
+    escalationStage: 1,
+    nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+    neighborId: 'neighbor-connectshyft-c4-pref-no-1004',
+    lastInboundCsNumberId: 'cs-number-404',
+    preferredOutboundCsNumberId: 'cs-number-504',
+    summary: 'Unclaimed thread with prefers_texting=NO policy.',
+  },
+  'thread-c4-closed-pref-no-1005': {
+    tenantId: 'tenant-connectshyft-c4',
+    orgUnitId: 'org-connectshyft-c4-east',
+    state: 'CLOSED',
+    claimedByUserId: null,
+    escalationStage: 0,
+    nextEvaluationAtUtc: null,
+    neighborId: 'neighbor-connectshyft-c4-pref-no-1005',
+    lastInboundCsNumberId: 'cs-number-405',
+    preferredOutboundCsNumberId: 'cs-number-505',
+    summary: 'Closed thread with prefers_texting=NO policy.',
+  },
 };
 
 const loadPlatformDb = (): Knex => {
@@ -188,6 +217,7 @@ const loadPlatformDb = (): Knex => {
 const connectShyftEscalationConfigService = new ConnectShyftEscalationConfigService(
   new KnexConnectShyftEscalationConfigStore(loadPlatformDb),
 );
+const connectShyftSmsPreferenceOverrideService = connectShyftSmsPreferenceOverrideServiceAsync;
 
 const actorFromRequest = (req: Request): PlatformAdminActorContext => ({
   userId: req.user?.userId || null,
@@ -1554,6 +1584,26 @@ const parseOutboundCallRequestPolicy = (req: Request): {
     retryCount:
       parseOptionalNonNegativeInteger(resolveField('retryCount'))
       ?? parseOptionalNonNegativeInteger(resolveField('maxRetries')),
+  };
+};
+
+const parseOutboundMessagePolicyRequest = (req: Request): {
+  body: string;
+  overrideReason: string | null;
+  overrideNote: string | null;
+} => {
+  const rawBody = req.body && typeof req.body === 'object'
+    ? req.body as Record<string, unknown>
+    : {};
+
+  const body = normalizeLifecycleString(rawBody.body);
+  const overrideReason = normalizeLifecycleString(rawBody.overrideReason).toLowerCase();
+  const overrideNote = normalizeLifecycleString(rawBody.overrideNote);
+
+  return {
+    body,
+    overrideReason: overrideReason || null,
+    overrideNote: overrideNote || null,
   };
 };
 
@@ -3758,6 +3808,9 @@ const performOutboundAction = async (
 
   const actorRoles = resolveConnectShyftActorRoles(req, context);
   const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const outboundMessagePolicy = outboundAction === 'message'
+    ? parseOutboundMessagePolicyRequest(req)
+    : null;
   const lifecycleContext = await resolveLifecycleContext({
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
@@ -3777,6 +3830,56 @@ const performOutboundAction = async (
       },
     });
     return;
+  }
+
+  let smsPreferenceDecision: ConnectShyftResolvedSmsPreference | null = null;
+  let validatedSmsOverride: ConnectShyftValidatedSmsOverride | null = null;
+  if (outboundAction === 'message' && outboundMessagePolicy) {
+    const preferenceNeighborId = lifecycleContext.syntheticThread?.neighborId || null;
+    smsPreferenceDecision = await connectShyftSmsPreferenceOverrideService.resolvePreference({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+      neighborId: preferenceNeighborId,
+    });
+
+    const overrideValidation = connectShyftSmsPreferenceOverrideService.validateOverride({
+      prefersTexting: smsPreferenceDecision.prefersTexting,
+      overrideReason: outboundMessagePolicy.overrideReason,
+      overrideNote: outboundMessagePolicy.overrideNote,
+    });
+
+    if (!overrideValidation.ok) {
+      refusal(res, {
+        code: overrideValidation.reason === 'required'
+          ? 'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED'
+          : 'CONNECTSHYFT_SMS_OVERRIDE_REASON_INVALID',
+        message: overrideValidation.message,
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          context,
+          threadId,
+          preferencePolicy: {
+            prefersTexting: smsPreferenceDecision.prefersTexting,
+            source: smsPreferenceDecision.source,
+            overrideRequired: smsPreferenceDecision.prefersTexting === 'NO',
+            overrideAccepted: false,
+            allowedOverrideReasons: overrideValidation.allowedReasons,
+          },
+          sideEffects: {
+            messageDispatched: false,
+            lifecycleMutationApplied: false,
+            auditPersisted: false,
+          },
+        },
+      });
+      return;
+    }
+
+    validatedSmsOverride = overrideValidation.overrideRequired
+      ? overrideValidation.override
+      : null;
   }
 
   let thread: ConnectShyftThread;
@@ -3856,6 +3959,22 @@ const performOutboundAction = async (
     });
   }
 
+  const persistedSmsOverride = outboundAction === 'message'
+    && smsPreferenceDecision?.prefersTexting === 'NO'
+    && validatedSmsOverride
+    ? await connectShyftSmsPreferenceOverrideService.persistApprovedOverride({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+      neighborId: smsPreferenceDecision.neighborId,
+      actorUserId,
+      preferenceValue: 'NO',
+      override: validatedSmsOverride,
+      messageBody: outboundMessagePolicy?.body || '',
+      messageEventName: 'connectshyft.thread.outbound_message_dispatched',
+    })
+    : null;
+
   const operatorFeedback = priorState === 'CLOSED'
     ? 'Conversation reopened on the same thread before outbound dispatch. Escalation and inactivity timers were reset.'
     : priorState === 'UNCLAIMED'
@@ -3887,7 +4006,37 @@ const performOutboundAction = async (
             call: CONNECTSHYFT_OUTBOUND_CALL_POLICY,
             autoClaimPolicy: CONNECTSHYFT_OUTBOUND_CALL_AUTO_CLAIM_POLICY,
           }
-        : {}),
+        : {
+            preferencePolicy: {
+              prefersTexting: smsPreferenceDecision?.prefersTexting || 'UNKNOWN',
+              source: smsPreferenceDecision?.source || 'unknown',
+              overrideRequired: smsPreferenceDecision?.prefersTexting === 'NO',
+              overrideAccepted: smsPreferenceDecision?.prefersTexting !== 'NO'
+                || Boolean(validatedSmsOverride),
+              ...(validatedSmsOverride
+                ? {
+                  override: {
+                    reason: validatedSmsOverride.reason,
+                    note: validatedSmsOverride.note,
+                    overrideId: persistedSmsOverride?.overrideId || null,
+                    durability: persistedSmsOverride?.durability || null,
+                    createdAtUtc: persistedSmsOverride?.createdAtUtc || null,
+                    audit: persistedSmsOverride
+                      ? {
+                        eventName: persistedSmsOverride.messageEventName,
+                        metadata: persistedSmsOverride.auditMetadata,
+                      }
+                      : null,
+                  },
+                }
+                : {}),
+            },
+            sideEffects: {
+              messageDispatched: true,
+              lifecycleMutationApplied: priorState === 'CLOSED',
+              auditPersisted: Boolean(persistedSmsOverride),
+            },
+          }),
       ...(sideEffects || {}),
     },
   });
