@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-26T21:17:13Z'
+lastSaved: '2026-02-26T17:01:50Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -2548,11 +2548,11 @@ lastSaved: '2026-02-26T21:17:13Z'
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story ux-r1 AC coverage to ATDD + automate evidence.
 
-## Story ux-r2 Run - Step 1: Preflight and Context
+## Story 2.4 Run - Step 1: Preflight and Context
 
 ### Framework Verification
-- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
-- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+- Framework detected: `/Users/jeremiahotis/projects/routeshyft/playwright.config.ts` exists.
+- Test dependencies detected in `/Users/jeremiahotis/projects/routeshyft/package.json`:
   - `@playwright/test`
   - `playwright`
 - Result: Framework readiness check passed.
@@ -2560,19 +2560,23 @@ lastSaved: '2026-02-26T21:17:13Z'
 ### Execution Mode
 - Mode selected: **BMad-Integrated**.
 - Basis:
-  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/ux-r2-accessibility-and-language-hardening.md`
-  - Existing ATDD files found for Story ux-r2:
-    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/ux-r2-accessibility-and-language-hardening.atdd.api.spec.ts`
-    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/ux-r2-accessibility-and-language-hardening.atdd.spec.ts`
+  - Story artifact loaded: `/Users/jeremiahotis/projects/routeshyft/_bmad-output/implementation-artifacts/2-4-request-to-commitment-linkage-and-terminal-enforcement.md`
+  - Existing ATDD files found for Story 2.4:
+    - `/Users/jeremiahotis/projects/routeshyft/tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/routeshyft/tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.spec.ts`
 
 ### Context Loaded
-- Test framework config loaded: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts`.
-- Existing test structure reviewed under `/Users/jeremiahotis/projects/connectshyft/tests`.
-- Story ux-r2 support assets loaded:
-  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryUxR2Factory.ts`
-  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryUxR2.fixture.ts`
-- Story status and dependency context loaded:
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+- Planning artifacts loaded:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/epics.md` (Story 2.4 scope)
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/prd.md` (terminal-state requirement)
+- Test-design/ATDD artifact loaded:
+  - `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/atdd-checklist-2-4.md`
+- Existing test structure reviewed under `/Users/jeremiahotis/projects/routeshyft/tests`.
+- Existing Story 2.4 automate coverage loaded:
+  - `/Users/jeremiahotis/projects/routeshyft/tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/support/factories/routeShyftStory24Factory.ts`
+  - `/Users/jeremiahotis/projects/routeshyft/tests/support/fixtures/routeShyftStory24.fixture.ts`
 
 ### TEA Config Flags
 - `tea_use_playwright_utils: true`
@@ -2586,7 +2590,7 @@ lastSaved: '2026-02-26T21:17:13Z'
   - `selective-testing.md`
   - `ci-burn-in.md`
   - `test-quality.md`
-- Playwright Utils + automation:
+- Playwright Utils:
   - `overview.md`
   - `api-request.md`
   - `network-recorder.md`
@@ -2598,73 +2602,71 @@ lastSaved: '2026-02-26T21:17:13Z'
   - `burn-in.md`
   - `network-error-monitor.md`
   - `fixtures-composition.md`
+- Browser automation reference:
   - `playwright-cli.md`
-- Additional generation references:
-  - `api-testing-patterns.md`
-  - `fixture-architecture.md`
-  - `network-first.md`
-  - `selector-resilience.md`
 
-## Story ux-r2 Run - Step 2: Identify Automation Targets
+## Story 2.4 Run - Step 2: Identify Automation Targets
 
 ### Browser Exploration
-- `playwright-cli` exploration was attempted in auto mode for selector validation.
-- Environment result: CLI browser bootstrap/socket handling was unstable for this run; coverage derived from story artifacts and current source selectors/contracts.
-- Session hygiene: no lingering `tea-automate` browser session retained.
+- `tea_browser_automation` is `auto`, so CLI exploration was attempted.
+- Result: `playwright-cli` is not installed in this environment (`playwright-cli not found`).
+- Fallback applied per workflow: code/doc-driven discovery using story, route module implementation, ATDD artifacts, and existing automate specs.
 
 ### Acceptance Criteria to Target Mapping
-- AC1: enforce minimum `16px` body typography and `44px` interactive target constraints across inbox, mine, thread, add-neighbor, and close surfaces.
-- AC2: preserve verb-first action labels and remove RBAC/internal UUID jargon from operator-facing copy.
-- AC3: enforce deterministic keyboard focus order, accessible naming, and screen-reader announcement contracts.
-- AC4: align visible feedback copy to canonical outcome taxonomy (`success|refusal|error`) with plain-language prefixes.
+- AC1: explicit terminal request outcome enforcement (`refused`/`cancelled`/`committed`) and deterministic request lifecycle exposure.
+- AC2: linked commitments can transition independently while request lifecycle remains terminal and stable.
+- AC3: unresolved/reconciliation surfaces expose lifecycle status and clear operator reconciliation actions.
 
 ### ATDD Duplication Control
 - Existing RED ATDD files retained and unchanged:
-  - `tests/api/platform/ux-r2-accessibility-and-language-hardening.atdd.api.spec.ts`
-  - `tests/e2e/platform/ux-r2-accessibility-and-language-hardening.atdd.spec.ts`
-- Automation expansion generated non-ATDD regression targets:
-  - `tests/api/platform/ux-r2-accessibility-and-language-hardening.automate.api.spec.ts`
-  - `tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts`
+  - `tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.api.spec.ts`
+  - `tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.atdd.spec.ts`
+- Automation expansion scope (non-ATDD) targets executable regression coverage and edge-case hardening:
+  - endpoint/path and contract alignment to implemented route APIs (`/api/v1/route/intake/...`)
+  - reconciliation queue behavior and stale classification
+  - cross-tenant scope leakage prevention
+  - canonical envelope key stability across success/refusal/detail responses
 
 ### Selected Test Levels
-- **API** (primary): contract and role-safe envelope hardening for accessibility/copy metadata.
-- **E2E** (secondary): keyboard/screen-reader/operator-journey behavior contracts across core UX surfaces.
+- **API** (primary): lifecycle terminalization, linkage/independence, reconciliation contract, and refusal/security edge paths.
+- **E2E** (secondary): operator-facing lifecycle/reconciliation UI contract checks (kept as implementation-gated where UI route/selectors are not yet confirmed).
+- **Component/Unit**: not selected for this automate pass to avoid overlap with existing service/domain unit coverage in `src/src/modules/route/**/__tests__`.
 
 ### Priority Assignment
 - P0:
-  - readability threshold drift protection
-  - verb-first plain-language action and feedback copy contracts
+  - explicit terminal request lifecycle behavior and terminal status exposure
+  - canonical request-to-commitment linkage with detail retrieval
+  - independent commitment transition after request terminalization
 - P1:
-  - deterministic focus/accessible-name/screen-reader metadata contracts
-  - outcome-taxonomy mapping and refusal-safe role behavior
-- P2:
-  - tenant-viewer UI action-suppression and refusal-guidance fallback path
+  - reconciliation queue payload, stale classification, and operator action guidance
+  - cross-tenant/org-unit access rejection without commitment leakage
+  - top-level envelope key stability across happy/refusal/detail responses
 
 ### Coverage Plan
 - API target file:
-  - `tests/api/platform/ux-r2-accessibility-and-language-hardening.automate.api.spec.ts`
+  - `tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts`
 - E2E target file:
-  - `tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts`
-- Scope: `critical-paths`
-- Implementation readiness finding:
-  - story status is `ready-for-dev`; current ConnectShyft selector and read-contract surfaces do not yet match ux-r2 hardening contracts.
-  - generated automate tests are intentionally `test.fixme`-gated until ux-r2 implementation lands.
+  - `tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
+- Supporting fixture/factory reuse:
+  - `tests/support/fixtures/routeShyftStory24.fixture.ts`
+  - `tests/support/factories/routeShyftStory24Factory.ts`
+- Scope justification: `critical-paths` (highest-risk operational lifecycle guarantees first; no duplicate ATDD coverage).
 
-## Story ux-r2 Run - Step 3: Parallel Test Generation Orchestration
+## Story 2.4 Run - Step 3: Parallel Test Generation Orchestration
 
 ### Subprocess Launch
 - Timestamp:
-  - `2026-02-26T11:53:04Z`
+  - `2026-02-26T16-57-02Z`
 - API subprocess output target:
-  - `/tmp/tea-automate-api-tests-2026-02-26T11-53-04Z.json`
+  - `/tmp/tea-automate-api-tests-2026-02-26T16-57-02Z.json`
 - E2E subprocess output target:
-  - `/tmp/tea-automate-e2e-tests-2026-02-26T11-53-04Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-26T16-57-02Z.json`
 - Execution mode:
   - `PARALLEL (API + E2E)`
 
 ### Completion Verification
-- API subprocess status: `success: true`, `test_count: 5`
-- E2E subprocess status: `success: true`, `test_count: 5`
+- API subprocess status: `success: true`, `test_count: 6`
+- E2E subprocess status: `success: true`, `test_count: 3`
 - Both output files present and JSON-valid.
 
 ### Performance Report
@@ -2672,465 +2674,88 @@ lastSaved: '2026-02-26T21:17:13Z'
 - Sequential equivalent would require two independent generation passes.
 - Performance gain target met: `~50% faster than sequential`.
 
-## Story ux-r2 Run - Step 3C: Aggregate Test Generation Results
+## Story 2.4 Run - Step 3C: Aggregate Test Generation Results
 
 ### Files Written to Disk
-- `tests/api/platform/ux-r2-accessibility-and-language-hardening.automate.api.spec.ts`
-- `tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts`
+- `tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts`
+- `tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
 
 ### Fixture Infrastructure
 - Reused existing fixture/helper infrastructure:
-  - `connectShyftStoryUxR2.fixture`
-  - `connectShyftStoryUxR2Factory`
-  - `apiRequest`
-  - `login`
-- No new shared fixture files required for this story slice.
-
-### Summary Metrics
-- Total tests generated: `10`
-  - API tests: `5` (1 file)
-  - E2E tests: `5` (1 file)
-- Priority coverage:
-  - P0: `4`
-  - P1: `5`
-  - P2: `1`
-  - P3: `0`
-- Summary artifact:
-  - `/tmp/tea-automate-summary-2026-02-26T11-53-04Z.json`
-
-### Artifact Persistence
-- Runtime subprocess artifacts:
-  - `/tmp/tea-automate-api-tests-2026-02-26T11-53-04Z.json`
-  - `/tmp/tea-automate-e2e-tests-2026-02-26T11-53-04Z.json`
-  - `/tmp/tea-automate-summary-2026-02-26T11-53-04Z.json`
-- Persisted under test artifacts:
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-26T11-53-04Z.json`
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-26T11-53-04Z.json`
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-26T11-53-04Z.json`
-
-## Story ux-r2 Run - Step 4: Validate and Summarize
-
-### Validation Results
-- Framework readiness: passed.
-- Coverage mapping by AC and priority: passed.
-- Generated spec parse/discovery validation:
-  - `npx playwright test --list tests/api/platform/ux-r2-accessibility-and-language-hardening.automate.api.spec.ts tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts`
-  - Result: passed (`10` tests discovered in `2` files).
-- Quality checks on generated files:
-  - no hard waits (`waitForTimeout`) detected.
-  - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
-  - no `try/catch` flow-control anti-pattern detected.
-  - priority tags (`@P0`, `@P1`, `@P2`) present for selective execution.
-- CLI session cleanup:
-  - no active lingering `tea-automate` session at workflow close.
-- Temp artifacts storage:
-  - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-temp`.
-
-### Coverage Summary
-- API coverage file:
-  - `tests/api/platform/ux-r2-accessibility-and-language-hardening.automate.api.spec.ts`
-  - `5` tests (`P0: 2`, `P1: 3`)
-- E2E coverage file:
-  - `tests/e2e/platform/ux-r2-accessibility-and-language-hardening.automate.spec.ts`
-  - `5` tests (`P0: 2`, `P1: 2`, `P2: 1`)
-- Total generated tests: `10`
-
-### Key Assumptions
-- ux-r2 implementation will expose/align required test-id and read-contract additions for accessibility/language hardening:
-  - `connectshyft-inbox-surface`, `connectshyft-thread-surface`, `connectshyft-feedback-banner`, `connectshyft-live-region-status`
-  - accessibility metadata for `focusOrder`, `accessibleNames`, and announcements
-  - plain-language feedback messages prefixed with `Success|Refusal|Error`
-- Role-restricted behavior will return refusal-safe guidance without privileged control leakage.
-
-### Risks
-- Browser exploration could not fully validate selector availability in a live local run, so selector assertions were derived from ux-r2 artifact contracts and current source analysis.
-- Story remains `ready-for-dev`; automate tests are intentionally `test.fixme`-gated until implementation lands.
-
-### Recommended Next Workflow
-- `[RV] Review Tests` for quality scoring and maintainability checks.
-- `[TR] Trace Requirements` to map Story ux-r2 AC coverage to ATDD + automate evidence.
-
-## Story b.4 Run - Step 1: Preflight and Context
-
-### Framework Verification
-- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
-- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
-  - `@playwright/test`
-  - `playwright`
-- Result: Framework readiness check passed.
-
-### Execution Mode
-- Mode selected: **BMad-Integrated**.
-- Basis:
-  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.md`
-  - Existing ATDD files found for Story b.4:
-    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.atdd.api.spec.ts`
-    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.atdd.spec.ts`
-
-### Context Loaded
-- Story support assets loaded:
-  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryB4Factory.ts`
-  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryB4.fixture.ts`
-- Related governance/reference artifacts loaded:
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/atdd-checklist-b-4.md`
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-epic-B.md`
-- Existing test structure reviewed under `/Users/jeremiahotis/projects/connectshyft/tests`.
-
-### TEA Config Flags
-- `tea_use_playwright_utils: true`
-- `tea_browser_automation: auto`
-
-### Knowledge Fragments Loaded
-- Core:
-  - `test-levels-framework.md`
-  - `test-priorities-matrix.md`
-  - `data-factories.md`
-  - `selective-testing.md`
-  - `ci-burn-in.md`
-  - `test-quality.md`
-- Playwright Utils + automation:
-  - `overview.md`
-  - `api-request.md`
-  - `network-recorder.md`
-  - `auth-session.md`
-  - `intercept-network-call.md`
-  - `recurse.md`
-  - `log.md`
-  - `file-utils.md`
-  - `burn-in.md`
-  - `network-error-monitor.md`
-  - `fixtures-composition.md`
-  - `playwright-cli.md`
-- Additional generation references:
-  - `api-testing-patterns.md`
-  - `fixture-architecture.md`
-  - `network-first.md`
-  - `selector-resilience.md`
-
-## Story b.4 Run - Step 2: Identify Automation Targets
-
-### Browser Exploration
-- Story b.4 target coverage was generated from artifact + code analysis.
-- Existing selector/test-id contracts in ATDD baseline were reused for `.automate` expansion.
-
-### Acceptance Criteria to Target Mapping
-- AC1: role-restricted merge authorization and deterministic refusal safety.
-- AC2: irreversible confirmation strictness and phrase validation edge cases.
-- AC3: audit/outbox before/after metadata integrity and reason propagation.
-- AC4: refusal/rollback no-leak/no-partial-write semantics.
-
-### ATDD Duplication Control
-- Existing RED ATDD files retained and unchanged:
-  - `tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.atdd.api.spec.ts`
-  - `tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.atdd.spec.ts`
-- Automation expansion generated non-ATDD regression targets:
-  - `tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.api.spec.ts`
-  - `tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.spec.ts`
-
-### Selected Test Levels
-- **API** (primary): merge governance/refusal/audit contract assertions.
-- **E2E** (secondary): modal confirmation/refusal/operator continuity journeys.
-
-### Priority Assignment
-- P0:
-  - self-merge target validation refusal contract.
-  - irreversible modal safety gate visibility contract.
-- P1:
-  - cross-tenant refusal no-leak behavior.
-  - envelope parity across success/refusal paths.
-  - reason propagation and phrase-redaction behavior.
-  - deterministic malformed-confirmation behavior.
-  - cancel/no-dispatch and survivor continuity UX contracts.
-- P2:
-  - membership-missing refusal guidance and control suppression.
-
-### Coverage Plan
-- API target file:
-  - `tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.api.spec.ts`
-- E2E target file:
-  - `tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.spec.ts`
-- Scope: `critical-paths`
-- Implementation readiness finding:
-  - story status remains `ready-for-dev`; generated automate tests are intentionally `test.fixme`-gated until merge implementation is live.
-
-## Story b.4 Run - Step 3: Parallel Test Generation Orchestration
-
-### Subprocess Launch
-- Timestamp:
-  - `2026-02-26T19-45-11Z`
-- API subprocess output target:
-  - `/tmp/tea-automate-api-tests-2026-02-26T19-45-11Z.json`
-- E2E subprocess output target:
-  - `/tmp/tea-automate-e2e-tests-2026-02-26T19-45-11Z.json`
-- Execution mode:
-  - `PARALLEL (API + E2E)`
-
-### Completion Verification
-- API subprocess status: `success: true`, `test_count: 5`
-- E2E subprocess status: `success: true`, `test_count: 5`
-- Both output files present and JSON-valid.
-
-### Performance Report
-- Parallel orchestration completed in one pass for both test levels.
-- Sequential equivalent would require two independent generation passes.
-- Performance gain target met: `~50% faster than sequential`.
-
-## Story b.4 Run - Step 3C: Aggregate Test Generation Results
-
-### Files Written to Disk
-- `tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.api.spec.ts`
-- `tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.spec.ts`
-
-### Fixture Infrastructure
-- Reused existing fixture/helper infrastructure:
-  - `connectShyftStoryB4.fixture`
-  - `connectShyftStoryB4Factory`
-  - `apiClient`
-  - `login`
-- No new shared fixture files required for this story slice.
-
-### Summary Metrics
-- Total tests generated: `10`
-  - API tests: `5` (1 file)
-  - E2E tests: `5` (1 file)
-- Priority coverage:
-  - P0: `2`
-  - P1: `7`
-  - P2: `1`
-  - P3: `0`
-- Summary artifact:
-  - `/tmp/tea-automate-summary-2026-02-26T19-45-11Z.json`
-
-### Artifact Persistence
-- Runtime subprocess artifacts:
-  - `/tmp/tea-automate-api-tests-2026-02-26T19-45-11Z.json`
-  - `/tmp/tea-automate-e2e-tests-2026-02-26T19-45-11Z.json`
-  - `/tmp/tea-automate-summary-2026-02-26T19-45-11Z.json`
-- Persisted under test artifacts:
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-26T19-45-11Z.json`
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-26T19-45-11Z.json`
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-26T19-45-11Z.json`
-
-## Story b.4 Run - Step 4: Validate and Summarize
-
-### Validation Results
-- Framework readiness: passed.
-- Coverage mapping by AC and priority: passed.
-- Generated spec parse/discovery validation:
-  - `npx playwright test --list tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.api.spec.ts tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.spec.ts`
-  - Result: passed (`10` tests discovered in `2` files).
-- Quality checks on generated files:
-  - no hard waits (`waitForTimeout`) detected.
-  - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
-  - no `try/catch` flow-control anti-pattern detected.
-  - priority tags (`@P0`, `@P1`, `@P2`) present for selective execution.
-- CLI session cleanup:
-  - `playwright-cli -s=tea-automate close` confirmed no active lingering session.
-
-### Coverage Summary
-- API coverage file:
-  - `tests/api/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.api.spec.ts`
-  - `5` tests (`P0: 1`, `P1: 4`)
-- E2E coverage file:
-  - `tests/e2e/platform/b-4-role-restricted-neighbor-merge-with-irreversible-confirmation.automate.spec.ts`
-  - `5` tests (`P0: 1`, `P1: 3`, `P2: 1`)
-- Total generated tests: `10`
-
-### Key Assumptions
-- Merge endpoint and envelope contracts remain aligned with story b.4 and ATDD context:
-  - `POST /api/v1/connectshyft/neighbors/merge`
-  - deterministic business refusals for authorization/confirmation/validation paths
-  - success envelope includes before/after + actor metadata for audit/outbox
-
-### Risks
-- Story remains `ready-for-dev`; tests are `test.fixme`-gated until backend/frontend merge contracts are implemented.
-- Cross-tenant and self-merge validation codes may require minor alignment once canonical refusal code registry is finalized.
-
-### Recommended Next Workflow
-- `[RV] Review Tests` for quality scoring and maintainability checks.
-- `[TR] Trace Requirements` to map Story b.4 AC coverage to ATDD + automate evidence.
-
-## Story c.5 Run - Step 1: Preflight and Context
-
-### Framework Verification
-- Framework detected: `playwright.config.ts` exists at repository root.
-- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
-  - `@playwright/test`
-  - `playwright`
-- Result: Framework readiness check passed.
-
-### Execution Mode
-- Mode selected: **BMad-Integrated**.
-- Basis:
-  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/c-5-deterministic-escalation-scheduler-with-claim-only-reset.md`
-  - Existing ATDD files found for Story c.5:
-    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts`
-    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.spec.ts`
-
-### Context Loaded
-- Test framework config loaded: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts`.
-- Story support assets loaded:
-  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryC5.fixture.ts`
-  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryC5Factory.ts`
-- Supporting planning/test context loaded:
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-epic-C.md`
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
-
-### TEA Config Flags
-- `tea_use_playwright_utils: true`
-- `tea_browser_automation: auto`
-
-### Browser Exploration
-- `playwright-cli` is installed (`1.59.0-alpha-1771104257000`).
-- Browser exploration executed with session `tea-automate-c5`.
-- Target inbox route redirected to login due unauthenticated session:
-  - URL: `http://localhost:5174/login?redirect=/app/connectshyft/inbox?...`
-- Selector snapshot captured from login surface:
-  - Email textbox `e12`, password textbox `e15`, log in button `e19`.
-- Snapshot artifact:
-  - `/Users/jeremiahotis/projects/connectshyft/.playwright-cli/page-2026-02-26T21-12-10-481Z.yml`
-
-### Knowledge Fragments Loaded
-- Core:
-  - `test-levels-framework.md`
-  - `test-priorities-matrix.md`
-  - `data-factories.md`
-  - `selective-testing.md`
-  - `ci-burn-in.md`
-  - `test-quality.md`
-- Playwright Utils and automation references:
-  - `overview.md`
-  - `api-request.md`
-  - `network-recorder.md`
-  - `auth-session.md`
-  - `intercept-network-call.md`
-  - `recurse.md`
-  - `log.md`
-  - `file-utils.md`
-  - `burn-in.md`
-  - `network-error-monitor.md`
-  - `fixtures-composition.md`
-  - `playwright-cli.md`
-  - `api-testing-patterns.md`
-  - `network-first.md`
-  - `selector-resilience.md`
-
-## Story c.5 Run - Step 2: Identify Automation Targets
-
-### Acceptance Criteria to Test Targets
-- AC1 (`X -> 2X -> 3X` deterministic progression):
-  - API: scheduler envelope, transition multipliers, replay-safe reruns, baseline range/integer validation.
-  - E2E: scheduler-run UI timeline/stage chips and rerun summary behavior.
-- AC2 (claim-only reset + notification suppression):
-  - API: explicit claim reset semantics, non-member refusal with no mutation payload.
-  - E2E: claim interaction resets stage and clears pending-notification indicator.
-
-### Existing ATDD Gap Analysis
-- Existing c.5 ATDD coverage is `test.skip` and focuses on primary red-phase contract targets.
-- Automation expansion added edge/negative coverage:
-  - refusal path without orgUnit membership
-  - strict baseline low/high/fractional validation split
-  - deterministic transition uniqueness checks
-  - replay-safe duplicate side-effect suppression assertions
-  - viewer action-visibility guards in E2E
-
-### Coverage Plan
-- API target file:
-  - `tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts`
-- E2E target file:
-  - `tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.spec.ts`
-- Scope: `critical-paths`
-- Priority allocation:
-  - `P0`: 4 tests
-  - `P1`: 5 tests
-  - `P2/P3`: 0 tests
-
-## Story c.5 Run - Step 3: Parallel Subprocess Orchestration
-
-### Subprocess Outputs
-- API subprocess output:
-  - `/tmp/tea-automate-api-tests-2026-02-26T21-15-52Z.json`
-- E2E subprocess output:
-  - `/tmp/tea-automate-e2e-tests-2026-02-26T21-15-52Z.json`
-- Both subprocess outputs report `success: true`.
-
-### Performance Report
-- Execution mode: `PARALLEL (API + E2E)`
-- Sequential equivalent: two separate generation passes.
-- Performance gain target met: `~50% faster than sequential`.
-
-## Story c.5 Run - Step 3C: Aggregate Test Generation Results
-
-### Files Written to Disk
-- `tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts`
-- `tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.spec.ts`
-
-### Fixture Infrastructure
-- Reused existing fixture/helper infrastructure:
-  - `connectShyftStoryC5.fixture`
-  - `connectShyftStoryC5Factory`
-  - `apiClient`
-  - `login`
-- No new shared fixture files required for this story slice.
+  - `tests/helpers/auth.ts`
+  - `tests/support/helpers/apiClient.ts`
+  - `tests/support/factories/routeShyftStory24Factory.ts`
+  - `tests/support/fixtures/routeShyftStory24.fixture.ts`
+  - `tests/fixtures/network-mocks.ts`
+- New shared fixture files created: none.
 
 ### Summary Metrics
 - Total tests generated: `9`
-  - API tests: `5` (1 file)
-  - E2E tests: `4` (1 file)
+  - API tests: `6` (1 file)
+  - E2E tests: `3` (1 file)
 - Priority coverage:
-  - P0: `4`
-  - P1: `5`
+  - P0: `3`
+  - P1: `6`
   - P2: `0`
   - P3: `0`
 - Summary artifact:
-  - `/tmp/tea-automate-summary-2026-02-26T21-15-52Z.json`
+  - `/tmp/tea-automate-summary-2026-02-26T16-57-02Z.json`
 
-### Artifact Persistence
-- Runtime subprocess artifacts:
-  - `/tmp/tea-automate-api-tests-2026-02-26T21-15-52Z.json`
-  - `/tmp/tea-automate-e2e-tests-2026-02-26T21-15-52Z.json`
-  - `/tmp/tea-automate-summary-2026-02-26T21-15-52Z.json`
-- Persisted under test artifacts:
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-26T21-15-52Z.json`
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-26T21-15-52Z.json`
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-26T21-15-52Z.json`
+### Generation Validation
+- Playwright discovery validation command:
+  - `npx playwright test --list tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
+- Result:
+  - `9 tests in 2 files` discovered successfully.
 
-## Story c.5 Run - Step 4: Validate and Summarize
+## Story 2.4 Run - Step 4: Validate and Summarize
 
 ### Validation Results
 - Framework readiness: passed.
 - Coverage mapping by AC and priority: passed.
 - Generated spec parse/discovery validation:
-  - `npx playwright test tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts --list`
-  - `npx playwright test tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.spec.ts --list`
-  - Result: passed (`9` tests discovered across `2` files).
-- Quality checks on generated files:
+  - `npx playwright test --list tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
+  - Result: passed (`9` tests discovered in `2` files).
+- Test quality checks on generated files:
   - no hard waits (`waitForTimeout`) detected.
   - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
   - no `try/catch` flow-control anti-pattern detected.
-  - priority tags (`@P0`, `@P1`) present for selective execution.
+- CLI session cleanup:
+  - `playwright-cli` unavailable in environment; no browser CLI session was opened.
+- Temp artifacts storage:
+  - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-temp`.
 
-### Coverage Summary
+### Coverage Plan Summary
 - API coverage file:
-  - `tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts`
-  - `5` tests (`P0: 2`, `P1: 3`)
+  - `tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts`
+  - `6` tests (`P0: 3`, `P1: 3`)
 - E2E coverage file:
-  - `tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.spec.ts`
-  - `4` tests (`P0: 2`, `P1: 2`)
+  - `tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
+  - `3` tests (`P0: 0`, `P1: 3`) (`test.fixme`-gated pending UI readiness)
 - Total generated tests: `9`
 
+### Files Updated
+- `tests/api/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.api.spec.ts`
+- `tests/e2e/platform/2-4-request-to-commitment-linkage-and-terminal-enforcement.spec.ts`
+- `_bmad-output/test-artifacts/automation-summary.md`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-02-26T16-57-02Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-26T16-57-02Z.json`
+  - `/tmp/tea-automate-summary-2026-02-26T16-57-02Z.json`
+- Persisted under test artifacts:
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-26T16-57-02Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-26T16-57-02Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-26T16-57-02Z.json`
+
 ### Key Assumptions
-- Story c.5 contract targets remain centered on:
-  - deterministic scheduler progression (`X -> 2X -> 3X`)
-  - replay-safe due-window processing
-  - claim-only reset + notification suppression semantics
-- Existing C5 factory/fixture endpoint paths remain source of truth for scheduler and claim endpoints.
+- Authenticated test user has valid tenant context and, where required, org-unit scope for route intake endpoints.
+- Story 2.4 UI route and test-id contract may still require frontend readiness; therefore E2E coverage remains explicitly `test.fixme`-gated.
 
 ### Risks
-- Browser exploration reached authenticated-login boundary only; inbox/thread UI selectors are based on existing story fixtures/spec conventions.
-- `c.5` implementation is not yet merged in current branch head, so generated automate tests are expected to be red until scheduler/reset runtime behavior lands.
+- API tests that require org-unit scope may skip in environments where authenticated users do not have `activeOrgUnitId` context.
+- E2E tests are intentionally not executable until Story 2.4 operator UI surfaces and selectors are fully available.
 
 ### Recommended Next Workflow
-- `[RV] Review Tests` for quality scoring and maintainability checks.
-- `[TR] Trace Requirements` to map Story c.5 AC coverage to ATDD + automate evidence.
+- `[RV] Review Tests` to score maintainability and quality gates for the generated Story 2.4 suite.
+- `[TR] Trace Requirements` to map Story 2.4 acceptance criteria to ATDD + automate evidence.
