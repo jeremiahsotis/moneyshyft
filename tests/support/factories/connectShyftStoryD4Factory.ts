@@ -45,7 +45,8 @@ export type StoryD4Context = {
     unclaimedPrefersNo: string;
   };
   refusalCodes: {
-    overrideRequired: 'CONNECTSHYFT_OUTBOUND_OVERRIDE_REASON_REQUIRED';
+    overrideRequired: 'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED';
+    overrideInvalid: 'CONNECTSHYFT_SMS_OVERRIDE_REASON_INVALID';
   };
   eventNames: {
     reopenedByUser: 'connectshyft.thread_reopened_by_user';
@@ -86,7 +87,8 @@ export function createStoryD4Context(
       unclaimedPrefersNo: 'thread-d4-unclaimed-prefers-no-1004',
     },
     refusalCodes: {
-      overrideRequired: 'CONNECTSHYFT_OUTBOUND_OVERRIDE_REASON_REQUIRED',
+      overrideRequired: 'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED',
+      overrideInvalid: 'CONNECTSHYFT_SMS_OVERRIDE_REASON_INVALID',
     },
     eventNames: {
       reopenedByUser: 'connectshyft.thread_reopened_by_user',

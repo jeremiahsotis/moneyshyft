@@ -1,8 +1,8 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryD4.fixture';
 
-test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATDD API RED)', () => {
-  test.skip(
+test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATDD API)', () => {
+  test(
     '[P0] thread detail contracts expose deterministic state-action matrices for unclaimed claimed and closed threads @P0',
     async ({
       request,
@@ -63,7 +63,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
     },
   );
 
-  test.skip(
+  test(
     '[P0] outbound actions from CLOSED thread return explicit same-thread reopen feedback metadata without hidden transitions @P0',
     async ({
       request,
@@ -87,11 +87,21 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
           thread: {
             threadId: storyD4Context.threadIds.closed,
             state: 'UNCLAIMED',
+          },
+          lifecycle: {
             priorState: 'CLOSED',
+            nextState: 'UNCLAIMED',
+            reopenedFromClosed: true,
           },
           lifecycleEvent: storyD4Context.eventNames.reopenedByUser,
-          operatorFeedback: expect.objectContaining({
+          operatorFeedback: expect.stringMatching(/reopened/i),
+          operatorFeedbackMeta: expect.objectContaining({
             heading: expect.stringContaining('reopened'),
+            hiddenTransition: false,
+          }),
+          uiFeedback: expect.objectContaining({
+            severity: 'success',
+            ariaLive: 'polite',
             hiddenTransition: false,
           }),
         },
@@ -99,7 +109,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
     },
   );
 
-  test.skip(
+  test(
     '[P1] prefers_texting NO outbound sms without override returns envelope metadata that maps cleanly to refusal UX @P1',
     async ({
       request,
@@ -121,17 +131,32 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
         code: storyD4Context.refusalCodes.overrideRequired,
         refusalType: 'business',
         message: expect.any(String),
-        uiFeedback: {
-          severity: 'warning',
-          requiresAction: true,
-          actionLabel: expect.stringContaining('Add override reason'),
-          accessibilityHint: expect.any(String),
+        data: {
+          preferencePolicy: {
+            prefersTexting: 'NO',
+            overrideRequired: true,
+            overrideAccepted: false,
+            allowedOverrideReasons: expect.arrayContaining(['safety-follow-up']),
+          },
+          uiFeedback: {
+            severity: 'warning',
+            ariaLive: 'assertive',
+            messageKey: 'connectshyft.override.required',
+            requiresAction: true,
+            actionLabel: expect.stringContaining('Add override reason'),
+            accessibilityHint: expect.any(String),
+          },
+          sideEffects: {
+            messageDispatched: false,
+            lifecycleMutationApplied: false,
+            auditPersisted: false,
+          },
         },
       });
     },
   );
 
-  test.skip(
+  test(
     '[P1] success and refusal envelopes preserve deterministic feedback contract keys for UI mapping across breakpoints @P1',
     async ({
       request,
@@ -163,6 +188,9 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
         ok: true,
         code: 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED',
         data: {
+          preferencePolicy: {
+            overrideAccepted: true,
+          },
           uiFeedback: {
             severity: 'success',
             ariaLive: 'polite',
@@ -173,10 +201,15 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
       expect(refusalBody).toMatchObject({
         ok: false,
         code: storyD4Context.refusalCodes.overrideRequired,
-        uiFeedback: {
-          severity: 'warning',
-          ariaLive: 'assertive',
-          messageKey: expect.any(String),
+        data: {
+          preferencePolicy: {
+            overrideAccepted: false,
+          },
+          uiFeedback: {
+            severity: 'warning',
+            ariaLive: 'assertive',
+            messageKey: expect.any(String),
+          },
         },
       });
     },

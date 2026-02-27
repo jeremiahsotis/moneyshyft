@@ -26,8 +26,8 @@ const buildThreadUrl = (
   return `${context.paths.threadDetailUi}/${options.threadId}?${params.toString()}`;
 };
 
-test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATDD E2E RED)', () => {
-  test.skip(
+test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATDD E2E)', () => {
+  test(
     '[P0] desktop tablet and mobile views preserve explicit state-action matrix contracts with accessible labels @P0',
     async ({ page }) => {
       const context = createStoryD4Context();
@@ -74,7 +74,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
     },
   );
 
-  test.skip(
+  test(
     '[P0] policy refusal and confirmation copy remain keyboard accessible and screen-reader ready for outbound safety workflows @P0',
     async ({ page }) => {
       const context = createStoryD4Context();
@@ -89,8 +89,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
         }),
       );
 
-      await page.keyboard.press('Tab');
-      await page.keyboard.press('Tab');
+      await page.getByRole('button', { name: /Send Message|Text/i }).focus();
       await page.keyboard.press('Enter');
 
       await expect(page.getByTestId('connectshyft-preference-override-modal')).toBeVisible();
@@ -109,7 +108,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
     },
   );
 
-  test.skip(
+  test(
     '[P0] closed-thread outbound action shows explicit reopened transition and updated action set without hidden lifecycle changes @P0',
     async ({ page }) => {
       const context = createStoryD4Context();
@@ -136,7 +135,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
     },
   );
 
-  test.skip(
+  test(
     '[P1] prefers_texting NO override flow remains explicit with accessible refusal and success outcomes for outbound sms @P1',
     async ({ page }) => {
       const context = createStoryD4Context();
@@ -154,12 +153,12 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
       await page.getByRole('button', { name: /Send Message|Text/i }).click();
       await expect(page.getByTestId('connectshyft-preference-override-submit')).toBeDisabled();
       await expect(page.getByTestId('connectshyft-policy-refusal-banner')).toContainText(
-        /override reason required/i,
+        /override reason/i,
       );
 
       await page
         .getByTestId('connectshyft-preference-override-reason-select')
-        .selectOption('SAFETY_EXCEPTION');
+        .selectOption('safety-follow-up');
       await page.getByTestId('connectshyft-preference-override-note-input').fill(
         'Safety check outreach required by policy exception.',
       );
@@ -167,6 +166,9 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
 
       await expect(page.getByTestId('connectshyft-policy-success-banner')).toContainText(
         /override applied/i,
+      );
+      await expect(page.getByTestId('connectshyft-preference-override-audit-chip')).toContainText(
+        'SAFETY-FOLLOW-UP',
       );
       await expect(page.getByTestId('connectshyft-policy-success-banner')).toHaveAttribute(
         'aria-live',

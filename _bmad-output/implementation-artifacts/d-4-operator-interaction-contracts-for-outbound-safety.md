@@ -15,7 +15,8 @@ so that I can complete actions quickly without violating governance rules.
 1. Given users perform claim/send/close actions across supported breakpoints, when UI interaction patterns render, then policy guardrails, refusal messages, and confirmation copy are explicit and keyboard/screen-reader accessible.
 2. Given thread views are rendered by state, when action controls appear, then action sets are consistent and explicit:
    - `UNCLAIMED`: `Call`, `Text`, `Claim`
-   - `CLAIMED`: `Call`, `Text`, `Close`
+   - `CLAIMED` (member baseline): `Call`, `Text`, `Close`
+   - `CLAIMED` (tenant-privileged roles): `Call`, `Take Over`, `Text`, `Close`
    - `CLOSED`: `Call`, `Send Message`
 3. Given outbound actions are initiated on `CLOSED`, when action executes, then the UX reflects same-thread reopen (`CLOSED -> UNCLAIMED`) with deterministic feedback and no hidden transition.
 4. Given `prefers_texting=NO`, when outbound SMS is initiated, then override requirement and refusal/success outcome handling remain explicit and accessible.
@@ -153,6 +154,8 @@ GPT-5 Codex
 - `cd src && npm test -- src/src/modules/connectshyft/__tests__/readContracts.test.ts src/src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts` (pass)
 - `cd src && npm run build` (pass)
 - `cd frontend && npm run build` (pass)
+- `npx playwright test tests/api/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.api.spec.ts` (pass)
+- `npx playwright test tests/e2e/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.spec.ts` (pass)
 
 ### Completion Notes List
 
@@ -162,6 +165,8 @@ GPT-5 Codex
 - Added override-required UX path with actionable next-step refusal copy, approved reason selection, and override audit chip on success.
 - Extended backend outbound response contracts with explicit `uiFeedback` metadata while preserving existing envelope semantics.
 - Added D-4 seed/synthetic lifecycle coverage and module-level regression tests for action matrix and preference override paths.
+- Unskipped D-4 API/E2E contract suites and aligned assertions to current outbound/refusal envelope shapes.
+- Corrected D-4 override factory refusal codes and E2E override reason token to current supported contract values.
 
 ### File List
 
@@ -169,6 +174,9 @@ GPT-5 Codex
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 - frontend/src/features/connectshyft/uiContracts.ts
 - frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
+- tests/api/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.api.spec.ts
+- tests/e2e/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.spec.ts
+- tests/support/factories/connectShyftStoryD4Factory.ts
 - src/src/modules/connectshyft/__tests__/readContracts.test.ts
 - src/src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts
 - src/src/modules/connectshyft/readContracts.ts
@@ -179,3 +187,4 @@ GPT-5 Codex
 
 - 2026-02-27: Created Story d.4 ready-for-dev context document.
 - 2026-02-27: Implemented Story d.4 state-action UI contracts, preference-override accessibility flow, deterministic reopen feedback, and backend UI-feedback envelope mapping.
+- 2026-02-27: Hardened D-4 API/E2E contracts (unskipped tests, updated refusal/assertion mappings, corrected override option values) and synced story traceability metadata.
