@@ -333,7 +333,7 @@ lastSaved: '2026-02-27'
 
 - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
 - `_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-27.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md`
 - `_bmad-output/implementation-artifacts/f-1-provider-adapter-interface-and-provider-registry.md`
 - `_bmad-output/implementation-artifacts/f-2-canonical-comms-event-model-and-event-store.md`
 - `_bmad-output/implementation-artifacts/f-3-provider-leg-message-correlation-fallback-mapping.md`

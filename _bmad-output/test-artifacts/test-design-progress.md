@@ -759,7 +759,7 @@ lastSaved: '2026-02-27'
   - Architecture/PRD/change-control context available:
     - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
     - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
-    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-27.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md`
   - Dependency/sprint context available:
     - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
 - No blocker found for progression to Step 2.
@@ -773,7 +773,7 @@ lastSaved: '2026-02-27'
   - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
   - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
   - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
-  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-27.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md`
   - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/f-1-provider-adapter-interface-and-provider-registry.md`
   - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/f-2-canonical-comms-event-model-and-event-store.md`
   - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/f-3-provider-leg-message-correlation-fallback-mapping.md`

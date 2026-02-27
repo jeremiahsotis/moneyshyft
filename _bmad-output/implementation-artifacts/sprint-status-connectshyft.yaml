@@ -103,7 +103,7 @@ change_controls:
   comms_provider_abstraction_approved: true
   comms_provider_abstraction_approved_on: 2026-02-27
   comms_provider_abstraction_approved_by: Jeremiah
-  comms_provider_abstraction_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-27.md
+  comms_provider_abstraction_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md
   comms_provider_strategy: provider-agnostic-comms-core
   comms_provider_v1_selected: telnyx
   comms_provider_deprecated: twilio

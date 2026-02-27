@@ -28,6 +28,7 @@ inputDocuments:
   - /Users/jeremiahotis/Downloads/05_Risk_and_Threat_Model.pdf
   - /Users/jeremiahotis/Downloads/02_Build_Phases.pdf
 workflowType: 'prd'
+project_lane: connectshyft
 classification:
   projectType: modular monolith module expansion
   domain: nonprofit communication operations

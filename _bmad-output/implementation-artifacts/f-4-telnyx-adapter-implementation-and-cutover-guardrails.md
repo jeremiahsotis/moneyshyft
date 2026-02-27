@@ -83,7 +83,7 @@ so that Twilio-dependent paths are retired without breaking lifecycle behavior.
 ### References
 
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (Epic f, Story f.4)
-- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-27.md`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md`
 - `/Users/jeremiahotis/projects/connectshyft/provider_adapter.md`
 - `/Users/jeremiahotis/projects/connectshyft/openapi.yaml`
 - `/Users/jeremiahotis/projects/connectshyft/engineering_tasks.md`

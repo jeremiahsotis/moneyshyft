@@ -86,7 +86,7 @@ so that downstream ConnectShyft behavior remains stable regardless of provider.
 ### References
 
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (Epic f, Story f.2)
-- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-27.md`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md`
 - `/Users/jeremiahotis/projects/connectshyft/event_schema.md`
 - `/Users/jeremiahotis/projects/connectshyft/openapi.yaml`
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`

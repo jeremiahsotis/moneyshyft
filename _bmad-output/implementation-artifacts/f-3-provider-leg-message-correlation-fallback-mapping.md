@@ -86,7 +86,7 @@ so that webhook handling remains deterministic even if metadata is incomplete.
 ### References
 
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (Epic f, Story f.3)
-- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-27.md`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md`
 - `/Users/jeremiahotis/projects/connectshyft/db_schema.sql`
 - `/Users/jeremiahotis/projects/connectshyft/provider_adapter.md`
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`

@@ -86,7 +86,7 @@ so that outbound and inbound communication flows can run without provider-specif
 ### References
 
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (Epic f, Story f.1)
-- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-27.md`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-ConnectShyft-2026-02-27.md`
 - `/Users/jeremiahotis/projects/connectshyft/provider_adapter.md`
 - `/Users/jeremiahotis/projects/connectshyft/openapi.yaml`
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
