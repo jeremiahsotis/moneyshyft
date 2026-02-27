@@ -10,6 +10,7 @@ import { isCommitmentStatus } from '../../../modules/route/domain/commitmentLife
 import { IntakeService } from '../../../modules/route/application/intakeService';
 import { KnexIntakeRequestRepository } from '../../../modules/route/infrastructure/intakeRequestRepository';
 import { RouteIntakeChannel, RouteIntakePayload } from '../../../modules/route/domain/intakePolicy';
+import { createRouteRouter as createRouteRefusalRouter } from '../../../modules/route/api/router';
 
 const TEST_TENANT_HEADER = 'x-test-route-tenant-id';
 const TEST_ACTOR_HEADER = 'x-test-route-actor-id';
@@ -726,6 +727,8 @@ export const createRouteRouter = (
       data: reconciled.data,
     });
   });
+
+  router.use(createRouteRefusalRouter());
 
   return router;
 };

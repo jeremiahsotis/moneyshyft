@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/2-5-refusal-outcomes-with-structured-alternatives.atdd.spec.ts",
+      "content": "import { test, expect } from '../../support/fixtures/routeShyftStory25.fixture';\nimport { login } from '../../helpers/auth';\n\ntest.describe('Story 2-5 Refusal Outcomes with Structured Alternatives (ATDD E2E RED)', () => {\n  test.skip('[P1] requester/staff view shows refusal reason with structured alternatives and next steps @P1', async ({ page, story25Context }) => {\n    await login(page);\n\n    const loadResponse = page.waitForResponse(\n      (response) => response.url().includes(story25Context.paths.resourceCollection) && response.request().method() === 'GET',\n    );\n\n    await page.goto(story25Context.paths.ui + '?tenantId=' + story25Context.tenantId + '&orgUnitId=' + story25Context.orgUnitId);\n    await loadResponse;\n\n    await expect(page.getByRole('heading', { name: 'Refusal Outcomes' })).toBeVisible();\n    await expect(page.getByTestId('routeshyft-refusal-outcome-banner')).toBeVisible();\n    await expect(page.getByTestId('routeshyft-refusal-next-steps')).toBeVisible();\n  });\n\n  test.skip('[P1] refusal history view surfaces deterministic refusal metadata in audit timeline @P1', async ({ page, story25Context }) => {\n    await login(page);\n\n    const submitResponse = page.waitForResponse(\n      (response) => response.url().includes(story25Context.paths.resourceCollection) && response.request().method() === 'POST',\n    );\n\n    await page.goto(story25Context.paths.ui + '?tenantId=' + story25Context.tenantId + '&orgUnitId=' + story25Context.orgUnitId);\n    await page.getByRole('button', { name: 'Record Refusal' }).click();\n    await submitResponse;\n\n    await expect(page.getByTestId('routeshyft-refusal-code')).toBeVisible();\n    await expect(page.getByTestId('routeshyft-refusal-alternatives-list')).toHaveText(story25Context.refusalCode);\n    await expect(page.getByTestId('routeshyft-refusal-audit-history')).toBeVisible();\n  });\n});\n",
+      "description": "ATDD E2E tests for refusal outcomes UI and audit timeline (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Refusal outcomes and alternatives visible to requester/staff",
+        "Refusal reason and alternatives visible in lifecycle audit timeline"
+      ],
+      "priority_coverage": {
+        "P0": 0,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "routeShyftStory25.fixture"
+  ],
+  "knowledge_fragments_used": [
+    "selector-resilience",
+    "network-first",
+    "playwright-cli",
+    "test-quality"
+  ],
+  "test_count": 2,
+  "tdd_phase": "RED",
+  "summary": "Generated 2 FAILING E2E tests for story 2-5 refusal outcomes"
+}
