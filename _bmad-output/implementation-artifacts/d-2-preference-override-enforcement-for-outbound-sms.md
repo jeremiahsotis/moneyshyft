@@ -174,7 +174,10 @@ GPT-5 Codex
 - src/src/routes/api/v1/connectshyft.ts
 - src/src/migrations/20260227123000_create_connectshyft_sms_preference_overrides.ts
 - src/src/migrations/20260227150000_add_connectshyft_sms_override_reason_constraint.ts
+- src/src/modules/connectshyft/smsPreferenceOverrides.ts
+- src/src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts
 - tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts
+- tests/support/factories/connectShyftStoryDFactory.ts
 
 ## Senior Developer Review (AI)
 
