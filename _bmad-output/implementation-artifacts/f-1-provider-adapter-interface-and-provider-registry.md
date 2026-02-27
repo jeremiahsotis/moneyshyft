@@ -1,6 +1,6 @@
 # Story f.1: Provider Adapter Interface and Provider Registry
 
-Status: backlog
+Status: ready-for-dev
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

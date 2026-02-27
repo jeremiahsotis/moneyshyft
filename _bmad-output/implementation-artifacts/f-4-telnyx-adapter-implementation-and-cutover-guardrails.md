@@ -1,6 +1,6 @@
 # Story f.4: Telnyx Adapter Implementation and Cutover Guardrails
 
-Status: backlog
+Status: ready-for-dev
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

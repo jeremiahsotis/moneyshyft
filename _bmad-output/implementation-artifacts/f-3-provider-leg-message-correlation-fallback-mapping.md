@@ -1,6 +1,6 @@
 # Story f.3: Provider Leg and Message Correlation Fallback Mapping
 
-Status: backlog
+Status: ready-for-dev
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

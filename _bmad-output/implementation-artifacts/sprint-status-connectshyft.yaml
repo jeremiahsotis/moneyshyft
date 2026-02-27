@@ -77,11 +77,11 @@ development_status:
   e-5-replay-safe-webhook-receipt-ledger-and-retention-controls: backlog
   e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: backlog
   epic-e-retrospective: optional
-  epic-f: backlog
-  f-1-provider-adapter-interface-and-provider-registry: backlog
-  f-2-canonical-comms-event-model-and-event-store: backlog
-  f-3-provider-leg-message-correlation-fallback-mapping: backlog
-  f-4-telnyx-adapter-implementation-and-cutover-guardrails: backlog
+  epic-f: in-progress
+  f-1-provider-adapter-interface-and-provider-registry: ready-for-dev
+  f-2-canonical-comms-event-model-and-event-store: ready-for-dev
+  f-3-provider-leg-message-correlation-fallback-mapping: ready-for-dev
+  f-4-telnyx-adapter-implementation-and-cutover-guardrails: ready-for-dev
   epic-f-retrospective: optional
   epic-ux-remediation: in-progress
   ux-r1-mobile-first-inbox-mine-thread-redesign: done
