@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-26T19:45:11Z'
+lastSaved: '2026-02-27T10:38:50Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -2949,3 +2949,209 @@ lastSaved: '2026-02-26T19:45:11Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story b.4 AC coverage to ATDD + automate evidence.
+
+## Story d-series Run (d-1, d-2, d-3, d-4) - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifacts loaded:
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/d-2-preference-override-enforcement-for-outbound-sms.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/d-3-outbound-audit-outbox-and-refusal-envelope-integration.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/d-4-operator-interaction-contracts-for-outbound-safety.md`
+
+### Context Loaded
+- Existing test structure reviewed under `/Users/jeremiahotis/projects/connectshyft/tests`.
+- Existing D-series automate coverage status before generation:
+  - No matching `d-1..d-4` API/E2E automate files were present.
+- ConnectShyft route/contract context loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright utils and automation references:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+- Additional generation references:
+  - `api-testing-patterns.md`
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+
+## Story d-series Run (d-1, d-2, d-3, d-4) - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- Browser exploration was skipped for this run and coverage was generated from story artifacts plus code-contract analysis.
+- Session hygiene: no lingering `playwright-cli -s=tea-automate` session was created.
+
+### Acceptance Criteria to Target Mapping
+- d-1:
+  - outbound on `UNCLAIMED` preserves escalation semantics;
+  - outbound on `CLOSED` reopens same thread with deterministic lifecycle event;
+  - bridge-call-only/no auto-redial constraints;
+  - inbound fallback on `CLOSED` does not auto-reopen.
+- d-2:
+  - override reason required when `prefers_texting=NO`;
+  - refusal path no-side-effect guarantees;
+  - successful override path persists policy metadata;
+  - CLOSED reopen + override ordering.
+- d-3:
+  - outbound/governance success path atomic audit/outbox persistence;
+  - refusal envelope parity with no partial writes;
+  - lifecycle lineage propagation for reopen-on-outbound.
+- d-4:
+  - explicit state-action matrix across breakpoints;
+  - visible CLOSED->UNCLAIMED reopen feedback;
+  - accessible override/refusal guidance;
+  - keyboard/screen-reader-safe policy feedback contracts.
+
+### Selected Test Levels
+- **API** (primary): outbound policy, refusal envelope, traceability metadata, action contract assertions.
+- **E2E** (secondary): operator interaction contracts, state-action visibility, and accessibility/policy feedback expectations.
+
+### Priority Assignment
+- P0:
+  - critical outbound lifecycle and override safety invariants.
+- P1:
+  - refusal determinism, metadata lineage completeness, and accessibility/interaction hardening.
+
+### Coverage Plan
+- API target files:
+  - `tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts`
+  - `tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts`
+  - `tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts`
+  - `tests/api/platform/d-4-operator-interaction-contracts-for-outbound-safety.automate.api.spec.ts`
+- E2E target files:
+  - `tests/e2e/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.spec.ts`
+  - `tests/e2e/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.spec.ts`
+  - `tests/e2e/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.spec.ts`
+  - `tests/e2e/platform/d-4-operator-interaction-contracts-for-outbound-safety.automate.spec.ts`
+- Scope: `critical-paths`
+- Implementation readiness finding:
+  - d-series stories are `ready-for-dev`; future-contract assertions were generated as `test.fixme` placeholders to preserve CI stability while documenting expected behavior.
+
+## Story d-series Run (d-1, d-2, d-3, d-4) - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-02-27T10-38-50Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-02-27T10-38-50Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-02-27T10-38-50Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 16`
+- E2E subprocess status: `success: true`, `test_count: 16`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed for both test levels in one run.
+- Sequential equivalent would require separate API and E2E generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story d-series Run (d-1, d-2, d-3, d-4) - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- New support artifacts:
+  - `tests/support/factories/connectShyftStoryDFactory.ts`
+  - `tests/support/fixtures/connectShyftStoryD.fixture.ts`
+- New API automate specs:
+  - `tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts`
+  - `tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts`
+  - `tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts`
+  - `tests/api/platform/d-4-operator-interaction-contracts-for-outbound-safety.automate.api.spec.ts`
+- New E2E automate specs:
+  - `tests/e2e/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.spec.ts`
+  - `tests/e2e/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.spec.ts`
+  - `tests/e2e/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.spec.ts`
+  - `tests/e2e/platform/d-4-operator-interaction-contracts-for-outbound-safety.automate.spec.ts`
+
+### Fixture Infrastructure
+- Added shared Story D fixture/factory infrastructure:
+  - `storyDContext`
+  - scoped role headers (`storyDMemberHeaders`, `storyDAdminHeaders`, `storyDViewerHeaders`)
+  - reusable payload fixtures for call/message/override/close/inbound scenarios.
+
+### Summary Metrics
+- Total tests generated: `32`
+  - API tests: `16` (4 files)
+  - E2E tests: `16` (4 files)
+- Priority coverage:
+  - P0: `16`
+  - P1: `16`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-02-27T10-38-50Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-02-27T10-38-50Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-02-27T10-38-50Z.json`
+  - `/tmp/tea-automate-summary-2026-02-27T10-38-50Z.json`
+- Persisted under test artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-02-27T10-38-50Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-02-27T10-38-50Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-02-27T10-38-50Z.json`
+
+## Story d-series Run (d-1, d-2, d-3, d-4) - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by story AC and priority: passed.
+- Generated spec parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts tests/e2e/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.spec.ts tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts tests/e2e/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.spec.ts tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts tests/e2e/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.spec.ts tests/api/platform/d-4-operator-interaction-contracts-for-outbound-safety.automate.api.spec.ts tests/e2e/platform/d-4-operator-interaction-contracts-for-outbound-safety.automate.spec.ts`
+  - Result: passed (`32` tests discovered in `8` files).
+- Quality checks:
+  - test files compile and are discoverable by Playwright;
+  - priority tags are present for selective execution;
+  - d-series future-contract tests are intentionally marked `test.fixme` due `ready-for-dev` implementation state.
+- CLI session cleanup:
+  - no browser session was opened in this run.
+- Temp artifacts:
+  - subprocess and summary JSON persisted under `_bmad-output/test-artifacts/automation-temp`.
+
+### Key Assumptions
+- d-series stories are still implementation-pending and test expectations represent target-state contracts.
+- Existing ConnectShyft canonical states remain `UNCLAIMED | CLAIMED | CLOSED`.
+- Shared refusal envelope taxonomy remains the authoritative client contract for policy refusals.
+
+### Risks
+- Until story implementation lands, generated d-series tests are placeholders and require future activation (`fixme` removal) when contracts are implemented.
+- Naming/code specifics for preference override and audit metadata may require alignment once backend implementation finalizes exact payload shape.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality scoring and maintainability checks.
+- `[TR] Trace Requirements` to map d-series acceptance criteria to generated automate coverage and gate readiness.
