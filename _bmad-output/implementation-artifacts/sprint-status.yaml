@@ -67,7 +67,7 @@ development_status:
   2-3-cashier-assisted-intake-and-voucher-delivery-scheduling: done
   2-4-request-to-commitment-linkage-and-terminal-enforcement: done
   2-5-refusal-outcomes-with-structured-alternatives: in-progress
-  2-6-canonical-timezone-processing-across-intake-and-scheduling: ready-for-dev
+  2-6-canonical-timezone-processing-across-intake-and-scheduling: review
   epic-2-retrospective: optional
   epic-3: backlog
   3-1-unified-dispatcher-queue-and-triage-attributes: backlog

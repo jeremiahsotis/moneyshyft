@@ -68,6 +68,8 @@ const reconciliationActions = ref<string[]>([]);
 const refusalBanner = ref('No finalize action submitted yet.');
 const refusalCode = ref('ROUTE_FINALIZE_NOT_SUBMITTED');
 const lifecycleDetails = ref('{}');
+const utcFieldSuffix = /Utc$/;
+const utcIsoPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 
 const terminalStatusLabel = computed(() => {
   if (terminalStatus.value === 'unknown') {
@@ -81,8 +83,78 @@ const terminalStatusLabel = computed(() => {
   return terminalStatus.value;
 });
 
+const isValidIanaTimezone = (value: unknown): value is string => {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return false;
+  }
+
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format(new Date());
+    return true;
+  } catch (_error) {
+    return false;
+  }
+};
+
+const resolveDisplayTimezone = (value: unknown): string | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const timezoneCandidate = (value as Record<string, unknown>).timezone;
+  return isValidIanaTimezone(timezoneCandidate) ? timezoneCandidate : null;
+};
+
+const formatUtcForDisplay = (value: string, timezone: string | null): string => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  const formatOptions: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  };
+
+  if (timezone) {
+    formatOptions.timeZone = timezone;
+  }
+
+  return new Intl.DateTimeFormat('en-US', formatOptions).format(parsed);
+};
+
+const sanitizeOperationalPayload = (value: unknown, timezone: string | null): unknown => {
+  if (typeof value === 'string') {
+    return utcIsoPattern.test(value) ? formatUtcForDisplay(value, timezone) : value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeOperationalPayload(entry, timezone));
+  }
+
+  if (value && typeof value === 'object') {
+    const payload = value as Record<string, unknown>;
+    const sanitized: Record<string, unknown> = {};
+
+    for (const [key, entry] of Object.entries(payload)) {
+      const nextKey = utcFieldSuffix.test(key) ? key.replace(utcFieldSuffix, 'Local') : key;
+      sanitized[nextKey] = sanitizeOperationalPayload(entry, timezone);
+    }
+
+    return sanitized;
+  }
+
+  return value;
+};
+
 const setLifecycleDetails = (value: unknown): void => {
-  lifecycleDetails.value = JSON.stringify(value ?? {}, null, 2);
+  const payload = value ?? {};
+  const displayTimezone = resolveDisplayTimezone(payload);
+  lifecycleDetails.value = JSON.stringify(sanitizeOperationalPayload(payload, displayTimezone), null, 2);
 };
 
 const loadReconciliationQueue = async (): Promise<void> => {

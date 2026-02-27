@@ -31,11 +31,19 @@ const getCookieValue = (name: string): string | null => {
 
 api.interceptors.request.use((config) => {
   const method = (config.method || 'get').toLowerCase();
+  config.headers = config.headers || {};
+
+  const existingTimezoneHeader = (config.headers as Record<string, string>)['x-user-timezone'];
+  if (!existingTimezoneHeader && typeof Intl !== 'undefined') {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (timezone) {
+      (config.headers as Record<string, string>)['x-user-timezone'] = timezone;
+    }
+  }
 
   if (!SAFE_METHODS.has(method)) {
     const csrfToken = getCookieValue('csrf_token');
     if (csrfToken) {
-      config.headers = config.headers || {};
       (config.headers as Record<string, string>)['X-CSRF-Token'] = csrfToken;
     }
   }
