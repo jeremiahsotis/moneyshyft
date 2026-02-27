@@ -319,11 +319,21 @@ test.describe('Story d.3 outbound audit outbox and refusal envelope integration 
             },
           },
           outboundDispatch: {
-            metadata: {
-              prior_state: 'UNCLAIMED',
-              new_state: 'UNCLAIMED',
-              action: 'outbound_call',
-              thread_reopened_by_user: 'connectshyft.thread_reopened_by_user',
+            audit: {
+              metadata: {
+                prior_state: 'UNCLAIMED',
+                new_state: 'UNCLAIMED',
+                action: 'outbound_call',
+                thread_reopened_by_user: 'connectshyft.thread_reopened_by_user',
+              },
+            },
+            outbox: {
+              metadata: {
+                prior_state: 'UNCLAIMED',
+                new_state: 'UNCLAIMED',
+                action: 'outbound_call',
+                thread_reopened_by_user: 'connectshyft.thread_reopened_by_user',
+              },
             },
           },
         },
