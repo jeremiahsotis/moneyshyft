@@ -77,6 +77,10 @@ const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
   inboundVoiceVoicemail: 'connectshyft.inbound.voice_voicemail_recorded',
   inboundVoiceFallback: 'connectshyft.inbound.voice_fallback_recorded',
 } as const;
+const CONNECTSHYFT_OUTBOUND_EVENT_NAMES = {
+  callDispatched: 'connectshyft.thread.outbound_call_dispatched',
+  messageDispatched: 'connectshyft.thread.outbound_message_dispatched',
+} as const;
 const CONNECTSHYFT_LEGACY_ROLE_ALIASES: Record<string, string> = {
   admin: 'TENANT_ADMIN',
   member: 'ORGUNIT_MEMBER',
@@ -546,6 +550,8 @@ const buildLifecycleMetadata = (input: {
   action: string;
   reason?: string | null;
   resolution?: string | null;
+  threadReopenedByUser?: string | null;
+  lifecycleLineage?: Record<string, unknown> | null;
 }): Record<string, unknown> => ({
   tenant_id: input.tenantId,
   org_unit_id: input.orgUnitId,
@@ -556,6 +562,8 @@ const buildLifecycleMetadata = (input: {
   action: input.action,
   reason: input.reason || null,
   resolution: input.resolution || null,
+  thread_reopened_by_user: input.threadReopenedByUser || null,
+  lifecycle_lineage: input.lifecycleLineage || null,
 });
 
 const buildLifecycleSideEffects = (input: {
@@ -571,6 +579,164 @@ const buildLifecycleSideEffects = (input: {
     metadata: input.metadata,
   },
 });
+
+const resolveOutboundLifecycleAction = (
+  outboundAction: ConnectShyftOutboundAction,
+): 'outbound_call' | 'outbound_message' => {
+  return outboundAction === 'call' ? 'outbound_call' : 'outbound_message';
+};
+
+const resolveOutboundDispatchEventName = (
+  outboundAction: ConnectShyftOutboundAction,
+): string => {
+  return outboundAction === 'call'
+    ? CONNECTSHYFT_OUTBOUND_EVENT_NAMES.callDispatched
+    : CONNECTSHYFT_OUTBOUND_EVENT_NAMES.messageDispatched;
+};
+
+class OutboundDispatchRefusalError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'OutboundDispatchRefusalError';
+  }
+}
+
+const canPersistOutboundDispatchSideEffects = (input: {
+  tenantId: string;
+  threadId: string;
+}): boolean => {
+  return UUID_PATTERN.test(input.tenantId) && UUID_PATTERN.test(input.threadId);
+};
+
+const persistOutboundDispatchSideEffects = async (input: {
+  tenantId: string;
+  threadId: string;
+  actorUserId: string | null;
+  eventName: string;
+  metadata: Record<string, unknown>;
+}): Promise<
+  | {
+    ok: true;
+    sideEffectsPersisted: boolean;
+    sideEffects: ReturnType<typeof buildLifecycleSideEffects>;
+  }
+  | {
+    ok: false;
+    code: string;
+    message: string;
+  }
+> => {
+  const sideEffects = buildLifecycleSideEffects({
+    eventName: input.eventName,
+    metadata: input.metadata,
+  });
+
+  if (!canPersistOutboundDispatchSideEffects({
+    tenantId: input.tenantId,
+    threadId: input.threadId,
+  })) {
+    return {
+      ok: true,
+      sideEffectsPersisted: false,
+      sideEffects,
+    };
+  }
+
+  try {
+    await executePlatformMutation({
+      mutation: async (trx) => {
+        const [updated] = await trx
+          .withSchema('connectshyft')
+          .table('cs_threads')
+          .where({
+            tenant_id: input.tenantId,
+            id: input.threadId,
+          })
+          .update({
+            updated_by_user_id: resolveMutationActorUserId(input.actorUserId),
+            updated_at_utc: trx.fn.now(),
+          })
+          .returning<{ id: string }[]>(['id']);
+
+        if (!updated?.id) {
+          throw new OutboundDispatchRefusalError(
+            'CONNECTSHYFT_THREAD_NOT_FOUND',
+            'Thread not found for this tenant/orgUnit context.',
+          );
+        }
+
+        return updated.id;
+      },
+      event: {
+        tenantId: input.tenantId,
+        actorId: resolveMutationActorUserId(input.actorUserId),
+        eventName: input.eventName,
+        entityType: 'connectshyft.thread',
+        entityId: input.threadId,
+        payload: input.metadata,
+      },
+    }, loadPlatformDb());
+
+    return {
+      ok: true,
+      sideEffectsPersisted: true,
+      sideEffects,
+    };
+  } catch (error: unknown) {
+    if (error instanceof OutboundDispatchRefusalError) {
+      return {
+        ok: false,
+        code: error.code,
+        message: error.message,
+      };
+    }
+
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_OUTBOUND_SIDE_EFFECTS_UNAVAILABLE',
+      message: 'Outbound side effects are temporarily unavailable. Please retry.',
+    };
+  }
+};
+
+const respondConnectShyftBusinessRefusal = (
+  res: Response,
+  input: {
+    code: string;
+    message: string;
+    httpStatus?: number;
+    data?: unknown;
+  },
+): void => {
+  refusal(res, {
+    code: input.code,
+    message: input.message,
+    refusalType: 'business',
+    httpStatus: input.httpStatus ?? 200,
+    data: input.data,
+  });
+};
+
+const respondConnectShyftClientRefusal = (
+  res: Response,
+  input: {
+    code: string;
+    message: string;
+    httpStatus?: number;
+    data?: unknown;
+  },
+): void => {
+  refusal(res, {
+    code: input.code,
+    message: input.message,
+    refusalType: 'client',
+    httpStatus: input.httpStatus ?? 400,
+    data: input.data,
+  });
+};
 
 type ResolvedLifecycleContext = {
   detail: ConnectShyftThreadDetailRecord | null;
@@ -2961,11 +3127,9 @@ const performLifecycleTransition = async (
 
   const threadId = parseThreadIdParam(req);
   if (!threadId) {
-    refusal(res, {
+    respondConnectShyftClientRefusal(res, {
       code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
       message: 'threadId is required',
-      refusalType: 'client',
-      httpStatus: 400,
     });
     return;
   }
@@ -2982,11 +3146,9 @@ const performLifecycleTransition = async (
   });
 
   if (!lifecycleContext.currentState) {
-    refusal(res, {
+    respondConnectShyftBusinessRefusal(res, {
       code: 'CONNECTSHYFT_THREAD_NOT_FOUND',
       message: 'Thread not found for this tenant/orgUnit context.',
-      refusalType: 'business',
-      httpStatus: 200,
       data: {
         context,
         threadId,
@@ -3003,11 +3165,9 @@ const performLifecycleTransition = async (
     actorRoles,
   });
   if (!policyDecision.ok) {
-    refusal(res, {
+    respondConnectShyftBusinessRefusal(res, {
       code: policyDecision.code,
       message: policyDecision.message,
-      refusalType: 'business',
-      httpStatus: 200,
       data: {
         context,
         threadId,
@@ -3047,11 +3207,9 @@ const performLifecycleTransition = async (
   });
 
   if (!transitioned.ok) {
-    refusal(res, {
+    respondConnectShyftBusinessRefusal(res, {
       code: transitioned.code,
       message: transitioned.message,
-      refusalType: 'business',
-      httpStatus: 200,
       data: {
         context,
         threadId,
@@ -3125,11 +3283,9 @@ const performOutboundAction = async (
 
   const threadId = parseThreadIdParam(req);
   if (!threadId) {
-    refusal(res, {
+    respondConnectShyftClientRefusal(res, {
       code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
       message: 'threadId is required',
-      refusalType: 'client',
-      httpStatus: 400,
     });
     return;
   }
@@ -3144,11 +3300,9 @@ const performOutboundAction = async (
   });
 
   if (!lifecycleContext.currentState) {
-    refusal(res, {
+    respondConnectShyftBusinessRefusal(res, {
       code: 'CONNECTSHYFT_THREAD_NOT_FOUND',
       message: 'Thread not found for this tenant/orgUnit context.',
-      refusalType: 'business',
-      httpStatus: 200,
       data: {
         context,
         threadId,
@@ -3157,6 +3311,7 @@ const performOutboundAction = async (
     return;
   }
 
+  const outboundLifecycleAction = resolveOutboundLifecycleAction(outboundAction);
   let thread: ConnectShyftThread;
   let lifecycleEvent: string | null = null;
   let sideEffects: ReturnType<typeof buildLifecycleSideEffects> | null = null;
@@ -3171,7 +3326,13 @@ const performOutboundAction = async (
       threadId,
       priorState: 'CLOSED',
       newState: 'UNCLAIMED',
-      action: outboundAction === 'call' ? 'outbound_call' : 'outbound_message',
+      action: outboundLifecycleAction,
+      threadReopenedByUser: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      lifecycleLineage: {
+        prior_state: 'CLOSED',
+        new_state: 'UNCLAIMED',
+        thread_reopened_by_user: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      },
     });
     const transitioned = await transitionThreadWithSideEffects({
       actorRoles,
@@ -3190,11 +3351,9 @@ const performOutboundAction = async (
     });
 
     if (!transitioned.ok) {
-      refusal(res, {
+      respondConnectShyftBusinessRefusal(res, {
         code: transitioned.code,
         message: transitioned.message,
-        refusalType: 'business',
-        httpStatus: 200,
         data: {
           context,
           threadId,
@@ -3229,6 +3388,39 @@ const performOutboundAction = async (
       fallbackLastInboundCsNumberId: lifecycleContext.syntheticThread?.lastInboundCsNumberId,
       fallbackPreferredOutboundCsNumberId: lifecycleContext.syntheticThread?.preferredOutboundCsNumberId,
     });
+  }
+
+  if (lifecycleContext.currentState !== 'CLOSED') {
+    const persistedDispatch = await persistOutboundDispatchSideEffects({
+      tenantId: context.tenantId,
+      threadId,
+      actorUserId,
+      eventName: resolveOutboundDispatchEventName(outboundAction),
+      metadata: buildLifecycleMetadata({
+        tenantId: context.tenantId,
+        orgUnitId: context.orgUnitId,
+        actorUserId,
+        threadId,
+        priorState: thread.state,
+        newState: thread.state,
+        action: outboundLifecycleAction,
+      }),
+    });
+
+    if (!persistedDispatch.ok) {
+      respondConnectShyftBusinessRefusal(res, {
+        code: persistedDispatch.code,
+        message: persistedDispatch.message,
+        data: {
+          context,
+          threadId,
+        },
+      });
+      return;
+    }
+
+    sideEffectsPersisted = persistedDispatch.sideEffectsPersisted;
+    sideEffects = persistedDispatch.sideEffects;
   }
 
   success(res, {
