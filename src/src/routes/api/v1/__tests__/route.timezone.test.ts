@@ -172,7 +172,7 @@ describe('route timezone presentation contract', () => {
       .set('x-user-timezone', 'America/Los_Angeles')
       .send({
         sourceType: 'route_request',
-        sourceId: 'timezone-commitment-1',
+        sourceId: 'timezone-commitment-1:2026-02-26T14:00:00.000Z',
       });
 
     expect(created.status).toBe(201);

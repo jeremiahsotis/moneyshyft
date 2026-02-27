@@ -12,6 +12,7 @@ export type RouteTimezoneContext = TimezoneContext;
 const DEFAULT_SYSTEM_TIMEZONE = 'UTC';
 const UTC_FIELD_SUFFIX = /Utc$/;
 const UTC_REDACTED_VALUE = '[UTC timestamp withheld]';
+const EMBEDDED_UTC_ISO_PATTERN = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z/g;
 const SYSTEM_TIMEZONE_ENV_KEYS = ['ROUTESHYFT_SYSTEM_TIMEZONE', 'SYSTEM_TIMEZONE', 'TZ'] as const;
 
 const normalizeNonEmptyString = (value: unknown): string => {
@@ -38,6 +39,21 @@ const localizeUtcString = (value: string, timezone: string): string => {
   return localized || UTC_REDACTED_VALUE;
 };
 
+const localizeEmbeddedUtcTokens = (value: string, timezone: string): string => {
+  if (!EMBEDDED_UTC_ISO_PATTERN.test(value)) {
+    return value;
+  }
+
+  EMBEDDED_UTC_ISO_PATTERN.lastIndex = 0;
+  return value.replace(EMBEDDED_UTC_ISO_PATTERN, (candidate) => {
+    if (!isStrictUtcIsoTimestamp(candidate)) {
+      return candidate;
+    }
+
+    return localizeUtcString(candidate, timezone);
+  });
+};
+
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 };
@@ -48,7 +64,7 @@ const localizeValue = (value: unknown, context: RouteTimezoneContext): unknown =
       return localizeUtcString(value, context.timezone);
     }
 
-    return value;
+    return localizeEmbeddedUtcTokens(value, context.timezone);
   }
 
   if (Array.isArray(value)) {
