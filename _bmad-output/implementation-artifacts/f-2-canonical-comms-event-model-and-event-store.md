@@ -130,6 +130,10 @@ GPT-5 Codex
 - tests/support/fixtures/connectShyftStoryF2.fixture.ts
 - tests/api/platform/f-2-canonical-comms-event-model-and-event-store.automate.api.spec.ts
 - tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.automate.spec.ts
+- tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts
+- tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts
+- tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.spec.ts
+- tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.automate.spec.ts
 
 ## Change Log
 
