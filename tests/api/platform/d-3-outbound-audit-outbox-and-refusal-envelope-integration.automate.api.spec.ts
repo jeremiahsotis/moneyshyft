@@ -244,8 +244,9 @@ test.describe('Story d.3 outbound audit outbox and refusal envelope integration 
       });
 
       const afterCounts = await countThreadSideEffects(context.tenantId, threadId);
-      expect(afterCounts.events).toBe(beforeCounts.events + 1);
-      expect(afterCounts.outbox).toBe(beforeCounts.outbox + 1);
+      // Outbound message writes lifecycle + canonical events and corresponding outbox records.
+      expect(afterCounts.events).toBe(beforeCounts.events + 2);
+      expect(afterCounts.outbox).toBe(beforeCounts.outbox + 2);
     },
   );
 
@@ -340,8 +341,9 @@ test.describe('Story d.3 outbound audit outbox and refusal envelope integration 
       });
 
       const afterCounts = await countThreadSideEffects(context.tenantId, threadId);
-      expect(afterCounts.events).toBe(beforeCounts.events + 2);
-      expect(afterCounts.outbox).toBe(beforeCounts.outbox + 2);
+      // Closed-thread outbound call writes reopen + dispatch + canonical side effects.
+      expect(afterCounts.events).toBe(beforeCounts.events + 3);
+      expect(afterCounts.outbox).toBe(beforeCounts.outbox + 3);
 
       const threadEvents = await listThreadEvents(context.tenantId, threadId);
       expect(threadEvents.map((event) => event.event_name)).toEqual(expect.arrayContaining([

@@ -79,7 +79,7 @@ development_status:
   epic-e-retrospective: optional
   epic-f: in-progress
   f-1-provider-adapter-interface-and-provider-registry: review
-  f-2-canonical-comms-event-model-and-event-store: ready-for-dev
+  f-2-canonical-comms-event-model-and-event-store: in-progress
   f-3-provider-leg-message-correlation-fallback-mapping: ready-for-dev
   f-4-telnyx-adapter-implementation-and-cutover-guardrails: ready-for-dev
   epic-f-retrospective: optional

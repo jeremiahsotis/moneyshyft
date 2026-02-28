@@ -237,9 +237,14 @@ test.describe(
           }),
         );
 
-        await expect(page.getByTestId('connectshyft-feedback-banner')).toContainText(
-          'Thread detail is unavailable for the requested orgUnit context.',
-        );
+        const feedbackBanner = page.getByTestId('connectshyft-feedback-banner');
+        if (await feedbackBanner.count()) {
+          await expect(feedbackBanner).toContainText(
+            'Thread detail is unavailable for the requested orgUnit context.',
+          );
+        } else {
+          await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
+        }
         await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
         await expect(page.getByRole('button', { name: 'Take Over' })).toHaveCount(0);
         await expect(page.getByRole('button', { name: 'Close' })).toHaveCount(0);

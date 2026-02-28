@@ -59,6 +59,33 @@ const buildHeaders = (overrides: Record<string, string> = {}): Record<string, st
   ...overrides,
 });
 
+type CanonicalEventRecord = {
+  eventId: string;
+  aggregateId: string;
+  aggregateType: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+  occurredAtUtc: string;
+};
+
+const sortCanonical = (events: CanonicalEventRecord[]): CanonicalEventRecord[] => {
+  return [...events].sort((left, right) => {
+    const timeDelta = new Date(left.occurredAtUtc).getTime() - new Date(right.occurredAtUtc).getTime();
+    if (timeDelta !== 0) {
+      return timeDelta;
+    }
+
+    return left.eventId.localeCompare(right.eventId);
+  });
+};
+
+const expectProviderSpecificLeakageRemoved = (payload: Record<string, unknown>): void => {
+  expect(payload).not.toHaveProperty('twilioCallSid');
+  expect(payload).not.toHaveProperty('telnyxCallControlId');
+  expect(payload).not.toHaveProperty('providerLegId');
+  expect(payload).not.toHaveProperty('providerMessageId');
+};
+
 describe('connectshyft provider adapter registry route integration', () => {
   const previousNodeEnv = process.env.NODE_ENV;
   const previousOverrideFlag = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
@@ -125,6 +152,236 @@ describe('connectshyft provider adapter registry route integration', () => {
           providerBranchingInDomain: false,
         },
       },
+    });
+  });
+
+  it('records canonical outbound and inbound events and lists deterministic provider-neutral records', async () => {
+    const app = buildApp();
+    const headers = buildHeaders({
+      'x-test-connectshyft-tenant-id': 'tenant-connectshyft-f2',
+      'x-test-connectshyft-orgunit-id': 'org-connectshyft-f2-east',
+      'x-test-connectshyft-user-id': 'user-connectshyft-f2-operator',
+      'x-test-connectshyft-orgunit-memberships': JSON.stringify(['org-connectshyft-f2-east']),
+    });
+
+    const threadId = 'thread-f2-unclaimed-1001';
+
+    const callResponse = await request(app)
+      .post(`/api/v1/connectshyft/threads/${threadId}/call`)
+      .set(headers)
+      .send({
+        orgUnitId: 'org-connectshyft-f2-east',
+        providerKey: 'telnyx',
+      });
+    expect(callResponse.status).toBe(200);
+
+    const messageResponse = await request(app)
+      .post(`/api/v1/connectshyft/threads/${threadId}/messages`)
+      .set(headers)
+      .send({
+        orgUnitId: 'org-connectshyft-f2-east',
+        providerKey: 'telnyx',
+        channel: 'sms',
+        body: 'Story f2 canonical store test message.',
+      });
+    expect(messageResponse.status).toBe(200);
+
+    const webhookResponse = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(headers)
+      .send({
+        eventType: 'voice.connected',
+        threadId,
+        orgUnitId: 'org-connectshyft-f2-east',
+        tenantId: 'tenant-connectshyft-f2',
+        providerKey: 'telnyx',
+        providerEventId: 'provider-event-f2-1001',
+        providerPayload: {
+          telnyxCallControlId: 'telnyx-hidden',
+          twilioCallSid: 'twilio-hidden',
+        },
+      });
+
+    expect(webhookResponse.status).toBe(200);
+    expect(webhookResponse.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+      data: {
+        canonicalTranslation: {
+          eventType: 'CallConnected',
+          providerNeutral: true,
+          providerSpecificFieldsStripped: true,
+        },
+        domainHandlers: {
+          providerBranchingInDomain: false,
+        },
+      },
+    });
+
+    const eventsResponse = await request(app)
+      .get('/api/v1/connectshyft/events')
+      .query({
+        orgUnitId: 'org-connectshyft-f2-east',
+        aggregateId: threadId,
+        aggregateType: 'Thread',
+        limit: '50',
+      })
+      .set(headers);
+
+    expect(eventsResponse.status).toBe(200);
+    expect(eventsResponse.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_CANONICAL_EVENTS_LISTED',
+      data: {
+        deterministic: true,
+        providerNeutral: true,
+        filters: {
+          aggregateId: threadId,
+          aggregateType: 'Thread',
+        },
+      },
+    });
+
+    const events = eventsResponse.body.data.events as CanonicalEventRecord[];
+    expect(events.length).toBeGreaterThanOrEqual(3);
+    expect(events).toEqual(sortCanonical(events));
+    expect(events.map((event) => event.eventType)).toEqual(expect.arrayContaining([
+      'CallAttemptStarted',
+      'MessageQueued',
+      'CallConnected',
+    ]));
+
+    events.forEach((event) => {
+      expect(event.aggregateId).toBe(threadId);
+      expect(event.aggregateType).toBe('Thread');
+      expectProviderSpecificLeakageRemoved(event.payload);
+    });
+  });
+
+  it('filters canonical events by event type deterministically across repeated reads', async () => {
+    const app = buildApp();
+    const headers = buildHeaders({
+      'x-test-connectshyft-tenant-id': 'tenant-connectshyft-f2',
+      'x-test-connectshyft-orgunit-id': 'org-connectshyft-f2-east',
+      'x-test-connectshyft-user-id': 'user-connectshyft-f2-operator',
+      'x-test-connectshyft-orgunit-memberships': JSON.stringify(['org-connectshyft-f2-east']),
+    });
+    const query = {
+      orgUnitId: 'org-connectshyft-f2-east',
+      aggregateId: 'thread-f2-unclaimed-1001',
+      aggregateType: 'Thread',
+      eventType: 'CallConnected',
+      limit: '50',
+    };
+
+    await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(headers)
+      .send({
+        eventType: 'voice.connected',
+        threadId: 'thread-f2-unclaimed-1001',
+        orgUnitId: 'org-connectshyft-f2-east',
+        tenantId: 'tenant-connectshyft-f2',
+        providerKey: 'telnyx',
+      });
+
+    const first = await request(app)
+      .get('/api/v1/connectshyft/events')
+      .query(query)
+      .set(headers);
+    const second = await request(app)
+      .get('/api/v1/connectshyft/events')
+      .query(query)
+      .set(headers);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(first.body.data.events).toEqual(second.body.data.events);
+
+    const events = first.body.data.events as CanonicalEventRecord[];
+    events.forEach((event) => {
+      expect(event.eventType).toBe('CallConnected');
+      expectProviderSpecificLeakageRemoved(event.payload);
+    });
+  });
+
+  it('records voice-family canonical webhook payloads with channel=voice', async () => {
+    const app = buildApp();
+    const headers = buildHeaders({
+      'x-test-connectshyft-tenant-id': 'tenant-connectshyft-f2',
+      'x-test-connectshyft-orgunit-id': 'org-connectshyft-f2-east',
+      'x-test-connectshyft-user-id': 'user-connectshyft-f2-operator',
+      'x-test-connectshyft-orgunit-memberships': JSON.stringify(['org-connectshyft-f2-east']),
+    });
+
+    const threadId = 'thread-f2-unclaimed-1001';
+    const webhookResponse = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(headers)
+      .send({
+        eventType: 'voice.fallback',
+        threadId,
+        orgUnitId: 'org-connectshyft-f2-east',
+        tenantId: 'tenant-connectshyft-f2',
+        providerKey: 'telnyx',
+      });
+
+    expect(webhookResponse.status).toBe(200);
+
+    const eventsResponse = await request(app)
+      .get('/api/v1/connectshyft/events')
+      .query({
+        orgUnitId: 'org-connectshyft-f2-east',
+        aggregateId: threadId,
+        aggregateType: 'Thread',
+        eventType: 'VoiceFallback',
+        limit: '10',
+      })
+      .set(headers);
+
+    expect(eventsResponse.status).toBe(200);
+    const events = eventsResponse.body.data.events as CanonicalEventRecord[];
+    expect(events.length).toBeGreaterThan(0);
+    events.forEach((event) => {
+      expect(event.eventType).toBe('VoiceFallback');
+      expect(event.payload).toMatchObject({
+        direction: 'inbound',
+        channel: 'voice',
+      });
+    });
+  });
+
+  it('derives provider-neutral thread detail timeline from canonical events with deterministic ordering', async () => {
+    const app = buildApp();
+    const headers = buildHeaders({
+      'x-test-connectshyft-tenant-id': 'tenant-connectshyft-f2',
+      'x-test-connectshyft-orgunit-id': 'org-connectshyft-f2-east',
+      'x-test-connectshyft-user-id': 'user-connectshyft-f2-operator',
+      'x-test-connectshyft-orgunit-memberships': JSON.stringify(['org-connectshyft-f2-east']),
+    });
+
+    const response = await request(app)
+      .get('/api/v1/connectshyft/threads/thread-f2-unclaimed-1001')
+      .set(headers);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+      data: {
+        thread: {
+          threadId: 'thread-f2-unclaimed-1001',
+          providerNeutral: true,
+          statusDerivedFromCanonicalEvents: true,
+          timeline: expect.any(Array),
+        },
+      },
+    });
+
+    const timeline = response.body.data.thread.timeline as CanonicalEventRecord[];
+    expect(timeline).toEqual(sortCanonical(timeline));
+    timeline.forEach((event) => {
+      expectProviderSpecificLeakageRemoved(event.payload);
     });
   });
 
@@ -271,7 +528,9 @@ describe('connectshyft provider adapter registry route integration', () => {
         },
         canonicalTranslation: {
           providerBranchingInDomain: false,
-          eventType: 'voice.connected',
+          eventType: 'CallConnected',
+          providerNeutral: true,
+          providerSpecificFieldsStripped: true,
         },
       },
     });
@@ -300,6 +559,9 @@ describe('connectshyft provider adapter registry route integration', () => {
         validateInboundWebhookSignature: () => ({ ok: true }),
         toCanonicalEvent: ({ rawEventType }) => ({
           eventType: rawEventType,
+          payload: {},
+          providerNeutral: true,
+          providerSpecificFieldsStripped: true,
           providerBranchingInDomain: false,
         }),
       },
@@ -376,7 +638,7 @@ describe('connectshyft provider adapter registry route integration', () => {
       tenantId: 'tenant-connectshyft-f1',
       providerKey: 'telnyx',
     };
-    const timestamp = '1700000000';
+    const timestamp = Math.trunc(Date.now() / 1000).toString();
     const signature = signPayload(
       null,
       Buffer.from(`${timestamp}|${JSON.stringify(payload)}`),

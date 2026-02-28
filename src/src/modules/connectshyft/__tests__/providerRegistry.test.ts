@@ -212,7 +212,10 @@ describe('connectshyft provider registry', () => {
         payload: {},
       }),
     ).toEqual({
-      eventType: 'voice.connected',
+      eventType: 'CallConnected',
+      payload: {},
+      providerNeutral: true,
+      providerSpecificFieldsStripped: true,
       providerBranchingInDomain: false,
     });
   });
@@ -285,7 +288,7 @@ describe('connectshyft provider registry', () => {
       threadId: 'thread-f1-unclaimed-1001',
     };
     const rawBody = JSON.stringify(payload);
-    const timestamp = '1700000000';
+    const timestamp = Math.trunc(Date.now() / 1000).toString();
     const signature = signPayload(
       null,
       Buffer.from(`${timestamp}|${rawBody}`),
@@ -321,5 +324,63 @@ describe('connectshyft provider registry', () => {
     });
 
     expect(signatureDecision).toEqual({ ok: true });
+  });
+
+  it('rejects validly-signed webhooks when timestamp falls outside replay window', () => {
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'false';
+
+    const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+    process.env.TELNYX_PUBLIC_KEY = publicKey.export({
+      type: 'spki',
+      format: 'pem',
+    }).toString();
+
+    const payload = {
+      eventType: 'voice.connected',
+      threadId: 'thread-f1-unclaimed-1001',
+    };
+    const rawBody = JSON.stringify(payload);
+    const staleTimestamp = '1700000000';
+    const signature = signPayload(
+      null,
+      Buffer.from(`${staleTimestamp}|${rawBody}`),
+      privateKey,
+    ).toString('base64');
+
+    const result = resolveConnectShyftProviderAdapter({
+      req: buildRequest({
+        body: payload,
+        rawBody,
+        headers: {
+          'telnyx-timestamp': staleTimestamp,
+          'telnyx-signature-ed25519': signature,
+        },
+      }),
+      operation: 'webhook',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error('Expected adapter resolution to succeed');
+    }
+
+    const signatureDecision = result.adapter.validateInboundWebhookSignature({
+      req: buildRequest({
+        body: payload,
+        rawBody,
+        headers: {
+          'telnyx-timestamp': staleTimestamp,
+          'telnyx-signature-ed25519': signature,
+        },
+      }),
+    });
+
+    expect(signatureDecision).toMatchObject({
+      ok: false,
+      refusal: {
+        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',
+        httpStatus: 401,
+      },
+    });
   });
 });

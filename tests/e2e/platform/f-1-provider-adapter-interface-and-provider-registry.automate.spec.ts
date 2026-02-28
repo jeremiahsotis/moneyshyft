@@ -262,7 +262,7 @@ test.describe(
             },
             canonicalTranslation: {
               providerBranchingInDomain: false,
-              eventType: 'voice.connected',
+              eventType: 'CallConnected',
             },
             timeline: {
               routingDecision: expect.stringMatching(/accepted|voicemail_only|intake_fallback/),

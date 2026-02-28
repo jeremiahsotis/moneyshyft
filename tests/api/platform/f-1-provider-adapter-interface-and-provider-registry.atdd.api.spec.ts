@@ -70,7 +70,7 @@ test.describe(
             },
             canonicalTranslation: {
               providerBranchingInDomain: false,
-              eventType: 'voice.connected',
+              eventType: 'CallConnected',
             },
           },
         });

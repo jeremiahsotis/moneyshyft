@@ -1,5 +1,6 @@
 import { createPublicKey, verify } from 'node:crypto';
 import { isConnectShyftTestOverrideEnabled } from './featureFlags';
+import { sanitizeConnectShyftCanonicalPayload } from './canonicalEvents';
 
 const DEFAULT_ENABLED_PROVIDERS = ['telnyx'];
 const ENABLED_PROVIDERS_ENV = 'CONNECTSHYFT_ENABLED_PROVIDERS';
@@ -10,6 +11,8 @@ const TEST_REQUESTED_PROVIDER_HEADER = 'x-test-connectshyft-provider-requested';
 const TELNYX_SIGNATURE_HEADER = 'telnyx-signature-ed25519';
 const TELNYX_TIMESTAMP_HEADER = 'telnyx-timestamp';
 const TELNYX_PUBLIC_KEY_ENV = 'TELNYX_PUBLIC_KEY';
+const CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS_ENV = 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS';
+const DEFAULT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS = 300;
 
 export type ConnectShyftProviderOperation = 'call' | 'message' | 'webhook';
 export type ConnectShyftProviderResolutionReason =
@@ -33,6 +36,9 @@ export type ConnectShyftProviderDispatchResult = {
 
 export type ConnectShyftProviderCanonicalEvent = {
   eventType: string;
+  payload: Record<string, unknown>;
+  providerNeutral: true;
+  providerSpecificFieldsStripped: true;
   providerBranchingInDomain: false;
 };
 
@@ -215,6 +221,21 @@ const parseBooleanEnv = (value: string | undefined): boolean => {
     || normalized === 'enabled';
 };
 
+const parsePositiveInteger = (value: string | undefined): number | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const normalized = value.trim();
+  if (!/^\d+$/.test(normalized)) {
+    return null;
+  }
+  const parsed = Number.parseInt(normalized, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
+};
+
 const resolveProvidersFromEnv = (envVar: string, fallback: string[] = []): string[] => {
   const parsed = parseProviderList(process.env[envVar]);
   if (parsed.length > 0) {
@@ -339,6 +360,28 @@ const parseTelnyxSignatureHeader = (header: string): Buffer | null => {
   }
 };
 
+const parseWebhookTimestampMs = (timestamp: string): number | null => {
+  const normalized = normalizeString(timestamp);
+  if (!/^\d+$/.test(normalized)) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(normalized, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  // Telnyx sends unix seconds; tolerate millisecond epoch values if configured upstream.
+  return parsed > 1_000_000_000_000 ? parsed : parsed * 1000;
+};
+
+const resolveWebhookSignatureMaxAgeMs = (): number => {
+  const configured = parsePositiveInteger(
+    process.env[CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS_ENV],
+  );
+  return (configured ?? DEFAULT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS) * 1000;
+};
+
 const resolveTelnyxPublicKey = (): ReturnType<typeof createPublicKey> | null => {
   const rawKey = normalizeString(process.env[TELNYX_PUBLIC_KEY_ENV]);
   if (!rawKey) {
@@ -435,20 +478,53 @@ const validateTelnyxWebhookSignature = (
     };
   }
 
+  const webhookTimestampMs = parseWebhookTimestampMs(incomingTimestamp);
+  const maxAgeMs = resolveWebhookSignatureMaxAgeMs();
+  if (!webhookTimestampMs || Math.abs(Date.now() - webhookTimestampMs) > maxAgeMs) {
+    return {
+      ok: false,
+      refusal: {
+        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',
+        message: 'Webhook signature timestamp is outside the allowed replay window.',
+        refusalType: 'client',
+        httpStatus: 401,
+      },
+    };
+  }
+
   return { ok: true };
 };
 
 const toCanonicalEventType = (rawEventType: string): string => {
   const normalized = normalizeString(rawEventType).toLowerCase();
   if (!normalized) {
-    return 'sms.inbound';
+    return 'MessageQueued';
   }
 
-  if (normalized === 'call.connected') {
-    return 'voice.connected';
+  if (normalized === 'call.connected' || normalized === 'voice.connected') {
+    return 'CallConnected';
   }
 
-  return normalized;
+  if (normalized === 'call.attempt.started' || normalized === 'voice.started') {
+    return 'CallAttemptStarted';
+  }
+
+  if (normalized === 'message.delivered' || normalized === 'sms.delivered') {
+    return 'MessageDelivered';
+  }
+
+  if (normalized === 'message.sent' || normalized === 'sms.sent') {
+    return 'MessageSent';
+  }
+
+  if (normalized === 'message.queued' || normalized === 'sms.inbound') {
+    return 'MessageQueued';
+  }
+
+  return normalized
+    .split(/[._-]+/)
+    .map((part) => part ? `${part.charAt(0).toUpperCase()}${part.slice(1)}` : '')
+    .join('') || 'MessageQueued';
 };
 
 const buildDispatchResult = (
@@ -479,13 +555,24 @@ const createAdapter = (input: {
     }
     return { ok: true };
   },
-  toCanonicalEvent({ rawEventType }) {
+  toCanonicalEvent({ rawEventType, payload }) {
     return {
       eventType: toCanonicalEventType(rawEventType),
+      payload: sanitizeConnectShyftCanonicalPayload(payloadToRecord(payload)),
+      providerNeutral: true,
+      providerSpecificFieldsStripped: true,
       providerBranchingInDomain: false,
     };
   },
 });
+
+const payloadToRecord = (payload: unknown): Record<string, unknown> => {
+  if (!payload || typeof payload !== 'object') {
+    return {};
+  }
+
+  return payload as Record<string, unknown>;
+};
 
 const PROVIDER_ADAPTERS: Record<string, ConnectShyftProviderAdapter> = {
   telnyx: createAdapter({
