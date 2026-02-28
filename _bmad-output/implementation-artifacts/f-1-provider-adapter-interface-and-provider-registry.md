@@ -99,12 +99,12 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `npm run branch:ensure-workflow -- --workflow dev-story --story f-1-provider-adapter-interface-and-provider-registry`
-- `cd src && npm test -- src/modules/connectshyft/__tests__/providerRegistry.test.ts src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts`
-- `cd src && npm run build`
-- `BASE_URL=http://localhost:3000 npx playwright test tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts --project=chromium` (sandbox EPERM on loopback)
-- `cd src && npm test -- src/modules/connectshyft/__tests__/providerRegistry.test.ts src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` (post-review fix verification)
-- `cd src && npm run build` (post-review fix verification)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story f-1-provider-adapter-interface-and-provider-registry` (pass)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/providerRegistry.test.ts src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` (pass: 2 suites, 15 tests)
+- `cd src && npm run build` (pass)
+- `BASE_URL=http://localhost:3000 npx playwright test tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts --project=chromium` (blocked: sandbox EPERM on loopback)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/providerRegistry.test.ts src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` (pass: post-review fix verification)
+- `cd src && npm run build` (pass: post-review fix verification)
 
 ### Completion Notes List
 
@@ -125,6 +125,10 @@ GPT-5 Codex
 - src/src/modules/connectshyft/__tests__/providerRegistry.test.ts
 - src/src/routes/api/v1/connectshyft.ts
 - src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts
+- tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts
+- tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.spec.ts
+- tests/support/factories/connectShyftStoryF1Factory.ts
+- tests/support/fixtures/connectShyftStoryF1.fixture.ts
 
 ## Change Log
 
