@@ -1,6 +1,6 @@
 # Story f.1: Provider Adapter Interface and Provider Registry
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -33,22 +33,22 @@ so that outbound and inbound communication flows can run without provider-specif
 
 ## Tasks / Subtasks
 
-- [ ] Define provider adapter interface and shared DTO contracts (AC: 1, 3)
-  - [ ] Add adapter methods for outbound call, outbound message, webhook handling, and canonical event translation.
-  - [ ] Define deterministic error/refusal contract for unavailable provider scenarios.
-- [ ] Implement provider registry and resolution policy (AC: 1, 2)
-  - [ ] Add registry for enabled providers with deterministic default selection.
-  - [ ] Return refusal on disabled/unregistered provider requests with no side effects.
-- [ ] Integrate registry with ConnectShyft comms entry points (AC: 1, 3)
-  - [ ] Replace provider-specific branching in route/service layer with registry-dispatched adapter calls.
-  - [ ] Preserve shared envelope semantics (`success`, `refusal`, `error`).
-- [ ] Preserve operator-usable refusal outcomes in action contracts (AC: 4)
-  - [ ] Ensure refusal payloads include deterministic reason codes/messages consumed by existing ConnectShyft action clients.
-  - [ ] Ensure refusal paths do not introduce hidden state transitions in thread lifecycle fields.
-- [ ] Add contract and regression tests (AC: 1, 2, 3, 4)
-  - [ ] Unit tests for registry selection and unavailable-provider refusal handling.
-  - [ ] API tests ensuring no partial writes when provider resolution fails.
-  - [ ] Contract tests asserting refusal metadata remains explicit and operator-actionable.
+- [x] Define provider adapter interface and shared DTO contracts (AC: 1, 3)
+  - [x] Add adapter methods for outbound call, outbound message, webhook handling, and canonical event translation.
+  - [x] Define deterministic error/refusal contract for unavailable provider scenarios.
+- [x] Implement provider registry and resolution policy (AC: 1, 2)
+  - [x] Add registry for enabled providers with deterministic default selection.
+  - [x] Return refusal on disabled/unregistered provider requests with no side effects.
+- [x] Integrate registry with ConnectShyft comms entry points (AC: 1, 3)
+  - [x] Replace provider-specific branching in route/service layer with registry-dispatched adapter calls.
+  - [x] Preserve shared envelope semantics (`success`, `refusal`, `error`).
+- [x] Preserve operator-usable refusal outcomes in action contracts (AC: 4)
+  - [x] Ensure refusal payloads include deterministic reason codes/messages consumed by existing ConnectShyft action clients.
+  - [x] Ensure refusal paths do not introduce hidden state transitions in thread lifecycle fields.
+- [x] Add contract and regression tests (AC: 1, 2, 3, 4)
+  - [x] Unit tests for registry selection and unavailable-provider refusal handling.
+  - [x] API tests ensuring no partial writes when provider resolution fails.
+  - [x] Contract tests asserting refusal metadata remains explicit and operator-actionable.
 
 ## Dev Notes
 
@@ -99,16 +99,45 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context generation only (no implementation commands executed).
+- `npm run branch:ensure-workflow -- --workflow dev-story --story f-1-provider-adapter-interface-and-provider-registry` (pass)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/providerRegistry.test.ts src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` (pass: 2 suites, 15 tests)
+- `cd src && npm run build` (pass)
+- `BASE_URL=http://localhost:3000 npx playwright test tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts --project=chromium` (blocked: sandbox EPERM on loopback)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/providerRegistry.test.ts src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` (pass: post-review fix verification)
+- `cd src && npm run build` (pass: post-review fix verification)
+- `bash scripts/ci-run-playwright-stack.sh npx playwright test tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts` (pass: 4 tests, 4 workers, post-fix isolation verification)
+- `bash scripts/ci-run-playwright-stack.sh npx playwright test tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts` (pass: 5 tests, post-fix isolation verification)
+- `bash scripts/enforce-story-artifact-hygiene.sh --story-file _bmad-output/implementation-artifacts/f-1-provider-adapter-interface-and-provider-registry.md --base-ref codex/dev` (pass)
 
 ### Completion Notes List
 
-- Created implementation-ready Story f.1 context defining provider adapter and registry contracts.
+- Added `src/src/modules/connectshyft/providerRegistry.ts` with provider adapter interface, deterministic provider registry resolution, webhook signature handling delegation, and refusal contracts for disabled/unavailable providers.
+- Integrated provider registry dispatch into outbound call/message and inbound webhook flows in `src/src/routes/api/v1/connectshyft.ts`; added explicit provider resolution metadata on success and fail-closed refusal payloads with no-side-effect indicators.
+- Added F1 synthetic lifecycle threads and prioritized synthetic lifecycle lookup to keep deterministic contract behavior for ConnectShyft story fixtures.
+- Added backend regression tests in `src/src/modules/connectshyft/__tests__/providerRegistry.test.ts` and `src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts`.
+- Enabled `tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts` scenarios (removed `test.skip`), but Playwright execution is currently blocked in this environment by sandbox loopback EPERM.
+- Review follow-up: replaced Twilio-specific webhook signature validation with Telnyx signature headers/public-key verification and added non-override signature-path coverage in unit and route tests.
+- Review follow-up: reordered outbound dispatch flow so provider dispatch executes before outbound dispatch side-effect persistence, preventing false dispatched telemetry when provider dispatch fails.
+- Review follow-up: normalized number mapping route contracts to provider-neutral `providerNumberE164` output (with request backward compatibility for legacy `twilioNumberE164` input).
+- Review follow-up: stabilized c.5 scheduler contract runs under parallel workers by scoping synthetic scheduler evaluation to optional `threadId` requests and generating unique c.5 synthetic thread IDs per test context.
+- Review follow-up: refreshed this story's File List and notes so story evidence matches current git working-tree changes for this pass.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/f-1-provider-adapter-interface-and-provider-registry.md
+- src/src/modules/connectshyft/providerRegistry.ts
+- src/src/modules/connectshyft/__tests__/providerRegistry.test.ts
+- src/src/routes/api/v1/connectshyft.ts
+- src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts
+- tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts
+- tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.spec.ts
+- tests/support/factories/connectShyftStoryC5Factory.ts
+- tests/support/factories/connectShyftStoryF1Factory.ts
+- tests/support/fixtures/connectShyftStoryC5.fixture.ts
+- tests/support/fixtures/connectShyftStoryF1.fixture.ts
 
 ## Change Log
 
 - 2026-02-27: Created Story f.1 ready-for-dev context document.
+- 2026-02-27: Implemented provider adapter interface + provider registry integration, added deterministic refusal contracts, and added backend regression tests for F1.
+- 2026-02-27: Addressed code-review findings for F1 (Telnyx signature contract, dispatch write ordering, provider-neutral number mapping contract output, and signature-path regression coverage).

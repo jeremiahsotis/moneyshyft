@@ -15,6 +15,7 @@ type StoryC5Fixtures = {
     orgUnitId: string;
     asOfUtc: string;
     limit: number;
+    threadId: string;
   };
   storyC5ClaimPayload: {
     orgUnitId: string;
@@ -138,6 +139,7 @@ export const test = base.extend<StoryC5Fixtures>({
       orgUnitId: storyC5Context.orgUnitId,
       asOfUtc,
       limit: 50,
+      threadId: storyC5Context.threadId,
     });
   },
   storyC5ClaimPayload: async ({ storyC5Context }, use) => {
