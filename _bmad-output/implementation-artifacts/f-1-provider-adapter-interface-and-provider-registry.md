@@ -130,7 +130,9 @@ GPT-5 Codex
 - src/src/routes/api/v1/connectshyft.ts
 - src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts
 - tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts
+- tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.automate.api.spec.ts
 - tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.spec.ts
+- tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.automate.spec.ts
 - tests/support/factories/connectShyftStoryC5Factory.ts
 - tests/support/factories/connectShyftStoryF1Factory.ts
 - tests/support/fixtures/connectShyftStoryC5.fixture.ts
