@@ -11,6 +11,8 @@ const TEST_REQUESTED_PROVIDER_HEADER = 'x-test-connectshyft-provider-requested';
 const TELNYX_SIGNATURE_HEADER = 'telnyx-signature-ed25519';
 const TELNYX_TIMESTAMP_HEADER = 'telnyx-timestamp';
 const TELNYX_PUBLIC_KEY_ENV = 'TELNYX_PUBLIC_KEY';
+const CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS_ENV = 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS';
+const DEFAULT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS = 300;
 
 export type ConnectShyftProviderOperation = 'call' | 'message' | 'webhook';
 export type ConnectShyftProviderResolutionReason =
@@ -219,6 +221,21 @@ const parseBooleanEnv = (value: string | undefined): boolean => {
     || normalized === 'enabled';
 };
 
+const parsePositiveInteger = (value: string | undefined): number | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const normalized = value.trim();
+  if (!/^\d+$/.test(normalized)) {
+    return null;
+  }
+  const parsed = Number.parseInt(normalized, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
+};
+
 const resolveProvidersFromEnv = (envVar: string, fallback: string[] = []): string[] => {
   const parsed = parseProviderList(process.env[envVar]);
   if (parsed.length > 0) {
@@ -343,6 +360,28 @@ const parseTelnyxSignatureHeader = (header: string): Buffer | null => {
   }
 };
 
+const parseWebhookTimestampMs = (timestamp: string): number | null => {
+  const normalized = normalizeString(timestamp);
+  if (!/^\d+$/.test(normalized)) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(normalized, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  // Telnyx sends unix seconds; tolerate millisecond epoch values if configured upstream.
+  return parsed > 1_000_000_000_000 ? parsed : parsed * 1000;
+};
+
+const resolveWebhookSignatureMaxAgeMs = (): number => {
+  const configured = parsePositiveInteger(
+    process.env[CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS_ENV],
+  );
+  return (configured ?? DEFAULT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS) * 1000;
+};
+
 const resolveTelnyxPublicKey = (): ReturnType<typeof createPublicKey> | null => {
   const rawKey = normalizeString(process.env[TELNYX_PUBLIC_KEY_ENV]);
   if (!rawKey) {
@@ -433,6 +472,20 @@ const validateTelnyxWebhookSignature = (
       refusal: {
         code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',
         message: 'Webhook signature validation failed.',
+        refusalType: 'client',
+        httpStatus: 401,
+      },
+    };
+  }
+
+  const webhookTimestampMs = parseWebhookTimestampMs(incomingTimestamp);
+  const maxAgeMs = resolveWebhookSignatureMaxAgeMs();
+  if (!webhookTimestampMs || Math.abs(Date.now() - webhookTimestampMs) > maxAgeMs) {
+    return {
+      ok: false,
+      refusal: {
+        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',
+        message: 'Webhook signature timestamp is outside the allowed replay window.',
         refusalType: 'client',
         httpStatus: 401,
       },

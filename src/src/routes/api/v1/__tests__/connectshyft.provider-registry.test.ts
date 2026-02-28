@@ -305,6 +305,52 @@ describe('connectshyft provider adapter registry route integration', () => {
     });
   });
 
+  it('records voice-family canonical webhook payloads with channel=voice', async () => {
+    const app = buildApp();
+    const headers = buildHeaders({
+      'x-test-connectshyft-tenant-id': 'tenant-connectshyft-f2',
+      'x-test-connectshyft-orgunit-id': 'org-connectshyft-f2-east',
+      'x-test-connectshyft-user-id': 'user-connectshyft-f2-operator',
+      'x-test-connectshyft-orgunit-memberships': JSON.stringify(['org-connectshyft-f2-east']),
+    });
+
+    const threadId = 'thread-f2-unclaimed-1001';
+    const webhookResponse = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(headers)
+      .send({
+        eventType: 'voice.fallback',
+        threadId,
+        orgUnitId: 'org-connectshyft-f2-east',
+        tenantId: 'tenant-connectshyft-f2',
+        providerKey: 'telnyx',
+      });
+
+    expect(webhookResponse.status).toBe(200);
+
+    const eventsResponse = await request(app)
+      .get('/api/v1/connectshyft/events')
+      .query({
+        orgUnitId: 'org-connectshyft-f2-east',
+        aggregateId: threadId,
+        aggregateType: 'Thread',
+        eventType: 'VoiceFallback',
+        limit: '10',
+      })
+      .set(headers);
+
+    expect(eventsResponse.status).toBe(200);
+    const events = eventsResponse.body.data.events as CanonicalEventRecord[];
+    expect(events.length).toBeGreaterThan(0);
+    events.forEach((event) => {
+      expect(event.eventType).toBe('VoiceFallback');
+      expect(event.payload).toMatchObject({
+        direction: 'inbound',
+        channel: 'voice',
+      });
+    });
+  });
+
   it('derives provider-neutral thread detail timeline from canonical events with deterministic ordering', async () => {
     const app = buildApp();
     const headers = buildHeaders({
@@ -592,7 +638,7 @@ describe('connectshyft provider adapter registry route integration', () => {
       tenantId: 'tenant-connectshyft-f1',
       providerKey: 'telnyx',
     };
-    const timestamp = '1700000000';
+    const timestamp = Math.trunc(Date.now() / 1000).toString();
     const signature = signPayload(
       null,
       Buffer.from(`${timestamp}|${JSON.stringify(payload)}`),

@@ -1876,7 +1876,12 @@ const buildCanonicalPayloadForInboundWebhook = (input: {
   autoClaimApplied: boolean;
 }): Record<string, unknown> => ({
   direction: 'inbound',
-  channel: input.eventType.toLowerCase().includes('call') ? 'voice' : 'sms',
+  channel: (
+    input.eventType.toLowerCase().includes('call')
+    || input.eventType.toLowerCase().includes('voice')
+  )
+    ? 'voice'
+    : 'sms',
   eventType: input.eventType,
   routingDecision: input.routingDecision,
   threadState: input.threadState,

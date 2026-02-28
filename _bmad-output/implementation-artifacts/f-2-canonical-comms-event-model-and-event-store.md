@@ -1,6 +1,6 @@
 # Story f.2: Canonical Comms Event Model and Event Store
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

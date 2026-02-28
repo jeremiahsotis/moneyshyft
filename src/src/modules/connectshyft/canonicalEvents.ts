@@ -6,6 +6,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
 const CONNECTSHYFT_CANONICAL_EVENT_NAME = 'connectshyft.canonical.event_recorded';
 const MAX_LIST_LIMIT = 200;
 const DEFAULT_LIST_LIMIT = 50;
+const MAX_IN_MEMORY_EVENT_RECORDS = 1000;
 
 export type ConnectShyftCanonicalAggregateType = 'Thread';
 
@@ -58,6 +59,14 @@ const CONNECTSHYFT_PROVIDER_SPECIFIC_KEYS = new Set([
 ]);
 
 const inMemoryCanonicalEvents: ConnectShyftStoredCanonicalEvent[] = [];
+
+const recordInMemoryFallbackEvent = (event: ConnectShyftStoredCanonicalEvent): void => {
+  inMemoryCanonicalEvents.push(event);
+  if (inMemoryCanonicalEvents.length > MAX_IN_MEMORY_EVENT_RECORDS) {
+    const overflow = inMemoryCanonicalEvents.length - MAX_IN_MEMORY_EVENT_RECORDS;
+    inMemoryCanonicalEvents.splice(0, overflow);
+  }
+};
 
 const normalizeString = (value: unknown): string => {
   if (typeof value !== 'string') {
@@ -281,32 +290,28 @@ export const recordConnectShyftCanonicalEvent = async (
   },
 ): Promise<ConnectShyftCanonicalEventRecord> => {
   const stored = toStoredRecord(input);
-  inMemoryCanonicalEvents.push(stored);
 
   if (!shouldUseDb(input, input.db)) {
+    recordInMemoryFallbackEvent(stored);
     return stored.record;
   }
 
-  try {
-    await executePlatformMutation({
-      mutation: async () => stored.record,
-      event: {
+  await executePlatformMutation({
+    mutation: async () => stored.record,
+    event: {
+      tenantId: input.tenantId,
+      actorId: isUuid(input.actorUserId || '') ? input.actorUserId : null,
+      eventName: CONNECTSHYFT_CANONICAL_EVENT_NAME,
+      entityType: 'connectshyft.thread',
+      entityId: input.aggregateId,
+      payload: {
+        ...stored.record,
         tenantId: input.tenantId,
-        actorId: isUuid(input.actorUserId || '') ? input.actorUserId : null,
-        eventName: CONNECTSHYFT_CANONICAL_EVENT_NAME,
-        entityType: 'connectshyft.thread',
-        entityId: input.aggregateId,
-        payload: {
-          ...stored.record,
-          tenantId: input.tenantId,
-          orgUnitId: input.orgUnitId,
-        },
-        occurredAtUtc: stored.record.occurredAtUtc,
+        orgUnitId: input.orgUnitId,
       },
-    }, input.db);
-  } catch (_error) {
-    // Canonical events still remain queryable from in-memory fallback in test/non-UUID paths.
-  }
+      occurredAtUtc: stored.record.occurredAtUtc,
+    },
+  }, input.db);
 
   return stored.record;
 };
