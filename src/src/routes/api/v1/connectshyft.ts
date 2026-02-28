@@ -60,11 +60,17 @@ import {
 } from '../../../services/PlatformAdminService';
 import {
   parseConnectShyftInboxBucket,
+  resolveConnectShyftThreadActions,
   resolveConnectShyftInboxContractAsync,
   resolveConnectShyftThreadDetailContractAsync,
   type ConnectShyftInboxBucket,
   type ConnectShyftThreadDetailRecord,
 } from '../../../modules/connectshyft/readContracts';
+import {
+  listConnectShyftCanonicalEvents,
+  recordConnectShyftCanonicalEvent,
+  type ConnectShyftCanonicalEventRecord,
+} from '../../../modules/connectshyft/canonicalEvents';
 import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService';
 
 const router = Router();
@@ -101,6 +107,14 @@ const CONNECTSHYFT_OUTBOUND_EVENT_NAMES = {
   callDispatched: 'connectshyft.thread.outbound_call_dispatched',
   messageDispatched: 'connectshyft.thread.outbound_message_dispatched',
 } as const;
+const CONNECTSHYFT_CANONICAL_EVENT_TYPES = {
+  callAttemptStarted: 'CallAttemptStarted',
+  messageQueued: 'MessageQueued',
+  callConnected: 'CallConnected',
+  messageDelivered: 'MessageDelivered',
+} as const;
+const CONNECTSHYFT_CANONICAL_EVENTS_DEFAULT_LIMIT = 50;
+const CONNECTSHYFT_CANONICAL_EVENTS_MAX_LIMIT = 200;
 const CONNECTSHYFT_OUTBOUND_CALL_POLICY = {
   transport: 'bridge',
   autoRetry: false,
@@ -114,7 +128,7 @@ const CONNECTSHYFT_OUTBOUND_CALL_AUTO_CLAIM_POLICY = {
 } as const;
 const CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT = CONNECTSHYFT_OUTBOUND_CALL_POLICY.transport;
 const CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_REDIAL_POLICY = CONNECTSHYFT_OUTBOUND_CALL_POLICY.redialPolicy;
-const CONNECTSHYFT_CONNECTED_CALL_EVENT_TYPES = new Set(['voice.connected', 'call.connected']);
+const CONNECTSHYFT_CONNECTED_CALL_EVENT_TYPES = new Set(['voice.connected', 'call.connected', 'callconnected']);
 const CONNECTSHYFT_ESCALATION_NOTIFICATION_EVENT_PREFIXES = [
   'connectshyft.thread.escalation.',
   'connectshyft.escalation.',
@@ -296,6 +310,42 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     lastInboundCsNumberId: 'cs-number-f1-403',
     preferredOutboundCsNumberId: 'cs-number-f1-503',
     summary: 'F1 closed thread for same-thread reopen provider dispatch validation.',
+  },
+  'thread-f2-unclaimed-1001': {
+    tenantId: 'tenant-connectshyft-f2',
+    orgUnitId: 'org-connectshyft-f2-east',
+    state: 'UNCLAIMED',
+    claimedByUserId: null,
+    escalationStage: 1,
+    nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+    neighborId: 'neighbor-connectshyft-f2-1001',
+    lastInboundCsNumberId: 'cs-number-f2-401',
+    preferredOutboundCsNumberId: 'cs-number-f2-501',
+    summary: 'F2 unclaimed thread for canonical event model contracts.',
+  },
+  'thread-f2-claimed-1002': {
+    tenantId: 'tenant-connectshyft-f2',
+    orgUnitId: 'org-connectshyft-f2-east',
+    state: 'CLAIMED',
+    claimedByUserId: 'user-connectshyft-f2-other-operator',
+    escalationStage: 0,
+    nextEvaluationAtUtc: null,
+    neighborId: 'neighbor-connectshyft-f2-1002',
+    lastInboundCsNumberId: 'cs-number-f2-402',
+    preferredOutboundCsNumberId: 'cs-number-f2-502',
+    summary: 'F2 claimed thread for canonical timeline validation.',
+  },
+  'thread-f2-closed-1003': {
+    tenantId: 'tenant-connectshyft-f2',
+    orgUnitId: 'org-connectshyft-f2-east',
+    state: 'CLOSED',
+    claimedByUserId: null,
+    escalationStage: 0,
+    nextEvaluationAtUtc: null,
+    neighborId: 'neighbor-connectshyft-f2-1003',
+    lastInboundCsNumberId: 'cs-number-f2-403',
+    preferredOutboundCsNumberId: 'cs-number-f2-503',
+    summary: 'F2 closed thread for canonical timeline validation.',
   },
 };
 const CONNECTSHYFT_DYNAMIC_C5_THREAD_PREFIX = 'thread-c5-unclaimed-';
@@ -782,6 +832,61 @@ const buildThreadFromDetailRecord = (
     escalation: {
       stage: detail.escalationStage,
       nextEvaluationAtUtc: detail.state === 'UNCLAIMED' ? now : null,
+    },
+  };
+};
+
+const buildSyntheticThreadDetailRecord = (input: {
+  descriptor: ConnectShyftSyntheticThreadDescriptor;
+  threadId: string;
+  actorUserId: string | null;
+  requestedRole: string | null;
+}): ConnectShyftThreadDetailRecord => {
+  const actorUserId = normalizeLifecycleString(input.actorUserId) || null;
+  const bucket = input.descriptor.state === 'CLAIMED'
+    && actorUserId
+    && input.descriptor.claimedByUserId === actorUserId
+    ? 'mine'
+    : 'inbox';
+  const escalationStage = Math.max(0, Math.trunc(input.descriptor.escalationStage));
+  const urgencyLabel = escalationStage <= 0
+    ? ''
+    : escalationStage === 1
+      ? 'Needs attention soon'
+      : 'Needs urgent attention';
+
+  return {
+    threadId: input.threadId,
+    tenantId: input.descriptor.tenantId,
+    orgUnitId: input.descriptor.orgUnitId,
+    state: input.descriptor.state,
+    claimedByUserId: input.descriptor.claimedByUserId,
+    claimed_by_user_id: input.descriptor.claimedByUserId,
+    bucket,
+    escalationStage,
+    isNewUnread: false,
+    priorityRank: escalationStage >= 3 ? 1 : escalationStage === 2 ? 2 : escalationStage === 1 ? 3 : 5,
+    urgencyLabel,
+    lastActivityAtUtc: input.descriptor.nextEvaluationAtUtc || nowIsoUtc(),
+    lastInboundCsNumberId: input.descriptor.lastInboundCsNumberId,
+    last_inbound_cs_number_id: input.descriptor.lastInboundCsNumberId,
+    preferredOutboundCsNumberId: input.descriptor.preferredOutboundCsNumberId,
+    preferred_outbound_cs_number_id: input.descriptor.preferredOutboundCsNumberId,
+    preferredOutboundContext: {
+      csNumberId: input.descriptor.preferredOutboundCsNumberId,
+      label: 'Provider-neutral dispatch line',
+    },
+    preferred_outbound_context: {
+      cs_number_id: input.descriptor.preferredOutboundCsNumberId,
+      label: 'Provider-neutral dispatch line',
+    },
+    voicemailIndicator: false,
+    summary: input.descriptor.summary,
+    actions: resolveConnectShyftThreadActions(input.descriptor.state, {
+      requestedRole: input.requestedRole,
+    }),
+    lifecycle: {
+      reopenedByInbound: false,
     },
   };
 };
@@ -1706,6 +1811,112 @@ const parseThreadDueLimit = (req: Request): number => {
   }
 
   return Math.min(Math.trunc(rawLimit), 250);
+};
+
+const parseCanonicalEventsLimit = (req: Request): number => {
+  const rawLimit = typeof req.query?.limit === 'string'
+    ? Number.parseInt(req.query.limit, 10)
+    : Number.NaN;
+  if (!Number.isFinite(rawLimit) || rawLimit <= 0) {
+    return CONNECTSHYFT_CANONICAL_EVENTS_DEFAULT_LIMIT;
+  }
+
+  return Math.min(Math.trunc(rawLimit), CONNECTSHYFT_CANONICAL_EVENTS_MAX_LIMIT);
+};
+
+const parseCanonicalEventFilters = (req: Request): {
+  aggregateId: string | null;
+  aggregateType: string | null;
+  eventType: string | null;
+  limit: number;
+} => {
+  const aggregateId = typeof req.query?.aggregateId === 'string'
+    ? req.query.aggregateId.trim()
+    : '';
+  const aggregateType = typeof req.query?.aggregateType === 'string'
+    ? req.query.aggregateType.trim()
+    : '';
+  const eventType = typeof req.query?.eventType === 'string'
+    ? req.query.eventType.trim()
+    : '';
+
+  return {
+    aggregateId: aggregateId || null,
+    aggregateType: aggregateType || null,
+    eventType: eventType || null,
+    limit: parseCanonicalEventsLimit(req),
+  };
+};
+
+const resolveCanonicalEventTypeForOutboundAction = (
+  outboundAction: ConnectShyftOutboundAction,
+): string => {
+  return outboundAction === 'call'
+    ? CONNECTSHYFT_CANONICAL_EVENT_TYPES.callAttemptStarted
+    : CONNECTSHYFT_CANONICAL_EVENT_TYPES.messageQueued;
+};
+
+const buildCanonicalPayloadForOutboundAction = (input: {
+  outboundAction: ConnectShyftOutboundAction;
+  threadState: ConnectShyftThreadState;
+  lifecycleEvent: string;
+  reopenedFromClosed: boolean;
+}): Record<string, unknown> => ({
+  direction: 'outbound',
+  channel: input.outboundAction === 'call' ? 'voice' : 'sms',
+  lifecycleEvent: input.lifecycleEvent,
+  threadState: input.threadState,
+  reopenedFromClosed: input.reopenedFromClosed,
+});
+
+const buildCanonicalPayloadForInboundWebhook = (input: {
+  eventType: string;
+  routingDecision: 'voicemail_only' | 'intake_fallback' | 'accepted';
+  threadState: ConnectShyftThreadState | null;
+  autoClaimApplied: boolean;
+}): Record<string, unknown> => ({
+  direction: 'inbound',
+  channel: input.eventType.toLowerCase().includes('call') ? 'voice' : 'sms',
+  eventType: input.eventType,
+  routingDecision: input.routingDecision,
+  threadState: input.threadState,
+  autoClaimApplied: input.autoClaimApplied,
+});
+
+const recordCanonicalThreadEvent = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+  actorUserId: string | null;
+}): Promise<ConnectShyftCanonicalEventRecord> => {
+  return recordConnectShyftCanonicalEvent({
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    aggregateId: input.threadId,
+    aggregateType: 'Thread',
+    eventType: input.eventType,
+    payload: input.payload,
+    actorUserId: input.actorUserId,
+    db: loadPlatformDb(),
+  });
+};
+
+const listCanonicalThreadEvents = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  limit?: number;
+}): Promise<ConnectShyftCanonicalEventRecord[]> => {
+  return listConnectShyftCanonicalEvents({
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    aggregateId: input.threadId,
+    aggregateType: 'Thread',
+    limit: input.limit,
+    db: loadPlatformDb(),
+  });
 };
 
 const normalizeSchedulerLimit = (value: unknown): number => {
@@ -3686,6 +3897,47 @@ router.get('/internal/threads/due', async (req: Request, res: Response) => {
   });
 });
 
+router.get('/events', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'inbox')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res, parseOrgUnitIdFromQuery(req));
+  if (!context) {
+    return;
+  }
+
+  if (!enforceThreadViewCapability(req, res, context)) {
+    return;
+  }
+
+  const filters = parseCanonicalEventFilters(req);
+  const events = await listConnectShyftCanonicalEvents({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    aggregateId: filters.aggregateId,
+    aggregateType: filters.aggregateType,
+    eventType: filters.eventType,
+    limit: filters.limit,
+    db: loadPlatformDb(),
+  });
+
+  return success(res, {
+    code: 'CONNECTSHYFT_CANONICAL_EVENTS_LISTED',
+    message: 'ConnectShyft canonical events listed',
+    data: {
+      filters: {
+        aggregateId: filters.aggregateId,
+        aggregateType: filters.aggregateType,
+        eventType: filters.eventType,
+      },
+      deterministic: true,
+      providerNeutral: true,
+      events,
+    },
+  });
+});
+
 router.get('/threads/:threadId', async (req: Request, res: Response) => {
   if (!await enforceCapability(req, res, 'inbox')) {
     return;
@@ -3716,7 +3968,7 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
 
   const requestedRole = resolveConnectShyftRequestedRole(req);
   const actorUserId = resolveConnectShyftRequestedActorUserId(req);
-  const thread = await resolveConnectShyftThreadDetailContractAsync({
+  let thread = await resolveConnectShyftThreadDetailContractAsync({
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     threadId,
@@ -3724,6 +3976,22 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
     requestedRole,
     db: loadPlatformDb(),
   });
+
+  if (!thread) {
+    const syntheticThread = resolveSyntheticLifecycleThread({
+      threadId,
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+    });
+    if (syntheticThread) {
+      thread = buildSyntheticThreadDetailRecord({
+        descriptor: syntheticThread,
+        threadId,
+        actorUserId,
+        requestedRole,
+      });
+    }
+  }
 
   if (!thread) {
     refusal(res, {
@@ -3742,6 +4010,20 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
     return;
   }
 
+  const timeline = await listCanonicalThreadEvents({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId,
+    limit: CONNECTSHYFT_CANONICAL_EVENTS_MAX_LIMIT,
+  });
+
+  const threadWithCanonicalTimeline = {
+    ...thread,
+    providerNeutral: true as const,
+    statusDerivedFromCanonicalEvents: true as const,
+    timeline,
+  };
+
   return success(res, {
     code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
     message: 'ConnectShyft thread detail loaded',
@@ -3751,8 +4033,8 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
         orgUnitId: context.orgUnitId,
         bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
       },
-      thread,
-      actions: thread.actions,
+      thread: threadWithCanonicalTimeline,
+      actions: threadWithCanonicalTimeline.actions,
       latencyBudgetsMs: {
         p95: CONNECTSHYFT_INBOX_P95_BUDGET_MS,
         p99: CONNECTSHYFT_INBOX_P99_BUDGET_MS,
@@ -4332,6 +4614,20 @@ const performOutboundAction = async (
     })
     : null;
 
+  const canonicalEvent = await recordCanonicalThreadEvent({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId,
+    eventType: resolveCanonicalEventTypeForOutboundAction(outboundAction),
+    payload: buildCanonicalPayloadForOutboundAction({
+      outboundAction,
+      threadState: thread.state,
+      lifecycleEvent: resolveOutboundDispatchEventName(outboundAction),
+      reopenedFromClosed: priorState === 'CLOSED',
+    }),
+    actorUserId,
+  });
+
   const operatorFeedback = priorState === 'CLOSED'
     ? 'Conversation reopened on the same thread before outbound dispatch. Escalation and inactivity timers were reset.'
     : priorState === 'UNCLAIMED'
@@ -4389,6 +4685,7 @@ const performOutboundAction = async (
         adapterInterfaceVersion: providerSelection.adapter.adapterInterfaceVersion,
         providerBranchingInDomain: false,
       },
+      canonicalEvent,
       dispatch: providerDispatch,
       ...(outboundAction === 'call'
         ? {
@@ -4478,7 +4775,7 @@ const handleInboundWebhook = async (
   const threadId = normalizeLifecycleString(req.body?.threadId) || null;
   const tenantId = normalizeLifecycleString(req.body?.tenantId) || null;
   const orgUnitId = normalizeLifecycleString(req.body?.orgUnitId) || null;
-  const isVoiceEvent = normalizedEventType.startsWith('voice');
+  const isVoiceEvent = normalizedEventType.startsWith('voice') || normalizedEventType.includes('call');
   const callPolicy = parseOutboundCallRequestPolicy(req);
   const callTransport = callPolicy.transport || CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT;
   const canApplyAutoClaimForTransport = callTransport === CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT;
@@ -4580,7 +4877,7 @@ const handleInboundWebhook = async (
     autoClaim?.applied === true
       ? CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.claimed
       : CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceVoicemail;
-  if (normalizedEventType === 'voice.fallback') {
+  if (normalizedEventType === 'voice.fallback' || normalizedEventType === 'voicefallback') {
     timelineEventName = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceFallback;
     routingDecision = 'intake_fallback';
   } else if (isVoiceEvent && !isConnectedCallEvent) {
@@ -4592,6 +4889,22 @@ const handleInboundWebhook = async (
       routingDecision = 'voicemail_only';
     }
   }
+
+  const canonicalEvent = tenantId && orgUnitId && threadId
+    ? await recordCanonicalThreadEvent({
+      tenantId,
+      orgUnitId,
+      threadId,
+      eventType,
+      payload: buildCanonicalPayloadForInboundWebhook({
+        eventType,
+        routingDecision,
+        threadState,
+        autoClaimApplied: autoClaim?.applied === true,
+      }),
+      actorUserId: resolveWebhookActorUserId(req),
+    })
+    : null;
 
   success(res, {
     code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
@@ -4606,6 +4919,10 @@ const handleInboundWebhook = async (
         adapterInvoked: true,
       },
       canonicalTranslation,
+      domainHandlers: {
+        providerBranchingInDomain: false,
+      },
+      canonicalEvent,
       threadId,
       threadState,
       thread,

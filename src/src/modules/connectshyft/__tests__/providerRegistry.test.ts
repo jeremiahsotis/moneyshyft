@@ -212,7 +212,10 @@ describe('connectshyft provider registry', () => {
         payload: {},
       }),
     ).toEqual({
-      eventType: 'voice.connected',
+      eventType: 'CallConnected',
+      payload: {},
+      providerNeutral: true,
+      providerSpecificFieldsStripped: true,
       providerBranchingInDomain: false,
     });
   });

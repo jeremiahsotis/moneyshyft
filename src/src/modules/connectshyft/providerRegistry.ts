@@ -1,5 +1,6 @@
 import { createPublicKey, verify } from 'node:crypto';
 import { isConnectShyftTestOverrideEnabled } from './featureFlags';
+import { sanitizeConnectShyftCanonicalPayload } from './canonicalEvents';
 
 const DEFAULT_ENABLED_PROVIDERS = ['telnyx'];
 const ENABLED_PROVIDERS_ENV = 'CONNECTSHYFT_ENABLED_PROVIDERS';
@@ -33,6 +34,9 @@ export type ConnectShyftProviderDispatchResult = {
 
 export type ConnectShyftProviderCanonicalEvent = {
   eventType: string;
+  payload: Record<string, unknown>;
+  providerNeutral: true;
+  providerSpecificFieldsStripped: true;
   providerBranchingInDomain: false;
 };
 
@@ -441,14 +445,33 @@ const validateTelnyxWebhookSignature = (
 const toCanonicalEventType = (rawEventType: string): string => {
   const normalized = normalizeString(rawEventType).toLowerCase();
   if (!normalized) {
-    return 'sms.inbound';
+    return 'MessageQueued';
   }
 
-  if (normalized === 'call.connected') {
-    return 'voice.connected';
+  if (normalized === 'call.connected' || normalized === 'voice.connected') {
+    return 'CallConnected';
   }
 
-  return normalized;
+  if (normalized === 'call.attempt.started' || normalized === 'voice.started') {
+    return 'CallAttemptStarted';
+  }
+
+  if (normalized === 'message.delivered' || normalized === 'sms.delivered') {
+    return 'MessageDelivered';
+  }
+
+  if (normalized === 'message.sent' || normalized === 'sms.sent') {
+    return 'MessageSent';
+  }
+
+  if (normalized === 'message.queued' || normalized === 'sms.inbound') {
+    return 'MessageQueued';
+  }
+
+  return normalized
+    .split(/[._-]+/)
+    .map((part) => part ? `${part.charAt(0).toUpperCase()}${part.slice(1)}` : '')
+    .join('') || 'MessageQueued';
 };
 
 const buildDispatchResult = (
@@ -479,13 +502,24 @@ const createAdapter = (input: {
     }
     return { ok: true };
   },
-  toCanonicalEvent({ rawEventType }) {
+  toCanonicalEvent({ rawEventType, payload }) {
     return {
       eventType: toCanonicalEventType(rawEventType),
+      payload: sanitizeConnectShyftCanonicalPayload(payloadToRecord(payload)),
+      providerNeutral: true,
+      providerSpecificFieldsStripped: true,
       providerBranchingInDomain: false,
     };
   },
 });
+
+const payloadToRecord = (payload: unknown): Record<string, unknown> => {
+  if (!payload || typeof payload !== 'object') {
+    return {};
+  }
+
+  return payload as Record<string, unknown>;
+};
 
 const PROVIDER_ADAPTERS: Record<string, ConnectShyftProviderAdapter> = {
   telnyx: createAdapter({

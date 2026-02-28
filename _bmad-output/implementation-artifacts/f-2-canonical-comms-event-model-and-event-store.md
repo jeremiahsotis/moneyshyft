@@ -1,6 +1,6 @@
 # Story f.2: Canonical Comms Event Model and Event Store
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,30 +25,30 @@ so that downstream ConnectShyft behavior remains stable regardless of provider.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Canonical events are the operational truth source for call/message state and must remain stable across providers.
-- Real-User Validation Evidence: Pending event-stream validation run using API and webhook replay fixtures.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-02-28 executed webhook replay and outbound dispatch validation via `src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` plus full `cd src && npm test` regression; verified canonical `/events` retrieval and thread timeline output are provider-neutral and deterministic.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: No new role-administration surface introduced.
 
 ## Tasks / Subtasks
 
-- [ ] Define canonical event schema and persistence contract (AC: 1, 2)
-  - [ ] Align event model with `event_schema.md` and platform audit/outbox expectations.
-  - [ ] Ensure event payload supports provider metadata without leaking provider coupling into consumers.
-- [ ] Implement event store writes and retrieval API path (AC: 1, 3)
-  - [ ] Persist canonical events atomically with relevant lifecycle mutations where required.
-  - [ ] Add deterministic filtering for aggregate and event type retrieval.
-- [ ] Integrate canonical translation into inbound/outbound flows (AC: 1, 2)
-  - [ ] Route all provider webhook payloads through canonical translation before domain handlers.
-  - [ ] Ensure outbound initiation emits canonical start/queued events.
-- [ ] Preserve operator-consumable provider-neutral outputs (AC: 4)
-  - [ ] Ensure read/status contracts expose canonical event-derived fields without provider-specific naming leakage.
-  - [ ] Ensure timeline ordering remains deterministic under mixed inbound/outbound provider event sequences.
-- [ ] Add test coverage for canonicalization invariants (AC: 1, 2, 3, 4)
-  - [ ] Unit tests for provider payload to canonical event mapping.
-  - [ ] API tests for deterministic event retrieval and filtering.
-  - [ ] Contract tests for provider-neutral state/timeline outputs consumed by ConnectShyft clients.
+- [x] Define canonical event schema and persistence contract (AC: 1, 2)
+  - [x] Align event model with `event_schema.md` and platform audit/outbox expectations.
+  - [x] Ensure event payload supports provider metadata without leaking provider coupling into consumers.
+- [x] Implement event store writes and retrieval API path (AC: 1, 3)
+  - [x] Persist canonical events atomically with relevant lifecycle mutations where required.
+  - [x] Add deterministic filtering for aggregate and event type retrieval.
+- [x] Integrate canonical translation into inbound/outbound flows (AC: 1, 2)
+  - [x] Route all provider webhook payloads through canonical translation before domain handlers.
+  - [x] Ensure outbound initiation emits canonical start/queued events.
+- [x] Preserve operator-consumable provider-neutral outputs (AC: 4)
+  - [x] Ensure read/status contracts expose canonical event-derived fields without provider-specific naming leakage.
+  - [x] Ensure timeline ordering remains deterministic under mixed inbound/outbound provider event sequences.
+- [x] Add test coverage for canonicalization invariants (AC: 1, 2, 3, 4)
+  - [x] Unit tests for provider payload to canonical event mapping.
+  - [x] API tests for deterministic event retrieval and filtering.
+  - [x] Contract tests for provider-neutral state/timeline outputs consumed by ConnectShyft clients.
 
 ## Dev Notes
 
@@ -99,16 +99,33 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- Story context generation only (no implementation commands executed).
+- `npm run branch:ensure-workflow -- --workflow dev-story --story f-2-canonical-comms-event-model-and-event-store` (pass)
+- `cd src && npm test -- src/src/modules/connectshyft/__tests__/providerRegistry.test.ts src/src/modules/connectshyft/__tests__/canonicalEvents.test.ts src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` (pass)
+- `cd src && npm test` (pass)
 
 ### Completion Notes List
 
-- Created implementation-ready Story f.2 context defining canonical event model and store expectations.
+- Added `src/src/modules/connectshyft/canonicalEvents.ts` with canonical event record contract, provider-specific payload sanitization, deterministic ordering, aggregate/event-type filtering, and UUID-aware persistence fallback.
+- Updated provider adapter canonical translation in `src/src/modules/connectshyft/providerRegistry.ts` to emit provider-neutral canonical event types and sanitized payload metadata.
+- Updated `src/src/routes/api/v1/connectshyft.ts` to:
+  - persist canonical events for outbound call/message dispatch and inbound webhook handling,
+  - expose `GET /api/v1/connectshyft/events` with deterministic provider-neutral filtering,
+  - include canonical event-derived timeline on thread detail responses,
+  - support F2 synthetic thread fixtures for deterministic contract execution.
+- Added/updated tests covering canonical mapping invariants, deterministic event retrieval, and provider-neutral thread timeline contracts.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/f-2-canonical-comms-event-model-and-event-store.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- src/src/modules/connectshyft/canonicalEvents.ts
+- src/src/modules/connectshyft/__tests__/canonicalEvents.test.ts
+- src/src/modules/connectshyft/providerRegistry.ts
+- src/src/modules/connectshyft/__tests__/providerRegistry.test.ts
+- src/src/routes/api/v1/connectshyft.ts
+- src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts
 
 ## Change Log
 
 - 2026-02-27: Created Story f.2 ready-for-dev context document.
+- 2026-02-28: Implemented canonical comms event store, deterministic `/events` retrieval, provider-neutral canonical translation/timeline output, and associated unit/API contract tests.
