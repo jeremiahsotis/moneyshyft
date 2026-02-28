@@ -1,3 +1,4 @@
+import { generateKeyPairSync, sign as signPayload } from 'node:crypto';
 import {
   resolveConnectShyftProviderAdapter,
   resolveConnectShyftRequestedProviderKey,
@@ -8,6 +9,7 @@ type HeaderMap = Record<string, string>;
 const buildRequest = (input?: {
   headers?: HeaderMap;
   body?: Record<string, unknown>;
+  rawBody?: string;
 }) => {
   const normalizedHeaders: HeaderMap = {};
   Object.entries(input?.headers || {}).forEach(([key, value]) => {
@@ -16,6 +18,7 @@ const buildRequest = (input?: {
 
   return {
     body: input?.body || {},
+    rawBody: input?.rawBody,
     originalUrl: '/api/v1/connectshyft/webhooks/inbound',
     protocol: 'https',
     url: '/api/v1/connectshyft/webhooks/inbound',
@@ -26,10 +29,12 @@ const buildRequest = (input?: {
 describe('connectshyft provider registry', () => {
   let previousNodeEnv: string | undefined;
   let previousEnableFlags: string | undefined;
+  let previousTelnyxPublicKey: string | undefined;
 
   beforeEach(() => {
     previousNodeEnv = process.env.NODE_ENV;
     previousEnableFlags = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
+    previousTelnyxPublicKey = process.env.TELNYX_PUBLIC_KEY;
     process.env.NODE_ENV = 'test';
     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
   });
@@ -37,6 +42,7 @@ describe('connectshyft provider registry', () => {
   afterEach(() => {
     process.env.NODE_ENV = previousNodeEnv;
     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = previousEnableFlags;
+    process.env.TELNYX_PUBLIC_KEY = previousTelnyxPublicKey;
   });
 
   it('resolves deterministic default provider from enabled registry order', () => {
@@ -224,5 +230,96 @@ describe('connectshyft provider registry', () => {
     );
 
     expect(requested).toBe('telnyx');
+  });
+
+  it('rejects webhook signatures when Telnyx signature headers are missing outside override mode', () => {
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'false';
+
+    const result = resolveConnectShyftProviderAdapter({
+      req: buildRequest({
+        body: {
+          providerKey: 'telnyx',
+        },
+      }),
+      operation: 'webhook',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error('Expected adapter resolution to succeed');
+    }
+
+    process.env.TELNYX_PUBLIC_KEY = generateKeyPairSync('ed25519').publicKey.export({
+      type: 'spki',
+      format: 'pem',
+    }).toString();
+
+    const signatureDecision = result.adapter.validateInboundWebhookSignature({
+      req: buildRequest({
+        body: {
+          eventType: 'voice.connected',
+        },
+      }),
+    });
+
+    expect(signatureDecision).toMatchObject({
+      ok: false,
+      refusal: {
+        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING',
+        httpStatus: 401,
+      },
+    });
+  });
+
+  it('accepts valid Telnyx webhook signatures outside override mode', () => {
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'false';
+
+    const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+    process.env.TELNYX_PUBLIC_KEY = publicKey.export({
+      type: 'spki',
+      format: 'pem',
+    }).toString();
+
+    const payload = {
+      eventType: 'voice.connected',
+      threadId: 'thread-f1-unclaimed-1001',
+    };
+    const rawBody = JSON.stringify(payload);
+    const timestamp = '1700000000';
+    const signature = signPayload(
+      null,
+      Buffer.from(`${timestamp}|${rawBody}`),
+      privateKey,
+    ).toString('base64');
+
+    const result = resolveConnectShyftProviderAdapter({
+      req: buildRequest({
+        body: payload,
+        rawBody,
+        headers: {
+          'telnyx-timestamp': timestamp,
+          'telnyx-signature-ed25519': signature,
+        },
+      }),
+      operation: 'webhook',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error('Expected adapter resolution to succeed');
+    }
+
+    const signatureDecision = result.adapter.validateInboundWebhookSignature({
+      req: buildRequest({
+        body: payload,
+        rawBody,
+        headers: {
+          'telnyx-timestamp': timestamp,
+          'telnyx-signature-ed25519': signature,
+        },
+      }),
+    });
+
+    expect(signatureDecision).toEqual({ ok: true });
   });
 });

@@ -1,5 +1,8 @@
 import express from 'express';
+import { generateKeyPairSync, sign as signPayload } from 'node:crypto';
 import request from 'supertest';
+import * as PlatformAdminService from '../../../../services/PlatformAdminService';
+import * as ProviderRegistry from '../../../../modules/connectshyft/providerRegistry';
 import { responseEnvelope } from '../../../../platform/middleware/responseEnvelope';
 import connectShyftRouter from '../connectshyft';
 
@@ -59,15 +62,39 @@ const buildHeaders = (overrides: Record<string, string> = {}): Record<string, st
 describe('connectshyft provider adapter registry route integration', () => {
   const previousNodeEnv = process.env.NODE_ENV;
   const previousOverrideFlag = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
+  const previousTelnyxPublicKey = process.env.TELNYX_PUBLIC_KEY;
+  const previousConnectShyftEnabled = process.env.CONNECTSHYFT_ENABLED;
+  const previousConnectShyftInboxEnabled = process.env.CONNECTSHYFT_INBOX_ENABLED;
+  const previousConnectShyftEscalationEnabled = process.env.CONNECTSHYFT_ESCALATION_ENABLED;
+  const previousConnectShyftWebhooksEnabled = process.env.CONNECTSHYFT_WEBHOOKS_ENABLED;
+  let entitlementSpy: jest.SpyInstance;
 
   beforeAll(() => {
     process.env.NODE_ENV = 'test';
     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
+    process.env.CONNECTSHYFT_ENABLED = 'true';
+    process.env.CONNECTSHYFT_INBOX_ENABLED = 'true';
+    process.env.CONNECTSHYFT_ESCALATION_ENABLED = 'true';
+    process.env.CONNECTSHYFT_WEBHOOKS_ENABLED = 'true';
+    entitlementSpy = jest.spyOn(PlatformAdminService, 'evaluateActorTenantModuleEntitlement').mockResolvedValue({
+      tenantId: 'tenant-connectshyft-f1',
+      moduleKey: 'connectshyft',
+      enabled: true,
+      reason: 'enabled',
+      refusalCode: 'CONNECTSHYFT_ENTITLEMENT_ENABLED',
+      message: 'ConnectShyft entitlement enabled for tests.',
+    });
   });
 
   afterAll(() => {
+    entitlementSpy.mockRestore();
     process.env.NODE_ENV = previousNodeEnv;
     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = previousOverrideFlag;
+    process.env.TELNYX_PUBLIC_KEY = previousTelnyxPublicKey;
+    process.env.CONNECTSHYFT_ENABLED = previousConnectShyftEnabled;
+    process.env.CONNECTSHYFT_INBOX_ENABLED = previousConnectShyftInboxEnabled;
+    process.env.CONNECTSHYFT_ESCALATION_ENABLED = previousConnectShyftEscalationEnabled;
+    process.env.CONNECTSHYFT_WEBHOOKS_ENABLED = previousConnectShyftWebhooksEnabled;
   });
 
   it('dispatches outbound call through deterministic provider adapter resolution metadata', async () => {
@@ -190,6 +217,32 @@ describe('connectshyft provider adapter registry route integration', () => {
     });
   });
 
+  it('returns provider-neutral number mapping contract fields in route responses', async () => {
+    const app = buildApp();
+    const providerNumberE164 = `+1260${Date.now().toString().slice(-7)}`;
+    const createResponse = await request(app)
+      .post('/api/v1/connectshyft/numbers')
+      .set(buildHeaders({
+        'x-test-connectshyft-role': 'SYSTEM_ADMIN',
+      }))
+      .send({
+        orgUnitId: 'org-connectshyft-f1-east',
+        providerNumberE164,
+        label: 'Provider-neutral contract check',
+        isActive: true,
+      });
+
+    expect([200, 201]).toContain(createResponse.status);
+    expect(createResponse.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NUMBER_MAPPING_SAVED',
+      data: {
+        providerNumberE164,
+      },
+    });
+    expect(createResponse.body?.data).not.toHaveProperty('twilioNumberE164');
+  });
+
   it('routes inbound webhook processing through provider adapter translation metadata', async () => {
     const app = buildApp();
     const response = await request(app)
@@ -222,5 +275,135 @@ describe('connectshyft provider adapter registry route integration', () => {
         },
       },
     });
+  });
+
+  it('returns deterministic refusal when provider dispatch fails before side-effect persistence', async () => {
+    const dispatchFailureSpy = jest.spyOn(ProviderRegistry, 'resolveConnectShyftProviderAdapter').mockReturnValue({
+      ok: true,
+      providerResolution: {
+        requestedProvider: 'telnyx',
+        resolvedProvider: 'telnyx',
+        deterministic: true,
+      },
+      adapter: {
+        providerKey: 'telnyx',
+        adapterInterfaceVersion: 'v1',
+        dispatchOutboundCall: async () => {
+          throw new Error('provider-dispatch-failure');
+        },
+        dispatchOutboundMessage: async () => ({
+          providerKey: 'telnyx',
+          channel: 'message',
+          adapterInvoked: true,
+          providerBranchingInDomain: false,
+        }),
+        validateInboundWebhookSignature: () => ({ ok: true }),
+        toCanonicalEvent: ({ rawEventType }) => ({
+          eventType: rawEventType,
+          providerBranchingInDomain: false,
+        }),
+      },
+    });
+
+    try {
+      const app = buildApp();
+      const response = await request(app)
+        .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/call')
+        .set(buildHeaders())
+        .send({
+          orgUnitId: 'org-connectshyft-f1-east',
+          providerKey: 'telnyx',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: false,
+        code: 'CONNECTSHYFT_PROVIDER_DISPATCH_FAILED',
+        data: {
+          sideEffects: {
+            dispatchAttempted: true,
+            lifecycleMutationApplied: false,
+            auditPersisted: false,
+          },
+        },
+      });
+    } finally {
+      dispatchFailureSpy.mockRestore();
+    }
+  });
+
+  it('rejects inbound webhooks without Telnyx signature headers when override mode is disabled', async () => {
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'false';
+    process.env.TELNYX_PUBLIC_KEY = generateKeyPairSync('ed25519').publicKey.export({
+      type: 'spki',
+      format: 'pem',
+    }).toString();
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildHeaders())
+      .send({
+        eventType: 'voice.connected',
+        threadId: 'thread-f1-unclaimed-1001',
+        orgUnitId: 'org-connectshyft-f1-east',
+        tenantId: 'tenant-connectshyft-f1',
+        providerKey: 'telnyx',
+      });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING',
+      refusalType: 'client',
+    });
+
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
+  });
+
+  it('accepts inbound webhooks with valid Telnyx signatures when override mode is disabled', async () => {
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'false';
+    const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+    process.env.TELNYX_PUBLIC_KEY = publicKey.export({
+      type: 'spki',
+      format: 'pem',
+    }).toString();
+
+    const payload = {
+      eventType: 'voice.connected',
+      threadId: 'thread-f1-unclaimed-1001',
+      orgUnitId: 'org-connectshyft-f1-east',
+      tenantId: 'tenant-connectshyft-f1',
+      providerKey: 'telnyx',
+    };
+    const timestamp = '1700000000';
+    const signature = signPayload(
+      null,
+      Buffer.from(`${timestamp}|${JSON.stringify(payload)}`),
+      privateKey,
+    ).toString('base64');
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildHeaders({
+        'telnyx-timestamp': timestamp,
+        'telnyx-signature-ed25519': signature,
+      }))
+      .send(payload);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+      data: {
+        providerResolution: {
+          resolvedProvider: 'telnyx',
+          adapterInvoked: true,
+        },
+      },
+    });
+
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
   });
 });

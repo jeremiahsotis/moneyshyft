@@ -103,6 +103,8 @@ GPT-5 Codex
 - `cd src && npm test -- src/modules/connectshyft/__tests__/providerRegistry.test.ts src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts`
 - `cd src && npm run build`
 - `BASE_URL=http://localhost:3000 npx playwright test tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts --project=chromium` (sandbox EPERM on loopback)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/providerRegistry.test.ts src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` (post-review fix verification)
+- `cd src && npm run build` (post-review fix verification)
 
 ### Completion Notes List
 
@@ -111,6 +113,10 @@ GPT-5 Codex
 - Added F1 synthetic lifecycle threads and prioritized synthetic lifecycle lookup to keep deterministic contract behavior for ConnectShyft story fixtures.
 - Added backend regression tests in `src/src/modules/connectshyft/__tests__/providerRegistry.test.ts` and `src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts`.
 - Enabled `tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts` scenarios (removed `test.skip`), but Playwright execution is currently blocked in this environment by sandbox loopback EPERM.
+- Review follow-up: replaced Twilio-specific webhook signature validation with Telnyx signature headers/public-key verification and added non-override signature-path coverage in unit and route tests.
+- Review follow-up: reordered outbound dispatch flow so provider dispatch executes before outbound dispatch side-effect persistence, preventing false dispatched telemetry when provider dispatch fails.
+- Review follow-up: normalized number mapping route contracts to provider-neutral `providerNumberE164` output (with request backward compatibility for legacy `twilioNumberE164` input).
+- Review follow-up: refreshed this story's File List and notes so story evidence matches current git working-tree changes for this pass.
 
 ### File List
 
@@ -119,9 +125,9 @@ GPT-5 Codex
 - src/src/modules/connectshyft/__tests__/providerRegistry.test.ts
 - src/src/routes/api/v1/connectshyft.ts
 - src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts
-- tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts
 
 ## Change Log
 
 - 2026-02-27: Created Story f.1 ready-for-dev context document.
 - 2026-02-27: Implemented provider adapter interface + provider registry integration, added deterministic refusal contracts, and added backend regression tests for F1.
+- 2026-02-27: Addressed code-review findings for F1 (Telnyx signature contract, dispatch write ordering, provider-neutral number mapping contract output, and signature-path regression coverage).

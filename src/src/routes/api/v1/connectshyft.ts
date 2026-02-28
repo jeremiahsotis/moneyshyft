@@ -47,6 +47,7 @@ import {
 import {
   resolveConnectShyftProviderAdapter,
   resolveConnectShyftRequestedProviderKey,
+  type ConnectShyftProviderDispatchResult,
 } from '../../../modules/connectshyft/providerRegistry';
 import { executePlatformMutation } from '../../../platform/mutations/executePlatformMutation';
 import {
@@ -1949,10 +1950,40 @@ const parseThreadEnsureBody = (req: Request) => ({
     : undefined,
 });
 const parseMappingBody = (req: Request) => ({
-  twilioNumberE164: typeof req.body?.twilioNumberE164 === 'string' ? req.body.twilioNumberE164 : '',
+  providerNumberE164: typeof req.body?.providerNumberE164 === 'string'
+    ? req.body.providerNumberE164
+    : (typeof req.body?.twilioNumberE164 === 'string' ? req.body.twilioNumberE164 : ''),
   label: typeof req.body?.label === 'string' ? req.body.label : '',
   isActive: req.body?.isActive === undefined ? true : Boolean(req.body.isActive),
 });
+
+const normalizeProviderNumberContract = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => normalizeProviderNumberContract(entry));
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  const normalized: Record<string, unknown> = {};
+  Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
+    const normalizedEntry = normalizeProviderNumberContract(entry);
+    if (key === 'twilioNumberE164') {
+      normalized.providerNumberE164 = normalizedEntry;
+      return;
+    }
+
+    if (key === 'field' && normalizedEntry === 'twilioNumberE164') {
+      normalized[key] = 'providerNumberE164';
+      return;
+    }
+
+    normalized[key] = normalizedEntry;
+  });
+
+  return normalized;
+};
 
 const parseNeighborPhones = (req: Request): ConnectShyftNeighborPhoneInput[] => {
   const rawPhones: unknown[] = Array.isArray(req.body?.phones) ? req.body.phones : [];
@@ -3206,7 +3237,9 @@ router.get('/numbers', async (req: Request, res: Response) => {
     message: 'ConnectShyft number mappings resolved',
     data: {
       orgUnitId: context.orgUnitId,
-      mappings: await connectShyftNumberMappingServiceAsync.listMappings(context.tenantId, context.orgUnitId),
+      mappings: normalizeProviderNumberContract(
+        await connectShyftNumberMappingServiceAsync.listMappings(context.tenantId, context.orgUnitId),
+      ),
     },
   });
 });
@@ -3232,7 +3265,7 @@ router.post('/numbers', async (req: Request, res: Response) => {
     actorRoles,
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
-    twilioNumberE164: payload.twilioNumberE164,
+    twilioNumberE164: payload.providerNumberE164,
     label: payload.label,
     isActive: payload.isActive,
   });
@@ -3244,7 +3277,7 @@ router.post('/numbers', async (req: Request, res: Response) => {
       message: saved.message,
       refusalType: 'business',
       httpStatus: 200,
-      data: refusalData,
+      data: normalizeProviderNumberContract(refusalData),
     });
     return;
   }
@@ -3253,14 +3286,14 @@ router.post('/numbers', async (req: Request, res: Response) => {
     code: saved.code,
     message: 'ConnectShyft number mapping saved',
     httpStatus: saved.httpStatus,
-    data: {
+    data: normalizeProviderNumberContract({
       orgUnitId: saved.data.orgUnitId,
       mappingId: saved.data.mappingId,
       twilioNumberE164: saved.data.twilioNumberE164,
       label: saved.data.label,
       isActive: saved.data.isActive,
       mappings: saved.data.mappings,
-    },
+    }),
   });
 });
 
@@ -3297,7 +3330,7 @@ router.put('/numbers/:mappingId', async (req: Request, res: Response) => {
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     mappingId,
-    twilioNumberE164: payload.twilioNumberE164,
+    twilioNumberE164: payload.providerNumberE164,
     label: payload.label,
     isActive: payload.isActive,
   });
@@ -3308,7 +3341,7 @@ router.put('/numbers/:mappingId', async (req: Request, res: Response) => {
       message: updated.message,
       refusalType: 'business',
       httpStatus: 200,
-      data: updated.data,
+      data: normalizeProviderNumberContract(updated.data),
     });
     return;
   }
@@ -3317,14 +3350,14 @@ router.put('/numbers/:mappingId', async (req: Request, res: Response) => {
     code: updated.code,
     message: 'ConnectShyft number mapping updated',
     httpStatus: updated.httpStatus,
-    data: {
+    data: normalizeProviderNumberContract({
       mappingId: updated.data.mappingId,
       orgUnitId: updated.data.orgUnitId,
       twilioNumberE164: updated.data.twilioNumberE164,
       label: updated.data.label,
       isActive: updated.data.isActive,
       mappings: updated.data.mappings,
-    },
+    }),
   });
 });
 
@@ -4085,21 +4118,6 @@ const performOutboundAction = async (
         thread_reopened_by_user: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
       },
     });
-    const outboundDispatchMetadata = buildLifecycleMetadata({
-      tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      actorUserId,
-      threadId,
-      priorState: 'UNCLAIMED',
-      newState: 'UNCLAIMED',
-      action: outboundLifecycleAction,
-      threadReopenedByUser: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-      lifecycleLineage: {
-        prior_state: 'CLOSED',
-        new_state: 'UNCLAIMED',
-        thread_reopened_by_user: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-      },
-    });
     const transitioned = await transitionThreadWithSideEffects({
       actorRoles,
       tenantId: context.tenantId,
@@ -4110,16 +4128,10 @@ const performOutboundAction = async (
       nextState: 'UNCLAIMED',
       syntheticThread: lifecycleContext.syntheticThread,
       detail: lifecycleContext.detail,
-      sideEffects: [
-        {
-          eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-          metadata: reopenedMetadata,
-        },
-        {
-          eventName: resolveOutboundDispatchEventName(outboundAction),
-          metadata: outboundDispatchMetadata,
-        },
-      ],
+      sideEffects: {
+        eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+        metadata: reopenedMetadata,
+      },
     });
 
     if (!transitioned.ok) {
@@ -4145,10 +4157,6 @@ const performOutboundAction = async (
       eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
       metadata: reopenedMetadata,
     });
-    outboundDispatch = buildLifecycleSideEffects({
-      eventName: resolveOutboundDispatchEventName(outboundAction),
-      metadata: outboundDispatchMetadata,
-    });
   } else if (lifecycleContext.detail) {
     thread = buildThreadFromDetailRecord(lifecycleContext.detail);
   } else {
@@ -4168,38 +4176,76 @@ const performOutboundAction = async (
     });
   }
 
-  if (priorState !== 'CLOSED') {
-    const persistedDispatch = await persistOutboundDispatchSideEffects({
-      tenantId: context.tenantId,
-      threadId,
-      actorUserId,
-      eventName: resolveOutboundDispatchEventName(outboundAction),
-      metadata: buildLifecycleMetadata({
+  let providerDispatch: ConnectShyftProviderDispatchResult;
+  try {
+    providerDispatch = outboundAction === 'call'
+      ? await providerSelection.adapter.dispatchOutboundCall({
         tenantId: context.tenantId,
         orgUnitId: context.orgUnitId,
-        actorUserId,
         threadId,
-        priorState: thread.state,
-        newState: thread.state,
-        action: outboundLifecycleAction,
-      }),
-    });
-
-    if (!persistedDispatch.ok) {
-      respondConnectShyftBusinessRefusal(res, {
-        code: persistedDispatch.code,
-        message: persistedDispatch.message,
-        data: {
-          context,
-          threadId,
-        },
+      })
+      : await providerSelection.adapter.dispatchOutboundMessage({
+        tenantId: context.tenantId,
+        orgUnitId: context.orgUnitId,
+        threadId,
       });
-      return;
-    }
+  } catch (error) {
+    respondConnectShyftBusinessRefusal(res, {
+      code: 'CONNECTSHYFT_PROVIDER_DISPATCH_FAILED',
+      message: 'Provider dispatch failed before persistence.',
+      data: {
+        context,
+        threadId,
+        providerResolution: {
+          ...providerSelection.providerResolution,
+          adapterInterfaceVersion: providerSelection.adapter.adapterInterfaceVersion,
+          providerBranchingInDomain: false,
+        },
+        sideEffects: {
+          dispatchAttempted: true,
+          lifecycleMutationApplied: priorState === 'CLOSED',
+          auditPersisted: sideEffectsPersisted,
+        },
+        error: error instanceof Error ? error.message : 'unknown-provider-dispatch-error',
+      },
+    });
+    return;
+  }
 
-    sideEffectsPersisted = persistedDispatch.sideEffectsPersisted;
+  const persistedDispatch = await persistOutboundDispatchSideEffects({
+    tenantId: context.tenantId,
+    threadId,
+    actorUserId,
+    eventName: resolveOutboundDispatchEventName(outboundAction),
+    metadata: buildLifecycleMetadata({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      actorUserId,
+      threadId,
+      priorState: thread.state,
+      newState: thread.state,
+      action: outboundLifecycleAction,
+    }),
+  });
+
+  if (!persistedDispatch.ok) {
+    respondConnectShyftBusinessRefusal(res, {
+      code: persistedDispatch.code,
+      message: persistedDispatch.message,
+      data: {
+        context,
+        threadId,
+      },
+    });
+    return;
+  }
+
+  sideEffectsPersisted = priorState === 'CLOSED'
+    ? sideEffectsPersisted && persistedDispatch.sideEffectsPersisted
+    : persistedDispatch.sideEffectsPersisted;
+  outboundDispatch = persistedDispatch.sideEffects;
+  if (priorState !== 'CLOSED') {
     sideEffects = persistedDispatch.sideEffects;
-    outboundDispatch = persistedDispatch.sideEffects;
   }
 
   const persistedSmsOverride = outboundAction === 'message'
@@ -4217,18 +4263,6 @@ const performOutboundAction = async (
       messageEventName: 'connectshyft.thread.outbound_message_dispatched',
     })
     : null;
-
-  const providerDispatch = outboundAction === 'call'
-    ? await providerSelection.adapter.dispatchOutboundCall({
-      tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      threadId,
-    })
-    : await providerSelection.adapter.dispatchOutboundMessage({
-      tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      threadId,
-    });
 
   const operatorFeedback = priorState === 'CLOSED'
     ? 'Conversation reopened on the same thread before outbound dispatch. Escalation and inactivity timers were reset.'

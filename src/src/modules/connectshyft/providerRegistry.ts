@@ -1,5 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
-import type { Request } from 'express';
+import { createPublicKey, verify } from 'node:crypto';
 import { isConnectShyftTestOverrideEnabled } from './featureFlags';
 
 const DEFAULT_ENABLED_PROVIDERS = ['telnyx'];
@@ -8,8 +7,9 @@ const DISABLED_PROVIDERS_ENV = 'CONNECTSHYFT_DISABLED_PROVIDERS';
 const TEST_ENABLED_PROVIDERS_HEADER = 'x-test-connectshyft-enabled-providers';
 const TEST_DISABLED_PROVIDERS_HEADER = 'x-test-connectshyft-disabled-providers';
 const TEST_REQUESTED_PROVIDER_HEADER = 'x-test-connectshyft-provider-requested';
-const WEBHOOK_SIGNATURE_HEADER = 'x-twilio-signature';
-const WEBHOOK_AUTH_TOKEN_ENV = 'TWILIO_AUTH_TOKEN';
+const TELNYX_SIGNATURE_HEADER = 'telnyx-signature-ed25519';
+const TELNYX_TIMESTAMP_HEADER = 'telnyx-timestamp';
+const TELNYX_PUBLIC_KEY_ENV = 'TELNYX_PUBLIC_KEY';
 
 export type ConnectShyftProviderOperation = 'call' | 'message' | 'webhook';
 export type ConnectShyftProviderResolutionReason =
@@ -83,6 +83,7 @@ type ConnectShyftHeaderReader = {
 
 type ConnectShyftWebhookRequest = ConnectShyftHeaderReader & {
   body: unknown;
+  rawBody?: Buffer | string;
   originalUrl?: string;
   protocol?: string;
   url?: string;
@@ -285,58 +286,70 @@ const buildProviderResolutionRefusal = (input: {
   };
 };
 
-const resolveWebhookRequestUrl = (req: ConnectShyftWebhookRequest): string => {
-  const forwardedProto = normalizeString(req.header('x-forwarded-proto'));
-  const forwardedHost = normalizeString(req.header('x-forwarded-host'));
-  const host = forwardedHost || normalizeString(req.header('host')) || 'localhost';
-  const protocol = forwardedProto
-    ? forwardedProto.split(',')[0].trim()
-    : (normalizeString(req.protocol) || 'http');
-  const path = req.originalUrl || req.url;
-  return `${protocol}://${host}${path}`;
+const readHeader = (req: ConnectShyftHeaderReader, ...names: string[]): string => {
+  for (const name of names) {
+    const resolved = normalizeString(req.header(name));
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return '';
 };
 
-const serializeWebhookPayloadForSignature = (payload: unknown): string => {
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+const resolveWebhookPayloadForSignature = (req: ConnectShyftWebhookRequest): string => {
+  if (typeof req.rawBody === 'string') {
+    return req.rawBody;
+  }
+
+  if (Buffer.isBuffer(req.rawBody)) {
+    return req.rawBody.toString('utf8');
+  }
+
+  if (typeof req.body === 'string') {
+    return req.body;
+  }
+
+  if (!req.body || typeof req.body !== 'object') {
     return '';
   }
 
-  const body = payload as Record<string, unknown>;
-  return Object.keys(body)
-    .sort((a, b) => a.localeCompare(b))
-    .map((key) => {
-      const rawValue = body[key];
-      if (rawValue === null || rawValue === undefined) {
-        return `${key}`;
-      }
-      if (typeof rawValue === 'string') {
-        return `${key}${rawValue}`;
-      }
-      if (typeof rawValue === 'number' || typeof rawValue === 'boolean') {
-        return `${key}${String(rawValue)}`;
-      }
-      return `${key}${JSON.stringify(rawValue)}`;
-    })
-    .join('');
+  try {
+    return JSON.stringify(req.body);
+  } catch (_error) {
+    return '';
+  }
 };
 
-const computeWebhookSignature = (input: {
-  authToken: string;
-  requestUrl: string;
-  payload: unknown;
-}): string => {
-  const base = `${input.requestUrl}${serializeWebhookPayloadForSignature(input.payload)}`;
-  return createHmac('sha1', input.authToken).update(base).digest('base64');
-};
-
-const secureCompareSignature = (actual: string, expected: string): boolean => {
-  const actualBuffer = Buffer.from(actual);
-  const expectedBuffer = Buffer.from(expected);
-  if (actualBuffer.length !== expectedBuffer.length) {
-    return false;
+const parseTelnyxSignatureHeader = (header: string): Buffer | null => {
+  const normalized = normalizeString(header);
+  if (!normalized) {
+    return null;
   }
 
-  return timingSafeEqual(actualBuffer, expectedBuffer);
+  if (/^[a-f0-9]+$/i.test(normalized) && normalized.length % 2 === 0) {
+    return Buffer.from(normalized, 'hex');
+  }
+
+  try {
+    const parsed = Buffer.from(normalized, 'base64');
+    return parsed.length > 0 ? parsed : null;
+  } catch (_error) {
+    return null;
+  }
+};
+
+const resolveTelnyxPublicKey = (): ReturnType<typeof createPublicKey> | null => {
+  const rawKey = normalizeString(process.env[TELNYX_PUBLIC_KEY_ENV]);
+  if (!rawKey) {
+    return null;
+  }
+
+  try {
+    return createPublicKey(rawKey);
+  } catch (_error) {
+    return null;
+  }
 };
 
 const validateTelnyxWebhookSignature = (
@@ -346,39 +359,71 @@ const validateTelnyxWebhookSignature = (
     return { ok: true };
   }
 
-  const authToken = normalizeString(process.env[WEBHOOK_AUTH_TOKEN_ENV]);
-  if (!authToken) {
+  const telnyxPublicKey = resolveTelnyxPublicKey();
+  if (!telnyxPublicKey) {
     return {
       ok: false,
       refusal: {
         code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED',
-        message: 'Webhook signature validation is not configured.',
+        message: 'Webhook signature validation is not configured for Telnyx.',
         refusalType: 'business',
         httpStatus: 503,
       },
     };
   }
 
-  const incomingSignature = normalizeString(req.header(WEBHOOK_SIGNATURE_HEADER));
-  if (!incomingSignature) {
+  const incomingSignature = readHeader(
+    req,
+    TELNYX_SIGNATURE_HEADER,
+    `x-${TELNYX_SIGNATURE_HEADER}`,
+  );
+  const incomingTimestamp = readHeader(
+    req,
+    TELNYX_TIMESTAMP_HEADER,
+    `x-${TELNYX_TIMESTAMP_HEADER}`,
+  );
+  if (!incomingSignature || !incomingTimestamp) {
     return {
       ok: false,
       refusal: {
         code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING',
-        message: 'Webhook signature header is required.',
+        message: 'Telnyx webhook signature headers are required.',
         refusalType: 'client',
         httpStatus: 401,
       },
     };
   }
 
-  const expectedSignature = computeWebhookSignature({
-    authToken,
-    requestUrl: resolveWebhookRequestUrl(req),
-    payload: req.body,
-  });
+  const parsedSignature = parseTelnyxSignatureHeader(incomingSignature);
+  if (!parsedSignature) {
+    return {
+      ok: false,
+      refusal: {
+        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',
+        message: 'Webhook signature validation failed.',
+        refusalType: 'client',
+        httpStatus: 401,
+      },
+    };
+  }
 
-  if (!secureCompareSignature(incomingSignature, expectedSignature)) {
+  const signedPayload = Buffer.from(
+    `${incomingTimestamp}|${resolveWebhookPayloadForSignature(req)}`,
+    'utf8',
+  );
+  let isValidSignature = false;
+  try {
+    isValidSignature = verify(
+      null,
+      signedPayload,
+      telnyxPublicKey,
+      parsedSignature,
+    );
+  } catch (_error) {
+    isValidSignature = false;
+  }
+
+  if (!isValidSignature) {
     return {
       ok: false,
       refusal: {
