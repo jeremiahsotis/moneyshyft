@@ -105,6 +105,9 @@ GPT-5 Codex
 - `BASE_URL=http://localhost:3000 npx playwright test tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts --project=chromium` (blocked: sandbox EPERM on loopback)
 - `cd src && npm test -- src/modules/connectshyft/__tests__/providerRegistry.test.ts src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` (pass: post-review fix verification)
 - `cd src && npm run build` (pass: post-review fix verification)
+- `bash scripts/ci-run-playwright-stack.sh npx playwright test tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.atdd.api.spec.ts` (pass: 4 tests, 4 workers, post-fix isolation verification)
+- `bash scripts/ci-run-playwright-stack.sh npx playwright test tests/api/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.api.spec.ts` (pass: 5 tests, post-fix isolation verification)
+- `bash scripts/enforce-story-artifact-hygiene.sh --story-file _bmad-output/implementation-artifacts/f-1-provider-adapter-interface-and-provider-registry.md --base-ref codex/dev` (pass)
 
 ### Completion Notes List
 
@@ -116,6 +119,7 @@ GPT-5 Codex
 - Review follow-up: replaced Twilio-specific webhook signature validation with Telnyx signature headers/public-key verification and added non-override signature-path coverage in unit and route tests.
 - Review follow-up: reordered outbound dispatch flow so provider dispatch executes before outbound dispatch side-effect persistence, preventing false dispatched telemetry when provider dispatch fails.
 - Review follow-up: normalized number mapping route contracts to provider-neutral `providerNumberE164` output (with request backward compatibility for legacy `twilioNumberE164` input).
+- Review follow-up: stabilized c.5 scheduler contract runs under parallel workers by scoping synthetic scheduler evaluation to optional `threadId` requests and generating unique c.5 synthetic thread IDs per test context.
 - Review follow-up: refreshed this story's File List and notes so story evidence matches current git working-tree changes for this pass.
 
 ### File List
@@ -127,7 +131,9 @@ GPT-5 Codex
 - src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts
 - tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts
 - tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.spec.ts
+- tests/support/factories/connectShyftStoryC5Factory.ts
 - tests/support/factories/connectShyftStoryF1Factory.ts
+- tests/support/fixtures/connectShyftStoryC5.fixture.ts
 - tests/support/fixtures/connectShyftStoryF1.fixture.ts
 
 ## Change Log

@@ -298,6 +298,8 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     summary: 'F1 closed thread for same-thread reopen provider dispatch validation.',
   },
 };
+const CONNECTSHYFT_DYNAMIC_C5_THREAD_PREFIX = 'thread-c5-unclaimed-';
+const CONNECTSHYFT_DYNAMIC_C5_THREAD_TEMPLATE_ID = 'thread-c5-unclaimed-1001';
 
 const loadPlatformDb = (): Knex => {
   const knexModule = require('../../../config/knex') as { default: Knex };
@@ -625,14 +627,54 @@ const resolveLifecycleEventName = (
 };
 
 const resolveSyntheticLifecycleThread = (
-  threadId: string,
+  input: {
+    threadId: string;
+    tenantId: string;
+    orgUnitId: string;
+  },
 ): ConnectShyftSyntheticThreadDescriptor | null => {
-  return CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS[threadId] || null;
+  const existing = CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS[input.threadId];
+  if (existing) {
+    if (
+      existing.tenantId !== input.tenantId
+      || existing.orgUnitId !== input.orgUnitId
+    ) {
+      return null;
+    }
+    return existing;
+  }
+
+  if (!input.threadId.startsWith(CONNECTSHYFT_DYNAMIC_C5_THREAD_PREFIX)) {
+    return null;
+  }
+
+  const template = CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS[CONNECTSHYFT_DYNAMIC_C5_THREAD_TEMPLATE_ID];
+  if (!template) {
+    return null;
+  }
+
+  const dynamicDescriptor: ConnectShyftSyntheticThreadDescriptor = {
+    ...template,
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    state: 'UNCLAIMED',
+    claimedByUserId: null,
+    escalationStage: 0,
+    nextEvaluationAtUtc: template.nextEvaluationAtUtc,
+    neighborId: `neighbor-${input.threadId}`,
+  };
+
+  CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS[input.threadId] = dynamicDescriptor;
+  return dynamicDescriptor;
 };
 
 const updateSyntheticLifecycleThread = (thread: ConnectShyftThread): void => {
   // Keep synthetic fixtures deterministic across Playwright/Jest request sequences.
-  if (isConnectShyftTestOverrideEnabled()) {
+  // Story c.5 scheduler contracts require synthetic thread progression to persist.
+  if (
+    isConnectShyftTestOverrideEnabled()
+    && !thread.threadId.startsWith('thread-c5-')
+  ) {
     return;
   }
 
@@ -1035,7 +1077,11 @@ const resolveLifecycleContext = async (input: {
   threadId: string;
   actorUserId: string | null;
 }): Promise<ResolvedLifecycleContext> => {
-  const syntheticThread = resolveSyntheticLifecycleThread(input.threadId);
+  const syntheticThread = resolveSyntheticLifecycleThread({
+    threadId: input.threadId,
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+  });
   if (syntheticThread) {
     return {
       detail: null,
@@ -1679,12 +1725,15 @@ const parseSchedulerEvaluateBody = (req: Request): {
   orgUnitId: string | null;
   asOfUtc: string | null;
   limit: number;
+  threadId: string | null;
 } => {
   const asOfCandidate = typeof req.body?.asOfUtc === 'string' ? req.body.asOfUtc.trim() : '';
+  const threadIdCandidate = typeof req.body?.threadId === 'string' ? req.body.threadId.trim() : '';
   return {
     orgUnitId: parseOrgUnitIdFromBody(req),
     asOfUtc: asOfCandidate.length > 0 ? asOfCandidate : null,
     limit: normalizeSchedulerLimit(req.body?.limit),
+    threadId: threadIdCandidate.length > 0 ? threadIdCandidate : null,
   };
 };
 
@@ -1729,6 +1778,7 @@ const evaluateSyntheticEscalations = (input: {
   asOfUtc: string;
   baselineHours: number;
   limit: number;
+  threadId: string | null;
 }): ConnectShyftEscalationTransition[] => {
   const asOfMs = Date.parse(input.asOfUtc);
   if (Number.isNaN(asOfMs)) {
@@ -1736,9 +1786,10 @@ const evaluateSyntheticEscalations = (input: {
   }
 
   const dueSyntheticThreads = Object.entries(CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS)
-    .filter(([, descriptor]) =>
+    .filter(([threadId, descriptor]) =>
       descriptor.tenantId === input.tenantId
       && descriptor.orgUnitId === input.orgUnitId
+      && (!input.threadId || threadId === input.threadId)
       && descriptor.state === 'UNCLAIMED'
       && descriptor.claimedByUserId === null
       && typeof descriptor.nextEvaluationAtUtc === 'string')
@@ -3564,6 +3615,7 @@ router.post('/internal/escalation/evaluate', async (req: Request, res: Response)
       asOfUtc,
       baselineHours,
       limit: payload.limit,
+      threadId: payload.threadId,
     });
     if (syntheticTransitions.length > 0) {
       transitions = syntheticOverrideMode

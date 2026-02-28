@@ -11,6 +11,7 @@ export type ConnectShyftFlags = {
 type StoryC5ContextOverrides = {
   tenantId?: string;
   orgUnitId?: string;
+  threadId?: string;
   role?: string;
   userId?: string;
   correlationId?: string;
@@ -71,9 +72,10 @@ const DEFAULT_FLAGS: ConnectShyftFlags = {
 export function createStoryC5Context(
   overrides: StoryC5ContextOverrides = {},
 ): StoryC5Context {
+  const contextSuffix = randomUUID().slice(0, 8);
   const tenantId = overrides.tenantId ?? 'tenant-connectshyft-c5';
   const orgUnitId = overrides.orgUnitId ?? 'org-connectshyft-c5-east';
-  const threadId = 'thread-c5-unclaimed-1001';
+  const threadId = overrides.threadId ?? `thread-c5-unclaimed-${contextSuffix}`;
 
   return {
     storyId: 'c-5',
