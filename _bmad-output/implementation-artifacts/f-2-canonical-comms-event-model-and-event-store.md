@@ -124,6 +124,12 @@ GPT-5 Codex
 - src/src/modules/connectshyft/__tests__/providerRegistry.test.ts
 - src/src/routes/api/v1/connectshyft.ts
 - src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts
+- tests/api/platform/f-2-canonical-comms-event-model-and-event-store.atdd.api.spec.ts
+- tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.atdd.spec.ts
+- tests/support/factories/connectShyftStoryF2Factory.ts
+- tests/support/fixtures/connectShyftStoryF2.fixture.ts
+- tests/api/platform/f-2-canonical-comms-event-model-and-event-store.automate.api.spec.ts
+- tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.automate.spec.ts
 
 ## Change Log
 
