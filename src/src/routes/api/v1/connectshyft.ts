@@ -631,6 +631,11 @@ const resolveSyntheticLifecycleThread = (
 };
 
 const updateSyntheticLifecycleThread = (thread: ConnectShyftThread): void => {
+  // Keep synthetic fixtures deterministic across Playwright/Jest request sequences.
+  if (isConnectShyftTestOverrideEnabled()) {
+    return;
+  }
+
   const descriptor = CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS[thread.threadId];
   if (!descriptor) {
     return;
@@ -1970,12 +1975,20 @@ const normalizeProviderNumberContract = (value: unknown): unknown => {
   Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
     const normalizedEntry = normalizeProviderNumberContract(entry);
     if (key === 'twilioNumberE164') {
+      normalized.twilioNumberE164 = normalizedEntry;
       normalized.providerNumberE164 = normalizedEntry;
       return;
     }
 
+    if (key === 'providerNumberE164') {
+      normalized.providerNumberE164 = normalizedEntry;
+      normalized.twilioNumberE164 = normalizedEntry;
+      return;
+    }
+
     if (key === 'field' && normalizedEntry === 'twilioNumberE164') {
-      normalized[key] = 'providerNumberE164';
+      normalized[key] = 'twilioNumberE164';
+      normalized.providerField = 'providerNumberE164';
       return;
     }
 
@@ -4225,6 +4238,9 @@ const performOutboundAction = async (
       priorState: thread.state,
       newState: thread.state,
       action: outboundLifecycleAction,
+      threadReopenedByUser: priorState === 'CLOSED'
+        ? CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser
+        : null,
     }),
   });
 

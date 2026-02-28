@@ -238,9 +238,9 @@ describe('connectshyft provider adapter registry route integration', () => {
       code: 'CONNECTSHYFT_NUMBER_MAPPING_SAVED',
       data: {
         providerNumberE164,
+        twilioNumberE164: providerNumberE164,
       },
     });
-    expect(createResponse.body?.data).not.toHaveProperty('twilioNumberE164');
   });
 
   it('routes inbound webhook processing through provider adapter translation metadata', async () => {
