@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-02-28T10:38:48Z'
+lastSaved: '2026-03-01T22:00:54Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -2928,3 +2928,171 @@ lastSaved: '2026-02-28T10:38:48Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and maintainability checks.
 - `[TR] Trace Requirements` to map Story f.1 AC coverage across ATDD + automate evidence.
+
+## Story f.4 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/f-4-telnyx-adapter-implementation-and-cutover-guardrails.md`
+  - Existing ATDD files for Story f.4 were not found, so automation targets were generated directly from implemented source + route integration behavior.
+
+### Context Loaded
+- Source and route context loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/modules/connectshyft/providerRegistry.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/scripts/enforce-connectshyft-provider-abstraction-guard.sh`
+- Existing policy harness assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/utils/policyScriptTestHarness.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- API and architecture guidance:
+  - `api-request.md`
+  - `api-testing-patterns.md`
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `playwright-cli.md`
+
+## Story f.4 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` is installed (`1.59.0-alpha-1771104257000`).
+- Exploration was intentionally skipped for this run because Story f.4 scope is provider adapter/runtime behavior + policy guardrail enforcement (API/policy surfaces, no required UI selector discovery).
+- Fallback applied by design: source/artifact-driven target identification.
+
+### Acceptance Criteria to Target Mapping
+- AC1: outbound + inbound Telnyx adapter parity with lifecycle/escalation and envelope invariants.
+- AC2: webhook signature/canonical translation through deterministic correlation + replay-safe pathways.
+- AC3: policy gate blocks Twilio-coupled paths outside provider adapter contracts.
+- AC4: rollout allow-list stage gates remain explicit fail-closed with auditable rollback behavior.
+
+### Selected Test Levels
+- **API** (primary): provider resolution, rollout fail-closed behavior, webhook replay-safety, policy guard execution outcomes.
+- **E2E** (secondary): operator/maintainer journey assertions across staged cutover toggles and webhook replay-safe flow.
+
+### Priority Assignment
+- P0:
+  - closed-thread outbound Telnyx dispatch lifecycle parity
+  - webhook deterministic translation + duplicate suppression
+  - staged allow-list fail-closed refusal
+  - CI policy guard Twilio-coupling block
+- P1:
+  - invalid allow-list fail-closed config path
+  - webhook post-correlation allow-list revalidation
+  - maintainer guardrail diagnostics journey
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.spec.ts`
+- Scope: `critical-paths`
+
+## Story f.4 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-03-01T22-00-54-245Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-03-01T22-00-54-245Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-03-01T22-00-54-245Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 6`
+- E2E subprocess status: `success: true`, `test_count: 3`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed in one run for both levels.
+- Sequential equivalent would require two independent generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story f.4 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts`
+- `tests/e2e/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper assets:
+  - `tests/support/helpers/apiClient.ts`
+  - `tests/support/factories/connectShyftStoryF1Factory.ts`
+  - `tests/support/factories/connectShyftStoryF2Factory.ts`
+  - `tests/support/utils/policyScriptTestHarness.ts`
+- New shared fixture files created: none.
+
+### Summary Metrics
+- Total tests generated: `9`
+  - API tests: `6` (1 file)
+  - E2E tests: `3` (1 file)
+- Priority coverage:
+  - P0: `6`
+  - P1: `3`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-03-01T22-00-54-245Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-03-01T22-00-54-245Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-03-01T22-00-54-245Z.json`
+  - `/tmp/tea-automate-summary-2026-03-01T22-00-54-245Z.json`
+- Persisted under test artifacts:
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-03-01T22-00-54-245Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-03-01T22-00-54-245Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-03-01T22-00-54-245Z.json`
+
+## Story f.4 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated suite execution validation:
+  - `npm run test:e2e -- tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts tests/e2e/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.spec.ts`
+  - Result: `9 passed`.
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) detected.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
+  - no `try/catch` flow-control anti-pattern detected.
+- CLI session cleanup:
+  - no browser CLI session opened for this run.
+- Temp artifacts storage:
+  - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-temp`.
+
+### Key Assumptions
+- ConnectShyft test harness headers (`x-test-connectshyft-*`) remain available for deterministic tenant/orgUnit/provider routing in automated suites.
+- Provider abstraction guard script remains authoritative for direct Twilio-coupling detection within ConnectShyft source scope.
+
+### Risks
+- Policy guardrail assertions use harnessed temporary repositories; branch/policy envelope behavior outside harness assumptions may require additional CI-lane confirmation.
+- Browser-level selector validation was intentionally skipped because Story f.4 scope is API/policy centric; UI contract assertions can be added if a dedicated operator UI surface is introduced.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality and maintainability scoring of the generated f.4 suite.
+- `[TR] Trace Requirements` to map f.4 AC coverage across implementation evidence and automation artifacts.
