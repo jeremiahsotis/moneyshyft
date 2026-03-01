@@ -142,6 +142,11 @@ export function runPolicyScriptInTempRepo(
       true,
     );
     copyFileIfPresent(
+      join(scriptsDir, 'enforce-connectshyft-provider-abstraction-guard.sh'),
+      join(repoDir, 'scripts/enforce-connectshyft-provider-abstraction-guard.sh'),
+      true,
+    );
+    copyFileIfPresent(
       join(scriptsDir, 'enforce-story-status-sync.sh'),
       join(repoDir, 'scripts/enforce-story-status-sync.sh'),
       true,

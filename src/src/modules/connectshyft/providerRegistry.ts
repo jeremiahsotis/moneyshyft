@@ -5,9 +5,11 @@ import { sanitizeConnectShyftCanonicalPayload } from './canonicalEvents';
 const DEFAULT_ENABLED_PROVIDERS = ['telnyx'];
 const ENABLED_PROVIDERS_ENV = 'CONNECTSHYFT_ENABLED_PROVIDERS';
 const DISABLED_PROVIDERS_ENV = 'CONNECTSHYFT_DISABLED_PROVIDERS';
+const PROVIDER_ROLLOUT_ALLOWLIST_ENV = 'CONNECTSHYFT_PROVIDER_ROLLOUT_ALLOWLIST';
 const TEST_ENABLED_PROVIDERS_HEADER = 'x-test-connectshyft-enabled-providers';
 const TEST_DISABLED_PROVIDERS_HEADER = 'x-test-connectshyft-disabled-providers';
 const TEST_REQUESTED_PROVIDER_HEADER = 'x-test-connectshyft-provider-requested';
+const TEST_PROVIDER_ROLLOUT_ALLOWLIST_HEADER = 'x-test-connectshyft-provider-rollout-allowlist';
 const TELNYX_SIGNATURE_HEADER = 'telnyx-signature-ed25519';
 const TELNYX_TIMESTAMP_HEADER = 'telnyx-timestamp';
 const TELNYX_PUBLIC_KEY_ENV = 'TELNYX_PUBLIC_KEY';
@@ -17,6 +19,7 @@ const DEFAULT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS = 300;
 export type ConnectShyftProviderOperation = 'call' | 'message' | 'webhook';
 export type ConnectShyftProviderResolutionReason =
   | 'provider-disabled'
+  | 'provider-not-allowlisted'
   | 'provider-not-registered'
   | 'no-enabled-provider';
 
@@ -95,7 +98,17 @@ type ConnectShyftWebhookRequest = ConnectShyftHeaderReader & {
   originalUrl?: string;
   protocol?: string;
   url?: string;
+  tenantId?: string | null;
+  orgUnitId?: string | null;
 };
+
+type ConnectShyftProviderRolloutAllowlistRule = {
+  tenantIds: string[];
+  orgUnitIds: string[];
+  tenantOrgUnitPairs: string[];
+};
+
+type ConnectShyftProviderRolloutAllowlist = Record<string, ConnectShyftProviderRolloutAllowlistRule>;
 
 export interface ConnectShyftProviderAdapter {
   providerKey: string;
@@ -211,6 +224,60 @@ const parseProviderList = (raw: unknown): string[] => {
   }
 };
 
+const parseNormalizedStringList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const resolved: string[] = [];
+  value.forEach((entry) => {
+    const normalized = normalizeString(entry);
+    if (!normalized || resolved.includes(normalized)) {
+      return;
+    }
+    resolved.push(normalized);
+  });
+  return resolved;
+};
+
+const resolveProviderRolloutAllowlist = (raw: unknown): ConnectShyftProviderRolloutAllowlist => {
+  let candidate: unknown = raw;
+
+  if (typeof candidate === 'string') {
+    const normalized = candidate.trim();
+    if (!normalized) {
+      return {};
+    }
+
+    try {
+      candidate = JSON.parse(normalized);
+    } catch (_error) {
+      return {};
+    }
+  }
+
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+    return {};
+  }
+
+  const resolved: ConnectShyftProviderRolloutAllowlist = {};
+  Object.entries(candidate as Record<string, unknown>).forEach(([providerKey, entry]) => {
+    const normalizedProviderKey = normalizeProviderKey(providerKey);
+    if (!normalizedProviderKey || !entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      return;
+    }
+
+    const rule = entry as Record<string, unknown>;
+    resolved[normalizedProviderKey] = {
+      tenantIds: parseNormalizedStringList(rule.tenantIds),
+      orgUnitIds: parseNormalizedStringList(rule.orgUnitIds),
+      tenantOrgUnitPairs: parseNormalizedStringList(rule.tenantOrgUnitPairs),
+    };
+  });
+
+  return resolved;
+};
+
 const parseBooleanEnv = (value: string | undefined): boolean => {
   if (typeof value !== 'string') {
     return false;
@@ -251,19 +318,25 @@ const resolveProviderRegistryConfig = (
 ): {
   enabledProviders: string[];
   disabledProviders: string[];
+  rolloutAllowlist: ConnectShyftProviderRolloutAllowlist;
 } => {
   if (isConnectShyftTestOverrideEnabled()) {
     const enabledProviders = parseProviderList(req.header(TEST_ENABLED_PROVIDERS_HEADER));
     const disabledProviders = parseProviderList(req.header(TEST_DISABLED_PROVIDERS_HEADER));
+    const rolloutAllowlist = resolveProviderRolloutAllowlist(
+      req.header(TEST_PROVIDER_ROLLOUT_ALLOWLIST_HEADER),
+    );
     return {
       enabledProviders: enabledProviders.length > 0 ? enabledProviders : [...DEFAULT_ENABLED_PROVIDERS],
       disabledProviders,
+      rolloutAllowlist,
     };
   }
 
   return {
     enabledProviders: resolveProvidersFromEnv(ENABLED_PROVIDERS_ENV, DEFAULT_ENABLED_PROVIDERS),
     disabledProviders: resolveProvidersFromEnv(DISABLED_PROVIDERS_ENV),
+    rolloutAllowlist: resolveProviderRolloutAllowlist(process.env[PROVIDER_ROLLOUT_ALLOWLIST_ENV]),
   };
 };
 
@@ -318,6 +391,68 @@ const readHeader = (req: ConnectShyftHeaderReader, ...names: string[]): string =
   }
 
   return '';
+};
+
+const resolveRequestTenantOrgUnit = (
+  req: ConnectShyftWebhookRequest,
+): {
+  tenantId: string;
+  orgUnitId: string;
+} => {
+  const body = req.body && typeof req.body === 'object'
+    ? req.body as Record<string, unknown>
+    : null;
+
+  return {
+    tenantId:
+      normalizeString(req.tenantId)
+      || normalizeString(body?.tenantId)
+      || readHeader(req, 'x-test-connectshyft-tenant-id', 'x-tenant-id'),
+    orgUnitId:
+      normalizeString(req.orgUnitId)
+      || normalizeString(body?.orgUnitId)
+      || readHeader(req, 'x-test-connectshyft-orgunit-id', 'x-orgunit-id'),
+  };
+};
+
+const isProviderAllowedByRolloutAllowlist = (input: {
+  providerKey: string;
+  req: ConnectShyftWebhookRequest;
+  rolloutAllowlist: ConnectShyftProviderRolloutAllowlist;
+}): boolean => {
+  const rule = input.rolloutAllowlist[input.providerKey];
+  if (!rule) {
+    return true;
+  }
+
+  if (
+    rule.tenantIds.length === 0
+    && rule.orgUnitIds.length === 0
+    && rule.tenantOrgUnitPairs.length === 0
+  ) {
+    return false;
+  }
+
+  const { tenantId, orgUnitId } = resolveRequestTenantOrgUnit(input.req);
+  if (!tenantId && !orgUnitId) {
+    return false;
+  }
+
+  const tenantOrgPair = tenantId && orgUnitId ? `${tenantId}::${orgUnitId}` : '';
+  if (rule.tenantOrgUnitPairs.includes('*')) {
+    return true;
+  }
+  if (tenantOrgPair && rule.tenantOrgUnitPairs.includes(tenantOrgPair)) {
+    return true;
+  }
+  if (rule.tenantIds.includes('*') || (tenantId && rule.tenantIds.includes(tenantId))) {
+    return true;
+  }
+  if (rule.orgUnitIds.includes('*') || (orgUnitId && rule.orgUnitIds.includes(orgUnitId))) {
+    return true;
+  }
+
+  return false;
 };
 
 const resolveWebhookPayloadForSignature = (req: ConnectShyftWebhookRequest): string => {
@@ -674,6 +809,19 @@ export const resolveConnectShyftProviderAdapter = (input: {
       message: `Provider "${resolvedProvider}" does not have a registered adapter.`,
       requestedProvider: requestedProvider || resolvedProvider,
       reason: 'provider-not-registered',
+    });
+  }
+
+  if (!isProviderAllowedByRolloutAllowlist({
+    providerKey: resolvedProvider,
+    req: input.req,
+    rolloutAllowlist: registryConfig.rolloutAllowlist,
+  })) {
+    return buildProviderResolutionRefusal({
+      code: 'CONNECTSHYFT_PROVIDER_DISABLED',
+      message: `Provider "${resolvedProvider}" is not allow-listed for this tenant/orgUnit cutover stage.`,
+      requestedProvider: requestedProvider || resolvedProvider,
+      reason: 'provider-not-allowlisted',
     });
   }
 

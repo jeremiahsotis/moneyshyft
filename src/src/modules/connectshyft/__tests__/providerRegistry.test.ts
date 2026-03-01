@@ -10,6 +10,8 @@ const buildRequest = (input?: {
   headers?: HeaderMap;
   body?: Record<string, unknown>;
   rawBody?: string;
+  tenantId?: string;
+  orgUnitId?: string;
 }) => {
   const normalizedHeaders: HeaderMap = {};
   Object.entries(input?.headers || {}).forEach(([key, value]) => {
@@ -22,6 +24,8 @@ const buildRequest = (input?: {
     originalUrl: '/api/v1/connectshyft/webhooks/inbound',
     protocol: 'https',
     url: '/api/v1/connectshyft/webhooks/inbound',
+    tenantId: input?.tenantId,
+    orgUnitId: input?.orgUnitId,
     header: (name: string) => normalizedHeaders[name.toLowerCase()],
   };
 };
@@ -30,11 +34,13 @@ describe('connectshyft provider registry', () => {
   let previousNodeEnv: string | undefined;
   let previousEnableFlags: string | undefined;
   let previousTelnyxPublicKey: string | undefined;
+  let previousProviderRolloutAllowlist: string | undefined;
 
   beforeEach(() => {
     previousNodeEnv = process.env.NODE_ENV;
     previousEnableFlags = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
     previousTelnyxPublicKey = process.env.TELNYX_PUBLIC_KEY;
+    previousProviderRolloutAllowlist = process.env.CONNECTSHYFT_PROVIDER_ROLLOUT_ALLOWLIST;
     process.env.NODE_ENV = 'test';
     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
   });
@@ -43,6 +49,7 @@ describe('connectshyft provider registry', () => {
     process.env.NODE_ENV = previousNodeEnv;
     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = previousEnableFlags;
     process.env.TELNYX_PUBLIC_KEY = previousTelnyxPublicKey;
+    process.env.CONNECTSHYFT_PROVIDER_ROLLOUT_ALLOWLIST = previousProviderRolloutAllowlist;
   });
 
   it('resolves deterministic default provider from enabled registry order', () => {
@@ -152,6 +159,87 @@ describe('connectshyft provider registry', () => {
           auditPersisted: false,
         },
       },
+    });
+  });
+
+  it('fails closed when rollout allow-list excludes the request tenant/orgUnit context', () => {
+    const result = resolveConnectShyftProviderAdapter({
+      req: buildRequest({
+        headers: {
+          'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+          'x-test-connectshyft-provider-rollout-allowlist': JSON.stringify({
+            telnyx: {
+              tenantIds: ['tenant-connectshyft-allowed'],
+              orgUnitIds: ['org-connectshyft-allowed'],
+              tenantOrgUnitPairs: ['tenant-connectshyft-allowed::org-connectshyft-allowed'],
+            },
+          }),
+        },
+        body: {
+          providerKey: 'telnyx',
+        },
+        tenantId: 'tenant-connectshyft-blocked',
+        orgUnitId: 'org-connectshyft-blocked',
+      }),
+      operation: 'call',
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      throw new Error('Expected rollout allow-list refusal for excluded tenant/orgUnit');
+    }
+
+    expect(result.refusal).toMatchObject({
+      code: 'CONNECTSHYFT_PROVIDER_DISABLED',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        providerResolution: {
+          requestedProvider: 'telnyx',
+          resolvedProvider: null,
+          deterministic: true,
+          reason: 'provider-not-allowlisted',
+        },
+        sideEffects: {
+          dispatchAttempted: false,
+          lifecycleMutationApplied: false,
+          auditPersisted: false,
+        },
+      },
+    });
+  });
+
+  it('allows resolution when rollout allow-list includes the request tenant/orgUnit context', () => {
+    const result = resolveConnectShyftProviderAdapter({
+      req: buildRequest({
+        headers: {
+          'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+          'x-test-connectshyft-provider-rollout-allowlist': JSON.stringify({
+            telnyx: {
+              tenantIds: [],
+              orgUnitIds: [],
+              tenantOrgUnitPairs: ['tenant-connectshyft-f1::org-connectshyft-f1-east'],
+            },
+          }),
+        },
+        body: {
+          providerKey: 'telnyx',
+        },
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+      }),
+      operation: 'message',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error('Expected allow-listed provider resolution to succeed');
+    }
+
+    expect(result.providerResolution).toEqual({
+      requestedProvider: 'telnyx',
+      resolvedProvider: 'telnyx',
+      deterministic: true,
     });
   });
 

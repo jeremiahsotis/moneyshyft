@@ -427,6 +427,45 @@ describe('connectshyft provider adapter registry route integration', () => {
     });
   });
 
+  it('fails closed when Telnyx rollout allow-list excludes tenant/orgUnit context', async () => {
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/call')
+      .set(buildHeaders({
+        'x-test-connectshyft-provider-rollout-allowlist': JSON.stringify({
+          telnyx: {
+            tenantIds: ['tenant-connectshyft-allowlist-only'],
+            orgUnitIds: ['org-connectshyft-allowlist-only'],
+            tenantOrgUnitPairs: ['tenant-connectshyft-allowlist-only::org-connectshyft-allowlist-only'],
+          },
+        }),
+      }))
+      .send({
+        orgUnitId: 'org-connectshyft-f1-east',
+        providerKey: 'telnyx',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_PROVIDER_DISABLED',
+      refusalType: 'business',
+      data: {
+        providerResolution: {
+          requestedProvider: 'telnyx',
+          resolvedProvider: null,
+          deterministic: true,
+          reason: 'provider-not-allowlisted',
+        },
+        sideEffects: {
+          dispatchAttempted: false,
+          lifecycleMutationApplied: false,
+          auditPersisted: false,
+        },
+      },
+    });
+  });
+
   it('returns actionable unavailable-provider refusal metadata and preserves thread state', async () => {
     const app = buildApp();
     const headers = buildHeaders();
