@@ -30,6 +30,8 @@ export type ConnectShyftProviderResolution = {
 export type ConnectShyftProviderDispatchResult = {
   providerKey: string;
   channel: 'call' | 'message';
+  providerLegId: string | null;
+  providerMessageId: string | null;
   adapterInvoked: true;
   providerBranchingInDomain: false;
 };
@@ -528,11 +530,20 @@ const toCanonicalEventType = (rawEventType: string): string => {
 };
 
 const buildDispatchResult = (
-  providerKey: string,
-  channel: 'call' | 'message',
+  input: {
+    providerKey: string;
+    channel: 'call' | 'message';
+    threadId: string;
+  },
 ): ConnectShyftProviderDispatchResult => ({
-  providerKey,
-  channel,
+  providerKey: input.providerKey,
+  channel: input.channel,
+  providerLegId: input.channel === 'call'
+    ? `${input.providerKey}-call-leg-${input.threadId}`
+    : null,
+  providerMessageId: input.channel === 'message'
+    ? `${input.providerKey}-message-${input.threadId}`
+    : null,
   adapterInvoked: true,
   providerBranchingInDomain: false,
 });
@@ -543,11 +554,19 @@ const createAdapter = (input: {
 }): ConnectShyftProviderAdapter => ({
   providerKey: input.providerKey,
   adapterInterfaceVersion: 'v1',
-  async dispatchOutboundCall(_dispatchInput) {
-    return buildDispatchResult(input.providerKey, 'call');
+  async dispatchOutboundCall(dispatchInput) {
+    return buildDispatchResult({
+      providerKey: input.providerKey,
+      channel: 'call',
+      threadId: dispatchInput.threadId,
+    });
   },
-  async dispatchOutboundMessage(_dispatchInput) {
-    return buildDispatchResult(input.providerKey, 'message');
+  async dispatchOutboundMessage(dispatchInput) {
+    return buildDispatchResult({
+      providerKey: input.providerKey,
+      channel: 'message',
+      threadId: dispatchInput.threadId,
+    });
   },
   validateInboundWebhookSignature({ req }) {
     if (input.validateInboundWebhookSignature) {

@@ -181,6 +181,8 @@ describe('connectshyft provider registry', () => {
     expect(callDispatch).toMatchObject({
       providerKey: 'telnyx',
       channel: 'call',
+      providerLegId: 'telnyx-call-leg-thread-f1-unclaimed-1001',
+      providerMessageId: null,
       adapterInvoked: true,
       providerBranchingInDomain: false,
     });
@@ -193,6 +195,8 @@ describe('connectshyft provider registry', () => {
     expect(messageDispatch).toMatchObject({
       providerKey: 'telnyx',
       channel: 'message',
+      providerLegId: null,
+      providerMessageId: 'telnyx-message-thread-f1-unclaimed-1001',
       adapterInvoked: true,
       providerBranchingInDomain: false,
     });
