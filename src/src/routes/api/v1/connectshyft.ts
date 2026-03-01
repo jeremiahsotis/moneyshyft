@@ -5150,6 +5150,44 @@ const handleInboundWebhook = async (
   const tenantId = correlation.tenantId;
   const orgUnitId = correlation.orgUnitId;
   const threadId = correlation.threadId;
+  const requestWithRawBody = req as Request & { rawBody?: Buffer | string };
+
+  const rolloutContextValidation = resolveConnectShyftProviderAdapter({
+    req: {
+      header: (name: string) => req.header(name),
+      body: req.body,
+      rawBody: requestWithRawBody.rawBody,
+      originalUrl: req.originalUrl,
+      protocol: req.protocol,
+      url: req.url,
+      tenantId,
+      orgUnitId,
+    },
+    operation: 'webhook',
+    requestedProvider: providerSelection.providerResolution.resolvedProvider,
+  });
+  if (!rolloutContextValidation.ok) {
+    refusal(res, {
+      code: rolloutContextValidation.refusal.code,
+      message: rolloutContextValidation.refusal.message,
+      refusalType: rolloutContextValidation.refusal.refusalType,
+      httpStatus: rolloutContextValidation.refusal.httpStatus,
+      data: {
+        ...(rolloutContextValidation.refusal.data || {}),
+        correlation: {
+          source: correlation.source,
+          deterministic: true,
+          threadId,
+          tenantId,
+          orgUnitId,
+          providerLegId: correlation.providerLegId,
+          providerMessageId: correlation.providerMessageId,
+          providerEventId: correlation.providerEventId,
+        },
+      },
+    });
+    return;
+  }
 
   const webhookReceipt = await recordConnectShyftWebhookReceipt({
     tenantId,

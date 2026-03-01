@@ -110,6 +110,12 @@ type ConnectShyftProviderRolloutAllowlistRule = {
 
 type ConnectShyftProviderRolloutAllowlist = Record<string, ConnectShyftProviderRolloutAllowlistRule>;
 
+type ConnectShyftProviderRolloutAllowlistParseResult = {
+  allowlist: ConnectShyftProviderRolloutAllowlist;
+  configured: boolean;
+  invalid: boolean;
+};
+
 export interface ConnectShyftProviderAdapter {
   providerKey: string;
   adapterInterfaceVersion: 'v1';
@@ -240,34 +246,64 @@ const parseNormalizedStringList = (value: unknown): string[] => {
   return resolved;
 };
 
-const resolveProviderRolloutAllowlist = (raw: unknown): ConnectShyftProviderRolloutAllowlist => {
+const resolveProviderRolloutAllowlist = (raw: unknown): ConnectShyftProviderRolloutAllowlistParseResult => {
   let candidate: unknown = raw;
 
   if (typeof candidate === 'string') {
     const normalized = candidate.trim();
     if (!normalized) {
-      return {};
+      return {
+        allowlist: {},
+        configured: false,
+        invalid: false,
+      };
     }
 
     try {
       candidate = JSON.parse(normalized);
     } catch (_error) {
-      return {};
+      return {
+        allowlist: {},
+        configured: true,
+        invalid: true,
+      };
     }
   }
 
+  if (candidate === null || typeof candidate === 'undefined') {
+    return {
+      allowlist: {},
+      configured: false,
+      invalid: false,
+    };
+  }
+
   if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
-    return {};
+    return {
+      allowlist: {},
+      configured: true,
+      invalid: true,
+    };
   }
 
   const resolved: ConnectShyftProviderRolloutAllowlist = {};
+  let invalid = false;
   Object.entries(candidate as Record<string, unknown>).forEach(([providerKey, entry]) => {
     const normalizedProviderKey = normalizeProviderKey(providerKey);
     if (!normalizedProviderKey || !entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      invalid = true;
       return;
     }
 
     const rule = entry as Record<string, unknown>;
+    if (
+      ('tenantIds' in rule && !Array.isArray(rule.tenantIds))
+      || ('orgUnitIds' in rule && !Array.isArray(rule.orgUnitIds))
+      || ('tenantOrgUnitPairs' in rule && !Array.isArray(rule.tenantOrgUnitPairs))
+    ) {
+      invalid = true;
+      return;
+    }
     resolved[normalizedProviderKey] = {
       tenantIds: parseNormalizedStringList(rule.tenantIds),
       orgUnitIds: parseNormalizedStringList(rule.orgUnitIds),
@@ -275,7 +311,11 @@ const resolveProviderRolloutAllowlist = (raw: unknown): ConnectShyftProviderRoll
     };
   });
 
-  return resolved;
+  return {
+    allowlist: resolved,
+    configured: true,
+    invalid,
+  };
 };
 
 const parseBooleanEnv = (value: string | undefined): boolean => {
@@ -319,24 +359,31 @@ const resolveProviderRegistryConfig = (
   enabledProviders: string[];
   disabledProviders: string[];
   rolloutAllowlist: ConnectShyftProviderRolloutAllowlist;
+  rolloutAllowlistConfigured: boolean;
+  rolloutAllowlistInvalid: boolean;
 } => {
   if (isConnectShyftTestOverrideEnabled()) {
-    const enabledProviders = parseProviderList(req.header(TEST_ENABLED_PROVIDERS_HEADER));
-    const disabledProviders = parseProviderList(req.header(TEST_DISABLED_PROVIDERS_HEADER));
     const rolloutAllowlist = resolveProviderRolloutAllowlist(
       req.header(TEST_PROVIDER_ROLLOUT_ALLOWLIST_HEADER),
     );
+    const enabledProviders = parseProviderList(req.header(TEST_ENABLED_PROVIDERS_HEADER));
+    const disabledProviders = parseProviderList(req.header(TEST_DISABLED_PROVIDERS_HEADER));
     return {
       enabledProviders: enabledProviders.length > 0 ? enabledProviders : [...DEFAULT_ENABLED_PROVIDERS],
       disabledProviders,
-      rolloutAllowlist,
+      rolloutAllowlist: rolloutAllowlist.allowlist,
+      rolloutAllowlistConfigured: rolloutAllowlist.configured,
+      rolloutAllowlistInvalid: rolloutAllowlist.invalid,
     };
   }
 
+  const rolloutAllowlist = resolveProviderRolloutAllowlist(process.env[PROVIDER_ROLLOUT_ALLOWLIST_ENV]);
   return {
     enabledProviders: resolveProvidersFromEnv(ENABLED_PROVIDERS_ENV, DEFAULT_ENABLED_PROVIDERS),
     disabledProviders: resolveProvidersFromEnv(DISABLED_PROVIDERS_ENV),
-    rolloutAllowlist: resolveProviderRolloutAllowlist(process.env[PROVIDER_ROLLOUT_ALLOWLIST_ENV]),
+    rolloutAllowlist: rolloutAllowlist.allowlist,
+    rolloutAllowlistConfigured: rolloutAllowlist.configured,
+    rolloutAllowlistInvalid: rolloutAllowlist.invalid,
   };
 };
 
@@ -419,6 +466,7 @@ const isProviderAllowedByRolloutAllowlist = (input: {
   providerKey: string;
   req: ConnectShyftWebhookRequest;
   rolloutAllowlist: ConnectShyftProviderRolloutAllowlist;
+  deferIfContextMissing: boolean;
 }): boolean => {
   const rule = input.rolloutAllowlist[input.providerKey];
   if (!rule) {
@@ -435,7 +483,7 @@ const isProviderAllowedByRolloutAllowlist = (input: {
 
   const { tenantId, orgUnitId } = resolveRequestTenantOrgUnit(input.req);
   if (!tenantId && !orgUnitId) {
-    return false;
+    return input.deferIfContextMissing;
   }
 
   const tenantOrgPair = tenantId && orgUnitId ? `${tenantId}::${orgUnitId}` : '';
@@ -812,10 +860,20 @@ export const resolveConnectShyftProviderAdapter = (input: {
     });
   }
 
+  if (registryConfig.rolloutAllowlistConfigured && registryConfig.rolloutAllowlistInvalid) {
+    return buildProviderResolutionRefusal({
+      code: 'CONNECTSHYFT_PROVIDER_DISABLED',
+      message: 'Provider rollout allow-list configuration is invalid. Cutover is fail-closed until corrected.',
+      requestedProvider: requestedProvider || resolvedProvider,
+      reason: 'provider-not-allowlisted',
+    });
+  }
+
   if (!isProviderAllowedByRolloutAllowlist({
     providerKey: resolvedProvider,
     req: input.req,
     rolloutAllowlist: registryConfig.rolloutAllowlist,
+    deferIfContextMissing: input.operation === 'webhook',
   })) {
     return buildProviderResolutionRefusal({
       code: 'CONNECTSHYFT_PROVIDER_DISABLED',

@@ -81,7 +81,7 @@ development_status:
   f-1-provider-adapter-interface-and-provider-registry: review
   f-2-canonical-comms-event-model-and-event-store: in-progress
   f-3-provider-leg-message-correlation-fallback-mapping: in-progress
-  f-4-telnyx-adapter-implementation-and-cutover-guardrails: review
+  f-4-telnyx-adapter-implementation-and-cutover-guardrails: done
   epic-f-retrospective: optional
   epic-ux-remediation: in-progress
   ux-r1-mobile-first-inbox-mine-thread-redesign: done

@@ -466,6 +466,68 @@ describe('connectshyft provider adapter registry route integration', () => {
     });
   });
 
+  it('revalidates rollout allow-list against correlated webhook context before side effects', async () => {
+    const app = buildApp();
+    const f2Headers = buildHeaders({
+      'x-test-connectshyft-tenant-id': 'tenant-connectshyft-f2',
+      'x-test-connectshyft-orgunit-id': 'org-connectshyft-f2-east',
+      'x-test-connectshyft-user-id': 'user-connectshyft-f2-operator',
+      'x-test-connectshyft-orgunit-memberships': JSON.stringify(['org-connectshyft-f2-east']),
+    });
+    const callResponse = await request(app)
+      .post('/api/v1/connectshyft/threads/thread-f2-unclaimed-1001/call')
+      .set(f2Headers)
+      .send({
+        orgUnitId: 'org-connectshyft-f2-east',
+        providerKey: 'telnyx',
+      });
+
+    expect(callResponse.status).toBe(200);
+    const providerLegId = callResponse.body?.data?.dispatch?.providerLegId as string;
+    expect(typeof providerLegId).toBe('string');
+    expect(providerLegId.length).toBeGreaterThan(0);
+
+    const webhookResponse = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildHeaders({
+        'x-test-connectshyft-provider-rollout-allowlist': JSON.stringify({
+          telnyx: {
+            tenantOrgUnitPairs: ['tenant-connectshyft-f1::org-connectshyft-f1-east'],
+            tenantIds: [],
+            orgUnitIds: [],
+          },
+        }),
+      }))
+      .send({
+        eventType: 'voice.connected',
+        providerKey: 'telnyx',
+        providerLegId,
+      });
+
+    expect(webhookResponse.status).toBe(200);
+    expect(webhookResponse.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_PROVIDER_DISABLED',
+      refusalType: 'business',
+      data: {
+        providerResolution: {
+          requestedProvider: 'telnyx',
+          resolvedProvider: null,
+          deterministic: true,
+          reason: 'provider-not-allowlisted',
+        },
+        correlation: {
+          source: 'provider_fallback',
+          deterministic: true,
+          tenantId: 'tenant-connectshyft-f2',
+          orgUnitId: 'org-connectshyft-f2-east',
+          threadId: 'thread-f2-unclaimed-1001',
+          providerLegId,
+        },
+      },
+    });
+  });
+
   it('returns actionable unavailable-provider refusal metadata and preserves thread state', async () => {
     const app = buildApp();
     const headers = buildHeaders();

@@ -43,6 +43,7 @@ describe('connectshyft provider registry', () => {
     previousProviderRolloutAllowlist = process.env.CONNECTSHYFT_PROVIDER_ROLLOUT_ALLOWLIST;
     process.env.NODE_ENV = 'test';
     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
+    delete process.env.CONNECTSHYFT_PROVIDER_ROLLOUT_ALLOWLIST;
   });
 
   afterEach(() => {
@@ -240,6 +241,101 @@ describe('connectshyft provider registry', () => {
       requestedProvider: 'telnyx',
       resolvedProvider: 'telnyx',
       deterministic: true,
+    });
+  });
+
+  it('fails closed when rollout allow-list configuration is invalid JSON', () => {
+    const result = resolveConnectShyftProviderAdapter({
+      req: buildRequest({
+        headers: {
+          'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+          'x-test-connectshyft-provider-rollout-allowlist': '{not-valid-json',
+        },
+        body: {
+          providerKey: 'telnyx',
+        },
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+      }),
+      operation: 'call',
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      throw new Error('Expected invalid rollout allow-list configuration to fail closed');
+    }
+
+    expect(result.refusal).toMatchObject({
+      code: 'CONNECTSHYFT_PROVIDER_DISABLED',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        providerResolution: {
+          requestedProvider: 'telnyx',
+          resolvedProvider: null,
+          deterministic: true,
+          reason: 'provider-not-allowlisted',
+        },
+      },
+    });
+  });
+
+  it('defers webhook allow-list gating without context and enforces after context is known', () => {
+    const headers = {
+      'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+      'x-test-connectshyft-provider-rollout-allowlist': JSON.stringify({
+        telnyx: {
+          tenantIds: ['tenant-connectshyft-f2'],
+          orgUnitIds: ['org-connectshyft-f2-east'],
+          tenantOrgUnitPairs: ['tenant-connectshyft-f2::org-connectshyft-f2-east'],
+        },
+      }),
+    };
+
+    const preCorrelation = resolveConnectShyftProviderAdapter({
+      req: buildRequest({
+        headers,
+        body: {
+          providerKey: 'telnyx',
+        },
+      }),
+      operation: 'webhook',
+    });
+
+    expect(preCorrelation.ok).toBe(true);
+    if (!preCorrelation.ok) {
+      throw new Error('Expected webhook provider resolution to defer allow-list gating before correlation context');
+    }
+
+    const postCorrelation = resolveConnectShyftProviderAdapter({
+      req: buildRequest({
+        headers,
+        body: {
+          providerKey: 'telnyx',
+        },
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+      }),
+      operation: 'webhook',
+    });
+
+    expect(postCorrelation.ok).toBe(false);
+    if (postCorrelation.ok) {
+      throw new Error('Expected webhook provider resolution to fail once correlation context is evaluated');
+    }
+
+    expect(postCorrelation.refusal).toMatchObject({
+      code: 'CONNECTSHYFT_PROVIDER_DISABLED',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        providerResolution: {
+          requestedProvider: 'telnyx',
+          resolvedProvider: null,
+          deterministic: true,
+          reason: 'provider-not-allowlisted',
+        },
+      },
     });
   });
 

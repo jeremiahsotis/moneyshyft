@@ -43,15 +43,6 @@ collect_connectshyft_files_from_head() {
   git ls-tree -r --name-only HEAD -- "${CONNECTSHYFT_SCOPE_PATHS[@]}" | sort -u
 }
 
-collect_added_twilio_coupling_lines() {
-  local range="$1"
-  local file="$2"
-
-  git diff --unified=0 --no-color "$range" -- "$file" \
-    | awk '/^\+[^+]/ { sub(/^\+/, "", $0); print }' \
-    | grep -Ein "$TWILIO_COUPLING_PATTERN" || true
-}
-
 collect_file_twilio_coupling_lines() {
   local file="$1"
   grep -Ein "$TWILIO_COUPLING_PATTERN" "$file" || true
@@ -99,7 +90,7 @@ violation_count=0
 violation_output=""
 
 for file in "${changed_files[@]}"; do
-  if [[ "$file" != *.ts ]]; then
+  if [[ ! "$file" =~ \.(ts|tsx|js|jsx|mjs|cjs)$ ]]; then
     continue
   fi
 
@@ -107,11 +98,11 @@ for file in "${changed_files[@]}"; do
     continue
   fi
 
-  if [[ "$scan_mode" == "full" ]]; then
-    matched_lines="$(collect_file_twilio_coupling_lines "$file")"
-  else
-    matched_lines="$(collect_added_twilio_coupling_lines "$compare_range" "$file")"
+  if [[ ! -f "$file" ]]; then
+    continue
   fi
+
+  matched_lines="$(collect_file_twilio_coupling_lines "$file")"
   if [[ -z "$matched_lines" ]]; then
     continue
   fi
