@@ -5,6 +5,7 @@ module.exports = {
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   clearMocks: true,
+  setupFilesAfterEnv: ['<rootDir>/src/__tests__/jest.setup.ts'],
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }],
   },
