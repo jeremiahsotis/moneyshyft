@@ -134,10 +134,16 @@ GPT-5 Codex
 
 - _bmad-output/implementation-artifacts/f-3-provider-leg-message-correlation-fallback-mapping.md
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- src/jest.config.js
+- src/src/__tests__/jest.setup.ts
 - src/src/modules/connectshyft/providerCorrelationMappings.ts
 - src/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts
+- src/src/modules/connectshyft/providerRegistry.ts
+- src/src/modules/connectshyft/__tests__/providerRegistry.test.ts
 - src/src/routes/api/v1/connectshyft.ts
 - src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts
+- src/src/migrations/20260228103000_create_connectshyft_provider_correlation_mappings.ts
+- src/src/migrations/__tests__/connectShyftProviderCorrelationMappingsMigration.test.ts
 - src/src/migrations/20260301113000_scope_provider_correlation_uniqueness_to_tenant.ts
 - src/src/migrations/__tests__/scopeProviderCorrelationUniquenessToTenantMigration.test.ts
 
