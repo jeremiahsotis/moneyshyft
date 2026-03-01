@@ -686,9 +686,10 @@ type ConnectShyftResolvedWebhookCorrelation =
       | 'CONNECTSHYFT_WEBHOOK_CORRELATION_IDENTIFIERS_REQUIRED'
       | 'CONNECTSHYFT_WEBHOOK_CORRELATION_NOT_FOUND'
       | 'CONNECTSHYFT_WEBHOOK_CORRELATION_AMBIGUOUS'
+      | 'CONNECTSHYFT_WEBHOOK_CORRELATION_LOOKUP_UNAVAILABLE'
       | 'CONNECTSHYFT_WEBHOOK_CORRELATION_CONFLICT';
     message: string;
-    reason: 'missing-identifiers' | 'not-found' | 'ambiguous' | 'conflict';
+    reason: 'missing-identifiers' | 'not-found' | 'ambiguous' | 'unavailable' | 'conflict';
     providerLegId: string | null;
     providerMessageId: string | null;
     providerEventId: string | null;
@@ -757,12 +758,13 @@ const extractWebhookProviderIdentifiers = (body: unknown): {
 };
 
 const resolveWebhookCorrelationFailure = (
-  reason: 'missing-identifiers' | 'not-found' | 'ambiguous',
+  reason: 'missing-identifiers' | 'not-found' | 'ambiguous' | 'unavailable',
 ): {
   code:
     | 'CONNECTSHYFT_WEBHOOK_CORRELATION_IDENTIFIERS_REQUIRED'
     | 'CONNECTSHYFT_WEBHOOK_CORRELATION_NOT_FOUND'
-    | 'CONNECTSHYFT_WEBHOOK_CORRELATION_AMBIGUOUS';
+    | 'CONNECTSHYFT_WEBHOOK_CORRELATION_AMBIGUOUS'
+    | 'CONNECTSHYFT_WEBHOOK_CORRELATION_LOOKUP_UNAVAILABLE';
   message: string;
 } => {
   if (reason === 'missing-identifiers') {
@@ -775,6 +777,12 @@ const resolveWebhookCorrelationFailure = (
     return {
       code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_AMBIGUOUS',
       message: 'Inbound webhook correlation is ambiguous across provider identifiers.',
+    };
+  }
+  if (reason === 'unavailable') {
+    return {
+      code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_LOOKUP_UNAVAILABLE',
+      message: 'Inbound webhook correlation lookup is temporarily unavailable.',
     };
   }
   return {
@@ -799,6 +807,7 @@ const resolveInboundWebhookCorrelation = async (input: {
       providerName: input.providerName,
       providerLegId: providerIdentifiers.providerLegId,
       providerMessageId: providerIdentifiers.providerMessageId,
+      tenantId,
       db: loadPlatformDb(),
     });
 
@@ -837,6 +846,7 @@ const resolveInboundWebhookCorrelation = async (input: {
     providerName: input.providerName,
     providerLegId: providerIdentifiers.providerLegId,
     providerMessageId: providerIdentifiers.providerMessageId,
+    tenantId: tenantId || null,
     db: loadPlatformDb(),
   });
   if (!fallback.ok) {
@@ -2135,8 +2145,12 @@ const persistOutboundProviderIdentifierMappings = async (input: {
   canonicalEventId: string;
 }): Promise<{
   deterministic: true;
-  callLegMapping: 'created' | 'duplicate' | 'ignored';
-  messageMapping: 'created' | 'duplicate' | 'ignored';
+  callLegMapping: 'created' | 'duplicate' | 'ignored' | 'error';
+  messageMapping: 'created' | 'duplicate' | 'ignored' | 'error';
+  error: {
+    code: 'CONNECTSHYFT_PROVIDER_CORRELATION_PERSISTENCE_UNAVAILABLE';
+    message: string;
+  } | null;
 }> => {
   const callLegMappingResult = input.dispatch.providerLegId
     ? await recordConnectShyftProviderIdentifierMapping({
@@ -2168,6 +2182,17 @@ const persistOutboundProviderIdentifierMappings = async (input: {
     deterministic: true,
     callLegMapping: callLegMappingResult.status,
     messageMapping: messageMappingResult.status,
+    error: callLegMappingResult.status === 'error'
+      ? {
+        code: callLegMappingResult.errorCode || 'CONNECTSHYFT_PROVIDER_CORRELATION_PERSISTENCE_UNAVAILABLE',
+        message: callLegMappingResult.errorMessage || 'Provider correlation mapping persistence unavailable.',
+      }
+      : messageMappingResult.status === 'error'
+        ? {
+          code: messageMappingResult.errorCode || 'CONNECTSHYFT_PROVIDER_CORRELATION_PERSISTENCE_UNAVAILABLE',
+          message: messageMappingResult.errorMessage || 'Provider correlation mapping persistence unavailable.',
+        }
+        : null,
   };
 };
 
@@ -4904,6 +4929,34 @@ const performOutboundAction = async (
     dispatch: providerDispatch,
     canonicalEventId: canonicalEvent.eventId,
   });
+  if (correlationMapping.error) {
+    respondConnectShyftBusinessRefusal(res, {
+      code: correlationMapping.error.code,
+      message: 'Provider dispatch completed but correlation mapping persistence is unavailable.',
+      data: {
+        context,
+        threadId,
+        providerResolution: {
+          ...providerSelection.providerResolution,
+          adapterInterfaceVersion: providerSelection.adapter.adapterInterfaceVersion,
+          providerBranchingInDomain: false,
+        },
+        correlationMapping: {
+          deterministic: true,
+          callLegMapping: correlationMapping.callLegMapping,
+          messageMapping: correlationMapping.messageMapping,
+        },
+        sideEffects: {
+          dispatchAttempted: true,
+          lifecycleMutationApplied: priorState === 'CLOSED',
+          auditPersisted: sideEffectsPersisted,
+          canonicalEventPersisted: true,
+          correlationMappingPersisted: false,
+        },
+      },
+    });
+    return;
+  }
 
   const operatorFeedback = priorState === 'CLOSED'
     ? 'Conversation reopened on the same thread before outbound dispatch. Escalation and inactivity timers were reset.'
@@ -5109,6 +5162,45 @@ const handleInboundWebhook = async (
     providerMessageId: correlation.providerMessageId,
     db: loadPlatformDb(),
   });
+  if (webhookReceipt.error) {
+    refusal(res, {
+      code: webhookReceipt.error.code,
+      message: 'Inbound webhook correlation resolved but receipt persistence is unavailable.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        providerResolution: {
+          ...providerSelection.providerResolution,
+          adapterInvoked: true,
+        },
+        correlation: {
+          source: correlation.source,
+          deterministic: true,
+          threadId,
+          tenantId,
+          orgUnitId,
+          providerLegId: correlation.providerLegId,
+          providerMessageId: correlation.providerMessageId,
+          providerEventId: correlation.providerEventId,
+        },
+        replaySafe: {
+          duplicate: false,
+          suppressedDomainWrites: false,
+          dedupeKey: webhookReceipt.dedupeKey,
+        },
+        sideEffects: {
+          lifecycleMutationApplied: false,
+          canonicalEventPersisted: false,
+          outboxPersisted: false,
+        },
+        timelineOutcome: {
+          eventName: null,
+          routingDecision: 'refused',
+        },
+      },
+    });
+    return;
+  }
   if (webhookReceipt.duplicate) {
     success(res, {
       code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',

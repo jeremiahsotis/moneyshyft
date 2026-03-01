@@ -8,7 +8,8 @@ export type ConnectShyftProviderIdentifierKind = 'call_leg' | 'message';
 export type ConnectShyftProviderCorrelationRefusalReason =
   | 'missing-identifiers'
   | 'not-found'
-  | 'ambiguous';
+  | 'ambiguous'
+  | 'unavailable';
 
 export type ConnectShyftProviderIdentifierMapping = {
   tenantId: string;
@@ -92,6 +93,15 @@ const normalizeIdentifierKind = (value: unknown): ConnectShyftProviderIdentifier
 };
 
 const buildMappingKey = (
+  tenantId: string,
+  providerName: string,
+  identifierKind: ConnectShyftProviderIdentifierKind,
+  providerIdentifier: string,
+): string => {
+  return `${tenantId}|${providerName}|${identifierKind}|${providerIdentifier}`;
+};
+
+const buildMappingLookupKey = (
   providerName: string,
   identifierKind: ConnectShyftProviderIdentifierKind,
   providerIdentifier: string,
@@ -173,20 +183,47 @@ const mapDbRowToRecord = (
   };
 };
 
-const findInMemoryMapping = (input: {
+const findInMemoryMappings = (input: {
+  tenantId?: string | null;
   providerName: string;
   identifierKind: ConnectShyftProviderIdentifierKind;
   providerIdentifier: string;
-}): ConnectShyftProviderIdentifierMappingRecord | null => {
-  const key = buildMappingKey(input.providerName, input.identifierKind, input.providerIdentifier);
-  return inMemoryProviderIdentifierMappings.get(key) || null;
+}): ConnectShyftProviderIdentifierMappingRecord[] => {
+  const tenantId = normalizeString(input.tenantId || null);
+  const lookupKey = buildMappingLookupKey(
+    input.providerName,
+    input.identifierKind,
+    input.providerIdentifier,
+  );
+  const matches: ConnectShyftProviderIdentifierMappingRecord[] = [];
+  for (const record of inMemoryProviderIdentifierMappings.values()) {
+    if (
+      record.providerName === input.providerName
+      && record.identifierKind === input.identifierKind
+      && record.providerIdentifier === input.providerIdentifier
+      && (!tenantId || record.tenantId === tenantId)
+      && buildMappingLookupKey(
+        record.providerName,
+        record.identifierKind,
+        record.providerIdentifier,
+      ) === lookupKey
+    ) {
+      matches.push(record);
+    }
+  }
+  return matches;
 };
 
 const saveInMemoryMapping = (record: ConnectShyftProviderIdentifierMappingRecord): {
   status: 'created' | 'duplicate';
   mapping: ConnectShyftProviderIdentifierMapping;
 } => {
-  const key = buildMappingKey(record.providerName, record.identifierKind, record.providerIdentifier);
+  const key = buildMappingKey(
+    record.tenantId,
+    record.providerName,
+    record.identifierKind,
+    record.providerIdentifier,
+  );
   const existing = inMemoryProviderIdentifierMappings.get(key);
   if (existing) {
     return {
@@ -222,7 +259,7 @@ const saveDbMapping = async (input: {
       internal_reference_id: input.record.internalReferenceId,
       created_at_utc: input.record.createdAtUtc,
     })
-    .onConflict(['provider_name', 'identifier_kind', 'provider_identifier'])
+    .onConflict(['tenant_id', 'provider_name', 'identifier_kind', 'provider_identifier'])
     .ignore()
     .returning([
       'tenant_id',
@@ -247,6 +284,7 @@ const saveDbMapping = async (input: {
     .withSchema('connectshyft')
     .table(PROVIDER_IDENTIFIER_MAPPINGS_TABLE)
     .where({
+      tenant_id: input.record.tenantId,
       provider_name: input.record.providerName,
       identifier_kind: input.record.identifierKind,
       provider_identifier: input.record.providerIdentifier,
@@ -278,32 +316,41 @@ const saveDbMapping = async (input: {
   };
 };
 
-const findDbMapping = async (input: {
+const findDbMappings = async (input: {
   db: Knex;
+  tenantId?: string | null;
   providerName: string;
   identifierKind: ConnectShyftProviderIdentifierKind;
   providerIdentifier: string;
-}): Promise<ConnectShyftProviderIdentifierMappingRecord | null> => {
-  const row = await input.db
+}): Promise<ConnectShyftProviderIdentifierMappingRecord[]> => {
+  const query = input.db
     .withSchema('connectshyft')
     .table(PROVIDER_IDENTIFIER_MAPPINGS_TABLE)
     .where({
       provider_name: input.providerName,
       identifier_kind: input.identifierKind,
       provider_identifier: input.providerIdentifier,
-    })
-    .first([
-      'tenant_id',
-      'org_unit_id',
-      'thread_id',
-      'provider_name',
-      'identifier_kind',
-      'provider_identifier',
-      'internal_reference_id',
-      'created_at_utc',
-    ]);
+    });
 
-  return mapDbRowToRecord(row as ConnectShyftProviderMappingRow | null);
+  const tenantId = normalizeString(input.tenantId || null);
+  if (tenantId) {
+    query.andWhere('tenant_id', tenantId);
+  }
+
+  const rows = await query.select([
+    'tenant_id',
+    'org_unit_id',
+    'thread_id',
+    'provider_name',
+    'identifier_kind',
+    'provider_identifier',
+    'internal_reference_id',
+    'created_at_utc',
+  ]);
+
+  return rows
+    .map((row) => mapDbRowToRecord(row as ConnectShyftProviderMappingRow))
+    .filter((record): record is ConnectShyftProviderIdentifierMappingRecord => record !== null);
 };
 
 const toCorrelationResolution = (input: {
@@ -378,8 +425,10 @@ export const recordConnectShyftProviderIdentifierMapping = async (input: {
   createdAtUtc?: string;
   db?: Knex;
 }): Promise<{
-  status: 'created' | 'duplicate' | 'ignored';
+  status: 'created' | 'duplicate' | 'ignored' | 'error';
   mapping: ConnectShyftProviderIdentifierMapping | null;
+  errorCode?: 'CONNECTSHYFT_PROVIDER_CORRELATION_PERSISTENCE_UNAVAILABLE';
+  errorMessage?: string;
 }> => {
   const providerName = normalizeProviderName(input.providerName);
   const providerIdentifier = normalizeString(input.providerIdentifier);
@@ -432,11 +481,14 @@ export const recordConnectShyftProviderIdentifierMapping = async (input: {
       status: saved.status,
       mapping: saved.mapping,
     };
-  } catch (_error) {
-    const saved = saveInMemoryMapping(record);
+  } catch (error) {
     return {
-      status: saved.status,
-      mapping: saved.mapping,
+      status: 'error',
+      mapping: null,
+      errorCode: 'CONNECTSHYFT_PROVIDER_CORRELATION_PERSISTENCE_UNAVAILABLE',
+      errorMessage: error instanceof Error
+        ? error.message
+        : 'Provider correlation mapping persistence unavailable.',
     };
   }
 };
@@ -445,11 +497,13 @@ export const resolveConnectShyftProviderCorrelationByIdentifiers = async (input:
   providerName: string;
   providerLegId?: string | null;
   providerMessageId?: string | null;
+  tenantId?: string | null;
   db?: Knex;
 }): Promise<ConnectShyftProviderCorrelationLookupResult> => {
   const providerName = normalizeProviderName(input.providerName);
   const providerLegId = normalizeString(input.providerLegId || null);
   const providerMessageId = normalizeString(input.providerMessageId || null);
+  const tenantId = normalizeString(input.tenantId || null);
 
   if (!providerName || (!providerLegId && !providerMessageId)) {
     return {
@@ -458,11 +512,16 @@ export const resolveConnectShyftProviderCorrelationByIdentifiers = async (input:
     };
   }
 
-  let callLegMapping: ConnectShyftProviderIdentifierMappingRecord | null = null;
-  let messageMapping: ConnectShyftProviderIdentifierMappingRecord | null = null;
+  let callLegMappings: ConnectShyftProviderIdentifierMappingRecord[] = [];
+  let messageMappings: ConnectShyftProviderIdentifierMappingRecord[] = [];
+  const dbScopeTenantId = tenantId && UUID_PATTERN.test(tenantId)
+    ? tenantId
+    : null;
+  const canQueryDb = Boolean(input.db && (!tenantId || dbScopeTenantId));
 
   if (providerLegId) {
-    callLegMapping = findInMemoryMapping({
+    callLegMappings = findInMemoryMappings({
+      tenantId,
       providerName,
       identifierKind: 'call_leg',
       providerIdentifier: providerLegId,
@@ -470,68 +529,163 @@ export const resolveConnectShyftProviderCorrelationByIdentifiers = async (input:
   }
 
   if (providerMessageId) {
-    messageMapping = findInMemoryMapping({
+    messageMappings = findInMemoryMappings({
+      tenantId,
       providerName,
       identifierKind: 'message',
       providerIdentifier: providerMessageId,
     });
   }
 
-  if (input.db && providerLegId && !callLegMapping) {
+  if (canQueryDb && providerLegId && callLegMappings.length === 0) {
     try {
-      callLegMapping = await findDbMapping({
-        db: input.db,
+      callLegMappings = await findDbMappings({
+        db: input.db as Knex,
+        tenantId: dbScopeTenantId,
         providerName,
         identifierKind: 'call_leg',
         providerIdentifier: providerLegId,
       });
     } catch (_error) {
-      callLegMapping = callLegMapping || null;
+      return {
+        ok: false,
+        reason: 'unavailable',
+      };
     }
   }
 
-  if (input.db && providerMessageId && !messageMapping) {
+  if (canQueryDb && providerMessageId && messageMappings.length === 0) {
     try {
-      messageMapping = await findDbMapping({
-        db: input.db,
+      messageMappings = await findDbMappings({
+        db: input.db as Knex,
+        tenantId: dbScopeTenantId,
         providerName,
         identifierKind: 'message',
         providerIdentifier: providerMessageId,
       });
     } catch (_error) {
-      messageMapping = messageMapping || null;
+      return {
+        ok: false,
+        reason: 'unavailable',
+      };
     }
   }
 
-  if (callLegMapping && messageMapping && mappingsConflict(callLegMapping, messageMapping)) {
+  const contextKey = (mapping: ConnectShyftProviderIdentifierMappingRecord): string => {
+    return `${mapping.tenantId}|${mapping.orgUnitId}|${mapping.threadId}`;
+  };
+
+  const dedupeMappingsByContext = (
+    mappings: ConnectShyftProviderIdentifierMappingRecord[],
+  ): Map<string, ConnectShyftProviderIdentifierMappingRecord> => {
+    const deduped = new Map<string, ConnectShyftProviderIdentifierMappingRecord>();
+    mappings.forEach((mapping) => {
+      const key = contextKey(mapping);
+      if (!deduped.has(key)) {
+        deduped.set(key, mapping);
+      }
+    });
+    return deduped;
+  };
+
+  const callLegByContext = dedupeMappingsByContext(callLegMappings);
+  const messageByContext = dedupeMappingsByContext(messageMappings);
+  const callLegContextKeys = Array.from(callLegByContext.keys());
+  const messageContextKeys = Array.from(messageByContext.keys());
+  const hasCallLegInput = Boolean(providerLegId);
+  const hasMessageInput = Boolean(providerMessageId);
+
+  if (hasCallLegInput && hasMessageInput) {
+    const consensusContexts = callLegContextKeys.filter((key) => messageByContext.has(key));
+
+    if (consensusContexts.length === 1) {
+      const consensusKey = consensusContexts[0];
+      return toCorrelationResolution({
+        callLegMapping: callLegByContext.get(consensusKey) || null,
+        messageMapping: messageByContext.get(consensusKey) || null,
+        source: 'provider_consensus',
+      });
+    }
+
+    if (consensusContexts.length > 1) {
+      return {
+        ok: false,
+        reason: 'ambiguous',
+      };
+    }
+
+    if (callLegByContext.size > 0 && messageByContext.size > 0) {
+      const [callLegCandidate] = Array.from(callLegByContext.values());
+      const [messageCandidate] = Array.from(messageByContext.values());
+      if (callLegCandidate && messageCandidate && mappingsConflict(callLegCandidate, messageCandidate)) {
+        return {
+          ok: false,
+          reason: 'ambiguous',
+        };
+      }
+    }
+
+    if (callLegByContext.size > 1 || messageByContext.size > 1) {
+      return {
+        ok: false,
+        reason: 'ambiguous',
+      };
+    }
+
+    if (callLegByContext.size === 1 && messageByContext.size === 0) {
+      return toCorrelationResolution({
+        callLegMapping: Array.from(callLegByContext.values())[0],
+        messageMapping: null,
+        source: 'provider_leg_id',
+      });
+    }
+
+    if (messageByContext.size === 1 && callLegByContext.size === 0) {
+      return toCorrelationResolution({
+        callLegMapping: null,
+        messageMapping: Array.from(messageByContext.values())[0],
+        source: 'provider_message_id',
+      });
+    }
+
     return {
       ok: false,
-      reason: 'ambiguous',
+      reason: 'not-found',
     };
   }
 
-  if (callLegMapping && messageMapping) {
-    return toCorrelationResolution({
-      callLegMapping,
-      messageMapping,
-      source: 'provider_consensus',
-    });
+  if (hasCallLegInput) {
+    if (callLegByContext.size > 1) {
+      return {
+        ok: false,
+        reason: 'ambiguous',
+      };
+    }
+
+    if (callLegByContext.size === 1) {
+      return toCorrelationResolution({
+        callLegMapping: Array.from(callLegByContext.values())[0],
+        messageMapping: null,
+        source: 'provider_leg_id',
+      });
+    }
   }
 
-  if (callLegMapping) {
-    return toCorrelationResolution({
-      callLegMapping,
-      messageMapping: null,
-      source: 'provider_leg_id',
-    });
-  }
+  if (hasMessageInput) {
+    if (messageByContext.size > 1) {
+      return {
+        ok: false,
+        reason: 'ambiguous',
+      };
+    }
 
-  if (messageMapping) {
-    return toCorrelationResolution({
-      callLegMapping: null,
-      messageMapping,
-      source: 'provider_message_id',
-    });
+    if (messageByContext.size === 1) {
+      return toCorrelationResolution({
+        callLegMapping: null,
+        messageMapping: Array.from(messageByContext.values())[0],
+        source: 'provider_message_id',
+      });
+    }
   }
 
   return {
@@ -554,6 +708,10 @@ export const recordConnectShyftWebhookReceipt = async (input: {
   deterministic: true;
   duplicate: boolean;
   dedupeKey: string | null;
+  error?: {
+    code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_PERSISTENCE_UNAVAILABLE';
+    message: string;
+  };
 }> => {
   const providerName = normalizeProviderName(input.providerName);
   const tenantId = normalizeString(input.tenantId);
@@ -578,7 +736,7 @@ export const recordConnectShyftWebhookReceipt = async (input: {
     };
   }
 
-  const inMemoryReceiptKey = `${providerName}|${dedupeKey}`;
+  const inMemoryReceiptKey = `${tenantId}|${providerName}|${dedupeKey}`;
   if (!shouldUseDbForWebhookReceipt({ tenantId, threadId }, input.db)) {
     if (inMemoryWebhookReceiptKeys.has(inMemoryReceiptKey)) {
       return {
@@ -615,7 +773,7 @@ export const recordConnectShyftWebhookReceipt = async (input: {
         canonical_event_type: canonicalEventType,
         dedupe_key: dedupeKey,
       })
-      .onConflict(['provider_name', 'dedupe_key'])
+      .onConflict(['tenant_id', 'provider_name', 'dedupe_key'])
       .ignore()
       .returning(['id']);
 
@@ -632,19 +790,17 @@ export const recordConnectShyftWebhookReceipt = async (input: {
       duplicate: true,
       dedupeKey,
     };
-  } catch (_error) {
-    if (inMemoryWebhookReceiptKeys.has(inMemoryReceiptKey)) {
-      return {
-        deterministic: true,
-        duplicate: true,
-        dedupeKey,
-      };
-    }
-    inMemoryWebhookReceiptKeys.add(inMemoryReceiptKey);
+  } catch (error) {
     return {
       deterministic: true,
       duplicate: false,
       dedupeKey,
+      error: {
+        code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_PERSISTENCE_UNAVAILABLE',
+        message: error instanceof Error
+          ? error.message
+          : 'Webhook receipt persistence unavailable.',
+      },
     };
   }
 };

@@ -3,6 +3,7 @@ import { generateKeyPairSync, sign as signPayload } from 'node:crypto';
 import request from 'supertest';
 import * as PlatformAdminService from '../../../../services/PlatformAdminService';
 import * as ProviderRegistry from '../../../../modules/connectshyft/providerRegistry';
+import db from '../../../../config/knex';
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings';
 import { responseEnvelope } from '../../../../platform/middleware/responseEnvelope';
 import connectShyftRouter from '../connectshyft';
@@ -118,7 +119,7 @@ describe('connectshyft provider adapter registry route integration', () => {
     });
   });
 
-  afterAll(() => {
+  afterAll(async () => {
     entitlementSpy.mockRestore();
     process.env.NODE_ENV = previousNodeEnv;
     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = previousOverrideFlag;
@@ -127,6 +128,11 @@ describe('connectshyft provider adapter registry route integration', () => {
     process.env.CONNECTSHYFT_INBOX_ENABLED = previousConnectShyftInboxEnabled;
     process.env.CONNECTSHYFT_ESCALATION_ENABLED = previousConnectShyftEscalationEnabled;
     process.env.CONNECTSHYFT_WEBHOOKS_ENABLED = previousConnectShyftWebhooksEnabled;
+    try {
+      await db.destroy();
+    } catch (_error) {
+      // ignore teardown close errors in test cleanup
+    }
   });
 
   it('dispatches outbound call through deterministic provider adapter resolution metadata', async () => {
@@ -580,6 +586,107 @@ describe('connectshyft provider adapter registry route integration', () => {
           duplicate: false,
           suppressedDomainWrites: false,
         },
+        timeline: {
+          routingDecision: 'accepted',
+        },
+      },
+    });
+  });
+
+  it('returns deterministic conflict refusal when full metadata disagrees with provider fallback mapping', async () => {
+    const app = buildApp();
+    const callResponse = await request(app)
+      .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/call')
+      .set(buildHeaders())
+      .send({
+        orgUnitId: 'org-connectshyft-f1-east',
+        providerKey: 'telnyx',
+      });
+
+    expect(callResponse.status).toBe(200);
+    const providerLegId = callResponse.body?.data?.dispatch?.providerLegId as string;
+    expect(typeof providerLegId).toBe('string');
+
+    const webhookResponse = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildHeaders())
+      .send({
+        eventType: 'voice.connected',
+        providerKey: 'telnyx',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        threadId: 'thread-f1-claimed-1002',
+        providerLegId,
+      });
+
+    expect(webhookResponse.status).toBe(200);
+    expect(webhookResponse.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_CONFLICT',
+      refusalType: 'business',
+      data: {
+        correlation: {
+          deterministic: true,
+          reason: 'conflict',
+          providerLegId,
+        },
+        sideEffects: {
+          lifecycleMutationApplied: false,
+          canonicalEventPersisted: false,
+          outboxPersisted: false,
+        },
+        timelineOutcome: {
+          eventName: null,
+          routingDecision: 'refused',
+        },
+      },
+    });
+  });
+
+  it('returns deterministic conflict refusal when partial metadata disagrees with provider fallback mapping', async () => {
+    const app = buildApp();
+    const callResponse = await request(app)
+      .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/call')
+      .set(buildHeaders())
+      .send({
+        orgUnitId: 'org-connectshyft-f1-east',
+        providerKey: 'telnyx',
+      });
+
+    expect(callResponse.status).toBe(200);
+    const providerLegId = callResponse.body?.data?.dispatch?.providerLegId as string;
+    expect(typeof providerLegId).toBe('string');
+
+    const webhookResponse = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildHeaders())
+      .send({
+        eventType: 'voice.connected',
+        providerKey: 'telnyx',
+        threadId: 'thread-f1-closed-1003',
+        providerLegId,
+      });
+
+    expect(webhookResponse.status).toBe(200);
+    expect(webhookResponse.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_CONFLICT',
+      refusalType: 'business',
+      data: {
+        correlation: {
+          deterministic: true,
+          reason: 'conflict',
+          providerLegId,
+        },
+        sideEffects: {
+          lifecycleMutationApplied: false,
+          canonicalEventPersisted: false,
+          outboxPersisted: false,
+        },
+        timelineOutcome: {
+          eventName: null,
+          routingDecision: 'refused',
+        },
       },
     });
   });
@@ -608,6 +715,10 @@ describe('connectshyft provider adapter registry route integration', () => {
           lifecycleMutationApplied: false,
           canonicalEventPersisted: false,
           outboxPersisted: false,
+        },
+        timelineOutcome: {
+          eventName: null,
+          routingDecision: 'refused',
         },
       },
     });
@@ -674,6 +785,10 @@ describe('connectshyft provider adapter registry route integration', () => {
       },
     });
     expect(duplicate.body.data).not.toHaveProperty('canonicalEvent');
+    expect(duplicate.body.data).not.toHaveProperty('timeline');
+    expect(duplicate.body.data).not.toHaveProperty('audit');
+    expect(duplicate.body.data).not.toHaveProperty('outbox');
+    expect(duplicate.body.data).not.toHaveProperty('lifecycle');
   });
 
   it('returns deterministic refusal when provider dispatch fails before side-effect persistence', async () => {
