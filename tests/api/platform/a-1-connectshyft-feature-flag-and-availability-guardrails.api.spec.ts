@@ -182,6 +182,9 @@ test.describe(
         path: storyA1Context.paths.webhookSms,
         headers: storyA1AllEnabledHeaders,
         data: {
+          tenantId: storyA1Context.tenantId,
+          orgUnitId: storyA1Context.orgUnitId,
+          threadId: ensuredThreadId,
           sid: 'SM1234567890-ALLOW',
           from: '+12605550123',
           to: '+12605550999',

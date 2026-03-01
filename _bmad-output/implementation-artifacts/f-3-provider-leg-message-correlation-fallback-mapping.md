@@ -146,6 +146,7 @@ GPT-5 Codex
 - src/src/migrations/__tests__/connectShyftProviderCorrelationMappingsMigration.test.ts
 - src/src/migrations/20260301113000_scope_provider_correlation_uniqueness_to_tenant.ts
 - src/src/migrations/__tests__/scopeProviderCorrelationUniquenessToTenantMigration.test.ts
+- tests/api/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.api.spec.ts
 
 ## Senior Developer Review (AI)
 
