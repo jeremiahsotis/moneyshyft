@@ -128,6 +128,7 @@ GPT-5 Codex
 - `npx playwright test tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts --project=chromium`
 - `npx playwright test tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts --project=chromium`
 - `cd src && MONEYSHYFT_TEST_DATABASE_URL='postgresql://jeremiahotis:Oiruueu12@127.0.0.1:5432/moneyshyft' npm test -- src/src/modules/connectshyft/__tests__/threads.test.ts src/src/modules/connectshyft/__tests__/threads.contract.test.ts`
+- `npx playwright test --list tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts` (pass)
 
 ### Completion Notes List
 
@@ -140,8 +141,13 @@ GPT-5 Codex
 
 - _bmad-output/implementation-artifacts/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.md
 - src/src/routes/api/v1/connectshyft.ts
+- src/src/modules/connectshyft/readContracts.ts
+- src/src/modules/connectshyft/__tests__/readContracts.test.ts
+- frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts
+- tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.atdd.api.spec.ts
 - tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts
+- tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.atdd.spec.ts
 
 ## Change Log
 

@@ -580,15 +580,11 @@ const inactivityChipLabel = computed(() => {
 });
 
 const escalationChipLabel = computed(() => {
-  if (!threadDetail.value || threadDetail.value.escalationStage <= 0) {
+  if (!threadDetail.value) {
     return 'Monitoring';
   }
-
-  if (threadDetail.value.escalationStage === 1) {
-    return 'Needs attention soon';
-  }
-
-  return 'Needs urgent attention';
+  const label = threadDetail.value.urgencyLabel.trim();
+  return label || 'Monitoring';
 });
 
 const visibleActions = computed<string[]>(() => {
@@ -681,6 +677,7 @@ const applyThreadUpdate = (payload: unknown): void => {
     state?: unknown;
     claimedByUserId?: unknown;
     claimed_by_user_id?: unknown;
+    urgencyLabel?: unknown;
     escalation?: {
       stage?: unknown;
     };
@@ -708,6 +705,9 @@ const applyThreadUpdate = (payload: unknown): void => {
   const escalationStage = typeof candidate.escalation?.stage === 'number'
     ? candidate.escalation.stage
     : current.escalationStage;
+  const urgencyLabel = typeof candidate.urgencyLabel === 'string'
+    ? candidate.urgencyLabel.trim()
+    : current.urgencyLabel;
   const nextActions = parseThreadActions(candidate.actions);
   const resolvedActions = resolveSafeVisibleThreadActions({
     state: nextState,
@@ -719,6 +719,7 @@ const applyThreadUpdate = (payload: unknown): void => {
     state: nextState,
     claimedByUserId: claimedByUserId || null,
     escalationStage,
+    urgencyLabel,
     lastInboundCsNumberId: typeof candidate.lastInboundCsNumberId === 'string'
       ? candidate.lastInboundCsNumberId
       : typeof candidate.last_inbound_cs_number_id === 'string'

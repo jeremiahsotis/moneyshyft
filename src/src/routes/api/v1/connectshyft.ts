@@ -1111,9 +1111,7 @@ const buildSyntheticThreadDetailRecord = (input: {
     },
     voicemailIndicator: false,
     summary: input.descriptor.summary,
-    actions: resolveConnectShyftThreadActions(input.descriptor.state, {
-      requestedRole: input.requestedRole,
-    }),
+    actions: resolveConnectShyftThreadActions(input.descriptor.state),
     lifecycle: {
       reopenedByInbound: false,
     },
@@ -2075,6 +2073,35 @@ const parseCanonicalEventFilters = (req: Request): {
     eventType: eventType || null,
     limit: parseCanonicalEventsLimit(req),
   };
+};
+
+const resolveThreadDetailActionsForActor = (input: {
+  req: Request;
+  context: ResolvedConnectShyftContext;
+  thread: ConnectShyftThreadDetailRecord;
+  actorUserId: string | null;
+}): ReturnType<typeof resolveConnectShyftThreadActions> => {
+  const baseActions = [...resolveConnectShyftThreadActions(input.thread.state)];
+  if (input.thread.state !== 'CLAIMED') {
+    return baseActions;
+  }
+
+  const actorRoles = resolveConnectShyftActorRoles(input.req, input.context);
+  const canTakeOver = (
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_TAKEOVER)
+    || hasCapability(actorRoles, CAPABILITIES.THREAD_TAKEOVER_ALL)
+  );
+  if (!canTakeOver) {
+    return baseActions;
+  }
+
+  const claimedByUserId = normalizeLifecycleString(input.thread.claimedByUserId);
+  const actorUserId = normalizeLifecycleString(input.actorUserId);
+  if (!claimedByUserId || !actorUserId || claimedByUserId === actorUserId) {
+    return baseActions;
+  }
+
+  return ['Call', 'Take Over', 'Text', 'Close'] as const;
 };
 
 const resolveCanonicalEventTypeForOutboundAction = (
@@ -4307,6 +4334,16 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
     });
     return;
   }
+
+  thread = {
+    ...thread,
+    actions: resolveThreadDetailActionsForActor({
+      req,
+      context,
+      thread,
+      actorUserId,
+    }),
+  };
 
   const timeline = await listCanonicalThreadEvents({
     tenantId: context.tenantId,
