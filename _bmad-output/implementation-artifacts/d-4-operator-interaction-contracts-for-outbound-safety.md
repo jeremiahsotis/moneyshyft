@@ -169,6 +169,7 @@ GPT-5 Codex
 - _bmad-output/implementation-artifacts/d-4-operator-interaction-contracts-for-outbound-safety.md
 - frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - tests/api/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.api.spec.ts
+- tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts
 - tests/e2e/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.spec.ts
 - tests/support/factories/connectShyftStoryD4Factory.ts
 - tests/support/fixtures/connectShyftStoryD4.fixture.ts
