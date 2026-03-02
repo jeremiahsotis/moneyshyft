@@ -21,7 +21,6 @@ const hasRequiredEnvelopeKeys = (payload: Record<string, unknown>): boolean =>
 test.describe(
   'Story f.4 Telnyx Adapter Implementation and Cutover Guardrails (Automate E2E Expansion)',
   () => {
-    test.describe.configure({ mode: 'serial' });
 
     test(
       '[P0] staged cutover journey fails closed outside allow-list and succeeds when allow-list includes tenant and org-unit rollback scope @P0',

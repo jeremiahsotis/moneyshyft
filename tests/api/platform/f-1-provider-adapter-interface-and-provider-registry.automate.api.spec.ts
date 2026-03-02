@@ -12,7 +12,6 @@ const hasRequiredEnvelopeKeys = (payload: Record<string, unknown>): boolean =>
 test.describe(
   'Story f.1 Provider Adapter Interface and Provider Registry (Automate API Expansion)',
   () => {
-    test.describe.configure({ mode: 'serial' });
 
     test(
       '[P0] provider fallback resolves deterministically to the first enabled provider when no provider key is supplied @P0',

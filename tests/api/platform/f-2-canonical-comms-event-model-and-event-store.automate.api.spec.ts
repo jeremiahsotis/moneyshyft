@@ -54,7 +54,6 @@ const sortCanonically = (
 test.describe(
   'Story f.2 Canonical Comms Event Model and Event Store (Automate API Expansion)',
   () => {
-    test.describe.configure({ mode: 'serial' });
 
     test(
       '[P0] outbound call and message dispatches persist canonical provider-neutral events with stable schema and UTC timestamps @P0',
@@ -215,24 +214,45 @@ test.describe(
         storyF2Context,
         storyF2AdminHeaders,
         storyF2OperatorHeaders,
-        storyF2InboundWebhookPayload,
-        storyF2EventsByAggregateAndTypeQuery,
       }) => {
+        const eventToken = Date.now().toString().slice(-6);
         await apiRequest(request, {
           method: 'POST',
           path: storyF2Context.paths.inboundWebhook,
           headers: storyF2AdminHeaders,
-          data: storyF2InboundWebhookPayload,
+          data: {
+            eventType: 'voice.connected',
+            threadId: storyF2Context.threadIds.claimed,
+            orgUnitId: storyF2Context.orgUnitId,
+            tenantId: storyF2Context.tenantId,
+            providerKey: storyF2Context.providers.enabledPrimary,
+            providerEventId: `provider-event-f2-claimed-${eventToken}`,
+            callStatus: 'CONNECTED',
+            providerPayload: {
+              telnyxCallControlId: `telnyx-control-f2-claimed-${eventToken}`,
+              twilioCallSid: `twilio-callsid-f2-claimed-${eventToken}`,
+              rawProviderStatus: 'answered',
+            },
+          },
+        });
+
+        const query = new URLSearchParams({
+          tenantId: storyF2Context.tenantId,
+          orgUnitId: storyF2Context.orgUnitId,
+          aggregateId: storyF2Context.threadIds.claimed,
+          aggregateType: 'Thread',
+          eventType: storyF2Context.canonicalEventTypes.callConnected,
+          limit: '50',
         });
 
         const firstResponse = await apiRequest(request, {
           method: 'GET',
-          path: `${storyF2Context.paths.events}${storyF2EventsByAggregateAndTypeQuery}`,
+          path: `${storyF2Context.paths.events}?${query.toString()}`,
           headers: storyF2OperatorHeaders,
         });
         const secondResponse = await apiRequest(request, {
           method: 'GET',
-          path: `${storyF2Context.paths.events}${storyF2EventsByAggregateAndTypeQuery}`,
+          path: `${storyF2Context.paths.events}?${query.toString()}`,
           headers: storyF2OperatorHeaders,
         });
 

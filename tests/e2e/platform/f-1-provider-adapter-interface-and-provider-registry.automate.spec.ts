@@ -14,7 +14,6 @@ const hasRequiredEnvelopeKeys = (payload: Record<string, unknown>): boolean =>
 test.describe(
   'Story f.1 Provider Adapter Interface and Provider Registry (Automate E2E Expansion)',
   () => {
-    test.describe.configure({ mode: 'serial' });
 
     test(
       '[P0] operator-triggered outbound actions without provider key remain deterministic across call and message contracts using the same registry ordering @P0',

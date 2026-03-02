@@ -21,7 +21,6 @@ const hasRequiredEnvelopeKeys = (payload: Record<string, unknown>): boolean =>
 test.describe(
   'Story f.4 Telnyx Adapter Implementation and Cutover Guardrails (Automate API Expansion)',
   () => {
-    test.describe.configure({ mode: 'serial' });
 
     test(
       '[P0] telnyx outbound dispatch from closed threads preserves lifecycle reopen semantics and provider-neutral envelope contracts during cutover @P0',

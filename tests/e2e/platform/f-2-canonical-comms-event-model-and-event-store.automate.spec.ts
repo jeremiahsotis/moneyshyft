@@ -42,7 +42,6 @@ const sortCanonically = (
 test.describe(
   'Story f.2 Canonical Comms Event Model and Event Store (Automate E2E Expansion)',
   () => {
-    test.describe.configure({ mode: 'serial' });
 
     test(
       '[P0] end-to-end outbound plus inbound comms flow persists canonical events that remain provider-neutral and deterministically ordered @P0',

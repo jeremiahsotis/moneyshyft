@@ -50,7 +50,7 @@ const sortCanonically = (
 test.describe(
   'Story f.2 Canonical Comms Event Model and Event Store (ATDD API RED)',
   () => {
-    test.skip(
+    test(
       '[P0] outbound call and sms plus inbound webhook flows persist canonical events with aggregate id/type payload and UTC timestamp schema @P0',
       async ({
         request,
@@ -120,7 +120,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P0] canonical translation shields downstream handlers from provider-specific payload keys while preserving provider-neutral event meaning @P0',
       async ({
         request,
@@ -172,7 +172,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] events endpoint filtering by aggregate id and event type is deterministic and orders by occurred_at_utc with event_id tie-breaks @P1',
       async ({
         request,
@@ -223,7 +223,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] thread detail and status contracts derive provider-neutral timeline state from canonical events with stable deterministic ordering @P1',
       async ({ request, storyF2Context, storyF2OperatorHeaders }) => {
         const response = await apiRequest(request, {
