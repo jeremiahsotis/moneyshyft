@@ -222,13 +222,16 @@ const fs = require('fs');
 const path = require('path');
 
 const backendEnvPath = path.resolve(process.cwd(), 'src/.env');
-let jwtSecret = 'your_jwt_secret_change_in_production';
-if (fs.existsSync(backendEnvPath)) {
-  for (const rawLine of fs.readFileSync(backendEnvPath, 'utf8').split('\n')) {
-    const line = rawLine.trim();
-    if (line.startsWith('JWT_SECRET=')) {
-      jwtSecret = line.slice('JWT_SECRET='.length).trim();
-      break;
+let jwtSecret = (process.env.JWT_SECRET || '').trim();
+if (!jwtSecret) {
+  jwtSecret = 'your_jwt_secret_change_in_production';
+  if (fs.existsSync(backendEnvPath)) {
+    for (const rawLine of fs.readFileSync(backendEnvPath, 'utf8').split('\n')) {
+      const line = rawLine.trim();
+      if (line.startsWith('JWT_SECRET=')) {
+        jwtSecret = line.slice('JWT_SECRET='.length).trim();
+        break;
+      }
     }
   }
 }

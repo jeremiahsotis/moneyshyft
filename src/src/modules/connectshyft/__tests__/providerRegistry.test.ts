@@ -1,5 +1,6 @@
 import { generateKeyPairSync, sign as signPayload } from 'node:crypto';
 import {
+  ConnectShyftProviderDispatchPolicyError,
   resolveConnectShyftProviderAdapter,
   resolveConnectShyftRequestedProviderKey,
 } from '../providerRegistry';
@@ -406,6 +407,50 @@ describe('connectshyft provider registry', () => {
       providerSpecificFieldsStripped: true,
       providerBranchingInDomain: false,
     });
+  });
+
+  it('enforces bridge-only/manual retry policy at the adapter dispatch boundary', async () => {
+    const result = resolveConnectShyftProviderAdapter({
+      req: buildRequest({
+        body: {
+          providerKey: 'telnyx',
+        },
+      }),
+      operation: 'call',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error('Expected adapter resolution to succeed');
+    }
+
+    await expect(
+      result.adapter.dispatchOutboundCall({
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        threadId: 'thread-f1-unclaimed-1001',
+        callPolicy: {
+          transport: 'sip',
+          autoRetry: false,
+          redialPolicy: 'manual_only',
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: 'CONNECTSHYFT_OUTBOUND_CALL_TRANSPORT_UNSUPPORTED',
+    });
+
+    await expect(
+      result.adapter.dispatchOutboundCall({
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        threadId: 'thread-f1-unclaimed-1001',
+        callPolicy: {
+          transport: 'bridge',
+          autoRetry: true,
+          redialPolicy: 'manual_only',
+        },
+      }),
+    ).rejects.toBeInstanceOf(ConnectShyftProviderDispatchPolicyError);
   });
 
   it('prefers body providerKey over test header provider request override', () => {

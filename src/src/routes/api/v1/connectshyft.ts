@@ -45,8 +45,10 @@ import {
   type ConnectShyftValidatedSmsOverride,
 } from '../../../modules/connectshyft/smsPreferenceOverrides';
 import {
+  ConnectShyftProviderDispatchPolicyError,
   resolveConnectShyftProviderAdapter,
   resolveConnectShyftRequestedProviderKey,
+  type ConnectShyftOutboundCallDispatchPolicy,
   type ConnectShyftProviderDispatchResult,
 } from '../../../modules/connectshyft/providerRegistry';
 import { executePlatformMutation } from '../../../platform/mutations/executePlatformMutation';
@@ -889,6 +891,32 @@ const resolveInboundWebhookCorrelation = async (input: {
     providerMessageId: providerIdentifiers.providerMessageId,
     providerEventId: providerIdentifiers.providerEventId,
   };
+};
+
+const verifyConnectedCallLineage = async (input: {
+  correlation: Extract<ConnectShyftResolvedWebhookCorrelation, { ok: true }>;
+  providerName: string;
+}): Promise<boolean> => {
+  const providerLegId = normalizeLifecycleString(input.correlation.providerLegId);
+  if (!providerLegId) {
+    return false;
+  }
+
+  const lookup = await resolveConnectShyftProviderCorrelationByIdentifiers({
+    providerName: input.providerName,
+    providerLegId,
+    tenantId: input.correlation.tenantId,
+    db: loadPlatformDb(),
+  });
+  if (!lookup.ok) {
+    return false;
+  }
+
+  return (
+    lookup.correlation.tenantId === input.correlation.tenantId
+    && lookup.correlation.orgUnitId === input.correlation.orgUnitId
+    && lookup.correlation.threadId === input.correlation.threadId
+  );
 };
 
 const nowIsoUtc = (): string => new Date().toISOString();
@@ -2452,8 +2480,12 @@ const parseOutboundMessagePolicyRequest = (req: Request): {
   };
 };
 
-const enforceOutboundCallPolicyRequest = (req: Request, res: Response): boolean => {
-  const callPolicy = parseOutboundCallRequestPolicy(req);
+const enforceOutboundCallPolicyRequest = (
+  req: Request,
+  res: Response,
+  parsedCallPolicy: ReturnType<typeof parseOutboundCallRequestPolicy> = parseOutboundCallRequestPolicy(req),
+): boolean => {
+  const callPolicy = parsedCallPolicy;
 
   if (
     callPolicy.transport
@@ -4702,7 +4734,14 @@ const performOutboundAction = async (
     return;
   }
 
-  if (outboundAction === 'call' && !enforceOutboundCallPolicyRequest(req, res)) {
+  const outboundCallPolicyRequest = outboundAction === 'call'
+    ? parseOutboundCallRequestPolicy(req)
+    : null;
+  if (
+    outboundAction === 'call'
+    && outboundCallPolicyRequest
+    && !enforceOutboundCallPolicyRequest(req, res, outboundCallPolicyRequest)
+  ) {
     return;
   }
 
@@ -4895,6 +4934,14 @@ const performOutboundAction = async (
     });
   }
 
+  const outboundCallDispatchPolicy: ConnectShyftOutboundCallDispatchPolicy | null = outboundAction === 'call'
+    ? {
+      transport: outboundCallPolicyRequest?.transport || CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT,
+      autoRetry: outboundCallPolicyRequest?.autoRetry === true,
+      redialPolicy: outboundCallPolicyRequest?.redialPolicy || CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_REDIAL_POLICY,
+    }
+    : null;
+
   let providerDispatch: ConnectShyftProviderDispatchResult;
   try {
     providerDispatch = outboundAction === 'call'
@@ -4902,6 +4949,7 @@ const performOutboundAction = async (
         tenantId: context.tenantId,
         orgUnitId: context.orgUnitId,
         threadId,
+        callPolicy: outboundCallDispatchPolicy || undefined,
       })
       : await providerSelection.adapter.dispatchOutboundMessage({
         tenantId: context.tenantId,
@@ -4909,6 +4957,29 @@ const performOutboundAction = async (
         threadId,
       });
   } catch (error) {
+    if (error instanceof ConnectShyftProviderDispatchPolicyError) {
+      respondConnectShyftBusinessRefusal(res, {
+        code: error.code,
+        message: error.message,
+        data: {
+          context,
+          threadId,
+          providerResolution: {
+            ...providerSelection.providerResolution,
+            adapterInterfaceVersion: providerSelection.adapter.adapterInterfaceVersion,
+            providerBranchingInDomain: false,
+          },
+          sideEffects: {
+            dispatchAttempted: false,
+            lifecycleMutationApplied: priorState === 'CLOSED',
+            auditPersisted: sideEffectsPersisted,
+          },
+          providerCallPolicy: error.data,
+        },
+      });
+      return;
+    }
+
     respondConnectShyftBusinessRefusal(res, {
       code: 'CONNECTSHYFT_PROVIDER_DISPATCH_FAILED',
       message: 'Provider dispatch failed before persistence.',
@@ -5358,8 +5429,14 @@ const handleInboundWebhook = async (
 
   const isVoiceEvent = normalizedEventType.startsWith('voice') || normalizedEventType.includes('call');
   const callPolicy = parseOutboundCallRequestPolicy(req);
-  const callTransport = callPolicy.transport || CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT;
+  const callTransport = callPolicy.transport || null;
   const canApplyAutoClaimForTransport = callTransport === CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT;
+  const hasVerifiedConnectedCallLineage = isConnectedCallEvent
+    ? await verifyConnectedCallLineage({
+      correlation,
+      providerName: providerSelection.providerResolution.resolvedProvider,
+    })
+    : false;
   let threadState: ConnectShyftThreadState | null = null;
   let lifecycleContext: ResolvedLifecycleContext | null = null;
   let thread: ConnectShyftThread | null = null;
@@ -5395,7 +5472,9 @@ const handleInboundWebhook = async (
     } else if (lifecycleContext.currentState !== 'UNCLAIMED') {
       autoClaim.reason = `state_${lifecycleContext.currentState.toLowerCase()}`;
     } else if (!canApplyAutoClaimForTransport) {
-      autoClaim.reason = 'unsupported_transport';
+      autoClaim.reason = callTransport ? 'unsupported_transport' : 'transport_required';
+    } else if (!hasVerifiedConnectedCallLineage) {
+      autoClaim.reason = 'unverified_call_lineage';
     } else {
       const actorUserId = resolveWebhookActorUserId(req);
       const metadata = buildLifecycleMetadata({

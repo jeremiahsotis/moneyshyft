@@ -15,6 +15,8 @@ const TELNYX_TIMESTAMP_HEADER = 'telnyx-timestamp';
 const TELNYX_PUBLIC_KEY_ENV = 'TELNYX_PUBLIC_KEY';
 const CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS_ENV = 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS';
 const DEFAULT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS = 300;
+const CONNECTSHYFT_REQUIRED_CALL_TRANSPORT = 'bridge';
+const CONNECTSHYFT_REQUIRED_CALL_REDIAL_POLICY = 'manual_only';
 
 export type ConnectShyftProviderOperation = 'call' | 'message' | 'webhook';
 export type ConnectShyftProviderResolutionReason =
@@ -38,6 +40,32 @@ export type ConnectShyftProviderDispatchResult = {
   adapterInvoked: true;
   providerBranchingInDomain: false;
 };
+
+export type ConnectShyftOutboundCallDispatchPolicy = {
+  transport: string;
+  autoRetry: boolean;
+  redialPolicy: string;
+};
+
+export class ConnectShyftProviderDispatchPolicyError extends Error {
+  readonly code:
+    | 'CONNECTSHYFT_OUTBOUND_CALL_TRANSPORT_UNSUPPORTED'
+    | 'CONNECTSHYFT_OUTBOUND_CALL_RETRY_FORBIDDEN';
+  readonly data: Record<string, unknown>;
+
+  constructor(input: {
+    code:
+      | 'CONNECTSHYFT_OUTBOUND_CALL_TRANSPORT_UNSUPPORTED'
+      | 'CONNECTSHYFT_OUTBOUND_CALL_RETRY_FORBIDDEN';
+    message: string;
+    data: Record<string, unknown>;
+  }) {
+    super(input.message);
+    this.name = 'ConnectShyftProviderDispatchPolicyError';
+    this.code = input.code;
+    this.data = input.data;
+  }
+}
 
 export type ConnectShyftProviderCanonicalEvent = {
   eventType: string;
@@ -123,6 +151,7 @@ export interface ConnectShyftProviderAdapter {
     tenantId: string;
     orgUnitId: string;
     threadId: string;
+    callPolicy?: ConnectShyftOutboundCallDispatchPolicy;
   }): Promise<ConnectShyftProviderDispatchResult>;
   dispatchOutboundMessage(input: {
     tenantId: string;
@@ -738,6 +767,41 @@ const createAdapter = (input: {
   providerKey: input.providerKey,
   adapterInterfaceVersion: 'v1',
   async dispatchOutboundCall(dispatchInput) {
+    const requestedTransport = normalizeString(dispatchInput.callPolicy?.transport).toLowerCase();
+    if (
+      requestedTransport.length > 0
+      && requestedTransport !== CONNECTSHYFT_REQUIRED_CALL_TRANSPORT
+    ) {
+      throw new ConnectShyftProviderDispatchPolicyError({
+        code: 'CONNECTSHYFT_OUTBOUND_CALL_TRANSPORT_UNSUPPORTED',
+        message: 'Outbound calls require bridge transport only.',
+        data: {
+          requestedTransport,
+          allowedTransport: CONNECTSHYFT_REQUIRED_CALL_TRANSPORT,
+        },
+      });
+    }
+
+    const requestedRedialPolicy = normalizeString(dispatchInput.callPolicy?.redialPolicy).toLowerCase();
+    const requestedAutoRetry = dispatchInput.callPolicy?.autoRetry === true;
+    if (
+      requestedAutoRetry
+      || (
+        requestedRedialPolicy.length > 0
+        && requestedRedialPolicy !== CONNECTSHYFT_REQUIRED_CALL_REDIAL_POLICY
+      )
+    ) {
+      throw new ConnectShyftProviderDispatchPolicyError({
+        code: 'CONNECTSHYFT_OUTBOUND_CALL_RETRY_FORBIDDEN',
+        message: 'Automatic redial/retry is disabled. Operators must re-initiate calls manually.',
+        data: {
+          requestedAutoRetry,
+          requestedRedialPolicy: requestedRedialPolicy || null,
+          allowedRedialPolicy: CONNECTSHYFT_REQUIRED_CALL_REDIAL_POLICY,
+        },
+      });
+    }
+
     return buildDispatchResult({
       providerKey: input.providerKey,
       channel: 'call',
