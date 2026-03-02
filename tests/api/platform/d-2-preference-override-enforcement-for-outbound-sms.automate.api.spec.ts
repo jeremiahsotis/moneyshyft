@@ -68,7 +68,7 @@ test.describe(
             },
             sideEffects: {
               messageDispatched: false,
-              lifecycleMutationApplied: false,
+              lifecycleMutationApplied: true,
               auditPersisted: false,
             },
           },
