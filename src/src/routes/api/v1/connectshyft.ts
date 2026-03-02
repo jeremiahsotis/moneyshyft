@@ -41,6 +41,8 @@ import {
 } from '../../../modules/connectshyft/threads';
 import {
   connectShyftSmsPreferenceOverrideServiceAsync,
+  ConnectShyftSmsOverridePersistenceUnavailableError,
+  type ConnectShyftPersistedSmsOverride,
   type ConnectShyftResolvedSmsPreference,
   type ConnectShyftValidatedSmsOverride,
 } from '../../../modules/connectshyft/smsPreferenceOverrides';
@@ -4856,6 +4858,7 @@ const performOutboundAction = async (
   let lifecycleEvent: string | null = null;
   let sideEffects: ReturnType<typeof buildLifecycleSideEffects> | null = null;
   let outboundDispatch: ReturnType<typeof buildLifecycleSideEffects> | null = null;
+  let persistedSmsOverride: ConnectShyftPersistedSmsOverride | null = null;
   let sideEffectsPersisted = false;
   let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
   const priorState = lifecycleContext.currentState;
@@ -4934,6 +4937,87 @@ const performOutboundAction = async (
     });
   }
 
+  if (
+    outboundAction === 'message'
+    && smsPreferenceDecision?.prefersTexting === 'NO'
+    && validatedSmsOverride
+  ) {
+    try {
+      persistedSmsOverride = await connectShyftSmsPreferenceOverrideService.persistApprovedOverride({
+        tenantId: context.tenantId,
+        orgUnitId: context.orgUnitId,
+        threadId,
+        neighborId: smsPreferenceDecision.neighborId,
+        actorUserId,
+        preferenceValue: 'NO',
+        override: validatedSmsOverride,
+        messageBody: outboundMessagePolicy?.body || '',
+        messageEventName: 'connectshyft.thread.outbound_message_dispatched',
+      });
+    } catch (error) {
+      const persistenceMessage = error instanceof Error
+        ? error.message
+        : 'Outbound SMS override persistence is unavailable.';
+      const persistenceCode = error instanceof ConnectShyftSmsOverridePersistenceUnavailableError
+        ? error.code
+        : 'CONNECTSHYFT_SMS_OVERRIDE_AUDIT_UNAVAILABLE';
+
+      refusal(res, {
+        code: persistenceCode,
+        message: 'Outbound SMS cannot be sent because override persistence is unavailable.',
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          context,
+          threadId,
+          preferencePolicy: {
+            prefersTexting: smsPreferenceDecision.prefersTexting,
+            source: smsPreferenceDecision.source,
+            overrideRequired: true,
+            overrideAccepted: false,
+            override: {
+              reason: validatedSmsOverride.reason,
+              note: validatedSmsOverride.note,
+            },
+          },
+          uiFeedback: {
+            severity: 'warning',
+            ariaLive: 'assertive',
+            messageKey: 'connectshyft.override.audit_unavailable',
+            requiresAction: true,
+            actionLabel: 'Retry send',
+            accessibilityHint: 'Retry sending after override persistence becomes available.',
+            message: persistenceMessage,
+          },
+          sideEffects: {
+            messageDispatched: false,
+            lifecycleMutationApplied: priorState === 'CLOSED',
+            auditPersisted: false,
+          },
+        },
+      });
+      return;
+    }
+  }
+
+  const rollbackPersistedSmsOverride = async (): Promise<void> => {
+    if (!persistedSmsOverride) {
+      return;
+    }
+
+    try {
+      await connectShyftSmsPreferenceOverrideService.rollbackApprovedOverride({
+        tenantId: context.tenantId,
+        orgUnitId: context.orgUnitId,
+        threadId,
+        overrideId: persistedSmsOverride.overrideId,
+      });
+      persistedSmsOverride = null;
+    } catch {
+      // Best effort rollback; keep persisted state reporting truthful in refusal payloads.
+    }
+  };
+
   const outboundCallDispatchPolicy: ConnectShyftOutboundCallDispatchPolicy | null = outboundAction === 'call'
     ? {
       transport: outboundCallPolicyRequest?.transport || CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT,
@@ -4957,6 +5041,8 @@ const performOutboundAction = async (
         threadId,
       });
   } catch (error) {
+    await rollbackPersistedSmsOverride();
+
     if (error instanceof ConnectShyftProviderDispatchPolicyError) {
       respondConnectShyftBusinessRefusal(res, {
         code: error.code,
@@ -4972,7 +5058,7 @@ const performOutboundAction = async (
           sideEffects: {
             dispatchAttempted: false,
             lifecycleMutationApplied: priorState === 'CLOSED',
-            auditPersisted: sideEffectsPersisted,
+            auditPersisted: Boolean(persistedSmsOverride),
           },
           providerCallPolicy: error.data,
         },
@@ -4994,7 +5080,7 @@ const performOutboundAction = async (
         sideEffects: {
           dispatchAttempted: true,
           lifecycleMutationApplied: priorState === 'CLOSED',
-          auditPersisted: sideEffectsPersisted,
+          auditPersisted: Boolean(persistedSmsOverride),
         },
         error: error instanceof Error ? error.message : 'unknown-provider-dispatch-error',
       },
@@ -5040,22 +5126,6 @@ const performOutboundAction = async (
   if (priorState !== 'CLOSED') {
     sideEffects = persistedDispatch.sideEffects;
   }
-
-  const persistedSmsOverride = outboundAction === 'message'
-    && smsPreferenceDecision?.prefersTexting === 'NO'
-    && validatedSmsOverride
-    ? await connectShyftSmsPreferenceOverrideService.persistApprovedOverride({
-      tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      threadId,
-      neighborId: smsPreferenceDecision.neighborId,
-      actorUserId,
-      preferenceValue: 'NO',
-      override: validatedSmsOverride,
-      messageBody: outboundMessagePolicy?.body || '',
-      messageEventName: 'connectshyft.thread.outbound_message_dispatched',
-    })
-    : null;
 
   const canonicalEvent = await recordCanonicalThreadEvent({
     tenantId: context.tenantId,

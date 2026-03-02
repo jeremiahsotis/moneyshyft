@@ -1,5 +1,6 @@
 import {
   AsyncConnectShyftSmsPreferenceOverrideService,
+  ConnectShyftSmsOverridePersistenceUnavailableError,
   validateConnectShyftSmsOverride,
 } from '../smsPreferenceOverrides';
 
@@ -76,6 +77,84 @@ describe('connectshyft sms preference overrides', () => {
       prefersTexting: 'NO',
       neighborId: null,
       source: 'thread-map',
+    });
+  });
+
+  it('fails closed when override persistence is unavailable', async () => {
+    const missingTableError = Object.assign(
+      new Error('relation "connectshyft.cs_sms_preference_overrides" does not exist'),
+      { code: '42P01' },
+    );
+    const store = {
+      resolvePreference: async () => ({
+        prefersTexting: 'UNKNOWN' as const,
+        neighborId: null,
+        source: 'unknown' as const,
+      }),
+      persistOverride: async () => {
+        throw missingTableError;
+      },
+    };
+    const service = new AsyncConnectShyftSmsPreferenceOverrideService(store as any);
+
+    await expect(
+      service.persistApprovedOverride({
+        tenantId: 'tenant-connectshyft-c4',
+        orgUnitId: 'org-connectshyft-c4-east',
+        threadId: 'thread-c4-unclaimed-pref-no-1004',
+        neighborId: null,
+        actorUserId: '00000000-0000-4000-8000-000000000001',
+        preferenceValue: 'NO',
+        override: {
+          reason: 'safety-follow-up',
+          note: 'Policy-safe follow-up',
+        },
+        messageBody: 'Checking in',
+        messageEventName: 'connectshyft.thread.outbound_message_dispatched',
+      }),
+    ).rejects.toBeInstanceOf(ConnectShyftSmsOverridePersistenceUnavailableError);
+  });
+
+  it('rolls back a persisted override by id when requested', async () => {
+    const deleteOverride = jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined);
+    const store = {
+      resolvePreference: async () => ({
+        prefersTexting: 'UNKNOWN' as const,
+        neighborId: null,
+        source: 'unknown' as const,
+      }),
+      persistOverride: async () => ({
+        overrideId: '83fba1aa-2118-4259-a6bc-f8c4086e44ec',
+        tenantId: 'tenant-connectshyft-c4',
+        orgUnitId: 'org-connectshyft-c4-east',
+        threadId: 'thread-c4-unclaimed-pref-no-1004',
+        neighborId: null,
+        actorUserId: '00000000-0000-4000-8000-000000000001',
+        preferenceValue: 'NO' as const,
+        overrideReason: 'safety-follow-up' as const,
+        overrideNote: 'Policy-safe follow-up',
+        messageBody: 'Checking in',
+        messageEventName: 'connectshyft.thread.outbound_message_dispatched',
+        auditMetadata: {},
+        createdAtUtc: '2026-03-02T00:00:00.000Z',
+        durability: 'database' as const,
+      }),
+      deleteOverride,
+    };
+    const service = new AsyncConnectShyftSmsPreferenceOverrideService(store as any);
+
+    await service.rollbackApprovedOverride({
+      tenantId: 'tenant-connectshyft-c4',
+      orgUnitId: 'org-connectshyft-c4-east',
+      threadId: 'thread-c4-unclaimed-pref-no-1004',
+      overrideId: '83fba1aa-2118-4259-a6bc-f8c4086e44ec',
+    });
+
+    expect(deleteOverride).toHaveBeenCalledWith({
+      tenantId: 'tenant-connectshyft-c4',
+      orgUnitId: 'org-connectshyft-c4-east',
+      threadId: 'thread-c4-unclaimed-pref-no-1004',
+      overrideId: '83fba1aa-2118-4259-a6bc-f8c4086e44ec',
     });
   });
 });
