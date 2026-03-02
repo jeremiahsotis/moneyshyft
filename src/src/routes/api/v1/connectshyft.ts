@@ -80,6 +80,7 @@ import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService'
 
 const router = Router();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CONNECTSHYFT_NEIGHBOR_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
 const TEST_ACTIVE_THREAD_NEIGHBOR_IDS_HEADER = 'x-test-connectshyft-active-thread-neighbor-ids';
 const TEST_USER_ID_HEADER = 'x-test-connectshyft-user-id';
 const CONNECTSHYFT_SYSTEM_ACTOR_USER_ID = '00000000-0000-4000-8000-000000000001';
@@ -1110,9 +1111,7 @@ const buildSyntheticThreadDetailRecord = (input: {
     },
     voicemailIndicator: false,
     summary: input.descriptor.summary,
-    actions: resolveConnectShyftThreadActions(input.descriptor.state, {
-      requestedRole: input.requestedRole,
-    }),
+    actions: resolveConnectShyftThreadActions(input.descriptor.state),
     lifecycle: {
       reopenedByInbound: false,
     },
@@ -2076,6 +2075,35 @@ const parseCanonicalEventFilters = (req: Request): {
   };
 };
 
+const resolveThreadDetailActionsForActor = (input: {
+  req: Request;
+  context: ResolvedConnectShyftContext;
+  thread: ConnectShyftThreadDetailRecord;
+  actorUserId: string | null;
+}): ReturnType<typeof resolveConnectShyftThreadActions> => {
+  const baseActions = [...resolveConnectShyftThreadActions(input.thread.state)];
+  if (input.thread.state !== 'CLAIMED') {
+    return baseActions;
+  }
+
+  const actorRoles = resolveConnectShyftActorRoles(input.req, input.context);
+  const canTakeOver = (
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_TAKEOVER)
+    || hasCapability(actorRoles, CAPABILITIES.THREAD_TAKEOVER_ALL)
+  );
+  if (!canTakeOver) {
+    return baseActions;
+  }
+
+  const claimedByUserId = normalizeLifecycleString(input.thread.claimedByUserId);
+  const actorUserId = normalizeLifecycleString(input.actorUserId);
+  if (!claimedByUserId || !actorUserId || claimedByUserId === actorUserId) {
+    return baseActions;
+  }
+
+  return ['Call', 'Take Over', 'Text', 'Close'] as const;
+};
+
 const resolveCanonicalEventTypeForOutboundAction = (
   outboundAction: ConnectShyftOutboundAction,
 ): string => {
@@ -2509,6 +2537,10 @@ const parseThreadEnsureBody = (req: Request) => ({
     ? req.body.nextEvaluationAtUtc
     : undefined,
 });
+
+const isValidConnectShyftNeighborIdentifier = (neighborId: string): boolean => {
+  return UUID_PATTERN.test(neighborId) || CONNECTSHYFT_NEIGHBOR_SLUG_PATTERN.test(neighborId);
+};
 const parseMappingBody = (req: Request) => ({
   providerNumberE164: typeof req.body?.providerNumberE164 === 'string'
     ? req.body.providerNumberE164
@@ -4303,6 +4335,16 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
     return;
   }
 
+  thread = {
+    ...thread,
+    actions: resolveThreadDetailActionsForActor({
+      req,
+      context,
+      thread,
+      actorUserId,
+    }),
+  };
+
   const timeline = await listCanonicalThreadEvents({
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
@@ -4357,6 +4399,23 @@ router.post('/threads', async (req: Request, res: Response) => {
       message: 'neighborId is required',
       refusalType: 'client',
       httpStatus: 400,
+    });
+    return;
+  }
+
+  if (!isValidConnectShyftNeighborIdentifier(payload.neighborId)) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_NEIGHBOR_ID_INVALID',
+      message: 'neighborId must be a canonical identifier (UUID or slug).',
+      data: {
+        fieldErrors: [
+          {
+            field: 'neighborId',
+            reason: 'INVALID',
+            message: 'neighborId must be a canonical identifier (UUID or slug).',
+          },
+        ],
+      },
     });
     return;
   }

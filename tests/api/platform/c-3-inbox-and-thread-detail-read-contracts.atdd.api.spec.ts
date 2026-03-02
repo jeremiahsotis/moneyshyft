@@ -2,7 +2,7 @@ import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryC3.fixture';
 
 test.describe('Story c.3 Inbox and Thread Detail Read Contracts (ATDD API RED)', () => {
-  test.skip(
+  test(
     '[P0] inbox endpoint enforces deterministic priority ordering with priority_rank and thread_id tie-break semantics @P0',
     async ({ request, storyC3Context, storyC3MemberHeaders, storyC3InboxQuery }) => {
       const response = await apiRequest(request, {
@@ -43,7 +43,7 @@ test.describe('Story c.3 Inbox and Thread Detail Read Contracts (ATDD API RED)',
     },
   );
 
-  test.skip(
+  test(
     '[P0] inbox and detail payloads include orgUnit-scoped number metadata required for operator outbound context @P0',
     async ({ request, storyC3Context, storyC3MemberHeaders, storyC3InboxQuery }) => {
       const inboxResponse = await apiRequest(request, {
@@ -76,7 +76,7 @@ test.describe('Story c.3 Inbox and Thread Detail Read Contracts (ATDD API RED)',
     },
   );
 
-  test.skip(
+  test(
     '[P1] urgency labels map from stage values to operator-safe language and never expose raw stage internals @P1',
     async ({ request, storyC3Context, storyC3MemberHeaders, storyC3InboxQuery }) => {
       const response = await apiRequest(request, {
@@ -101,7 +101,7 @@ test.describe('Story c.3 Inbox and Thread Detail Read Contracts (ATDD API RED)',
     },
   );
 
-  test.skip(
+  test(
     '[P0] thread detail action sets match canonical lifecycle state contracts for UNCLAIMED CLAIMED and CLOSED @P0',
     async ({ request, storyC3Context, storyC3MemberHeaders }) => {
       const unclaimedResponse = await apiRequest(request, {
@@ -134,7 +134,7 @@ test.describe('Story c.3 Inbox and Thread Detail Read Contracts (ATDD API RED)',
     },
   );
 
-  test.skip(
+  test(
     '[P1] voicemail on claimed thread remains in mine list with voicemail indicator and does not force inbox reclassification @P1',
     async ({ request, storyC3Context, storyC3MemberHeaders, storyC3MineQuery }) => {
       const response = await apiRequest(request, {

@@ -26,6 +26,23 @@ const buildBucketUrl = (
   return `${basePath}?${params.toString()}`;
 };
 
+const buildThreadDetailUrl = (
+  context: StoryC3Context,
+  threadId: string,
+  actorUserId: string,
+): string => {
+  const params = new URLSearchParams({
+    flags: 'module:on,inbox:on,escalation:on,webhooks:on',
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    actorUserId,
+    tenantRole: 'ORGUNIT_MEMBER',
+    orgUnitMemberships: context.orgUnitId,
+  });
+
+  return `${context.paths.threadDetailUi}/${threadId}?${params.toString()}`;
+};
+
 test.describe('Story c.3 Inbox and Thread Detail Read Contracts (ATDD E2E RED)', () => {
   test.skip(
     '[P0] inbox list renders deterministic ordering with urgency labels mapped to operator language @P0',
@@ -78,15 +95,21 @@ test.describe('Story c.3 Inbox and Thread Detail Read Contracts (ATDD E2E RED)',
       const context = createStoryC3Context();
       await login(page);
 
-      await page.goto(`${context.paths.threadDetail}/${context.threadIds.unclaimed}`);
+      await page.goto(
+        buildThreadDetailUrl(context, context.threadIds.unclaimed, context.userId),
+      );
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Text' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toBeVisible();
 
-      await page.goto(`${context.paths.threadDetail}/${context.threadIds.claimed}`);
+      await page.goto(
+        buildThreadDetailUrl(context, context.threadIds.claimed, context.userId),
+      );
       await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
 
-      await page.goto(`${context.paths.threadDetail}/${context.threadIds.closed}`);
+      await page.goto(
+        buildThreadDetailUrl(context, context.threadIds.closed, context.userId),
+      );
       await expect(page.getByRole('button', { name: 'Send Message' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
     },

@@ -1,5 +1,6 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryC1.fixture';
+import { createStoryC1Headers } from '../../support/factories/connectShyftStoryC1Factory';
 
 const resolveConnectShyftDbConnection = () => {
   const databaseUrl =
@@ -112,6 +113,72 @@ test.describe(
             neighbor_id: uniqueNeighborId,
           })
           .del();
+      },
+    );
+
+    test(
+      '[P1] malformed neighbor identifiers are refused with shared client-envelope semantics @P1',
+      async ({ request, storyC1Context, storyC1OperatorHeaders, storyC1CreatePayload }) => {
+        const response = await apiRequest(request, {
+          method: 'POST',
+          path: storyC1Context.paths.threadsCollection,
+          headers: storyC1OperatorHeaders,
+          data: {
+            ...storyC1CreatePayload,
+            neighborId: 'neighbor invalid id',
+          },
+        });
+
+        expect(response.status()).toBe(400);
+        const body = await response.json();
+        expect(body).toMatchObject({
+          ok: false,
+          code: 'CONNECTSHYFT_NEIGHBOR_ID_INVALID',
+          refusalType: 'client',
+          data: {
+            fieldErrors: [
+              expect.objectContaining({
+                field: 'neighborId',
+                reason: 'INVALID',
+              }),
+            ],
+          },
+        });
+        expect(body).not.toHaveProperty('data.threadId');
+      },
+    );
+
+    test(
+      '[P1] cross-tenant orgUnit overrides preserve no-leak refusal behavior for ensure attempts @P1',
+      async ({ request, storyC1Context, storyC1CreatePayload }) => {
+        const crossTenantHeaders = createStoryC1Headers(storyC1Context, {
+          role: 'TENANT_ADMIN',
+          userId: 'user-connectshyft-c2-tenant-admin',
+          orgUnitId: storyC1Context.orgUnitId,
+        });
+
+        const response = await apiRequest(request, {
+          method: 'POST',
+          path: storyC1Context.paths.threadsCollection,
+          headers: crossTenantHeaders,
+          data: {
+            ...storyC1CreatePayload,
+            orgUnitId: 'org-connectshyft-bravo-north',
+            neighborId: `neighbor-c2-cross-tenant-${Date.now().toString(36)}`,
+          },
+        });
+
+        expect(response.status()).toBe(200);
+        const body = await response.json();
+        expect(body.ok).toBe(false);
+        expect(body.refusalType).toBe('business');
+        expect([
+          'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH',
+          'CONNECTSHYFT_ORGUNIT_SCOPE_VIOLATION',
+        ]).toContain(body.code);
+        expect(body).not.toHaveProperty('data.thread');
+        expect(body).not.toHaveProperty('data.threadId');
+        expect(body).not.toHaveProperty('data.neighborId');
       },
     );
   },

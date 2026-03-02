@@ -99,12 +99,6 @@ const CONNECTSHYFT_THREAD_ACTIONS: Record<
   CLAIMED: ['Call', 'Text', 'Close'],
   CLOSED: ['Call', 'Send Message'],
 };
-const CONNECTSHYFT_TAKEOVER_ROLES = new Set([
-  'ORGUNIT_ADMIN',
-  'TENANT_ADMIN',
-  'TENANT_STAFF',
-  'SYSTEM_ADMIN',
-]);
 
 const CONNECTSHYFT_SCHEMA = 'connectshyft';
 const CONNECTSHYFT_THREADS_TABLE = 'cs_threads';
@@ -460,15 +454,10 @@ export const resolveConnectShyftUrgencyLabel = (
 
 export const resolveConnectShyftThreadActions = (
   state: ConnectShyftThreadState,
-  options: {
+  _options: {
     requestedRole?: string | null;
   } = {},
 ): readonly ConnectShyftThreadAction[] => {
-  const role = normalizeString(options.requestedRole).toUpperCase();
-  if (state === 'CLAIMED' && CONNECTSHYFT_TAKEOVER_ROLES.has(role)) {
-    return ['Call', 'Take Over', 'Text', 'Close'];
-  }
-
   return CONNECTSHYFT_THREAD_ACTIONS[state];
 };
 
