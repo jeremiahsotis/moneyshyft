@@ -4862,63 +4862,10 @@ const performOutboundAction = async (
   let sideEffectsPersisted = false;
   let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
   const priorState = lifecycleContext.currentState;
+  const postDispatchWarnings: Array<{ stage: string; code: string; message: string }> = [];
+  const dispatchEventName = resolveOutboundDispatchEventName(outboundAction);
 
-  if (priorState === 'CLOSED') {
-    const reopenedMetadata = buildLifecycleMetadata({
-      tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      actorUserId,
-      threadId,
-      priorState: 'CLOSED',
-      newState: 'UNCLAIMED',
-      action: outboundLifecycleAction,
-      threadReopenedByUser: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-      lifecycleLineage: {
-        prior_state: 'CLOSED',
-        new_state: 'UNCLAIMED',
-        thread_reopened_by_user: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-      },
-    });
-    const transitioned = await transitionThreadWithSideEffects({
-      actorRoles,
-      tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      threadId,
-      actorUserId,
-      currentState: priorState,
-      nextState: 'UNCLAIMED',
-      syntheticThread: lifecycleContext.syntheticThread,
-      detail: lifecycleContext.detail,
-      sideEffects: {
-        eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-        metadata: reopenedMetadata,
-      },
-    });
-
-    if (!transitioned.ok) {
-      respondConnectShyftBusinessRefusal(res, {
-        code: transitioned.code,
-        message: transitioned.message,
-        data: {
-          context,
-          threadId,
-        },
-      });
-      return;
-    }
-
-    thread = transitioned.thread;
-    sideEffectsPersisted = transitioned.sideEffectsPersisted;
-    lifecycleEvent = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser;
-    escalationReset = {
-      stage: 0,
-      inactivityWindow: 'reset',
-    };
-    sideEffects = buildLifecycleSideEffects({
-      eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-      metadata: reopenedMetadata,
-    });
-  } else if (lifecycleContext.detail) {
+  if (lifecycleContext.detail) {
     thread = buildThreadFromDetailRecord(lifecycleContext.detail);
   } else {
     thread = buildSyntheticThread({
@@ -4991,7 +4938,7 @@ const performOutboundAction = async (
           },
           sideEffects: {
             messageDispatched: false,
-            lifecycleMutationApplied: priorState === 'CLOSED',
+            lifecycleMutationApplied: false,
             auditPersisted: false,
           },
         },
@@ -5057,7 +5004,7 @@ const performOutboundAction = async (
           },
           sideEffects: {
             dispatchAttempted: false,
-            lifecycleMutationApplied: priorState === 'CLOSED',
+            lifecycleMutationApplied: false,
             auditPersisted: Boolean(persistedSmsOverride),
           },
           providerCallPolicy: error.data,
@@ -5079,7 +5026,7 @@ const performOutboundAction = async (
         },
         sideEffects: {
           dispatchAttempted: true,
-          lifecycleMutationApplied: priorState === 'CLOSED',
+          lifecycleMutationApplied: false,
           auditPersisted: Boolean(persistedSmsOverride),
         },
         error: error instanceof Error ? error.message : 'unknown-provider-dispatch-error',
@@ -5088,12 +5035,87 @@ const performOutboundAction = async (
     return;
   }
 
-  const persistedDispatch = await persistOutboundDispatchSideEffects({
-    tenantId: context.tenantId,
-    threadId,
-    actorUserId,
-    eventName: resolveOutboundDispatchEventName(outboundAction),
-    metadata: buildLifecycleMetadata({
+  if (priorState === 'CLOSED') {
+    const reopenedMetadata = buildLifecycleMetadata({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      actorUserId,
+      threadId,
+      priorState: 'CLOSED',
+      newState: 'UNCLAIMED',
+      action: outboundLifecycleAction,
+      threadReopenedByUser: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      lifecycleLineage: {
+        prior_state: 'CLOSED',
+        new_state: 'UNCLAIMED',
+        thread_reopened_by_user: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      },
+    });
+    const outboundDispatchMetadata = buildLifecycleMetadata({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      actorUserId,
+      threadId,
+      priorState: 'UNCLAIMED',
+      newState: 'UNCLAIMED',
+      action: outboundLifecycleAction,
+      threadReopenedByUser: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      lifecycleLineage: {
+        prior_state: 'CLOSED',
+        new_state: 'UNCLAIMED',
+        thread_reopened_by_user: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      },
+    });
+
+    const transitioned = await transitionThreadWithSideEffects({
+      actorRoles,
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+      actorUserId,
+      currentState: priorState,
+      nextState: 'UNCLAIMED',
+      syntheticThread: lifecycleContext.syntheticThread,
+      detail: lifecycleContext.detail,
+      sideEffects: [
+        {
+          eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+          metadata: reopenedMetadata,
+        },
+        {
+          eventName: dispatchEventName,
+          metadata: outboundDispatchMetadata,
+        },
+      ],
+    });
+
+    sideEffects = buildLifecycleSideEffects({
+      eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      metadata: reopenedMetadata,
+    });
+    outboundDispatch = buildLifecycleSideEffects({
+      eventName: dispatchEventName,
+      metadata: outboundDispatchMetadata,
+    });
+
+    if (transitioned.ok) {
+      thread = transitioned.thread;
+      sideEffectsPersisted = transitioned.sideEffectsPersisted;
+      lifecycleEvent = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser;
+      escalationReset = {
+        stage: 0,
+        inactivityWindow: 'reset',
+      };
+    } else {
+      sideEffectsPersisted = false;
+      postDispatchWarnings.push({
+        stage: 'lifecycle-side-effects',
+        code: transitioned.code,
+        message: transitioned.message,
+      });
+    }
+  } else {
+    const outboundDispatchMetadata = buildLifecycleMetadata({
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
       actorUserId,
@@ -5101,103 +5123,123 @@ const performOutboundAction = async (
       priorState: thread.state,
       newState: thread.state,
       action: outboundLifecycleAction,
-      threadReopenedByUser: priorState === 'CLOSED'
-        ? CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser
-        : null,
-    }),
-  });
-
-  if (!persistedDispatch.ok) {
-    respondConnectShyftBusinessRefusal(res, {
-      code: persistedDispatch.code,
-      message: persistedDispatch.message,
-      data: {
-        context,
-        threadId,
-      },
+      threadReopenedByUser: null,
     });
-    return;
-  }
-
-  sideEffectsPersisted = priorState === 'CLOSED'
-    ? sideEffectsPersisted && persistedDispatch.sideEffectsPersisted
-    : persistedDispatch.sideEffectsPersisted;
-  outboundDispatch = persistedDispatch.sideEffects;
-  if (priorState !== 'CLOSED') {
-    sideEffects = persistedDispatch.sideEffects;
-  }
-
-  const canonicalEvent = await recordCanonicalThreadEvent({
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    threadId,
-    eventType: resolveCanonicalEventTypeForOutboundAction(outboundAction),
-    payload: buildCanonicalPayloadForOutboundAction({
-      outboundAction,
-      threadState: thread.state,
-      lifecycleEvent: resolveOutboundDispatchEventName(outboundAction),
-      reopenedFromClosed: priorState === 'CLOSED',
-    }),
-    actorUserId,
-  });
-
-  const correlationMapping = await persistOutboundProviderIdentifierMappings({
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    threadId,
-    providerName: providerDispatch.providerKey,
-    dispatch: providerDispatch,
-    canonicalEventId: canonicalEvent.eventId,
-  });
-  if (correlationMapping.error) {
-    respondConnectShyftBusinessRefusal(res, {
-      code: correlationMapping.error.code,
-      message: 'Provider dispatch completed but correlation mapping persistence is unavailable.',
-      data: {
-        context,
-        threadId,
-        providerResolution: {
-          ...providerSelection.providerResolution,
-          adapterInterfaceVersion: providerSelection.adapter.adapterInterfaceVersion,
-          providerBranchingInDomain: false,
-        },
-        correlationMapping: {
-          deterministic: true,
-          callLegMapping: correlationMapping.callLegMapping,
-          messageMapping: correlationMapping.messageMapping,
-        },
-        sideEffects: {
-          dispatchAttempted: true,
-          lifecycleMutationApplied: priorState === 'CLOSED',
-          auditPersisted: sideEffectsPersisted,
-          canonicalEventPersisted: true,
-          correlationMappingPersisted: false,
-        },
-      },
+    const expectedDispatchSideEffects = buildLifecycleSideEffects({
+      eventName: dispatchEventName,
+      metadata: outboundDispatchMetadata,
     });
-    return;
+
+    const persistedDispatch = await persistOutboundDispatchSideEffects({
+      tenantId: context.tenantId,
+      threadId,
+      actorUserId,
+      eventName: dispatchEventName,
+      metadata: outboundDispatchMetadata,
+    });
+
+    if (!persistedDispatch.ok) {
+      sideEffectsPersisted = false;
+      sideEffects = expectedDispatchSideEffects;
+      outboundDispatch = expectedDispatchSideEffects;
+      postDispatchWarnings.push({
+        stage: 'outbound-side-effects',
+        code: persistedDispatch.code,
+        message: persistedDispatch.message,
+      });
+    } else {
+      sideEffectsPersisted = persistedDispatch.sideEffectsPersisted;
+      sideEffects = persistedDispatch.sideEffects;
+      outboundDispatch = persistedDispatch.sideEffects;
+    }
   }
 
-  const operatorFeedback = priorState === 'CLOSED'
-    ? 'Conversation reopened on the same thread before outbound dispatch. Escalation and inactivity timers were reset.'
-    : priorState === 'UNCLAIMED'
-      ? 'Outbound dispatched. Escalation continues until claim; no reset was applied.'
-      : 'Outbound dispatched from a claimed thread. Escalation remains stable unless ownership changes.';
-  const operatorFeedbackHeading = priorState === 'CLOSED'
-    ? 'Conversation reopened before outbound dispatch.'
-    : 'Outbound dispatch completed.';
-  const uiFeedbackMessage = outboundAction === 'message'
-    && smsPreferenceDecision?.prefersTexting === 'NO'
-    && validatedSmsOverride
-    ? 'Override applied. Outbound message dispatched.'
-    : operatorFeedback;
-  const uiFeedbackMessageKey = priorState === 'CLOSED'
-    ? 'connectshyft.thread.reopened_dispatch_success'
-    : outboundAction === 'call'
-      ? 'connectshyft.outbound.call.dispatched'
-      : 'connectshyft.outbound.message.dispatched';
+  let canonicalEvent: ConnectShyftCanonicalEventRecord | null = null;
+  try {
+    canonicalEvent = await recordCanonicalThreadEvent({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+      eventType: resolveCanonicalEventTypeForOutboundAction(outboundAction),
+      payload: buildCanonicalPayloadForOutboundAction({
+        outboundAction,
+        threadState: thread.state,
+        lifecycleEvent: dispatchEventName,
+        reopenedFromClosed: lifecycleEvent === CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      }),
+      actorUserId,
+    });
+  } catch (error) {
+    postDispatchWarnings.push({
+      stage: 'canonical-event',
+      code: 'CONNECTSHYFT_CANONICAL_EVENT_PERSISTENCE_UNAVAILABLE',
+      message: error instanceof Error
+        ? error.message
+        : 'Canonical event persistence unavailable.',
+    });
+  }
+
+  let correlationMapping: Awaited<ReturnType<typeof persistOutboundProviderIdentifierMappings>> = {
+    deterministic: true,
+    callLegMapping: 'ignored',
+    messageMapping: 'ignored',
+    error: null,
+  };
+
+  if (canonicalEvent) {
+    correlationMapping = await persistOutboundProviderIdentifierMappings({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+      providerName: providerDispatch.providerKey,
+      dispatch: providerDispatch,
+      canonicalEventId: canonicalEvent.eventId,
+    });
+    if (correlationMapping.error) {
+      postDispatchWarnings.push({
+        stage: 'provider-correlation',
+        code: correlationMapping.error.code,
+        message: correlationMapping.error.message,
+      });
+    }
+  } else if (providerDispatch.providerLegId || providerDispatch.providerMessageId) {
+    postDispatchWarnings.push({
+      stage: 'provider-correlation',
+      code: 'CONNECTSHYFT_PROVIDER_CORRELATION_SKIPPED',
+      message: 'Provider correlation mapping skipped because canonical event persistence failed.',
+    });
+  }
+
+  const hasPostDispatchWarnings = postDispatchWarnings.length > 0;
+  const reopenedFromClosed = lifecycleEvent === CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser;
+  const operatorFeedback = hasPostDispatchWarnings
+    ? 'Outbound dispatch completed with persistence warnings. Review traceability details before retrying.'
+    : priorState === 'CLOSED'
+      ? 'Conversation reopened on the same thread and outbound dispatch completed. Escalation and inactivity timers were reset.'
+      : priorState === 'UNCLAIMED'
+        ? 'Outbound dispatched. Escalation continues until claim; no reset was applied.'
+        : 'Outbound dispatched from a claimed thread. Escalation remains stable unless ownership changes.';
+  const operatorFeedbackHeading = hasPostDispatchWarnings
+    ? 'Outbound dispatch completed with warnings.'
+    : priorState === 'CLOSED'
+      ? 'Conversation reopened and outbound dispatch completed.'
+      : 'Outbound dispatch completed.';
+  const uiFeedbackMessage = hasPostDispatchWarnings
+    ? operatorFeedback
+    : outboundAction === 'message'
+      && smsPreferenceDecision?.prefersTexting === 'NO'
+      && validatedSmsOverride
+      ? 'Override applied. Outbound message dispatched.'
+      : operatorFeedback;
+  const uiFeedbackMessageKey = hasPostDispatchWarnings
+    ? 'connectshyft.outbound.dispatch_warning'
+    : priorState === 'CLOSED'
+      ? 'connectshyft.thread.reopened_dispatch_success'
+      : outboundAction === 'call'
+        ? 'connectshyft.outbound.call.dispatched'
+        : 'connectshyft.outbound.message.dispatched';
   const uiFeedback = {
-    severity: 'success' as const,
+    severity: hasPostDispatchWarnings ? ('warning' as const) : ('success' as const),
     ariaLive: 'polite' as const,
     messageKey: uiFeedbackMessageKey,
     message: uiFeedbackMessage,
@@ -5220,7 +5262,7 @@ const performOutboundAction = async (
       lifecycle: {
         priorState,
         nextState: thread.state,
-        reopenedFromClosed: priorState === 'CLOSED',
+        reopenedFromClosed,
       },
       operatorFeedback,
       operatorFeedbackMeta: {
@@ -5238,6 +5280,9 @@ const performOutboundAction = async (
       canonicalEvent,
       dispatch: providerDispatch,
       correlationMapping,
+      ...(postDispatchWarnings.length > 0
+        ? { postDispatchWarnings }
+        : {}),
       ...(outboundAction === 'call'
         ? {
             call: CONNECTSHYFT_OUTBOUND_CALL_POLICY,
@@ -5270,7 +5315,7 @@ const performOutboundAction = async (
             },
             sideEffects: {
               messageDispatched: true,
-              lifecycleMutationApplied: priorState === 'CLOSED',
+              lifecycleMutationApplied: reopenedFromClosed,
               auditPersisted: Boolean(persistedSmsOverride),
             },
           }),
