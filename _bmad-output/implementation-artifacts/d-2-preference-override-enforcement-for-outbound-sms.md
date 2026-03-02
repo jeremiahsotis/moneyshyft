@@ -1,6 +1,6 @@
 # Story d.2: Preference Override Enforcement for Outbound SMS
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -54,6 +54,10 @@ so that policy exceptions are explicit, justified, and traceable.
 - [x] [AI-Review][HIGH] Replaced synthetic `neighbor-${threadId}` fallback with canonical resolver trigger (`neighborId: null` for non-synthetic contexts) so FR-CS-023 enforcement applies to DB-backed threads. [src/src/routes/api/v1/connectshyft.ts:3838]
 - [x] [AI-Review][MEDIUM] Added API coverage for UUID-backed thread/neighbor preference paths validating refusal and success behavior through real `cs_threads -> cs_neighbors` lookup. [tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts:153]
 - [x] [AI-Review][MEDIUM] Added persistence-level override reason canonical-value constraint and upgrade-safe migration coverage. [src/src/migrations/20260227123000_create_connectshyft_sms_preference_overrides.ts:36]
+- [x] [AI-Review][HIGH] Moved SMS override persistence ahead of provider dispatch and added rollback on dispatch failure to prevent dispatch-without-audit drift. [src/src/routes/api/v1/connectshyft.ts:4938]
+- [x] [AI-Review][HIGH] Removed in-memory override persistence fallback and fail-closed with `CONNECTSHYFT_SMS_OVERRIDE_AUDIT_UNAVAILABLE` when durable persistence is unavailable. [src/src/modules/connectshyft/smsPreferenceOverrides.ts:166]
+- [x] [AI-Review][MEDIUM] Removed hard-coded DB credential fallback from API coverage to avoid committed secret defaults. [tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts:13]
+- [x] [AI-Review][MEDIUM] Added explicit persistence-unavailable and rollback unit tests for override durability semantics. [src/src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts:83]
 
 ## Dev Notes
 
@@ -159,6 +163,8 @@ GPT-5 Codex
 - `npm run test:e2e -- tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts` (pass)
 - `npm run test:e2e -- tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts` (pass)
 - `npm run test:e2e -- tests/e2e/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.spec.ts` (pass)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts` (pass)
+- `cd src && npm run build` (pass)
 
 ### Completion Notes List
 
@@ -173,6 +179,9 @@ GPT-5 Codex
 - Added DB-backed UUID thread/neighbor API regression coverage to prevent preference-override enforcement bypass regressions.
 - Revalidated story quality gates on 2026-03-02 (policy check, full backend Jest run, d.2+d.1 API suites, backend TypeScript build).
 - Completed Critical Capability operability closeout with passing desktop/tablet/mobile operator-journey coverage and accessibility assertions.
+- Prevented outbound-dispatch-before-audit sequencing by persisting override metadata before provider dispatch and adding rollback on provider dispatch refusal/failure.
+- Removed in-memory persistence fallback and now fail closed when durable override persistence is unavailable.
+- Added persistence failure/rollback regression coverage in module tests and removed hard-coded DB credential defaults from API test helpers.
 
 ### File List
 
@@ -202,6 +211,15 @@ GPT-5 Codex
   - `cd src && npm test -- src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts` (pass)
   - `cd src && npm run build` (pass)
   - `npm run test:e2e -- tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts` (pass)
+- 2026-03-02: Completed follow-up adversarial fixes for persistence ordering/durability and test hardening. Outcome: **Approved**.
+- Key findings resolved:
+  - HIGH: Prevented dispatch before override persistence and added rollback cleanup path.
+  - HIGH: Replaced in-memory persistence fallback with fail-closed refusal semantics for unavailable durability.
+  - MEDIUM: Removed hard-coded API test credential defaults.
+  - MEDIUM: Added persistence-failure and rollback regression tests.
+- Verification after fixes:
+  - `cd src && npm test -- src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts` (pass)
+  - `cd src && npm run build` (pass)
 
 ## Change Log
 
@@ -210,3 +228,4 @@ GPT-5 Codex
 - 2026-02-27: Senior Developer Review (AI) completed; status moved to in-progress with review follow-up tasks added.
 - 2026-02-27: Resolved all AI review findings, added DB-backed regression coverage, and synced story file list with git changes.
 - 2026-03-02: Re-ran regression + operability evidence suite, closed Critical Capability guardrail evidence, and moved story to review.
+- 2026-03-02: Resolved follow-up review findings (persistence ordering/durability + test hardening), synced story status to done.

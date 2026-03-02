@@ -83,6 +83,24 @@ export type ConnectShyftPersistedSmsOverride = {
   durability: 'database' | 'in-memory';
 };
 
+type ConnectShyftDeleteSmsOverrideInput = {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  overrideId: string;
+};
+
+type ConnectShyftSmsPreferenceOverrideStore = {
+  resolvePreference(input: {
+    tenantId: string;
+    orgUnitId: string;
+    threadId: string;
+    neighborId?: string | null;
+  }): Promise<ConnectShyftResolvedSmsPreference>;
+  persistOverride(input: ConnectShyftPersistSmsOverrideInput): Promise<ConnectShyftPersistedSmsOverride>;
+  deleteOverride?(input: ConnectShyftDeleteSmsOverrideInput): Promise<void>;
+};
+
 const CONNECTSHYFT_SYNTHETIC_THREAD_TEXTING_PREFERENCES: Record<string, ConnectShyftCanonicalTextingPreference> = {
   'thread-c4-unclaimed-pref-no-1004': 'NO',
   'thread-c4-closed-pref-no-1005': 'NO',
@@ -146,6 +164,18 @@ const isMissingPersistenceError = (error: unknown): boolean => {
     || candidate.code === '3F000'
     || candidate.code === '42703';
 };
+
+export class ConnectShyftSmsOverridePersistenceUnavailableError extends Error {
+  readonly code = 'CONNECTSHYFT_SMS_OVERRIDE_AUDIT_UNAVAILABLE';
+
+  constructor(cause?: unknown) {
+    super('Outbound SMS override persistence is unavailable.');
+    this.name = 'ConnectShyftSmsOverridePersistenceUnavailableError';
+    if (cause !== undefined) {
+      (this as Error & { cause?: unknown }).cause = cause;
+    }
+  }
+}
 
 export const validateConnectShyftSmsOverride = (
   input: ConnectShyftValidateSmsOverrideInput,
@@ -403,11 +433,24 @@ class KnexConnectShyftSmsPreferenceOverrideStore {
       durability: 'database',
     };
   }
+
+  async deleteOverride(input: ConnectShyftDeleteSmsOverrideInput): Promise<void> {
+    await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_sms_preference_overrides')
+      .where({
+        id: input.overrideId,
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+        thread_id: input.threadId,
+      })
+      .delete();
+  }
 }
 
 export class AsyncConnectShyftSmsPreferenceOverrideService {
   constructor(
-    private readonly store: KnexConnectShyftSmsPreferenceOverrideStore = new KnexConnectShyftSmsPreferenceOverrideStore(),
+    private readonly store: ConnectShyftSmsPreferenceOverrideStore = new KnexConnectShyftSmsPreferenceOverrideStore(),
     private readonly fallbackStore: InMemoryConnectShyftSmsPreferenceOverrideStore = new InMemoryConnectShyftSmsPreferenceOverrideStore(),
   ) {}
 
@@ -447,7 +490,31 @@ export class AsyncConnectShyftSmsPreferenceOverrideService {
       if (!isMissingPersistenceError(error)) {
         throw error;
       }
-      return this.fallbackStore.persistOverride(input);
+      throw new ConnectShyftSmsOverridePersistenceUnavailableError(error);
+    }
+  }
+
+  async rollbackApprovedOverride(input: {
+    tenantId: string;
+    orgUnitId: string;
+    threadId: string;
+    overrideId: string | null;
+  }): Promise<void> {
+    if (!input.overrideId || !this.store.deleteOverride) {
+      return;
+    }
+
+    try {
+      await this.store.deleteOverride({
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        threadId: input.threadId,
+        overrideId: input.overrideId,
+      });
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
     }
   }
 }

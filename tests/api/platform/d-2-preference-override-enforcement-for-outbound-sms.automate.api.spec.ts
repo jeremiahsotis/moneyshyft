@@ -10,12 +10,15 @@ const resolveConnectShyftDbConnection = () => {
     return databaseUrl;
   }
 
+  const resolvedUser = process.env.TEST_DB_USER || process.env.USER;
+  const resolvedPassword = process.env.TEST_DB_PASSWORD;
+
   return {
     host: process.env.TEST_DB_HOST || '127.0.0.1',
     port: Number(process.env.TEST_DB_PORT || 5432),
     database: process.env.TEST_DB_NAME || 'moneyshyft',
-    user: process.env.TEST_DB_USER || 'jeremiahotis',
-    password: process.env.TEST_DB_PASSWORD || 'Oiurueu12',
+    ...(resolvedUser ? { user: resolvedUser } : {}),
+    ...(resolvedPassword ? { password: resolvedPassword } : {}),
   };
 };
 
