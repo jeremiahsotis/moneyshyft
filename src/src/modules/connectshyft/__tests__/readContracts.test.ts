@@ -140,10 +140,17 @@ describe('connectshyft read contracts', () => {
       threadId: 'thread-d4-closed-1003',
       requestedRole: 'ORGUNIT_MEMBER',
     });
+    const closedPrefersNo = resolveConnectShyftThreadDetailContract({
+      tenantId: 'tenant-connectshyft-d4',
+      orgUnitId: 'org-connectshyft-d4-east',
+      threadId: 'thread-d4-closed-prefers-no-1005',
+      requestedRole: 'ORGUNIT_MEMBER',
+    });
 
     expect(unclaimed?.actions).toEqual(['Call', 'Text', 'Claim']);
     expect(claimed?.actions).toEqual(['Call', 'Text', 'Close']);
     expect(closed?.actions).toEqual(['Call', 'Send Message']);
+    expect(closedPrefersNo?.actions).toEqual(['Call', 'Send Message']);
   });
 
   it('keeps claimed action set canonical in read-contract output regardless of role hint', () => {

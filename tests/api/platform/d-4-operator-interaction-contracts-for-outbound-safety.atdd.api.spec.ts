@@ -64,6 +64,33 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
   );
 
   test(
+    '[P0] claimed thread detail adds Take Over action for tenant-privileged role while preserving canonical order @P0',
+    async ({
+      request,
+      storyD4Context,
+      storyD4TenantAdminHeaders,
+    }) => {
+      const claimedResponse = await apiRequest(request, {
+        method: 'GET',
+        path: `${storyD4Context.paths.threads}/${storyD4Context.threadIds.claimed}`,
+        headers: storyD4TenantAdminHeaders,
+      });
+
+      expect(claimedResponse.status()).toBe(200);
+      const claimedBody = await claimedResponse.json();
+      expect(claimedBody).toMatchObject({
+        ok: true,
+        data: {
+          thread: {
+            state: 'CLAIMED',
+          },
+          actions: ['Call', 'Take Over', 'Text', 'Close'],
+        },
+      });
+    },
+  );
+
+  test(
     '[P0] outbound actions from CLOSED thread return explicit same-thread reopen feedback metadata without hidden transitions @P0',
     async ({
       request,
@@ -150,6 +177,54 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
             messageDispatched: false,
             lifecycleMutationApplied: false,
             auditPersisted: false,
+          },
+        },
+      });
+    },
+  );
+
+  test(
+    '[P1] closed prefers_texting NO outbound sms refusal returns explicit same-thread reopen metadata @P1',
+    async ({
+      request,
+      storyD4Context,
+      storyD4OperatorHeaders,
+      storyD4MessageWithoutOverridePayload,
+    }) => {
+      const response = await apiRequest(request, {
+        method: 'POST',
+        path: `${storyD4Context.paths.threads}/${storyD4Context.threadIds.closedPrefersNo}/messages`,
+        headers: storyD4OperatorHeaders,
+        data: storyD4MessageWithoutOverridePayload,
+      });
+
+      expect(response.status()).toBe(200);
+      const body = await response.json();
+      expect(body).toMatchObject({
+        ok: false,
+        code: storyD4Context.refusalCodes.overrideRequired,
+        refusalType: 'business',
+        data: {
+          thread: {
+            threadId: storyD4Context.threadIds.closedPrefersNo,
+            priorState: 'CLOSED',
+            state: 'UNCLAIMED',
+          },
+          lifecycleEvent: storyD4Context.eventNames.reopenedByUser,
+          lifecycle: {
+            priorState: 'CLOSED',
+            nextState: 'UNCLAIMED',
+            reopenedFromClosed: true,
+          },
+          sideEffects: {
+            messageDispatched: false,
+            lifecycleMutationApplied: true,
+            auditPersisted: false,
+          },
+          preferencePolicy: {
+            prefersTexting: 'NO',
+            overrideRequired: true,
+            overrideAccepted: false,
           },
         },
       });
