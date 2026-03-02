@@ -164,7 +164,7 @@ test.describe(
 
         await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
         await expect(page.getByTestId('connectshyft-thread-escalation-chip')).toContainText(
-          /monitoring/i,
+          /needs attention soon/i,
         );
         await expect(page.getByTestId('connectshyft-thread-inactivity-chip')).toContainText(/reset/i);
       },
