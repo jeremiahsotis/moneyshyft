@@ -2,6 +2,8 @@ import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryC1.fixture';
 import { createStoryC1Headers } from '../../support/factories/connectShyftStoryC1Factory';
 
+const CONNECTSHYFT_ENSURE_HIGH_CONTENTION_REQUESTS = 12;
+
 const resolveConnectShyftDbConnection = () => {
   const databaseUrl =
     process.env.MONEYSHYFT_TEST_DATABASE_URL
@@ -32,6 +34,32 @@ const createConnectShyftDbClient = () => {
 };
 
 const connectShyftDb = createConnectShyftDbClient();
+
+const readStableThreadContract = (thread: {
+  threadId: string;
+  tenantId: string;
+  orgUnitId: string;
+  neighborId: string;
+  source: string;
+  state: string;
+  lastInboundCsNumberId: string;
+  preferredOutboundCsNumberId: string;
+  escalation: {
+    stage: number;
+    nextEvaluationAtUtc: string | null;
+  };
+}) => ({
+  threadId: thread.threadId,
+  tenantId: thread.tenantId,
+  orgUnitId: thread.orgUnitId,
+  neighborId: thread.neighborId,
+  source: thread.source,
+  state: thread.state,
+  lastInboundCsNumberId: thread.lastInboundCsNumberId,
+  preferredOutboundCsNumberId: thread.preferredOutboundCsNumberId,
+  escalationStage: thread.escalation.stage,
+  escalationNextEvaluationAtUtc: thread.escalation.nextEvaluationAtUtc,
+});
 
 const countActiveThreadsForIdentity = async ({
   tenantId,
@@ -74,28 +102,46 @@ test.describe(
           neighborId: uniqueNeighborId,
         };
 
-        const [firstResponse, secondResponse] = await Promise.all([
-          apiRequest(request, {
-            method: 'POST',
-            path: storyC1Context.paths.threadsCollection,
-            headers: storyC1OperatorHeaders,
-            data: ensurePayload,
-          }),
-          apiRequest(request, {
-            method: 'POST',
-            path: storyC1Context.paths.threadsCollection,
-            headers: storyC1OperatorHeaders,
-            data: ensurePayload,
-          }),
-        ]);
+        const responses = await Promise.all(
+          Array.from({ length: CONNECTSHYFT_ENSURE_HIGH_CONTENTION_REQUESTS }, () =>
+            apiRequest(request, {
+              method: 'POST',
+              path: storyC1Context.paths.threadsCollection,
+              headers: storyC1OperatorHeaders,
+              data: ensurePayload,
+            })),
+        );
 
-        expect(firstResponse.status()).toBe(201);
-        expect(secondResponse.status()).toBe(201);
+        responses.forEach((response) => {
+          expect(response.status()).toBe(201);
+        });
 
-        const firstBody = await firstResponse.json();
-        const secondBody = await secondResponse.json();
+        const bodies = await Promise.all(responses.map((response) => response.json()));
+        const resolvedThreadIds = bodies.map((body) => body.data.thread.threadId);
+        const uniqueThreadIds = new Set(resolvedThreadIds);
+        expect(uniqueThreadIds.size).toBe(1);
 
-        expect(firstBody.data.thread.threadId).toBe(secondBody.data.thread.threadId);
+        const expectedThreadId = resolvedThreadIds[0];
+        const expectedContract = readStableThreadContract(bodies[0].data.thread);
+        bodies.forEach((body) => {
+          expect(body).toMatchObject({
+            ok: true,
+            code: 'CONNECTSHYFT_THREAD_ENSURED',
+            data: {
+              thread: {
+                threadId: expectedThreadId,
+                tenantId: storyC1Context.tenantId,
+                orgUnitId: storyC1Context.orgUnitId,
+                neighborId: uniqueNeighborId,
+                state: 'UNCLAIMED',
+              },
+            },
+          });
+          expect(readStableThreadContract(body.data.thread)).toEqual(expectedContract);
+          expect(Date.parse(body.data.thread.updatedAtUtc)).toBeGreaterThanOrEqual(
+            Date.parse(body.data.thread.createdAtUtc),
+          );
+        });
 
         const activeThreadCount = await countActiveThreadsForIdentity({
           tenantId: storyC1Context.tenantId,
@@ -112,6 +158,72 @@ test.describe(
             org_unit_id: storyC1Context.orgUnitId,
             neighbor_id: uniqueNeighborId,
           })
+          .del();
+      },
+    );
+
+    test(
+      '[P1] ensure normalizes neighborId case variants to one active thread identity @P1',
+      async ({ request, storyC1Context, storyC1OperatorHeaders, storyC1CreatePayload }) => {
+        const canonicalNeighborId = `${storyC1CreatePayload.neighborId}-case-${Date.now().toString(36)}`;
+        const upperCaseNeighborId = canonicalNeighborId.toUpperCase();
+
+        const createResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyC1Context.paths.threadsCollection,
+          headers: storyC1OperatorHeaders,
+          data: {
+            ...storyC1CreatePayload,
+            neighborId: upperCaseNeighborId,
+          },
+        });
+        const reuseResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyC1Context.paths.threadsCollection,
+          headers: storyC1OperatorHeaders,
+          data: {
+            ...storyC1CreatePayload,
+            neighborId: canonicalNeighborId,
+          },
+        });
+
+        expect(createResponse.status()).toBe(201);
+        expect(reuseResponse.status()).toBe(201);
+
+        const createBody = await createResponse.json();
+        const reuseBody = await reuseResponse.json();
+        expect(createBody.data.thread.threadId).toBe(reuseBody.data.thread.threadId);
+        expect(createBody.data.thread.neighborId).toBe(canonicalNeighborId);
+        expect(reuseBody.data.thread.neighborId).toBe(canonicalNeighborId);
+
+        const activeThreadCount = await countActiveThreadsForIdentity({
+          tenantId: storyC1Context.tenantId,
+          orgUnitId: storyC1Context.orgUnitId,
+          neighborId: canonicalNeighborId,
+        });
+        expect(activeThreadCount).toBe(1);
+
+        const caseInsensitiveCount = await connectShyftDb
+          .withSchema('connectshyft')
+          .table('cs_threads')
+          .where({
+            tenant_id: storyC1Context.tenantId,
+            org_unit_id: storyC1Context.orgUnitId,
+          })
+          .whereRaw('LOWER(neighbor_id) = LOWER(?)', [canonicalNeighborId])
+          .andWhere('state', '<>', 'CLOSED')
+          .count<{ count: string | number }>({ count: '*' })
+          .first();
+        expect(Number(caseInsensitiveCount?.count ?? 0)).toBe(1);
+
+        await connectShyftDb
+          .withSchema('connectshyft')
+          .table('cs_threads')
+          .where({
+            tenant_id: storyC1Context.tenantId,
+            org_unit_id: storyC1Context.orgUnitId,
+          })
+          .whereRaw('LOWER(neighbor_id) = LOWER(?)', [canonicalNeighborId])
           .del();
       },
     );
