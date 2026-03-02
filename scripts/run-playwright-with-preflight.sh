@@ -28,6 +28,8 @@ export TEST_EMAIL
 export TEST_PASSWORD
 export ENABLE_TEST_AUTH_HARNESS
 export ENABLE_TEST_CONNECTSHYFT_FLAGS
+export JWT_SECRET="${JWT_SECRET:-test-jwt-secret}"
+export JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET:-test-jwt-refresh-secret}"
 export PLAYWRIGHT_BACKEND_NODE_ENV
 
 mkdir -p "$RUNTIME_DIR"

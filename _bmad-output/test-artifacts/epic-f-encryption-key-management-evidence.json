@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-03-02T13:31:46.092Z",
+  "storyScope": "epic-f",
+  "requirements": {
+    "nfr12": "NFR12: Data in transit shall be encrypted; sensitive stored credentials/secrets shall not be persisted in plaintext.",
+    "nfr12a": "NFR12a: Secrets shall be stored in environment/secret manager; refresh tokens in persistence are stored only as salted hashes."
+  },
+  "controls": {
+    "secretsFromEnvFailClosed": {
+      "jwt": true,
+      "dbPool": true,
+      "knex": true,
+      "forbiddenSecretFallbacksRemoved": true,
+      "forbiddenSecretFallbackHits": []
+    },
+    "tokenStorageAndRotation": {
+      "refreshTokenHashedAtRest": true,
+      "refreshTokenReplayProtectionTested": true
+    },
+    "credentialPersistence": {
+      "userPasswordHashing": true,
+      "adminPasswordHashing": true
+    },
+    "secretRedaction": {
+      "centralizedRedaction": true,
+      "redactionVerificationTests": true
+    }
+  },
+  "supportingEvidence": {
+    "sastSummary": {
+      "suitesPassed": 6,
+      "suitesTotal": 6,
+      "testsPassed": 22,
+      "testsTotal": 22
+    },
+    "securityScanArtifact": "_bmad-output/test-artifacts/epic-f-security-scan-evidence.json",
+    "sastArtifact": "_bmad-output/test-artifacts/epic-f-sast-security-tests.txt"
+  },
+  "gate": {
+    "nfr12RequirementPresent": true,
+    "nfr12aRequirementPresent": true,
+    "secretsFailClosed": true,
+    "refreshTokensHashedAtRest": true,
+    "hashingAndRedactionTestsPass": true,
+    "securityGatePass": true,
+    "encryptionKeyManagementEvidenceComplete": true
+  },
+  "evidenceSources": [
+    "_bmad-output/planning-artifacts/prd.md",
+    "src/src/utils/jwt.ts",
+    "src/src/config/database.ts",
+    "src/src/knexfile.ts",
+    "src/src/platform/sessions/PlatformSessionStore.ts",
+    "src/src/platform/audit/redaction.ts",
+    "src/src/services/AuthService.ts",
+    "src/src/routes/api/v1/platform-admin-console.ts"
+  ]
+}

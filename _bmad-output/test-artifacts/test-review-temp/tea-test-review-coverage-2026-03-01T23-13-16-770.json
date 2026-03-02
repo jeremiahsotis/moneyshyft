@@ -1,0 +1,74 @@
+{
+  "dimension": "coverage",
+  "score": 35,
+  "max_score": 100,
+  "grade": "F",
+  "violations": [
+    {
+      "file": "tests/",
+      "severity": "HIGH",
+      "category": "missing-story-coverage",
+      "description": "Epic F story f-3 has no matching test specs in API or E2E suites.",
+      "suggestion": "Add ATDD + automate coverage for f-3 fallback correlation mapping and replay-safe constraints."
+    },
+    {
+      "file": "tests/api/platform/f-2-canonical-comms-event-model-and-event-store.atdd.api.spec.ts",
+      "line": 53,
+      "severity": "HIGH",
+      "category": "disabled-atdd-tests",
+      "description": "All ATDD scenarios in this file are skipped, removing acceptance-level guardrails for f-2.",
+      "suggestion": "Unskip and stabilize core ATDD scenarios for canonical event persistence and filtering.",
+      "code_snippet": "test.skip('[P0] ...')"
+    },
+    {
+      "file": "tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.spec.ts",
+      "line": 34,
+      "severity": "HIGH",
+      "category": "disabled-atdd-tests",
+      "description": "All E2E ATDD scenarios for f-1 are skipped, leaving UI-level acceptance criteria unverified.",
+      "suggestion": "Re-enable core thread-detail and refusal UX acceptance scenarios.",
+      "code_snippet": "test.skip('[P0] ...')"
+    },
+    {
+      "file": "tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.atdd.spec.ts",
+      "line": 34,
+      "severity": "MEDIUM",
+      "category": "disabled-atdd-tests",
+      "description": "E2E ATDD coverage for canonical timeline filtering is fully skipped.",
+      "suggestion": "Recover at least one deterministic happy-path UI ATDD case per acceptance criterion.",
+      "code_snippet": "test.skip('[P0] ...')"
+    },
+    {
+      "file": "tests/e2e/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.spec.ts",
+      "line": 46,
+      "severity": "MEDIUM",
+      "category": "e2e-level-gap",
+      "description": "Active f-4 E2E automation is API-request driven and does not validate browser UI behavior for cutover guardrails.",
+      "suggestion": "Add UI-level assertions for operator-visible cutover and refusal signals."
+    }
+  ],
+  "passed_checks": 8,
+  "failed_checks": 12,
+  "violation_summary": {
+    "HIGH": 3,
+    "MEDIUM": 2,
+    "LOW": 0
+  },
+  "coverage_gaps": {
+    "untested_epic_story": ["f-3-provider-leg-message-correlation-fallback-mapping"],
+    "skipped_specs": [
+      "tests/api/platform/f-2-canonical-comms-event-model-and-event-store.atdd.api.spec.ts",
+      "tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.spec.ts",
+      "tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.atdd.spec.ts"
+    ],
+    "missing_ui_acceptance": [
+      "Epic F4 cutover guardrail UI assertions"
+    ]
+  },
+  "recommendations": [
+    "Create dedicated f-3 API and E2E specs covering fallback correlation mapping.",
+    "Remove skip markers from Epic F ATDD suites and stabilize fixtures.",
+    "Ensure each Epic F story has at least one active UI-level acceptance scenario."
+  ],
+  "summary": "Coverage is the weakest dimension due to missing f-3 tests and extensive skipped ATDD suites."
+}

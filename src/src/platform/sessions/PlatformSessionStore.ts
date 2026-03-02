@@ -30,6 +30,19 @@ type CreateSessionInput = {
 class PlatformSessionStore {
   private tenantColumnSupport: Promise<boolean> | null = null;
 
+  private resolveJwtRefreshSecret(): string {
+    const value = process.env.JWT_REFRESH_SECRET;
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value;
+    }
+
+    if (process.env.NODE_ENV === 'test') {
+      return 'test-jwt_refresh_secret';
+    }
+
+    throw new Error('JWT_REFRESH_SECRET must be set via environment/secret manager');
+  }
+
   private getScopedDb(trx?: Knex.Transaction): Knex.QueryBuilder {
     const client = trx ?? db;
     return client.withSchema('platform').table('sessions');
@@ -203,7 +216,7 @@ class PlatformSessionStore {
     try {
       const decoded = jwt.verify(
         refreshToken,
-        process.env.JWT_REFRESH_SECRET || 'your_refresh_secret_change_in_production'
+        this.resolveJwtRefreshSecret(),
       ) as JwtPayload | string;
 
       if (!decoded || typeof decoded === 'string' || typeof decoded.exp !== 'number') {

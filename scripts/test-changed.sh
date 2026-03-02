@@ -8,7 +8,10 @@ if ! git rev-parse --verify "$base_ref" >/dev/null 2>&1; then
   git fetch --no-tags origin "${base_ref#origin/}:${base_ref}" || true
 fi
 
-mapfile -t changed_specs < <(git diff --name-only "$base_ref"...HEAD | grep -E '^tests/.*\.spec\.(ts|js)$' || true)
+changed_specs=()
+while IFS= read -r line; do
+  changed_specs+=("$line")
+done < <(git diff --name-only "$base_ref"...HEAD | grep -E '^tests/.*\.spec\.(ts|js)$' || true)
 
 if [[ ${#changed_specs[@]} -eq 0 ]]; then
   echo "No changed spec files detected against $base_ref. Skipping test run."

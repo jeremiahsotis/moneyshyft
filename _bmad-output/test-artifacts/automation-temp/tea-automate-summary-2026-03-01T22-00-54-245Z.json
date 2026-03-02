@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-03-01T22-00-54-245Z",
+  "total_tests": 9,
+  "api_tests": 6,
+  "e2e_tests": 3,
+  "fixtures_created": 0,
+  "fixtures_reused": [
+    "tests/support/factories/connectShyftStoryF1Factory.ts",
+    "tests/support/factories/connectShyftStoryF2Factory.ts",
+    "tests/support/utils/policyScriptTestHarness.ts"
+  ],
+  "api_test_files": 1,
+  "e2e_test_files": 1,
+  "priority_coverage": {
+    "P0": 6,
+    "P1": 3,
+    "P2": 0,
+    "P3": 0
+  },
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns",
+    "test-quality",
+    "test-priorities-matrix",
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience",
+    "playwright-cli"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential",
+  "validated_command": "npm run test:e2e -- tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts tests/e2e/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.spec.ts",
+  "validated_result": "9 passed"
+}

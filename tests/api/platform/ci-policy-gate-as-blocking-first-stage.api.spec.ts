@@ -125,6 +125,54 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     expect(status !== 0 && hasFailurePrefix && hasBranchFirstContext && hasCurrentBranch).toBe(true);
   });
 
+  test('[P0] policy gate blocks direct Twilio SDK coupling in ConnectShyft sources outside adapter contracts @P0', async ({
+    ciPolicyContext,
+  }) => {
+    // Given a story branch that introduces direct Twilio SDK coupling in ConnectShyft sources
+    const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
+      branch: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
+      event: 'local',
+      commitSubject: '0-9: enforce provider abstraction cutover guard',
+      seedFiles: {
+        'src/src/modules/connectshyft/twilio-coupling.ts': [
+          "import twilio from 'twilio';",
+          '',
+          "export const createDirectTwilioClient = () => twilio('sid', 'token');",
+          '',
+        ].join('\n'),
+      },
+    });
+
+    // Then policy should fail before downstream checks with explicit coupling diagnostics
+    const hasGuardFailure = /ConnectShyft provider abstraction guard failed: direct Twilio coupling detected/.test(output);
+    const hasViolationFile = /src\/src\/modules\/connectshyft\/twilio-coupling\.ts/.test(output);
+    expect(status !== 0 && hasGuardFailure && hasViolationFile).toBe(true);
+  });
+
+  test('[P1] policy gate blocks direct Twilio SDK coupling in ConnectShyft TSX sources @P1', async ({
+    ciPolicyContext,
+  }) => {
+    // Given a story branch that introduces Twilio coupling in a TSX ConnectShyft file
+    const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
+      branch: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
+      event: 'local',
+      commitSubject: '0-9: enforce provider abstraction cutover guard for tsx',
+      seedFiles: {
+        'src/src/modules/connectshyft/twilio-coupling.tsx': [
+          "import twilio from 'twilio';",
+          '',
+          'export const TwilioButton = () => null;',
+          '',
+        ].join('\n'),
+      },
+    });
+
+    // Then policy should fail with explicit TSX file diagnostics
+    const hasGuardFailure = /ConnectShyft provider abstraction guard failed: direct Twilio coupling detected/.test(output);
+    const hasViolationFile = /src\/src\/modules\/connectshyft\/twilio-coupling\.tsx/.test(output);
+    expect(status !== 0 && hasGuardFailure && hasViolationFile).toBe(true);
+  });
+
   test('[P0] rejects story pull requests targeting non-codex\\/dev base with actionable branch context @P0', async ({
     ciPolicyContext,
   }) => {

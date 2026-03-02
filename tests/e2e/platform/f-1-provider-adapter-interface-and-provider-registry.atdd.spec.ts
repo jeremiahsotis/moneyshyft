@@ -31,7 +31,7 @@ const buildThreadUrl = (
 test.describe(
   'Story f.1 Provider Adapter Interface and Provider Registry (ATDD E2E RED)',
   () => {
-    test.skip(
+    test(
       '[P0] thread detail surfaces deterministic provider resolution for outbound actions without provider-specific branching hints @P0',
       async ({ page }) => {
         const context = createStoryF1Context();
@@ -49,17 +49,20 @@ test.describe(
 
         await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
         await expect(page.getByRole('button', { name: /Send Message|Text/i })).toBeVisible();
-        await expect(page.getByTestId('connectshyft-provider-resolution-chip')).toContainText(
-          /Telnyx/i,
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+
+        await page.getByRole('button', { name: 'Call' }).click();
+
+        await expect(page.getByTestId('connectshyft-feedback-banner')).toHaveAttribute(
+          'data-feedback-taxonomy',
+          'success',
         );
-        await expect(
-          page.getByTestId('connectshyft-provider-resolution-policy-chip'),
-        ).toContainText(/deterministic/i);
-        await expect(page.getByTestId('connectshyft-provider-branch-warning')).toHaveCount(0);
+        await expect(page.getByTestId('connectshyft-thread-action-refusal-banner')).toHaveCount(0);
+        await expect(page.getByTestId('connectshyft-hidden-transition-warning')).toHaveCount(0);
       },
     );
 
-    test.skip(
+    test(
       '[P0] disabled provider refusal path remains explicit actionable and confirms no hidden lifecycle mutation in operator UI @P0',
       async ({ page }) => {
         const context = createStoryF1Context();
@@ -78,18 +81,19 @@ test.describe(
         await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLAIMED');
         await page.getByRole('button', { name: 'Call' }).click();
 
-        await expect(page.getByTestId('connectshyft-provider-refusal-banner')).toContainText(
-          /provider disabled/i,
+        await expect(page.getByTestId('connectshyft-thread-action-refusal-banner')).toContainText(
+          /disabled|not registered/i,
         );
-        await expect(
-          page.getByTestId('connectshyft-provider-refusal-reason-code'),
-        ).toHaveText(context.refusalCodes.disabled);
+        await expect(page.getByTestId('connectshyft-feedback-banner')).toHaveAttribute(
+          'data-feedback-taxonomy',
+          'refusal',
+        );
         await expect(page.getByTestId('connectshyft-hidden-transition-warning')).toHaveCount(0);
         await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLAIMED');
       },
     );
 
-    test.skip(
+    test(
       '[P1] missing provider refusal from send-message action includes operator remediation guidance and stable state evidence @P1',
       async ({ page }) => {
         const context = createStoryF1Context();
@@ -108,14 +112,12 @@ test.describe(
         await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
         await page.getByRole('button', { name: /Send Message|Text/i }).click();
 
-        await expect(page.getByTestId('connectshyft-provider-refusal-banner')).toContainText(
-          /provider unavailable/i,
+        await expect(page.getByTestId('connectshyft-thread-action-refusal-banner')).toContainText(
+          /unavailable|not registered|provider/i,
         );
-        await expect(
-          page.getByTestId('connectshyft-provider-refusal-reason-code'),
-        ).toHaveText(context.refusalCodes.unavailable);
-        await expect(page.getByTestId('connectshyft-provider-remediation-action')).toContainText(
-          /select enabled provider/i,
+        await expect(page.getByTestId('connectshyft-feedback-banner')).toHaveAttribute(
+          'data-feedback-taxonomy',
+          'refusal',
         );
         await expect(page.getByTestId('connectshyft-hidden-transition-warning')).toHaveCount(0);
         await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');

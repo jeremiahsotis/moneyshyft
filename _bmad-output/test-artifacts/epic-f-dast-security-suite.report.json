@@ -1,0 +1,710 @@
+{
+  "config": {
+    "configFile": "/Users/jeremiahotis/projects/connectshyft/playwright.config.ts",
+    "rootDir": "/Users/jeremiahotis/projects/connectshyft/tests",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 4
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/Users/jeremiahotis/projects/connectshyft/tests/artifacts/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 4
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/jeremiahotis/projects/connectshyft/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 45000
+      }
+    ],
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.57.0",
+    "workers": 4,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+      "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Story 1.6 automate - security controls and redaction verification API coverage",
+          "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+          "line": 13,
+          "column": 6,
+          "specs": [
+            {
+              "title": "[P0] rejects cross-tenant read overrides on protected repository diagnostics @P0",
+              "ok": true,
+              "tags": [
+                "P0"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 34,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.813Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0a8282a6d3a5ac0c61f-fb03623867fed546cda1",
+              "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+              "line": 14,
+              "column": 7
+            },
+            {
+              "title": "[P0] rejects cross-tenant write overrides with deterministic business refusal envelope @P0",
+              "ok": true,
+              "tags": [
+                "P0"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 37,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.812Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0a8282a6d3a5ac0c61f-d6a7604033c6d5d8f99a",
+              "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+              "line": 34,
+              "column": 7
+            },
+            {
+              "title": "[P1] rejects spoofed active-tenant header values that diverge from canonical tenancy context @P1",
+              "ok": true,
+              "tags": [
+                "P1"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 32,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.817Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0a8282a6d3a5ac0c61f-86a227fd89c1db5aa0de",
+              "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+              "line": 55,
+              "column": 7
+            },
+            {
+              "title": "[P1] rejects spoofed active-org-unit header values on orgUnit-scoped repository diagnostics @P1",
+              "ok": true,
+              "tags": [
+                "P1"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 30,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.820Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0a8282a6d3a5ac0c61f-697d9ae8b8b31877636c",
+              "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+              "line": 78,
+              "column": 7
+            },
+            {
+              "title": "[P0] enforces csrf evidence on state-changing security guard endpoints when header proof is missing @P0",
+              "ok": true,
+              "tags": [
+                "P0"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 19,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.860Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0a8282a6d3a5ac0c61f-b9febb88fe01e1d94d4a",
+              "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+              "line": 108,
+              "column": 7
+            },
+            {
+              "title": "[P1] accepts state-changing security guard requests when csrf header and proof token match @P1",
+              "ok": true,
+              "tags": [
+                "P1"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 12,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.862Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0a8282a6d3a5ac0c61f-73efde99f9fa3f0299ed",
+              "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+              "line": 131,
+              "column": 7
+            },
+            {
+              "title": "[P1] rejects csrf mismatch with deterministic security refusal semantics @P1",
+              "ok": true,
+              "tags": [
+                "P1"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 13,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.865Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0a8282a6d3a5ac0c61f-f5bc50ae8b575e056cce",
+              "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+              "line": 153,
+              "column": 7
+            },
+            {
+              "title": "[P1] enforces csrf protection on auth logout path when csrf header proof is missing @P1",
+              "ok": true,
+              "tags": [
+                "P1"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 15,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.863Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0a8282a6d3a5ac0c61f-1b13df2870fd7f482519",
+              "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+              "line": 176,
+              "column": 7
+            },
+            {
+              "title": "[P1] allows auth logout path when csrf cookie/header proof matches @P1",
+              "ok": true,
+              "tags": [
+                "P1"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 11,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.880Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0a8282a6d3a5ac0c61f-11e8a58d191ce6f88a98",
+              "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+              "line": 197,
+              "column": 7
+            },
+            {
+              "title": "[P1] validates development cookie policy matrix for sibling app/api domains @P1",
+              "ok": true,
+              "tags": [
+                "P1"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 11,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.885Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0a8282a6d3a5ac0c61f-4cb9b4da7559116ee45e",
+              "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+              "line": 215,
+              "column": 9
+            },
+            {
+              "title": "[P1] validates production cookie policy matrix for sibling app/api domains @P1",
+              "ok": true,
+              "tags": [
+                "P1"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 14,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.886Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0a8282a6d3a5ac0c61f-c54510896b9bf51a0be3",
+              "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+              "line": 215,
+              "column": 9
+            },
+            {
+              "title": "[P1] verifies redaction endpoint strips prohibited plaintext markers from audit payload contracts @P1",
+              "ok": true,
+              "tags": [
+                "P1"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 13,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.892Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0a8282a6d3a5ac0c61f-0cee6605b6ef0784576f",
+              "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+              "line": 257,
+              "column": 7
+            },
+            {
+              "title": "[P1] keeps Story 1.6 security verification specs in required quality gate suites @P1",
+              "ok": true,
+              "tags": [
+                "P1"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.897Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0a8282a6d3a5ac0c61f-4c06ce30f2f9b091d779",
+              "file": "api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+              "line": 290,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts",
+      "file": "e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Story 1.6 automate - security controls and redaction verification journey coverage",
+          "file": "e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts",
+          "line": 8,
+          "column": 6,
+          "specs": [
+            {
+              "title": "[P0] operator security verification journey confirms cross-tenant guardrails block read and write override attempts @P0",
+              "ok": true,
+              "tags": [
+                "P0"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 17,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.905Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "413a4ccb1118a8cb0e2d-760635e491f2e0fef05a",
+              "file": "e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts",
+              "line": 9,
+              "column": 7
+            },
+            {
+              "title": "[P1] operator journey validates csrf acceptance and sibling-domain cookie posture contracts @P1",
+              "ok": true,
+              "tags": [
+                "P1"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 23,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.912Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "413a4ccb1118a8cb0e2d-1d73a72a3783ff681329",
+              "file": "e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts",
+              "line": 46,
+              "column": 7
+            },
+            {
+              "title": "[P1] operator journey validates auth logout csrf enforcement and success path @P1",
+              "ok": true,
+              "tags": [
+                "P1"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 15,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.909Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "413a4ccb1118a8cb0e2d-cb611da42c6b32bb134c",
+              "file": "e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts",
+              "line": 104,
+              "column": 7
+            },
+            {
+              "title": "[P1] operator journey validates redaction-safe evidence stream with no plaintext secret exposure @P1",
+              "ok": true,
+              "tags": [
+                "P1"
+              ],
+              "tests": [
+                {
+                  "timeout": 45000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-02T13:28:26.913Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "413a4ccb1118a8cb0e2d-ebff89013710905a0ffe",
+              "file": "e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts",
+              "line": 137,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-03-02T13:28:26.363Z",
+    "duration": 586.688,
+    "expected": 17,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

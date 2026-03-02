@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { test as base } from '@playwright/test';
 import {
   createStoryF2Context,
@@ -74,17 +75,18 @@ export const test = base.extend<StoryF2Fixtures>({
     });
   },
   storyF2InboundWebhookPayload: async ({ storyF2Context }, use) => {
+    const eventToken = randomUUID().slice(0, 8);
     await use({
       eventType: 'voice.connected',
       threadId: storyF2Context.threadIds.unclaimed,
       orgUnitId: storyF2Context.orgUnitId,
       tenantId: storyF2Context.tenantId,
       providerKey: storyF2Context.providers.enabledPrimary,
-      providerEventId: 'provider-event-f2-voice-connected-1001',
+      providerEventId: `provider-event-f2-voice-connected-${eventToken}`,
       callStatus: 'CONNECTED',
       providerPayload: {
-        telnyxCallControlId: 'telnyx-control-f2-1001',
-        twilioCallSid: 'twilio-callsid-f2-should-not-leak',
+        telnyxCallControlId: `telnyx-control-f2-${eventToken}`,
+        twilioCallSid: `twilio-callsid-f2-${eventToken}`,
         rawProviderStatus: 'answered',
       },
     });

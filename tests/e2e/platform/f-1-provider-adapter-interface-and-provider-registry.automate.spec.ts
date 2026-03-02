@@ -3,6 +3,7 @@ import {
   createStoryF1Context,
   createStoryF1Headers,
 } from '../../support/factories/connectShyftStoryF1Factory';
+import { deterministicProviderEventId } from '../../support/utils/deterministicTestIds';
 
 const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
 
@@ -14,7 +15,6 @@ const hasRequiredEnvelopeKeys = (payload: Record<string, unknown>): boolean =>
 test.describe(
   'Story f.1 Provider Adapter Interface and Provider Registry (Automate E2E Expansion)',
   () => {
-    test.describe.configure({ mode: 'serial' });
 
     test(
       '[P0] operator-triggered outbound actions without provider key remain deterministic across call and message contracts using the same registry ordering @P0',
@@ -227,7 +227,7 @@ test.describe(
 
     test(
       '[P1] inbound webhook contracts preserve provider-adapter translation metadata and deterministic routing decisions for operator observability @P1',
-      async ({ request }) => {
+      async ({ request }, testInfo) => {
         const context = createStoryF1Context();
         const adminHeaders = createStoryF1Headers(context, {
           role: 'ORGUNIT_ADMIN',
@@ -243,7 +243,11 @@ test.describe(
             orgUnitId: context.orgUnitId,
             tenantId: context.tenantId,
             providerKey: context.providers.enabledPrimary,
-            providerEventId: `telnyx-call-event-f1-${Date.now().toString().slice(-6)}`,
+            providerEventId: deterministicProviderEventId(
+              'telnyx-call-event-f1',
+              testInfo,
+              'inbound-webhook',
+            ),
             callStatus: 'CONNECTED',
           },
         });

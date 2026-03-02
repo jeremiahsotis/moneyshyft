@@ -1,0 +1,66 @@
+{
+  "dimension": "maintainability",
+  "score": 60,
+  "max_score": 100,
+  "grade": "D",
+  "violations": [
+    {
+      "file": "tests/api/platform/f-2-canonical-comms-event-model-and-event-store.automate.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "file-too-large",
+      "description": "Spec file exceeds 300 lines, increasing cognitive load and debugging complexity.",
+      "suggestion": "Split by behavior slices (dispatch, webhook translation, event query determinism).",
+      "code_snippet": "379-line file with mixed scenarios and helper logic"
+    },
+    {
+      "file": "tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "file-too-large",
+      "description": "Large multi-scenario suite combines policy-gate, rollout, webhook, and dispatch checks in one file.",
+      "suggestion": "Decompose into focused specs per capability and share fixtures/helpers.",
+      "code_snippet": "377-line file with broad scenario mix"
+    },
+    {
+      "file": "tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.automate.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "file-too-large",
+      "description": "E2E automate spec exceeds 300 lines and duplicates helper patterns from API coverage.",
+      "suggestion": "Extract shared assertion helpers and keep each scenario under ~120 lines.",
+      "code_snippet": "314-line file"
+    },
+    {
+      "file": "tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "MEDIUM",
+      "category": "duplicated-helpers",
+      "description": "Repeated envelope and payload assertion structures appear across files with minor variations.",
+      "suggestion": "Introduce reusable assertion helpers for envelope and provider-neutral checks.",
+      "code_snippet": "Repeated hasRequiredEnvelopeKeys and toMatchObject blocks"
+    },
+    {
+      "file": "tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.automate.spec.ts",
+      "line": 34,
+      "severity": "MEDIUM",
+      "category": "api-in-e2e-duplication",
+      "description": "E2E suite primarily exercises API request flows, duplicating backend assertions from API specs.",
+      "suggestion": "Keep API contract assertions in API tests and reserve E2E for UI behavior validation.",
+      "code_snippet": "const callResponse = await request.post(...)"
+    }
+  ],
+  "passed_checks": 15,
+  "failed_checks": 7,
+  "violation_summary": {
+    "HIGH": 3,
+    "MEDIUM": 2,
+    "LOW": 0
+  },
+  "recommendations": [
+    "Refactor Epic F specs into smaller concern-based files.",
+    "Create shared assertion utilities for envelopes and provider-neutral payload checks.",
+    "Reduce API assertion duplication inside E2E suites."
+  ],
+  "summary": "Maintainability is constrained by oversized files and duplicated assertion patterns across API/E2E suites."
+}

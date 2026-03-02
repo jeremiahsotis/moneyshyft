@@ -1,6 +1,19 @@
 import { Pool } from 'pg';
 import logger from '../utils/logger';
 
+const resolveDbPassword = (): string => {
+  const password = process.env.DB_PASSWORD;
+  if (typeof password === 'string' && password.trim().length > 0) {
+    return password;
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    return 'test-db-password';
+  }
+
+  throw new Error('DB_PASSWORD must be set via environment/secret manager when DATABASE_URL is not provided');
+};
+
 // Parse DATABASE_URL or use individual env vars
 const getDatabaseConfig = () => {
   if (process.env.DATABASE_URL) {
@@ -19,7 +32,7 @@ const getDatabaseConfig = () => {
     port: parseInt(process.env.DB_PORT || '5432'),
     database: process.env.DB_NAME || 'moneyshyft',
     user: process.env.DB_USER || 'jeremiahotis',
-    password: process.env.DB_PASSWORD || 'Oiurueu12',
+    password: resolveDbPassword(),
   };
 };
 

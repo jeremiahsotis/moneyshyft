@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-03-02T14:31:28Z",
+  "storyScope": "epic-f",
+  "criteria": {
+    "testDataStrategy_2_1_segregation": {
+      "threshold": "Tenant/orgUnit scoped synthetic data contexts are enforced across Epic F tests",
+      "tenantScopeFactoryCount": 3,
+      "tenantScopeAssertionCount": 93,
+      "pass": true
+    },
+    "testDataStrategy_2_2_generation": {
+      "threshold": "Synthetic data generation is used; no production dump references in Epic F test assets",
+      "syntheticUuidUsageCount": 13,
+      "fakerUsageCount": 8,
+      "productionDumpReferenceCount": 0,
+      "pass": true
+    },
+    "testDataStrategy_2_3_teardown": {
+      "threshold": "Automated cleanup/reset mechanisms are present for test-created entities and probes",
+      "cleanupHelperUsageCount": 10,
+      "fixtureCleanupHookCount": 1,
+      "drProbeCleanupHookCount": 1,
+      "pass": true
+    }
+  },
+  "longWindowReadiness": {
+    "stressProfileArtifactPresent": true,
+    "stressTotalRequests": 400
+  },
+  "gate": {
+    "testDataStrategyEvidenceComplete": true
+  },
+  "evidenceSources": [
+    "tests/support/factories/connectShyftStoryF1Factory.ts",
+    "tests/support/factories/connectShyftStoryF2Factory.ts",
+    "tests/support/factories/connectShyftStoryF3Factory.ts",
+    "tests/support/fixtures/connectShyftStoryF1.fixture.ts",
+    "tests/support/fixtures/connectShyftStoryF2.fixture.ts",
+    "tests/support/fixtures/connectShyftStoryF3.fixture.ts",
+    "tests/support/fixtures/index.ts",
+    "tests/helpers/cleanup.ts",
+    "scripts/epic-f-dr-drill.sh",
+    "_bmad-output/test-artifacts/epic-f-stress-resource-evidence.json"
+  ]
+}

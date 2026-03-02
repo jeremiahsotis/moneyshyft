@@ -53,6 +53,7 @@ type ParsedConnectShyftContextOverride = {
   orgUnitId: string | null;
   role: string | null;
   userId: string | null;
+  requestedProvider: string | null;
   orgUnitMemberships: string[];
   activeThreadNeighborIds: string[];
 };
@@ -143,6 +144,7 @@ const parseContextQueryForTestOverride = (): ParsedConnectShyftContextOverride =
       orgUnitId: null,
       role: null,
       userId: null,
+      requestedProvider: null,
       orgUnitMemberships: [],
       activeThreadNeighborIds: [],
     };
@@ -153,6 +155,9 @@ const parseContextQueryForTestOverride = (): ParsedConnectShyftContextOverride =
   const tenantId = normalizeQueryValue(searchParams.get('tenantId'));
   const role = normalizeQueryValue(searchParams.get('tenantRole'))
     || normalizeQueryValue(searchParams.get('role'));
+  const requestedProvider = normalizeQueryValue(searchParams.get('providerKey'))
+    || normalizeQueryValue(searchParams.get('requestedProvider'))
+    || normalizeQueryValue(searchParams.get('provider'));
   const userId = normalizeQueryValue(searchParams.get('actorUserId'))
     || normalizeQueryValue(searchParams.get('userId'))
     || (role ? `user-connectshyft-ui-${role.toLowerCase()}` : null);
@@ -181,6 +186,7 @@ const parseContextQueryForTestOverride = (): ParsedConnectShyftContextOverride =
       orgUnitId,
       role,
       userId,
+      requestedProvider,
       orgUnitMemberships: memberships,
       activeThreadNeighborIds,
     };
@@ -191,6 +197,7 @@ const parseContextQueryForTestOverride = (): ParsedConnectShyftContextOverride =
     orgUnitId,
     role,
     userId,
+    requestedProvider,
     orgUnitMemberships: orgUnitId ? [orgUnitId] : [],
     activeThreadNeighborIds,
   };
@@ -230,6 +237,10 @@ export const buildConnectShyftTestOverrideHeaders = (): Record<string, string> =
     headers['x-test-connectshyft-active-thread-neighbor-ids'] = JSON.stringify(
       context.activeThreadNeighborIds,
     );
+  }
+
+  if (context.requestedProvider) {
+    headers['x-test-connectshyft-provider-requested'] = context.requestedProvider;
   }
 
   return headers;
