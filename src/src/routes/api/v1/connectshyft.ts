@@ -80,6 +80,7 @@ import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService'
 
 const router = Router();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CONNECTSHYFT_NEIGHBOR_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
 const TEST_ACTIVE_THREAD_NEIGHBOR_IDS_HEADER = 'x-test-connectshyft-active-thread-neighbor-ids';
 const TEST_USER_ID_HEADER = 'x-test-connectshyft-user-id';
 const CONNECTSHYFT_SYSTEM_ACTOR_USER_ID = '00000000-0000-4000-8000-000000000001';
@@ -2509,6 +2510,10 @@ const parseThreadEnsureBody = (req: Request) => ({
     ? req.body.nextEvaluationAtUtc
     : undefined,
 });
+
+const isValidConnectShyftNeighborIdentifier = (neighborId: string): boolean => {
+  return UUID_PATTERN.test(neighborId) || CONNECTSHYFT_NEIGHBOR_SLUG_PATTERN.test(neighborId);
+};
 const parseMappingBody = (req: Request) => ({
   providerNumberE164: typeof req.body?.providerNumberE164 === 'string'
     ? req.body.providerNumberE164
@@ -4357,6 +4362,23 @@ router.post('/threads', async (req: Request, res: Response) => {
       message: 'neighborId is required',
       refusalType: 'client',
       httpStatus: 400,
+    });
+    return;
+  }
+
+  if (!isValidConnectShyftNeighborIdentifier(payload.neighborId)) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_NEIGHBOR_ID_INVALID',
+      message: 'neighborId must be a canonical identifier (UUID or slug).',
+      data: {
+        fieldErrors: [
+          {
+            field: 'neighborId',
+            reason: 'INVALID',
+            message: 'neighborId must be a canonical identifier (UUID or slug).',
+          },
+        ],
+      },
     });
     return;
   }
