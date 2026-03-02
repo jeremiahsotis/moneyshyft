@@ -1,0 +1,40 @@
+{
+  "dimension": "determinism",
+  "score": 93,
+  "max_score": 100,
+  "grade": "A",
+  "violations": [
+    {
+      "file": "tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts",
+      "line": 117,
+      "severity": "MEDIUM",
+      "category": "time-derived-identifier",
+      "description": "Dynamic provider event IDs are generated with Date.now(), which can make failures harder to replay exactly.",
+      "suggestion": "Route event-id generation through a deterministic test helper with seeded or injected clock values.",
+      "code_snippet": "providerEventId: `provider-event-f4-${Date.now().toString().slice(-8)}`"
+    },
+    {
+      "file": "tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.automate.spec.ts",
+      "line": 91,
+      "severity": "LOW",
+      "category": "time-derived-identifier",
+      "description": "UI automation path also uses Date.now() derived IDs, introducing non-repeatable payload values.",
+      "suggestion": "Use shared deterministic ID factory for webhook payloads in both API and E2E specs.",
+      "code_snippet": "providerEventId: `provider-event-f2-automate-${Date.now().toString().slice(-6)}`"
+    }
+  ],
+  "passed_checks": 25,
+  "failed_checks": 2,
+  "total_checks": 27,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 1,
+    "LOW": 1
+  },
+  "recommendations": [
+    "Centralize deterministic provider-event ID generation in test factories.",
+    "Inject a test clock or deterministic suffix generator where event IDs are required.",
+    "Keep sort logic deterministic by asserting canonical order against stable fixtures."
+  ],
+  "summary": "Determinism is strong overall; minor non-determinism comes from Date.now()-derived IDs in a few specs."
+}

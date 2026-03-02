@@ -1,0 +1,49 @@
+{
+  "dimension": "isolation",
+  "score": 74,
+  "max_score": 100,
+  "grade": "C",
+  "violations": [
+    {
+      "file": "tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.automate.api.spec.ts",
+      "line": 15,
+      "severity": "HIGH",
+      "category": "test-order-dependency",
+      "description": "Suite is forced to serial execution, indicating inter-test dependency and reduced isolation.",
+      "suggestion": "Split stateful scenarios into isolated setup/teardown blocks so tests can run in parallel.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });"
+    },
+    {
+      "file": "tests/e2e/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.spec.ts",
+      "line": 24,
+      "severity": "HIGH",
+      "category": "test-order-dependency",
+      "description": "E2E automate suite is also pinned to serial mode, increasing coupling between test cases.",
+      "suggestion": "Use per-test context factories and cleanup hooks to remove ordering constraints.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });"
+    },
+    {
+      "file": "tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.automate.spec.ts",
+      "line": 22,
+      "severity": "MEDIUM",
+      "category": "shared-context-reuse",
+      "description": "Context factories produce reusable IDs and domain entities that may overlap across concurrent workers.",
+      "suggestion": "Generate unique per-test entity keys or enforce cleanup contracts in fixtures.",
+      "code_snippet": "const context = createStoryF1Context();"
+    }
+  ],
+  "passed_checks": 18,
+  "failed_checks": 5,
+  "total_checks": 23,
+  "violation_summary": {
+    "HIGH": 2,
+    "MEDIUM": 1,
+    "LOW": 0
+  },
+  "recommendations": [
+    "Remove serial mode from suites where state can be made independent.",
+    "Promote unique-per-test context generation in story fixtures.",
+    "Add explicit teardown assertions for entities created during dispatch/webhook flows."
+  ],
+  "summary": "Isolation needs improvement due to serial-mode dependency and shared context reuse patterns."
+}
