@@ -138,6 +138,9 @@ test.describe(
 
         expect(response.status()).toBe(200);
         const body = await response.json();
+        const providerLegId = body?.data?.dispatch?.providerLegId as string;
+        expect(typeof providerLegId).toBe('string');
+        expect(providerLegId.length).toBeGreaterThan(0);
         expect(body).toMatchObject({
           ok: true,
           code: 'CONNECTSHYFT_THREAD_CALL_DISPATCHED',
@@ -204,6 +207,7 @@ test.describe(
             tenantId: storyDContext.tenantId,
             actorUserId: '00000000-0000-4000-8000-000000000042',
             transport: 'bridge',
+            providerLegId,
           },
         });
         expect(connectedResponse.status()).toBe(200);
@@ -288,6 +292,106 @@ test.describe(
         expect(fallbackBody?.data?.lifecycle?.reopenedByInbound).toBe(false);
         expect(voiceBody?.data?.timeline?.eventName).toBe(storyDContext.eventNames.inboundVoiceFallback);
         expect(fallbackBody?.data?.timeline?.eventName).toBe(storyDContext.eventNames.inboundVoiceFallback);
+      },
+    );
+
+    test(
+      '[P1] CONNECTED webhook without explicit transport does not auto-claim even when provider leg mapping exists @P1',
+      async ({
+        request,
+        storyDContext,
+        storyDMemberHeaders,
+        storyDAdminHeaders,
+        storyDCallPayload,
+      }) => {
+        const regressionThreadId = storyDContext.threadIds.prefersNoUnclaimed;
+        const callResponse = await apiRequest(request, {
+          method: 'POST',
+          path: `${storyDContext.paths.threads}/${regressionThreadId}/call`,
+          headers: storyDMemberHeaders,
+          data: storyDCallPayload,
+        });
+        expect(callResponse.status()).toBe(200);
+        const callBody = await callResponse.json();
+        const providerLegId = callBody?.data?.dispatch?.providerLegId as string;
+        expect(typeof providerLegId).toBe('string');
+        expect(providerLegId.length).toBeGreaterThan(0);
+
+        const connectedWithoutTransportResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyDContext.paths.inboundWebhook,
+          headers: storyDAdminHeaders,
+          data: {
+            eventType: 'voice.connected',
+            threadId: regressionThreadId,
+            orgUnitId: storyDContext.orgUnitId,
+            tenantId: storyDContext.tenantId,
+            providerLegId,
+          },
+        });
+        expect(connectedWithoutTransportResponse.status()).toBe(200);
+        const connectedWithoutTransportBody = await connectedWithoutTransportResponse.json();
+        expect(connectedWithoutTransportBody).toMatchObject({
+          ok: true,
+          data: {
+            lifecycle: {
+              autoClaimedByConnectedEvent: false,
+            },
+            autoClaim: {
+              attempted: true,
+              applied: false,
+              reason: 'transport_required',
+            },
+          },
+        });
+      },
+    );
+
+    test(
+      '[P1] CONNECTED webhook with metadata-only bridge transport does not auto-claim without mapped outbound lineage @P1',
+      async ({
+        request,
+        storyDContext,
+        storyDAdminHeaders,
+        storyDMemberHeaders,
+      }) => {
+        const regressionThreadId = storyDContext.threadIds.prefersNoUnclaimed;
+        const metadataOnlyConnectedResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyDContext.paths.inboundWebhook,
+          headers: storyDAdminHeaders,
+          data: {
+            eventType: 'voice.connected',
+            threadId: regressionThreadId,
+            orgUnitId: storyDContext.orgUnitId,
+            tenantId: storyDContext.tenantId,
+            transport: 'bridge',
+          },
+        });
+        expect(metadataOnlyConnectedResponse.status()).toBe(200);
+        const metadataOnlyConnectedBody = await metadataOnlyConnectedResponse.json();
+        expect(metadataOnlyConnectedBody).toMatchObject({
+          ok: true,
+          data: {
+            lifecycle: {
+              autoClaimedByConnectedEvent: false,
+            },
+            autoClaim: {
+              attempted: true,
+              applied: false,
+              reason: 'unverified_call_lineage',
+            },
+          },
+        });
+
+        const detailResponse = await apiRequest(request, {
+          method: 'GET',
+          path: `${storyDContext.paths.threads}/${regressionThreadId}`,
+          headers: storyDMemberHeaders,
+        });
+        expect(detailResponse.status()).toBe(200);
+        const detailBody = await detailResponse.json();
+        expect(detailBody?.data?.thread?.state).toBe('UNCLAIMED');
       },
     );
   },

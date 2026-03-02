@@ -1,6 +1,6 @@
 # Story d.1: Outbound SMS/Call Actions that Preserve Escalation Semantics
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -150,7 +150,8 @@ GPT-5 Codex
 - `rg -n "^### Story d\\.[1-4]:" _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (pass)
 - `rg -n "^  d-|^  epic-d" _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml` (pass)
 - `npm run branch:ensure-workflow -- --workflow dev-story --story d-1-outbound-sms-call-actions-that-preserve-escalation-semantics` (pass)
-- `npm run test:e2e -- tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts` (pass; 4 passed)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/providerRegistry.test.ts src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` (pass; 32 passed)
+- `npm run test:e2e -- tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts` (pass; 6 passed)
 - `npm run test:e2e -- tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.api.spec.ts tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts` (pass; 18 passed)
 - `cd src && npm run build` (pass)
 - `cd frontend && npm run build` (pass)
@@ -160,22 +161,25 @@ GPT-5 Codex
 
 - Created implementation-ready Story d.1 context with locked outbound/reopen semantics, bridge-call constraints, and escalation guardrails.
 - Implemented outbound response contract enhancements in `src/src/routes/api/v1/connectshyft.ts`: explicit operator feedback, lifecycle metadata, bridge-call-only policy metadata, and CONNECTED auto-claim policy metadata for outbound calls.
+- Tightened CONNECTED auto-claim guardrails in `src/src/routes/api/v1/connectshyft.ts` to require explicit bridge transport evidence and verified provider-leg lineage before claim transition.
+- Enforced bridge/manual-retry outbound call policy at provider-adapter dispatch boundary in `src/src/modules/connectshyft/providerRegistry.ts` and covered with unit tests in `src/src/modules/connectshyft/__tests__/providerRegistry.test.ts`.
 - Preserved CLOSED outbound reopen semantics on same thread id with `thread_reopened_by_user` and deterministic escalation reset metadata in response envelope.
-- Updated thread-detail UX action feedback path in `frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue` to prioritize API-supplied `operatorFeedback` language.
-- Activated and completed d.1 API contract coverage in `tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts` (all 4 tests passing).
+- Added regression API coverage in `tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts` for missing transport evidence and metadata-only/no-lineage CONNECTED events (all 6 tests passing).
+- Resolved Playwright preflight tenancy contract drift by updating `scripts/run-playwright-with-preflight.sh` tenant probe JWT secret precedence to honor runtime `JWT_SECRET`.
 - Full backend Jest run currently reports unrelated failures outside ConnectShyft d.1 scope; story-targeted API suites and compile/build checks pass.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.md
-- src/src/routes/api/v1/connectshyft.ts
-- frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
-- tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts
-- tests/support/factories/connectShyftStoryDFactory.ts
-- tests/support/fixtures/connectShyftStoryD.fixture.ts
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- scripts/run-playwright-with-preflight.sh
+- src/src/modules/connectshyft/providerRegistry.ts
+- src/src/modules/connectshyft/__tests__/providerRegistry.test.ts
+- src/src/routes/api/v1/connectshyft.ts
+- tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.automate.api.spec.ts
 
 ## Change Log
 
 - 2026-02-27: Created Story d.1 ready-for-dev context document.
 - 2026-02-27: Implemented d.1 outbound lifecycle/call policy contract updates; activated and passed d.1 automate API coverage; updated story status to review.
+- 2026-03-02: Hardened CONNECTED auto-claim lineage/transport gates, enforced adapter-boundary bridge/manual retry policy, added two regression API tests, resolved preflight tenancy contract probe mismatch, and moved story status to done.
