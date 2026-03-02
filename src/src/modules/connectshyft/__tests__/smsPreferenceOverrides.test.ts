@@ -80,6 +80,22 @@ describe('connectshyft sms preference overrides', () => {
     });
   });
 
+  it('resolves d-4 CLOSED synthetic NO preferences for reopen-before-override flows', async () => {
+    const service = new AsyncConnectShyftSmsPreferenceOverrideService();
+
+    const resolved = await service.resolvePreference({
+      tenantId: 'tenant-connectshyft-d4',
+      orgUnitId: 'org-connectshyft-d4-east',
+      threadId: 'thread-d4-closed-prefers-no-1005',
+    });
+
+    expect(resolved).toEqual({
+      prefersTexting: 'NO',
+      neighborId: null,
+      source: 'thread-map',
+    });
+  });
+
   it('fails closed when override persistence is unavailable', async () => {
     const missingTableError = Object.assign(
       new Error('relation "connectshyft.cs_sms_preference_overrides" does not exist'),

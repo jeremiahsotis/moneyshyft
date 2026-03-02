@@ -281,12 +281,20 @@
 
             <section
               v-if="preferenceOverrideModalOpen"
+              ref="preferenceOverrideModalRef"
               data-testid="connectshyft-preference-override-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="connectshyft-preference-override-title"
               class="rounded border border-slate-300 bg-slate-50 p-4"
+              @keydown="handlePreferenceOverrideModalKeydown"
             >
-              <p class="text-base text-slate-900">
+              <h2
+                id="connectshyft-preference-override-title"
+                class="text-base font-semibold text-slate-900"
+              >
                 Outbound SMS policy requires an approved override reason.
-              </p>
+              </h2>
               <label
                 class="mt-3 block text-base text-slate-700"
                 for="connectshyft-preference-override-reason-select"
@@ -375,12 +383,20 @@
 
             <section
               v-if="closeModalOpen"
+              ref="closeModalRef"
               data-testid="connectshyft-close-thread-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="connectshyft-close-thread-title"
               class="rounded border border-slate-300 bg-slate-50 p-4"
+              @keydown="handleCloseModalKeydown"
             >
-              <p class="text-base text-slate-900">
+              <h2
+                id="connectshyft-close-thread-title"
+                class="text-base font-semibold text-slate-900"
+              >
                 Are you sure you want to close this thread?
-              </p>
+              </h2>
               <div class="mt-3 flex gap-2">
                 <button
                   type="button"
@@ -420,7 +436,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
 import api from '@/services/api';
@@ -469,6 +485,8 @@ const pendingPreferenceOverrideAction = ref<'Text' | 'Send Message' | null>(null
 const addNeighborFormOpen = ref(false);
 const addNeighborPhone = ref('');
 const addNeighborSubmitting = ref(false);
+const preferenceOverrideModalRef = ref<HTMLElement | null>(null);
+const closeModalRef = ref<HTMLElement | null>(null);
 const focusRingClass = CONNECTSHYFT_FOCUS_RING_CLASS;
 const bodyTextStyle = {
   fontSize: `${CONNECTSHYFT_ACCESSIBILITY_LOCKS.minBodyTextPx}px`,
@@ -482,6 +500,14 @@ const CONNECTSHYFT_OVERRIDE_REFUSAL_CODES = new Set([
   'CONNECTSHYFT_SMS_OVERRIDE_REASON_INVALID',
   'CONNECTSHYFT_OUTBOUND_OVERRIDE_REASON_REQUIRED',
 ]);
+const CONNECTSHYFT_MODAL_FOCUSABLE_SELECTOR = [
+  'button:not([disabled])',
+  '[href]',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
 
 const role = computed(() => {
   const rawRole = typeof route.query.tenantRole === 'string'
@@ -547,6 +573,68 @@ const closePreferenceOverrideModal = (): void => {
   preferenceOverrideModalOpen.value = false;
   pendingPreferenceOverrideAction.value = null;
   resetPreferenceOverrideState();
+};
+
+const resolveModalFocusableElements = (container: HTMLElement | null): HTMLElement[] => {
+  if (!container) {
+    return [];
+  }
+
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(CONNECTSHYFT_MODAL_FOCUSABLE_SELECTOR),
+  );
+};
+
+const focusFirstModalElement = async (container: HTMLElement | null): Promise<void> => {
+  await nextTick();
+  const focusable = resolveModalFocusableElements(container);
+  if (focusable.length > 0) {
+    focusable[0].focus();
+    return;
+  }
+
+  container?.focus();
+};
+
+const trapModalFocus = (event: KeyboardEvent, container: HTMLElement | null): void => {
+  if (event.key !== 'Tab') {
+    return;
+  }
+
+  const focusable = resolveModalFocusableElements(container);
+  if (focusable.length === 0) {
+    event.preventDefault();
+    return;
+  }
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement as HTMLElement | null;
+
+  if (!active || !container?.contains(active)) {
+    event.preventDefault();
+    first.focus();
+    return;
+  }
+
+  if (event.shiftKey && active === first) {
+    event.preventDefault();
+    last.focus();
+    return;
+  }
+
+  if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+};
+
+const handlePreferenceOverrideModalKeydown = (event: KeyboardEvent): void => {
+  trapModalFocus(event, preferenceOverrideModalRef.value);
+};
+
+const handleCloseModalKeydown = (event: KeyboardEvent): void => {
+  trapModalFocus(event, closeModalRef.value);
 };
 
 const formatOverrideReason = (reason: string): string => {
@@ -891,6 +979,45 @@ const executeThreadAction = async (
         envelope.message,
         'Unable to complete that thread action.',
       );
+
+      applyThreadUpdate(envelope.data?.thread);
+
+      const refusalLifecycleEvent = typeof envelope.data?.lifecycleEvent === 'string'
+        ? envelope.data.lifecycleEvent
+        : '';
+
+      const refusalOperatorFeedbackMeta = envelope.data?.operatorFeedbackMeta
+        && typeof envelope.data.operatorFeedbackMeta === 'object'
+        ? envelope.data.operatorFeedbackMeta as {
+          heading?: unknown;
+          hiddenTransition?: unknown;
+        }
+        : envelope.data?.uiFeedback
+          && typeof envelope.data.uiFeedback === 'object'
+          ? envelope.data.uiFeedback as {
+            heading?: unknown;
+            hiddenTransition?: unknown;
+          }
+          : null;
+
+      const refusalHiddenTransitionDetected = refusalOperatorFeedbackMeta?.hiddenTransition === true;
+      hiddenTransitionWarning.value = refusalHiddenTransitionDetected;
+
+      if (refusalLifecycleEvent.includes('thread_reopened_by_user')) {
+        const reopenHeading = sanitizeConnectShyftOperatorCopy(
+          refusalOperatorFeedbackMeta?.heading,
+          'Conversation reopened. Escalation and inactivity timers were reset.',
+        );
+        lifecycleToast.value = reopenHeading;
+        inactivityReset.value = true;
+        if (threadDetail.value) {
+          threadDetail.value.escalationStage = 0;
+        }
+      } else {
+        lifecycleToast.value = '';
+        inactivityReset.value = false;
+      }
+
       const requiresOverride = isPreferenceOverrideRefusal({
         code: envelope.code,
         data: envelope.data,
@@ -1164,6 +1291,22 @@ const refreshThreadDetail = async () => {
 
 onMounted(() => {
   void refreshThreadDetail();
+});
+
+watch(preferenceOverrideModalOpen, (isOpen) => {
+  if (!isOpen) {
+    return;
+  }
+
+  void focusFirstModalElement(preferenceOverrideModalRef.value);
+});
+
+watch(closeModalOpen, (isOpen) => {
+  if (!isOpen) {
+    return;
+  }
+
+  void focusFirstModalElement(closeModalRef.value);
 });
 
 watch(

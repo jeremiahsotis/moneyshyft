@@ -75,6 +75,29 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
   );
 
   test(
+    '[P0] claimed thread shows Take Over action for tenant-privileged operators with deterministic action ordering @P0',
+    async ({ page }) => {
+      const context = createStoryD4Context();
+      await login(page);
+
+      await page.goto(
+        buildThreadUrl(context, {
+          threadId: context.threadIds.claimed,
+          actorUserId: context.adminUserId,
+          tenantRole: 'TENANT_ADMIN',
+          orgUnitMemberships: [],
+        }),
+      );
+
+      await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Take Over' })).toBeVisible();
+      await expect(page.getByRole('button', { name: /Text|Send Message/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
+    },
+  );
+
+  test(
     '[P0] policy refusal and confirmation copy remain keyboard accessible and screen-reader ready for outbound safety workflows @P0',
     async ({ page }) => {
       const context = createStoryD4Context();
@@ -174,6 +197,36 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
         'aria-live',
         'polite',
       );
+    },
+  );
+
+  test(
+    '[P1] closed prefers_texting NO send action reopens immediately and keeps override refusal path explicit @P1',
+    async ({ page }) => {
+      const context = createStoryD4Context();
+      await login(page);
+
+      await page.goto(
+        buildThreadUrl(context, {
+          threadId: context.threadIds.closedPrefersNo,
+          actorUserId: context.userId,
+          tenantRole: 'ORGUNIT_MEMBER',
+          orgUnitMemberships: [context.orgUnitId],
+        }),
+      );
+
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLOSED');
+      await page.getByRole('button', { name: /Send Message|Text/i }).click();
+
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+      await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toContainText(
+        /reopened/i,
+      );
+      await expect(page.getByTestId('connectshyft-preference-override-modal')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-policy-refusal-banner')).toContainText(
+        /override reason/i,
+      );
+      await expect(page.getByTestId('connectshyft-hidden-transition-warning')).toHaveCount(0);
     },
   );
 });

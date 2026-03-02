@@ -237,6 +237,18 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-503',
     summary: 'Closed thread awaiting explicit same-thread reopen',
   },
+  'thread-d4-closed-prefers-no-1005': {
+    tenantId: 'tenant-connectshyft-d4',
+    orgUnitId: 'org-connectshyft-d4-east',
+    state: 'CLOSED',
+    claimedByUserId: null,
+    escalationStage: 0,
+    nextEvaluationAtUtc: null,
+    neighborId: 'neighbor-connectshyft-d4-pref-no-1005',
+    lastInboundCsNumberId: 'cs-number-d4-405',
+    preferredOutboundCsNumberId: 'cs-number-d4-505',
+    summary: 'Closed thread with prefers_texting=NO policy.',
+  },
   'thread-d4-unclaimed-prefers-no-1004': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
@@ -4792,8 +4804,129 @@ const performOutboundAction = async (
   }
 
   const outboundLifecycleAction = resolveOutboundLifecycleAction(outboundAction);
+  const priorState = lifecycleContext.currentState;
+  const dispatchEventName = resolveOutboundDispatchEventName(outboundAction);
+  const postDispatchWarnings: Array<{ stage: string; code: string; message: string }> = [];
+
   let smsPreferenceDecision: ConnectShyftResolvedSmsPreference | null = null;
   let validatedSmsOverride: ConnectShyftValidatedSmsOverride | null = null;
+  let thread: ConnectShyftThread;
+  let lifecycleEvent: string | null = null;
+  let sideEffects: ReturnType<typeof buildLifecycleSideEffects> | null = null;
+  let outboundDispatch: ReturnType<typeof buildLifecycleSideEffects> | null = null;
+  let persistedSmsOverride: ConnectShyftPersistedSmsOverride | null = null;
+  let sideEffectsPersisted = false;
+  let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
+
+  if (lifecycleContext.detail) {
+    thread = buildThreadFromDetailRecord(lifecycleContext.detail);
+  } else {
+    thread = buildSyntheticThread({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+      currentState: lifecycleContext.currentState,
+      nextState: lifecycleContext.currentState,
+      actorUserId,
+      fallbackSummary: lifecycleContext.syntheticThread?.summary,
+      fallbackNeighborId: lifecycleContext.syntheticThread?.neighborId,
+      fallbackLastInboundCsNumberId: lifecycleContext.syntheticThread?.lastInboundCsNumberId,
+      fallbackPreferredOutboundCsNumberId: lifecycleContext.syntheticThread?.preferredOutboundCsNumberId,
+      fallbackEscalationStage: lifecycleContext.syntheticThread?.escalationStage,
+      fallbackNextEvaluationAtUtc: lifecycleContext.syntheticThread?.nextEvaluationAtUtc,
+    });
+  }
+
+  if (priorState === 'CLOSED') {
+    const reopenedMetadata = buildLifecycleMetadata({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      actorUserId,
+      threadId,
+      priorState: 'CLOSED',
+      newState: 'UNCLAIMED',
+      action: outboundLifecycleAction,
+      threadReopenedByUser: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      lifecycleLineage: {
+        prior_state: 'CLOSED',
+        new_state: 'UNCLAIMED',
+        thread_reopened_by_user: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      },
+    });
+    const transitioned = await transitionThreadWithSideEffects({
+      actorRoles,
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+      actorUserId,
+      currentState: priorState,
+      nextState: 'UNCLAIMED',
+      syntheticThread: lifecycleContext.syntheticThread,
+      detail: lifecycleContext.detail,
+      sideEffects: {
+        eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+        metadata: reopenedMetadata,
+      },
+    });
+
+    sideEffects = buildLifecycleSideEffects({
+      eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+      metadata: reopenedMetadata,
+    });
+
+    if (!transitioned.ok) {
+      respondConnectShyftBusinessRefusal(res, {
+        code: transitioned.code,
+        message: transitioned.message,
+        data: {
+          context,
+          threadId,
+          lifecycle: {
+            priorState: 'CLOSED',
+            nextState: 'CLOSED',
+            reopenedFromClosed: false,
+          },
+          sideEffectsPersisted: false,
+          ...sideEffects,
+        },
+      });
+      return;
+    }
+
+    thread = transitioned.thread;
+    sideEffectsPersisted = transitioned.sideEffectsPersisted;
+    lifecycleEvent = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser;
+    escalationReset = {
+      stage: 0,
+      inactivityWindow: 'reset',
+    };
+  }
+
+  const lifecycleMutationApplied =
+    lifecycleEvent === CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser;
+  const buildReopenLifecycleData = (): Record<string, unknown> => {
+    if (!lifecycleMutationApplied) {
+      return {};
+    }
+
+    return {
+      thread: {
+        threadId,
+        priorState: 'CLOSED',
+        state: thread.state,
+      },
+      lifecycleEvent,
+      lifecycle: {
+        priorState: 'CLOSED',
+        nextState: thread.state,
+        reopenedFromClosed: true,
+      },
+      escalationReset,
+      sideEffectsPersisted,
+      ...(sideEffects || {}),
+    };
+  };
+
   if (outboundAction === 'message' && outboundMessagePolicy) {
     const preferenceNeighborId = lifecycleContext.syntheticThread?.neighborId || null;
     smsPreferenceDecision = await connectShyftSmsPreferenceOverrideService.resolvePreference({
@@ -4841,9 +4974,10 @@ const performOutboundAction = async (
           },
           sideEffects: {
             messageDispatched: false,
-            lifecycleMutationApplied: false,
+            lifecycleMutationApplied,
             auditPersisted: false,
           },
+          ...buildReopenLifecycleData(),
         },
       });
       return;
@@ -4852,36 +4986,6 @@ const performOutboundAction = async (
     validatedSmsOverride = overrideValidation.overrideRequired
       ? overrideValidation.override
       : null;
-  }
-
-  let thread: ConnectShyftThread;
-  let lifecycleEvent: string | null = null;
-  let sideEffects: ReturnType<typeof buildLifecycleSideEffects> | null = null;
-  let outboundDispatch: ReturnType<typeof buildLifecycleSideEffects> | null = null;
-  let persistedSmsOverride: ConnectShyftPersistedSmsOverride | null = null;
-  let sideEffectsPersisted = false;
-  let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
-  const priorState = lifecycleContext.currentState;
-  const postDispatchWarnings: Array<{ stage: string; code: string; message: string }> = [];
-  const dispatchEventName = resolveOutboundDispatchEventName(outboundAction);
-
-  if (lifecycleContext.detail) {
-    thread = buildThreadFromDetailRecord(lifecycleContext.detail);
-  } else {
-    thread = buildSyntheticThread({
-      tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      threadId,
-      currentState: lifecycleContext.currentState,
-      nextState: lifecycleContext.currentState,
-      actorUserId,
-      fallbackSummary: lifecycleContext.syntheticThread?.summary,
-      fallbackNeighborId: lifecycleContext.syntheticThread?.neighborId,
-      fallbackLastInboundCsNumberId: lifecycleContext.syntheticThread?.lastInboundCsNumberId,
-      fallbackPreferredOutboundCsNumberId: lifecycleContext.syntheticThread?.preferredOutboundCsNumberId,
-      fallbackEscalationStage: lifecycleContext.syntheticThread?.escalationStage,
-      fallbackNextEvaluationAtUtc: lifecycleContext.syntheticThread?.nextEvaluationAtUtc,
-    });
   }
 
   if (
@@ -4938,9 +5042,10 @@ const performOutboundAction = async (
           },
           sideEffects: {
             messageDispatched: false,
-            lifecycleMutationApplied: false,
+            lifecycleMutationApplied,
             auditPersisted: false,
           },
+          ...buildReopenLifecycleData(),
         },
       });
       return;
@@ -5004,10 +5109,11 @@ const performOutboundAction = async (
           },
           sideEffects: {
             dispatchAttempted: false,
-            lifecycleMutationApplied: false,
+            lifecycleMutationApplied,
             auditPersisted: Boolean(persistedSmsOverride),
           },
           providerCallPolicy: error.data,
+          ...buildReopenLifecycleData(),
         },
       });
       return;
@@ -5026,132 +5132,68 @@ const performOutboundAction = async (
         },
         sideEffects: {
           dispatchAttempted: true,
-          lifecycleMutationApplied: false,
+          lifecycleMutationApplied,
           auditPersisted: Boolean(persistedSmsOverride),
         },
         error: error instanceof Error ? error.message : 'unknown-provider-dispatch-error',
+        ...buildReopenLifecycleData(),
       },
     });
     return;
   }
 
-  if (priorState === 'CLOSED') {
-    const reopenedMetadata = buildLifecycleMetadata({
-      tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      actorUserId,
-      threadId,
-      priorState: 'CLOSED',
-      newState: 'UNCLAIMED',
-      action: outboundLifecycleAction,
-      threadReopenedByUser: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-      lifecycleLineage: {
-        prior_state: 'CLOSED',
-        new_state: 'UNCLAIMED',
-        thread_reopened_by_user: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-      },
-    });
-    const outboundDispatchMetadata = buildLifecycleMetadata({
-      tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      actorUserId,
-      threadId,
-      priorState: 'UNCLAIMED',
-      newState: 'UNCLAIMED',
-      action: outboundLifecycleAction,
-      threadReopenedByUser: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-      lifecycleLineage: {
-        prior_state: 'CLOSED',
-        new_state: 'UNCLAIMED',
-        thread_reopened_by_user: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-      },
-    });
-
-    const transitioned = await transitionThreadWithSideEffects({
-      actorRoles,
-      tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      threadId,
-      actorUserId,
-      currentState: priorState,
-      nextState: 'UNCLAIMED',
-      syntheticThread: lifecycleContext.syntheticThread,
-      detail: lifecycleContext.detail,
-      sideEffects: [
-        {
-          eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-          metadata: reopenedMetadata,
-        },
-        {
-          eventName: dispatchEventName,
-          metadata: outboundDispatchMetadata,
-        },
-      ],
-    });
-
-    sideEffects = buildLifecycleSideEffects({
-      eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
-      metadata: reopenedMetadata,
-    });
-    outboundDispatch = buildLifecycleSideEffects({
-      eventName: dispatchEventName,
-      metadata: outboundDispatchMetadata,
-    });
-
-    if (transitioned.ok) {
-      thread = transitioned.thread;
-      sideEffectsPersisted = transitioned.sideEffectsPersisted;
-      lifecycleEvent = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser;
-      escalationReset = {
-        stage: 0,
-        inactivityWindow: 'reset',
-      };
-    } else {
-      sideEffectsPersisted = false;
-      postDispatchWarnings.push({
-        stage: 'lifecycle-side-effects',
-        code: transitioned.code,
-        message: transitioned.message,
-      });
+  const reopenedLifecycleLineage = lifecycleMutationApplied
+    ? {
+      prior_state: 'CLOSED',
+      new_state: 'UNCLAIMED',
+      thread_reopened_by_user: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
     }
-  } else {
-    const outboundDispatchMetadata = buildLifecycleMetadata({
-      tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      actorUserId,
-      threadId,
-      priorState: thread.state,
-      newState: thread.state,
-      action: outboundLifecycleAction,
-      threadReopenedByUser: null,
-    });
-    const expectedDispatchSideEffects = buildLifecycleSideEffects({
-      eventName: dispatchEventName,
-      metadata: outboundDispatchMetadata,
-    });
+    : null;
+  const outboundDispatchMetadata = buildLifecycleMetadata({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    actorUserId,
+    threadId,
+    priorState: thread.state,
+    newState: thread.state,
+    action: outboundLifecycleAction,
+    threadReopenedByUser: lifecycleMutationApplied
+      ? CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser
+      : null,
+    lifecycleLineage: reopenedLifecycleLineage,
+  });
+  const expectedDispatchSideEffects = buildLifecycleSideEffects({
+    eventName: dispatchEventName,
+    metadata: outboundDispatchMetadata,
+  });
 
-    const persistedDispatch = await persistOutboundDispatchSideEffects({
-      tenantId: context.tenantId,
-      threadId,
-      actorUserId,
-      eventName: dispatchEventName,
-      metadata: outboundDispatchMetadata,
-    });
+  const persistedDispatch = await persistOutboundDispatchSideEffects({
+    tenantId: context.tenantId,
+    threadId,
+    actorUserId,
+    eventName: dispatchEventName,
+    metadata: outboundDispatchMetadata,
+  });
 
-    if (!persistedDispatch.ok) {
-      sideEffectsPersisted = false;
+  if (!persistedDispatch.ok) {
+    sideEffectsPersisted = false;
+    if (!sideEffects) {
       sideEffects = expectedDispatchSideEffects;
-      outboundDispatch = expectedDispatchSideEffects;
-      postDispatchWarnings.push({
-        stage: 'outbound-side-effects',
-        code: persistedDispatch.code,
-        message: persistedDispatch.message,
-      });
-    } else {
-      sideEffectsPersisted = persistedDispatch.sideEffectsPersisted;
-      sideEffects = persistedDispatch.sideEffects;
-      outboundDispatch = persistedDispatch.sideEffects;
     }
+    outboundDispatch = expectedDispatchSideEffects;
+    postDispatchWarnings.push({
+      stage: 'outbound-side-effects',
+      code: persistedDispatch.code,
+      message: persistedDispatch.message,
+    });
+  } else {
+    sideEffectsPersisted = sideEffects
+      ? sideEffectsPersisted && persistedDispatch.sideEffectsPersisted
+      : persistedDispatch.sideEffectsPersisted;
+    if (!sideEffects) {
+      sideEffects = persistedDispatch.sideEffects;
+    }
+    outboundDispatch = persistedDispatch.sideEffects;
   }
 
   let canonicalEvent: ConnectShyftCanonicalEventRecord | null = null;

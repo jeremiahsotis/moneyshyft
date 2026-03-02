@@ -9,6 +9,7 @@ type StoryD4Fixtures = {
   storyD4Context: StoryD4Context;
   storyD4OperatorHeaders: Record<string, string>;
   storyD4AdminHeaders: Record<string, string>;
+  storyD4TenantAdminHeaders: Record<string, string>;
   storyD4ViewerHeaders: Record<string, string>;
   storyD4OutboundCallPayload: {
     orgUnitId: string;
@@ -43,6 +44,15 @@ export const test = base.extend<StoryD4Fixtures>({
         role: 'ORGUNIT_ADMIN',
         userId: storyD4Context.adminUserId,
         orgUnitMemberships: [storyD4Context.orgUnitId],
+      }),
+    );
+  },
+  storyD4TenantAdminHeaders: async ({ storyD4Context }, use) => {
+    await use(
+      createStoryD4Headers(storyD4Context, {
+        role: 'TENANT_ADMIN',
+        userId: storyD4Context.adminUserId,
+        orgUnitMemberships: [],
       }),
     );
   },

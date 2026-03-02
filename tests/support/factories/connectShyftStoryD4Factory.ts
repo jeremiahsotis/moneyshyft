@@ -43,6 +43,7 @@ export type StoryD4Context = {
     claimed: string;
     closed: string;
     unclaimedPrefersNo: string;
+    closedPrefersNo: string;
   };
   refusalCodes: {
     overrideRequired: 'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED';
@@ -85,6 +86,7 @@ export function createStoryD4Context(
       claimed: 'thread-d4-claimed-1002',
       closed: 'thread-d4-closed-1003',
       unclaimedPrefersNo: 'thread-d4-unclaimed-prefers-no-1004',
+      closedPrefersNo: 'thread-d4-closed-prefers-no-1005',
     },
     refusalCodes: {
       overrideRequired: 'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED',

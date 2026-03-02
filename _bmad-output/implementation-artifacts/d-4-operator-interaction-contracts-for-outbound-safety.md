@@ -1,6 +1,6 @@
 # Story d.4: Operator Interaction Contracts for Outbound Safety
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -148,47 +148,30 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `rg -n "UNCLAIMED|CLAIMED|CLOSED|Call|Text|Send Message" _bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md` (pass)
-- `rg -n "threads/:threadId/(call|messages|claim|takeover|close)" src/src/routes/api/v1/connectshyft.ts` (pass)
-- `npm run branch:ensure-workflow -- --workflow dev-story --story d-4-operator-interaction-contracts-for-outbound-safety` (pass)
+- `git branch --show-current && git status --short` (pass)
 - `cd src && npm test -- src/src/modules/connectshyft/__tests__/readContracts.test.ts src/src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts` (pass)
-- `cd src && npm run build` (pass)
-- `cd frontend && npm run build` (pass)
-- `npx playwright test tests/api/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.api.spec.ts` (pass)
-- `npx playwright test tests/e2e/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.spec.ts` (pass)
+- `set -a && source src/.env && set +a && HOST=127.0.0.1 NODE_ENV=test ENABLE_TEST_CONNECTSHYFT_FLAGS=true npm run dev` (pass; local API test-mode server)
+- `VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS=true VITE_API_PROXY_TARGET=http://127.0.0.1:3000 npm run dev -- --host 127.0.0.1 --port 5174` (pass; local frontend with ConnectShyft test overrides enabled)
+- `npx playwright test tests/api/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.api.spec.ts` (pass; 6/6)
+- `BASE_URL=http://127.0.0.1:5174 API_BASE_URL=http://127.0.0.1:3000/api/v1 npx playwright test tests/e2e/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.spec.ts` (pass; 6/6)
 
 ### Completion Notes List
 
-- Enforced canonical thread-action rendering in thread-detail UI with safe action filtering and state-driven refresh behavior.
-- Added explicit policy refusal/success affordances (`role=alert` / `role=status`) and keyboard/screen-reader friendly preference-override modal controls.
-- Implemented deterministic CLOSED outbound reopen UX handling with explicit lifecycle toast and hidden-transition warning guard.
-- Added override-required UX path with actionable next-step refusal copy, approved reason selection, and override audit chip on success.
-- Extended backend outbound response contracts with explicit `uiFeedback` metadata while preserving existing envelope semantics.
-- Added D-4 seed/synthetic lifecycle coverage and module-level regression tests for action matrix and preference override paths.
-- Unskipped D-4 API/E2E contract suites and aligned assertions to current outbound/refusal envelope shapes.
-- Corrected D-4 override factory refusal codes and E2E override reason token to current supported contract values.
+- Fixed CLOSED outbound behavior to reopen immediately before override validation/provider dispatch and return reopen lifecycle metadata on refusal paths when reopen already applied.
+- Added D-4 synthetic/read-contract/override coverage for `thread-d4-closed-prefers-no-1005`.
+- Added tenant-privileged `Take Over` coverage and closed `prefers_texting=NO` reopen refusal coverage in D-4 API/E2E suites and supporting fixtures/factories.
+- Added dialog accessibility semantics and keyboard focus containment for override/close modals in thread detail.
+- Added module-level regressions for D-4 closed-prefers-no action contracts and `prefersTexting` override resolution.
+- Updated thread-detail refusal handling to apply lifecycle reopen metadata for business refusals, so CLOSED + `prefers_texting=NO` transitions immediately to `UNCLAIMED` with explicit reopen feedback.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/d-4-operator-interaction-contracts-for-outbound-safety.md
-- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
-- frontend/src/features/connectshyft/uiContracts.ts
 - frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - tests/api/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.api.spec.ts
-- tests/api/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.atdd.api.spec.ts
-- tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.atdd.api.spec.ts
-- tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.atdd.api.spec.ts
+- tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts
 - tests/e2e/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.spec.ts
-- tests/e2e/platform/d-1-outbound-sms-call-actions-that-preserve-escalation-semantics.atdd.spec.ts
-- tests/e2e/platform/d-2-preference-override-enforcement-for-outbound-sms.atdd.spec.ts
-- tests/e2e/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.atdd.spec.ts
 - tests/support/factories/connectShyftStoryD4Factory.ts
-- tests/support/factories/connectShyftStoryD1Factory.ts
-- tests/support/factories/connectShyftStoryD2Factory.ts
-- tests/support/factories/connectShyftStoryD3Factory.ts
-- tests/support/fixtures/connectShyftStoryD1.fixture.ts
-- tests/support/fixtures/connectShyftStoryD2.fixture.ts
-- tests/support/fixtures/connectShyftStoryD3.fixture.ts
 - tests/support/fixtures/connectShyftStoryD4.fixture.ts
 - src/src/modules/connectshyft/__tests__/readContracts.test.ts
 - src/src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts
@@ -201,3 +184,6 @@ GPT-5 Codex
 - 2026-02-27: Created Story d.4 ready-for-dev context document.
 - 2026-02-27: Implemented Story d.4 state-action UI contracts, preference-override accessibility flow, deterministic reopen feedback, and backend UI-feedback envelope mapping.
 - 2026-02-27: Hardened D-4 API/E2E contracts (unskipped tests, updated refusal/assertion mappings, corrected override option values) and synced story traceability metadata.
+- 2026-03-02: Resolved five review findings spanning CLOSED reopen sequencing, D-4 closed-prefers-no synthetic coverage, tenant-privileged `Take Over` assertions, modal accessibility/focus containment, and module-level regression expansion.
+- 2026-03-02: Reconciled story debug evidence and file traceability with current branch state.
+- 2026-03-02: Re-ran D-4 API/E2E Playwright suites against local test-mode API and frontend test harness; patched refusal-path UI lifecycle application for CLOSED + `prefers_texting=NO` so E2E contracts pass.
