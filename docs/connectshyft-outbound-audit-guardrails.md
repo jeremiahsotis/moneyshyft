@@ -33,6 +33,12 @@ Business-policy or validation refusals must:
 - Use deterministic refusal codes/messages per route contract
 - Avoid partial writes (domain mutation, `platform.events`, and `platform.outbox_events` all remain unchanged)
 
+Post-dispatch persistence degradations must:
+
+- Keep `ok=true` because provider dispatch already occurred
+- Include `data.postDispatchWarnings[]` entries with `stage`, `code`, and `message`
+- Set `data.sideEffectsPersisted=false` when durable audit/outbox guarantees were not fully met
+
 Client-validation refusals must:
 
 - Use `refusalType='client'`
