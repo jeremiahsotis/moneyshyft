@@ -148,6 +148,7 @@ GPT-5 Codex
 - tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.atdd.api.spec.ts
 - tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts
 - tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.atdd.spec.ts
+- tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts
 
 ## Change Log
 
