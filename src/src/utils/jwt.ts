@@ -40,8 +40,21 @@ const sanitizeJwtPayload = (decoded: JwtPayload | string): JWTPayload => {
   };
 };
 
-const resolveJwtSecret = (): string => process.env.JWT_SECRET || 'your_jwt_secret_change_in_production';
-const resolveJwtRefreshSecret = (): string => process.env.JWT_REFRESH_SECRET || 'your_refresh_secret_change_in_production';
+const resolveRequiredSecret = (name: 'JWT_SECRET' | 'JWT_REFRESH_SECRET'): string => {
+  const value = process.env[name];
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value;
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    return `test-${name.toLowerCase()}`;
+  }
+
+  throw new Error(`${name} must be set via environment/secret manager`);
+};
+
+const resolveJwtSecret = (): string => resolveRequiredSecret('JWT_SECRET');
+const resolveJwtRefreshSecret = (): string => resolveRequiredSecret('JWT_REFRESH_SECRET');
 
 // Session duration constants
 const SHORT_SESSION_ACCESS = '2h';

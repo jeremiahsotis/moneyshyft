@@ -1,6 +1,6 @@
 # Story f.1: Provider Adapter Interface and Provider Registry
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,8 +25,8 @@ so that outbound and inbound communication flows can run without provider-specif
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Provider dispatch must fail closed with actionable refusal metadata so operators are not left in ambiguous comms states.
-- Real-User Validation Evidence: Pending API contract run validating provider selection and fail-closed refusal behavior.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-03-02 executed operator-facing provider dispatch/refusal validation via `cd src && npm test -- src/modules/connectshyft/__tests__/providerRegistry.test.ts src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` (pass: 3 suites, 39 tests) and `cd src && npm run build` (pass); confirmed deterministic provider selection, fail-closed refusal metadata, and no hidden lifecycle mutation on refusal paths.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story defines backend abstraction boundary; no new role-administration workflow.

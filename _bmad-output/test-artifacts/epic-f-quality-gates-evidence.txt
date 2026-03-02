@@ -1,0 +1,11 @@
+
+> quality-gates
+> bash scripts/quality-gates.sh
+
+P0 tagged tests: 4
+P1 tagged tests: 13
+P0 pass rate: 100.00%
+P1 pass rate: 100.00%
+Security verification suite gate passed: api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts (13/13)
+Security verification suite gate passed: e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts (4/4)
+Quality gates passed

@@ -4,16 +4,37 @@ import path from 'node:path';
 
 dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
+const resolveDbPassword = (): string => {
+  const password = process.env.DB_PASSWORD;
+  if (typeof password === 'string' && password.trim().length > 0) {
+    return password;
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    return 'test-db-password';
+  }
+
+  throw new Error('DB_PASSWORD must be set via environment/secret manager when DATABASE_URL is not provided');
+};
+
+const buildNonProductionConnection = (): string | Knex.StaticConnectionConfig => {
+  if (process.env.DATABASE_URL) {
+    return process.env.DATABASE_URL;
+  }
+
+  return {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    database: process.env.DB_NAME || 'moneyshyft',
+    user: process.env.DB_USER || 'jeremiahotis',
+    password: resolveDbPassword(),
+  };
+};
+
 const config: { [key: string]: Knex.Config } = {
   development: {
     client: 'postgresql',
-    connection: process.env.DATABASE_URL || {
-      host: 'localhost',
-      port: 5432,
-      database: 'moneyshyft',
-      user: 'jeremiahotis',
-      password: 'Oiurueu12'
-    },
+    connection: buildNonProductionConnection(),
     pool: {
       min: 2,
       max: 10
@@ -31,13 +52,7 @@ const config: { [key: string]: Knex.Config } = {
 
   test: {
     client: 'postgresql',
-    connection: process.env.DATABASE_URL || {
-      host: 'localhost',
-      port: 5432,
-      database: 'moneyshyft',
-      user: 'jeremiahotis',
-      password: 'Oiurueu12'
-    },
+    connection: buildNonProductionConnection(),
     pool: {
       min: 2,
       max: 10

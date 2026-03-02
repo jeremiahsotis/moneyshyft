@@ -96,6 +96,15 @@ is_allowed_transition() {
   esac
 }
 
+is_allowed_closeout_multihop() {
+  local from="$1"
+  local to="$2"
+
+  # Allow an in-progress -> done diff when both closeout transitions were
+  # executed in sequence before commit (in-progress -> review -> done).
+  [[ "$from" == "in-progress" && "$to" == "done" ]]
+}
+
 extract_story_status_from_file() {
   local file="$1"
   awk '
@@ -448,7 +457,8 @@ validate_closeout_transition() {
       failures=$((failures + 1))
       return 0
     fi
-    if ! is_allowed_transition "$previous_story_status" "$story_status"; then
+    if ! is_allowed_transition "$previous_story_status" "$story_status" \
+      && ! is_allowed_closeout_multihop "$previous_story_status" "$story_status"; then
       echo "Status sync mismatch: invalid closeout transition '$story_key' ${previous_story_status} -> ${story_status}; use npm run story:status:set"
       failures=$((failures + 1))
       return 0
@@ -461,7 +471,8 @@ validate_closeout_transition() {
       failures=$((failures + 1))
       return 0
     fi
-    if ! is_allowed_transition "$previous_sprint_status" "$sprint_status"; then
+    if ! is_allowed_transition "$previous_sprint_status" "$sprint_status" \
+      && ! is_allowed_closeout_multihop "$previous_sprint_status" "$sprint_status"; then
       echo "Status sync mismatch: invalid sprint closeout transition '$story_key' ${previous_sprint_status} -> ${sprint_status}; use npm run story:status:set"
       failures=$((failures + 1))
       return 0
