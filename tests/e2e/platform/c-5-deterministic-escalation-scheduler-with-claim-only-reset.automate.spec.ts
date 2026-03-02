@@ -174,6 +174,7 @@ test.describe(
           orgUnitId: context.orgUnitId,
           asOfUtc: new Date(Date.now() + (5 * 60 * 1000)).toISOString(),
           limit: 50,
+          threadId: context.threadId,
         };
 
         const firstRunResponse = await request.post(context.paths.schedulerEvaluate, {
