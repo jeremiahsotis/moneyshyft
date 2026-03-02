@@ -1,6 +1,6 @@
 # Story c.2: Thread Ensure Endpoint with Conflict-Safe Idempotency
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -23,8 +23,8 @@ so that duplicate active threads are never created for the same neighbor context
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Existing-thread reuse must be deterministic and non-disruptive so operators do not see duplicate conversations.
-- Real-User Validation Evidence: Pending critical-capability validation run. Record concrete UI/API operator evidence before closeout.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-03-02 manual operator validation by Jeremiah in local runtime. Concurrent ensure flow validated for tenant `tenant-connectshyft-c1` and orgUnit `org-connectshyft-c1-east` with inbound/outbound markers `cs-inbound-c2-real-001` / `cs-outbound-c2-real-001`; resolved thread id `155cb908-612d-4470-a34f-059cb730d240`. Inbox screenshot shows exactly one matching thread card and no duplicate conversation card. Thread-detail screenshot confirms same thread id (`155cb908-612d-4470-a34f-059cb730d240`) after opening from inbox. Automated runtime validation also passed with managed stack (`bash scripts/ci-run-playwright-stack.sh ...` => 5/5 c.2 specs passed).
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Endpoint uses existing context/auth patterns; no new role-administration workflow.
@@ -129,6 +129,8 @@ GPT-5 Codex
 - `npx playwright test tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts --project=chromium`
 - `cd src && MONEYSHYFT_TEST_DATABASE_URL='postgresql://jeremiahotis:Oiruueu12@127.0.0.1:5432/moneyshyft' npm test -- src/src/modules/connectshyft/__tests__/threads.test.ts src/src/modules/connectshyft/__tests__/threads.contract.test.ts`
 - `npx playwright test --list tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts` (pass)
+- `cd src && npm run build` (pass)
+- `bash scripts/ci-run-playwright-stack.sh npx playwright test tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts --project=chromium` (pass; 5/5)
 
 ### Completion Notes List
 
@@ -136,21 +138,25 @@ GPT-5 Codex
 - Expanded story c.2 API coverage for malformed-neighbor refusal and cross-tenant no-leak refusal semantics while retaining concurrent idempotency verification.
 - Added c.2 E2E operator journey proving concurrent ensure requests converge to one thread identity and one inbox card, with navigation into the same thread detail context.
 - Verified related thread module behavior with Jest unit + Postgres contract test suites.
+- Canonicalized `neighborId` casing for UUID/slug inputs before ensure persistence to close case-variant duplicate-thread risk under the active-thread uniqueness constraint.
+- Upgraded c.2 contention coverage from two parallel callers to a 12-request burst and added stable-thread-contract assertions across all responses.
+- Added API coverage proving uppercase/lowercase `neighborId` variants converge to one canonical active thread identity and one active row.
+- Added deterministic E2E cleanup for ensured test threads so c.2 UI automation does not leave persistent `cs_threads` residue.
+- Reconciled Dev Agent Record file inventory with story-specific git history (removed unrelated c.3/c.4 files; restored sprint-status entry from c.2 implementation commit).
+- Executed c.2 API + E2E runtime validation under managed backend/frontend stack startup; all five c.2 specs passed.
+- Recorded manual real-user validation evidence from operator-run inbox/detail flow screenshots and verified single-thread continuity.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 - src/src/routes/api/v1/connectshyft.ts
-- src/src/modules/connectshyft/readContracts.ts
-- src/src/modules/connectshyft/__tests__/readContracts.test.ts
-- frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts
-- tests/api/platform/c-3-inbox-and-thread-detail-read-contracts.atdd.api.spec.ts
 - tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts
-- tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.atdd.spec.ts
-- tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts
 
 ## Change Log
 
 - 2026-02-24: Created Story c.2 ready-for-dev context document.
 - 2026-03-02: Implemented c.2 conflict-safe ensure validation and expanded API/E2E coverage; status moved to review.
+- 2026-03-02: Hardened c.2 case-safe neighbor idempotency, expanded high-contention/contract checks, added E2E thread cleanup, and reconciled story file inventory with git history.
+- 2026-03-02: Completed real-user validation evidence capture and moved story status to done.

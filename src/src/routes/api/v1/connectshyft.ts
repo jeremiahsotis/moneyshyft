@@ -80,7 +80,7 @@ import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService'
 
 const router = Router();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const CONNECTSHYFT_NEIGHBOR_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
+const CONNECTSHYFT_NEIGHBOR_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TEST_ACTIVE_THREAD_NEIGHBOR_IDS_HEADER = 'x-test-connectshyft-active-thread-neighbor-ids';
 const TEST_USER_ID_HEADER = 'x-test-connectshyft-user-id';
 const CONNECTSHYFT_SYSTEM_ACTOR_USER_ID = '00000000-0000-4000-8000-000000000001';
@@ -2522,9 +2522,29 @@ const resolveWebhookActorUserId = (req: Request): string => {
   return CONNECTSHYFT_SYSTEM_ACTOR_USER_ID;
 };
 
+const normalizeConnectShyftNeighborIdentifier = (neighborId: string): string => {
+  const normalized = neighborId.trim();
+  if (!normalized) {
+    return '';
+  }
+
+  if (UUID_PATTERN.test(normalized)) {
+    return normalized.toLowerCase();
+  }
+
+  const normalizedSlugCandidate = normalized.toLowerCase();
+  if (CONNECTSHYFT_NEIGHBOR_SLUG_PATTERN.test(normalizedSlugCandidate)) {
+    return normalizedSlugCandidate;
+  }
+
+  return normalized;
+};
+
 const parseThreadEnsureBody = (req: Request) => ({
   orgUnitId: parseOrgUnitIdFromBody(req),
-  neighborId: typeof req.body?.neighborId === 'string' ? req.body.neighborId.trim() : '',
+  neighborId: typeof req.body?.neighborId === 'string'
+    ? normalizeConnectShyftNeighborIdentifier(req.body.neighborId)
+    : '',
   source: typeof req.body?.source === 'string' ? req.body.source : 'VOICE',
   forcedState: typeof req.body?.forcedState === 'string' ? req.body.forcedState : undefined,
   lastInboundCsNumberId: typeof req.body?.lastInboundCsNumberId === 'string'
