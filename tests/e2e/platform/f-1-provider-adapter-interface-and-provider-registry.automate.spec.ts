@@ -3,6 +3,7 @@ import {
   createStoryF1Context,
   createStoryF1Headers,
 } from '../../support/factories/connectShyftStoryF1Factory';
+import { deterministicProviderEventId } from '../../support/utils/deterministicTestIds';
 
 const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
 
@@ -226,7 +227,7 @@ test.describe(
 
     test(
       '[P1] inbound webhook contracts preserve provider-adapter translation metadata and deterministic routing decisions for operator observability @P1',
-      async ({ request }) => {
+      async ({ request }, testInfo) => {
         const context = createStoryF1Context();
         const adminHeaders = createStoryF1Headers(context, {
           role: 'ORGUNIT_ADMIN',
@@ -242,7 +243,11 @@ test.describe(
             orgUnitId: context.orgUnitId,
             tenantId: context.tenantId,
             providerKey: context.providers.enabledPrimary,
-            providerEventId: `telnyx-call-event-f1-${Date.now().toString().slice(-6)}`,
+            providerEventId: deterministicProviderEventId(
+              'telnyx-call-event-f1',
+              testInfo,
+              'inbound-webhook',
+            ),
             callStatus: 'CONNECTED',
           },
         });

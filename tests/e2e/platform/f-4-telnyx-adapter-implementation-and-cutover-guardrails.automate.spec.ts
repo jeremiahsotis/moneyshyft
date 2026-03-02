@@ -10,6 +10,7 @@ import {
 } from '../../support/factories/connectShyftStoryF2Factory';
 import { createCiPolicyContext } from '../../support/factories/ciPolicyContextFactory';
 import { runPolicyScriptInTempRepo } from '../../support/utils/policyScriptTestHarness';
+import { deterministicProviderEventId } from '../../support/utils/deterministicTestIds';
 
 const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
 
@@ -119,7 +120,7 @@ test.describe(
 
     test(
       '[P0] inbound webhook journey preserves deterministic correlation, canonical translation, and replay-safe duplicate suppression for telnyx cutover flows @P0',
-      async ({ request }) => {
+      async ({ request }, testInfo) => {
         const context = createStoryF2Context();
         const operatorHeaders = createStoryF2Headers(context, {
           role: 'ORGUNIT_MEMBER',
@@ -153,7 +154,11 @@ test.describe(
           eventType: 'sms.delivered',
           providerKey: context.providers.enabledPrimary,
           providerMessageId,
-          providerEventId: `provider-event-f4-e2e-${Date.now().toString().slice(-8)}`,
+          providerEventId: deterministicProviderEventId(
+            'provider-event-f4-e2e',
+            testInfo,
+            'inbound-webhook',
+          ),
         };
 
         const firstWebhookResponse = await apiRequest(request, {

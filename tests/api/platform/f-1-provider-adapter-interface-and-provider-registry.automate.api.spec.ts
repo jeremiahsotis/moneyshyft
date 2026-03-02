@@ -1,6 +1,7 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { createStoryF1Headers } from '../../support/factories/connectShyftStoryF1Factory';
 import { test, expect } from '../../support/fixtures/connectShyftStoryF1.fixture';
+import { deterministicE164 } from '../../support/utils/deterministicTestIds';
 
 const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
 
@@ -217,13 +218,16 @@ test.describe(
 
     test(
       '[P1] number mapping create accepts legacy twilioNumberE164 input while returning provider-neutral providerNumberE164 contract fields @P1',
-      async ({ request, storyF1Context }) => {
+      async ({ request, storyF1Context }, testInfo) => {
         const adminHeaders = createStoryF1Headers(storyF1Context, {
           role: 'SYSTEM_ADMIN',
           userId: storyF1Context.adminUserId,
           orgUnitMemberships: [storyF1Context.orgUnitId],
         });
-        const legacyTwilioNumberE164 = `+1260${Date.now().toString().slice(-7)}`;
+        const legacyTwilioNumberE164 = deterministicE164(
+          testInfo,
+          'f1-number-mapping',
+        );
 
         const response = await apiRequest(request, {
           method: 'POST',
