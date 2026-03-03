@@ -684,7 +684,7 @@ const normalizeLifecycleString = (value: unknown): string => {
   return value.trim();
 };
 
-type ConnectShyftWebhookCorrelationSource = 'metadata' | 'provider_fallback';
+type ConnectShyftWebhookCorrelationSource = 'metadata' | 'provider_fallback' | 'number_mapping';
 
 type ConnectShyftResolvedWebhookCorrelation =
   | {
@@ -696,6 +696,7 @@ type ConnectShyftResolvedWebhookCorrelation =
     providerLegId: string | null;
     providerMessageId: string | null;
     providerEventId: string | null;
+    providerNumberE164: string | null;
   }
   | {
     ok: false;
@@ -710,6 +711,7 @@ type ConnectShyftResolvedWebhookCorrelation =
     providerLegId: string | null;
     providerMessageId: string | null;
     providerEventId: string | null;
+    providerNumberE164: string | null;
   };
 
 const asRecord = (value: unknown): Record<string, unknown> | null => {
@@ -774,6 +776,49 @@ const extractWebhookProviderIdentifiers = (body: unknown): {
   };
 };
 
+const extractWebhookProviderNumber = (body: unknown): string | null => {
+  const payload = asRecord(body);
+  const providerPayload = asRecord(payload?.providerPayload);
+  const data = asRecord(payload?.data);
+  const dataPayload = asRecord(data?.payload);
+  const sources = [payload, providerPayload, dataPayload, data];
+
+  return readWebhookIdentifierFromSources(sources, [
+    'providerNumberE164',
+    'provider_number_e164',
+    'to',
+    'toNumber',
+    'to_number',
+    'recipient',
+    'recipientNumber',
+    'recipient_number',
+    'twilioNumberE164',
+    'twilio_number_e164',
+  ]);
+};
+
+const normalizeRoutingSlug = (value: string): string => {
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return normalized || 'unknown';
+};
+
+const resolveDeterministicThreadIdForNumberMapping = (input: {
+  tenantId: string;
+  orgUnitId: string;
+  providerNumberE164: string;
+}): string => {
+  const existingSynthetic = Object.entries(CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS).find(([, descriptor]) =>
+    descriptor.tenantId === input.tenantId
+    && descriptor.orgUnitId === input.orgUnitId
+    && descriptor.state === 'UNCLAIMED');
+
+  if (existingSynthetic) {
+    return existingSynthetic[0];
+  }
+
+  return `thread-ingress-${normalizeRoutingSlug(input.tenantId)}-${normalizeRoutingSlug(input.orgUnitId)}-${normalizeRoutingSlug(input.providerNumberE164)}`;
+};
+
 const resolveWebhookCorrelationFailure = (
   reason: 'missing-identifiers' | 'not-found' | 'ambiguous' | 'unavailable',
 ): {
@@ -811,12 +856,18 @@ const resolveWebhookCorrelationFailure = (
 const resolveInboundWebhookCorrelation = async (input: {
   body: unknown;
   providerName: string;
+  tenantIdHint?: string | null;
 }): Promise<ConnectShyftResolvedWebhookCorrelation> => {
   const payload = asRecord(input.body);
   const tenantId = normalizeLifecycleString(payload?.tenantId);
   const orgUnitId = normalizeLifecycleString(payload?.orgUnitId);
   const threadId = normalizeLifecycleString(payload?.threadId);
   const providerIdentifiers = extractWebhookProviderIdentifiers(input.body);
+  const providerNumberE164 = extractWebhookProviderNumber(input.body);
+  const tenantScopeHint = normalizeLifecycleString(input.tenantIdHint || null);
+  const numberMappingTenantScope = tenantId
+    || (tenantScopeHint.toLowerCase() !== 'public' ? tenantScopeHint : '')
+    || null;
   const hasCompleteMetadata = Boolean(tenantId && orgUnitId && threadId);
 
   if (hasCompleteMetadata) {
@@ -844,6 +895,7 @@ const resolveInboundWebhookCorrelation = async (input: {
         providerLegId: providerIdentifiers.providerLegId,
         providerMessageId: providerIdentifiers.providerMessageId,
         providerEventId: providerIdentifiers.providerEventId,
+        providerNumberE164,
       };
     }
 
@@ -856,6 +908,7 @@ const resolveInboundWebhookCorrelation = async (input: {
       providerLegId: providerIdentifiers.providerLegId,
       providerMessageId: providerIdentifiers.providerMessageId,
       providerEventId: providerIdentifiers.providerEventId,
+      providerNumberE164,
     };
   }
 
@@ -866,6 +919,69 @@ const resolveInboundWebhookCorrelation = async (input: {
     tenantId: tenantId || null,
     db: loadPlatformDb(),
   });
+  if (!fallback.ok && providerNumberE164) {
+    try {
+      const numberMapping = await connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber({
+        tenantId: numberMappingTenantScope,
+        twilioNumberE164: providerNumberE164,
+      });
+      if (numberMapping.status === 'found') {
+        return {
+          ok: true,
+          source: 'number_mapping',
+          tenantId: numberMapping.mapping.tenantId,
+          orgUnitId: numberMapping.mapping.orgUnitId,
+          threadId: resolveDeterministicThreadIdForNumberMapping({
+            tenantId: numberMapping.mapping.tenantId,
+            orgUnitId: numberMapping.mapping.orgUnitId,
+            providerNumberE164,
+          }),
+          providerLegId: providerIdentifiers.providerLegId,
+          providerMessageId: providerIdentifiers.providerMessageId,
+          providerEventId: providerIdentifiers.providerEventId,
+          providerNumberE164,
+        };
+      }
+
+      if (numberMapping.status === 'ambiguous') {
+        return {
+          ok: false,
+          code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_AMBIGUOUS',
+          message: 'Inbound webhook correlation is ambiguous across provider number mappings.',
+          reason: 'ambiguous',
+          providerLegId: providerIdentifiers.providerLegId,
+          providerMessageId: providerIdentifiers.providerMessageId,
+          providerEventId: providerIdentifiers.providerEventId,
+          providerNumberE164,
+        };
+      }
+    } catch (_error) {
+      return {
+        ok: false,
+        code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_LOOKUP_UNAVAILABLE',
+        message: 'Inbound webhook correlation lookup is temporarily unavailable.',
+        reason: 'unavailable',
+        providerLegId: providerIdentifiers.providerLegId,
+        providerMessageId: providerIdentifiers.providerMessageId,
+        providerEventId: providerIdentifiers.providerEventId,
+        providerNumberE164,
+      };
+    }
+
+    if (fallback.reason === 'missing-identifiers') {
+      return {
+        ok: false,
+        code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_NOT_FOUND',
+        message: 'Inbound webhook correlation mapping not found for provider identifiers.',
+        reason: 'not-found',
+        providerLegId: providerIdentifiers.providerLegId,
+        providerMessageId: providerIdentifiers.providerMessageId,
+        providerEventId: providerIdentifiers.providerEventId,
+        providerNumberE164,
+      };
+    }
+  }
+
   if (!fallback.ok) {
     const failure = resolveWebhookCorrelationFailure(fallback.reason);
     return {
@@ -876,6 +992,7 @@ const resolveInboundWebhookCorrelation = async (input: {
       providerLegId: providerIdentifiers.providerLegId,
       providerMessageId: providerIdentifiers.providerMessageId,
       providerEventId: providerIdentifiers.providerEventId,
+      providerNumberE164,
     };
   }
 
@@ -892,6 +1009,7 @@ const resolveInboundWebhookCorrelation = async (input: {
       providerLegId: providerIdentifiers.providerLegId,
       providerMessageId: providerIdentifiers.providerMessageId,
       providerEventId: providerIdentifiers.providerEventId,
+      providerNumberE164,
     };
   }
 
@@ -904,6 +1022,7 @@ const resolveInboundWebhookCorrelation = async (input: {
     providerLegId: providerIdentifiers.providerLegId,
     providerMessageId: providerIdentifiers.providerMessageId,
     providerEventId: providerIdentifiers.providerEventId,
+    providerNumberE164,
   };
 };
 
@@ -5394,11 +5513,42 @@ const handleInboundWebhook = async (
 
   const signatureDecision = providerSelection.adapter.validateInboundWebhookSignature({ req });
   if (!signatureDecision.ok) {
+    const signatureMessageKey = signatureDecision.refusal.code === 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING'
+      ? 'connectshyft.webhook.signature.missing'
+      : signatureDecision.refusal.code === 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED'
+        ? 'connectshyft.webhook.signature.not_configured'
+        : 'connectshyft.webhook.signature.invalid';
     refusal(res, {
       code: signatureDecision.refusal.code,
       message: signatureDecision.refusal.message,
       refusalType: signatureDecision.refusal.refusalType,
       httpStatus: signatureDecision.refusal.httpStatus,
+      data: {
+        providerResolution: {
+          ...providerSelection.providerResolution,
+          adapterInvoked: true,
+        },
+        signatureValidation: {
+          deterministic: true,
+          verified: false,
+          provider: providerSelection.providerResolution.resolvedProvider,
+        },
+        operatorFeedbackMeta: {
+          actionable: true,
+          hiddenTransition: false,
+          messageKey: signatureMessageKey,
+          remediation: 'Ensure provider webhook signing is configured and include a valid signature.',
+        },
+        sideEffects: {
+          lifecycleMutationApplied: false,
+          canonicalEventPersisted: false,
+          outboxPersisted: false,
+        },
+        timelineOutcome: {
+          eventName: null,
+          routingDecision: 'refused',
+        },
+      },
     });
     return;
   }
@@ -5413,6 +5563,7 @@ const handleInboundWebhook = async (
   const correlation = await resolveInboundWebhookCorrelation({
     body: req.body,
     providerName: providerSelection.providerResolution.resolvedProvider,
+    tenantIdHint: req.tenantId || null,
   });
   if (!correlation.ok) {
     refusal(res, {
@@ -5433,6 +5584,7 @@ const handleInboundWebhook = async (
           providerLegId: correlation.providerLegId,
           providerMessageId: correlation.providerMessageId,
           providerEventId: correlation.providerEventId,
+          providerNumberE164: correlation.providerNumberE164,
         },
         operatorFeedbackMeta: {
           actionable: true,
@@ -5490,6 +5642,7 @@ const handleInboundWebhook = async (
           providerLegId: correlation.providerLegId,
           providerMessageId: correlation.providerMessageId,
           providerEventId: correlation.providerEventId,
+          providerNumberE164: correlation.providerNumberE164,
         },
       },
     });
@@ -5527,6 +5680,7 @@ const handleInboundWebhook = async (
           providerLegId: correlation.providerLegId,
           providerMessageId: correlation.providerMessageId,
           providerEventId: correlation.providerEventId,
+          providerNumberE164: correlation.providerNumberE164,
         },
         replaySafe: {
           duplicate: false,
@@ -5568,6 +5722,7 @@ const handleInboundWebhook = async (
           providerLegId: correlation.providerLegId,
           providerMessageId: correlation.providerMessageId,
           providerEventId: correlation.providerEventId,
+          providerNumberE164: correlation.providerNumberE164,
         },
         replaySafe: {
           duplicate: true,
@@ -5740,6 +5895,7 @@ const handleInboundWebhook = async (
         providerLegId: correlation.providerLegId,
         providerMessageId: correlation.providerMessageId,
         providerEventId: correlation.providerEventId,
+        providerNumberE164: correlation.providerNumberE164,
       },
       replaySafe: {
         duplicate: false,

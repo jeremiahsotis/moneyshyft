@@ -1,7 +1,10 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import type { TestInfo } from '@playwright/test';
 
-const DEFAULT_RUN_SEED = randomUUID().slice(0, 8);
+const DEFAULT_RUN_SEED = 'seed0000';
+const DEFAULT_TIMESTAMP_BASE_SECONDS = Number(
+  process.env.PLAYWRIGHT_TEST_TIMESTAMP_BASE ?? Math.trunc(Date.now() / 1000),
+);
 
 const toHash = (input: string): string =>
   createHash('sha1').update(input).digest('hex');
@@ -52,3 +55,15 @@ export const deterministicE164 = (
   label: string,
   prefix = '+1260',
 ): string => `${prefix}${deterministicDigits(testInfo, label, 7)}`;
+
+export const deterministicUnixTimestamp = (
+  testInfo: TestInfo,
+  label: string,
+  base = DEFAULT_TIMESTAMP_BASE_SECONDS,
+  lookbackWindowSeconds = 240,
+): string => {
+  const token = deterministicToken(testInfo, label, 8);
+  const window = Math.max(1, lookbackWindowSeconds);
+  const secondsOffset = parseInt(token, 16) % window;
+  return String(base - secondsOffset);
+};

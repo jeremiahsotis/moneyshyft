@@ -468,6 +468,96 @@ describe('connectshyft provider registry', () => {
     expect(requested).toBe('telnyx');
   });
 
+  it('enforces webhook signature validation in test override mode when explicitly requested', () => {
+    const { publicKey } = generateKeyPairSync('ed25519');
+    const testPublicKey = publicKey.export({
+      type: 'spki',
+      format: 'pem',
+    }).toString();
+
+    const result = resolveConnectShyftProviderAdapter({
+      req: buildRequest({
+        body: {
+          providerKey: 'telnyx',
+        },
+      }),
+      operation: 'webhook',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error('Expected adapter resolution to succeed');
+    }
+
+    const signatureDecision = result.adapter.validateInboundWebhookSignature({
+      req: buildRequest({
+        body: {
+          eventType: 'voice.connected',
+        },
+        headers: {
+          'x-test-connectshyft-enforce-webhook-signature': 'true',
+          'x-test-connectshyft-telnyx-public-key': testPublicKey,
+        },
+      }),
+    });
+
+    expect(signatureDecision).toMatchObject({
+      ok: false,
+      refusal: {
+        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING',
+        httpStatus: 401,
+      },
+    });
+  });
+
+  it('accepts valid webhook signatures in test override mode when explicit signature enforcement is enabled', () => {
+    const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+    const testPublicKey = publicKey.export({
+      type: 'spki',
+      format: 'pem',
+    }).toString();
+
+    const payload = {
+      eventType: 'voice.connected',
+      threadId: 'thread-f1-unclaimed-1001',
+    };
+    const rawBody = JSON.stringify(payload);
+    const timestamp = Math.trunc(Date.now() / 1000).toString();
+    const signature = signPayload(
+      null,
+      Buffer.from(`${timestamp}|${rawBody}`),
+      privateKey,
+    ).toString('base64');
+
+    const result = resolveConnectShyftProviderAdapter({
+      req: buildRequest({
+        body: payload,
+        rawBody,
+      }),
+      operation: 'webhook',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error('Expected adapter resolution to succeed');
+    }
+
+    const signatureDecision = result.adapter.validateInboundWebhookSignature({
+      req: buildRequest({
+        body: payload,
+        rawBody,
+        headers: {
+          'x-test-connectshyft-enforce-webhook-signature': 'true',
+          'x-test-connectshyft-telnyx-public-key': testPublicKey,
+          'telnyx-timestamp': timestamp,
+          'telnyx-signature-ed25519': signature,
+        },
+      }),
+    });
+
+    expect(signatureDecision).toEqual({ ok: true });
+  });
+
   it('rejects webhook signatures when Telnyx signature headers are missing outside override mode', () => {
     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'false';
 
