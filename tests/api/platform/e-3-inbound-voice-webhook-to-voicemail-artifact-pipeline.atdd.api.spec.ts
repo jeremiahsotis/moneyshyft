@@ -65,6 +65,32 @@ const ensureThread = async ({
   return threadId;
 };
 
+const resolvePersistedActorUserId = async (
+  request: Parameters<typeof apiRequest>[0],
+): Promise<string> => {
+  const loginResponse = await apiRequest(request, {
+    method: 'POST',
+    path: '/api/v1/auth/login',
+    headers: {
+      cookie: '',
+    },
+    data: {
+      email: process.env.TEST_EMAIL || 'operator@example.com',
+      password: process.env.TEST_PASSWORD || 'SecurePass123!',
+      rememberMe: false,
+    },
+  });
+  expect(loginResponse.status()).toBe(200);
+
+  const loginBody = await loginResponse.json();
+  const user = loginBody?.user ?? loginBody?.data?.user ?? {};
+  const userId = typeof user?.userId === 'string'
+    ? user.userId
+    : (typeof user?.id === 'string' ? user.id : '');
+  expect(userId.length).toBeGreaterThan(0);
+  return userId;
+};
+
 const buildVoicemailWebhookPayload = ({
   context,
   neighborId,
@@ -110,7 +136,7 @@ const buildVoicemailWebhookPayload = ({
 };
 
 test.describe(
-  'Story e.3 Inbound Voice Webhook to Voicemail Artifact Pipeline (ATDD API RED)',
+  'Story e.3 Inbound Voice Webhook to Voicemail Artifact Pipeline (ATDD API)',
   () => {
     test.beforeEach(async ({
       request,
@@ -126,7 +152,7 @@ test.describe(
       });
     });
 
-    test.skip(
+    test(
       '[E3-ATDD-API-001][P0] valid inbound voice webhook creates voicemail artifact linked to resolved active thread context @P0',
       async ({
         request,
@@ -197,7 +223,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E3-ATDD-API-002][P0] no-active-thread voice inbound routes to intake fallback and does not pretend voicemail-only routing @P0',
       async ({
         request,
@@ -246,31 +272,53 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E3-ATDD-API-003][P1] claimed-thread inbound voice follows orgUnit-configured mode rather than forced voicemail-only defaults @P1',
       async ({
         request,
         storyE3Context,
         storyE3AdminHeaders,
+        storyE3OperatorHeaders,
         storyE3EnsurePayloadClaimed,
       }, testInfo) => {
+        const claimedNeighborId = `${storyE3Context.neighborIds.voicemailClaimed}-${deterministicToken(
+          testInfo,
+          'e3-atdd-api-003-neighbor',
+        )}`;
         const claimedThreadId = await ensureThread({
           request,
           path: storyE3Context.paths.threads,
           headers: storyE3AdminHeaders,
-          payload: storyE3EnsurePayloadClaimed,
+          payload: {
+            ...storyE3EnsurePayloadClaimed,
+            neighborId: claimedNeighborId,
+          },
         });
+        const persistedActorUserId = await resolvePersistedActorUserId(request);
+        const claimHeaders = {
+          ...storyE3OperatorHeaders,
+          'x-test-connectshyft-user-id': persistedActorUserId,
+        };
 
         const claimResponse = await apiRequest(request, {
           method: 'POST',
           path: `${storyE3Context.paths.threads}/${claimedThreadId}/claim`,
-          headers: storyE3AdminHeaders,
+          headers: claimHeaders,
         });
         expect([200, 409]).toContain(claimResponse.status());
 
+        const detailAfterClaimResponse = await apiRequest(request, {
+          method: 'GET',
+          path: `${storyE3Context.paths.threads}/${claimedThreadId}`,
+          headers: storyE3AdminHeaders,
+        });
+        expect(detailAfterClaimResponse.status()).toBe(200);
+        const detailAfterClaimBody = await detailAfterClaimResponse.json();
+        expect(String(detailAfterClaimBody?.data?.thread?.state || '')).toBe('CLAIMED');
+
         const webhookPayload = buildVoicemailWebhookPayload({
           context: storyE3Context,
-          neighborId: storyE3Context.neighborIds.voicemailClaimed,
+          neighborId: claimedNeighborId,
           threadId: claimedThreadId,
           testInfo,
           label: 'e3-atdd-api-003',
@@ -309,7 +357,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E3-ATDD-API-004][P1] successful voicemail artifact creation enqueues transcription with durable callback correlation metadata @P1',
       async ({
         request,
@@ -369,7 +417,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E3-ATDD-API-005][P1] voicemail-only inbound processing keeps escalation and inactivity windows unchanged unless locked lifecycle rules require a change @P1',
       async ({
         request,
