@@ -67,6 +67,74 @@ describe('connectshyft number mapping service', () => {
     });
   });
 
+  it('treats inactive mappings as non-routable for webhook routing', () => {
+    const created = service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      twilioNumberE164: '+12605550142',
+      label: 'Webhook ingress disabled',
+      isActive: false,
+    });
+
+    expect(created.ok).toBe(true);
+    expect(service.findMappingByTenantNumber(
+      'tenant-connectshyft-alpha',
+      '+12605550142',
+    )).toBeNull();
+  });
+
+  it('resolves unscoped webhook routing by globally unique active number', () => {
+    service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      twilioNumberE164: '+12605550143',
+      label: 'Global unique ingress',
+      isActive: true,
+    });
+
+    const resolved = service.resolveRoutingMappingByNumber({
+      tenantId: null,
+      twilioNumberE164: '+12605550143',
+    });
+
+    expect(resolved).toMatchObject({
+      status: 'found',
+      mapping: {
+        tenantId: 'tenant-connectshyft-alpha',
+        orgUnitId: 'org-connectshyft-alpha-east',
+        twilioNumberE164: '+12605550143',
+      },
+    });
+  });
+
+  it('refuses unscoped webhook routing when active mappings are ambiguous across tenants', () => {
+    service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      twilioNumberE164: '+12605550144',
+      label: 'Alpha mapping',
+      isActive: true,
+    });
+    service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
+      tenantId: 'tenant-connectshyft-beta',
+      orgUnitId: 'org-connectshyft-beta-east',
+      twilioNumberE164: '+12605550144',
+      label: 'Beta mapping',
+      isActive: true,
+    });
+
+    const resolved = service.resolveRoutingMappingByNumber({
+      tenantId: null,
+      twilioNumberE164: '+12605550144',
+    });
+
+    expect(resolved.status).toBe('ambiguous');
+  });
+
   it('rejects non-E.164 number values before persistence', () => {
     const result = service.createMapping({
       actorRoles: ['ORGUNIT_ADMIN'],

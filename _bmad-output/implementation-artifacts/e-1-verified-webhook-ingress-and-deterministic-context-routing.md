@@ -138,20 +138,30 @@ GPT-5 Codex
 - `npm run test:e2e -- tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts`
 - `cd src && npm test`
 - `cd src && npm run build`
+- `cd src && npm test -- src/src/modules/connectshyft/__tests__/numberMappings.test.ts src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts`
+- `npm run test:e2e -- tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts`
 
 ### Completion Notes List
 
 - Added explicit fail-closed signature refusal metadata with side-effect and operator remediation fields in `handleInboundWebhook`.
 - Added deterministic test-mode signature enforcement controls (`x-test-connectshyft-enforce-webhook-signature`, `x-test-connectshyft-telnyx-public-key`) while preserving default test override behavior.
-- Implemented provider-number correlation fallback for inbound webhooks using tenant-scoped mapping lookup and deterministic `number_mapping` source context.
-- Added async number-mapping lookup API (`findMappingByTenantNumber`) for ingress routing without write-side coupling.
+- Implemented provider-number correlation fallback for inbound webhooks with tenant-aware routing semantics: scoped lookup when tenant is known, global active-number resolution when tenant context is unavailable, and deterministic ambiguity refusals.
+- Updated number mapping routing semantics so `isActive=false` mappings are non-routable for inbound webhook correlation.
+- Added async number-mapping routing resolution API (`resolveRoutingMappingByNumber`) for ingress routing without write-side coupling.
 - Activated Story e.1 ATDD API tests and updated them to run signed-path and unsigned fail-closed assertions with deterministic replay-safe identity checks.
-- Added/updated module and route regression tests for number-mapping correlation, unmapped refusal behavior, and enforced signature validation.
+- Added/updated module and route regression tests for number-mapping correlation, unauthenticated/public-tenant fallback behavior, active/inactive routing behavior, ambiguity refusal, unmapped refusal behavior, and enforced signature validation.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/e-1-verified-webhook-ingress-and-deterministic-context-routing.md
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- _bmad-output/test-artifacts/atdd-checklist-e-1.md
+- _bmad-output/test-artifacts/atdd-temp/api-e-1-2026-03-03T02-02-23Z.json
+- _bmad-output/test-artifacts/atdd-temp/e2e-e-1-2026-03-03T02-02-23Z.json
+- _bmad-output/test-artifacts/atdd-temp/summary-e-1-2026-03-03T02-02-23Z.json
+- _bmad-output/test-artifacts/tea-atdd-api-tests-2026-03-03T02-02-23Z.json
+- _bmad-output/test-artifacts/tea-atdd-e2e-tests-2026-03-03T02-02-23Z.json
+- _bmad-output/test-artifacts/tea-atdd-summary-2026-03-03T02-02-23Z.json
 - src/src/modules/connectshyft/numberMappings.ts
 - src/src/modules/connectshyft/providerRegistry.ts
 - src/src/routes/api/v1/connectshyft.ts
@@ -159,8 +169,12 @@ GPT-5 Codex
 - src/src/modules/connectshyft/__tests__/providerRegistry.test.ts
 - src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts
 - tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts
+- tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts
+- tests/support/factories/connectShyftStoryE1Factory.ts
+- tests/support/fixtures/connectShyftStoryE1.fixture.ts
 
 ## Change Log
 
 - 2026-03-03: Created Story e.1 ready-for-dev context document.
 - 2026-03-03: Implemented webhook signature fail-closed metadata, deterministic number-mapping correlation routing, and replay-safe ingress contract/regression coverage for Story e.1.
+- 2026-03-03: Fixed review findings by making inactive mappings non-routable and enabling deterministic unauthenticated webhook routing via globally unique active number mappings with explicit ambiguous refusal handling.

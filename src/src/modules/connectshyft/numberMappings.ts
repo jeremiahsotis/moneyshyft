@@ -88,6 +88,19 @@ export type NumberMappingSaveResult =
   }
   | NumberMappingRefusalResult;
 
+export type NumberMappingRoutingResolution =
+  | {
+    status: 'found';
+    mapping: ConnectShyftNumberMapping;
+  }
+  | {
+    status: 'not-found';
+  }
+  | {
+    status: 'ambiguous';
+    mappings: ConnectShyftNumberMapping[];
+  };
+
 const normalizeTwilioNumber = (value: string): string => value.trim();
 
 const normalizeLabel = (value: string): string => value.trim();
@@ -228,6 +241,20 @@ export class InMemoryConnectShyftNumberMappingStore {
 
     const mapping = this.mappingsById.get(mappingId);
     return mapping || null;
+  }
+
+  listActiveByNumber(twilioNumberE164: string): ConnectShyftNumberMapping[] {
+    return Array.from(this.mappingsById.values())
+      .filter((mapping) => mapping.twilioNumberE164 === twilioNumberE164 && mapping.isActive)
+      .sort((left, right) => {
+        if (left.tenantId !== right.tenantId) {
+          return left.tenantId.localeCompare(right.tenantId);
+        }
+        if (left.orgUnitId !== right.orgUnitId) {
+          return left.orgUnitId.localeCompare(right.orgUnitId);
+        }
+        return left.mappingId.localeCompare(right.mappingId);
+      });
   }
 
   createMapping(input: NumberMappingCreateInput): NumberMappingPersistenceResult {
@@ -387,6 +414,31 @@ export class KnexConnectShyftNumberMappingStore {
     return row ? mapDbRowToMapping(row) : null;
   }
 
+  async listActiveByNumber(twilioNumberE164: string): Promise<ConnectShyftNumberMapping[]> {
+    const rows = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_number_mappings')
+      .where({
+        twilio_number_e164: twilioNumberE164,
+        is_active: true,
+      })
+      .orderBy('tenant_id', 'asc')
+      .orderBy('org_unit_id', 'asc')
+      .orderBy('id', 'asc')
+      .select<DbNumberMappingRow[]>([
+        'id',
+        'tenant_id',
+        'org_unit_id',
+        'twilio_number_e164',
+        'label',
+        'is_active',
+        'created_at_utc',
+        'updated_at_utc',
+      ]);
+
+    return rows.map(mapDbRowToMapping);
+  }
+
   async createMapping(input: NumberMappingCreateInput): Promise<NumberMappingPersistenceResult> {
     const mappingId = input.mappingId || randomUUID();
     try {
@@ -504,7 +556,56 @@ export class ConnectShyftNumberMappingService {
     if (!isValidTwilioE164(normalizedNumber)) {
       return null;
     }
-    return this.store.findByTenantNumber(tenantId, normalizedNumber);
+    const mapping = this.store.findByTenantNumber(tenantId, normalizedNumber);
+    if (!mapping || !mapping.isActive) {
+      return null;
+    }
+
+    return mapping;
+  }
+
+  resolveRoutingMappingByNumber(input: {
+    tenantId: string | null;
+    twilioNumberE164: string;
+  }): NumberMappingRoutingResolution {
+    const normalizedNumber = normalizeTwilioNumber(input.twilioNumberE164);
+    if (!isValidTwilioE164(normalizedNumber)) {
+      return { status: 'not-found' };
+    }
+
+    const normalizedTenantId = typeof input.tenantId === 'string'
+      ? input.tenantId.trim()
+      : '';
+    const hasTenantScope = normalizedTenantId.length > 0 && normalizedTenantId.toLowerCase() !== 'public';
+
+    if (hasTenantScope) {
+      const scoped = this.findMappingByTenantNumber(normalizedTenantId, normalizedNumber);
+      if (!scoped) {
+        return { status: 'not-found' };
+      }
+
+      return {
+        status: 'found',
+        mapping: scoped,
+      };
+    }
+
+    const candidates = this.store.listActiveByNumber(normalizedNumber);
+    if (candidates.length === 1) {
+      return {
+        status: 'found',
+        mapping: candidates[0],
+      };
+    }
+
+    if (candidates.length > 1) {
+      return {
+        status: 'ambiguous',
+        mappings: candidates,
+      };
+    }
+
+    return { status: 'not-found' };
   }
 
   createMapping(input: NumberMappingCreateCommand): NumberMappingSaveResult {
@@ -652,12 +753,72 @@ export class AsyncConnectShyftNumberMappingService {
     }
 
     try {
-      return await this.store.findByTenantNumber(tenantId, normalizedNumber);
+      const mapping = await this.store.findByTenantNumber(tenantId, normalizedNumber);
+      if (!mapping || !mapping.isActive) {
+        return null;
+      }
+
+      return mapping;
     } catch (error) {
       if (!isMissingPersistenceError(error)) {
         throw error;
       }
       return this.fallbackService.findMappingByTenantNumber(tenantId, normalizedNumber);
+    }
+  }
+
+  async resolveRoutingMappingByNumber(input: {
+    tenantId: string | null;
+    twilioNumberE164: string;
+  }): Promise<NumberMappingRoutingResolution> {
+    const normalizedNumber = normalizeTwilioNumber(input.twilioNumberE164);
+    if (!isValidTwilioE164(normalizedNumber)) {
+      return { status: 'not-found' };
+    }
+
+    const normalizedTenantId = typeof input.tenantId === 'string'
+      ? input.tenantId.trim()
+      : '';
+    const hasTenantScope = normalizedTenantId.length > 0 && normalizedTenantId.toLowerCase() !== 'public';
+
+    if (hasTenantScope) {
+      const scoped = await this.findMappingByTenantNumber(normalizedTenantId, normalizedNumber);
+      if (!scoped) {
+        return { status: 'not-found' };
+      }
+
+      return {
+        status: 'found',
+        mapping: scoped,
+      };
+    }
+
+    try {
+      const candidates = await this.store.listActiveByNumber(normalizedNumber);
+      if (candidates.length === 1) {
+        return {
+          status: 'found',
+          mapping: candidates[0],
+        };
+      }
+
+      if (candidates.length > 1) {
+        return {
+          status: 'ambiguous',
+          mappings: candidates,
+        };
+      }
+
+      return { status: 'not-found' };
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return this.fallbackService.resolveRoutingMappingByNumber({
+        tenantId: normalizedTenantId || null,
+        twilioNumberE164: normalizedNumber,
+      });
     }
   }
 

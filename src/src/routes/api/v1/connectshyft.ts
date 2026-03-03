@@ -865,7 +865,9 @@ const resolveInboundWebhookCorrelation = async (input: {
   const providerIdentifiers = extractWebhookProviderIdentifiers(input.body);
   const providerNumberE164 = extractWebhookProviderNumber(input.body);
   const tenantScopeHint = normalizeLifecycleString(input.tenantIdHint || null);
-  const numberMappingTenantScope = tenantId || tenantScopeHint || null;
+  const numberMappingTenantScope = tenantId
+    || (tenantScopeHint.toLowerCase() !== 'public' ? tenantScopeHint : '')
+    || null;
   const hasCompleteMetadata = Boolean(tenantId && orgUnitId && threadId);
 
   if (hasCompleteMetadata) {
@@ -917,23 +919,36 @@ const resolveInboundWebhookCorrelation = async (input: {
     tenantId: tenantId || null,
     db: loadPlatformDb(),
   });
-  if (!fallback.ok && providerNumberE164 && numberMappingTenantScope) {
+  if (!fallback.ok && providerNumberE164) {
     try {
-      const numberMapping = await connectShyftNumberMappingServiceAsync.findMappingByTenantNumber(
-        numberMappingTenantScope,
-        providerNumberE164,
-      );
-      if (numberMapping) {
+      const numberMapping = await connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber({
+        tenantId: numberMappingTenantScope,
+        twilioNumberE164: providerNumberE164,
+      });
+      if (numberMapping.status === 'found') {
         return {
           ok: true,
           source: 'number_mapping',
-          tenantId: numberMapping.tenantId,
-          orgUnitId: numberMapping.orgUnitId,
+          tenantId: numberMapping.mapping.tenantId,
+          orgUnitId: numberMapping.mapping.orgUnitId,
           threadId: resolveDeterministicThreadIdForNumberMapping({
-            tenantId: numberMapping.tenantId,
-            orgUnitId: numberMapping.orgUnitId,
+            tenantId: numberMapping.mapping.tenantId,
+            orgUnitId: numberMapping.mapping.orgUnitId,
             providerNumberE164,
           }),
+          providerLegId: providerIdentifiers.providerLegId,
+          providerMessageId: providerIdentifiers.providerMessageId,
+          providerEventId: providerIdentifiers.providerEventId,
+          providerNumberE164,
+        };
+      }
+
+      if (numberMapping.status === 'ambiguous') {
+        return {
+          ok: false,
+          code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_AMBIGUOUS',
+          message: 'Inbound webhook correlation is ambiguous across provider number mappings.',
+          reason: 'ambiguous',
           providerLegId: providerIdentifiers.providerLegId,
           providerMessageId: providerIdentifiers.providerMessageId,
           providerEventId: providerIdentifiers.providerEventId,
