@@ -1,6 +1,6 @@
 # Story 2.5: Refusal Outcomes with Structured Alternatives
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,8 +24,8 @@ so that refusal is explicit, understandable, and actionable.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Refusal UX must provide clear next-step alternatives and reason codes.
-- Real-User Validation Evidence: Requesters and staff can view refusal reason, alternatives, and audit trail in UI/API.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-03-02 live API validation against `/api/v1/route/staff/*` confirmed pre-commitment refusal, post-commitment refusal, request/commitment history visibility, idempotency replay behavior, idempotency conflict behavior, and unauthenticated refusal rejection. Evidence bundle: `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/story-2-5-real-user-20260302-154847`. 2026-03-03 browser validation confirmed explicit refusal outcome and clear terminalized reconciliation state on `/app/route/requests`; evidence notes: `/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/story-2-5-real-user-20260303-browser-validation/00-browser-validation-notes.md`.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: No access-control administration in scope.
@@ -210,3 +210,5 @@ GPT-5 Codex
 - 2026-02-27: Implemented Story 2.5 refusal outcomes with structured alternatives, idempotent refusal persistence, lifecycle history endpoints, and contract/regression test coverage.
 - 2026-02-27: Senior Developer Review (AI) completed; added 6 follow-up action items and set story status to in-progress pending security/persistence/audit fixes.
 - 2026-02-27: Resolved all 6 review findings: durable refusal persistence + outbox, auth/capability enforcement, tenant spoof hardening, idempotency conflict handling, and security regression tests.
+- 2026-03-02: Fixed JSONB event serialization in `KnexRouteRefusalStore` and repaired idempotency replay flow to avoid transaction-abort after uniqueness conflict; validated via live API evidence bundle.
+- 2026-03-03: Added browser validation evidence documenting explicit refusal UI outcome and clear reconciliation state after orgUnit-scoped session correction.

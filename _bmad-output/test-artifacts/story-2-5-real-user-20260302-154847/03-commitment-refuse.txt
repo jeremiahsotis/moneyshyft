@@ -1,0 +1,17 @@
+HTTP/1.1 201 Created
+X-Powered-By: Express
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: e0462c03-1b1c-4724-8607-67c2982938a5
+x-tenant-id: tenant-route-authenticated
+x-org-unit-id: org-route-authenticated
+x-scope-mode: ORG_UNIT
+Content-Type: application/json; charset=utf-8
+Content-Length: 873
+ETag: W/"369-YP2ZEuUJkvBa0vDnrFEh7VbZ/XQ"
+Date: Mon, 02 Mar 2026 20:48:48 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":true,"code":"ROUTE_COMMITMENT_REFUSAL_RECORDED","message":"Commitment refusal recorded with structured alternatives","correlationId":"e0462c03-1b1c-4724-8607-67c2982938a5","tenantId":"tenant-route-authenticated","data":{"commitmentId":"commitment-real-2-5-1772484528","requestId":"request-real-2-5-1772484528","replayed":false,"outcome":{"refusalId":"e57ac4a2-c925-4ae7-b67b-1992b68aa89c","tenantId":"tenant-route-authenticated","scope":"commitment","scopeId":"commitment-real-2-5-1772484528","stage":"execution","reasonCode":"RESOURCE_UNAVAILABLE","reasonMessage":"Required team is unavailable.","alternatives":[{"type":"PARTNER_REFERRAL","partnerName":"Partner Program","contactPhone":"+12605550166"}],"requestId":"request-real-2-5-1772484528","commitmentId":"commitment-real-2-5-1772484528","actorUserId":"user-real-25","createdAtUtc":"2026-03-02T20:48:48.135Z"}}}

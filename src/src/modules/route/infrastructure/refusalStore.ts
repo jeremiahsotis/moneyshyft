@@ -206,14 +206,6 @@ const mapEventRow = (row: RefusalEventRow): RouteLifecycleHistoryEvent => ({
   occurredAtUtc: toIsoUtc(row.occurred_at_utc),
 });
 
-const isUniqueViolation = (error: unknown): boolean => {
-  if (!error || typeof error !== 'object') {
-    return false;
-  }
-  const maybeCode = (error as { code?: unknown }).code;
-  return maybeCode === '23505';
-};
-
 const loadPlatformDb = (): Knex => {
   const knexModule = require('../../../config/knex') as { default: Knex };
   return knexModule.default;
@@ -382,22 +374,22 @@ export class KnexRouteRefusalStore implements RouteRefusalStore {
       idempotency_key: idempotencyKey,
     };
 
-    try {
-      await trx
-        .withSchema(ROUTE_SCHEMA)
-        .table(REFUSAL_IDEMPOTENCY_TABLE)
-        .insert({
-          id: randomUUID(),
-          ...lookupWhere,
-          request_fingerprint: fingerprint,
-          refusal_outcome_id: refusalOutcomeId,
-          created_at_utc: occurredAtUtc,
-        });
+    const inserted = await trx
+      .withSchema(ROUTE_SCHEMA)
+      .table(REFUSAL_IDEMPOTENCY_TABLE)
+      .insert({
+        id: randomUUID(),
+        ...lookupWhere,
+        request_fingerprint: fingerprint,
+        refusal_outcome_id: refusalOutcomeId,
+        created_at_utc: occurredAtUtc,
+      })
+      .onConflict(['tenant_id', 'scope', 'scope_id', 'idempotency_key'])
+      .ignore()
+      .returning(['refusal_outcome_id', 'request_fingerprint']) as RefusalIdempotencyRow[];
+
+    if (inserted.length > 0) {
       return refusalOutcomeId;
-    } catch (error) {
-      if (!isUniqueViolation(error)) {
-        throw error;
-      }
     }
 
     const existing = await trx
@@ -459,6 +451,8 @@ export class KnexRouteRefusalStore implements RouteRefusalStore {
       occurredAtUtc: string;
     },
   ): Promise<void> {
+    // JSONB columns in Postgres expect valid JSON, not driver-level array literals.
+    const normalizedAlternatives = parseAlternatives(params.outcome.alternatives);
     const eventId = randomUUID();
     await trx
       .withSchema(ROUTE_SCHEMA)
@@ -473,7 +467,7 @@ export class KnexRouteRefusalStore implements RouteRefusalStore {
         stage: params.outcome.stage,
         reason_code: params.outcome.reason_code,
         reason_message: params.outcome.reason_message,
-        alternatives: params.outcome.alternatives,
+        alternatives: JSON.stringify(normalizedAlternatives),
         request_id: params.outcome.request_id,
         commitment_id: params.outcome.commitment_id,
         actor_user_id: params.outcome.actor_user_id,
@@ -499,6 +493,7 @@ export class KnexRouteRefusalStore implements RouteRefusalStore {
           stage: params.outcome.stage,
           reasonCode: params.outcome.reason_code,
           reasonMessage: params.outcome.reason_message,
+          alternatives: normalizedAlternatives,
           requestId: params.outcome.request_id,
           commitmentId: params.outcome.commitment_id,
           actorUserId: params.outcome.actor_user_id,

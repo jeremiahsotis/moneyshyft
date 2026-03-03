@@ -1,0 +1,17 @@
+HTTP/1.1 201 Created
+X-Powered-By: Express
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: 125b6433-9684-4f31-b82e-c8dea359e520
+x-tenant-id: tenant-route-authenticated
+x-org-unit-id: org-route-authenticated
+x-scope-mode: ORG_UNIT
+Content-Type: application/json; charset=utf-8
+Content-Length: 792
+ETag: W/"318-WgXJf84RUk4z1wLUUT+8vdo6Jhw"
+Date: Mon, 02 Mar 2026 20:48:48 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":true,"code":"ROUTE_REQUEST_REFUSAL_RECORDED","message":"Request refusal recorded with structured alternatives","correlationId":"125b6433-9684-4f31-b82e-c8dea359e520","tenantId":"tenant-route-authenticated","data":{"requestId":"request-idem-real-1772484528","replayed":false,"outcome":{"refusalId":"d84b186e-8d87-44d9-95bb-690383d8df8b","tenantId":"tenant-route-authenticated","scope":"request","scopeId":"request-idem-real-1772484528","stage":"intake","reasonCode":"DAY_PART_NOT_AVAILABLE","reasonMessage":"Requested window is unavailable.","alternatives":[{"type":"RESCHEDULE_WINDOW","status":"open","dayPart":"afternoon","dateLocal":"2026-03-09"}],"requestId":"request-idem-real-1772484528","commitmentId":null,"actorUserId":"user-real-25","createdAtUtc":"2026-03-02T20:48:48.166Z"}}}

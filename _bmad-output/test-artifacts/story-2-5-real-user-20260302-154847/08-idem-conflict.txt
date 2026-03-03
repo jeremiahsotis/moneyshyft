@@ -1,0 +1,17 @@
+HTTP/1.1 409 Conflict
+X-Powered-By: Express
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: 64df5a1b-ed4b-4595-955d-dab4b8baf80d
+x-tenant-id: tenant-route-authenticated
+x-org-unit-id: org-route-authenticated
+x-scope-mode: ORG_UNIT
+Content-Type: application/json; charset=utf-8
+Content-Length: 301
+ETag: W/"12d-RbujIgXEU+gFz6/TLMEtCnX4H8A"
+Date: Mon, 02 Mar 2026 20:48:48 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":false,"code":"ROUTE_IDEMPOTENCY_KEY_PAYLOAD_CONFLICT","message":"Idempotency-Key cannot be reused with a different refusal payload.","refusalType":"client","correlationId":"64df5a1b-ed4b-4595-955d-dab4b8baf80d","tenantId":"tenant-route-authenticated","data":{"idempotencyKey":"idem-2-5-replay"}}

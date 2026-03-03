@@ -1,0 +1,4 @@
+EVIDENCE_DIR=/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/story-2-5-real-user-20260302-154847
+REQUEST_ID=request-real-2-5-1772484528
+COMMITMENT_ID=commitment-real-2-5-1772484528
+IDEM_SCOPE=request-idem-real-1772484528

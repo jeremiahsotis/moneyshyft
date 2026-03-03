@@ -1,0 +1,17 @@
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: 33e9a36f-e631-4301-97e8-04348cec0039
+x-tenant-id: tenant-route-authenticated
+x-org-unit-id: org-route-authenticated
+x-scope-mode: ORG_UNIT
+Content-Type: application/json; charset=utf-8
+Content-Length: 879
+ETag: W/"36f-Xlvk0TjtfXsSy/ScR0tRwt27XqQ"
+Date: Mon, 02 Mar 2026 20:48:48 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":true,"code":"ROUTE_COMMITMENT_HISTORY_RESOLVED","message":"Route commitment history resolved","correlationId":"33e9a36f-e631-4301-97e8-04348cec0039","tenantId":"tenant-route-authenticated","data":{"commitmentId":"commitment-real-2-5-1772484528","events":[{"eventId":"01c1203e-bb0d-480a-b203-b6a5f093c95b","tenantId":"tenant-route-authenticated","scope":"commitment","scopeId":"commitment-real-2-5-1772484528","eventType":"ROUTE_REFUSAL_RECORDED","refusalId":"e57ac4a2-c925-4ae7-b67b-1992b68aa89c","stage":"execution","reasonCode":"RESOURCE_UNAVAILABLE","reasonMessage":"Required team is unavailable.","alternatives":[{"type":"PARTNER_REFERRAL","partnerName":"Partner Program","contactPhone":"+12605550166"}],"requestId":"request-real-2-5-1772484528","commitmentId":"commitment-real-2-5-1772484528","actorUserId":"user-real-25","occurredAtUtc":"2026-03-02T20:48:48.135Z"}]}}

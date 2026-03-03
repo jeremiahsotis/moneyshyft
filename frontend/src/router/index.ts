@@ -316,6 +316,8 @@ router.beforeEach(async (to, _from, next) => {
     authStore.isAuthenticated &&
     authStore.user?.householdId &&
     authStore.user?.setupWizardCompleted === false &&
+    accessStore.isModuleEnabled('moneyshyft') &&
+    moduleGate === 'moneyshyft' &&
     to.name !== 'budget-setup' &&
     to.meta.allowIncompleteSetup !== true
   ) {
