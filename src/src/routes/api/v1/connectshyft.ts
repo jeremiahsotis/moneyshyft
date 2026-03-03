@@ -2361,6 +2361,108 @@ const recordCanonicalThreadEvent = async (input: {
   });
 };
 
+class InboundSmsEnsureRefusalError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'InboundSmsEnsureRefusalError';
+  }
+}
+
+class InboundSmsEnsurePersistenceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InboundSmsEnsurePersistenceError';
+  }
+}
+
+class InboundSmsCanonicalPersistenceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InboundSmsCanonicalPersistenceError';
+  }
+}
+
+const canPersistConnectShyftCanonicalSideEffects = (input: {
+  tenantId: string;
+  threadId: string;
+}): boolean => {
+  return UUID_PATTERN.test(input.tenantId) && UUID_PATTERN.test(input.threadId);
+};
+
+const persistInboundSmsEnsureAndCanonicalEvent = async (input: {
+  actorRoles: string[];
+  tenantId: string;
+  orgUnitId: string;
+  neighborId: string;
+  actorUserId: string;
+  lastInboundCsNumberId: string;
+  preferredOutboundCsNumberId: string;
+  eventType: string;
+  buildCanonicalPayload: (threadState: ConnectShyftThreadState) => Record<string, unknown>;
+}): Promise<{
+  thread: ConnectShyftThread;
+  canonicalEvent: ConnectShyftCanonicalEventRecord;
+  sideEffectsPersisted: boolean;
+}> => {
+  return loadPlatformDb().transaction(async (trx) => {
+    const txThreadService = new AsyncConnectShyftThreadService(
+      new KnexConnectShyftThreadStore(trx as unknown as Knex),
+    );
+
+    let ensured: Awaited<ReturnType<typeof txThreadService.ensureThread>>;
+    try {
+      ensured = await txThreadService.ensureThread({
+        actorRoles: input.actorRoles,
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        neighborId: input.neighborId,
+        source: 'SMS',
+        lastInboundCsNumberId: input.lastInboundCsNumberId,
+        preferredOutboundCsNumberId: input.preferredOutboundCsNumberId,
+      });
+    } catch (error) {
+      throw new InboundSmsEnsurePersistenceError(
+        error instanceof Error ? error.message : 'thread-ensure-error',
+      );
+    }
+
+    if (!ensured.ok) {
+      throw new InboundSmsEnsureRefusalError(ensured.code, ensured.message);
+    }
+
+    const ensuredThread = ensured.data.thread;
+
+    try {
+      const canonicalEvent = await recordConnectShyftCanonicalEvent({
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        aggregateId: ensuredThread.threadId,
+        aggregateType: 'Thread',
+        eventType: input.eventType,
+        payload: input.buildCanonicalPayload(ensuredThread.state),
+        actorUserId: input.actorUserId,
+        db: trx as unknown as Knex,
+      });
+
+      return {
+        thread: ensuredThread,
+        canonicalEvent,
+        sideEffectsPersisted: canPersistConnectShyftCanonicalSideEffects({
+          tenantId: input.tenantId,
+          threadId: ensuredThread.threadId,
+        }),
+      };
+    } catch (error) {
+      throw new InboundSmsCanonicalPersistenceError(
+        error instanceof Error ? error.message : 'canonical-event-persistence-error',
+      );
+    }
+  });
+};
+
 const persistOutboundProviderIdentifierMappings = async (input: {
   tenantId: string;
   orgUnitId: string;
@@ -2708,22 +2810,10 @@ const enforceOutboundCallPolicyRequest = (
 };
 
 const resolveWebhookActorUserId = (req: Request): string => {
-  const rawBody = req.body && typeof req.body === 'object'
-    ? req.body as Record<string, unknown>
-    : {};
-  const actorCandidates = [
-    rawBody.actorUserId,
-    rawBody.userId,
-    rawBody.claimedByUserId,
-  ];
-
-  for (const candidate of actorCandidates) {
-    if (typeof candidate !== 'string') {
-      continue;
-    }
-    const normalized = candidate.trim();
-    if (UUID_PATTERN.test(normalized)) {
-      return normalized;
+  if (isConnectShyftTestOverrideEnabled()) {
+    const testActorUserId = normalizeLifecycleString(req.header(TEST_USER_ID_HEADER));
+    if (UUID_PATTERN.test(testActorUserId)) {
+      return testActorUserId;
     }
   }
 
@@ -2777,6 +2867,52 @@ const parseThreadEnsureBody = (req: Request) => ({
 
 const isValidConnectShyftNeighborIdentifier = (neighborId: string): boolean => {
   return UUID_PATTERN.test(neighborId) || CONNECTSHYFT_NEIGHBOR_SLUG_PATTERN.test(neighborId);
+};
+
+const resolveNeighborIdForThreadCorrelation = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+}): Promise<string | null> => {
+  const normalizedThreadId = normalizeLifecycleString(input.threadId);
+  if (!normalizedThreadId) {
+    return null;
+  }
+
+  const syntheticThread = resolveSyntheticLifecycleThread({
+    threadId: normalizedThreadId,
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+  });
+  if (syntheticThread) {
+    const normalizedSyntheticNeighborId = normalizeConnectShyftNeighborIdentifier(syntheticThread.neighborId);
+    if (isValidConnectShyftNeighborIdentifier(normalizedSyntheticNeighborId)) {
+      return normalizedSyntheticNeighborId;
+    }
+  }
+
+  try {
+    const row = await loadPlatformDb()
+      .withSchema('connectshyft')
+      .table('cs_threads')
+      .where({
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+        id: normalizedThreadId,
+      })
+      .first<{ neighbor_id?: unknown }>(['neighbor_id']);
+
+    const normalizedNeighborId = normalizeConnectShyftNeighborIdentifier(
+      normalizeLifecycleString(row?.neighbor_id),
+    );
+    if (!normalizedNeighborId || !isValidConnectShyftNeighborIdentifier(normalizedNeighborId)) {
+      return null;
+    }
+
+    return normalizedNeighborId;
+  } catch (_error) {
+    return null;
+  }
 };
 const parseMappingBody = (req: Request) => ({
   providerNumberE164: typeof req.body?.providerNumberE164 === 'string'
@@ -5796,35 +5932,22 @@ const handleInboundWebhook = async (
     const extractedNeighborId = normalizeConnectShyftNeighborIdentifier(
       extractConnectShyftInboundSmsNeighborId(req.body) || '',
     );
-    const fallbackNeighborId = `neighbor-${normalizeRoutingSlug(threadId)}`;
-    const neighborId = extractedNeighborId && isValidConnectShyftNeighborIdentifier(extractedNeighborId)
+    const normalizedExtractedNeighborId = extractedNeighborId
+      && isValidConnectShyftNeighborIdentifier(extractedNeighborId)
       ? extractedNeighborId
-      : fallbackNeighborId;
-    const existingActiveThreadId = await resolveExistingActiveThreadIdForScope({
-      tenantId,
-      orgUnitId,
-      neighborId,
-    });
-    const actorUserId = resolveWebhookActorUserId(req);
-    let ensured: Awaited<ReturnType<typeof connectShyftThreadServiceAsync.ensureThread>>;
-    try {
-      ensured = await connectShyftThreadServiceAsync.ensureThread({
-        actorRoles: resolveWebhookActorRoles(req),
+      : null;
+    const correlatedNeighborId = normalizedExtractedNeighborId
+      ? null
+      : await resolveNeighborIdForThreadCorrelation({
         tenantId,
         orgUnitId,
-        neighborId,
-        source: 'SMS',
-        lastInboundCsNumberId: `sms-inbound:${normalizeRoutingSlug(
-          correlation.providerNumberE164 || extractWebhookProviderNumber(req.body) || neighborId,
-        )}`,
-        preferredOutboundCsNumberId: `sms-outbound:${normalizeRoutingSlug(
-          extractWebhookProviderNumber(req.body) || neighborId,
-        )}`,
+        threadId,
       });
-    } catch (error) {
+    const neighborId = normalizedExtractedNeighborId || correlatedNeighborId;
+    if (!neighborId) {
       refusal(res, {
-        code: 'CONNECTSHYFT_THREAD_ENSURE_PERSISTENCE_UNAVAILABLE',
-        message: 'Inbound SMS thread ensure is temporarily unavailable.',
+        code: 'CONNECTSHYFT_WEBHOOK_NEIGHBOR_UNRESOLVED',
+        message: 'Inbound SMS processing requires a resolvable neighbor context.',
         refusalType: 'business',
         httpStatus: 200,
         data: {
@@ -5838,46 +5961,6 @@ const handleInboundWebhook = async (
             threadId,
             tenantId,
             orgUnitId,
-            neighborId,
-            providerLegId: correlation.providerLegId,
-            providerMessageId: correlation.providerMessageId,
-            providerEventId: correlation.providerEventId,
-            providerNumberE164: correlation.providerNumberE164,
-          },
-          replaySafe: {
-            duplicate: false,
-            suppressedDomainWrites: false,
-            dedupeKey: webhookReceipt.dedupeKey,
-          },
-          sideEffects: {
-            lifecycleMutationApplied: false,
-            canonicalEventPersisted: false,
-            outboxPersisted: false,
-          },
-          error: error instanceof Error ? error.message : 'thread-ensure-error',
-        },
-      });
-      return;
-    }
-
-    if (!ensured.ok) {
-      refusal(res, {
-        code: ensured.code,
-        message: ensured.message,
-        refusalType: 'business',
-        httpStatus: 200,
-        data: {
-          providerResolution: {
-            ...providerSelection.providerResolution,
-            adapterInvoked: true,
-          },
-          correlation: {
-            source: correlation.source,
-            deterministic: true,
-            threadId,
-            tenantId,
-            orgUnitId,
-            neighborId,
             providerLegId: correlation.providerLegId,
             providerMessageId: correlation.providerMessageId,
             providerEventId: correlation.providerEventId,
@@ -5897,12 +5980,18 @@ const handleInboundWebhook = async (
             eventName: null,
             routingDecision: 'refused',
           },
+          reason: 'neighbor_unresolved',
         },
       });
       return;
     }
 
-    const ensuredThread = ensured.data.thread;
+    const existingActiveThreadId = await resolveExistingActiveThreadIdForScope({
+      tenantId,
+      orgUnitId,
+      neighborId,
+    });
+    const actorUserId = resolveWebhookActorUserId(req);
     const domainEvent = mapConnectShyftInboundSmsWebhookToDomainEvent({
       webhookBody: req.body,
       canonicalEventType: eventType,
@@ -5910,21 +5999,113 @@ const handleInboundWebhook = async (
       providerMessageId: correlation.providerMessageId,
       providerLegId: correlation.providerLegId,
     });
-
-    let canonicalEvent: ConnectShyftCanonicalEventRecord;
+    let ensuredThread: ConnectShyftThread | null = null;
+    let canonicalEvent: ConnectShyftCanonicalEventRecord | null = null;
+    let sideEffectsPersisted = false;
     try {
-      canonicalEvent = await recordCanonicalThreadEvent({
+      const persisted = await persistInboundSmsEnsureAndCanonicalEvent({
+        actorRoles: resolveWebhookActorRoles(req),
         tenantId,
         orgUnitId,
-        threadId: ensuredThread.threadId,
-        eventType: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundSmsAppended,
-        payload: buildConnectShyftInboundSmsCanonicalPayload({
-          domainEvent,
-          threadState: ensuredThread.state,
-        }),
+        neighborId,
         actorUserId,
+        lastInboundCsNumberId: `sms-inbound:${normalizeRoutingSlug(
+          correlation.providerNumberE164 || extractWebhookProviderNumber(req.body) || neighborId,
+        )}`,
+        preferredOutboundCsNumberId: `sms-outbound:${normalizeRoutingSlug(
+          extractWebhookProviderNumber(req.body) || neighborId,
+        )}`,
+        eventType: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundSmsAppended,
+        buildCanonicalPayload: (threadState) => buildConnectShyftInboundSmsCanonicalPayload({
+          domainEvent,
+          threadState,
+        }),
       });
+      ensuredThread = persisted.thread;
+      canonicalEvent = persisted.canonicalEvent;
+      sideEffectsPersisted = persisted.sideEffectsPersisted;
     } catch (error) {
+      if (error instanceof InboundSmsEnsureRefusalError) {
+        refusal(res, {
+          code: error.code,
+          message: error.message,
+          refusalType: 'business',
+          httpStatus: 200,
+          data: {
+            providerResolution: {
+              ...providerSelection.providerResolution,
+              adapterInvoked: true,
+            },
+            correlation: {
+              source: correlation.source,
+              deterministic: true,
+              threadId,
+              tenantId,
+              orgUnitId,
+              neighborId,
+              providerLegId: correlation.providerLegId,
+              providerMessageId: correlation.providerMessageId,
+              providerEventId: correlation.providerEventId,
+              providerNumberE164: correlation.providerNumberE164,
+            },
+            replaySafe: {
+              duplicate: false,
+              suppressedDomainWrites: false,
+              dedupeKey: webhookReceipt.dedupeKey,
+            },
+            sideEffects: {
+              lifecycleMutationApplied: false,
+              canonicalEventPersisted: false,
+              outboxPersisted: false,
+            },
+            timelineOutcome: {
+              eventName: null,
+              routingDecision: 'refused',
+            },
+          },
+        });
+        return;
+      }
+
+      if (error instanceof InboundSmsEnsurePersistenceError) {
+        refusal(res, {
+          code: 'CONNECTSHYFT_THREAD_ENSURE_PERSISTENCE_UNAVAILABLE',
+          message: 'Inbound SMS thread ensure is temporarily unavailable.',
+          refusalType: 'business',
+          httpStatus: 200,
+          data: {
+            providerResolution: {
+              ...providerSelection.providerResolution,
+              adapterInvoked: true,
+            },
+            correlation: {
+              source: correlation.source,
+              deterministic: true,
+              threadId,
+              tenantId,
+              orgUnitId,
+              neighborId,
+              providerLegId: correlation.providerLegId,
+              providerMessageId: correlation.providerMessageId,
+              providerEventId: correlation.providerEventId,
+              providerNumberE164: correlation.providerNumberE164,
+            },
+            replaySafe: {
+              duplicate: false,
+              suppressedDomainWrites: false,
+              dedupeKey: webhookReceipt.dedupeKey,
+            },
+            sideEffects: {
+              lifecycleMutationApplied: false,
+              canonicalEventPersisted: false,
+              outboxPersisted: false,
+            },
+            error: error.message || 'thread-ensure-error',
+          },
+        });
+        return;
+      }
+
       refusal(res, {
         code: 'CONNECTSHYFT_INBOUND_SMS_PERSISTENCE_UNAVAILABLE',
         message: 'Inbound SMS processing could not persist timeline side effects.',
@@ -5938,7 +6119,7 @@ const handleInboundWebhook = async (
           correlation: {
             source: correlation.source,
             deterministic: true,
-            threadId: ensuredThread.threadId,
+            threadId: ensuredThread?.threadId || threadId,
             tenantId,
             orgUnitId,
             neighborId,
@@ -5957,16 +6138,21 @@ const handleInboundWebhook = async (
             canonicalEventPersisted: false,
             outboxPersisted: false,
           },
-          error: error instanceof Error ? error.message : 'canonical-event-persistence-error',
+          error: error instanceof InboundSmsCanonicalPersistenceError
+            ? error.message
+            : (error instanceof Error ? error.message : 'canonical-event-persistence-error'),
         },
       });
+      return;
+    }
+    if (!ensuredThread || !canonicalEvent) {
       return;
     }
 
     const createdNewThread = existingActiveThreadId
       ? existingActiveThreadId !== ensuredThread.threadId
       : ensuredThread.createdAtUtc === ensuredThread.updatedAtUtc;
-    const sideEffectsPersisted = true;
+    const canonicalEventPersisted = true;
 
     success(res, {
       code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
@@ -6015,13 +6201,13 @@ const handleInboundWebhook = async (
           ...domainEvent.inboundMessageArtifact,
         },
         transaction: {
-          atomic: true,
+          atomic: sideEffectsPersisted,
           auditPersisted: sideEffectsPersisted,
           outboxPersisted: sideEffectsPersisted,
         },
         sideEffects: {
           lifecycleMutationApplied: true,
-          canonicalEventPersisted: sideEffectsPersisted,
+          canonicalEventPersisted,
           auditPersisted: sideEffectsPersisted,
           outboxPersisted: sideEffectsPersisted,
         },
@@ -6030,36 +6216,40 @@ const handleInboundWebhook = async (
           routingDecision: domainEvent.routingDecision,
           deterministicOrdering: domainEvent.deterministicOrdering,
         },
-        audit: {
-          eventName: domainEvent.eventName,
-          metadata: {
-            tenant_id: tenantId,
-            org_unit_id: orgUnitId,
-            thread_id: ensuredThread.threadId,
-            neighbor_id: neighborId,
-            thread_state: ensuredThread.state,
-            event_type: eventType,
-            routing_decision: domainEvent.routingDecision,
-            provider_event_id: correlation.providerEventId,
-            provider_message_id: correlation.providerMessageId,
-            provider_leg_id: correlation.providerLegId,
-          },
-        },
-        outbox: {
-          eventName: domainEvent.eventName,
-          metadata: {
-            tenant_id: tenantId,
-            org_unit_id: orgUnitId,
-            thread_id: ensuredThread.threadId,
-            neighbor_id: neighborId,
-            thread_state: ensuredThread.state,
-            event_type: eventType,
-            routing_decision: domainEvent.routingDecision,
-            provider_event_id: correlation.providerEventId,
-            provider_message_id: correlation.providerMessageId,
-            provider_leg_id: correlation.providerLegId,
-          },
-        },
+        ...(sideEffectsPersisted
+          ? {
+              audit: {
+                eventName: domainEvent.eventName,
+                metadata: {
+                  tenant_id: tenantId,
+                  org_unit_id: orgUnitId,
+                  thread_id: ensuredThread.threadId,
+                  neighbor_id: neighborId,
+                  thread_state: ensuredThread.state,
+                  event_type: eventType,
+                  routing_decision: domainEvent.routingDecision,
+                  provider_event_id: correlation.providerEventId,
+                  provider_message_id: correlation.providerMessageId,
+                  provider_leg_id: correlation.providerLegId,
+                },
+              },
+              outbox: {
+                eventName: domainEvent.eventName,
+                metadata: {
+                  tenant_id: tenantId,
+                  org_unit_id: orgUnitId,
+                  thread_id: ensuredThread.threadId,
+                  neighbor_id: neighborId,
+                  thread_state: ensuredThread.state,
+                  event_type: eventType,
+                  routing_decision: domainEvent.routingDecision,
+                  provider_event_id: correlation.providerEventId,
+                  provider_message_id: correlation.providerMessageId,
+                  provider_leg_id: correlation.providerLegId,
+                },
+              },
+            }
+          : {}),
       },
     });
     return;

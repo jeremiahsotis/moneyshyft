@@ -1,0 +1,49 @@
+{
+  "dimension": "determinism",
+  "score": 86,
+  "max_score": 100,
+  "grade": "B",
+  "violations": [
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts",
+      "line": 30,
+      "severity": "MEDIUM",
+      "category": "time-dependency",
+      "description": "Timestamp-based signatures use Date.now() across suites, which can create clock-sensitive behavior in edge CI conditions.",
+      "suggestion": "Prefer deterministic time fixtures where feasible, or centralize timestamp creation behind a helper with test-time injection.",
+      "code_snippet": "const timestamp = String(Math.trunc(Date.now() / 1000));"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts",
+      "line": 12,
+      "severity": "LOW",
+      "category": "random-generation",
+      "description": "Random token generation via randomUUID() reduces strict reproducibility for failure replay.",
+      "suggestion": "Use deterministic test id helpers similar to deterministicToken(testInfo, ...) for all generated IDs.",
+      "code_snippet": "const randomToken = (): string => randomUUID().slice(0, 8);"
+    },
+    {
+      "file": "tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts",
+      "line": 15,
+      "severity": "MEDIUM",
+      "category": "time-dependency",
+      "description": "ATDD E2E signature headers depend on runtime timestamp and pseudo-signature values.",
+      "suggestion": "Switch to deterministic signed-header helper shared with automate suites when unskipping scenarios.",
+      "code_snippet": "'telnyx-timestamp': String(Math.trunc(Date.now() / 1000)),"
+    }
+  ],
+  "passed_checks": 13,
+  "failed_checks": 3,
+  "total_checks": 16,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 2,
+    "LOW": 1
+  },
+  "recommendations": [
+    "Standardize on deterministic ID/time helper utilities in all E1 specs",
+    "Consolidate signature timestamp generation behind a reusable helper with injectable time source",
+    "Align ATDD E2E signing helpers with automate suites before enabling skipped tests"
+  ],
+  "summary": "E1 tests are mostly deterministic but still include clock/random inputs in helper setup paths."
+}

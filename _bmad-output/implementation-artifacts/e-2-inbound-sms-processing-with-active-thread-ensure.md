@@ -1,6 +1,6 @@
 # Story e.2: Inbound SMS Processing with Active-Thread Ensure
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,8 +25,8 @@ so that SMS timelines stay complete and context-consistent.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Inbound SMS continuity is operator-critical; missing or duplicate entries directly degrade inbox trust and response speed.
-- Real-User Validation Evidence: Pending implementation. Validate inbound SMS append/create and duplicate suppression using provider fixture events.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-03-03 targeted validation run via `bash scripts/run-playwright-with-preflight.sh tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts` (6/6 pass), plus ingress regression via `bash scripts/run-playwright-with-preflight.sh tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.replay-and-refusal.api.spec.ts` (4/4 pass).
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story is webhook + thread data handling; no role-admin capability changes.
@@ -138,6 +138,9 @@ GPT-5 Codex
 - `cd src && npm run build`
 - `cd src && npm test -- --runInBand src/src/modules/connectshyft/__tests__`
 - `bash scripts/run-playwright-with-preflight.sh tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.replay-and-refusal.api.spec.ts tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts`
+- `cd src && npm test -- --runInBand src/src/modules/connectshyft/__tests__/inboundSms.test.ts`
+- `bash scripts/run-playwright-with-preflight.sh tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts`
+- `bash scripts/run-playwright-with-preflight.sh tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.replay-and-refusal.api.spec.ts`
 
 ### Completion Notes List
 
@@ -148,12 +151,21 @@ GPT-5 Codex
 - Extended thread detail timeline contracts to include `eventName` aliases for deterministic event-name based assertions.
 - Activated and expanded Story e.2 API ATDD coverage, including concurrent inbound delivery convergence checks.
 - Regression validation passed across e.1 + e.2 ATDD API specs and ConnectShyft module Jest suites.
+- Removed webhook actor spoofing risk by forcing system actor attribution for inbound webhook processing (test override only for explicit test header).
+- Replaced synthetic neighbor fallback with deterministic neighbor resolution (`payload neighborId` or correlation thread lookup) and refusal when unresolved.
+- Converted inbound SMS ensure + canonical event write to a shared transaction path to prevent partial thread/timeline commits on persistence failure.
+- Corrected side-effect durability signaling so `auditPersisted/outboxPersisted` and `transaction.atomic` reflect actual durable persistence capability.
+- Added API contract coverage for unresolved-neighbor refusal and updated durability assertions to be environment-accurate.
+
+### Senior Developer Review (AI)
+
+- All 5 review findings addressed in code and tests.
+- Git/story discrepancy resolved by aligning `File List` with files changed in this remediation pass.
+- Guardrail blocker resolved: real-user validation evidence captured with passing results.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/e-2-inbound-sms-processing-with-active-thread-ensure.md
-- src/src/modules/connectshyft/inboundSms.ts
-- src/src/modules/connectshyft/__tests__/inboundSms.test.ts
 - src/src/routes/api/v1/connectshyft.ts
 - tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
@@ -162,3 +174,4 @@ GPT-5 Codex
 
 - 2026-03-03: Created Story e.2 ready-for-dev context document.
 - 2026-03-03: Implemented inbound SMS ensure+append processing, replay-safe duplicate suppression integration, and API/module regression coverage; status advanced to review.
+- 2026-03-03: Remediated code-review findings (actor attribution hardening, neighbor resolution refusal path, transactional ensure+append, truthful side-effect durability signaling), updated ATDD coverage, and advanced story to done.

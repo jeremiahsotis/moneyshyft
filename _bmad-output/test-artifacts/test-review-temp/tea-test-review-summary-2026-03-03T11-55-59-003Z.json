@@ -1,0 +1,273 @@
+{
+  "overall_score": 79,
+  "overall_grade": "C",
+  "quality_assessment": "Acceptable",
+  "dimension_scores": {
+    "determinism": 86,
+    "isolation": 88,
+    "maintainability": 55,
+    "coverage": 72,
+    "performance": 92
+  },
+  "dimension_grades": {
+    "determinism": "B",
+    "isolation": "B",
+    "maintainability": "F",
+    "coverage": "C",
+    "performance": "A"
+  },
+  "violations_summary": {
+    "total": 15,
+    "HIGH": 4,
+    "MEDIUM": 6,
+    "LOW": 5
+  },
+  "all_violations": [
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts",
+      "line": 30,
+      "severity": "MEDIUM",
+      "category": "time-dependency",
+      "description": "Timestamp-based signatures use Date.now() across suites, which can create clock-sensitive behavior in edge CI conditions.",
+      "suggestion": "Prefer deterministic time fixtures where feasible, or centralize timestamp creation behind a helper with test-time injection.",
+      "code_snippet": "const timestamp = String(Math.trunc(Date.now() / 1000));",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts",
+      "line": 12,
+      "severity": "LOW",
+      "category": "random-generation",
+      "description": "Random token generation via randomUUID() reduces strict reproducibility for failure replay.",
+      "suggestion": "Use deterministic test id helpers similar to deterministicToken(testInfo, ...) for all generated IDs.",
+      "code_snippet": "const randomToken = (): string => randomUUID().slice(0, 8);",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts",
+      "line": 15,
+      "severity": "MEDIUM",
+      "category": "time-dependency",
+      "description": "ATDD E2E signature headers depend on runtime timestamp and pseudo-signature values.",
+      "suggestion": "Switch to deterministic signed-header helper shared with automate suites when unskipping scenarios.",
+      "code_snippet": "'telnyx-timestamp': String(Math.trunc(Date.now() / 1000)),",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts",
+      "line": 134,
+      "severity": "MEDIUM",
+      "category": "shared-state-without-teardown",
+      "description": "ATDD API scenarios reuse shared story context and persistent number mappings without explicit teardown in-file.",
+      "suggestion": "Add explicit cleanup hooks or isolated seeded identifiers per test to reduce cross-run residue.",
+      "code_snippet": "const mappingResponse = await apiRequest(request, { method: 'POST', path: storyE1Context.paths.numbersCollection, ... });",
+      "dimension": "isolation"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts",
+      "line": 354,
+      "severity": "LOW",
+      "category": "multi-tenant-state-persistence",
+      "description": "Ambiguity-routing scenario seeds two tenant mappings and relies on persisted state, which increases cleanup sensitivity.",
+      "suggestion": "Add teardown for seeded tenant mappings or reset fixtures per case.",
+      "code_snippet": "const firstMapping = await apiRequest(request, { ... }); const secondMapping = await apiRequest(request, { ... });",
+      "dimension": "isolation"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "File is 365 lines, exceeding maintainability target and making review/debug slower.",
+      "suggestion": "Split by behavior: signature refusal, mapping success, replay-safe dedupe, unmapped refusal.",
+      "code_snippet": "// 365-line ATDD API spec",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "File is 510 lines with multiple concerns in one suite.",
+      "suggestion": "Split into focused suites (signature, provider fallback, public routing, ambiguity, conflict).",
+      "code_snippet": "// 510-line automate API spec",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "File is 423 lines, increasing cognitive load and change risk.",
+      "suggestion": "Refactor into smaller e2e suites grouped by happy-path, replay-safe, and refusal scenarios.",
+      "code_snippet": "// 423-line automate E2E spec",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts",
+      "line": 24,
+      "severity": "HIGH",
+      "category": "duplicate-logic",
+      "description": "Signature/header and payload builder logic is duplicated across API/E2E ATDD and automate files.",
+      "suggestion": "Extract shared E1 webhook test helpers under tests/support/helpers/connectShyftWebhookTestHelpers.ts.",
+      "code_snippet": "const buildSignatureEnforcementHeaders = (): Record<string, string> => ({ ... });",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts",
+      "line": 39,
+      "severity": "MEDIUM",
+      "category": "dead-suite",
+      "description": "Entire ATDD E2E suite is currently skipped, which increases drift risk over time.",
+      "suggestion": "Re-enable incrementally or quarantine with explicit TODO + gate ownership metadata.",
+      "code_snippet": "test.skip('[P0] end-to-end ingress journey accepts valid signed webhook ...')",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts",
+      "line": 39,
+      "severity": "MEDIUM",
+      "category": "skipped-acceptance-scenarios",
+      "description": "All three E2E ATDD journeys are skipped, reducing acceptance-level confidence for end-to-end ingress behavior.",
+      "suggestion": "Re-enable skipped E2E ATDD journeys and gate with deterministic signing fixture compatibility.",
+      "code_snippet": "test.skip('[P0] end-to-end ingress journey accepts valid signed webhook ...')",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts",
+      "line": 109,
+      "severity": "MEDIUM",
+      "category": "traceability-id-gap",
+      "description": "Tests use priority tags but do not include explicit story-level test IDs required by the test-level framework convention.",
+      "suggestion": "Add explicit IDs (e.g., e.1-API-001) to improve traceability from AC to test case.",
+      "code_snippet": "test('[P0] invalid webhook signatures are refused fail-closed ... @P0', async (...) => {",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.spec.ts",
+      "line": 77,
+      "severity": "LOW",
+      "category": "api-heavy-e2e",
+      "description": "E2E suite validates workflow mostly through API calls; limited browser-driven interaction assertions reduce UI contract confidence.",
+      "suggestion": "Add at least one browser-centric assertion path for operator-visible outcomes where applicable.",
+      "code_snippet": "const webhookResponse = await apiRequest(request, { method: 'POST', ... });",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts",
+      "line": 15,
+      "severity": "LOW",
+      "category": "crypto-setup-overhead",
+      "description": "Keypair generation at module load adds small but avoidable startup cost per spec process.",
+      "suggestion": "Move shared test keys to reusable fixture setup or static deterministic fixture.",
+      "code_snippet": "const { publicKey, privateKey } = generateKeyPairSync('ed25519');",
+      "dimension": "performance"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "file-size-execution-overhead",
+      "description": "Large monolithic test files increase parse and rerun overhead.",
+      "suggestion": "Split long files into focused suites to reduce rerun scope and improve CI cache locality.",
+      "code_snippet": "// Large monolithic suite",
+      "dimension": "performance"
+    }
+  ],
+  "high_severity_violations": [
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "File is 365 lines, exceeding maintainability target and making review/debug slower.",
+      "suggestion": "Split by behavior: signature refusal, mapping success, replay-safe dedupe, unmapped refusal.",
+      "code_snippet": "// 365-line ATDD API spec",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "File is 510 lines with multiple concerns in one suite.",
+      "suggestion": "Split into focused suites (signature, provider fallback, public routing, ambiguity, conflict).",
+      "code_snippet": "// 510-line automate API spec",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "File is 423 lines, increasing cognitive load and change risk.",
+      "suggestion": "Refactor into smaller e2e suites grouped by happy-path, replay-safe, and refusal scenarios.",
+      "code_snippet": "// 423-line automate E2E spec",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts",
+      "line": 24,
+      "severity": "HIGH",
+      "category": "duplicate-logic",
+      "description": "Signature/header and payload builder logic is duplicated across API/E2E ATDD and automate files.",
+      "suggestion": "Extract shared E1 webhook test helpers under tests/support/helpers/connectShyftWebhookTestHelpers.ts.",
+      "code_snippet": "const buildSignatureEnforcementHeaders = (): Record<string, string> => ({ ... });",
+      "dimension": "maintainability"
+    }
+  ],
+  "top_10_recommendations": [
+    {
+      "dimension": "maintainability",
+      "recommendation": "Split large E1 specs into behavior-focused files under 300 lines",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "maintainability",
+      "recommendation": "Extract duplicated signing/payload utilities into shared support helpers",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "maintainability",
+      "recommendation": "Re-enable or consciously retire skipped ATDD E2E scenarios with ownership",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Standardize on deterministic ID/time helper utilities in all E1 specs",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Consolidate signature timestamp generation behind a reusable helper with injectable time source",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Align ATDD E2E signing helpers with automate suites before enabling skipped tests",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "isolation",
+      "recommendation": "Introduce cleanup utilities for mapping records created in tests",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "isolation",
+      "recommendation": "Prefer unique per-test seeded entities in ATDD API file similar to automate deterministic helpers",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "isolation",
+      "recommendation": "Document fixture teardown guarantees for story-level context fixtures",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "coverage",
+      "recommendation": "Unskip E2E ATDD scenarios for AC-level end-to-end confidence",
+      "impact": "MEDIUM"
+    }
+  ],
+  "subprocess_execution": "PARALLEL (5 quality dimensions)",
+  "performance_gain": "~60% faster than sequential"
+}

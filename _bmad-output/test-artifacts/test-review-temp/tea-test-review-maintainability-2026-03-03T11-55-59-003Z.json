@@ -1,0 +1,66 @@
+{
+  "dimension": "maintainability",
+  "score": 55,
+  "max_score": 100,
+  "grade": "F",
+  "violations": [
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "File is 365 lines, exceeding maintainability target and making review/debug slower.",
+      "suggestion": "Split by behavior: signature refusal, mapping success, replay-safe dedupe, unmapped refusal.",
+      "code_snippet": "// 365-line ATDD API spec"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "File is 510 lines with multiple concerns in one suite.",
+      "suggestion": "Split into focused suites (signature, provider fallback, public routing, ambiguity, conflict).",
+      "code_snippet": "// 510-line automate API spec"
+    },
+    {
+      "file": "tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "File is 423 lines, increasing cognitive load and change risk.",
+      "suggestion": "Refactor into smaller e2e suites grouped by happy-path, replay-safe, and refusal scenarios.",
+      "code_snippet": "// 423-line automate E2E spec"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts",
+      "line": 24,
+      "severity": "HIGH",
+      "category": "duplicate-logic",
+      "description": "Signature/header and payload builder logic is duplicated across API/E2E ATDD and automate files.",
+      "suggestion": "Extract shared E1 webhook test helpers under tests/support/helpers/connectShyftWebhookTestHelpers.ts.",
+      "code_snippet": "const buildSignatureEnforcementHeaders = (): Record<string, string> => ({ ... });"
+    },
+    {
+      "file": "tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts",
+      "line": 39,
+      "severity": "MEDIUM",
+      "category": "dead-suite",
+      "description": "Entire ATDD E2E suite is currently skipped, which increases drift risk over time.",
+      "suggestion": "Re-enable incrementally or quarantine with explicit TODO + gate ownership metadata.",
+      "code_snippet": "test.skip('[P0] end-to-end ingress journey accepts valid signed webhook ...')"
+    }
+  ],
+  "passed_checks": 8,
+  "failed_checks": 5,
+  "violation_summary": {
+    "HIGH": 4,
+    "MEDIUM": 1,
+    "LOW": 0
+  },
+  "recommendations": [
+    "Split large E1 specs into behavior-focused files under 300 lines",
+    "Extract duplicated signing/payload utilities into shared support helpers",
+    "Re-enable or consciously retire skipped ATDD E2E scenarios with ownership"
+  ],
+  "summary": "Maintainability is the weakest dimension due to oversized files and repeated helper logic."
+}

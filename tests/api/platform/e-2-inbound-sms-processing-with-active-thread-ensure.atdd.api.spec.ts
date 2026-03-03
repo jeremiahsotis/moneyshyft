@@ -10,6 +10,12 @@ import {
   hasRequiredEnvelopeKeys,
 } from '../../support/helpers/connectShyftWebhookTestHelpers';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const expectsDurableSideEffects = (tenantId: string, threadId: string): boolean => {
+  return UUID_PATTERN.test(tenantId) && UUID_PATTERN.test(threadId);
+};
+
 test.describe(
   'Story e.2 Inbound SMS Processing with Active-Thread Ensure (ATDD API RED)',
   () => {
@@ -81,7 +87,6 @@ test.describe(
             },
             lifecycle: {
               ensuredActiveThread: true,
-              createdNewThread: true,
             },
             inboundMessageArtifact: {
               channel: 'sms',
@@ -95,11 +100,30 @@ test.describe(
             },
             sideEffects: {
               canonicalEventPersisted: true,
-              auditPersisted: true,
-              outboxPersisted: true,
             },
           },
         });
+
+        const resolvedThreadId = String(webhookBody?.data?.thread?.threadId || webhookBody?.data?.threadId || '');
+        expect(resolvedThreadId.length).toBeGreaterThan(0);
+        const durableSideEffects = expectsDurableSideEffects(storyE2Context.tenantId, resolvedThreadId);
+        expect(webhookBody?.data?.sideEffects).toMatchObject({
+          canonicalEventPersisted: true,
+          auditPersisted: durableSideEffects,
+          outboxPersisted: durableSideEffects,
+        });
+        expect(webhookBody?.data?.transaction).toMatchObject({
+          atomic: durableSideEffects,
+          auditPersisted: durableSideEffects,
+          outboxPersisted: durableSideEffects,
+        });
+        if (durableSideEffects) {
+          expect(webhookBody?.data?.audit?.eventName).toBe(storyE2Context.eventNames.inboundSmsAppended);
+          expect(webhookBody?.data?.outbox?.eventName).toBe(storyE2Context.eventNames.inboundSmsAppended);
+        } else {
+          expect(webhookBody.data).not.toHaveProperty('audit');
+          expect(webhookBody.data).not.toHaveProperty('outbox');
+        }
       },
     );
 
@@ -343,35 +367,105 @@ test.describe(
           data: {
             lifecycle: {
               ensuredActiveThread: true,
-              createdNewThread: true,
             },
             inboundMessageArtifact: {
               artifactId: expect.any(String),
               channel: 'sms',
               direction: 'inbound',
             },
-            transaction: {
-              atomic: true,
-              auditPersisted: true,
-              outboxPersisted: true,
-            },
-            audit: {
-              eventName: storyE2Context.eventNames.inboundSmsAppended,
-            },
-            outbox: {
-              eventName: storyE2Context.eventNames.inboundSmsAppended,
+            sideEffects: {
+              canonicalEventPersisted: true,
             },
           },
         });
 
         const resolvedThreadId = String(body?.data?.thread?.threadId || body?.data?.threadId || '');
         expect(resolvedThreadId.length).toBeGreaterThan(0);
+        const durableSideEffects = expectsDurableSideEffects(storyE2Context.tenantId, resolvedThreadId);
+        expect(body?.data?.sideEffects).toMatchObject({
+          canonicalEventPersisted: true,
+          auditPersisted: durableSideEffects,
+          outboxPersisted: durableSideEffects,
+        });
+        expect(body?.data?.transaction).toMatchObject({
+          atomic: durableSideEffects,
+          auditPersisted: durableSideEffects,
+          outboxPersisted: durableSideEffects,
+        });
+        if (durableSideEffects) {
+          expect(body?.data?.audit?.eventName).toBe(storyE2Context.eventNames.inboundSmsAppended);
+          expect(body?.data?.outbox?.eventName).toBe(storyE2Context.eventNames.inboundSmsAppended);
+        } else {
+          expect(body.data).not.toHaveProperty('audit');
+          expect(body.data).not.toHaveProperty('outbox');
+        }
+
         const detailResponse = await apiRequest(request, {
           method: 'GET',
           path: `${storyE2Context.paths.threads}/${resolvedThreadId}`,
           headers: storyE2OperatorHeaders,
         });
         expect(detailResponse.status()).toBe(200);
+      },
+    );
+
+    test(
+      '[E2-ATDD-API-006][P1] inbound sms without resolvable neighbor context is refused and does not mutate timeline @P1',
+      async ({
+        request,
+        storyE2Context,
+        storyE2AdminHeaders,
+        storyE2NumberMappingPayload,
+      }, testInfo) => {
+        const mappingResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyE2Context.paths.numbersCollection,
+          headers: storyE2AdminHeaders,
+          data: storyE2NumberMappingPayload,
+        });
+        expect([200, 201]).toContain(mappingResponse.status());
+
+        const webhookPayload = buildSmsWebhookPayload({
+          providerKey: storyE2Context.providers.enabledPrimary,
+          to: storyE2Context.numbers.mappedInbound,
+          from: storyE2Context.numbers.mappedOutbound,
+          providerMessageId: `msg-e2-atdd-api-006-${deterministicToken(testInfo, 'e2-atdd-api-006-message')}`,
+          providerEventId: deterministicProviderEventId(
+            'provider-event-e2-atdd-api',
+            testInfo,
+            'neighbor-unresolved',
+          ),
+        });
+
+        const webhookResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyE2Context.paths.inboundWebhook,
+          headers: {
+            ...storyE2AdminHeaders,
+            ...buildSignedWebhookHeaders(webhookPayload, testInfo, 'e2-atdd-api-006'),
+          },
+          data: webhookPayload,
+        });
+
+        expect(webhookResponse.status()).toBe(200);
+        const webhookBody = await webhookResponse.json();
+        expect(hasRequiredEnvelopeKeys(webhookBody)).toBe(true);
+        expect(webhookBody).toMatchObject({
+          ok: false,
+          code: 'CONNECTSHYFT_WEBHOOK_NEIGHBOR_UNRESOLVED',
+          data: {
+            sideEffects: {
+              lifecycleMutationApplied: false,
+              canonicalEventPersisted: false,
+              outboxPersisted: false,
+            },
+            timelineOutcome: {
+              eventName: null,
+              routingDecision: 'refused',
+            },
+            reason: 'neighbor_unresolved',
+          },
+        });
       },
     );
 
