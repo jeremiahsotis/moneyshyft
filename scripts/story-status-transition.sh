@@ -63,7 +63,7 @@ to_lower() {
 
 is_valid_story_key() {
   local key="$1"
-  [[ "$key" =~ ^([0-9]+|[A-Za-z])-[0-9]+-.+ ]]
+  [[ "$key" =~ ^(([0-9]+|[A-Za-z])-[0-9]+|[A-Za-z]+-[Rr][0-9]+)-.+$ ]]
 }
 
 is_valid_status() {

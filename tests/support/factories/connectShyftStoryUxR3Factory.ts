@@ -88,14 +88,14 @@ export function createStoryUxR3Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-ux-r3-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimedVoicemail: 'thread-c4-unclaimed-1001',
-      claimedVoicemail: 'thread-c3-claimed-voicemail-1004',
-      closedVoice: 'thread-c4-closed-1003',
+      unclaimedVoicemail: 'thread-ux-r3-unclaimed-voicemail-1001',
+      claimedVoicemail: 'thread-ux-r3-claimed-voicemail-1002',
+      closedVoice: 'thread-ux-r3-closed-voice-1003',
     },
     neighborIds: {
-      unclaimed: 'neighbor-connectshyft-c4-unclaimed-1001',
-      claimed: 'neighbor-connectshyft-c3-claimed-voicemail-1004',
-      closed: 'neighbor-connectshyft-c4-closed-1003',
+      unclaimed: 'neighbor-connectshyft-ux-r3-unclaimed-1001',
+      claimed: 'neighbor-connectshyft-ux-r3-claimed-1002',
+      closed: 'neighbor-connectshyft-ux-r3-closed-1003',
     },
     events: {
       inboundVoicemail: 'voice.voicemail',

@@ -1,8 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryUxR3.fixture';
 
 test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD API RED)', () => {
-  test.skip(
+  test(
     '[P0] voicemail on claimed threads remains in Mine with voicemail indicator and never reclassifies into Inbox @P0',
     async ({
       request,
@@ -45,7 +46,7 @@ test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD API RED)', () 
     },
   );
 
-  test.skip(
+  test(
     '[P0] voicemail on unclaimed threads remains in Inbox and carries voicemail-received labeling @P0',
     async ({ request, storyUxR3Context, storyUxR3MemberHeaders, storyUxR3InboxQuery }) => {
       const inboxResponse = await apiRequest(request, {
@@ -71,7 +72,7 @@ test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD API RED)', () 
     },
   );
 
-  test.skip(
+  test(
     '[P1] voicemail-only and missed-inbound events preserve escalation and inactivity windows without lifecycle reset @P1',
     async ({
       request,
@@ -87,8 +88,11 @@ test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD API RED)', () 
 
       expect(detailBefore.status()).toBe(200);
       const detailBeforeBody = await detailBefore.json();
-      const beforeStage = detailBeforeBody?.data?.thread?.escalation?.stage;
-      const beforeNextEvaluation = detailBeforeBody?.data?.thread?.nextEvaluationAtUtc;
+      const beforeThread = detailBeforeBody?.data?.thread;
+      const beforeStage = beforeThread?.escalationStage;
+      const beforeUrgencyLabel = beforeThread?.urgencyLabel;
+      const beforeLastActivity = beforeThread?.lastActivityAtUtc;
+      const beforeState = beforeThread?.state;
 
       const webhookResponse = await apiRequest(request, {
         method: 'POST',
@@ -111,6 +115,32 @@ test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD API RED)', () 
         },
       });
 
+      const missedInboundResponse = await apiRequest(request, {
+        method: 'POST',
+        path: storyUxR3Context.paths.inboundWebhook,
+        headers: storyUxR3AdminHeaders,
+        data: {
+          ...storyUxR3InboundVoicemailPayload,
+          providerEventId: `evt-ux-r3-missed-${randomUUID().slice(0, 8)}`,
+          providerLegId: `leg-ux-r3-missed-${randomUUID().slice(0, 8)}`,
+          eventType: storyUxR3Context.events.inboundMissedCall,
+        },
+      });
+
+      expect(missedInboundResponse.status()).toBe(200);
+      const missedInboundBody = await missedInboundResponse.json();
+      expect(missedInboundBody).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          lifecycle: {
+            reopenedByInbound: false,
+            escalationResetApplied: false,
+            inactivityResetApplied: false,
+          },
+        },
+      });
+
       const detailAfter = await apiRequest(request, {
         method: 'GET',
         path: `${storyUxR3Context.paths.threadDetail}/${storyUxR3Context.threadIds.unclaimedVoicemail}`,
@@ -119,12 +149,15 @@ test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD API RED)', () 
 
       expect(detailAfter.status()).toBe(200);
       const detailAfterBody = await detailAfter.json();
-      expect(detailAfterBody?.data?.thread?.escalation?.stage).toBe(beforeStage);
-      expect(detailAfterBody?.data?.thread?.nextEvaluationAtUtc).toBe(beforeNextEvaluation);
+      const afterThread = detailAfterBody?.data?.thread;
+      expect(afterThread?.state).toBe(beforeState);
+      expect(afterThread?.escalationStage).toBe(beforeStage);
+      expect(afterThread?.urgencyLabel).toBe(beforeUrgencyLabel);
+      expect(afterThread?.lastActivityAtUtc).toBe(beforeLastActivity);
     },
   );
 
-  test.skip(
+  test(
     '[P0] closed-thread inbound voice events route to locked fallback and do not auto-reopen thread state @P0',
     async ({
       request,

@@ -81,6 +81,38 @@ describe('connectshyft read contracts', () => {
     expect(otherOperatorMine.map((item) => item.threadId)).toEqual(['thread-c3-claimed-1002']);
   });
 
+  it('keeps ux-r3 voicemail threads in deterministic mine/inbox buckets with explicit labels', () => {
+    const mine = resolveConnectShyftInboxContract({
+      tenantId: 'tenant-connectshyft-ux-r3',
+      orgUnitId: 'org-connectshyft-ux-r3-east',
+      bucket: 'mine',
+      actorUserId: 'user-connectshyft-ux-r3-operator',
+    });
+    const inbox = resolveConnectShyftInboxContract({
+      tenantId: 'tenant-connectshyft-ux-r3',
+      orgUnitId: 'org-connectshyft-ux-r3-east',
+      bucket: 'inbox',
+      actorUserId: 'user-connectshyft-ux-r3-operator',
+    });
+
+    const mineVoicemail = mine.find((item) => item.threadId === 'thread-ux-r3-claimed-voicemail-1002');
+    const inboxVoicemail = inbox.find((item) => item.threadId === 'thread-ux-r3-unclaimed-voicemail-1001');
+
+    expect(mineVoicemail).toMatchObject({
+      state: 'CLAIMED',
+      bucket: 'mine',
+      voicemailIndicator: true,
+      voicemailLabel: 'Voicemail',
+    });
+    expect(inboxVoicemail).toMatchObject({
+      state: 'UNCLAIMED',
+      bucket: 'inbox',
+      voicemailIndicator: true,
+      voicemailLabel: 'Voicemail received',
+    });
+    expect(inbox.some((item) => item.threadId === 'thread-ux-r3-claimed-voicemail-1002')).toBe(false);
+  });
+
   it('returns thread-detail bucket from actor perspective for claimed threads', () => {
     const claimedOwner = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-c3',

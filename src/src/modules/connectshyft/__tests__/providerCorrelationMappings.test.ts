@@ -1,5 +1,7 @@
 import {
   beginConnectShyftWebhookReceiptProcessing,
+  cleanupConnectShyftWebhookReceipts,
+  loadConnectShyftWebhookReceiptMetrics,
   markConnectShyftWebhookReceiptProcessingResult,
   recordConnectShyftWebhookReceipt,
   recordConnectShyftProviderIdentifierMapping,
@@ -201,6 +203,66 @@ describe('connectshyft provider correlation mappings', () => {
       duplicate: true,
       dedupeKey: 'provider-event:provider-event-f3-1001',
     });
+  });
+
+  it('scopes webhook replay identity by canonical event type for the same provider sid', async () => {
+    const firstMessage = await recordConnectShyftWebhookReceipt({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'telnyx',
+      canonicalEventType: 'MessageDelivered',
+      providerEventId: 'provider-event-f3-shared-by-type',
+      providerMessageId: 'telnyx-msg-f3-shared-by-type',
+    });
+
+    const firstVoice = await recordConnectShyftWebhookReceipt({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'telnyx',
+      canonicalEventType: 'CallConnected',
+      providerEventId: 'provider-event-f3-shared-by-type',
+      providerLegId: 'telnyx-leg-f3-shared-by-type',
+    });
+
+    const duplicateMessage = await recordConnectShyftWebhookReceipt({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'telnyx',
+      canonicalEventType: 'MessageDelivered',
+      providerEventId: 'provider-event-f3-shared-by-type',
+      providerMessageId: 'telnyx-msg-f3-shared-by-type',
+    });
+
+    expect(firstMessage.duplicate).toBe(false);
+    expect(firstVoice.duplicate).toBe(false);
+    expect(duplicateMessage.duplicate).toBe(true);
+  });
+
+  it('keeps duplicate suppression deterministic under concurrent duplicate bursts', async () => {
+    const start = Date.now();
+    const burst = await Promise.all(
+      Array.from({ length: 32 }).map(() =>
+        recordConnectShyftWebhookReceipt({
+          tenantId: 'tenant-connectshyft-f3',
+          orgUnitId: 'org-connectshyft-f3-east',
+          threadId: 'thread-f3-unclaimed-1001',
+          providerName: 'telnyx',
+          canonicalEventType: 'MessageDelivered',
+          providerEventId: 'provider-event-f3-concurrent-burst',
+          providerMessageId: 'telnyx-msg-f3-concurrent-burst',
+        }),
+      ),
+    );
+    const elapsedMs = Date.now() - start;
+
+    const firstSeenCount = burst.filter((result) => result.duplicate === false).length;
+    const duplicateCount = burst.filter((result) => result.duplicate === true).length;
+    expect(firstSeenCount).toBe(1);
+    expect(duplicateCount).toBe(31);
+    expect(elapsedMs).toBeLessThan(1000);
   });
 
   it('allows retry attempts for non-applied webhook receipts and only suppresses after applied', async () => {
@@ -409,5 +471,67 @@ describe('connectshyft provider correlation mappings', () => {
         code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_PERSISTENCE_UNAVAILABLE',
       },
     });
+  });
+
+  it('applies retention cleanup and reports receipt metrics for bounded replay windows', async () => {
+    await recordConnectShyftWebhookReceipt({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'telnyx',
+      canonicalEventType: 'MessageDelivered',
+      providerEventId: 'provider-event-f3-retention-1',
+      providerMessageId: 'telnyx-msg-f3-retention-1',
+    });
+    await recordConnectShyftWebhookReceipt({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'telnyx',
+      canonicalEventType: 'MessageDelivered',
+      providerEventId: 'provider-event-f3-retention-2',
+      providerMessageId: 'telnyx-msg-f3-retention-2',
+    });
+
+    const asOfUtc = '2100-01-10T00:00:00.000Z';
+    const before = await loadConnectShyftWebhookReceiptMetrics({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      retentionWindowDays: 1,
+      asOfUtc,
+    });
+    expect(before.totalRows).toBe(2);
+    expect(before.expiredRowsCandidate).toBe(2);
+
+    const dryRun = await cleanupConnectShyftWebhookReceipts({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      policyWindowDays: 1,
+      dryRun: true,
+      asOfUtc,
+    });
+    expect(dryRun.expiredRowsRemoved).toBe(2);
+    expect(dryRun.totalRowsBefore).toBe(2);
+    expect(dryRun.totalRowsAfter).toBe(2);
+
+    const applied = await cleanupConnectShyftWebhookReceipts({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      policyWindowDays: 1,
+      dryRun: false,
+      asOfUtc,
+    });
+    expect(applied.expiredRowsRemoved).toBe(2);
+    expect(applied.totalRowsBefore).toBe(2);
+    expect(applied.totalRowsAfter).toBe(0);
+
+    const after = await loadConnectShyftWebhookReceiptMetrics({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      retentionWindowDays: 1,
+      asOfUtc,
+    });
+    expect(after.totalRows).toBe(0);
+    expect(after.oldestRetainedAt).toBe(asOfUtc);
   });
 });

@@ -30,6 +30,7 @@ export type ConnectShyftThreadSummaryRecord = {
     label: string;
   };
   voicemailIndicator: boolean;
+  voicemailLabel: string | null;
   summary: string;
 };
 
@@ -119,6 +120,10 @@ const CONNECTSHYFT_D4_SCOPE = {
 const CONNECTSHYFT_UX_R1_SCOPE = {
   tenantId: 'tenant-connectshyft-ux-r1',
   orgUnitId: 'org-connectshyft-ux-r1-east',
+} as const;
+const CONNECTSHYFT_UX_R3_SCOPE = {
+  tenantId: 'tenant-connectshyft-ux-r3',
+  orgUnitId: 'org-connectshyft-ux-r3-east',
 } as const;
 
 const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
@@ -410,6 +415,54 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
     voicemailIndicator: true,
     summary: 'Voicemail retained on claimed operator thread',
   },
+  {
+    tenantId: CONNECTSHYFT_UX_R3_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_UX_R3_SCOPE.orgUnitId,
+    threadId: 'thread-ux-r3-unclaimed-voicemail-1001',
+    state: 'UNCLAIMED',
+    bucket: 'inbox',
+    claimedByUserId: null,
+    escalationStage: 2,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-02-26T14:20:00.000Z',
+    lastInboundCsNumberId: 'cs-number-ux-r3-401',
+    preferredOutboundCsNumberId: 'cs-number-ux-r3-501',
+    preferredOutboundLabel: 'UX R3 Intake Queue',
+    voicemailIndicator: true,
+    summary: 'Voicemail received from inbound caller',
+  },
+  {
+    tenantId: CONNECTSHYFT_UX_R3_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_UX_R3_SCOPE.orgUnitId,
+    threadId: 'thread-ux-r3-claimed-voicemail-1002',
+    state: 'CLAIMED',
+    bucket: 'mine',
+    claimedByUserId: 'user-connectshyft-ux-r3-operator',
+    escalationStage: 1,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-02-26T14:10:00.000Z',
+    lastInboundCsNumberId: 'cs-number-ux-r3-402',
+    preferredOutboundCsNumberId: 'cs-number-ux-r3-502',
+    preferredOutboundLabel: 'UX R3 Assigned Operator Line',
+    voicemailIndicator: true,
+    summary: 'Claimed voicemail remains with assigned owner',
+  },
+  {
+    tenantId: CONNECTSHYFT_UX_R3_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_UX_R3_SCOPE.orgUnitId,
+    threadId: 'thread-ux-r3-closed-voice-1003',
+    state: 'CLOSED',
+    bucket: 'inbox',
+    claimedByUserId: null,
+    escalationStage: 1,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-02-26T14:00:00.000Z',
+    lastInboundCsNumberId: 'cs-number-ux-r3-403',
+    preferredOutboundCsNumberId: 'cs-number-ux-r3-503',
+    preferredOutboundLabel: 'UX R3 Closed Follow-up Queue',
+    voicemailIndicator: false,
+    summary: 'Closed thread locked against inbound auto-reopen',
+  },
 ];
 
 export const parseConnectShyftInboxBucket = (
@@ -564,6 +617,21 @@ const normalizeThreadState = (
   return null;
 };
 
+const resolveVoicemailLabel = (input: {
+  voicemailIndicator: boolean;
+  state: ConnectShyftThreadState;
+}): string | null => {
+  if (!input.voicemailIndicator) {
+    return null;
+  }
+
+  if (input.state === 'UNCLAIMED') {
+    return 'Voicemail received';
+  }
+
+  return 'Voicemail';
+};
+
 const hasSeedScope = (scope: {
   tenantId: string;
   orgUnitId: string;
@@ -584,6 +652,10 @@ const toSummaryRecord = (
   });
 
   const urgencyLabel = resolveConnectShyftUrgencyLabel(seed.escalationStage);
+  const voicemailLabel = resolveVoicemailLabel({
+    voicemailIndicator: seed.voicemailIndicator,
+    state: seed.state,
+  });
   return {
     threadId: seed.threadId,
     tenantId: seed.tenantId,
@@ -610,6 +682,7 @@ const toSummaryRecord = (
       label: seed.preferredOutboundLabel,
     },
     voicemailIndicator: seed.voicemailIndicator,
+    voicemailLabel,
     summary: seed.summary,
   };
 };
@@ -887,6 +960,10 @@ const mapDbRowToSummary = (
     || normalizeBoolean(row.voicemail_waiting)
     || unreadVoicemailCount > 0
     || unreadVoicemailCountMine > 0;
+  const voicemailLabel = resolveVoicemailLabel({
+    voicemailIndicator,
+    state,
+  });
 
   return {
     threadId,
@@ -914,6 +991,7 @@ const mapDbRowToSummary = (
       label: preferredOutboundLabel,
     },
     voicemailIndicator,
+    voicemailLabel,
     summary: normalizeString(row.summary ?? row.preview ?? row.last_message_preview),
   };
 };

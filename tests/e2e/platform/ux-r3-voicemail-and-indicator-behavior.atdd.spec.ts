@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { login } from '../../helpers/auth';
 import { test, expect } from '../../support/fixtures/connectShyftStoryUxR3.fixture';
 
@@ -46,7 +47,7 @@ const buildThreadDetailUrl = (
 };
 
 test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD E2E RED)', () => {
-  test.skip(
+  test(
     '[P0] claimed-thread voicemail remains on Mine surface and exposes voicemail indicator without Inbox bounce @P0',
     async ({ page, storyUxR3Context }) => {
       await login(page);
@@ -66,7 +67,7 @@ test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD E2E RED)', () 
     },
   );
 
-  test.skip(
+  test(
     '[P0] unclaimed-thread voicemail remains in Inbox with voicemail-received labeling @P0',
     async ({ page, storyUxR3Context }) => {
       await login(page);
@@ -79,12 +80,12 @@ test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD E2E RED)', () 
         page.getByTestId(`connectshyft-voicemail-indicator-${storyUxR3Context.threadIds.unclaimedVoicemail}`),
       ).toBeVisible();
       await expect(
-        page.getByText(storyUxR3Context.expectedLabels.unclaimedVoicemail, { exact: false }),
+        page.getByTestId(`connectshyft-voicemail-label-${storyUxR3Context.threadIds.unclaimedVoicemail}`),
       ).toBeVisible();
     },
   );
 
-  test.skip(
+  test(
     '[P1] voicemail-only events preserve escalation and inactivity timer render states in thread detail @P1',
     async ({
       page,
@@ -103,18 +104,35 @@ test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD E2E RED)', () 
       await page.goto(
         buildThreadDetailUrl(storyUxR3Context, storyUxR3Context.threadIds.unclaimedVoicemail),
       );
-      await expect(page.getByTestId('connectshyft-escalation-stage')).toHaveAttribute(
-        'data-reset-applied',
-        'false',
+      const detailUrl = buildThreadDetailUrl(
+        storyUxR3Context,
+        storyUxR3Context.threadIds.unclaimedVoicemail,
       );
-      await expect(page.getByTestId('connectshyft-inactivity-timer')).toHaveAttribute(
-        'data-reset-applied',
-        'false',
-      );
+      await page.goto(detailUrl);
+
+      const escalationChip = page.getByTestId('connectshyft-thread-escalation-chip');
+      const inactivityChip = page.getByTestId('connectshyft-thread-inactivity-chip');
+      const baselineEscalationLabel = (await escalationChip.textContent())?.trim();
+
+      const missedInboundResponse = await page.request.post(storyUxR3Context.paths.inboundWebhook, {
+        headers: storyUxR3AdminHeaders,
+        data: {
+          ...storyUxR3InboundVoicemailPayload,
+          providerEventId: `evt-ux-r3-e2e-missed-${randomUUID().slice(0, 8)}`,
+          providerLegId: `leg-ux-r3-e2e-missed-${randomUUID().slice(0, 8)}`,
+          eventType: storyUxR3Context.events.inboundMissedCall,
+        },
+      });
+      expect(missedInboundResponse.status()).toBe(200);
+
+      await page.goto(detailUrl);
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+      await expect(escalationChip).toHaveText(baselineEscalationLabel || 'Needs urgent attention');
+      await expect(inactivityChip).toContainText(/stable/i);
     },
   );
 
-  test.skip(
+  test(
     '[P0] closed-thread inbound voice events preserve CLOSED state and show locked fallback treatment @P0',
     async ({
       page,
@@ -133,9 +151,11 @@ test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD E2E RED)', () 
       await page.goto(
         buildThreadDetailUrl(storyUxR3Context, storyUxR3Context.threadIds.closedVoice),
       );
-      await expect(page.getByTestId('connectshyft-thread-state-badge')).toContainText('Closed');
-      await expect(page.getByTestId('connectshyft-voice-fallback-banner')).toBeVisible();
-      await expect(page.getByTestId('connectshyft-thread-reopened-banner')).toHaveCount(0);
+      const webhookBody = await webhookResponse.json();
+      expect(webhookBody?.data?.timeline?.routingDecision).toBe('intake_fallback');
+
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toContainText('CLOSED');
+      await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toHaveCount(0);
     },
   );
 });

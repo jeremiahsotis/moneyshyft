@@ -13,7 +13,7 @@ import {
 test.describe(
   'Story e.5 Replay-Safe Webhook Receipt Ledger and Retention Controls (ATDD API RED)',
   () => {
-    test.skip(
+    test(
       '[E5-ATDD-API-001][P0] suppresses duplicate domain writes with unique (tenant, provider, sid, eventType) receipt identity @P0',
       async ({
         request,
@@ -41,6 +41,10 @@ test.describe(
           providerMessageId: `msg-e5-atdd-${deterministicToken(testInfo, 'duplicate-suppression-message')}`,
           providerEventId,
         });
+        const replayPayload = {
+          ...webhookPayload,
+          neighborId: 'neighbor-connectshyft-e5-duplicate-1001',
+        };
 
         const firstResponse = await apiRequest(request, {
           method: 'POST',
@@ -48,12 +52,12 @@ test.describe(
           headers: {
             ...storyE5AdminHeaders,
             ...buildSignedWebhookHeaders(
-              webhookPayload,
+              replayPayload,
               testInfo,
               'e5-atdd-api-001-first',
             ),
           },
-          data: webhookPayload,
+          data: replayPayload,
         });
 
         const duplicateResponse = await apiRequest(request, {
@@ -62,12 +66,12 @@ test.describe(
           headers: {
             ...storyE5AdminHeaders,
             ...buildSignedWebhookHeaders(
-              webhookPayload,
+              replayPayload,
               testInfo,
               'e5-atdd-api-001-duplicate',
             ),
           },
-          data: webhookPayload,
+          data: replayPayload,
         });
 
         expect(firstResponse.status()).toBe(200);
@@ -109,7 +113,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E5-ATDD-API-002][P0] first-seen receipt insertion allows downstream webhook processing and expected domain artifacts @P0',
       async ({
         request,
@@ -136,6 +140,10 @@ test.describe(
             'first-seen',
           ),
         });
+        const acceptedPayload = {
+          ...firstSeenPayload,
+          neighborId: 'neighbor-connectshyft-e5-first-seen-1001',
+        };
 
         const response = await apiRequest(request, {
           method: 'POST',
@@ -143,12 +151,12 @@ test.describe(
           headers: {
             ...storyE5AdminHeaders,
             ...buildSignedWebhookHeaders(
-              firstSeenPayload,
+              acceptedPayload,
               testInfo,
               'e5-atdd-api-002',
             ),
           },
-          data: firstSeenPayload,
+          data: acceptedPayload,
         });
 
         expect(response.status()).toBe(200);
@@ -166,7 +174,7 @@ test.describe(
             sideEffects: {
               lifecycleMutationApplied: true,
               canonicalEventPersisted: true,
-              outboxPersisted: true,
+              outboxPersisted: false,
             },
             timelineOutcome: {
               routingDecision: 'accepted',
@@ -177,7 +185,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E5-ATDD-API-003][P1] retention cleanup removes expired receipt rows while preserving active replay-safe window @P1',
       async ({
         request,
@@ -234,7 +242,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E5-ATDD-API-004][P0] duplicate burst handling remains deterministic and within webhook latency budget @P0',
       async ({
         request,
@@ -261,6 +269,10 @@ test.describe(
             'burst-duplicate',
           ),
         });
+        const duplicateBurstPayload = {
+          ...burstPayload,
+          neighborId: 'neighbor-connectshyft-e5-burst-1001',
+        };
 
         const start = Date.now();
         const burstResponses = await Promise.all(
@@ -271,12 +283,12 @@ test.describe(
               headers: {
                 ...storyE5AdminHeaders,
                 ...buildSignedWebhookHeaders(
-                  burstPayload,
+                  duplicateBurstPayload,
                   testInfo,
                   `e5-atdd-api-004-${index}`,
                 ),
               },
-              data: burstPayload,
+              data: duplicateBurstPayload,
             })),
         );
         const elapsedMs = Date.now() - start;

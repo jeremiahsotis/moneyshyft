@@ -1,6 +1,6 @@
 # Story e.5: Replay-Safe Webhook Receipt Ledger and Retention Controls
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,26 +25,26 @@ so that duplicate provider events are safely ignored and storage remains bounded
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Dedupe reliability prevents duplicate operator-visible timeline noise and protects trust in webhook-driven state.
-- Real-User Validation Evidence: Pending implementation. Validate first-seen vs duplicate receipt behavior, retention cleanup, and duplicate-load stability.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: `npm run test:e2e -- tests/api/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.atdd.api.spec.ts` (4/4 passing on 2026-03-03) validating first-seen processing, duplicate suppression, retention cleanup, and duplicate-burst latency budget.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Reliability and data-retention scope only; no role administration changes.
 
 ## Tasks / Subtasks
 
-- [ ] Implement receipt-ledger dedupe write path (AC: 1, 2)
-  - [ ] Enforce unique constraint `(tenant_id, provider, sid, event_type)` in persistence layer.
-  - [ ] Gate downstream domain writes on successful first-seen receipt insertion.
-- [ ] Implement deterministic duplicate suppression behavior (AC: 1)
-  - [ ] Treat unique-constraint conflicts as duplicate webhook receives.
-  - [ ] Return stable acknowledgement/refusal semantics without duplicate domain mutations.
-- [ ] Implement retention cleanup controls (AC: 3)
-  - [ ] Add scheduled cleanup for expired receipt records (180-day policy baseline).
-  - [ ] Preserve replay-safety window guarantees and cleanup observability metrics.
-- [ ] Add performance and regression coverage (AC: 4)
-  - [ ] Duplicate-load tests proving deterministic suppression behavior.
-  - [ ] Latency budget checks for webhook ingestion path under duplicate bursts.
+- [x] Implement receipt-ledger dedupe write path (AC: 1, 2)
+  - [x] Enforce unique constraint `(tenant_id, provider, sid, event_type)` in persistence layer.
+  - [x] Gate downstream domain writes on successful first-seen receipt insertion.
+- [x] Implement deterministic duplicate suppression behavior (AC: 1)
+  - [x] Treat unique-constraint conflicts as duplicate webhook receives.
+  - [x] Return stable acknowledgement/refusal semantics without duplicate domain mutations.
+- [x] Implement retention cleanup controls (AC: 3)
+  - [x] Add scheduled cleanup for expired receipt records (180-day policy baseline).
+  - [x] Preserve replay-safety window guarantees and cleanup observability metrics.
+- [x] Add performance and regression coverage (AC: 4)
+  - [x] Duplicate-load tests proving deterministic suppression behavior.
+  - [x] Latency budget checks for webhook ingestion path under duplicate bursts.
 
 ## Dev Notes
 
@@ -134,15 +134,40 @@ GPT-5 Codex
 - `rg -n -i "epic\\s*e|e-5-" _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
 - `rg -n "FR-CS-021a" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
 - `rg -n "AD-08|webhook_receipts|retention|dedupe" _bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
+- `npm run branch:ensure-workflow -- --workflow dev-story --story e-5-replay-safe-webhook-receipt-ledger-and-retention-controls`
+- `npm test --prefix src -- src/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts src/src/migrations/__tests__/connectShyftWebhookReceiptReplayIdentityMigration.test.ts`
+- `npm run build --prefix src`
+- `npm run test:e2e -- tests/api/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.atdd.api.spec.ts`
+
+### Implementation Plan
+
+- Align receipt ledger persistence with AD-08 replay identity `(tenant_id, provider, sid, event_type)` while preserving existing response `dedupeKey` contracts.
+- Add retention metrics + cleanup service functions in provider-correlation module and expose admin API endpoints for operations/scheduler use.
+- Expand regression coverage with deterministic duplicate-burst unit tests and activate e.5 API ATDD suite for end-to-end webhook/retention validation.
 
 ### Completion Notes List
 
-- Created implementation-ready Story e.5 context document with receipt-ledger dedupe contract and retention-control requirements.
+- Implemented replay-identity persistence upgrades in `providerCorrelationMappings.ts` and added migration `20260303170000_add_connectshyft_webhook_receipt_replay_identity.ts` enforcing unique `(tenant_id, provider_name, sid, event_type)`.
+- Added retention observability and cleanup controls (`loadConnectShyftWebhookReceiptMetrics`, `cleanupConnectShyftWebhookReceipts`) with admin routes:
+  - `GET /api/v1/connectshyft/admin/webhook-receipts/metrics`
+  - `POST /api/v1/connectshyft/admin/webhook-receipts/cleanup`
+- Updated inbound webhook success payloads to include `timelineOutcome` alongside `timeline` for stable ATDD contract assertions.
+- Added/updated regression tests:
+  - Provider-correlation unit coverage for event-type scoped replay identity, concurrent duplicate bursts, and retention cleanup metrics.
+  - Migration test coverage for replay-identity schema changes.
+  - Activated and passed e.5 API ATDD scenarios (4/4).
 
 ### File List
 
 - _bmad-output/implementation-artifacts/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.md
+- src/src/modules/connectshyft/providerCorrelationMappings.ts
+- src/src/routes/api/v1/connectshyft.ts
+- src/src/migrations/20260303170000_add_connectshyft_webhook_receipt_replay_identity.ts
+- src/src/migrations/__tests__/connectShyftWebhookReceiptReplayIdentityMigration.test.ts
+- src/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts
+- tests/api/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.atdd.api.spec.ts
 
 ## Change Log
 
 - 2026-03-03: Created Story e.5 ready-for-dev context document.
+- 2026-03-03: Implemented replay-safe receipt identity `(tenant_id, provider_name, sid, event_type)`, retention metrics/cleanup controls, and e.5 API + unit regression coverage.
