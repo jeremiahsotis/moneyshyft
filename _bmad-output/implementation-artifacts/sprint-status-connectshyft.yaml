@@ -70,7 +70,7 @@ development_status:
   d-4-operator-interaction-contracts-for-outbound-safety: done
   epic-d-retrospective: optional
   epic-e: in-progress
-  e-1-verified-webhook-ingress-and-deterministic-context-routing: review
+  e-1-verified-webhook-ingress-and-deterministic-context-routing: done
   e-2-inbound-sms-processing-with-active-thread-ensure: done
   e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: ready-for-dev
   e-4-transcription-webhook-attachment-to-voicemail-records: ready-for-dev
