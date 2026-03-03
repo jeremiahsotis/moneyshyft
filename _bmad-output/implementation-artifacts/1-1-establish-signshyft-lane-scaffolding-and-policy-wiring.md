@@ -15,6 +15,20 @@ so that SignShyft delivery cannot interfere with RouteShyft or ConnectShyft lane
 3. Lane enforcement and policy checks pass with SignShyft artifacts present.
 4. Existing non-SignShyft lane artifacts are unchanged by this story.
 
+## Operability Guardrails
+
+- Guardrail Classification Reviewed: yes
+- Critical Capability: no
+- Access-Control Story: no
+- Backend/API Implies Human Operability: no
+- Frontend/Operator Usability Criteria Included: n/a
+- Operability Pairing Notes: N/A
+- Real-User Validation Evidence: N/A
+- Real-User Validation Result: n/a
+- Role-Admin UI Path: N/A
+- Role-Admin UI Path Verified: n/a
+- Access-Control Exemption Rationale: N/A
+
 ## Tasks / Subtasks
 
 - [ ] Generate lane-tagged SignShyft planning artifacts.
