@@ -25,8 +25,8 @@ so that voice content is searchable and actionable in-thread.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Transcript attachment correctness is directly user-facing in thread review workflows and must never drift from voicemail identity.
-- Real-User Validation Evidence: Pending implementation. Validate transcript attach/update behavior for success, missing-correlation refusal, and duplicate callback suppression.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: `npm run test:e2e -- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.spec.ts tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.spec.ts` on 2026-03-03 passed all 10 E4 API scenarios (core attach, detail projection, refusal guards, signature fail-closed handling, and replay-safe dedupe behavior).
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story handles callback correlation and artifact updates only.
@@ -131,17 +131,17 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `rg -n -i "epic\\s*e|e-4-" _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `rg -n "FR-CS-020|FR-CS-021a" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
-- `rg -n "voicemail-transcription|dedupe|receipt" _bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
-- `npm run branch:ensure-workflow -- --workflow dev-story --story e-4-transcription-webhook-attachment-to-voicemail-records.md`
-- `cd src && npm test -- src/src/modules/connectshyft/__tests__/inboundVoice.test.ts`
-- `npm run test:e2e -- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.spec.ts`
-- `cd src && npm run build`
-- `npm run test:e2e -- tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.atdd.api.spec.ts tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.automate.api.spec.ts`
-- `npm run test:e2e -- tests/api/platform/f-2-canonical-comms-event-model-and-event-store.atdd.api.spec.ts --workers=1`
-- `cd src && npm test -- src/src/modules/connectshyft/__tests__/inboundVoice.test.ts src/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts src/src/migrations/__tests__/connectShyftWebhookReceiptProcessingStateMigration.test.ts`
-- `npm run test:e2e -- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.spec.ts`
+- `rg -n -i "epic\\s*e|e-4-" _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (pass)
+- `rg -n "FR-CS-020|FR-CS-021a" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md` (pass)
+- `rg -n "voicemail-transcription|dedupe|receipt" _bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md` (pass)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story e-4-transcription-webhook-attachment-to-voicemail-records.md` (pass)
+- `cd src && npm test -- src/src/modules/connectshyft/__tests__/inboundVoice.test.ts` (pass)
+- `npm run test:e2e -- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.spec.ts` (pass)
+- `cd src && npm run build` (pass)
+- `npm run test:e2e -- tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.atdd.api.spec.ts tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.automate.api.spec.ts` (pass)
+- `npm run test:e2e -- tests/api/platform/f-2-canonical-comms-event-model-and-event-store.atdd.api.spec.ts --workers=1` (pass)
+- `cd src && npm test -- src/src/modules/connectshyft/__tests__/inboundVoice.test.ts src/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts src/src/migrations/__tests__/connectShyftWebhookReceiptProcessingStateMigration.test.ts` (pass)
+- `npm run test:e2e -- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.spec.ts tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.spec.ts` (pass; 10 passed)
 
 ### Completion Notes List
 
