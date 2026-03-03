@@ -1,12 +1,12 @@
-import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryE4.fixture';
 import {
-  buildSignedWebhookHeaders,
   hasRequiredEnvelopeKeys,
 } from '../../support/helpers/connectShyftWebhookTestHelpers';
 import {
-  buildStoryE4TranscriptionCallbackPayload,
-  seedStoryE4VoicemailWithCallbackCorrelation,
+  countStoryE4TimelineEvents,
+  fetchStoryE4ThreadDetail,
+  postStoryE4TranscriptionCallback,
+  seedStoryE4VoicemailScenario,
 } from '../../support/helpers/connectShyftStoryE4TestHelpers';
 
 test.describe(
@@ -15,68 +15,50 @@ test.describe(
     test(
       '[E4-AUTOMATE-API-101][P0] snake_case callback correlation payload variants still attach transcription to the deterministic voicemail artifact @P0',
       async ({ request }, testInfo) => {
-        const seeded = await seedStoryE4VoicemailWithCallbackCorrelation({
+        const seeded = await seedStoryE4VoicemailScenario({
           request,
           testInfo,
-          numberMappingLabel: 'Story e.4 automate api-101 mapped number',
-          neighborId: 'neighbor-connectshyft-e4-automate-api-101',
-          inboundNumberId: 'cs-inbound-e4-automate-api-101',
-          outboundNumberId: 'cs-outbound-e4-automate-api-101',
-          seedLabel: 'e4-automate-api-101-seed',
-          providerEventNamespace: 'provider-event-e4-automate-api-seed',
-          webhookHeaderLabel: 'e4-automate-api-101-seed',
+          suite: 'automate-api',
+          scenarioId: '101',
         });
 
         const transcriptText =
           'Snake case correlation payload mapped transcript attachment.';
-        const callbackPayload = buildStoryE4TranscriptionCallbackPayload({
-          context: seeded.context,
-          neighborId: seeded.context.neighborIds.transcriptionTarget,
-          threadId: seeded.threadId,
-          callbackCorrelation: seeded.callbackCorrelation,
-          transcriptText,
+        const {
+          response: callbackResponse,
+          body: callbackBody,
+        } = await postStoryE4TranscriptionCallback({
+          request,
+          seeded,
           testInfo,
+          transcriptText,
           label: 'e4-automate-api-101-callback',
           callbackEventNamespace: 'provider-event-e4-automate-api-callback',
-        });
-
-        const snakeCaseCorrelation = {
-          tenant_id: seeded.context.tenantId,
-          org_unit_id: seeded.context.orgUnitId,
-          thread_id: seeded.threadId,
-          provider_event_id: seeded.callbackCorrelation.providerEventId,
-          provider_leg_id: seeded.callbackCorrelation.providerLegId,
-          voicemail_artifact_id: seeded.callbackCorrelation.voicemailArtifactId,
-        };
-
-        const snakeCasePayload = {
-          ...callbackPayload,
-          callback_correlation: snakeCaseCorrelation,
-          providerPayload: {
-            ...(callbackPayload.providerPayload as Record<string, unknown>),
-            callback_correlation: snakeCaseCorrelation,
-            transcription_text: transcriptText,
+          mutatePayload: (callbackPayload) => {
+            const snakeCaseCorrelation = {
+              tenant_id: seeded.context.tenantId,
+              org_unit_id: seeded.context.orgUnitId,
+              thread_id: seeded.threadId,
+              provider_event_id: seeded.callbackCorrelation.providerEventId,
+              provider_leg_id: seeded.callbackCorrelation.providerLegId,
+              voicemail_artifact_id: seeded.callbackCorrelation.voicemailArtifactId,
+            };
+            const snakeCasePayload = {
+              ...callbackPayload,
+              callback_correlation: snakeCaseCorrelation,
+              providerPayload: {
+                ...(callbackPayload.providerPayload as Record<string, unknown>),
+                callback_correlation: snakeCaseCorrelation,
+                transcription_text: transcriptText,
+              },
+            } as Record<string, unknown>;
+            delete snakeCasePayload.callbackCorrelation;
+            delete snakeCasePayload.transcript;
+            return snakeCasePayload;
           },
-        } as Record<string, unknown>;
-        delete snakeCasePayload.callbackCorrelation;
-        delete snakeCasePayload.transcript;
-
-        const callbackResponse = await apiRequest(request, {
-          method: 'POST',
-          path: seeded.context.paths.inboundWebhook,
-          headers: {
-            ...seeded.adminHeaders,
-            ...buildSignedWebhookHeaders(
-              snakeCasePayload,
-              testInfo,
-              'e4-automate-api-101-callback',
-            ),
-          },
-          data: snakeCasePayload,
         });
 
         expect(callbackResponse.status()).toBe(200);
-        const callbackBody = await callbackResponse.json();
         expect(hasRequiredEnvelopeKeys(callbackBody)).toBe(true);
         expect(callbackBody).toMatchObject({
           ok: true,
@@ -96,13 +78,14 @@ test.describe(
           },
         });
 
-        const detailResponse = await apiRequest(request, {
-          method: 'GET',
-          path: `${seeded.context.paths.threads}/${seeded.threadId}`,
-          headers: seeded.operatorHeaders,
+        const {
+          response: detailResponse,
+          body: detailBody,
+        } = await fetchStoryE4ThreadDetail({
+          request,
+          seeded,
         });
         expect(detailResponse.status()).toBe(200);
-        const detailBody = await detailResponse.json();
         expect(hasRequiredEnvelopeKeys(detailBody)).toBe(true);
         expect(detailBody).toMatchObject({
           ok: true,
@@ -125,53 +108,33 @@ test.describe(
     test(
       '[E4-AUTOMATE-API-102][P1] callback correlation thread scope mismatches are refused deterministically with no transcription timeline mutation @P1',
       async ({ request }, testInfo) => {
-        const seeded = await seedStoryE4VoicemailWithCallbackCorrelation({
+        const seeded = await seedStoryE4VoicemailScenario({
           request,
           testInfo,
-          numberMappingLabel: 'Story e.4 automate api-102 mapped number',
-          neighborId: 'neighbor-connectshyft-e4-automate-api-102',
-          inboundNumberId: 'cs-inbound-e4-automate-api-102',
-          outboundNumberId: 'cs-outbound-e4-automate-api-102',
-          seedLabel: 'e4-automate-api-102-seed',
-          providerEventNamespace: 'provider-event-e4-automate-api-seed',
-          webhookHeaderLabel: 'e4-automate-api-102-seed',
+          suite: 'automate-api',
+          scenarioId: '102',
         });
 
-        const callbackPayload = buildStoryE4TranscriptionCallbackPayload({
-          context: seeded.context,
-          neighborId: seeded.context.neighborIds.transcriptionTarget,
-          threadId: seeded.threadId,
-          callbackCorrelation: seeded.callbackCorrelation,
-          transcriptText: 'Thread scope mismatch should refuse callback processing.',
+        const {
+          response: callbackResponse,
+          body: callbackBody,
+        } = await postStoryE4TranscriptionCallback({
+          request,
+          seeded,
           testInfo,
+          transcriptText: 'Thread scope mismatch should refuse callback processing.',
           label: 'e4-automate-api-102-callback',
           callbackEventNamespace: 'provider-event-e4-automate-api-callback',
-        });
-
-        const mismatchedScopePayload = {
-          ...callbackPayload,
-          callbackCorrelation: {
-            ...callbackPayload.callbackCorrelation,
-            threadId: `${seeded.threadId}-mismatch`,
-          },
-        };
-
-        const callbackResponse = await apiRequest(request, {
-          method: 'POST',
-          path: seeded.context.paths.inboundWebhook,
-          headers: {
-            ...seeded.adminHeaders,
-            ...buildSignedWebhookHeaders(
-              mismatchedScopePayload as Record<string, unknown>,
-              testInfo,
-              'e4-automate-api-102-callback',
-            ),
-          },
-          data: mismatchedScopePayload,
+          mutatePayload: (callbackPayload) => ({
+            ...callbackPayload,
+            callbackCorrelation: {
+              ...callbackPayload.callbackCorrelation,
+              threadId: `${seeded.threadId}-mismatch`,
+            },
+          }),
         });
 
         expect(callbackResponse.status()).toBe(200);
-        const callbackBody = await callbackResponse.json();
         expect(hasRequiredEnvelopeKeys(callbackBody)).toBe(true);
         expect(callbackBody).toMatchObject({
           ok: false,
@@ -189,20 +152,20 @@ test.describe(
           },
         });
 
-        const detailResponse = await apiRequest(request, {
-          method: 'GET',
-          path: `${seeded.context.paths.threads}/${seeded.threadId}`,
-          headers: seeded.operatorHeaders,
+        const {
+          response: detailResponse,
+          body: detailBody,
+        } = await fetchStoryE4ThreadDetail({
+          request,
+          seeded,
         });
         expect(detailResponse.status()).toBe(200);
-        const detailBody = await detailResponse.json();
-        const timeline = Array.isArray(detailBody?.data?.thread?.timeline)
-          ? (detailBody.data.thread.timeline as Array<{ eventName?: string }>)
-          : [];
-        const transcriptionEvents = timeline.filter(
-          (entry) => entry.eventName === seeded.context.eventNames.transcriptionAttached,
-        );
-        expect(transcriptionEvents.length).toBe(0);
+        expect(
+          countStoryE4TimelineEvents(
+            detailBody,
+            seeded.context.eventNames.transcriptionAttached,
+          ),
+        ).toBe(0);
       },
     );
   },

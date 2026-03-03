@@ -65,6 +65,38 @@ type StoryE4TranscriptionCallbackInput = {
   callbackEventNamespace: string;
 };
 
+type StoryE4ApiSuite = 'atdd-api' | 'automate-api';
+
+type StoryE4ScenarioSeedInput = {
+  request: RequestContext;
+  testInfo: TestInfo;
+  suite: StoryE4ApiSuite;
+  scenarioId: string;
+  numberMappingLabel?: string;
+  neighborId?: string;
+  inboundNumberId?: string;
+  outboundNumberId?: string;
+  seedLabel?: string;
+  providerEventNamespace?: string;
+  webhookHeaderLabel?: string;
+};
+
+type StoryE4PostTranscriptionCallbackInput = {
+  request: RequestContext;
+  seeded: StoryE4SeededVoicemailContext;
+  testInfo: TestInfo;
+  transcriptText: string;
+  label: string;
+  callbackEventNamespace: string;
+  neighborId?: string;
+  threadId?: string;
+  callbackCorrelation?: StoryE4SeededVoicemailContext['callbackCorrelation'];
+  signatureLabel?: string;
+  mutatePayload?: (
+    payload: ReturnType<typeof buildStoryE4TranscriptionCallbackPayload>,
+  ) => Record<string, unknown>;
+};
+
 export const bootstrapStoryE4 = async ({
   request,
   numberMappingLabel,
@@ -309,4 +341,121 @@ export const seedStoryE4VoicemailWithCallbackCorrelation = async ({
     seedResponseBody,
     callbackCorrelation,
   };
+};
+
+const buildStoryE4ScenarioToken = (
+  suite: StoryE4ApiSuite,
+  scenarioId: string,
+): string => `${suite}-${scenarioId}`;
+
+export const seedStoryE4VoicemailScenario = async ({
+  request,
+  testInfo,
+  suite,
+  scenarioId,
+  numberMappingLabel,
+  neighborId,
+  inboundNumberId,
+  outboundNumberId,
+  seedLabel,
+  providerEventNamespace,
+  webhookHeaderLabel,
+}: StoryE4ScenarioSeedInput): Promise<StoryE4SeededVoicemailContext> => {
+  const scenarioToken = buildStoryE4ScenarioToken(suite, scenarioId);
+  return seedStoryE4VoicemailWithCallbackCorrelation({
+    request,
+    testInfo,
+    numberMappingLabel:
+      numberMappingLabel ?? `Story e.4 mapped number (${scenarioToken})`,
+    neighborId: neighborId ?? `neighbor-connectshyft-e4-${scenarioToken}`,
+    inboundNumberId: inboundNumberId ?? `cs-inbound-e4-seed-${scenarioToken}`,
+    outboundNumberId: outboundNumberId ?? `cs-outbound-e4-seed-${scenarioToken}`,
+    seedLabel: seedLabel ?? `e4-seed-${scenarioToken}`,
+    providerEventNamespace:
+      providerEventNamespace ?? `provider-event-e4-${suite}-seed`,
+    webhookHeaderLabel: webhookHeaderLabel ?? `e4-seed-${scenarioToken}`,
+  });
+};
+
+export const postStoryE4TranscriptionCallback = async ({
+  request,
+  seeded,
+  testInfo,
+  transcriptText,
+  label,
+  callbackEventNamespace,
+  neighborId,
+  threadId,
+  callbackCorrelation,
+  signatureLabel,
+  mutatePayload,
+}: StoryE4PostTranscriptionCallbackInput): Promise<{
+  payload: Record<string, unknown>;
+  response: Awaited<ReturnType<typeof apiRequest>>;
+  body: Record<string, unknown>;
+}> => {
+  const basePayload = buildStoryE4TranscriptionCallbackPayload({
+    context: seeded.context,
+    neighborId: neighborId ?? seeded.context.neighborIds.transcriptionTarget,
+    threadId: threadId ?? seeded.threadId,
+    callbackCorrelation: callbackCorrelation ?? seeded.callbackCorrelation,
+    transcriptText,
+    testInfo,
+    label,
+    callbackEventNamespace,
+  });
+  const payload = mutatePayload
+    ? mutatePayload(basePayload)
+    : (basePayload as Record<string, unknown>);
+
+  const response = await apiRequest(request, {
+    method: 'POST',
+    path: seeded.context.paths.inboundWebhook,
+    headers: {
+      ...seeded.adminHeaders,
+      ...buildSignedWebhookHeaders(payload, testInfo, signatureLabel ?? label),
+    },
+    data: payload,
+  });
+  const body = (await response.json()) as Record<string, unknown>;
+  return {
+    payload,
+    response,
+    body,
+  };
+};
+
+export const fetchStoryE4ThreadDetail = async ({
+  request,
+  seeded,
+  threadId,
+}: {
+  request: RequestContext;
+  seeded: StoryE4SeededVoicemailContext;
+  threadId?: string;
+}): Promise<{
+  response: Awaited<ReturnType<typeof apiRequest>>;
+  body: Record<string, unknown>;
+}> => {
+  const resolvedThreadId = threadId ?? seeded.threadId;
+  const response = await apiRequest(request, {
+    method: 'GET',
+    path: `${seeded.context.paths.threads}/${resolvedThreadId}`,
+    headers: seeded.operatorHeaders,
+  });
+  const body = (await response.json()) as Record<string, unknown>;
+  return {
+    response,
+    body,
+  };
+};
+
+export const countStoryE4TimelineEvents = (
+  detailBody: Record<string, unknown>,
+  eventName: string,
+): number => {
+  const timeline = Array.isArray((detailBody.data as { thread?: { timeline?: unknown[] } } | undefined)?.thread?.timeline)
+    ? ((detailBody.data as { thread?: { timeline?: Array<{ eventName?: string }> } }).thread?.timeline ?? [])
+    : [];
+  return timeline.filter((entry) => entry.eventName === eventName).length;
 };

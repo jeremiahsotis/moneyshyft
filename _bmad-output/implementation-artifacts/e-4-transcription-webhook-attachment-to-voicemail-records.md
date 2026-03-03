@@ -1,6 +1,6 @@
 # Story e.4: Transcription Webhook Attachment to Voicemail Records
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

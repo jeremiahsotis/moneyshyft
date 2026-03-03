@@ -15,6 +15,7 @@ type StoryE4ContextOverrides = {
   userId?: string;
   correlationId?: string;
   csrfToken?: string;
+  isolationToken?: string;
 };
 
 type StoryE4HeaderOverrides = {
@@ -95,7 +96,7 @@ const buildStoryE4Numbers = (token: string): StoryE4Context['numbers'] => {
 export function createStoryE4Context(
   overrides: StoryE4ContextOverrides = {},
 ): StoryE4Context {
-  const isolationToken = buildStoryE4IsolationToken();
+  const isolationToken = overrides.isolationToken ?? buildStoryE4IsolationToken();
 
   return {
     storyId: 'e-4',
