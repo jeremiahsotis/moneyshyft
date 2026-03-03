@@ -1,0 +1,31 @@
+{
+  "dimension": "isolation",
+  "score": 91,
+  "max_score": 100,
+  "grade": "A-",
+  "violations": [
+    {
+      "file": "tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.core.cases.ts",
+      "line": 23,
+      "severity": "MEDIUM",
+      "category": "no-explicit-teardown",
+      "description": "Scenarios rely on idempotent setup and per-test deterministic neighbor IDs, but do not explicitly tear down created mapping/thread artifacts.",
+      "suggestion": "Add optional cleanup/reset helper for persistent environments while keeping current deterministic suffixing.",
+      "code_snippet": "test.beforeEach(async (...) => { await mapStoryE2InboundNumber(...); })"
+    }
+  ],
+  "passed_checks": 19,
+  "failed_checks": 1,
+  "total_checks": 20,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 1,
+    "LOW": 0
+  },
+  "recommendations": [
+    "Keep deterministic per-test neighbor suffixing as the baseline isolation strategy",
+    "Introduce teardown/reset hooks only for long-lived shared environments",
+    "Retain idempotent [200,201] setup response tolerance"
+  ],
+  "summary": "Isolation is materially improved by per-test neighbor IDs and helper extraction; only teardown in persistent environments remains a moderate concern."
+}

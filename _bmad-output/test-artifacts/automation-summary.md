@@ -3445,3 +3445,187 @@ lastSaved: '2026-03-03T15:20:19Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality and maintainability scoring of the generated e.2 automate suite.
 - `[TR] Trace Requirements` to map e.2 AC coverage across ATDD and automate evidence.
+
+## Story e.3 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.md`
+  - Existing ATDD files found for Story e.3:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.atdd.spec.ts`
+
+### Context Loaded
+- Source and route context loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/modules/connectshyft/inboundVoice.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts`
+- Existing fixture/factory assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryE3.fixture.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryE3Factory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/helpers/connectShyftWebhookTestHelpers.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/helpers/apiClient.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils and tooling:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+
+### Browser Exploration
+- `playwright-cli` is installed (`1.59.0-alpha-1771104257000`).
+- Attempted exploration session:
+  - `playwright-cli -s=tea-automate-e3-1772560010 open http://127.0.0.1:5174/app/connectshyft/threads`
+- Result:
+  - page navigation failed with `net::ERR_CONNECTION_REFUSED` (frontend not reachable at probe time)
+  - session was closed cleanly with `playwright-cli -s=tea-automate-e3-1772560010 close`
+- Fallback applied: source/artifact-driven target discovery.
+
+## Story e.3 Run - Step 2: Identify Automation Targets
+
+### Acceptance Criteria to Target Mapping
+- AC1 expansion target:
+  - replay-safe duplicate suppression for inbound voice events after first accepted voicemail side effects.
+- AC2 expansion target:
+  - explicit `voice.fallback` event enforcement for active-thread context.
+  - closed-thread voicemail ingress remains fail-closed to intake fallback.
+- AC3/AC4 guardrail expansion target:
+  - no voicemail artifact/transcription writes on fallback routes.
+  - lifecycle reset invariants preserved on closed-thread inbound voice fallback paths.
+
+### Selected Test Levels
+- **API** (primary): webhook routing, replay safety, lifecycle invariants, artifact side-effect suppression.
+- **E2E** (secondary): end-to-end API journey validation for duplicate suppression and closed-thread fail-closed behavior.
+
+### Priority Assignment
+- P0:
+  - duplicate inbound voice replay-safe suppression
+- P1:
+  - explicit fallback routing on active thread
+  - closed-thread voicemail fail-closed behavior with no artifact/transcription side effects
+
+### Coverage Plan
+- API target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.automate.api.spec.ts`
+- E2E target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.automate.spec.ts`
+- Scope: `critical-paths`
+
+## Story e.3 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-03-03T17-49-53Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-03-03T17-49-53Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-03-03T17-49-53Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 3`
+- E2E subprocess status: `success: true`, `test_count: 2`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed in one run for both levels.
+- Sequential equivalent would require two independent generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story e.3 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.automate.api.spec.ts`
+- `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.automate.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper assets:
+  - `tests/support/fixtures/connectShyftStoryE3.fixture.ts`
+  - `tests/support/factories/connectShyftStoryE3Factory.ts`
+  - `tests/support/helpers/connectShyftWebhookTestHelpers.ts`
+  - `tests/support/helpers/apiClient.ts`
+- New shared fixture files created: none.
+
+### Summary Metrics
+- Total tests generated: `5`
+  - API tests: `3` (1 file)
+  - E2E tests: `2` (1 file)
+- Priority coverage:
+  - P0: `2`
+  - P1: `3`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-03-03T17-49-53Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-03-03T17-49-53Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-03-03T17-49-53Z.json`
+  - `/tmp/tea-automate-summary-2026-03-03T17-49-53Z.json`
+- Persisted under test artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-03-03T17-49-53Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-03-03T17-49-53Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-03-03T17-49-53Z.json`
+
+## Story e.3 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated suite parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.automate.api.spec.ts tests/e2e/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.automate.spec.ts`
+  - Result: passed (`5` tests discovered in `2` files).
+- Generated suite execution validation:
+  - `npm run test:e2e -- tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.automate.api.spec.ts tests/e2e/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.automate.spec.ts`
+  - Result: `5 passed`.
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) detected.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
+  - no `try/catch` flow-control anti-pattern detected.
+- CLI session cleanup:
+  - browser exploration session was closed cleanly.
+- Temp artifact storage:
+  - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-temp`.
+
+### Key Assumptions
+- Story e.3 webhook behavior remains available at:
+  - `/api/v1/connectshyft/webhooks/inbound`
+- ConnectShyft test harness headers (`x-test-connectshyft-*`) remain enabled in test runtime.
+- Story e.3 fixture/factory contracts remain source-of-truth for deterministic tenant/orgUnit/provider routing.
+
+### Risks
+- Browser exploration could not load local frontend at `http://127.0.0.1:5174` during probe, so selector validation relied on source/artifact analysis.
+- E2E automate suite is API-journey-centric (consistent with current platform test pattern) rather than browser interaction-centric for this backend-focused story.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality and maintainability scoring of the generated e.3 automate suite.
+- `[TR] Trace Requirements` to map e.3 acceptance criteria across ATDD and automate evidence.

@@ -1,0 +1,36 @@
+{
+  "dimension": "coverage",
+  "score": 94,
+  "max_score": 100,
+  "grade": "A-",
+  "violations": [
+    {
+      "file": "tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.core.cases.ts",
+      "line": 213,
+      "severity": "LOW",
+      "category": "loose-existing-thread-count-assertion",
+      "description": "Existing-thread scenario validates timeline order and presence but uses a non-strict count assertion (>0).",
+      "suggestion": "Capture baseline count pre-webhook and assert +1 post-webhook for tighter cardinality guarantees.",
+      "code_snippet": "expect(inboundSmsEvents.length).toBeGreaterThan(0);"
+    }
+  ],
+  "passed_checks": 21,
+  "failed_checks": 1,
+  "total_checks": 22,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 1
+  },
+  "coverage_gaps": {
+    "untested_endpoints": [],
+    "untested_user_paths": [],
+    "missing_error_scenarios": []
+  },
+  "recommendations": [
+    "Retain replay duplicate suppression cardinality check introduced in E2-ATDD-API-003",
+    "Tighten existing-thread event count to strict delta where practical",
+    "Keep refusal and concurrency scenarios as story-level baseline coverage"
+  ],
+  "summary": "Coverage is strong across AC1-AC4 plus refusal and concurrency contracts; only one low-severity assertion-tightness opportunity remains."
+}

@@ -1,0 +1,40 @@
+{
+  "dimension": "isolation",
+  "score": 87,
+  "max_score": 100,
+  "grade": "B+",
+  "violations": [
+    {
+      "file": "tests/support/factories/connectShyftStoryE2Factory.ts",
+      "line": 82,
+      "severity": "MEDIUM",
+      "category": "shared-synthetic-identifiers",
+      "description": "Tenant/orgUnit/neighbor defaults are static across tests, which can accumulate state in long-lived environments.",
+      "suggestion": "Parameterize identifiers with deterministic per-test suffixes for all mutable entities.",
+      "code_snippet": "tenantId: overrides.tenantId ?? 'tenant-connectshyft-e2'"
+    },
+    {
+      "file": "tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts",
+      "line": 30,
+      "severity": "MEDIUM",
+      "category": "no-explicit-teardown",
+      "description": "Tests create mappings/threads but do not perform explicit teardown, relying on idempotent behavior and tolerant assertions.",
+      "suggestion": "Add cleanup hooks or reset helpers for created thread/mapping artifacts when running against persistent environments.",
+      "code_snippet": "const mappingResponse = await apiRequest(request, { method: 'POST', ... })"
+    }
+  ],
+  "passed_checks": 18,
+  "failed_checks": 2,
+  "total_checks": 20,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 2,
+    "LOW": 0
+  },
+  "recommendations": [
+    "Introduce lightweight teardown helpers for story e.2 synthetic artifacts",
+    "Use per-test deterministic context suffixing for static fixture IDs where feasible",
+    "Keep idempotent response handling ([200,201]) for resilient setup"
+  ],
+  "summary": "Isolation is generally good for CI-style ephemeral runs, with moderate risk in persistent environments due to static fixture IDs and missing explicit teardown."
+}

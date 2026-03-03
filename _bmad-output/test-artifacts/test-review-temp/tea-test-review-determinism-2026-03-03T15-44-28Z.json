@@ -1,0 +1,21 @@
+{
+  "dimension": "determinism",
+  "score": 95,
+  "max_score": 100,
+  "grade": "A",
+  "violations": [],
+  "passed_checks": 24,
+  "failed_checks": 0,
+  "total_checks": 24,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 0
+  },
+  "recommendations": [
+    "Keep deterministic token/provider-event generation for all new story e.2 scenarios",
+    "Preserve explicit ordering checks using occurredAtUtc and eventId tie-breaks",
+    "Continue avoiding timing-based waits in API contract tests"
+  ],
+  "summary": "Determinism is strong: no hard waits, no random generators in test logic, and stable replay/concurrency assertions."
+}

@@ -1,0 +1,58 @@
+{
+  "dimension": "maintainability",
+  "score": 78,
+  "max_score": 100,
+  "grade": "C",
+  "violations": [
+    {
+      "file": "tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "file-too-long",
+      "description": "Spec file is 595 lines, exceeding the TEA maintainability target for focused review and change safety.",
+      "suggestion": "Split by behavior cluster (ensure/create, duplicate suppression, concurrency, refusal).",
+      "code_snippet": "// 595-line monolithic story spec"
+    },
+    {
+      "file": "tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts",
+      "line": 110,
+      "severity": "MEDIUM",
+      "category": "duplicated-assertion-block",
+      "description": "Durability side-effect assertion block is duplicated in multiple scenarios.",
+      "suggestion": "Extract an assertion helper (e.g., assertDurabilityEnvelope) and reuse it.",
+      "code_snippet": "expect(...sideEffects)... expect(...transaction)... if (durableSideEffects) ..."
+    },
+    {
+      "file": "tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts",
+      "line": 30,
+      "severity": "MEDIUM",
+      "category": "repeated-setup-boilerplate",
+      "description": "Mapping + signed webhook setup is repeated across scenarios with minor variation.",
+      "suggestion": "Create reusable setup helpers/builders for mapping and webhook request dispatch.",
+      "code_snippet": "await apiRequest(request, { method: 'POST', path: storyE2Context.paths.numbersCollection, ... })"
+    },
+    {
+      "file": "tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts",
+      "line": 43,
+      "severity": "LOW",
+      "category": "inline-literal-noise",
+      "description": "Long inline IDs/labels are repeated and increase visual noise across tests.",
+      "suggestion": "Centralize repeated test-id labels in story-local constants.",
+      "code_snippet": "'e2-atdd-api-001-message' / 'e2-atdd-api-005-message-a'"
+    }
+  ],
+  "passed_checks": 14,
+  "failed_checks": 4,
+  "total_checks": 18,
+  "violation_summary": {
+    "HIGH": 1,
+    "MEDIUM": 2,
+    "LOW": 1
+  },
+  "recommendations": [
+    "Split the 595-line spec into smaller behavior-focused files",
+    "Extract reusable assertion/setup helpers for webhook and durability checks",
+    "Consolidate repeated scenario labels and deterministic token keys"
+  ],
+  "summary": "Maintainability is the main quality constraint due to file size and duplicated setup/assertion logic."
+}

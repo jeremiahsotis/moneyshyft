@@ -1,0 +1,40 @@
+{
+  "dimension": "determinism",
+  "score": 94,
+  "max_score": 100,
+  "grade": "A-",
+  "violations": [
+    {
+      "file": "tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts",
+      "line": 120,
+      "severity": "LOW",
+      "category": "conditional-assertion-branch",
+      "description": "Conditional assertion branch changes expected contract path by runtime durability state.",
+      "suggestion": "Extract a helper that validates both durability modes from a single expected-shape table.",
+      "code_snippet": "if (durableSideEffects) { ... } else { ... }"
+    },
+    {
+      "file": "tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts",
+      "line": 395,
+      "severity": "LOW",
+      "category": "conditional-assertion-branch",
+      "description": "Duplicate conditional branch appears in a second scenario, increasing branching surface.",
+      "suggestion": "Share one assertion helper for side-effect durability to remove duplicate branch logic.",
+      "code_snippet": "if (durableSideEffects) { ... } else { ... }"
+    }
+  ],
+  "passed_checks": 22,
+  "failed_checks": 2,
+  "total_checks": 24,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 2
+  },
+  "recommendations": [
+    "Keep deterministic token/provider-event generation as the default strategy for all new scenarios",
+    "Consolidate durability branch assertions into one helper to reduce duplicated conditional flows",
+    "Retain explicit timeline ordering checks using occurredAtUtc + eventId tie-break"
+  ],
+  "summary": "Determinism is strong with no hard waits, random generators, or timing sleeps; only minor duplicated conditional assertion branches were found."
+}

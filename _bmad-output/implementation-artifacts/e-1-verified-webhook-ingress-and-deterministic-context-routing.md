@@ -1,6 +1,6 @@
 # Story e.1: Verified Webhook Ingress and Deterministic Context Routing
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,8 +25,8 @@ so that spoofed or misrouted events cannot create operational artifacts.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Webhook rejection and misrouting outcomes must be explicit and auditable so operators can diagnose ingestion failures quickly.
-- Real-User Validation Evidence: Pending implementation. Validate signature-fail, mapping-miss, and valid-ingress paths with provider adapter fixtures.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-03-03 targeted validation run via `npm run test:e2e -- tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing*.spec.ts tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing*.spec.ts` (pass: 16/16; includes signature-fail, mapping-miss, valid-ingress, and replay-safe duplicate suppression paths).
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story enforces webhook security and routing determinism; no role-admin workflow is introduced.

@@ -77,6 +77,17 @@ import {
   mapConnectShyftInboundSmsWebhookToDomainEvent,
 } from '../../../modules/connectshyft/inboundSms';
 import {
+  CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
+  CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
+  CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_QUEUE_NAME,
+  CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME,
+  buildConnectShyftInboundVoiceCanonicalPayload,
+  buildConnectShyftVoicemailTranscriptionRequest,
+  extractConnectShyftInboundVoiceNeighborId,
+  mapConnectShyftInboundVoiceWebhookToDomainEvent,
+  resolveConnectShyftInboundVoiceRouting,
+} from '../../../modules/connectshyft/inboundVoice';
+import {
   listConnectShyftCanonicalEvents,
   recordConnectShyftCanonicalEvent,
   type ConnectShyftCanonicalEventRecord,
@@ -117,8 +128,9 @@ const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
   closed: 'connectshyft.thread.closed',
   reopenedByUser: 'connectshyft.thread_reopened_by_user',
   inboundSmsAppended: CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME,
-  inboundVoiceVoicemail: 'connectshyft.inbound.voice_voicemail_recorded',
-  inboundVoiceFallback: 'connectshyft.inbound.voice_fallback_recorded',
+  inboundVoiceVoicemail: CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
+  inboundVoiceFallback: CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
+  voicemailTranscriptionRequested: CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME,
 } as const;
 const CONNECTSHYFT_OUTBOUND_EVENT_NAMES = {
   callDispatched: 'connectshyft.thread.outbound_call_dispatched',
@@ -1237,14 +1249,21 @@ const buildLifecycleThreadResponse = (
 
 const buildThreadFromDetailRecord = (
   detail: ConnectShyftThreadDetailRecord,
+  input: {
+    neighborId?: string | null;
+  } = {},
 ): ConnectShyftThread => {
   const now = nowIsoUtc();
+  const normalizedNeighborId = normalizeConnectShyftNeighborIdentifier(input.neighborId || '');
+  const neighborId = normalizedNeighborId && isValidConnectShyftNeighborIdentifier(normalizedNeighborId)
+    ? normalizedNeighborId
+    : '';
 
   return {
     threadId: detail.threadId,
     tenantId: detail.tenantId,
     orgUnitId: detail.orgUnitId,
-    neighborId: `neighbor-${detail.threadId}`,
+    neighborId,
     source: 'VOICE',
     state: detail.state,
     lastInboundCsNumberId: detail.lastInboundCsNumberId,
@@ -5109,6 +5128,11 @@ const performOutboundAction = async (
     });
     return;
   }
+  const resolvedThreadNeighborId = await resolveNeighborIdForThreadCorrelation({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId,
+  });
 
   const outboundLifecycleAction = resolveOutboundLifecycleAction(outboundAction);
   const priorState = lifecycleContext.currentState;
@@ -5126,7 +5150,9 @@ const performOutboundAction = async (
   let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
 
   if (lifecycleContext.detail) {
-    thread = buildThreadFromDetailRecord(lifecycleContext.detail);
+    thread = buildThreadFromDetailRecord(lifecycleContext.detail, {
+      neighborId: resolvedThreadNeighborId,
+    });
   } else {
     thread = buildSyntheticThread({
       tenantId: context.tenantId,
@@ -5136,7 +5162,7 @@ const performOutboundAction = async (
       nextState: lifecycleContext.currentState,
       actorUserId,
       fallbackSummary: lifecycleContext.syntheticThread?.summary,
-      fallbackNeighborId: lifecycleContext.syntheticThread?.neighborId,
+      fallbackNeighborId: resolvedThreadNeighborId || lifecycleContext.syntheticThread?.neighborId,
       fallbackLastInboundCsNumberId: lifecycleContext.syntheticThread?.lastInboundCsNumberId,
       fallbackPreferredOutboundCsNumberId: lifecycleContext.syntheticThread?.preferredOutboundCsNumberId,
       fallbackEscalationStage: lifecycleContext.syntheticThread?.escalationStage,
@@ -6256,6 +6282,39 @@ const handleInboundWebhook = async (
   }
 
   const isVoiceEvent = normalizedEventType.startsWith('voice') || normalizedEventType.includes('call');
+  const extractedVoiceNeighborId = normalizeConnectShyftNeighborIdentifier(
+    extractConnectShyftInboundVoiceNeighborId(req.body) || '',
+  );
+  const normalizedExtractedVoiceNeighborId = extractedVoiceNeighborId
+    && isValidConnectShyftNeighborIdentifier(extractedVoiceNeighborId)
+    ? extractedVoiceNeighborId
+    : null;
+  const correlatedVoiceNeighborId = normalizedExtractedVoiceNeighborId
+    ? null
+    : await resolveNeighborIdForThreadCorrelation({
+      tenantId,
+      orgUnitId,
+      threadId,
+    });
+  const candidateVoiceNeighborId = normalizedExtractedVoiceNeighborId || correlatedVoiceNeighborId;
+  const existingVoiceActiveThreadId = candidateVoiceNeighborId
+    ? await resolveExistingActiveThreadIdForScope({
+      tenantId,
+      orgUnitId,
+      neighborId: candidateVoiceNeighborId,
+    })
+    : null;
+  const shouldResolveVoiceThreadByNeighbor = !isConnectedCallEvent && correlation.source === 'number_mapping';
+  const resolvedVoiceThreadId = shouldResolveVoiceThreadByNeighbor && existingVoiceActiveThreadId
+    ? existingVoiceActiveThreadId
+    : threadId;
+  const resolvedVoiceNeighborId = await resolveNeighborIdForThreadCorrelation({
+    tenantId,
+    orgUnitId,
+    threadId: resolvedVoiceThreadId,
+  });
+  const voiceNeighborId = resolvedVoiceNeighborId || candidateVoiceNeighborId;
+
   const callPolicy = parseOutboundCallRequestPolicy(req);
   const callTransport = callPolicy.transport || null;
   const canApplyAutoClaimForTransport = callTransport === CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT;
@@ -6281,7 +6340,7 @@ const handleInboundWebhook = async (
   lifecycleContext = await resolveLifecycleContext({
     tenantId,
     orgUnitId,
-    threadId,
+    threadId: resolvedVoiceThreadId,
     actorUserId: null,
   });
   threadState = lifecycleContext.currentState;
@@ -6295,7 +6354,7 @@ const handleInboundWebhook = async (
       sideEffectsPersisted: false,
     };
 
-    if (!lifecycleContext || !tenantId || !orgUnitId || !threadId || !lifecycleContext.currentState) {
+    if (!lifecycleContext || !tenantId || !orgUnitId || !resolvedVoiceThreadId || !lifecycleContext.currentState) {
       autoClaim.reason = 'thread_not_found';
     } else if (lifecycleContext.currentState !== 'UNCLAIMED') {
       autoClaim.reason = `state_${lifecycleContext.currentState.toLowerCase()}`;
@@ -6309,7 +6368,7 @@ const handleInboundWebhook = async (
         tenantId,
         orgUnitId,
         actorUserId,
-        threadId,
+        threadId: resolvedVoiceThreadId,
         priorState: 'UNCLAIMED',
         newState: 'CLAIMED',
         action: 'auto_claim_connected_call',
@@ -6318,7 +6377,7 @@ const handleInboundWebhook = async (
         actorRoles: ['SYSTEM_ADMIN'],
         tenantId,
         orgUnitId,
-        threadId,
+        threadId: resolvedVoiceThreadId,
         actorUserId,
         currentState: 'UNCLAIMED',
         nextState: 'CLAIMED',
@@ -6339,7 +6398,7 @@ const handleInboundWebhook = async (
           data: {
             tenantId,
             orgUnitId,
-            threadId,
+            threadId: resolvedVoiceThreadId,
             eventType,
           },
         });
@@ -6358,45 +6417,105 @@ const handleInboundWebhook = async (
     }
   }
 
+  if (!thread && lifecycleContext?.detail) {
+    thread = buildThreadFromDetailRecord(lifecycleContext.detail, {
+      neighborId: voiceNeighborId,
+    });
+  }
+
   let routingDecision: 'voicemail_only' | 'intake_fallback' | 'accepted' = 'accepted';
   let timelineEventName: string =
     autoClaim?.applied === true
       ? CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.claimed
       : CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceVoicemail;
-  if (normalizedEventType === 'voice.fallback' || normalizedEventType === 'voicefallback') {
-    timelineEventName = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceFallback;
-    routingDecision = 'intake_fallback';
-  } else if (isVoiceEvent && !isConnectedCallEvent) {
-    if (!threadState || threadState === 'CLOSED') {
-      timelineEventName = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceFallback;
-      routingDecision = 'intake_fallback';
-    } else {
-      timelineEventName = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceVoicemail;
-      routingDecision = 'voicemail_only';
-    }
+  let voiceRoutingPolicy: { claimedMode?: 'orgunit_configured_mode' } = {};
+  let voiceDomainEvent: ReturnType<typeof mapConnectShyftInboundVoiceWebhookToDomainEvent> | null = null;
+
+  if (isVoiceEvent && !isConnectedCallEvent) {
+    const routing = resolveConnectShyftInboundVoiceRouting({
+      normalizedEventType,
+      threadState,
+    });
+    timelineEventName = routing.eventName;
+    routingDecision = routing.routingDecision;
+    voiceRoutingPolicy = routing.routingPolicy;
+
+    voiceDomainEvent = mapConnectShyftInboundVoiceWebhookToDomainEvent({
+      webhookBody: req.body,
+      canonicalEventType: eventType,
+      eventName: routing.eventName,
+      routingDecision: routing.routingDecision,
+      providerEventId: correlation.providerEventId,
+      providerMessageId: correlation.providerMessageId,
+      providerLegId: correlation.providerLegId,
+      routingPolicy: routing.routingPolicy,
+    });
   }
+
+  const shouldCreateVoicemailArtifact = Boolean(
+    voiceDomainEvent && routingDecision !== 'intake_fallback',
+  );
+  const voicemailArtifactId = shouldCreateVoicemailArtifact
+    ? `vm-${normalizeRoutingSlug(resolvedVoiceThreadId)}-${normalizeRoutingSlug(
+      correlation.providerEventId
+      || correlation.providerLegId
+      || eventType,
+    )}`
+    : null;
+  const transcription = shouldCreateVoicemailArtifact && voicemailArtifactId
+    ? buildConnectShyftVoicemailTranscriptionRequest({
+      tenantId,
+      orgUnitId,
+      threadId: resolvedVoiceThreadId,
+      providerEventId: correlation.providerEventId,
+      providerLegId: correlation.providerLegId,
+      voicemailArtifactId,
+    })
+    : null;
+  const voicemailArtifact = shouldCreateVoicemailArtifact && voicemailArtifactId && voiceDomainEvent
+    ? {
+      artifactId: voicemailArtifactId,
+      ...voiceDomainEvent.inboundVoiceArtifact,
+    }
+    : null;
 
   const canonicalEvent = await recordCanonicalThreadEvent({
     tenantId,
     orgUnitId,
-    threadId,
+    threadId: resolvedVoiceThreadId,
     eventType,
-    payload: buildCanonicalPayloadForInboundWebhook({
-      eventType,
-      routingDecision,
-      threadState,
-      autoClaimApplied: autoClaim?.applied === true,
-    }),
+    payload: voiceDomainEvent
+      ? buildConnectShyftInboundVoiceCanonicalPayload({
+        domainEvent: voiceDomainEvent,
+        threadState,
+        autoClaimApplied: autoClaim?.applied === true,
+        voicemailArtifactId,
+        transcription,
+      })
+      : buildCanonicalPayloadForInboundWebhook({
+        eventType,
+        routingDecision,
+        threadState,
+        autoClaimApplied: autoClaim?.applied === true,
+      }),
     actorUserId: resolveWebhookActorUserId(req),
   });
+
+  const lifecycleEnsuredActiveThread = threadState === 'UNCLAIMED' || threadState === 'CLAIMED';
+  const responseThread = thread && voiceNeighborId
+    ? {
+      ...thread,
+      neighborId: voiceNeighborId,
+    }
+    : thread;
 
   success(res, {
     code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
     message: 'Inbound webhook accepted for processing',
     data: {
       sid: typeof req.body?.sid === 'string' ? req.body.sid : null,
-      from: typeof req.body?.from === 'string' ? req.body.from : null,
-      to: typeof req.body?.to === 'string' ? req.body.to : null,
+      from: voiceDomainEvent?.inboundVoiceArtifact.from || (typeof req.body?.from === 'string' ? req.body.from : null),
+      to: voiceDomainEvent?.inboundVoiceArtifact.to || (typeof req.body?.to === 'string' ? req.body.to : null),
       eventType,
       providerResolution: {
         ...providerSelection.providerResolution,
@@ -6405,9 +6524,10 @@ const handleInboundWebhook = async (
       correlation: {
         source: correlation.source,
         deterministic: true,
-        threadId,
+        threadId: resolvedVoiceThreadId,
         tenantId,
         orgUnitId,
+        ...(voiceNeighborId ? { neighborId: voiceNeighborId } : {}),
         providerLegId: correlation.providerLegId,
         providerMessageId: correlation.providerMessageId,
         providerEventId: correlation.providerEventId,
@@ -6423,13 +6543,26 @@ const handleInboundWebhook = async (
         providerBranchingInDomain: false,
       },
       canonicalEvent,
-      threadId,
+      threadId: resolvedVoiceThreadId,
       threadState,
-      thread,
+      thread: responseThread,
       lifecycle: {
+        ensuredActiveThread: lifecycleEnsuredActiveThread,
+        ...(lifecycleEnsuredActiveThread ? { reusedThreadId: resolvedVoiceThreadId } : {}),
         reopenedByInbound: false,
+        escalationResetApplied: false,
+        inactivityResetApplied: false,
         autoClaimedByConnectedEvent: autoClaim?.applied === true,
       },
+      ...(voiceRoutingPolicy.claimedMode
+        ? {
+            routingPolicy: {
+              claimedMode: voiceRoutingPolicy.claimedMode,
+            },
+          }
+        : {}),
+      ...(voicemailArtifact ? { voicemailArtifact } : {}),
+      ...(transcription ? { transcription } : {}),
       autoClaim,
       callPolicy: {
         transport: callTransport,
@@ -6439,16 +6572,20 @@ const handleInboundWebhook = async (
       timeline: {
         eventName: timelineEventName,
         routingDecision,
+        deterministicOrdering: true,
       },
       audit: {
         eventName: timelineEventName,
         metadata: {
           tenant_id: tenantId,
           org_unit_id: orgUnitId,
-          thread_id: threadId,
+          thread_id: resolvedVoiceThreadId,
+          neighbor_id: voiceNeighborId,
           thread_state: threadState,
           event_type: eventType,
           routing_decision: routingDecision,
+          voicemail_artifact_id: voicemailArtifactId,
+          transcription_queue: transcription?.queueName || null,
           auto_claim_attempted: autoClaim?.attempted === true,
           auto_claim_applied: autoClaim?.applied === true,
           auto_claim_reason: autoClaim?.reason || null,
@@ -6461,10 +6598,13 @@ const handleInboundWebhook = async (
         metadata: {
           tenant_id: tenantId,
           org_unit_id: orgUnitId,
-          thread_id: threadId,
+          thread_id: resolvedVoiceThreadId,
+          neighbor_id: voiceNeighborId,
           thread_state: threadState,
           event_type: eventType,
           routing_decision: routingDecision,
+          voicemail_artifact_id: voicemailArtifactId,
+          transcription_queue: transcription?.queueName || null,
           auto_claim_attempted: autoClaim?.attempted === true,
           auto_claim_applied: autoClaim?.applied === true,
           auto_claim_reason: autoClaim?.reason || null,
@@ -6472,6 +6612,22 @@ const handleInboundWebhook = async (
           reopened_by_inbound: false,
         },
       },
+      ...(transcription
+        ? {
+            transcriptionOutbox: {
+              eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.voicemailTranscriptionRequested,
+              queueName: CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_QUEUE_NAME,
+              metadata: {
+                tenant_id: tenantId,
+                org_unit_id: orgUnitId,
+                thread_id: resolvedVoiceThreadId,
+                voicemail_artifact_id: transcription.callbackCorrelation.voicemailArtifactId,
+                provider_event_id: transcription.callbackCorrelation.providerEventId,
+                provider_leg_id: transcription.callbackCorrelation.providerLegId,
+              },
+            },
+          }
+        : {}),
     },
   });
   return;

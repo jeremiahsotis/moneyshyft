@@ -148,6 +148,28 @@ const parsePreferredOutboundContext = (
   };
 };
 
+const hasVoicemailTimelineEvent = (payload: unknown): boolean => {
+  if (!Array.isArray(payload)) {
+    return false;
+  }
+
+  return payload.some((entry) => {
+    if (!entry || typeof entry !== 'object') {
+      return false;
+    }
+
+    const candidate = entry as {
+      eventName?: unknown;
+      event_name?: unknown;
+      type?: unknown;
+    };
+    const eventName = normalizeString(
+      candidate.eventName ?? candidate.event_name ?? candidate.type,
+    ).toLowerCase();
+    return eventName.includes('voicemail');
+  });
+};
+
 const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null => {
   if (!payload || typeof payload !== 'object') {
     return null;
@@ -171,6 +193,7 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
     preferredOutboundContext?: unknown;
     preferred_outbound_context?: unknown;
     voicemailIndicator?: unknown;
+    timeline?: unknown;
     summary?: unknown;
   };
 
@@ -202,7 +225,8 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
       candidate.preferredOutboundCsNumberId ?? candidate.preferred_outbound_cs_number_id,
     ),
     preferredOutboundContext,
-    voicemailIndicator: candidate.voicemailIndicator === true,
+    voicemailIndicator:
+      candidate.voicemailIndicator === true || hasVoicemailTimelineEvent(candidate.timeline),
     summary: normalizeString(candidate.summary),
   };
 };
