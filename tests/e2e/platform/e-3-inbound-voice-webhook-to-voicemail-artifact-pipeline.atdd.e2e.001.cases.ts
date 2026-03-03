@@ -1,17 +1,15 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '@playwright/test';
-import {
-  createStoryE3Context,
-  createStoryE3Headers,
-} from '../../support/factories/connectShyftStoryE3Factory';
+import { login } from '../../helpers/auth';
 import {
   buildSignedWebhookHeaders,
   hasRequiredEnvelopeKeys,
 } from '../../support/helpers/connectShyftWebhookTestHelpers';
 import {
+  bootstrapStoryE3E2E,
+  buildStoryE3ThreadDetailUrl,
   buildStoryE3VoicemailPayload,
   ensureThread,
-  mapInboundVoiceNumber,
 } from '../../support/helpers/connectShyftStoryE3TestHelpers';
 
 test.describe(
@@ -19,28 +17,10 @@ test.describe(
   () => {
     test(
       '[E3-ATDD-E2E-001][P0] end-to-end inbound voice webhook journey creates voicemail artifact on active thread timeline with deterministic context linkage @P0',
-      async ({ request }, testInfo) => {
-        const context = createStoryE3Context();
-        const operatorHeaders = createStoryE3Headers(context, {
-          role: 'ORGUNIT_MEMBER',
-          orgUnitMemberships: [context.orgUnitId],
-        });
-        const adminHeaders = createStoryE3Headers(context, {
-          role: 'ORGUNIT_ADMIN',
-          userId: context.adminUserId,
-          orgUnitMemberships: [context.orgUnitId],
-        });
-
-        await mapInboundVoiceNumber({
+      async ({ request, page }, testInfo) => {
+        const { context, operatorHeaders, adminHeaders } = await bootstrapStoryE3E2E({
           request,
-          path: context.paths.numbersCollection,
-          headers: adminHeaders,
-          payload: {
-            orgUnitId: context.orgUnitId,
-            providerNumberE164: context.numbers.mappedInbound,
-            label: 'Story e.3 inbound mapped voice number',
-            isActive: true,
-          },
+          numberMappingLabel: 'Story e.3 inbound mapped voice number',
         });
 
         const threadId = await ensureThread({
@@ -117,6 +97,23 @@ test.describe(
             },
           },
         });
+
+        await login(page);
+        const threadDetailRequest = page.waitForResponse(
+          (response) =>
+            response.url().includes(`/api/v1/connectshyft/threads/${threadId}`)
+            && response.request().method() === 'GET',
+        );
+        await page.goto(
+          buildStoryE3ThreadDetailUrl({
+            context,
+            threadId,
+            actorUserId: context.userId,
+          }),
+        );
+        await threadDetailRequest;
+        await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
+        await expect(page.getByTestId('connectshyft-voicemail-indicator')).toBeVisible();
       },
     );
   },

@@ -72,7 +72,7 @@ development_status:
   epic-e: in-progress
   e-1-verified-webhook-ingress-and-deterministic-context-routing: done
   e-2-inbound-sms-processing-with-active-thread-ensure: done
-  e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: review
+  e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: done
   e-4-transcription-webhook-attachment-to-voicemail-records: ready-for-dev
   e-5-replay-safe-webhook-receipt-ledger-and-retention-controls: ready-for-dev
   e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: ready-for-dev

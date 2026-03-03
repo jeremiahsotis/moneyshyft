@@ -1,5 +1,9 @@
 import { expect, type TestInfo } from '@playwright/test';
-import type { StoryE3Context } from '../factories/connectShyftStoryE3Factory';
+import {
+  createStoryE3Context,
+  createStoryE3Headers,
+  type StoryE3Context,
+} from '../factories/connectShyftStoryE3Factory';
 import { apiRequest } from './apiClient';
 import {
   deterministicProviderEventId,
@@ -26,6 +30,12 @@ type EnsureThreadPayload = {
 
 type VoiceWebhookEventType = 'voice.voicemail' | 'voice.fallback';
 
+type StoryE3E2EBootstrap = {
+  context: StoryE3Context;
+  operatorHeaders: Record<string, string>;
+  adminHeaders: Record<string, string>;
+};
+
 type StoryE3VoicemailPayloadInput = {
   context: StoryE3Context;
   neighborId: string;
@@ -36,6 +46,8 @@ type StoryE3VoicemailPayloadInput = {
   eventType?: VoiceWebhookEventType;
   voicemailDurationSeconds?: number;
 };
+
+const persistedActorUserIdCache = new Map<string, Promise<string>>();
 
 export const mapInboundVoiceNumber = async ({
   request,
@@ -58,6 +70,43 @@ export const mapInboundVoiceNumber = async ({
   expect(response.status()).toBe(201);
   const body = await response.json();
   expect(String(body?.code || '')).toBe('CONNECTSHYFT_NUMBER_MAPPING_SAVED');
+};
+
+export const bootstrapStoryE3E2E = async ({
+  request,
+  numberMappingLabel,
+}: {
+  request: RequestContext;
+  numberMappingLabel: string;
+}): Promise<StoryE3E2EBootstrap> => {
+  const context = createStoryE3Context();
+  const operatorHeaders = createStoryE3Headers(context, {
+    role: 'ORGUNIT_MEMBER',
+    orgUnitMemberships: [context.orgUnitId],
+  });
+  const adminHeaders = createStoryE3Headers(context, {
+    role: 'ORGUNIT_ADMIN',
+    userId: context.adminUserId,
+    orgUnitMemberships: [context.orgUnitId],
+  });
+
+  await mapInboundVoiceNumber({
+    request,
+    path: context.paths.numbersCollection,
+    headers: adminHeaders,
+    payload: {
+      orgUnitId: context.orgUnitId,
+      providerNumberE164: context.numbers.mappedInbound,
+      label: numberMappingLabel,
+      isActive: true,
+    },
+  });
+
+  return {
+    context,
+    operatorHeaders,
+    adminHeaders,
+  };
 };
 
 export const ensureThread = async ({
@@ -89,32 +138,74 @@ export const ensureThread = async ({
 export const resolvePersistedActorUserId = async (
   request: RequestContext,
 ): Promise<string> => {
-  const loginResponse = await apiRequest(request, {
-    method: 'POST',
-    path: '/api/v1/auth/login',
-    headers: {
-      cookie: '',
-    },
-    data: {
-      email: process.env.TEST_EMAIL || 'operator@example.com',
-      password: process.env.TEST_PASSWORD || 'SecurePass123!',
-      rememberMe: false,
-    },
+  const email = process.env.TEST_EMAIL || 'operator@example.com';
+  const password = process.env.TEST_PASSWORD || 'SecurePass123!';
+  const cacheKey = `${email}::${password}`;
+  const cachedResolution = persistedActorUserIdCache.get(cacheKey);
+
+  if (cachedResolution) {
+    return cachedResolution;
+  }
+
+  const resolution = (async () => {
+    const loginResponse = await apiRequest(request, {
+      method: 'POST',
+      path: '/api/v1/auth/login',
+      headers: {
+        cookie: '',
+      },
+      data: {
+        email,
+        password,
+        rememberMe: false,
+      },
+    });
+
+    expect(loginResponse.status()).toBe(200);
+
+    const loginBody = await loginResponse.json();
+    const user = loginBody?.user ?? loginBody?.data?.user ?? {};
+    const userId =
+      typeof user?.userId === 'string'
+        ? user.userId
+        : typeof user?.id === 'string'
+          ? user.id
+          : '';
+
+    expect(userId.length).toBeGreaterThan(0);
+    return userId;
+  })();
+
+  persistedActorUserIdCache.set(cacheKey, resolution);
+  try {
+    return await resolution;
+  } catch (error) {
+    persistedActorUserIdCache.delete(cacheKey);
+    throw error;
+  }
+};
+
+export const buildStoryE3ThreadDetailUrl = ({
+  context,
+  threadId,
+  actorUserId,
+  tenantRole = 'ORGUNIT_MEMBER',
+}: {
+  context: StoryE3Context;
+  threadId: string;
+  actorUserId: string;
+  tenantRole?: string;
+}): string => {
+  const params = new URLSearchParams({
+    flags: 'module:on,inbox:on,escalation:on,webhooks:on',
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    actorUserId,
+    tenantRole,
+    orgUnitMemberships: context.orgUnitId,
   });
 
-  expect(loginResponse.status()).toBe(200);
-
-  const loginBody = await loginResponse.json();
-  const user = loginBody?.user ?? loginBody?.data?.user ?? {};
-  const userId =
-    typeof user?.userId === 'string'
-      ? user.userId
-      : typeof user?.id === 'string'
-        ? user.id
-        : '';
-
-  expect(userId.length).toBeGreaterThan(0);
-  return userId;
+  return `${context.paths.threadDetailUi}/${threadId}?${params.toString()}`;
 };
 
 export const buildStoryE3VoicemailPayload = ({

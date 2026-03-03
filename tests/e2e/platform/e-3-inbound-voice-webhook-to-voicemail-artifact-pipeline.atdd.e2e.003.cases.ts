@@ -1,17 +1,13 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '@playwright/test';
 import {
-  createStoryE3Context,
-  createStoryE3Headers,
-} from '../../support/factories/connectShyftStoryE3Factory';
-import {
   buildSignedWebhookHeaders,
   hasRequiredEnvelopeKeys,
 } from '../../support/helpers/connectShyftWebhookTestHelpers';
 import {
+  bootstrapStoryE3E2E,
   buildStoryE3VoicemailPayload,
   ensureThread,
-  mapInboundVoiceNumber,
 } from '../../support/helpers/connectShyftStoryE3TestHelpers';
 
 test.describe(
@@ -20,23 +16,9 @@ test.describe(
     test(
       '[E3-ATDD-E2E-003][P1] voicemail artifact pipeline emits transcription enqueue metadata and preserves lifecycle reset guards @P1',
       async ({ request }, testInfo) => {
-        const context = createStoryE3Context();
-        const adminHeaders = createStoryE3Headers(context, {
-          role: 'ORGUNIT_ADMIN',
-          userId: context.adminUserId,
-          orgUnitMemberships: [context.orgUnitId],
-        });
-
-        await mapInboundVoiceNumber({
+        const { context, adminHeaders } = await bootstrapStoryE3E2E({
           request,
-          path: context.paths.numbersCollection,
-          headers: adminHeaders,
-          payload: {
-            orgUnitId: context.orgUnitId,
-            providerNumberE164: context.numbers.mappedInbound,
-            label: 'Story e.3 transcription queue number',
-            isActive: true,
-          },
+          numberMappingLabel: 'Story e.3 transcription queue number',
         });
 
         const threadId = await ensureThread({

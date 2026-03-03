@@ -2,6 +2,7 @@ import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryE3.fixture';
 import { deterministicToken } from '../../support/utils/deterministicTestIds';
 import {
+  buildInvalidSignedWebhookHeaders,
   buildSignedWebhookHeaders,
   hasRequiredEnvelopeKeys,
 } from '../../support/helpers/connectShyftWebhookTestHelpers';
@@ -240,6 +241,59 @@ test.describe(
             thread: {
               threadId,
               neighborId: canonicalNeighborId,
+            },
+          },
+        });
+      },
+    );
+
+    test(
+      '[E3-ATDD-API-008][P1] invalid webhook signatures are refused fail-closed with explicit verification metadata and zero domain side effects @P1',
+      async ({
+        request,
+        storyE3Context,
+        storyE3AdminHeaders,
+      }, testInfo) => {
+        const webhookPayload = buildStoryE3VoicemailPayload({
+          context: storyE3Context,
+          neighborId: storyE3Context.neighborIds.noActiveThread,
+          testInfo,
+          label: 'e3-atdd-api-008-invalid-signature',
+          providerEventNamespace: 'provider-event-e3-atdd-api',
+          voicemailDurationSeconds: 47,
+        });
+
+        const webhookResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyE3Context.paths.inboundWebhook,
+          headers: {
+            ...storyE3AdminHeaders,
+            ...buildInvalidSignedWebhookHeaders(webhookPayload, testInfo, 'e3-atdd-api-008'),
+          },
+          data: webhookPayload,
+        });
+
+        expect(webhookResponse.status()).toBe(401);
+        const webhookBody = await webhookResponse.json();
+        expect(hasRequiredEnvelopeKeys(webhookBody)).toBe(true);
+        expect(webhookBody).toMatchObject({
+          ok: false,
+          code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',
+          refusalType: 'client',
+          data: {
+            signatureValidation: {
+              deterministic: true,
+              verified: false,
+              provider: storyE3Context.providers.enabledPrimary,
+            },
+            sideEffects: {
+              lifecycleMutationApplied: false,
+              canonicalEventPersisted: false,
+              outboxPersisted: false,
+            },
+            timelineOutcome: {
+              eventName: null,
+              routingDecision: 'refused',
             },
           },
         });

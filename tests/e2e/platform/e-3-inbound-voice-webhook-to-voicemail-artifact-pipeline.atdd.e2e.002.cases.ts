@@ -1,16 +1,12 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '@playwright/test';
 import {
-  createStoryE3Context,
-  createStoryE3Headers,
-} from '../../support/factories/connectShyftStoryE3Factory';
-import {
   buildSignedWebhookHeaders,
 } from '../../support/helpers/connectShyftWebhookTestHelpers';
 import {
+  bootstrapStoryE3E2E,
   buildStoryE3VoicemailPayload,
   ensureThread,
-  mapInboundVoiceNumber,
   resolvePersistedActorUserId,
 } from '../../support/helpers/connectShyftStoryE3TestHelpers';
 
@@ -20,27 +16,9 @@ test.describe(
     test(
       '[E3-ATDD-E2E-002][P0] state-driven voice routing matrix honors no-thread intake fallback unclaimed voicemail-only and claimed orgUnit-configured behavior @P0',
       async ({ request }, testInfo) => {
-        const context = createStoryE3Context();
-        const operatorHeaders = createStoryE3Headers(context, {
-          role: 'ORGUNIT_MEMBER',
-          orgUnitMemberships: [context.orgUnitId],
-        });
-        const adminHeaders = createStoryE3Headers(context, {
-          role: 'ORGUNIT_ADMIN',
-          userId: context.adminUserId,
-          orgUnitMemberships: [context.orgUnitId],
-        });
-
-        await mapInboundVoiceNumber({
+        const { context, operatorHeaders, adminHeaders } = await bootstrapStoryE3E2E({
           request,
-          path: context.paths.numbersCollection,
-          headers: adminHeaders,
-          payload: {
-            orgUnitId: context.orgUnitId,
-            providerNumberE164: context.numbers.mappedInbound,
-            label: 'Story e.3 routing matrix number',
-            isActive: true,
-          },
+          numberMappingLabel: 'Story e.3 routing matrix number',
         });
 
         const unclaimedThreadId = await ensureThread({
