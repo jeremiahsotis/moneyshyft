@@ -1,6 +1,7 @@
 # generated: 2026-03-03
 # project: SignShyft
 # project_key: NOKEY
+# project_lane: signshyft
 # tracking_system: file-system
 # story_location: _bmad-output/implementation-artifacts
 #
@@ -41,12 +42,56 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  epic-s1: backlog
-  s-1-lane-bootstrap-and-governance: ready-for-dev
-  s-2-template-and-version-management: backlog
-  s-3-render-engine-determinism-and-preview-parity: backlog
-  s-4-envelopes-signer-otp-and-completion-flow: backlog
-  s-5-finalization-audit-and-document-hash-chain: backlog
-  s-6-webhooks-and-wordpress-phase-a-integration: backlog
-  s-7-deployment-observability-and-backup-restore: backlog
-  epic-s1-retrospective: optional
+  epic-1: backlog
+  1-1-establish-signshyft-lane-scaffolding-and-policy-wiring: ready-for-dev
+  1-2-create-signshyft-api-skeleton-with-required-plugins: backlog
+  1-3-create-signshyft-web-shell-for-staff-and-signer-route-groups: backlog
+  1-4-implement-canonical-refusal-reasons-and-api-contract-fixtures: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-implement-template-crud-endpoints-and-list-ui: backlog
+  2-2-implement-template-version-read-and-draft-patch-workflow: backlog
+  2-3-add-draft-pdf-upload-and-hash-capture: backlog
+  2-4-add-layout-validation-endpoint-and-blocking-publish-guard: backlog
+  2-5-implement-publish-immutability-and-clone-new-draft-workflow: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-define-renderengine-interface-and-enforce-import-boundary: backlog
+  3-2-implement-shared-layout-ts-used-by-preview-and-final: backlog
+  3-3-implement-deterministic-signature-and-initials-rasterization-pipeline: backlog
+  3-4-implement-render-semaphore-and-busy-refusal-behavior: backlog
+  3-5-add-golden-render-drift-tests: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-implement-envelope-create-list-get-with-recipient-signer-links: backlog
+  4-2-implement-recipient-signing-mode-and-turn-enforcement: backlog
+  4-3-implement-signer-token-lifecycle-and-resend-rotation: backlog
+  4-4-implement-otp-challenge-and-verify-flow: backlog
+  4-5-implement-signer-submit-endpoint-and-persistence-model: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-implement-signer-complete-endpoint-and-finalization-orchestration: backlog
+  5-2-implement-final-pdf-flattening-certificate-page-and-hash-persistence: backlog
+  5-3-implement-staff-download-and-audit-timeline-surfaces: backlog
+  5-4-implement-retention-workers-for-draft-token-otp-and-finalized-artifacts: backlog
+  5-5-implement-document-hash-chain-persistence-integrity-checks: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-implement-webhook-endpoint-management-apis-and-staff-ui: backlog
+  6-2-implement-webhook-worker-queue-with-retry-backoff-and-idempotent-delivery-ids: backlog
+  6-3-implement-webhook-hmac-signing-spec-v1: backlog
+  6-4-implement-webhook-payload-contract-for-wp-consumption: backlog
+  6-5-publish-wp-integration-hardening-guide-and-receiver-checklist: backlog
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-implement-infra-artifacts-for-docker-nginx-and-systemd: backlog
+  7-2-implement-minimum-monitoring-stack-and-memwatch-automation: backlog
+  7-3-implement-backup-and-restore-automation-scripts: backlog
+  7-4-resolve-policy-constants-and-lock-final-operational-defaults: backlog
+  epic-7-retrospective: optional
