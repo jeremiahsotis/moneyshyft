@@ -1,14 +1,14 @@
 ---
 stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-quality-evaluation', 'step-03f-aggregate-scores', 'step-04-generate-report']
 lastStep: 'step-04-generate-report'
-lastSaved: '2026-03-03T11:58:30Z'
+lastSaved: '2026-03-03T15:44:28Z'
 ---
 
-# Test Quality Review: Story e.1 (`verified-webhook-ingress-and-deterministic-context-routing`)
+# Test Quality Review: Story e.2 (`inbound-sms-processing-with-active-thread-ensure`)
 
-**Quality Score**: 79/100 (C - Needs Improvement)
+**Quality Score**: 92/100 (A- - Strong)
 **Review Date**: 2026-03-03
-**Review Scope**: single (story-targeted review mapped to related API/E2E specs)
+**Review Scope**: single (story-targeted review mapped to split API ATDD modules)
 **Reviewer**: TEA Agent (Murat)
 
 ---
@@ -17,27 +17,27 @@ Note: This review audits existing tests; it does not generate tests.
 
 ## Executive Summary
 
-**Overall Assessment**: Needs Improvement
+**Overall Assessment**: Strong
 
-**Recommendation**: Request Changes
+**Recommendation**: Approve
 
 ### Key Strengths
 
-✅ No hard waits, serial mode, or flow-control anti-patterns (`if`/`try-catch`) in active E1 suites.
-✅ Strong explicit assertions on refusal envelopes, side-effect suppression, and deterministic routing metadata.
-✅ Good use of story fixtures/factories and deterministic helpers in automate suites.
+✅ Replay-suppression coverage now includes persisted timeline cardinality validation after duplicate delivery.
+✅ Story e.2 test decomposition (core/replay-refusal/concurrency/shared) materially reduced monolithic-file risk.
+✅ Deterministic IDs and explicit envelope assertions remain consistent across all six scenarios.
 
 ### Key Weaknesses
 
-❌ Entire E1 ATDD E2E suite is skipped (`3` skipped scenarios), reducing acceptance-level confidence.
-❌ Three large spec files exceed maintainability threshold (`>300` lines).
-❌ Webhook signing/payload helper logic is duplicated across API/E2E suites.
+❌ Core cases module is slightly above the 300-line maintainability target (302 lines).
+❌ Persistent-environment teardown/reset remains implicit (idempotency-based) rather than explicit.
+❌ Existing-thread scenario uses a loose inbound-event count assertion (`> 0`) instead of strict delta.
 
 ### Summary
 
-Story e.1 has solid active API and automate E2E signal for signature refusal, deterministic routing, replay-safe behavior, and conflict/ambiguity handling. Runtime performance and flake posture are generally good.
+Behavioral correctness and contract depth are now strong for story e.2. The previous blocker-level maintainability concern (single 595-line spec) has been addressed by decomposition, and the replay coverage gap is closed with a post-duplicate cardinality check.
 
-The largest gaps are maintainability and acceptance-depth readiness. Long monolithic files and duplicated helper code increase long-term change risk, and skipped ATDD E2E scenarios leave a visible confidence gap for end-to-end ingress behavior.
+Remaining findings are non-blocking and mostly incremental: trim the core module slightly, tighten one count assertion, and optionally add teardown hooks for long-lived environments.
 
 ---
 
@@ -45,21 +45,21 @@ The largest gaps are maintainability and acceptance-depth readiness. Long monoli
 
 | Criterion                            | Status   | Violations | Notes |
 | ------------------------------------ | -------- | ---------- | ----- |
-| BDD Format (Given-When-Then)         | ⚠️ WARN  | 16         | Titles are behavior-oriented but not explicitly structured as Given/When/Then. |
-| Test IDs                             | ❌ FAIL  | 16         | Priority tags exist, but no explicit test ID format (e.g., `e.1-API-001`). |
-| Priority Markers (P0/P1/P2/P3)       | ✅ PASS  | 0          | All scenarios carry priority tags (`@P0`/`@P1`). |
+| BDD Format (Given-When-Then)         | ⚠️ WARN  | 6          | Scenario titles are behavior-driven but not explicit Given/When/Then phrasing. |
+| Test IDs                             | ✅ PASS  | 0          | IDs `[E2-ATDD-API-001..006]` are complete and consistent. |
+| Priority Markers (P0/P1/P2/P3)       | ✅ PASS  | 0          | All tests include `@P0`/`@P1` markers. |
 | Hard Waits (sleep, waitForTimeout)   | ✅ PASS  | 0          | No hard waits detected. |
-| Determinism (no conditionals)        | ⚠️ WARN  | 3          | Timestamp/random helper usage remains in signing/token helpers. |
-| Isolation (cleanup, no shared state) | ⚠️ WARN  | 2          | Some mapping seed operations persist state without explicit teardown in-file. |
-| Fixture Patterns                     | ✅ PASS  | 0          | Fixture/factory usage is consistent across story suites. |
-| Data Factories                       | ✅ PASS  | 0          | Deterministic ID helpers are used in automate suites. |
-| Network-First Pattern                | ⚠️ WARN  | 1          | E2E coverage is mostly API-driven with limited browser-network interaction assertions. |
-| Explicit Assertions                  | ✅ PASS  | 0          | Assertions are visible and specific in test bodies. |
-| Test Length (≤300 lines)             | ❌ FAIL  | 3          | 3 of 4 reviewed files exceed 300 lines. |
-| Test Duration (≤1.5 min)             | ✅ PASS  | 0          | Latest automate runs are fast (`0.24s` API suite, `0.128s` E2E suite in JUnit artifact). |
-| Flakiness Patterns                   | ⚠️ WARN  | 2          | Skipped acceptance suite plus time/random helper usage reduce strict repeatability confidence. |
+| Determinism (no conditionals)        | ✅ PASS  | 0          | No timing randomness in test logic; deterministic IDs preserved. |
+| Isolation (cleanup, no shared state) | ⚠️ WARN  | 1          | Per-test neighbor suffixing improved isolation; teardown remains implicit. |
+| Fixture Patterns                     | ✅ PASS  | 0          | Shared helper module reduces duplication and drift. |
+| Data Factories                       | ✅ PASS  | 0          | Deterministic token/event factories used consistently. |
+| Network-First Pattern                | ✅ PASS  | 0          | API-first request strategy is appropriate for this scope. |
+| Explicit Assertions                  | ✅ PASS  | 0          | Assertions are contract-focused and explicit. |
+| Test Length (≤300 lines)             | ⚠️ WARN  | 1          | Core module is 302 lines (slightly above threshold). |
+| Test Duration (≤1.5 min)             | ✅ PASS  | 0          | Story preflight run completed quickly (6 tests in sub-second execution window). |
+| Flakiness Patterns                   | ✅ PASS  | 0          | No retries/sleeps/tight timeout anti-patterns detected. |
 
-**Total Violations**: 0 Critical, 4 High, 6 Medium, 5 Low
+**Total Violations**: 0 Critical, 0 High, 3 Medium, 3 Low
 
 ---
 
@@ -68,167 +68,98 @@ The largest gaps are maintainability and acceptance-depth readiness. Long monoli
 ```text
 Weighted Dimension Model
 
-Determinism:      86 × 0.25 = 21.50
-Isolation:        88 × 0.25 = 22.00
-Maintainability:  55 × 0.20 = 11.00
-Coverage:         72 × 0.15 = 10.80
-Performance:      92 × 0.15 = 13.80
+Determinism:      95 × 0.25 = 23.75
+Isolation:        91 × 0.25 = 22.75
+Maintainability:  89 × 0.20 = 17.80
+Coverage:         94 × 0.15 = 14.10
+Performance:      90 × 0.15 = 13.50
                   -------------------
-Final Score:      79/100
-Grade:            C
+Final Score:      92/100
+Grade:            A-
 ```
 
 ---
 
 ## Critical Issues (Must Fix)
 
-No P0 execution-integrity defects were found, but two high-priority blockers should be resolved before using this suite as a strong quality gate:
-
-1. Re-enable or explicitly retire skipped E2E ATDD scenarios in [`tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts`](../../tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts).
-2. Reduce maintainability risk by splitting oversized files and extracting shared webhook-test helper logic.
+No P0/P1 execution-integrity blockers were found.
 
 ---
 
 ## Recommendations (Should Fix)
 
-### 1. Re-enable E1 ATDD E2E Scenarios
+### 1. Trim Core Module Below 300 Lines
 
-**Severity**: P1 (High)
-**Location**: `tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts:39,134,191`
+**Severity**: P2 (Medium)
+**Location**: `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.core.cases.ts:1`
+**Criterion**: Maintainability
+**Knowledge Base**: [test-quality](../../_bmad/tea/testarch/knowledge/test-quality.md)
+
+**Issue Description**:
+The core module is 302 lines, slightly above the maintainability guideline.
+
+**Recommended Improvement**:
+Extract one scenario block or relocate additional shared setup/assertion snippets into helpers.
+
+### 2. Add Optional Explicit Cleanup for Persistent Environments
+
+**Severity**: P2 (Medium)
+**Location**:
+- `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.core.cases.ts:23`
+- `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.replay-refusal.cases.ts:21`
+- `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.concurrency.cases.ts:21`
+**Criterion**: Isolation
+**Knowledge Base**: [data-factories](../../_bmad/tea/testarch/knowledge/data-factories.md)
+
+**Issue Description**:
+State isolation relies on deterministic IDs and idempotent setup. This is usually fine for ephemeral CI, but explicit cleanup improves reliability in persistent test environments.
+
+**Recommended Improvement**:
+Provide optional teardown/reset hooks for mapping/thread artifacts in long-lived environments.
+
+### 3. Tighten Existing-Thread Count Assertion
+
+**Severity**: P3 (Low)
+**Location**: `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.core.cases.ts:213`
 **Criterion**: Coverage
 **Knowledge Base**: [test-quality](../../_bmad/tea/testarch/knowledge/test-quality.md)
 
 **Issue Description**:
-All three end-to-end ATDD scenarios are skipped.
-
-**Current Code**:
-
-```typescript
-test.skip('[P0] end-to-end ingress journey accepts valid signed webhook ...', async (...) => {
-```
+`E2-ATDD-API-002` checks inbound event count with `> 0`.
 
 **Recommended Improvement**:
-
-```typescript
-test('[P0] end-to-end ingress journey accepts valid signed webhook ...', async (...) => {
-```
-
-**Benefits**:
-Restores acceptance-level gate confidence for story-critical ingress behavior.
-
-### 2. Split Oversized Spec Files
-
-**Severity**: P1 (High)
-**Location**:
-- `tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts` (365 lines)
-- `tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts` (510 lines)
-- `tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.spec.ts` (423 lines)
-**Criterion**: Maintainability
-**Knowledge Base**: [test-quality](../../_bmad/tea/testarch/knowledge/test-quality.md)
-
-**Issue Description**:
-Large files increase review complexity and rerun/debug blast radius.
-
-**Recommended Improvement**:
-
-```typescript
-// Example split by behavior
-// e-1-signature-refusal.*.spec.ts
-// e-1-deterministic-routing.*.spec.ts
-// e-1-replay-safe-identity.*.spec.ts
-```
-
-**Benefits**:
-Improves readability, ownership, and selective reruns.
-
-### 3. Extract Shared Webhook Test Helpers
-
-**Severity**: P1 (High)
-**Location**: duplicated helper blocks across E1 API/E2E files (e.g., signature/payload builders at `:24-52` patterns)
-**Criterion**: Maintainability
-**Knowledge Base**: [fixtures-composition](../../_bmad/tea/testarch/knowledge/fixtures-composition.md)
-
-**Issue Description**:
-Signing-header and payload builder logic is duplicated across suites.
-
-**Recommended Improvement**:
-
-```typescript
-// tests/support/helpers/connectShyftWebhookTestHelpers.ts
-export const buildSignatureEnforcementHeaders = ...
-export const buildSignedWebhookHeaders = ...
-export const buildSmsWebhookPayload = ...
-```
-
-**Benefits**:
-Reduces drift and lowers update cost when webhook contract details change.
-
-### 4. Add Explicit Traceability Test IDs
-
-**Severity**: P2 (Medium)
-**Location**: all E1 tests
-**Criterion**: Test IDs / Traceability
-**Knowledge Base**: [test-levels-framework](../../_bmad/tea/testarch/knowledge/test-levels-framework.md)
-
-**Issue Description**:
-Priority tags exist, but there is no explicit test ID convention for AC traceability.
-
-**Recommended Improvement**:
-Use IDs in titles or metadata, e.g., `e.1-API-001`, `e.1-E2E-003`.
-
-**Benefits**:
-Improves requirement-to-test traceability and reporting quality.
-
-### 5. Standardize Deterministic ID/Time Helpers
-
-**Severity**: P3 (Low)
-**Location**:
-- `tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts:12,30`
-- `tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts:12,15`
-**Criterion**: Determinism
-**Knowledge Base**: [data-factories](../../_bmad/tea/testarch/knowledge/data-factories.md)
-
-**Issue Description**:
-`randomUUID()` and `Date.now()` are still used in helper paths.
-
-**Recommended Improvement**:
-Adopt deterministic helper utilities for all generated IDs/time where feasible.
-
-**Benefits**:
-More reproducible reruns and easier failure replay.
+Capture timeline baseline before webhook and assert strict `+1` post-webhook where stable.
 
 ---
 
 ## Best Practices Found
 
-### 1. Explicit Contract Assertions
+### 1. Replay-Safe Duplicate Validation with Persisted Cardinality
 
-**Location**:
-- `tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts`
-- `tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts`
-**Pattern**: explicit envelope + side-effect assertions
+**Location**: `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.replay-refusal.cases.ts:100-143`
+**Pattern**: replay suppression + persistence verification
 **Knowledge Base**: [test-quality](../../_bmad/tea/testarch/knowledge/test-quality.md)
 
 **Why This Is Good**:
-Assertions verify both refusal reason and zero side-effect behavior, which is critical for ingress safety contracts.
+Duplicate replay behavior is validated at both envelope and persisted-timeline levels, reducing false confidence from metadata-only assertions.
 
-### 2. Priority-Tagged Risk Ordering
+### 2. Concurrency Convergence Contract
 
-**Location**: all reviewed E1 suites
-**Pattern**: `@P0` / `@P1` tags
-**Knowledge Base**: [selective-testing](../../_bmad/tea/testarch/knowledge/selective-testing.md)
-
-**Why This Is Good**:
-Supports focused CI execution and risk-based gating.
-
-### 3. API-First Verification Strategy
-
-**Location**: active E1 API + automate E2E specs
-**Pattern**: API-first setup and validation
-**Knowledge Base**: [api-request](../../_bmad/tea/testarch/knowledge/api-request.md)
+**Location**: `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.concurrency.cases.ts:80-148`
+**Pattern**: parallel webhook convergence to single thread identity
+**Knowledge Base**: [timing-debugging](../../_bmad/tea/testarch/knowledge/timing-debugging.md)
 
 **Why This Is Good**:
-Keeps tests fast and deterministic while still validating ingress contracts.
+`Promise.all` delivery validation verifies both requests converge to one thread while still appending multiple inbound artifacts.
+
+### 3. Shared Assertion/Request Helpers
+
+**Location**: `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.shared.ts`
+**Pattern**: fixture/helper extraction for consistency
+**Knowledge Base**: [fixtures-composition](../../_bmad/tea/testarch/knowledge/fixtures-composition.md)
+
+**Why This Is Good**:
+Helper extraction reduced repeated contract assertions and setup drift from the previous monolithic spec layout.
 
 ---
 
@@ -236,37 +167,36 @@ Keeps tests fast and deterministic while still validating ingress contracts.
 
 ### File Metadata
 
-- **Files Reviewed**:
-  - `tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts`
-  - `tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts`
-  - `tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts`
-  - `tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.spec.ts`
-- **Total Size**: 1,540 lines (~53.4 KB)
+- **Primary Entrypoint**: `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts`
+- **Behavior Modules Reviewed**:
+  - `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.core.cases.ts` (302 lines)
+  - `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.replay-refusal.cases.ts` (197 lines)
+  - `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.concurrency.cases.ts` (151 lines)
+  - `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.shared.ts` (139 lines)
 - **Test Framework**: Playwright
 - **Language**: TypeScript
 
 ### Test Structure
 
-- **Describe Blocks**: 4
-- **Scenario Definitions**: 16
-- **Active Scenarios**: 13
-- **Skipped Scenarios**: 3
-- **Average Lines per Scenario**: 96.3
-- **Total Assertions**: 102
+- **Describe Blocks**: 3
+- **Test Cases**: 6
+- **Fixtures Used**:
+  - `storyE2Context`
+  - `storyE2OperatorHeaders`
+  - `storyE2AdminHeaders`
+  - `storyE2NumberMappingPayload`
+  - `storyE2EnsurePayload`
+- **Assertions**: 47 `expect(...)` calls across story modules
 
 ### Test Coverage Scope
 
-- **Priority Distribution**:
-  - P0: 11
-  - P1: 5
-  - P2: 0
-  - P3: 0
-- **Formal Test ID Coverage**: missing
-
-### Assertions Analysis
-
-- **Assertions per Active Scenario**: ~7.8
-- **Assertion Types**: `toBe`, `toMatchObject`, `toContain`, `toHaveProperty`, negative property checks
+- **Test IDs**:
+  - `E2-ATDD-API-001`
+  - `E2-ATDD-API-002`
+  - `E2-ATDD-API-003`
+  - `E2-ATDD-API-004`
+  - `E2-ATDD-API-005`
+  - `E2-ATDD-API-006`
 
 ---
 
@@ -274,67 +204,45 @@ Keeps tests fast and deterministic while still validating ingress contracts.
 
 ### Related Artifacts
 
-- **Story File**: `_bmad-output/implementation-artifacts/e-1-verified-webhook-ingress-and-deterministic-context-routing.md`
-- **ATDD Checklist**: `_bmad-output/test-artifacts/atdd-checklist-e-1.md`
-- **Test Design Context**: `_bmad-output/test-artifacts/test-design-epic-E.md`
-- **Framework Config**: `playwright.config.ts`
+- **Story File**: `_bmad-output/implementation-artifacts/e-2-inbound-sms-processing-with-active-thread-ensure.md`
+- **Acceptance Criteria Mapped**: 4/4 core ACs covered
 
 ### Acceptance Criteria Validation
 
-| Acceptance Criterion | Evidence | Status |
-| -------------------- | -------- | ------ |
-| AC1 signature fail-closed | ATDD API + automate API + automate E2E refusal tests | ✅ Covered |
-| AC2 deterministic context routing | ATDD API mapped route + automate API fallback/ambiguity + automate E2E mapped route | ✅ Covered |
-| AC3 canonical identity normalization | ATDD API replay-safe duplicate check + automate E2E replay-safe scenario | ✅ Covered |
-| AC4 unresolved mapping deterministic refusal | ATDD API unmapped refusal + automate API ambiguity/conflict refusal | ✅ Covered |
+| Acceptance Criterion | Test ID(s) | Status | Notes |
+| -------------------- | ---------- | ------ | ----- |
+| AC1 ensure + append  | 001        | ✅ Covered | New active thread ensure + append artifact contract validated. |
+| AC2 reuse active thread | 002     | ✅ Covered | Existing thread reuse and deterministic ordering validated. |
+| AC3 replay suppression | 003      | ✅ Covered | Duplicate envelope + persisted timeline cardinality validated. |
+| AC4 atomic create-and-append | 004 | ✅ Covered | Side-effect durability envelope plus timeline append path validated. |
 
-**Coverage**: 4/4 ACs covered by active tests, with reduced acceptance-depth confidence due to 3 skipped ATDD E2E scenarios.
+**Additional risk scenarios**: refusal path (`006`) and concurrency convergence (`005`) are covered.
 
 ---
 
 ## Knowledge Base References
 
-- `_bmad/tea/testarch/knowledge/test-quality.md`
-- `_bmad/tea/testarch/knowledge/data-factories.md`
-- `_bmad/tea/testarch/knowledge/test-levels-framework.md`
-- `_bmad/tea/testarch/knowledge/selective-testing.md`
-- `_bmad/tea/testarch/knowledge/test-healing-patterns.md`
-- `_bmad/tea/testarch/knowledge/selector-resilience.md`
-- `_bmad/tea/testarch/knowledge/timing-debugging.md`
-- `_bmad/tea/testarch/knowledge/overview.md`
-- `_bmad/tea/testarch/knowledge/api-request.md`
-- `_bmad/tea/testarch/knowledge/network-recorder.md`
-- `_bmad/tea/testarch/knowledge/auth-session.md`
-- `_bmad/tea/testarch/knowledge/intercept-network-call.md`
-- `_bmad/tea/testarch/knowledge/recurse.md`
-- `_bmad/tea/testarch/knowledge/log.md`
-- `_bmad/tea/testarch/knowledge/file-utils.md`
-- `_bmad/tea/testarch/knowledge/burn-in.md`
-- `_bmad/tea/testarch/knowledge/network-error-monitor.md`
-- `_bmad/tea/testarch/knowledge/fixtures-composition.md`
-- `_bmad/tea/testarch/knowledge/playwright-cli.md`
+This review consulted these TEA knowledge fragments:
 
----
-
-## External Documentation Cross-Check
-
-Recommendations were cross-checked against current official guidance:
-
-- [Playwright Auto-waiting / Actionability](https://playwright.dev/docs/actionability)
-- [Playwright `page.waitForTimeout()` API](https://playwright.dev/docs/api/class-page#page-wait-for-timeout)
-- [Playwright Test Annotations (`test.skip`)](https://playwright.dev/docs/test-annotations)
-- [Cypress Best Practices: Unnecessary Waiting](https://docs.cypress.io/app/core-concepts/best-practices#Unnecessary-Waiting)
-- [Pact Documentation](https://docs.pact.io/)
-- [GitHub Actions Matrix Jobs](https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs)
+- [test-quality.md](../../_bmad/tea/testarch/knowledge/test-quality.md)
+- [data-factories.md](../../_bmad/tea/testarch/knowledge/data-factories.md)
+- [test-levels-framework.md](../../_bmad/tea/testarch/knowledge/test-levels-framework.md)
+- [selective-testing.md](../../_bmad/tea/testarch/knowledge/selective-testing.md)
+- [test-healing-patterns.md](../../_bmad/tea/testarch/knowledge/test-healing-patterns.md)
+- [selector-resilience.md](../../_bmad/tea/testarch/knowledge/selector-resilience.md)
+- [timing-debugging.md](../../_bmad/tea/testarch/knowledge/timing-debugging.md)
+- [playwright-cli.md](../../_bmad/tea/testarch/knowledge/playwright-cli.md)
+- [api-request.md](../../_bmad/tea/testarch/knowledge/api-request.md)
+- [fixtures-composition.md](../../_bmad/tea/testarch/knowledge/fixtures-composition.md)
 
 ---
 
 ## Decision
 
-**Recommendation**: Request Changes
+**Recommendation**: Approve
 
 **Rationale**:
-Core ingress quality behavior is tested well in active suites, but skipped ATDD E2E scenarios and maintainability debt (large monolithic files, duplicated helper logic) reduce confidence for durable, scalable quality gates. Addressing these items should move this suite into “Approve with Comments” territory quickly.
+The previously reported blockers for story e.2 test quality have been addressed: monolithic spec risk is removed via decomposition, and replay suppression now validates persisted timeline cardinality after duplicate delivery. Remaining findings are incremental and non-blocking.
 
 ---
 
@@ -342,13 +250,5 @@ Core ingress quality behavior is tested well in active suites, but skipped ATDD 
 
 **Generated By**: BMad TEA Agent (Test Architect)
 **Workflow**: testarch-test-review (step-file create mode)
-**Review ID**: test-review-e-1-verified-webhook-ingress-and-deterministic-context-routing-20260303
-**Timestamp**: 2026-03-03T11:58:30Z
-**Artifacts**:
-- `_bmad-output/test-artifacts/test-review-temp/tea-test-review-determinism-2026-03-03T11-55-59-003Z.json`
-- `_bmad-output/test-artifacts/test-review-temp/tea-test-review-isolation-2026-03-03T11-55-59-003Z.json`
-- `_bmad-output/test-artifacts/test-review-temp/tea-test-review-maintainability-2026-03-03T11-55-59-003Z.json`
-- `_bmad-output/test-artifacts/test-review-temp/tea-test-review-coverage-2026-03-03T11-55-59-003Z.json`
-- `_bmad-output/test-artifacts/test-review-temp/tea-test-review-performance-2026-03-03T11-55-59-003Z.json`
-- `_bmad-output/test-artifacts/test-review-temp/tea-test-review-summary-2026-03-03T11-55-59-003Z.json`
-
+**Review ID**: test-review-e-2-inbound-sms-processing-with-active-thread-ensure-20260303-rerun
+**Timestamp**: 2026-03-03T15:44:28Z
