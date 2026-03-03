@@ -179,7 +179,7 @@ FR-SS-024: Envelope creation requires `templateVersionId`, `recipients`, and `ex
 FR-SS-025: Envelope status lifecycle supports `DRAFT|SENT|IN_PROGRESS|COMPLETED|VOIDED|EXPIRED|DECLINED|ERROR`.
 FR-SS-026: Recipient model supports `ORDERED` and `PARALLEL` signing modes.
 FR-SS-027: Ordered mode enforces turn-taking with refusal `NOT_YOUR_TURN`.
-FR-SS-028: Signer tokens are single-recipient scoped and expire per policy.
+FR-SS-028: Signer tokens are single-recipient scoped and expire exactly 48 hours (`172800` seconds) from issuance.
 FR-SS-029: Resend rotates token and invalidates prior token.
 FR-SS-030: Signer submit persists field values and signature strokes by binding key.
 FR-SS-031: Complete operation triggers deterministic finalization workflow.
@@ -195,7 +195,7 @@ FR-SS-035: Invalid/expired OTP returns canonical refusal (`OTP_INVALID|OTP_EXPIR
 
 FR-SS-036: Staff can configure webhook endpoints (`targetApp`, `url`, enabled state).
 FR-SS-037: Webhook test endpoint queues synthetic delivery.
-FR-SS-038: Webhook worker performs retry with backoff and idempotent delivery IDs.
+FR-SS-038: Webhook worker retry policy is locked to 10 total attempts (1 initial + 9 retries), exponential base-2 starting at 10s, full-jitter, and a 15-minute cap.
 FR-SS-039: Outbound webhook signatures follow locked HMAC spec (`v1` format).
 FR-SS-040: Required signed headers must be emitted for every webhook delivery.
 FR-SS-041: Delivery retries must reuse the same `deliveryId` across attempts.
@@ -229,7 +229,7 @@ NFR-SS-006: Webhook verification supports replay resistance via timestamp window
 NFR-SS-007: Secrets are stored as base64 and support dual-secret rotation with grace window.
 NFR-SS-008: Signed webhook verification occurs before JSON parse/business logic.
 NFR-SS-009: Logging excludes tokens, signer URLs, secrets, and full signed payload bodies.
-NFR-SS-010: Backups include DB and filesystem with 14-day retention minimum.
+NFR-SS-010: Backups include DB and filesystem with 14-day retention minimum, and admin UX exposes last successful backup timestamp and last backup status.
 NFR-SS-011: Restore drill must be executable in staging and validate rendering outputs.
 NFR-SS-012: All planning outputs remain lane-safe and non-interfering with other lanes.
 
@@ -254,11 +254,18 @@ The SQL DDL (`20_DB_DDL_and_RLS.sql`) is the schema source for v1 including:
 5. Webhook endpoints + webhook deliveries.
 6. RLS policies for tenant-scoped staff access.
 
-## Open Questions
+## Locked V1 Decisions
 
-1. Confirm final token TTL policy mismatch between OpenAPI guidance (48 hours) and env example (`TOKEN_TTL_DAYS=7`) before implementation lock.
-2. Confirm exact max retry attempts/backoff constants for webhook delivery worker.
-3. Confirm optional vs required implementation of “last backup timestamp” in admin UI for MVP.
+1. Signer token TTL is locked to 48 hours (`172800` seconds) using explicit signer token config naming (`SIGNER_TOKEN_TTL_SECONDS=172800`).
+2. Webhook retries are locked to 10 total attempts with this algorithm for attempts 2..10:
+   - `exp = attempt - 2`
+   - `baseDelaySeconds = 10 * (2 ** exp)`
+   - `cappedDelaySeconds = min(baseDelaySeconds, 900)`
+   - `sleepSeconds = random_uniform(0, cappedDelaySeconds)` (full jitter)
+3. Admin “last backup timestamp” is required for MVP and must show:
+   - last successful backup timestamp
+   - last backup status (`SUCCESS` or `FAIL`)
+4. Token-related configuration must be explicit by token class; ambiguous `TOKEN_TTL_DAYS` usage for signer links is prohibited.
 
 ## Release Readiness Gates
 
