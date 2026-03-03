@@ -1,0 +1,52 @@
+# generated: 2026-03-03
+# project: SignShyft
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+#
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-03-03
+project: SignShyft
+project_key: NOKEY
+project_lane: signshyft
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-s1: backlog
+  s-1-lane-bootstrap-and-governance: ready-for-dev
+  s-2-template-and-version-management: backlog
+  s-3-render-engine-determinism-and-preview-parity: backlog
+  s-4-envelopes-signer-otp-and-completion-flow: backlog
+  s-5-finalization-audit-and-document-hash-chain: backlog
+  s-6-webhooks-and-wordpress-phase-a-integration: backlog
+  s-7-deployment-observability-and-backup-restore: backlog
+  epic-s1-retrospective: optional
