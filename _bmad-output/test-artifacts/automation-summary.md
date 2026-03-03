@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-01T22:00:54Z'
+lastSaved: '2026-03-03T03:27:30Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -3096,3 +3096,174 @@ lastSaved: '2026-03-01T22:00:54Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality and maintainability scoring of the generated f.4 suite.
 - `[TR] Trace Requirements` to map f.4 AC coverage across implementation evidence and automation artifacts.
+
+## Story e.1 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/e-1-verified-webhook-ingress-and-deterministic-context-routing.md`
+  - Existing ATDD files found for Story e.1:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts`
+
+### Context Loaded
+- Source and route context loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/modules/connectshyft/numberMappings.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/modules/connectshyft/providerRegistry.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/modules/connectshyft/providerCorrelationMappings.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts`
+- Existing fixture/factory assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryE1Factory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryE1.fixture.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/helpers/apiClient.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/utils/deterministicTestIds.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- API/E2E guidance:
+  - `api-request.md`
+  - `api-testing-patterns.md`
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `playwright-cli.md`
+
+## Story e.1 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` exploration was skipped for this run.
+- Rationale: Story e.1 scope is ingress contract determinism and routing behavior, fully exposed through API/webhook surfaces.
+
+### Acceptance Criteria to Target Mapping
+- AC1: fail-closed signature verification (missing/invalid signatures, no side effects).
+- AC2: deterministic correlation routing via provider fallback and provider-number mapping (including public-tenant resolution).
+- AC3: canonical webhook identity normalization for replay-safe dedupe keys.
+- AC4: deterministic refusal contracts for ambiguous, missing-identifier, and conflict/not-found correlation paths.
+
+### Selected Test Levels
+- **API** (primary): signature gate, correlation routing, ambiguity/conflict refusal contracts.
+- **E2E** (secondary): end-to-end ingress journeys validating deterministic contracts and replay safety.
+
+### Priority Assignment
+- P0:
+  - invalid signature fail-closed contract
+  - provider-identifier fallback success path
+  - unique public number-mapping routing path
+  - ambiguous public routing refusal path
+  - mapped ingress deterministic thread contract
+  - replay-safe duplicate suppression with normalized provider event ids
+- P1:
+  - partial metadata conflict refusal
+  - unsigned spoofed ingress refusal with unchanged thread lifecycle
+  - missing-identifiers refusal with deterministic diagnostics
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.spec.ts`
+- Scope: `critical-paths`
+
+## Story e.1 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-03-03T03-27-30-313Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-03-03T03-27-30-313Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-03-03T03-27-30-313Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 5`
+- E2E subprocess status: `success: true`, `test_count: 4`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed in one run for both levels.
+- Sequential equivalent would require two independent generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story e.1 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts`
+- `tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper assets:
+  - `tests/support/helpers/apiClient.ts`
+  - `tests/support/factories/connectShyftStoryE1Factory.ts`
+  - `tests/support/utils/deterministicTestIds.ts`
+- New shared fixture files created: none.
+
+### Summary Metrics
+- Total tests generated: `9`
+  - API tests: `5` (1 file)
+  - E2E tests: `4` (1 file)
+- Priority coverage:
+  - P0: `6`
+  - P1: `3`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-03-03T03-27-30-313Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-03-03T03-27-30-313Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-03-03T03-27-30-313Z.json`
+  - `/tmp/tea-automate-summary-2026-03-03T03-27-30-313Z.json`
+- Persisted under test artifacts:
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-03-03T03-27-30-313Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-03-03T03-27-30-313Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-03-03T03-27-30-313Z.json`
+
+## Story e.1 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated spec parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.spec.ts`
+  - Result: passed (`9` tests discovered in `2` files).
+- Generated suite execution validation:
+  - `npm run test:e2e -- tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.spec.ts`
+  - Result: `9 passed`.
+- CLI session cleanup:
+  - no browser CLI session opened for this run.
+- Temp artifact storage:
+  - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-temp`.
+
+### Key Assumptions
+- ConnectShyft test harness headers (`x-test-connectshyft-*`) remain available for deterministic signature gate controls and tenant/orgUnit/provider test routing.
+- Number mapping contracts continue supporting provider-neutral `providerNumberE164` for inbound correlation fallback behavior.
+
+### Risks
+- These E2E tests validate ingress behavior via API request journeys rather than browser UI selectors; UI-level observability workflows remain outside this run's scope.
+- Deterministic routing assertions depend on synthetic fixture thread topology (`thread-f1-*`) remaining stable in the test harness.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality and maintainability scoring of the generated e.1 automate suite.
+- `[TR] Trace Requirements` to map e.1 AC coverage across ATDD and automate evidence.
