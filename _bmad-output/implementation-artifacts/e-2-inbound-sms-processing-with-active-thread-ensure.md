@@ -175,6 +175,8 @@ GPT-5 Codex
 - tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.shared.ts
 - tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts
 - tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.automate.api.spec.ts
+- tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts
+- tests/e2e/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.spec.ts
 - tests/e2e/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.spec.ts
 - tests/e2e/platform/e-2-inbound-sms-processing-with-active-thread-ensure.automate.spec.ts
 - tests/support/factories/connectShyftStoryE2Factory.ts
