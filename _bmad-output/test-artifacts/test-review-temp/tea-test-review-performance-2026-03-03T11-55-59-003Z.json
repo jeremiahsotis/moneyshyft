@@ -1,0 +1,46 @@
+{
+  "dimension": "performance",
+  "score": 92,
+  "max_score": 100,
+  "grade": "A",
+  "violations": [
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts",
+      "line": 15,
+      "severity": "LOW",
+      "category": "crypto-setup-overhead",
+      "description": "Keypair generation at module load adds small but avoidable startup cost per spec process.",
+      "suggestion": "Move shared test keys to reusable fixture setup or static deterministic fixture.",
+      "code_snippet": "const { publicKey, privateKey } = generateKeyPairSync('ed25519');"
+    },
+    {
+      "file": "tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "file-size-execution-overhead",
+      "description": "Large monolithic test files increase parse and rerun overhead.",
+      "suggestion": "Split long files into focused suites to reduce rerun scope and improve CI cache locality.",
+      "code_snippet": "// Large monolithic suite"
+    }
+  ],
+  "passed_checks": 14,
+  "failed_checks": 2,
+  "total_checks": 16,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 2
+  },
+  "performance_metrics": {
+    "hard_waits_detected": 0,
+    "serial_mode_detected": 0,
+    "api_first_patterns": "high",
+    "estimated_runtime_risk": "low"
+  },
+  "recommendations": [
+    "Retain API-first setup pattern used in E1 suites",
+    "Extract expensive cryptographic setup into fixtures",
+    "Split monolithic files to improve selective reruns"
+  ],
+  "summary": "Performance posture is strong with no hard waits or serial bottlenecks; only minor startup overhead remains."
+}

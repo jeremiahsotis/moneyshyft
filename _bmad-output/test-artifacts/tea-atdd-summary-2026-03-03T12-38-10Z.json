@@ -1,0 +1,40 @@
+{
+  "tdd_phase": "RED",
+  "story_id": "e-2",
+  "total_tests": 7,
+  "api_tests": 4,
+  "e2e_tests": 3,
+  "all_tests_skipped": true,
+  "expected_to_fail": true,
+  "fixtures_created": 2,
+  "fixture_needs": [
+    "connectShyftStoryE2Factory",
+    "connectShyftStoryE2Fixture",
+    "signedWebhookHeaders"
+  ],
+  "acceptance_criteria_covered": [
+    "Ensure single active thread for tenant, orgUnit, neighbor and append inbound artifact",
+    "Reuse existing active thread and preserve deterministic ordering",
+    "Suppress duplicate timeline entries for duplicate provider event identity",
+    "Create-and-append path is atomic with audit and outbox writes",
+    "Mapped inbound SMS create-and-append journey",
+    "Concurrent inbound deliveries converge on one active thread identity",
+    "Duplicate replay is suppressed with no duplicate timeline writes"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns",
+    "selector-resilience",
+    "network-first",
+    "timing-debugging"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential",
+  "generated_files": [
+    "tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts",
+    "tests/e2e/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.spec.ts",
+    "tests/support/factories/connectShyftStoryE2Factory.ts",
+    "tests/support/fixtures/connectShyftStoryE2.fixture.ts"
+  ]
+}

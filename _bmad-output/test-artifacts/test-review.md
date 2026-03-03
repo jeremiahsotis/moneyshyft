@@ -1,14 +1,14 @@
 ---
 stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-quality-evaluation', 'step-03f-aggregate-scores', 'step-04-generate-report']
 lastStep: 'step-04-generate-report'
-lastSaved: '2026-03-01'
+lastSaved: '2026-03-03T15:44:28Z'
 ---
 
-# Test Quality Review: Epic F (`f-1`..`f-4`) Platform Specs
+# Test Quality Review: Story e.2 (`inbound-sms-processing-with-active-thread-ensure`)
 
-**Quality Score**: 70/100 (C - Needs Improvement)
-**Review Date**: 2026-03-01
-**Review Scope**: directory
+**Quality Score**: 92/100 (A- - Strong)
+**Review Date**: 2026-03-03
+**Review Scope**: single (story-targeted review mapped to split API ATDD modules)
 **Reviewer**: TEA Agent (Murat)
 
 ---
@@ -17,27 +17,27 @@ Note: This review audits existing tests; it does not generate tests.
 
 ## Executive Summary
 
-**Overall Assessment**: Needs Improvement
+**Overall Assessment**: Strong
 
-**Recommendation**: Request Changes
+**Recommendation**: Approve
 
 ### Key Strengths
 
-✅ Strong use of explicit assertions and contract-shape checks (`expect(...).toMatchObject`, envelope checks).
-✅ Priority tagging is consistent where present (`@P0`, `@P1`) and supports risk-based sequencing.
-✅ No hard waits (`waitForTimeout`, `sleep`) detected in Epic F specs.
+✅ Replay-suppression coverage now includes persisted timeline cardinality validation after duplicate delivery.
+✅ Story e.2 test decomposition (core/replay-refusal/concurrency/shared) materially reduced monolithic-file risk.
+✅ Deterministic IDs and explicit envelope assertions remain consistent across all six scenarios.
 
 ### Key Weaknesses
 
-❌ Epic F story `f-3` has no API or E2E spec coverage.
-❌ 10 ATDD tests are skipped across Epic F files, leaving acceptance-level gaps.
-❌ Six automate suites are locked to serial mode, reducing isolation and CI throughput.
+❌ Core cases module is slightly above the 300-line maintainability target (302 lines).
+❌ Persistent-environment teardown/reset remains implicit (idempotency-based) rather than explicit.
+❌ Existing-thread scenario uses a loose inbound-event count assertion (`> 0`) instead of strict delta.
 
 ### Summary
 
-Epic F’s active automation gives useful API-level signal for `f-1`, `f-2`, and `f-4`, but acceptance coverage is materially incomplete for epic-level readiness. The largest quality gap is coverage: `f-3` is missing entirely and multiple ATDD suites are skipped, which weakens gate confidence for release decisions.
+Behavioral correctness and contract depth are now strong for story e.2. The previous blocker-level maintainability concern (single 595-line spec) has been addressed by decomposition, and the replay coverage gap is closed with a post-duplicate cardinality check.
 
-Maintainability and execution quality are mixed. Assertions and provider-neutral contract checks are clear, but oversized specs and serial-suite coupling increase rerun cost and long-term maintenance risk. This should be treated as a “fix before merge-to-hard gate” state rather than a full-quality pass.
+Remaining findings are non-blocking and mostly incremental: trim the core module slightly, tighten one count assertion, and optionally add teardown hooks for long-lived environments.
 
 ---
 
@@ -45,206 +45,121 @@ Maintainability and execution quality are mixed. Assertions and provider-neutral
 
 | Criterion                            | Status   | Violations | Notes |
 | ------------------------------------ | -------- | ---------- | ----- |
-| BDD Format (Given-When-Then)         | ⚠️ WARN  | 4          | Scenario titles are behavior-oriented but not consistently in explicit Given/When/Then structure. |
-| Test IDs                             | ❌ FAIL  | 49         | No formal test ID format (`<epic>.<story>-<level>-<seq>`) detected in Epic F specs. |
-| Priority Markers (P0/P1/P2/P3)       | ✅ PASS  | 0          | `@P0`/`@P1` markers are used broadly in Epic F test titles. |
-| Hard Waits (sleep, waitForTimeout)   | ✅ PASS  | 0          | No hard waits found. |
-| Determinism (no conditionals)        | ⚠️ WARN  | 2          | Date-derived event IDs used in several tests (`Date.now()`), reducing strict reproducibility. |
-| Isolation (cleanup, no shared state) | ❌ FAIL  | 3          | Serial mode in multiple suites indicates order dependency and weaker isolation. |
-| Fixture Patterns                     | ✅ PASS  | 0          | Story fixtures/factories are used consistently for setup context. |
-| Data Factories                       | ✅ PASS  | 0          | Factory-backed contexts and headers are prevalent (`createStoryF*Context`, `createStoryF*Headers`). |
-| Network-First Pattern                | ⚠️ WARN  | 2          | Active E2E automate specs are mostly API-request driven; limited UI-network interception behavior coverage. |
-| Explicit Assertions                  | ✅ PASS  | 0          | Assertions are visible in test bodies and generally actionable. |
-| Test Length (≤300 lines)             | ⚠️ WARN  | 3          | Three specs exceed 300 lines (`f-2 automate api`, `f-4 automate api`, `f-2 automate e2e`). |
-| Test Duration (≤1.5 min)             | ⚠️ WARN  | 2          | Serial suite configuration likely increases wall time and rerun costs. |
-| Flakiness Patterns                   | ⚠️ WARN  | 2          | Date-derived IDs + serial coupling are minor-to-moderate flakiness/maintenance signals. |
+| BDD Format (Given-When-Then)         | ⚠️ WARN  | 6          | Scenario titles are behavior-driven but not explicit Given/When/Then phrasing. |
+| Test IDs                             | ✅ PASS  | 0          | IDs `[E2-ATDD-API-001..006]` are complete and consistent. |
+| Priority Markers (P0/P1/P2/P3)       | ✅ PASS  | 0          | All tests include `@P0`/`@P1` markers. |
+| Hard Waits (sleep, waitForTimeout)   | ✅ PASS  | 0          | No hard waits detected. |
+| Determinism (no conditionals)        | ✅ PASS  | 0          | No timing randomness in test logic; deterministic IDs preserved. |
+| Isolation (cleanup, no shared state) | ⚠️ WARN  | 1          | Per-test neighbor suffixing improved isolation; teardown remains implicit. |
+| Fixture Patterns                     | ✅ PASS  | 0          | Shared helper module reduces duplication and drift. |
+| Data Factories                       | ✅ PASS  | 0          | Deterministic token/event factories used consistently. |
+| Network-First Pattern                | ✅ PASS  | 0          | API-first request strategy is appropriate for this scope. |
+| Explicit Assertions                  | ✅ PASS  | 0          | Assertions are contract-focused and explicit. |
+| Test Length (≤300 lines)             | ⚠️ WARN  | 1          | Core module is 302 lines (slightly above threshold). |
+| Test Duration (≤1.5 min)             | ✅ PASS  | 0          | Story preflight run completed quickly (6 tests in sub-second execution window). |
+| Flakiness Patterns                   | ✅ PASS  | 0          | No retries/sleeps/tight timeout anti-patterns detected. |
 
-**Total Violations**: 0 Critical, 4 High, 6 Medium, 2 Low
+**Total Violations**: 0 Critical, 0 High, 3 Medium, 3 Low
 
 ---
 
 ## Quality Score Breakdown
 
 ```text
-Starting Score:          100
-Critical Violations:     -0 × 10 = -0
-High Violations:         -4 × 5 = -20
-Medium Violations:       -6 × 2 = -12
-Low Violations:          -2 × 1 = -2
+Weighted Dimension Model
 
-Bonus Points:
-  Excellent BDD:         +0
-  Comprehensive Fixtures: +5
-  Data Factories:        +5
-  Network-First:         +0
-  Perfect Isolation:     +0
-  All Test IDs:          +0
-                         --------
-Total Bonus:             +10
-
-Final Score:             70/100
-Grade:                   C
+Determinism:      95 × 0.25 = 23.75
+Isolation:        91 × 0.25 = 22.75
+Maintainability:  89 × 0.20 = 17.80
+Coverage:         94 × 0.15 = 14.10
+Performance:      90 × 0.15 = 13.50
+                  -------------------
+Final Score:      92/100
+Grade:            A-
 ```
 
 ---
 
 ## Critical Issues (Must Fix)
 
-No critical P0 defects were detected in deterministic execution mechanics (hard waits/try-catch/conditional flow), but there are multiple high-severity quality blockers that should be addressed before enforcing strict Epic F quality gates.
+No P0/P1 execution-integrity blockers were found.
 
 ---
 
 ## Recommendations (Should Fix)
 
-### 1. Add Missing `f-3` Story Coverage
-
-**Severity**: P1 (High)
-**Location**: `tests/`
-**Criterion**: Coverage
-**Knowledge Base**: [test-levels-framework](../../_bmad/tea/testarch/knowledge/test-levels-framework.md)
-
-**Issue Description**:
-Epic F story `f-3-provider-leg-message-correlation-fallback-mapping` has no API or E2E specs.
-
-**Recommended Improvement**:
-
-```typescript
-// Add both files:
-// tests/api/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.api.spec.ts
-// tests/e2e/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.spec.ts
-```
-
-**Benefits**:
-Closes a direct acceptance-criteria gap and restores epic-wide traceability.
-
-### 2. Unskip ATDD Suites for `f-1` and `f-2`
-
-**Severity**: P1 (High)
-**Location**: `tests/api/platform/f-2-canonical-comms-event-model-and-event-store.atdd.api.spec.ts:53`
-**Criterion**: Coverage
-**Knowledge Base**: [test-quality](../../_bmad/tea/testarch/knowledge/test-quality.md)
-
-**Issue Description**:
-10 ATDD tests are currently disabled across Epic F files.
-
-**Current Code**:
-
-```typescript
-test.skip('[P0] outbound call and sms plus inbound webhook flows persist canonical events ...', async (...) => {
-```
-
-**Recommended Improvement**:
-
-```typescript
-test('[P0] outbound call and sms plus inbound webhook flows persist canonical events ...', async (...) => {
-```
-
-**Benefits**:
-Restores acceptance-level confidence and improves gate signal quality.
-
-### 3. Remove Broad Serial Mode Dependencies
-
-**Severity**: P1 (High)
-**Location**: `tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts:24`
-**Criterion**: Isolation / Performance
-**Knowledge Base**: [test-quality](../../_bmad/tea/testarch/knowledge/test-quality.md)
-
-**Issue Description**:
-Multiple suites force `mode: 'serial'`, implying order dependence and blocking parallel throughput.
-
-**Current Code**:
-
-```typescript
-test.describe.configure({ mode: 'serial' });
-```
-
-**Recommended Improvement**:
-
-```typescript
-// Prefer isolated setup/cleanup so suite can run in parallel mode:
-// test.describe.configure({ mode: 'parallel' });
-```
-
-**Benefits**:
-Reduces CI wall-clock time and improves isolation confidence.
-
-### 4. Split Oversized Spec Files
+### 1. Trim Core Module Below 300 Lines
 
 **Severity**: P2 (Medium)
-**Location**: `tests/api/platform/f-2-canonical-comms-event-model-and-event-store.automate.api.spec.ts:1`
+**Location**: `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.core.cases.ts:1`
 **Criterion**: Maintainability
 **Knowledge Base**: [test-quality](../../_bmad/tea/testarch/knowledge/test-quality.md)
 
 **Issue Description**:
-Three specs exceed 300 lines, increasing review/debug complexity.
+The core module is 302 lines, slightly above the maintainability guideline.
 
 **Recommended Improvement**:
+Extract one scenario block or relocate additional shared setup/assertion snippets into helpers.
 
-```typescript
-// Break by behavior:
-// - dispatch-canonicalization.spec.ts
-// - webhook-translation.spec.ts
-// - deterministic-event-query.spec.ts
-```
+### 2. Add Optional Explicit Cleanup for Persistent Environments
 
-**Benefits**:
-Lower rerun blast radius, clearer ownership, faster diagnosis.
-
-### 5. Replace `Date.now()` Event ID Generation with Deterministic Helper
-
-**Severity**: P3 (Low)
-**Location**: `tests/e2e/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.spec.ts:157`
-**Criterion**: Determinism
+**Severity**: P2 (Medium)
+**Location**:
+- `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.core.cases.ts:23`
+- `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.replay-refusal.cases.ts:21`
+- `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.concurrency.cases.ts:21`
+**Criterion**: Isolation
 **Knowledge Base**: [data-factories](../../_bmad/tea/testarch/knowledge/data-factories.md)
 
 **Issue Description**:
-Date-derived IDs reduce reproducibility and can complicate replay diagnostics.
-
-**Current Code**:
-
-```typescript
-providerEventId: `provider-event-f4-e2e-${Date.now().toString().slice(-8)}`
-```
+State isolation relies on deterministic IDs and idempotent setup. This is usually fine for ephemeral CI, but explicit cleanup improves reliability in persistent test environments.
 
 **Recommended Improvement**:
+Provide optional teardown/reset hooks for mapping/thread artifacts in long-lived environments.
 
-```typescript
-providerEventId: createDeterministicProviderEventId('f4-e2e', testInfo.retry)
-```
+### 3. Tighten Existing-Thread Count Assertion
 
-**Benefits**:
-Improves deterministic reruns and failure triage consistency.
+**Severity**: P3 (Low)
+**Location**: `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.core.cases.ts:213`
+**Criterion**: Coverage
+**Knowledge Base**: [test-quality](../../_bmad/tea/testarch/knowledge/test-quality.md)
+
+**Issue Description**:
+`E2-ATDD-API-002` checks inbound event count with `> 0`.
+
+**Recommended Improvement**:
+Capture timeline baseline before webhook and assert strict `+1` post-webhook where stable.
 
 ---
 
 ## Best Practices Found
 
-### 1. Hard-Wait Avoidance
+### 1. Replay-Safe Duplicate Validation with Persisted Cardinality
 
-**Location**: `tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.automate.api.spec.ts`
-**Pattern**: No hard waits
-**Knowledge Base**: [timing-debugging](../../_bmad/tea/testarch/knowledge/timing-debugging.md)
-
-**Why This Is Good**:
-No `waitForTimeout`/`sleep` anti-patterns were detected across Epic F test specs.
-
-### 2. Strong Contract Assertions
-
-**Location**: `tests/api/platform/f-2-canonical-comms-event-model-and-event-store.automate.api.spec.ts:245`
-**Pattern**: Explicit response contract checks
+**Location**: `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.replay-refusal.cases.ts:100-143`
+**Pattern**: replay suppression + persistence verification
 **Knowledge Base**: [test-quality](../../_bmad/tea/testarch/knowledge/test-quality.md)
 
 **Why This Is Good**:
-Assertions are visible and specific (status, code, deterministic/provider-neutral flags), which improves failure diagnosability.
+Duplicate replay behavior is validated at both envelope and persisted-timeline levels, reducing false confidence from metadata-only assertions.
 
-### 3. Priority-Tagged Scenarios
+### 2. Concurrency Convergence Contract
 
-**Location**: `tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.automate.spec.ts`
-**Pattern**: Risk-based tags
-**Knowledge Base**: [selective-testing](../../_bmad/tea/testarch/knowledge/selective-testing.md)
+**Location**: `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.concurrency.cases.ts:80-148`
+**Pattern**: parallel webhook convergence to single thread identity
+**Knowledge Base**: [timing-debugging](../../_bmad/tea/testarch/knowledge/timing-debugging.md)
 
 **Why This Is Good**:
-`@P0`/`@P1` tags support selective execution and clearer gate tuning.
+`Promise.all` delivery validation verifies both requests converge to one thread while still appending multiple inbound artifacts.
+
+### 3. Shared Assertion/Request Helpers
+
+**Location**: `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.shared.ts`
+**Pattern**: fixture/helper extraction for consistency
+**Knowledge Base**: [fixtures-composition](../../_bmad/tea/testarch/knowledge/fixtures-composition.md)
+
+**Why This Is Good**:
+Helper extraction reduced repeated contract assertions and setup drift from the previous monolithic spec layout.
 
 ---
 
@@ -252,46 +167,36 @@ Assertions are visible and specific (status, code, deterministic/provider-neutra
 
 ### File Metadata
 
-- **File Paths**:
-  - `tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts`
-  - `tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.automate.api.spec.ts`
-  - `tests/api/platform/f-2-canonical-comms-event-model-and-event-store.atdd.api.spec.ts`
-  - `tests/api/platform/f-2-canonical-comms-event-model-and-event-store.automate.api.spec.ts`
-  - `tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts`
-  - `tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.spec.ts`
-  - `tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.automate.spec.ts`
-  - `tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.atdd.spec.ts`
-  - `tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.automate.spec.ts`
-  - `tests/e2e/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.spec.ts`
-- **Total Size**: 2,563 lines across 10 files
+- **Primary Entrypoint**: `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts`
+- **Behavior Modules Reviewed**:
+  - `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.core.cases.ts` (302 lines)
+  - `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.replay-refusal.cases.ts` (197 lines)
+  - `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.concurrency.cases.ts` (151 lines)
+  - `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.shared.ts` (139 lines)
 - **Test Framework**: Playwright
 - **Language**: TypeScript
 
 ### Test Structure
 
-- **Describe Blocks**: 10
-- **Test Cases (it/test)**: 49
-- **Skipped Tests**: 10
-- **Active Tests**: 39
-- **Average Test Length**: 52.3 lines/test
-- **Total Assertions**: 223 (~4.6/test)
-- **Fixtures Used**: Story fixtures/factories (`createStoryF1Context`, `createStoryF2Context`, `createStoryF1Headers`, `createStoryF2Headers`)
-- **Data Factories Used**: 6+ references across API/E2E specs
+- **Describe Blocks**: 3
+- **Test Cases**: 6
+- **Fixtures Used**:
+  - `storyE2Context`
+  - `storyE2OperatorHeaders`
+  - `storyE2AdminHeaders`
+  - `storyE2NumberMappingPayload`
+  - `storyE2EnsurePayload`
+- **Assertions**: 47 `expect(...)` calls across story modules
 
 ### Test Coverage Scope
 
-- **Test IDs**: none detected
-- **Priority Distribution**:
-  - P0 (Critical): 22 tests
-  - P1 (High): 19 tests
-  - P2 (Medium): 0 tests
-  - P3 (Low): 0 tests
-  - Unknown/untagged: 8 tests
-
-### Assertions Analysis
-
-- **Explicit Assertions**: Present in all reviewed active files
-- **Assertion Styles**: `toBe`, `toMatchObject`, `toEqual`, `toContain`, `toHaveProperty`, `toHaveCount`
+- **Test IDs**:
+  - `E2-ATDD-API-001`
+  - `E2-ATDD-API-002`
+  - `E2-ATDD-API-003`
+  - `E2-ATDD-API-004`
+  - `E2-ATDD-API-005`
+  - `E2-ATDD-API-006`
 
 ---
 
@@ -299,63 +204,51 @@ Assertions are visible and specific (status, code, deterministic/provider-neutra
 
 ### Related Artifacts
 
-- **Story Files**:
-  - `_bmad-output/implementation-artifacts/f-1-provider-adapter-interface-and-provider-registry.md`
-  - `_bmad-output/implementation-artifacts/f-2-canonical-comms-event-model-and-event-store.md`
-  - `_bmad-output/implementation-artifacts/f-3-provider-leg-message-correlation-fallback-mapping.md`
-  - `_bmad-output/implementation-artifacts/f-4-telnyx-adapter-implementation-and-cutover-guardrails.md`
-- **Test Design**:
-  - `_bmad-output/test-artifacts/test-design-epic-F.md`
-- **Framework Config**:
-  - `playwright.config.ts`
+- **Story File**: `_bmad-output/implementation-artifacts/e-2-inbound-sms-processing-with-active-thread-ensure.md`
+- **Acceptance Criteria Mapped**: 4/4 core ACs covered
 
-### Acceptance Criteria Validation (Epic F)
+### Acceptance Criteria Validation
 
-| Story / AC Block | Status | Notes |
-| ---------------- | ------ | ----- |
-| F1 AC1-AC4 | ✅ Covered (partial acceptance depth) | Active API/E2E automate coverage exists; E2E ATDD set is skipped. |
-| F2 AC1-AC4 | ⚠️ Partially Covered | Automate coverage exists; ATDD API+E2E sets are skipped. |
-| F3 AC1-AC4 | ❌ Missing | No `f-3` API/E2E specs found. |
-| F4 AC1-AC4 | ⚠️ Covered (automation-only) | API and E2E automate coverage exists; no ATDD suite present. |
+| Acceptance Criterion | Test ID(s) | Status | Notes |
+| -------------------- | ---------- | ------ | ----- |
+| AC1 ensure + append  | 001        | ✅ Covered | New active thread ensure + append artifact contract validated. |
+| AC2 reuse active thread | 002     | ✅ Covered | Existing thread reuse and deterministic ordering validated. |
+| AC3 replay suppression | 003      | ✅ Covered | Duplicate envelope + persisted timeline cardinality validated. |
+| AC4 atomic create-and-append | 004 | ✅ Covered | Side-effect durability envelope plus timeline append path validated. |
 
-**AC Coverage Estimate**: 12/16 criteria covered by active tests (~75%).
+**Additional risk scenarios**: refusal path (`006`) and concurrency convergence (`005`) are covered.
 
 ---
 
 ## Knowledge Base References
 
-- `_bmad/tea/testarch/knowledge/test-quality.md`
-- `_bmad/tea/testarch/knowledge/data-factories.md`
-- `_bmad/tea/testarch/knowledge/test-levels-framework.md`
-- `_bmad/tea/testarch/knowledge/selective-testing.md`
-- `_bmad/tea/testarch/knowledge/test-healing-patterns.md`
-- `_bmad/tea/testarch/knowledge/selector-resilience.md`
-- `_bmad/tea/testarch/knowledge/timing-debugging.md`
-- `_bmad/tea/testarch/knowledge/overview.md`
-- `_bmad/tea/testarch/knowledge/api-request.md`
-- `_bmad/tea/testarch/knowledge/network-recorder.md`
-- `_bmad/tea/testarch/knowledge/auth-session.md`
-- `_bmad/tea/testarch/knowledge/intercept-network-call.md`
-- `_bmad/tea/testarch/knowledge/recurse.md`
-- `_bmad/tea/testarch/knowledge/log.md`
-- `_bmad/tea/testarch/knowledge/file-utils.md`
-- `_bmad/tea/testarch/knowledge/burn-in.md`
-- `_bmad/tea/testarch/knowledge/network-error-monitor.md`
-- `_bmad/tea/testarch/knowledge/fixtures-composition.md`
-- `_bmad/tea/testarch/knowledge/playwright-cli.md`
+This review consulted these TEA knowledge fragments:
+
+- [test-quality.md](../../_bmad/tea/testarch/knowledge/test-quality.md)
+- [data-factories.md](../../_bmad/tea/testarch/knowledge/data-factories.md)
+- [test-levels-framework.md](../../_bmad/tea/testarch/knowledge/test-levels-framework.md)
+- [selective-testing.md](../../_bmad/tea/testarch/knowledge/selective-testing.md)
+- [test-healing-patterns.md](../../_bmad/tea/testarch/knowledge/test-healing-patterns.md)
+- [selector-resilience.md](../../_bmad/tea/testarch/knowledge/selector-resilience.md)
+- [timing-debugging.md](../../_bmad/tea/testarch/knowledge/timing-debugging.md)
+- [playwright-cli.md](../../_bmad/tea/testarch/knowledge/playwright-cli.md)
+- [api-request.md](../../_bmad/tea/testarch/knowledge/api-request.md)
+- [fixtures-composition.md](../../_bmad/tea/testarch/knowledge/fixtures-composition.md)
 
 ---
 
-## External Documentation Cross-Check
+## Decision
 
-Recommendations above were cross-checked against current official sources:
+**Recommendation**: Approve
 
-- Playwright Best Practices (user-visible behavior assertions, isolation guidance): https://playwright.dev/docs/best-practices
-- Playwright Release Notes / Docs Index (current framework guidance): https://playwright.dev/docs/release-notes
-- Cypress Test Isolation (independent tests): https://docs.cypress.io/app/core-concepts/test-isolation
-- Pact Docs (contract-testing reference context): https://docs.pact.io/
-- GitHub Actions Matrix/Parallel Strategy (CI parallelization context): https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs
+**Rationale**:
+The previously reported blockers for story e.2 test quality have been addressed: monolithic spec risk is removed via decomposition, and replay suppression now validates persisted timeline cardinality after duplicate delivery. Remaining findings are incremental and non-blocking.
 
 ---
 
-Generated by TEA test-review workflow (`_bmad/tea/workflows/testarch/test-review`).
+## Review Metadata
+
+**Generated By**: BMad TEA Agent (Test Architect)
+**Workflow**: testarch-test-review (step-file create mode)
+**Review ID**: test-review-e-2-inbound-sms-processing-with-active-thread-ensure-20260303-rerun
+**Timestamp**: 2026-03-03T15:44:28Z

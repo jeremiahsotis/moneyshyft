@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-03T03:27:30Z'
+lastSaved: '2026-03-03T15:20:19Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -3267,3 +3267,181 @@ lastSaved: '2026-03-03T03:27:30Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality and maintainability scoring of the generated e.1 automate suite.
 - `[TR] Trace Requirements` to map e.1 AC coverage across ATDD and automate evidence.
+
+## Story e.2 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/e-2-inbound-sms-processing-with-active-thread-ensure.md`
+  - Existing ATDD files found for Story e.2:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.spec.ts`
+
+### Context Loaded
+- Source and route context loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/modules/connectshyft/inboundSms.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/modules/connectshyft/providerCorrelationMappings.ts`
+- Existing fixture/factory assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryE2.fixture.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryE2Factory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/helpers/connectShyftWebhookTestHelpers.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/helpers/apiClient.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+- Additional pattern references:
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `api-testing-patterns.md`
+  - `playwright-cli.md`
+
+## Story e.2 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` was not required for this run.
+- Rationale: Story e.2 automation targets are deterministic webhook/API contract flows and thread timeline assertions; coverage was generated from code + artifact analysis.
+
+### Acceptance Criteria to Target Mapping
+- AC1/AC2/AC4 expansion target:
+  - metadata-correlated SMS ingest without explicit `neighborId` still reuses active thread and resolves neighbor context deterministically from thread scope.
+  - invalid inbound `neighborId` payload values are ignored when correlated thread context is authoritative.
+- AC3 expansion target:
+  - replay-safe suppression when `providerEventId` is absent, using message-id + canonical-event dedupe fallback.
+
+### Selected Test Levels
+- **API** (primary): ingress contract expansion around correlation source, neighbor resolution precedence, and dedupe key fallback semantics.
+- **E2E** (secondary): journey-level verification of accepted ingest and duplicate suppression reflected in thread detail timeline.
+
+### Priority Assignment
+- P0:
+  - metadata-correlation active-thread reuse with neighbor fallback
+- P1:
+  - invalid-neighbor fallback precedence
+  - message-id replay-safe dedupe fallback
+  - duplicate suppression reflected in timeline cardinality
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.automate.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/e-2-inbound-sms-processing-with-active-thread-ensure.automate.spec.ts`
+- Scope: `critical-paths`
+
+## Story e.2 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-03-03T15-18-40Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-03-03T15-18-40Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-03-03T15-18-40Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 3`
+- E2E subprocess status: `success: true`, `test_count: 2`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed in one pass for both levels.
+- Sequential equivalent would require two independent generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story e.2 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.automate.api.spec.ts`
+- `tests/e2e/platform/e-2-inbound-sms-processing-with-active-thread-ensure.automate.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper assets:
+  - `tests/support/fixtures/connectShyftStoryE2.fixture.ts`
+  - `tests/support/factories/connectShyftStoryE2Factory.ts`
+  - `tests/support/helpers/connectShyftWebhookTestHelpers.ts`
+  - `tests/support/helpers/apiClient.ts`
+- New shared fixture files created: none.
+
+### Summary Metrics
+- Total tests generated: `5`
+  - API tests: `3` (1 file)
+  - E2E tests: `2` (1 file)
+- Priority coverage:
+  - P0: `2`
+  - P1: `3`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-03-03T15-18-40Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-03-03T15-18-40Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-03-03T15-18-40Z.json`
+  - `/tmp/tea-automate-summary-2026-03-03T15-18-40Z.json`
+- Persisted under test artifacts:
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-03-03T15-18-40Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-03-03T15-18-40Z.json`
+  - `_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-03-03T15-18-40Z.json`
+
+## Story e.2 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated suite execution validation:
+  - `npm run test:e2e -- tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.automate.api.spec.ts tests/e2e/platform/e-2-inbound-sms-processing-with-active-thread-ensure.automate.spec.ts`
+  - Result: `5 passed`.
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) detected.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
+  - no `try/catch` flow-control anti-pattern detected.
+- CLI session cleanup:
+  - no browser CLI session opened for this run.
+- Temp artifact storage:
+  - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-temp`.
+
+### Key Assumptions
+- ConnectShyft test harness headers (`x-test-connectshyft-*`) remain available for deterministic tenant/orgUnit/provider routing.
+- Inbound webhook canonical translation for `sms.delivered` continues to produce `MessageDelivered` and preserve dedupe fallback behavior.
+
+### Risks
+- Coverage intentionally focuses on API-driven ingress determinism; browser-surface operator UI assertions remain out of scope for this run.
+- Existing shared synthetic Story e.2 fixture context remains a dependency for deterministic route contracts.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality and maintainability scoring of the generated e.2 automate suite.
+- `[TR] Trace Requirements` to map e.2 AC coverage across ATDD and automate evidence.
