@@ -1,0 +1,31 @@
+{
+  "total_tests": 5,
+  "api_tests": 3,
+  "e2e_tests": 2,
+  "fixtures_created": 0,
+  "fixtures_reused": 3,
+  "api_test_files": 3,
+  "e2e_test_files": 1,
+  "priority_coverage": {
+    "P0": 3,
+    "P1": 2,
+    "P2": 0,
+    "P3": 0
+  },
+  "knowledge_fragments_used": [
+    "test-levels",
+    "test-priorities",
+    "data-factories",
+    "selective-testing",
+    "ci-burn-in",
+    "test-quality",
+    "api-testing-patterns",
+    "api-request",
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience",
+    "playwright-cli"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential"
+}
