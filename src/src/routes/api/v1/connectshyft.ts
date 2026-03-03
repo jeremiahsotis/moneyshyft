@@ -79,11 +79,15 @@ import {
 import {
   CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
   CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
+  CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME,
   CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_QUEUE_NAME,
   CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME,
   buildConnectShyftInboundVoiceCanonicalPayload,
+  buildConnectShyftVoicemailTranscriptionAttachedCanonicalPayload,
   buildConnectShyftVoicemailTranscriptionRequest,
+  extractConnectShyftVoicemailTranscriptionCallbackPayload,
   extractConnectShyftInboundVoiceNeighborId,
+  isConnectShyftVoicemailTranscriptionCallbackEventType,
   mapConnectShyftInboundVoiceWebhookToDomainEvent,
   resolveConnectShyftInboundVoiceRouting,
 } from '../../../modules/connectshyft/inboundVoice';
@@ -93,6 +97,8 @@ import {
   type ConnectShyftCanonicalEventRecord,
 } from '../../../modules/connectshyft/canonicalEvents';
 import {
+  beginConnectShyftWebhookReceiptProcessing,
+  markConnectShyftWebhookReceiptProcessingResult,
   recordConnectShyftProviderIdentifierMapping,
   recordConnectShyftWebhookReceipt,
   resolveConnectShyftProviderCorrelationByIdentifiers,
@@ -131,6 +137,7 @@ const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
   inboundVoiceVoicemail: CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
   inboundVoiceFallback: CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
   voicemailTranscriptionRequested: CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME,
+  voicemailTranscriptionAttached: CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME,
 } as const;
 const CONNECTSHYFT_OUTBOUND_EVENT_NAMES = {
   callDispatched: 'connectshyft.thread.outbound_call_dispatched',
@@ -2542,12 +2549,17 @@ const persistOutboundProviderIdentifierMappings = async (input: {
   };
 };
 
+type ConnectShyftThreadTimelineEvent = ConnectShyftCanonicalEventRecord & {
+  eventName: string;
+  metadata: Record<string, unknown> | null;
+};
+
 const listCanonicalThreadEvents = async (input: {
   tenantId: string;
   orgUnitId: string;
   threadId: string;
   limit?: number;
-}): Promise<Array<ConnectShyftCanonicalEventRecord & { eventName: string }>> => {
+}): Promise<ConnectShyftThreadTimelineEvent[]> => {
   const events = await listConnectShyftCanonicalEvents({
     tenantId: input.tenantId,
     orgUnitId: input.orgUnitId,
@@ -2557,12 +2569,206 @@ const listCanonicalThreadEvents = async (input: {
     db: loadPlatformDb(),
   });
 
-  return events.map((event) => ({
-    ...event,
-    eventName: typeof event.payload?.eventName === 'string'
-      ? event.payload.eventName
-      : event.eventType,
-  }));
+  return events.map((event) => {
+    const payload = asRecord(event.payload);
+    const metadata = asRecord(payload?.metadata);
+    return {
+      ...event,
+      eventName: typeof payload?.eventName === 'string'
+        ? payload.eventName
+        : event.eventType,
+      metadata: metadata || null,
+    };
+  });
+};
+
+type ConnectShyftVoicemailArtifactContract = {
+  artifactId: string;
+  transcription: {
+    available: boolean;
+    text: string | null;
+  };
+};
+
+const resolveVoicemailArtifactsFromTimeline = (
+  timeline: ConnectShyftThreadTimelineEvent[],
+): ConnectShyftVoicemailArtifactContract[] => {
+  const artifacts = new Map<string, ConnectShyftVoicemailArtifactContract>();
+
+  const ensureArtifact = (artifactId: string): ConnectShyftVoicemailArtifactContract => {
+    const normalizedArtifactId = normalizeLifecycleString(artifactId);
+    const existing = artifacts.get(normalizedArtifactId);
+    if (existing) {
+      return existing;
+    }
+
+    const created: ConnectShyftVoicemailArtifactContract = {
+      artifactId: normalizedArtifactId,
+      transcription: {
+        available: false,
+        text: null,
+      },
+    };
+    artifacts.set(normalizedArtifactId, created);
+    return created;
+  };
+
+  timeline.forEach((event) => {
+    const payload = asRecord(event.payload);
+    const voicemailArtifact = asRecord(payload?.voicemailArtifact);
+    const payloadArtifactId = normalizeLifecycleString(voicemailArtifact?.artifactId);
+    if (payloadArtifactId) {
+      const artifact = ensureArtifact(payloadArtifactId);
+      const transcription = asRecord(voicemailArtifact?.transcription);
+      const available = transcription?.available === true;
+      const text = normalizeLifecycleString(transcription?.text);
+      if (available || text) {
+        artifact.transcription = {
+          available: available || Boolean(text),
+          text: text || artifact.transcription.text,
+        };
+      }
+    }
+
+    if (event.eventName !== CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.voicemailTranscriptionAttached) {
+      return;
+    }
+
+    const metadata = asRecord(event.metadata);
+    const transcription = asRecord(payload?.transcription);
+    const callbackArtifactId = normalizeLifecycleString(
+      metadata?.voicemailArtifactId
+      || payload?.voicemailArtifactId
+      || voicemailArtifact?.artifactId,
+    );
+    if (!callbackArtifactId) {
+      return;
+    }
+
+    const transcriptText = normalizeLifecycleString(
+      metadata?.transcriptText
+      || transcription?.text
+      || asRecord(voicemailArtifact?.transcription)?.text,
+    );
+    const artifact = ensureArtifact(callbackArtifactId);
+    artifact.transcription = {
+      available: true,
+      text: transcriptText || null,
+    };
+  });
+
+  return Array.from(artifacts.values());
+};
+
+const hasPersistedVoicemailArtifactCorrelation = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  voicemailArtifactId: string;
+  callbackProviderEventId: string;
+}): Promise<boolean> => {
+  const callbackProviderEventId = normalizeLifecycleString(input.callbackProviderEventId);
+  if (!callbackProviderEventId) {
+    return false;
+  }
+
+  const db = loadPlatformDb();
+  const canQueryAllEvents = UUID_PATTERN.test(input.tenantId) && UUID_PATTERN.test(input.threadId);
+  if (canQueryAllEvents) {
+    try {
+      const matched = await db
+        .withSchema('platform')
+        .table('events')
+        .where({
+          tenant_id: input.tenantId,
+          event_name: 'connectshyft.canonical.event_recorded',
+        })
+        .andWhereRaw(`payload ->> 'aggregateId' = ?`, [input.threadId])
+        .andWhereRaw(`payload ->> 'aggregateType' = ?`, ['Thread'])
+        .andWhereRaw(`payload ->> 'orgUnitId' = ?`, [input.orgUnitId])
+        .andWhereRaw(
+          `COALESCE(
+            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'tenantId',
+            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'tenant_id'
+          ) = ?`,
+          [input.tenantId],
+        )
+        .andWhereRaw(
+          `COALESCE(
+            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'orgUnitId',
+            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'org_unit_id'
+          ) = ?`,
+          [input.orgUnitId],
+        )
+        .andWhereRaw(
+          `COALESCE(
+            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'threadId',
+            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'thread_id'
+          ) = ?`,
+          [input.threadId],
+        )
+        .andWhereRaw(
+          `COALESCE(
+            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'providerEventId',
+            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'provider_event_id',
+            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'correlationEventId',
+            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'correlation_event_id'
+          ) = ?`,
+          [callbackProviderEventId],
+        )
+        .andWhereRaw(
+          `COALESCE(
+            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'voicemailArtifactId',
+            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'voicemail_artifact_id'
+          ) = ?`,
+          [input.voicemailArtifactId],
+        )
+        .first(['id']);
+
+      return Boolean(matched?.id);
+    } catch (_error) {
+      // Fall through to bounded in-memory/list fallback for non-production contexts.
+    }
+  }
+
+  const events = await listConnectShyftCanonicalEvents({
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    aggregateId: input.threadId,
+    aggregateType: 'Thread',
+    limit: CONNECTSHYFT_CANONICAL_EVENTS_MAX_LIMIT,
+    db,
+  });
+
+  return events.some((event) => {
+    const payload = asRecord(event.payload);
+    const transcription = asRecord(payload?.transcription);
+    const callbackCorrelation = asRecord(transcription?.callbackCorrelation);
+    const callbackTenantId = normalizeLifecycleString(
+      callbackCorrelation?.tenantId || callbackCorrelation?.tenant_id,
+    );
+    const callbackOrgUnitId = normalizeLifecycleString(
+      callbackCorrelation?.orgUnitId || callbackCorrelation?.org_unit_id,
+    );
+    const callbackThreadId = normalizeLifecycleString(
+      callbackCorrelation?.threadId || callbackCorrelation?.thread_id,
+    );
+    const callbackArtifactId = normalizeLifecycleString(
+      callbackCorrelation?.voicemailArtifactId || callbackCorrelation?.voicemail_artifact_id,
+    );
+    const callbackSeedEventId = normalizeLifecycleString(
+      callbackCorrelation?.providerEventId
+      || callbackCorrelation?.provider_event_id
+      || callbackCorrelation?.correlationEventId
+      || callbackCorrelation?.correlation_event_id,
+    );
+
+    return callbackTenantId === input.tenantId
+      && callbackOrgUnitId === input.orgUnitId
+      && callbackThreadId === input.threadId
+      && callbackArtifactId === input.voicemailArtifactId
+      && callbackSeedEventId === callbackProviderEventId;
+  });
 };
 
 const normalizeSchedulerLimit = (value: unknown): number => {
@@ -4743,6 +4949,7 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
     threadId,
     limit: CONNECTSHYFT_CANONICAL_EVENTS_MAX_LIMIT,
   });
+  const voicemailArtifacts = resolveVoicemailArtifactsFromTimeline(timeline);
 
   const threadWithCanonicalTimeline = {
     ...thread,
@@ -4761,6 +4968,7 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
         bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
       },
       thread: threadWithCanonicalTimeline,
+      voicemailArtifacts,
       actions: threadWithCanonicalTimeline.actions,
       latencyBudgetsMs: {
         p95: CONNECTSHYFT_INBOX_P95_BUDGET_MS,
@@ -5773,6 +5981,7 @@ const handleInboundWebhook = async (
   });
   const eventType = canonicalTranslation.eventType;
   const normalizedEventType = eventType.toLowerCase();
+  const isTranscriptionCallbackEvent = isConnectShyftVoicemailTranscriptionCallbackEventType(eventType);
   const isConnectedCallEvent = CONNECTSHYFT_CONNECTED_CALL_EVENT_TYPES.has(normalizedEventType);
   const correlation = await resolveInboundWebhookCorrelation({
     body: req.body,
@@ -5858,6 +6067,357 @@ const handleInboundWebhook = async (
           providerEventId: correlation.providerEventId,
           providerNumberE164: correlation.providerNumberE164,
         },
+      },
+    });
+    return;
+  }
+
+  if (isTranscriptionCallbackEvent) {
+    const callbackPayload = extractConnectShyftVoicemailTranscriptionCallbackPayload(req.body);
+    const callbackInboundProviderEventId = normalizeLifecycleString(correlation.providerEventId);
+    if (!callbackInboundProviderEventId) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_TRANSCRIPTION_PROVIDER_EVENT_REQUIRED',
+        message: 'Transcription callback requires providerEventId for deterministic replay handling.',
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          providerResolution: {
+            ...providerSelection.providerResolution,
+            adapterInvoked: true,
+          },
+          correlation: {
+            source: correlation.source,
+            deterministic: true,
+            threadId,
+            tenantId,
+            orgUnitId,
+            providerLegId: correlation.providerLegId,
+            providerMessageId: correlation.providerMessageId,
+            providerEventId: correlation.providerEventId,
+            providerNumberE164: correlation.providerNumberE164,
+          },
+          replaySafe: {
+            duplicate: false,
+            suppressedDomainWrites: false,
+            dedupeKey: null,
+          },
+          sideEffects: {
+            transcriptMutationApplied: false,
+            orphanTranscriptPrevented: true,
+          },
+          audit: {
+            eventName: 'connectshyft.voicemail.transcription_refused',
+            metadata: {
+              tenant_id: tenantId,
+              org_unit_id: orgUnitId,
+              thread_id: threadId,
+              reason: 'provider_event_id_missing',
+            },
+          },
+        },
+      });
+      return;
+    }
+
+    const transcriptionReceipt = await beginConnectShyftWebhookReceiptProcessing({
+      tenantId,
+      orgUnitId,
+      threadId,
+      providerName: providerSelection.providerResolution.resolvedProvider,
+      canonicalEventType: eventType,
+      providerEventId: callbackInboundProviderEventId,
+      providerLegId: correlation.providerLegId,
+      providerMessageId: correlation.providerMessageId,
+      correlationKeys: {
+        tenantId,
+        orgUnitId,
+        threadId,
+        callbackProviderEventId: callbackPayload.correlation.providerEventId || null,
+        voicemailArtifactId: callbackPayload.correlation.voicemailArtifactId || null,
+      },
+      db: loadPlatformDb(),
+    });
+    if (transcriptionReceipt.error) {
+      refusal(res, {
+        code: transcriptionReceipt.error.code,
+        message: 'Inbound webhook correlation resolved but receipt persistence is unavailable.',
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          providerResolution: {
+            ...providerSelection.providerResolution,
+            adapterInvoked: true,
+          },
+          correlation: {
+            source: correlation.source,
+            deterministic: true,
+            threadId,
+            tenantId,
+            orgUnitId,
+            providerLegId: correlation.providerLegId,
+            providerMessageId: correlation.providerMessageId,
+            providerEventId: correlation.providerEventId,
+            providerNumberE164: correlation.providerNumberE164,
+          },
+          replaySafe: {
+            duplicate: false,
+            suppressedDomainWrites: false,
+            dedupeKey: transcriptionReceipt.dedupeKey,
+          },
+          sideEffects: {
+            transcriptMutationApplied: false,
+            orphanTranscriptPrevented: true,
+          },
+          timelineOutcome: {
+            eventName: null,
+            routingDecision: 'refused',
+          },
+        },
+      });
+      return;
+    }
+
+    if (transcriptionReceipt.alreadyApplied) {
+      success(res, {
+        code: 'CONNECTSHYFT_TRANSCRIPTION_CALLBACK_DUPLICATE_SUPPRESSED',
+        message: 'Transcription callback duplicate suppressed',
+        data: {
+          eventType,
+          providerResolution: {
+            ...providerSelection.providerResolution,
+            adapterInvoked: true,
+          },
+          correlation: {
+            source: correlation.source,
+            deterministic: true,
+            threadId,
+            tenantId,
+            orgUnitId,
+            providerLegId: correlation.providerLegId,
+            providerMessageId: correlation.providerMessageId,
+            providerEventId: correlation.providerEventId,
+            providerNumberE164: correlation.providerNumberE164,
+          },
+          replaySafe: {
+            duplicate: true,
+            suppressedDomainWrites: true,
+            dedupeKey: transcriptionReceipt.dedupeKey,
+          },
+          sideEffects: {
+            transcriptMutationApplied: false,
+            timelineMutationApplied: false,
+          },
+        },
+      });
+      return;
+    }
+
+    const callbackTenantId = normalizeLifecycleString(callbackPayload.correlation.tenantId);
+    const callbackOrgUnitId = normalizeLifecycleString(callbackPayload.correlation.orgUnitId);
+    const callbackThreadId = normalizeLifecycleString(callbackPayload.correlation.threadId);
+    const callbackProviderEventId = normalizeLifecycleString(callbackPayload.correlation.providerEventId);
+    const callbackVoicemailArtifactId = normalizeLifecycleString(
+      callbackPayload.correlation.voicemailArtifactId,
+    );
+    const callbackProviderLegId = normalizeLifecycleString(
+      callbackPayload.correlation.providerLegId,
+    );
+    const transcriptText = normalizeLifecycleString(callbackPayload.transcriptText);
+    const hasRequiredCallbackCorrelation = Boolean(
+      callbackTenantId
+      && callbackOrgUnitId
+      && callbackThreadId
+      && callbackProviderEventId
+      && callbackVoicemailArtifactId,
+    );
+    const callbackMatchesResolvedScope = hasRequiredCallbackCorrelation
+      && callbackTenantId === tenantId
+      && callbackOrgUnitId === orgUnitId
+      && callbackThreadId === threadId
+      && (
+        !callbackProviderLegId
+        || !correlation.providerLegId
+        || callbackProviderLegId === correlation.providerLegId
+      );
+    const hasPersistedVoicemailCorrelation = callbackMatchesResolvedScope
+      ? await hasPersistedVoicemailArtifactCorrelation({
+        tenantId,
+        orgUnitId,
+        threadId,
+        voicemailArtifactId: callbackVoicemailArtifactId,
+        callbackProviderEventId,
+      })
+      : false;
+
+    if (!callbackMatchesResolvedScope || !hasPersistedVoicemailCorrelation || !transcriptText) {
+      await markConnectShyftWebhookReceiptProcessingResult({
+        tenantId,
+        threadId,
+        providerName: providerSelection.providerResolution.resolvedProvider,
+        dedupeKey: transcriptionReceipt.dedupeKey,
+        status: 'FAILED_TERMINAL',
+        failureReason: !callbackMatchesResolvedScope
+          ? 'callback_correlation_scope_invalid'
+          : !hasPersistedVoicemailCorrelation
+            ? 'callback_correlation_unresolved'
+            : 'transcript_text_missing',
+        db: loadPlatformDb(),
+      });
+      refusal(res, {
+        code: 'CONNECTSHYFT_TRANSCRIPTION_CORRELATION_INVALID',
+        message: 'Transcription callback correlation is invalid or unresolved for voicemail attachment.',
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          providerResolution: {
+            ...providerSelection.providerResolution,
+            adapterInvoked: true,
+          },
+          correlation: {
+            source: correlation.source,
+            deterministic: true,
+            threadId,
+            tenantId,
+            orgUnitId,
+            providerEventId: callbackProviderEventId || null,
+            voicemailArtifactId: callbackVoicemailArtifactId || null,
+          },
+          replaySafe: {
+            duplicate: false,
+            suppressedDomainWrites: false,
+            dedupeKey: transcriptionReceipt.dedupeKey,
+          },
+          sideEffects: {
+            transcriptMutationApplied: false,
+            orphanTranscriptPrevented: true,
+          },
+          audit: {
+            eventName: 'connectshyft.voicemail.transcription_refused',
+            metadata: {
+              tenant_id: tenantId,
+              org_unit_id: orgUnitId,
+              thread_id: threadId,
+              provider_event_id: callbackProviderEventId || null,
+              voicemail_artifact_id: callbackVoicemailArtifactId || null,
+              reason: !callbackMatchesResolvedScope
+                ? 'callback_correlation_scope_invalid'
+                : !hasPersistedVoicemailCorrelation
+                  ? 'callback_correlation_unresolved'
+                  : 'transcript_text_missing',
+            },
+          },
+        },
+      });
+      return;
+    }
+
+    let canonicalEvent: ConnectShyftCanonicalEventRecord;
+    try {
+      canonicalEvent = await recordCanonicalThreadEvent({
+        tenantId,
+        orgUnitId,
+        threadId,
+        eventType,
+        payload: buildConnectShyftVoicemailTranscriptionAttachedCanonicalPayload({
+          eventType,
+          voicemailArtifactId: callbackVoicemailArtifactId,
+          transcriptText,
+          callbackCorrelation: {
+            tenantId,
+            orgUnitId,
+            threadId,
+            correlationEventId: callbackProviderEventId,
+          },
+        }),
+        actorUserId: resolveWebhookActorUserId(req),
+      });
+    } catch (error) {
+      await markConnectShyftWebhookReceiptProcessingResult({
+        tenantId,
+        threadId,
+        providerName: providerSelection.providerResolution.resolvedProvider,
+        dedupeKey: transcriptionReceipt.dedupeKey,
+        status: 'FAILED_RETRYABLE',
+        failureReason: 'canonical_event_persistence_error',
+        db: loadPlatformDb(),
+      });
+      refusal(res, {
+        code: 'CONNECTSHYFT_TRANSCRIPTION_ATTACHMENT_UNAVAILABLE',
+        message: 'Transcription callback could not persist attachment side effects.',
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          correlation: {
+            source: correlation.source,
+            deterministic: true,
+            threadId,
+            tenantId,
+            orgUnitId,
+            providerEventId: callbackProviderEventId || null,
+            voicemailArtifactId: callbackVoicemailArtifactId,
+          },
+          replaySafe: {
+            duplicate: false,
+            suppressedDomainWrites: false,
+            dedupeKey: transcriptionReceipt.dedupeKey,
+          },
+          sideEffects: {
+            transcriptMutationApplied: false,
+            orphanTranscriptPrevented: true,
+          },
+          error: error instanceof Error ? error.message : 'canonical-event-persistence-error',
+        },
+      });
+      return;
+    }
+
+    await markConnectShyftWebhookReceiptProcessingResult({
+      tenantId,
+      threadId,
+      providerName: providerSelection.providerResolution.resolvedProvider,
+      dedupeKey: transcriptionReceipt.dedupeKey,
+      status: 'APPLIED',
+      db: loadPlatformDb(),
+    });
+
+    success(res, {
+      code: 'CONNECTSHYFT_TRANSCRIPTION_CALLBACK_ATTACHED',
+      message: 'Transcription callback attached to voicemail artifact',
+      data: {
+        eventType,
+        providerResolution: {
+          ...providerSelection.providerResolution,
+          adapterInvoked: true,
+        },
+        correlation: {
+          source: correlation.source,
+          deterministic: true,
+          threadId,
+          tenantId,
+          orgUnitId,
+          providerEventId: callbackProviderEventId,
+          voicemailArtifactId: callbackVoicemailArtifactId,
+        },
+        replaySafe: {
+          duplicate: false,
+          suppressedDomainWrites: false,
+          dedupeKey: transcriptionReceipt.dedupeKey,
+        },
+        transcriptionAttachment: {
+          applied: true,
+          transcriptText,
+          voicemailArtifactId: callbackVoicemailArtifactId,
+        },
+        timeline: {
+          eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.voicemailTranscriptionAttached,
+          routingDecision: 'accepted',
+        },
+        sideEffects: {
+          transcriptMutationApplied: true,
+          timelineMutationApplied: true,
+        },
+        canonicalEvent,
       },
     });
     return;

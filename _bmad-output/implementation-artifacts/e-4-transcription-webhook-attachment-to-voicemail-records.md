@@ -1,6 +1,6 @@
 # Story e.4: Transcription Webhook Attachment to Voicemail Records
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,26 +25,26 @@ so that voice content is searchable and actionable in-thread.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Transcript attachment correctness is directly user-facing in thread review workflows and must never drift from voicemail identity.
-- Real-User Validation Evidence: Pending implementation. Validate transcript attach/update behavior for success, missing-correlation refusal, and duplicate callback suppression.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: `npm run test:e2e -- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.spec.ts tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.spec.ts` on 2026-03-03 passed all 10 E4 API scenarios (core attach, detail projection, refusal guards, signature fail-closed handling, and replay-safe dedupe behavior).
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story handles callback correlation and artifact updates only.
 
 ## Tasks / Subtasks
 
-- [ ] Implement transcription callback canonical handling path (AC: 1)
-  - [ ] Parse provider callback payload and normalize canonical transcription event identity.
-  - [ ] Resolve voicemail correlation keys from persisted mapping data.
-- [ ] Implement deterministic transcript attachment logic (AC: 1, 2)
-  - [ ] Persist transcript content against correct voicemail artifact.
-  - [ ] Expose transcript availability in thread artifact contract outputs.
-- [ ] Implement missing/invalid-correlation refusal path (AC: 3)
-  - [ ] Return deterministic refusal without orphan writes.
-  - [ ] Record audit metadata for callback diagnosis.
-- [ ] Add idempotency and regression coverage (AC: 4)
-  - [ ] Duplicate callback tests proving no duplicate timeline mutations.
-  - [ ] Contract tests validating refusal semantics on unresolved correlation.
+- [x] Implement transcription callback canonical handling path (AC: 1)
+  - [x] Parse provider callback payload and normalize canonical transcription event identity.
+  - [x] Resolve voicemail correlation keys from persisted mapping data.
+- [x] Implement deterministic transcript attachment logic (AC: 1, 2)
+  - [x] Persist transcript content against correct voicemail artifact.
+  - [x] Expose transcript availability in thread artifact contract outputs.
+- [x] Implement missing/invalid-correlation refusal path (AC: 3)
+  - [x] Return deterministic refusal without orphan writes.
+  - [x] Record audit metadata for callback diagnosis.
+- [x] Add idempotency and regression coverage (AC: 4)
+  - [x] Duplicate callback tests proving no duplicate timeline mutations.
+  - [x] Contract tests validating refusal semantics on unresolved correlation.
 
 ## Dev Notes
 
@@ -131,18 +131,55 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `rg -n -i "epic\\s*e|e-4-" _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `rg -n "FR-CS-020|FR-CS-021a" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
-- `rg -n "voicemail-transcription|dedupe|receipt" _bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
+- `rg -n -i "epic\\s*e|e-4-" _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (pass)
+- `rg -n "FR-CS-020|FR-CS-021a" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md` (pass)
+- `rg -n "voicemail-transcription|dedupe|receipt" _bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md` (pass)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story e-4-transcription-webhook-attachment-to-voicemail-records.md` (pass)
+- `cd src && npm test -- src/src/modules/connectshyft/__tests__/inboundVoice.test.ts` (pass)
+- `npm run test:e2e -- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.spec.ts` (pass)
+- `cd src && npm run build` (pass)
+- `npm run test:e2e -- tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.atdd.api.spec.ts tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.automate.api.spec.ts` (pass)
+- `npm run test:e2e -- tests/api/platform/f-2-canonical-comms-event-model-and-event-store.atdd.api.spec.ts --workers=1` (pass)
+- `cd src && npm test -- src/src/modules/connectshyft/__tests__/inboundVoice.test.ts src/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts src/src/migrations/__tests__/connectShyftWebhookReceiptProcessingStateMigration.test.ts` (pass)
+- `npm run test:e2e -- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.spec.ts tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.spec.ts` (pass; 10 passed)
 
 ### Completion Notes List
 
 - Created implementation-ready Story e.4 context document with deterministic callback correlation and replay-safe transcript attachment guardrails.
+- Implemented dedicated transcription-callback handling in inbound webhook flow with deterministic callback correlation parsing, persisted voicemail-artifact correlation checks, transcript attachment canonical event persistence, and explicit duplicate-suppression response contracts.
+- Thread detail now returns `voicemailArtifacts` projection derived from canonical timeline and exposes timeline-level `metadata` for transcription-attached events so transcript availability is reflected in artifact views.
+- Added E4 unit coverage for callback event detection/parsing/payload composition and enabled E4 ATDD API core + replay/guards suites (all passing).
+- Hardened transcription callback idempotency with receipt processing states (`RECEIVED|APPLIED|FAILED_RETRYABLE|FAILED_TERMINAL`) so only applied callbacks are duplicate-suppressed and retryable failures can safely replay.
+- Enforced transcription callback `providerEventId` as required for deterministic replay handling and wired correlation checks to match persisted callback correlation event identity.
+- Removed callback-correlation dependence on timeline windowing by using unbounded canonical-event existence checks (DB path) for persisted voicemail correlation validation.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/e-4-transcription-webhook-attachment-to-voicemail-records.md
+- _bmad-output/test-artifacts/test-review.md
+- src/src/modules/connectshyft/inboundVoice.ts
+- src/src/modules/connectshyft/__tests__/inboundVoice.test.ts
+- src/src/modules/connectshyft/providerCorrelationMappings.ts
+- src/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts
+- src/src/routes/api/v1/connectshyft.ts
+- src/src/migrations/20260303153000_add_connectshyft_webhook_receipt_processing_state.ts
+- src/src/migrations/__tests__/connectShyftWebhookReceiptProcessingStateMigration.test.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.core.cases.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.correlation-guards.cases.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.replay-and-guards.cases.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.replay-integrity.cases.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.spec.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.correlation-shape.cases.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.replay-integrity.cases.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.spec.ts
+- tests/e2e/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.spec.ts
+- tests/e2e/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.spec.ts
+- tests/support/factories/connectShyftStoryE4Factory.ts
+- tests/support/fixtures/connectShyftStoryE4.fixture.ts
+- tests/support/helpers/connectShyftStoryE4TestHelpers.ts
 
 ## Change Log
 
 - 2026-03-03: Created Story e.4 ready-for-dev context document.
+- 2026-03-03: Implemented transcription callback attachment/refusal/idempotency flow, added voicemail artifact transcript projection in thread detail, and enabled E4 ATDD coverage.
+- 2026-03-03: Fixed adversarial-review findings by adding retry-safe receipt-state idempotency, strict transcription provider-event identity requirements, unbounded persisted-correlation validation, and expanded E4 guard/replay test coverage.

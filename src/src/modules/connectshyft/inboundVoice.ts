@@ -38,6 +38,7 @@ const CONNECTSHYFT_INBOUND_VOICE_DURATION_KEYS = [
 export const CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME = 'connectshyft.inbound.voice_voicemail_recorded' as const;
 export const CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME = 'connectshyft.inbound.voice_fallback_recorded' as const;
 export const CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME = 'connectshyft.voicemail.transcription_requested' as const;
+export const CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME = 'connectshyft.voicemail.transcription_attached' as const;
 export const CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_QUEUE_NAME = 'connectshyft.voicemail.transcription' as const;
 
 const normalizeString = (value: unknown): string => {
@@ -157,9 +158,44 @@ export type ConnectShyftVoicemailTranscriptionRequest = {
     orgUnitId: string;
     threadId: string;
     providerEventId: string | null;
+    correlationEventId: string | null;
     providerLegId: string | null;
     voicemailArtifactId: string;
   };
+};
+
+export type ConnectShyftVoicemailTranscriptionCallbackCorrelation = {
+  tenantId: string | null;
+  orgUnitId: string | null;
+  threadId: string | null;
+  providerEventId: string | null;
+  providerLegId: string | null;
+  voicemailArtifactId: string | null;
+};
+
+export type ConnectShyftVoicemailTranscriptionCallbackPayload = {
+  correlation: ConnectShyftVoicemailTranscriptionCallbackCorrelation;
+  transcriptText: string | null;
+};
+
+const readRecordFromSources = (
+  sources: Array<Record<string, unknown> | null>,
+  keys: readonly string[],
+): Record<string, unknown> | null => {
+  for (const source of sources) {
+    if (!source) {
+      continue;
+    }
+
+    for (const key of keys) {
+      const nested = asRecord(source[key]);
+      if (nested) {
+        return nested;
+      }
+    }
+  }
+
+  return null;
 };
 
 export const extractConnectShyftInboundVoiceNeighborId = (
@@ -169,6 +205,67 @@ export const extractConnectShyftInboundVoiceNeighborId = (
     readWebhookSources(webhookBody),
     CONNECTSHYFT_INBOUND_VOICE_NEIGHBOR_KEYS,
   );
+};
+
+export const isConnectShyftVoicemailTranscriptionCallbackEventType = (
+  canonicalEventType: string,
+): boolean => {
+  const normalized = normalizeString(canonicalEventType).toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+
+  return normalized.includes('transcription')
+    && (normalized.includes('completed') || normalized.includes('callback'));
+};
+
+export const extractConnectShyftVoicemailTranscriptionCallbackPayload = (
+  webhookBody: unknown,
+): ConnectShyftVoicemailTranscriptionCallbackPayload => {
+  const payload = asRecord(webhookBody);
+  const providerPayload = asRecord(payload?.providerPayload);
+  const data = asRecord(payload?.data);
+  const dataPayload = asRecord(data?.payload);
+  const sources = [payload, providerPayload, dataPayload, data];
+
+  const callbackCorrelation = readRecordFromSources(sources, [
+    'callbackCorrelation',
+    'callback_correlation',
+  ]);
+  const correlationSources = [callbackCorrelation, ...sources];
+  const transcriptRecord = readRecordFromSources(sources, ['transcript']);
+  const transcriptText = readFromSources(
+    [transcriptRecord, ...sources],
+    [
+      'text',
+      'transcriptText',
+      'transcript_text',
+      'transcriptionText',
+      'transcription_text',
+    ],
+  );
+
+  return {
+    correlation: {
+      tenantId: readFromSources(correlationSources, ['tenantId', 'tenant_id']),
+      orgUnitId: readFromSources(correlationSources, ['orgUnitId', 'org_unit_id']),
+      threadId: readFromSources(correlationSources, ['threadId', 'thread_id']),
+      providerEventId: readFromSources(correlationSources, [
+        'providerEventId',
+        'provider_event_id',
+        'correlationEventId',
+        'correlation_event_id',
+      ]),
+      providerLegId: readFromSources(correlationSources, ['providerLegId', 'provider_leg_id']),
+      voicemailArtifactId: readFromSources(correlationSources, [
+        'voicemailArtifactId',
+        'voicemail_artifact_id',
+        'artifactId',
+        'artifact_id',
+      ]),
+    },
+    transcriptText,
+  };
 };
 
 export const resolveConnectShyftInboundVoiceRouting = (input: {
@@ -290,7 +387,49 @@ export const buildConnectShyftVoicemailTranscriptionRequest = (input: {
     orgUnitId: input.orgUnitId,
     threadId: input.threadId,
     providerEventId: input.providerEventId,
+    correlationEventId: input.providerEventId,
     providerLegId: input.providerLegId,
     voicemailArtifactId: input.voicemailArtifactId,
+  },
+});
+
+export const buildConnectShyftVoicemailTranscriptionAttachedCanonicalPayload = (input: {
+  eventType: string;
+  voicemailArtifactId: string;
+  transcriptText: string;
+  callbackCorrelation: {
+    tenantId: string;
+    orgUnitId: string;
+    threadId: string;
+    correlationEventId: string;
+  };
+}): Record<string, unknown> => ({
+  direction: 'inbound',
+  channel: 'voice',
+  eventType: normalizeString(input.eventType) || 'VoiceTranscriptionCompleted',
+  eventName: CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME,
+  routingDecision: 'accepted',
+  deterministicOrdering: true,
+  metadata: {
+    voicemailArtifactId: input.voicemailArtifactId,
+    transcriptAvailable: true,
+    transcriptText: input.transcriptText,
+    callbackCorrelation: {
+      tenantId: input.callbackCorrelation.tenantId,
+      orgUnitId: input.callbackCorrelation.orgUnitId,
+      threadId: input.callbackCorrelation.threadId,
+      correlationEventId: input.callbackCorrelation.correlationEventId,
+    },
+  },
+  voicemailArtifact: {
+    artifactId: input.voicemailArtifactId,
+    transcription: {
+      available: true,
+      text: input.transcriptText,
+    },
+  },
+  transcription: {
+    available: true,
+    text: input.transcriptText,
   },
 });

@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-03T15:20:19Z'
+lastSaved: '2026-03-03T20:05:11Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -3629,3 +3629,196 @@ lastSaved: '2026-03-03T15:20:19Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality and maintainability scoring of the generated e.3 automate suite.
 - `[TR] Trace Requirements` to map e.3 acceptance criteria across ATDD and automate evidence.
+
+## Story e.4 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/e-4-transcription-webhook-attachment-to-voicemail-records.md`
+  - Existing ATDD files found for Story e.4:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.spec.ts`
+
+### Context Loaded
+- Source and route context loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/modules/connectshyft/inboundVoice.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/modules/connectshyft/providerCorrelationMappings.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts`
+- Existing fixture/factory assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryE4.fixture.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryE4Factory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/helpers/connectShyftStoryE4TestHelpers.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/helpers/connectShyftWebhookTestHelpers.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils and supporting patterns:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `api-testing-patterns.md`
+
+## Story e.4 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` is installed (`1.59.0-alpha-1771104257000`).
+- Attempted exploration session (`tea-automate-e4-1772568090`) with:
+  - `playwright-cli -s=tea-automate-e4-1772568090 open http://127.0.0.1:5174/app/connectshyft/threads`
+  - `playwright-cli -s=tea-automate-e4-1772568090 snapshot`
+- Result:
+  - local CLI session socket bootstrap failed (`listen EINVAL` on Playwright CLI socket path).
+  - session closed cleanly with `playwright-cli -s=tea-automate-e4-1772568090 close`.
+- Fallback applied: source + artifact analysis for coverage targeting.
+
+### Acceptance Criteria to Target Mapping
+- AC1/AC2 expansion targets:
+  - snake_case and nested callback-correlation payload variants still map deterministically.
+  - operator thread detail contract reflects transcript availability after attachment.
+- AC3 expansion target:
+  - callback-correlation scope mismatches are refused and leave timeline unchanged.
+- AC4 expansion target:
+  - duplicate callback payloads with modified transcript text stay replay-safe and preserve initial transcript.
+
+### Selected Test Levels
+- **API** (primary): callback correlation shape, scope refusal, replay integrity.
+- **E2E** (secondary): operator-facing detail contract verification across callback payload variants.
+
+### Priority Assignment
+- P0:
+  - payload shape variants attach transcript deterministically
+  - replay-safe duplicate suppression preserves first-write transcript
+  - operator detail reflects nested callback payload attachment
+- P1:
+  - callback scope mismatch refusal remains invisible in operator timeline
+
+### Coverage Plan
+- API target files:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.spec.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.correlation-shape.cases.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.replay-integrity.cases.ts`
+- E2E target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.spec.ts`
+- Scope: `critical-paths`
+
+## Story e.4 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-03-03T20-04-23Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-03-03T20-04-23Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-03-03T20-04-23Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 3`
+- E2E subprocess status: `success: true`, `test_count: 2`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed in one run for both levels.
+- Sequential equivalent would require two independent generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story e.4 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.spec.ts`
+- `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.correlation-shape.cases.ts`
+- `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.replay-integrity.cases.ts`
+- `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper assets:
+  - `tests/support/fixtures/connectShyftStoryE4.fixture.ts`
+  - `tests/support/helpers/connectShyftStoryE4TestHelpers.ts`
+  - `tests/support/helpers/connectShyftWebhookTestHelpers.ts`
+- New shared fixture files created: none.
+
+### Summary Metrics
+- Total tests generated: `5`
+  - API tests: `3` (3 files)
+  - E2E tests: `2` (1 file)
+- Priority coverage:
+  - P0: `3`
+  - P1: `2`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-03-03T20-04-23Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-03-03T20-04-23Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-03-03T20-04-23Z.json`
+  - `/tmp/tea-automate-summary-2026-03-03T20-04-23Z.json`
+- Persisted under test artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-03-03T20-04-23Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-03-03T20-04-23Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-03-03T20-04-23Z.json`
+
+## Story e.4 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated suite parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.spec.ts tests/e2e/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.spec.ts`
+  - Result: passed (`5` tests discovered in `3` files).
+- Generated suite execution validation:
+  - `npm run test:e2e -- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.spec.ts tests/e2e/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.spec.ts`
+  - Result: `5 passed`.
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) detected.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
+  - no `try/catch` flow-control anti-pattern detected.
+- CLI session cleanup:
+  - attempted browser exploration session closed cleanly.
+- Temp artifact storage:
+  - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-temp`.
+
+### Key Assumptions
+- Story e.4 webhook behavior remains available at:
+  - `/api/v1/connectshyft/webhooks/inbound`
+- ConnectShyft test harness headers (`x-test-connectshyft-*`) remain enabled in test runtime.
+- Story e.4 fixture/helper contracts remain source-of-truth for deterministic tenant/orgUnit/provider routing.
+
+### Risks
+- Browser exploration via `playwright-cli` was attempted but failed at local socket session bootstrap (`listen EINVAL`), so selector exploration relied on source/artifact analysis.
+- E2E automate suite is operator-contract/API-journey centric for this backend-focused story and does not include browser DOM assertions.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality and maintainability scoring of the generated e.4 automate suite.
+- `[TR] Trace Requirements` to map e.4 acceptance criteria across ATDD and automate evidence.
