@@ -13,7 +13,7 @@ import {
 test.describe(
   'Story e.2 Inbound SMS Processing with Active-Thread Ensure (ATDD API RED)',
   () => {
-    test.skip(
+    test(
       '[E2-ATDD-API-001][P0] mapped inbound sms ensures one active thread for tenant-orgUnit-neighbor and appends inbound message artifact @P0',
       async ({
         request,
@@ -41,7 +41,7 @@ test.describe(
               'mapped-ensure-append',
             ),
           }),
-          neighborId: storyE2Context.neighborIds.inboundCreate,
+          neighborId: `${storyE2Context.neighborIds.inboundCreate}-new-${deterministicToken(testInfo, 'e2-atdd-api-001-neighbor')}`,
         };
 
         const webhookResponse = await apiRequest(request, {
@@ -66,7 +66,7 @@ test.describe(
               deterministic: true,
               tenantId: storyE2Context.tenantId,
               orgUnitId: storyE2Context.orgUnitId,
-              neighborId: storyE2Context.neighborIds.inboundCreate,
+              neighborId: webhookPayload.neighborId,
             },
             replaySafe: {
               duplicate: false,
@@ -76,7 +76,7 @@ test.describe(
             thread: {
               tenantId: storyE2Context.tenantId,
               orgUnitId: storyE2Context.orgUnitId,
-              neighborId: storyE2Context.neighborIds.inboundCreate,
+              neighborId: webhookPayload.neighborId,
               state: 'UNCLAIMED',
             },
             lifecycle: {
@@ -103,7 +103,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E2-ATDD-API-002][P0] existing active thread is reused without duplicate creation and ordering remains deterministic @P0',
       async ({
         request,
@@ -203,7 +203,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E2-ATDD-API-003][P0] duplicate inbound webhook deliveries suppress duplicate timeline entries via provider event replay identity @P0',
       async ({
         request,
@@ -294,7 +294,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E2-ATDD-API-004][P1] create-and-append path writes inbound message artifact atomically with audit and outbox metadata @P1',
       async ({
         request,
@@ -322,7 +322,7 @@ test.describe(
               'atomic-create-append',
             ),
           }),
-          neighborId: storyE2Context.neighborIds.inboundCreate,
+          neighborId: `${storyE2Context.neighborIds.inboundCreate}-atomic-${deterministicToken(testInfo, 'e2-atdd-api-004-neighbor')}`,
         };
 
         const response = await apiRequest(request, {
@@ -372,6 +372,129 @@ test.describe(
           headers: storyE2OperatorHeaders,
         });
         expect(detailResponse.status()).toBe(200);
+      },
+    );
+
+    test(
+      '[E2-ATDD-API-005][P0] concurrent inbound deliveries converge to a single active thread identity while appending both artifacts @P0',
+      async ({
+        request,
+        storyE2Context,
+        storyE2OperatorHeaders,
+        storyE2AdminHeaders,
+        storyE2NumberMappingPayload,
+      }, testInfo) => {
+        await apiRequest(request, {
+          method: 'POST',
+          path: storyE2Context.paths.numbersCollection,
+          headers: storyE2AdminHeaders,
+          data: storyE2NumberMappingPayload,
+        });
+
+        const concurrentNeighborId = `${storyE2Context.neighborIds.inboundCreate}-concurrent-${deterministicToken(testInfo, 'e2-atdd-api-005-neighbor')}`;
+        const webhookPayloadA = {
+          ...buildSmsWebhookPayload({
+            providerKey: storyE2Context.providers.enabledPrimary,
+            to: storyE2Context.numbers.mappedInbound,
+            from: storyE2Context.numbers.mappedOutbound,
+            providerMessageId: `msg-e2-atdd-api-005-a-${deterministicToken(testInfo, 'e2-atdd-api-005-message-a')}`,
+            providerEventId: deterministicProviderEventId(
+              'provider-event-e2-atdd-api',
+              testInfo,
+              'concurrent-a',
+            ),
+          }),
+          neighborId: concurrentNeighborId,
+        };
+        const webhookPayloadB = {
+          ...buildSmsWebhookPayload({
+            providerKey: storyE2Context.providers.enabledPrimary,
+            to: storyE2Context.numbers.mappedInbound,
+            from: storyE2Context.numbers.mappedOutbound,
+            providerMessageId: `msg-e2-atdd-api-005-b-${deterministicToken(testInfo, 'e2-atdd-api-005-message-b')}`,
+            providerEventId: deterministicProviderEventId(
+              'provider-event-e2-atdd-api',
+              testInfo,
+              'concurrent-b',
+            ),
+          }),
+          neighborId: concurrentNeighborId,
+        };
+
+        const [firstResponse, secondResponse] = await Promise.all([
+          apiRequest(request, {
+            method: 'POST',
+            path: storyE2Context.paths.inboundWebhook,
+            headers: {
+              ...storyE2AdminHeaders,
+              ...buildSignedWebhookHeaders(webhookPayloadA, testInfo, 'e2-atdd-api-005-a'),
+            },
+            data: webhookPayloadA,
+          }),
+          apiRequest(request, {
+            method: 'POST',
+            path: storyE2Context.paths.inboundWebhook,
+            headers: {
+              ...storyE2AdminHeaders,
+              ...buildSignedWebhookHeaders(webhookPayloadB, testInfo, 'e2-atdd-api-005-b'),
+            },
+            data: webhookPayloadB,
+          }),
+        ]);
+
+        expect(firstResponse.status()).toBe(200);
+        expect(secondResponse.status()).toBe(200);
+
+        const firstBody = await firstResponse.json();
+        const secondBody = await secondResponse.json();
+        expect(hasRequiredEnvelopeKeys(firstBody)).toBe(true);
+        expect(hasRequiredEnvelopeKeys(secondBody)).toBe(true);
+        expect(firstBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+          data: {
+            lifecycle: {
+              ensuredActiveThread: true,
+            },
+            replaySafe: {
+              duplicate: false,
+            },
+          },
+        });
+        expect(secondBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+          data: {
+            lifecycle: {
+              ensuredActiveThread: true,
+            },
+            replaySafe: {
+              duplicate: false,
+            },
+          },
+        });
+
+        const firstThreadId = String(firstBody?.data?.thread?.threadId || firstBody?.data?.threadId || '');
+        const secondThreadId = String(secondBody?.data?.thread?.threadId || secondBody?.data?.threadId || '');
+        expect(firstThreadId.length).toBeGreaterThan(0);
+        expect(secondThreadId.length).toBeGreaterThan(0);
+        expect(firstThreadId).toBe(secondThreadId);
+
+        const detailResponse = await apiRequest(request, {
+          method: 'GET',
+          path: `${storyE2Context.paths.threads}/${firstThreadId}`,
+          headers: storyE2OperatorHeaders,
+        });
+        expect(detailResponse.status()).toBe(200);
+
+        const detailBody = await detailResponse.json();
+        const timeline = detailBody?.data?.thread?.timeline as Array<{
+          eventName: string;
+        }>;
+        const inboundSmsEvents = timeline.filter(
+          (entry) => entry.eventName === storyE2Context.eventNames.inboundSmsAppended,
+        );
+        expect(inboundSmsEvents.length).toBeGreaterThanOrEqual(2);
       },
     );
   },
