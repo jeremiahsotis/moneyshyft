@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { createTenantScopeHeaders } from './tenantRepositoryFactory';
 
 export type ConnectShyftFlags = {
@@ -83,10 +82,8 @@ export function createStoryUxR3Context(
     role: overrides.role ?? 'ORGUNIT_MEMBER',
     userId: overrides.userId ?? 'user-connectshyft-ux-r3-operator',
     adminUserId: 'user-connectshyft-ux-r3-admin',
-    correlationId:
-      overrides.correlationId ?? `corr-story-ux-r3-${randomUUID().slice(0, 8)}`,
-    csrfToken:
-      overrides.csrfToken ?? `csrf-story-ux-r3-${randomUUID().slice(0, 8)}`,
+    correlationId: overrides.correlationId ?? 'corr-story-ux-r3-default',
+    csrfToken: overrides.csrfToken ?? 'csrf-story-ux-r3-default',
     threadIds: {
       unclaimedVoicemail: 'thread-ux-r3-unclaimed-voicemail-1001',
       claimedVoicemail: 'thread-ux-r3-claimed-voicemail-1002',
