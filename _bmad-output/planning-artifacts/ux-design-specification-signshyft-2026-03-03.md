@@ -100,7 +100,9 @@ The UI must make refusal states obvious and recoverable, preserve deterministic 
 
 1. Queue state card: `available` vs `busy`.
 2. Disk usage card for `/var/lib/signshyft`.
-3. Optional last backup timestamp card.
+3. Required backup card showing:
+   - last successful backup timestamp
+   - last backup status (`SUCCESS` or `FAIL`)
 4. If render slot is busy, show non-alarm notice with expected retry guidance.
 
 ## Signer UX Flows

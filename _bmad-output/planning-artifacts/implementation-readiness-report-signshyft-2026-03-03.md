@@ -3,7 +3,7 @@ workflow: check-implementation-readiness
 project: SignShyft
 project_lane: signshyft
 date: 2026-03-03
-status: PASS_WITH_OPEN_DECISIONS
+status: PASS
 stepsCompleted:
   - step-01-document-discovery
   - step-02-prd-analysis
@@ -137,26 +137,28 @@ Assessment: coherent and implementable.
 2. Concurrency=1 + refusal on saturation + monitoring (Epic 3/7).
 3. Signature test vectors, idempotent delivery IDs, receiver checklist (Epic 6).
 
-## 7. Open Decisions (Must Resolve Before Dev Freeze)
+## 7. Locked V1 Decisions
 
-1. Token TTL policy mismatch: OpenAPI guidance (48h) vs env example (`TOKEN_TTL_DAYS=7`).
-2. Final webhook retry attempt count/backoff constants.
-3. MVP scope decision for admin “last backup timestamp” widget.
-
-These are not blockers for story kickoff but must be resolved before production hardening stories are marked done.
+1. Signer token TTL is locked to 48 hours (`172800` seconds) and must use explicit signer token config naming (`SIGNER_TOKEN_TTL_SECONDS`).
+2. Webhook retry behavior is locked to 10 total attempts with capped exponential backoff and full jitter:
+   - attempts 2..10 use `exp = attempt - 2`
+   - `baseDelaySeconds = 10 * (2 ** exp)`
+   - `cappedDelaySeconds = min(baseDelaySeconds, 900)`
+   - `sleepSeconds = random_uniform(0, cappedDelaySeconds)`
+3. Admin “last backup timestamp” is required for MVP and must display last successful backup timestamp and last backup status (`SUCCESS|FAIL`).
 
 ## 8. Final Readiness Assessment
 
-Readiness verdict: **PASS WITH OPEN DECISIONS**.
+Readiness verdict: **PASS**.
 
 Interpretation:
 
 1. Planning set is sufficient to start implementation in SignShyft lane.
 2. Requirements-to-story traceability is complete at planning level.
-3. Remaining items are policy constant clarifications, not structural planning gaps.
+3. Locked decisions have been incorporated into planning artifacts and implementation criteria.
 
 ## 9. Go-Forward Checklist
 
 1. Generate/update sprint status file from epics document.
-2. Resolve open decisions in Epic 7 Story 7.4 during early implementation.
+2. Implement locked policy constants in Epic 7 Story 7.4 during early implementation.
 3. Keep lane/policy checks mandatory after each story-level artifact update.

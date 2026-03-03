@@ -287,8 +287,16 @@ Architecture follows the phased build sequence:
 6. Webhooks and retries.
 7. WordPress Phase A integration.
 
-## 11. Known Decisions to Confirm Before Build Lock
+## 11. Locked V1 Operational Decisions
 
-1. Resolve token TTL policy conflict (OpenAPI 48h vs env sample 7 days) in final implementation constants.
-2. Lock webhook retry max attempts/backoff values and surface in ops docs.
-3. Confirm whether admin “last backup timestamp” widget is mandatory for MVP or optional.
+1. Signer token TTL is locked at 48 hours (`172800` seconds) and must use explicit signer token config naming (`SIGNER_TOKEN_TTL_SECONDS`).
+2. Webhook retry behavior is locked:
+   - total attempts: 10 (attempt 1 initial + attempts 2..10 retries)
+   - `exp = attempt - 2`
+   - `baseDelaySeconds = 10 * (2 ** exp)`
+   - `cappedDelaySeconds = min(baseDelaySeconds, 900)`
+   - `sleepSeconds = random_uniform(0, cappedDelaySeconds)` (full jitter)
+3. Admin backup observability is required for MVP:
+   - display last successful backup timestamp
+   - display last backup status (`SUCCESS` or `FAIL`)
+4. Backup telemetry persistence is required (e.g., `backup_runs` table or equivalent metrics store with `started_at`, `completed_at`, `status`, and artifact reference).

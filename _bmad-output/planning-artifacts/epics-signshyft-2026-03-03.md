@@ -335,8 +335,13 @@ FR Coverage: FR-SS-036, FR-SS-037
 Acceptance Criteria:
 
 1. Delivery queue tracks attempts, next attempt, last status/error.
-2. Retry policy applies to retryable failure classes only.
-3. Retries reuse same delivery ID for attempt chain.
+2. Retry policy applies to retryable failure classes only (`network/timeouts`, `5xx`, `429`; optional `408`).
+3. Retry schedule is locked to 10 total attempts with full jitter:
+   - attempts 2..10 use `exp = attempt - 2`
+   - `baseDelaySeconds = 10 * (2 ** exp)`
+   - `cappedDelaySeconds = min(baseDelaySeconds, 900)`
+   - `sleepSeconds = random_uniform(0, cappedDelaySeconds)`
+4. Retries reuse same delivery ID for attempt chain.
 
 FR Coverage: FR-SS-038, FR-SS-041
 
@@ -415,9 +420,10 @@ NFR Coverage: NFR-SS-010, NFR-SS-011
 
 Acceptance Criteria:
 
-1. Token TTL conflict is resolved and documented in code + API docs.
-2. Webhook retry limits/backoff values are locked and documented.
-3. Optional admin backup timestamp requirement finalized for MVP scope.
+1. Signer token TTL is locked to `172800` seconds (`48h`) and configured via explicit signer token variable (`SIGNER_TOKEN_TTL_SECONDS`).
+2. Ambiguous signer token config names (e.g., `TOKEN_TTL_DAYS`) are removed or repurposed with token-class-specific names.
+3. Webhook retry limits/backoff are implemented exactly per locked algorithm and documented.
+4. Admin backup indicator is required for MVP and backed by persisted backup run telemetry (`started_at`, `completed_at`, `status`, artifact reference).
 
 FR Coverage: FR-SS-052
 
