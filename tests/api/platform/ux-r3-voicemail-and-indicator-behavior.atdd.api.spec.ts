@@ -3,15 +3,34 @@ import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryUxR3.fixture';
 
 test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD API RED)', () => {
+  test.describe.configure({ mode: 'serial' });
+
   test(
     '[P0] voicemail on claimed threads remains in Mine with voicemail indicator and never reclassifies into Inbox @P0',
     async ({
       request,
       storyUxR3Context,
+      storyUxR3AdminHeaders,
       storyUxR3MemberHeaders,
       storyUxR3InboxQuery,
       storyUxR3MineQuery,
+      storyUxR3InboundVoicemailPayload,
     }) => {
+      const webhookResponse = await apiRequest(request, {
+        method: 'POST',
+        path: storyUxR3Context.paths.inboundWebhook,
+        headers: storyUxR3AdminHeaders,
+        data: {
+          ...storyUxR3InboundVoicemailPayload,
+          providerEventId: `evt-ux-r3-claimed-${randomUUID().slice(0, 8)}`,
+          providerLegId: `leg-ux-r3-claimed-${randomUUID().slice(0, 8)}`,
+          threadId: storyUxR3Context.threadIds.claimedVoicemail,
+          neighborId: storyUxR3Context.neighborIds.claimed,
+          eventType: storyUxR3Context.events.inboundVoicemail,
+        },
+      });
+      expect(webhookResponse.status()).toBe(200);
+
       const mineResponse = await apiRequest(request, {
         method: 'GET',
         path: `${storyUxR3Context.paths.inbox}${storyUxR3MineQuery}`,
@@ -41,6 +60,7 @@ test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD API RED)', () 
         state: 'CLAIMED',
         bucket: 'mine',
         voicemailIndicator: true,
+        voicemailLabel: storyUxR3Context.expectedLabels.claimedVoicemail,
       });
       expect(inboxThread).toBeUndefined();
     },
@@ -48,7 +68,29 @@ test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD API RED)', () 
 
   test(
     '[P0] voicemail on unclaimed threads remains in Inbox and carries voicemail-received labeling @P0',
-    async ({ request, storyUxR3Context, storyUxR3MemberHeaders, storyUxR3InboxQuery }) => {
+    async ({
+      request,
+      storyUxR3Context,
+      storyUxR3AdminHeaders,
+      storyUxR3MemberHeaders,
+      storyUxR3InboxQuery,
+      storyUxR3InboundVoicemailPayload,
+    }) => {
+      const webhookResponse = await apiRequest(request, {
+        method: 'POST',
+        path: storyUxR3Context.paths.inboundWebhook,
+        headers: storyUxR3AdminHeaders,
+        data: {
+          ...storyUxR3InboundVoicemailPayload,
+          providerEventId: `evt-ux-r3-unclaimed-${randomUUID().slice(0, 8)}`,
+          providerLegId: `leg-ux-r3-unclaimed-${randomUUID().slice(0, 8)}`,
+          threadId: storyUxR3Context.threadIds.unclaimedVoicemail,
+          neighborId: storyUxR3Context.neighborIds.unclaimed,
+          eventType: storyUxR3Context.events.inboundVoicemail,
+        },
+      });
+      expect(webhookResponse.status()).toBe(200);
+
       const inboxResponse = await apiRequest(request, {
         method: 'GET',
         path: `${storyUxR3Context.paths.inbox}${storyUxR3InboxQuery}`,

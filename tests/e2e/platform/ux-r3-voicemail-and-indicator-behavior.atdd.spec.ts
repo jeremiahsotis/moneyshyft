@@ -81,7 +81,7 @@ test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD E2E RED)', () 
       ).toBeVisible();
       await expect(
         page.getByTestId(`connectshyft-voicemail-label-${storyUxR3Context.threadIds.unclaimedVoicemail}`),
-      ).toBeVisible();
+      ).toHaveText(storyUxR3Context.expectedLabels.unclaimedVoicemail);
     },
   );
 
@@ -95,24 +95,25 @@ test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD E2E RED)', () 
     }) => {
       await login(page);
 
+      const detailUrl = buildThreadDetailUrl(
+        storyUxR3Context,
+        storyUxR3Context.threadIds.unclaimedVoicemail,
+      );
+      await page.goto(detailUrl);
+      const escalationChip = page.getByTestId('connectshyft-thread-escalation-chip');
+      const inactivityChip = page.getByTestId('connectshyft-thread-inactivity-chip');
+      const baselineEscalationLabel = (await escalationChip.textContent())?.trim();
+
       const webhookResponse = await page.request.post(storyUxR3Context.paths.inboundWebhook, {
         headers: storyUxR3AdminHeaders,
         data: storyUxR3InboundVoicemailPayload,
       });
       expect(webhookResponse.status()).toBe(200);
 
-      await page.goto(
-        buildThreadDetailUrl(storyUxR3Context, storyUxR3Context.threadIds.unclaimedVoicemail),
-      );
-      const detailUrl = buildThreadDetailUrl(
-        storyUxR3Context,
-        storyUxR3Context.threadIds.unclaimedVoicemail,
-      );
       await page.goto(detailUrl);
-
-      const escalationChip = page.getByTestId('connectshyft-thread-escalation-chip');
-      const inactivityChip = page.getByTestId('connectshyft-thread-inactivity-chip');
-      const baselineEscalationLabel = (await escalationChip.textContent())?.trim();
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+      await expect(escalationChip).toHaveText(baselineEscalationLabel || 'Needs urgent attention');
+      await expect(inactivityChip).toContainText(/stable/i);
 
       const missedInboundResponse = await page.request.post(storyUxR3Context.paths.inboundWebhook, {
         headers: storyUxR3AdminHeaders,
