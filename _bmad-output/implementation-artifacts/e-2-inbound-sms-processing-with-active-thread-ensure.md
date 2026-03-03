@@ -131,16 +131,16 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `rg -n -i "epic\\s*e|e-2-" _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `rg -n "FR-CS-018|FR-CS-021a" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
-- `rg -n "ensure|active thread|webhook|dedupe" _bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
-- `npm run branch:ensure-workflow -- --workflow dev-story --story e-2-inbound-sms-processing-with-active-thread-ensure`
-- `cd src && npm run build`
-- `cd src && npm test -- --runInBand src/src/modules/connectshyft/__tests__`
-- `bash scripts/run-playwright-with-preflight.sh tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.replay-and-refusal.api.spec.ts tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts`
-- `cd src && npm test -- --runInBand src/src/modules/connectshyft/__tests__/inboundSms.test.ts`
-- `bash scripts/run-playwright-with-preflight.sh tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts`
-- `bash scripts/run-playwright-with-preflight.sh tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.replay-and-refusal.api.spec.ts`
+- `rg -n -i "epic\\s*e|e-2-" _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (pass: story anchors found)
+- `rg -n "FR-CS-018|FR-CS-021a" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md` (pass: FR references found)
+- `rg -n "ensure|active thread|webhook|dedupe" _bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md` (pass: architecture constraints found)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story e-2-inbound-sms-processing-with-active-thread-ensure` (pass: branch guard passed)
+- `cd src && npm run build` (pass)
+- `cd src && npm test -- --runInBand src/src/modules/connectshyft/__tests__` (pass)
+- `bash scripts/run-playwright-with-preflight.sh tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.replay-and-refusal.api.spec.ts tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts` (pass: 10/10)
+- `cd src && npm test -- --runInBand src/src/modules/connectshyft/__tests__/inboundSms.test.ts` (pass)
+- `bash scripts/run-playwright-with-preflight.sh tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts` (pass: 6/6)
+- `bash scripts/run-playwright-with-preflight.sh tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.replay-and-refusal.api.spec.ts` (pass: 4/4)
 
 ### Completion Notes List
 
@@ -166,8 +166,19 @@ GPT-5 Codex
 ### File List
 
 - _bmad-output/implementation-artifacts/e-2-inbound-sms-processing-with-active-thread-ensure.md
+- src/src/modules/connectshyft/__tests__/inboundSms.test.ts
+- src/src/modules/connectshyft/inboundSms.ts
 - src/src/routes/api/v1/connectshyft.ts
+- tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.concurrency.cases.ts
+- tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.core.cases.ts
+- tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.replay-refusal.cases.ts
+- tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.shared.ts
 - tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.spec.ts
+- tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.automate.api.spec.ts
+- tests/e2e/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.spec.ts
+- tests/e2e/platform/e-2-inbound-sms-processing-with-active-thread-ensure.automate.spec.ts
+- tests/support/factories/connectShyftStoryE2Factory.ts
+- tests/support/fixtures/connectShyftStoryE2.fixture.ts
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 
 ## Change Log
