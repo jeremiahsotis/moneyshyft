@@ -70,12 +70,12 @@ development_status:
   d-4-operator-interaction-contracts-for-outbound-safety: done
   epic-d-retrospective: optional
   epic-e: in-progress
-  e-1-verified-webhook-ingress-and-deterministic-context-routing: backlog
-  e-2-inbound-sms-processing-with-active-thread-ensure: backlog
-  e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: backlog
-  e-4-transcription-webhook-attachment-to-voicemail-records: backlog
-  e-5-replay-safe-webhook-receipt-ledger-and-retention-controls: backlog
-  e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: backlog
+  e-1-verified-webhook-ingress-and-deterministic-context-routing: ready-for-dev
+  e-2-inbound-sms-processing-with-active-thread-ensure: ready-for-dev
+  e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: ready-for-dev
+  e-4-transcription-webhook-attachment-to-voicemail-records: ready-for-dev
+  e-5-replay-safe-webhook-receipt-ledger-and-retention-controls: ready-for-dev
+  e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: ready-for-dev
   epic-e-retrospective: optional
   epic-f: done
   f-1-provider-adapter-interface-and-provider-registry: done
