@@ -9,84 +9,17 @@ import {
   deterministicToken,
 } from '../../support/utils/deterministicTestIds';
 import {
-  buildInvalidSignedWebhookHeaders,
+  buildSignatureEnforcementHeaders,
   buildSignedWebhookHeaders,
   buildSmsWebhookPayload,
-  buildVoiceWebhookPayload,
   hasRequiredEnvelopeKeys,
 } from '../../support/helpers/connectShyftWebhookTestHelpers';
 
 test.describe(
-  'Story e.1 Verified Webhook Ingress and Deterministic Context Routing (Automate API Expansion)',
+  'Story e.1 Verified Webhook Ingress and Deterministic Context Routing (Automate E2E Expansion)',
   () => {
     test(
-      '[E1-AUTOMATE-API-101][P0] invalid webhook signatures are refused fail-closed with explicit verification metadata and zero domain writes @P0',
-      async ({ request }, testInfo) => {
-        const context = createStoryE1Context();
-        const adminHeaders = createStoryE1Headers(context, {
-          role: 'ORGUNIT_ADMIN',
-          userId: context.adminUserId,
-          orgUnitMemberships: [context.orgUnitId],
-        });
-
-        const payload = buildSmsWebhookPayload({
-          providerKey: context.providers.enabledPrimary,
-          to: context.numbers.mappedInbound,
-          from: context.numbers.mappedOutbound,
-          providerMessageId: `msg-e1-automate-invalid-${deterministicToken(testInfo, 'invalid-signature-message')}`,
-          providerEventId: deterministicProviderEventId(
-            'provider-event-e1-automate',
-            testInfo,
-            'invalid-signature-event',
-          ),
-        });
-
-        const response = await apiRequest(request, {
-          method: 'POST',
-          path: context.paths.inboundWebhook,
-          headers: {
-            ...adminHeaders,
-            ...buildInvalidSignedWebhookHeaders(payload, testInfo, 'automate-api-invalid-signature'),
-          },
-          data: payload,
-        });
-
-        expect(response.status()).toBe(401);
-        const body = (await response.json()) as Record<string, unknown>;
-        expect(hasRequiredEnvelopeKeys(body)).toBe(true);
-        expect(body).toMatchObject({
-          ok: false,
-          code: context.refusalCodes.signatureInvalid,
-          refusalType: 'client',
-          data: {
-            providerResolution: {
-              requestedProvider: context.providers.enabledPrimary,
-              resolvedProvider: context.providers.enabledPrimary,
-              deterministic: true,
-              adapterInvoked: true,
-            },
-            signatureValidation: {
-              deterministic: true,
-              verified: false,
-              provider: context.providers.enabledPrimary,
-            },
-            operatorFeedbackMeta: {
-              actionable: true,
-              hiddenTransition: false,
-              messageKey: 'connectshyft.webhook.signature.invalid',
-            },
-            sideEffects: {
-              lifecycleMutationApplied: false,
-              canonicalEventPersisted: false,
-              outboxPersisted: false,
-            },
-          },
-        });
-      },
-    );
-
-    test(
-      '[E1-AUTOMATE-API-102][P0] provider-identifier fallback resolves deterministic context when metadata is absent and accepts signed connected-call webhooks @P0',
+      '[E1-AUTOMATE-E2E-203][P1] spoofed ingress without signature is refused fail-closed and leaves existing thread lifecycle state unchanged @P1',
       async ({ request }, testInfo) => {
         const context = createStoryE1Context();
         const operatorHeaders = createStoryE1Headers(context, {
@@ -99,29 +32,25 @@ test.describe(
           orgUnitMemberships: [context.orgUnitId],
         });
 
-        const outboundResponse = await apiRequest(request, {
-          method: 'POST',
-          path: `${context.paths.threads}/${context.threadIds.unclaimed}/call`,
+        const beforeDetailResponse = await apiRequest(request, {
+          method: 'GET',
+          path: `${context.paths.threads}/${context.threadIds.unclaimed}`,
           headers: operatorHeaders,
-          data: {
-            orgUnitId: context.orgUnitId,
-            providerKey: context.providers.enabledPrimary,
-          },
         });
 
-        expect(outboundResponse.status()).toBe(200);
-        const outboundBody = await outboundResponse.json();
-        const providerLegId = outboundBody?.data?.dispatch?.providerLegId as string;
-        expect(typeof providerLegId).toBe('string');
-        expect(providerLegId.length).toBeGreaterThan(0);
+        expect(beforeDetailResponse.status()).toBe(200);
+        const beforeDetailBody = await beforeDetailResponse.json();
+        const beforeState = beforeDetailBody?.data?.thread?.state;
 
-        const payload = buildVoiceWebhookPayload({
+        const payload = buildSmsWebhookPayload({
           providerKey: context.providers.enabledPrimary,
-          providerLegId,
+          to: context.numbers.mappedInbound,
+          from: context.numbers.mappedOutbound,
+          providerMessageId: `msg-e1-automate-unsigned-${deterministicToken(testInfo, 'unsigned-message')}`,
           providerEventId: deterministicProviderEventId(
-            'provider-event-e1-automate',
+            'provider-event-e1-automate-e2e',
             testInfo,
-            'provider-fallback',
+            'unsigned-ingress',
           ),
         });
 
@@ -130,7 +59,70 @@ test.describe(
           path: context.paths.inboundWebhook,
           headers: {
             ...adminHeaders,
-            ...buildSignedWebhookHeaders(payload, testInfo, 'automate-api-provider-fallback'),
+            ...buildSignatureEnforcementHeaders(),
+          },
+          data: payload,
+        });
+
+        expect(response.status()).toBe(401);
+        const body = (await response.json()) as Record<string, unknown>;
+        expect(hasRequiredEnvelopeKeys(body)).toBe(true);
+        expect(body).toMatchObject({
+          ok: false,
+          code: context.refusalCodes.signatureMissing,
+          refusalType: 'client',
+          data: {
+            signatureValidation: {
+              deterministic: true,
+              verified: false,
+              provider: context.providers.enabledPrimary,
+            },
+            sideEffects: {
+              lifecycleMutationApplied: false,
+              canonicalEventPersisted: false,
+              outboxPersisted: false,
+            },
+          },
+        });
+
+        const afterDetailResponse = await apiRequest(request, {
+          method: 'GET',
+          path: `${context.paths.threads}/${context.threadIds.unclaimed}`,
+          headers: operatorHeaders,
+        });
+
+        expect(afterDetailResponse.status()).toBe(200);
+        const afterDetailBody = await afterDetailResponse.json();
+        expect(afterDetailBody?.data?.thread?.state).toBe(beforeState);
+      },
+    );
+
+    test(
+      '[E1-AUTOMATE-E2E-204][P1] signed ingress without metadata and provider identifiers is refused deterministically with missing-identifiers diagnostics @P1',
+      async ({ request }, testInfo) => {
+        const context = createStoryE1Context();
+        const adminHeaders = createStoryE1Headers(context, {
+          role: 'ORGUNIT_ADMIN',
+          userId: context.adminUserId,
+          orgUnitMemberships: [context.orgUnitId],
+        });
+
+        const payload = {
+          eventType: 'voice.connected',
+          providerKey: context.providers.enabledPrimary,
+          providerEventId: deterministicProviderEventId(
+            'provider-event-e1-automate-e2e',
+            testInfo,
+            'missing-identifiers',
+          ),
+        };
+
+        const response = await apiRequest(request, {
+          method: 'POST',
+          path: context.paths.inboundWebhook,
+          headers: {
+            ...adminHeaders,
+            ...buildSignedWebhookHeaders(payload, testInfo, 'automate-e2e-missing-identifiers'),
           },
           data: payload,
         });
@@ -139,25 +131,22 @@ test.describe(
         const body = (await response.json()) as Record<string, unknown>;
         expect(hasRequiredEnvelopeKeys(body)).toBe(true);
         expect(body).toMatchObject({
-          ok: true,
-          code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+          ok: false,
+          code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_IDENTIFIERS_REQUIRED',
+          refusalType: 'business',
           data: {
             correlation: {
-              source: 'provider_fallback',
               deterministic: true,
-              tenantId: context.tenantId,
-              orgUnitId: context.orgUnitId,
-              threadId: context.threadIds.unclaimed,
-              providerLegId,
+              reason: 'missing-identifiers',
             },
-            canonicalTranslation: {
-              eventType: context.canonicalEventTypes.callConnected,
-              providerNeutral: true,
-              providerSpecificFieldsStripped: true,
+            sideEffects: {
+              lifecycleMutationApplied: false,
+              canonicalEventPersisted: false,
+              outboxPersisted: false,
             },
-            replaySafe: {
-              duplicate: false,
-              suppressedDomainWrites: false,
+            timelineOutcome: {
+              eventName: null,
+              routingDecision: 'refused',
             },
           },
         });

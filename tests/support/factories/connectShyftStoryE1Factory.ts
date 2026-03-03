@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { createTenantScopeHeaders } from './tenantRepositoryFactory';
 
 export type ConnectShyftFlags = {
@@ -80,6 +79,13 @@ const DEFAULT_FLAGS: ConnectShyftFlags = {
   connectshyft_webhooks_enabled: true,
 };
 
+let storyE1ContextCounter = 0;
+
+const nextStoryE1Token = (): string => {
+  storyE1ContextCounter += 1;
+  return storyE1ContextCounter.toString(16).padStart(8, '0');
+};
+
 export function createStoryE1Context(
   overrides: StoryE1ContextOverrides = {},
 ): StoryE1Context {
@@ -91,9 +97,9 @@ export function createStoryE1Context(
     userId: overrides.userId ?? 'user-connectshyft-e1-operator',
     adminUserId: 'user-connectshyft-e1-admin',
     correlationId:
-      overrides.correlationId ?? `corr-story-e1-${randomUUID().slice(0, 8)}`,
+      overrides.correlationId ?? `corr-story-e1-${nextStoryE1Token()}`,
     csrfToken:
-      overrides.csrfToken ?? `csrf-story-e1-${randomUUID().slice(0, 8)}`,
+      overrides.csrfToken ?? `csrf-story-e1-${nextStoryE1Token()}`,
     threadIds: {
       // Story e.1 ingress tests piggyback on known synthetic thread ids used by provider stories.
       unclaimed: 'thread-f1-unclaimed-1001',
