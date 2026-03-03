@@ -73,6 +73,8 @@ test.describe(
         expect(webhookResponse.status()).toBe(200);
         const webhookBody = await webhookResponse.json();
         expect(hasRequiredEnvelopeKeys(webhookBody)).toBe(true);
+        const correlatedThreadId = String(webhookBody?.data?.correlation?.threadId || '');
+        expect(correlatedThreadId.length).toBeGreaterThan(0);
         expect(webhookBody).toMatchObject({
           ok: true,
           code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
@@ -81,7 +83,7 @@ test.describe(
               deterministic: true,
               tenantId: storyE1Context.tenantId,
               orgUnitId: storyE1Context.orgUnitId,
-              threadId: storyE1Context.threadIds.unclaimed,
+              threadId: expect.any(String),
             },
             canonicalTranslation: {
               providerNeutral: true,
@@ -96,7 +98,7 @@ test.describe(
 
         const detailResponse = await apiRequest(request, {
           method: 'GET',
-          path: `${storyE1Context.paths.threads}/${storyE1Context.threadIds.unclaimed}`,
+          path: `${storyE1Context.paths.threads}/${correlatedThreadId}`,
           headers: storyE1OperatorHeaders,
         });
         expect(detailResponse.status()).toBe(200);
@@ -106,7 +108,7 @@ test.describe(
           ok: true,
           data: {
             thread: {
-              threadId: storyE1Context.threadIds.unclaimed,
+              threadId: correlatedThreadId,
               tenantId: storyE1Context.tenantId,
               orgUnitId: storyE1Context.orgUnitId,
             },

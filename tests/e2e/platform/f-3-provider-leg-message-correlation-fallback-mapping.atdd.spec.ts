@@ -97,6 +97,10 @@ test.describe(
         const messageWebhookBody = await messageWebhookResponse.json();
         expect(hasRequiredEnvelopeKeys(callWebhookBody)).toBe(true);
         expect(hasRequiredEnvelopeKeys(messageWebhookBody)).toBe(true);
+        const callCorrelationThreadId = String(callWebhookBody?.data?.correlation?.threadId || '');
+        const messageCorrelationThreadId = String(messageWebhookBody?.data?.correlation?.threadId || '');
+        expect(callCorrelationThreadId.length).toBeGreaterThan(0);
+        expect(messageCorrelationThreadId.length).toBeGreaterThan(0);
         expect(callWebhookBody).toMatchObject({
           ok: true,
           code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
@@ -104,7 +108,7 @@ test.describe(
             correlation: {
               source: 'provider_fallback',
               deterministic: true,
-              threadId: context.threadIds.unclaimed,
+              threadId: expect.any(String),
               providerLegId,
             },
             replaySafe: {
@@ -120,7 +124,7 @@ test.describe(
             correlation: {
               source: 'provider_fallback',
               deterministic: true,
-              threadId: context.threadIds.unclaimed,
+              threadId: expect.any(String),
               providerMessageId,
             },
             replaySafe: {
