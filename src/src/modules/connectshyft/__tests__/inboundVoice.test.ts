@@ -135,6 +135,7 @@ describe('connectshyft inbound voice domain mapping', () => {
         orgUnitId: 'org-connectshyft-e3-east',
         threadId: 'thread-connectshyft-e3-001',
         providerEventId: 'provider-event-e3-002',
+        correlationEventId: 'provider-event-e3-002',
         providerLegId: 'provider-leg-e3-002',
         voicemailArtifactId: 'vm-thread-connectshyft-e3-001-provider-event-e3-002',
       },
@@ -217,6 +218,7 @@ describe('connectshyft inbound voice domain mapping', () => {
         tenantId: 'tenant-connectshyft-e4',
         orgUnitId: 'org-connectshyft-e4-east',
         threadId: 'thread-connectshyft-e4-001',
+        correlationEventId: 'provider-event-e4-seed',
       },
     });
 
@@ -235,6 +237,7 @@ describe('connectshyft inbound voice domain mapping', () => {
           tenantId: 'tenant-connectshyft-e4',
           orgUnitId: 'org-connectshyft-e4-east',
           threadId: 'thread-connectshyft-e4-001',
+          correlationEventId: 'provider-event-e4-seed',
         },
       },
       voicemailArtifact: {

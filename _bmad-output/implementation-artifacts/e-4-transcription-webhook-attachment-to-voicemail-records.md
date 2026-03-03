@@ -140,6 +140,8 @@ GPT-5 Codex
 - `cd src && npm run build`
 - `npm run test:e2e -- tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.atdd.api.spec.ts tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.automate.api.spec.ts`
 - `npm run test:e2e -- tests/api/platform/f-2-canonical-comms-event-model-and-event-store.atdd.api.spec.ts --workers=1`
+- `cd src && npm test -- src/src/modules/connectshyft/__tests__/inboundVoice.test.ts src/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts src/src/migrations/__tests__/connectShyftWebhookReceiptProcessingStateMigration.test.ts`
+- `npm run test:e2e -- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.spec.ts`
 
 ### Completion Notes List
 
@@ -147,13 +149,21 @@ GPT-5 Codex
 - Implemented dedicated transcription-callback handling in inbound webhook flow with deterministic callback correlation parsing, persisted voicemail-artifact correlation checks, transcript attachment canonical event persistence, and explicit duplicate-suppression response contracts.
 - Thread detail now returns `voicemailArtifacts` projection derived from canonical timeline and exposes timeline-level `metadata` for transcription-attached events so transcript availability is reflected in artifact views.
 - Added E4 unit coverage for callback event detection/parsing/payload composition and enabled E4 ATDD API core + replay/guards suites (all passing).
+- Hardened transcription callback idempotency with receipt processing states (`RECEIVED|APPLIED|FAILED_RETRYABLE|FAILED_TERMINAL`) so only applied callbacks are duplicate-suppressed and retryable failures can safely replay.
+- Enforced transcription callback `providerEventId` as required for deterministic replay handling and wired correlation checks to match persisted callback correlation event identity.
+- Removed callback-correlation dependence on timeline windowing by using unbounded canonical-event existence checks (DB path) for persisted voicemail correlation validation.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/e-4-transcription-webhook-attachment-to-voicemail-records.md
+- _bmad-output/test-artifacts/test-review.md
 - src/src/modules/connectshyft/inboundVoice.ts
 - src/src/modules/connectshyft/__tests__/inboundVoice.test.ts
+- src/src/modules/connectshyft/providerCorrelationMappings.ts
+- src/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts
 - src/src/routes/api/v1/connectshyft.ts
+- src/src/migrations/20260303153000_add_connectshyft_webhook_receipt_processing_state.ts
+- src/src/migrations/__tests__/connectShyftWebhookReceiptProcessingStateMigration.test.ts
 - tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.core.cases.ts
 - tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.replay-and-guards.cases.ts
 
@@ -161,3 +171,4 @@ GPT-5 Codex
 
 - 2026-03-03: Created Story e.4 ready-for-dev context document.
 - 2026-03-03: Implemented transcription callback attachment/refusal/idempotency flow, added voicemail artifact transcript projection in thread detail, and enabled E4 ATDD coverage.
+- 2026-03-03: Fixed adversarial-review findings by adding retry-safe receipt-state idempotency, strict transcription provider-event identity requirements, unbounded persisted-correlation validation, and expanded E4 guard/replay test coverage.

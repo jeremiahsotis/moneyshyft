@@ -158,6 +158,7 @@ export type ConnectShyftVoicemailTranscriptionRequest = {
     orgUnitId: string;
     threadId: string;
     providerEventId: string | null;
+    correlationEventId: string | null;
     providerLegId: string | null;
     voicemailArtifactId: string;
   };
@@ -249,7 +250,12 @@ export const extractConnectShyftVoicemailTranscriptionCallbackPayload = (
       tenantId: readFromSources(correlationSources, ['tenantId', 'tenant_id']),
       orgUnitId: readFromSources(correlationSources, ['orgUnitId', 'org_unit_id']),
       threadId: readFromSources(correlationSources, ['threadId', 'thread_id']),
-      providerEventId: readFromSources(correlationSources, ['providerEventId', 'provider_event_id']),
+      providerEventId: readFromSources(correlationSources, [
+        'providerEventId',
+        'provider_event_id',
+        'correlationEventId',
+        'correlation_event_id',
+      ]),
       providerLegId: readFromSources(correlationSources, ['providerLegId', 'provider_leg_id']),
       voicemailArtifactId: readFromSources(correlationSources, [
         'voicemailArtifactId',
@@ -381,6 +387,7 @@ export const buildConnectShyftVoicemailTranscriptionRequest = (input: {
     orgUnitId: input.orgUnitId,
     threadId: input.threadId,
     providerEventId: input.providerEventId,
+    correlationEventId: input.providerEventId,
     providerLegId: input.providerLegId,
     voicemailArtifactId: input.voicemailArtifactId,
   },
@@ -394,6 +401,7 @@ export const buildConnectShyftVoicemailTranscriptionAttachedCanonicalPayload = (
     tenantId: string;
     orgUnitId: string;
     threadId: string;
+    correlationEventId: string;
   };
 }): Record<string, unknown> => ({
   direction: 'inbound',
@@ -410,6 +418,7 @@ export const buildConnectShyftVoicemailTranscriptionAttachedCanonicalPayload = (
       tenantId: input.callbackCorrelation.tenantId,
       orgUnitId: input.callbackCorrelation.orgUnitId,
       threadId: input.callbackCorrelation.threadId,
+      correlationEventId: input.callbackCorrelation.correlationEventId,
     },
   },
   voicemailArtifact: {

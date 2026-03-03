@@ -1,4 +1,6 @@
 import {
+  beginConnectShyftWebhookReceiptProcessing,
+  markConnectShyftWebhookReceiptProcessingResult,
   recordConnectShyftWebhookReceipt,
   recordConnectShyftProviderIdentifierMapping,
   resetConnectShyftProviderCorrelationStateForTests,
@@ -198,6 +200,79 @@ describe('connectshyft provider correlation mappings', () => {
       deterministic: true,
       duplicate: true,
       dedupeKey: 'provider-event:provider-event-f3-1001',
+    });
+  });
+
+  it('allows retry attempts for non-applied webhook receipts and only suppresses after applied', async () => {
+    const first = await beginConnectShyftWebhookReceiptProcessing({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'telnyx',
+      canonicalEventType: 'VoiceTranscriptionCompleted',
+      providerEventId: 'provider-event-f3-transcription-1001',
+      providerLegId: 'telnyx-leg-f3-1001',
+    });
+
+    expect(first).toMatchObject({
+      deterministic: true,
+      alreadyApplied: false,
+      dedupeKey: 'provider-event:provider-event-f3-transcription-1001',
+      status: 'RECEIVED',
+      attemptCount: 1,
+    });
+
+    const markedRetryableFailure = await markConnectShyftWebhookReceiptProcessingResult({
+      tenantId: 'tenant-connectshyft-f3',
+      providerName: 'telnyx',
+      dedupeKey: first.dedupeKey,
+      status: 'FAILED_RETRYABLE',
+      failureReason: 'canonical_event_persistence_error',
+    });
+    expect(markedRetryableFailure.updated).toBe(true);
+
+    const second = await beginConnectShyftWebhookReceiptProcessing({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'telnyx',
+      canonicalEventType: 'VoiceTranscriptionCompleted',
+      providerEventId: 'provider-event-f3-transcription-1001',
+      providerLegId: 'telnyx-leg-f3-1001',
+    });
+
+    expect(second).toMatchObject({
+      deterministic: true,
+      alreadyApplied: false,
+      dedupeKey: 'provider-event:provider-event-f3-transcription-1001',
+      status: 'RECEIVED',
+      attemptCount: 2,
+    });
+
+    const markedApplied = await markConnectShyftWebhookReceiptProcessingResult({
+      tenantId: 'tenant-connectshyft-f3',
+      providerName: 'telnyx',
+      dedupeKey: first.dedupeKey,
+      status: 'APPLIED',
+    });
+    expect(markedApplied.updated).toBe(true);
+
+    const duplicateAfterApplied = await beginConnectShyftWebhookReceiptProcessing({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'telnyx',
+      canonicalEventType: 'VoiceTranscriptionCompleted',
+      providerEventId: 'provider-event-f3-transcription-1001',
+      providerLegId: 'telnyx-leg-f3-1001',
+    });
+
+    expect(duplicateAfterApplied).toMatchObject({
+      deterministic: true,
+      alreadyApplied: true,
+      dedupeKey: 'provider-event:provider-event-f3-transcription-1001',
+      status: 'APPLIED',
+      attemptCount: 3,
     });
   });
 

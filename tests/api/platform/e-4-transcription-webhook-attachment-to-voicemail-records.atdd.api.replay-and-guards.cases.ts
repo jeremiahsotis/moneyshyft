@@ -187,5 +187,176 @@ test.describe(
         expect(transcriptionEvents.length).toBe(1);
       },
     );
+
+    test(
+      '[E4-ATDD-API-005][P0] transcription callbacks without providerEventId are refused before side effects for deterministic idempotency keys @P0',
+      async ({ request }, testInfo) => {
+        const seeded = await seedStoryE4VoicemailWithCallbackCorrelation({
+          request,
+          testInfo,
+          numberMappingLabel: 'Story e.4 mapped number (api-005)',
+          neighborId: 'neighbor-connectshyft-e4-api-005',
+          inboundNumberId: 'cs-inbound-e4-seed-api-005',
+          outboundNumberId: 'cs-outbound-e4-seed-api-005',
+          seedLabel: 'e4-seed-api-005',
+          providerEventNamespace: 'provider-event-e4-atdd-api-seed',
+          webhookHeaderLabel: 'e4-seed-api-005',
+        });
+
+        const callbackPayload = buildStoryE4TranscriptionCallbackPayload({
+          context: seeded.context,
+          neighborId: seeded.context.neighborIds.transcriptionTarget,
+          threadId: seeded.threadId,
+          callbackCorrelation: seeded.callbackCorrelation,
+          transcriptText: 'Provider event id required refusal coverage.',
+          testInfo,
+          label: 'e4-atdd-api-005',
+          callbackEventNamespace: 'provider-event-e4-atdd-api-callback',
+        }) as Record<string, unknown>;
+        delete callbackPayload.providerEventId;
+
+        const callbackResponse = await apiRequest(request, {
+          method: 'POST',
+          path: seeded.context.paths.inboundWebhook,
+          headers: {
+            ...seeded.adminHeaders,
+            ...buildSignedWebhookHeaders(callbackPayload, testInfo, 'e4-atdd-api-005'),
+          },
+          data: callbackPayload,
+        });
+
+        expect(callbackResponse.status()).toBe(200);
+        const callbackBody = await callbackResponse.json();
+        expect(hasRequiredEnvelopeKeys(callbackBody)).toBe(true);
+        expect(callbackBody).toMatchObject({
+          ok: false,
+          code: 'CONNECTSHYFT_TRANSCRIPTION_PROVIDER_EVENT_REQUIRED',
+          data: {
+            replaySafe: {
+              duplicate: false,
+              dedupeKey: null,
+            },
+            sideEffects: {
+              transcriptMutationApplied: false,
+              orphanTranscriptPrevented: true,
+            },
+          },
+        });
+
+        const detailResponse = await apiRequest(request, {
+          method: 'GET',
+          path: `${seeded.context.paths.threads}/${seeded.threadId}`,
+          headers: seeded.operatorHeaders,
+        });
+        expect(detailResponse.status()).toBe(200);
+        const detailBody = await detailResponse.json();
+        const timeline = Array.isArray(detailBody?.data?.thread?.timeline)
+          ? (detailBody.data.thread.timeline as Array<{ eventName?: string }>)
+          : [];
+        const transcriptionEvents = timeline.filter(
+          (entry) => entry.eventName === seeded.context.eventNames.transcriptionAttached,
+        );
+        expect(transcriptionEvents.length).toBe(0);
+      },
+    );
+
+    test(
+      '[E4-ATDD-API-006][P0] replay retries proceed after non-applied refusal and attach transcript when a corrected payload is replayed with the same provider event id @P0',
+      async ({ request }, testInfo) => {
+        const seeded = await seedStoryE4VoicemailWithCallbackCorrelation({
+          request,
+          testInfo,
+          numberMappingLabel: 'Story e.4 mapped number (api-006)',
+          neighborId: 'neighbor-connectshyft-e4-api-006',
+          inboundNumberId: 'cs-inbound-e4-seed-api-006',
+          outboundNumberId: 'cs-outbound-e4-seed-api-006',
+          seedLabel: 'e4-seed-api-006',
+          providerEventNamespace: 'provider-event-e4-atdd-api-seed',
+          webhookHeaderLabel: 'e4-seed-api-006',
+        });
+
+        const replayPayload = buildStoryE4TranscriptionCallbackPayload({
+          context: seeded.context,
+          neighborId: seeded.context.neighborIds.duplicateReplayProbe,
+          threadId: seeded.threadId,
+          callbackCorrelation: seeded.callbackCorrelation,
+          transcriptText: 'Retry-safe callback replay should attach after correction.',
+          testInfo,
+          label: 'e4-atdd-api-006',
+          callbackEventNamespace: 'provider-event-e4-atdd-api-callback',
+        });
+
+        const firstAttemptPayload = {
+          ...replayPayload,
+          transcript: {
+            ...replayPayload.transcript,
+            text: ' ',
+          },
+          providerPayload: {
+            ...(replayPayload.providerPayload || {}),
+            transcription_text: ' ',
+          },
+        };
+
+        const firstAttemptResponse = await apiRequest(request, {
+          method: 'POST',
+          path: seeded.context.paths.inboundWebhook,
+          headers: {
+            ...seeded.adminHeaders,
+            ...buildSignedWebhookHeaders(firstAttemptPayload, testInfo, 'e4-atdd-api-006-first'),
+          },
+          data: firstAttemptPayload,
+        });
+        expect(firstAttemptResponse.status()).toBe(200);
+        const firstAttemptBody = await firstAttemptResponse.json();
+        expect(hasRequiredEnvelopeKeys(firstAttemptBody)).toBe(true);
+        expect(firstAttemptBody).toMatchObject({
+          ok: false,
+          code: 'CONNECTSHYFT_TRANSCRIPTION_CORRELATION_INVALID',
+        });
+
+        const replayResponse = await apiRequest(request, {
+          method: 'POST',
+          path: seeded.context.paths.inboundWebhook,
+          headers: {
+            ...seeded.adminHeaders,
+            ...buildSignedWebhookHeaders(replayPayload, testInfo, 'e4-atdd-api-006-replay'),
+          },
+          data: replayPayload,
+        });
+        expect(replayResponse.status()).toBe(200);
+        const replayBody = await replayResponse.json();
+        expect(hasRequiredEnvelopeKeys(replayBody)).toBe(true);
+        expect(replayBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_TRANSCRIPTION_CALLBACK_ATTACHED',
+          data: {
+            replaySafe: {
+              duplicate: false,
+              suppressedDomainWrites: false,
+            },
+            transcriptionAttachment: {
+              applied: true,
+              voicemailArtifactId: seeded.callbackCorrelation.voicemailArtifactId,
+            },
+          },
+        });
+
+        const detailResponse = await apiRequest(request, {
+          method: 'GET',
+          path: `${seeded.context.paths.threads}/${seeded.threadId}`,
+          headers: seeded.operatorHeaders,
+        });
+        expect(detailResponse.status()).toBe(200);
+        const detailBody = await detailResponse.json();
+        const timeline = Array.isArray(detailBody?.data?.thread?.timeline)
+          ? (detailBody.data.thread.timeline as Array<{ eventName?: string }>)
+          : [];
+        const transcriptionEvents = timeline.filter(
+          (entry) => entry.eventName === seeded.context.eventNames.transcriptionAttached,
+        );
+        expect(transcriptionEvents.length).toBe(1);
+      },
+    );
   },
 );
