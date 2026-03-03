@@ -1,6 +1,6 @@
 # Story 1.1: Establish signshyft lane scaffolding and policy wiring
 
-Status: in-progress
+Status: review
 
 ## Story
 
