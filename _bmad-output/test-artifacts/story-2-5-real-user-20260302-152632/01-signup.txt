@@ -1,0 +1,16 @@
+HTTP/1.1 400 Bad Request
+X-Powered-By: Express
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: 0fb59d8f-0fca-49b7-b25c-9433b784dcf3
+x-tenant-id: public
+x-scope-mode: TENANT
+Content-Type: application/json; charset=utf-8
+Content-Length: 248
+ETag: W/"f8-8ljoZHh3a5eKdOf7xthjyjkIjHA"
+Date: Mon, 02 Mar 2026 20:30:53 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":false,"code":"HTTP_400","message":"Validation failed","refusalType":"client","correlationId":"0fb59d8f-0fca-49b7-b25c-9433b784dcf3","tenantId":null,"data":{"details":[{"field":"password","message":"\"password\" is not allowed to be empty"}]}}

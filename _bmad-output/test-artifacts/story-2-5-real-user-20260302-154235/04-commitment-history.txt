@@ -1,0 +1,17 @@
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: d99e34bb-2e7b-4b0c-a38b-7b2d0de3b29b
+x-tenant-id: tenant-route-authenticated
+x-org-unit-id: org-route-authenticated
+x-scope-mode: ORG_UNIT
+Content-Type: application/json; charset=utf-8
+Content-Length: 264
+ETag: W/"108-fUg4pbDUU+cglmz908el3gH0guM"
+Date: Mon, 02 Mar 2026 20:42:35 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":true,"code":"ROUTE_COMMITMENT_HISTORY_RESOLVED","message":"Route commitment history resolved","correlationId":"d99e34bb-2e7b-4b0c-a38b-7b2d0de3b29b","tenantId":"tenant-route-authenticated","data":{"commitmentId":"commitment-real-2-5-1772484155","events":[]}}

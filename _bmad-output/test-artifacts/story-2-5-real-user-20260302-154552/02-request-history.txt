@@ -1,0 +1,17 @@
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: 7ca482f0-7a9a-464a-b240-eb80e75fed76
+x-tenant-id: tenant-route-authenticated
+x-org-unit-id: org-route-authenticated
+x-scope-mode: ORG_UNIT
+Content-Type: application/json; charset=utf-8
+Content-Length: 901
+ETag: W/"385-os4wyqqOwijG/bClKLn6WJCEQIQ"
+Date: Mon, 02 Mar 2026 20:45:52 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":true,"code":"ROUTE_REQUEST_HISTORY_RESOLVED","message":"Route request history resolved","correlationId":"7ca482f0-7a9a-464a-b240-eb80e75fed76","tenantId":"tenant-route-authenticated","data":{"requestId":"request-real-2-5-1772484352","events":[{"eventId":"385486f6-dbaa-4ab1-9692-e38fbdfc7c20","tenantId":"tenant-route-authenticated","scope":"request","scopeId":"request-real-2-5-1772484352","eventType":"ROUTE_REFUSAL_RECORDED","refusalId":"67535326-8fb5-4155-966b-3a274fe3ebfc","stage":"intake","reasonCode":"CAPACITY_FULL","reasonMessage":"Requested day part is full.","alternatives":[{"type":"RESCHEDULE_WINDOW","status":"open","dayPart":"morning","dateLocal":"2026-03-08"},{"type":"CALLBACK_PATH","queue":"dispatcher-callback","expectedWithinHours":48}],"requestId":"request-real-2-5-1772484352","commitmentId":null,"actorUserId":"user-real-25","occurredAtUtc":"2026-03-02T20:45:52.479Z"}]}}

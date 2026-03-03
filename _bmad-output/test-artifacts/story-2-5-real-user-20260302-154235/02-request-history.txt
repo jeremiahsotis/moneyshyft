@@ -1,0 +1,17 @@
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: 59c27500-722d-4f7b-b08e-2577dd6b640b
+x-tenant-id: tenant-route-authenticated
+x-org-unit-id: org-route-authenticated
+x-scope-mode: ORG_UNIT
+Content-Type: application/json; charset=utf-8
+Content-Length: 252
+ETag: W/"fc-Qt+knkqAdQXLF4KFJn30VqBAeWw"
+Date: Mon, 02 Mar 2026 20:42:35 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":true,"code":"ROUTE_REQUEST_HISTORY_RESOLVED","message":"Route request history resolved","correlationId":"59c27500-722d-4f7b-b08e-2577dd6b640b","tenantId":"tenant-route-authenticated","data":{"requestId":"request-real-2-5-1772484155","events":[]}}

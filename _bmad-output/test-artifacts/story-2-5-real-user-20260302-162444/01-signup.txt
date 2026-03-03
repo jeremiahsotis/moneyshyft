@@ -1,0 +1,19 @@
+HTTP/1.1 201 Created
+X-Powered-By: Express
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: 77d2a600-f448-49d2-9448-e7133dac2477
+x-tenant-id: public
+x-scope-mode: TENANT
+Set-Cookie: access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjMTE0N2JiMC05ZjcwLTQ5MjQtODhjMS0wNjhiZGE0ODIxYzIiLCJlbWFpbCI6InJvdXRlcWErMTc3MjQ4NjY4NEBleGFtcGxlLmNvbSIsImhvdXNlaG9sZElkIjoiMGQyY2YwMTctNmVjYy00ZjlhLWEyMjktMDVlMTExOTBkYjJhIiwiYWN0aXZlVGVuYW50SWQiOiIwZDJjZjAxNy02ZWNjLTRmOWEtYTIyOS0wNWUxMTE5MGRiMmEiLCJhY3RpdmVPcmdVbml0SWQiOm51bGwsIm11c3RSZXNldFBhc3N3b3JkIjpmYWxzZSwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzcyNDg2Njg1LCJleHAiOjE3NzI0OTM4ODV9.wTzGYpGG3o3EHnQOD9DkZENDVEO7z0yqI5WBWSXM9j4; Max-Age=7200; Path=/; Expires=Mon, 02 Mar 2026 23:24:45 GMT; HttpOnly; SameSite=Lax
+Set-Cookie: refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjMTE0N2JiMC05ZjcwLTQ5MjQtODhjMS0wNjhiZGE0ODIxYzIiLCJlbWFpbCI6InJvdXRlcWErMTc3MjQ4NjY4NEBleGFtcGxlLmNvbSIsImhvdXNlaG9sZElkIjoiMGQyY2YwMTctNmVjYy00ZjlhLWEyMjktMDVlMTExOTBkYjJhIiwiYWN0aXZlVGVuYW50SWQiOiIwZDJjZjAxNy02ZWNjLTRmOWEtYTIyOS0wNWUxMTE5MGRiMmEiLCJhY3RpdmVPcmdVbml0SWQiOm51bGwsIm11c3RSZXNldFBhc3N3b3JkIjpmYWxzZSwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzcyNDg2Njg1LCJleHAiOjE3NzMwOTE0ODUsImp0aSI6ImYxOGQxN2FjLWJmNDItNGY4OC05MjM5LWU3ODlhZmM1MGRiOCJ9.K0PAIkOUazWgYZS-YGCIEG8TnvufiRhpF4Uy_nzdC_U; Max-Age=604800; Path=/; Expires=Mon, 09 Mar 2026 21:24:45 GMT; HttpOnly; SameSite=Lax
+Set-Cookie: csrf_token=e4c4490f81133245facdb66d608ad0c138cbfa13a856191900f93f5eea7b927e; Max-Age=604800; Path=/; Expires=Mon, 09 Mar 2026 21:24:45 GMT; SameSite=Lax
+Content-Type: application/json; charset=utf-8
+Content-Length: 465
+ETag: W/"1d1-ZLea4DlmsOwNHN6TEONhEGA62fc"
+Date: Mon, 02 Mar 2026 21:24:45 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":true,"code":"HTTP_201","message":"User created successfully","correlationId":"77d2a600-f448-49d2-9448-e7133dac2477","tenantId":null,"data":{"user":{"id":"c1147bb0-9f70-4924-88c1-068bda4821c2","email":"routeqa+1772486684@example.com","firstName":"Route","lastName":"QA","householdId":"0d2cf017-6ecc-4f9a-a229-05e11190db2a","role":"admin","mustResetPassword":false,"setupWizardCompleted":false,"createdAt":"2026-03-02T21:24:45.149Z"},"invitationCode":"HALPRH"}}

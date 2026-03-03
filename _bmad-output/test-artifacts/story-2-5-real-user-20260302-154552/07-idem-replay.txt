@@ -1,0 +1,17 @@
+HTTP/1.1 500 Internal Server Error
+X-Powered-By: Express
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: cadce511-c263-4c73-8f7e-94d69ceac301
+x-tenant-id: tenant-route-authenticated
+x-org-unit-id: org-route-authenticated
+x-scope-mode: ORG_UNIT
+Content-Type: application/json; charset=utf-8
+Content-Length: 470
+ETag: W/"1d6-XhBUVf0iDOk/VO8YaPl4aGnOo4Y"
+Date: Mon, 02 Mar 2026 20:45:52 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":false,"code":"ROUTE_REFUSAL_PERSISTENCE_ERROR","message":"select \"refusal_outcome_id\", \"request_fingerprint\" from \"route\".\"refusal_idempotency_keys\" where \"tenant_id\" = $1 and \"scope\" = $2 and \"scope_id\" = $3 and \"idempotency_key\" = $4 limit $5 - current transaction is aborted, commands ignored until end of transaction block","refusalType":"security","correlationId":"cadce511-c263-4c73-8f7e-94d69ceac301","tenantId":"tenant-route-authenticated"}

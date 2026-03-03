@@ -1,0 +1,19 @@
+HTTP/1.1 201 Created
+X-Powered-By: Express
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: be1efc30-15ba-4730-8b3b-41e8deb2cc0a
+x-tenant-id: public
+x-scope-mode: TENANT
+Set-Cookie: access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmNmVmMTg3Ny04NzFkLTRmNzctODg1Ni02OWFiZmZjYzZlOWEiLCJlbWFpbCI6InJvdXRlcWErMTc3MjU2ODMxNEBleGFtcGxlLmNvbSIsImhvdXNlaG9sZElkIjoiMjUwNmYxMTYtOTI1My00MTQzLThmMGQtNTNlNGUzODQ3Y2RiIiwiYWN0aXZlVGVuYW50SWQiOiIyNTA2ZjExNi05MjUzLTQxNDMtOGYwZC01M2U0ZTM4NDdjZGIiLCJhY3RpdmVPcmdVbml0SWQiOm51bGwsIm11c3RSZXNldFBhc3N3b3JkIjpmYWxzZSwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzcyNTY4MzE1LCJleHAiOjE3NzI1NzU1MTV9.oPMqflleOg57M_cUfBaF6jxYOISf1mOZbdNHsOI9Sa0; Max-Age=7200; Path=/; Expires=Tue, 03 Mar 2026 22:05:15 GMT; HttpOnly; SameSite=Lax
+Set-Cookie: refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmNmVmMTg3Ny04NzFkLTRmNzctODg1Ni02OWFiZmZjYzZlOWEiLCJlbWFpbCI6InJvdXRlcWErMTc3MjU2ODMxNEBleGFtcGxlLmNvbSIsImhvdXNlaG9sZElkIjoiMjUwNmYxMTYtOTI1My00MTQzLThmMGQtNTNlNGUzODQ3Y2RiIiwiYWN0aXZlVGVuYW50SWQiOiIyNTA2ZjExNi05MjUzLTQxNDMtOGYwZC01M2U0ZTM4NDdjZGIiLCJhY3RpdmVPcmdVbml0SWQiOm51bGwsIm11c3RSZXNldFBhc3N3b3JkIjpmYWxzZSwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzcyNTY4MzE1LCJleHAiOjE3NzMxNzMxMTUsImp0aSI6IjVmYjEzYWM1LWFhMWItNDU3OS05YmIxLTY2NzQ2MjZiYmZiMiJ9.WwXmnLIKM1ahLorwcqncgwL5uwiEYT8YdliUpc0yBJ4; Max-Age=604800; Path=/; Expires=Tue, 10 Mar 2026 20:05:15 GMT; HttpOnly; SameSite=Lax
+Set-Cookie: csrf_token=cf6a4a898de6fc8e3536159d81cc224b7403a9216eb8e2968d72dfc0e416f2ad; Max-Age=604800; Path=/; Expires=Tue, 10 Mar 2026 20:05:15 GMT; SameSite=Lax
+Content-Type: application/json; charset=utf-8
+Content-Length: 465
+ETag: W/"1d1-3bEz0fOccZFRzMK6zQY6kOw/AoM"
+Date: Tue, 03 Mar 2026 20:05:15 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":true,"code":"HTTP_201","message":"User created successfully","correlationId":"be1efc30-15ba-4730-8b3b-41e8deb2cc0a","tenantId":null,"data":{"user":{"id":"f6ef1877-871d-4f77-8856-69abffcc6e9a","email":"routeqa+1772568314@example.com","firstName":"Route","lastName":"QA","householdId":"2506f116-9253-4143-8f0d-53e4e3847cdb","role":"admin","mustResetPassword":false,"setupWizardCompleted":false,"createdAt":"2026-03-03T20:05:14.960Z"},"invitationCode":"CDVFM8"}}

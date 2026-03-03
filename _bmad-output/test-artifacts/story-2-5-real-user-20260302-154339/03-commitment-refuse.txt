@@ -1,0 +1,17 @@
+HTTP/1.1 500 Internal Server Error
+X-Powered-By: Express
+Access-Control-Allow-Origin: http://localhost:5173
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: e2b5a35a-81e6-4ae5-879c-93f0fdc8f2ea
+x-tenant-id: tenant-route-authenticated
+x-org-unit-id: org-route-authenticated
+x-scope-mode: ORG_UNIT
+Content-Type: application/json; charset=utf-8
+Content-Length: 572
+ETag: W/"23c-IuSB6Ats7+BqTGiLdT0lYqx+7mU"
+Date: Mon, 02 Mar 2026 20:43:39 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":false,"code":"ROUTE_REFUSAL_PERSISTENCE_ERROR","message":"insert into \"route\".\"refusal_lifecycle_events\" (\"actor_user_id\", \"alternatives\", \"commitment_id\", \"event_type\", \"id\", \"occurred_at_utc\", \"reason_code\", \"reason_message\", \"refusal_outcome_id\", \"request_id\", \"scope\", \"scope_id\", \"stage\", \"tenant_id\") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) - invalid input syntax for type json","refusalType":"security","correlationId":"e2b5a35a-81e6-4ae5-879c-93f0fdc8f2ea","tenantId":"tenant-route-authenticated"}
