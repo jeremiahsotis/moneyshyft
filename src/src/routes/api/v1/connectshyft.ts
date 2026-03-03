@@ -1249,14 +1249,21 @@ const buildLifecycleThreadResponse = (
 
 const buildThreadFromDetailRecord = (
   detail: ConnectShyftThreadDetailRecord,
+  input: {
+    neighborId?: string | null;
+  } = {},
 ): ConnectShyftThread => {
   const now = nowIsoUtc();
+  const normalizedNeighborId = normalizeConnectShyftNeighborIdentifier(input.neighborId || '');
+  const neighborId = normalizedNeighborId && isValidConnectShyftNeighborIdentifier(normalizedNeighborId)
+    ? normalizedNeighborId
+    : '';
 
   return {
     threadId: detail.threadId,
     tenantId: detail.tenantId,
     orgUnitId: detail.orgUnitId,
-    neighborId: `neighbor-${detail.threadId}`,
+    neighborId,
     source: 'VOICE',
     state: detail.state,
     lastInboundCsNumberId: detail.lastInboundCsNumberId,
@@ -5121,6 +5128,11 @@ const performOutboundAction = async (
     });
     return;
   }
+  const resolvedThreadNeighborId = await resolveNeighborIdForThreadCorrelation({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId,
+  });
 
   const outboundLifecycleAction = resolveOutboundLifecycleAction(outboundAction);
   const priorState = lifecycleContext.currentState;
@@ -5138,7 +5150,9 @@ const performOutboundAction = async (
   let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
 
   if (lifecycleContext.detail) {
-    thread = buildThreadFromDetailRecord(lifecycleContext.detail);
+    thread = buildThreadFromDetailRecord(lifecycleContext.detail, {
+      neighborId: resolvedThreadNeighborId,
+    });
   } else {
     thread = buildSyntheticThread({
       tenantId: context.tenantId,
@@ -5148,7 +5162,7 @@ const performOutboundAction = async (
       nextState: lifecycleContext.currentState,
       actorUserId,
       fallbackSummary: lifecycleContext.syntheticThread?.summary,
-      fallbackNeighborId: lifecycleContext.syntheticThread?.neighborId,
+      fallbackNeighborId: resolvedThreadNeighborId || lifecycleContext.syntheticThread?.neighborId,
       fallbackLastInboundCsNumberId: lifecycleContext.syntheticThread?.lastInboundCsNumberId,
       fallbackPreferredOutboundCsNumberId: lifecycleContext.syntheticThread?.preferredOutboundCsNumberId,
       fallbackEscalationStage: lifecycleContext.syntheticThread?.escalationStage,
@@ -6282,18 +6296,24 @@ const handleInboundWebhook = async (
       orgUnitId,
       threadId,
     });
-  const voiceNeighborId = normalizedExtractedVoiceNeighborId || correlatedVoiceNeighborId;
-  const existingVoiceActiveThreadId = voiceNeighborId
+  const candidateVoiceNeighborId = normalizedExtractedVoiceNeighborId || correlatedVoiceNeighborId;
+  const existingVoiceActiveThreadId = candidateVoiceNeighborId
     ? await resolveExistingActiveThreadIdForScope({
       tenantId,
       orgUnitId,
-      neighborId: voiceNeighborId,
+      neighborId: candidateVoiceNeighborId,
     })
     : null;
   const shouldResolveVoiceThreadByNeighbor = !isConnectedCallEvent && correlation.source === 'number_mapping';
   const resolvedVoiceThreadId = shouldResolveVoiceThreadByNeighbor && existingVoiceActiveThreadId
     ? existingVoiceActiveThreadId
     : threadId;
+  const resolvedVoiceNeighborId = await resolveNeighborIdForThreadCorrelation({
+    tenantId,
+    orgUnitId,
+    threadId: resolvedVoiceThreadId,
+  });
+  const voiceNeighborId = resolvedVoiceNeighborId || candidateVoiceNeighborId;
 
   const callPolicy = parseOutboundCallRequestPolicy(req);
   const callTransport = callPolicy.transport || null;
@@ -6398,7 +6418,9 @@ const handleInboundWebhook = async (
   }
 
   if (!thread && lifecycleContext?.detail) {
-    thread = buildThreadFromDetailRecord(lifecycleContext.detail);
+    thread = buildThreadFromDetailRecord(lifecycleContext.detail, {
+      neighborId: voiceNeighborId,
+    });
   }
 
   let routingDecision: 'voicemail_only' | 'intake_fallback' | 'accepted' = 'accepted';

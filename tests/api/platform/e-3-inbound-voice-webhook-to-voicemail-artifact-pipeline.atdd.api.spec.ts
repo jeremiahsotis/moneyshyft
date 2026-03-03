@@ -494,5 +494,147 @@ test.describe(
         );
       },
     );
+
+    test(
+      '[E3-ATDD-API-006][P1] number-mapping correlation reroutes voicemail inbound to existing active thread for the resolved neighbor context @P1',
+      async ({
+        request,
+        storyE3Context,
+        storyE3AdminHeaders,
+        storyE3EnsurePayloadUnclaimed,
+      }, testInfo) => {
+        const rerouteNeighborId = `${storyE3Context.neighborIds.voicemailUnclaimed}-${deterministicToken(
+          testInfo,
+          'e3-atdd-api-006-neighbor',
+        )}`;
+        const existingThreadId = await ensureThread({
+          request,
+          path: storyE3Context.paths.threads,
+          headers: storyE3AdminHeaders,
+          payload: {
+            ...storyE3EnsurePayloadUnclaimed,
+            neighborId: rerouteNeighborId,
+          },
+        });
+
+        const webhookPayload = buildVoicemailWebhookPayload({
+          context: storyE3Context,
+          neighborId: rerouteNeighborId,
+          testInfo,
+          label: 'e3-atdd-api-006',
+        });
+
+        const webhookResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyE3Context.paths.inboundWebhook,
+          headers: {
+            ...storyE3AdminHeaders,
+            ...buildSignedWebhookHeaders(webhookPayload, testInfo, 'e3-atdd-api-006'),
+          },
+          data: webhookPayload,
+        });
+
+        expect(webhookResponse.status()).toBe(200);
+        const webhookBody = await webhookResponse.json();
+        expect(hasRequiredEnvelopeKeys(webhookBody)).toBe(true);
+        expect(webhookBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+          data: {
+            correlation: {
+              source: 'number_mapping',
+              threadId: existingThreadId,
+              tenantId: storyE3Context.tenantId,
+              orgUnitId: storyE3Context.orgUnitId,
+              neighborId: rerouteNeighborId,
+            },
+            threadId: existingThreadId,
+            thread: {
+              threadId: existingThreadId,
+              state: 'UNCLAIMED',
+              neighborId: rerouteNeighborId,
+            },
+            lifecycle: {
+              ensuredActiveThread: true,
+              reusedThreadId: existingThreadId,
+            },
+            timeline: {
+              eventName: storyE3Context.eventNames.inboundVoiceVoicemail,
+              routingDecision: 'voicemail_only',
+            },
+          },
+        });
+      },
+    );
+
+    test(
+      '[E3-ATDD-API-007][P1] metadata-correlated thread context wins over conflicting payload neighbor id to prevent thread-neighbor desynchronization @P1',
+      async ({
+        request,
+        storyE3Context,
+        storyE3AdminHeaders,
+        storyE3EnsurePayloadUnclaimed,
+      }, testInfo) => {
+        const canonicalNeighborId = `${storyE3Context.neighborIds.voicemailUnclaimed}-${deterministicToken(
+          testInfo,
+          'e3-atdd-api-007-neighbor-canonical',
+        )}`;
+        const conflictingNeighborId = `${storyE3Context.neighborIds.voicemailClaimed}-${deterministicToken(
+          testInfo,
+          'e3-atdd-api-007-neighbor-conflict',
+        )}`;
+        expect(conflictingNeighborId).not.toBe(canonicalNeighborId);
+
+        const threadId = await ensureThread({
+          request,
+          path: storyE3Context.paths.threads,
+          headers: storyE3AdminHeaders,
+          payload: {
+            ...storyE3EnsurePayloadUnclaimed,
+            neighborId: canonicalNeighborId,
+          },
+        });
+
+        const webhookPayload = buildVoicemailWebhookPayload({
+          context: storyE3Context,
+          neighborId: conflictingNeighborId,
+          threadId,
+          testInfo,
+          label: 'e3-atdd-api-007',
+        });
+
+        const webhookResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyE3Context.paths.inboundWebhook,
+          headers: {
+            ...storyE3AdminHeaders,
+            ...buildSignedWebhookHeaders(webhookPayload, testInfo, 'e3-atdd-api-007'),
+          },
+          data: webhookPayload,
+        });
+
+        expect(webhookResponse.status()).toBe(200);
+        const webhookBody = await webhookResponse.json();
+        expect(hasRequiredEnvelopeKeys(webhookBody)).toBe(true);
+        expect(webhookBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+          data: {
+            correlation: {
+              source: 'metadata',
+              threadId,
+              tenantId: storyE3Context.tenantId,
+              orgUnitId: storyE3Context.orgUnitId,
+              neighborId: canonicalNeighborId,
+            },
+            threadId,
+            thread: {
+              threadId,
+              neighborId: canonicalNeighborId,
+            },
+          },
+        });
+      },
+    );
   },
 );
