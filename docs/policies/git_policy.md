@@ -180,6 +180,9 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
   - `connectshyft` lane:
     - planning artifacts include `ConnectShyft` in filename
     - sprint status file: `_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+  - `signshyft` lane:
+    - planning artifacts include `SignShyft` in filename
+    - sprint status file: `_bmad-output/implementation-artifacts/sprint-status-signshyft.yaml`
   - `routeshyft` lane:
     - planning artifacts omit `ConnectShyft` token
     - sprint status file: `_bmad-output/implementation-artifacts/sprint-status.yaml`

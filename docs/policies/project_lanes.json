@@ -20,6 +20,17 @@
         "connectshyft"
       ],
       "sprintStatusFile": "_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml"
+    },
+    {
+      "id": "signshyft",
+      "displayName": "SignShyft",
+      "branchTokens": [
+        "signshyft"
+      ],
+      "planningFilenameTokens": [
+        "signshyft"
+      ],
+      "sprintStatusFile": "_bmad-output/implementation-artifacts/sprint-status-signshyft.yaml"
     }
   ],
   "planningRules": {
