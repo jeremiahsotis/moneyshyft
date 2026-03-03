@@ -1,0 +1,450 @@
+import { apiRequest } from '../../support/helpers/apiClient';
+import { test, expect } from '../../support/fixtures/connectShyftStoryE3.fixture';
+import {
+  deterministicProviderEventId,
+  deterministicToken,
+} from '../../support/utils/deterministicTestIds';
+import {
+  buildSignedWebhookHeaders,
+  buildVoiceWebhookPayload,
+  hasRequiredEnvelopeKeys,
+} from '../../support/helpers/connectShyftWebhookTestHelpers';
+
+const mapInboundVoiceNumber = async ({
+  request,
+  path,
+  headers,
+  payload,
+}: {
+  request: Parameters<typeof apiRequest>[0];
+  path: string;
+  headers: Record<string, string>;
+  payload: {
+    orgUnitId: string;
+    providerNumberE164: string;
+    label: string;
+    isActive: true;
+  };
+}): Promise<void> => {
+  const response = await apiRequest(request, {
+    method: 'POST',
+    path,
+    headers,
+    data: payload,
+  });
+  expect([200, 201, 409]).toContain(response.status());
+};
+
+const ensureThread = async ({
+  request,
+  path,
+  headers,
+  payload,
+}: {
+  request: Parameters<typeof apiRequest>[0];
+  path: string;
+  headers: Record<string, string>;
+  payload: {
+    orgUnitId: string;
+    neighborId: string;
+    source: 'VOICE';
+    lastInboundCsNumberId: string;
+    preferredOutboundCsNumberId: string;
+  };
+}): Promise<string> => {
+  const ensureResponse = await apiRequest(request, {
+    method: 'POST',
+    path,
+    headers,
+    data: payload,
+  });
+  expect([200, 201]).toContain(ensureResponse.status());
+  const ensureBody = await ensureResponse.json();
+  const threadId = String(ensureBody?.data?.thread?.threadId || '');
+  expect(threadId.length).toBeGreaterThan(0);
+  return threadId;
+};
+
+const buildVoicemailWebhookPayload = ({
+  context,
+  neighborId,
+  threadId,
+  testInfo,
+  label,
+}: {
+  context: {
+    tenantId: string;
+    orgUnitId: string;
+    providers: { enabledPrimary: string };
+    numbers: { mappedInbound: string; mappedOutbound: string };
+  };
+  neighborId: string;
+  threadId?: string;
+  testInfo: Parameters<typeof deterministicToken>[0];
+  label: string;
+}) => {
+  const providerEventId = deterministicProviderEventId(
+    'provider-event-e3-atdd-api',
+    testInfo,
+    `${label}-provider-event`,
+  );
+  const providerLegId = `leg-e3-${deterministicToken(testInfo, `${label}-provider-leg`)}`;
+  return {
+    ...buildVoiceWebhookPayload({
+      providerKey: context.providers.enabledPrimary,
+      providerLegId,
+      providerEventId,
+      ...(threadId ? { threadId } : {}),
+    }),
+    eventType: 'voice.voicemail' as const,
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    neighborId,
+    providerPayload: {
+      to: context.numbers.mappedInbound,
+      from: context.numbers.mappedOutbound,
+      recording_url: `https://example.invalid/recordings/${providerEventId}.mp3`,
+      voicemail_duration_seconds: 47,
+    },
+  };
+};
+
+test.describe(
+  'Story e.3 Inbound Voice Webhook to Voicemail Artifact Pipeline (ATDD API RED)',
+  () => {
+    test.beforeEach(async ({
+      request,
+      storyE3Context,
+      storyE3AdminHeaders,
+      storyE3NumberMappingPayload,
+    }) => {
+      await mapInboundVoiceNumber({
+        request,
+        path: storyE3Context.paths.numbersCollection,
+        headers: storyE3AdminHeaders,
+        payload: storyE3NumberMappingPayload,
+      });
+    });
+
+    test.skip(
+      '[E3-ATDD-API-001][P0] valid inbound voice webhook creates voicemail artifact linked to resolved active thread context @P0',
+      async ({
+        request,
+        storyE3Context,
+        storyE3AdminHeaders,
+        storyE3EnsurePayloadUnclaimed,
+      }, testInfo) => {
+        const threadId = await ensureThread({
+          request,
+          path: storyE3Context.paths.threads,
+          headers: storyE3AdminHeaders,
+          payload: storyE3EnsurePayloadUnclaimed,
+        });
+
+        const webhookPayload = buildVoicemailWebhookPayload({
+          context: storyE3Context,
+          neighborId: storyE3Context.neighborIds.voicemailUnclaimed,
+          threadId,
+          testInfo,
+          label: 'e3-atdd-api-001',
+        });
+
+        const webhookResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyE3Context.paths.inboundWebhook,
+          headers: {
+            ...storyE3AdminHeaders,
+            ...buildSignedWebhookHeaders(webhookPayload, testInfo, 'e3-atdd-api-001'),
+          },
+          data: webhookPayload,
+        });
+
+        expect(webhookResponse.status()).toBe(200);
+        const webhookBody = await webhookResponse.json();
+        expect(hasRequiredEnvelopeKeys(webhookBody)).toBe(true);
+        expect(webhookBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+          data: {
+            correlation: {
+              deterministic: true,
+              tenantId: storyE3Context.tenantId,
+              orgUnitId: storyE3Context.orgUnitId,
+              neighborId: storyE3Context.neighborIds.voicemailUnclaimed,
+            },
+            thread: {
+              threadId,
+              tenantId: storyE3Context.tenantId,
+              orgUnitId: storyE3Context.orgUnitId,
+              neighborId: storyE3Context.neighborIds.voicemailUnclaimed,
+              state: 'UNCLAIMED',
+            },
+            lifecycle: {
+              ensuredActiveThread: true,
+            },
+            timeline: {
+              eventName: storyE3Context.eventNames.inboundVoiceVoicemail,
+              routingDecision: 'voicemail_only',
+            },
+            voicemailArtifact: {
+              artifactId: expect.any(String),
+              channel: 'voice',
+              direction: 'inbound',
+              providerLegId: expect.any(String),
+            },
+          },
+        });
+      },
+    );
+
+    test.skip(
+      '[E3-ATDD-API-002][P0] no-active-thread voice inbound routes to intake fallback and does not pretend voicemail-only routing @P0',
+      async ({
+        request,
+        storyE3Context,
+        storyE3AdminHeaders,
+      }, testInfo) => {
+        const webhookPayload = buildVoicemailWebhookPayload({
+          context: storyE3Context,
+          neighborId: storyE3Context.neighborIds.noActiveThread,
+          testInfo,
+          label: 'e3-atdd-api-002',
+        });
+
+        const webhookResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyE3Context.paths.inboundWebhook,
+          headers: {
+            ...storyE3AdminHeaders,
+            ...buildSignedWebhookHeaders(webhookPayload, testInfo, 'e3-atdd-api-002'),
+          },
+          data: webhookPayload,
+        });
+
+        expect(webhookResponse.status()).toBe(200);
+        const webhookBody = await webhookResponse.json();
+        expect(hasRequiredEnvelopeKeys(webhookBody)).toBe(true);
+        expect(webhookBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+          data: {
+            correlation: {
+              tenantId: storyE3Context.tenantId,
+              orgUnitId: storyE3Context.orgUnitId,
+              neighborId: storyE3Context.neighborIds.noActiveThread,
+            },
+            lifecycle: {
+              ensuredActiveThread: false,
+              reopenedByInbound: false,
+            },
+            timeline: {
+              eventName: storyE3Context.eventNames.inboundVoiceFallback,
+              routingDecision: 'intake_fallback',
+            },
+          },
+        });
+      },
+    );
+
+    test.skip(
+      '[E3-ATDD-API-003][P1] claimed-thread inbound voice follows orgUnit-configured mode rather than forced voicemail-only defaults @P1',
+      async ({
+        request,
+        storyE3Context,
+        storyE3AdminHeaders,
+        storyE3EnsurePayloadClaimed,
+      }, testInfo) => {
+        const claimedThreadId = await ensureThread({
+          request,
+          path: storyE3Context.paths.threads,
+          headers: storyE3AdminHeaders,
+          payload: storyE3EnsurePayloadClaimed,
+        });
+
+        const claimResponse = await apiRequest(request, {
+          method: 'POST',
+          path: `${storyE3Context.paths.threads}/${claimedThreadId}/claim`,
+          headers: storyE3AdminHeaders,
+        });
+        expect([200, 409]).toContain(claimResponse.status());
+
+        const webhookPayload = buildVoicemailWebhookPayload({
+          context: storyE3Context,
+          neighborId: storyE3Context.neighborIds.voicemailClaimed,
+          threadId: claimedThreadId,
+          testInfo,
+          label: 'e3-atdd-api-003',
+        });
+
+        const webhookResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyE3Context.paths.inboundWebhook,
+          headers: {
+            ...storyE3AdminHeaders,
+            ...buildSignedWebhookHeaders(webhookPayload, testInfo, 'e3-atdd-api-003'),
+          },
+          data: webhookPayload,
+        });
+
+        expect(webhookResponse.status()).toBe(200);
+        const webhookBody = await webhookResponse.json();
+        expect(hasRequiredEnvelopeKeys(webhookBody)).toBe(true);
+        expect(webhookBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+          data: {
+            threadState: 'CLAIMED',
+            timeline: {
+              eventName: storyE3Context.eventNames.inboundVoiceVoicemail,
+              routingDecision: 'accepted',
+            },
+            routingPolicy: {
+              claimedMode: 'orgunit_configured_mode',
+            },
+            lifecycle: {
+              reopenedByInbound: false,
+            },
+          },
+        });
+      },
+    );
+
+    test.skip(
+      '[E3-ATDD-API-004][P1] successful voicemail artifact creation enqueues transcription with durable callback correlation metadata @P1',
+      async ({
+        request,
+        storyE3Context,
+        storyE3AdminHeaders,
+        storyE3EnsurePayloadUnclaimed,
+      }, testInfo) => {
+        const threadId = await ensureThread({
+          request,
+          path: storyE3Context.paths.threads,
+          headers: storyE3AdminHeaders,
+          payload: storyE3EnsurePayloadUnclaimed,
+        });
+
+        const webhookPayload = buildVoicemailWebhookPayload({
+          context: storyE3Context,
+          neighborId: storyE3Context.neighborIds.voicemailUnclaimed,
+          threadId,
+          testInfo,
+          label: 'e3-atdd-api-004',
+        });
+
+        const webhookResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyE3Context.paths.inboundWebhook,
+          headers: {
+            ...storyE3AdminHeaders,
+            ...buildSignedWebhookHeaders(webhookPayload, testInfo, 'e3-atdd-api-004'),
+          },
+          data: webhookPayload,
+        });
+
+        expect(webhookResponse.status()).toBe(200);
+        const webhookBody = await webhookResponse.json();
+        expect(hasRequiredEnvelopeKeys(webhookBody)).toBe(true);
+        expect(webhookBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+          data: {
+            voicemailArtifact: {
+              artifactId: expect.any(String),
+            },
+            transcription: {
+              requestQueued: true,
+              queueName: 'connectshyft.voicemail.transcription',
+              callbackCorrelation: {
+                tenantId: storyE3Context.tenantId,
+                orgUnitId: storyE3Context.orgUnitId,
+                threadId,
+                providerEventId: webhookPayload.providerEventId,
+                providerLegId: webhookPayload.providerLegId,
+                voicemailArtifactId: expect.any(String),
+              },
+            },
+          },
+        });
+      },
+    );
+
+    test.skip(
+      '[E3-ATDD-API-005][P1] voicemail-only inbound processing keeps escalation and inactivity windows unchanged unless locked lifecycle rules require a change @P1',
+      async ({
+        request,
+        storyE3Context,
+        storyE3AdminHeaders,
+        storyE3EnsurePayloadUnclaimed,
+      }, testInfo) => {
+        const threadId = await ensureThread({
+          request,
+          path: storyE3Context.paths.threads,
+          headers: storyE3AdminHeaders,
+          payload: storyE3EnsurePayloadUnclaimed,
+        });
+
+        const detailBeforeResponse = await apiRequest(request, {
+          method: 'GET',
+          path: `${storyE3Context.paths.threads}/${threadId}`,
+          headers: storyE3AdminHeaders,
+        });
+        expect(detailBeforeResponse.status()).toBe(200);
+        const detailBeforeBody = await detailBeforeResponse.json();
+        const beforeStage = Number(
+          detailBeforeBody?.data?.thread?.escalation?.stage ?? 0,
+        );
+        const beforeInactivity = String(
+          detailBeforeBody?.data?.thread?.nextEvaluationAtUtc ?? '',
+        );
+
+        const webhookPayload = buildVoicemailWebhookPayload({
+          context: storyE3Context,
+          neighborId: storyE3Context.neighborIds.voicemailUnclaimed,
+          threadId,
+          testInfo,
+          label: 'e3-atdd-api-005',
+        });
+
+        const webhookResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyE3Context.paths.inboundWebhook,
+          headers: {
+            ...storyE3AdminHeaders,
+            ...buildSignedWebhookHeaders(webhookPayload, testInfo, 'e3-atdd-api-005'),
+          },
+          data: webhookPayload,
+        });
+
+        expect(webhookResponse.status()).toBe(200);
+        const webhookBody = await webhookResponse.json();
+        expect(hasRequiredEnvelopeKeys(webhookBody)).toBe(true);
+        expect(webhookBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+          data: {
+            lifecycle: {
+              reopenedByInbound: false,
+              escalationResetApplied: false,
+              inactivityResetApplied: false,
+            },
+          },
+        });
+
+        const detailAfterResponse = await apiRequest(request, {
+          method: 'GET',
+          path: `${storyE3Context.paths.threads}/${threadId}`,
+          headers: storyE3AdminHeaders,
+        });
+        expect(detailAfterResponse.status()).toBe(200);
+        const detailAfterBody = await detailAfterResponse.json();
+        expect(Number(detailAfterBody?.data?.thread?.escalation?.stage ?? 0)).toBe(
+          beforeStage,
+        );
+        expect(String(detailAfterBody?.data?.thread?.nextEvaluationAtUtc ?? '')).toBe(
+          beforeInactivity,
+        );
+      },
+    );
+  },
+);
