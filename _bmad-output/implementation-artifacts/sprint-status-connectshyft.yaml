@@ -70,12 +70,12 @@ development_status:
   d-4-operator-interaction-contracts-for-outbound-safety: done
   epic-d-retrospective: optional
   epic-e: in-progress
-  e-1-verified-webhook-ingress-and-deterministic-context-routing: backlog
-  e-2-inbound-sms-processing-with-active-thread-ensure: backlog
-  e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: backlog
-  e-4-transcription-webhook-attachment-to-voicemail-records: backlog
-  e-5-replay-safe-webhook-receipt-ledger-and-retention-controls: backlog
-  e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: backlog
+  e-1-verified-webhook-ingress-and-deterministic-context-routing: ready-for-dev
+  e-2-inbound-sms-processing-with-active-thread-ensure: ready-for-dev
+  e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: ready-for-dev
+  e-4-transcription-webhook-attachment-to-voicemail-records: ready-for-dev
+  e-5-replay-safe-webhook-receipt-ledger-and-retention-controls: ready-for-dev
+  e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: ready-for-dev
   epic-e-retrospective: optional
   epic-f: done
   f-1-provider-adapter-interface-and-provider-registry: done
@@ -362,18 +362,29 @@ story_dependencies:
     - c-3-inbox-and-thread-detail-read-contracts
     - d-1-outbound-sms-call-actions-that-preserve-escalation-semantics
     - d-2-preference-override-enforcement-for-outbound-sms
+  e-1-verified-webhook-ingress-and-deterministic-context-routing:
+    - f-1-provider-adapter-interface-and-provider-registry
+    - f-2-canonical-comms-event-model-and-event-store
+    - f-4-telnyx-adapter-implementation-and-cutover-guardrails
   e-2-inbound-sms-processing-with-active-thread-ensure:
     - e-1-verified-webhook-ingress-and-deterministic-context-routing
     - c-2-thread-ensure-endpoint-with-conflict-safe-idempotency
+    - f-1-provider-adapter-interface-and-provider-registry
+    - f-2-canonical-comms-event-model-and-event-store
   e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline:
     - e-1-verified-webhook-ingress-and-deterministic-context-routing
     - c-2-thread-ensure-endpoint-with-conflict-safe-idempotency
+    - f-1-provider-adapter-interface-and-provider-registry
+    - f-2-canonical-comms-event-model-and-event-store
   e-4-transcription-webhook-attachment-to-voicemail-records:
     - e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline
+    - f-1-provider-adapter-interface-and-provider-registry
+    - f-2-canonical-comms-event-model-and-event-store
   e-5-replay-safe-webhook-receipt-ledger-and-retention-controls:
     - e-1-verified-webhook-ingress-and-deterministic-context-routing
     - f-1-provider-adapter-interface-and-provider-registry
     - f-2-canonical-comms-event-model-and-event-store
+    - f-3-provider-leg-message-correlation-fallback-mapping
   e-6-parallel-delivery-safety-gates-for-connectshyft-rollout:
     - a-5-capability-based-route-access-and-envelope-contract-compliance
     - e-1-verified-webhook-ingress-and-deterministic-context-routing
@@ -471,41 +482,46 @@ blocked_story_registry:
       - f-1-provider-adapter-interface-and-provider-registry
       - f-2-canonical-comms-event-model-and-event-store
   e-1-verified-webhook-ingress-and-deterministic-context-routing:
-    blocked: true
+    blocked: false
     noted_on: 2026-02-27
-    reason: "Frozen until provider abstraction foundation is implemented and webhook contract is rebaselined."
+    resolved_on: 2026-03-03
+    reason: "Epic F foundation dependencies reached done and Epic E dependency metadata is synchronized; story is unblocked for execution."
     blocked_on:
       - f-1-provider-adapter-interface-and-provider-registry
       - f-2-canonical-comms-event-model-and-event-store
       - f-4-telnyx-adapter-implementation-and-cutover-guardrails
   e-2-inbound-sms-processing-with-active-thread-ensure:
-    blocked: true
+    blocked: false
     noted_on: 2026-02-27
-    reason: "Frozen until provider abstraction foundation is implemented and webhook contract is rebaselined."
+    resolved_on: 2026-03-03
+    reason: "Upstream webhook and Comms Core dependencies are complete and dependency graph sync is applied; story is unblocked for execution."
     blocked_on:
       - e-1-verified-webhook-ingress-and-deterministic-context-routing
       - f-1-provider-adapter-interface-and-provider-registry
       - f-2-canonical-comms-event-model-and-event-store
   e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline:
-    blocked: true
+    blocked: false
     noted_on: 2026-02-27
-    reason: "Frozen until provider abstraction foundation is implemented and webhook contract is rebaselined."
+    resolved_on: 2026-03-03
+    reason: "Upstream webhook and Comms Core dependencies are complete and dependency graph sync is applied; story is unblocked for execution."
     blocked_on:
       - e-1-verified-webhook-ingress-and-deterministic-context-routing
       - f-1-provider-adapter-interface-and-provider-registry
       - f-2-canonical-comms-event-model-and-event-store
   e-4-transcription-webhook-attachment-to-voicemail-records:
-    blocked: true
+    blocked: false
     noted_on: 2026-02-27
-    reason: "Frozen until provider abstraction foundation is implemented and webhook contract is rebaselined."
+    resolved_on: 2026-03-03
+    reason: "Voice-ingress and Comms Core prerequisites are complete and dependency graph sync is applied; story is unblocked for execution."
     blocked_on:
       - e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline
       - f-1-provider-adapter-interface-and-provider-registry
       - f-2-canonical-comms-event-model-and-event-store
   e-5-replay-safe-webhook-receipt-ledger-and-retention-controls:
-    blocked: true
+    blocked: false
     noted_on: 2026-02-27
-    reason: "Frozen until provider abstraction foundation is implemented and webhook contract is rebaselined."
+    resolved_on: 2026-03-03
+    reason: "Webhook ingress and Comms Core prerequisites (including fallback mapping) are complete and dependency graph sync is applied; story is unblocked for execution."
     blocked_on:
       - e-1-verified-webhook-ingress-and-deterministic-context-routing
       - f-1-provider-adapter-interface-and-provider-registry

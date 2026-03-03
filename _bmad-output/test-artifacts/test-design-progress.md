@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-detect-mode','step-02-load-context','step-03-risk-and-testability','step-04-coverage-plan','step-05-generate-output']
 lastStep: 'step-05-generate-output'
-lastSaved: '2026-02-27'
+lastSaved: '2026-03-03'
 ---
 
 # Test Design Workflow Progress
@@ -867,3 +867,156 @@ lastSaved: '2026-02-27'
 - Key release risks/thresholds in final output:
   - Highest risks: `R-F-001`, `R-F-002`, `R-F-004`, `R-F-005`
   - Gate thresholds: P0=100%, P1>=95%, high-risk mitigations complete, coverage >=80%, zero non-adapter provider coupling violations
+
+## 2026-03-03 Run - Step 1 Output - Detect Mode & Prerequisites (Epic E)
+- Mode selected: **Epic-Level Mode**.
+- Selection reason: user input explicitly requested `testarch-test-design epic e`.
+- Prerequisite check passed for epic scope:
+  - Epic/story acceptance criteria are present and ready-for-dev in:
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/e-1-verified-webhook-ingress-and-deterministic-context-routing.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/e-2-inbound-sms-processing-with-active-thread-ensure.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/e-4-transcription-webhook-attachment-to-voicemail-records.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.md`
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.md`
+  - Sprint status confirms `epic-e: in-progress` with `e-1`..`e-6` synchronized and unblocked for execution:
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+  - Validation report confirms Epic E package is ready for dev-story execution:
+    - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/story-validation-epic-e-2026-03-03.md`
+
+## 2026-03-03 Run - Step 2 Output - Load Context & Knowledge Base (Epic E)
+- Config loaded from `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/config.yaml`:
+  - `tea_use_playwright_utils: true`
+  - `tea_browser_automation: auto`
+  - `test_artifacts: /Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts`
+- Loaded epic-level source artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+  - Epic E story files `e-1` through `e-6`
+- Loaded prior system-level outputs (context only):
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-architecture.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-qa.md`
+- Existing coverage scan summary:
+  - No dedicated Epic E story suites currently exist in `tests/api/platform` or `tests/e2e/platform` for `e-1`..`e-6`.
+  - Webhook/correlation baseline coverage exists in Epic F suites (`f-1`, `f-2`, `f-3`, `f-4`) and partial lifecycle voice behavior exists in D/C suites.
+  - Route and module code has inbound webhook correlation, dedupe receipt, and signature validation paths already present, but epic-story-specific gate and scenario coverage is still a gap.
+- Browser exploration status (auto mode):
+  - `playwright-cli` is installed (`1.59.0-alpha-1771104257000`), but local runtime targets were unavailable at run time (`http://127.0.0.1:3000` and `http://127.0.0.1:5173` connection refused).
+  - Browser exploration was skipped and replaced by code/artifact evidence analysis.
+- Required knowledge fragments loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/risk-governance.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/probability-impact.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/test-levels-framework.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/test-priorities-matrix.md`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad/tea/testarch/knowledge/playwright-cli.md`
+
+## 2026-03-03 Run - Step 3 Output - Risk Assessment (Epic E)
+- System-level testability subsection is not applicable (epic-level mode).
+- Risk matrix generated using probability-impact scoring (`score = probability x impact`).
+- Highest risks:
+  - `R-E-001` signature bypass on inbound webhooks (score 9)
+  - `R-E-002` context misrouting across tenant/orgUnit (score 9)
+  - `R-E-003` replay dedupe inconsistency across inbound event families (score 9)
+  - `R-E-006` transcription correlation mismatch/orphan mutation risk (score 9)
+- Additional high-priority risks:
+  - `R-E-004` inbound SMS ensure concurrency drift
+  - `R-E-005` inbound voice routing matrix drift
+  - `R-E-007` receipt-retention and dedupe-window integrity risk
+  - `R-E-008` release-safety gate drift in CI
+- Priority order:
+  1. Ingress security and cross-scope integrity (`R-E-001`, `R-E-002`)
+  2. Idempotency and callback correlation correctness (`R-E-003`, `R-E-006`)
+  3. Stateful routing and operational release control (`R-E-004`, `R-E-005`, `R-E-007`, `R-E-008`)
+
+## 2026-03-03 Run - Step 4 Output - Coverage Plan & Execution Strategy (Epic E)
+- Coverage matrix created for stories `e-1` through `e-6` with explicit risk links.
+- Test level assignment follows framework guidance:
+  - API/Integration for signature, routing, dedupe, correlation, and retention guarantees
+  - CI contract checks for policy-first and required-lane release safety
+  - Targeted E2E/read-contract checks for voicemail/transcript visibility parity
+- Priority model applied:
+  - P0: ingress integrity, replay safety, and release-blocking gate controls
+  - P1: voice/transcript continuity and dependency-regression safety
+  - P2: performance and operability hardening
+  - P3: burn-in and exploratory confidence checks
+- Execution strategy defined as simple PR / Nightly / Weekly:
+  - PR: P0 + P1 + fast P2
+  - Nightly: full P2 including perf/retention checks
+  - Weekly: P3 burn-in and rollout drills
+- Interval-only effort estimates:
+  - P0: ~30-46 hours
+  - P1: ~24-38 hours
+  - P2: ~12-22 hours
+  - P3: ~4-10 hours
+  - Total: ~70-116 hours (~2.5-4 weeks)
+- Quality gates set:
+  - P0 pass rate = 100%
+  - P1 pass rate >=95%
+  - High-risk mitigations complete or explicitly waived
+  - Policy-first CI ordering and required-lane checks enforced
+  - Coverage target >=80%
+
+## 2026-03-03 Run - Step 5 Output - Generate Outputs & Validate (Epic E)
+- Mode used: **Epic-Level**
+- Epic selected: **Epic E** (`e-1`..`e-6`)
+- Output generated:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-epic-E.md`
+- Validation summary against checklist:
+  - Risk matrix includes IDs, category, P/I scoring, mitigation, owner, and timeline.
+  - Coverage plan includes P0-P3 with risk link and non-duplicative level intent.
+  - Execution strategy follows simple PR/Nightly/Weekly structure.
+  - Estimates are range-based only (no false precision).
+  - Quality gate thresholds and accountability sections are present.
+  - Output stored under `_bmad-output/test-artifacts/`.
+- Browser/session hygiene:
+  - No CLI browser sessions were opened because no local runtime target was available.
+- Open assumptions carried into final output:
+  - Epic E validated story package and dependency graph remain authoritative during implementation.
+  - Epic F provider-abstraction contracts remain stable.
+  - CI policy and required-lane checks remain merge-blocking for ConnectShyft PRs.
+
+## 2026-03-03 Addendum - Live Runtime Browser Exploration Reconciliation (Epic E)
+- Objective: reconcile Epic E test design assumptions against live frontend/backend runtime behavior.
+- Runtime targets started successfully:
+  - Backend dev server on `:3000` (`/health` returned `status: ok`)
+  - Frontend dev server on `:5173`
+- Browser exploration executed with Playwright CLI session `tea-explore` and evidence captured under:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/exploration/`
+
+### Live Findings
+- ConnectShyft list and nav routes are canonicalized to:
+  - `/app/connectshyft/inbox`
+  - `/app/connectshyft/mine`
+  - `/app/connectshyft/more`
+  - `/app/connectshyft/threads/:threadId` (detail only)
+- `/app/connectshyft/threads` does not resolve as a valid list route and should be treated as invalid-route coverage.
+- Module-gated ConnectShyft routes redirect to authorized fallback (observed `/admin/tenant`) when ConnectShyft module entitlement is not active.
+- Tenant admin node-level module enable attempts return `409` refusal when tenant scope is disabled:
+  - `code: MODULE_ASSIGNMENT_OUT_OF_BOUNDS`
+  - `message: Cannot enable a module that is disabled at tenant scope`
+
+### Test Design Adjustments Applied
+- Updated Epic E risk wording for rollout and route-contract drift:
+  - `R-E-010` now includes tenant->orgUnit module hierarchy drift and refusal behavior.
+  - `R-E-011` now includes canonical route assumptions and invalid-route coverage.
+- Updated **Entry Criteria** in Epic E to require:
+  - tenant-level ConnectShyft entitlement fixtures for both enabled/disabled states
+  - canonical route manifest validation before E2E authoring
+- Updated Epic E coverage notes to explicitly include:
+  - `/inbox`, `/mine`, `/threads/:threadId` parity scope
+  - invalid `/app/connectshyft/threads` list-route assertion
+  - `409 MODULE_ASSIGNMENT_OUT_OF_BOUNDS` hierarchy contract
+  - tenant module-gate fallback behavior in env parity checks
+- Updated **Non-Negotiables**, **Assumptions/Dependencies**, and **Interworking & Regression** to include:
+  - route gate and fallback contract enforcement
+  - node-module override refusal contract
+  - router/access-store/platform-admin-console ownership surfaces
+
+### Evidence References
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/exploration/explore-connectshyft-threads.png`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/exploration/explore-connectshyft-inbox-default.png`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/exploration/explore-connectshyft-inbox-flags.png`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/exploration/explore-admin-tenant-settings.png`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/exploration/explore-connectshyft-module-toggle-conflict.png`
