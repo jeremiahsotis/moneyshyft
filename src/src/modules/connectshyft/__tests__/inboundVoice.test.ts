@@ -10,7 +10,7 @@ import {
 } from '../inboundVoice';
 
 describe('connectshyft inbound voice domain mapping', () => {
-  it('maps voicemail webhook payload fields into a canonical inbound voice domain event', () => {
+  it('[E3-UNIT-001][P0] maps voicemail webhook payload fields into a canonical inbound voice domain event @P0', () => {
     const domainEvent = mapConnectShyftInboundVoiceWebhookToDomainEvent({
       webhookBody: {
         providerPayload: {
@@ -47,7 +47,7 @@ describe('connectshyft inbound voice domain mapping', () => {
     });
   });
 
-  it('resolves voice routing matrix across no-thread, unclaimed, claimed, and closed states', () => {
+  it('[E3-UNIT-002][P0] resolves voice routing matrix across no-thread, unclaimed, claimed, and closed states @P0', () => {
     expect(resolveConnectShyftInboundVoiceRouting({
       normalizedEventType: 'voice.voicemail',
       threadState: null,
@@ -88,7 +88,7 @@ describe('connectshyft inbound voice domain mapping', () => {
     });
   });
 
-  it('builds canonical payload and transcription callback correlation for voicemail artifacts', () => {
+  it('[E3-UNIT-003][P1] builds canonical payload and transcription callback correlation for voicemail artifacts @P1', () => {
     const domainEvent = mapConnectShyftInboundVoiceWebhookToDomainEvent({
       webhookBody: {
         providerPayload: {
@@ -154,7 +154,7 @@ describe('connectshyft inbound voice domain mapping', () => {
     });
   });
 
-  it('extracts neighbor id from voice webhook envelope aliases', () => {
+  it('[E3-UNIT-004][P1] extracts neighbor id from voice webhook envelope aliases @P1', () => {
     expect(extractConnectShyftInboundVoiceNeighborId({
       neighborId: 'neighbor-connectshyft-e3-unclaimed-1002',
     })).toBe('neighbor-connectshyft-e3-unclaimed-1002');

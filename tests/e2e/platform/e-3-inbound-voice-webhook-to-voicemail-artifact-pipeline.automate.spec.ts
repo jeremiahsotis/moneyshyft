@@ -5,136 +5,16 @@ import {
   createStoryE3Headers,
 } from '../../support/factories/connectShyftStoryE3Factory';
 import {
-  deterministicProviderEventId,
-  deterministicToken,
-} from '../../support/utils/deterministicTestIds';
-import {
   buildSignedWebhookHeaders,
-  buildVoiceWebhookPayload,
   hasRequiredEnvelopeKeys,
 } from '../../support/helpers/connectShyftWebhookTestHelpers';
-
-const mapInboundVoiceNumber = async ({
-  request,
-  path,
-  headers,
-  payload,
-}: {
-  request: Parameters<typeof apiRequest>[0];
-  path: string;
-  headers: Record<string, string>;
-  payload: {
-    orgUnitId: string;
-    providerNumberE164: string;
-    label: string;
-    isActive: true;
-  };
-}): Promise<void> => {
-  const response = await apiRequest(request, {
-    method: 'POST',
-    path,
-    headers,
-    data: payload,
-  });
-  expect([200, 201, 409]).toContain(response.status());
-};
-
-const ensureThread = async ({
-  request,
-  path,
-  headers,
-  payload,
-}: {
-  request: Parameters<typeof apiRequest>[0];
-  path: string;
-  headers: Record<string, string>;
-  payload: {
-    orgUnitId: string;
-    neighborId: string;
-    source: 'VOICE';
-    lastInboundCsNumberId: string;
-    preferredOutboundCsNumberId: string;
-  };
-}): Promise<string> => {
-  const ensureResponse = await apiRequest(request, {
-    method: 'POST',
-    path,
-    headers,
-    data: payload,
-  });
-  expect([200, 201]).toContain(ensureResponse.status());
-  const ensureBody = await ensureResponse.json();
-  const threadId = String(ensureBody?.data?.thread?.threadId || '');
-  expect(threadId.length).toBeGreaterThan(0);
-  return threadId;
-};
-
-const resolvePersistedActorUserId = async (
-  request: Parameters<typeof apiRequest>[0],
-): Promise<string> => {
-  const loginResponse = await apiRequest(request, {
-    method: 'POST',
-    path: '/api/v1/auth/login',
-    headers: {
-      cookie: '',
-    },
-    data: {
-      email: process.env.TEST_EMAIL || 'operator@example.com',
-      password: process.env.TEST_PASSWORD || 'SecurePass123!',
-      rememberMe: false,
-    },
-  });
-  expect(loginResponse.status()).toBe(200);
-
-  const loginBody = await loginResponse.json();
-  const user = loginBody?.user ?? loginBody?.data?.user ?? {};
-  const userId = typeof user?.userId === 'string'
-    ? user.userId
-    : (typeof user?.id === 'string' ? user.id : '');
-  expect(userId.length).toBeGreaterThan(0);
-  return userId;
-};
-
-const buildVoicemailWebhookPayload = ({
-  context,
-  neighborId,
-  threadId,
-  testInfo,
-  label,
-  eventType = 'voice.voicemail',
-}: {
-  context: ReturnType<typeof createStoryE3Context>;
-  neighborId: string;
-  threadId?: string;
-  testInfo: Parameters<typeof deterministicToken>[0];
-  label: string;
-  eventType?: 'voice.voicemail' | 'voice.fallback';
-}) => {
-  const providerEventId = deterministicProviderEventId(
-    'provider-event-e3-automate-e2e',
-    testInfo,
-    `${label}-provider-event`,
-  );
-  const providerLegId = `leg-e3-${deterministicToken(testInfo, `${label}-provider-leg`)}`;
-  return {
-    ...buildVoiceWebhookPayload({
-      providerKey: context.providers.enabledPrimary,
-      providerLegId,
-      providerEventId,
-      ...(threadId ? { threadId } : {}),
-    }),
-    eventType,
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    neighborId,
-    providerPayload: {
-      to: context.numbers.mappedInbound,
-      from: context.numbers.mappedOutbound,
-      recording_url: `https://example.invalid/recordings/${providerEventId}.mp3`,
-      voicemail_duration_seconds: 38,
-    },
-  };
-};
+import { deterministicToken } from '../../support/utils/deterministicTestIds';
+import {
+  buildStoryE3VoicemailPayload,
+  ensureThread,
+  mapInboundVoiceNumber,
+  resolvePersistedActorUserId,
+} from '../../support/helpers/connectShyftStoryE3TestHelpers';
 
 test.describe(
   'Story e.3 Inbound Voice Webhook to Voicemail Artifact Pipeline (Automate E2E Expansion)',
@@ -179,12 +59,14 @@ test.describe(
           },
         });
 
-        const webhookPayload = buildVoicemailWebhookPayload({
+        const webhookPayload = buildStoryE3VoicemailPayload({
           context,
           neighborId,
           threadId,
           testInfo,
           label: 'e3-automate-e2e-201',
+          providerEventNamespace: 'provider-event-e3-automate-e2e',
+          voicemailDurationSeconds: 38,
         });
 
         const firstResponse = await apiRequest(request, {
@@ -251,7 +133,7 @@ test.describe(
         expect(detailResponse.status()).toBe(200);
         const detailBody = await detailResponse.json();
         const timeline = Array.isArray(detailBody?.data?.thread?.timeline)
-          ? detailBody.data.thread.timeline as Array<{ eventName: string }>
+          ? (detailBody.data.thread.timeline as Array<{ eventName: string }>)
           : [];
         const voicemailEvents = timeline.filter(
           (entry) => entry.eventName === context.eventNames.inboundVoiceVoicemail,
@@ -311,22 +193,24 @@ test.describe(
           path: `${context.paths.threads}/${threadId}/claim`,
           headers: actorHeaders,
         });
-        expect([200, 409]).toContain(claimResponse.status());
+        expect(claimResponse.status()).toBe(200);
 
         const closeResponse = await apiRequest(request, {
           method: 'POST',
           path: `${context.paths.threads}/${threadId}/close`,
           headers: actorHeaders,
         });
-        expect([200, 409]).toContain(closeResponse.status());
+        expect(closeResponse.status()).toBe(200);
 
-        const webhookPayload = buildVoicemailWebhookPayload({
+        const webhookPayload = buildStoryE3VoicemailPayload({
           context,
           neighborId,
           threadId,
           testInfo,
           label: 'e3-automate-e2e-202',
+          providerEventNamespace: 'provider-event-e3-automate-e2e',
           eventType: 'voice.voicemail',
+          voicemailDurationSeconds: 38,
         });
 
         const webhookResponse = await apiRequest(request, {

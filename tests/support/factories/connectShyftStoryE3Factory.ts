@@ -76,9 +76,27 @@ const DEFAULT_FLAGS: ConnectShyftFlags = {
   connectshyft_webhooks_enabled: true,
 };
 
+const buildStoryE3IsolationToken = (): string => randomUUID().replace(/-/g, '').slice(0, 8);
+
+const buildStoryE3Numbers = (token: string): StoryE3Context['numbers'] => {
+  const seed = Number.parseInt(token, 16);
+  const normalizeLocal = (offset: number): string => {
+    const localNumber = 2000000 + ((seed + offset) % 7000000);
+    return String(localNumber).padStart(7, '0');
+  };
+
+  return {
+    mappedInbound: `+1260${normalizeLocal(0)}`,
+    mappedOutbound: `+1260${normalizeLocal(1)}`,
+    unmappedInbound: `+1260${normalizeLocal(2)}`,
+  };
+};
+
 export function createStoryE3Context(
   overrides: StoryE3ContextOverrides = {},
 ): StoryE3Context {
+  const isolationToken = buildStoryE3IsolationToken();
+
   return {
     storyId: 'e-3',
     tenantId: overrides.tenantId ?? 'tenant-connectshyft-e3',
@@ -91,20 +109,16 @@ export function createStoryE3Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-e3-${randomUUID().slice(0, 8)}`,
     neighborIds: {
-      noActiveThread: 'neighbor-connectshyft-e3-no-thread-1001',
-      voicemailUnclaimed: 'neighbor-connectshyft-e3-unclaimed-1002',
-      voicemailClaimed: 'neighbor-connectshyft-e3-claimed-1003',
+      noActiveThread: `neighbor-connectshyft-e3-no-thread-${isolationToken}`,
+      voicemailUnclaimed: `neighbor-connectshyft-e3-unclaimed-${isolationToken}`,
+      voicemailClaimed: `neighbor-connectshyft-e3-claimed-${isolationToken}`,
     },
     providers: {
       enabledPrimary: 'telnyx',
       enabledSecondary: 'mock-sandbox',
       disabled: 'twilio',
     },
-    numbers: {
-      mappedInbound: '+12605550171',
-      mappedOutbound: '+12605550172',
-      unmappedInbound: '+12605550971',
-    },
+    numbers: buildStoryE3Numbers(isolationToken),
     eventNames: {
       inboundVoiceVoicemail: 'connectshyft.inbound.voice_voicemail_recorded',
       inboundVoiceFallback: 'connectshyft.inbound.voice_fallback_recorded',
