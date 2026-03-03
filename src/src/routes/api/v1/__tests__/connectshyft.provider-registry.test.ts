@@ -694,6 +694,53 @@ describe('connectshyft provider adapter registry route integration', () => {
     });
   });
 
+  it('resolves webhook correlation by tenant number mapping when provider identifiers are unavailable', async () => {
+    const app = buildApp();
+    const mappedInboundNumber = '+12605550141';
+
+    const mappingResponse = await request(app)
+      .post('/api/v1/connectshyft/numbers')
+      .set(buildHeaders({
+        'x-test-connectshyft-role': 'SYSTEM_ADMIN',
+      }))
+      .send({
+        orgUnitId: 'org-connectshyft-f1-east',
+        providerNumberE164: mappedInboundNumber,
+        label: 'Webhook number-routing fallback',
+        isActive: true,
+      });
+
+    expect([200, 201]).toContain(mappingResponse.status);
+
+    const webhookResponse = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildHeaders())
+      .send({
+        eventType: 'sms.delivered',
+        providerKey: 'telnyx',
+        providerPayload: {
+          to: mappedInboundNumber,
+          from: '+12605550142',
+        },
+      });
+
+    expect(webhookResponse.status).toBe(200);
+    expect(webhookResponse.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+      data: {
+        correlation: {
+          source: 'number_mapping',
+          deterministic: true,
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+          threadId: expect.any(String),
+          providerNumberE164: mappedInboundNumber,
+        },
+      },
+    });
+  });
+
   it('returns deterministic conflict refusal when full metadata disagrees with provider fallback mapping', async () => {
     const app = buildApp();
     const callResponse = await request(app)
@@ -820,6 +867,40 @@ describe('connectshyft provider adapter registry route integration', () => {
         timelineOutcome: {
           eventName: null,
           routingDecision: 'refused',
+        },
+      },
+    });
+  });
+
+  it('returns deterministic not-found refusal when provider-number mapping is missing', async () => {
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildHeaders())
+      .send({
+        eventType: 'sms.delivered',
+        providerKey: 'telnyx',
+        providerPayload: {
+          to: '+12605550991',
+          from: '+12605550142',
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_NOT_FOUND',
+      refusalType: 'business',
+      data: {
+        correlation: {
+          deterministic: true,
+          reason: 'not-found',
+          providerNumberE164: '+12605550991',
+        },
+        sideEffects: {
+          lifecycleMutationApplied: false,
+          canonicalEventPersisted: false,
+          outboxPersisted: false,
         },
       },
     });
@@ -976,6 +1057,18 @@ describe('connectshyft provider adapter registry route integration', () => {
       ok: false,
       code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING',
       refusalType: 'client',
+      data: {
+        signatureValidation: {
+          deterministic: true,
+          verified: false,
+          provider: 'telnyx',
+        },
+        sideEffects: {
+          lifecycleMutationApplied: false,
+          canonicalEventPersisted: false,
+          outboxPersisted: false,
+        },
+      },
     });
 
     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';

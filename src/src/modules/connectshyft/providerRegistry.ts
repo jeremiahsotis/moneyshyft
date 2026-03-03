@@ -10,6 +10,8 @@ const TEST_ENABLED_PROVIDERS_HEADER = 'x-test-connectshyft-enabled-providers';
 const TEST_DISABLED_PROVIDERS_HEADER = 'x-test-connectshyft-disabled-providers';
 const TEST_REQUESTED_PROVIDER_HEADER = 'x-test-connectshyft-provider-requested';
 const TEST_PROVIDER_ROLLOUT_ALLOWLIST_HEADER = 'x-test-connectshyft-provider-rollout-allowlist';
+const TEST_ENFORCE_WEBHOOK_SIGNATURE_HEADER = 'x-test-connectshyft-enforce-webhook-signature';
+const TEST_TELNYX_PUBLIC_KEY_HEADER = 'x-test-connectshyft-telnyx-public-key';
 const TELNYX_SIGNATURE_HEADER = 'telnyx-signature-ed25519';
 const TELNYX_TIMESTAMP_HEADER = 'telnyx-timestamp';
 const TELNYX_PUBLIC_KEY_ENV = 'TELNYX_PUBLIC_KEY';
@@ -374,6 +376,17 @@ const parsePositiveInteger = (value: string | undefined): number | null => {
   return parsed;
 };
 
+const parseBooleanHeaderValue = (value: unknown): boolean => {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'true'
+    || normalized === '1'
+    || normalized === 'on'
+    || normalized === 'enabled';
+};
+
 const resolveProvidersFromEnv = (envVar: string, fallback: string[] = []): string[] => {
   const parsed = parseProviderList(process.env[envVar]);
   if (parsed.length > 0) {
@@ -596,7 +609,46 @@ const resolveWebhookSignatureMaxAgeMs = (): number => {
   return (configured ?? DEFAULT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS) * 1000;
 };
 
-const resolveTelnyxPublicKey = (): ReturnType<typeof createPublicKey> | null => {
+const shouldBypassWebhookSignatureValidation = (
+  req: ConnectShyftWebhookRequest,
+): boolean => {
+  if (!isConnectShyftTestOverrideEnabled()) {
+    return false;
+  }
+
+  const enforceValidation = parseBooleanHeaderValue(
+    readHeader(req, TEST_ENFORCE_WEBHOOK_SIGNATURE_HEADER),
+  );
+  return !enforceValidation;
+};
+
+const resolveTelnyxPublicKey = (
+  req?: ConnectShyftWebhookRequest,
+): ReturnType<typeof createPublicKey> | null => {
+  if (req && isConnectShyftTestOverrideEnabled()) {
+    const testPublicKey = readHeader(req, TEST_TELNYX_PUBLIC_KEY_HEADER);
+    if (testPublicKey) {
+      const candidateKeys = [testPublicKey];
+      try {
+        const decoded = Buffer.from(testPublicKey, 'base64').toString('utf8').trim();
+        if (decoded && decoded !== testPublicKey) {
+          candidateKeys.push(decoded);
+        }
+      } catch (_error) {
+        // Ignore base64 decode failures and keep raw header candidate.
+      }
+
+      for (const candidate of candidateKeys) {
+        try {
+          return createPublicKey(candidate);
+        } catch (_error) {
+          // Try next candidate.
+        }
+      }
+      return null;
+    }
+  }
+
   const rawKey = normalizeString(process.env[TELNYX_PUBLIC_KEY_ENV]);
   if (!rawKey) {
     return null;
@@ -612,11 +664,11 @@ const resolveTelnyxPublicKey = (): ReturnType<typeof createPublicKey> | null => 
 const validateTelnyxWebhookSignature = (
   req: ConnectShyftWebhookRequest,
 ): ConnectShyftWebhookSignatureResult => {
-  if (isConnectShyftTestOverrideEnabled()) {
+  if (shouldBypassWebhookSignatureValidation(req)) {
     return { ok: true };
   }
 
-  const telnyxPublicKey = resolveTelnyxPublicKey();
+  const telnyxPublicKey = resolveTelnyxPublicKey(req);
   if (!telnyxPublicKey) {
     return {
       ok: false,

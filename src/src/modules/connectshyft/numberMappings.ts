@@ -496,6 +496,17 @@ export class ConnectShyftNumberMappingService {
     return this.store.listByOrgUnit(tenantId, orgUnitId);
   }
 
+  findMappingByTenantNumber(
+    tenantId: string,
+    twilioNumberE164: string,
+  ): ConnectShyftNumberMapping | null {
+    const normalizedNumber = normalizeTwilioNumber(twilioNumberE164);
+    if (!isValidTwilioE164(normalizedNumber)) {
+      return null;
+    }
+    return this.store.findByTenantNumber(tenantId, normalizedNumber);
+  }
+
   createMapping(input: NumberMappingCreateCommand): NumberMappingSaveResult {
     if (!hasCapability(input.actorRoles, CAPABILITIES.NUMBER_MAPPING_MANAGE)) {
       return buildCapabilityRefusal();
@@ -628,6 +639,25 @@ export class AsyncConnectShyftNumberMappingService {
         return this.fallbackService.listMappings(tenantId, orgUnitId);
       }
       throw error;
+    }
+  }
+
+  async findMappingByTenantNumber(
+    tenantId: string,
+    twilioNumberE164: string,
+  ): Promise<ConnectShyftNumberMapping | null> {
+    const normalizedNumber = normalizeTwilioNumber(twilioNumberE164);
+    if (!isValidTwilioE164(normalizedNumber)) {
+      return null;
+    }
+
+    try {
+      return await this.store.findByTenantNumber(tenantId, normalizedNumber);
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+      return this.fallbackService.findMappingByTenantNumber(tenantId, normalizedNumber);
     }
   }
 

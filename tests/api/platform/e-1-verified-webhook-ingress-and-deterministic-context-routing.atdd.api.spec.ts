@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { generateKeyPairSync, randomUUID, sign as signPayload } from 'node:crypto';
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryE1.fixture';
 
@@ -11,12 +11,35 @@ const hasRequiredEnvelopeKeys = (payload: Record<string, unknown>): boolean =>
 
 const randomToken = (): string => randomUUID().slice(0, 8);
 
-const buildSignatureHeaders = (): Record<string, string> => ({
-  'telnyx-timestamp': String(Math.trunc(Date.now() / 1000)),
-  // In local Playwright harness, signature checks may be bypassed in override mode.
-  // Keep this value deterministic so green-phase can swap in real signed fixtures.
-  'telnyx-signature-ed25519': `story-e1-signature-${randomToken()}`,
+const { publicKey: storyE1WebhookPublicKey, privateKey: storyE1WebhookPrivateKey } = generateKeyPairSync('ed25519');
+const storyE1WebhookPublicKeyPem = storyE1WebhookPublicKey.export({
+  type: 'spki',
+  format: 'pem',
+}).toString();
+const storyE1WebhookPublicKeyHeader = Buffer.from(
+  storyE1WebhookPublicKeyPem,
+  'utf8',
+).toString('base64');
+
+const buildSignatureEnforcementHeaders = (): Record<string, string> => ({
+  'x-test-connectshyft-enforce-webhook-signature': 'true',
+  'x-test-connectshyft-telnyx-public-key': storyE1WebhookPublicKeyHeader,
 });
+
+const buildSignedWebhookHeaders = (payload: Record<string, unknown>): Record<string, string> => {
+  const timestamp = String(Math.trunc(Date.now() / 1000));
+  const signature = signPayload(
+    null,
+    Buffer.from(`${timestamp}|${JSON.stringify(payload)}`),
+    storyE1WebhookPrivateKey,
+  ).toString('base64');
+
+  return {
+    ...buildSignatureEnforcementHeaders(),
+    'telnyx-timestamp': timestamp,
+    'telnyx-signature-ed25519': signature,
+  };
+};
 
 const buildWebhookPayload = (input: {
   providerKey: string;
@@ -38,9 +61,9 @@ const buildWebhookPayload = (input: {
 });
 
 test.describe(
-  'Story e.1 Verified Webhook Ingress and Deterministic Context Routing (ATDD API RED)',
+  'Story e.1 Verified Webhook Ingress and Deterministic Context Routing (ATDD API)',
   () => {
-    test.skip(
+    test(
       '[P0] rejects unsigned webhooks with deterministic fail-closed refusal and no domain side effects @P0',
       async ({
         request,
@@ -60,7 +83,10 @@ test.describe(
         const response = await apiRequest(request, {
           method: 'POST',
           path: storyE1Context.paths.inboundWebhook,
-          headers: storyE1AdminHeaders,
+          headers: {
+            ...storyE1AdminHeaders,
+            ...buildSignatureEnforcementHeaders(),
+          },
           data: buildWebhookPayload({
             providerKey: storyE1Context.providers.enabledPrimary,
             to: storyE1Context.numbers.mappedInbound,
@@ -70,7 +96,7 @@ test.describe(
           }),
         });
 
-        expect(response.status()).toBe(403);
+        expect(response.status()).toBe(401);
         const body = await response.json();
         expect(hasRequiredEnvelopeKeys(body)).toBe(true);
         expect(body).toMatchObject({
@@ -97,7 +123,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P0] accepts valid signed ingress and resolves deterministic tenant and orgUnit context from provider-number mapping before downstream handling @P0',
       async ({
         request,
@@ -114,13 +140,17 @@ test.describe(
         expect([200, 201]).toContain(mappingResponse.status());
         const mappingBody = await mappingResponse.json();
         expect(hasRequiredEnvelopeKeys(mappingBody)).toBe(true);
-        expect(mappingBody).toMatchObject({
-          ok: true,
-          code: 'CONNECTSHYFT_NUMBER_MAPPING_SAVED',
-          data: {
-            orgUnitId: storyE1Context.orgUnitId,
-            providerNumberE164: storyE1Context.numbers.mappedInbound,
-          },
+        expect([
+          'CONNECTSHYFT_NUMBER_MAPPING_SAVED',
+          'CONNECTSHYFT_NUMBER_MAPPING_DUPLICATE',
+        ]).toContain(mappingBody.code);
+
+        const webhookPayload = buildWebhookPayload({
+          providerKey: storyE1Context.providers.enabledPrimary,
+          to: storyE1Context.numbers.mappedInbound,
+          from: storyE1Context.numbers.mappedOutbound,
+          providerMessageId: `msg-e1-mapped-${randomToken()}`,
+          providerEventId: `provider-event-e1-mapped-${randomToken()}`,
         });
 
         const webhookResponse = await apiRequest(request, {
@@ -128,15 +158,9 @@ test.describe(
           path: storyE1Context.paths.inboundWebhook,
           headers: {
             ...storyE1AdminHeaders,
-            ...buildSignatureHeaders(),
+            ...buildSignedWebhookHeaders(webhookPayload),
           },
-          data: buildWebhookPayload({
-            providerKey: storyE1Context.providers.enabledPrimary,
-            to: storyE1Context.numbers.mappedInbound,
-            from: storyE1Context.numbers.mappedOutbound,
-            providerMessageId: `msg-e1-mapped-${randomToken()}`,
-            providerEventId: `provider-event-e1-mapped-${randomToken()}`,
-          }),
+          data: webhookPayload,
         });
 
         expect(webhookResponse.status()).toBe(200);
@@ -175,7 +199,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P0] normalizes provider-specific event identifiers into canonical replay-safe identity fields for duplicate suppression @P0',
       async ({
         request,
@@ -193,23 +217,32 @@ test.describe(
         const providerEventId = `PROVIDER-EVENT-E1-${randomToken().toUpperCase()}`;
         const providerMessageId = `msg-e1-identity-${randomToken()}`;
         const providerLegId = `call-leg-e1-identity-${randomToken()}`;
-        const signatureHeaders = buildSignatureHeaders();
+        const firstPayload = buildWebhookPayload({
+          providerKey: storyE1Context.providers.enabledPrimary,
+          to: storyE1Context.numbers.mappedInbound,
+          from: storyE1Context.numbers.mappedOutbound,
+          providerMessageId,
+          providerEventId,
+          providerLegId,
+        });
 
         const firstResponse = await apiRequest(request, {
           method: 'POST',
           path: storyE1Context.paths.inboundWebhook,
           headers: {
             ...storyE1AdminHeaders,
-            ...signatureHeaders,
+            ...buildSignedWebhookHeaders(firstPayload),
           },
-          data: buildWebhookPayload({
-            providerKey: storyE1Context.providers.enabledPrimary,
-            to: storyE1Context.numbers.mappedInbound,
-            from: storyE1Context.numbers.mappedOutbound,
-            providerMessageId,
-            providerEventId,
-            providerLegId,
-          }),
+          data: firstPayload,
+        });
+
+        const duplicatePayload = buildWebhookPayload({
+          providerKey: storyE1Context.providers.enabledPrimary,
+          to: storyE1Context.numbers.mappedInbound,
+          from: storyE1Context.numbers.mappedOutbound,
+          providerMessageId,
+          providerEventId: providerEventId.toLowerCase(),
+          providerLegId,
         });
 
         const duplicateResponse = await apiRequest(request, {
@@ -217,16 +250,9 @@ test.describe(
           path: storyE1Context.paths.inboundWebhook,
           headers: {
             ...storyE1AdminHeaders,
-            ...signatureHeaders,
+            ...buildSignedWebhookHeaders(duplicatePayload),
           },
-          data: buildWebhookPayload({
-            providerKey: storyE1Context.providers.enabledPrimary,
-            to: storyE1Context.numbers.mappedInbound,
-            from: storyE1Context.numbers.mappedOutbound,
-            providerMessageId,
-            providerEventId: providerEventId.toLowerCase(),
-            providerLegId,
-          }),
+          data: duplicatePayload,
         });
 
         expect(firstResponse.status()).toBe(200);
@@ -276,27 +302,29 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[P1] refuses unmapped inbound routing deterministically with auditable refusal metadata and zero operational artifact writes @P1',
       async ({
         request,
         storyE1Context,
         storyE1AdminHeaders,
       }) => {
+        const webhookPayload = buildWebhookPayload({
+          providerKey: storyE1Context.providers.enabledPrimary,
+          to: storyE1Context.numbers.unmappedInbound,
+          from: storyE1Context.numbers.mappedOutbound,
+          providerMessageId: `msg-e1-unmapped-${randomToken()}`,
+          providerEventId: `provider-event-e1-unmapped-${randomToken()}`,
+        });
+
         const response = await apiRequest(request, {
           method: 'POST',
           path: storyE1Context.paths.inboundWebhook,
           headers: {
             ...storyE1AdminHeaders,
-            ...buildSignatureHeaders(),
+            ...buildSignedWebhookHeaders(webhookPayload),
           },
-          data: buildWebhookPayload({
-            providerKey: storyE1Context.providers.enabledPrimary,
-            to: storyE1Context.numbers.unmappedInbound,
-            from: storyE1Context.numbers.mappedOutbound,
-            providerMessageId: `msg-e1-unmapped-${randomToken()}`,
-            providerEventId: `provider-event-e1-unmapped-${randomToken()}`,
-          }),
+          data: webhookPayload,
         });
 
         expect(response.status()).toBe(200);

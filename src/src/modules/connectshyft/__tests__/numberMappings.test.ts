@@ -44,6 +44,29 @@ describe('connectshyft number mapping service', () => {
     ]);
   });
 
+  it('resolves tenant-scoped mapping context by provider number for webhook routing', () => {
+    const created = service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      twilioNumberE164: '+12605550141',
+      label: 'Webhook ingress',
+      isActive: true,
+    });
+
+    expect(created.ok).toBe(true);
+    const resolved = service.findMappingByTenantNumber(
+      'tenant-connectshyft-alpha',
+      '+12605550141',
+    );
+
+    expect(resolved).toMatchObject({
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      twilioNumberE164: '+12605550141',
+    });
+  });
+
   it('rejects non-E.164 number values before persistence', () => {
     const result = service.createMapping({
       actorRoles: ['ORGUNIT_ADMIN'],
