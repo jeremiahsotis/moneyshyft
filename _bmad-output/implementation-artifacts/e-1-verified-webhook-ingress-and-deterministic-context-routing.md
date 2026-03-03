@@ -140,6 +140,8 @@ GPT-5 Codex
 - `cd src && npm run build`
 - `cd src && npm test -- src/src/modules/connectshyft/__tests__/numberMappings.test.ts src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts`
 - `npm run test:e2e -- tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts`
+- `npx playwright test tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing*.spec.ts tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing*.spec.ts --list` (pass)
+- `npm run test:e2e -- tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing*.spec.ts tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing*.spec.ts` (pass)
 
 ### Completion Notes List
 
@@ -169,9 +171,17 @@ GPT-5 Codex
 - src/src/modules/connectshyft/__tests__/providerRegistry.test.ts
 - src/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts
 - tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.api.spec.ts
+- tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.replay-and-refusal.api.spec.ts
+- tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.api.spec.ts
+- tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.conflict-refusal.api.spec.ts
+- tests/api/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.public-routing.api.spec.ts
 - tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.atdd.spec.ts
+- tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.spec.ts
+- tests/e2e/platform/e-1-verified-webhook-ingress-and-deterministic-context-routing.automate.refusals.spec.ts
 - tests/support/factories/connectShyftStoryE1Factory.ts
+- tests/support/helpers/connectShyftWebhookTestHelpers.ts
 - tests/support/fixtures/connectShyftStoryE1.fixture.ts
+- tests/support/utils/deterministicTestIds.ts
 
 ## Change Log
 
