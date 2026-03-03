@@ -1,10 +1,14 @@
 import {
   CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
   CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
+  CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME,
   CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_QUEUE_NAME,
+  buildConnectShyftVoicemailTranscriptionAttachedCanonicalPayload,
   buildConnectShyftInboundVoiceCanonicalPayload,
   buildConnectShyftVoicemailTranscriptionRequest,
+  extractConnectShyftVoicemailTranscriptionCallbackPayload,
   extractConnectShyftInboundVoiceNeighborId,
+  isConnectShyftVoicemailTranscriptionCallbackEventType,
   mapConnectShyftInboundVoiceWebhookToDomainEvent,
   resolveConnectShyftInboundVoiceRouting,
 } from '../inboundVoice';
@@ -164,5 +168,86 @@ describe('connectshyft inbound voice domain mapping', () => {
         neighbor_id: 'neighbor-connectshyft-e3-claimed-1003',
       },
     })).toBe('neighbor-connectshyft-e3-claimed-1003');
+  });
+
+  it('[E4-UNIT-001][P0] detects canonical transcription callback event families deterministically @P0', () => {
+    expect(isConnectShyftVoicemailTranscriptionCallbackEventType('VoiceTranscriptionCompleted')).toBe(true);
+    expect(isConnectShyftVoicemailTranscriptionCallbackEventType('voice.transcription.completed')).toBe(true);
+    expect(isConnectShyftVoicemailTranscriptionCallbackEventType('VoiceVoicemail')).toBe(false);
+    expect(isConnectShyftVoicemailTranscriptionCallbackEventType('CallConnected')).toBe(false);
+  });
+
+  it('[E4-UNIT-002][P0] extracts callback correlation and transcript text from provider payload aliases @P0', () => {
+    const extracted = extractConnectShyftVoicemailTranscriptionCallbackPayload({
+      callbackCorrelation: {
+        tenantId: 'tenant-connectshyft-e4',
+        orgUnitId: 'org-connectshyft-e4-east',
+        threadId: 'thread-connectshyft-e4-001',
+        providerEventId: 'provider-event-e4-seed',
+        providerLegId: 'provider-leg-e4-seed',
+        voicemailArtifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
+      },
+      transcript: {
+        text: 'Follow-up requested after noon.',
+      },
+      providerPayload: {
+        transcription_text: 'Follow-up requested after noon.',
+      },
+    });
+
+    expect(extracted).toEqual({
+      correlation: {
+        tenantId: 'tenant-connectshyft-e4',
+        orgUnitId: 'org-connectshyft-e4-east',
+        threadId: 'thread-connectshyft-e4-001',
+        providerEventId: 'provider-event-e4-seed',
+        providerLegId: 'provider-leg-e4-seed',
+        voicemailArtifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
+      },
+      transcriptText: 'Follow-up requested after noon.',
+    });
+  });
+
+  it('[E4-UNIT-003][P1] builds canonical transcription-attached payload with deterministic metadata @P1', () => {
+    const payload = buildConnectShyftVoicemailTranscriptionAttachedCanonicalPayload({
+      eventType: 'VoiceTranscriptionCompleted',
+      voicemailArtifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
+      transcriptText: 'Neighbor confirmed transport coordination.',
+      callbackCorrelation: {
+        tenantId: 'tenant-connectshyft-e4',
+        orgUnitId: 'org-connectshyft-e4-east',
+        threadId: 'thread-connectshyft-e4-001',
+      },
+    });
+
+    expect(payload).toMatchObject({
+      direction: 'inbound',
+      channel: 'voice',
+      eventType: 'VoiceTranscriptionCompleted',
+      eventName: CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME,
+      routingDecision: 'accepted',
+      deterministicOrdering: true,
+      metadata: {
+        voicemailArtifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
+        transcriptAvailable: true,
+        transcriptText: 'Neighbor confirmed transport coordination.',
+        callbackCorrelation: {
+          tenantId: 'tenant-connectshyft-e4',
+          orgUnitId: 'org-connectshyft-e4-east',
+          threadId: 'thread-connectshyft-e4-001',
+        },
+      },
+      voicemailArtifact: {
+        artifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
+        transcription: {
+          available: true,
+          text: 'Neighbor confirmed transport coordination.',
+        },
+      },
+      transcription: {
+        available: true,
+        text: 'Neighbor confirmed transport coordination.',
+      },
+    });
   });
 });

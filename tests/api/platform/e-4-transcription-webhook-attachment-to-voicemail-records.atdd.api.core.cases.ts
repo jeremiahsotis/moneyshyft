@@ -12,7 +12,7 @@ import {
 test.describe(
   'Story e.4 Transcription Webhook Attachment to Voicemail Records (ATDD API RED) - Core',
   () => {
-    test.skip(
+    test(
       '[E4-ATDD-API-001][P0] valid transcription callback attaches transcript text to the correct voicemail artifact using deterministic callback correlation metadata @P0',
       async ({ request }, testInfo) => {
         const seeded = await seedStoryE4VoicemailWithCallbackCorrelation({
@@ -100,7 +100,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E4-ATDD-API-002][P1] successful transcript attachment is reflected in thread timeline and voicemail artifact transcript views when detail contracts are queried @P1',
       async ({ request }, testInfo) => {
         const seeded = await seedStoryE4VoicemailWithCallbackCorrelation({

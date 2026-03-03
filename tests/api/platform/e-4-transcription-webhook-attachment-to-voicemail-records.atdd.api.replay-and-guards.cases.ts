@@ -12,7 +12,7 @@ import {
 test.describe(
   'Story e.4 Transcription Webhook Attachment to Voicemail Records (ATDD API RED) - Guards and Replay',
   () => {
-    test.skip(
+    test(
       '[E4-ATDD-API-003][P0] missing or invalid voicemail callback correlation identifiers are deterministically refused with no orphan transcript updates @P0',
       async ({ request }, testInfo) => {
         const seeded = await seedStoryE4VoicemailWithCallbackCorrelation({
@@ -85,7 +85,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E4-ATDD-API-004][P0] duplicate transcription callbacks for the same event identity are replay-safe and suppress duplicate timeline mutations @P0',
       async ({ request }, testInfo) => {
         const seeded = await seedStoryE4VoicemailWithCallbackCorrelation({
