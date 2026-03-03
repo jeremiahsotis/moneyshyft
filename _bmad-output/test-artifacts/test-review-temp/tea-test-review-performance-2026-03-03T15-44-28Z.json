@@ -1,0 +1,46 @@
+{
+  "dimension": "performance",
+  "score": 90,
+  "max_score": 100,
+  "grade": "A-",
+  "violations": [
+    {
+      "file": "tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.core.cases.ts",
+      "line": 23,
+      "severity": "MEDIUM",
+      "category": "repeated-bootstrap-work",
+      "description": "Each scenario group performs mapping bootstrap in beforeEach, adding repeated setup overhead.",
+      "suggestion": "Use a scoped shared setup for mapping where isolation guarantees remain intact.",
+      "code_snippet": "test.beforeEach(async (...) => { await mapStoryE2InboundNumber(...); })"
+    },
+    {
+      "file": "tests/api/platform/e-2-inbound-sms-processing-with-active-thread-ensure.atdd.api.replay-refusal.cases.ts",
+      "line": 100,
+      "severity": "LOW",
+      "category": "extra-verification-roundtrip",
+      "description": "Replay cardinality verification adds an additional thread-detail fetch after duplicate delivery.",
+      "suggestion": "Keep as-is for correctness; only optimize if runtime becomes a bottleneck.",
+      "code_snippet": "const timelineAfterDuplicate = await fetchThreadTimeline({ ... });"
+    }
+  ],
+  "passed_checks": 17,
+  "failed_checks": 2,
+  "total_checks": 19,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 1,
+    "LOW": 1
+  },
+  "performance_metrics": {
+    "parallelizable_tests": 75,
+    "serial_tests": 25,
+    "avg_test_duration_estimate": "short API-bound scenarios",
+    "slow_tests": []
+  },
+  "recommendations": [
+    "Keep split files for better worker scheduling and selective reruns",
+    "Reduce repeated mapping bootstrap if environment setup allows",
+    "Prefer correctness-preserving verification over micro-optimizing API readbacks"
+  ],
+  "summary": "Runtime posture is healthy for API-level ATDD; optimization opportunities are minor and mostly setup-related."
+}
