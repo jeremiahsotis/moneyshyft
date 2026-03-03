@@ -165,7 +165,18 @@ GPT-5 Codex
 - src/src/migrations/20260303153000_add_connectshyft_webhook_receipt_processing_state.ts
 - src/src/migrations/__tests__/connectShyftWebhookReceiptProcessingStateMigration.test.ts
 - tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.core.cases.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.correlation-guards.cases.ts
 - tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.replay-and-guards.cases.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.replay-integrity.cases.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.spec.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.correlation-shape.cases.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.replay-integrity.cases.ts
+- tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.spec.ts
+- tests/e2e/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.spec.ts
+- tests/e2e/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.spec.ts
+- tests/support/factories/connectShyftStoryE4Factory.ts
+- tests/support/fixtures/connectShyftStoryE4.fixture.ts
+- tests/support/helpers/connectShyftStoryE4TestHelpers.ts
 
 ## Change Log
 
