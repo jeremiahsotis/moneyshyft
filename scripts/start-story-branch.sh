@@ -87,8 +87,14 @@ if [[ "$story_id" =~ ^([0-9]+|[A-Za-z])-([0-9]+)$ ]]; then
     epic_token="$(echo "$epic_token" | tr '[:upper:]' '[:lower:]')"
   fi
   story_id="${epic_token}-${story_number}"
+elif [[ "$story_id" =~ ^([A-Za-z]+)-([Rr][0-9]+)$ ]]; then
+  epic_token="${BASH_REMATCH[1]}"
+  story_token="${BASH_REMATCH[2]}"
+  epic_token="$(echo "$epic_token" | tr '[:upper:]' '[:lower:]')"
+  story_token="$(echo "$story_token" | tr '[:upper:]' '[:lower:]')"
+  story_id="${epic_token}-${story_token}"
 else
-  echo "Invalid story id '$story_id'. Expected format: <epic>-<story> where <epic> is numeric or a letter (e.g. 0-1, a-1)"
+  echo "Invalid story id '$story_id'. Expected format: <epic>-<story> where <epic> is numeric/letter and story is numeric or r<number> (e.g. 0-1, a-1, ux-r3)"
   exit 1
 fi
 

@@ -145,6 +145,14 @@ normalize_story_id() {
     echo "${epic_token}-${story_number}"
     return 0
   fi
+  if [[ "$raw" =~ ^(([A-Za-z]+)[.-]([Rr][0-9]+)) ]]; then
+    local epic_token="${BASH_REMATCH[2]}"
+    local story_token="${BASH_REMATCH[3]}"
+    epic_token="$(echo "$epic_token" | tr '[:upper:]' '[:lower:]')"
+    story_token="$(echo "$story_token" | tr '[:upper:]' '[:lower:]')"
+    echo "${epic_token}-${story_token}"
+    return 0
+  fi
   echo ""
 }
 
@@ -160,6 +168,15 @@ normalize_story_key() {
       epic_token="$(echo "$epic_token" | tr '[:upper:]' '[:lower:]')"
     fi
     echo "${epic_token}-${story_number}-${slug_part}"
+    return 0
+  fi
+  if [[ "$raw" =~ ^(([A-Za-z]+)[.-]([Rr][0-9]+)-(.+))$ ]]; then
+    local epic_token="${BASH_REMATCH[2]}"
+    local story_token="${BASH_REMATCH[3]}"
+    local slug_part="${BASH_REMATCH[4]}"
+    epic_token="$(echo "$epic_token" | tr '[:upper:]' '[:lower:]')"
+    story_token="$(echo "$story_token" | tr '[:upper:]' '[:lower:]')"
+    echo "${epic_token}-${story_token}-${slug_part}"
     return 0
   fi
   echo ""
