@@ -1,6 +1,6 @@
 # Story e.3: Inbound Voice Webhook to Voicemail Artifact Pipeline
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -137,6 +137,7 @@ GPT-5 Codex
 - `npm test` (in `src/`)
 - `bash scripts/run-playwright-with-preflight.sh tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.atdd.api.spec.ts`
 - `npm run policy:check`
+- `npm run story:status:check -- --story-key e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline`
 
 ### Completion Notes List
 
@@ -145,6 +146,8 @@ GPT-5 Codex
 - Added module regression coverage in `src/src/modules/connectshyft/__tests__/inboundVoice.test.ts`.
 - Activated and stabilized Story e.3 API ATDD suite in `tests/api/platform/e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline.atdd.api.spec.ts` including claimed-path setup using persisted actor identity from `/api/v1/auth/login`.
 - Validated end-to-end story contracts via managed Playwright preflight run: all 5 e.3 API tests passing.
+- Revalidated Story e.3 on 2026-03-03 with branch guard, backend build, backend Jest suite, and e.3 ATDD API suite; no additional implementation changes were required.
+- `npm run policy:check` and `npm run story:status:check -- --story-key e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline` currently report an existing closeout-transition baseline mismatch (`ready-for-dev -> review`) that predates this revalidation run.
 
 ### File List
 
@@ -159,3 +162,4 @@ GPT-5 Codex
 
 - 2026-03-03: Created Story e.3 ready-for-dev context document.
 - 2026-03-03: Implemented inbound voice voicemail artifact + transcription pipeline with locked state routing and API/module regression coverage.
+- 2026-03-03: Revalidated Story e.3 execution evidence (build, Jest, and ATDD API) with no new code changes.
