@@ -8,6 +8,12 @@ import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../m
 import { responseEnvelope } from '../../../../platform/middleware/responseEnvelope';
 import connectShyftRouter from '../connectshyft';
 
+const CONNECTSHYFT_PROVIDER_REGISTRY_TEST_TENANT_IDS = [
+  'tenant-connectshyft-f1',
+  'tenant-connectshyft-f2',
+  'tenant-connectshyft-allowlist-only',
+] as const;
+
 const buildApp = () => {
   const app = express();
   app.use(express.json());
@@ -88,6 +94,24 @@ const expectProviderSpecificLeakageRemoved = (payload: Record<string, unknown>):
   expect(payload).not.toHaveProperty('providerMessageId');
 };
 
+const resetProviderCorrelationDbStateForTests = async (): Promise<void> => {
+  try {
+    const testTenantIds = [...CONNECTSHYFT_PROVIDER_REGISTRY_TEST_TENANT_IDS];
+    await db
+      .withSchema('connectshyft')
+      .table('cs_webhook_receipts')
+      .whereIn('tenant_id', testTenantIds)
+      .del();
+    await db
+      .withSchema('connectshyft')
+      .table('cs_provider_identifier_mappings')
+      .whereIn('tenant_id', testTenantIds)
+      .del();
+  } catch (_error) {
+    // Ignore cleanup failures when db-backed tables are unavailable in isolated test runs.
+  }
+};
+
 describe('connectshyft provider adapter registry route integration', () => {
   const previousNodeEnv = process.env.NODE_ENV;
   const previousOverrideFlag = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
@@ -98,8 +122,9 @@ describe('connectshyft provider adapter registry route integration', () => {
   const previousConnectShyftWebhooksEnabled = process.env.CONNECTSHYFT_WEBHOOKS_ENABLED;
   let entitlementSpy: jest.SpyInstance;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     resetConnectShyftProviderCorrelationStateForTests();
+    await resetProviderCorrelationDbStateForTests();
   });
 
   beforeAll(() => {

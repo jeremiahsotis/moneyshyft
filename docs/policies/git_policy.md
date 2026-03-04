@@ -191,7 +191,10 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - Lane enforcement is mandatory through:
   - `scripts/project-lane-context.js`
   - `scripts/enforce-project-lane.js`
+  - `scripts/enforce-workspace-boundaries.js`
   - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+- Workspace dependency taxonomy and allowed lane/shared dependency directions are defined in:
+  - `docs/policies/workspace_boundary_rules.md`
 
 ## 7) BMAD Safety / Artifact Boundaries
 
