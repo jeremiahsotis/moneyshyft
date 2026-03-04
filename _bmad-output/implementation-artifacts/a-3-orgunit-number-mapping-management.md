@@ -1,6 +1,6 @@
 # Story a.3: OrgUnit Number Mapping Management
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,10 +24,10 @@ so that inbound routing is deterministic and operationally maintainable.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Admin UI and API validation rules must mirror each other for number uniqueness and formatting errors.
-- Real-User Validation Evidence: Admin flow validation of add/update/duplicate number scenarios.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: `NODE_ENV=test npm run test:e2e -- tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts` (6/6 pass) and `NODE_ENV=test npm run test:e2e -- tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts` (4/4 pass) covering add/update/duplicate/invalid plus deterministic ordering.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: OrgUnit admin number-mapping screen and API path are both required.
-- Role-Admin UI Path Verified: pending
+- Role-Admin UI Path Verified: yes
 - Access-Control Exemption Rationale: N/A
 
 ## Tasks / Subtasks
@@ -98,6 +98,10 @@ GPT-5 Codex
 - `cd src && npm run build` (pass)
 - `NODE_ENV=test npm run test:e2e -- tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts` (pass, 5 tests)
 - `NODE_ENV=test npm run test:e2e -- tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts` (pass, 4 tests)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/numberMappings.test.ts` (pass, 13 tests)
+- `cd src && npm run build` (pass)
+- `NODE_ENV=test npm run test:e2e -- tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts` (pass, 6 tests)
+- `NODE_ENV=test npm run test:e2e -- tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts` (pass, 4 tests)
 
 ### Completion Notes List
 
@@ -112,17 +116,27 @@ GPT-5 Codex
 - Strengthened API/E2E assertions to verify deterministic ordering instead of presence-only checks.
 - Added explicit `test` Knex environment config to keep Playwright preflight migrations/runtime compatible with strict test-only `x-test-*` override gating.
 - Updated Playwright preflight backend boot to default `NODE_ENV=test` so strict test-only override gating remains compatible with standard `npm run test:e2e` execution.
+- Fixed `/api/v1/connectshyft/numbers` `isActive` parsing so explicit `"false"` values are preserved instead of being coerced to `true`.
+- Added API regression coverage for string `"false"` `isActive` payload handling on number mapping create requests.
+- Tightened a.3 UI deterministic-order assertions to verify row position order, not presence-only membership checks.
+- Reconciled story File List against implementation/review git history to remove traceability gaps.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/a-3-orgunit-number-mapping-management.md
-- src/src/knexfile.ts
-- src/src/modules/connectshyft/featureFlags.ts
-- src/src/modules/connectshyft/contextAccess.ts
-- src/src/modules/connectshyft/numberMappings.ts
-- src/src/modules/connectshyft/__tests__/numberMappings.test.ts
-- src/src/routes/api/v1/connectshyft.ts
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- frontend/src/features/connectshyft/flags.ts
+- frontend/src/features/connectshyft/numbers.ts
+- frontend/src/router/index.ts
+- frontend/src/views/ConnectShyft/ConnectShyftNumberMappingsView.vue
 - scripts/run-playwright-with-preflight.sh
+- src/src/knexfile.ts
+- src/src/modules/connectshyft/__tests__/numberMappings.test.ts
+- src/src/modules/connectshyft/contextAccess.ts
+- src/src/modules/connectshyft/featureFlags.ts
+- src/src/modules/connectshyft/numberMappings.ts
+- src/src/platform/rbac/capabilities.ts
+- src/src/routes/api/v1/connectshyft.ts
 - tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts
 - tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts
 
@@ -132,3 +146,15 @@ GPT-5 Codex
 - 2026-02-22: Resolved review findings by hardening test-header gating, removing unsafe update upsert behavior, adding mapping-id collision protection, and tightening deterministic-order test assertions.
 - 2026-02-22: Added test-environment Knex profile to support strict `x-test-*` gating during Playwright preflight/runtime.
 - 2026-02-22: Updated Playwright preflight backend runtime to default `NODE_ENV=test` for test-only override compatibility.
+- 2026-03-04: Closed review follow-ups by fixing `isActive` false-value parsing, adding API regression coverage, restoring deterministic-order UI assertions, and reconciling story File List history.
+
+## Senior Developer Review (AI)
+
+- Reviewer: Amelia (Developer Agent)
+- Date: 2026-03-04
+- Outcome: Approved after fixes
+Resolved items:
+- `parseMappingBody` now preserves explicit false `isActive` inputs.
+- Story a.3 API suite now includes a regression test for string `"false"` `isActive` handling.
+- Story a.3 E2E suite now verifies deterministic ordering by row position.
+- Story metadata, guardrails evidence, and File List now align with implementation + review history.
