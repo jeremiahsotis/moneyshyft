@@ -171,8 +171,15 @@ GPT-5 Codex
 - src/src/modules/connectshyft/__tests__/readContracts.test.ts
 - src/src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts
 - tests/support/fixtures/connectShyftStoryUxR4.fixture.ts
+- tests/support/factories/connectShyftStoryUxR4Factory.ts
 - tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts
+- tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.action-surface.cases.ts
+- tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.override.cases.ts
+- tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.lifecycle.cases.ts
+- tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.envelopes.cases.ts
+- tests/api/platform/ux-r4-outbound-policy-guardrail-ui.automate.api.spec.ts
 - tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts
+- tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.automate.spec.ts
 
 ## Senior Developer Review (AI)
 
