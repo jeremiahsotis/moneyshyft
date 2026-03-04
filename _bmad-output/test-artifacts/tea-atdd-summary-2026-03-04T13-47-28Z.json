@@ -1,0 +1,47 @@
+{
+  "tdd_phase": "RED",
+  "story_id": "e-6",
+  "total_tests": 7,
+  "api_tests": 4,
+  "e2e_tests": 3,
+  "all_tests_skipped": true,
+  "expected_to_fail": true,
+  "fixtures_created": 2,
+  "fixture_needs": [
+    "tests/support/factories/connectShyftStoryE6Factory.ts",
+    "tests/support/fixtures/connectShyftStoryE6.fixture.ts"
+  ],
+  "acceptance_criteria_covered": [
+    "policy:check first blocking gate",
+    "deterministic guard failure for boundary/provider bypass",
+    "RouteShyft regression + ConnectShyft quality gates before merge",
+    "feature-flag allow-list + rollback documentation controls"
+  ],
+  "knowledge_fragments_used": [
+    "data-factories",
+    "component-tdd",
+    "test-quality",
+    "test-healing-patterns",
+    "selector-resilience",
+    "timing-debugging",
+    "overview",
+    "api-request",
+    "network-recorder",
+    "auth-session",
+    "intercept-network-call",
+    "recurse",
+    "log",
+    "file-utils",
+    "network-error-monitor",
+    "fixtures-composition",
+    "playwright-cli"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential",
+  "generated_files": [
+    "tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts",
+    "tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts",
+    "tests/support/factories/connectShyftStoryE6Factory.ts",
+    "tests/support/fixtures/connectShyftStoryE6.fixture.ts"
+  ]
+}
