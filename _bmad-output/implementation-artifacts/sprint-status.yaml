@@ -103,7 +103,7 @@ development_status:
   epic-8: in-progress
   8-1-workspace-scaffold-and-nx-baseline: done
   8-2-mechanical-app-moves-with-history-preservation: done
-  8-3-explicit-lane-boundary-rules: ready-for-dev
+  8-3-explicit-lane-boundary-rules: review
   8-4-lane-extraction-transition-strategy: ready-for-dev
   8-5-shared-contact-safe-dedupe-contract: ready-for-dev
   8-6-service-ready-identity-boundary: ready-for-dev

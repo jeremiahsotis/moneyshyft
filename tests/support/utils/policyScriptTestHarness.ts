@@ -228,6 +228,10 @@ export function runPolicyScriptInTempRepo(
       join(repoDir, 'scripts/enforce-project-lane.js'),
     );
     copyFileIfPresent(
+      join(scriptsDir, 'enforce-workspace-boundaries.js'),
+      join(repoDir, 'scripts/enforce-workspace-boundaries.js'),
+    );
+    copyFileIfPresent(
       join(scriptsDir, 'project-lane-context.js'),
       join(repoDir, 'scripts/project-lane-context.js'),
     );
