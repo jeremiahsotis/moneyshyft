@@ -185,6 +185,38 @@ describe('connectshyft read contracts', () => {
     expect(closedPrefersNo?.actions).toEqual(['Call', 'Send Message']);
   });
 
+  it('resolves ux-r4 seeded thread-detail action matrix with explicit closed-thread outbound controls', () => {
+    const unclaimed = resolveConnectShyftThreadDetailContract({
+      tenantId: 'tenant-connectshyft-ux-r4',
+      orgUnitId: 'org-connectshyft-ux-r4-east',
+      threadId: 'thread-ux-r4-unclaimed-1001',
+      requestedRole: 'ORGUNIT_MEMBER',
+    });
+    const claimed = resolveConnectShyftThreadDetailContract({
+      tenantId: 'tenant-connectshyft-ux-r4',
+      orgUnitId: 'org-connectshyft-ux-r4-east',
+      threadId: 'thread-ux-r4-claimed-1002',
+      requestedRole: 'ORGUNIT_MEMBER',
+    });
+    const closed = resolveConnectShyftThreadDetailContract({
+      tenantId: 'tenant-connectshyft-ux-r4',
+      orgUnitId: 'org-connectshyft-ux-r4-east',
+      threadId: 'thread-ux-r4-closed-1003',
+      requestedRole: 'ORGUNIT_MEMBER',
+    });
+    const closedPrefersNo = resolveConnectShyftThreadDetailContract({
+      tenantId: 'tenant-connectshyft-ux-r4',
+      orgUnitId: 'org-connectshyft-ux-r4-east',
+      threadId: 'thread-ux-r4-closed-prefers-no-1005',
+      requestedRole: 'ORGUNIT_MEMBER',
+    });
+
+    expect(unclaimed?.actions).toEqual(['Call', 'Text', 'Claim']);
+    expect(claimed?.actions).toEqual(['Call', 'Text', 'Close']);
+    expect(closed?.actions).toEqual(['Call', 'Send Message']);
+    expect(closedPrefersNo?.actions).toEqual(['Call', 'Send Message']);
+  });
+
   it('keeps claimed action set canonical in read-contract output regardless of role hint', () => {
     const claimedAdmin = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-c4',

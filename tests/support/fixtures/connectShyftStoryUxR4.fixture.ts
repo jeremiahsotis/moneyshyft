@@ -22,19 +22,15 @@ type StoryUxR4Fixtures = {
     orgUnitId: string;
     channel: 'sms';
     body: string;
-    override: {
-      reasonCode: string;
-      note: string;
-    };
+    overrideReason: string;
+    overrideNote: string;
   };
   storyUxR4MessageWithInvalidOverridePayload: {
     orgUnitId: string;
     channel: 'sms';
     body: string;
-    override: {
-      reasonCode: string;
-      note: string;
-    };
+    overrideReason: string;
+    overrideNote: string;
   };
 };
 
@@ -85,10 +81,8 @@ export const test = base.extend<StoryUxR4Fixtures>({
       orgUnitId: storyUxR4Context.orgUnitId,
       channel: 'sms',
       body: 'Outbound guardrail action with approved policy override reason.',
-      override: {
-        reasonCode: 'SAFETY_EXCEPTION',
-        note: 'Safety-critical outreach required while honoring policy audit constraints.',
-      },
+      overrideReason: 'safety-follow-up',
+      overrideNote: 'Safety-critical outreach required while honoring policy audit constraints.',
     });
   },
   storyUxR4MessageWithInvalidOverridePayload: async ({ storyUxR4Context }, use) => {
@@ -96,10 +90,8 @@ export const test = base.extend<StoryUxR4Fixtures>({
       orgUnitId: storyUxR4Context.orgUnitId,
       channel: 'sms',
       body: 'Outbound guardrail action with invalid override payload.',
-      override: {
-        reasonCode: 'INVALID_REASON_CODE',
-        note: '',
-      },
+      overrideReason: 'INVALID_REASON_CODE',
+      overrideNote: '',
     });
   },
 });

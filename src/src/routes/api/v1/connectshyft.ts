@@ -291,6 +291,66 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-504',
     summary: 'Unclaimed thread with prefers_texting=NO policy.',
   },
+  'thread-ux-r4-unclaimed-1001': {
+    tenantId: 'tenant-connectshyft-ux-r4',
+    orgUnitId: 'org-connectshyft-ux-r4-east',
+    state: 'UNCLAIMED',
+    claimedByUserId: null,
+    escalationStage: 2,
+    nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+    neighborId: 'neighbor-connectshyft-ux-r4-1001',
+    lastInboundCsNumberId: 'cs-number-ux-r4-401',
+    preferredOutboundCsNumberId: 'cs-number-ux-r4-501',
+    summary: 'Unclaimed thread with explicit outbound guardrail controls.',
+  },
+  'thread-ux-r4-claimed-1002': {
+    tenantId: 'tenant-connectshyft-ux-r4',
+    orgUnitId: 'org-connectshyft-ux-r4-east',
+    state: 'CLAIMED',
+    claimedByUserId: 'user-connectshyft-ux-r4-other-operator',
+    escalationStage: 1,
+    nextEvaluationAtUtc: null,
+    neighborId: 'neighbor-connectshyft-ux-r4-1002',
+    lastInboundCsNumberId: 'cs-number-ux-r4-402',
+    preferredOutboundCsNumberId: 'cs-number-ux-r4-502',
+    summary: 'Claimed thread with deterministic policy-safe outbound controls.',
+  },
+  'thread-ux-r4-closed-1003': {
+    tenantId: 'tenant-connectshyft-ux-r4',
+    orgUnitId: 'org-connectshyft-ux-r4-east',
+    state: 'CLOSED',
+    claimedByUserId: null,
+    escalationStage: 0,
+    nextEvaluationAtUtc: null,
+    neighborId: 'neighbor-connectshyft-ux-r4-1003',
+    lastInboundCsNumberId: 'cs-number-ux-r4-403',
+    preferredOutboundCsNumberId: 'cs-number-ux-r4-503',
+    summary: 'Closed thread requiring explicit same-thread reopen before outbound.',
+  },
+  'thread-ux-r4-unclaimed-prefers-no-1004': {
+    tenantId: 'tenant-connectshyft-ux-r4',
+    orgUnitId: 'org-connectshyft-ux-r4-east',
+    state: 'UNCLAIMED',
+    claimedByUserId: null,
+    escalationStage: 1,
+    nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+    neighborId: 'neighbor-connectshyft-ux-r4-pref-no-1004',
+    lastInboundCsNumberId: 'cs-number-ux-r4-404',
+    preferredOutboundCsNumberId: 'cs-number-ux-r4-504',
+    summary: 'Unclaimed thread with prefers_texting=NO policy.',
+  },
+  'thread-ux-r4-closed-prefers-no-1005': {
+    tenantId: 'tenant-connectshyft-ux-r4',
+    orgUnitId: 'org-connectshyft-ux-r4-east',
+    state: 'CLOSED',
+    claimedByUserId: null,
+    escalationStage: 0,
+    nextEvaluationAtUtc: null,
+    neighborId: 'neighbor-connectshyft-ux-r4-pref-no-1005',
+    lastInboundCsNumberId: 'cs-number-ux-r4-405',
+    preferredOutboundCsNumberId: 'cs-number-ux-r4-505',
+    summary: 'Closed thread with prefers_texting=NO policy.',
+  },
   'thread-c5-unclaimed-1001': {
     tenantId: 'tenant-connectshyft-c5',
     orgUnitId: 'org-connectshyft-c5-east',
@@ -3024,9 +3084,20 @@ const parseOutboundMessagePolicyRequest = (req: Request): {
     ? req.body as Record<string, unknown>
     : {};
 
+  const nestedOverride = rawBody.override && typeof rawBody.override === 'object'
+    ? rawBody.override as Record<string, unknown>
+    : null;
+
   const body = normalizeLifecycleString(rawBody.body);
-  const overrideReason = normalizeLifecycleString(rawBody.overrideReason).toLowerCase();
-  const overrideNote = normalizeLifecycleString(rawBody.overrideNote);
+  const overrideReason = normalizeLifecycleString(
+    rawBody.overrideReason
+    ?? nestedOverride?.reason
+    ?? nestedOverride?.reasonCode,
+  ).toLowerCase();
+  const overrideNote = normalizeLifecycleString(
+    rawBody.overrideNote
+    ?? nestedOverride?.note,
+  );
 
   return {
     body,
@@ -5131,6 +5202,10 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
       thread: threadWithCanonicalTimeline,
       voicemailArtifacts,
       actions: threadWithCanonicalTimeline.actions,
+      outboundPolicy: {
+        hiddenPolicyPaths: [],
+        explicitActionSurface: true,
+      },
       latencyBudgetsMs: {
         p95: CONNECTSHYFT_INBOX_P95_BUDGET_MS,
         p99: CONNECTSHYFT_INBOX_P99_BUDGET_MS,

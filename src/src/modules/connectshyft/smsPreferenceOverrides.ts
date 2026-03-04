@@ -106,6 +106,8 @@ const CONNECTSHYFT_SYNTHETIC_THREAD_TEXTING_PREFERENCES: Record<string, ConnectS
   'thread-c4-closed-pref-no-1005': 'NO',
   'thread-d4-unclaimed-prefers-no-1004': 'NO',
   'thread-d4-closed-prefers-no-1005': 'NO',
+  'thread-ux-r4-unclaimed-prefers-no-1004': 'NO',
+  'thread-ux-r4-closed-prefers-no-1005': 'NO',
 };
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
