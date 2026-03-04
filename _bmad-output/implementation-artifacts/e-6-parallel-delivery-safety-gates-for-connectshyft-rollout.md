@@ -137,6 +137,8 @@ GPT-5 Codex
 - `npm run story:status:set -- --story-file _bmad-output/implementation-artifacts/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.md --status in-progress --lane connectshyft`
 - `npx playwright test tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts`
 - `npm run test:e2e -- tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts`
+- `npx playwright test tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts`
+- `tmpdir=$(mktemp -d /tmp/e6guardtest.XXXXXX) ... /scripts/enforce-connectshyft-provider-abstraction-guard.sh`
 - `npm run policy:check`
 - `bash scripts/lint-or-discovery.sh`
 
@@ -147,17 +149,24 @@ GPT-5 Codex
 - Added blocking `burn-in` stage to `.github/workflows/test.yml` between `test` and `quality-gates`, and updated release-readiness aggregation to block on burn-in failures.
 - Extended `scripts/enforce-connectshyft-provider-abstraction-guard.sh` to fail deterministically on direct `modules/route` <-> `modules/connectshyft` cross-module import-boundary violations while retaining Twilio-coupling guard enforcement.
 - Verified rollout allow-list + rollback reference contracts remain explicit via passing Story e.6 ATDD assertions.
+- Renamed CI burn-in check contexts to avoid ambiguity across split workflows (`ci-burn-in` vs `scheduled-burn-in`) and aligned policy documentation with required check naming.
+- Hardened burn-in execution to require real test execution via `BURN_IN_REQUIRE_TESTS` and deterministic fallback spec suite when no changed specs are detected.
+- Added dynamic-import boundary violation coverage and guard detection so `import('../route/...')`/`import('../connectshyft/...')` bypasses now fail policy checks deterministically.
 
 ### File List
 
+- .github/workflows/burn-in.yml
 - .github/workflows/test.yml
+- docs/policies/git_policy.md
 - scripts/enforce-connectshyft-provider-abstraction-guard.sh
+- scripts/test-changed.sh
 - tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts
 - tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts
+- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts
 - _bmad-output/implementation-artifacts/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.md
-- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 
 ## Change Log
 
 - 2026-03-03: Created Story e.6 ready-for-dev context document.
 - 2026-03-04: Implemented CI burn-in merge blocking, module boundary/provider guard hardening, and activated Story e.6 ATDD coverage.
+- 2026-03-04: Resolved code-review findings by disambiguating burn-in check contexts, enforcing non-empty burn-in execution with fallback specs, and hardening boundary guard coverage for dynamic imports.

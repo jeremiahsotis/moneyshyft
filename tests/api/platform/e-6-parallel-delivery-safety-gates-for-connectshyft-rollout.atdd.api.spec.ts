@@ -108,6 +108,25 @@ test.describe(
           },
         );
 
+        const dynamicBoundaryViolationResult = runPolicyScriptInTempRepo(
+          storyE6Context.policyScript,
+          storyE6Context.policyFile,
+          {
+            branch: storyE6Context.storyBranch,
+            event: 'local',
+            commitSubject: 'e-6: enforce dynamic import boundary policy contracts',
+            env: {
+              PROJECT_LANE: 'connectshyft',
+            },
+            seedFiles: {
+              'src/src/modules/connectshyft/route-dynamic-boundary-violation-e6.ts': [
+                "export const leakingBoundaryReference = async () => import('../route/application/commitmentService');",
+                '',
+              ].join('\n'),
+            },
+          },
+        );
+
         const providerGuardFailed =
           providerCouplingResult.status !== 0
           && /ConnectShyft provider abstraction guard failed/.test(providerCouplingResult.output)
@@ -115,8 +134,12 @@ test.describe(
         const boundaryGuardFailed =
           boundaryViolationResult.status !== 0
           && /(boundary|cross-module|import-boundary)/i.test(boundaryViolationResult.output);
+        const dynamicBoundaryGuardFailed =
+          dynamicBoundaryViolationResult.status !== 0
+          && /route-dynamic-boundary-violation-e6\.ts/.test(dynamicBoundaryViolationResult.output)
+          && /(boundary|cross-module|import-boundary)/i.test(dynamicBoundaryViolationResult.output);
 
-        expect(providerGuardFailed && boundaryGuardFailed).toBe(true);
+        expect(providerGuardFailed && boundaryGuardFailed && dynamicBoundaryGuardFailed).toBe(true);
       },
     );
 
@@ -125,12 +148,22 @@ test.describe(
       async ({ storyE6Context }) => {
         const workflow = readFileSync(storyE6Context.workflowFile, 'utf8');
         const burnInWorkflow = readFileSync(storyE6Context.burnInWorkflowFile, 'utf8');
+        const testChangedScript = readFileSync('scripts/test-changed.sh', 'utf8');
 
         const qualityGateNeeds = getNeeds(getJobBlock(workflow, 'quality-gates'));
         const qualityNeedsBurnIn = qualityGateNeeds.includes('burn-in');
         const releaseReadinessTracksBurnIn =
           /blocked_jobs\+\=\("burn-in"\)/.test(workflow)
           || /needs\['burn-in'\]\.result/.test(workflow);
+        const inlineBurnInJob = getJobBlock(workflow, 'burn-in');
+        const splitBurnInJob = getJobBlock(burnInWorkflow, 'burn-in');
+        const ciBurnInHasDistinctName = /name:\s*ci-burn-in/.test(inlineBurnInJob);
+        const scheduledBurnInHasDistinctName = /name:\s*scheduled-burn-in/.test(splitBurnInJob);
+        const ciBurnInRequiresTests = /BURN_IN_REQUIRE_TESTS:\s*'true'/.test(inlineBurnInJob);
+        const splitBurnInRequiresTests = /BURN_IN_REQUIRE_TESTS:\s*'true'/.test(splitBurnInJob);
+        const testChangedHasRequiredFallbackLogic =
+          /BURN_IN_REQUIRE_TESTS/.test(testChangedScript)
+          && /Running burn-in fallback spec suite/.test(testChangedScript);
         const burnInRunsOnCiCompletion =
           /workflow_run:\s*\n\s*workflows:\s*\['RouteShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(
             burnInWorkflow,
@@ -140,6 +173,11 @@ test.describe(
         expect(
           qualityNeedsBurnIn
             && releaseReadinessTracksBurnIn
+            && ciBurnInHasDistinctName
+            && scheduledBurnInHasDistinctName
+            && ciBurnInRequiresTests
+            && splitBurnInRequiresTests
+            && testChangedHasRequiredFallbackLogic
             && burnInRunsOnCiCompletion
             && burnInHasPrPath,
         ).toBe(true);

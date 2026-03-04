@@ -170,7 +170,7 @@ jobs:
           retention-days: 30
 
   burn-in:
-    name: burn-in
+    name: ci-burn-in
     runs-on: ubuntu-latest
     needs: [test, changes]
     if: needs.changes.outputs.run_heavy_ci == 'true' && needs.test.result == 'success'
@@ -201,6 +201,10 @@ jobs:
       API_BASE_URL: http://localhost:3000
       FRONTEND_URL: http://localhost:5174
       VITE_API_PROXY_TARGET: http://localhost:3000
+      BURN_IN_REQUIRE_TESTS: 'true'
+      BURN_IN_FALLBACK_SPECS: >-
+        tests/api/platform/2-1-commitment-domain-model-and-transition-rules.atdd.api.spec.ts
+        tests/e2e/platform/2-1-commitment-domain-model-and-transition-rules.atdd.spec.ts
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-ci-node-playwright

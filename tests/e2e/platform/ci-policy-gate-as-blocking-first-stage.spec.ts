@@ -111,7 +111,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
 
     // When checking quality-gates conditional execution criteria
     const hasAlwaysGateCondition =
-      /if:\s*always\(\)\s*&&\s*\(needs\.test\.result\s*==\s*'success'/.test(qualityGatesJob);
+      /if:\s*\|?\s*\n\s*always\(\)\s*&&\s*\(\s*\(?\s*needs\.test\.result\s*==\s*'success'/.test(qualityGatesJob);
     const hasInlineBurnInCondition = /needs\['burn-in'\]\.result/.test(qualityGatesJob);
     const splitBurnInWorkflowRunTrigger =
       /workflow_run:\s*\n\s*workflows:\s*\['RouteShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);

@@ -9,8 +9,8 @@ GUARD_SCOPE_PATHS=(
 )
 APPROVED_ADAPTER_CONTRACT_FILE="src/src/modules/connectshyft/providerRegistry.ts"
 TWILIO_COUPLING_PATTERN="from[[:space:]]+['\"]twilio['\"]|require\\(['\"]twilio['\"]\\)|new[[:space:]]+Twilio[[:space:]]*\\(|\\bTWILIO_(ACCOUNT_SID|AUTH_TOKEN|API_KEY|API_SECRET)\\b|api\\.twilio\\.com|x-twilio-signature"
-CONNECT_TO_ROUTE_IMPORT_PATTERN="from[[:space:]]+['\"][^'\"]*(\\.\\./)+route(/|['\"])|require\\(['\"][^'\"]*(\\.\\./)+route(/|['\"])|from[[:space:]]+['\"][^'\"]*modules/route(/|['\"])|require\\(['\"][^'\"]*modules/route(/|['\"])|from[[:space:]]+['\"]@modules/route(/|['\"])|require\\(['\"]@modules/route(/|['\"])"
-ROUTE_TO_CONNECT_IMPORT_PATTERN="from[[:space:]]+['\"][^'\"]*(\\.\\./)+connectshyft(/|['\"])|require\\(['\"][^'\"]*(\\.\\./)+connectshyft(/|['\"])|from[[:space:]]+['\"][^'\"]*modules/connectshyft(/|['\"])|require\\(['\"][^'\"]*modules/connectshyft(/|['\"])|from[[:space:]]+['\"]@modules/connectshyft(/|['\"])|require\\(['\"]@modules/connectshyft(/|['\"])"
+CONNECT_TO_ROUTE_IMPORT_PATTERN="from[[:space:]]+['\"][^'\"]*(\\.\\./)+route(/|['\"])|require\\(['\"][^'\"]*(\\.\\./)+route(/|['\"])|import[[:space:]]*\\([[:space:]]*['\"][^'\"]*(\\.\\./)+route(/|['\"])|from[[:space:]]+['\"][^'\"]*modules/route(/|['\"])|require\\(['\"][^'\"]*modules/route(/|['\"])|import[[:space:]]*\\([[:space:]]*['\"][^'\"]*modules/route(/|['\"])|from[[:space:]]+['\"]@modules/route(/|['\"])|require\\(['\"]@modules/route(/|['\"])|import[[:space:]]*\\([[:space:]]*['\"]@modules/route(/|['\"])"
+ROUTE_TO_CONNECT_IMPORT_PATTERN="from[[:space:]]+['\"][^'\"]*(\\.\\./)+connectshyft(/|['\"])|require\\(['\"][^'\"]*(\\.\\./)+connectshyft(/|['\"])|import[[:space:]]*\\([[:space:]]*['\"][^'\"]*(\\.\\./)+connectshyft(/|['\"])|from[[:space:]]+['\"][^'\"]*modules/connectshyft(/|['\"])|require\\(['\"][^'\"]*modules/connectshyft(/|['\"])|import[[:space:]]*\\([[:space:]]*['\"][^'\"]*modules/connectshyft(/|['\"])|from[[:space:]]+['\"]@modules/connectshyft(/|['\"])|require\\(['\"]@modules/connectshyft(/|['\"])|import[[:space:]]*\\([[:space:]]*['\"]@modules/connectshyft(/|['\"])"
 
 resolve_compare_range() {
   local event="${GITHUB_EVENT_NAME:-local}"
