@@ -82,8 +82,9 @@ test.describe(
 
         const rows = page.getByTestId('connectshyft-number-mapping-row');
         await expect(rows).toHaveCount(2, { timeout: 10000 });
-        await expect(rows.filter({ hasText: secondNumber })).toHaveCount(1);
-        await expect(rows.filter({ hasText: firstNumber })).toHaveCount(1);
+        const expectedOrder = [firstNumber, secondNumber].sort((left, right) => left.localeCompare(right));
+        await expect(rows.nth(0)).toContainText(expectedOrder[0]);
+        await expect(rows.nth(1)).toContainText(expectedOrder[1]);
       },
     );
 
@@ -179,8 +180,9 @@ test.describe(
 
         const rows = page.getByTestId('connectshyft-number-mapping-row');
         await expect(rows).toHaveCount(2);
-        await expect(rows.filter({ hasText: overflowNumber })).toHaveCount(1);
-        await expect(rows.filter({ hasText: updatedNumber })).toHaveCount(1);
+        const expectedOrder = [overflowNumber, updatedNumber].sort((left, right) => left.localeCompare(right));
+        await expect(rows.nth(0)).toContainText(expectedOrder[0]);
+        await expect(rows.nth(1)).toContainText(expectedOrder[1]);
       },
     );
   },

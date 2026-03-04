@@ -3278,11 +3278,12 @@ const resolveNeighborIdForThreadCorrelation = async (input: {
   }
 };
 const parseMappingBody = (req: Request) => ({
+  // Preserve explicit false values from JSON/string payloads instead of truthy coercion.
+  isActive: parseOptionalBoolean(req.body?.isActive) ?? true,
   providerNumberE164: typeof req.body?.providerNumberE164 === 'string'
     ? req.body.providerNumberE164
     : (typeof req.body?.twilioNumberE164 === 'string' ? req.body.twilioNumberE164 : ''),
   label: typeof req.body?.label === 'string' ? req.body.label : '',
-  isActive: req.body?.isActive === undefined ? true : Boolean(req.body.isActive),
 });
 
 const normalizeProviderNumberContract = (value: unknown): unknown => {

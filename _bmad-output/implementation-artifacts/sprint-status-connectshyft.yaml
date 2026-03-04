@@ -46,7 +46,7 @@ development_status:
   epic-a: done
   a-1-connectshyft-feature-flag-and-availability-guardrails: done
   a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes: done
-  a-3-orgunit-number-mapping-management: review
+  a-3-orgunit-number-mapping-management: done
   a-4-escalation-baseline-and-recipient-configuration: review
   a-5-capability-based-route-access-and-envelope-contract-compliance: done
   epic-a-retrospective: done
@@ -462,9 +462,10 @@ blocked_story_registry:
       - c-3-inbox-and-thread-detail-read-contracts
     unblock_queue_ref: _bmad-output/implementation-artifacts/next-unblocked-queue-connectshyft.md
   a-3-orgunit-number-mapping-management:
-    blocked: true
+    blocked: false
     noted_on: 2026-02-27
-    reason: "Provider-agnostic rebaseline completed on 2026-02-27; merge remains frozen until Epic F foundation is in place."
+    resolved_on: 2026-03-04
+    reason: "Epic F dependencies are complete and a.3 review follow-ups are closed; story can proceed as done."
     blocked_on:
       - f-1-provider-adapter-interface-and-provider-registry
   d-1-outbound-sms-call-actions-that-preserve-escalation-semantics:
