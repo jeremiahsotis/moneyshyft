@@ -114,6 +114,87 @@ function toSortedUnique(values) {
   return Array.from(new Set(values)).sort();
 }
 
+function stripPackageScope(name) {
+  if (!name || typeof name !== 'string') {
+    return '';
+  }
+  if (!name.startsWith('@')) {
+    return name;
+  }
+  const parts = name.split('/');
+  return parts.length > 1 ? parts[1] : '';
+}
+
+function extractProjectDescriptors(projectFiles, issues) {
+  const descriptors = [];
+
+  for (const projectFile of projectFiles) {
+    let projectConfig;
+    try {
+      projectConfig = readJson(projectFile);
+    } catch (error) {
+      issues.push(`${projectFile}: unable to parse JSON (${error.message})`);
+      continue;
+    }
+
+    const tags = Array.isArray(projectConfig.tags)
+      ? projectConfig.tags.filter((tag) => typeof tag === 'string' && tag.trim().length > 0).map((tag) => tag.trim())
+      : [];
+    const laneTags = tags.filter((tag) => tag.startsWith('lane:'));
+    const hasSharedTag = tags.includes(SHARED_TAG);
+    const projectRoot = normalizeRelative(path.dirname(projectFile));
+    const sourceRoot =
+      typeof projectConfig.sourceRoot === 'string' && projectConfig.sourceRoot.trim().length > 0
+        ? normalizeRelative(projectConfig.sourceRoot.trim())
+        : projectRoot;
+    const importIds = new Set();
+
+    if (typeof projectConfig.name === 'string' && projectConfig.name.trim().length > 0) {
+      const projectName = projectConfig.name.trim();
+      importIds.add(projectName);
+      const unscopedProjectName = stripPackageScope(projectName);
+      if (unscopedProjectName) {
+        importIds.add(unscopedProjectName);
+      }
+    }
+
+    const packageJsonPath = path.join(repoRoot, projectRoot, 'package.json');
+    if (fs.existsSync(packageJsonPath)) {
+      try {
+        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+        if (typeof packageJson.name === 'string' && packageJson.name.trim().length > 0) {
+          const packageName = packageJson.name.trim();
+          importIds.add(packageName);
+          const unscopedPackageName = stripPackageScope(packageName);
+          if (unscopedPackageName) {
+            importIds.add(unscopedPackageName);
+          }
+        }
+      } catch (error) {
+        issues.push(`${projectRoot}/package.json: unable to parse JSON (${error.message})`);
+      }
+    }
+
+    const rootBasename = path.basename(projectRoot);
+    if (rootBasename) {
+      importIds.add(rootBasename);
+    }
+
+    descriptors.push({
+      projectFile,
+      projectRoot,
+      sourceRoot,
+      tags,
+      laneTags,
+      hasSharedTag,
+      laneTag: laneTags.length === 1 ? laneTags[0] : null,
+      importIds: Array.from(importIds),
+    });
+  }
+
+  return descriptors;
+}
+
 function gatherChangedFiles() {
   const changed = new Set();
 
@@ -167,7 +248,7 @@ function isWorkspaceSourceFile(filePath) {
 }
 
 function isDisallowedSharedImport(specifier, sourceFile) {
-  const directSharedPathPattern = /packages\/shared-[^/]+\/src\/.+/;
+  const directSharedPathPattern = /packages\/shared-[^/]+\/src(?:\/.*)?$/;
   const directSharedIndexPattern = /packages\/shared-[^/]+\/src\/index(?:\.[a-z0-9]+)?$/i;
   const scopedSharedDeepPattern = /^@[^/]+\/shared-[^/]+\/.+/;
   const unscopedSharedDeepPattern = /^shared-[^/]+\/.+/;
@@ -194,25 +275,14 @@ function isDisallowedSharedImport(specifier, sourceFile) {
 }
 
 function validateProjectTags(projectFiles, issues) {
-  for (const projectFile of projectFiles) {
-    let projectConfig;
-    try {
-      projectConfig = readJson(projectFile);
-    } catch (error) {
-      issues.push(`${projectFile}: unable to parse JSON (${error.message})`);
-      continue;
-    }
-
-    const tags = Array.isArray(projectConfig.tags)
-      ? projectConfig.tags.filter((tag) => typeof tag === 'string' && tag.trim().length > 0).map((tag) => tag.trim())
-      : [];
+  for (const descriptor of projectFiles) {
+    const { projectFile, tags, laneTags, hasSharedTag } = descriptor;
 
     if (tags.length === 0) {
-      issues.push(`${projectFile}: missing tags[] classification. Add a lane:* tag or scope:shared.`);
+      issues.push(`${projectFile}: missing tags[] classification. Add exactly one lane:* tag or scope:shared.`);
       continue;
     }
 
-    const laneTags = tags.filter((tag) => tag.startsWith('lane:'));
     if (laneTags.length > 1) {
       issues.push(`${projectFile}: multiple lane tags are not allowed (${laneTags.join(', ')}).`);
     }
@@ -227,14 +297,24 @@ function validateProjectTags(projectFiles, issues) {
       }
     }
 
-    if (laneTags.length === 0 && !tags.includes(SHARED_TAG)) {
+    const classificationCount = laneTags.length + (hasSharedTag ? 1 : 0);
+    if (classificationCount === 0) {
       issues.push(
         `${projectFile}: must include exactly one lane tag (${LANE_TAGS.join(', ')}) or '${SHARED_TAG}' for shared packages.`,
       );
     }
+    if (classificationCount > 1) {
+      issues.push(`${projectFile}: ambiguous classification. Do not combine lane:* tags with '${SHARED_TAG}'.`);
+    }
 
-    if (projectFile.startsWith('packages/shared-') && !tags.includes(SHARED_TAG)) {
+    if (projectFile.startsWith('packages/shared-') && !hasSharedTag) {
       issues.push(`${projectFile}: shared package projects must include '${SHARED_TAG}'.`);
+    }
+
+    if (!projectFile.startsWith('packages/shared-') && hasSharedTag) {
+      issues.push(
+        `${projectFile}: '${SHARED_TAG}' is only allowed for projects under packages/shared-*; use exactly one lane tag.`,
+      );
     }
   }
 }
@@ -349,6 +429,183 @@ function validateDeepImports(issues) {
   }
 }
 
+function buildProjectLookup(projectDescriptors) {
+  const byProjectRoot = projectDescriptors
+    .slice()
+    .sort((left, right) => right.projectRoot.length - left.projectRoot.length);
+  const bySourceRoot = projectDescriptors
+    .slice()
+    .sort((left, right) => right.sourceRoot.length - left.sourceRoot.length);
+  const byImportId = new Map();
+
+  for (const descriptor of projectDescriptors) {
+    for (const importId of descriptor.importIds) {
+      if (!importId) {
+        continue;
+      }
+      const normalizedImportId = importId.trim();
+      if (!normalizedImportId) {
+        continue;
+      }
+      const existing = byImportId.get(normalizedImportId) || [];
+      existing.push(descriptor);
+      byImportId.set(normalizedImportId, existing);
+    }
+  }
+
+  return { byProjectRoot, bySourceRoot, byImportId };
+}
+
+function findOwningProjectForWorkspacePath(relativePath, lookup) {
+  const normalizedPath = normalizeRelative(relativePath);
+  const isMatch = (candidatePath, rootPath) => candidatePath === rootPath || candidatePath.startsWith(`${rootPath}/`);
+
+  for (const descriptor of lookup.bySourceRoot) {
+    if (isMatch(normalizedPath, descriptor.sourceRoot)) {
+      return descriptor;
+    }
+  }
+
+  for (const descriptor of lookup.byProjectRoot) {
+    if (isMatch(normalizedPath, descriptor.projectRoot)) {
+      return descriptor;
+    }
+  }
+
+  return null;
+}
+
+function resolveWorkspacePathSpecifier(specifier, sourceFile) {
+  if (specifier.startsWith('.')) {
+    const sourceAbsolute = path.join(repoRoot, sourceFile);
+    return normalizeRelative(path.relative(repoRoot, path.resolve(path.dirname(sourceAbsolute), specifier)));
+  }
+
+  const normalized = normalizeRelative(specifier.replace(/^\/+/, ''));
+  if (SCAN_ROOTS.some((root) => normalized === root || normalized.startsWith(`${root}/`))) {
+    return normalized;
+  }
+
+  return null;
+}
+
+function toImportRoot(specifier) {
+  if (!specifier || typeof specifier !== 'string') {
+    return '';
+  }
+
+  if (specifier.startsWith('@')) {
+    const parts = specifier.split('/');
+    return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : specifier;
+  }
+
+  const [root] = specifier.split('/');
+  return root || '';
+}
+
+function findProjectForSpecifier(specifier, sourceFile, lookup) {
+  const workspacePath = resolveWorkspacePathSpecifier(specifier, sourceFile);
+  if (workspacePath) {
+    return findOwningProjectForWorkspacePath(workspacePath, lookup);
+  }
+
+  const importRoot = toImportRoot(specifier);
+  if (!importRoot) {
+    return null;
+  }
+
+  const directMatches = lookup.byImportId.get(importRoot) || [];
+  if (directMatches.length === 1) {
+    return directMatches[0];
+  }
+
+  const unscoped = stripPackageScope(importRoot);
+  if (unscoped) {
+    const unscopedMatches = lookup.byImportId.get(unscoped) || [];
+    if (unscopedMatches.length === 1) {
+      return unscopedMatches[0];
+    }
+  }
+
+  return null;
+}
+
+function classifyProject(descriptor) {
+  if (descriptor.hasSharedTag) {
+    return SHARED_TAG;
+  }
+  if (descriptor.laneTag) {
+    return descriptor.laneTag;
+  }
+  return null;
+}
+
+function isAllowedLaneDependency(sourceClass, targetClass) {
+  if (!sourceClass || !targetClass) {
+    return true;
+  }
+  if (sourceClass === SHARED_TAG) {
+    return targetClass === SHARED_TAG;
+  }
+  if (targetClass === SHARED_TAG) {
+    return true;
+  }
+  return sourceClass === targetClass;
+}
+
+function validateCrossLaneImports(projectDescriptors, issues) {
+  if (projectDescriptors.length === 0) {
+    return;
+  }
+
+  const lookup = buildProjectLookup(projectDescriptors);
+  let candidateFiles = gatherChangedFiles().filter((file) => isWorkspaceSourceFile(file));
+  if (candidateFiles.length === 0) {
+    candidateFiles = runLines('git ls-files').filter((file) => isWorkspaceSourceFile(file));
+  }
+
+  for (const file of candidateFiles) {
+    const sourceProject = findOwningProjectForWorkspacePath(file, lookup);
+    if (!sourceProject) {
+      continue;
+    }
+
+    const sourceClass = classifyProject(sourceProject);
+    const absolutePath = path.join(repoRoot, file);
+    if (!fs.existsSync(absolutePath)) {
+      continue;
+    }
+
+    let content;
+    try {
+      content = fs.readFileSync(absolutePath, 'utf8');
+    } catch (_error) {
+      continue;
+    }
+
+    const lines = content.split(/\r?\n/g);
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      const specifiers = extractImportSpecifiers(line);
+      for (const specifier of specifiers) {
+        const targetProject = findProjectForSpecifier(specifier, file, lookup);
+        if (!targetProject || targetProject.projectFile === sourceProject.projectFile) {
+          continue;
+        }
+
+        const targetClass = classifyProject(targetProject);
+        if (isAllowedLaneDependency(sourceClass, targetClass)) {
+          continue;
+        }
+
+        issues.push(
+          `${file}:${index + 1}: cross-lane import '${specifier}' is forbidden (${sourceClass} -> ${targetClass}). Route cross-lane contracts through packages/shared-* and import from package root APIs.`,
+        );
+      }
+    }
+  }
+}
+
 function fail(issues) {
   console.error('Workspace boundary guard failed:');
   for (const issue of issues) {
@@ -371,12 +628,14 @@ function main() {
 
   const issues = [];
   const projectFiles = collectProjectJsonFiles();
+  const projectDescriptors = extractProjectDescriptors(projectFiles, issues);
   const sharedPackageDirs = collectSharedPackageDirs();
 
-  validateProjectTags(projectFiles, issues);
+  validateProjectTags(projectDescriptors, issues);
   validateDependencyConstraints(projectFiles, issues);
   validateSharedPackageEntrypoints(sharedPackageDirs, issues);
   validateDeepImports(issues);
+  validateCrossLaneImports(projectDescriptors, issues);
 
   if (issues.length > 0) {
     fail(issues);
