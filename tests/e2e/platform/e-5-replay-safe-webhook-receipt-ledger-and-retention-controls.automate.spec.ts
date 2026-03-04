@@ -9,6 +9,7 @@ import {
   buildSmsWebhookPayload,
   hasRequiredEnvelopeKeys,
 } from '../../support/helpers/connectShyftWebhookTestHelpers';
+import { withStoryE5RunScope } from '../../support/helpers/connectShyftStoryE5TestHelpers';
 
 test.describe(
   'Story e.5 Replay-Safe Webhook Receipt Ledger and Retention Controls (Automate E2E Expansion)',
@@ -31,7 +32,7 @@ test.describe(
         expect([200, 201]).toContain(mappingResponse.status());
 
         const providerEventId = deterministicProviderEventId(
-          'provider-event-e5-automate-e2e',
+          withStoryE5RunScope(storyE5Context, 'provider-event-e5-automate-e2e'),
           testInfo,
           'timeline-deduped',
         );
@@ -152,7 +153,7 @@ test.describe(
             from: storyE5Context.numbers.mappedOutbound,
             providerMessageId: `msg-e5-automate-e2e-202-${deterministicToken(testInfo, 'cleanup-replay-message')}`,
             providerEventId: deterministicProviderEventId(
-              'provider-event-e5-automate-e2e',
+              withStoryE5RunScope(storyE5Context, 'provider-event-e5-automate-e2e'),
               testInfo,
               'cleanup-replay-safe',
             ),

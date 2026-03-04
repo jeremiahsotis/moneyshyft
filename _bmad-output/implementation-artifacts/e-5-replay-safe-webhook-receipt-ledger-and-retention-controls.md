@@ -1,6 +1,6 @@
 # Story e.5: Replay-Safe Webhook Receipt Ledger and Retention Controls
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 

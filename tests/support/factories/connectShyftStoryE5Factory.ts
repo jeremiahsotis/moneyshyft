@@ -58,11 +58,11 @@ export type StoryE5Context = {
   paths: {
     inboundWebhook: string;
     numbersCollection: string;
+    threads: string;
     threadDetailUi: string;
     receiptCleanup: string;
     receiptMetrics: string;
     receiptLedger: string;
-    receiptControlsUi: string;
   };
   codes: {
     webhookAccepted: 'CONNECTSHYFT_WEBHOOK_ACCEPTED';
@@ -124,11 +124,11 @@ export function createStoryE5Context(
     paths: {
       inboundWebhook: '/api/v1/connectshyft/webhooks/inbound',
       numbersCollection: '/api/v1/connectshyft/numbers',
+      threads: '/api/v1/connectshyft/threads',
       threadDetailUi: '/app/connectshyft/threads',
       receiptCleanup: '/api/v1/connectshyft/admin/webhook-receipts/cleanup',
       receiptMetrics: '/api/v1/connectshyft/admin/webhook-receipts/metrics',
       receiptLedger: '/api/v1/connectshyft/admin/webhook-receipts',
-      receiptControlsUi: '/app/connectshyft/settings/webhook-receipts',
     },
     codes: {
       webhookAccepted: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
