@@ -193,6 +193,68 @@ test.describe(
     );
 
     test(
+      '[P1] keeps previously saved configuration unchanged after a refused invalid update @P1',
+      async ({ request, storyA4Context, storyA4AdminHeaders, storyA4ValidConfigPayload }) => {
+        const initialSaveResponse = await apiRequest(request, {
+          method: 'PUT',
+          path: storyA4Context.paths.escalationConfig,
+          headers: storyA4AdminHeaders,
+          data: storyA4ValidConfigPayload,
+        });
+        expect(initialSaveResponse.status()).toBe(200);
+        const initialSaveBody = await initialSaveResponse.json();
+        expect(initialSaveBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_ESCALATION_CONFIG_SAVED',
+          data: {
+            orgUnitId: storyA4Context.orgUnitId,
+            escalationBaselineHours: storyA4Context.validBaselineHours,
+          },
+        });
+
+        const refusedUpdateResponse = await apiRequest(request, {
+          method: 'PUT',
+          path: storyA4Context.paths.escalationConfig,
+          headers: storyA4AdminHeaders,
+          data: {
+            orgUnitId: storyA4Context.orgUnitId,
+            escalationBaselineHours: storyA4Context.invalidBaselineHigh,
+            recipients: {
+              ...storyA4Context.recipients,
+            },
+          },
+        });
+        expect(refusedUpdateResponse.status()).toBe(200);
+        const refusedUpdateBody = await refusedUpdateResponse.json();
+        expect(refusedUpdateBody).toMatchObject({
+          ok: false,
+          code: 'CONNECTSHYFT_ESCALATION_BASELINE_INVALID_RANGE',
+        });
+
+        const resolvedConfigResponse = await apiRequest(request, {
+          method: 'GET',
+          path: storyA4Context.paths.escalationConfig,
+          headers: storyA4AdminHeaders,
+        });
+        expect(resolvedConfigResponse.status()).toBe(200);
+        const resolvedConfigBody = await resolvedConfigResponse.json();
+        expect(resolvedConfigBody).toMatchObject({
+          ok: true,
+          code: 'CONNECTSHYFT_ESCALATION_CONFIG_RESOLVED',
+          data: {
+            orgUnitId: storyA4Context.orgUnitId,
+            escalationBaselineHours: storyA4Context.validBaselineHours,
+            recipients: {
+              primaryOrgUnitAdminUserId: storyA4Context.recipients.primaryOrgUnitAdminUserId,
+              secondaryOrgUnitAdminUserId: storyA4Context.recipients.secondaryOrgUnitAdminUserId,
+              tenantStaffUserId: storyA4Context.recipients.tenantStaffUserId,
+            },
+          },
+        });
+      },
+    );
+
+    test(
       '[P1] refuses cross-tenant recipient assignments with deterministic refusal semantics @P1',
       async ({ request, storyA4Context }) => {
         const headers = createStoryA4Headers(storyA4Context, {

@@ -8,6 +8,9 @@
         <p class="mt-2 text-sm text-slate-600">
           Configure orgUnit escalation baseline and recipient targets.
         </p>
+        <p class="mt-2 text-sm text-slate-600">
+          Escalation resets only when a thread is claimed. Outbound actions without claim do not reset escalation, and baseline hours directly affect scheduler timing.
+        </p>
       </header>
 
       <form class="rounded-md border border-slate-200 p-4" novalidate @submit.prevent="handleSave">
@@ -41,7 +44,7 @@
             >
               <option value="">Select recipient</option>
               <option
-                v-for="option in recipientOptions"
+                v-for="option in primaryRecipientOptions"
                 :key="`primary-${option.value}`"
                 :value="option.value"
               >
@@ -60,7 +63,7 @@
             >
               <option value="">None</option>
               <option
-                v-for="option in recipientOptions"
+                v-for="option in secondaryRecipientOptions"
                 :key="`secondary-${option.value}`"
                 :value="option.value"
               >
@@ -79,7 +82,7 @@
             >
               <option value="">None</option>
               <option
-                v-for="option in recipientOptions"
+                v-for="option in tenantStaffRecipientOptions"
                 :key="`tenant-staff-${option.value}`"
                 :value="option.value"
               >
@@ -135,8 +138,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import {
+  connectShyftEscalationRecipientScopes,
   fetchConnectShyftEscalationRecipientOptions,
   fetchConnectShyftEscalationConfig,
   saveConnectShyftEscalationConfig,
@@ -155,6 +159,19 @@ const primaryRecipientError = ref('');
 const saveSuccessMessage = ref('');
 const isInitializing = ref(true);
 const isSaving = ref(false);
+
+const primaryRecipientOptions = computed(() =>
+  recipientOptions.value.filter(
+    (option) => option.scope === connectShyftEscalationRecipientScopes.ORG_UNIT,
+  ));
+const secondaryRecipientOptions = computed(() =>
+  recipientOptions.value.filter(
+    (option) => option.scope === connectShyftEscalationRecipientScopes.ORG_UNIT,
+  ));
+const tenantStaffRecipientOptions = computed(() =>
+  recipientOptions.value.filter(
+    (option) => option.scope !== connectShyftEscalationRecipientScopes.TEST_ONLY,
+  ));
 
 const clearFeedback = (): void => {
   validationError.value = '';
@@ -226,19 +243,30 @@ onMounted(async () => {
   clearFeedback();
 
   try {
-    const [config, options] = await Promise.all([
-      fetchConnectShyftEscalationConfig(),
-      fetchConnectShyftEscalationRecipientOptions(),
-    ]);
-
-    recipientOptions.value = options;
+    const config = await fetchConnectShyftEscalationConfig();
     syncFromServer(config.escalationBaselineHours, config.recipients);
   } catch (error: unknown) {
     validationError.value = error instanceof Error
       ? error.message
       : 'Unable to load escalation settings right now.';
-  } finally {
-    isInitializing.value = false;
   }
+
+  try {
+    const options = await fetchConnectShyftEscalationRecipientOptions();
+    recipientOptions.value = options;
+    if (options.length === 0 && !validationError.value) {
+      validationError.value = 'No eligible recipients are available for this orgUnit. Ask a tenant administrator to assign orgUnit or tenant members.';
+    }
+  } catch (error: unknown) {
+    recipientOptions.value = [];
+    const message = error instanceof Error
+      ? error.message
+      : 'Unable to load escalation recipients right now.';
+    validationError.value = validationError.value
+      ? `${validationError.value} ${message}`
+      : message;
+  }
+
+  isInitializing.value = false;
 });
 </script>

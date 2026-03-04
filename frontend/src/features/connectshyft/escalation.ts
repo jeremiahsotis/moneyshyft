@@ -16,7 +16,17 @@ export type ConnectShyftEscalationConfig = {
 export type ConnectShyftEscalationRecipientOption = {
   value: string;
   label: string;
+  scope: ConnectShyftEscalationRecipientScope;
 };
+
+export const connectShyftEscalationRecipientScopes = {
+  ORG_UNIT: 'ORG_UNIT',
+  TENANT: 'TENANT',
+  TEST_ONLY: 'TEST_ONLY',
+} as const;
+
+export type ConnectShyftEscalationRecipientScope =
+  (typeof connectShyftEscalationRecipientScopes)[keyof typeof connectShyftEscalationRecipientScopes];
 
 export type ConnectShyftEscalationFieldError = {
   field: string;
@@ -35,6 +45,7 @@ type ConnectShyftEscalationEnvelope = {
     recipientOptions?: Array<{
       value?: string;
       label?: string;
+      scope?: string;
     }>;
     fieldErrors?: Array<{
       field?: string;
@@ -150,14 +161,23 @@ const parseRecipientOptions = (payload: unknown): ConnectShyftEscalationRecipien
       const label = typeof recipientOption?.label === 'string'
         ? recipientOption.label.trim()
         : '';
+      const rawScope = typeof recipientOption?.scope === 'string'
+        ? recipientOption.scope.trim().toUpperCase()
+        : '';
+      const scope = rawScope === connectShyftEscalationRecipientScopes.ORG_UNIT
+        || rawScope === connectShyftEscalationRecipientScopes.TENANT
+        || rawScope === connectShyftEscalationRecipientScopes.TEST_ONLY
+        ? rawScope as ConnectShyftEscalationRecipientScope
+        : null;
 
-      if (!value) {
+      if (!value || !scope) {
         return null;
       }
 
       return {
         value,
         label: label || value,
+        scope,
       };
     })
     .filter((recipientOption): recipientOption is ConnectShyftEscalationRecipientOption => recipientOption !== null);
@@ -222,12 +242,17 @@ export const fetchConnectShyftEscalationRecipientOptions = async (): Promise<Con
 
     const envelope = response.data as ConnectShyftEscalationEnvelope;
     if (envelope?.ok !== true) {
-      return [];
+      throw new Error(parseRefusalMessage(response.data, 'Unable to load escalation recipients right now.'));
     }
 
     return parseRecipientOptions(response.data);
-  } catch (_error) {
-    return [];
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message.trim().length > 0) {
+      throw error;
+    }
+
+    const errorPayload = (error as { response?: { data?: unknown } })?.response?.data;
+    throw new Error(parseRefusalMessage(errorPayload, 'Unable to load escalation recipients right now.'));
   }
 };
 
