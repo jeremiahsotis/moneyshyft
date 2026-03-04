@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-04T12:36:34Z'
+lastSaved: '2026-03-04T14:34:41Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -4385,3 +4385,201 @@ lastSaved: '2026-03-04T12:36:34Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` to score maintainability/quality against TEA rubric.
 - `[TR] Trace Requirements` to map e.5 acceptance criteria to ATDD + automate coverage sets.
+
+
+## Story e.6 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+  - `@faker-js/faker`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.md`
+  - Existing ATDD files found for Story e.6:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts`
+
+### Context Loaded
+- CI/release implementation context loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/.github/workflows/test.yml`
+  - `/Users/jeremiahotis/projects/connectshyft/.github/workflows/burn-in.yml`
+  - `/Users/jeremiahotis/projects/connectshyft/scripts/enforce-connectshyft-provider-abstraction-guard.sh`
+  - `/Users/jeremiahotis/projects/connectshyft/scripts/test-changed.sh`
+  - `/Users/jeremiahotis/projects/connectshyft/docs/policies/git_policy.md`
+- Existing test structure reviewed under `/Users/jeremiahotis/projects/connectshyft/tests`.
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils + supporting references:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+
+## Story e.6 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` reference loaded for selector/network strategy.
+- Workflow target is CI/policy/release-script enforcement (no user-facing browser journey surface required), so interactive browser exploration was skipped by design.
+- Fallback applied: artifact/code-driven analysis.
+
+### Acceptance Criteria to Target Mapping
+- AC1 expansion target:
+  - deterministic blocker ordering in release-readiness reporting and heavy-CI gated quality stages.
+- AC2 expansion targets:
+  - approved adapter-contract exemption behavior for provider-coupling scans.
+  - reverse route->connectshyft import-boundary violation detection (including dynamic import paths).
+- AC3 expansion target:
+  - maintainer guard command journeys for valid story-workflow usage vs invalid epic-workflow invocation context.
+- AC4 expansion target:
+  - scheduled burn-in policy semantics (docs-only skip, advisory PR mode, blocking production/merge-group paths).
+
+### Selected Test Levels
+- **API** (primary): CI graph/script and policy guard semantics.
+- **E2E** (secondary): maintainer workflow command journeys and burn-in orchestration behavior.
+
+### Priority Assignment
+- P0:
+  - adapter-contract exemption + reverse boundary enforcement.
+  - valid story-workflow branch guard journey.
+- P1:
+  - release-readiness heavy-CI gating and blocker ordering.
+  - epic-ops invocation failure diagnostics from story branch.
+  - burn-in orchestration semantics for advisory vs blocking paths.
+
+### Coverage Plan
+- API target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.api.spec.ts`
+- E2E target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.spec.ts`
+- Scope: `critical-paths`
+- ATDD duplication control:
+  - Existing `.atdd.*` files retained as RED-phase acceptance references.
+  - Automate coverage focuses on complementary guardrail depth and happy-path/diagnostic workflow behavior.
+
+## Story e.6 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-03-04T14-33-43Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-03-04T14-33-43Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-03-04T14-33-43Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 3`
+- E2E subprocess status: `success: true`, `test_count: 3`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed for API and E2E in a single run.
+- Sequential equivalent would require two independent generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story e.6 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.api.spec.ts`
+- `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper assets:
+  - `tests/support/fixtures/connectShyftStoryE6.fixture.ts`
+  - `tests/support/utils/policyScriptTestHarness.ts`
+  - `tests/support/utils/branchWorkflowGuardTestHarness.ts`
+- New shared fixture files created: none.
+
+### Summary Metrics
+- Total tests generated: `6`
+  - API tests: `3` (1 file)
+  - E2E tests: `3` (1 file)
+- Priority coverage:
+  - P0: `3`
+  - P1: `3`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-03-04T14-33-43Z.json`
+
+### Artifact Retention Path
+- Copied temp artifacts to test-artifact storage:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/e-6-2026-03-04T14-33-43Z/tea-automate-api-tests-2026-03-04T14-33-43Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/e-6-2026-03-04T14-33-43Z/tea-automate-e2e-tests-2026-03-04T14-33-43Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/e-6-2026-03-04T14-33-43Z/tea-automate-summary-2026-03-04T14-33-43Z.json`
+
+## Story e.6 Run - Step 4: Validate and Summarize
+
+### Coverage Plan by Test Level and Priority
+- API file (`e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.api.spec.ts`):
+  - P0: 2, P1: 1, P2: 0, P3: 0
+- E2E file (`e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.spec.ts`):
+  - P0: 1, P1: 2, P2: 0, P3: 0
+
+### Files Created or Updated
+- Created:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.api.spec.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.spec.ts`
+- Updated:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-summary.md`
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated suite parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.spec.ts`
+  - Result: passed (`6` tests discovered in `2` files).
+- Generated suite execution validation:
+  - `npm run test:e2e -- tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.spec.ts`
+  - Result: `6 passed`.
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) detected.
+  - no conditional visibility flow anti-pattern (`if (await ...isVisible())`) detected.
+  - no `try/catch` flow-control anti-pattern detected.
+- CLI session cleanup:
+  - no browser session opened for this run.
+- Temp artifact storage:
+  - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-runs/e-6-2026-03-04T14-33-43Z`.
+
+### Key Assumptions
+- Story e.6 CI orchestration remains anchored to:
+  - `.github/workflows/test.yml`
+  - `.github/workflows/burn-in.yml`
+- Policy guard contracts remain anchored to:
+  - `scripts/enforce-git-policy.sh`
+  - `scripts/enforce-connectshyft-provider-abstraction-guard.sh`
+  - `scripts/branch-ensure-workflow.sh`
+
+### Risks
+- Tests are script/workflow focused and do not include live browser selector verification because this story scope has no user-facing flow surface.
+- Regex assertions over workflow/script source are intentionally strict and will require updates when expected CI wording/structure changes.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` to score maintainability and quality-rubric alignment for Story e.6 automate coverage.
+- `[TR] Trace Requirements` to map Story e.6 acceptance criteria across ATDD and automate evidence before release cutover.

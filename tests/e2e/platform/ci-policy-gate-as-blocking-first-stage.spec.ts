@@ -1,50 +1,25 @@
 import { readFileSync } from 'node:fs';
 import { test, expect } from '../../support/fixtures/ciPolicyContext.fixture';
 import { runPolicyScriptInTempRepo } from '../../support/utils/policyScriptTestHarness';
+import { getJobBlock, getNeeds } from '../../support/utils/workflowGraphParser';
 
-function escapeRegex(input: string): string {
-  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+const WORKFLOW_FILE = '.github/workflows/test.yml';
+const BURN_IN_WORKFLOW_FILE = '.github/workflows/burn-in.yml';
+const EPIC0_QUALITY_GATES_SCRIPT = 'scripts/quality-gates-epic0.sh';
 
-function getJobBlock(workflow: string, jobName: string): string {
-  const pattern = new RegExp(
-    `(?:^|\\n)\\s{2}${escapeRegex(jobName)}:\\s*\\n([\\s\\S]*?)(?=\\n\\s{2}[A-Za-z0-9_-]+:\\s*\\n|$)`,
-  );
-  const match = workflow.match(pattern);
-  return match?.[1] ?? '';
-}
-
-function getNeeds(jobBlock: string): string[] {
-  const inlineNeeds = jobBlock.match(/^\s{4}needs:\s*([^\n]+)\s*$/m);
-  if (inlineNeeds) {
-    const value = inlineNeeds[1].trim();
-    if (value.startsWith('[') && value.endsWith(']')) {
-      return value
-        .slice(1, -1)
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-    }
-    return value ? [value] : [];
-  }
-
-  const multilineNeeds = jobBlock.match(/^\s{4}needs:\s*\n((?:\s{6}-\s*[^\n]+\n?)+)/m);
-  if (!multilineNeeds) return [];
-
-  return multilineNeeds[1]
-    .split('\n')
-    .map((line) => {
-      const match = line.match(/^\s{6}-\s*([^\n]+)/);
-      return match ? match[1].trim() : '';
-    })
-    .filter(Boolean);
-}
+let workflow = '';
+let splitBurnInWorkflow = '';
+let epic0QualityScript = '';
 
 test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
-  test('[P0] defines required policy-first quality-stage jobs in the CI graph @P0', async ({ ciPolicyContext }) => {
+  test.beforeAll(async () => {
+    workflow = readFileSync(WORKFLOW_FILE, 'utf8');
+    splitBurnInWorkflow = readFileSync(BURN_IN_WORKFLOW_FILE, 'utf8');
+    epic0QualityScript = readFileSync(EPIC0_QUALITY_GATES_SCRIPT, 'utf8');
+  });
+
+  test('[E6-ATDD-E2E-004][P0] defines required policy-first quality-stage jobs in the CI graph @P0', async () => {
     // Given the CI workflow graph definition
-    const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');
-    const splitBurnInWorkflow = readFileSync('.github/workflows/burn-in.yml', 'utf8');
 
     // When evaluating required stage presence and policy gate command
     const policyJob = getJobBlock(workflow, 'policy');
@@ -61,24 +36,18 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     const pullRequestIncludesCodexDev = /pull_request:\s*\n\s*branches:\s*\[[^\]]*\bcodex\/dev\b/.test(workflow);
 
     // Then CI should define all required quality jobs and run policy:check in policy stage
-    expect(
-      policyJob.length > 0 &&
-        lintJob.length > 0 &&
-        testJob.length > 0 &&
-        burnInDefined &&
-        qualityGatesJob.length > 0 &&
-        policyRunsGate &&
-        pullRequestIncludesProduction &&
-        pullRequestIncludesCodexDev,
-    ).toBe(true);
+    expect(policyJob.length).toBeGreaterThan(0);
+    expect(lintJob.length).toBeGreaterThan(0);
+    expect(testJob.length).toBeGreaterThan(0);
+    expect(burnInDefined).toBe(true);
+    expect(qualityGatesJob.length).toBeGreaterThan(0);
+    expect(policyRunsGate).toBe(true);
+    expect(pullRequestIncludesProduction).toBe(true);
+    expect(pullRequestIncludesCodexDev).toBe(true);
   });
 
-  test('[P0] blocks lint, test, burn-in, and quality-gates through explicit dependency graph edges @P0', async ({
-    ciPolicyContext,
-  }) => {
+  test('[E6-ATDD-E2E-005][P0] blocks lint, test, burn-in, and quality-gates through explicit dependency graph edges @P0', async () => {
     // Given the CI workflow graph definition
-    const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');
-    const splitBurnInWorkflow = readFileSync('.github/workflows/burn-in.yml', 'utf8');
 
     // When evaluating dependency relationships for quality stages
     const lintNeedsPolicy = getNeeds(getJobBlock(workflow, 'lint')).includes('policy');
@@ -98,21 +67,19 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
       splitBurnInNeedsPrepare;
 
     // Then lint/test/burn-in/gates should not proceed when policy fails
-    expect(lintNeedsPolicy && testNeedsLint && (inlineBurnInGraph || splitBurnInGraph)).toBe(true);
+    expect(lintNeedsPolicy).toBe(true);
+    expect(testNeedsLint).toBe(true);
+    expect(inlineBurnInGraph || splitBurnInGraph).toBe(true);
   });
 
-  test('[P1] quality-gates execution condition enforces successful upstream dependencies @P1', async ({
-    ciPolicyContext,
-  }) => {
+  test('[E6-ATDD-E2E-006][P1] quality-gates execution condition enforces successful upstream dependencies @P1', async () => {
     // Given quality gate job definition in CI workflow
-    const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');
-    const splitBurnInWorkflow = readFileSync('.github/workflows/burn-in.yml', 'utf8');
     const qualityGatesJob = getJobBlock(workflow, 'quality-gates');
 
     // When checking quality-gates conditional execution criteria
-    const hasAlwaysGateCondition =
-      /if:\s*always\(\)\s*&&\s*\(needs\.test\.result\s*==\s*'success'/.test(qualityGatesJob);
-    const hasInlineBurnInCondition = /needs\['burn-in'\]\.result/.test(qualityGatesJob);
+    const hasAlwaysGateCondition = qualityGatesJob.includes('always()');
+    const hasInlineTestCondition = /needs\.test\.result\s*==\s*'success'/.test(qualityGatesJob);
+    const hasInlineBurnInCondition = /needs\['burn-in'\]\.result\s*==\s*'success'/.test(qualityGatesJob);
     const splitBurnInWorkflowRunTrigger =
       /workflow_run:\s*\n\s*workflows:\s*\['RouteShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);
     const splitBurnInRequiresCiSuccess = /run\.conclusion !== 'success'/.test(splitBurnInWorkflow);
@@ -122,15 +89,12 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
       !hasInlineBurnInCondition;
 
     // Then quality gates should only execute after required successful upstream quality stages
-    expect(hasAlwaysGateCondition && (hasInlineBurnInCondition || splitBurnInCondition)).toBe(true);
+    expect(hasAlwaysGateCondition).toBe(true);
+    expect(hasInlineTestCondition).toBe(true);
+    expect(hasInlineBurnInCondition || splitBurnInCondition).toBe(true);
   });
 
-  test('[P1] report stage always publishes policy and downstream status lines in CI summary @P1', async ({
-    ciPolicyContext,
-  }) => {
-    // Given the workflow summary/report stages
-    const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');
-
+  test('[E6-ATDD-E2E-007][P1] report stage always publishes policy and downstream status lines in CI summary @P1', async () => {
     // When searching for policy-first summary output lines
     const reportContainsPolicyStatus = /echo "- policy: \$\{\{ needs\.policy\.result \}\}"/.test(workflow);
     const reportContainsLintStatus = /echo "- lint: \$\{\{ needs\.lint\.result \}\}"/.test(workflow);
@@ -138,12 +102,13 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     const reportContainsQualityGateStatus = /echo "- quality-gates: \$\{\{ needs\['quality-gates'\]\.result \}\}"/.test(workflow);
 
     // Then summary should include policy and all quality-stage statuses
-    expect(reportContainsPolicyStatus && reportContainsLintStatus && reportContainsTestStatus && reportContainsQualityGateStatus).toBe(
-      true,
-    );
+    expect(reportContainsPolicyStatus).toBe(true);
+    expect(reportContainsLintStatus).toBe(true);
+    expect(reportContainsTestStatus).toBe(true);
+    expect(reportContainsQualityGateStatus).toBe(true);
   });
 
-  test('[P1] local policy gate failure experience includes branch-specific recovery guidance @P1', async ({
+  test('[E6-ATDD-E2E-008][P1] local policy gate failure experience includes branch-specific recovery guidance @P1', async ({
     ciPolicyContext,
   }) => {
     // Given local execution in an isolated repository on a protected default branch
@@ -160,20 +125,21 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     const hasRecoveryCommand = /npm run start:story-branch -- <story-id> <story-slug>/.test(output);
 
     // Then local feedback should be actionable and include current branch context
-    expect(status !== 0 && hasViolationHeadline && hasBranchName && hasRecoveryCommand).toBe(true);
+    expect(status).not.toBe(0);
+    expect(hasViolationHeadline).toBe(true);
+    expect(hasBranchName).toBe(true);
+    expect(hasRecoveryCommand).toBe(true);
   });
 
-  test('[P1] epic-0 quality gate script resolves jsonwebtoken with portable module lookup order @P1', async () => {
-    // Given the Epic-0 quality gate script source
-    const script = readFileSync('scripts/quality-gates-epic0.sh', 'utf8');
-
+  test('[E6-ATDD-E2E-009][P1] epic-0 quality gate script resolves jsonwebtoken with portable module lookup order @P1', async () => {
     // When checking JWT dependency resolution strategy
-    const hasNodeModuleRequire = /return require\('jsonwebtoken'\);/.test(script);
+    const hasNodeModuleRequire = /return require\('jsonwebtoken'\);/.test(epic0QualityScript);
     const hasBackendFallbackRequire = /return require\(path\.join\(root, 'src\/node_modules\/jsonwebtoken'\)\);/.test(
-      script,
+      epic0QualityScript,
     );
 
     // Then script should try normal resolution first and support backend-local fallback
-    expect(hasNodeModuleRequire && hasBackendFallbackRequire).toBe(true);
+    expect(hasNodeModuleRequire).toBe(true);
+    expect(hasBackendFallbackRequire).toBe(true);
   });
 });

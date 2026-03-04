@@ -1,6 +1,6 @@
 # Story e.6: Parallel Delivery Safety Gates for ConnectShyft Rollout
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,26 +25,26 @@ so that ConnectShyft can ship in parallel with RouteShyft without cross-module r
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Release gates are operator safety controls; failures must be explicit, actionable, and prevent unsafe merges.
-- Real-User Validation Evidence: Pending implementation. Validate CI policy-first ordering, boundary enforcement failures, and rollback-playbook checks.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: Validated via Story e.6 ATDD/API/E2E policy-gate assertions plus rollout/rollback contract checks on 2026-03-04.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story governs CI/release controls, not role-admin capabilities.
 
 ## Tasks / Subtasks
 
-- [ ] Enforce policy gate as first blocking stage (AC: 1)
-  - [ ] Confirm `npm run policy:check` is first required CI job in workflow definitions.
-  - [ ] Fail pipeline immediately on policy gate failure.
-- [ ] Enforce module boundary and provider-abstraction guardrails (AC: 2)
-  - [ ] Block direct `modules/route` <-> `modules/connectshyft` boundary violations.
-  - [ ] Block ConnectShyft provider-coupled bypass paths outside approved adapter contracts.
-- [ ] Enforce regression and quality gate completion before merge (AC: 3)
-  - [ ] Require ConnectShyft targeted tests and RouteShyft regression lane completion.
-  - [ ] Verify quality gate thresholds and report-stage aggregation are present.
-- [ ] Codify rollout + rollback operational controls (AC: 4)
-  - [ ] Keep feature-flag/allow-list rollout controls explicit and verified.
-  - [ ] Ensure rollback path documentation is current and referenced by release workflow.
+- [x] Enforce policy gate as first blocking stage (AC: 1)
+  - [x] Confirm `npm run policy:check` is first required CI job in workflow definitions.
+  - [x] Fail pipeline immediately on policy gate failure.
+- [x] Enforce module boundary and provider-abstraction guardrails (AC: 2)
+  - [x] Block direct `modules/route` <-> `modules/connectshyft` boundary violations.
+  - [x] Block ConnectShyft provider-coupled bypass paths outside approved adapter contracts.
+- [x] Enforce regression and quality gate completion before merge (AC: 3)
+  - [x] Require ConnectShyft targeted tests and RouteShyft regression lane completion.
+  - [x] Verify quality gate thresholds and report-stage aggregation are present.
+- [x] Codify rollout + rollback operational controls (AC: 4)
+  - [x] Keep feature-flag/allow-list rollout controls explicit and verified.
+  - [x] Ensure rollback path documentation is current and referenced by release workflow.
 
 ## Dev Notes
 
@@ -130,18 +130,48 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `rg -n -i "epic\\s*e|e-6-" _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `rg -n "NFR-CS-001|NFR-CS-004|NFR-CS-010" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
-- `rg -n "policy:check|webhook ingestion budgets|mandatory CI gates|module boundary" _bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md docs/policies/git_policy.md`
+- `rg -n -i "epic\\s*e|e-6-" _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (pass)
+- `rg -n "NFR-CS-001|NFR-CS-004|NFR-CS-010" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md` (pass)
+- `rg -n "policy:check|webhook ingestion budgets|mandatory CI gates|module boundary" _bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md docs/policies/git_policy.md` (pass)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story e-6-parallel-delivery-safety-gates-for-connectshyft-rollout` (pass)
+- `npm run story:status:set -- --story-file _bmad-output/implementation-artifacts/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.md --status in-progress --lane connectshyft` (pass)
+- `npx playwright test tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts` (pass)
+- `npm run test:e2e -- tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts` (pass)
+- `npx playwright test tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts` (pass)
+- `tmpdir=$(mktemp -d /tmp/e6guardtest.XXXXXX) ... /scripts/enforce-connectshyft-provider-abstraction-guard.sh` (pass)
+- `npm run policy:check` (pass)
+- `bash scripts/lint-or-discovery.sh` (pass)
 
 ### Completion Notes List
 
 - Created implementation-ready Story e.6 context document with policy-first CI gates, boundary enforcement, and release safety guardrails.
+- Activated Story e.6 ATDD coverage by converting API/E2E tests from `test.skip` to executable tests and validated green.
+- Added blocking `burn-in` stage to `.github/workflows/test.yml` between `test` and `quality-gates`, and updated release-readiness aggregation to block on burn-in failures.
+- Extended `scripts/enforce-connectshyft-provider-abstraction-guard.sh` to fail deterministically on direct `modules/route` <-> `modules/connectshyft` cross-module import-boundary violations while retaining Twilio-coupling guard enforcement.
+- Verified rollout allow-list + rollback reference contracts remain explicit via passing Story e.6 ATDD assertions.
+- Renamed CI burn-in check contexts to avoid ambiguity across split workflows (`ci-burn-in` vs `scheduled-burn-in`) and aligned policy documentation with required check naming.
+- Hardened burn-in execution to require real test execution via `BURN_IN_REQUIRE_TESTS` and deterministic fallback spec suite when no changed specs are detected.
+- Added dynamic-import boundary violation coverage and guard detection so `import('../route/...')`/`import('../connectshyft/...')` bypasses now fail policy checks deterministically.
 
 ### File List
 
+- .github/workflows/burn-in.yml
+- .github/workflows/test.yml
+- docs/policies/git_policy.md
+- scripts/enforce-connectshyft-provider-abstraction-guard.sh
+- scripts/test-changed.sh
+- tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts
+- tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.api.spec.ts
+- tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts
+- tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.spec.ts
+- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts
+- tests/support/factories/connectShyftStoryE6Factory.ts
+- tests/support/fixtures/connectShyftStoryE6.fixture.ts
+- tests/support/utils/workflowGraphParser.ts
 - _bmad-output/implementation-artifacts/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.md
 
 ## Change Log
 
 - 2026-03-03: Created Story e.6 ready-for-dev context document.
+- 2026-03-04: Implemented CI burn-in merge blocking, module boundary/provider guard hardening, and activated Story e.6 ATDD coverage.
+- 2026-03-04: Resolved code-review findings by disambiguating burn-in check contexts, enforcing non-empty burn-in execution with fallback specs, and hardening boundary guard coverage for dynamic imports.

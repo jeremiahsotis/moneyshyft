@@ -178,7 +178,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   burn-in:
-    name: burn-in
+    name: scheduled-burn-in
     runs-on: ubuntu-latest
     needs: prepare
     if: needs.prepare.outputs.should_run == 'true'
@@ -213,6 +213,10 @@ jobs:
       BURN_IN_ITERATIONS: ${{ needs.prepare.outputs.iterations }}
       BURN_IN_BASE_REF: ${{ needs.prepare.outputs.base_ref }}
       BURN_IN_SOURCE_EVENT: ${{ needs.prepare.outputs.source_event }}
+      BURN_IN_REQUIRE_TESTS: 'true'
+      BURN_IN_FALLBACK_SPECS: >-
+        tests/api/platform/2-1-commitment-domain-model-and-transition-rules.atdd.api.spec.ts
+        tests/e2e/platform/2-1-commitment-domain-model-and-transition-rules.atdd.spec.ts
     steps:
       - uses: actions/checkout@v4
         with:

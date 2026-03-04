@@ -223,7 +223,7 @@ The CI policy gate runs `npm run policy:check` and fails the pipeline on violati
   - `test (shard 3)`
   - `test (shard 4)`
   - `quality-gates`
-  - `burn-in`
+  - `ci-burn-in`
 - `merge_group` events must remain enabled in core CI and produce the same required check contexts used by branch protection.
-- Burn-in remains advisory for pull_request validation but blocking for merge-group and production-protection paths.
+- Scheduled burn-in (`RouteShyft Burn-in / scheduled-burn-in`) remains advisory for pull_request validation but blocking for merge-group and production-protection paths.
 - Drift must be monitored through workflow: `.github/workflows/branch-protection-drift-check.yml`.

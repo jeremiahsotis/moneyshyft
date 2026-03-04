@@ -75,7 +75,7 @@ development_status:
   e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: done
   e-4-transcription-webhook-attachment-to-voicemail-records: done
   e-5-replay-safe-webhook-receipt-ledger-and-retention-controls: done
-  e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: ready-for-dev
+  e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: done
   epic-e-retrospective: optional
   epic-f: done
   f-1-provider-adapter-interface-and-provider-registry: done

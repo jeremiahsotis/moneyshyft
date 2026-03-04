@@ -1,0 +1,29 @@
+{
+  "success": true,
+  "subprocess": "e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.spec.ts",
+      "content": "import { readFileSync } from 'node:fs';\nimport { test, expect } from '../../support/fixtures/connectShyftStoryE6.fixture';\nimport { runBranchWorkflowGuardInTempRepo } from '../../support/utils/branchWorkflowGuardTestHarness';\n\ntest.describe(\n  'Story e.6 Parallel Delivery Safety Gates for ConnectShyft Rollout (Automate E2E Expansion)',\n  () => {\n    test(\n      '[E6-AUTOMATE-E2E-201][P0] maintainer journey on a matching connectshyft story branch passes story-workflow branch guard checks for automate execution @P0',\n      async ({ storyE6Context }) => {\n        const guardResult = runBranchWorkflowGuardInTempRepo(\n          storyE6Context.branchGuardScript,\n          {\n            branch: storyE6Context.storyBranch,\n            workflow: '_bmad/tea/workflows/testarch/automate/workflow.yaml',\n            story: storyE6Context.storyFile,\n            env: {\n              PROJECT_LANE: 'connectshyft',\n            },\n          },\n        );\n\n        const happyPathPassed =\n          guardResult.status === 0\n          && /Branch guard passed for story workflow/.test(guardResult.output);\n\n        expect(happyPathPassed).toBe(true);\n      },\n    );\n\n    test(\n      '[E6-AUTOMATE-E2E-202][P1] maintainer journey fails with actionable diagnostics when epic-ops workflow is invoked from a story branch instead of codex/epic-e-ops @P1',\n      async ({ storyE6Context }) => {\n        const guardResult = runBranchWorkflowGuardInTempRepo(\n          storyE6Context.branchGuardScript,\n          {\n            branch: storyE6Context.storyBranch,\n            workflow: 'sprint-planning',\n            epic: 'e',\n          },\n        );\n\n        const hasEpicBranchDiagnostics =\n          guardResult.status !== 0\n          && /Workflow key:\\s*sprint-planning/.test(guardResult.output)\n          && /Expected branch:\\s*codex\\/epic-e-ops/.test(guardResult.output)\n          && new RegExp(`Current branch:\\\\s*${storyE6Context.storyBranch}`).test(\n            guardResult.output,\n          )\n          && /Branch guard failed/.test(guardResult.output);\n\n        expect(hasEpicBranchDiagnostics).toBe(true);\n      },\n    );\n\n    test(\n      '[E6-AUTOMATE-E2E-203][P1] scheduled burn-in workflow keeps docs-only PR skip behavior advisory PR mode and blocking production/merge-group burn-in paths explicit @P1',\n      async ({ storyE6Context }) => {\n        const burnInWorkflow = readFileSync(storyE6Context.burnInWorkflowFile, 'utf8');\n\n        const hasDocsOnlySkipFilters =\n          /value\\.startsWith\\('docs\\/'\\)/.test(burnInWorkflow)\n          && /value\\.startsWith\\('_bmad\\/'\\)/.test(burnInWorkflow)\n          && /value\\.startsWith\\('_bmad-output\\/'\\)/.test(burnInWorkflow)\n          && /value\\.endsWith\\('\\.md'\\)/.test(burnInWorkflow);\n\n        const hasAdvisoryPrMode =\n          /Advisory PR burn-in/.test(burnInWorkflow)\n          && /advisory\\s*=\\s*true;[\\s\\S]*iterations\\s*=\\s*3;/.test(burnInWorkflow)\n          && /if \\[ \"\\$BURN_IN_ADVISORY\" = \"true\" \\] && \\[ \"\\$exit_code\" -ne 0 \\]; then/.test(\n            burnInWorkflow,\n          );\n\n        const hasBlockingProductionAndMergeGroupPaths =\n          /run\\.head_branch === 'production'[\\s\\S]*advisory\\s*=\\s*false;[\\s\\S]*iterations\\s*=\\s*10;/.test(\n            burnInWorkflow,\n          )\n          && /run\\.event === 'merge_group'[\\s\\S]*advisory\\s*=\\s*false;[\\s\\S]*iterations\\s*=\\s*10;/.test(\n            burnInWorkflow,\n          )\n          && /BURN_IN_REQUIRE_TESTS:\\s*'true'/.test(burnInWorkflow);\n\n        expect(\n          hasDocsOnlySkipFilters\n            && hasAdvisoryPrMode\n            && hasBlockingProductionAndMergeGroupPaths,\n        ).toBe(true);\n      },\n    );\n  },\n);\n",
+      "description": "Automate E2E expansion for Story e.6 maintainer safety-gate journeys",
+      "priority_coverage": {
+        "P0": 1,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "connectShyftStoryE6.fixture",
+    "branchWorkflowGuardTestHarness"
+  ],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience",
+    "playwright-cli"
+  ],
+  "test_count": 3,
+  "summary": "Generated 3 E2E automate tests for Story e.6"
+}
