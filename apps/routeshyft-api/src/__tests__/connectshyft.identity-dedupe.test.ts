@@ -214,4 +214,58 @@ describe('connectshyft identity dedupe decision matrix', () => {
       },
     });
   });
+
+  it('deterministically refuses auto-merge when duplicate exact matches for one neighbor include unsafe metadata', () => {
+    const outcomes = new Set<string>();
+
+    for (let run = 0; run < 40; run += 1) {
+      const localService = new ConnectShyftNeighborService(new InMemoryConnectShyftNeighborStore());
+      const created = localService.createNeighbor({
+        actorRoles: ['ORGUNIT_MEMBER'],
+        tenantId: 'tenant-connectshyft-alpha',
+        orgUnitId: 'org-connectshyft-alpha-east',
+        firstName: 'Deterministic',
+        lastName: 'Safety',
+        phones: [
+          {
+            label: 'mobile',
+            value: '+12605550404',
+            isShared: false,
+            verificationStatus: 'verified',
+          },
+          {
+            label: 'home',
+            value: '+12605550404',
+            isShared: true,
+            verificationStatus: 'unverified',
+          },
+        ],
+      });
+
+      if (!created.ok) {
+        throw new Error('Expected duplicate-contact seed creation to succeed');
+      }
+
+      const evaluated = localService.evaluateIdentityMatch({
+        actorRoles: ['ORGUNIT_MEMBER'],
+        tenantId: 'tenant-connectshyft-alpha',
+        contactPoint: {
+          label: 'mobile',
+          value: '+12605550404',
+          isShared: false,
+          verificationStatus: 'verified',
+        },
+      });
+
+      if (!evaluated.ok) {
+        throw new Error('Expected deterministic no-auto-merge evaluation to succeed');
+      }
+
+      outcomes.add(`${evaluated.code}:${evaluated.data.identityMatch.reason}`);
+    }
+
+    expect(outcomes).toEqual(
+      new Set(['CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE:MATCH_CONTACT_SHARED']),
+    );
+  });
 });

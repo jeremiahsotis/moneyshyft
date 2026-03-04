@@ -456,10 +456,30 @@ const buildPersistenceUnavailableRefusal = (): NeighborRefusalResult => ({
   message: 'Neighbor persistence is temporarily unavailable. Please retry.',
 });
 
-const dedupeSortedNeighborIds = (
+const aggregateIdentityMatchCandidates = (
   candidates: ConnectShyftIdentityMatchCandidate[],
-): string[] => Array.from(new Set(candidates.map((candidate) => candidate.neighborId))).sort((left, right) =>
-  left.localeCompare(right));
+): Array<{
+  neighborId: string;
+  isShared: boolean;
+  verificationStatus: 'verified' | 'unverified';
+}> => {
+  const candidatesByNeighbor = new Map<string, ConnectShyftIdentityMatchCandidate[]>();
+  candidates.forEach((candidate) => {
+    const existing = candidatesByNeighbor.get(candidate.neighborId) || [];
+    existing.push(candidate);
+    candidatesByNeighbor.set(candidate.neighborId, existing);
+  });
+
+  return Array.from(candidatesByNeighbor.entries())
+    .sort(([leftNeighborId], [rightNeighborId]) => leftNeighborId.localeCompare(rightNeighborId))
+    .map(([neighborId, neighborCandidates]) => ({
+      neighborId,
+      isShared: neighborCandidates.some((candidate) => candidate.isShared === true),
+      verificationStatus: neighborCandidates.every((candidate) => candidate.verificationStatus === 'verified')
+        ? 'verified'
+        : 'unverified',
+    }));
+};
 
 const buildIdentityManualResolutionContext = (
   candidateNeighborIds: string[],
@@ -478,7 +498,8 @@ const buildIdentityMatchDecision = (input: {
   verificationStatus: 'verified' | 'unverified';
   candidates: ConnectShyftIdentityMatchCandidate[];
 }): ConnectShyftIdentityMatchDecision => {
-  const candidateNeighborIds = dedupeSortedNeighborIds(input.candidates);
+  const candidateAggregates = aggregateIdentityMatchCandidates(input.candidates);
+  const candidateNeighborIds = candidateAggregates.map((candidate) => candidate.neighborId);
   const candidateCount = candidateNeighborIds.length;
 
   if (candidateCount === 0) {
@@ -516,7 +537,7 @@ const buildIdentityMatchDecision = (input: {
     };
   }
 
-  const matched = input.candidates[0];
+  const matched = candidateAggregates[0];
   const isInputVerified = input.verificationStatus === 'verified';
   const isMatchedVerified = matched.verificationStatus === 'verified';
   const inputIsSafe = isInputVerified && input.isShared === false;
