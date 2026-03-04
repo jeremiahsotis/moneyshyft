@@ -1,44 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { test, expect } from '../../support/fixtures/connectShyftStoryE6.fixture';
 import { runPolicyScriptInTempRepo } from '../../support/utils/policyScriptTestHarness';
-
-function escapeRegex(input: string): string {
-  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function getJobBlock(workflow: string, jobName: string): string {
-  const pattern = new RegExp(
-    `(?:^|\\n)\\s{2}${escapeRegex(jobName)}:\\s*\\n([\\s\\S]*?)(?=\\n\\s{2}[A-Za-z0-9_-]+:\\s*\\n|$)`,
-  );
-  const match = workflow.match(pattern);
-  return match?.[1] ?? '';
-}
-
-function getNeeds(jobBlock: string): string[] {
-  const inlineNeeds = jobBlock.match(/^\s{4}needs:\s*([^\n]+)\s*$/m);
-  if (inlineNeeds) {
-    const value = inlineNeeds[1].trim();
-    if (value.startsWith('[') && value.endsWith(']')) {
-      return value
-        .slice(1, -1)
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-    }
-    return value ? [value] : [];
-  }
-
-  const multilineNeeds = jobBlock.match(/^\s{4}needs:\s*\n((?:\s{6}-\s*[^\n]+\n?)+)/m);
-  if (!multilineNeeds) return [];
-
-  return multilineNeeds[1]
-    .split('\n')
-    .map((line) => {
-      const match = line.match(/^\s{6}-\s*([^\n]+)/);
-      return match ? match[1].trim() : '';
-    })
-    .filter(Boolean);
-}
+import { getJobBlock, getNeeds } from '../../support/utils/workflowGraphParser';
 
 test.describe(
   'Story e.6 Parallel Delivery Safety Gates for ConnectShyft Rollout (ATDD API RED)',
@@ -53,13 +16,11 @@ test.describe(
         const qualityNeedsTest = getNeeds(getJobBlock(workflow, 'quality-gates')).includes('test');
         const policyRunsGate = /\n\s*run:\s*npm run policy:check\b/.test(policyJob);
 
-        expect(
-          policyJob.length > 0
-            && policyRunsGate
-            && lintNeedsPolicy
-            && testNeedsLint
-            && qualityNeedsTest,
-        ).toBe(true);
+        expect(policyJob.length).toBeGreaterThan(0);
+        expect(policyRunsGate).toBe(true);
+        expect(lintNeedsPolicy).toBe(true);
+        expect(testNeedsLint).toBe(true);
+        expect(qualityNeedsTest).toBe(true);
       },
     );
 
@@ -139,7 +100,9 @@ test.describe(
           && /route-dynamic-boundary-violation-e6\.ts/.test(dynamicBoundaryViolationResult.output)
           && /(boundary|cross-module|import-boundary)/i.test(dynamicBoundaryViolationResult.output);
 
-        expect(providerGuardFailed && boundaryGuardFailed && dynamicBoundaryGuardFailed).toBe(true);
+        expect(providerGuardFailed).toBe(true);
+        expect(boundaryGuardFailed).toBe(true);
+        expect(dynamicBoundaryGuardFailed).toBe(true);
       },
     );
 
@@ -170,17 +133,15 @@ test.describe(
           );
         const burnInHasPrPath = /run\.event === 'pull_request'/.test(burnInWorkflow);
 
-        expect(
-          qualityNeedsBurnIn
-            && releaseReadinessTracksBurnIn
-            && ciBurnInHasDistinctName
-            && scheduledBurnInHasDistinctName
-            && ciBurnInRequiresTests
-            && splitBurnInRequiresTests
-            && testChangedHasRequiredFallbackLogic
-            && burnInRunsOnCiCompletion
-            && burnInHasPrPath,
-        ).toBe(true);
+        expect(qualityNeedsBurnIn).toBe(true);
+        expect(releaseReadinessTracksBurnIn).toBe(true);
+        expect(ciBurnInHasDistinctName).toBe(true);
+        expect(scheduledBurnInHasDistinctName).toBe(true);
+        expect(ciBurnInRequiresTests).toBe(true);
+        expect(splitBurnInRequiresTests).toBe(true);
+        expect(testChangedHasRequiredFallbackLogic).toBe(true);
+        expect(burnInRunsOnCiCompletion).toBe(true);
+        expect(burnInHasPrPath).toBe(true);
       },
     );
 
@@ -212,12 +173,10 @@ test.describe(
           && /See PRODUCTION_DEPLOYMENT_GUIDE\.md → Rollback Step 4/.test(deploymentChecklist)
           && /## Rollback Procedure/.test(productionGuide);
 
-        expect(
-          hasAllowlistEnv
-            && hasFailClosedAllowlistBehavior
-            && hasAllowlistContractCoverage
-            && hasRollbackDocs,
-        ).toBe(true);
+        expect(hasAllowlistEnv).toBe(true);
+        expect(hasFailClosedAllowlistBehavior).toBe(true);
+        expect(hasAllowlistContractCoverage).toBe(true);
+        expect(hasRollbackDocs).toBe(true);
       },
     );
   },

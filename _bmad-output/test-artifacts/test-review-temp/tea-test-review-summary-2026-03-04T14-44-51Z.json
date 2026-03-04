@@ -1,0 +1,244 @@
+{
+  "overall_score": 87,
+  "overall_grade": "B",
+  "quality_assessment": "Good",
+  "dimension_scores": {
+    "determinism": 98,
+    "isolation": 95,
+    "maintainability": 66,
+    "coverage": 83,
+    "performance": 90
+  },
+  "dimension_grades": {
+    "determinism": "A",
+    "isolation": "A-",
+    "maintainability": "D",
+    "coverage": "B",
+    "performance": "A-"
+  },
+  "violations_summary": {
+    "total": 13,
+    "HIGH": 3,
+    "MEDIUM": 6,
+    "LOW": 4
+  },
+  "all_violations": [
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "line": 114,
+      "severity": "LOW",
+      "category": "format-coupling",
+      "description": "Regex assertions are coupled to YAML whitespace/newline formatting, so semantically equivalent formatting changes can trigger false failures.",
+      "suggestion": "Parse workflow YAML and assert structured fields instead of whitespace-sensitive regex fragments.",
+      "code_snippet": "/if:\\s*\\|?\\s*\\n\\s*always\\(\\)\\s*&&.../.test(qualityGatesJob)",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "line": 49,
+      "severity": "MEDIUM",
+      "category": "shared-repo-state-dependency",
+      "description": "Tests assert directly against mutable repository workflow files, so unrelated concurrent edits can affect outcomes.",
+      "suggestion": "Snapshot required workflow fixtures into isolated temp workspaces per test when validating parsing logic.",
+      "code_snippet": "const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');",
+      "dimension": "isolation"
+    },
+    {
+      "file": "tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Spec file size (225 lines) increases cognitive load and makes failures harder to localize quickly.",
+      "suggestion": "Split by acceptance criterion into smaller focused files with shared helper imports.",
+      "code_snippet": "// file length: 225 lines",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Spec file size (180 lines) and broad scope reduce readability and maintenance speed.",
+      "suggestion": "Partition into policy-graph, report-summary, and local-diagnostics focused specs.",
+      "code_snippet": "// file length: 180 lines",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts",
+      "line": 5,
+      "severity": "MEDIUM",
+      "category": "duplicate-helper-logic",
+      "description": "Workflow parsing helpers are duplicated across multiple specs, increasing drift risk.",
+      "suggestion": "Extract escapeRegex/getJobBlock/getNeeds into a shared helper under tests/support/utils.",
+      "code_snippet": "function escapeRegex(...) { ... }",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "line": 5,
+      "severity": "MEDIUM",
+      "category": "duplicate-helper-logic",
+      "description": "Repeated helper implementation duplicates parsing semantics and adds maintenance overhead.",
+      "suggestion": "Import shared parser helpers to keep behavior consistent.",
+      "code_snippet": "function getJobBlock(...) { ... }",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts",
+      "line": 56,
+      "severity": "LOW",
+      "category": "mega-assertion",
+      "description": "Large boolean conjunctions inside single expects obscure which precondition failed.",
+      "suggestion": "Split assertions into named expect statements for faster failure diagnosis.",
+      "code_snippet": "expect(policyJob.length > 0 && policyRunsGate && lintNeedsPolicy && ...).toBe(true);",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "line": 44,
+      "severity": "LOW",
+      "category": "test-id-format-inconsistency",
+      "description": "Legacy [P0]/[P1] IDs reduce traceability consistency with story-scoped structured IDs used elsewhere.",
+      "suggestion": "Adopt structured IDs (e.g., E6-ATDD-E2E-XXX) for this suite.",
+      "code_snippet": "test('[P0] defines required policy-first quality-stage jobs ...')",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "line": 44,
+      "severity": "HIGH",
+      "category": "static-config-only-validation",
+      "description": "Coverage is heavily skewed toward static regex checks of workflow/config text, with limited runtime execution-path validation.",
+      "suggestion": "Add at least one execution-oriented CI contract test that evaluates job graph behavior from resolved workflow data.",
+      "code_snippet": "test('[P0] defines required policy-first quality-stage jobs ...')",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts",
+      "line": 58,
+      "severity": "MEDIUM",
+      "category": "missing-merge-happy-path-simulation",
+      "description": "Current tests strongly validate blocker conditions but do not explicitly simulate a full all-green merge-ready path for all required gates together.",
+      "suggestion": "Add a happy-path release-readiness test that verifies policy/lint/test/burn-in/quality-gates complete and status resolves ready.",
+      "code_snippet": "'[E6-ATDD-E2E-002][P0] release-readiness summary blocks merge when ...'",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.spec.ts",
+      "line": 57,
+      "severity": "LOW",
+      "category": "limited-operator-ui-runtime-validation",
+      "description": "Operator journey checks are primarily script/doc assertions rather than end-user UI interaction flows.",
+      "suggestion": "Introduce one targeted UI flow assertion for rollout control visibility/diagnostics where applicable.",
+      "code_snippet": "test('[E6-AUTOMATE-E2E-203][P1] scheduled burn-in workflow keeps docs-only PR skip behavior ...')",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "line": 49,
+      "severity": "MEDIUM",
+      "category": "repeated-heavy-file-reads",
+      "description": "Large workflow/script files are repeatedly read in multiple tests, adding avoidable per-test IO overhead.",
+      "suggestion": "Cache parsed workflow/script content in beforeAll or fixture setup and share immutable snapshots.",
+      "code_snippet": "const workflow = readFileSync(ciPolicyContext.workflowFile, 'utf8');",
+      "dimension": "performance"
+    },
+    {
+      "file": "tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts",
+      "line": 72,
+      "severity": "MEDIUM",
+      "category": "serial-harness-invocations",
+      "description": "Multiple policy harness invocations are executed serially inside single tests, increasing runtime under constrained CI workers.",
+      "suggestion": "Use table-driven or batched harness execution where deterministic and safe, or split into smaller focused tests.",
+      "code_snippet": "const providerCouplingResult = runPolicyScriptInTempRepo(...);\nconst boundaryViolationResult = runPolicyScriptInTempRepo(...);\nconst dynamicBoundaryViolationResult = runPolicyScriptInTempRepo(...);",
+      "dimension": "performance"
+    }
+  ],
+  "high_severity_violations": [
+    {
+      "file": "tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Spec file size (225 lines) increases cognitive load and makes failures harder to localize quickly.",
+      "suggestion": "Split by acceptance criterion into smaller focused files with shared helper imports.",
+      "code_snippet": "// file length: 225 lines",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Spec file size (180 lines) and broad scope reduce readability and maintenance speed.",
+      "suggestion": "Partition into policy-graph, report-summary, and local-diagnostics focused specs.",
+      "code_snippet": "// file length: 180 lines",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "line": 44,
+      "severity": "HIGH",
+      "category": "static-config-only-validation",
+      "description": "Coverage is heavily skewed toward static regex checks of workflow/config text, with limited runtime execution-path validation.",
+      "suggestion": "Add at least one execution-oriented CI contract test that evaluates job graph behavior from resolved workflow data.",
+      "code_snippet": "test('[P0] defines required policy-first quality-stage jobs ...')",
+      "dimension": "coverage"
+    }
+  ],
+  "top_10_recommendations": [
+    {
+      "dimension": "determinism",
+      "recommendation": "Keep avoiding hard waits and random/time primitives in assertions.",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Prefer parser-based assertions for workflow semantics over formatting-sensitive regex checks.",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Continue using deterministic fixture/harness setup for policy checks.",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "isolation",
+      "recommendation": "Continue using temp-repo harnesses for mutation-style policy tests.",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "isolation",
+      "recommendation": "Isolate static workflow reads in fixture snapshots to reduce coupling to repo churn.",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "isolation",
+      "recommendation": "Keep test cases parallel-safe by avoiding shared mutable runtime state.",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "maintainability",
+      "recommendation": "Split large spec files by acceptance criterion or behavior axis.",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "maintainability",
+      "recommendation": "Extract duplicated workflow-parsing helpers into shared utilities.",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "maintainability",
+      "recommendation": "Replace conjunction-style asserts with granular, named expects.",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "maintainability",
+      "recommendation": "Standardize test ID schema across all CI policy specs.",
+      "impact": "HIGH"
+    }
+  ],
+  "subprocess_execution": "PARALLEL (5 quality dimensions)",
+  "performance_gain": "~60% faster than sequential",
+  "timestamp": "2026-03-04T14-44-51Z"
+}

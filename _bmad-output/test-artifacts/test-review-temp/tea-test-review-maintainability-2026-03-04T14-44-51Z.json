@@ -1,0 +1,76 @@
+{
+  "dimension": "maintainability",
+  "score": 66,
+  "max_score": 100,
+  "grade": "D",
+  "violations": [
+    {
+      "file": "tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Spec file size (225 lines) increases cognitive load and makes failures harder to localize quickly.",
+      "suggestion": "Split by acceptance criterion into smaller focused files with shared helper imports.",
+      "code_snippet": "// file length: 225 lines"
+    },
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Spec file size (180 lines) and broad scope reduce readability and maintenance speed.",
+      "suggestion": "Partition into policy-graph, report-summary, and local-diagnostics focused specs.",
+      "code_snippet": "// file length: 180 lines"
+    },
+    {
+      "file": "tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts",
+      "line": 5,
+      "severity": "MEDIUM",
+      "category": "duplicate-helper-logic",
+      "description": "Workflow parsing helpers are duplicated across multiple specs, increasing drift risk.",
+      "suggestion": "Extract escapeRegex/getJobBlock/getNeeds into a shared helper under tests/support/utils.",
+      "code_snippet": "function escapeRegex(...) { ... }"
+    },
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "line": 5,
+      "severity": "MEDIUM",
+      "category": "duplicate-helper-logic",
+      "description": "Repeated helper implementation duplicates parsing semantics and adds maintenance overhead.",
+      "suggestion": "Import shared parser helpers to keep behavior consistent.",
+      "code_snippet": "function getJobBlock(...) { ... }"
+    },
+    {
+      "file": "tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts",
+      "line": 56,
+      "severity": "LOW",
+      "category": "mega-assertion",
+      "description": "Large boolean conjunctions inside single expects obscure which precondition failed.",
+      "suggestion": "Split assertions into named expect statements for faster failure diagnosis.",
+      "code_snippet": "expect(policyJob.length > 0 && policyRunsGate && lintNeedsPolicy && ...).toBe(true);"
+    },
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "line": 44,
+      "severity": "LOW",
+      "category": "test-id-format-inconsistency",
+      "description": "Legacy [P0]/[P1] IDs reduce traceability consistency with story-scoped structured IDs used elsewhere.",
+      "suggestion": "Adopt structured IDs (e.g., E6-ATDD-E2E-XXX) for this suite.",
+      "code_snippet": "test('[P0] defines required policy-first quality-stage jobs ...')"
+    }
+  ],
+  "passed_checks": 24,
+  "failed_checks": 6,
+  "violation_summary": {
+    "HIGH": 2,
+    "MEDIUM": 2,
+    "LOW": 2
+  },
+  "recommendations": [
+    "Split large spec files by acceptance criterion or behavior axis.",
+    "Extract duplicated workflow-parsing helpers into shared utilities.",
+    "Replace conjunction-style asserts with granular, named expects.",
+    "Standardize test ID schema across all CI policy specs."
+  ],
+  "summary": "Maintainability is the main weakness due to long files, duplicated parsing helpers, and conjunction-heavy assertions."
+}

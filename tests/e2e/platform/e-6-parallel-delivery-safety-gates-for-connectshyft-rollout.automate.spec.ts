@@ -80,11 +80,9 @@ test.describe(
           )
           && /BURN_IN_REQUIRE_TESTS:\s*'true'/.test(burnInWorkflow);
 
-        expect(
-          hasDocsOnlySkipFilters
-            && hasAdvisoryPrMode
-            && hasBlockingProductionAndMergeGroupPaths,
-        ).toBe(true);
+        expect(hasDocsOnlySkipFilters).toBe(true);
+        expect(hasAdvisoryPrMode).toBe(true);
+        expect(hasBlockingProductionAndMergeGroupPaths).toBe(true);
       },
     );
   },

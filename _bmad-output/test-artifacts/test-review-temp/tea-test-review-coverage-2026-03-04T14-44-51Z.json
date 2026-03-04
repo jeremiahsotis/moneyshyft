@@ -1,0 +1,55 @@
+{
+  "dimension": "coverage",
+  "score": 83,
+  "max_score": 100,
+  "grade": "B",
+  "violations": [
+    {
+      "file": "tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts",
+      "line": 44,
+      "severity": "HIGH",
+      "category": "static-config-only-validation",
+      "description": "Coverage is heavily skewed toward static regex checks of workflow/config text, with limited runtime execution-path validation.",
+      "suggestion": "Add at least one execution-oriented CI contract test that evaluates job graph behavior from resolved workflow data.",
+      "code_snippet": "test('[P0] defines required policy-first quality-stage jobs ...')"
+    },
+    {
+      "file": "tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts",
+      "line": 58,
+      "severity": "MEDIUM",
+      "category": "missing-merge-happy-path-simulation",
+      "description": "Current tests strongly validate blocker conditions but do not explicitly simulate a full all-green merge-ready path for all required gates together.",
+      "suggestion": "Add a happy-path release-readiness test that verifies policy/lint/test/burn-in/quality-gates complete and status resolves ready.",
+      "code_snippet": "'[E6-ATDD-E2E-002][P0] release-readiness summary blocks merge when ...'"
+    },
+    {
+      "file": "tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.spec.ts",
+      "line": 57,
+      "severity": "LOW",
+      "category": "limited-operator-ui-runtime-validation",
+      "description": "Operator journey checks are primarily script/doc assertions rather than end-user UI interaction flows.",
+      "suggestion": "Introduce one targeted UI flow assertion for rollout control visibility/diagnostics where applicable.",
+      "code_snippet": "test('[E6-AUTOMATE-E2E-203][P1] scheduled burn-in workflow keeps docs-only PR skip behavior ...')"
+    }
+  ],
+  "passed_checks": 27,
+  "failed_checks": 3,
+  "violation_summary": {
+    "HIGH": 1,
+    "MEDIUM": 1,
+    "LOW": 1
+  },
+  "coverage_gaps": {
+    "untested_endpoints": [],
+    "untested_user_paths": [
+      "All-green merge-ready aggregate path with all required gate successes in one scenario"
+    ],
+    "missing_error_scenarios": []
+  },
+  "recommendations": [
+    "Add one merge-ready happy-path integration check across all gates.",
+    "Balance text/regex policy assertions with at least one execution-path contract check.",
+    "Preserve strong blocker-path coverage while adding confidence on success-path semantics."
+  ],
+  "summary": "Coverage is good for blocker and guardrail detection, with moderate gaps in runtime semantics and full success-path simulation."
+}

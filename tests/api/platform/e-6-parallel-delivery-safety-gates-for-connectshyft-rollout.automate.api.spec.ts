@@ -116,12 +116,10 @@ test.describe(
           'burn-in',
           'quality-gates',
         ]);
-        expect(
-          hasHeavyCiGuardOnTest
-            && hasHeavyCiGuardOnBurnIn
-            && hasHeavyCiGuardOnQualityGates
-            && summaryContainsReleaseBlockers,
-        ).toBe(true);
+        expect(hasHeavyCiGuardOnTest).toBe(true);
+        expect(hasHeavyCiGuardOnBurnIn).toBe(true);
+        expect(hasHeavyCiGuardOnQualityGates).toBe(true);
+        expect(summaryContainsReleaseBlockers).toBe(true);
       },
     );
   },

@@ -1,6 +1,6 @@
 # Story e.6: Parallel Delivery Safety Gates for ConnectShyft Rollout
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,8 +25,8 @@ so that ConnectShyft can ship in parallel with RouteShyft without cross-module r
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Release gates are operator safety controls; failures must be explicit, actionable, and prevent unsafe merges.
-- Real-User Validation Evidence: Pending implementation. Validate CI policy-first ordering, boundary enforcement failures, and rollback-playbook checks.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: Validated via Story e.6 ATDD/API/E2E policy-gate assertions plus rollout/rollback contract checks on 2026-03-04.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story governs CI/release controls, not role-admin capabilities.
