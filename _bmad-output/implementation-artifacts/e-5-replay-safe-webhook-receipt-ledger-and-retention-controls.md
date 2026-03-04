@@ -1,6 +1,6 @@
 # Story e.5: Replay-Safe Webhook Receipt Ledger and Retention Controls
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -135,9 +135,12 @@ GPT-5 Codex
 - `rg -n "FR-CS-021a" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
 - `rg -n "AD-08|webhook_receipts|retention|dedupe" _bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
 - `npm run branch:ensure-workflow -- --workflow dev-story --story e-5-replay-safe-webhook-receipt-ledger-and-retention-controls`
+- `npm run branch:ensure-workflow -- --lane connectshyft --workflow dev-story --story e-5-replay-safe-webhook-receipt-ledger-and-retention-controls`
+- `npm test --prefix src`
 - `npm test --prefix src -- src/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts src/src/migrations/__tests__/connectShyftWebhookReceiptReplayIdentityMigration.test.ts`
 - `npm run build --prefix src`
 - `npm run test:e2e -- tests/api/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.atdd.api.spec.ts`
+- `npm run story:status:set -- --story-key e-5-replay-safe-webhook-receipt-ledger-and-retention-controls --status review --lane connectshyft`
 
 ### Implementation Plan
 
@@ -156,10 +159,12 @@ GPT-5 Codex
   - Provider-correlation unit coverage for event-type scoped replay identity, concurrent duplicate bursts, and retention cleanup metrics.
   - Migration test coverage for replay-identity schema changes.
   - Activated and passed e.5 API ATDD scenarios (4/4).
+- Validated final review gates on 2026-03-04: backend Jest regression (`66 passed, 2 skipped`), backend TypeScript build, and e.5 API ATDD (`4/4`) all passing before story/sprint status transition to `review`.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 - src/src/modules/connectshyft/providerCorrelationMappings.ts
 - src/src/routes/api/v1/connectshyft.ts
 - src/src/migrations/20260303170000_add_connectshyft_webhook_receipt_replay_identity.ts
@@ -171,3 +176,4 @@ GPT-5 Codex
 
 - 2026-03-03: Created Story e.5 ready-for-dev context document.
 - 2026-03-03: Implemented replay-safe receipt identity `(tenant_id, provider_name, sid, event_type)`, retention metrics/cleanup controls, and e.5 API + unit regression coverage.
+- 2026-03-04: Re-validated full backend regression/build plus e.5 ATDD and transitioned story + connectshyft sprint status from `in-progress` to `review`.

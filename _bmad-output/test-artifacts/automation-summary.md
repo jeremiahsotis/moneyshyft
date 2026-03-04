@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-04T10:15:11Z'
+lastSaved: '2026-03-04T12:36:34Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -4225,3 +4225,163 @@ lastSaved: '2026-03-04T10:15:11Z'
 - `[RV] Review Tests` for quality and maintainability scoring of the generated ux-r4 automate suite.
 - `[TR] Trace Requirements` to map ux-r4 acceptance criteria across ATDD and automate evidence.
 
+## Story e.5 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.md`
+  - Existing ATDD files found for Story e.5:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.atdd.spec.ts`
+
+### Context Loaded
+- Test framework config loaded: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts`.
+- Existing test structure loaded from `/Users/jeremiahotis/projects/connectshyft/tests`.
+- Story e.5 support assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryE5.fixture.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryE5Factory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/helpers/connectShyftWebhookTestHelpers.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- API/E2E patterns and automation references:
+  - `api-testing-patterns.md`
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `overview.md`
+  - `api-request.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+
+## Story e.5 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` is installed and was invoked for this workflow.
+- Attempted browser discovery target: `http://127.0.0.1:5173`.
+- Result: `net::ERR_CONNECTION_REFUSED` (no local frontend running at 5173 during agent run).
+- Session hygiene: CLI session `tea-automate-e5-1772627549` was closed successfully.
+- Fallback applied: code + artifact analysis for target and selector determination.
+
+### Acceptance Criteria to Test Targets
+- AC1/AC2 expansion:
+  - event-type scoped replay identity behavior for same provider event id
+  - message-id fallback dedupe behavior across duplicate and non-duplicate event-type variants
+- AC3 expansion:
+  - retention cleanup dry-run invariants (`dryRun=true`, stable totals)
+  - post-cleanup replay-safety persistence for active-window duplicates
+- AC4 alignment:
+  - replay-safe duplicate suppression and deterministic side effects under repeated deliveries
+
+### Selected Test Levels
+- **API** (primary): replay identity, dedupe semantics, retention metrics/cleanup contracts.
+- **E2E** (secondary): operator journey assertions via thread detail and cleanup-to-replay continuity.
+
+### Priority Assignment
+- P0:
+  - event-type scoped replay identity processing
+  - duplicate replay journey with single timeline append + duplicate suppression
+- P1:
+  - message-id fallback dedupe across event-type variants
+  - cleanup dry-run invariants
+  - cleanup-run active-window replay-safe continuity
+
+### Coverage Plan
+- API target file:
+  - `tests/api/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.automate.api.spec.ts`
+- E2E target file:
+  - `tests/e2e/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.automate.spec.ts`
+- Scope: `critical-paths`
+- ATDD duplication control:
+  - Existing `.atdd.*` files preserved as canonical acceptance references.
+  - Generated executable coverage in `.automate.*` files for regression lane use.
+
+## Story e.5 Run - Step 3C: Aggregate Test Generation Results
+
+### Parallel Subprocess Execution
+- API subprocess output:
+  - `/tmp/tea-automate-api-tests-2026-03-04T12-32-38Z.json`
+- E2E subprocess output:
+  - `/tmp/tea-automate-e2e-tests-2026-03-04T12-32-38Z.json`
+- Verification:
+  - `success: true` for both subprocess outputs
+  - output files present and valid JSON
+
+### Files Written to Disk
+- `tests/api/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.automate.api.spec.ts`
+- `tests/e2e/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.automate.spec.ts`
+
+### Fixture/Helper Aggregation
+- Reused existing fixture/helper assets:
+  - `connectShyftStoryE5.fixture`
+  - `apiClient`
+  - `connectShyftWebhookTestHelpers`
+- No new fixture infrastructure required for this story slice.
+
+### Summary Metrics
+- Total tests generated: `5`
+  - API tests: `3` (1 file)
+  - E2E tests: `2` (1 file)
+- Priority coverage:
+  - P0: `2`
+  - P1: `3`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-03-04T12-32-38Z.json`
+
+### Artifact Retention Path
+- Copied temp artifacts to test-artifact storage:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/e-5-2026-03-04T12-32-38Z/tea-automate-api-tests-2026-03-04T12-32-38Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/e-5-2026-03-04T12-32-38Z/tea-automate-e2e-tests-2026-03-04T12-32-38Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/e-5-2026-03-04T12-32-38Z/tea-automate-summary-2026-03-04T12-32-38Z.json`
+
+## Story e.5 Run - Step 4: Validate and Summarize
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Test quality checks on generated files:
+  - No hard waits (`waitForTimeout`) used.
+  - No conditional visibility branching anti-patterns used.
+  - Priority tags included in test titles.
+- CLI session cleanup:
+  - session `tea-automate-e5-1772627549` closed.
+- Temp artifact retention:
+  - persisted under `_bmad-output/test-artifacts/automation-runs/e-5-2026-03-04T12-32-38Z`.
+
+### Execution Validation
+- Command run:
+  - `npm run test:e2e -- tests/api/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.automate.api.spec.ts tests/e2e/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.automate.spec.ts`
+- Result:
+  - `5 passed`
+  - runtime wrapper started managed backend/frontend test runtime and completed successfully.
+
+### Key Assumptions
+- Inbound SMS timeline event remains `connectshyft.inbound.sms_appended` for detail-contract assertions.
+- Story e.5 fixture/factory contract remains source-of-truth for tenant headers, policy defaults, and endpoints.
+
+### Risks
+- Browser UI selector verification could not be performed live because local frontend URL `127.0.0.1:5173` was unavailable at generation time; E2E coverage here remains API-journey dominant.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` to score maintainability/quality against TEA rubric.
+- `[TR] Trace Requirements` to map e.5 acceptance criteria to ATDD + automate coverage sets.

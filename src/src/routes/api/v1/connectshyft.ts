@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Request, Response, Router } from 'express';
 import type { Knex } from 'knex';
 import { refusal, success } from '../../../platform/envelopes/response';
@@ -103,7 +104,6 @@ import {
   loadConnectShyftWebhookReceiptMetrics,
   markConnectShyftWebhookReceiptProcessingResult,
   recordConnectShyftProviderIdentifierMapping,
-  recordConnectShyftWebhookReceipt,
   resolveConnectShyftProviderCorrelationByIdentifiers,
 } from '../../../modules/connectshyft/providerCorrelationMappings';
 import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService';
@@ -892,6 +892,15 @@ const normalizeRoutingSlug = (value: string): string => {
   return normalized || 'unknown';
 };
 
+const buildDeterministicUuidFromSeed = (seed: string): string => {
+  const digest = createHash('sha1').update(seed).digest('hex').slice(0, 32).split('');
+  digest[12] = '5';
+  const variantNibble = Number.parseInt(digest[16], 16);
+  digest[16] = ((variantNibble & 0x3) | 0x8).toString(16);
+  const hex = digest.join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+};
+
 const resolveDeterministicThreadIdForNumberMapping = (input: {
   tenantId: string;
   orgUnitId: string;
@@ -906,7 +915,13 @@ const resolveDeterministicThreadIdForNumberMapping = (input: {
     return existingSynthetic[0];
   }
 
-  return `thread-ingress-${normalizeRoutingSlug(input.tenantId)}-${normalizeRoutingSlug(input.orgUnitId)}-${normalizeRoutingSlug(input.providerNumberE164)}`;
+  return buildDeterministicUuidFromSeed([
+    'connectshyft',
+    'number-mapping-thread',
+    input.tenantId,
+    input.orgUnitId,
+    input.providerNumberE164,
+  ].join('|'));
 };
 
 const resolveExistingActiveThreadIdForScope = async (input: {
@@ -6414,7 +6429,11 @@ const handleInboundWebhook = async (
       return;
     }
 
-    if (transcriptionReceipt.alreadyApplied) {
+    const shouldSuppressTranscriptionDuplicate = transcriptionReceipt.alreadyApplied
+      || transcriptionReceipt.previousStatus === 'RECEIVED'
+      || transcriptionReceipt.previousStatus === 'FAILED_TERMINAL';
+
+    if (shouldSuppressTranscriptionDuplicate) {
       success(res, {
         code: 'CONNECTSHYFT_TRANSCRIPTION_CALLBACK_DUPLICATE_SUPPRESSED',
         message: 'Transcription callback duplicate suppressed',
@@ -6492,7 +6511,11 @@ const handleInboundWebhook = async (
         threadId,
         providerName: providerSelection.providerResolution.resolvedProvider,
         dedupeKey: transcriptionReceipt.dedupeKey,
-        status: 'FAILED_TERMINAL',
+        canonicalEventType: eventType,
+        providerEventId: callbackInboundProviderEventId,
+        providerLegId: correlation.providerLegId,
+        providerMessageId: correlation.providerMessageId,
+        status: 'FAILED_RETRYABLE',
         failureReason: !callbackMatchesResolvedScope
           ? 'callback_correlation_scope_invalid'
           : !hasPersistedVoicemailCorrelation
@@ -6574,6 +6597,10 @@ const handleInboundWebhook = async (
         threadId,
         providerName: providerSelection.providerResolution.resolvedProvider,
         dedupeKey: transcriptionReceipt.dedupeKey,
+        canonicalEventType: eventType,
+        providerEventId: callbackInboundProviderEventId,
+        providerLegId: correlation.providerLegId,
+        providerMessageId: correlation.providerMessageId,
         status: 'FAILED_RETRYABLE',
         failureReason: 'canonical_event_persistence_error',
         db: loadPlatformDb(),
@@ -6613,6 +6640,10 @@ const handleInboundWebhook = async (
       threadId,
       providerName: providerSelection.providerResolution.resolvedProvider,
       dedupeKey: transcriptionReceipt.dedupeKey,
+      canonicalEventType: eventType,
+      providerEventId: callbackInboundProviderEventId,
+      providerLegId: correlation.providerLegId,
+      providerMessageId: correlation.providerMessageId,
       status: 'APPLIED',
       db: loadPlatformDb(),
     });
@@ -6659,7 +6690,7 @@ const handleInboundWebhook = async (
     return;
   }
 
-  const webhookReceipt = await recordConnectShyftWebhookReceipt({
+  const webhookReceipt = await beginConnectShyftWebhookReceiptProcessing({
     tenantId,
     orgUnitId,
     threadId,
@@ -6668,6 +6699,15 @@ const handleInboundWebhook = async (
     providerEventId: correlation.providerEventId,
     providerLegId: correlation.providerLegId,
     providerMessageId: correlation.providerMessageId,
+    correlationKeys: {
+      tenantId,
+      orgUnitId,
+      threadId,
+      providerEventId: correlation.providerEventId,
+      providerLegId: correlation.providerLegId,
+      providerMessageId: correlation.providerMessageId,
+      providerNumberE164: correlation.providerNumberE164,
+    },
     db: loadPlatformDb(),
   });
   if (webhookReceipt.error) {
@@ -6710,7 +6750,31 @@ const handleInboundWebhook = async (
     });
     return;
   }
-  if (webhookReceipt.duplicate) {
+
+  const markWebhookReceipt = async (
+    status: 'APPLIED' | 'FAILED_RETRYABLE' | 'FAILED_TERMINAL',
+    failureReason?: string,
+  ): Promise<void> => {
+    await markConnectShyftWebhookReceiptProcessingResult({
+      tenantId,
+      threadId,
+      providerName: providerSelection.providerResolution.resolvedProvider,
+      dedupeKey: webhookReceipt.dedupeKey,
+      canonicalEventType: eventType,
+      providerEventId: correlation.providerEventId,
+      providerLegId: correlation.providerLegId,
+      providerMessageId: correlation.providerMessageId,
+      status,
+      failureReason: failureReason || null,
+      db: loadPlatformDb(),
+    });
+  };
+
+  const shouldSuppressWebhookDuplicate = webhookReceipt.alreadyApplied
+    || webhookReceipt.previousStatus === 'RECEIVED'
+    || webhookReceipt.previousStatus === 'FAILED_TERMINAL';
+
+  if (shouldSuppressWebhookDuplicate) {
     success(res, {
       code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
       message: 'Inbound webhook accepted (duplicate suppressed)',
@@ -6767,6 +6831,7 @@ const handleInboundWebhook = async (
       });
     const neighborId = normalizedExtractedNeighborId || correlatedNeighborId;
     if (!neighborId) {
+      await markWebhookReceipt('FAILED_TERMINAL', 'neighbor_unresolved');
       refusal(res, {
         code: 'CONNECTSHYFT_WEBHOOK_NEIGHBOR_UNRESOLVED',
         message: 'Inbound SMS processing requires a resolvable neighbor context.',
@@ -6848,6 +6913,7 @@ const handleInboundWebhook = async (
       sideEffectsPersisted = persisted.sideEffectsPersisted;
     } catch (error) {
       if (error instanceof InboundSmsEnsureRefusalError) {
+        await markWebhookReceipt('FAILED_TERMINAL', 'inbound_sms_ensure_refused');
         refusal(res, {
           code: error.code,
           message: error.message,
@@ -6890,6 +6956,7 @@ const handleInboundWebhook = async (
       }
 
       if (error instanceof InboundSmsEnsurePersistenceError) {
+        await markWebhookReceipt('FAILED_RETRYABLE', 'inbound_sms_thread_ensure_persistence_unavailable');
         refusal(res, {
           code: 'CONNECTSHYFT_THREAD_ENSURE_PERSISTENCE_UNAVAILABLE',
           message: 'Inbound SMS thread ensure is temporarily unavailable.',
@@ -6928,6 +6995,7 @@ const handleInboundWebhook = async (
         return;
       }
 
+      await markWebhookReceipt('FAILED_RETRYABLE', 'inbound_sms_canonical_persistence_unavailable');
       refusal(res, {
         code: 'CONNECTSHYFT_INBOUND_SMS_PERSISTENCE_UNAVAILABLE',
         message: 'Inbound SMS processing could not persist timeline side effects.',
@@ -6968,6 +7036,7 @@ const handleInboundWebhook = async (
       return;
     }
     if (!ensuredThread || !canonicalEvent) {
+      await markWebhookReceipt('FAILED_RETRYABLE', 'inbound_sms_processing_incomplete');
       return;
     }
 
@@ -6976,6 +7045,7 @@ const handleInboundWebhook = async (
       : ensuredThread.createdAtUtc === ensuredThread.updatedAtUtc;
     const canonicalEventPersisted = true;
 
+    await markWebhookReceipt('APPLIED');
     success(res, {
       code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
       message: 'Inbound webhook accepted for processing',
@@ -7190,6 +7260,7 @@ const handleInboundWebhook = async (
       });
 
       if (!transitioned.ok) {
+        await markWebhookReceipt('FAILED_TERMINAL', 'connected_call_auto_claim_refused');
         refusal(res, {
           code: transitioned.code,
           message: transitioned.message,
@@ -7279,27 +7350,72 @@ const handleInboundWebhook = async (
     }
     : null;
 
-  const canonicalEvent = await recordCanonicalThreadEvent({
-    tenantId,
-    orgUnitId,
-    threadId: resolvedVoiceThreadId,
-    eventType,
-    payload: voiceDomainEvent
-      ? buildConnectShyftInboundVoiceCanonicalPayload({
-        domainEvent: voiceDomainEvent,
-        threadState,
-        autoClaimApplied: autoClaim?.applied === true,
-        voicemailArtifactId,
-        transcription,
-      })
-      : buildCanonicalPayloadForInboundWebhook({
-        eventType,
-        routingDecision,
-        threadState,
-        autoClaimApplied: autoClaim?.applied === true,
-      }),
-    actorUserId: resolveWebhookActorUserId(req),
-  });
+  let canonicalEvent: ConnectShyftCanonicalEventRecord;
+  try {
+    canonicalEvent = await recordCanonicalThreadEvent({
+      tenantId,
+      orgUnitId,
+      threadId: resolvedVoiceThreadId,
+      eventType,
+      payload: voiceDomainEvent
+        ? buildConnectShyftInboundVoiceCanonicalPayload({
+          domainEvent: voiceDomainEvent,
+          threadState,
+          autoClaimApplied: autoClaim?.applied === true,
+          voicemailArtifactId,
+          transcription,
+        })
+        : buildCanonicalPayloadForInboundWebhook({
+          eventType,
+          routingDecision,
+          threadState,
+          autoClaimApplied: autoClaim?.applied === true,
+        }),
+      actorUserId: resolveWebhookActorUserId(req),
+    });
+  } catch (error) {
+    await markWebhookReceipt('FAILED_RETRYABLE', 'inbound_voice_canonical_persistence_unavailable');
+    refusal(res, {
+      code: 'CONNECTSHYFT_CANONICAL_EVENT_PERSISTENCE_UNAVAILABLE',
+      message: 'Inbound voice processing could not persist canonical event side effects.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        providerResolution: {
+          ...providerSelection.providerResolution,
+          adapterInvoked: true,
+        },
+        correlation: {
+          source: correlation.source,
+          deterministic: true,
+          threadId: resolvedVoiceThreadId,
+          tenantId,
+          orgUnitId,
+          ...(voiceNeighborId ? { neighborId: voiceNeighborId } : {}),
+          providerLegId: correlation.providerLegId,
+          providerMessageId: correlation.providerMessageId,
+          providerEventId: correlation.providerEventId,
+          providerNumberE164: correlation.providerNumberE164,
+        },
+        replaySafe: {
+          duplicate: false,
+          suppressedDomainWrites: false,
+          dedupeKey: webhookReceipt.dedupeKey,
+        },
+        sideEffects: {
+          lifecycleMutationApplied: autoClaim?.applied === true,
+          canonicalEventPersisted: false,
+          outboxPersisted: false,
+        },
+        timelineOutcome: {
+          eventName: null,
+          routingDecision: 'refused',
+        },
+        error: error instanceof Error ? error.message : 'canonical-event-persistence-error',
+      },
+    });
+    return;
+  }
 
   const lifecycleEnsuredActiveThread = threadState === 'UNCLAIMED' || threadState === 'CLAIMED';
   const responseThread = thread && voiceNeighborId
@@ -7309,6 +7425,7 @@ const handleInboundWebhook = async (
     }
     : thread;
 
+  await markWebhookReceipt('APPLIED');
   success(res, {
     code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
     message: 'Inbound webhook accepted for processing',
