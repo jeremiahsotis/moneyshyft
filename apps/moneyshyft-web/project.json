@@ -25,6 +25,12 @@
         "cwd": "apps/moneyshyft-web",
         "command": "npm run preview"
       }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node scripts/enforce-workspace-boundaries.js"
+      }
     }
   }
 }
