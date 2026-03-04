@@ -15,8 +15,12 @@ Every Nx project must have exactly one lane tag or `scope:shared`.
 
 ## Current Project Inventory
 
-- `apps/moneyshyft-api/project.json`: `lane:routeshyft`, `type:app`, `runtime:node`
-- `apps/moneyshyft-web/project.json`: `lane:routeshyft`, `type:app`, `runtime:web`
+- `apps/routeshyft-api/project.json`: `lane:routeshyft`, `type:app`, `runtime:node`
+- `apps/routeshyft-web/project.json`: `lane:routeshyft`, `type:app`, `runtime:web`
+- `apps/moneyshyft-api/project.json`: legacy compatibility alias to RouteShyft app path.
+- `apps/moneyshyft-web/project.json`: legacy compatibility alias to RouteShyft web path.
+- `apps/connectshyft-api/project.json`: `lane:connectshyft`, `type:app`, `runtime:node`
+- `apps/connectshyft-web/project.json`: `lane:connectshyft`, `type:app`, `runtime:web`
 - `tools/e2e/project.json`: `lane:routeshyft`, `type:tool`, `scope:test`
 
 ## Allowed Dependency Directions

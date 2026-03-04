@@ -104,7 +104,7 @@ development_status:
   8-1-workspace-scaffold-and-nx-baseline: done
   8-2-mechanical-app-moves-with-history-preservation: done
   8-3-explicit-lane-boundary-rules: done
-  8-4-lane-extraction-transition-strategy: ready-for-dev
+  8-4-lane-extraction-transition-strategy: review
   8-5-shared-contact-safe-dedupe-contract: ready-for-dev
   8-6-service-ready-identity-boundary: ready-for-dev
   8-7-verified-patch-application-policy: ready-for-dev
