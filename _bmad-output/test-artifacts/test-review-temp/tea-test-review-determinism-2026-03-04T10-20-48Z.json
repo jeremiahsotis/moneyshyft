@@ -1,0 +1,58 @@
+{
+  "dimension": "determinism",
+  "score": 89,
+  "max_score": 100,
+  "grade": "B+",
+  "violations": [
+    {
+      "file": "tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts",
+      "line": 138,
+      "severity": "MEDIUM",
+      "category": "conditional-assertion-path",
+      "description": "Assertion for thread ID stability is guarded by a conditional branch, so the key invariant can be skipped.",
+      "suggestion": "Assert non-null ID first, then assert exact stability without conditional branching.",
+      "code_snippet": "if (priorThreadIdText) { await expect(threadIdChip).toContainText(priorThreadIdText.trim()); }"
+    },
+    {
+      "file": "tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts",
+      "line": 203,
+      "severity": "LOW",
+      "category": "branching-in-mock-handler",
+      "description": "Mock response path uses in-test branching by dispatch attempt count.",
+      "suggestion": "Prefer explicit dedicated tests or deterministic route fixtures per scenario.",
+      "code_snippet": "if (dispatchAttempts === 1) { ... }"
+    },
+    {
+      "file": "tests/support/factories/connectShyftStoryUxR4Factory.ts",
+      "line": 86,
+      "severity": "LOW",
+      "category": "randomized-correlation-id",
+      "description": "Correlation IDs are randomized, which can reduce replayability during flaky triage.",
+      "suggestion": "Allow deterministic correlation ID override from testInfo-based helper.",
+      "code_snippet": "`corr-story-ux-r4-${randomUUID().slice(0, 8)}`"
+    },
+    {
+      "file": "tests/support/factories/connectShyftStoryUxR4Factory.ts",
+      "line": 88,
+      "severity": "LOW",
+      "category": "randomized-csrf-token",
+      "description": "CSRF token defaults are randomized in factory output.",
+      "suggestion": "Use deterministic token helper for repeatable debug reproduction when needed.",
+      "code_snippet": "`csrf-story-ux-r4-${randomUUID().slice(0, 8)}`"
+    }
+  ],
+  "passed_checks": 22,
+  "failed_checks": 4,
+  "total_checks": 26,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 1,
+    "LOW": 3
+  },
+  "recommendations": [
+    "Remove conditional assertion gating for thread-id continuity checks",
+    "Use deterministic fixture IDs/tokens in debug or CI replay mode",
+    "Keep envelope-mock branches isolated by test scenario for clearer failure diagnosis"
+  ],
+  "summary": "Determinism is strong overall; minor branching/randomization patterns can be tightened for easier replay debugging."
+}

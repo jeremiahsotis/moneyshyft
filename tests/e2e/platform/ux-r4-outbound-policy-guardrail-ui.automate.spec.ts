@@ -68,9 +68,8 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
       await expect(page.getByTestId('connectshyft-preference-override-modal')).toBeVisible();
       await expect(page.getByTestId('connectshyft-preference-override-required-chip')).toBeVisible();
       await expect(page.getByTestId('connectshyft-preference-override-submit')).toBeDisabled();
-      if (priorThreadIdText) {
-        await expect(threadIdChip).toContainText(priorThreadIdText.trim());
-      }
+      expect(priorThreadIdText?.trim().length).toBeGreaterThan(0);
+      await expect(threadIdChip).toContainText((priorThreadIdText || '').trim());
     },
   );
 

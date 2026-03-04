@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { createTenantScopeHeaders } from './tenantRepositoryFactory';
 
 export type ConnectShyftFlags = {
@@ -13,6 +12,7 @@ type StoryUxR4ContextOverrides = {
   orgUnitId?: string;
   role?: string;
   userId?: string;
+  scopeId?: string;
   correlationId?: string;
   csrfToken?: string;
 };
@@ -71,9 +71,22 @@ const DEFAULT_FLAGS: ConnectShyftFlags = {
   connectshyft_webhooks_enabled: true,
 };
 
+const normalizeScopeId = (value: string | undefined): string => {
+  const normalized = (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 48);
+
+  return normalized || 'default';
+};
+
 export function createStoryUxR4Context(
   overrides: StoryUxR4ContextOverrides = {},
 ): StoryUxR4Context {
+  const scopeId = normalizeScopeId(overrides.scopeId);
+
   return {
     storyId: 'ux-r4',
     tenantId: overrides.tenantId ?? 'tenant-connectshyft-ux-r4',
@@ -83,9 +96,9 @@ export function createStoryUxR4Context(
     adminUserId: 'user-connectshyft-ux-r4-admin',
     viewerUserId: 'user-connectshyft-ux-r4-viewer',
     correlationId:
-      overrides.correlationId ?? `corr-story-ux-r4-${randomUUID().slice(0, 8)}`,
+      overrides.correlationId ?? `corr-story-ux-r4-${scopeId}`,
     csrfToken:
-      overrides.csrfToken ?? `csrf-story-ux-r4-${randomUUID().slice(0, 8)}`,
+      overrides.csrfToken ?? `csrf-story-ux-r4-${scopeId}`,
     threadIds: {
       unclaimed: 'thread-ux-r4-unclaimed-1001',
       claimed: 'thread-ux-r4-claimed-1002',

@@ -38,7 +38,7 @@ const expectThreadActions = async (
 
 test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
   test(
-    '[P0] lifecycle-specific action controls remain explicit and do not expose hidden policy paths @P0',
+    '[UXR4-ATDD-E2E-001][P0] lifecycle-specific action controls remain explicit and do not expose hidden policy paths @P0',
     async ({ page }) => {
       const context = createStoryUxR4Context();
       await login(page);
@@ -86,7 +86,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
   );
 
   test(
-    '[P0] prefers_texting NO requires explicit override reason and blocks send until validation succeeds @P0',
+    '[UXR4-ATDD-E2E-002][P0] prefers_texting NO requires explicit override reason and blocks send until validation succeeds @P0',
     async ({ page }) => {
       const context = createStoryUxR4Context();
       await login(page);
@@ -111,14 +111,15 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
   );
 
   test(
-    '[P0] outbound action from CLOSED thread reopens same thread to UNCLAIMED with explicit transition feedback @P0',
+    '[UXR4-ATDD-E2E-003][P0] outbound action from CLOSED thread reopens same thread to UNCLAIMED with explicit transition feedback @P0',
     async ({ page }) => {
       const context = createStoryUxR4Context();
       await login(page);
 
       await page.goto(
         buildThreadUrl(context, {
-          threadId: context.threadIds.closed,
+          // Use a dedicated CLOSED fixture thread for mutation to reduce cross-test coupling.
+          threadId: context.threadIds.closedPrefersNo,
           actorUserId: context.userId,
           tenantRole: 'ORGUNIT_MEMBER',
           orgUnitMemberships: [context.orgUnitId],
@@ -135,14 +136,13 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
       await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toContainText(
         /reopened/i,
       );
-      if (priorThreadIdText) {
-        await expect(threadIdChip).toContainText(priorThreadIdText.trim());
-      }
+      expect(priorThreadIdText?.trim().length).toBeGreaterThan(0);
+      await expect(threadIdChip).toContainText((priorThreadIdText || '').trim());
     },
   );
 
   test(
-    '[P1] refusal envelope mapping renders deterministic accessible policy-specific feedback @P1',
+    '[UXR4-ATDD-E2E-004][P1] refusal envelope mapping renders deterministic accessible policy-specific feedback @P1',
     async ({ page }) => {
       const context = createStoryUxR4Context();
       await login(page);
@@ -192,7 +192,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
   );
 
   test(
-    '[P1] success and error envelopes map to stable accessible feedback and avoid ambiguous fallback copy @P1',
+    '[UXR4-ATDD-E2E-005][P1] success and error envelopes map to stable accessible feedback and avoid ambiguous fallback copy @P1',
     async ({ page }) => {
       const context = createStoryUxR4Context();
       await login(page);

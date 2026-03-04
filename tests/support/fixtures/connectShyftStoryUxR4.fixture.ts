@@ -5,6 +5,13 @@ import {
   type StoryUxR4Context,
 } from '../factories/connectShyftStoryUxR4Factory';
 
+const sanitizeScopeToken = (value: string): string => value
+  .toLowerCase()
+  .replace(/[^a-z0-9-]+/g, '-')
+  .replace(/-+/g, '-')
+  .replace(/^-|-$/g, '')
+  .slice(0, 32);
+
 type StoryUxR4Fixtures = {
   storyUxR4Context: StoryUxR4Context;
   storyUxR4OperatorHeaders: Record<string, string>;
@@ -35,8 +42,10 @@ type StoryUxR4Fixtures = {
 };
 
 export const test = base.extend<StoryUxR4Fixtures>({
-  storyUxR4Context: async ({}, use) => {
-    await use(createStoryUxR4Context());
+  storyUxR4Context: async ({}, use, testInfo) => {
+    const titleScope = sanitizeScopeToken(testInfo.title);
+    const scopeId = `w${testInfo.workerIndex}-r${testInfo.retry}-${titleScope || 'ux-r4'}`;
+    await use(createStoryUxR4Context({ scopeId }));
   },
   storyUxR4OperatorHeaders: async ({ storyUxR4Context }, use) => {
     await use(

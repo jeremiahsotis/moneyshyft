@@ -1,0 +1,285 @@
+{
+  "overall_score": 84,
+  "overall_grade": "B",
+  "quality_assessment": "Good",
+  "weighted_score_raw": 84.15,
+  "dimension_scores": {
+    "determinism": 89,
+    "isolation": 88,
+    "maintainability": 66,
+    "coverage": 85,
+    "performance": 93
+  },
+  "dimension_grades": {
+    "determinism": "B+",
+    "isolation": "B+",
+    "maintainability": "D",
+    "coverage": "B",
+    "performance": "A"
+  },
+  "violations_summary": {
+    "total": 18,
+    "HIGH": 2,
+    "MEDIUM": 8,
+    "LOW": 8
+  },
+  "all_violations": [
+    {
+      "file": "tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts",
+      "line": 138,
+      "severity": "MEDIUM",
+      "category": "conditional-assertion-path",
+      "description": "Assertion for thread ID stability is guarded by a conditional branch, so the key invariant can be skipped.",
+      "suggestion": "Assert non-null ID first, then assert exact stability without conditional branching.",
+      "code_snippet": "if (priorThreadIdText) { await expect(threadIdChip).toContainText(priorThreadIdText.trim()); }",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts",
+      "line": 203,
+      "severity": "LOW",
+      "category": "branching-in-mock-handler",
+      "description": "Mock response path uses in-test branching by dispatch attempt count.",
+      "suggestion": "Prefer explicit dedicated tests or deterministic route fixtures per scenario.",
+      "code_snippet": "if (dispatchAttempts === 1) { ... }",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/support/factories/connectShyftStoryUxR4Factory.ts",
+      "line": 86,
+      "severity": "LOW",
+      "category": "randomized-correlation-id",
+      "description": "Correlation IDs are randomized, which can reduce replayability during flaky triage.",
+      "suggestion": "Allow deterministic correlation ID override from testInfo-based helper.",
+      "code_snippet": "`corr-story-ux-r4-${randomUUID().slice(0, 8)}`",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/support/factories/connectShyftStoryUxR4Factory.ts",
+      "line": 88,
+      "severity": "LOW",
+      "category": "randomized-csrf-token",
+      "description": "CSRF token defaults are randomized in factory output.",
+      "suggestion": "Use deterministic token helper for repeatable debug reproduction when needed.",
+      "code_snippet": "`csrf-story-ux-r4-${randomUUID().slice(0, 8)}`",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/support/factories/connectShyftStoryUxR4Factory.ts",
+      "line": 90,
+      "severity": "MEDIUM",
+      "category": "shared-thread-identities",
+      "description": "All tests use fixed thread IDs, increasing risk of cross-test state leakage when run concurrently against mutable environments.",
+      "suggestion": "Suffix thread IDs per test worker or inject per-test namespace in fixture factory.",
+      "code_snippet": "threadIds: { unclaimed: 'thread-ux-r4-unclaimed-1001', ... }",
+      "dimension": "isolation"
+    },
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 249,
+      "severity": "MEDIUM",
+      "category": "stateful-endpoint-reuse",
+      "description": "Lifecycle-mutating outbound actions run against shared story thread identities without explicit teardown/reset hooks.",
+      "suggestion": "Add test-scoped thread seeds or cleanup reset endpoint after mutation tests.",
+      "code_snippet": "POST .../threads/${storyUxR4Context.threadIds.closed}/call",
+      "dimension": "isolation"
+    },
+    {
+      "file": "tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts",
+      "line": 43,
+      "severity": "LOW",
+      "category": "repeated-shared-login-path",
+      "description": "Each E2E test reuses same login path and actor identity without explicit isolation assertions.",
+      "suggestion": "Introduce test-scoped auth/session fixture with clearer setup boundary.",
+      "code_snippet": "const context = createStoryUxR4Context(); await login(page);",
+      "dimension": "isolation"
+    },
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-file-too-long",
+      "description": "API ATDD file is 350 lines, exceeding TEA <300-line maintainability guardrail.",
+      "suggestion": "Split by acceptance-criterion clusters (contract matrix, override flow, lifecycle reopen, envelope feedback).",
+      "code_snippet": "// 350-line single-spec API suite",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 4,
+      "severity": "HIGH",
+      "category": "multi-concern-suite",
+      "description": "Single describe block carries multiple distinct concerns, increasing cognitive load and change blast radius.",
+      "suggestion": "Create AC-scoped describe blocks/files with shared helpers for request/response assertions.",
+      "code_snippet": "test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD API)', ... )",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 6,
+      "severity": "MEDIUM",
+      "category": "missing-stable-test-ids",
+      "description": "Priority tags exist but stable traceable case IDs are missing in test titles.",
+      "suggestion": "Prefix titles with immutable IDs (e.g., UXR4-API-001).",
+      "code_snippet": "'[P0] thread detail contract exposes ... @P0'",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts",
+      "line": 43,
+      "severity": "MEDIUM",
+      "category": "repeated-setup-pattern",
+      "description": "Context creation + login setup repeats across tests and can be extracted to fixture layers.",
+      "suggestion": "Use authenticated fixture/storageState and story context fixture composition.",
+      "code_snippet": "const context = createStoryUxR4Context(); await login(page);",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts",
+      "line": 29,
+      "severity": "LOW",
+      "category": "helper-localized-in-spec",
+      "description": "Action-label helper is local to file and may diverge from similar suites over time.",
+      "suggestion": "Move common assertion helpers into shared test utility module.",
+      "code_snippet": "const expectThreadActions = async (...) => { ... }",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 117,
+      "severity": "LOW",
+      "category": "inline-payload-literals",
+      "description": "Several inline payload literals and message strings reduce reuse and can drift from fixture defaults.",
+      "suggestion": "Centralize payload builders in fixtures/factories.",
+      "code_snippet": "data: { orgUnitId: ..., channel: 'sms', body: 'Deterministic policy-safe outbound follow-up.' }",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 291,
+      "severity": "MEDIUM",
+      "category": "missing-api-error-envelope-assertion",
+      "description": "API ATDD coverage validates success/refusal envelopes but does not assert system error envelope behavior from live API.",
+      "suggestion": "Add API case asserting canonical `error` envelope semantics and deterministic UI metadata contract where applicable.",
+      "code_snippet": "[P1] success and refusal envelopes expose deterministic accessible feedback metadata",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 4,
+      "severity": "MEDIUM",
+      "category": "missing-negative-access-control-case",
+      "description": "Suite lacks explicit unauthorized/forbidden outbound action checks for non-member role or org-unit mismatch.",
+      "suggestion": "Add one negative access-control test path for outbound send/call endpoints.",
+      "code_snippet": "// no dedicated 403/401 ux-r4 assertion in ATDD suite",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 203,
+      "severity": "LOW",
+      "category": "invalid-override-atdd-gap",
+      "description": "Invalid override reason path is present in automate expansion but not in core ux-r4 ATDD suite.",
+      "suggestion": "Promote one invalid-override path into core ATDD to keep baseline contract complete.",
+      "code_snippet": "[P1] nested override payload fields are accepted ...",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts",
+      "line": 43,
+      "severity": "MEDIUM",
+      "category": "repeated-ui-login",
+      "description": "Each E2E test performs full UI login flow, increasing runtime and noise for functional assertions.",
+      "suggestion": "Use storageState/session fixture to reuse authenticated context.",
+      "code_snippet": "await login(page);",
+      "dimension": "performance"
+    },
+    {
+      "file": "tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts",
+      "line": 46,
+      "severity": "LOW",
+      "category": "multi-navigation-in-single-test",
+      "description": "Lifecycle matrix test performs three navigations in one test body.",
+      "suggestion": "Split into parameterized cases or keep as-is if preserving matrix intent is preferred.",
+      "code_snippet": "await page.goto(...unclaimed); ... await page.goto(...claimed); ... await page.goto(...closed);",
+      "dimension": "performance"
+    }
+  ],
+  "high_severity_violations": [
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-file-too-long",
+      "description": "API ATDD file is 350 lines, exceeding TEA <300-line maintainability guardrail.",
+      "suggestion": "Split by acceptance-criterion clusters (contract matrix, override flow, lifecycle reopen, envelope feedback).",
+      "code_snippet": "// 350-line single-spec API suite",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 4,
+      "severity": "HIGH",
+      "category": "multi-concern-suite",
+      "description": "Single describe block carries multiple distinct concerns, increasing cognitive load and change blast radius.",
+      "suggestion": "Create AC-scoped describe blocks/files with shared helpers for request/response assertions.",
+      "code_snippet": "test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD API)', ... )",
+      "dimension": "maintainability"
+    }
+  ],
+  "top_10_recommendations": [
+    {
+      "dimension": "maintainability",
+      "recommendation": "Split ux-r4 API suite into smaller AC-focused files",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "maintainability",
+      "recommendation": "Add stable test IDs for durable traceability",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "maintainability",
+      "recommendation": "Extract repeated login/context setup into reusable fixtures",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Remove conditional assertion gating for thread-id continuity checks",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Use deterministic fixture IDs/tokens in debug or CI replay mode",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Keep envelope-mock branches isolated by test scenario for clearer failure diagnosis",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "isolation",
+      "recommendation": "Make thread IDs test-scoped to avoid order-dependent behavior",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "isolation",
+      "recommendation": "Reset lifecycle-mutated fixtures between tests",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "isolation",
+      "recommendation": "Use isolated auth/session fixture boundaries for E2E cases",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "coverage",
+      "recommendation": "Add API-level system error envelope test",
+      "impact": "MEDIUM"
+    }
+  ],
+  "subprocess_execution": "PARALLEL (5 quality dimensions)",
+  "performance_gain": "~60% faster than sequential",
+  "generated_at": "2026-03-04T10:23:05.609Z"
+}
