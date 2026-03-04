@@ -1,0 +1,15 @@
+{
+  "name": "connectshyft-web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/connectshyft-web/src",
+  "tags": ["lane:connectshyft", "type:app", "runtime:web"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node scripts/enforce-workspace-boundaries.js"
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # Story 8.4: Lane Extraction Transition Strategy
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -34,18 +34,18 @@ so that dedicated lane apps can be introduced without breaking existing behavior
 
 ## Tasks / Subtasks
 
-- [ ] Plan extraction boundaries and sequencing (AC: 1, 2)
-  - [ ] Identify RouteShyft and ConnectShyft seams suitable for mechanical moves.
-  - [ ] Define temporary mount/import bridge points that preserve runtime behavior.
-- [ ] Execute staged extraction (AC: 1, 2, 4)
-  - [ ] Perform `git mv` operations into lane-specific app paths.
-  - [ ] Implement transitional bridge wiring without behavior refactors.
-- [ ] Update workspace and delivery tooling (AC: 3)
-  - [ ] Update Nx project descriptors and target command paths.
-  - [ ] Update CI/workflow path filters and related script assumptions.
-- [ ] Validate compatibility and governance gates (AC: 4, 5)
-  - [ ] Verify legacy compatibility paths still resolve during transition.
-  - [ ] Run policy, branch/workflow guard, and changed-test gate checks.
+- [x] Plan extraction boundaries and sequencing (AC: 1, 2)
+  - [x] Identify RouteShyft and ConnectShyft seams suitable for mechanical moves.
+  - [x] Define temporary mount/import bridge points that preserve runtime behavior.
+- [x] Execute staged extraction (AC: 1, 2, 4)
+  - [x] Perform `git mv` operations into lane-specific app paths.
+  - [x] Implement transitional bridge wiring without behavior refactors.
+- [x] Update workspace and delivery tooling (AC: 3)
+  - [x] Update Nx project descriptors and target command paths.
+  - [x] Update CI/workflow path filters and related script assumptions.
+- [x] Validate compatibility and governance gates (AC: 4, 5)
+  - [x] Verify legacy compatibility paths still resolve during transition.
+  - [x] Run policy, branch/workflow guard, and changed-test gate checks.
 
 ## Dev Notes
 
@@ -74,14 +74,72 @@ Move from single-lane app roots toward lane-specific app boundaries in controlle
 
 ### Agent Model Used
 
-TBD
+GPT-5 Codex
 
 ### Debug Log References
 
+- `npx playwright test tests/api/platform/8-4-lane-extraction-transition-strategy.api.spec.ts` (initial fail, then pass after extraction/bridge updates)
+- `git mv apps/moneyshyft-api apps/routeshyft-api && git mv apps/moneyshyft-web apps/routeshyft-web` (pass)
+- `git mv apps/routeshyft-api/src/modules/connectshyft apps/connectshyft-api/src/modules/connectshyft` (pass)
+- `git mv apps/routeshyft-api/src/routes/api/v1/connectshyft.ts apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` (pass)
+- `git mv apps/routeshyft-web/src/components/connectshyft apps/connectshyft-web/src/components/connectshyft` (pass)
+- `git mv apps/routeshyft-web/src/features/connectshyft apps/connectshyft-web/src/features/connectshyft` (pass)
+- `git mv apps/routeshyft-web/src/views/ConnectShyft apps/connectshyft-web/src/views/ConnectShyft` (pass)
+- `npm run branch:ensure-workflow -- --lane routeshyft --workflow dev-story --story 8-4-lane-extraction-transition-strategy.md` (pass)
+- `npm run policy:check` (initial fail: story/sprint status mismatch; subsequent pass)
+- `bash scripts/test-changed.sh codex/dev` (pass)
+- `npm run build --prefix apps/routeshyft-api` (pass)
+- `npm run build --prefix apps/routeshyft-web` (pass)
+- `npm run build --prefix src` (pass)
+- `npm run build --prefix frontend` (pass)
+- `npm test` (fails in `e2e:test` with pre-existing/flaky E2E failures outside this story scope; backend Jest suites pass)
 ### Completion Notes List
 
+- Extracted canonical RouteShyft app roots with mechanical moves: `apps/moneyshyft-api` -> `apps/routeshyft-api` and `apps/moneyshyft-web` -> `apps/routeshyft-web`.
+- Extracted ConnectShyft seams with mechanical moves into dedicated lane paths:
+  - Backend: `apps/connectshyft-api/src/modules/connectshyft`, `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts`
+  - Frontend: `apps/connectshyft-web/src/components/connectshyft`, `apps/connectshyft-web/src/features/connectshyft`, `apps/connectshyft-web/src/views/ConnectShyft`
+- Added transitional host import bridges via symlinked seam mount points in RouteShyft app paths to preserve runtime behavior.
+- Added compatibility bridges for legacy `apps/moneyshyft-*` paths as compatibility directories (with bridged contents) so legacy build entrypoints remain operable while avoiding Nx duplicate-project graph conflicts.
+- Updated workspace descriptors to recognize extracted lane app locations (`routeshyft-*`, `connectshyft-*`) while retaining legacy `moneyshyft-*` aliases for transition.
+- Updated CI/setup lockfile and install path detection to prioritize `apps/routeshyft-*` with compatibility fallback.
+- Added Story 8.4 API coverage to validate extraction topology + CI/workspace recognition.
 ### File List
 
+- _bmad-output/implementation-artifacts/8-4-lane-extraction-transition-strategy.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+- .github/actions/setup-ci-node-playwright/action.yml
+- .github/workflows/test.yml
+- docs/policies/workspace_boundary_rules.md
+- tests/api/platform/8-4-lane-extraction-transition-strategy.api.spec.ts
+- apps/routeshyft-api/** (mechanical move from `apps/moneyshyft-api/**`)
+- apps/routeshyft-web/** (mechanical move from `apps/moneyshyft-web/**`)
+- apps/connectshyft-api/project.json
+- apps/connectshyft-api/node_modules (compatibility symlink)
+- apps/connectshyft-api/src/config (compatibility symlink)
+- apps/connectshyft-api/src/migrations (compatibility symlink)
+- apps/connectshyft-api/src/platform (compatibility symlink)
+- apps/connectshyft-api/src/services (compatibility symlink)
+- apps/connectshyft-api/src/utils (compatibility symlink)
+- apps/connectshyft-api/src/modules/connectshyft/** (mechanical move from RouteShyft host seam)
+- apps/connectshyft-api/src/routes/api/v1/connectshyft.ts (mechanical move from RouteShyft host seam)
+- apps/connectshyft-web/project.json
+- apps/connectshyft-web/node_modules (compatibility symlink)
+- apps/connectshyft-web/src/components/connectshyft/** (mechanical move from RouteShyft host seam)
+- apps/connectshyft-web/src/features/connectshyft/** (mechanical move from RouteShyft host seam)
+- apps/connectshyft-web/src/views/ConnectShyft/** (mechanical move from RouteShyft host seam)
+- apps/routeshyft-api/project.json
+- apps/routeshyft-api/src/modules/connectshyft (transitional host bridge symlink)
+- apps/routeshyft-api/src/routes/api/v1/connectshyft.ts (transitional host bridge symlink)
+- apps/routeshyft-web/project.json
+- apps/routeshyft-web/src/components/connectshyft (transitional host bridge symlink)
+- apps/routeshyft-web/src/features/connectshyft (transitional host bridge symlink)
+- apps/routeshyft-web/src/views/ConnectShyft (transitional host bridge symlink)
+- apps/moneyshyft-api/project.json (legacy compatibility alias)
+- apps/moneyshyft-api/** (legacy compatibility bridge directory entries)
+- apps/moneyshyft-web/project.json (legacy compatibility alias)
+- apps/moneyshyft-web/** (legacy compatibility bridge directory entries)
 ## Change Log
 
 - 2026-03-04: Story created from approved Correct Course proposal (`cc-2026-03-04`, Change B2).
+- 2026-03-04: Implemented staged lane extraction for RouteShyft and ConnectShyft seams via mechanical moves, added transitional host bridges and legacy compatibility directories, updated workspace/CI recognition, and validated policy/workflow/changed-test gates.

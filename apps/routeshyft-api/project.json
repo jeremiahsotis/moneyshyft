@@ -1,0 +1,43 @@
+{
+  "name": "routeshyft-api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/routeshyft-api/src",
+  "tags": ["lane:routeshyft", "type:app", "runtime:node"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/routeshyft-api",
+        "command": "npm run dev"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/routeshyft-api",
+        "command": "npm run build"
+      }
+    },
+    "start": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/routeshyft-api",
+        "command": "npm run start"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/routeshyft-api",
+        "command": "npm test"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node scripts/enforce-workspace-boundaries.js"
+      }
+    }
+  }
+}

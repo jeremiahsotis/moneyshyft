@@ -1,6 +1,1 @@
-node_modules
-dist
-npm-debug.log
-Dockerfile
-.git
-.env
+../routeshyft-api/.dockerignore.bak

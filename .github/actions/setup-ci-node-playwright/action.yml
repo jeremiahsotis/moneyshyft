@@ -28,6 +28,8 @@ runs:
         cache: npm
         cache-dependency-path: |
           package-lock.json
+          apps/routeshyft-web/package-lock.json
+          apps/routeshyft-api/package-lock.json
           apps/moneyshyft-web/package-lock.json
           apps/moneyshyft-api/package-lock.json
           frontend/package-lock.json
@@ -50,24 +52,28 @@ runs:
       if: inputs.install_frontend == 'true'
       shell: bash
       run: |
-        if [ -f apps/moneyshyft-web/package-lock.json ]; then
+        if [ -f apps/routeshyft-web/package-lock.json ]; then
+          npm ci --prefix apps/routeshyft-web || npm ci --prefix apps/routeshyft-web || npm install --prefix apps/routeshyft-web --no-audit --fund=false
+        elif [ -f apps/moneyshyft-web/package-lock.json ]; then
           npm ci --prefix apps/moneyshyft-web || npm ci --prefix apps/moneyshyft-web || npm install --prefix apps/moneyshyft-web --no-audit --fund=false
         elif [ -f frontend/package-lock.json ]; then
           npm ci --prefix frontend || npm ci --prefix frontend || npm install --prefix frontend --no-audit --fund=false
         else
-          npm install --prefix apps/moneyshyft-web --no-audit --fund=false
+          npm install --prefix apps/routeshyft-web --no-audit --fund=false
         fi
 
     - name: Install backend dependencies
       if: inputs.install_src == 'true'
       shell: bash
       run: |
-        if [ -f apps/moneyshyft-api/package-lock.json ]; then
+        if [ -f apps/routeshyft-api/package-lock.json ]; then
+          npm ci --prefix apps/routeshyft-api --omit=dev || npm ci --prefix apps/routeshyft-api --omit=dev || npm install --prefix apps/routeshyft-api --omit=dev --no-audit --fund=false
+        elif [ -f apps/moneyshyft-api/package-lock.json ]; then
           npm ci --prefix apps/moneyshyft-api --omit=dev || npm ci --prefix apps/moneyshyft-api --omit=dev || npm install --prefix apps/moneyshyft-api --omit=dev --no-audit --fund=false
         elif [ -f src/package-lock.json ]; then
           npm ci --prefix src --omit=dev || npm ci --prefix src --omit=dev || npm install --prefix src --omit=dev --no-audit --fund=false
         else
-          npm install --prefix apps/moneyshyft-api --omit=dev --no-audit --fund=false
+          npm install --prefix apps/routeshyft-api --omit=dev --no-audit --fund=false
         fi
 
     - name: Cache Playwright browsers (fallback)
