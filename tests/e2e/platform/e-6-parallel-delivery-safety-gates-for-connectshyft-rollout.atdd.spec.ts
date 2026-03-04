@@ -6,7 +6,7 @@ import { runBranchWorkflowGuardInTempRepo } from '../../support/utils/branchWork
 test.describe(
   'Story e.6 Parallel Delivery Safety Gates for ConnectShyft Rollout (ATDD E2E RED)',
   () => {
-    test.skip(
+    test(
       '[E6-ATDD-E2E-001][P1] maintainer journey fails fast on protected branches and provides story-branch remediation plus workflow-guard diagnostics @P1',
       async ({ storyE6Context }) => {
         const policyResult = runPolicyScriptInTempRepo(
@@ -54,7 +54,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E6-ATDD-E2E-002][P0] release-readiness summary blocks merge when ConnectShyft quality gates or RouteShyft regression lane are incomplete @P0',
       async ({ storyE6Context }) => {
         const workflow = readFileSync(storyE6Context.workflowFile, 'utf8');
@@ -80,7 +80,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E6-ATDD-E2E-003][P1] operator release-playbook journey keeps allow-list controls and rollback references synchronized across deployment docs and provider rollout contracts @P1',
       async ({ storyE6Context }) => {
         const deploymentChecklist = readFileSync(storyE6Context.deploymentChecklistFile, 'utf8');

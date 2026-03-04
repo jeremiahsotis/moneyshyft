@@ -43,7 +43,7 @@ function getNeeds(jobBlock: string): string[] {
 test.describe(
   'Story e.6 Parallel Delivery Safety Gates for ConnectShyft Rollout (ATDD API RED)',
   () => {
-    test.skip(
+    test(
       '[E6-ATDD-API-001][P0] ConnectShyft CI executes npm run policy:check as the first blocking gate before lint/test quality stages @P0',
       async ({ storyE6Context }) => {
         const workflow = readFileSync(storyE6Context.workflowFile, 'utf8');
@@ -63,7 +63,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E6-ATDD-API-002][P0] policy checks block provider-coupled bypass paths and route/connectshyft boundary violations deterministically @P0',
       async ({ storyE6Context }) => {
         const providerCouplingResult = runPolicyScriptInTempRepo(
@@ -120,7 +120,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E6-ATDD-API-003][P0] merge gating enforces both RouteShyft regression lane completion and ConnectShyft quality gates before release-readiness turns ready @P0',
       async ({ storyE6Context }) => {
         const workflow = readFileSync(storyE6Context.workflowFile, 'utf8');
@@ -146,7 +146,7 @@ test.describe(
       },
     );
 
-    test.skip(
+    test(
       '[E6-ATDD-API-004][P1] rollout controls keep feature-flag allow-list gates explicit and rollback playbooks current and testable @P1',
       async ({ storyE6Context }) => {
         const providerRegistry = readFileSync(storyE6Context.providerRegistryFile, 'utf8');

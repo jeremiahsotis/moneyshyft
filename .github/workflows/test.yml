@@ -169,14 +169,80 @@ jobs:
             tests/artifacts/runtime/
           retention-days: 30
 
+  burn-in:
+    name: burn-in
+    runs-on: ubuntu-latest
+    needs: [test, changes]
+    if: needs.changes.outputs.run_heavy_ci == 'true' && needs.test.result == 'success'
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-jammy
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: moneyshyft_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d moneyshyft_ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/moneyshyft_ci
+      TEST_ENV: local
+      ENABLE_TEST_AUTH_HARNESS: 'true'
+      TEST_EMAIL: test@example.com
+      TEST_PASSWORD: test1234
+      BASE_URL: http://localhost:5174
+      API_URL: http://localhost:3000
+      API_BASE_URL: http://localhost:3000
+      FRONTEND_URL: http://localhost:5174
+      VITE_API_PROXY_TARGET: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-ci-node-playwright
+        with:
+          install_src: 'true'
+          install_frontend: 'true'
+          ensure_playwright: 'true'
+      - name: Run burn-in loop (10 iterations)
+        run: |
+          BASE_REF="origin/production"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+          fi
+          bash scripts/ci-run-playwright-stack.sh bash scripts/burn-in.sh 10 "$BASE_REF"
+      - name: Upload burn-in artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: burn-in-artifacts
+          path: |
+            tests/artifacts/test-results/
+            tests/artifacts/playwright-report/
+            tests/artifacts/junit/
+            tests/artifacts/runtime/
+          retention-days: 30
+
   quality-gates:
     name: quality-gates
     runs-on: ubuntu-latest
-    needs: [test, changes]
-    if: always() && (needs.test.result == 'success' || (needs.test.result == 'skipped' && needs.changes.outputs.run_heavy_ci != 'true'))
+    needs: [burn-in, test, changes]
+    if: |
+      always() && (
+        (needs.test.result == 'success' && needs['burn-in'].result == 'success') ||
+        (
+          needs.test.result == 'skipped' &&
+          needs['burn-in'].result == 'skipped' &&
+          needs.changes.outputs.run_heavy_ci != 'true'
+        )
+      )
     steps:
       - name: Skip quality gates for docs/story-artifact-only PRs
-        if: needs.test.result == 'skipped'
+        if: needs.test.result == 'skipped' && needs['burn-in'].result == 'skipped'
         run: |
           {
             echo "## Quality Gates"
@@ -267,7 +333,7 @@ jobs:
   report:
     name: report
     runs-on: ubuntu-latest
-    needs: [changes, policy, lint, test, quality-gates, epic-0-quality, backend-contracts]
+    needs: [changes, policy, lint, test, burn-in, quality-gates, epic-0-quality, backend-contracts]
     if: always()
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -285,6 +351,9 @@ jobs:
           fi
           if [ "${{ needs.changes.outputs.run_heavy_ci }}" = "true" ] && [ "${{ needs.test.result }}" != "success" ]; then
             blocked_jobs+=("test")
+          fi
+          if [ "${{ needs.changes.outputs.run_heavy_ci }}" = "true" ] && [ "${{ needs['burn-in'].result }}" != "success" ]; then
+            blocked_jobs+=("burn-in")
           fi
           if [ "${{ needs.changes.outputs.run_heavy_ci }}" = "true" ] && [ "${{ needs['quality-gates'].result }}" != "success" ]; then
             blocked_jobs+=("quality-gates")
@@ -310,6 +379,7 @@ jobs:
             echo "- lint: ${{ needs.lint.result }}"
             echo "- changes: ${{ needs.changes.outputs.reason }}"
             echo "- test: ${{ needs.test.result }}"
+            echo "- burn-in: ${{ needs['burn-in'].result }}"
             echo "- quality-gates: ${{ needs['quality-gates'].result }}"
             echo "- epic-0-quality: ${{ needs['epic-0-quality'].result }}"
             echo "- backend-contracts: ${{ needs['backend-contracts'].result }}"
