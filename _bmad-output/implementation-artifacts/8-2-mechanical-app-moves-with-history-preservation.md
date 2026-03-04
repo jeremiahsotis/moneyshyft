@@ -1,6 +1,6 @@
 # Story 8.2: Mechanical App Moves with History Preservation
 
-Status: review
+Status: done
 
 ## Story
 
@@ -110,7 +110,24 @@ GPT-5 Codex
 - src (compatibility symlink to `apps/moneyshyft-api`)
 - frontend (compatibility symlink to `apps/moneyshyft-web`)
 
+## Senior Developer Review (AI)
+
+- Date: 2026-03-04
+- Reviewer: Jeremiah (AI-assisted code review workflow)
+- Outcome: Approved
+- Findings:
+  - No HIGH or MEDIUM issues found in the moved app paths, compatibility symlinks, Nx descriptors, or CI path updates.
+- Validation Evidence:
+  - `git log --follow --name-status -- apps/moneyshyft-api/package.json` (shows `R100` from `src/package.json`)
+  - `git log --follow --name-status -- apps/moneyshyft-web/package.json` (shows `R100` from `frontend/package.json`)
+  - `npm run branch:ensure-workflow -- --lane routeshyft --workflow dev-story --story 8-2-mechanical-app-moves-with-history-preservation` (pass)
+  - `npm run policy:check` (pass)
+  - `bash scripts/test-changed.sh codex/dev` (pass: no changed spec files, skipped as designed)
+  - `npx nx run moneyshyft-api:build && npx nx run moneyshyft-web:build` (pass)
+  - `npm run build --prefix src && npm run build --prefix frontend` (pass via compatibility symlinks)
+
 ## Change Log
 
 - 2026-03-04: Story drafted for mechanical app moves with history preservation.
 - 2026-03-04: Story implemented with git-history-preserving app moves, transitional compatibility symlinks, and CI/path updates; status set to `review`.
+- 2026-03-04: Senior Developer Review (AI) completed; no blocking findings, status set to `done`.
