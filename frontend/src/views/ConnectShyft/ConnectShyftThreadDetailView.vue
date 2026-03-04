@@ -968,6 +968,8 @@ const executeThreadAction = async (
       ok?: boolean;
       code?: unknown;
       message?: string;
+      errorType?: unknown;
+      refusalType?: unknown;
       data?: {
         thread?: unknown;
         lifecycleEvent?: unknown;
@@ -995,8 +997,11 @@ const executeThreadAction = async (
       const refusalUiSeverity = typeof envelope.data?.uiFeedback?.severity === 'string'
         ? envelope.data.uiFeedback.severity.trim().toLowerCase()
         : '';
+      const envelopeErrorType = typeof envelope.errorType === 'string'
+        ? envelope.errorType.trim().toLowerCase()
+        : '';
       const refusalMapsToError = refusalUiSeverity === 'error'
-        || envelope.code === 'CONNECTSHYFT_OUTBOUND_POLICY_GUARDRAIL_ERROR';
+        || envelopeErrorType === 'system';
 
       applyThreadUpdate(envelope.data?.thread);
 

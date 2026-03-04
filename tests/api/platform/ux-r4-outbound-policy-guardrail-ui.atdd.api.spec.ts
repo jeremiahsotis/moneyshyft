@@ -200,6 +200,53 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD API)', () => {
   );
 
   test(
+    '[P1] nested override payload fields are accepted for prefers_texting NO dispatches @P1',
+    async ({
+      request,
+      storyUxR4Context,
+      storyUxR4OperatorHeaders,
+    }) => {
+      const response = await apiRequest(request, {
+        method: 'POST',
+        path: `${storyUxR4Context.paths.threads}/${storyUxR4Context.threadIds.unclaimedPrefersNo}/messages`,
+        headers: storyUxR4OperatorHeaders,
+        data: {
+          orgUnitId: storyUxR4Context.orgUnitId,
+          channel: 'sms',
+          body: 'Outbound guardrail action with nested override payload.',
+          override: {
+            reasonCode: 'SAFETY-FOLLOW-UP',
+            note: 'Nested override payload accepted for audit-safe dispatch.',
+          },
+        },
+      });
+
+      expect(response.status()).toBe(200);
+      const body = await response.json();
+
+      expect(body).toMatchObject({
+        ok: true,
+        code: storyUxR4Context.envelopeCodes.success,
+        data: {
+          preferencePolicy: {
+            overrideRequired: true,
+            overrideAccepted: true,
+            override: {
+              reason: 'safety-follow-up',
+              note: 'Nested override payload accepted for audit-safe dispatch.',
+            },
+          },
+          sideEffects: {
+            messageDispatched: true,
+            lifecycleMutationApplied: false,
+            auditPersisted: true,
+          },
+        },
+      });
+    },
+  );
+
+  test(
     '[P0] outbound action from CLOSED thread reopens the same thread to UNCLAIMED before dispatch @P0',
     async ({
       request,

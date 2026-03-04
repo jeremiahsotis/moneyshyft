@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { login } from '../../helpers/auth';
 import {
   createStoryUxR4Context,
@@ -26,6 +26,16 @@ const buildThreadUrl = (
   return `${context.paths.threadDetailUi}/${options.threadId}?${params.toString()}`;
 };
 
+const expectThreadActions = async (
+  page: Page,
+  expected: string[],
+): Promise<void> => {
+  const labels = (await page.getByTestId('connectshyft-thread-action-label').allTextContents())
+    .map((label) => label.trim())
+    .filter((label) => label.length > 0);
+  expect(labels).toEqual(expected);
+};
+
 test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
   test(
     '[P0] lifecycle-specific action controls remain explicit and do not expose hidden policy paths @P0',
@@ -44,7 +54,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
       await expect(page.getByRole('button', { name: /Text|Send Message/i })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toBeVisible();
-      await expect(page.getByTestId('connectshyft-hidden-policy-action')).toHaveCount(0);
+      await expectThreadActions(page, ['Call', 'Text', 'Claim']);
 
       await page.goto(
         buildThreadUrl(context, {
@@ -58,7 +68,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
       await expect(page.getByRole('button', { name: /Text|Send Message/i })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
-      await expect(page.getByTestId('connectshyft-hidden-policy-action')).toHaveCount(0);
+      await expectThreadActions(page, ['Call', 'Text', 'Close']);
 
       await page.goto(
         buildThreadUrl(context, {
@@ -71,7 +81,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
       await expect(page.getByRole('button', { name: /Text|Send Message/i })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
-      await expect(page.getByTestId('connectshyft-hidden-policy-action')).toHaveCount(0);
+      await expectThreadActions(page, ['Call', 'Send Message']);
     },
   );
 
@@ -211,14 +221,16 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
         }
 
         await route.fulfill({
-          status: 500,
+          status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
             ok: false,
-            code: context.envelopeCodes.error,
+            code: 'CONNECTSHYFT_PROVIDER_DISPATCH_FAILED',
+            message: 'Unable to send message because policy guardrail validation failed.',
+            errorType: 'system',
             data: {
               uiFeedback: {
-                severity: 'error',
+                severity: 'warning',
                 ariaLive: 'assertive',
                 messageKey: 'connectshyft.outbound.error',
                 message: 'Unable to send message because policy guardrail validation failed.',

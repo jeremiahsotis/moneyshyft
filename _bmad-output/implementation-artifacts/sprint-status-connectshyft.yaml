@@ -87,7 +87,7 @@ development_status:
   ux-r1-mobile-first-inbox-mine-thread-redesign: done
   ux-r2-accessibility-and-language-hardening: done
   ux-r3-voicemail-and-indicator-behavior: done
-  ux-r4-outbound-policy-guardrail-ui: review
+  ux-r4-outbound-policy-guardrail-ui: done
   epic-ux-remediation-retrospective: optional
 
 change_controls:

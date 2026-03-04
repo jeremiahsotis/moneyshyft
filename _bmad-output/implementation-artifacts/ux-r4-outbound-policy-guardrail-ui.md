@@ -1,6 +1,6 @@
 # Story ux-r4: Outbound Policy Guardrail UI
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -142,6 +142,10 @@ GPT-5 Codex
 - `npm run build` in `frontend/` (pass)
 - `npm run build` in `src/` (pass)
 - `npm run policy:check` (pass)
+- `npm run test:e2e -- tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts` after review remediation (pass)
+- `npm run test:e2e -- tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts` after review remediation (pass)
+- `npm run build` in `frontend/` after review remediation (pass)
+- `npm run build` in `src/` after review remediation (pass)
 
 ### Completion Notes List
 
@@ -152,6 +156,9 @@ GPT-5 Codex
 - Hardened outbound message policy parsing to accept both flat (`overrideReason`, `overrideNote`) and nested (`override.reasonCode`/`override.note`) override payloads.
 - Added deterministic policy error UX handling in thread detail via `connectshyft-policy-error-banner` and canonical mapping for `error` envelopes without ambiguous fallback copy.
 - Replaced ux-r4 API/E2E RED placeholders with active ATDD coverage for action matrices, override-required refusal/success paths, closed-thread reopen behavior, role-admin action visibility, and deterministic success/refusal/error messaging.
+- Tightened non-success envelope handling to map system errors via envelope taxonomy (`errorType=system`) instead of relying on non-canonical error codes.
+- Reworked ux-r4 action-surface E2E assertions to validate exact lifecycle action sets, removing non-diagnostic hidden-policy selector checks.
+- Added ux-r4 API ATDD coverage for nested override payloads (`override.reasonCode` / `override.note`) to validate hardened parsing paths.
 
 ### File List
 
@@ -167,7 +174,12 @@ GPT-5 Codex
 - tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts
 - tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts
 
+## Senior Developer Review (AI)
+
+- 2026-03-04: Review findings remediated. Fixed error taxonomy drift in thread-detail envelope handling, strengthened lifecycle action-surface assertions to be explicit and diagnostic, and added nested override payload ATDD coverage. Re-ran ux-r4 API/E2E suites plus frontend/backend builds; all pass.
+
 ## Change Log
 
 - 2026-02-25: Created Story ux-r4 ready-for-dev context document.
 - 2026-03-03: Implemented ux-r4 outbound policy guardrail UI contracts, deterministic success/refusal/error feedback mapping, and active API/E2E ATDD coverage including role-admin action-path verification.
+- 2026-03-04: Applied code-review remediation for taxonomy alignment, diagnostic action-surface assertions, and nested override payload contract coverage; story moved to done.
