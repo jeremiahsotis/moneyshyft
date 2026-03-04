@@ -12,10 +12,12 @@ docker-build/
 # Dependencies
 node_modules/
 */node_modules/
+apps/*/node_modules/
 
 # Build outputs
 dist/
 build/
+apps/*/dist/
 *.tsbuildinfo
 
 # Logs

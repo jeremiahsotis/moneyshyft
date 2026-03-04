@@ -2,34 +2,34 @@
   "name": "moneyshyft-api",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
-  "sourceRoot": "src/src",
+  "sourceRoot": "apps/moneyshyft-api/src",
   "tags": ["lane:moneyshyft", "type:app", "runtime:node"],
   "targets": {
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "cwd": "src",
+        "cwd": "apps/moneyshyft-api",
         "command": "npm run dev"
       }
     },
     "build": {
       "executor": "nx:run-commands",
       "options": {
-        "cwd": "src",
+        "cwd": "apps/moneyshyft-api",
         "command": "npm run build"
       }
     },
     "start": {
       "executor": "nx:run-commands",
       "options": {
-        "cwd": "src",
+        "cwd": "apps/moneyshyft-api",
         "command": "npm run start"
       }
     },
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "cwd": "src",
+        "cwd": "apps/moneyshyft-api",
         "command": "npm test"
       }
     }
