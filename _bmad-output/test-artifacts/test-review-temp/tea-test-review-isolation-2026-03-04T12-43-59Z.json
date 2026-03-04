@@ -1,0 +1,40 @@
+{
+  "dimension": "isolation",
+  "score": 93,
+  "max_score": 100,
+  "grade": "A",
+  "violations": [
+    {
+      "file": "tests/api/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.atdd.api.spec.ts",
+      "line": 25,
+      "severity": "MEDIUM",
+      "category": "no-explicit-cleanup",
+      "description": "Tests create mappings and receipt rows but do not perform explicit teardown, relying on uniqueness and retention windows for isolation.",
+      "suggestion": "Add optional test-scope cleanup hooks (or reset helpers) for long-running shared environments to keep state bounded.",
+      "code_snippet": "const mappingResponse = await apiRequest(request, { method: 'POST', path: storyE5Context.paths.numbersCollection, ... });"
+    },
+    {
+      "file": "tests/support/factories/connectShyftStoryE5Factory.ts",
+      "line": 95,
+      "severity": "LOW",
+      "category": "shared-tenant-defaults",
+      "description": "Factory defaults use stable tenant/orgUnit identifiers; this is practical but can increase cross-run coupling in persistent shared test environments.",
+      "suggestion": "Allow easy override to per-run tenant/orgUnit in environments where data reset is not guaranteed.",
+      "code_snippet": "tenantId: overrides.tenantId ?? 'tenant-connectshyft-e5'"
+    }
+  ],
+  "passed_checks": 18,
+  "failed_checks": 2,
+  "total_checks": 20,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 1,
+    "LOW": 1
+  },
+  "recommendations": [
+    "Introduce optional teardown/reset utility for mappings/receipts",
+    "Keep fixture-based context generation to preserve test independence",
+    "Preserve unique deterministic event/message IDs to avoid collisions"
+  ],
+  "summary": "Isolation is good with fixture-based context and unique IDs; explicit cleanup strategy could be strengthened for long-lived shared environments."
+}

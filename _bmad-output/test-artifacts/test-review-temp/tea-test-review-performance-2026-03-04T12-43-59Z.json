@@ -1,0 +1,47 @@
+{
+  "dimension": "performance",
+  "score": 88,
+  "max_score": 100,
+  "grade": "B",
+  "violations": [
+    {
+      "file": "tests/api/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.atdd.api.spec.ts",
+      "line": 277,
+      "severity": "MEDIUM",
+      "category": "strict-wall-clock-budget-assert",
+      "description": "A hard latency threshold based on process wall-clock can be sensitive to host noise in shared CI runners.",
+      "suggestion": "Use percentile/service-timing-based budget checks or add controlled tolerance for CI jitter.",
+      "code_snippet": "expect(elapsedMs).toBeLessThanOrEqual(storyE5Context.latencyBudgetMs);"
+    },
+    {
+      "file": "tests/api/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.automate.api.spec.ts",
+      "line": 25,
+      "severity": "LOW",
+      "category": "repeated-arrange-overhead",
+      "description": "Each scenario re-creates mapping/setup independently; this is safe but increases suite runtime and boilerplate.",
+      "suggestion": "Use scoped reusable setup helpers where safe to reduce repeated overhead.",
+      "code_snippet": "const mappingResponse = await apiRequest(request, {...});"
+    }
+  ],
+  "passed_checks": 18,
+  "failed_checks": 2,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 1,
+    "LOW": 1
+  },
+  "performance_metrics": {
+    "parallelizable_tests": 100,
+    "serial_tests": 0,
+    "avg_test_duration_estimate": "< 1.5 min target appears achievable; not executed in this review run",
+    "slow_tests": [
+      "Potential CI outliers for duplicate-burst latency budget assertions"
+    ]
+  },
+  "recommendations": [
+    "Keep Promise.all burst strategy and avoid serial mode",
+    "Tune latency budget checks for CI jitter resistance",
+    "Consolidate repeated setup paths where practical"
+  ],
+  "summary": "Performance posture is generally good; main risk is CI-host variance around strict latency assertions."
+}
