@@ -139,6 +139,36 @@ is_frontend_reachable() {
   is_http_reachable "$frontend_root/login" || is_http_reachable "$frontend_root"
 }
 
+resolve_app_dir() {
+  for candidate in "$@"; do
+    if [[ -f "$candidate/package.json" ]]; then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+ensure_runtime_node_modules_link() {
+  local link_path="$1"
+  local target_path="$2"
+
+  mkdir -p "$(dirname "$link_path")"
+
+  if [[ -L "$link_path" ]]; then
+    local current_target
+    current_target="$(readlink "$link_path" || true)"
+    if [[ "$current_target" == "$target_path" ]]; then
+      return 0
+    fi
+    rm -f "$link_path"
+  elif [[ -e "$link_path" ]]; then
+    return 0
+  fi
+
+  ln -s "$target_path" "$link_path"
+}
+
 redact_connection_url() {
   local raw_url="$1"
   node -e "
@@ -198,7 +228,7 @@ run_backend_migrations() {
     export DATABASE_URL="$initial_database_url"
   fi
 
-  if (cd src && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1; then
+  if (cd "$BACKEND_APP_DIR" && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1; then
     return 0
   fi
 
@@ -213,7 +243,7 @@ run_backend_migrations() {
   echo "Managed runtime policy: migration retry using docker postgres credentials ($redacted_fallback)" >>"$BACKEND_LOG_FILE"
 
   export DATABASE_URL="$fallback_database_url"
-  (cd src && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1
+  (cd "$BACKEND_APP_DIR" && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1
 }
 
 build_tenant_probe_token() {
@@ -221,7 +251,8 @@ build_tenant_probe_token() {
 const fs = require('fs');
 const path = require('path');
 
-const backendEnvPath = path.resolve(process.cwd(), 'src/.env');
+const backendAppDir = process.env.PLAYWRIGHT_BACKEND_APP_DIR || 'src';
+const backendEnvPath = path.resolve(process.cwd(), backendAppDir, '.env');
 let jwtSecret = (process.env.JWT_SECRET || '').trim();
 if (!jwtSecret) {
   jwtSecret = 'your_jwt_secret_change_in_production';
@@ -238,7 +269,7 @@ if (!jwtSecret) {
 
 let jwt;
 try {
-  jwt = require(path.resolve(process.cwd(), 'src/node_modules/jsonwebtoken'));
+  jwt = require(path.resolve(process.cwd(), backendAppDir, 'node_modules/jsonwebtoken'));
 } catch {
   process.exit(1);
 }
@@ -452,13 +483,32 @@ backend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.writ
 frontend_host="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.hostname);" "$BASE_URL")"
 frontend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.port || '5174');" "$BASE_URL")"
 
-if [[ ! -x "src/node_modules/.bin/ts-node-dev" && ! -x "src/node_modules/.bin/ts-node" ]]; then
-  echo "Playwright preflight failed: backend runtime dependencies are missing. Run 'npm install --prefix src' and retry."
+BACKEND_APP_DIR="$(resolve_app_dir apps/routeshyft-api apps/moneyshyft-api src || true)"
+FRONTEND_APP_DIR="$(resolve_app_dir apps/routeshyft-web apps/moneyshyft-web frontend || true)"
+
+if [[ -z "$BACKEND_APP_DIR" ]]; then
+  echo "Playwright preflight failed: no backend app directory with package.json was found."
   exit 1
 fi
 
-if [[ ! -x "frontend/node_modules/.bin/vite" ]]; then
-  echo "Playwright preflight failed: frontend dependencies are missing. Run 'npm install --prefix frontend' and retry."
+if [[ -z "$FRONTEND_APP_DIR" ]]; then
+  echo "Playwright preflight failed: no frontend app directory with package.json was found."
+  exit 1
+fi
+
+export PLAYWRIGHT_BACKEND_APP_DIR="$BACKEND_APP_DIR"
+export NODE_PATH="$(pwd)/$BACKEND_APP_DIR/node_modules${NODE_PATH:+:$NODE_PATH}"
+
+ensure_runtime_node_modules_link "apps/connectshyft-api/node_modules" "$(pwd)/$BACKEND_APP_DIR/node_modules"
+ensure_runtime_node_modules_link "apps/connectshyft-web/node_modules" "$(pwd)/$FRONTEND_APP_DIR/node_modules"
+
+if [[ ! -x "$BACKEND_APP_DIR/node_modules/.bin/ts-node-dev" && ! -x "$BACKEND_APP_DIR/node_modules/.bin/ts-node" ]]; then
+  echo "Playwright preflight failed: backend runtime dependencies are missing. Run 'npm install --prefix $BACKEND_APP_DIR' and retry."
+  exit 1
+fi
+
+if [[ ! -x "$FRONTEND_APP_DIR/node_modules/.bin/vite" ]]; then
+  echo "Playwright preflight failed: frontend dependencies are missing. Run 'npm install --prefix $FRONTEND_APP_DIR' and retry."
   exit 1
 fi
 
@@ -518,7 +568,7 @@ if [[ "$backend_requires_managed_start" == "true" ]]; then
   fi
 
   echo "Managed runtime policy: starting backend for this test run at $API_URL"
-  (cd src && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" HOST="$backend_host" PORT="$backend_port" FRONTEND_URL="$BASE_URL" TEST_ENV="$TEST_ENV" TEST_EMAIL="$TEST_EMAIL" TEST_PASSWORD="$TEST_PASSWORD" ENABLE_TEST_AUTH_HARNESS="$ENABLE_TEST_AUTH_HARNESS" ENABLE_TEST_CONNECTSHYFT_FLAGS="$ENABLE_TEST_CONNECTSHYFT_FLAGS" npm run dev) >>"$BACKEND_LOG_FILE" 2>&1 &
+  (cd "$BACKEND_APP_DIR" && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" HOST="$backend_host" PORT="$backend_port" FRONTEND_URL="$BASE_URL" TEST_ENV="$TEST_ENV" TEST_EMAIL="$TEST_EMAIL" TEST_PASSWORD="$TEST_PASSWORD" ENABLE_TEST_AUTH_HARNESS="$ENABLE_TEST_AUTH_HARNESS" ENABLE_TEST_CONNECTSHYFT_FLAGS="$ENABLE_TEST_CONNECTSHYFT_FLAGS" npm run dev) >>"$BACKEND_LOG_FILE" 2>&1 &
   BACKEND_PID=$!
   BACKEND_STARTED=true
   echo "$BACKEND_PID" > "$BACKEND_PID_FILE"
@@ -563,7 +613,7 @@ if [[ "$frontend_requires_managed_start" == "true" ]]; then
   fi
 
   echo "Managed runtime policy: starting frontend for this test run at $BASE_URL"
-  (cd frontend && VITE_API_PROXY_TARGET="$API_URL" VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS="$ENABLE_TEST_CONNECTSHYFT_FLAGS" npm run dev -- --host "$frontend_host" --port "$frontend_port" --strictPort) >"$FRONTEND_LOG_FILE" 2>&1 &
+  (cd "$FRONTEND_APP_DIR" && VITE_API_PROXY_TARGET="$API_URL" VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS="$ENABLE_TEST_CONNECTSHYFT_FLAGS" npm run dev -- --host "$frontend_host" --port "$frontend_port" --strictPort) >"$FRONTEND_LOG_FILE" 2>&1 &
   FRONTEND_PID=$!
   FRONTEND_STARTED=true
   echo "$FRONTEND_PID" > "$FRONTEND_PID_FILE"

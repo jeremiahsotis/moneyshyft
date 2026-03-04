@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { test, expect } from '@playwright/test';
 
 const repoRoot = process.cwd();
@@ -7,6 +8,10 @@ const repoRoot = process.cwd();
 const resolvePath = (...segments: string[]): string => path.join(repoRoot, ...segments);
 
 const pathExists = (...segments: string[]): boolean => fs.existsSync(resolvePath(...segments));
+const resolveRealPath = (...segments: string[]): string => fs.realpathSync(resolvePath(...segments));
+const fileDigest = (...segments: string[]): string => createHash('sha256')
+  .update(fs.readFileSync(resolvePath(...segments)))
+  .digest('hex');
 const isDirectory = (...segments: string[]): boolean => {
   try {
     return fs.statSync(resolvePath(...segments)).isDirectory();
@@ -42,6 +47,36 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
     expect(isSymlink('apps', 'routeshyft-api', 'src', 'modules', 'connectshyft')).toBe(true);
     expect(isSymlink('apps', 'routeshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts')).toBe(true);
     expect(isSymlink('apps', 'routeshyft-web', 'src', 'features', 'connectshyft')).toBe(true);
+  });
+
+  test('[P0] transitional host bridges preserve runtime module identity and route registration @P0', () => {
+    const registerRoutes = fs.readFileSync(
+      resolvePath('apps', 'routeshyft-api', 'src', 'api', 'registerRoutes.ts'),
+      'utf8',
+    );
+    expect(registerRoutes.includes("{ path: '/api/v1/connectshyft', modulePath: '../routes/api/v1/connectshyft' }")).toBe(true);
+
+    expect(
+      resolveRealPath('apps', 'routeshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
+    ).toBe(
+      resolveRealPath('apps', 'connectshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
+    );
+    expect(
+      fileDigest('apps', 'routeshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
+    ).toBe(
+      fileDigest('apps', 'connectshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
+    );
+
+    expect(
+      resolveRealPath('apps', 'routeshyft-web', 'src', 'features', 'connectshyft', 'threads.ts'),
+    ).toBe(
+      resolveRealPath('apps', 'connectshyft-web', 'src', 'features', 'connectshyft', 'threads.ts'),
+    );
+    expect(
+      fileDigest('apps', 'routeshyft-web', 'src', 'features', 'connectshyft', 'threads.ts'),
+    ).toBe(
+      fileDigest('apps', 'connectshyft-web', 'src', 'features', 'connectshyft', 'threads.ts'),
+    );
   });
 
   test('[P1] workspace and CI descriptors recognize extracted lane app locations @P1', () => {
