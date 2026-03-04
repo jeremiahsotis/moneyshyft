@@ -1,6 +1,6 @@
 # Story 8.5: Shared-Contact-Safe Dedupe Contract
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -34,18 +34,18 @@ so that auto-merge behavior avoids identity corruption and escalates ambiguous c
 
 ## Tasks / Subtasks
 
-- [ ] Define and codify dedupe decision matrix (AC: 1, 2, 3)
-  - [ ] Implement verified/non-shared auto-merge eligibility rules.
-  - [ ] Implement explicit ambiguous/no-auto-merge outcomes for shared or unverified points.
-- [ ] Wire deterministic refusal/error contract (AC: 3)
-  - [ ] Return `IDENTITY_MATCH_AMBIGUOUS` with actionable metadata for manual handling.
-  - [ ] Preserve existing manual-merge paths.
-- [ ] Add observability and audit hooks (AC: 4)
-  - [ ] Persist audit/event records for dedupe decisions and ambiguous outcomes.
-  - [ ] Ensure logs avoid leaking sensitive identity data.
-- [ ] Add automated and manual validation (AC: 4, 5)
-  - [ ] Add tests for shared/unverified/verified contact-point permutations.
-  - [ ] Document operator manual test steps for ambiguity resolution flow.
+- [x] Define and codify dedupe decision matrix (AC: 1, 2, 3)
+  - [x] Implement verified/non-shared auto-merge eligibility rules.
+  - [x] Implement explicit ambiguous/no-auto-merge outcomes for shared or unverified points.
+- [x] Wire deterministic refusal/error contract (AC: 3)
+  - [x] Return `IDENTITY_MATCH_AMBIGUOUS` with actionable metadata for manual handling.
+  - [x] Preserve existing manual-merge paths.
+- [x] Add observability and audit hooks (AC: 4)
+  - [x] Persist audit/event records for dedupe decisions and ambiguous outcomes.
+  - [x] Ensure logs avoid leaking sensitive identity data.
+- [x] Add automated and manual validation (AC: 4, 5)
+  - [x] Add tests for shared/unverified/verified contact-point permutations.
+  - [x] Document operator manual test steps for ambiguity resolution flow.
 
 ## Dev Notes
 
@@ -75,14 +75,43 @@ Introduce a safe dedupe contract that supports real-world shared-contact scenari
 
 ### Agent Model Used
 
-TBD
+GPT-5 (Codex)
 
 ### Debug Log References
 
+- `npm run branch:ensure-workflow -- --workflow dev-story --story 8-5-shared-contact-safe-dedupe-contract`
+- `npm run build` (cwd: `apps/routeshyft-api`)
+- `npm test` (cwd: `apps/routeshyft-api`)
+- `npm run policy:check` (repo root)
+- `npx nx run routeshyft-api:lint` (repo root)
+
 ### Completion Notes List
 
+- Implemented identity-dedupe decision matrix in ConnectShyft neighbor services with deterministic outcomes for `AUTO_MERGE_ALLOWED`, `NO_AUTO_MERGE`, and `AMBIGUOUS`.
+- Added refusal contract support for `IDENTITY_MATCH_AMBIGUOUS` including structured `manualResolution` metadata and candidate neighbor context.
+- Added `POST /api/v1/connectshyft/neighbors/identity-match` to evaluate dedupe decisions without changing existing manual merge flow.
+- Added identity-match observability side-effects with masked and hashed contact-point fields to avoid raw contact-value exposure in event payloads.
+- Preserved existing explicit/manual merge endpoint contract (`/api/v1/connectshyft/neighbors/merge`) and compatible behavior.
+- Added automated coverage for verified/non-shared auto-merge eligibility, shared/unverified no-auto-merge behavior, and deterministic ambiguous multi-match refusal paths.
+- Updated Jest/TypeScript module resolution config in `apps/routeshyft-api` to keep symlinked lane tests/builds working without local `apps/connectshyft-api/node_modules` symlink workarounds.
+- Operator manual validation steps:
+  - Call `POST /api/v1/connectshyft/neighbors/identity-match` with a verified, non-shared exact match and verify `CONNECTSHYFT_IDENTITY_MATCH_AUTO_MERGE_ALLOWED`.
+  - Call the same endpoint with shared or unverified contact points and verify `CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE`.
+  - Seed duplicate exact contact-point matches across multiple neighbors and verify refusal `IDENTITY_MATCH_AMBIGUOUS` with `manualResolution.nextAction=manual-merge` and `mergeEndpoint=/api/v1/connectshyft/neighbors/merge`.
+
 ### File List
+
+- `apps/connectshyft-api/src/modules/connectshyft/neighbors.ts` (modified)
+- `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` (modified)
+- `apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts` (modified)
+- `apps/routeshyft-api/src/__tests__/connectshyft.identity-dedupe.test.ts` (added)
+- `apps/routeshyft-api/jest.config.js` (modified)
+- `apps/routeshyft-api/tsconfig.json` (modified)
 
 ## Change Log
 
 - 2026-03-04: Story created from approved Correct Course proposal (`cc-2026-03-04`, Change C1).
+- 2026-03-04: Implemented shared-contact-safe dedupe decision matrix, deterministic ambiguous refusal contract, and identity-match API evaluation endpoint.
+- 2026-03-04: Added audit/observability payload support for identity dedupe decisions with masked/hash contact-point safety controls.
+- 2026-03-04: Added automated tests for shared/unverified/verified/ambiguous dedupe decision paths and updated route/module coverage.
+- 2026-03-04: Updated `apps/routeshyft-api` Jest/TypeScript module resolution settings for symlinked ConnectShyft lane compatibility.

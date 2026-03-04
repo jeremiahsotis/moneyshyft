@@ -11,6 +11,11 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "*": ["./node_modules/@types/*", "./node_modules/*"]
+    },
+    "preserveSymlinks": true,
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false,
