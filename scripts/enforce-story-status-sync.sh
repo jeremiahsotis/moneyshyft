@@ -16,7 +16,7 @@ Usage: bash scripts/enforce-story-status-sync.sh [options]
 Options:
   --status-file <path>  Sprint status yaml override (default: resolved lane file)
   --stories-dir <path>  Story markdown folder (default: _bmad-output/implementation-artifacts)
-  --story-key <key>     Validate only one story key (example: 1-2-... or a-1-...)
+  --story-key <key>     Validate only one story key (example: 1-2-..., a-1-..., ux-r3-...)
   --lane <lane-id>      Explicit lane override for sprint-status resolution
   -h, --help            Show this help message
 EOF
@@ -71,6 +71,11 @@ is_valid_status() {
   [[ "$status" =~ ^(backlog|ready-for-dev|in-progress|review|done)$ ]]
 }
 
+is_valid_story_key() {
+  local key="$1"
+  [[ "$key" =~ ^(([0-9]+|[A-Za-z])-[0-9]+|[A-Za-z]+-[Rr][0-9]+)-.+$ ]]
+}
+
 is_allowed_transition() {
   local from="$1"
   local to="$2"
@@ -102,7 +107,10 @@ is_allowed_closeout_multihop() {
 
   # Allow an in-progress -> done diff when both closeout transitions were
   # executed in sequence before commit (in-progress -> review -> done).
-  [[ "$from" == "in-progress" && "$to" == "done" ]]
+  # Also allow ready-for-dev -> review when dev-story marks in-progress
+  # and review in one implementation diff (ready-for-dev -> in-progress -> review).
+  [[ "$from" == "in-progress" && "$to" == "done" ]] \
+    || [[ "$from" == "ready-for-dev" && "$to" == "review" ]]
 }
 
 extract_story_status_from_file() {
@@ -329,7 +337,7 @@ SPRINT_MAP_FILE="$TMP_DIR/sprint_story_status.tsv"
 LANE_CATALOG_FILE="$TMP_DIR/lane_catalog.tsv"
 
 while IFS=$'\t' read -r key value; do
-  if [[ "$key" =~ ^([0-9]+|[A-Za-z])-[0-9]+-.+ && -n "$value" ]]; then
+  if is_valid_story_key "$key" && [[ -n "$value" ]]; then
     printf '%s\t%s\n' "$key" "$value" >> "$SPRINT_MAP_FILE"
   fi
 done < <(
@@ -388,7 +396,7 @@ if [[ -n "$STORY_KEY" ]]; then
 else
   while IFS=$'\t' read -r sprint_key sprint_status_value; do
     [[ -n "$sprint_key" ]] || continue
-    if [[ "$sprint_key" =~ ^([0-9]+|[A-Za-z])-[0-9]+-.+ && "$sprint_status_value" =~ ^(ready-for-dev|in-progress|review|done)$ ]]; then
+    if is_valid_story_key "$sprint_key" && [[ "$sprint_status_value" =~ ^(ready-for-dev|in-progress|review|done)$ ]]; then
       target_story_files+=("$STORIES_DIR/$sprint_key.md")
     fi
   done < "$SPRINT_MAP_FILE"

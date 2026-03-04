@@ -3,6 +3,7 @@ import type { Knex } from 'knex';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PROVIDER_IDENTIFIER_MAPPINGS_TABLE = 'cs_provider_identifier_mappings';
 const WEBHOOK_RECEIPTS_TABLE = 'cs_webhook_receipts';
+const WEBHOOK_RECEIPT_RETENTION_DEFAULT_DAYS = 180;
 
 export type ConnectShyftProviderIdentifierKind = 'call_leg' | 'message';
 export type ConnectShyftWebhookReceiptProcessingStatus =
@@ -15,6 +16,7 @@ export type ConnectShyftProviderCorrelationRefusalReason =
   | 'not-found'
   | 'ambiguous'
   | 'unavailable';
+export const CONNECTSHYFT_WEBHOOK_RECEIPT_RETENTION_POLICY_DAYS = WEBHOOK_RECEIPT_RETENTION_DEFAULT_DAYS;
 
 export type ConnectShyftProviderIdentifierMapping = {
   tenantId: string;
@@ -73,8 +75,14 @@ type ConnectShyftProviderMappingRow = {
 
 const inMemoryProviderIdentifierMappings =
   new Map<string, ConnectShyftProviderIdentifierMappingRecord>();
-const inMemoryWebhookReceiptKeys = new Set<string>();
 const inMemoryWebhookReceiptStates = new Map<string, {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  providerName: string;
+  sid: string;
+  eventType: string;
+  dedupeKey: string;
   status: ConnectShyftWebhookReceiptProcessingStatus;
   firstSeenAtUtc: string;
   lastSeenAtUtc: string;
@@ -121,6 +129,22 @@ const normalizeWebhookReceiptProcessingStatus = (
   return 'RECEIVED';
 };
 
+const normalizeWebhookReceiptSid = (input: {
+  providerEventId?: string | null;
+  providerLegId?: string | null;
+  providerMessageId?: string | null;
+}): string => {
+  return (
+    normalizeString(input.providerEventId || null)
+    || normalizeString(input.providerLegId || null)
+    || normalizeString(input.providerMessageId || null)
+  ).toLowerCase();
+};
+
+const normalizeWebhookReceiptEventType = (canonicalEventType: string): string => {
+  return normalizeString(canonicalEventType).toLowerCase();
+};
+
 const buildMappingKey = (
   tenantId: string,
   providerName: string,
@@ -141,9 +165,10 @@ const buildMappingLookupKey = (
 const buildInMemoryWebhookReceiptStateKey = (
   tenantId: string,
   providerName: string,
-  dedupeKey: string,
+  sid: string,
+  eventType: string,
 ): string => {
-  return `${tenantId}|${providerName}|${dedupeKey}`;
+  return `${tenantId}|${providerName}|${sid}|${eventType}`;
 };
 
 const parseAttemptCount = (value: unknown): number => {
@@ -466,6 +491,31 @@ const buildWebhookDedupeKey = (input: {
   return null;
 };
 
+const buildWebhookReceiptIdentity = (input: {
+  canonicalEventType: string;
+  providerEventId?: string | null;
+  providerLegId?: string | null;
+  providerMessageId?: string | null;
+}): { sid: string; eventType: string } | null => {
+  const sid = normalizeWebhookReceiptSid(input);
+  const eventType = normalizeWebhookReceiptEventType(input.canonicalEventType);
+  if (!sid || !eventType) {
+    return null;
+  }
+  return {
+    sid,
+    eventType,
+  };
+};
+
+const normalizeRetentionWindowDays = (value: number | null | undefined): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return WEBHOOK_RECEIPT_RETENTION_DEFAULT_DAYS;
+  }
+
+  return Math.max(1, Math.trunc(value));
+};
+
 export const recordConnectShyftProviderIdentifierMapping = async (input: {
   tenantId: string;
   orgUnitId: string;
@@ -779,8 +829,22 @@ export const recordConnectShyftWebhookReceipt = async (input: {
     providerLegId,
     providerMessageId,
   });
+  const receiptIdentity = buildWebhookReceiptIdentity({
+    canonicalEventType,
+    providerEventId,
+    providerLegId,
+    providerMessageId,
+  });
 
-  if (!providerName || !dedupeKey || !tenantId || !orgUnitId || !threadId || !canonicalEventType) {
+  if (
+    !providerName
+    || !dedupeKey
+    || !tenantId
+    || !orgUnitId
+    || !threadId
+    || !canonicalEventType
+    || !receiptIdentity
+  ) {
     return {
       deterministic: true,
       duplicate: false,
@@ -788,16 +852,47 @@ export const recordConnectShyftWebhookReceipt = async (input: {
     };
   }
 
-  const inMemoryReceiptKey = `${tenantId}|${providerName}|${dedupeKey}`;
+  const now = new Date().toISOString();
+  const inMemoryReceiptKey = buildInMemoryWebhookReceiptStateKey(
+    tenantId,
+    providerName,
+    receiptIdentity.sid,
+    receiptIdentity.eventType,
+  );
   if (!shouldUseDbForWebhookReceipt({ tenantId, threadId }, input.db)) {
-    if (inMemoryWebhookReceiptKeys.has(inMemoryReceiptKey)) {
+    const existing = inMemoryWebhookReceiptStates.get(inMemoryReceiptKey);
+    if (existing) {
+      inMemoryWebhookReceiptStates.set(inMemoryReceiptKey, {
+        ...existing,
+        orgUnitId,
+        threadId,
+        dedupeKey,
+        status: 'APPLIED',
+        lastSeenAtUtc: now,
+        attemptCount: existing.attemptCount + 1,
+        failureReason: null,
+      });
       return {
         deterministic: true,
         duplicate: true,
         dedupeKey,
       };
     }
-    inMemoryWebhookReceiptKeys.add(inMemoryReceiptKey);
+    inMemoryWebhookReceiptStates.set(inMemoryReceiptKey, {
+      tenantId,
+      orgUnitId,
+      threadId,
+      providerName,
+      sid: receiptIdentity.sid,
+      eventType: receiptIdentity.eventType,
+      dedupeKey,
+      status: 'APPLIED',
+      firstSeenAtUtc: now,
+      lastSeenAtUtc: now,
+      attemptCount: 1,
+      correlationKeys: null,
+      failureReason: null,
+    });
     return {
       deterministic: true,
       duplicate: false,
@@ -815,6 +910,8 @@ export const recordConnectShyftWebhookReceipt = async (input: {
         org_unit_id: orgUnitId,
         thread_id: threadId,
         provider_name: providerName,
+        sid: receiptIdentity.sid,
+        event_type: receiptIdentity.eventType,
         provider_event_id: providerEventId || null,
         provider_identifier_kind: providerLegId
           ? 'call_leg'
@@ -824,8 +921,13 @@ export const recordConnectShyftWebhookReceipt = async (input: {
         provider_identifier: providerLegId || providerMessageId || null,
         canonical_event_type: canonicalEventType,
         dedupe_key: dedupeKey,
+        processing_status: 'APPLIED',
+        first_seen_at_utc: now,
+        last_seen_at_utc: now,
+        attempt_count: 1,
+        failure_reason: null,
       })
-      .onConflict(['tenant_id', 'provider_name', 'dedupe_key'])
+      .onConflict(['tenant_id', 'provider_name', 'sid', 'event_type'])
       .ignore()
       .returning(['id']);
 
@@ -836,6 +938,34 @@ export const recordConnectShyftWebhookReceipt = async (input: {
         dedupeKey,
       };
     }
+
+    await db
+      .withSchema('connectshyft')
+      .table(WEBHOOK_RECEIPTS_TABLE)
+      .where({
+        tenant_id: tenantId,
+        provider_name: providerName,
+        sid: receiptIdentity.sid,
+        event_type: receiptIdentity.eventType,
+      })
+      .update({
+        org_unit_id: orgUnitId,
+        thread_id: threadId,
+        provider_event_id: providerEventId || null,
+        provider_identifier_kind: providerLegId
+          ? 'call_leg'
+          : providerMessageId
+            ? 'message'
+            : null,
+        provider_identifier: providerLegId || providerMessageId || null,
+        canonical_event_type: canonicalEventType,
+        dedupe_key: dedupeKey,
+        processing_status: 'APPLIED',
+        processed_at_utc: now,
+        last_seen_at_utc: now,
+        attempt_count: db.raw('COALESCE(attempt_count, 1) + 1'),
+        failure_reason: null,
+      });
 
     return {
       deterministic: true,
@@ -893,6 +1023,12 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
     providerLegId,
     providerMessageId,
   });
+  const receiptIdentity = buildWebhookReceiptIdentity({
+    canonicalEventType,
+    providerEventId,
+    providerLegId,
+    providerMessageId,
+  });
   const correlationKeys = (
     input.correlationKeys
     && typeof input.correlationKeys === 'object'
@@ -901,7 +1037,15 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
     ? input.correlationKeys
     : null;
 
-  if (!providerName || !dedupeKey || !tenantId || !orgUnitId || !threadId || !canonicalEventType) {
+  if (
+    !providerName
+    || !dedupeKey
+    || !tenantId
+    || !orgUnitId
+    || !threadId
+    || !canonicalEventType
+    || !receiptIdentity
+  ) {
     return {
       deterministic: true,
       alreadyApplied: false,
@@ -912,12 +1056,24 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
   }
 
   const now = new Date().toISOString();
-  const inMemoryStateKey = buildInMemoryWebhookReceiptStateKey(tenantId, providerName, dedupeKey);
+  const inMemoryStateKey = buildInMemoryWebhookReceiptStateKey(
+    tenantId,
+    providerName,
+    receiptIdentity.sid,
+    receiptIdentity.eventType,
+  );
 
   if (!shouldUseDbForWebhookReceipt({ tenantId, threadId }, input.db)) {
     const existing = inMemoryWebhookReceiptStates.get(inMemoryStateKey);
     if (!existing) {
       inMemoryWebhookReceiptStates.set(inMemoryStateKey, {
+        tenantId,
+        orgUnitId,
+        threadId,
+        providerName,
+        sid: receiptIdentity.sid,
+        eventType: receiptIdentity.eventType,
+        dedupeKey,
         status: 'RECEIVED',
         firstSeenAtUtc: now,
         lastSeenAtUtc: now,
@@ -941,6 +1097,9 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
       : 'RECEIVED';
     inMemoryWebhookReceiptStates.set(inMemoryStateKey, {
       ...existing,
+      orgUnitId,
+      threadId,
+      dedupeKey,
       status: nextStatus,
       lastSeenAtUtc: now,
       attemptCount: nextAttemptCount,
@@ -962,7 +1121,8 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
     const scope = {
       tenant_id: tenantId,
       provider_name: providerName,
-      dedupe_key: dedupeKey,
+      sid: receiptIdentity.sid,
+      event_type: receiptIdentity.eventType,
     };
     const inserted = await db
       .withSchema('connectshyft')
@@ -972,6 +1132,8 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
         org_unit_id: orgUnitId,
         thread_id: threadId,
         provider_name: providerName,
+        sid: receiptIdentity.sid,
+        event_type: receiptIdentity.eventType,
         provider_event_id: providerEventId || null,
         provider_identifier_kind: providerLegId
           ? 'call_leg'
@@ -989,7 +1151,7 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
         correlation_keys: correlationKeys,
         failure_reason: null,
       })
-      .onConflict(['tenant_id', 'provider_name', 'dedupe_key'])
+      .onConflict(['tenant_id', 'provider_name', 'sid', 'event_type'])
       .ignore()
       .returning(['id']);
 
@@ -1025,6 +1187,8 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
       .update({
         org_unit_id: orgUnitId,
         thread_id: threadId,
+        sid: receiptIdentity.sid,
+        event_type: receiptIdentity.eventType,
         provider_event_id: providerEventId || null,
         provider_identifier_kind: providerLegId
           ? 'call_leg'
@@ -1033,6 +1197,7 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
             : null,
         provider_identifier: providerLegId || providerMessageId || null,
         canonical_event_type: canonicalEventType,
+        dedupe_key: dedupeKey,
         processed_at_utc: now,
         processing_status: nextStatus,
         last_seen_at_utc: now,
@@ -1096,51 +1261,79 @@ export const markConnectShyftWebhookReceiptProcessingResult = async (input: {
     };
   }
 
-  const inMemoryStateKey = buildInMemoryWebhookReceiptStateKey(tenantId, providerName, dedupeKey);
-  const existingInMemory = inMemoryWebhookReceiptStates.get(inMemoryStateKey);
+  let inMemoryUpdated = false;
+  for (const [inMemoryStateKey, existingInMemory] of inMemoryWebhookReceiptStates.entries()) {
+    if (
+      existingInMemory.tenantId !== tenantId
+      || existingInMemory.providerName !== providerName
+      || existingInMemory.dedupeKey !== dedupeKey
+      || (threadId && existingInMemory.threadId !== threadId)
+    ) {
+      continue;
+    }
+
+    inMemoryWebhookReceiptStates.set(inMemoryStateKey, {
+      ...existingInMemory,
+      status,
+      lastSeenAtUtc: now,
+      failureReason: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
+        ? failureReason
+        : null,
+    });
+    inMemoryUpdated = true;
+  }
   const shouldUseDbState = threadId
     ? shouldUseDbForWebhookReceipt({ tenantId, threadId }, input.db)
     : Boolean(input.db);
-  if (existingInMemory || !shouldUseDbState) {
-    if (!existingInMemory) {
-      inMemoryWebhookReceiptStates.set(inMemoryStateKey, {
-        status,
-        firstSeenAtUtc: now,
-        lastSeenAtUtc: now,
-        attemptCount: 1,
-        correlationKeys: null,
-        failureReason: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
-          ? failureReason
-          : null,
-      });
-    } else {
-      inMemoryWebhookReceiptStates.set(inMemoryStateKey, {
-        ...existingInMemory,
-        status,
-        lastSeenAtUtc: now,
-        failureReason: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
-          ? failureReason
-          : null,
-      });
-    }
+  if (!inMemoryUpdated && !shouldUseDbState) {
+    const fallbackStateKey = buildInMemoryWebhookReceiptStateKey(
+      tenantId,
+      providerName,
+      dedupeKey,
+      'unknown',
+    );
+    inMemoryWebhookReceiptStates.set(fallbackStateKey, {
+      tenantId,
+      orgUnitId: '',
+      threadId: threadId || '',
+      providerName,
+      sid: dedupeKey,
+      eventType: 'unknown',
+      dedupeKey,
+      status,
+      firstSeenAtUtc: now,
+      lastSeenAtUtc: now,
+      attemptCount: 1,
+      correlationKeys: null,
+      failureReason: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
+        ? failureReason
+        : null,
+    });
+    inMemoryUpdated = true;
   }
   if (!shouldUseDbState) {
     return {
       deterministic: true,
-      updated: true,
+      updated: inMemoryUpdated,
     };
   }
 
   try {
     const db = input.db as Knex;
-    const updated = await db
+    const updateQuery = db
       .withSchema('connectshyft')
       .table(WEBHOOK_RECEIPTS_TABLE)
       .where({
         tenant_id: tenantId,
         provider_name: providerName,
         dedupe_key: dedupeKey,
-      })
+      });
+
+    if (threadId) {
+      updateQuery.andWhere('thread_id', threadId);
+    }
+
+    const updated = await updateQuery
       .update({
         processing_status: status,
         last_seen_at_utc: now,
@@ -1152,12 +1345,12 @@ export const markConnectShyftWebhookReceiptProcessingResult = async (input: {
 
     return {
       deterministic: true,
-      updated: updated > 0,
+      updated: inMemoryUpdated || updated > 0,
     };
   } catch (error) {
     return {
       deterministic: true,
-      updated: false,
+      updated: inMemoryUpdated,
       error: {
         code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_PERSISTENCE_UNAVAILABLE',
         message: error instanceof Error
@@ -1168,8 +1361,248 @@ export const markConnectShyftWebhookReceiptProcessingResult = async (input: {
   }
 };
 
+export const loadConnectShyftWebhookReceiptMetrics = async (input: {
+  tenantId: string;
+  orgUnitId?: string | null;
+  retentionWindowDays?: number;
+  asOfUtc?: string;
+  db?: Knex;
+}): Promise<{
+  deterministic: true;
+  retentionWindowDays: number;
+  totalRows: number;
+  oldestRetainedAt: string;
+  expiredRowsCandidate: number;
+  asOfUtc: string;
+  cutoffUtc: string;
+  error?: {
+    code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_PERSISTENCE_UNAVAILABLE';
+    message: string;
+  };
+}> => {
+  const tenantId = normalizeString(input.tenantId);
+  const orgUnitId = normalizeString(input.orgUnitId || null) || null;
+  const retentionWindowDays = normalizeRetentionWindowDays(input.retentionWindowDays);
+  const asOfUtc = normalizeString(input.asOfUtc) || new Date().toISOString();
+  const cutoffMs = Date.parse(asOfUtc) - (retentionWindowDays * 24 * 60 * 60 * 1000);
+  const cutoffUtc = Number.isFinite(cutoffMs)
+    ? new Date(cutoffMs).toISOString()
+    : new Date(Date.now() - (retentionWindowDays * 24 * 60 * 60 * 1000)).toISOString();
+
+  const inMemoryReceipts = Array.from(inMemoryWebhookReceiptStates.values()).filter((record) => {
+    return record.tenantId === tenantId && (!orgUnitId || record.orgUnitId === orgUnitId);
+  });
+  const inMemoryOldest = inMemoryReceipts
+    .map((record) => normalizeString(record.firstSeenAtUtc))
+    .filter((value) => value.length > 0)
+    .sort()[0] || null;
+  const inMemoryExpired = inMemoryReceipts.filter((record) => {
+    const observedAt = normalizeString(record.lastSeenAtUtc) || normalizeString(record.firstSeenAtUtc);
+    return observedAt.length > 0 && observedAt < cutoffUtc;
+  }).length;
+
+  let dbTotalRows = 0;
+  let dbOldestRetainedAt: string | null = null;
+  let dbExpiredRows = 0;
+
+  if (input.db) {
+    try {
+      const db = input.db;
+      const scoped = db
+        .withSchema('connectshyft')
+        .table(WEBHOOK_RECEIPTS_TABLE)
+        .where({ tenant_id: tenantId });
+      if (orgUnitId) {
+        scoped.andWhere({ org_unit_id: orgUnitId });
+      }
+
+      const totalRow = await scoped
+        .clone()
+        .count<{ count?: string | number }>({ count: 'id' })
+        .first();
+      const oldestRow = await scoped
+        .clone()
+        .select(db.raw('MIN(COALESCE(first_seen_at_utc, processed_at_utc)) AS oldest_retained_at'))
+        .first<{ oldest_retained_at?: unknown }>();
+      const expiredRow = await scoped
+        .clone()
+        .whereRaw('COALESCE(last_seen_at_utc, processed_at_utc) < ?', [cutoffUtc])
+        .count<{ count?: string | number }>({ count: 'id' })
+        .first();
+
+      dbTotalRows = Number(totalRow?.count || 0);
+      dbOldestRetainedAt = normalizeString(oldestRow?.oldest_retained_at) || null;
+      dbExpiredRows = Number(expiredRow?.count || 0);
+    } catch (error) {
+      return {
+        deterministic: true,
+        retentionWindowDays,
+        totalRows: inMemoryReceipts.length,
+        oldestRetainedAt: inMemoryOldest || asOfUtc,
+        expiredRowsCandidate: inMemoryExpired,
+        asOfUtc,
+        cutoffUtc,
+        error: {
+          code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_PERSISTENCE_UNAVAILABLE',
+          message: error instanceof Error
+            ? error.message
+            : 'Webhook receipt persistence unavailable.',
+        },
+      };
+    }
+  }
+
+  const oldestRetainedAt = [inMemoryOldest, dbOldestRetainedAt]
+    .filter((value): value is string => Boolean(value))
+    .sort()[0] || asOfUtc;
+
+  return {
+    deterministic: true,
+    retentionWindowDays,
+    totalRows: inMemoryReceipts.length + dbTotalRows,
+    oldestRetainedAt,
+    expiredRowsCandidate: inMemoryExpired + dbExpiredRows,
+    asOfUtc,
+    cutoffUtc,
+  };
+};
+
+export const cleanupConnectShyftWebhookReceipts = async (input: {
+  tenantId: string;
+  orgUnitId?: string | null;
+  policyWindowDays?: number;
+  dryRun?: boolean;
+  asOfUtc?: string;
+  db?: Knex;
+}): Promise<{
+  deterministic: true;
+  policyWindowDays: number;
+  dryRun: boolean;
+  expiredRowsRemoved: number;
+  activeWindowProtected: true;
+  totalRowsBefore: number;
+  totalRowsAfter: number;
+  oldestRetainedAt: string;
+  executedAtUtc: string;
+  cutoffUtc: string;
+  error?: {
+    code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_PERSISTENCE_UNAVAILABLE';
+    message: string;
+  };
+}> => {
+  const tenantId = normalizeString(input.tenantId);
+  const orgUnitId = normalizeString(input.orgUnitId || null) || null;
+  const policyWindowDays = normalizeRetentionWindowDays(input.policyWindowDays);
+  const dryRun = input.dryRun === true;
+  const executedAtUtc = normalizeString(input.asOfUtc) || new Date().toISOString();
+  const cutoffMs = Date.parse(executedAtUtc) - (policyWindowDays * 24 * 60 * 60 * 1000);
+  const cutoffUtc = Number.isFinite(cutoffMs)
+    ? new Date(cutoffMs).toISOString()
+    : new Date(Date.now() - (policyWindowDays * 24 * 60 * 60 * 1000)).toISOString();
+
+  const scopedInMemoryEntries = Array.from(inMemoryWebhookReceiptStates.entries()).filter(([, record]) => {
+    return record.tenantId === tenantId && (!orgUnitId || record.orgUnitId === orgUnitId);
+  });
+  const inMemoryExpiredEntries = scopedInMemoryEntries.filter(([, record]) => {
+    const observedAt = normalizeString(record.lastSeenAtUtc) || normalizeString(record.firstSeenAtUtc);
+    return observedAt.length > 0 && observedAt < cutoffUtc;
+  });
+
+  const totalRowsBeforeInMemory = scopedInMemoryEntries.length;
+  if (!dryRun) {
+    inMemoryExpiredEntries.forEach(([inMemoryStateKey]) => {
+      inMemoryWebhookReceiptStates.delete(inMemoryStateKey);
+    });
+  }
+  const totalRowsAfterInMemory = dryRun
+    ? totalRowsBeforeInMemory
+    : totalRowsBeforeInMemory - inMemoryExpiredEntries.length;
+
+  let dbTotalBefore = 0;
+  let dbTotalAfter = 0;
+  let dbExpiredRemoved = 0;
+
+  if (input.db) {
+    try {
+      const db = input.db;
+      const scoped = db
+        .withSchema('connectshyft')
+        .table(WEBHOOK_RECEIPTS_TABLE)
+        .where({ tenant_id: tenantId });
+      if (orgUnitId) {
+        scoped.andWhere({ org_unit_id: orgUnitId });
+      }
+
+      const totalBeforeRow = await scoped
+        .clone()
+        .count<{ count?: string | number }>({ count: 'id' })
+        .first();
+      dbTotalBefore = Number(totalBeforeRow?.count || 0);
+
+      if (dryRun) {
+        const expiredRow = await scoped
+          .clone()
+          .whereRaw('COALESCE(last_seen_at_utc, processed_at_utc) < ?', [cutoffUtc])
+          .count<{ count?: string | number }>({ count: 'id' })
+          .first();
+        dbExpiredRemoved = Number(expiredRow?.count || 0);
+        dbTotalAfter = dbTotalBefore;
+      } else {
+        dbExpiredRemoved = await scoped
+          .clone()
+          .whereRaw('COALESCE(last_seen_at_utc, processed_at_utc) < ?', [cutoffUtc])
+          .delete();
+        const totalAfterRow = await scoped
+          .clone()
+          .count<{ count?: string | number }>({ count: 'id' })
+          .first();
+        dbTotalAfter = Number(totalAfterRow?.count || 0);
+      }
+    } catch (error) {
+      return {
+        deterministic: true,
+        policyWindowDays,
+        dryRun,
+        expiredRowsRemoved: inMemoryExpiredEntries.length,
+        activeWindowProtected: true,
+        totalRowsBefore: totalRowsBeforeInMemory,
+        totalRowsAfter: totalRowsAfterInMemory,
+        oldestRetainedAt: executedAtUtc,
+        executedAtUtc,
+        cutoffUtc,
+        error: {
+          code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_PERSISTENCE_UNAVAILABLE',
+          message: error instanceof Error
+            ? error.message
+            : 'Webhook receipt persistence unavailable.',
+        },
+      };
+    }
+  }
+
+  const totalRowsBefore = totalRowsBeforeInMemory + dbTotalBefore;
+  const totalRowsAfter = totalRowsAfterInMemory + dbTotalAfter;
+  const oldestRetainedAt = Array.from(inMemoryWebhookReceiptStates.values())
+    .filter((record) => record.tenantId === tenantId && (!orgUnitId || record.orgUnitId === orgUnitId))
+    .map((record) => normalizeString(record.firstSeenAtUtc))
+    .filter((value) => value.length > 0)
+    .sort()[0] || executedAtUtc;
+
+  return {
+    deterministic: true,
+    policyWindowDays,
+    dryRun,
+    expiredRowsRemoved: inMemoryExpiredEntries.length + dbExpiredRemoved,
+    activeWindowProtected: true,
+    totalRowsBefore,
+    totalRowsAfter,
+    oldestRetainedAt,
+    executedAtUtc,
+    cutoffUtc,
+  };
+};
+
 export const resetConnectShyftProviderCorrelationStateForTests = (): void => {
   inMemoryProviderIdentifierMappings.clear();
-  inMemoryWebhookReceiptKeys.clear();
   inMemoryWebhookReceiptStates.clear();
 };

@@ -74,7 +74,7 @@ development_status:
   e-2-inbound-sms-processing-with-active-thread-ensure: done
   e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: done
   e-4-transcription-webhook-attachment-to-voicemail-records: done
-  e-5-replay-safe-webhook-receipt-ledger-and-retention-controls: ready-for-dev
+  e-5-replay-safe-webhook-receipt-ledger-and-retention-controls: in-progress
   e-6-parallel-delivery-safety-gates-for-connectshyft-rollout: ready-for-dev
   epic-e-retrospective: optional
   epic-f: done
@@ -86,7 +86,7 @@ development_status:
   epic-ux-remediation: in-progress
   ux-r1-mobile-first-inbox-mine-thread-redesign: done
   ux-r2-accessibility-and-language-hardening: done
-  ux-r3-voicemail-and-indicator-behavior: ready-for-dev
+  ux-r3-voicemail-and-indicator-behavior: done
   ux-r4-outbound-policy-guardrail-ui: ready-for-dev
   epic-ux-remediation-retrospective: optional
 

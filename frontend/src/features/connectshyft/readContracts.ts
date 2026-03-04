@@ -32,6 +32,7 @@ export type ConnectShyftThreadSummary = {
     label: string;
   };
   voicemailIndicator: boolean;
+  voicemailLabel: string | null;
   summary: string;
 };
 
@@ -193,6 +194,8 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
     preferredOutboundContext?: unknown;
     preferred_outbound_context?: unknown;
     voicemailIndicator?: unknown;
+    voicemailLabel?: unknown;
+    voicemail_label?: unknown;
     timeline?: unknown;
     summary?: unknown;
   };
@@ -205,6 +208,16 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
   const preferredOutboundContext = parsePreferredOutboundContext(
     candidate.preferredOutboundContext ?? candidate.preferred_outbound_context,
   );
+
+  const voicemailIndicator =
+    candidate.voicemailIndicator === true || hasVoicemailTimelineEvent(candidate.timeline);
+  const explicitVoicemailLabel = normalizeString(
+    candidate.voicemailLabel ?? candidate.voicemail_label,
+  );
+  const voicemailLabel = explicitVoicemailLabel
+    || (voicemailIndicator
+      ? (normalizeState(candidate.state) === 'UNCLAIMED' ? 'Voicemail received' : 'Voicemail')
+      : '');
 
   return {
     threadId,
@@ -225,8 +238,8 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
       candidate.preferredOutboundCsNumberId ?? candidate.preferred_outbound_cs_number_id,
     ),
     preferredOutboundContext,
-    voicemailIndicator:
-      candidate.voicemailIndicator === true || hasVoicemailTimelineEvent(candidate.timeline),
+    voicemailIndicator,
+    voicemailLabel: voicemailLabel || null,
     summary: normalizeString(candidate.summary),
   };
 };

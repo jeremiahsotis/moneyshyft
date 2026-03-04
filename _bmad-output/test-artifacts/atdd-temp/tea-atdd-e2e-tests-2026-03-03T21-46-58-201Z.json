@@ -1,0 +1,36 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/ux-r3-voicemail-and-indicator-behavior.atdd.spec.ts",
+      "content": "import { login } from '../../helpers/auth';\nimport { test, expect } from '../../support/fixtures/connectShyftStoryUxR3.fixture';\n\nconst buildSurfaceUrl = (\n  context: {\n    paths: { mineUi: string; inboxUi: string };\n    tenantId: string;\n    orgUnitId: string;\n    userId: string;\n  },\n  bucket: 'mine' | 'inbox',\n): string => {\n  const params = new URLSearchParams({\n    flags: 'module:on,inbox:on,escalation:on,webhooks:on',\n    tenantId: context.tenantId,\n    orgUnitId: context.orgUnitId,\n    actorUserId: context.userId,\n    tenantRole: 'ORGUNIT_MEMBER',\n    orgUnitMemberships: context.orgUnitId,\n    bucket,\n  });\n\n  const path = bucket === 'mine' ? context.paths.mineUi : context.paths.inboxUi;\n  return `${path}?${params.toString()}`;\n};\n\nconst buildThreadDetailUrl = (\n  context: {\n    paths: { threadDetailUi: string };\n    tenantId: string;\n    orgUnitId: string;\n    userId: string;\n  },\n  threadId: string,\n): string => {\n  const params = new URLSearchParams({\n    flags: 'module:on,inbox:on,escalation:on,webhooks:on',\n    tenantId: context.tenantId,\n    orgUnitId: context.orgUnitId,\n    actorUserId: context.userId,\n    tenantRole: 'ORGUNIT_MEMBER',\n    orgUnitMemberships: context.orgUnitId,\n  });\n\n  return `${context.paths.threadDetailUi}/${threadId}?${params.toString()}`;\n};\n\ntest.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD E2E RED)', () => {\n  test.skip(\n    '[P0] claimed-thread voicemail remains on Mine surface and exposes voicemail indicator without Inbox bounce @P0',\n    async ({ page, storyUxR3Context }) => {\n      await login(page);\n\n      await page.goto(buildSurfaceUrl(storyUxR3Context, 'mine'));\n      await expect(\n        page.getByTestId(`connectshyft-thread-card-${storyUxR3Context.threadIds.claimedVoicemail}`),\n      ).toBeVisible();\n      await expect(\n        page.getByTestId(`connectshyft-voicemail-indicator-${storyUxR3Context.threadIds.claimedVoicemail}`),\n      ).toBeVisible();\n\n      await page.goto(buildSurfaceUrl(storyUxR3Context, 'inbox'));\n      await expect(\n        page.getByTestId(`connectshyft-thread-card-${storyUxR3Context.threadIds.claimedVoicemail}`),\n      ).toHaveCount(0);\n    },\n  );\n\n  test.skip(\n    '[P0] unclaimed-thread voicemail remains in Inbox with voicemail-received labeling @P0',\n    async ({ page, storyUxR3Context }) => {\n      await login(page);\n\n      await page.goto(buildSurfaceUrl(storyUxR3Context, 'inbox'));\n      await expect(\n        page.getByTestId(`connectshyft-thread-card-${storyUxR3Context.threadIds.unclaimedVoicemail}`),\n      ).toBeVisible();\n      await expect(\n        page.getByTestId(`connectshyft-voicemail-indicator-${storyUxR3Context.threadIds.unclaimedVoicemail}`),\n      ).toBeVisible();\n      await expect(\n        page.getByText(storyUxR3Context.expectedLabels.unclaimedVoicemail, { exact: false }),\n      ).toBeVisible();\n    },\n  );\n\n  test.skip(\n    '[P1] voicemail-only events preserve escalation and inactivity timer render states in thread detail @P1',\n    async ({\n      page,\n      storyUxR3Context,\n      storyUxR3AdminHeaders,\n      storyUxR3InboundVoicemailPayload,\n    }) => {\n      await login(page);\n\n      const webhookResponse = await page.request.post(storyUxR3Context.paths.inboundWebhook, {\n        headers: storyUxR3AdminHeaders,\n        data: storyUxR3InboundVoicemailPayload,\n      });\n      expect(webhookResponse.status()).toBe(200);\n\n      await page.goto(\n        buildThreadDetailUrl(storyUxR3Context, storyUxR3Context.threadIds.unclaimedVoicemail),\n      );\n      await expect(page.getByTestId('connectshyft-escalation-stage')).toHaveAttribute(\n        'data-reset-applied',\n        'false',\n      );\n      await expect(page.getByTestId('connectshyft-inactivity-timer')).toHaveAttribute(\n        'data-reset-applied',\n        'false',\n      );\n    },\n  );\n\n  test.skip(\n    '[P0] closed-thread inbound voice events preserve CLOSED state and show locked fallback treatment @P0',\n    async ({\n      page,\n      storyUxR3Context,\n      storyUxR3AdminHeaders,\n      storyUxR3InboundClosedPayload,\n    }) => {\n      await login(page);\n\n      const webhookResponse = await page.request.post(storyUxR3Context.paths.inboundWebhook, {\n        headers: storyUxR3AdminHeaders,\n        data: storyUxR3InboundClosedPayload,\n      });\n      expect(webhookResponse.status()).toBe(200);\n\n      await page.goto(\n        buildThreadDetailUrl(storyUxR3Context, storyUxR3Context.threadIds.closedVoice),\n      );\n      await expect(page.getByTestId('connectshyft-thread-state-badge')).toContainText('Closed');\n      await expect(page.getByTestId('connectshyft-voice-fallback-banner')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-thread-reopened-banner')).toHaveCount(0);\n    },\n  );\n});\n",
+      "description": "ATDD E2E tests for ux-r3 voicemail indicator behavior (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Claimed voicemail remains visible in Mine with indicator",
+        "Unclaimed voicemail remains in Inbox with voicemail-received labeling",
+        "Voicemail-only events preserve escalation and inactivity timer surfaces",
+        "Closed-thread inbound voice retains CLOSED state and fallback behavior"
+      ],
+      "priority_coverage": {
+        "P0": 3,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "connectShyftStoryUxR3Factory",
+    "connectShyftStoryUxR3Fixture"
+  ],
+  "knowledge_fragments_used": [
+    "selector-resilience",
+    "timing-debugging",
+    "fixtures-composition"
+  ],
+  "test_count": 4,
+  "tdd_phase": "RED",
+  "summary": "Generated 4 FAILING E2E tests for ux-r3 voicemail and indicator behavior story"
+}

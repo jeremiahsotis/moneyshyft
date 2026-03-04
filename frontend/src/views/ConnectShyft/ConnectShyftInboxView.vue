@@ -140,6 +140,13 @@
                   >
                     Voicemail waiting
                   </span>
+                  <span
+                    v-if="item.voicemailIndicator && item.voicemailLabel"
+                    :data-testid="`connectshyft-voicemail-label-${item.threadId}`"
+                    class="rounded-md border border-blue-200 bg-white px-2 py-1 text-base font-medium text-blue-800"
+                  >
+                    {{ item.voicemailLabel }}
+                  </span>
                   <RouterLink
                     :to="buildThreadDetailPath(item.threadId)"
                     data-testid="connectshyft-thread-card-primary-action"

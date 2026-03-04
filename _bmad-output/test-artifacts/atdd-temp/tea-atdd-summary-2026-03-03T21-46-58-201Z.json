@@ -1,0 +1,30 @@
+{
+  "story_id": "ux-r3",
+  "tdd_phase": "RED",
+  "total_tests": 8,
+  "api_tests": 4,
+  "e2e_tests": 4,
+  "all_tests_skipped": true,
+  "expected_to_fail": true,
+  "fixtures_created": 2,
+  "acceptance_criteria_covered": [
+    "Claimed voicemail remains in Mine with indicators",
+    "Unclaimed voicemail remains in Inbox with labeling",
+    "Voicemail-only events do not reset escalation/inactivity timers",
+    "Closed-thread inbound voice does not auto-reopen and routes to fallback",
+    "Claimed voicemail remains visible in Mine with indicator",
+    "Unclaimed voicemail remains in Inbox with voicemail-received labeling",
+    "Voicemail-only events preserve escalation and inactivity timer surfaces",
+    "Closed-thread inbound voice retains CLOSED state and fallback behavior"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns",
+    "selector-resilience",
+    "timing-debugging",
+    "fixtures-composition"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential (logical orchestration)"
+}

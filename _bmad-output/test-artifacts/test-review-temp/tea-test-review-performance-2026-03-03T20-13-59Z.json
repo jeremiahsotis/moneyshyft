@@ -1,0 +1,56 @@
+{
+  "dimension": "performance",
+  "score": 88,
+  "max_score": 100,
+  "grade": "B+",
+  "violations": [
+    {
+      "file": "tests/support/helpers/connectShyftStoryE4TestHelpers.ts",
+      "line": 68,
+      "severity": "MEDIUM",
+      "category": "expensive-bootstrap-per-test",
+      "description": "Each scenario maps number + ensures thread + seeds voicemail, which increases runtime for larger story suites.",
+      "suggestion": "Introduce worker-scoped reusable baseline fixture with per-test overlay when safe.",
+      "code_snippet": "export const bootstrapStoryE4 = async ({ request, numberMappingLabel }) => { ... }"
+    },
+    {
+      "file": "tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.atdd.api.replay-and-guards.cases.ts",
+      "line": 71,
+      "severity": "MEDIUM",
+      "category": "repeated-detail-fetch",
+      "description": "Most tests perform immediate full thread-detail fetches; this is valuable but can be selectively reduced in some non-read-contract checks.",
+      "suggestion": "Keep full detail assertions for key AC checks and use narrower follow-up checks for purely replay-idempotency paths.",
+      "code_snippet": "const detailResponse = await apiRequest(request, { method: 'GET', path: `${seeded.context.paths.threads}/${seeded.threadId}` });"
+    },
+    {
+      "file": "tests/api/platform/e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.spec.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "no-selective-tag-granularity",
+      "description": "Entrypoint-level splitting is good, but selective run tags at test level could further optimize story-focused CI selection.",
+      "suggestion": "Add consistent tags/grep hints for shard-optimized selective runs where applicable.",
+      "code_snippet": "import './e-4-transcription-webhook-attachment-to-voicemail-records.automate.api.correlation-shape.cases';"
+    }
+  ],
+  "passed_checks": 22,
+  "failed_checks": 3,
+  "total_checks": 25,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 2,
+    "LOW": 1
+  },
+  "performance_metrics": {
+    "parallelizable_tests": 100,
+    "serial_tests": 0,
+    "avg_test_duration_estimate": "Not executed in this review (static analysis)",
+    "slow_tests": [
+      "Potential runtime concentration in repeated seed/bootstrap paths"
+    ]
+  },
+  "recommendations": [
+    "Consider worker-scoped seeded baseline fixture for E4 API suites",
+    "Reduce full thread-detail reads in non-contract-critical replay checks"
+  ],
+  "summary": "Performance is good and parallel-friendly, with moderate optimization headroom in repeated setup and readback patterns."
+}

@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-03T20:05:11Z'
+lastSaved: '2026-03-03T22:50:29Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -3822,3 +3822,200 @@ lastSaved: '2026-03-03T20:05:11Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality and maintainability scoring of the generated e.4 automate suite.
 - `[TR] Trace Requirements` to map e.4 acceptance criteria across ATDD and automate evidence.
+
+## Story ux-r3 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+  - `@faker-js/faker`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/ux-r3-voicemail-and-indicator-behavior.md`
+  - Existing ATDD files found for Story ux-r3:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/ux-r3-voicemail-and-indicator-behavior.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/ux-r3-voicemail-and-indicator-behavior.atdd.spec.ts`
+
+### Context Loaded
+- Story ux-r3 fixture/factory and helper assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryUxR3Factory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryUxR3.fixture.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/helpers/connectShyftWebhookTestHelpers.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/helpers/apiClient.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils and supporting patterns:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `api-testing-patterns.md`
+
+## Story ux-r3 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` reference was loaded for selector strategy.
+- For this run, selector and flow targeting used existing ATDD/UI contract test IDs already validated in repo patterns.
+- No interactive `playwright-cli` session was opened for this run.
+
+### Acceptance Criteria to Target Mapping
+- AC1 expansion target:
+  - duplicate claimed voicemail replay-safe behavior keeps Mine ownership with no Inbox bounce.
+- AC2 expansion target:
+  - unclaimed voicemail label parity across Inbox card surface and thread detail contract.
+- AC3 expansion target:
+  - actor-scoped ownership visibility preserves Mine-only owner view and Inbox-only peer visibility.
+- AC4 expansion target:
+  - closed-thread inbound voicemail remains fail-closed with no reopen in detail surface.
+
+### Selected Test Levels
+- **API** (primary): replay-safe suppression, actor-scoped ownership, label parity, closed-thread fail-closed contract.
+- **E2E** (secondary): owner/peer visibility journeys, Mine/Inbox card behavior, thread-detail closed-state UX invariant, label consistency across refresh.
+
+### Priority Assignment
+- P0:
+  - duplicate claimed voicemail replay-safe suppression + Mine/Inbox invariants.
+- P1:
+  - closed-thread fail-closed voicemail behavior in API + E2E detail checks.
+  - actor-scoped ownership visibility between owner and peer operators.
+- P2:
+  - unclaimed voicemail label consistency between list and detail contracts across refresh.
+
+### Coverage Plan
+- API target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/ux-r3-voicemail-and-indicator-behavior.automate.api.spec.ts`
+- E2E target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/ux-r3-voicemail-and-indicator-behavior.automate.spec.ts`
+- Scope: `critical-paths`
+
+## Story ux-r3 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-03-03T22-49-42Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-03-03T22-49-42Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-03-03T22-49-42Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 4`
+- E2E subprocess status: `success: true`, `test_count: 4`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed in one run for both levels.
+- Sequential equivalent would require two independent generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story ux-r3 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/ux-r3-voicemail-and-indicator-behavior.automate.api.spec.ts`
+- `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/ux-r3-voicemail-and-indicator-behavior.automate.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper assets:
+  - `tests/support/fixtures/connectShyftStoryUxR3.fixture.ts`
+  - `tests/support/factories/connectShyftStoryUxR3Factory.ts`
+  - `tests/support/helpers/connectShyftWebhookTestHelpers.ts`
+  - `tests/support/helpers/apiClient.ts`
+- New shared fixture files created: none.
+
+### Summary Metrics
+- Total tests generated: `8`
+  - API tests: `4` (1 file)
+  - E2E tests: `4` (1 file)
+- Priority coverage:
+  - P0: `2`
+  - P1: `4`
+  - P2: `2`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-03-03T22-49-42Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-03-03T22-49-42Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-03-03T22-49-42Z.json`
+  - `/tmp/tea-automate-summary-2026-03-03T22-49-42Z.json`
+- Persisted under test artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-03-03T22-49-42Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-03-03T22-49-42Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-03-03T22-49-42Z.json`
+
+## Story ux-r3 Run - Step 4: Validate and Summarize
+
+### Coverage Plan by Test Level and Priority
+- API file (`ux-r3-voicemail-and-indicator-behavior.automate.api.spec.ts`):
+  - P0: 1, P1: 2, P2: 1, P3: 0
+- E2E file (`ux-r3-voicemail-and-indicator-behavior.automate.spec.ts`):
+  - P0: 1, P1: 2, P2: 1, P3: 0
+
+### Files Created or Updated
+- Created:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/ux-r3-voicemail-and-indicator-behavior.automate.spec.ts`
+- Updated:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/ux-r3-voicemail-and-indicator-behavior.automate.api.spec.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-summary.md`
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated suite parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/ux-r3-voicemail-and-indicator-behavior.automate.api.spec.ts tests/e2e/platform/ux-r3-voicemail-and-indicator-behavior.automate.spec.ts`
+  - Result: passed (`8` tests discovered in `2` files).
+- Generated suite execution validation:
+  - `npm run test:e2e -- tests/api/platform/ux-r3-voicemail-and-indicator-behavior.automate.api.spec.ts tests/e2e/platform/ux-r3-voicemail-and-indicator-behavior.automate.spec.ts`
+  - Result: `8 passed`.
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) detected.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
+  - no `try/catch` flow-control anti-pattern detected.
+- CLI session cleanup:
+  - no browser session opened during this run.
+- Temp artifact storage:
+  - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-temp`.
+
+### Key Assumptions
+- Story ux-r3 webhook behavior remains available at:
+  - `/api/v1/connectshyft/webhooks/inbound`
+- ConnectShyft test harness headers (`x-test-connectshyft-*`) remain enabled in test runtime.
+- Story ux-r3 fixture/factory contracts remain source-of-truth for deterministic tenant/orgUnit and thread-state setup.
+
+### Risks
+- Duplicate-delivery and actor-scoped visibility assertions depend on seeded story thread IDs staying stable across fixture revisions.
+- E2E coverage uses deterministic story URLs and API-triggered event setup; major UI route/query contract changes will require test alignment.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality and maintainability scoring of the generated ux-r3 automate suite.
+- `[TR] Trace Requirements` to map ux-r3 acceptance criteria across ATDD and automate evidence.

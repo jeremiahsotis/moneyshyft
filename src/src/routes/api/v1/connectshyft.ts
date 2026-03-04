@@ -98,6 +98,9 @@ import {
 } from '../../../modules/connectshyft/canonicalEvents';
 import {
   beginConnectShyftWebhookReceiptProcessing,
+  cleanupConnectShyftWebhookReceipts,
+  CONNECTSHYFT_WEBHOOK_RECEIPT_RETENTION_POLICY_DAYS,
+  loadConnectShyftWebhookReceiptMetrics,
   markConnectShyftWebhookReceiptProcessingResult,
   recordConnectShyftProviderIdentifierMapping,
   recordConnectShyftWebhookReceipt,
@@ -128,6 +131,7 @@ const MAX_ESCALATION_STAGE = 3;
 const DEFAULT_SCHEDULER_LIMIT = 50;
 const MAX_SCHEDULER_LIMIT = 250;
 const HOUR_MS = 60 * 60 * 1000;
+const CONNECTSHYFT_WEBHOOK_RECEIPT_RETENTION_DAYS_MAX = 3650;
 const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
   claimed: 'connectshyft.thread.claimed',
   takenOver: 'connectshyft.thread.taken_over',
@@ -1333,6 +1337,7 @@ const buildSyntheticThreadDetailRecord = (input: {
       label: 'Provider-neutral dispatch line',
     },
     voicemailIndicator: false,
+    voicemailLabel: null,
     summary: input.descriptor.summary,
     actions: resolveConnectShyftThreadActions(input.descriptor.state),
     lifecycle: {
@@ -2928,6 +2933,53 @@ const parseOptionalNonNegativeInteger = (value: unknown): number | null => {
   }
 
   return null;
+};
+
+const normalizeWebhookReceiptRetentionDays = (
+  value: unknown,
+  fallback = CONNECTSHYFT_WEBHOOK_RECEIPT_RETENTION_POLICY_DAYS,
+): number => {
+  const parsed = parseOptionalNonNegativeInteger(value);
+  if (parsed === null || parsed <= 0) {
+    return fallback;
+  }
+
+  return Math.min(parsed, CONNECTSHYFT_WEBHOOK_RECEIPT_RETENTION_DAYS_MAX);
+};
+
+const parseWebhookReceiptMetricsQuery = (req: Request): {
+  orgUnitId: string | null;
+  retentionWindowDays: number;
+  asOfUtc: string | null;
+} => {
+  const asOfCandidate = typeof req.query?.asOfUtc === 'string'
+    ? req.query.asOfUtc.trim()
+    : '';
+  return {
+    orgUnitId: parseOrgUnitIdFromQuery(req),
+    retentionWindowDays: normalizeWebhookReceiptRetentionDays(req.query?.retentionWindowDays),
+    asOfUtc: asOfCandidate.length > 0 ? asOfCandidate : null,
+  };
+};
+
+const parseWebhookReceiptCleanupBody = (req: Request): {
+  orgUnitId: string | null;
+  policyWindowDays: number;
+  dryRun: boolean;
+  asOfUtc: string | null;
+} => {
+  const asOfCandidate = typeof req.body?.asOfUtc === 'string'
+    ? req.body.asOfUtc.trim()
+    : '';
+  return {
+    orgUnitId: parseOrgUnitIdFromBody(req),
+    policyWindowDays: normalizeWebhookReceiptRetentionDays(
+      req.body?.policyWindowDays,
+      CONNECTSHYFT_WEBHOOK_RECEIPT_RETENTION_POLICY_DAYS,
+    ),
+    dryRun: parseOptionalBoolean(req.body?.dryRun) === true,
+    asOfUtc: asOfCandidate.length > 0 ? asOfCandidate : null,
+  };
 };
 
 const parseOutboundCallRequestPolicy = (req: Request): {
@@ -4556,6 +4608,115 @@ router.put('/numbers/:mappingId', async (req: Request, res: Response) => {
       isActive: updated.data.isActive,
       mappings: updated.data.mappings,
     }),
+  });
+});
+
+router.get('/admin/webhook-receipts/metrics', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const query = parseWebhookReceiptMetricsQuery(req);
+  const context = await enforceOrgUnitContext(req, res, query.orgUnitId);
+  if (!context) {
+    return;
+  }
+
+  if (!enforceNumberMappingManageCapability(req, res, context)) {
+    return;
+  }
+
+  const metrics = await loadConnectShyftWebhookReceiptMetrics({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    retentionWindowDays: query.retentionWindowDays,
+    asOfUtc: query.asOfUtc || undefined,
+    db: loadPlatformDb(),
+  });
+
+  if (metrics.error) {
+    refusal(res, {
+      code: metrics.error.code,
+      message: 'Webhook receipt metrics are temporarily unavailable.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        orgUnitId: context.orgUnitId,
+      },
+    });
+    return;
+  }
+
+  return success(res, {
+    code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_METRICS_LOADED',
+    message: 'Webhook receipt metrics loaded',
+    data: {
+      orgUnitId: context.orgUnitId,
+      retentionWindowDays: metrics.retentionWindowDays,
+      totalRows: metrics.totalRows,
+      expiredRowsCandidate: metrics.expiredRowsCandidate,
+      oldestRetainedAt: metrics.oldestRetainedAt,
+      asOfUtc: metrics.asOfUtc,
+      cutoffUtc: metrics.cutoffUtc,
+    },
+  });
+});
+
+router.post('/admin/webhook-receipts/cleanup', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const payload = parseWebhookReceiptCleanupBody(req);
+  const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
+  if (!context) {
+    return;
+  }
+
+  if (!enforceNumberMappingManageCapability(req, res, context)) {
+    return;
+  }
+
+  const cleanup = await cleanupConnectShyftWebhookReceipts({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    policyWindowDays: payload.policyWindowDays,
+    dryRun: payload.dryRun,
+    asOfUtc: payload.asOfUtc || undefined,
+    db: loadPlatformDb(),
+  });
+
+  if (cleanup.error) {
+    refusal(res, {
+      code: cleanup.error.code,
+      message: 'Webhook receipt cleanup is temporarily unavailable.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        orgUnitId: context.orgUnitId,
+        policyWindowDays: payload.policyWindowDays,
+      },
+    });
+    return;
+  }
+
+  return success(res, {
+    code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_RETENTION_APPLIED',
+    message: cleanup.dryRun
+      ? 'Webhook receipt retention cleanup dry-run complete'
+      : 'Webhook receipt retention cleanup complete',
+    data: {
+      orgUnitId: context.orgUnitId,
+      policyWindowDays: cleanup.policyWindowDays,
+      dryRun: cleanup.dryRun,
+      expiredRowsRemoved: cleanup.expiredRowsRemoved,
+      activeWindowProtected: cleanup.activeWindowProtected,
+      totalRowsBefore: cleanup.totalRowsBefore,
+      totalRowsAfter: cleanup.totalRowsAfter,
+      oldestRetainedAt: cleanup.oldestRetainedAt,
+      executedAtUtc: cleanup.executedAtUtc,
+      cutoffUtc: cleanup.cutoffUtc,
+    },
   });
 });
 
@@ -6802,6 +6963,10 @@ const handleInboundWebhook = async (
           routingDecision: domainEvent.routingDecision,
           deterministicOrdering: domainEvent.deterministicOrdering,
         },
+        timelineOutcome: {
+          eventName: domainEvent.eventName,
+          routingDecision: domainEvent.routingDecision,
+        },
         ...(sideEffectsPersisted
           ? {
               audit: {
@@ -7133,6 +7298,10 @@ const handleInboundWebhook = async (
         eventName: timelineEventName,
         routingDecision,
         deterministicOrdering: true,
+      },
+      timelineOutcome: {
+        eventName: timelineEventName,
+        routingDecision,
       },
       audit: {
         eventName: timelineEventName,

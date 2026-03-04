@@ -21,6 +21,11 @@ type PolicyScriptHarnessResult = {
   status: number;
 };
 
+type LaneSprintStatusEntry = {
+  laneId: string;
+  statusPath: string;
+};
+
 function copyFileIfPresent(sourcePath: string, targetPath: string, executable = false): void {
   if (!existsSync(sourcePath)) {
     return;
@@ -117,6 +122,58 @@ function ensureStoryFilesForActiveStatuses(repoDir: string, sprintStatusPath: st
   }
 }
 
+function resolveLaneSprintStatusEntries(repoDir: string): LaneSprintStatusEntry[] {
+  const fallbackEntries: LaneSprintStatusEntry[] = [
+    {
+      laneId: 'routeshyft',
+      statusPath: join(repoDir, '_bmad-output/implementation-artifacts/sprint-status.yaml'),
+    },
+    {
+      laneId: 'connectshyft',
+      statusPath: join(repoDir, '_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml'),
+    },
+  ];
+
+  const laneConfigPath = join(repoDir, 'docs/policies/project_lanes.json');
+  if (!existsSync(laneConfigPath)) {
+    return fallbackEntries;
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(laneConfigPath, 'utf8')) as {
+      lanes?: Array<{ id?: string; sprintStatusFile?: string }>;
+    };
+
+    if (!Array.isArray(parsed.lanes) || parsed.lanes.length === 0) {
+      return fallbackEntries;
+    }
+
+    const dedupedByPath = new Map<string, LaneSprintStatusEntry>();
+
+    for (const lane of parsed.lanes) {
+      const laneId = String(lane?.id ?? '').trim().toLowerCase();
+      const sprintStatusFile = String(lane?.sprintStatusFile ?? '')
+        .trim()
+        .replace(/\\/g, '/')
+        .replace(/^\.\//, '');
+
+      if (!laneId || !sprintStatusFile) {
+        continue;
+      }
+
+      const statusPath = join(repoDir, sprintStatusFile);
+      if (!dedupedByPath.has(statusPath)) {
+        dedupedByPath.set(statusPath, { laneId, statusPath });
+      }
+    }
+
+    const resolvedEntries = Array.from(dedupedByPath.values());
+    return resolvedEntries.length > 0 ? resolvedEntries : fallbackEntries;
+  } catch {
+    return fallbackEntries;
+  }
+}
+
 export function runPolicyScriptInTempRepo(
   policyScriptPath: string,
   policyFilePath: string,
@@ -185,22 +242,15 @@ export function runPolicyScriptInTempRepo(
       writeFileSync(absolutePath, contents);
     }
 
-    const routeSprintStatusPath = join(repoDir, '_bmad-output/implementation-artifacts/sprint-status.yaml');
-    const connectSprintStatusPath = join(repoDir, '_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml');
-
-    if (!existsSync(routeSprintStatusPath)) {
-      mkdirSync(dirname(routeSprintStatusPath), { recursive: true });
-      writeFileSync(routeSprintStatusPath, 'development_status:\n', 'utf8');
+    const laneSprintStatusEntries = resolveLaneSprintStatusEntries(repoDir);
+    for (const entry of laneSprintStatusEntries) {
+      if (!existsSync(entry.statusPath)) {
+        mkdirSync(dirname(entry.statusPath), { recursive: true });
+        writeFileSync(entry.statusPath, 'development_status:\n', 'utf8');
+      }
+      ensureProjectLaneMetadata(entry.statusPath, entry.laneId);
+      ensureStoryFilesForActiveStatuses(repoDir, entry.statusPath);
     }
-    if (!existsSync(connectSprintStatusPath)) {
-      mkdirSync(dirname(connectSprintStatusPath), { recursive: true });
-      writeFileSync(connectSprintStatusPath, 'development_status:\n', 'utf8');
-    }
-
-    ensureProjectLaneMetadata(routeSprintStatusPath, 'routeshyft');
-    ensureProjectLaneMetadata(connectSprintStatusPath, 'connectshyft');
-    ensureStoryFilesForActiveStatuses(repoDir, routeSprintStatusPath);
-    ensureStoryFilesForActiveStatuses(repoDir, connectSprintStatusPath);
 
     execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
     execFileSync('git', ['config', 'user.email', 'policy-harness@example.com'], { cwd: repoDir, stdio: 'ignore' });
