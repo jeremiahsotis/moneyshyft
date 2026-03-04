@@ -558,6 +558,210 @@ describe('connectshyft neighbor service', () => {
       code: 'CONNECTSHYFT_NEIGHBOR_MERGE_CONFIRMATION_REQUIRED',
     });
   });
+
+  it('marks verified non-shared exact contact matches as auto-merge eligible', () => {
+    const created = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+          isShared: false,
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!created.ok) {
+      throw new Error('Expected neighbor create to succeed');
+    }
+
+    const evaluated = service.evaluateIdentityMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '+1 (260) 555-0199',
+        isShared: false,
+        verificationStatus: 'verified',
+      },
+    });
+
+    expect(evaluated).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_AUTO_MERGE_ALLOWED',
+      data: {
+        identityMatch: {
+          decision: 'AUTO_MERGE_ALLOWED',
+          reason: 'VERIFIED_NON_SHARED_EXACT_CONTACT_POINT',
+          autoMergeAllowed: true,
+          matchedNeighborId: created.data.neighbor.neighborId,
+          candidateCount: 1,
+          candidateNeighborIds: [created.data.neighbor.neighborId],
+        },
+      },
+    });
+  });
+
+  it('returns no-auto-merge outcomes for shared or unverified contact points', () => {
+    const sharedCreated = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Shared',
+      lastName: 'Match',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550201',
+          isShared: true,
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!sharedCreated.ok) {
+      throw new Error('Expected shared neighbor create to succeed');
+    }
+
+    const sharedEvaluated = service.evaluateIdentityMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '+12605550201',
+        isShared: false,
+        verificationStatus: 'verified',
+      },
+    });
+
+    expect(sharedEvaluated).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE',
+      data: {
+        identityMatch: {
+          decision: 'NO_AUTO_MERGE',
+          reason: 'MATCH_CONTACT_SHARED',
+          autoMergeAllowed: false,
+        },
+      },
+    });
+
+    const verifiedCreated = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Verified',
+      lastName: 'Match',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550202',
+          isShared: false,
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!verifiedCreated.ok) {
+      throw new Error('Expected verified neighbor create to succeed');
+    }
+
+    const unverifiedInputEvaluated = service.evaluateIdentityMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '+12605550202',
+        isShared: false,
+        verificationStatus: 'unverified',
+      },
+    });
+
+    expect(unverifiedInputEvaluated).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE',
+      data: {
+        identityMatch: {
+          decision: 'NO_AUTO_MERGE',
+          reason: 'INPUT_CONTACT_UNVERIFIED',
+          autoMergeAllowed: false,
+        },
+      },
+    });
+  });
+
+  it('returns deterministic ambiguous refusal with manual-resolution context for multi-match contacts', () => {
+    const first = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'First',
+      lastName: 'Match',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550303',
+          isShared: false,
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    const second = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Second',
+      lastName: 'Match',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550303',
+          isShared: false,
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!first.ok || !second.ok) {
+      throw new Error('Expected duplicate contact neighbors to be created for ambiguity test');
+    }
+
+    const evaluated = service.evaluateIdentityMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '+12605550303',
+        isShared: false,
+        verificationStatus: 'verified',
+      },
+    });
+
+    expect(evaluated).toMatchObject({
+      ok: false,
+      code: 'IDENTITY_MATCH_AMBIGUOUS',
+      data: {
+        identityMatch: {
+          decision: 'AMBIGUOUS',
+          reason: 'MULTIPLE_EXACT_CONTACT_POINT_MATCHES',
+          autoMergeAllowed: false,
+          candidateCount: 2,
+        },
+        manualResolution: {
+          required: true,
+          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+          nextAction: 'manual-merge',
+          mergeEndpoint: '/api/v1/connectshyft/neighbors/merge',
+        },
+      },
+    });
+  });
 });
 
 describe('connectshyft async neighbor service', () => {
@@ -698,6 +902,21 @@ describe('connectshyft async neighbor service', () => {
       ],
     });
     expect(updated).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_PERSISTENCE_UNAVAILABLE',
+    });
+
+    const identityMatch = await service.evaluateIdentityMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '+12605550199',
+        isShared: false,
+        verificationStatus: 'verified',
+      },
+    });
+    expect(identityMatch).toMatchObject({
       ok: false,
       code: 'CONNECTSHYFT_NEIGHBOR_PERSISTENCE_UNAVAILABLE',
     });

@@ -4,6 +4,7 @@ module.exports = {
   testMatch: ['<rootDir>/src/**/__tests__/**/*.test.ts'],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   moduleFileExtensions: ['ts', 'js', 'json'],
+  modulePaths: ['<rootDir>/node_modules'],
   clearMocks: true,
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/jest.setup.ts'],
   transform: {
