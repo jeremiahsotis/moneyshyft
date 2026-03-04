@@ -1,0 +1,49 @@
+{
+  "dimension": "isolation",
+  "score": 88,
+  "max_score": 100,
+  "grade": "B+",
+  "violations": [
+    {
+      "file": "tests/support/factories/connectShyftStoryUxR4Factory.ts",
+      "line": 90,
+      "severity": "MEDIUM",
+      "category": "shared-thread-identities",
+      "description": "All tests use fixed thread IDs, increasing risk of cross-test state leakage when run concurrently against mutable environments.",
+      "suggestion": "Suffix thread IDs per test worker or inject per-test namespace in fixture factory.",
+      "code_snippet": "threadIds: { unclaimed: 'thread-ux-r4-unclaimed-1001', ... }"
+    },
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 249,
+      "severity": "MEDIUM",
+      "category": "stateful-endpoint-reuse",
+      "description": "Lifecycle-mutating outbound actions run against shared story thread identities without explicit teardown/reset hooks.",
+      "suggestion": "Add test-scoped thread seeds or cleanup reset endpoint after mutation tests.",
+      "code_snippet": "POST .../threads/${storyUxR4Context.threadIds.closed}/call"
+    },
+    {
+      "file": "tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts",
+      "line": 43,
+      "severity": "LOW",
+      "category": "repeated-shared-login-path",
+      "description": "Each E2E test reuses same login path and actor identity without explicit isolation assertions.",
+      "suggestion": "Introduce test-scoped auth/session fixture with clearer setup boundary.",
+      "code_snippet": "const context = createStoryUxR4Context(); await login(page);"
+    }
+  ],
+  "passed_checks": 20,
+  "failed_checks": 3,
+  "total_checks": 23,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 2,
+    "LOW": 1
+  },
+  "recommendations": [
+    "Make thread IDs test-scoped to avoid order-dependent behavior",
+    "Reset lifecycle-mutated fixtures between tests",
+    "Use isolated auth/session fixture boundaries for E2E cases"
+  ],
+  "summary": "Isolation is good but shared story identities create medium risk in parallel or stateful environments."
+}

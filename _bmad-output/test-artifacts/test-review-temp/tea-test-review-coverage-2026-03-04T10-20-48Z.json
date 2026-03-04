@@ -1,0 +1,54 @@
+{
+  "dimension": "coverage",
+  "score": 85,
+  "max_score": 100,
+  "grade": "B",
+  "violations": [
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 291,
+      "severity": "MEDIUM",
+      "category": "missing-api-error-envelope-assertion",
+      "description": "API ATDD coverage validates success/refusal envelopes but does not assert system error envelope behavior from live API.",
+      "suggestion": "Add API case asserting canonical `error` envelope semantics and deterministic UI metadata contract where applicable.",
+      "code_snippet": "[P1] success and refusal envelopes expose deterministic accessible feedback metadata"
+    },
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 4,
+      "severity": "MEDIUM",
+      "category": "missing-negative-access-control-case",
+      "description": "Suite lacks explicit unauthorized/forbidden outbound action checks for non-member role or org-unit mismatch.",
+      "suggestion": "Add one negative access-control test path for outbound send/call endpoints.",
+      "code_snippet": "// no dedicated 403/401 ux-r4 assertion in ATDD suite"
+    },
+    {
+      "file": "tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts",
+      "line": 203,
+      "severity": "LOW",
+      "category": "invalid-override-atdd-gap",
+      "description": "Invalid override reason path is present in automate expansion but not in core ux-r4 ATDD suite.",
+      "suggestion": "Promote one invalid-override path into core ATDD to keep baseline contract complete.",
+      "code_snippet": "[P1] nested override payload fields are accepted ..."
+    }
+  ],
+  "passed_checks": 18,
+  "failed_checks": 3,
+  "total_checks": 21,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 2,
+    "LOW": 1
+  },
+  "coverage_gaps": {
+    "untested_endpoints": [],
+    "untested_user_paths": ["Unauthorized outbound send/call attempt from non-member role"],
+    "missing_error_scenarios": ["API-level system error envelope contract assertion for outbound message dispatch"]
+  },
+  "recommendations": [
+    "Add API-level system error envelope test",
+    "Add outbound access-control negative-path test",
+    "Promote one invalid override rejection case into ATDD baseline"
+  ],
+  "summary": "Coverage is strong for AC1-AC4 core behavior; a few negative-path API contract cases are still missing."
+}

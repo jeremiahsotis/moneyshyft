@@ -1,0 +1,58 @@
+{
+  "dimension": "maintainability",
+  "score": 73,
+  "max_score": 100,
+  "grade": "C",
+  "violations": [
+    {
+      "file": "tests/api/platform/ux-r3-voicemail-and-indicator-behavior.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "API suite is 248 lines and mixes four behavioral concerns in one file.",
+      "suggestion": "Split into focused case modules (placement, lifecycle, closed-thread fallback).",
+      "code_snippet": "test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD API RED)', () => { ... })"
+    },
+    {
+      "file": "tests/e2e/platform/ux-r3-voicemail-and-indicator-behavior.atdd.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "E2E suite is 163 lines and combines multiple flows that can be modularized.",
+      "suggestion": "Split E2E scenarios into smaller files by acceptance criterion.",
+      "code_snippet": "test.describe('Story ux-r3 Voicemail and Indicator Behavior (ATDD E2E RED)', () => { ... })"
+    },
+    {
+      "file": "tests/api/platform/ux-r3-voicemail-and-indicator-behavior.atdd.api.spec.ts",
+      "line": 19,
+      "severity": "MEDIUM",
+      "category": "duplicate-setup",
+      "description": "Webhook POST setup pattern is repeated with small payload variations.",
+      "suggestion": "Extract helper for inbound webhook invocation and expected envelope assertions.",
+      "code_snippet": "const webhookResponse = await apiRequest(request, { method: \"POST\", ... })"
+    },
+    {
+      "file": "tests/api/platform/ux-r3-voicemail-and-indicator-behavior.atdd.api.spec.ts",
+      "line": 9,
+      "severity": "LOW",
+      "category": "test-id-convention",
+      "description": "Cases include priority tags but no stable story/test IDs in title prefix.",
+      "suggestion": "Adopt stable IDs (e.g., UX-R3-API-001) for traceability in reports.",
+      "code_snippet": "'[P0] voicemail on claimed threads remains in Mine ... @P0'"
+    }
+  ],
+  "passed_checks": 12,
+  "failed_checks": 4,
+  "total_checks": 16,
+  "violation_summary": {
+    "HIGH": 2,
+    "MEDIUM": 1,
+    "LOW": 1
+  },
+  "recommendations": [
+    "Modularize ux-r3 API and E2E suites by acceptance criterion.",
+    "Introduce shared webhook/assertion helpers to cut repetition.",
+    "Add stable case IDs to improve CI and defect traceability."
+  ],
+  "summary": "Maintainability is moderate; structure and reuse can be improved significantly."
+}

@@ -1,0 +1,49 @@
+{
+  "dimension": "isolation",
+  "score": 80,
+  "max_score": 100,
+  "grade": "B",
+  "violations": [
+    {
+      "file": "tests/api/platform/ux-r3-voicemail-and-indicator-behavior.atdd.api.spec.ts",
+      "line": 6,
+      "severity": "HIGH",
+      "category": "test-order-dependency",
+      "description": "Suite enforces serial mode, signaling shared-state coupling and reduced isolation.",
+      "suggestion": "Refactor data setup so cases can execute in parallel safely.",
+      "code_snippet": "test.describe.configure({ mode: \"serial\" });"
+    },
+    {
+      "file": "tests/support/factories/connectShyftStoryUxR3Factory.ts",
+      "line": 91,
+      "severity": "MEDIUM",
+      "category": "shared-test-data",
+      "description": "Static thread IDs are reused across all tests, increasing collision risk across retries/workers.",
+      "suggestion": "Namespace thread IDs per test run or seed isolated records per test case.",
+      "code_snippet": "unclaimedVoicemail: 'thread-ux-r3-unclaimed-voicemail-1001'"
+    },
+    {
+      "file": "tests/support/fixtures/connectShyftStoryUxR3.fixture.ts",
+      "line": 55,
+      "severity": "MEDIUM",
+      "category": "shared-fixture-state",
+      "description": "Inbound payload fixture targets shared thread context without explicit teardown.",
+      "suggestion": "Add per-test cleanup/seed reset helper to keep fixture state fully isolated.",
+      "code_snippet": "storyUxR3InboundVoicemailPayload: async ({ storyUxR3Context }, use) => { ... }"
+    }
+  ],
+  "passed_checks": 17,
+  "failed_checks": 3,
+  "total_checks": 20,
+  "violation_summary": {
+    "HIGH": 1,
+    "MEDIUM": 2,
+    "LOW": 0
+  },
+  "recommendations": [
+    "Eliminate serial-only requirement by isolating thread data per test.",
+    "Add teardown/reset utility for ux-r3 fixtures to reduce cross-test coupling.",
+    "Run ux-r3 API tests under parallel mode in CI once isolation refactor is complete."
+  ],
+  "summary": "Isolation is acceptable but constrained by serial execution and shared seeded identifiers."
+}

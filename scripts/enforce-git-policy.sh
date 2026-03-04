@@ -2,7 +2,8 @@
 set -euo pipefail
 
 POLICY_FILE="docs/policies/git_policy.md"
-STORY_SUBJECT_PATTERN='^(([0-9]+|[A-Za-z])-[0-9]+):[[:space:]]+.+$'
+STORY_KEY_PATTERN='(([0-9]+|[A-Za-z])-[0-9]+|[A-Za-z]+-[Rr][0-9]+)'
+STORY_SUBJECT_PATTERN="^(${STORY_KEY_PATTERN}):[[:space:]]+.+$"
 CONVENTIONAL_SUBJECT_PATTERN='^([Ff]ix|[Dd]ocs|[Cc]hore|[Ff]eat|[Rr]efactor|[Tt]est|[Cc][Ii]|[Bb]uild|[Pp]erf|[Ss]tyle|[Rr]evert)(\([^)]+\))?:[[:space:]]+.+$'
 
 print_policy_context() {
@@ -15,19 +16,21 @@ print_recovery() {
   local story_id=""
   local story_slug=""
   local branch_story_id=""
-  local branch_epic_token=""
   local branch_story_slug=""
+  local branch_epic_token=""
 
-  if [[ "$branch" =~ ^codex/story-(([0-9]+|[A-Za-z])-[0-9]+)-(.+)$ ]]; then
+  if [[ "$branch" =~ ^codex/story-([^-]+-[^-]+)-(.+)$ ]]; then
     branch_story_id="${BASH_REMATCH[1]}"
-    branch_epic_token="${BASH_REMATCH[2]}"
-    branch_story_slug="${BASH_REMATCH[3]}"
-    if [[ "$branch_epic_token" =~ ^[A-Za-z]$ ]]; then
-      story_id="$(echo "$branch_story_id" | tr '[:upper:]' '[:lower:]')"
-    else
-      story_id="$branch_story_id"
+    branch_story_slug="${BASH_REMATCH[2]}"
+    if [[ "$branch_story_id" =~ ^${STORY_KEY_PATTERN}$ ]]; then
+      branch_epic_token="${branch_story_id%%-*}"
+      if [[ "$branch_epic_token" =~ ^[A-Za-z]$ ]]; then
+        story_id="$(echo "$branch_story_id" | tr '[:upper:]' '[:lower:]')"
+      else
+        story_id="$branch_story_id"
+      fi
+      story_slug="$branch_story_slug"
     fi
-    story_slug="$branch_story_slug"
   fi
 
   echo "Remediation:"
@@ -146,7 +149,7 @@ fi
 last_subject="$(git log -1 --pretty=%s 2>/dev/null || true)"
 subject_source="HEAD"
 story_branch_id=""
-if [[ "$branch" =~ ^codex/story-(([0-9]+|[A-Za-z])-[0-9]+)- ]]; then
+if [[ "$branch" =~ ^codex/story-(${STORY_KEY_PATTERN})- ]]; then
   story_branch_id="${BASH_REMATCH[1]}"
   story_branch_epic_token="${BASH_REMATCH[2]}"
   if [[ "$story_branch_epic_token" =~ ^[A-Za-z]$ ]]; then

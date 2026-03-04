@@ -155,6 +155,16 @@
             </p>
 
             <p
+              v-if="policyErrorBanner"
+              data-testid="connectshyft-policy-error-banner"
+              role="alert"
+              aria-live="assertive"
+              class="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-base text-rose-900"
+            >
+              {{ policyErrorBanner }}
+            </p>
+
+            <p
               v-if="policySuccessBanner"
               data-testid="connectshyft-policy-success-banner"
               role="status"
@@ -474,6 +484,7 @@ const closeModalOpen = ref(false);
 const inactivityReset = ref(false);
 const feedbackBanner = ref<ConnectShyftFeedback | null>(null);
 const policyRefusalBanner = ref('');
+const policyErrorBanner = ref('');
 const policySuccessBanner = ref('');
 const policySuccessAuditReason = ref('');
 const preferenceOverrideModalOpen = ref(false);
@@ -558,6 +569,7 @@ const clearFeedbackBanner = (): void => {
 
 const clearPolicyBanners = (): void => {
   policyRefusalBanner.value = '';
+  policyErrorBanner.value = '';
   policySuccessBanner.value = '';
   policySuccessAuditReason.value = '';
 };
@@ -956,6 +968,8 @@ const executeThreadAction = async (
       ok?: boolean;
       code?: unknown;
       message?: string;
+      errorType?: unknown;
+      refusalType?: unknown;
       data?: {
         thread?: unknown;
         lifecycleEvent?: unknown;
@@ -967,6 +981,7 @@ const executeThreadAction = async (
           };
         };
         uiFeedback?: {
+          severity?: unknown;
           message?: unknown;
           heading?: unknown;
           hiddenTransition?: unknown;
@@ -979,6 +994,14 @@ const executeThreadAction = async (
         envelope.message,
         'Unable to complete that thread action.',
       );
+      const refusalUiSeverity = typeof envelope.data?.uiFeedback?.severity === 'string'
+        ? envelope.data.uiFeedback.severity.trim().toLowerCase()
+        : '';
+      const envelopeErrorType = typeof envelope.errorType === 'string'
+        ? envelope.errorType.trim().toLowerCase()
+        : '';
+      const refusalMapsToError = refusalUiSeverity === 'error'
+        || envelopeErrorType === 'system';
 
       applyThreadUpdate(envelope.data?.thread);
 
@@ -1037,10 +1060,18 @@ const executeThreadAction = async (
       }
 
       actionError.value = refusalMessage;
-      if (action === 'Send Message' || action === 'Text') {
-        policyRefusalBanner.value = refusalMessage;
+      if (action === 'Send Message' || action === 'Text' || action === 'Call') {
+        if (refusalMapsToError) {
+          policyErrorBanner.value = refusalMessage;
+        } else if (action === 'Send Message' || action === 'Text') {
+          policyRefusalBanner.value = refusalMessage;
+        }
       }
-      setFeedbackBanner('refusal', refusalMessage, 'Unable to complete that thread action.');
+      setFeedbackBanner(
+        refusalMapsToError ? 'error' : 'refusal',
+        refusalMessage,
+        'Unable to complete that thread action.',
+      );
       return false;
     }
 
@@ -1113,13 +1144,26 @@ const executeThreadAction = async (
     );
     return true;
   } catch (error: unknown) {
-    const payload = (error as { response?: { data?: { message?: unknown } } })?.response?.data;
+    const payload = (
+      error as {
+        response?: {
+          data?: {
+            message?: unknown;
+            data?: {
+              uiFeedback?: {
+                message?: unknown;
+              };
+            };
+          };
+        };
+      }
+    )?.response?.data;
     actionError.value = sanitizeConnectShyftOperatorCopy(
-      payload?.message,
+      payload?.data?.uiFeedback?.message ?? payload?.message,
       'Unable to complete that thread action.',
     );
-    if (action === 'Send Message' || action === 'Text') {
-      policyRefusalBanner.value = `${actionError.value} Retry after confirming override details.`;
+    if (action === 'Send Message' || action === 'Text' || action === 'Call') {
+      policyErrorBanner.value = actionError.value;
     }
     setFeedbackBanner('error', actionError.value, 'Unable to complete that thread action.');
     return false;
