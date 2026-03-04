@@ -1,6 +1,6 @@
 # Story 8.5: Shared-Contact-Safe Dedupe Contract
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -84,6 +84,8 @@ GPT-5 (Codex)
 - `npm test` (cwd: `apps/routeshyft-api`)
 - `npm run policy:check` (repo root)
 - `npx nx run routeshyft-api:lint` (repo root)
+- `npm run test:connectshyft` (cwd: `apps/routeshyft-api`)
+- `npx nx run connectshyft-api:test` (repo root)
 
 ### Completion Notes List
 
@@ -94,6 +96,10 @@ GPT-5 (Codex)
 - Preserved existing explicit/manual merge endpoint contract (`/api/v1/connectshyft/neighbors/merge`) and compatible behavior.
 - Added automated coverage for verified/non-shared auto-merge eligibility, shared/unverified no-auto-merge behavior, and deterministic ambiguous multi-match refusal paths.
 - Updated Jest/TypeScript module resolution config in `apps/routeshyft-api` to keep symlinked lane tests/builds working without local `apps/connectshyft-api/node_modules` symlink workarounds.
+- Patched single-neighbor duplicate-contact evaluation to aggregate candidate safety per neighbor, eliminating row-order nondeterminism and enforcing safe no-auto-merge outcomes.
+- Updated identity-match route behavior to preserve `IDENTITY_MATCH_AMBIGUOUS` contract responses when audit persistence is unavailable, while exposing side-effect persistence status.
+- Replaced unsalted contact-value hash with keyed HMAC output for identity-match audit payloads.
+- Added a dedicated `test:connectshyft` lane command and wired `connectshyft-api:test` to run ConnectShyft-focused suites directly.
 - Operator manual validation steps:
   - Call `POST /api/v1/connectshyft/neighbors/identity-match` with a verified, non-shared exact match and verify `CONNECTSHYFT_IDENTITY_MATCH_AUTO_MERGE_ALLOWED`.
   - Call the same endpoint with shared or unverified contact points and verify `CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE`.
@@ -101,12 +107,13 @@ GPT-5 (Codex)
 
 ### File List
 
+- `_bmad-output/implementation-artifacts/8-5-shared-contact-safe-dedupe-contract.md` (modified)
+- `apps/connectshyft-api/project.json` (modified)
 - `apps/connectshyft-api/src/modules/connectshyft/neighbors.ts` (modified)
 - `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` (modified)
-- `apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts` (modified)
-- `apps/routeshyft-api/src/__tests__/connectshyft.identity-dedupe.test.ts` (added)
-- `apps/routeshyft-api/jest.config.js` (modified)
-- `apps/routeshyft-api/tsconfig.json` (modified)
+- `apps/routeshyft-api/package.json` (modified)
+- `apps/routeshyft-api/src/__tests__/connectshyft.identity-dedupe.test.ts` (modified)
+- `apps/routeshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts` (added)
 
 ## Change Log
 
@@ -115,3 +122,4 @@ GPT-5 (Codex)
 - 2026-03-04: Added audit/observability payload support for identity dedupe decisions with masked/hash contact-point safety controls.
 - 2026-03-04: Added automated tests for shared/unverified/verified/ambiguous dedupe decision paths and updated route/module coverage.
 - 2026-03-04: Updated `apps/routeshyft-api` Jest/TypeScript module resolution settings for symlinked ConnectShyft lane compatibility.
+- 2026-03-04: Addressed review findings by hardening deterministic dedupe evaluation, preserving ambiguous refusal contract under audit-persistence failures, upgrading audit hashing to keyed HMAC, and wiring a ConnectShyft-specific test target.

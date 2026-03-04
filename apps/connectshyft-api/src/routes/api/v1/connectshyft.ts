@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { Request, Response, Router } from 'express';
 import type { Knex } from 'knex';
 import { refusal, success } from '../../../platform/envelopes/response';
@@ -122,9 +122,6 @@ const NEIGHBOR_MERGE_FORBIDDEN_MESSAGE = 'Neighbor merge requires an authorized 
 const NEIGHBOR_MERGE_TRANSACTION_ABORTED_CODE = 'CONNECTSHYFT_NEIGHBOR_MERGE_TRANSACTION_ABORTED';
 const NEIGHBOR_MERGE_TRANSACTION_ABORTED_MESSAGE = 'Neighbor merge aborted and no changes were persisted.';
 const IDENTITY_MATCH_AMBIGUOUS_CODE = 'IDENTITY_MATCH_AMBIGUOUS';
-const IDENTITY_MATCH_AUDIT_UNAVAILABLE_CODE = 'CONNECTSHYFT_IDENTITY_MATCH_AUDIT_UNAVAILABLE';
-const IDENTITY_MATCH_AUDIT_UNAVAILABLE_MESSAGE =
-  'Identity matching audit persistence is temporarily unavailable. Please retry.';
 const TENANT_PRIVILEGED_OVERRIDE_NOTICE = 'Tenant-privileged override applied';
 const RELATIONSHIP_POLICY_INDICATOR = 'Active thread relationship';
 const CONNECTSHYFT_INBOX_P95_BUDGET_MS = 750;
@@ -3529,8 +3526,25 @@ const maskIdentityContactPointValue = (value: string): string => {
   return `***${lastFour}`;
 };
 
+const resolveIdentityContactHashSecret = (): string => {
+  const configuredSecret = [
+    process.env.CONNECTSHYFT_CONTACT_HASH_SECRET,
+    process.env.CONNECTSHYFT_AUDIT_HASH_SECRET,
+    process.env.JWT_SECRET,
+    process.env.DB_PASSWORD,
+  ].find((candidate) => typeof candidate === 'string' && candidate.trim().length > 0);
+
+  if (configuredSecret && configuredSecret.trim().length > 0) {
+    return configuredSecret.trim();
+  }
+
+  return randomBytes(32).toString('hex');
+};
+
+const CONNECTSHYFT_CONTACT_HASH_SECRET = resolveIdentityContactHashSecret();
+
 const hashIdentityContactPointValue = (value: string): string =>
-  `sha256:${createHash('sha256').update(value).digest('hex')}`;
+  `hmac-sha256:${createHmac('sha256', CONNECTSHYFT_CONTACT_HASH_SECRET).update(value).digest('hex')}`;
 
 const buildIdentityMatchEventPayload = (input: {
   context: { tenantId: string; orgUnitId: string };
@@ -4617,6 +4631,7 @@ router.post('/neighbors/identity-match', async (req: Request, res: Response) => 
       : null;
 
   let sideEffectsPersisted = false;
+  let sideEffectsPersistenceUnavailable = false;
   if (identityDecision) {
     try {
       sideEffectsPersisted = await persistIdentityMatchDecision({
@@ -4625,18 +4640,8 @@ router.post('/neighbors/identity-match', async (req: Request, res: Response) => 
         decision: identityDecision,
       });
     } catch (_error) {
-      refusal(res, {
-        code: IDENTITY_MATCH_AUDIT_UNAVAILABLE_CODE,
-        message: IDENTITY_MATCH_AUDIT_UNAVAILABLE_MESSAGE,
-        refusalType: 'business',
-        httpStatus: 200,
-        data: {
-          ...buildNeighborScopePayload(context),
-          identityMatch: identityDecision,
-          sideEffectsPersisted: false,
-        },
-      });
-      return;
+      sideEffectsPersisted = false;
+      sideEffectsPersistenceUnavailable = true;
     }
   }
 
@@ -4649,6 +4654,7 @@ router.post('/neighbors/identity-match', async (req: Request, res: Response) => 
       data: {
         ...buildNeighborRefusalData(matched, context),
         sideEffectsPersisted,
+        sideEffectsPersistenceUnavailable,
       },
     });
     return;
@@ -4665,6 +4671,7 @@ router.post('/neighbors/identity-match', async (req: Request, res: Response) => 
     data: {
       identityMatch: matched.data.identityMatch,
       sideEffectsPersisted,
+      sideEffectsPersistenceUnavailable,
       ...buildNeighborScopePayload(context),
     },
   });
