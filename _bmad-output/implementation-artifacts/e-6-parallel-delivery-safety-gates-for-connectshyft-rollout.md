@@ -130,17 +130,17 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `rg -n -i "epic\\s*e|e-6-" _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `rg -n "NFR-CS-001|NFR-CS-004|NFR-CS-010" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
-- `rg -n "policy:check|webhook ingestion budgets|mandatory CI gates|module boundary" _bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md docs/policies/git_policy.md`
-- `npm run branch:ensure-workflow -- --workflow dev-story --story e-6-parallel-delivery-safety-gates-for-connectshyft-rollout`
-- `npm run story:status:set -- --story-file _bmad-output/implementation-artifacts/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.md --status in-progress --lane connectshyft`
-- `npx playwright test tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts`
-- `npm run test:e2e -- tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts`
-- `npx playwright test tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts`
-- `tmpdir=$(mktemp -d /tmp/e6guardtest.XXXXXX) ... /scripts/enforce-connectshyft-provider-abstraction-guard.sh`
-- `npm run policy:check`
-- `bash scripts/lint-or-discovery.sh`
+- `rg -n -i "epic\\s*e|e-6-" _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (pass)
+- `rg -n "NFR-CS-001|NFR-CS-004|NFR-CS-010" _bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md` (pass)
+- `rg -n "policy:check|webhook ingestion budgets|mandatory CI gates|module boundary" _bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md docs/policies/git_policy.md` (pass)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story e-6-parallel-delivery-safety-gates-for-connectshyft-rollout` (pass)
+- `npm run story:status:set -- --story-file _bmad-output/implementation-artifacts/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.md --status in-progress --lane connectshyft` (pass)
+- `npx playwright test tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts` (pass)
+- `npm run test:e2e -- tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts` (pass)
+- `npx playwright test tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts` (pass)
+- `tmpdir=$(mktemp -d /tmp/e6guardtest.XXXXXX) ... /scripts/enforce-connectshyft-provider-abstraction-guard.sh` (pass)
+- `npm run policy:check` (pass)
+- `bash scripts/lint-or-discovery.sh` (pass)
 
 ### Completion Notes List
 
@@ -161,8 +161,13 @@ GPT-5 Codex
 - scripts/enforce-connectshyft-provider-abstraction-guard.sh
 - scripts/test-changed.sh
 - tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.api.spec.ts
+- tests/api/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.api.spec.ts
 - tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.atdd.spec.ts
+- tests/e2e/platform/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.automate.spec.ts
 - tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts
+- tests/support/factories/connectShyftStoryE6Factory.ts
+- tests/support/fixtures/connectShyftStoryE6.fixture.ts
+- tests/support/utils/workflowGraphParser.ts
 - _bmad-output/implementation-artifacts/e-6-parallel-delivery-safety-gates-for-connectshyft-rollout.md
 
 ## Change Log
