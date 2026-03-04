@@ -1,6 +1,6 @@
 # Story a.4: Escalation Baseline and Recipient Configuration
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -86,11 +86,12 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `cd src && npm test -- src/modules/connectshyft/__tests__/escalationConfig.test.ts src/migrations/__tests__/connectShyftEscalationConfigMigration.test.ts` (pass, 2 suites / 9 tests)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/escalationConfig.test.ts src/migrations/__tests__/connectShyftEscalationConfigMigration.test.ts` (pass, 2 suites / 10 tests)
+- `cd src && npm test -- src/modules/connectshyft/__tests__/escalationConfig.test.ts` (pass, 1 suite / 8 tests)
 - `cd src && npm run build` (pass)
 - `cd frontend && npm run build` (pass)
-- `npm run test:e2e -- tests/api/platform/a-4-escalation-baseline-and-recipient-configuration.api.spec.ts` (pass, 7 tests)
-- `npm run test:e2e -- tests/e2e/platform/a-4-escalation-baseline-and-recipient-configuration.spec.ts` (pass, 4 tests)
+- `npm run test:e2e -- tests/api/platform/a-4-escalation-baseline-and-recipient-configuration.api.spec.ts` (pass, 8 tests)
+- `npm run test:e2e -- tests/e2e/platform/a-4-escalation-baseline-and-recipient-configuration.spec.ts` (pass, 5 tests)
 - `npm run test:e2e -- tests/api/platform/a-3-orgunit-number-mapping-management.api.spec.ts tests/e2e/platform/a-3-orgunit-number-mapping-management.spec.ts` (pass, 9 tests regression)
 
 ### Completion Notes List
@@ -100,18 +101,18 @@ GPT-5 Codex
 - Added `GET /api/v1/connectshyft/escalation/recipients` and switched the escalation settings UI to backend-sourced recipient options.
 - Updated frontend config-loading behavior to surface business refusal envelopes instead of silently defaulting to baseline values.
 - Re-ran story a.4 API + E2E suites and adjacent story a.3 API/E2E regression coverage after route/service updates.
+- Added explicit claim-only reset and scheduler-impacting configuration guidance copy to escalation settings UI.
+- Preserved recipient scope metadata client-side and filtered recipient controls by scope so cross-tenant test-only options are not shown in admin selectors.
+- Replaced silent recipient-directory fallback with actionable refusal/error messaging in UI initialization flow.
+- Added API and E2E regression coverage to verify refused invalid updates never overwrite previously persisted escalation configuration.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/a-4-escalation-baseline-and-recipient-configuration.md
-- src/src/migrations/20260222100000_create_connectshyft_escalation_config.ts
-- src/src/migrations/__tests__/connectShyftEscalationConfigMigration.test.ts
-- src/src/modules/connectshyft/escalationConfig.ts
-- src/src/modules/connectshyft/__tests__/escalationConfig.test.ts
-- src/src/routes/api/v1/connectshyft.ts
 - frontend/src/features/connectshyft/escalation.ts
 - frontend/src/views/ConnectShyft/ConnectShyftEscalationSettingsView.vue
 - tests/api/platform/a-4-escalation-baseline-and-recipient-configuration.api.spec.ts
+- tests/e2e/platform/a-4-escalation-baseline-and-recipient-configuration.spec.ts
 
 ### Change Log
 
@@ -119,3 +120,5 @@ GPT-5 Codex
 - 2026-02-22: Added and passed backend unit tests plus Playwright API/E2E suites for accepted/invalid escalation configuration paths.
 - 2026-02-22: Ran adjacent ConnectShyft a.3 API/E2E suites as regression validation after connectshyft route updates.
 - 2026-02-22: Resolved review findings by adding durable DB persistence, authoritative recipient scope validation, backend-sourced recipient options, and explicit frontend refusal handling for config fetch.
+- 2026-03-04: Resolved follow-up review gaps by adding claim-only reset UX copy, scope-aware recipient filtering, non-silent recipient fetch failures, and persistence-invariance API/E2E coverage.
+- 2026-03-04: Story status moved to done after resolving all review findings and syncing sprint tracking.

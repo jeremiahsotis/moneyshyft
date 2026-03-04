@@ -47,7 +47,7 @@ development_status:
   a-1-connectshyft-feature-flag-and-availability-guardrails: done
   a-2-tenant-and-orgunit-context-enforcement-for-connectshyft-routes: done
   a-3-orgunit-number-mapping-management: done
-  a-4-escalation-baseline-and-recipient-configuration: review
+  a-4-escalation-baseline-and-recipient-configuration: done
   a-5-capability-based-route-access-and-envelope-contract-compliance: done
   epic-a-retrospective: done
   epic-b: in-progress

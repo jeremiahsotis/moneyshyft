@@ -102,7 +102,7 @@ test.describe(
     );
 
     test(
-      '[P1] cross-tenant recipient selections are rejected with deterministic refusal messaging and no persisted state @P1',
+      '[P1] refused invalid update does not overwrite the last saved escalation configuration @P1',
       async ({ page }) => {
         await login(page);
         await page.goto(
@@ -111,29 +111,62 @@ test.describe(
           ),
         );
 
-        await page.getByTestId('connectshyft-escalation-baseline-input').fill('8');
-        await page.getByTestId('connectshyft-escalation-recipient-primary').selectOption(
-          'user-connectshyft-a4-cross-tenant-recipient',
-        );
-        await page.getByTestId('connectshyft-escalation-recipient-secondary').selectOption(
-          'user-connectshyft-a4-secondary-recipient',
-        );
-        await page.getByTestId('connectshyft-escalation-recipient-tenant-staff').selectOption(
-          'user-connectshyft-a4-tenant-staff-recipient',
-        );
+        await page.getByTestId('connectshyft-escalation-baseline-input').fill('7');
+        await fillValidRecipients(page);
 
-        const saveResponse = page.waitForResponse(
+        const initialSaveResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/connectshyft/escalation/config')
             && response.request().method() === 'PUT',
         );
         await page.getByRole('button', { name: 'Save Escalation Settings' }).click();
-        await saveResponse;
+        await initialSaveResponse;
+
+        await expect(page.getByTestId('connectshyft-escalation-baseline-display')).toHaveText('7 hours');
+
+        await page.getByTestId('connectshyft-escalation-baseline-input').fill('25');
+        await page.getByRole('button', { name: 'Save Escalation Settings' }).click();
 
         await expect(page.getByTestId('connectshyft-escalation-validation-error')).toContainText(
-          'Recipient must belong to the active tenant and orgUnit scope',
+          'Use whole hours between 1 and 24',
         );
-        await expect(page.getByTestId('connectshyft-escalation-save-success')).toHaveCount(0);
+
+        await page.reload();
+        await expect(
+          page.getByRole('heading', {
+            name: 'ConnectShyft Escalation Settings',
+          }),
+        ).toBeVisible();
+        await expect(page.getByTestId('connectshyft-escalation-baseline-display')).toHaveText('7 hours');
+        await expect(page.getByTestId('connectshyft-escalation-baseline-input')).toHaveValue('7');
+      },
+    );
+
+    test(
+      '[P1] cross-tenant recipient options are excluded from escalation recipient selectors @P1',
+      async ({ page }) => {
+        await login(page);
+        await page.goto(
+          buildEscalationUrl(
+            'tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_ADMIN',
+          ),
+        );
+
+        await expect(
+          page.locator(
+            '[data-testid="connectshyft-escalation-recipient-primary"] option[value="user-connectshyft-a4-cross-tenant-recipient"]',
+          ),
+        ).toHaveCount(0);
+        await expect(
+          page.locator(
+            '[data-testid="connectshyft-escalation-recipient-secondary"] option[value="user-connectshyft-a4-cross-tenant-recipient"]',
+          ),
+        ).toHaveCount(0);
+        await expect(
+          page.locator(
+            '[data-testid="connectshyft-escalation-recipient-tenant-staff"] option[value="user-connectshyft-a4-cross-tenant-recipient"]',
+          ),
+        ).toHaveCount(0);
       },
     );
   },
