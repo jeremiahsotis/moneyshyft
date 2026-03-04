@@ -100,6 +100,9 @@ development_status:
   7-2-pos-origin-commitment-and-completion-linkage: backlog
   7-3-expansion-guardrails-and-consent-readiness-gates: backlog
   epic-7-retrospective: optional
+  epic-8: in-progress
+  8-1-workspace-scaffold-and-nx-baseline: ready-for-dev
+  epic-8-retrospective: optional
 course_correction:
   cc-2026-02-18:
     status: approved
@@ -130,3 +133,12 @@ course_correction:
       - Cross-epic ConnectShyft UX remediation approved
       - Locked behavioral parity for closed-thread reopen, voicemail handling, and deterministic ordering
       - UX remediation story set added to lane-specific sprint status tracker
+  cc-2026-03-04:
+    status: approved
+    scope: major
+    lane: routeshyft
+    proposal: /Users/jeremiahotis/projects/routeshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-04.md
+    summary:
+      - Monorepo workspace and lane-boundary migration approved as staged change
+      - Shared-contact dedupe guardrails approved (no auto-merge on shared or unverified contact points)
+      - Patch intake governance approved with check-first and repair/rebuild policy

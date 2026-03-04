@@ -16,12 +16,24 @@
     "quality-gates": "bash scripts/quality-gates.sh",
     "quality-gates:epic0": "bash scripts/quality-gates-epic0.sh",
     "ci:local": "bash scripts/ci-local.sh",
-    "promote:production": "bash scripts/promote-to-production.sh"
+    "promote:production": "bash scripts/promote-to-production.sh",
+    "nx": "nx",
+    "build": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "affected:build": "nx affected -t build",
+    "affected:test": "nx affected -t test",
+    "affected:lint": "nx affected -t lint"
   },
   "dependencies": {},
   "devDependencies": {
     "@faker-js/faker": "^9.9.0",
     "@playwright/test": "^1.57.0",
-    "playwright": "^1.57.0"
-  }
+    "playwright": "^1.57.0",
+    "nx": "^20.0.0",
+    "eslint": "^9.0.0",
+    "@nx/eslint-plugin": "^20.0.0"
+  },
+  "name": "moneyshyft-monorepo",
+  "private": true,
+  "packageManager": "pnpm@latest"
 }
