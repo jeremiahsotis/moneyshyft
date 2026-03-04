@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-03T22:50:29Z'
+lastSaved: '2026-03-04T10:15:11Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -4019,3 +4019,209 @@ lastSaved: '2026-03-03T22:50:29Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality and maintainability scoring of the generated ux-r3 automate suite.
 - `[TR] Trace Requirements` to map ux-r3 acceptance criteria across ATDD and automate evidence.
+
+## Story ux-r4 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts` exists.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+  - `@faker-js/faker`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/ux-r4-outbound-policy-guardrail-ui.md`
+  - Existing ATDD files found for Story ux-r4:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.atdd.spec.ts`
+
+### Context Loaded
+- Source and contract context loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/routes/api/v1/connectshyft.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/modules/connectshyft/readContracts.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/src/src/modules/connectshyft/smsPreferenceOverrides.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/frontend/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue`
+- Existing story fixture/factory assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryUxR4.fixture.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryUxR4Factory.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils and supporting patterns:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `api-testing-patterns.md`
+
+## Story ux-r4 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` detected (`1.59.0-alpha-1771104257000`).
+- Attempted exploration session `tea-automate-ux-r4-1772619070` with:
+  - `playwright-cli -s=tea-automate-ux-r4-1772619070 open http://127.0.0.1:5174/app/connectshyft/threads/thread-ux-r4-closed-prefers-no-1005?...`
+  - `playwright-cli -s=tea-automate-ux-r4-1772619070 snapshot`
+- Result:
+  - local app was not reachable (`net::ERR_CONNECTION_REFUSED`), so selector discovery fell back to source/artifact analysis.
+  - session closed cleanly using `playwright-cli -s=tea-automate-ux-r4-1772619070 close`.
+
+### Acceptance Criteria to Target Mapping
+- AC1 expansion target:
+  - explicit action controls remain deterministic for tenant-admin claimed-thread view with Take Over ordering.
+- AC2 expansion targets:
+  - invalid override reason refusal includes deterministic policy metadata and approved-reason guidance.
+  - closed + prefers_texting=NO message attempts reopen same thread but still block dispatch without override.
+- AC3 expansion target:
+  - closed + prefers_texting=NO message with valid override dispatches after same-thread reopen and persists override audit metadata.
+- AC4 expansion target:
+  - override-submit UI success flow surfaces stable accessible success banner + audit reason chip, without fallback ambiguity.
+
+### Selected Test Levels
+- **API** (primary): refusal/override validation, closed-thread reopen + message dispatch side effects.
+- **E2E** (secondary): closed-thread reopen + override modal flow, tenant-admin action surface ordering, override-submit success feedback.
+
+### Priority Assignment
+- P0:
+  - invalid override refusal contract and side-effect blocking.
+  - closed-thread + prefers_texting=NO reopen-with-refusal path.
+  - closed-thread + prefers_texting=NO valid override dispatch path.
+- P1:
+  - tenant-admin Take Over action surface ordering.
+  - modal submit success feedback with audit chip and accessible announcement checks.
+
+### Coverage Plan
+- API target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/ux-r4-outbound-policy-guardrail-ui.automate.api.spec.ts`
+- E2E target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.automate.spec.ts`
+- Scope: `critical-paths`
+
+## Story ux-r4 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-03-04T10-12-03-042Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-03-04T10-12-03-042Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-03-04T10-12-03-042Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 3`
+- E2E subprocess status: `success: true`, `test_count: 3`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed in one run for both levels.
+- Sequential equivalent would require two independent generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story ux-r4 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/ux-r4-outbound-policy-guardrail-ui.automate.api.spec.ts`
+- `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.automate.spec.ts`
+
+### Fixture Infrastructure
+- Reused existing fixture/helper assets:
+  - `tests/support/fixtures/connectShyftStoryUxR4.fixture.ts`
+  - `tests/support/factories/connectShyftStoryUxR4Factory.ts`
+  - `tests/helpers/auth.ts`
+- New shared fixture files created: none.
+
+### Summary Metrics
+- Total tests generated: `6`
+  - API tests: `3` (1 file)
+  - E2E tests: `3` (1 file)
+- Priority coverage:
+  - P0: `3`
+  - P1: `3`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-03-04T10-12-03-042Z.json`
+
+### Artifact Persistence
+- Runtime subprocess artifacts:
+  - `/tmp/tea-automate-api-tests-2026-03-04T10-12-03-042Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-03-04T10-12-03-042Z.json`
+  - `/tmp/tea-automate-summary-2026-03-04T10-12-03-042Z.json`
+- Persisted under test artifacts:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-03-04T10-12-03-042Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-03-04T10-12-03-042Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-03-04T10-12-03-042Z.json`
+
+## Story ux-r4 Run - Step 4: Validate and Summarize
+
+### Coverage Plan by Test Level and Priority
+- API file (`ux-r4-outbound-policy-guardrail-ui.automate.api.spec.ts`):
+  - P0: 2, P1: 1, P2: 0, P3: 0
+- E2E file (`ux-r4-outbound-policy-guardrail-ui.automate.spec.ts`):
+  - P0: 1, P1: 2, P2: 0, P3: 0
+
+### Files Created or Updated
+- Created:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/ux-r4-outbound-policy-guardrail-ui.automate.api.spec.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.automate.spec.ts`
+- Updated:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-summary.md`
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated suite parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/ux-r4-outbound-policy-guardrail-ui.automate.api.spec.ts tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.automate.spec.ts`
+  - Result: passed (`6` tests discovered in `2` files).
+- Generated suite execution validation:
+  - `npm run test:e2e -- tests/api/platform/ux-r4-outbound-policy-guardrail-ui.automate.api.spec.ts tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.automate.spec.ts`
+  - Result: `6 passed`.
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) detected.
+  - no conditional visibility anti-pattern (`if (await ...isVisible())`) detected.
+  - no `try/catch` flow-control anti-pattern detected.
+- CLI session cleanup:
+  - browser exploration session was closed cleanly.
+- Temp artifact storage:
+  - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-temp`.
+
+### Key Assumptions
+- Story ux-r4 outbound policy endpoints remain available at:
+  - `/api/v1/connectshyft/threads/:threadId/messages`
+  - `/api/v1/connectshyft/threads/:threadId/call`
+- ConnectShyft test harness headers (`x-test-connectshyft-*`) remain enabled in test runtime.
+- Story ux-r4 fixture contracts remain source-of-truth for deterministic tenant/orgUnit/thread-state setup.
+
+### Risks
+- Browser exploration was limited because the local frontend was not reachable during CLI probe; selector verification relied on source/artifact analysis.
+- Override audit assertions depend on persistence availability for `cs_sms_preference_overrides`; if persistence is unavailable, runtime may return policy refusal instead of success.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality and maintainability scoring of the generated ux-r4 automate suite.
+- `[TR] Trace Requirements` to map ux-r4 acceptance criteria across ATDD and automate evidence.
+
