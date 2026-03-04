@@ -16,19 +16,21 @@ print_recovery() {
   local story_id=""
   local story_slug=""
   local branch_story_id=""
-  local branch_epic_token=""
   local branch_story_slug=""
+  local branch_epic_token=""
 
-  if [[ "$branch" =~ ^codex/story-(${STORY_KEY_PATTERN})-(.+)$ ]]; then
+  if [[ "$branch" =~ ^codex/story-([^-]+-[^-]+)-(.+)$ ]]; then
     branch_story_id="${BASH_REMATCH[1]}"
-    branch_epic_token="${BASH_REMATCH[2]}"
-    branch_story_slug="${BASH_REMATCH[3]}"
-    if [[ "$branch_epic_token" =~ ^[A-Za-z]$ ]]; then
-      story_id="$(echo "$branch_story_id" | tr '[:upper:]' '[:lower:]')"
-    else
-      story_id="$branch_story_id"
+    branch_story_slug="${BASH_REMATCH[2]}"
+    if [[ "$branch_story_id" =~ ^${STORY_KEY_PATTERN}$ ]]; then
+      branch_epic_token="${branch_story_id%%-*}"
+      if [[ "$branch_epic_token" =~ ^[A-Za-z]$ ]]; then
+        story_id="$(echo "$branch_story_id" | tr '[:upper:]' '[:lower:]')"
+      else
+        story_id="$branch_story_id"
+      fi
+      story_slug="$branch_story_slug"
     fi
-    story_slug="$branch_story_slug"
   fi
 
   echo "Remediation:"
