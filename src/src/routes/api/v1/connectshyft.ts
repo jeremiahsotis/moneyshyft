@@ -6515,7 +6515,7 @@ const handleInboundWebhook = async (
         providerEventId: callbackInboundProviderEventId,
         providerLegId: correlation.providerLegId,
         providerMessageId: correlation.providerMessageId,
-        status: 'FAILED_TERMINAL',
+        status: 'FAILED_RETRYABLE',
         failureReason: !callbackMatchesResolvedScope
           ? 'callback_correlation_scope_invalid'
           : !hasPersistedVoicemailCorrelation
