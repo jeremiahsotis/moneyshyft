@@ -9,6 +9,17 @@ Retire WordPress state writes for RouteShyft and confirm monolith-only authority
 3. Cutover stage is configured intentionally via `ROUTESHYFT_WP_CUTOVER_STAGE` (`bridge`, `monolith_authoritative`, `read_only`).
 4. Operator credentials or test-harness credentials are available for API auth.
 
+## Runtime/Deploy Config
+Set `ROUTESHYFT_WP_CUTOVER_STAGE` explicitly in runtime config (do not rely on implicit defaults):
+1. Local template: `apps/routeshyft-api/.env.example`
+2. Transitional template: `apps/connectshyft-api/.env.example`
+3. Docker template: `docker-compose.example.yml` (`services.node.environment`)
+
+Suggested stage progression:
+1. `bridge`: dual-write prevention is off while rehearsal and migration validation are in progress.
+2. `monolith_authoritative`: dual-write prevention is on and bridge writes require `api_only` assertion.
+3. `read_only`: bridge write paths are blocked after full cutover verification and rollback readiness.
+
 ## Step 1: Select Cutover Path
 Choose one path before rehearsal:
 1. `legacy-migration`: there is historical WP fulfillment state to ingest.

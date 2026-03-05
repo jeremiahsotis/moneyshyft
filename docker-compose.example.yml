@@ -30,6 +30,8 @@ services:
     environment:
       DATABASE_URL: postgresql://your_username:your_secure_password_here@postgres:5432/moneyshyft
       NODE_ENV: development
+      # Route bridge cutover stage: bridge | monolith_authoritative | read_only
+      ROUTESHYFT_WP_CUTOVER_STAGE: bridge
     restart: unless-stopped
     volumes:
       - ./apps/routeshyft-api:/app
