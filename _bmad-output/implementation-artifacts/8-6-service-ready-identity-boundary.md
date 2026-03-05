@@ -78,18 +78,18 @@ GPT-5 (Codex)
 
 ### Debug Log References
 
-- `npm test -- --runInBand --testPathPattern=connectshyft.identity-boundary.test.ts` (cwd: `apps/routeshyft-api`)
-- `npm test -- --runInBand --testPathPattern=connectshyft.identity-dedupe.test.ts` (cwd: `apps/routeshyft-api`)
-- `npm test -- --runInBand --testPathPattern=connectshyft.identity-match.test.ts` (cwd: `apps/routeshyft-api`)
-- `npm test -- --runInBand --testPathPattern='connectshyft.identity-boundary.test.ts|connectshyft.identity-dedupe.test.ts|connectshyft.identity-match.test.ts'` (cwd: `apps/routeshyft-api`)
-- `npm run test:connectshyft` (cwd: `apps/routeshyft-api`)
-- `npm test` (cwd: `apps/routeshyft-api`)
-- `npm run build` (cwd: `apps/routeshyft-api`)
-- `npm run policy:check` (repo root)
-- `npm run branch:ensure-workflow -- --workflow dev-story --story 8-6-service-ready-identity-boundary` (repo root)
-- `scripts/test-changed.sh origin/main` (repo root)
-- `npx nx run routeshyft-api:lint` (repo root)
-- `npx nx run connectshyft-api:test` (repo root)
+- `npm test -- --runInBand --testPathPattern=connectshyft.identity-boundary.test.ts` (cwd: `apps/routeshyft-api`) (pass)
+- `npm test -- --runInBand --testPathPattern=connectshyft.identity-dedupe.test.ts` (cwd: `apps/routeshyft-api`) (pass)
+- `npm test -- --runInBand --testPathPattern=connectshyft.identity-match.test.ts` (cwd: `apps/routeshyft-api`) (pass)
+- `npm test -- --runInBand --testPathPattern='connectshyft.identity-boundary.test.ts|connectshyft.identity-dedupe.test.ts|connectshyft.identity-match.test.ts'` (cwd: `apps/routeshyft-api`) (pass)
+- `npm run test:connectshyft` (cwd: `apps/routeshyft-api`) (pass)
+- `npm test` (cwd: `apps/routeshyft-api`) (pass)
+- `npm run build` (cwd: `apps/routeshyft-api`) (pass)
+- `npm run policy:check` (repo root) (pass)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story 8-6-service-ready-identity-boundary` (repo root) (pass)
+- `scripts/test-changed.sh origin/main` (repo root) (pass)
+- `npx nx run routeshyft-api:lint` (repo root) (pass)
+- `npx nx run connectshyft-api:test` (repo root) (pass)
 
 ### Completion Notes List
 
