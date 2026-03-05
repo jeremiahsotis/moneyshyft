@@ -52,13 +52,22 @@ runs:
       if: inputs.install_frontend == 'true'
       shell: bash
       run: |
+        installed_frontend=false
+
         if [ -f apps/routeshyft-web/package-lock.json ]; then
           npm ci --prefix apps/routeshyft-web || npm ci --prefix apps/routeshyft-web || npm install --prefix apps/routeshyft-web --no-audit --fund=false
-        elif [ -f apps/moneyshyft-web/package-lock.json ]; then
+          installed_frontend=true
+        fi
+
+        if [ -f apps/moneyshyft-web/package-lock.json ]; then
           npm ci --prefix apps/moneyshyft-web || npm ci --prefix apps/moneyshyft-web || npm install --prefix apps/moneyshyft-web --no-audit --fund=false
+          installed_frontend=true
         elif [ -f frontend/package-lock.json ]; then
           npm ci --prefix frontend || npm ci --prefix frontend || npm install --prefix frontend --no-audit --fund=false
-        else
+          installed_frontend=true
+        fi
+
+        if [ "$installed_frontend" != "true" ]; then
           npm install --prefix apps/routeshyft-web --no-audit --fund=false
         fi
 
@@ -83,6 +92,10 @@ runs:
 
         if [ "$installed_backend" != "true" ]; then
           npm install --prefix apps/routeshyft-api --omit=dev --no-audit --fund=false
+        fi
+
+        if [ ! -e apps/connectshyft-api/node_modules ] && [ -d apps/moneyshyft-api/node_modules ]; then
+          ln -s ../moneyshyft-api/node_modules apps/connectshyft-api/node_modules
         fi
 
     - name: Cache Playwright browsers (fallback)
