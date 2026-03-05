@@ -17,6 +17,7 @@ This repository uses GitHub Actions at `.github/workflows/test.yml`.
 Use the same guardrails locally:
 
 - `npm run policy:check`
+- `npm run patch:intake:guard`
 - `bash scripts/lint-or-discovery.sh`
 - `bash scripts/test-changed.sh origin/production`
 - `bash scripts/burn-in.sh 10 origin/production`

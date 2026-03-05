@@ -1,6 +1,6 @@
 # Story 8.7: Verified Patch Application Policy
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -34,18 +34,18 @@ so that stale or malformed patch bundles cannot be applied blindly and destabili
 
 ## Tasks / Subtasks
 
-- [ ] Define patch intake workflow and controls (AC: 1, 3)
-  - [ ] Document preflight checks (`git apply --check`, target existence, parse validation).
-  - [ ] Define remediation classes: apply-clean, repair-stale, rebuild-malformed, defer-structural.
-- [ ] Implement tooling/automation support (AC: 2, 5)
-  - [ ] Add scripts/checks to enforce verified apply pathways and diagnostics.
-  - [ ] Add policy/CI hooks to prevent blind patch application workflows.
-- [ ] Address known patch quality cases from proposal evidence (AC: 2, 3, 4)
-  - [ ] Encode handling guidance for `01`, `02`, `03`, `04`, `05`, `06`, `07`, `08` patch classes.
-  - [ ] Ensure invalid JSON patch content is fixed prior to eligible application.
-- [ ] Validate governance workflow (AC: 5)
-  - [ ] Run policy/workflow guard checks against positive and negative patch-intake scenarios.
-  - [ ] Document expected operator/developer remediation actions.
+- [x] Define patch intake workflow and controls (AC: 1, 3)
+  - [x] Document preflight checks (`git apply --check`, target existence, parse validation).
+  - [x] Define remediation classes: apply-clean, repair-stale, rebuild-malformed, defer-structural.
+- [x] Implement tooling/automation support (AC: 2, 5)
+  - [x] Add scripts/checks to enforce verified apply pathways and diagnostics.
+  - [x] Add policy/CI hooks to prevent blind patch application workflows.
+- [x] Address known patch quality cases from proposal evidence (AC: 2, 3, 4)
+  - [x] Encode handling guidance for `01`, `02`, `03`, `04`, `05`, `06`, `07`, `08` patch classes.
+  - [x] Ensure invalid JSON patch content is fixed prior to eligible application.
+- [x] Validate governance workflow (AC: 5)
+  - [x] Run policy/workflow guard checks against positive and negative patch-intake scenarios.
+  - [x] Document expected operator/developer remediation actions.
 
 ## Dev Notes
 
@@ -74,14 +74,55 @@ Convert patch intake from ad hoc/manual behavior into a deterministic and audita
 
 ### Agent Model Used
 
-TBD
+GPT-5 Codex (CLI)
 
 ### Debug Log References
 
+- `npm run branch:ensure-workflow -- --workflow dev-story --story _bmad-output/implementation-artifacts/8-7-verified-patch-application-policy.md` (pass)
+- `npm run story:status:set -- --story-key 8-7-verified-patch-application-policy --status in-progress` (pass)
+- `bash scripts/test-verified-patch-intake.sh` (pass; 14 scenario checks including `--mode apply` post-verify coverage)
+- `npm run policy:check` (pass)
+- `npm test` (partial fail at `e2e:test`: missing `../../../src/node_modules/knex` in Playwright ConnectShyft helper imports)
+
 ### Completion Notes List
 
+- Added mandatory governance workflow at `docs/policies/verified_patch_application_policy.md` with preflight and post-apply gates.
+- Added `scripts/verified-patch-apply.sh` as the verified intake path with class-aware strip handling, target checks, parse checks, and JSON payload validation.
+- Added `scripts/enforce-verified-patch-intake-guard.sh` to block ad hoc `git apply` usage and enforce policy expectations with actionable diagnostics.
+- Wired patch-intake governance into policy and CI hooks via `scripts/enforce-git-policy.sh` and new package scripts.
+- Updated `scripts/enforce-verified-patch-intake-guard.sh` to exempt test harness scripts (`scripts/test-*.sh`) so PR diff scans do not self-block valid guard tests.
+- Updated `scripts/test-verified-patch-intake.sh` to use isolated fixture repositories, removing brittle coupling to `docs/ci.md` repository content.
+- Added apply-mode test coverage for verified patch application post-verify gates (`git status --short`, `npm run policy:check`).
+- Updated policy/CI documentation to reflect mandatory verified patch intake and developer/operator remediation flow.
+
+### Git/Story Discrepancy Reconciliation
+
+- Story-scope file changes are captured in `File List` below.
+- Additional current workspace deltas are pre-existing/out-of-scope for Story 8.7 and intentionally excluded from story scope tracking:
+  - `_bmad-output/test-artifacts/epic-f-performance-evidence.json`
+  - `_bmad-output/test-artifacts/epic-f-performance-evidence.md`
+  - `_bmad-output/test-artifacts/epic-f-reliability-evidence.json`
+  - `_bmad-output/test-artifacts/epic-f-reliability-evidence.md`
+  - `_bmad-output/test-artifacts/epic-f-stress-resource-evidence.json`
+  - `_bmad-output/test-artifacts/epic-f-stress-resource-evidence.md`
+  - `apps/connectshyft-api/node_modules` (local dependency symlink/folder)
+  - `apps/connectshyft-web/node_modules` (local dependency symlink/folder)
+
 ### File List
+
+- _bmad-output/implementation-artifacts/8-7-verified-patch-application-policy.md
+- _bmad-output/implementation-artifacts/sprint-status.yaml
+- docs/policies/verified_patch_application_policy.md
+- docs/policies/git_policy.md
+- docs/ci.md
+- scripts/verified-patch-apply.sh
+- scripts/enforce-verified-patch-intake-guard.sh
+- scripts/test-verified-patch-intake.sh
+- scripts/enforce-git-policy.sh
+- package.json
 
 ## Change Log
 
 - 2026-03-04: Story created from approved Correct Course proposal (`cc-2026-03-04`, Change D1).
+- 2026-03-05: Implemented verified patch governance policy, verified apply tooling, enforcement guardrails, and scenario validation tests.
+- 2026-03-05: Fixed review findings: guard self-blocking in PR diff mode, apply-mode test coverage gap, brittle fixture coupling, and explicit git/story discrepancy reconciliation notes.

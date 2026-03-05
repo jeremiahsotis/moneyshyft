@@ -160,6 +160,17 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
   - planning and implementation workflow checklists
   - `scripts/enforce-operability-closeout-guard.sh` for done-story closeout
 
+### Verified Patch Intake Guardrail (Mandatory)
+
+- Patch intake must use the verified workflow in:
+  - `docs/policies/verified_patch_application_policy.md`
+- Direct `git apply` usage in workflow/automation files is blocked unless routed through:
+  - `scripts/verified-patch-apply.sh`
+- Patch class handling (`01`..`08`) and invalid JSON remediation guidance must remain present in policy documentation.
+- Enforced by:
+  - `scripts/enforce-verified-patch-intake-guard.sh`
+  - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+
 ## 5) Story Creation Inside Epics (`create-story`)
 
 - `create-story` uses sprint tracking as primary source (`sprint-status.yaml`) to choose/create the next story.
