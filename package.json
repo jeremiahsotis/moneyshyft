@@ -22,6 +22,7 @@
     "ci:local": "bash scripts/ci-local.sh",
     "promote:production": "bash scripts/promote-to-production.sh",
     "cutover:rehearse:routeshyft": "node scripts/routeshyft/wp-cutover/rehearse-route-cutover.mjs",
+    "cutover:shutdown:wp-writes": "node scripts/routeshyft/wp-cutover/shutdown-wp-direct-writes.mjs",
     "nx": "nx",
     "build": "nx run-many -t build",
     "test": "nx run-many -t test",

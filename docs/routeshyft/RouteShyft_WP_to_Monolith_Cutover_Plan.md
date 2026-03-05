@@ -102,7 +102,30 @@ Success criteria:
 2. Re-run cutover verification:
    - `legacy-migration`: re-run apply rehearsal on a fresh export.
    - `no-legacy-data`: re-run `--reconcile-only`.
-3. Disable WP direct DB writes and keep API-only bridge paths for all integrations.
+3. Disable WP direct DB writes and keep API-only bridge paths for all integrations:
+
+```bash
+export WP_DB_HOST='<wordpress-db-host>'
+export WP_DB_PORT='3306'
+export WP_DB_NAME='<wordpress-db-name>'
+export WP_DB_ADMIN_USER='<admin-user>'
+export WP_DB_ADMIN_PASSWORD='<admin-password>'
+export WP_DB_WRITE_USER='<wp-plugin-writer-user>'
+export WP_DB_WRITE_HOST='%'
+export WP_ROUTE_TABLES='<comma-separated-routeshyft-authority-tables>'
+
+# For reconcile-only verification after write shutdown
+export RS_CUTOVER_API_BASE_URL='http://127.0.0.1:3000'
+export RS_CUTOVER_LOGIN_EMAIL='operator@example.com'
+export RS_CUTOVER_LOGIN_PASSWORD='<operator-password>'
+
+npm run cutover:shutdown:wp-writes -- --apply
+```
+
+Expected release-gate outcome:
+   - DB verification passes with no `INSERT`/`UPDATE`/`DELETE` grants for the WP write principal on RouteShyft authority tables.
+   - Reconcile-only API verification passes with `driftDetected=false` and `singleSourceOfTruthConfirmed=true`.
+   - Evidence bundle is archived under `_bmad-output/test-artifacts/release-evidence/wp-write-shutdown-<timestamp>/`.
 4. Move to `read_only` stage only after verification and rollback readiness.
 
 ## Future WP Plugin Guardrails
