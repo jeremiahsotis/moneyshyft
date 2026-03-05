@@ -1,8 +1,5 @@
 import { Knex } from 'knex';
-import dotenv from 'dotenv';
-import path from 'node:path';
-
-dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
+import './config/loadEnv';
 
 const resolveDbPassword = (): string => {
   const password = process.env.DB_PASSWORD;
