@@ -105,14 +105,15 @@ GPT-5 Codex
 - _bmad-output/planning-artifacts/sprint-change-proposal-2026-03-04.md
 - .eslintrc.cjs
 - .github/workflows/ci.yml
-- apps/moneyshyft-api/project.json
-- apps/moneyshyft-web/project.json
+- apps/routeshyft-api/project.json
+- apps/routeshyft-web/project.json
 - nx.json
 - package-lock.json
 - package.json
 - pnpm-workspace.yaml
 - tools/e2e/project.json
 - tsconfig.base.json
+Legacy file-list references reconciled: `apps/moneyshyft-api/project.json`, `apps/moneyshyft-web/project.json` (retired after lane extraction).
 
 ## Senior Developer Review (AI)
 

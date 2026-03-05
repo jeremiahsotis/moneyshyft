@@ -98,7 +98,11 @@ GPT-5 Codex (CLI)
 ### Git/Story Discrepancy Reconciliation
 
 - Story-scope file changes are captured in `File List` below.
-- File list includes all git deltas present in this branch during Story 8.7 implementation, including generated evidence artifacts and dependency symlink entries.
+- File list is reconciled to current repository reality after lane-transition cleanup.
+- Legacy references removed from this story file list during reconciliation:
+  - `apps/moneyshyft-api/project.json` (path retired)
+  - `apps/connectshyft-api/node_modules` (tracked symlink removed)
+  - `apps/connectshyft-web/node_modules` (tracked symlink removed)
 
 ### File List
 
@@ -110,9 +114,6 @@ GPT-5 Codex (CLI)
 - _bmad-output/test-artifacts/epic-f-reliability-evidence.md
 - _bmad-output/test-artifacts/epic-f-stress-resource-evidence.json
 - _bmad-output/test-artifacts/epic-f-stress-resource-evidence.md
-- apps/connectshyft-api/node_modules
-- apps/connectshyft-web/node_modules
-- apps/moneyshyft-api/project.json
 - docs/policies/verified_patch_application_policy.md
 - docs/policies/git_policy.md
 - docs/ci.md

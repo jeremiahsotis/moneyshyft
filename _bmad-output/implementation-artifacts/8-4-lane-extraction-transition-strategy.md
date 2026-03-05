@@ -130,7 +130,6 @@ GPT-5 Codex
 - apps/routeshyft-api/** (mechanical move from `apps/moneyshyft-api/**`)
 - apps/routeshyft-web/** (mechanical move from `apps/moneyshyft-web/**`)
 - apps/connectshyft-api/project.json
-- apps/connectshyft-api/node_modules (removed from VCS; runtime-local link only)
 - apps/connectshyft-api/src/config (compatibility symlink)
 - apps/connectshyft-api/src/migrations (compatibility symlink)
 - apps/connectshyft-api/src/platform (compatibility symlink)
@@ -139,7 +138,6 @@ GPT-5 Codex
 - apps/connectshyft-api/src/modules/connectshyft/** (mechanical move from RouteShyft host seam)
 - apps/connectshyft-api/src/routes/api/v1/connectshyft.ts (mechanical move from RouteShyft host seam)
 - apps/connectshyft-web/project.json
-- apps/connectshyft-web/node_modules (removed from VCS; runtime-local link only)
 - apps/connectshyft-web/src/components/connectshyft/** (mechanical move from RouteShyft host seam)
 - apps/connectshyft-web/src/features/connectshyft/** (mechanical move from RouteShyft host seam)
 - apps/connectshyft-web/src/views/ConnectShyft/** (mechanical move from RouteShyft host seam)
@@ -150,15 +148,8 @@ GPT-5 Codex
 - apps/routeshyft-web/src/components/connectshyft (transitional host bridge symlink)
 - apps/routeshyft-web/src/features/connectshyft (transitional host bridge symlink)
 - apps/routeshyft-web/src/views/ConnectShyft (transitional host bridge symlink)
-- apps/moneyshyft-api/project.json (legacy compatibility project descriptor)
-- apps/moneyshyft-api/node_modules (removed from VCS; runtime-local link only)
-- apps/moneyshyft-api/dist (removed from VCS)
-- apps/moneyshyft-api/** (legacy compatibility bridge directory entries)
-- apps/moneyshyft-web/project.json (legacy compatibility project descriptor)
-- apps/moneyshyft-web/node_modules (removed from VCS; runtime-local link only)
-- apps/moneyshyft-web/dist (removed from VCS)
-- apps/moneyshyft-web/** (legacy compatibility bridge directory entries)
 - scripts/run-playwright-with-preflight.sh (runtime compatibility and canonical app-path preflight resolution)
+Legacy/removed references reconciled in audit notes (not active file-list entries): tracked `apps/connectshyft-*/node_modules` symlinks and retired `apps/moneyshyft-*` compatibility descriptors/artifacts.
 
 ## Senior Developer Review (AI)
 

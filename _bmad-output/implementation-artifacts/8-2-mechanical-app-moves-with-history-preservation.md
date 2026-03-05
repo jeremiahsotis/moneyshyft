@@ -105,10 +105,9 @@ GPT-5 Codex
 - .github/actions/setup-ci-node-playwright/action.yml
 - .github/workflows/test.yml
 - .gitignore
-- apps/moneyshyft-api/** (mechanical move from `src/**` + `project.json`)
-- apps/moneyshyft-web/** (mechanical move from `frontend/**` + `project.json`)
-- src (compatibility symlink to `apps/moneyshyft-api`)
-- frontend (compatibility symlink to `apps/moneyshyft-web`)
+- apps/routeshyft-api/** (successor path after 8.4 lane extraction)
+- apps/routeshyft-web/** (successor path after 8.4 lane extraction)
+Legacy transition references retained for audit context (retired in later cutover work): `apps/moneyshyft-api/**`, `apps/moneyshyft-web/**`, `src` compatibility symlink, `frontend` compatibility symlink.
 
 ## Senior Developer Review (AI)
 

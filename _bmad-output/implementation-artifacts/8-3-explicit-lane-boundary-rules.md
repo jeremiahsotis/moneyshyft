@@ -108,8 +108,8 @@ GPT-5 Codex
 - _bmad-output/implementation-artifacts/8-3-explicit-lane-boundary-rules.md
 - _bmad-output/implementation-artifacts/sprint-status.yaml
 - .eslintrc.cjs
-- apps/moneyshyft-api/project.json
-- apps/moneyshyft-web/project.json
+- apps/routeshyft-api/project.json
+- apps/routeshyft-web/project.json
 - docs/policies/git_policy.md
 - docs/policies/workspace_boundary_rules.md
 - package.json
@@ -117,6 +117,7 @@ GPT-5 Codex
 - scripts/enforce-workspace-boundaries.js
 - tests/api/platform/8-3-explicit-lane-boundary-rules.api.spec.ts
 - tests/support/utils/policyScriptTestHarness.ts
+Legacy file-list references reconciled: `apps/moneyshyft-api/project.json`, `apps/moneyshyft-web/project.json` (retired after lane extraction).
 ## Change Log
 
 - 2026-03-04: Story created from approved Correct Course proposal (`cc-2026-03-04`, Change B1).
