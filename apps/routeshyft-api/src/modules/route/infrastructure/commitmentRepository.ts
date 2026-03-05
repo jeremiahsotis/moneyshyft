@@ -56,6 +56,12 @@ export type PersistCommitmentTransitionInput = {
   policyExceptionCode: string | null;
 };
 
+export type ListPendingCommitmentsInput = {
+  tenantId: string;
+  orgUnitId?: string | null;
+  limit?: number;
+};
+
 export type PersistCommitmentTransitionResult =
   | {
     ok: true;
@@ -81,6 +87,10 @@ export interface CommitmentRepository {
     input: PersistCommitmentTransitionInput,
     dbClient?: Knex | Knex.Transaction,
   ): Promise<PersistCommitmentTransitionResult>;
+  listPendingCommitments(
+    input: ListPendingCommitmentsInput,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteCommitment[]>;
 }
 
 const toIsoUtc = (value: string | Date | null): string | null => {
@@ -227,6 +237,35 @@ export class InMemoryCommitmentRepository implements CommitmentRepository {
       commitment: { ...updated },
       transitionAudit: { ...transitionAudit },
     };
+  }
+
+  async listPendingCommitments(
+    input: ListPendingCommitmentsInput,
+    _dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteCommitment[]> {
+    const limit = Number.isInteger(input.limit) && (input.limit as number) > 0
+      ? Math.min(input.limit as number, 500)
+      : 100;
+
+    return [...this.commitmentsById.values()]
+      .filter((commitment) => {
+        if (commitment.tenantId !== input.tenantId) {
+          return false;
+        }
+
+        if (input.orgUnitId && commitment.orgUnitId !== input.orgUnitId) {
+          return false;
+        }
+
+        if (commitment.status !== 'scheduled' && commitment.status !== 'in_progress') {
+          return false;
+        }
+
+        return true;
+      })
+      .sort((left, right) => right.updatedAtUtc.localeCompare(left.updatedAtUtc))
+      .slice(0, limit)
+      .map((commitment) => ({ ...commitment }));
   }
 }
 
@@ -396,5 +435,33 @@ export class KnexCommitmentRepository implements CommitmentRepository {
     }
 
     return client.transaction(runTransition);
+  }
+
+  async listPendingCommitments(
+    input: ListPendingCommitmentsInput,
+    dbClient?: Knex | Knex.Transaction,
+  ): Promise<RouteCommitment[]> {
+    const client = this.resolveClient(dbClient);
+    const limit = Number.isInteger(input.limit) && (input.limit as number) > 0
+      ? Math.min(input.limit as number, 500)
+      : 100;
+
+    const query = client
+      .withSchema('route')
+      .table('commitments')
+      .select<DbCommitmentRow[]>(this.commitmentReturningColumns())
+      .where({
+        tenant_id: input.tenantId,
+      })
+      .whereIn('status', ['scheduled', 'in_progress'])
+      .orderBy('updated_at_utc', 'desc')
+      .limit(limit);
+
+    if (input.orgUnitId) {
+      query.andWhere({ org_unit_id: input.orgUnitId });
+    }
+
+    const rows = await query;
+    return rows.map((row) => mapCommitmentRow(row));
   }
 }
