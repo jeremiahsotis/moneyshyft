@@ -44,9 +44,9 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
     expect(pathExists('src')).toBe(false);
     expect(pathExists('frontend')).toBe(false);
 
-    expect(isSymlink('apps', 'routeshyft-api', 'src', 'modules', 'connectshyft')).toBe(true);
-    expect(isSymlink('apps', 'routeshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts')).toBe(true);
-    expect(isSymlink('apps', 'routeshyft-web', 'src', 'features', 'connectshyft')).toBe(true);
+    expect(isSymlink('apps', 'routeshyft-api', 'src', 'modules', 'connectshyft')).toBe(false);
+    expect(isSymlink('apps', 'routeshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts')).toBe(false);
+    expect(isSymlink('apps', 'routeshyft-web', 'src', 'features', 'connectshyft')).toBe(false);
   });
 
   test('[P0] transitional host bridges preserve runtime module identity and route registration @P0', () => {
@@ -57,10 +57,8 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
     expect(registerRoutes.includes("{ path: '/api/v1/connectshyft', modulePath: '../routes/api/v1/connectshyft' }")).toBe(true);
 
     expect(
-      resolveRealPath('apps', 'routeshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
-    ).toBe(
-      resolveRealPath('apps', 'connectshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
-    );
+      isSymlink('apps', 'routeshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
+    ).toBe(false);
     expect(
       fileDigest('apps', 'routeshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
     ).toBe(
@@ -68,10 +66,8 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
     );
 
     expect(
-      resolveRealPath('apps', 'routeshyft-web', 'src', 'features', 'connectshyft', 'threads.ts'),
-    ).toBe(
-      resolveRealPath('apps', 'connectshyft-web', 'src', 'features', 'connectshyft', 'threads.ts'),
-    );
+      isSymlink('apps', 'routeshyft-web', 'src', 'features', 'connectshyft'),
+    ).toBe(false);
     expect(
       fileDigest('apps', 'routeshyft-web', 'src', 'features', 'connectshyft', 'threads.ts'),
     ).toBe(

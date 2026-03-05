@@ -65,6 +65,12 @@ type StoryE4TranscriptionCallbackInput = {
   callbackEventNamespace: string;
 };
 
+const EMPTY_CALLBACK_CORRELATION = {
+  voicemailArtifactId: '',
+  providerEventId: null as string | null,
+  providerLegId: null as string | null,
+};
+
 type StoryE4ApiSuite = 'atdd-api' | 'automate-api';
 
 type StoryE4ScenarioSeedInput = {
@@ -208,6 +214,7 @@ export const buildStoryE4TranscriptionCallbackPayload = ({
   label,
   callbackEventNamespace,
 }: StoryE4TranscriptionCallbackInput) => {
+  const resolvedCallbackCorrelation = callbackCorrelation ?? EMPTY_CALLBACK_CORRELATION;
   const callbackEventId = deterministicProviderEventId(
     callbackEventNamespace,
     testInfo,
@@ -219,7 +226,7 @@ export const buildStoryE4TranscriptionCallbackPayload = ({
     providerKey: context.providers.enabledPrimary,
     providerEventId: callbackEventId,
     providerLegId:
-      callbackCorrelation.providerLegId
+      resolvedCallbackCorrelation.providerLegId
       || `leg-e4-callback-${deterministicToken(testInfo, `${label}-provider-leg`)}`,
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
@@ -229,9 +236,9 @@ export const buildStoryE4TranscriptionCallbackPayload = ({
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
       threadId,
-      providerEventId: callbackCorrelation.providerEventId,
-      providerLegId: callbackCorrelation.providerLegId,
-      voicemailArtifactId: callbackCorrelation.voicemailArtifactId,
+      providerEventId: resolvedCallbackCorrelation.providerEventId,
+      providerLegId: resolvedCallbackCorrelation.providerLegId,
+      voicemailArtifactId: resolvedCallbackCorrelation.voicemailArtifactId,
     },
     transcript: {
       text: transcriptText,

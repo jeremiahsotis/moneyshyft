@@ -2,7 +2,6 @@ import { generateKeyPairSync, sign as signPayload } from 'node:crypto';
 import type { TestInfo } from '@playwright/test';
 import {
   deterministicToken,
-  deterministicUnixTimestamp,
 } from '../utils/deterministicTestIds';
 
 export const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
@@ -37,12 +36,14 @@ const signWebhookBody = (
     webhookPrivateKey,
   ).toString('base64');
 
+const currentUnixTimestamp = (): string => String(Math.trunc(Date.now() / 1000));
+
 export const buildSignedWebhookHeaders = (
   payload: Record<string, unknown>,
-  testInfo: TestInfo,
-  label = 'signed',
+  _testInfo: TestInfo,
+  _label = 'signed',
 ): Record<string, string> => {
-  const timestamp = deterministicUnixTimestamp(testInfo, `e1-webhook:${label}:timestamp`);
+  const timestamp = currentUnixTimestamp();
   return {
     ...buildSignatureEnforcementHeaders(),
     'telnyx-timestamp': timestamp,
@@ -55,7 +56,7 @@ export const buildInvalidSignedWebhookHeaders = (
   testInfo: TestInfo,
   label = 'invalid',
 ): Record<string, string> => {
-  const timestamp = deterministicUnixTimestamp(testInfo, `e1-webhook:${label}:timestamp`);
+  const timestamp = currentUnixTimestamp();
   const tamperedPayload = {
     ...payload,
     eventType: `${String(payload.eventType || 'event')}.tampered`,

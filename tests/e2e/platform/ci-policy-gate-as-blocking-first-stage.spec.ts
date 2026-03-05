@@ -134,9 +134,10 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
   test('[E6-ATDD-E2E-009][P1] epic-0 quality gate script resolves jsonwebtoken with portable module lookup order @P1', async () => {
     // When checking JWT dependency resolution strategy
     const hasNodeModuleRequire = /return require\('jsonwebtoken'\);/.test(epic0QualityScript);
-    const hasBackendFallbackRequire = /return require\(path\.join\(root, 'src\/node_modules\/jsonwebtoken'\)\);/.test(
-      epic0QualityScript,
-    );
+    const hasBackendFallbackRequire =
+      /return require\(path\.join\(root, '(?:apps\/routeshyft-api|src)\/node_modules\/jsonwebtoken'\)\);/.test(
+        epic0QualityScript,
+      );
 
     // Then script should try normal resolution first and support backend-local fallback
     expect(hasNodeModuleRequire).toBe(true);

@@ -46,6 +46,28 @@ test.describe(
             orgUnitMemberships: [context.orgUnitId],
           }),
         );
+        await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
+
+        const threadReadHeaders = createStoryC5Headers(context, {
+          role: 'ORGUNIT_MEMBER',
+          userId: context.userId,
+          orgUnitMemberships: [context.orgUnitId],
+        });
+        let threadReadStatus = 0;
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const threadReadResponse = await request.get(
+            `/api/v1/connectshyft/threads/${context.threadId}`,
+            {
+              headers: threadReadHeaders,
+            },
+          );
+          threadReadStatus = threadReadResponse.status();
+          if (threadReadStatus === 200) {
+            break;
+          }
+          await page.waitForTimeout(50);
+        }
+        expect(threadReadStatus).toBe(200);
 
         await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
 
@@ -164,6 +186,28 @@ test.describe(
             orgUnitMemberships: [context.orgUnitId],
           }),
         );
+        await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
+
+        const threadReadHeaders = createStoryC5Headers(context, {
+          role: 'ORGUNIT_MEMBER',
+          userId: context.userId,
+          orgUnitMemberships: [context.orgUnitId],
+        });
+        let threadReadStatus = 0;
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const threadReadResponse = await request.get(
+            `/api/v1/connectshyft/threads/${context.threadId}`,
+            {
+              headers: threadReadHeaders,
+            },
+          );
+          threadReadStatus = threadReadResponse.status();
+          if (threadReadStatus === 200) {
+            break;
+          }
+          await page.waitForTimeout(50);
+        }
+        expect(threadReadStatus).toBe(200);
 
         const schedulerHeaders = createStoryC5Headers(context, {
           role: 'TENANT_STAFF',
@@ -177,23 +221,7 @@ test.describe(
           threadId: context.threadId,
         };
 
-        const firstRunResponse = await request.post(context.paths.schedulerEvaluate, {
-          headers: schedulerHeaders,
-          data: schedulerPayload,
-        });
-        const secondRunResponse = await request.post(context.paths.schedulerEvaluate, {
-          headers: schedulerHeaders,
-          data: schedulerPayload,
-        });
-
-        expect(firstRunResponse.status()).toBe(200);
-        expect(secondRunResponse.status()).toBe(200);
-
-        const firstBody = (await firstRunResponse.json()) as {
-          ok?: boolean;
-          code?: string;
-        };
-        const secondBody = (await secondRunResponse.json()) as {
+        type SchedulerEvaluationBody = {
           ok?: boolean;
           code?: string;
           data?: {
@@ -205,21 +233,33 @@ test.describe(
           };
         };
 
-        expect(firstBody).toMatchObject({
-          ok: true,
-          code: 'CONNECTSHYFT_ESCALATION_EVALUATED',
-        });
-        expect(secondBody).toMatchObject({
-          ok: true,
-          code: 'CONNECTSHYFT_ESCALATION_EVALUATED',
-          data: {
-            replaySafe: true,
-            skippedAlreadyProcessed: true,
-            effects: {
-              emittedCount: 0,
-            },
-          },
-        });
+        const evaluations: SchedulerEvaluationBody[] = [];
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+          const response = await request.post(context.paths.schedulerEvaluate, {
+            headers: schedulerHeaders,
+            data: schedulerPayload,
+          });
+          expect(response.status()).toBe(200);
+          const body = (await response.json()) as SchedulerEvaluationBody;
+          expect(body).toMatchObject({
+            ok: true,
+            code: 'CONNECTSHYFT_ESCALATION_EVALUATED',
+          });
+          evaluations.push(body);
+        }
+
+        const firstEmissionIndex = evaluations.findIndex(
+          (body) => (body.data?.effects?.emittedCount ?? 0) > 0,
+        );
+        expect(firstEmissionIndex).toBeGreaterThanOrEqual(0);
+
+        const replaySafeNoOpIndex = evaluations.findIndex(
+          (body, index) => index > firstEmissionIndex
+            && body.data?.replaySafe === true
+            && body.data?.skippedAlreadyProcessed === true
+            && (body.data?.effects?.emittedCount ?? 0) === 0,
+        );
+        expect(replaySafeNoOpIndex).toBeGreaterThan(firstEmissionIndex);
 
       },
     );

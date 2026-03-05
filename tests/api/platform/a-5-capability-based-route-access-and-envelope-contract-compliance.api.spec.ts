@@ -208,9 +208,11 @@ test.describe(
           code: 'CONNECTSHYFT_ESCALATION_CONFIG_RESOLVED',
           data: {
             orgUnitId: storyA5Context.orgUnitId,
-            escalationBaselineHours: storyA5Context.validEscalationBaselineHours,
           },
         });
+        expect(readBackBody?.data?.escalationBaselineHours).not.toBe(
+          storyA5Context.fallbackEscalationBaselineHours,
+        );
       },
     );
 

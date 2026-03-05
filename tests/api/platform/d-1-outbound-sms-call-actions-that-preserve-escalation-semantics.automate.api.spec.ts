@@ -1,5 +1,6 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryD.fixture';
+import { deterministicProviderEventId } from '../../support/utils/deterministicTestIds';
 
 test.describe(
   'Story d.1 outbound sms/call actions that preserve escalation semantics (Automate API Expansion)',
@@ -128,7 +129,7 @@ test.describe(
         storyDMemberHeaders,
         storyDAdminHeaders,
         storyDCallPayload,
-      }) => {
+      }, testInfo) => {
         const response = await apiRequest(request, {
           method: 'POST',
           path: `${storyDContext.paths.threads}/${storyDContext.threadIds.unclaimed}/call`,
@@ -208,6 +209,11 @@ test.describe(
             actorUserId: '00000000-0000-4000-8000-000000000042',
             transport: 'bridge',
             providerLegId,
+            providerEventId: deterministicProviderEventId(
+              'provider-event-d1-automate',
+              testInfo,
+              'connected-allowed',
+            ),
           },
         });
         expect(connectedResponse.status()).toBe(200);
@@ -240,6 +246,11 @@ test.describe(
             orgUnitId: storyDContext.orgUnitId,
             tenantId: storyDContext.tenantId,
             transport: 'sip',
+            providerEventId: deterministicProviderEventId(
+              'provider-event-d1-automate',
+              testInfo,
+              'connected-disallowed',
+            ),
           },
         });
         expect(disallowedConnectedResponse.status()).toBe(200);
@@ -303,7 +314,7 @@ test.describe(
         storyDMemberHeaders,
         storyDAdminHeaders,
         storyDCallPayload,
-      }) => {
+      }, testInfo) => {
         const regressionThreadId = storyDContext.threadIds.prefersNoUnclaimed;
         const callResponse = await apiRequest(request, {
           method: 'POST',
@@ -327,6 +338,11 @@ test.describe(
             orgUnitId: storyDContext.orgUnitId,
             tenantId: storyDContext.tenantId,
             providerLegId,
+            providerEventId: deterministicProviderEventId(
+              'provider-event-d1-automate',
+              testInfo,
+              'connected-without-transport',
+            ),
           },
         });
         expect(connectedWithoutTransportResponse.status()).toBe(200);
@@ -354,7 +370,7 @@ test.describe(
         storyDContext,
         storyDAdminHeaders,
         storyDMemberHeaders,
-      }) => {
+      }, testInfo) => {
         const regressionThreadId = storyDContext.threadIds.prefersNoUnclaimed;
         const metadataOnlyConnectedResponse = await apiRequest(request, {
           method: 'POST',
@@ -366,6 +382,11 @@ test.describe(
             orgUnitId: storyDContext.orgUnitId,
             tenantId: storyDContext.tenantId,
             transport: 'bridge',
+            providerEventId: deterministicProviderEventId(
+              'provider-event-d1-automate',
+              testInfo,
+              'connected-metadata-only',
+            ),
           },
         });
         expect(metadataOnlyConnectedResponse.status()).toBe(200);

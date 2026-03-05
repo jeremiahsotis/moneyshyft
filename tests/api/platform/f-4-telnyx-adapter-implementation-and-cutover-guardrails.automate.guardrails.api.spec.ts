@@ -169,7 +169,9 @@ test.describe(
         const hasGuardFailure =
           /ConnectShyft provider abstraction guard failed: direct Twilio coupling detected/.test(result.output);
         const hasViolationPath =
-          /src\/src\/modules\/connectshyft\/twilio-direct-coupling\.ts/.test(result.output);
+          /(?:apps\/routeshyft-api\/src\/modules\/connectshyft|src\/src\/modules\/connectshyft)\/twilio-direct-coupling\.ts/.test(
+            result.output,
+          );
         expect(result.status !== 0 && hasGuardFailure && hasViolationPath).toBe(true);
       },
     );

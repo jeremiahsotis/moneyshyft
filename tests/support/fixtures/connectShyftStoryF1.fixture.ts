@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { test as base } from '@playwright/test';
 import {
   createStoryF1Context,
@@ -90,13 +91,14 @@ export const test = base.extend<StoryF1Fixtures>({
     });
   },
   storyF1InboundWebhookPayload: async ({ storyF1Context }, use) => {
+    const eventToken = randomUUID().slice(0, 8);
     await use({
       eventType: 'voice.connected',
       threadId: storyF1Context.threadIds.unclaimed,
       orgUnitId: storyF1Context.orgUnitId,
       tenantId: storyF1Context.tenantId,
       providerKey: storyF1Context.providers.enabledPrimary,
-      providerEventId: 'telnyx-call-event-f1-1001',
+      providerEventId: `telnyx-call-event-f1-${eventToken}`,
       callStatus: 'CONNECTED',
     });
   },

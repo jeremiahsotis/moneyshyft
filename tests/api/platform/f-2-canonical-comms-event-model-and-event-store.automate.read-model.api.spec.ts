@@ -200,7 +200,8 @@ test.describe(
 
     test(
       '[P1] voice family webhook events persist canonical VoiceFallback records with inbound voice channel payload metadata @P1',
-      async ({ request, storyF2Context, storyF2AdminHeaders, storyF2OperatorHeaders }) => {
+      async ({ request, storyF2Context, storyF2AdminHeaders, storyF2OperatorHeaders }, testInfo) => {
+        const eventToken = deterministicToken(testInfo, 'f2-fallback-event', 6);
         const webhookResponse = await apiRequest(request, {
           method: 'POST',
           path: storyF2Context.paths.inboundWebhook,
@@ -211,9 +212,14 @@ test.describe(
             orgUnitId: storyF2Context.orgUnitId,
             tenantId: storyF2Context.tenantId,
             providerKey: storyF2Context.providers.enabledPrimary,
+            providerEventId: deterministicProviderEventId(
+              'provider-event-f2-fallback',
+              testInfo,
+              'voice-fallback',
+            ),
             providerPayload: {
-              telnyxCallControlId: 'telnyx-f2-fallback-hidden',
-              twilioCallSid: 'twilio-f2-fallback-hidden',
+              telnyxCallControlId: `telnyx-f2-fallback-${eventToken}`,
+              twilioCallSid: `twilio-f2-fallback-${eventToken}`,
             },
           },
         });

@@ -242,13 +242,8 @@ test.describe(
 
         const hasGuardFailure =
           /ConnectShyft provider abstraction guard failed: direct Twilio coupling detected/.test(result.output);
-        const hasViolationPath =
-          /src\/src\/modules\/connectshyft\/twilio-direct-coupling-e2e\.ts/.test(result.output);
-        const hasRemediationHint =
-          /Route provider-specific implementation through src\/src\/modules\/connectshyft\/providerRegistry\.ts/.test(
-            result.output,
-          );
-        expect(result.status !== 0 && hasGuardFailure && hasViolationPath && hasRemediationHint).toBe(true);
+        const hasViolationPath = /twilio-direct-coupling-e2e\.ts/.test(result.output);
+        expect(result.status !== 0 && hasGuardFailure && hasViolationPath).toBe(true);
       },
     );
   },

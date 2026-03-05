@@ -145,7 +145,10 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
 
     // Then policy should fail before downstream checks with explicit coupling diagnostics
     const hasGuardFailure = /ConnectShyft provider abstraction guard failed: direct Twilio coupling detected/.test(output);
-    const hasViolationFile = /src\/src\/modules\/connectshyft\/twilio-coupling\.ts/.test(output);
+    const hasViolationFile =
+      /(?:apps\/routeshyft-api\/src\/modules\/connectshyft|src\/src\/modules\/connectshyft)\/twilio-coupling\.ts/.test(
+        output,
+      );
     expect(status !== 0 && hasGuardFailure && hasViolationFile).toBe(true);
   });
 
@@ -169,7 +172,10 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
 
     // Then policy should fail with explicit TSX file diagnostics
     const hasGuardFailure = /ConnectShyft provider abstraction guard failed: direct Twilio coupling detected/.test(output);
-    const hasViolationFile = /src\/src\/modules\/connectshyft\/twilio-coupling\.tsx/.test(output);
+    const hasViolationFile =
+      /(?:apps\/routeshyft-api\/src\/modules\/connectshyft|src\/src\/modules\/connectshyft)\/twilio-coupling\.tsx/.test(
+        output,
+      );
     expect(status !== 0 && hasGuardFailure && hasViolationFile).toBe(true);
   });
 

@@ -77,7 +77,7 @@ export function createStoryA5Context(
     storyId: 'a-5',
     tenantId: overrides.tenantId ?? connectShyftCapabilityEnvelopeData.tenantAlphaId,
     orgUnitId:
-      overrides.orgUnitId ?? connectShyftCapabilityEnvelopeData.orgUnitAlphaEastId,
+      overrides.orgUnitId ?? connectShyftCapabilityEnvelopeData.orgUnitAlphaWestId,
     role: overrides.role ?? 'ORGUNIT_ADMIN',
     userId: overrides.userId ?? connectShyftCapabilityEnvelopeData.orgUnitAdminUserId,
     correlationId:

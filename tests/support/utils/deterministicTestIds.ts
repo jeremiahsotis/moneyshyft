@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { TestInfo } from '@playwright/test';
 
-const DEFAULT_RUN_SEED = 'seed0000';
+const DEFAULT_RUN_SEED = `seed-${Math.trunc(Date.now() / 1000)}`;
 const DEFAULT_TIMESTAMP_BASE_SECONDS = Number(
   process.env.PLAYWRIGHT_TEST_TIMESTAMP_BASE ?? Math.trunc(Date.now() / 1000),
 );
