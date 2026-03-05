@@ -50,6 +50,8 @@ jobs:
               - '.github/actions/**'
               - 'package.json'
               - 'package-lock.json'
+              - 'apps/routeshyft-api/package-lock.json'
+              - 'apps/routeshyft-web/package-lock.json'
               - 'apps/moneyshyft-api/package-lock.json'
               - 'apps/moneyshyft-web/package-lock.json'
               - 'src/package-lock.json'
