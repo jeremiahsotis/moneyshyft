@@ -268,4 +268,56 @@ describe('connectshyft identity dedupe decision matrix', () => {
       new Set(['CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE:MATCH_CONTACT_SHARED']),
     );
   });
+
+  it('enforces replay-safe idempotency semantics for repeated identity-match calls', () => {
+    const created = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Replay',
+      lastName: 'Safe',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550777',
+          isShared: false,
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!created.ok) {
+      throw new Error('Expected replay-safe seed creation to succeed');
+    }
+
+    const first = service.evaluateIdentityMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '+1 (260) 555-0777',
+        isShared: false,
+        verificationStatus: 'verified',
+      },
+    });
+
+    const second = service.evaluateIdentityMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '+12605550777',
+        isShared: false,
+        verificationStatus: 'verified',
+      },
+    });
+
+    if (!first.ok || !second.ok) {
+      throw new Error('Expected replay-safe idempotent identity-match responses');
+    }
+
+    expect(first.data.idempotency.semantics).toBe('REPLAY_SAFE');
+    expect(second.data.idempotency.semantics).toBe('REPLAY_SAFE');
+    expect(first.data.idempotency.key).toBe(second.data.idempotency.key);
+  });
 });

@@ -4670,6 +4670,7 @@ router.post('/neighbors/identity-match', async (req: Request, res: Response) => 
     httpStatus: matched.httpStatus,
     data: {
       identityMatch: matched.data.identityMatch,
+      idempotency: matched.data.idempotency,
       sideEffectsPersisted,
       sideEffectsPersistenceUnavailable,
       ...buildNeighborScopePayload(context),

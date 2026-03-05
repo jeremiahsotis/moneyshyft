@@ -1,6 +1,6 @@
 # Story 8.6: Service-Ready Identity Boundary
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -34,18 +34,18 @@ so that identity resolution and dedupe logic can be extracted later without brea
 
 ## Tasks / Subtasks
 
-- [ ] Define identity boundary contract (AC: 1, 3)
-  - [ ] Define interface operations, payload schemas, and deterministic error/result types.
-  - [ ] Define idempotency semantics and replay-safe behavior.
-- [ ] Implement in-process adapter layer (AC: 2)
-  - [ ] Add module implementation behind the new interface.
-  - [ ] Preserve existing behavior and response contracts.
-- [ ] Refactor lane callsites to boundary interface (AC: 4)
-  - [ ] Replace direct identity-logic coupling with boundary calls.
-  - [ ] Keep changes scoped to interface adoption without broad behavior refactor.
-- [ ] Validate and gate (AC: 3, 5)
-  - [ ] Add/adjust tests for contract behavior and idempotency.
-  - [ ] Run policy, branch/workflow guard, and changed-test validation.
+- [x] Define identity boundary contract (AC: 1, 3)
+  - [x] Define interface operations, payload schemas, and deterministic error/result types.
+  - [x] Define idempotency semantics and replay-safe behavior.
+- [x] Implement in-process adapter layer (AC: 2)
+  - [x] Add module implementation behind the new interface.
+  - [x] Preserve existing behavior and response contracts.
+- [x] Refactor lane callsites to boundary interface (AC: 4)
+  - [x] Replace direct identity-logic coupling with boundary calls.
+  - [x] Keep changes scoped to interface adoption without broad behavior refactor.
+- [x] Validate and gate (AC: 3, 5)
+  - [x] Add/adjust tests for contract behavior and idempotency.
+  - [x] Run policy, branch/workflow guard, and changed-test validation.
 
 ## Dev Notes
 
@@ -74,14 +74,46 @@ Create a stable identity interface boundary now to de-risk future service extrac
 
 ### Agent Model Used
 
-TBD
+GPT-5 (Codex)
 
 ### Debug Log References
 
+- `npm test -- --runInBand --testPathPattern=connectshyft.identity-boundary.test.ts` (cwd: `apps/routeshyft-api`)
+- `npm test -- --runInBand --testPathPattern=connectshyft.identity-dedupe.test.ts` (cwd: `apps/routeshyft-api`)
+- `npm test -- --runInBand --testPathPattern=connectshyft.identity-match.test.ts` (cwd: `apps/routeshyft-api`)
+- `npm run test:connectshyft` (cwd: `apps/routeshyft-api`)
+- `npm test` (cwd: `apps/routeshyft-api`)
+- `npm run build` (cwd: `apps/routeshyft-api`)
+- `npm run policy:check` (repo root)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story 8-6-service-ready-identity-boundary` (repo root)
+- `scripts/test-changed.sh origin/main` (repo root)
+- `npx nx run routeshyft-api:lint` (repo root)
+- `npx nx run connectshyft-api:test` (repo root)
+
 ### Completion Notes List
 
+- Added `identityBoundary` module contracts for identity match/dedupe operations with explicit success/refusal schemas and deterministic manual-resolution metadata.
+- Implemented in-process identity boundary adapters (`InProcess...` and `AsyncInProcess...`) and delegated both neighbor service identity-match paths to the new boundary interface.
+- Added explicit replay-safe idempotency semantics (`idempotency.key`, `idempotency.semantics`) to identity boundary responses and surfaced idempotency metadata through the identity-match route contract.
+- Preserved existing lane behavior and refusal codes (`CONNECTSHYFT_IDENTITY_MATCH_*`, `IDENTITY_MATCH_AMBIGUOUS`) while removing duplicated identity decision logic from neighbor services.
+- Added dedicated boundary contract tests and expanded dedupe/route tests to validate idempotency and response parity.
+- Operator usability note (Backend/API Implies Human Operability): operator-facing identity responses now carry deterministic refusal context and replay-safe idempotency metadata to support safe retriable workflows without accidental duplicate merge actions.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/8-6-service-ready-identity-boundary.md` (modified)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified)
+- `apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts` (added)
+- `apps/connectshyft-api/src/modules/connectshyft/neighbors.ts` (modified)
+- `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` (modified)
+- `apps/routeshyft-api/src/__tests__/connectshyft.identity-boundary.test.ts` (added)
+- `apps/routeshyft-api/src/__tests__/connectshyft.identity-dedupe.test.ts` (modified)
+- `apps/routeshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts` (modified)
 
 ## Change Log
 
 - 2026-03-04: Story created from approved Correct Course proposal (`cc-2026-03-04`, Change C2).
+- 2026-03-04: Added service-ready identity boundary contracts and in-process adapters for identity match/dedupe evaluation.
+- 2026-03-04: Refactored ConnectShyft neighbor identity callsites to consume the new boundary interface while preserving existing behavior/refusal contracts.
+- 2026-03-04: Added replay-safe idempotency metadata and expanded identity boundary/dedupe/route regression coverage.
+- 2026-03-04: Passed policy/workflow gates and targeted ConnectShyft regressions for boundary introduction.
