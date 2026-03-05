@@ -238,6 +238,111 @@ Status: done
   }
 }
 
+type StoryArtifactHygieneHarnessOptions = {
+  includeEpicFEvidenceInFileList: boolean;
+  includeNodeModulesMarkerInFileList: boolean;
+};
+
+function runStoryArtifactHygieneHarness(
+  storyArtifactScript: string,
+  options: StoryArtifactHygieneHarnessOptions,
+): { output: string; status: number } {
+  const repoDir = mkdtempSync(join(tmpdir(), 'story-artifact-hygiene-harness-'));
+
+  try {
+    mkdirSync(join(repoDir, '_bmad-output/implementation-artifacts'), { recursive: true });
+    mkdirSync(join(repoDir, 'scripts'), { recursive: true });
+    mkdirSync(join(repoDir, 'apps/routeshyft-api'), { recursive: true });
+
+    copyFileSync(storyArtifactScript, join(repoDir, 'scripts/enforce-story-artifact-hygiene.sh'));
+
+    writeFileSync(
+      join(repoDir, '.gitignore'),
+      [
+        'apps/*/node_modules/',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const storyPath = join(
+      repoDir,
+      '_bmad-output/implementation-artifacts/8-7-verified-patch-application-policy.md',
+    );
+
+    const fileListEntries = [
+      '- `_bmad-output/implementation-artifacts/8-7-verified-patch-application-policy.md`',
+    ];
+    if (options.includeEpicFEvidenceInFileList) {
+      fileListEntries.push('- `_bmad-output/test-artifacts/epic-f-performance-evidence.json`');
+    }
+    if (options.includeNodeModulesMarkerInFileList) {
+      fileListEntries.push('- `apps/routeshyft-api/node_modules`');
+    }
+
+    writeFileSync(
+      storyPath,
+      [
+        '# Story 8.7',
+        '',
+        'Status: review',
+        '',
+        '### Debug Log References',
+        '- `npm run policy:check` (pass)',
+        '',
+        '### File List',
+        ...fileListEntries,
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.email', 'story-artifact-harness@example.com'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.name', 'Story Artifact Harness'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['add', '.'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['commit', '-m', 'seed story artifact hygiene harness'], { cwd: repoDir, stdio: 'ignore' });
+
+    mkdirSync(join(repoDir, '_bmad-output/test-artifacts'), { recursive: true });
+    writeFileSync(
+      join(repoDir, '_bmad-output/test-artifacts/epic-f-performance-evidence.json'),
+      JSON.stringify({ ok: true }),
+      'utf8',
+    );
+
+    mkdirSync(join(repoDir, 'apps/routeshyft-api/node_modules'), { recursive: true });
+    writeFileSync(join(repoDir, 'apps/routeshyft-api/node_modules/.keep'), 'ignore-marker\n', 'utf8');
+
+    try {
+      const output = execFileSync(
+        'bash',
+        [
+          'scripts/enforce-story-artifact-hygiene.sh',
+          '--story-file',
+          '_bmad-output/implementation-artifacts/8-7-verified-patch-application-policy.md',
+          '--base-ref',
+          'codex/dev',
+        ],
+        {
+          cwd: repoDir,
+          encoding: 'utf8',
+        },
+      );
+      return {
+        output,
+        status: 0,
+      };
+    } catch (error) {
+      const typed = error as { stdout?: string; stderr?: string; status?: number };
+      return {
+        output: `${typed.stdout ?? ''}${typed.stderr ?? ''}`,
+        status: typed.status ?? 1,
+      };
+    }
+  } finally {
+    rmSync(repoDir, { recursive: true, force: true });
+  }
+}
+
 test.describe('Story 1.5 policy gate and branch workflow guard enforcement API coverage', () => {
   test('[P0] enforces policy-first CI dependency chain and runs backend contracts only after quality gates @P0', async ({
     story15Context,
@@ -373,6 +478,34 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
       && /critical\/access-control but missing real-user validation evidence/.test(output)
       && /critical\/access-control but 'Real-User Validation Result' is not 'pass'/.test(output),
     ).toBe(true);
+  });
+
+  test('[P1] story artifact hygiene guard fails when epic-f evidence and node_modules markers are missing from File List @P1', async ({
+    story15Context,
+  }) => {
+    const storyArtifactScript = resolve(dirname(story15Context.policyScript), 'enforce-story-artifact-hygiene.sh');
+    const { output, status } = runStoryArtifactHygieneHarness(storyArtifactScript, {
+      includeEpicFEvidenceInFileList: false,
+      includeNodeModulesMarkerInFileList: false,
+    });
+
+    expect(
+      status !== 0
+      && /changed file missing from File List -> _bmad-output\/test-artifacts\/epic-f-performance-evidence\.json/.test(output)
+      && /changed file missing from File List -> apps\/routeshyft-api\/node_modules/.test(output),
+    ).toBe(true);
+  });
+
+  test('[P1] story artifact hygiene guard passes when File List covers epic-f evidence and node_modules markers @P1', async ({
+    story15Context,
+  }) => {
+    const storyArtifactScript = resolve(dirname(story15Context.policyScript), 'enforce-story-artifact-hygiene.sh');
+    const { output, status } = runStoryArtifactHygieneHarness(storyArtifactScript, {
+      includeEpicFEvidenceInFileList: true,
+      includeNodeModulesMarkerInFileList: true,
+    });
+
+    expect(status === 0 && /Story artifact hygiene check passed\./.test(output)).toBe(true);
   });
 
   test('[P1] rejects epic workflow branch mismatch with explicit expected epic branch diagnostic @P1', async ({

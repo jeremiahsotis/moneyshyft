@@ -119,7 +119,12 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 ### Story Artifact Hygiene Guardrail (Mandatory for PR Validation)
 
 - Story implementation artifacts must maintain:
-  - Complete `### File List` coverage for changed `src/`, `tests/`, and `frontend/` files in the story scope.
+  - Complete `### File List` coverage for changed files in enforced hygiene scope:
+    - `apps/routeshyft-api/**`
+    - `apps/routeshyft-web/**`
+    - `tests/**`
+    - `_bmad-output/test-artifacts/epic-f-*`
+    - `apps/*/node_modules` directory markers when present in git status
   - `### Debug Log References` entries that include passing test/build command outcomes.
 - Enforced by:
   - `scripts/enforce-story-artifact-hygiene.sh`
