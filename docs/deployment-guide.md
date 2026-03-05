@@ -2,7 +2,7 @@
 
 ## Deployment Context
 Current production guidance in repo indicates:
-- Backend runs in Docker with production env from `src/.env`.
+- Backend runs in Docker with production env from `apps/routeshyft-api/.env`.
 - Postgres runs via Docker Compose.
 - nginx is host-managed and proxies `/api/` to backend.
 - Frontend is built and served as static assets.
