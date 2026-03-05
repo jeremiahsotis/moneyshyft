@@ -1,0 +1,33 @@
+{
+  "source": "/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/examples/wp-export-sample.json",
+  "sourceRowCount": 2,
+  "normalizedCount": 2,
+  "skippedDuplicateCount": 0,
+  "errors": [],
+  "records": [
+    {
+      "rowNumber": 1,
+      "sourceType": "wordpress_fulfillment",
+      "sourceId": "wp-fulfillment-1001",
+      "externalRef": "wp-lineage-5001",
+      "orgUnitId": "org-route-bridge-1",
+      "completion": {
+        "requested": false,
+        "reason": null,
+        "idempotencyKey": null
+      }
+    },
+    {
+      "rowNumber": 2,
+      "sourceType": "wordpress_fulfillment",
+      "sourceId": "wp-fulfillment-1002",
+      "externalRef": "wp-lineage-5002",
+      "orgUnitId": "org-route-bridge-1",
+      "completion": {
+        "requested": true,
+        "reason": "Imported as already completed during WP cutover",
+        "idempotencyKey": "wp-cutover-complete-wp-fulfillment-1002"
+      }
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "startedAtUtc": "2026-03-05T20:23:38.485Z",
+  "inputPath": "/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/examples/wp-export-sample.json",
+  "outputPath": "/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/route-cutover-rehearsal-apply-monolith-authoritative-2026-03-05.json",
+  "normalizedOutputPath": "/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/route-cutover-normalized-apply-monolith-authoritative-2026-03-05.json",
+  "mode": "apply",
+  "apiBaseUrl": "http://127.0.0.1:3000",
+  "sourceType": "wordpress_fulfillment",
+  "writeMode": "api_only",
+  "sourceRowCount": 2,
+  "normalizedCount": 2,
+  "skippedDuplicateCount": 0,
+  "validationErrors": [],
+  "dryRunPlan": null,
+  "execution": {
+    "authContext": {
+      "activeOrgUnitId": null
+    },
+    "importResults": {
+      "attempted": 2,
+      "created": 0,
+      "replayed": 2,
+      "failures": []
+    },
+    "completionResults": {
+      "attempted": 1,
+      "applied": 0,
+      "replayed": 1,
+      "transitionPrepared": 0,
+      "failures": []
+    },
+    "reconciliationResults": [
+      {
+        "orgUnitId": null,
+        "status": 200,
+        "code": "ROUTE_BRIDGE_RECONCILIATION_PASSED",
+        "driftDetected": false,
+        "singleSourceOfTruthConfirmed": true,
+        "response": {
+          "ok": true,
+          "code": "ROUTE_BRIDGE_RECONCILIATION_PASSED",
+          "message": "Bridge reconciliation confirms single-source state.",
+          "correlationId": "cutover-1772742219004",
+          "tenantId": "3a6a48bd-5c26-4efb-8cd2-49cc0eb0dcb8",
+          "data": {
+            "bridge": {
+              "integration": "wordpress",
+              "stateAuthority": "monolith",
+              "cutover": {
+                "stage": "monolith_authoritative",
+                "dualWritePreventionActive": true,
+                "writeBlocked": false,
+                "requiresApiOnlyAssertion": true,
+                "invalidConfiguration": false,
+                "configuredStage": "monolith_authoritative"
+              }
+            },
+            "generatedAtLocal": "03/05/2026, 08:23 PM",
+            "reconciliation": {
+              "sourceType": "wordpress_fulfillment",
+              "commitmentCount": 2,
+              "driftDetected": false,
+              "singleSourceOfTruthConfirmed": true,
+              "checks": [
+                {
+                  "name": "duplicate_bridge_source_ids",
+                  "ok": true,
+                  "violationCount": 0,
+                  "violations": []
+                },
+                {
+                  "name": "duplicate_bridge_lineage_refs",
+                  "ok": true,
+                  "violationCount": 0,
+                  "violations": []
+                }
+              ],
+              "actions": [
+                "Cutover stage progression is clear for this tenant/orgUnit scope."
+              ]
+            },
+            "timezone": "UTC",
+            "timezoneSource": "system"
+          }
+        }
+      }
+    ],
+    "commitmentsObserved": {
+      "wp-fulfillment-1001": "766c7467-606e-4c55-99c4-c2b54fb4808b",
+      "wp-fulfillment-1002": "0d4d740c-fcdf-4bd6-b8a2-41c3c01405d6"
+    },
+    "warnings": [
+      {
+        "rowNumber": 1,
+        "sourceId": "wp-fulfillment-1001",
+        "code": "ORG_UNIT_CONTEXT_UNAVAILABLE",
+        "message": "Row orgUnitId 'org-route-bridge-1' was omitted because active orgUnit context is not set for this session."
+      },
+      {
+        "rowNumber": 2,
+        "sourceId": "wp-fulfillment-1002",
+        "code": "ORG_UNIT_CONTEXT_UNAVAILABLE",
+        "message": "Row orgUnitId 'org-route-bridge-1' was omitted because active orgUnit context is not set for this session."
+      }
+    ]
+  },
+  "finishedAtUtc": "2026-03-05T20:23:39.006Z",
+  "success": true
+}

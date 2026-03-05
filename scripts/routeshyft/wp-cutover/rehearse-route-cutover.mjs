@@ -48,6 +48,11 @@ Options:
 Auth for non-dry-run:
   Either set RS_CUTOVER_ACCESS_TOKEN, or set RS_CUTOVER_LOGIN_EMAIL and RS_CUTOVER_LOGIN_PASSWORD
   (fallbacks to TEST_EMAIL and TEST_PASSWORD).
+  Optional: RS_CUTOVER_CSRF_TOKEN when using RS_CUTOVER_ACCESS_TOKEN directly.
+
+OrgUnit behavior:
+  If login session has no activeOrgUnitId, orgUnitId values from input are omitted from bridge payloads
+  and surfaced as warnings in the rehearsal report.
 `);
 };
 
