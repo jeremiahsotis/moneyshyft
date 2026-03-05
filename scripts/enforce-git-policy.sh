@@ -285,6 +285,7 @@ fi
 
 bash scripts/enforce-envelope-helper-guard.sh
 bash scripts/enforce-connectshyft-provider-abstraction-guard.sh
+node scripts/enforce-workspace-boundaries.js
 status_sync_args=(--status-file "$lane_sprint_status_file")
 if [[ -n "$story_branch_id" && -n "${story_branch_slug:-}" ]]; then
   status_sync_key="${story_branch_id}-${story_branch_slug}"

@@ -73,6 +73,7 @@ temp/
 
 # Cache
 .cache/
+.nx/
 .parcel-cache/
 .vite/
 
