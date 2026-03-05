@@ -1,6 +1,6 @@
 # Story 8.6: Service-Ready Identity Boundary
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -81,6 +81,7 @@ GPT-5 (Codex)
 - `npm test -- --runInBand --testPathPattern=connectshyft.identity-boundary.test.ts` (cwd: `apps/routeshyft-api`)
 - `npm test -- --runInBand --testPathPattern=connectshyft.identity-dedupe.test.ts` (cwd: `apps/routeshyft-api`)
 - `npm test -- --runInBand --testPathPattern=connectshyft.identity-match.test.ts` (cwd: `apps/routeshyft-api`)
+- `npm test -- --runInBand --testPathPattern='connectshyft.identity-boundary.test.ts|connectshyft.identity-dedupe.test.ts|connectshyft.identity-match.test.ts'` (cwd: `apps/routeshyft-api`)
 - `npm run test:connectshyft` (cwd: `apps/routeshyft-api`)
 - `npm test` (cwd: `apps/routeshyft-api`)
 - `npm run build` (cwd: `apps/routeshyft-api`)
@@ -98,17 +99,35 @@ GPT-5 (Codex)
 - Preserved existing lane behavior and refusal codes (`CONNECTSHYFT_IDENTITY_MATCH_*`, `IDENTITY_MATCH_AMBIGUOUS`) while removing duplicated identity decision logic from neighbor services.
 - Added dedicated boundary contract tests and expanded dedupe/route tests to validate idempotency and response parity.
 - Operator usability note (Backend/API Implies Human Operability): operator-facing identity responses now carry deterministic refusal context and replay-safe idempotency metadata to support safe retriable workflows without accidental duplicate merge actions.
+- Senior review remediation: `Idempotency-Key` now propagates through `/neighbors/identity-match` into boundary evaluation for explicit replay control.
+- Senior review remediation: sync service boundary invocation now enforces non-Promise adapter contracts to prevent async shape drift.
+- Senior review remediation: identity-match evaluation now uses targeted tenant+phone lookups and adds a dedicated `(tenant_id, value_e164, ...)` index migration for scalable matching.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/8-6-service-ready-identity-boundary.md` (modified)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified)
-- `apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts` (added)
+- `apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts` (modified)
 - `apps/connectshyft-api/src/modules/connectshyft/neighbors.ts` (modified)
 - `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` (modified)
-- `apps/routeshyft-api/src/__tests__/connectshyft.identity-boundary.test.ts` (added)
+- `apps/routeshyft-api/src/migrations/20260304100000_add_connectshyft_neighbor_phone_lookup_index.ts` (added)
 - `apps/routeshyft-api/src/__tests__/connectshyft.identity-dedupe.test.ts` (modified)
 - `apps/routeshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts` (modified)
+
+## Senior Developer Review (AI)
+
+- Date: 2026-03-04
+- Reviewer: Jeremiah (AI-assisted code review workflow)
+- Outcome: Approved after remediation
+- Findings Addressed:
+  - Fixed route-level idempotency propagation: identity-match now accepts and forwards explicit `Idempotency-Key`/`idempotencyKey`.
+  - Fixed sync boundary contract safety: sync service now rejects Promise-returning adapter wiring at runtime.
+  - Fixed identity-match query shape: async boundary now consumes targeted tenant+phone lookups, and supporting DB index migration added.
+- Validation Evidence:
+  - `npm test -- --runInBand --testPathPattern='connectshyft.identity-boundary.test.ts|connectshyft.identity-dedupe.test.ts|connectshyft.identity-match.test.ts'` (pass)
+  - `npm run test:connectshyft` (pass)
+  - `npm run build` (pass)
+  - `git status --short` reviewed against File List update (no undocumented code changes)
 
 ## Change Log
 
@@ -117,3 +136,4 @@ GPT-5 (Codex)
 - 2026-03-04: Refactored ConnectShyft neighbor identity callsites to consume the new boundary interface while preserving existing behavior/refusal contracts.
 - 2026-03-04: Added replay-safe idempotency metadata and expanded identity boundary/dedupe/route regression coverage.
 - 2026-03-04: Passed policy/workflow gates and targeted ConnectShyft regressions for boundary introduction.
+- 2026-03-04: Senior Developer Review (AI) remediation applied for idempotency propagation, sync boundary type safety, and targeted tenant+phone identity lookup/indexing; status set to `done`.

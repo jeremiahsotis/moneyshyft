@@ -320,4 +320,90 @@ describe('connectshyft identity dedupe decision matrix', () => {
     expect(second.data.idempotency.semantics).toBe('REPLAY_SAFE');
     expect(first.data.idempotency.key).toBe(second.data.idempotency.key);
   });
+
+  it('uses targeted tenant+phone lookup for identity matching', () => {
+    const created = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Targeted',
+      lastName: 'Lookup',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550888',
+          isShared: false,
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!created.ok) {
+      throw new Error('Expected seed neighbor creation to succeed');
+    }
+
+    const listByTenantSpy = jest.spyOn(store, 'listByTenant');
+    const targetedLookupSpy = jest.spyOn(store, 'listIdentityBoundaryNeighborsByPhoneValue');
+
+    const evaluated = service.evaluateIdentityMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '+1 (260) 555-0888',
+        isShared: false,
+        verificationStatus: 'verified',
+      },
+    });
+
+    expect(evaluated.ok).toBe(true);
+    expect(targetedLookupSpy).toHaveBeenCalledWith('tenant-connectshyft-alpha', '+12605550888');
+    expect(listByTenantSpy).not.toHaveBeenCalled();
+  });
+
+  it('fails fast when sync service is wired to an async-only boundary adapter', () => {
+    const asyncOnlyBoundary = {
+      evaluateMatch: async () => ({
+        ok: true as const,
+        code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH' as const,
+        httpStatus: 200 as const,
+        data: {
+          identityMatch: {
+            decision: 'NO_AUTO_MERGE' as const,
+            reason: 'NO_EXACT_CONTACT_POINT_MATCH' as const,
+            autoMergeAllowed: false,
+            contactPoint: {
+              value: '+12605550000',
+              isShared: false,
+              verificationStatus: 'verified' as const,
+            },
+            matchedNeighborId: null,
+            candidateCount: 0,
+            candidateNeighborIds: [],
+            exactMatches: [],
+          },
+          idempotency: {
+            key: 'identity-replay-key-async',
+            semantics: 'REPLAY_SAFE' as const,
+          },
+        },
+      }),
+    };
+
+    const syncService = new ConnectShyftNeighborService(
+      new InMemoryConnectShyftNeighborStore(),
+      asyncOnlyBoundary,
+    );
+
+    expect(() => syncService.evaluateIdentityMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '+12605550000',
+        isShared: false,
+        verificationStatus: 'verified',
+      },
+    })).toThrow('synchronous identity boundary adapter');
+  });
 });

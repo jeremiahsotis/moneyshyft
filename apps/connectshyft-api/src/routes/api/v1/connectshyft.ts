@@ -3379,12 +3379,19 @@ const parseNeighborIdentityMatchBody = (req: Request) => {
       verificationStatus?: unknown;
     }
     : null;
+  const headerIdempotencyKey = typeof req.header('Idempotency-Key') === 'string'
+    ? req.header('Idempotency-Key')?.trim() || ''
+    : '';
+  const bodyIdempotencyKey = typeof req.body?.idempotencyKey === 'string'
+    ? req.body.idempotencyKey.trim()
+    : '';
 
   return {
     orgUnitId: parseOrgUnitIdFromBody(req),
     excludeNeighborId: typeof req.body?.excludeNeighborId === 'string'
       ? req.body.excludeNeighborId.trim()
       : '',
+    idempotencyKey: headerIdempotencyKey || bodyIdempotencyKey,
     contactPoint: {
       label: typeof contactPointCandidate?.label === 'string' ? contactPointCandidate.label : '',
       value: typeof contactPointCandidate?.value === 'string' ? contactPointCandidate.value : '',
@@ -4621,6 +4628,7 @@ router.post('/neighbors/identity-match', async (req: Request, res: Response) => 
     tenantId: context.tenantId,
     contactPoint: payload.contactPoint,
     excludeNeighborId: payload.excludeNeighborId || undefined,
+    idempotencyKey: payload.idempotencyKey || undefined,
   });
 
   const identityDecision = matched.ok

@@ -422,63 +422,138 @@ const buildIdentityMatchSuccess = (
   },
 });
 
-export const evaluateConnectShyftIdentityBoundary = (
+type PreparedIdentityBoundaryEvaluation = {
+  normalizedContactPointValue: string | null;
+  isShared: boolean;
+  verificationStatus: 'verified' | 'unverified';
+  excludeNeighborId: string;
+  idempotency: ConnectShyftIdentityBoundaryReplay;
+};
+
+const prepareIdentityBoundaryEvaluation = (
   input: ConnectShyftIdentityBoundaryRequest,
-  neighbors: ConnectShyftIdentityBoundaryNeighbor[],
-): ConnectShyftIdentityBoundaryResult => {
+): PreparedIdentityBoundaryEvaluation => {
   const normalizedContactPointValue = normalizePhoneValue(normalizeNonEmptyString(input.contactPoint?.value));
   const isShared = input.contactPoint?.isShared === true;
   const verificationStatus = normalizeVerificationStatus(input.contactPoint?.verificationStatus);
   const excludeNeighborId = normalizeNonEmptyString(input.excludeNeighborId);
 
-  const idempotency = buildIdempotencyReplay({
-    tenantId: input.tenantId,
-    explicitKey: input.idempotencyKey,
+  return {
     normalizedContactPointValue,
-    rawContactPointValue: input.contactPoint?.value,
     isShared,
     verificationStatus,
     excludeNeighborId,
-  });
+    idempotency: buildIdempotencyReplay({
+      tenantId: input.tenantId,
+      explicitKey: input.idempotencyKey,
+      normalizedContactPointValue,
+      rawContactPointValue: input.contactPoint?.value,
+      isShared,
+      verificationStatus,
+      excludeNeighborId,
+    }),
+  };
+};
+
+const evaluateConnectShyftIdentityBoundaryWithResolver = (
+  input: ConnectShyftIdentityBoundaryRequest,
+  resolveNeighborsByNormalizedContactPoint: (
+    normalizedContactPointValue: string,
+  ) => ConnectShyftIdentityBoundaryNeighbor[],
+): ConnectShyftIdentityBoundaryResult => {
+  const prepared = prepareIdentityBoundaryEvaluation(input);
 
   if (!hasIdentityBoundaryCapability(input.actorRoles)) {
-    return buildIdentityMatchForbiddenRefusal(idempotency);
+    return buildIdentityMatchForbiddenRefusal(prepared.idempotency);
   }
 
-  if (!normalizedContactPointValue) {
-    return buildIdentityMatchInvalidPhoneRefusal(idempotency);
+  if (!prepared.normalizedContactPointValue) {
+    return buildIdentityMatchInvalidPhoneRefusal(prepared.idempotency);
   }
 
   const decision = buildIdentityMatchDecision({
-    normalizedValue: normalizedContactPointValue,
-    isShared,
-    verificationStatus,
+    normalizedValue: prepared.normalizedContactPointValue,
+    isShared: prepared.isShared,
+    verificationStatus: prepared.verificationStatus,
     candidates: collectIdentityMatchCandidates(
-      neighbors,
-      normalizedContactPointValue,
-      excludeNeighborId,
+      resolveNeighborsByNormalizedContactPoint(prepared.normalizedContactPointValue),
+      prepared.normalizedContactPointValue,
+      prepared.excludeNeighborId,
     ),
   });
 
   if (decision.decision === 'AMBIGUOUS') {
-    return buildIdentityMatchAmbiguousRefusal(decision, idempotency);
+    return buildIdentityMatchAmbiguousRefusal(decision, prepared.idempotency);
   }
 
-  return buildIdentityMatchSuccess(decision, idempotency);
+  return buildIdentityMatchSuccess(decision, prepared.idempotency);
+};
+
+const evaluateConnectShyftIdentityBoundaryWithAsyncResolver = async (
+  input: ConnectShyftIdentityBoundaryRequest,
+  resolveNeighborsByNormalizedContactPoint: (
+    normalizedContactPointValue: string,
+  ) => Promise<ConnectShyftIdentityBoundaryNeighbor[]>,
+): Promise<ConnectShyftIdentityBoundaryResult> => {
+  const prepared = prepareIdentityBoundaryEvaluation(input);
+
+  if (!hasIdentityBoundaryCapability(input.actorRoles)) {
+    return buildIdentityMatchForbiddenRefusal(prepared.idempotency);
+  }
+
+  if (!prepared.normalizedContactPointValue) {
+    return buildIdentityMatchInvalidPhoneRefusal(prepared.idempotency);
+  }
+
+  const decision = buildIdentityMatchDecision({
+    normalizedValue: prepared.normalizedContactPointValue,
+    isShared: prepared.isShared,
+    verificationStatus: prepared.verificationStatus,
+    candidates: collectIdentityMatchCandidates(
+      await resolveNeighborsByNormalizedContactPoint(prepared.normalizedContactPointValue),
+      prepared.normalizedContactPointValue,
+      prepared.excludeNeighborId,
+    ),
+  });
+
+  if (decision.decision === 'AMBIGUOUS') {
+    return buildIdentityMatchAmbiguousRefusal(decision, prepared.idempotency);
+  }
+
+  return buildIdentityMatchSuccess(decision, prepared.idempotency);
+};
+
+export const evaluateConnectShyftIdentityBoundary = (
+  input: ConnectShyftIdentityBoundaryRequest,
+  neighbors: ConnectShyftIdentityBoundaryNeighbor[],
+): ConnectShyftIdentityBoundaryResult => {
+  return evaluateConnectShyftIdentityBoundaryWithResolver(
+    input,
+    () => neighbors,
+  );
 };
 
 export class InProcessConnectShyftIdentityBoundaryAdapter
   implements ConnectShyftIdentityBoundaryAdapter {
   constructor(
     private readonly loadNeighborsByTenant: (tenantId: string) => ConnectShyftIdentityBoundaryNeighbor[],
+    private readonly loadNeighborsByNormalizedContactPoint?: (
+      tenantId: string,
+      normalizedContactPointValue: string,
+    ) => ConnectShyftIdentityBoundaryNeighbor[],
   ) {}
 
   evaluateMatch(
     input: ConnectShyftIdentityBoundaryRequest,
   ): ConnectShyftIdentityBoundaryResult {
-    return evaluateConnectShyftIdentityBoundary(
+    return evaluateConnectShyftIdentityBoundaryWithResolver(
       input,
-      this.loadNeighborsByTenant(input.tenantId),
+      (normalizedContactPointValue) => this.loadNeighborsByNormalizedContactPoint
+        ? this.loadNeighborsByNormalizedContactPoint(
+          input.tenantId,
+          normalizedContactPointValue,
+        )
+        : this.loadNeighborsByTenant(input.tenantId),
     );
   }
 }
@@ -489,14 +564,23 @@ export class AsyncInProcessConnectShyftIdentityBoundaryAdapter
     private readonly loadNeighborsByTenant: (
       tenantId: string,
     ) => Promise<ConnectShyftIdentityBoundaryNeighbor[]>,
+    private readonly loadNeighborsByNormalizedContactPoint?: (
+      tenantId: string,
+      normalizedContactPointValue: string,
+    ) => Promise<ConnectShyftIdentityBoundaryNeighbor[]>,
   ) {}
 
   async evaluateMatch(
     input: ConnectShyftIdentityBoundaryRequest,
   ): Promise<ConnectShyftIdentityBoundaryResult> {
-    return evaluateConnectShyftIdentityBoundary(
+    return evaluateConnectShyftIdentityBoundaryWithAsyncResolver(
       input,
-      await this.loadNeighborsByTenant(input.tenantId),
+      async (normalizedContactPointValue) => this.loadNeighborsByNormalizedContactPoint
+        ? this.loadNeighborsByNormalizedContactPoint(
+          input.tenantId,
+          normalizedContactPointValue,
+        )
+        : this.loadNeighborsByTenant(input.tenantId),
     );
   }
 }
