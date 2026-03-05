@@ -95,6 +95,7 @@ Success criteria:
 1. Reconciliation responses report `singleSourceOfTruthConfirmed: true`.
 2. No `ROUTE_BRIDGE_RECONCILIATION_DRIFT_DETECTED` results.
 3. No bridge write failures are reported.
+4. Archive rehearsal artifacts under `_bmad-output/test-artifacts/release-evidence/` and mark them as release evidence.
 
 ## Step 6: Promote Cutover Stage + Disable WP Writes
 1. Move stage to `monolith_authoritative` and require `api_only` bridge assertions.
