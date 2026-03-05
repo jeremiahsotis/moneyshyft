@@ -30,9 +30,11 @@ const usage = () => {
 
 Usage:
   node scripts/routeshyft/wp-cutover/rehearse-route-cutover.mjs --input <wp-export.json> [options]
+  node scripts/routeshyft/wp-cutover/rehearse-route-cutover.mjs --reconcile-only [options]
 
 Options:
   --input <path>                WP export JSON file (array or { items: [] })
+  --reconcile-only              Skip import input and run reconciliation checks only
   --output <path>               Rehearsal report JSON output path
   --normalized-output <path>    Normalized export output path
   --api-base <url>              API base URL (default: ${DEFAULT_API_BASE})
@@ -53,6 +55,10 @@ Auth for non-dry-run:
 OrgUnit behavior:
   If login session has no activeOrgUnitId, orgUnitId values from input are omitted from bridge payloads
   and surfaced as warnings in the rehearsal report.
+
+No-source behavior:
+  Use --reconcile-only when there is no WP export/migration payload and you only need
+  to verify single-source-of-truth reconciliation in the active stage.
 `);
 };
 
@@ -70,6 +76,7 @@ const parseArgs = (argv) => {
       10,
     ),
     limit: 0,
+    reconcileOnly: false,
     transformOnly: false,
     dryRun: false,
     help: false,
@@ -90,6 +97,11 @@ const parseArgs = (argv) => {
 
     if (arg === '--dry-run') {
       options.dryRun = true;
+      continue;
+    }
+
+    if (arg === '--reconcile-only') {
+      options.reconcileOnly = true;
       continue;
     }
 
@@ -742,8 +754,12 @@ const main = async () => {
     return;
   }
 
-  if (!options.inputPath) {
-    throw new Error('Missing required --input path.');
+  if (options.reconcileOnly && (options.transformOnly || options.dryRun)) {
+    throw new Error('--reconcile-only cannot be combined with --transform-only or --dry-run.');
+  }
+
+  if (!options.inputPath && !options.reconcileOnly) {
+    throw new Error('Missing required --input path (or use --reconcile-only).');
   }
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -754,9 +770,9 @@ const main = async () => {
     options.normalizedOutputPath || `_bmad-output/test-artifacts/route-cutover-normalized-${timestamp}.json`,
   );
 
-  const inputPath = toAbsolutePath(options.inputPath);
-  const rawPayload = readJson(inputPath);
-  const rows = resolveInputRows(rawPayload);
+  const inputPath = options.reconcileOnly ? null : toAbsolutePath(options.inputPath);
+  const rawPayload = inputPath ? readJson(inputPath) : [];
+  const rows = inputPath ? resolveInputRows(rawPayload) : [];
 
   const normalizedResult = normalizeRecords(rows, options);
   writeJson(normalizedOutputPath, {
@@ -773,7 +789,13 @@ const main = async () => {
     inputPath,
     outputPath: reportPath,
     normalizedOutputPath,
-    mode: options.transformOnly ? 'transform-only' : options.dryRun ? 'dry-run' : 'apply',
+    mode: options.reconcileOnly
+      ? 'reconcile-only'
+      : options.transformOnly
+        ? 'transform-only'
+        : options.dryRun
+          ? 'dry-run'
+          : 'apply',
     apiBaseUrl: options.apiBaseUrl,
     sourceType: options.sourceType,
     writeMode: options.writeMode,
