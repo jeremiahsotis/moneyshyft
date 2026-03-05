@@ -153,6 +153,10 @@ describe('connectshyft identity-match route', () => {
           manualResolution,
         },
         manualResolution,
+        idempotency: {
+          key: 'identity-replay-key-ambiguous',
+          semantics: 'REPLAY_SAFE',
+        },
       },
     });
 
@@ -184,6 +188,10 @@ describe('connectshyft identity-match route', () => {
         },
         manualResolution: {
           reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+        },
+        idempotency: {
+          key: 'identity-replay-key-ambiguous',
+          semantics: 'REPLAY_SAFE',
         },
         sideEffectsPersisted: false,
         sideEffectsPersistenceUnavailable: true,
@@ -218,6 +226,10 @@ describe('connectshyft identity-match route', () => {
             },
           ],
         },
+        idempotency: {
+          key: 'identity-replay-key-no-auto-merge',
+          semantics: 'REPLAY_SAFE',
+        },
       },
     });
 
@@ -244,6 +256,10 @@ describe('connectshyft identity-match route', () => {
       ok: true,
       code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE',
       data: {
+        idempotency: {
+          key: 'identity-replay-key-no-auto-merge',
+          semantics: 'REPLAY_SAFE',
+        },
         sideEffectsPersisted: true,
         sideEffectsPersistenceUnavailable: false,
       },
@@ -264,5 +280,64 @@ describe('connectshyft identity-match route', () => {
 
     expect(observedHash).toMatch(/^hmac-sha256:/);
     expect(observedHash).not.toBe(unsaltedHash);
+  });
+
+  it('forwards Idempotency-Key header to identity-match evaluation input', async () => {
+    const evaluateSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'evaluateIdentityMatch').mockResolvedValue({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH',
+      httpStatus: 200,
+      data: {
+        identityMatch: {
+          decision: 'NO_AUTO_MERGE',
+          reason: 'NO_EXACT_CONTACT_POINT_MATCH',
+          autoMergeAllowed: false,
+          contactPoint: {
+            value: '+12605550111',
+            isShared: false,
+            verificationStatus: 'verified',
+          },
+          matchedNeighborId: null,
+          candidateCount: 0,
+          candidateNeighborIds: [],
+          exactMatches: [],
+        },
+        idempotency: {
+          key: 'identity-replay-key-header',
+          semantics: 'REPLAY_SAFE',
+        },
+      },
+    });
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/neighbors/identity-match')
+      .set(buildHeaders({
+        'Idempotency-Key': 'identity-replay-key-header',
+      }))
+      .send({
+        orgUnitId: TEST_ORG_UNIT_ID,
+        contactPoint: {
+          label: 'mobile',
+          value: '+12605550111',
+          isShared: false,
+          verificationStatus: 'verified',
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH',
+      data: {
+        idempotency: {
+          key: 'identity-replay-key-header',
+          semantics: 'REPLAY_SAFE',
+        },
+      },
+    });
+    expect(evaluateSpy).toHaveBeenCalledWith(expect.objectContaining({
+      idempotencyKey: 'identity-replay-key-header',
+    }));
   });
 });
