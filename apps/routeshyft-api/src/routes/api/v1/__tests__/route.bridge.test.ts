@@ -183,4 +183,210 @@ describe('route bridge api contract', () => {
       refusalType: 'business',
     });
   });
+
+  it('applies completion transition with traceable idempotency and lineage fields', async () => {
+    const { app, commitmentService } = buildApp();
+
+    const created = await commitmentService.createCommitment({
+      tenantId: 'tenant-route-bridge-1',
+      actorId: 'user-route-bridge-1',
+      sourceType: 'wordpress_fulfillment',
+      sourceId: 'wp-fulfillment-complete-1',
+      orgUnitId: 'org-route-bridge-1',
+      externalRef: 'wp-lineage-complete-1',
+    });
+
+    expect(created.ok).toBe(true);
+    if (!created.ok) {
+      throw new Error('Expected commitment creation to succeed');
+    }
+
+    await commitmentService.transitionCommitment({
+      tenantId: 'tenant-route-bridge-1',
+      commitmentId: created.data.commitment.commitmentId,
+      actorId: 'user-route-bridge-1',
+      nextStatus: 'in_progress',
+      reason: 'Driver started fulfillment',
+    });
+
+    const response = await request(app)
+      .post(`/api/v1/route-bridge/fulfillment/${created.data.commitment.commitmentId}/completion`)
+      .send({
+        idempotencyKey: 'completion-key-1',
+        bridgeLineageId: 'wp-lineage-complete-1',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'ROUTE_BRIDGE_COMPLETION_APPLIED',
+      data: {
+        bridge: {
+          integration: 'wordpress',
+          stateAuthority: 'monolith',
+          lineageId: 'wp-lineage-complete-1',
+        },
+        idempotency: {
+          key: 'completion-key-1',
+          replayed: false,
+        },
+        completion: {
+          commitmentId: created.data.commitment.commitmentId,
+          transitionApplied: true,
+          transitionAuditId: expect.any(String),
+        },
+        canonicalLifecycle: {
+          commitment: {
+            commitmentId: created.data.commitment.commitmentId,
+            status: 'completed',
+            externalRef: 'wp-lineage-complete-1',
+          },
+          state: {
+            status: 'completed',
+            isTerminal: true,
+          },
+        },
+      },
+    });
+  });
+
+  it('returns idempotent replay response for duplicate completion retries', async () => {
+    const { app, commitmentService } = buildApp();
+
+    const created = await commitmentService.createCommitment({
+      tenantId: 'tenant-route-bridge-1',
+      actorId: 'user-route-bridge-1',
+      sourceType: 'wordpress_fulfillment',
+      sourceId: 'wp-fulfillment-complete-2',
+      orgUnitId: 'org-route-bridge-1',
+      externalRef: 'wp-lineage-complete-2',
+    });
+
+    expect(created.ok).toBe(true);
+    if (!created.ok) {
+      throw new Error('Expected commitment creation to succeed');
+    }
+
+    await commitmentService.transitionCommitment({
+      tenantId: 'tenant-route-bridge-1',
+      commitmentId: created.data.commitment.commitmentId,
+      actorId: 'user-route-bridge-1',
+      nextStatus: 'in_progress',
+      reason: 'Driver started fulfillment',
+    });
+
+    const payload = {
+      idempotencyKey: 'completion-key-2',
+      bridgeLineageId: 'wp-lineage-complete-2',
+    };
+
+    const first = await request(app)
+      .post(`/api/v1/route-bridge/fulfillment/${created.data.commitment.commitmentId}/completion`)
+      .send(payload);
+    const second = await request(app)
+      .post(`/api/v1/route-bridge/fulfillment/${created.data.commitment.commitmentId}/completion`)
+      .send(payload);
+
+    expect(first.status).toBe(200);
+    expect(first.body.code).toBe('ROUTE_BRIDGE_COMPLETION_APPLIED');
+    expect(second.status).toBe(200);
+    expect(second.body).toMatchObject({
+      ok: true,
+      code: 'ROUTE_BRIDGE_COMPLETION_IDEMPOTENT_REPLAY',
+      data: {
+        idempotency: {
+          key: 'completion-key-2',
+          replayed: true,
+        },
+        completion: {
+          commitmentId: created.data.commitment.commitmentId,
+          transitionApplied: false,
+        },
+        canonicalLifecycle: {
+          commitment: {
+            status: 'completed',
+          },
+          state: {
+            status: 'completed',
+            isTerminal: true,
+          },
+        },
+      },
+    });
+  });
+
+  it('refuses completion when bridge lineage identifier does not match commitment lineage', async () => {
+    const { app, commitmentService } = buildApp();
+
+    const created = await commitmentService.createCommitment({
+      tenantId: 'tenant-route-bridge-1',
+      actorId: 'user-route-bridge-1',
+      sourceType: 'wordpress_fulfillment',
+      sourceId: 'wp-fulfillment-complete-3',
+      orgUnitId: 'org-route-bridge-1',
+      externalRef: 'wp-lineage-complete-3',
+    });
+
+    expect(created.ok).toBe(true);
+    if (!created.ok) {
+      throw new Error('Expected commitment creation to succeed');
+    }
+
+    await commitmentService.transitionCommitment({
+      tenantId: 'tenant-route-bridge-1',
+      commitmentId: created.data.commitment.commitmentId,
+      actorId: 'user-route-bridge-1',
+      nextStatus: 'in_progress',
+      reason: 'Driver started fulfillment',
+    });
+
+    const response = await request(app)
+      .post(`/api/v1/route-bridge/fulfillment/${created.data.commitment.commitmentId}/completion`)
+      .send({
+        idempotencyKey: 'completion-key-3',
+        bridgeLineageId: 'wp-lineage-different',
+      });
+
+    expect(response.status).toBe(409);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'ROUTE_BRIDGE_LINEAGE_MISMATCH',
+      refusalType: 'business',
+      data: {
+        commitmentExternalRef: 'wp-lineage-complete-3',
+        bridgeLineageId: 'wp-lineage-different',
+      },
+    });
+  });
+
+  it('requires idempotency key for completion submissions', async () => {
+    const { app, commitmentService } = buildApp();
+
+    const created = await commitmentService.createCommitment({
+      tenantId: 'tenant-route-bridge-1',
+      actorId: 'user-route-bridge-1',
+      sourceType: 'wordpress_fulfillment',
+      sourceId: 'wp-fulfillment-complete-4',
+      orgUnitId: 'org-route-bridge-1',
+      externalRef: 'wp-lineage-complete-4',
+    });
+
+    expect(created.ok).toBe(true);
+    if (!created.ok) {
+      throw new Error('Expected commitment creation to succeed');
+    }
+
+    const response = await request(app)
+      .post(`/api/v1/route-bridge/fulfillment/${created.data.commitment.commitmentId}/completion`)
+      .send({
+        bridgeLineageId: 'wp-lineage-complete-4',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'ROUTE_BRIDGE_IDEMPOTENCY_KEY_REQUIRED',
+      refusalType: 'client',
+    });
+  });
 });

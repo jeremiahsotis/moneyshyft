@@ -157,6 +157,22 @@ const parsePendingLimit = (req: Request): number => {
 const parsePendingOrgUnit = (req: Request): string | null =>
   normalizeNonEmptyString(req.query?.orgUnitId || null) || null;
 
+const parseCommitmentIdParam = (req: Request): string =>
+  normalizeNonEmptyString(req.params.commitmentId || null);
+
+const parseCompletionBody = (req: Request) => ({
+  idempotencyKey: normalizeNonEmptyString(
+    req.body?.idempotencyKey
+    || req.body?.completionIdempotencyKey,
+  ),
+  bridgeLineageId: normalizeNonEmptyString(
+    req.body?.bridgeLineageId
+    || req.body?.externalRef
+    || req.body?.wpRequestId,
+  ),
+  reason: normalizeNonEmptyString(req.body?.reason),
+});
+
 const applyServiceRefusal = (
   res: Response,
   rejected: {
@@ -179,6 +195,61 @@ const applyServiceRefusal = (
 const localizeRouteResponseData = (req: Request, data: unknown): Record<string, unknown> => {
   const timezoneContext = resolveRouteTimezoneContext(req);
   return localizeRouteOperationalData(data, timezoneContext);
+};
+
+const buildCompletionReason = (
+  reason: string,
+  idempotencyKey: string,
+  bridgeLineageId: string,
+): string => {
+  if (reason) {
+    return reason;
+  }
+
+  return `Bridge completion submitted [lineage=${bridgeLineageId}; key=${idempotencyKey}]`;
+};
+
+const applyIdempotentReplaySuccess = (
+  req: Request,
+  res: Response,
+  resolved: {
+    data: {
+      commitment: {
+        commitmentId: string;
+        status: string;
+      };
+      state: unknown;
+    };
+  },
+  idempotencyKey: string,
+  bridgeLineageId: string,
+  transitionApplied: boolean,
+): void => {
+  success(res, {
+    code: transitionApplied
+      ? 'ROUTE_BRIDGE_COMPLETION_APPLIED'
+      : 'ROUTE_BRIDGE_COMPLETION_IDEMPOTENT_REPLAY',
+    message: transitionApplied
+      ? 'Bridge completion applied'
+      : 'Bridge completion replay acknowledged',
+    httpStatus: 200,
+    data: localizeRouteResponseData(req, {
+      bridge: {
+        integration: 'wordpress',
+        stateAuthority: 'monolith',
+        lineageId: bridgeLineageId,
+      },
+      idempotency: {
+        key: idempotencyKey,
+        replayed: !transitionApplied,
+      },
+      completion: {
+        commitmentId: resolved.data.commitment.commitmentId,
+        transitionApplied,
+      },
+      canonicalLifecycle: resolved.data,
+    }),
+  });
 };
 
 export const createRouteBridgeRouter = (
@@ -273,6 +344,145 @@ export const createRouteBridgeRouter = (
         canonicalLifecycle: pending.data,
       }),
     });
+  });
+
+  router.post('/fulfillment/:commitmentId/completion', async (req: Request, res: Response) => {
+    const tenantId = resolveTenantId(req, res);
+    if (!tenantId) {
+      return;
+    }
+
+    const commitmentId = parseCommitmentIdParam(req);
+    if (!commitmentId) {
+      refusal(res, {
+        code: 'ROUTE_COMMITMENT_ID_REQUIRED',
+        message: 'commitmentId is required.',
+        refusalType: 'client',
+        httpStatus: 400,
+      });
+      return;
+    }
+
+    const completion = parseCompletionBody(req);
+    if (!completion.idempotencyKey) {
+      refusal(res, {
+        code: 'ROUTE_BRIDGE_IDEMPOTENCY_KEY_REQUIRED',
+        message: 'idempotencyKey is required for bridge completion submissions.',
+        refusalType: 'client',
+        httpStatus: 400,
+      });
+      return;
+    }
+
+    if (!completion.bridgeLineageId) {
+      refusal(res, {
+        code: 'ROUTE_BRIDGE_LINEAGE_ID_REQUIRED',
+        message: 'bridgeLineageId is required for bridge completion submissions.',
+        refusalType: 'client',
+        httpStatus: 400,
+      });
+      return;
+    }
+
+    const resolved = await commitmentService.resolveCommitment({
+      tenantId,
+      commitmentId,
+    });
+    if (!resolved.ok) {
+      applyServiceRefusal(res, resolved);
+      return;
+    }
+
+    const commitment = resolved.data.commitment;
+    if (commitment.externalRef !== completion.bridgeLineageId) {
+      refusal(res, {
+        code: 'ROUTE_BRIDGE_LINEAGE_MISMATCH',
+        message: 'bridgeLineageId does not match commitment lineage reference.',
+        refusalType: 'business',
+        httpStatus: 409,
+        data: {
+          commitmentId,
+          commitmentExternalRef: commitment.externalRef,
+          bridgeLineageId: completion.bridgeLineageId,
+        },
+      });
+      return;
+    }
+
+    if (commitment.status === 'completed') {
+      applyIdempotentReplaySuccess(
+        req,
+        res,
+        resolved,
+        completion.idempotencyKey,
+        completion.bridgeLineageId,
+        false,
+      );
+      return;
+    }
+
+    const transitioned = await commitmentService.transitionCommitment({
+      tenantId,
+      commitmentId,
+      actorId: resolveActorId(req),
+      nextStatus: 'completed',
+      reason: buildCompletionReason(
+        completion.reason,
+        completion.idempotencyKey,
+        completion.bridgeLineageId,
+      ),
+    });
+
+    if (transitioned.ok) {
+      success(res, {
+        code: 'ROUTE_BRIDGE_COMPLETION_APPLIED',
+        message: 'Bridge completion applied',
+        httpStatus: 200,
+        data: localizeRouteResponseData(req, {
+          bridge: {
+            integration: 'wordpress',
+            stateAuthority: 'monolith',
+            lineageId: completion.bridgeLineageId,
+          },
+          idempotency: {
+            key: completion.idempotencyKey,
+            replayed: false,
+          },
+          completion: {
+            commitmentId,
+            transitionApplied: true,
+            transitionAuditId: transitioned.data.transition.transitionAuditId,
+          },
+          canonicalLifecycle: {
+            commitment: transitioned.data.commitment,
+            state: transitioned.data.state,
+          },
+        }),
+      });
+      return;
+    }
+
+    const resolvedAfterFailure = await commitmentService.resolveCommitment({
+      tenantId,
+      commitmentId,
+    });
+    if (
+      !resolvedAfterFailure.ok
+      || resolvedAfterFailure.data.commitment.status !== 'completed'
+      || resolvedAfterFailure.data.commitment.externalRef !== completion.bridgeLineageId
+    ) {
+      applyServiceRefusal(res, transitioned);
+      return;
+    }
+
+    applyIdempotentReplaySuccess(
+      req,
+      res,
+      resolvedAfterFailure,
+      completion.idempotencyKey,
+      completion.bridgeLineageId,
+      false,
+    );
   });
 
   return router;
