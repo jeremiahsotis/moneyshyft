@@ -23,7 +23,21 @@ jobs:
         run: npm ci || npm install --no-audit --fund=false
 
       - name: Nx affected - build
-        run: npm run affected:build
+        run: |
+          BASE_REF="origin/main"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+          elif git show-ref --verify --quiet refs/remotes/origin/codex/dev; then
+            BASE_REF="origin/codex/dev"
+          fi
+          npx nx affected -t build --base="$BASE_REF" --head=HEAD
 
       - name: Nx affected - test
-        run: npm run affected:test
+        run: |
+          BASE_REF="origin/main"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+          elif git show-ref --verify --quiet refs/remotes/origin/codex/dev; then
+            BASE_REF="origin/codex/dev"
+          fi
+          npx nx affected -t test --base="$BASE_REF" --head=HEAD
