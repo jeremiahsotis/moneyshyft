@@ -318,10 +318,36 @@ const parseAccessTokenFromSetCookie = (headerValue) => {
   return match ? match[1] : '';
 };
 
+const parseCsrfTokenFromSetCookie = (headerValue) => {
+  const match = headerValue.match(/csrf_token=([^;]+)/);
+  return match ? match[1] : '';
+};
+
+const decodeJwtPayload = (token) => {
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) {
+      return {};
+    }
+
+    const payloadJson = Buffer.from(parts[1], 'base64url').toString('utf8');
+    const payload = JSON.parse(payloadJson);
+    return payload && typeof payload === 'object' ? payload : {};
+  } catch {
+    return {};
+  }
+};
+
 const resolveAccessToken = async (apiBaseUrl) => {
   const directToken = toTrimmedString(process.env.RS_CUTOVER_ACCESS_TOKEN);
+  const explicitCsrfToken = firstNonEmpty(process.env.RS_CUTOVER_CSRF_TOKEN, 'cutover-csrf-token');
   if (directToken) {
-    return directToken;
+    const jwtPayload = decodeJwtPayload(directToken);
+    return {
+      accessToken: directToken,
+      csrfToken: explicitCsrfToken,
+      activeOrgUnitId: toTrimmedString(jwtPayload.activeOrgUnitId || null) || null,
+    };
   }
 
   const email = firstNonEmpty(process.env.RS_CUTOVER_LOGIN_EMAIL, process.env.TEST_EMAIL);
@@ -347,6 +373,7 @@ const resolveAccessToken = async (apiBaseUrl) => {
 
   const setCookieHeader = response.headers.get('set-cookie') || '';
   const accessToken = parseAccessTokenFromSetCookie(setCookieHeader);
+  const csrfToken = parseCsrfTokenFromSetCookie(setCookieHeader) || explicitCsrfToken;
   if (!response.ok || !accessToken) {
     const bodyText = await response.text();
     throw new Error(
@@ -354,22 +381,38 @@ const resolveAccessToken = async (apiBaseUrl) => {
     );
   }
 
-  return accessToken;
+  const jwtPayload = decodeJwtPayload(accessToken);
+  return {
+    accessToken,
+    csrfToken,
+    activeOrgUnitId: toTrimmedString(jwtPayload.activeOrgUnitId || null) || null,
+  };
 };
 
 const requestJson = async ({
   url,
   method,
   accessToken,
+  csrfToken,
   body,
 }) => {
+  const normalizedMethod = toTrimmedString(method).toUpperCase() || 'GET';
+  const isSafeMethod = normalizedMethod === 'GET' || normalizedMethod === 'HEAD' || normalizedMethod === 'OPTIONS';
+  const headers = {
+    cookie: `access_token=${accessToken}; csrf_token=${csrfToken || 'cutover-csrf-token'}`,
+    'x-correlation-id': `cutover-${Date.now()}`,
+  };
+
+  if (!isSafeMethod) {
+    headers['content-type'] = 'application/json';
+    headers['x-csrf-token'] = csrfToken || 'cutover-csrf-token';
+  } else if (body) {
+    headers['content-type'] = 'application/json';
+  }
+
   const response = await fetch(url, {
-    method,
-    headers: {
-      cookie: `access_token=${accessToken}`,
-      'content-type': 'application/json',
-      'x-correlation-id': `cutover-${Date.now()}`,
-    },
+    method: normalizedMethod,
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -448,8 +491,28 @@ const executeDryRun = (normalized, options) => {
   };
 };
 
+const transitionCommitmentToInProgress = async ({
+  apiBaseUrl,
+  accessToken,
+  csrfToken,
+  commitmentId,
+  reason,
+}) => requestJson({
+  url: `${apiBaseUrl}/api/v1/route/commitments/${encodeURIComponent(commitmentId)}/transitions`,
+  method: 'POST',
+  accessToken,
+  csrfToken,
+  body: {
+    nextStatus: 'in_progress',
+    reason: reason || 'WP cutover rehearsal pre-completion transition to in_progress',
+  },
+});
+
 const executeBridgeFlow = async (normalized, options) => {
-  const accessToken = await resolveAccessToken(options.apiBaseUrl);
+  const authContext = await resolveAccessToken(options.apiBaseUrl);
+  const accessToken = authContext.accessToken;
+  const csrfToken = authContext.csrfToken;
+  const activeOrgUnitId = authContext.activeOrgUnitId;
   const apiBaseUrl = options.apiBaseUrl.replace(/\/$/, '');
 
   const importResults = {
@@ -463,10 +526,12 @@ const executeBridgeFlow = async (normalized, options) => {
     attempted: 0,
     applied: 0,
     replayed: 0,
+    transitionPrepared: 0,
     failures: [],
   };
 
   const commitmentBySource = new Map();
+  const warnings = [];
 
   for (const record of normalized) {
     importResults.attempted += 1;
@@ -477,8 +542,24 @@ const executeBridgeFlow = async (normalized, options) => {
       wpWriteMode: options.writeMode,
     };
 
-    if (record.orgUnitId) {
-      createPayload.orgUnitId = record.orgUnitId;
+    if (record.orgUnitId && activeOrgUnitId) {
+      if (record.orgUnitId === activeOrgUnitId) {
+        createPayload.orgUnitId = record.orgUnitId;
+      } else {
+        warnings.push({
+          rowNumber: record.rowNumber,
+          sourceId: record.sourceId,
+          code: 'ORG_UNIT_CONTEXT_MISMATCH',
+          message: `Row orgUnitId '${record.orgUnitId}' does not match active orgUnit context '${activeOrgUnitId}'. orgUnitId was omitted from bridge payload.`,
+        });
+      }
+    } else if (record.orgUnitId && !activeOrgUnitId) {
+      warnings.push({
+        rowNumber: record.rowNumber,
+        sourceId: record.sourceId,
+        code: 'ORG_UNIT_CONTEXT_UNAVAILABLE',
+        message: `Row orgUnitId '${record.orgUnitId}' was omitted because active orgUnit context is not set for this session.`,
+      });
     }
 
     if (record.externalRef) {
@@ -489,6 +570,7 @@ const executeBridgeFlow = async (normalized, options) => {
       url: `${apiBaseUrl}/api/v1/route-bridge/fulfillment`,
       method: 'POST',
       accessToken,
+      csrfToken,
       body: createPayload,
     });
 
@@ -544,6 +626,30 @@ const executeBridgeFlow = async (normalized, options) => {
       continue;
     }
 
+    const lifecycleStatus = toTrimmedString(
+      createResponse.parsedBody?.data?.canonicalLifecycle?.state?.status,
+    ).toLowerCase();
+    if (lifecycleStatus === 'scheduled') {
+      const transitionResponse = await transitionCommitmentToInProgress({
+        apiBaseUrl,
+        accessToken,
+        csrfToken,
+        commitmentId,
+        reason: `WP cutover rehearsal pre-completion transition [sourceId=${record.sourceId}]`,
+      });
+      if (transitionResponse.parsedBody?.ok !== true) {
+        completionResults.failures.push({
+          rowNumber: record.rowNumber,
+          sourceId: record.sourceId,
+          stage: 'completion-transition-prep',
+          status: transitionResponse.status,
+          response: transitionResponse.parsedBody,
+        });
+        continue;
+      }
+      completionResults.transitionPrepared += 1;
+    }
+
     const completionPayload = {
       idempotencyKey: record.completion.idempotencyKey || buildCompletionKey(record.sourceId),
       bridgeLineageId: record.externalRef,
@@ -558,6 +664,7 @@ const executeBridgeFlow = async (normalized, options) => {
       url: `${apiBaseUrl}/api/v1/route-bridge/fulfillment/${encodeURIComponent(commitmentId)}/completion`,
       method: 'POST',
       accessToken,
+      csrfToken,
       body: completionPayload,
     });
 
@@ -581,8 +688,7 @@ const executeBridgeFlow = async (normalized, options) => {
   }
 
   const reconciliationResults = [];
-  const orgUnits = [...new Set(normalized.map((record) => record.orgUnitId).filter(Boolean))];
-  const scopes = orgUnits.length === 0 ? [null] : orgUnits;
+  const scopes = activeOrgUnitId ? [activeOrgUnitId] : [null];
 
   for (const orgUnitId of scopes) {
     const query = new URLSearchParams({
@@ -597,6 +703,7 @@ const executeBridgeFlow = async (normalized, options) => {
       url: `${apiBaseUrl}/api/v1/route-bridge/reconciliation?${query.toString()}`,
       method: 'GET',
       accessToken,
+      csrfToken,
     });
 
     reconciliationResults.push({
@@ -611,10 +718,14 @@ const executeBridgeFlow = async (normalized, options) => {
   }
 
   return {
+    authContext: {
+      activeOrgUnitId,
+    },
     importResults,
     completionResults,
     reconciliationResults,
     commitmentsObserved: Object.fromEntries(commitmentBySource.entries()),
+    warnings,
   };
 };
 
