@@ -66,13 +66,22 @@ runs:
       if: inputs.install_src == 'true'
       shell: bash
       run: |
+        installed_backend=false
+
         if [ -f apps/routeshyft-api/package-lock.json ]; then
           npm ci --prefix apps/routeshyft-api --omit=dev || npm ci --prefix apps/routeshyft-api --omit=dev || npm install --prefix apps/routeshyft-api --omit=dev --no-audit --fund=false
-        elif [ -f apps/moneyshyft-api/package-lock.json ]; then
+          installed_backend=true
+        fi
+
+        if [ -f apps/moneyshyft-api/package-lock.json ]; then
           npm ci --prefix apps/moneyshyft-api --omit=dev || npm ci --prefix apps/moneyshyft-api --omit=dev || npm install --prefix apps/moneyshyft-api --omit=dev --no-audit --fund=false
+          installed_backend=true
         elif [ -f src/package-lock.json ]; then
           npm ci --prefix src --omit=dev || npm ci --prefix src --omit=dev || npm install --prefix src --omit=dev --no-audit --fund=false
-        else
+          installed_backend=true
+        fi
+
+        if [ "$installed_backend" != "true" ]; then
           npm install --prefix apps/routeshyft-api --omit=dev --no-audit --fund=false
         fi
 
