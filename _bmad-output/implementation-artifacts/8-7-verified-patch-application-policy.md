@@ -128,6 +128,7 @@ GPT-5 Codex (CLI)
 - tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts
 - tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts
 - tests/support/helpers/connectShyftDbActor.ts
+- tests/support/utils/policyScriptTestHarness.ts
 
 ## Change Log
 
