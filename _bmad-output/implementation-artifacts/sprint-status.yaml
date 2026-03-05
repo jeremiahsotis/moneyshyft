@@ -90,11 +90,11 @@ development_status:
   5-6-performance-slo-and-quality-gate-evidence-pipeline: backlog
   5-7-accessibility-conformance-and-regression-guarding: backlog
   epic-5-retrospective: optional
-  epic-6: backlog
-  6-1-bridge-fulfillment-and-pending-endpoints: backlog
-  6-2-bridge-completion-endpoint-and-idempotency: backlog
-  6-3-cutover-controls-and-dual-write-prevention: backlog
-  epic-6-retrospective: optional
+  epic-6: done
+  6-1-bridge-fulfillment-and-pending-endpoints: done
+  6-2-bridge-completion-endpoint-and-idempotency: done
+  6-3-cutover-controls-and-dual-write-prevention: done
+  epic-6-retrospective: done
   epic-7: backlog
   7-1-operations-commitment-intake-contract: backlog
   7-2-pos-origin-commitment-and-completion-linkage: backlog

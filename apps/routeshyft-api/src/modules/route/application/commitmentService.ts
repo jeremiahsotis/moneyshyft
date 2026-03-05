@@ -1,6 +1,7 @@
 import type { Knex } from 'knex';
 import {
   type CommitmentStatus,
+  type RouteCommitment,
   describeCommitmentState,
   evaluateCommitmentTransition,
   isCommitmentStatus,
@@ -77,10 +78,44 @@ type ListPendingCommitmentsSuccess = {
   };
 };
 
+type FindCommitmentBySourceSuccess = {
+  ok: true;
+  code: 'ROUTE_COMMITMENT_SOURCE_LOOKUP_RESOLVED';
+  message: string;
+  httpStatus: 200;
+  data: {
+    commitment: RouteCommitment | null;
+  };
+};
+
+type FindCommitmentByExternalRefSuccess = {
+  ok: true;
+  code: 'ROUTE_COMMITMENT_EXTERNAL_REF_LOOKUP_RESOLVED';
+  message: string;
+  httpStatus: 200;
+  data: {
+    commitment: RouteCommitment | null;
+  };
+};
+
+type ListCommitmentsBySourceTypeSuccess = {
+  ok: true;
+  code: 'ROUTE_COMMITMENT_SOURCE_TYPE_LIST_RESOLVED';
+  message: string;
+  httpStatus: 200;
+  data: {
+    items: RouteCommitment[];
+    total: number;
+  };
+};
+
 export type CreateCommitmentResult = CreateCommitmentSuccess | ServiceRefusalResult;
 export type ResolveCommitmentResult = ResolveCommitmentSuccess | ServiceRefusalResult;
 export type TransitionCommitmentResult = TransitionCommitmentSuccess | ServiceRefusalResult;
 export type ListPendingCommitmentsResult = ListPendingCommitmentsSuccess | ServiceRefusalResult;
+export type FindCommitmentBySourceResult = FindCommitmentBySourceSuccess | ServiceRefusalResult;
+export type FindCommitmentByExternalRefResult = FindCommitmentByExternalRefSuccess | ServiceRefusalResult;
+export type ListCommitmentsBySourceTypeResult = ListCommitmentsBySourceTypeSuccess | ServiceRefusalResult;
 
 export type CreateCommitmentCommand = {
   tenantId: string;
@@ -112,6 +147,30 @@ export type TransitionCommitmentCommand = {
 
 export type ListPendingCommitmentsCommand = {
   tenantId: string;
+  orgUnitId?: string | null;
+  limit?: number;
+  dbClient?: Knex | Knex.Transaction;
+};
+
+export type FindCommitmentBySourceCommand = {
+  tenantId: string;
+  sourceType: string;
+  sourceId: string;
+  orgUnitId?: string | null;
+  dbClient?: Knex | Knex.Transaction;
+};
+
+export type FindCommitmentByExternalRefCommand = {
+  tenantId: string;
+  externalRef: string;
+  sourceType?: string | null;
+  orgUnitId?: string | null;
+  dbClient?: Knex | Knex.Transaction;
+};
+
+export type ListCommitmentsBySourceTypeCommand = {
+  tenantId: string;
+  sourceType: string;
   orgUnitId?: string | null;
   limit?: number;
   dbClient?: Knex | Knex.Transaction;
@@ -410,6 +469,148 @@ export class CommitmentService {
             commitment,
             state: describeCommitmentState(commitment.status),
           })),
+          total: commitments.length,
+        },
+      };
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return toRefusal(
+        'ROUTE_COMMITMENT_PERSISTENCE_UNAVAILABLE',
+        'Commitment persistence is unavailable. Retry after route schema migration.',
+      );
+    }
+  }
+
+  async findCommitmentBySource(input: FindCommitmentBySourceCommand): Promise<FindCommitmentBySourceResult> {
+    const sourceType = normalizeNonEmptyString(input.sourceType);
+    if (!sourceType) {
+      return toRefusal(
+        'ROUTE_COMMITMENT_SOURCE_TYPE_REQUIRED',
+        'sourceType is required for source lookup.',
+        'client',
+        400,
+      );
+    }
+
+    const sourceId = normalizeNonEmptyString(input.sourceId);
+    if (!sourceId) {
+      return toRefusal(
+        'ROUTE_COMMITMENT_SOURCE_ID_REQUIRED',
+        'sourceId is required for source lookup.',
+        'client',
+        400,
+      );
+    }
+
+    try {
+      const commitment = await this.repository.findCommitmentBySource({
+        tenantId: input.tenantId,
+        sourceType,
+        sourceId,
+        orgUnitId: normalizeNonEmptyString(input.orgUnitId || null) || null,
+      }, input.dbClient);
+
+      return {
+        ok: true,
+        code: 'ROUTE_COMMITMENT_SOURCE_LOOKUP_RESOLVED',
+        message: commitment
+          ? 'Commitment source lookup resolved with existing commitment.'
+          : 'Commitment source lookup resolved with no existing commitment.',
+        httpStatus: 200,
+        data: {
+          commitment,
+        },
+      };
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return toRefusal(
+        'ROUTE_COMMITMENT_PERSISTENCE_UNAVAILABLE',
+        'Commitment persistence is unavailable. Retry after route schema migration.',
+      );
+    }
+  }
+
+  async findCommitmentByExternalRef(
+    input: FindCommitmentByExternalRefCommand,
+  ): Promise<FindCommitmentByExternalRefResult> {
+    const externalRef = normalizeNonEmptyString(input.externalRef);
+    if (!externalRef) {
+      return {
+        ok: true,
+        code: 'ROUTE_COMMITMENT_EXTERNAL_REF_LOOKUP_RESOLVED',
+        message: 'External reference lookup skipped because externalRef was empty.',
+        httpStatus: 200,
+        data: {
+          commitment: null,
+        },
+      };
+    }
+
+    try {
+      const commitment = await this.repository.findCommitmentByExternalRef({
+        tenantId: input.tenantId,
+        externalRef,
+        sourceType: normalizeNonEmptyString(input.sourceType || null) || null,
+        orgUnitId: normalizeNonEmptyString(input.orgUnitId || null) || null,
+      }, input.dbClient);
+
+      return {
+        ok: true,
+        code: 'ROUTE_COMMITMENT_EXTERNAL_REF_LOOKUP_RESOLVED',
+        message: commitment
+          ? 'External reference lookup resolved with existing commitment.'
+          : 'External reference lookup resolved with no existing commitment.',
+        httpStatus: 200,
+        data: {
+          commitment,
+        },
+      };
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return toRefusal(
+        'ROUTE_COMMITMENT_PERSISTENCE_UNAVAILABLE',
+        'Commitment persistence is unavailable. Retry after route schema migration.',
+      );
+    }
+  }
+
+  async listCommitmentsBySourceType(
+    input: ListCommitmentsBySourceTypeCommand,
+  ): Promise<ListCommitmentsBySourceTypeResult> {
+    const sourceType = normalizeNonEmptyString(input.sourceType);
+    if (!sourceType) {
+      return toRefusal(
+        'ROUTE_COMMITMENT_SOURCE_TYPE_REQUIRED',
+        'sourceType is required to list commitments by source type.',
+        'client',
+        400,
+      );
+    }
+
+    try {
+      const commitments = await this.repository.listCommitmentsBySourceType({
+        tenantId: input.tenantId,
+        sourceType,
+        orgUnitId: normalizeNonEmptyString(input.orgUnitId || null) || null,
+        limit: Number.isInteger(input.limit) ? (input.limit as number) : undefined,
+      }, input.dbClient);
+
+      return {
+        ok: true,
+        code: 'ROUTE_COMMITMENT_SOURCE_TYPE_LIST_RESOLVED',
+        message: 'Commitment source-type list resolved.',
+        httpStatus: 200,
+        data: {
+          items: commitments,
           total: commitments.length,
         },
       };

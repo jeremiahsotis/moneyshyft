@@ -389,4 +389,205 @@ describe('route bridge api contract', () => {
       refusalType: 'client',
     });
   });
+
+  it('blocks bridge writes at monolith_authoritative stage without api_only assertion', async () => {
+    const { app } = buildApp();
+
+    const response = await request(app)
+      .post('/api/v1/route-bridge/fulfillment')
+      .set('x-test-route-cutover-stage', 'monolith_authoritative')
+      .send({
+        sourceType: 'wordpress_fulfillment',
+        sourceId: 'wp-cutover-no-assertion',
+        orgUnitId: 'org-route-bridge-1',
+        externalRef: 'wp-lineage-cutover-no-assertion',
+      });
+
+    expect(response.status).toBe(409);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'ROUTE_BRIDGE_DUAL_WRITE_BLOCKED',
+      refusalType: 'business',
+      data: {
+        stage: 'monolith_authoritative',
+        requiredWriteMode: 'api_only',
+      },
+    });
+  });
+
+  it('allows monolith_authoritative writes when api_only assertion is present', async () => {
+    const { app } = buildApp();
+
+    const response = await request(app)
+      .post('/api/v1/route-bridge/fulfillment')
+      .set('x-test-route-cutover-stage', 'monolith_authoritative')
+      .set('x-route-wp-write-mode', 'api_only')
+      .send({
+        sourceType: 'wordpress_fulfillment',
+        sourceId: 'wp-cutover-asserted',
+        orgUnitId: 'org-route-bridge-1',
+        externalRef: 'wp-lineage-cutover-asserted',
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'ROUTE_BRIDGE_FULFILLMENT_CREATED',
+      data: {
+        bridge: {
+          integration: 'wordpress',
+          cutover: {
+            stage: 'monolith_authoritative',
+            dualWritePreventionActive: true,
+          },
+        },
+      },
+    });
+  });
+
+  it('returns idempotent fulfillment replay when source mapping already exists in dual-write prevention stage', async () => {
+    const { app } = buildApp();
+
+    const payload = {
+      sourceType: 'wordpress_fulfillment',
+      sourceId: 'wp-dual-write-replay-source',
+      orgUnitId: 'org-route-bridge-1',
+      externalRef: 'wp-dual-write-replay-lineage',
+    };
+
+    const first = await request(app)
+      .post('/api/v1/route-bridge/fulfillment')
+      .set('x-test-route-cutover-stage', 'monolith_authoritative')
+      .set('x-route-wp-write-mode', 'api_only')
+      .send(payload);
+
+    const second = await request(app)
+      .post('/api/v1/route-bridge/fulfillment')
+      .set('x-test-route-cutover-stage', 'monolith_authoritative')
+      .set('x-route-wp-write-mode', 'api_only')
+      .send(payload);
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(200);
+    expect(second.body).toMatchObject({
+      ok: true,
+      code: 'ROUTE_BRIDGE_FULFILLMENT_IDEMPOTENT_REPLAY',
+      data: {
+        idempotency: {
+          replayed: true,
+        },
+      },
+    });
+  });
+
+  it('blocks sourceId lineage remap in dual-write prevention stage', async () => {
+    const { app } = buildApp();
+
+    const first = await request(app)
+      .post('/api/v1/route-bridge/fulfillment')
+      .set('x-test-route-cutover-stage', 'monolith_authoritative')
+      .set('x-route-wp-write-mode', 'api_only')
+      .send({
+        sourceType: 'wordpress_fulfillment',
+        sourceId: 'wp-dual-write-conflict-source',
+        orgUnitId: 'org-route-bridge-1',
+        externalRef: 'wp-lineage-conflict-original',
+      });
+
+    const conflict = await request(app)
+      .post('/api/v1/route-bridge/fulfillment')
+      .set('x-test-route-cutover-stage', 'monolith_authoritative')
+      .set('x-route-wp-write-mode', 'api_only')
+      .send({
+        sourceType: 'wordpress_fulfillment',
+        sourceId: 'wp-dual-write-conflict-source',
+        orgUnitId: 'org-route-bridge-1',
+        externalRef: 'wp-lineage-conflict-different',
+      });
+
+    expect(first.status).toBe(201);
+    expect(conflict.status).toBe(409);
+    expect(conflict.body).toMatchObject({
+      ok: false,
+      code: 'ROUTE_BRIDGE_DUAL_WRITE_BLOCKED',
+      refusalType: 'business',
+      data: {
+        sourceId: 'wp-dual-write-conflict-source',
+        existingLineageId: 'wp-lineage-conflict-original',
+        requestedLineageId: 'wp-lineage-conflict-different',
+      },
+    });
+  });
+
+  it('reports reconciliation pass when no duplicate bridge mappings exist', async () => {
+    const { app, commitmentService } = buildApp();
+
+    const created = await commitmentService.createCommitment({
+      tenantId: 'tenant-route-bridge-1',
+      actorId: 'user-route-bridge-1',
+      sourceType: 'wordpress_fulfillment',
+      sourceId: 'wp-reconcile-pass-source',
+      orgUnitId: 'org-route-bridge-1',
+      externalRef: 'wp-reconcile-pass-lineage',
+    });
+
+    expect(created.ok).toBe(true);
+
+    const response = await request(app)
+      .get('/api/v1/route-bridge/reconciliation')
+      .query({ orgUnitId: 'org-route-bridge-1', sourceType: 'wordpress_fulfillment' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'ROUTE_BRIDGE_RECONCILIATION_PASSED',
+      data: {
+        reconciliation: {
+          driftDetected: false,
+          singleSourceOfTruthConfirmed: true,
+        },
+      },
+    });
+  });
+
+  it('reports reconciliation drift when duplicate source mappings exist', async () => {
+    const { app, commitmentService } = buildApp();
+
+    const one = await commitmentService.createCommitment({
+      tenantId: 'tenant-route-bridge-1',
+      actorId: 'user-route-bridge-1',
+      sourceType: 'wordpress_fulfillment',
+      sourceId: 'wp-reconcile-drift-source',
+      orgUnitId: 'org-route-bridge-1',
+      externalRef: 'wp-reconcile-drift-lineage-a',
+    });
+
+    const two = await commitmentService.createCommitment({
+      tenantId: 'tenant-route-bridge-1',
+      actorId: 'user-route-bridge-1',
+      sourceType: 'wordpress_fulfillment',
+      sourceId: 'wp-reconcile-drift-source',
+      orgUnitId: 'org-route-bridge-1',
+      externalRef: 'wp-reconcile-drift-lineage-b',
+    });
+
+    expect(one.ok).toBe(true);
+    expect(two.ok).toBe(true);
+
+    const response = await request(app)
+      .get('/api/v1/route-bridge/reconciliation')
+      .query({ orgUnitId: 'org-route-bridge-1', sourceType: 'wordpress_fulfillment' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'ROUTE_BRIDGE_RECONCILIATION_DRIFT_DETECTED',
+      data: {
+        reconciliation: {
+          driftDetected: true,
+          singleSourceOfTruthConfirmed: false,
+        },
+      },
+    });
+  });
 });

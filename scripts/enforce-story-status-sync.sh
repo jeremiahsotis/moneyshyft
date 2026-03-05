@@ -473,6 +473,16 @@ validate_closeout_transition() {
     fi
   fi
 
+  # Backfill exception: when a story file is newly introduced in this diff and the
+  # sprint tracker previously held backlog for the key, allow direct closeout status
+  # capture (review/done). This preserves auditability for historical backfills
+  # without forcing synthetic intermediate commits.
+  if [[ -z "$previous_story_status" && "$previous_sprint_status" == "backlog" ]]; then
+    if [[ "$sprint_status" == "review" || "$sprint_status" == "done" ]]; then
+      return 0
+    fi
+  fi
+
   if [[ -n "$previous_sprint_status" && "$previous_sprint_status" != "$sprint_status" ]]; then
     if ! is_valid_status "$previous_sprint_status"; then
       echo "Status sync mismatch: invalid prior sprint status '$previous_sprint_status' for '$story_key'"
