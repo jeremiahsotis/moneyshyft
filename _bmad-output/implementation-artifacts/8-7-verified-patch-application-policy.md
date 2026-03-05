@@ -112,6 +112,7 @@ GPT-5 Codex (CLI)
 - _bmad-output/test-artifacts/epic-f-stress-resource-evidence.md
 - apps/connectshyft-api/node_modules
 - apps/connectshyft-web/node_modules
+- apps/moneyshyft-api/project.json
 - docs/policies/verified_patch_application_policy.md
 - docs/policies/git_policy.md
 - docs/ci.md
@@ -120,6 +121,13 @@ GPT-5 Codex (CLI)
 - scripts/test-verified-patch-intake.sh
 - scripts/enforce-git-policy.sh
 - package.json
+- tests/api/platform/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.api.spec.ts
+- tests/api/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.api.spec.ts
+- tests/api/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.api.spec.ts
+- tests/api/platform/d-2-preference-override-enforcement-for-outbound-sms.automate.api.spec.ts
+- tests/api/platform/d-3-outbound-audit-outbox-and-refusal-envelope-integration.automate.api.spec.ts
+- tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts
+- tests/support/helpers/connectShyftDbActor.ts
 
 ## Change Log
 

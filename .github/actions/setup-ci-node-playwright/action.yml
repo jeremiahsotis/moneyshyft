@@ -94,8 +94,13 @@ runs:
           npm install --prefix apps/routeshyft-api --omit=dev --no-audit --fund=false
         fi
 
-        if [ ! -e apps/connectshyft-api/node_modules ] && [ -d apps/moneyshyft-api/node_modules ]; then
-          ln -s ../moneyshyft-api/node_modules apps/connectshyft-api/node_modules
+        if [ -d apps/moneyshyft-api/node_modules ]; then
+          if [ -e apps/connectshyft-api/node_modules ] && [ ! -L apps/connectshyft-api/node_modules ]; then
+            echo "apps/connectshyft-api/node_modules exists as a directory; leaving in place."
+          else
+            rm -f apps/connectshyft-api/node_modules
+            ln -s ../moneyshyft-api/node_modules apps/connectshyft-api/node_modules
+          fi
         fi
 
     - name: Cache Playwright browsers (fallback)
