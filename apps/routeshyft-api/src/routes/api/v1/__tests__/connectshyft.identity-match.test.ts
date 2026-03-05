@@ -153,6 +153,10 @@ describe('connectshyft identity-match route', () => {
           manualResolution,
         },
         manualResolution,
+        idempotency: {
+          key: 'identity-replay-key-ambiguous',
+          semantics: 'REPLAY_SAFE',
+        },
       },
     });
 
@@ -184,6 +188,10 @@ describe('connectshyft identity-match route', () => {
         },
         manualResolution: {
           reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+        },
+        idempotency: {
+          key: 'identity-replay-key-ambiguous',
+          semantics: 'REPLAY_SAFE',
         },
         sideEffectsPersisted: false,
         sideEffectsPersistenceUnavailable: true,
@@ -218,6 +226,10 @@ describe('connectshyft identity-match route', () => {
             },
           ],
         },
+        idempotency: {
+          key: 'identity-replay-key-no-auto-merge',
+          semantics: 'REPLAY_SAFE',
+        },
       },
     });
 
@@ -244,6 +256,10 @@ describe('connectshyft identity-match route', () => {
       ok: true,
       code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE',
       data: {
+        idempotency: {
+          key: 'identity-replay-key-no-auto-merge',
+          semantics: 'REPLAY_SAFE',
+        },
         sideEffectsPersisted: true,
         sideEffectsPersistenceUnavailable: false,
       },
