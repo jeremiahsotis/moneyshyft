@@ -1,6 +1,6 @@
 # Story 8.7: Verified Patch Application Policy
 
-Status: done
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -98,20 +98,20 @@ GPT-5 Codex (CLI)
 ### Git/Story Discrepancy Reconciliation
 
 - Story-scope file changes are captured in `File List` below.
-- Additional current workspace deltas are pre-existing/out-of-scope for Story 8.7 and intentionally excluded from story scope tracking:
-  - `_bmad-output/test-artifacts/epic-f-performance-evidence.json`
-  - `_bmad-output/test-artifacts/epic-f-performance-evidence.md`
-  - `_bmad-output/test-artifacts/epic-f-reliability-evidence.json`
-  - `_bmad-output/test-artifacts/epic-f-reliability-evidence.md`
-  - `_bmad-output/test-artifacts/epic-f-stress-resource-evidence.json`
-  - `_bmad-output/test-artifacts/epic-f-stress-resource-evidence.md`
-  - `apps/connectshyft-api/node_modules` (local dependency symlink/folder)
-  - `apps/connectshyft-web/node_modules` (local dependency symlink/folder)
+- File list includes all git deltas present in this branch during Story 8.7 implementation, including generated evidence artifacts and dependency symlink entries.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/8-7-verified-patch-application-policy.md
 - _bmad-output/implementation-artifacts/sprint-status.yaml
+- _bmad-output/test-artifacts/epic-f-performance-evidence.json
+- _bmad-output/test-artifacts/epic-f-performance-evidence.md
+- _bmad-output/test-artifacts/epic-f-reliability-evidence.json
+- _bmad-output/test-artifacts/epic-f-reliability-evidence.md
+- _bmad-output/test-artifacts/epic-f-stress-resource-evidence.json
+- _bmad-output/test-artifacts/epic-f-stress-resource-evidence.md
+- apps/connectshyft-api/node_modules
+- apps/connectshyft-web/node_modules
 - docs/policies/verified_patch_application_policy.md
 - docs/policies/git_policy.md
 - docs/ci.md
