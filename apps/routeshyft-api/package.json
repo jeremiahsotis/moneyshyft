@@ -15,6 +15,7 @@
     "seed:run": "ts-node ./node_modules/.bin/knex --knexfile src/knexfile.ts seed:run",
     "seed:run:prod": "node ./node_modules/.bin/knex --knexfile knexfile.js seed:run",
     "test": "jest",
+    "test:connectshyft": "jest --runInBand --testPathPattern=connectshyft",
     "test:watch": "jest --watch"
   },
   "dependencies": {

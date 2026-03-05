@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { Request, Response, Router } from 'express';
 import type { Knex } from 'knex';
 import { refusal, success } from '../../../platform/envelopes/response';
@@ -20,6 +20,7 @@ import {
   AsyncConnectShyftNeighborService,
   KnexConnectShyftNeighborStore,
   connectShyftNeighborServiceAsync,
+  type ConnectShyftIdentityMatchDecision,
   type ConnectShyftNeighborPhoneInput,
 } from '../../../modules/connectshyft/neighbors';
 import {
@@ -120,6 +121,7 @@ const NEIGHBOR_MERGE_FORBIDDEN_CODE = 'CONNECTSHYFT_NEIGHBOR_MERGE_FORBIDDEN';
 const NEIGHBOR_MERGE_FORBIDDEN_MESSAGE = 'Neighbor merge requires an authorized role.';
 const NEIGHBOR_MERGE_TRANSACTION_ABORTED_CODE = 'CONNECTSHYFT_NEIGHBOR_MERGE_TRANSACTION_ABORTED';
 const NEIGHBOR_MERGE_TRANSACTION_ABORTED_MESSAGE = 'Neighbor merge aborted and no changes were persisted.';
+const IDENTITY_MATCH_AMBIGUOUS_CODE = 'IDENTITY_MATCH_AMBIGUOUS';
 const TENANT_PRIVILEGED_OVERRIDE_NOTICE = 'Tenant-privileged override applied';
 const RELATIONSHIP_POLICY_INDICATOR = 'Active thread relationship';
 const CONNECTSHYFT_INBOX_P95_BUDGET_MS = 750;
@@ -3367,6 +3369,33 @@ const parseNeighborUpdateBody = (req: Request) => ({
   phones: parseNeighborPhones(req),
 });
 
+const parseNeighborIdentityMatchBody = (req: Request) => {
+  const rawContactPoint = req.body?.contactPoint;
+  const contactPointCandidate = rawContactPoint && typeof rawContactPoint === 'object'
+    ? rawContactPoint as {
+      label?: unknown;
+      value?: unknown;
+      isShared?: unknown;
+      verificationStatus?: unknown;
+    }
+    : null;
+
+  return {
+    orgUnitId: parseOrgUnitIdFromBody(req),
+    excludeNeighborId: typeof req.body?.excludeNeighborId === 'string'
+      ? req.body.excludeNeighborId.trim()
+      : '',
+    contactPoint: {
+      label: typeof contactPointCandidate?.label === 'string' ? contactPointCandidate.label : '',
+      value: typeof contactPointCandidate?.value === 'string' ? contactPointCandidate.value : '',
+      isShared: contactPointCandidate?.isShared === true,
+      verificationStatus: contactPointCandidate?.verificationStatus === 'verified'
+        ? 'verified'
+        : 'unverified',
+    } as ConnectShyftNeighborPhoneInput,
+  };
+};
+
 const parseNeighborMergeBody = (req: Request): {
   orgUnitId: string | null;
   sourceNeighborId: string;
@@ -3486,6 +3515,93 @@ const buildNeighborEditProvenancePayload = (
 
 type NeighborEditProvenancePayload = ReturnType<typeof buildNeighborEditProvenancePayload>;
 type NeighborMergeProvenancePayload = ReturnType<typeof buildNeighborMergeProvenancePayload>;
+
+const maskIdentityContactPointValue = (value: string): string => {
+  const normalized = value.trim();
+  if (!normalized) {
+    return '';
+  }
+
+  const lastFour = normalized.slice(-4);
+  return `***${lastFour}`;
+};
+
+const resolveIdentityContactHashSecret = (): string => {
+  const configuredSecret = [
+    process.env.CONNECTSHYFT_CONTACT_HASH_SECRET,
+    process.env.CONNECTSHYFT_AUDIT_HASH_SECRET,
+    process.env.JWT_SECRET,
+    process.env.DB_PASSWORD,
+  ].find((candidate) => typeof candidate === 'string' && candidate.trim().length > 0);
+
+  if (configuredSecret && configuredSecret.trim().length > 0) {
+    return configuredSecret.trim();
+  }
+
+  return randomBytes(32).toString('hex');
+};
+
+const CONNECTSHYFT_CONTACT_HASH_SECRET = resolveIdentityContactHashSecret();
+
+const hashIdentityContactPointValue = (value: string): string =>
+  `hmac-sha256:${createHmac('sha256', CONNECTSHYFT_CONTACT_HASH_SECRET).update(value).digest('hex')}`;
+
+const buildIdentityMatchEventPayload = (input: {
+  context: { tenantId: string; orgUnitId: string };
+  actorUserId: string | null;
+  decision: ConnectShyftIdentityMatchDecision;
+}) => ({
+  tenant_id: input.context.tenantId,
+  org_unit_id: input.context.orgUnitId,
+  actor_user_id: input.actorUserId || 'unknown',
+  decision: input.decision.decision,
+  reason: input.decision.reason,
+  auto_merge_allowed: input.decision.autoMergeAllowed,
+  match_count: input.decision.candidateCount,
+  matched_neighbor_id: input.decision.matchedNeighborId,
+  candidate_neighbor_ids: input.decision.candidateNeighborIds,
+  contact_point: {
+    kind: 'phone_e164',
+    value_masked: maskIdentityContactPointValue(input.decision.contactPoint.value),
+    value_hash: hashIdentityContactPointValue(input.decision.contactPoint.value),
+    is_shared: input.decision.contactPoint.isShared,
+    verification_status: input.decision.contactPoint.verificationStatus,
+  },
+  manual_resolution_required: input.decision.manualResolution?.required === true,
+  manual_resolution_reason_code: input.decision.manualResolution?.reasonCode || null,
+});
+
+const canPersistIdentityMatchSideEffects = (input: {
+  tenantId: string;
+}): boolean => UUID_PATTERN.test(input.tenantId);
+
+const persistIdentityMatchDecision = async (input: {
+  context: { tenantId: string; orgUnitId: string };
+  actorUserId: string | null;
+  decision: ConnectShyftIdentityMatchDecision;
+}): Promise<boolean> => {
+  if (!canPersistIdentityMatchSideEffects({ tenantId: input.context.tenantId })) {
+    return false;
+  }
+
+  await executePlatformMutation({
+    mutation: async () => ({
+      persisted: true,
+    }),
+    event: {
+      tenantId: input.context.tenantId,
+      actorId: resolveMutationActorUserId(input.actorUserId),
+      eventName: input.decision.decision === 'AMBIGUOUS'
+        ? 'connectshyft.identity.match.ambiguous'
+        : 'connectshyft.identity.match.evaluated',
+      entityType: 'connectshyft.identity_match',
+      entityId: randomUUID(),
+      payload: buildIdentityMatchEventPayload(input),
+    },
+  }, loadPlatformDb());
+
+  return true;
+};
 
 const buildNeighborMergeProvenancePayload = (
   context: { tenantId: string; orgUnitId: string },
@@ -4479,6 +4595,84 @@ router.put('/neighbors/:neighborId', async (req: Request, res: Response) => {
       ...buildNeighborEditPolicyPayload(policyDecision),
       ...provenance,
       sideEffectsPersisted: updated.sideEffectsPersisted,
+    },
+  });
+});
+
+router.post('/neighbors/identity-match', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const payload = parseNeighborIdentityMatchBody(req);
+  const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
+  if (!context) {
+    return;
+  }
+
+  if (!enforceNeighborUpdateCapability(req, res, context)) {
+    return;
+  }
+
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const matched = await connectShyftNeighborServiceAsync.evaluateIdentityMatch({
+    actorRoles,
+    tenantId: context.tenantId,
+    contactPoint: payload.contactPoint,
+    excludeNeighborId: payload.excludeNeighborId || undefined,
+  });
+
+  const identityDecision = matched.ok
+    ? matched.data.identityMatch
+    : matched.code === IDENTITY_MATCH_AMBIGUOUS_CODE
+      && matched.data?.identityMatch
+      ? matched.data.identityMatch
+      : null;
+
+  let sideEffectsPersisted = false;
+  let sideEffectsPersistenceUnavailable = false;
+  if (identityDecision) {
+    try {
+      sideEffectsPersisted = await persistIdentityMatchDecision({
+        context,
+        actorUserId,
+        decision: identityDecision,
+      });
+    } catch (_error) {
+      sideEffectsPersisted = false;
+      sideEffectsPersistenceUnavailable = true;
+    }
+  }
+
+  if (!matched.ok) {
+    refusal(res, {
+      code: matched.code,
+      message: matched.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        ...buildNeighborRefusalData(matched, context),
+        sideEffectsPersisted,
+        sideEffectsPersistenceUnavailable,
+      },
+    });
+    return;
+  }
+
+  return success(res, {
+    code: matched.code,
+    message: matched.code === 'CONNECTSHYFT_IDENTITY_MATCH_AUTO_MERGE_ALLOWED'
+      ? 'Identity match permits auto-merge.'
+      : matched.code === 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH'
+        ? 'No exact identity matches found.'
+        : 'Identity match resolved without auto-merge eligibility.',
+    httpStatus: matched.httpStatus,
+    data: {
+      identityMatch: matched.data.identityMatch,
+      sideEffectsPersisted,
+      sideEffectsPersistenceUnavailable,
+      ...buildNeighborScopePayload(context),
     },
   });
 });

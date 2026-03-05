@@ -30,7 +30,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "apps/routeshyft-api",
-        "command": "npm test"
+        "command": "npm run test:connectshyft"
       }
     },
     "lint": {

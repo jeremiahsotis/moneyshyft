@@ -1,7 +1,33 @@
 import { randomUUID } from 'node:crypto';
-import type { Knex } from 'knex';
 import { CAPABILITIES, hasCapability } from '../../platform/rbac/capabilities';
 import db from '../../config/knex';
+
+type QueryBuilderLike = {
+  withSchema(schema: string): QueryBuilderLike;
+  table(tableName: string): QueryBuilderLike;
+  where(condition: Record<string, unknown>): QueryBuilderLike;
+  whereIn(column: string, values: string[]): QueryBuilderLike;
+  orderBy(column: string, direction: 'asc' | 'desc'): QueryBuilderLike;
+  insert(value: Record<string, unknown> | Array<Record<string, unknown>>): QueryBuilderLike;
+  update(value: Record<string, unknown>): QueryBuilderLike;
+  delete(): Promise<number>;
+  first<T>(columns: string[]): Promise<T>;
+  select<T>(columns: string[]): Promise<T>;
+  returning<T>(columns: string[]): Promise<T>;
+};
+
+type KnexTransactionLike = QueryBuilderLike & {
+  fn: {
+    now(): unknown;
+  };
+};
+
+type KnexLike = QueryBuilderLike & {
+  fn: {
+    now(): unknown;
+  };
+  transaction<T>(handler: (trx: KnexTransactionLike) => Promise<T>): Promise<T>;
+};
 
 const E164_PHONE_PATTERN = /^\+[1-9]\d{1,14}$/;
 const REMOVABLE_PHONE_CHARS_PATTERN = /[\s().-]/g;
@@ -92,10 +118,63 @@ export type ConnectShyftMergeNeighborCommand = NeighborActorContext & {
   reason?: string;
 };
 
+export type ConnectShyftIdentityMatchCommand = NeighborActorContext & {
+  tenantId: string;
+  contactPoint: ConnectShyftNeighborPhoneInput;
+  excludeNeighborId?: string;
+};
+
 type NeighborFieldError = {
   field: 'phones';
   reason: 'REQUIRED' | 'INVALID_FORMAT';
   message: string;
+};
+
+type ConnectShyftIdentityMatchCandidate = {
+  neighborId: string;
+  phoneId: string;
+  isShared: boolean;
+  verificationStatus: 'verified' | 'unverified';
+};
+
+type ConnectShyftIdentityMatchDecisionReason =
+  | 'VERIFIED_NON_SHARED_EXACT_CONTACT_POINT'
+  | 'NO_EXACT_CONTACT_POINT_MATCH'
+  | 'INPUT_CONTACT_UNVERIFIED'
+  | 'INPUT_CONTACT_SHARED'
+  | 'MATCH_CONTACT_UNVERIFIED'
+  | 'MATCH_CONTACT_SHARED'
+  | 'MULTIPLE_EXACT_CONTACT_POINT_MATCHES';
+
+export type ConnectShyftIdentityManualResolutionContext = {
+  required: true;
+  reasonCode: 'IDENTITY_MATCH_AMBIGUOUS';
+  nextAction: 'manual-merge';
+  mergeEndpoint: '/api/v1/connectshyft/neighbors/merge';
+  candidateNeighborIds: string[];
+  guidance: string;
+};
+
+export type ConnectShyftIdentityMatchDecision = {
+  decision: 'AUTO_MERGE_ALLOWED' | 'NO_AUTO_MERGE' | 'AMBIGUOUS';
+  reason: ConnectShyftIdentityMatchDecisionReason;
+  autoMergeAllowed: boolean;
+  contactPoint: {
+    value: string;
+    isShared: boolean;
+    verificationStatus: 'verified' | 'unverified';
+  };
+  matchedNeighborId: string | null;
+  candidateCount: number;
+  candidateNeighborIds: string[];
+  exactMatches: ConnectShyftIdentityMatchCandidate[];
+  manualResolution?: ConnectShyftIdentityManualResolutionContext;
+};
+
+type NeighborRefusalData = {
+  fieldErrors?: NeighborFieldError[];
+  identityMatch?: ConnectShyftIdentityMatchDecision;
+  manualResolution?: ConnectShyftIdentityManualResolutionContext;
 };
 
 type NeighborPersistenceResult =
@@ -137,13 +216,13 @@ type NeighborRefusalResult = {
     | 'CONNECTSHYFT_NEIGHBOR_MERGE_FORBIDDEN'
     | 'CONNECTSHYFT_NEIGHBOR_MERGE_CONFIRMATION_REQUIRED'
     | 'CONNECTSHYFT_NEIGHBOR_MERGE_INVALID'
+    | 'CONNECTSHYFT_IDENTITY_MATCH_FORBIDDEN'
+    | 'IDENTITY_MATCH_AMBIGUOUS'
     | 'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH'
     | 'CONNECTSHYFT_NEIGHBOR_CREATE_PERSISTENCE_UNAVAILABLE'
     | 'CONNECTSHYFT_NEIGHBOR_PERSISTENCE_UNAVAILABLE';
   message: string;
-  data?: {
-    fieldErrors?: NeighborFieldError[];
-  };
+  data?: NeighborRefusalData;
 };
 
 export type ConnectShyftCreateNeighborResult =
@@ -202,6 +281,20 @@ export type ConnectShyftMergeNeighborResult =
         survivorNeighborId: string;
         irreversibleConfirmed: true;
       };
+    };
+  }
+  | NeighborRefusalResult;
+
+export type ConnectShyftIdentityMatchResult =
+  | {
+    ok: true;
+    code:
+      | 'CONNECTSHYFT_IDENTITY_MATCH_AUTO_MERGE_ALLOWED'
+      | 'CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE'
+      | 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH';
+    httpStatus: 200;
+    data: {
+      identityMatch: ConnectShyftIdentityMatchDecision;
     };
   }
   | NeighborRefusalResult;
@@ -327,6 +420,12 @@ const buildMergeInvalidRefusal = (): NeighborRefusalResult => ({
   message: 'Neighbor merge request is invalid.',
 });
 
+const buildIdentityMatchCapabilityRefusal = (): NeighborRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_IDENTITY_MATCH_FORBIDDEN',
+  message: 'Identity matching requires an authorized ConnectShyft role.',
+});
+
 const buildRelationshipRequiredRefusal = (): NeighborRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_NEIGHBOR_EDIT_RELATIONSHIP_REQUIRED',
@@ -356,6 +455,179 @@ const buildPersistenceUnavailableRefusal = (): NeighborRefusalResult => ({
   code: 'CONNECTSHYFT_NEIGHBOR_PERSISTENCE_UNAVAILABLE',
   message: 'Neighbor persistence is temporarily unavailable. Please retry.',
 });
+
+const aggregateIdentityMatchCandidates = (
+  candidates: ConnectShyftIdentityMatchCandidate[],
+): Array<{
+  neighborId: string;
+  isShared: boolean;
+  verificationStatus: 'verified' | 'unverified';
+}> => {
+  const candidatesByNeighbor = new Map<string, ConnectShyftIdentityMatchCandidate[]>();
+  candidates.forEach((candidate) => {
+    const existing = candidatesByNeighbor.get(candidate.neighborId) || [];
+    existing.push(candidate);
+    candidatesByNeighbor.set(candidate.neighborId, existing);
+  });
+
+  return Array.from(candidatesByNeighbor.entries())
+    .sort(([leftNeighborId], [rightNeighborId]) => leftNeighborId.localeCompare(rightNeighborId))
+    .map(([neighborId, neighborCandidates]) => ({
+      neighborId,
+      isShared: neighborCandidates.some((candidate) => candidate.isShared === true),
+      verificationStatus: neighborCandidates.every((candidate) => candidate.verificationStatus === 'verified')
+        ? 'verified'
+        : 'unverified',
+    }));
+};
+
+const buildIdentityManualResolutionContext = (
+  candidateNeighborIds: string[],
+): ConnectShyftIdentityManualResolutionContext => ({
+  required: true,
+  reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+  nextAction: 'manual-merge',
+  mergeEndpoint: '/api/v1/connectshyft/neighbors/merge',
+  candidateNeighborIds,
+  guidance: 'Multiple identities share this contact point. Resolve manually before any merge.',
+});
+
+const buildIdentityMatchDecision = (input: {
+  normalizedValue: string;
+  isShared: boolean;
+  verificationStatus: 'verified' | 'unverified';
+  candidates: ConnectShyftIdentityMatchCandidate[];
+}): ConnectShyftIdentityMatchDecision => {
+  const candidateAggregates = aggregateIdentityMatchCandidates(input.candidates);
+  const candidateNeighborIds = candidateAggregates.map((candidate) => candidate.neighborId);
+  const candidateCount = candidateNeighborIds.length;
+
+  if (candidateCount === 0) {
+    return {
+      decision: 'NO_AUTO_MERGE',
+      reason: 'NO_EXACT_CONTACT_POINT_MATCH',
+      autoMergeAllowed: false,
+      contactPoint: {
+        value: input.normalizedValue,
+        isShared: input.isShared,
+        verificationStatus: input.verificationStatus,
+      },
+      matchedNeighborId: null,
+      candidateCount,
+      candidateNeighborIds,
+      exactMatches: [],
+    };
+  }
+
+  if (candidateCount > 1) {
+    return {
+      decision: 'AMBIGUOUS',
+      reason: 'MULTIPLE_EXACT_CONTACT_POINT_MATCHES',
+      autoMergeAllowed: false,
+      contactPoint: {
+        value: input.normalizedValue,
+        isShared: input.isShared,
+        verificationStatus: input.verificationStatus,
+      },
+      matchedNeighborId: null,
+      candidateCount,
+      candidateNeighborIds,
+      exactMatches: input.candidates,
+      manualResolution: buildIdentityManualResolutionContext(candidateNeighborIds),
+    };
+  }
+
+  const matched = candidateAggregates[0];
+  const isInputVerified = input.verificationStatus === 'verified';
+  const isMatchedVerified = matched.verificationStatus === 'verified';
+  const inputIsSafe = isInputVerified && input.isShared === false;
+  const matchedIsSafe = isMatchedVerified && matched.isShared === false;
+
+  const noAutoMergeReason: ConnectShyftIdentityMatchDecisionReason | null = input.isShared
+    ? 'INPUT_CONTACT_SHARED'
+    : !isInputVerified
+      ? 'INPUT_CONTACT_UNVERIFIED'
+      : matched.isShared
+        ? 'MATCH_CONTACT_SHARED'
+        : !isMatchedVerified
+          ? 'MATCH_CONTACT_UNVERIFIED'
+          : null;
+
+  if (inputIsSafe && matchedIsSafe) {
+    return {
+      decision: 'AUTO_MERGE_ALLOWED',
+      reason: 'VERIFIED_NON_SHARED_EXACT_CONTACT_POINT',
+      autoMergeAllowed: true,
+      contactPoint: {
+        value: input.normalizedValue,
+        isShared: input.isShared,
+        verificationStatus: input.verificationStatus,
+      },
+      matchedNeighborId: matched.neighborId,
+      candidateCount,
+      candidateNeighborIds,
+      exactMatches: input.candidates,
+    };
+  }
+
+  return {
+    decision: 'NO_AUTO_MERGE',
+    reason: noAutoMergeReason || 'NO_EXACT_CONTACT_POINT_MATCH',
+    autoMergeAllowed: false,
+    contactPoint: {
+      value: input.normalizedValue,
+      isShared: input.isShared,
+      verificationStatus: input.verificationStatus,
+    },
+    matchedNeighborId: matched.neighborId,
+    candidateCount,
+    candidateNeighborIds,
+    exactMatches: input.candidates,
+  };
+};
+
+const buildIdentityAmbiguousRefusal = (
+  decision: ConnectShyftIdentityMatchDecision,
+): NeighborRefusalResult => ({
+  ok: false,
+  code: 'IDENTITY_MATCH_AMBIGUOUS',
+  message: 'Identity match is ambiguous and requires manual resolution.',
+  data: {
+    identityMatch: decision,
+    manualResolution: decision.manualResolution,
+  },
+});
+
+const collectIdentityMatchCandidates = (
+  neighbors: ConnectShyftNeighbor[],
+  normalizedValue: string,
+  excludeNeighborId: string,
+): ConnectShyftIdentityMatchCandidate[] => {
+  const sortedMatches = neighbors
+    .flatMap((neighbor) => {
+      if (excludeNeighborId && neighbor.neighborId === excludeNeighborId) {
+        return [];
+      }
+
+      return neighbor.phones
+        .filter((phone) => phone.value === normalizedValue)
+        .map((phone) => ({
+          neighborId: neighbor.neighborId,
+          phoneId: phone.phoneId,
+          isShared: phone.isShared === true,
+          verificationStatus: normalizeVerificationStatus(phone.verificationStatus),
+        }));
+    })
+    .sort((left, right) => {
+      if (left.neighborId !== right.neighborId) {
+        return left.neighborId.localeCompare(right.neighborId);
+      }
+
+      return left.phoneId.localeCompare(right.phoneId);
+    });
+
+  return sortedMatches;
+};
 
 const normalizePhones = (
   phones: ConnectShyftNeighborPhoneInput[],
@@ -809,7 +1081,7 @@ export class InMemoryConnectShyftNeighborStore {
 }
 
 export class KnexConnectShyftNeighborStore {
-  constructor(private readonly knexClient: Knex = db) {}
+  constructor(private readonly knexClient: KnexLike = db as unknown as KnexLike) {}
 
   private neighborPhoneColumns(): string[] {
     return [
@@ -1310,6 +1582,45 @@ export class ConnectShyftNeighborService {
     };
   }
 
+  evaluateIdentityMatch(input: ConnectShyftIdentityMatchCommand): ConnectShyftIdentityMatchResult {
+    if (!hasNeighborManageCapability(input.actorRoles)) {
+      return buildIdentityMatchCapabilityRefusal();
+    }
+
+    const normalizedValue = normalizePhoneValue(normalizeNonEmptyString(input.contactPoint?.value));
+    if (!normalizedValue) {
+      return buildPhoneInvalidFormatRefusal();
+    }
+
+    const decision = buildIdentityMatchDecision({
+      normalizedValue,
+      isShared: input.contactPoint?.isShared === true,
+      verificationStatus: normalizeVerificationStatus(input.contactPoint?.verificationStatus),
+      candidates: collectIdentityMatchCandidates(
+        this.store.listByTenant(input.tenantId),
+        normalizedValue,
+        normalizeNonEmptyString(input.excludeNeighborId),
+      ),
+    });
+
+    if (decision.decision === 'AMBIGUOUS') {
+      return buildIdentityAmbiguousRefusal(decision);
+    }
+
+    return {
+      ok: true,
+      code: decision.decision === 'AUTO_MERGE_ALLOWED'
+        ? 'CONNECTSHYFT_IDENTITY_MATCH_AUTO_MERGE_ALLOWED'
+        : decision.reason === 'NO_EXACT_CONTACT_POINT_MATCH'
+          ? 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH'
+          : 'CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE',
+      httpStatus: 200,
+      data: {
+        identityMatch: decision,
+      },
+    };
+  }
+
   mergeNeighbor(input: ConnectShyftMergeNeighborCommand): ConnectShyftMergeNeighborResult {
     if (!hasNeighborMergeCapability(input.actorRoles)) {
       return buildMergeCapabilityRefusal();
@@ -1485,6 +1796,53 @@ export class AsyncConnectShyftNeighborService {
         httpStatus: 200,
         data: {
           neighbor: updated.neighbor,
+        },
+      };
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return buildPersistenceUnavailableRefusal();
+    }
+  }
+
+  async evaluateIdentityMatch(input: ConnectShyftIdentityMatchCommand): Promise<ConnectShyftIdentityMatchResult> {
+    if (!hasNeighborManageCapability(input.actorRoles)) {
+      return buildIdentityMatchCapabilityRefusal();
+    }
+
+    const normalizedValue = normalizePhoneValue(normalizeNonEmptyString(input.contactPoint?.value));
+    if (!normalizedValue) {
+      return buildPhoneInvalidFormatRefusal();
+    }
+
+    try {
+      const decision = buildIdentityMatchDecision({
+        normalizedValue,
+        isShared: input.contactPoint?.isShared === true,
+        verificationStatus: normalizeVerificationStatus(input.contactPoint?.verificationStatus),
+        candidates: collectIdentityMatchCandidates(
+          await this.store.listByTenant(input.tenantId),
+          normalizedValue,
+          normalizeNonEmptyString(input.excludeNeighborId),
+        ),
+      });
+
+      if (decision.decision === 'AMBIGUOUS') {
+        return buildIdentityAmbiguousRefusal(decision);
+      }
+
+      return {
+        ok: true,
+        code: decision.decision === 'AUTO_MERGE_ALLOWED'
+          ? 'CONNECTSHYFT_IDENTITY_MATCH_AUTO_MERGE_ALLOWED'
+          : decision.reason === 'NO_EXACT_CONTACT_POINT_MATCH'
+            ? 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH'
+            : 'CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE',
+        httpStatus: 200,
+        data: {
+          identityMatch: decision,
         },
       };
     } catch (error) {
