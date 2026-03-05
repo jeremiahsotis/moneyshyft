@@ -311,5 +311,6 @@ fi
 
 node scripts/enforce-project-lane.js
 bash scripts/enforce-operability-closeout-guard.sh
+bash scripts/enforce-verified-patch-intake-guard.sh
 
 echo "Policy check passed"

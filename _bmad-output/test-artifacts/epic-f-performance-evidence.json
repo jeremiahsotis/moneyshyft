@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-02T13:34:45.254Z",
+  "generatedAt": "2026-03-05T01:15:08.803Z",
   "storyScope": "epic-f",
   "sampleCounts": {
     "inbox": 25,
@@ -26,11 +26,6 @@
       "name": "inbox",
       "samples": [
         {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
           "durationMs": 3,
           "status": 200,
           "ok": true
@@ -41,27 +36,17 @@
           "ok": true
         },
         {
-          "durationMs": 2,
+          "durationMs": 5,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 2,
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
@@ -71,98 +56,15 @@
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 2,
+          "durationMs": 5,
           "status": 200,
           "ok": true
         },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        }
-      ],
-      "p50": 2,
-      "p95": 3,
-      "p99": 3,
-      "min": 1,
-      "max": 3,
-      "avg": 1.84,
-      "successRate": 1,
-      "errorRate": 0
-    },
-    "threadDetail": {
-      "name": "thread_detail",
-      "samples": [
         {
           "durationMs": 3,
           "status": 200,
@@ -179,97 +81,52 @@
           "ok": true
         },
         {
-          "durationMs": 2,
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 2,
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 2,
+          "durationMs": 5,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 3,
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 2,
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 2,
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 12,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 8,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
@@ -279,7 +136,12 @@
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
@@ -289,12 +151,150 @@
           "ok": true
         }
       ],
-      "p50": 2,
-      "p95": 3,
-      "p99": 4,
-      "min": 1,
-      "max": 4,
-      "avg": 1.92,
+      "p50": 4,
+      "p95": 8,
+      "p99": 12,
+      "min": 3,
+      "max": 12,
+      "avg": 4.32,
+      "successRate": 1,
+      "errorRate": 0
+    },
+    "threadDetail": {
+      "name": "thread_detail",
+      "samples": [
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 10,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 6,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "p50": 4,
+      "p95": 6,
+      "p99": 10,
+      "min": 2,
+      "max": 10,
+      "avg": 4.12,
       "successRate": 1,
       "errorRate": 0
     },
@@ -302,175 +302,7 @@
       "name": "events",
       "samples": [
         {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 0,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        }
-      ],
-      "p50": 1,
-      "p95": 2,
-      "p99": 2,
-      "min": 0,
-      "max": 2,
-      "avg": 1.08,
-      "successRate": 1,
-      "errorRate": 0
-    },
-    "webhookIngestion": {
-      "name": "webhook_ingestion",
-      "samples": [
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
+          "durationMs": 3,
           "status": 200,
           "ok": true
         },
@@ -480,17 +312,17 @@
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 2,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 3,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 3,
           "status": 200,
           "ok": true
         },
@@ -500,27 +332,12 @@
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 3,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
+          "durationMs": 3,
           "status": 200,
           "ok": true
         },
@@ -530,22 +347,27 @@
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 2,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 3,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 3,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
           "status": 200,
           "ok": true
         },
@@ -555,22 +377,200 @@
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 3,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 1,
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
           "status": 200,
           "ok": true
         }
       ],
-      "p50": 1,
-      "p95": 2,
-      "p99": 3,
-      "min": 1,
-      "max": 3,
-      "avg": 1.32,
+      "p50": 3,
+      "p95": 3,
+      "p99": 4,
+      "min": 2,
+      "max": 4,
+      "avg": 2.76,
+      "successRate": 1,
+      "errorRate": 0
+    },
+    "webhookIngestion": {
+      "name": "webhook_ingestion",
+      "samples": [
+        {
+          "durationMs": 8,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 7,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 6,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 10,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 7,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 9,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 8,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 9,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 9,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 11,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 8,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 7,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 9,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 9,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 15,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 9,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 9,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 9,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 9,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 8,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 15,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 17,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 10,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 19,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 10,
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "p50": 9,
+      "p95": 17,
+      "p99": 19,
+      "min": 6,
+      "max": 19,
+      "avg": 9.88,
       "successRate": 1,
       "errorRate": 0
     }

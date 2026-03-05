@@ -107,7 +107,7 @@ development_status:
   8-4-lane-extraction-transition-strategy: done
   8-5-shared-contact-safe-dedupe-contract: done
   8-6-service-ready-identity-boundary: done
-  8-7-verified-patch-application-policy: ready-for-dev
+  8-7-verified-patch-application-policy: done
   epic-8-retrospective: optional
 course_correction:
   cc-2026-02-18:

@@ -186,12 +186,17 @@ export function runPolicyScriptInTempRepo(
   const commitSubject = options.commitSubject ?? '0-9: policy harness seed';
   const baseBranch = options.baseRef ?? 'codex/dev';
   const scriptsDir = dirname(scriptAbsolutePath);
+  const sourceRepoRoot = resolve(scriptsDir, '..');
   const docsPoliciesDir = resolve(scriptsDir, '../docs/policies');
 
   try {
     mkdirSync(join(repoDir, 'docs/policies'), { recursive: true });
     writeFileSync(join(repoDir, 'docs/policies/git_policy.md'), policyContents);
     writeFileSync(join(repoDir, 'README.md'), '# policy harness\n');
+    copyFileIfPresent(
+      join(sourceRepoRoot, 'package.json'),
+      join(repoDir, 'package.json'),
+    );
 
     copyFileIfPresent(
       join(scriptsDir, 'enforce-envelope-helper-guard.sh'),
@@ -224,6 +229,16 @@ export function runPolicyScriptInTempRepo(
       true,
     );
     copyFileIfPresent(
+      join(scriptsDir, 'enforce-verified-patch-intake-guard.sh'),
+      join(repoDir, 'scripts/enforce-verified-patch-intake-guard.sh'),
+      true,
+    );
+    copyFileIfPresent(
+      join(scriptsDir, 'verified-patch-apply.sh'),
+      join(repoDir, 'scripts/verified-patch-apply.sh'),
+      true,
+    );
+    copyFileIfPresent(
       join(scriptsDir, 'enforce-project-lane.js'),
       join(repoDir, 'scripts/enforce-project-lane.js'),
     );
@@ -238,6 +253,10 @@ export function runPolicyScriptInTempRepo(
     copyFileIfPresent(
       join(docsPoliciesDir, 'project_lanes.json'),
       join(repoDir, 'docs/policies/project_lanes.json'),
+    );
+    copyFileIfPresent(
+      join(docsPoliciesDir, 'verified_patch_application_policy.md'),
+      join(repoDir, 'docs/policies/verified_patch_application_policy.md'),
     );
 
     for (const [relativePath, contents] of Object.entries(options.seedFiles ?? {})) {
