@@ -5,16 +5,16 @@
       "part_id": "backend",
       "name": "MoneyShyft API",
       "project_type": "backend",
-      "root_path": "src",
-      "entry_points": ["src/src/server.ts", "src/src/app.ts"],
+      "root_path": "apps/routeshyft-api",
+      "entry_points": ["apps/routeshyft-api/src/server.ts", "apps/routeshyft-api/src/app.ts"],
       "primary_language": "TypeScript"
     },
     {
       "part_id": "frontend",
       "name": "MoneyShyft Frontend",
       "project_type": "web",
-      "root_path": "frontend",
-      "entry_points": ["frontend/src/main.ts"],
+      "root_path": "apps/routeshyft-web",
+      "entry_points": ["apps/routeshyft-web/src/main.ts"],
       "primary_language": "TypeScript"
     }
   ],

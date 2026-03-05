@@ -37,9 +37,9 @@ const ESLINT_BOUNDARY_BASELINE = `module.exports = {
 
 const ROUTESHYFT_API_PROJECT = JSON.stringify(
   {
-    name: 'moneyshyft-api',
+    name: 'routeshyft-api',
     projectType: 'application',
-    sourceRoot: 'apps/moneyshyft-api/src',
+    sourceRoot: 'apps/routeshyft-api/src',
     tags: ['lane:routeshyft', 'type:app', 'runtime:node'],
   },
   null,
@@ -57,8 +57,8 @@ test.describe('Story 8.3 atdd - explicit lane boundary rules API coverage', () =
       seedFiles: {
         '_bmad-output/implementation-artifacts/sprint-status.yaml': SPRINT_STATUS_BASELINE,
         '.eslintrc.cjs': ESLINT_BOUNDARY_BASELINE,
-        'apps/moneyshyft-api/project.json': ROUTESHYFT_API_PROJECT,
-        'apps/moneyshyft-api/src/deep-import-violation.ts': "import { unsafe } from '../../../packages/shared-utils/src/internal';\n",
+        'apps/routeshyft-api/project.json': ROUTESHYFT_API_PROJECT,
+        'apps/routeshyft-api/src/deep-import-violation.ts': "import { unsafe } from '../../../packages/shared-utils/src/internal';\n",
       },
     });
 
@@ -79,8 +79,8 @@ test.describe('Story 8.3 atdd - explicit lane boundary rules API coverage', () =
       seedFiles: {
         '_bmad-output/implementation-artifacts/sprint-status.yaml': SPRINT_STATUS_BASELINE,
         '.eslintrc.cjs': ESLINT_BOUNDARY_BASELINE,
-        'apps/moneyshyft-api/project.json': ROUTESHYFT_API_PROJECT,
-        'apps/moneyshyft-api/src/deep-import-src-root-violation.ts': "import shared from '../../../packages/shared-utils/src';\n",
+        'apps/routeshyft-api/project.json': ROUTESHYFT_API_PROJECT,
+        'apps/routeshyft-api/src/deep-import-src-root-violation.ts': "import shared from '../../../packages/shared-utils/src';\n",
       },
     });
 
@@ -100,11 +100,11 @@ test.describe('Story 8.3 atdd - explicit lane boundary rules API coverage', () =
       seedFiles: {
         '_bmad-output/implementation-artifacts/sprint-status.yaml': SPRINT_STATUS_BASELINE,
         '.eslintrc.cjs': ESLINT_BOUNDARY_BASELINE,
-        'apps/moneyshyft-api/project.json': JSON.stringify(
+        'apps/routeshyft-api/project.json': JSON.stringify(
           {
-            name: 'moneyshyft-api',
+            name: 'routeshyft-api',
             projectType: 'application',
-            sourceRoot: 'apps/moneyshyft-api/src',
+            sourceRoot: 'apps/routeshyft-api/src',
             tags: ['lane:moneyshyft', 'type:app', 'runtime:node'],
           },
           null,
@@ -129,7 +129,7 @@ test.describe('Story 8.3 atdd - explicit lane boundary rules API coverage', () =
       seedFiles: {
         '_bmad-output/implementation-artifacts/sprint-status.yaml': SPRINT_STATUS_BASELINE,
         '.eslintrc.cjs': ESLINT_BOUNDARY_BASELINE,
-        'apps/moneyshyft-api/project.json': ROUTESHYFT_API_PROJECT,
+        'apps/routeshyft-api/project.json': ROUTESHYFT_API_PROJECT,
         'libs/connect-lib/project.json': JSON.stringify(
           {
             name: 'connect-lib',
@@ -147,7 +147,7 @@ test.describe('Story 8.3 atdd - explicit lane boundary rules API coverage', () =
           null,
           2,
         ),
-        'apps/moneyshyft-api/src/cross-lane-violation.ts': "import { connectLib } from '@acme/connect-lib';\n",
+        'apps/routeshyft-api/src/cross-lane-violation.ts': "import { connectLib } from '@acme/connect-lib';\n",
       },
     });
 
@@ -167,11 +167,11 @@ test.describe('Story 8.3 atdd - explicit lane boundary rules API coverage', () =
       seedFiles: {
         '_bmad-output/implementation-artifacts/sprint-status.yaml': SPRINT_STATUS_BASELINE,
         '.eslintrc.cjs': ESLINT_BOUNDARY_BASELINE,
-        'apps/moneyshyft-api/project.json': JSON.stringify(
+        'apps/routeshyft-api/project.json': JSON.stringify(
           {
-            name: 'moneyshyft-api',
+            name: 'routeshyft-api',
             projectType: 'application',
-            sourceRoot: 'apps/moneyshyft-api/src',
+            sourceRoot: 'apps/routeshyft-api/src',
             tags: ['scope:shared', 'type:app', 'runtime:node'],
           },
           null,
@@ -196,11 +196,11 @@ test.describe('Story 8.3 atdd - explicit lane boundary rules API coverage', () =
       seedFiles: {
         '_bmad-output/implementation-artifacts/sprint-status.yaml': SPRINT_STATUS_BASELINE,
         '.eslintrc.cjs': ESLINT_BOUNDARY_BASELINE,
-        'apps/moneyshyft-api/project.json': JSON.stringify(
+        'apps/routeshyft-api/project.json': JSON.stringify(
           {
-            name: 'moneyshyft-api',
+            name: 'routeshyft-api',
             projectType: 'application',
-            sourceRoot: 'apps/moneyshyft-api/src',
+            sourceRoot: 'apps/routeshyft-api/src',
             tags: ['lane:routeshyft', 'scope:shared', 'type:app', 'runtime:node'],
           },
           null,
@@ -225,8 +225,8 @@ test.describe('Story 8.3 atdd - explicit lane boundary rules API coverage', () =
       seedFiles: {
         '_bmad-output/implementation-artifacts/sprint-status.yaml': SPRINT_STATUS_BASELINE,
         '.eslintrc.cjs': ESLINT_BOUNDARY_BASELINE,
-        'apps/moneyshyft-api/project.json': ROUTESHYFT_API_PROJECT,
-        'apps/moneyshyft-api/src/boundary-baseline.ts': "import { sharedThing } from '@acme/shared-utils';\n",
+        'apps/routeshyft-api/project.json': ROUTESHYFT_API_PROJECT,
+        'apps/routeshyft-api/src/boundary-baseline.ts': "import { sharedThing } from '@acme/shared-utils';\n",
       },
     });
 

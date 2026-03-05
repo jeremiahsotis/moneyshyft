@@ -1,1 +1,0 @@
-../routeshyft-web/vite.config.ts

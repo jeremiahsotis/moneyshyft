@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODULE_ROUTES_DIR="src/src/routes/api/v1"
+MODULE_ROUTES_DIR="apps/routeshyft-api/src/routes/api/v1"
 PLATFORM_CONTRACTS_FILE="${MODULE_ROUTES_DIR}/platform-contracts.ts"
 
 resolve_compare_range() {

@@ -1,1 +1,0 @@
-../routeshyft-api/knexfile.d.ts

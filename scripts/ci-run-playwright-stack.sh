@@ -93,7 +93,7 @@ if (!databaseUrl) {
   process.exit(0);
 }
 
-const knexFactory = require(path.resolve(process.cwd(), 'src/node_modules/knex'));
+const knexFactory = require(path.resolve(process.cwd(), 'apps/routeshyft-api/node_modules/knex'));
 const db = knexFactory({
   client: 'pg',
   connection: databaseUrl,
@@ -112,7 +112,7 @@ const db = knexFactory({
 NODE
 
 echo "Running backend migrations"
-NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix src
+NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix apps/routeshyft-api
 
 echo "Verifying backend port $PORT is available..."
 node -e "
@@ -133,11 +133,11 @@ server.listen(port);
 " || exit 1
 
 echo "Starting backend dev server"
-(cd src && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run dev) > "$backend_log" 2>&1 &
+(cd apps/routeshyft-api && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run dev) > "$backend_log" 2>&1 &
 BACKEND_PID=$!
 
 echo "Starting frontend dev server"
-(cd frontend && npm run dev -- --host "$frontend_host" --port "$frontend_port") > "$frontend_log" 2>&1 &
+(cd apps/routeshyft-web && npm run dev -- --host "$frontend_host" --port "$frontend_port") > "$frontend_log" 2>&1 &
 FRONTEND_PID=$!
 
 wait_for_http "${API_URL%/}/health" "backend health endpoint" "$BACKEND_PID" 30 || {

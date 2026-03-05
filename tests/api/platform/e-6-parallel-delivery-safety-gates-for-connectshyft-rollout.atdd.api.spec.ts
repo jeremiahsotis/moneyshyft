@@ -38,7 +38,7 @@ test.describe(
               PROJECT_LANE: 'connectshyft',
             },
             seedFiles: {
-              'src/src/modules/connectshyft/twilio-direct-coupling-e6.ts': [
+              'apps/routeshyft-api/src/modules/connectshyft/twilio-direct-coupling-e6.ts': [
                 "import twilio from 'twilio';",
                 '',
                 "export const createDirectProviderClient = () => twilio('sid', 'token');",
@@ -59,7 +59,7 @@ test.describe(
               PROJECT_LANE: 'connectshyft',
             },
             seedFiles: {
-              'src/src/modules/connectshyft/route-boundary-violation-e6.ts': [
+              'apps/routeshyft-api/src/modules/connectshyft/route-boundary-violation-e6.ts': [
                 "import { CommitmentService } from '../route/application/commitmentService';",
                 '',
                 'export const leakingBoundaryReference = CommitmentService;',
@@ -80,7 +80,7 @@ test.describe(
               PROJECT_LANE: 'connectshyft',
             },
             seedFiles: {
-              'src/src/modules/connectshyft/route-dynamic-boundary-violation-e6.ts': [
+              'apps/routeshyft-api/src/modules/connectshyft/route-dynamic-boundary-violation-e6.ts': [
                 "export const leakingBoundaryReference = async () => import('../route/application/commitmentService');",
                 '',
               ].join('\n'),

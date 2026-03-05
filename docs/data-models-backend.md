@@ -1,7 +1,7 @@
 # Data Models (Backend Quick Scan)
 
 ## Source of Truth
-- Knex migrations in `src/src/migrations`
+- Knex migrations in `apps/routeshyft-api/src/migrations`
 
 ## Migration Inventory Highlights
 - Foundational schema: `001_initial_schema.ts`

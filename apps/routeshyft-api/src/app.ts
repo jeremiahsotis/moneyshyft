@@ -1,15 +1,11 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import logger from './utils/logger';
 import pool from './config/database';
 import { registerPlatformMiddleware, registerV1Routes } from './api/registerRoutes';
 import { errorHandler } from './middleware/errorHandler';
 import { csrfProtection } from './platform/middleware/csrfProtection';
-
-// Load environment variables
-dotenv.config();
 
 const app: Application = express();
 

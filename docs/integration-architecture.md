@@ -9,8 +9,8 @@
 
 2. Backend -> PostgreSQL
 - Protocol: SQL through Knex
-- Migrations: `src/src/migrations/*.ts`
-- Seeds: `src/src/seeds/**/*.ts`
+- Migrations: `apps/routeshyft-api/src/migrations/*.ts`
+- Seeds: `apps/routeshyft-api/src/seeds/**/*.ts`
 
 ## Planned RouteShyft Integration Direction
 - Add RouteShift bridge endpoints in backend monolith.

@@ -119,13 +119,13 @@ git diff --name-only >> "$changed_candidates_file"
 git diff --cached --name-only >> "$changed_candidates_file"
 
 sort -u "$changed_candidates_file" | awk '
-  /^src\// || /^tests\// || /^frontend\// {
+  /^apps\/routeshyft-api\// || /^apps\/routeshyft-web\// || /^tests\// {
     print $0
   }
 ' > "$changed_required_file"
 
 if [[ ! -s "$changed_required_file" ]]; then
-  echo "Story artifact hygiene check passed (no source/test/frontend story deltas detected)."
+  echo "Story artifact hygiene check passed (no RouteShyft app/test story deltas detected)."
   exit 0
 fi
 
@@ -150,7 +150,7 @@ while IFS= read -r changed_path; do
 done < "$changed_required_file"
 
 if [[ $missing_file_list_entries -gt 0 ]]; then
-  echo "Story artifact hygiene check failed: $missing_file_list_entries changed source/test/frontend file(s) are missing from File List."
+  echo "Story artifact hygiene check failed: $missing_file_list_entries changed RouteShyft app/test file(s) are missing from File List."
   exit 1
 fi
 

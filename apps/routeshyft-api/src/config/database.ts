@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import logger from '../utils/logger';
+import './loadEnv';
 
 const resolveDbPassword = (): string => {
   const password = process.env.DB_PASSWORD;

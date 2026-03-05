@@ -134,7 +134,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
       event: 'local',
       commitSubject: '0-9: enforce provider abstraction cutover guard',
       seedFiles: {
-        'src/src/modules/connectshyft/twilio-coupling.ts': [
+        'apps/routeshyft-api/src/modules/connectshyft/twilio-coupling.ts': [
           "import twilio from 'twilio';",
           '',
           "export const createDirectTwilioClient = () => twilio('sid', 'token');",
@@ -158,7 +158,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
       event: 'local',
       commitSubject: '0-9: enforce provider abstraction cutover guard for tsx',
       seedFiles: {
-        'src/src/modules/connectshyft/twilio-coupling.tsx': [
+        'apps/routeshyft-api/src/modules/connectshyft/twilio-coupling.tsx': [
           "import twilio from 'twilio';",
           '',
           'export const TwilioButton = () => null;',
