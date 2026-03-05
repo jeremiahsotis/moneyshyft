@@ -12,10 +12,8 @@ const resolveEnvCandidates = (): string[] => {
     path.resolve(__dirname, '..', '.env.local'),
     path.resolve(process.cwd(), 'apps/routeshyft-api/.env'),
     path.resolve(process.cwd(), 'apps/routeshyft-api/.env.local'),
-    path.resolve(process.cwd(), 'apps/moneyshyft-api/.env'),
-    path.resolve(process.cwd(), 'apps/moneyshyft-api/.env.local'),
-    path.resolve(process.cwd(), 'src/.env'),
-    path.resolve(process.cwd(), 'src/.env.local'),
+    path.resolve(process.cwd(), 'apps/connectshyft-api/.env'),
+    path.resolve(process.cwd(), 'apps/connectshyft-api/.env.local'),
   ].filter((candidate): candidate is string => typeof candidate === 'string' && candidate.trim().length > 0);
 
   return [...new Set(candidates)];

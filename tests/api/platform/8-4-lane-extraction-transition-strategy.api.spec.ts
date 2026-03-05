@@ -29,7 +29,7 @@ const isSymlink = (...segments: string[]): boolean => {
 };
 
 test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
-  test('[P0] extracts route and connect lane seams into dedicated app paths with compatibility bridges @P0', () => {
+  test('[P0] extracts route and connect lane seams into dedicated app paths without legacy compatibility roots @P0', () => {
     expect(pathExists('apps', 'routeshyft-api')).toBe(true);
     expect(pathExists('apps', 'routeshyft-web')).toBe(true);
     expect(pathExists('apps', 'connectshyft-api')).toBe(true);
@@ -39,10 +39,10 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
     expect(pathExists('apps', 'connectshyft-api', 'src', 'modules', 'connectshyft')).toBe(true);
     expect(pathExists('apps', 'connectshyft-web', 'src', 'features', 'connectshyft')).toBe(true);
 
-    expect(isDirectory('apps', 'moneyshyft-api')).toBe(true);
-    expect(isDirectory('apps', 'moneyshyft-web')).toBe(true);
-    expect(isSymlink('apps', 'moneyshyft-api', 'src')).toBe(true);
-    expect(isSymlink('apps', 'moneyshyft-web', 'src')).toBe(true);
+    expect(pathExists('apps', 'moneyshyft-api')).toBe(false);
+    expect(pathExists('apps', 'moneyshyft-web')).toBe(false);
+    expect(pathExists('src')).toBe(false);
+    expect(pathExists('frontend')).toBe(false);
 
     expect(isSymlink('apps', 'routeshyft-api', 'src', 'modules', 'connectshyft')).toBe(true);
     expect(isSymlink('apps', 'routeshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts')).toBe(true);

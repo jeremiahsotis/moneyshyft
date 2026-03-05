@@ -1,6 +1,6 @@
 import { test, expect, request as playwrightRequest, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
-import { generateAccessToken, type JWTPayload } from '../../../src/src/utils/jwt';
+import { generateAccessToken, type JWTPayload } from '../../../apps/routeshyft-api/src/utils/jwt';
 
 type SignedUpUser = {
   userId: string;

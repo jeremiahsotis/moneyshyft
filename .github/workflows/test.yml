@@ -42,8 +42,6 @@ jobs:
           filters: |
             heavy:
               - 'apps/**'
-              - 'src/**'
-              - 'frontend/**'
               - 'tests/**'
               - 'scripts/**'
               - '.github/workflows/**'
@@ -52,10 +50,6 @@ jobs:
               - 'package-lock.json'
               - 'apps/routeshyft-api/package-lock.json'
               - 'apps/routeshyft-web/package-lock.json'
-              - 'apps/moneyshyft-api/package-lock.json'
-              - 'apps/moneyshyft-web/package-lock.json'
-              - 'src/package-lock.json'
-              - 'frontend/package-lock.json'
       - id: decide
         run: |
           if [ "${{ github.event_name }}" != "pull_request" ]; then

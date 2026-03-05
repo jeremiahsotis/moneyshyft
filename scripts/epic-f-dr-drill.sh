@@ -18,10 +18,10 @@ BACKEND_PID=""
 
 mkdir -p "$ARTIFACT_DIR"
 
-if [[ -f "$ROOT_DIR/src/.env" ]]; then
+if [[ -f "$ROOT_DIR/apps/routeshyft-api/.env" ]]; then
   # shellcheck disable=SC1091
   set -a
-  source "$ROOT_DIR/src/.env"
+  source "$ROOT_DIR/apps/routeshyft-api/.env"
   set +a
 fi
 
@@ -72,7 +72,7 @@ wait_for_health_state() {
 start_backend() {
   rm -f "$PID_FILE"
   (
-    cd "$ROOT_DIR/src"
+    cd "$ROOT_DIR/apps/routeshyft-api"
     PORT="$BACKEND_PORT" npm run dev > "$BACKEND_LOG" 2>&1 &
     echo $! > "$PID_FILE"
   )
@@ -100,7 +100,7 @@ trap cleanup EXIT
 
 insert_probe_row() {
   (
-    cd "$ROOT_DIR/src"
+    cd "$ROOT_DIR/apps/routeshyft-api"
     node - <<'NODE'
 const crypto = require('crypto');
 const { Client } = require('pg');
@@ -270,8 +270,8 @@ cat > "$JSON_ARTIFACT" <<JSON
   },
   "evidenceSources": [
     "scripts/epic-f-dr-drill.sh",
-    "src/src/app.ts",
-    "src/src/config/database.ts"
+    "apps/routeshyft-api/src/app.ts",
+    "apps/routeshyft-api/src/config/database.ts"
   ]
 }
 JSON

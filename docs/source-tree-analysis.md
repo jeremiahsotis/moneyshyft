@@ -3,14 +3,14 @@
 ## High-Level Tree
 ```text
 moneyshyft/
-├── frontend/                 # Vue 3 SPA (web client)
+├── apps/routeshyft-web/      # Vue 3 SPA (web client)
 │   ├── src/
 │   │   ├── components/       # UI components grouped by domain
 │   │   ├── views/            # Route-level screens
 │   │   ├── stores/           # Pinia stores
 │   │   ├── services/         # API client wrappers
 │   │   └── router/           # Route definitions
-├── src/                      # Express API service
+├── apps/routeshyft-api/      # Express API service
 │   ├── src/
 │   │   ├── routes/api/v1/    # Versioned REST routes
 │   │   ├── services/         # Business logic
@@ -24,14 +24,14 @@ moneyshyft/
 ```
 
 ## Critical Folders
-- `src/src/routes/api/v1`: backend domain endpoints and route contracts
-- `src/src/services`: service layer where business rules currently live
-- `src/src/migrations`: schema evolution history and current table shape source
-- `frontend/src/stores`: application state domain boundaries
+- `apps/routeshyft-api/src/routes/api/v1`: backend domain endpoints and route contracts
+- `apps/routeshyft-api/src/services`: service layer where business rules currently live
+- `apps/routeshyft-api/src/migrations`: schema evolution history and current table shape source
+- `apps/routeshyft-web/src/stores`: application state domain boundaries
 - `docs/routeshyft`: canonical inputs for monolith migration and RouteShyft phases
 - `_bmad`: workflow engine and project process automation
 
 ## Entry Points
-- Backend runtime: `src/src/server.ts`
-- Backend app wiring: `src/src/app.ts`
-- Frontend app bootstrap: `frontend/src/main.ts`
+- Backend runtime: `apps/routeshyft-api/src/server.ts`
+- Backend app wiring: `apps/routeshyft-api/src/app.ts`
+- Frontend app bootstrap: `apps/routeshyft-web/src/main.ts`

@@ -156,7 +156,7 @@ test.describe(
             event: 'local',
             commitSubject: '0-9: enforce provider abstraction cutover guard in f4',
             seedFiles: {
-              'src/src/modules/connectshyft/twilio-direct-coupling.ts': [
+              'apps/routeshyft-api/src/modules/connectshyft/twilio-direct-coupling.ts': [
                 "import twilio from 'twilio';",
                 '',
                 "export const createLeakyClient = () => twilio('sid', 'token');",

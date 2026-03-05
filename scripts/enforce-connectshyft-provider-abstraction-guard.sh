@@ -2,12 +2,17 @@
 set -euo pipefail
 
 GUARD_SCOPE_PATHS=(
-  "src/src/modules/connectshyft"
-  "src/src/routes/api/v1/connectshyft.ts"
-  "src/src/modules/route"
-  "src/src/routes/api/v1/route.ts"
+  "apps/routeshyft-api/src/modules/connectshyft"
+  "apps/routeshyft-api/src/routes/api/v1/connectshyft.ts"
+  "apps/routeshyft-api/src/modules/route"
+  "apps/routeshyft-api/src/routes/api/v1/route.ts"
+  "apps/connectshyft-api/src/modules/connectshyft"
+  "apps/connectshyft-api/src/routes/api/v1/connectshyft.ts"
 )
-APPROVED_ADAPTER_CONTRACT_FILE="src/src/modules/connectshyft/providerRegistry.ts"
+APPROVED_ADAPTER_CONTRACT_FILES=(
+  "apps/routeshyft-api/src/modules/connectshyft/providerRegistry.ts"
+  "apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts"
+)
 TWILIO_COUPLING_PATTERN="from[[:space:]]+['\"]twilio['\"]|require\\(['\"]twilio['\"]\\)|new[[:space:]]+Twilio[[:space:]]*\\(|\\bTWILIO_(ACCOUNT_SID|AUTH_TOKEN|API_KEY|API_SECRET)\\b|api\\.twilio\\.com|x-twilio-signature"
 CONNECT_TO_ROUTE_IMPORT_PATTERN="from[[:space:]]+['\"][^'\"]*(\\.\\./)+route(/|['\"])|require\\(['\"][^'\"]*(\\.\\./)+route(/|['\"])|import[[:space:]]*\\([[:space:]]*['\"][^'\"]*(\\.\\./)+route(/|['\"])|from[[:space:]]+['\"][^'\"]*modules/route(/|['\"])|require\\(['\"][^'\"]*modules/route(/|['\"])|import[[:space:]]*\\([[:space:]]*['\"][^'\"]*modules/route(/|['\"])|from[[:space:]]+['\"]@modules/route(/|['\"])|require\\(['\"]@modules/route(/|['\"])|import[[:space:]]*\\([[:space:]]*['\"]@modules/route(/|['\"])"
 ROUTE_TO_CONNECT_IMPORT_PATTERN="from[[:space:]]+['\"][^'\"]*(\\.\\./)+connectshyft(/|['\"])|require\\(['\"][^'\"]*(\\.\\./)+connectshyft(/|['\"])|import[[:space:]]*\\([[:space:]]*['\"][^'\"]*(\\.\\./)+connectshyft(/|['\"])|from[[:space:]]+['\"][^'\"]*modules/connectshyft(/|['\"])|require\\(['\"][^'\"]*modules/connectshyft(/|['\"])|import[[:space:]]*\\([[:space:]]*['\"][^'\"]*modules/connectshyft(/|['\"])|from[[:space:]]+['\"]@modules/connectshyft(/|['\"])|require\\(['\"]@modules/connectshyft(/|['\"])|import[[:space:]]*\\([[:space:]]*['\"]@modules/connectshyft(/|['\"])"
@@ -54,12 +59,25 @@ collect_file_twilio_coupling_lines() {
 
 is_connectshyft_source_file() {
   local file="$1"
-  [[ "$file" == src/src/modules/connectshyft/* || "$file" == src/src/routes/api/v1/connectshyft.ts ]]
+  [[ "$file" == apps/routeshyft-api/src/modules/connectshyft/* \
+    || "$file" == apps/routeshyft-api/src/routes/api/v1/connectshyft.ts \
+    || "$file" == apps/connectshyft-api/src/modules/connectshyft/* \
+    || "$file" == apps/connectshyft-api/src/routes/api/v1/connectshyft.ts ]]
 }
 
 is_route_source_file() {
   local file="$1"
-  [[ "$file" == src/src/modules/route/* || "$file" == src/src/routes/api/v1/route.ts ]]
+  [[ "$file" == apps/routeshyft-api/src/modules/route/* || "$file" == apps/routeshyft-api/src/routes/api/v1/route.ts ]]
+}
+
+is_approved_adapter_contract_file() {
+  local file="$1"
+  for contract in "${APPROVED_ADAPTER_CONTRACT_FILES[@]}"; do
+    if [[ "$file" == "$contract" ]]; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 collect_file_boundary_violation_lines() {
@@ -130,7 +148,7 @@ for file in "${changed_files[@]}"; do
     continue
   fi
 
-  if [[ "$file" != "$APPROVED_ADAPTER_CONTRACT_FILE" ]]; then
+  if ! is_approved_adapter_contract_file "$file"; then
     matched_provider_lines="$(collect_file_twilio_coupling_lines "$file")"
     if [[ -n "$matched_provider_lines" ]]; then
       provider_violation_count=$((provider_violation_count + 1))
@@ -155,7 +173,10 @@ done
 
 if [[ "$provider_violation_count" -gt 0 ]]; then
   echo "ConnectShyft provider abstraction guard failed: direct Twilio coupling detected outside approved adapter contracts."
-  echo "Route provider-specific implementation through ${APPROVED_ADAPTER_CONTRACT_FILE}."
+  echo "Route provider-specific implementation through approved adapter contracts:"
+  for contract in "${APPROVED_ADAPTER_CONTRACT_FILES[@]}"; do
+    echo "  - ${contract}"
+  done
   echo "Violations:${provider_violation_output}"
 fi
 

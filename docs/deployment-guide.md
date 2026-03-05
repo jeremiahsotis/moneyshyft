@@ -9,7 +9,7 @@ Current production guidance in repo indicates:
 
 ## Key Files
 - `docker-compose.example.yml`
-- `src/Dockerfile.production`
+- `apps/routeshyft-api/Dockerfile.production`
 - `nginx/nginx.conf`
 - `PRODUCTION_DEPLOYMENT_GUIDE.md`
 - `DEPLOYMENT_CHECKLIST.md`
@@ -17,6 +17,6 @@ Current production guidance in repo indicates:
 ## Baseline Steps
 1. Build backend image and install production deps.
 2. Run DB migrations (`npm run migrate:latest:prod`) in backend container.
-3. Build frontend assets (`frontend/dist`).
+3. Build frontend assets (`apps/routeshyft-web/dist`).
 4. Ensure nginx serves frontend and proxies backend API.
 5. Run smoke checks for auth, budgeting core flows, and migration integrity.

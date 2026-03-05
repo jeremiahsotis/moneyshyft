@@ -415,7 +415,7 @@ test.describe(
           },
           evidenceSources: [
             'tests/api/platform/f-epic-nfr-evidence.api.spec.ts',
-            'src/src/routes/api/v1/connectshyft.ts',
+            'apps/routeshyft-api/src/routes/api/v1/connectshyft.ts',
           ],
         };
 
@@ -573,7 +573,7 @@ test.describe(
           },
           evidenceSources: [
             'tests/api/platform/f-epic-nfr-evidence.api.spec.ts',
-            'src/src/routes/api/v1/connectshyft.ts',
+            'apps/routeshyft-api/src/routes/api/v1/connectshyft.ts',
           ],
         };
 
@@ -699,8 +699,8 @@ test.describe(
           },
           evidenceSources: [
             'tests/api/platform/f-epic-nfr-evidence.api.spec.ts',
-            'src/src/app.ts',
-            'src/src/routes/api/v1/platform-contracts.ts',
+            'apps/routeshyft-api/src/app.ts',
+            'apps/routeshyft-api/src/routes/api/v1/platform-contracts.ts',
           ],
         };
 

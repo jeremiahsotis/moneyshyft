@@ -41,6 +41,6 @@ Layered modular backend:
 7. `report`
 
 ## Key Route Surface
-Representative route groups in `src/src/routes/api/v1/`:
+Representative route groups in `apps/routeshyft-api/src/routes/api/v1/`:
 - `auth`, `households`, `accounts`, `budgets`, `transactions`, `categories`
 - `debts`, `goals`, `income`, `extra-money`, `scenarios`, `tags`, `assignments`, `splits`, `settings`, `recurring-transactions`

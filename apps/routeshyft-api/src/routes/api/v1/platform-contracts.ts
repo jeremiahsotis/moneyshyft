@@ -795,9 +795,9 @@ const evaluateKernelReadinessRbacMatrix = (): {
 
 const evaluateKernelReadinessGlobalEmailUniquenessContract = async (): Promise<KernelReadinessGlobalEmailContract> => {
   const repoRoot = resolveRepoRoot();
-  const migrationPath = path.join(repoRoot, 'src/src/migrations/001_initial_schema.ts');
-  const authServicePath = path.join(repoRoot, 'src/src/services/AuthService.ts');
-  const authRoutePath = path.join(repoRoot, 'src/src/routes/api/v1/auth.ts');
+  const migrationPath = path.join(repoRoot, 'apps/routeshyft-api/src/migrations/001_initial_schema.ts');
+  const authServicePath = path.join(repoRoot, 'apps/routeshyft-api/src/services/AuthService.ts');
+  const authRoutePath = path.join(repoRoot, 'apps/routeshyft-api/src/routes/api/v1/auth.ts');
   const checks = [
     {
       filePath: migrationPath,

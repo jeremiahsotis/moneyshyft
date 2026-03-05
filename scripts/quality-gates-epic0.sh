@@ -15,13 +15,13 @@ const resolveJwtModule = () => {
   }
 
   try {
-    return require(path.join(root, 'src/node_modules/jsonwebtoken'));
+    return require(path.join(root, 'apps/routeshyft-api/node_modules/jsonwebtoken'));
   } catch (_error) {
     // Continue to explicit failure with remediation.
   }
 
   throw new Error(
-    'Missing jsonwebtoken dependency. Install with `npm ci` or `cd src && npm ci` before running Epic 0 quality gates.'
+    'Missing jsonwebtoken dependency. Install with `npm ci` or `cd apps/routeshyft-api && npm ci` before running Epic 0 quality gates.'
   );
 };
 
@@ -107,7 +107,7 @@ const parseDotEnv = (filePath) => {
   return result;
 };
 
-const backendEnv = parseDotEnv(path.join(root, 'src/.env'));
+const backendEnv = parseDotEnv(path.join(root, 'apps/routeshyft-api/.env'));
 const jwtSecret = process.env.JWT_SECRET || backendEnv.JWT_SECRET || 'your_jwt_secret_change_in_production';
 const signedTenantAccessToken = jwt.sign(
   {

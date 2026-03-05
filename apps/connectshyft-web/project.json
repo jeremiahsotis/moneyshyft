@@ -8,21 +8,21 @@
     "dev": {
       "executor": "nx:run-commands",
       "options": {
-        "cwd": "apps/routeshyft-web",
+        "cwd": "apps/connectshyft-web",
         "command": "npm run dev"
       }
     },
     "build": {
       "executor": "nx:run-commands",
       "options": {
-        "cwd": "apps/routeshyft-web",
+        "cwd": "apps/connectshyft-web",
         "command": "npm run build"
       }
     },
     "preview": {
       "executor": "nx:run-commands",
       "options": {
-        "cwd": "apps/routeshyft-web",
+        "cwd": "apps/connectshyft-web",
         "command": "npm run preview"
       }
     },
