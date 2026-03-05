@@ -283,4 +283,67 @@ describe('route commitment service', () => {
       },
     });
   });
+
+  it('lists only pending commitments for bridge fetch with canonical state descriptors', async () => {
+    const pending = await service.createCommitment({
+      tenantId: 'tenant-1',
+      actorId: 'user-1',
+      sourceType: 'route_request',
+      sourceId: 'request-pending',
+      orgUnitId: 'org-1',
+    });
+    const terminal = await service.createCommitment({
+      tenantId: 'tenant-1',
+      actorId: 'user-1',
+      sourceType: 'route_request',
+      sourceId: 'request-terminal',
+      orgUnitId: 'org-1',
+    });
+
+    if (!pending.ok || !terminal.ok) {
+      throw new Error('Expected commitment creation to succeed');
+    }
+
+    await service.transitionCommitment({
+      tenantId: 'tenant-1',
+      actorId: 'user-2',
+      commitmentId: terminal.data.commitment.commitmentId,
+      nextStatus: 'in_progress',
+      reason: 'Dispatch started',
+    });
+
+    await service.transitionCommitment({
+      tenantId: 'tenant-1',
+      actorId: 'user-2',
+      commitmentId: terminal.data.commitment.commitmentId,
+      nextStatus: 'completed',
+      reason: 'Proof recorded',
+    });
+
+    const list = await service.listPendingCommitments({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      limit: 50,
+    });
+
+    expect(list).toMatchObject({
+      ok: true,
+      code: 'ROUTE_COMMITMENT_PENDING_LIST_RESOLVED',
+      data: {
+        total: 1,
+        items: [
+          {
+            commitment: {
+              commitmentId: pending.data.commitment.commitmentId,
+              status: 'scheduled',
+            },
+            state: {
+              status: 'scheduled',
+              isTerminal: false,
+            },
+          },
+        ],
+      },
+    });
+  });
 });

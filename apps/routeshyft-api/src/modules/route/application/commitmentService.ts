@@ -63,9 +63,24 @@ type TransitionCommitmentSuccess = {
   };
 };
 
+type ListPendingCommitmentsSuccess = {
+  ok: true;
+  code: 'ROUTE_COMMITMENT_PENDING_LIST_RESOLVED';
+  message: string;
+  httpStatus: 200;
+  data: {
+    items: Array<{
+      commitment: Awaited<ReturnType<CommitmentRepository['createCommitment']>>;
+      state: ReturnType<typeof describeCommitmentState>;
+    }>;
+    total: number;
+  };
+};
+
 export type CreateCommitmentResult = CreateCommitmentSuccess | ServiceRefusalResult;
 export type ResolveCommitmentResult = ResolveCommitmentSuccess | ServiceRefusalResult;
 export type TransitionCommitmentResult = TransitionCommitmentSuccess | ServiceRefusalResult;
+export type ListPendingCommitmentsResult = ListPendingCommitmentsSuccess | ServiceRefusalResult;
 
 export type CreateCommitmentCommand = {
   tenantId: string;
@@ -92,6 +107,13 @@ export type TransitionCommitmentCommand = {
   reason: string;
   policyExceptionCode?: string | null;
   allowPolicyException?: boolean;
+  dbClient?: Knex | Knex.Transaction;
+};
+
+export type ListPendingCommitmentsCommand = {
+  tenantId: string;
+  orgUnitId?: string | null;
+  limit?: number;
   dbClient?: Knex | Knex.Transaction;
 };
 
@@ -356,6 +378,39 @@ export class CommitmentService {
           commitment: persisted.commitment,
           transition: persisted.transitionAudit,
           state: describeCommitmentState(persisted.commitment.status),
+        },
+      };
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return toRefusal(
+        'ROUTE_COMMITMENT_PERSISTENCE_UNAVAILABLE',
+        'Commitment persistence is unavailable. Retry after route schema migration.',
+      );
+    }
+  }
+
+  async listPendingCommitments(input: ListPendingCommitmentsCommand): Promise<ListPendingCommitmentsResult> {
+    try {
+      const commitments = await this.repository.listPendingCommitments({
+        tenantId: input.tenantId,
+        orgUnitId: normalizeNonEmptyString(input.orgUnitId || null) || null,
+        limit: Number.isInteger(input.limit) ? (input.limit as number) : undefined,
+      }, input.dbClient);
+
+      return {
+        ok: true,
+        code: 'ROUTE_COMMITMENT_PENDING_LIST_RESOLVED',
+        message: 'Pending commitments resolved',
+        httpStatus: 200,
+        data: {
+          items: commitments.map((commitment) => ({
+            commitment,
+            state: describeCommitmentState(commitment.status),
+          })),
+          total: commitments.length,
         },
       };
     } catch (error) {
