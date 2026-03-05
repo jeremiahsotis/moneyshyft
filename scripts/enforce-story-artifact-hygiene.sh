@@ -57,6 +57,7 @@ file_list_entries_file="$tmp_dir/file-list.txt"
 debug_refs_file="$tmp_dir/debug-refs.txt"
 changed_candidates_file="$tmp_dir/changed-candidates.txt"
 changed_required_file="$tmp_dir/changed-required.txt"
+ignored_scope_markers_file="$tmp_dir/ignored-scope-markers.txt"
 
 awk '
   BEGIN { in_file_list=0 }
@@ -117,15 +118,30 @@ fi
 
 git diff --name-only >> "$changed_candidates_file"
 git diff --cached --name-only >> "$changed_candidates_file"
+git ls-files --others --exclude-standard >> "$changed_candidates_file"
 
-sort -u "$changed_candidates_file" | awk '
-  /^apps\/routeshyft-api\// || /^apps\/routeshyft-web\// || /^tests\// {
-    print $0
+# Git does not include ignored directories in `git ls-files --others --exclude-standard`,
+# but story auditability still requires explicit node_modules scope markers when present.
+git status --short --ignored=matching --untracked-files=all 2>/dev/null | awk '
+  $1 == "!!" {
+    path=$2
+    sub(/\/$/, "", path)
+    if (path ~ /^apps\/[^\/]+\/node_modules$/) {
+      print path
+    }
   }
-' > "$changed_required_file"
+' > "$ignored_scope_markers_file"
+
+if [[ -s "$ignored_scope_markers_file" ]]; then
+  cat "$ignored_scope_markers_file" >> "$changed_candidates_file"
+fi
+
+sort -u "$changed_candidates_file" \
+  | grep -E '^(apps/routeshyft-api/|apps/routeshyft-web/|tests/|_bmad-output/test-artifacts/epic-f-[^[:space:]]+|apps/[^/]+/node_modules$)' \
+  > "$changed_required_file" || true
 
 if [[ ! -s "$changed_required_file" ]]; then
-  echo "Story artifact hygiene check passed (no RouteShyft app/test story deltas detected)."
+  echo "Story artifact hygiene check passed (no story deltas detected in enforced hygiene scope)."
   exit 0
 fi
 
@@ -150,7 +166,7 @@ while IFS= read -r changed_path; do
 done < "$changed_required_file"
 
 if [[ $missing_file_list_entries -gt 0 ]]; then
-  echo "Story artifact hygiene check failed: $missing_file_list_entries changed RouteShyft app/test file(s) are missing from File List."
+  echo "Story artifact hygiene check failed: $missing_file_list_entries changed file(s) in enforced hygiene scope are missing from File List."
   exit 1
 fi
 
