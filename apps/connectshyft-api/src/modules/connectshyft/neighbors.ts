@@ -7,6 +7,7 @@ import {
   type ConnectShyftIdentityBoundaryAdapter,
   type ConnectShyftIdentityBoundaryContactPoint,
   type ConnectShyftIdentityBoundaryDecision as ConnectShyftIdentityMatchDecision,
+  type ConnectShyftIdentityBoundaryNeighbor,
   type ConnectShyftIdentityBoundaryManualResolutionContext as ConnectShyftIdentityManualResolutionContext,
   type ConnectShyftIdentityBoundaryReplay,
   type ConnectShyftIdentityBoundaryResult as ConnectShyftIdentityMatchResult,
@@ -625,6 +626,14 @@ const isMissingPersistenceError = (error: unknown): boolean => {
     || candidate.code === '42703';
 };
 
+const isPromiseLike = <T>(value: T | Promise<T>): value is Promise<T> => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  return typeof (value as { then?: unknown }).then === 'function';
+};
+
 type NeighborStoreCreateInput = {
   tenantId: string;
   orgUnitId: string;
@@ -854,6 +863,44 @@ export class InMemoryConnectShyftNeighborStore {
     return sortNeighbors(neighbors);
   }
 
+  listIdentityBoundaryNeighborsByPhoneValue(
+    tenantId: string,
+    phoneValue: string,
+  ): ConnectShyftIdentityBoundaryNeighbor[] {
+    const tenantIds = this.neighborIdsByTenant.get(tenantId);
+    if (!tenantIds || tenantIds.size === 0) {
+      return [];
+    }
+
+    const boundaryNeighbors: ConnectShyftIdentityBoundaryNeighbor[] = [];
+    tenantIds.forEach((neighborId) => {
+      const neighbor = this.neighborsById.get(neighborId);
+      if (!neighbor || neighbor.tenantId !== tenantId) {
+        return;
+      }
+
+      const phones = neighbor.phones
+        .filter((phone) => phone.value === phoneValue)
+        .map((phone) => ({
+          phoneId: phone.phoneId,
+          value: phone.value,
+          isShared: phone.isShared === true,
+          verificationStatus: normalizeVerificationStatus(phone.verificationStatus),
+        }));
+
+      if (phones.length === 0) {
+        return;
+      }
+
+      boundaryNeighbors.push({
+        neighborId: neighbor.neighborId,
+        phones,
+      });
+    });
+
+    return boundaryNeighbors.sort((left, right) => left.neighborId.localeCompare(right.neighborId));
+  }
+
   listByOrgUnit(tenantId: string, orgUnitId: string): ConnectShyftNeighbor[] {
     const scopeKey = buildTenantOrgUnitKey(tenantId, orgUnitId);
     const scopedIds = this.neighborIdsByScope.get(scopeKey);
@@ -1040,6 +1087,52 @@ export class KnexConnectShyftNeighborStore {
 
     return neighborRows.map((neighborRow) =>
       mapRowsToNeighbor(neighborRow, phonesByNeighborId.get(neighborRow.id) || []));
+  }
+
+  async listIdentityBoundaryNeighborsByPhoneValue(
+    tenantId: string,
+    phoneValue: string,
+  ): Promise<ConnectShyftIdentityBoundaryNeighbor[]> {
+    const phoneRows = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_neighbor_phones')
+      .where({
+        tenant_id: tenantId,
+        value_e164: phoneValue,
+      })
+      .orderBy('neighbor_id', 'asc')
+      .orderBy('sort_order', 'asc')
+      .orderBy('id', 'asc')
+      .select<DbNeighborPhoneRow[]>(this.neighborPhoneColumns());
+
+    if (phoneRows.length === 0) {
+      return [];
+    }
+
+    const phonesByNeighborId = new Map<string, Array<{
+      phoneId: string;
+      value: string;
+      isShared: boolean;
+      verificationStatus: 'verified' | 'unverified';
+    }>>();
+
+    phoneRows.forEach((row) => {
+      const existing = phonesByNeighborId.get(row.neighbor_id) || [];
+      existing.push({
+        phoneId: row.id,
+        value: row.value_e164,
+        isShared: row.is_shared === true,
+        verificationStatus: normalizeVerificationStatus(row.verification_status),
+      });
+      phonesByNeighborId.set(row.neighbor_id, existing);
+    });
+
+    return Array.from(phonesByNeighborId.entries())
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([neighborId, phones]) => ({
+        neighborId,
+        phones,
+      }));
   }
 
   async updateNeighbor(input: NeighborStoreUpdateInput): Promise<NeighborPersistenceResult> {
@@ -1274,6 +1367,11 @@ export class ConnectShyftNeighborService {
     this.identityBoundary = identityBoundary
       || new InProcessConnectShyftIdentityBoundaryAdapter(
         (tenantId) => this.store.listByTenant(tenantId),
+        (tenantId, normalizedContactPointValue) =>
+          this.store.listIdentityBoundaryNeighborsByPhoneValue(
+            tenantId,
+            normalizedContactPointValue,
+          ),
       );
   }
 
@@ -1381,7 +1479,12 @@ export class ConnectShyftNeighborService {
   }
 
   evaluateIdentityMatch(input: ConnectShyftIdentityMatchCommand): ConnectShyftIdentityMatchResult {
-    return this.identityBoundary.evaluateMatch(input) as ConnectShyftIdentityMatchResult;
+    const evaluated = this.identityBoundary.evaluateMatch(input);
+    if (isPromiseLike(evaluated)) {
+      throw new TypeError('ConnectShyftNeighborService requires a synchronous identity boundary adapter.');
+    }
+
+    return evaluated;
   }
 
   mergeNeighbor(input: ConnectShyftMergeNeighborCommand): ConnectShyftMergeNeighborResult {
@@ -1439,6 +1542,11 @@ export class AsyncConnectShyftNeighborService {
     this.identityBoundary = identityBoundary
       || new AsyncInProcessConnectShyftIdentityBoundaryAdapter(
         async (tenantId) => this.store.listByTenant(tenantId),
+        async (tenantId, normalizedContactPointValue) =>
+          this.store.listIdentityBoundaryNeighborsByPhoneValue(
+            tenantId,
+            normalizedContactPointValue,
+          ),
       );
   }
 
@@ -1580,7 +1688,7 @@ export class AsyncConnectShyftNeighborService {
 
   async evaluateIdentityMatch(input: ConnectShyftIdentityMatchCommand): Promise<ConnectShyftIdentityMatchResult> {
     try {
-      return await this.identityBoundary.evaluateMatch(input) as ConnectShyftIdentityMatchResult;
+      return await this.identityBoundary.evaluateMatch(input);
     } catch (error) {
       if (!isMissingPersistenceError(error)) {
         throw error;
