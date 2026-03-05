@@ -1,0 +1,62 @@
+{
+  "startedAtUtc": "2026-03-05T20:12:03.467Z",
+  "inputPath": "/Users/jeremiahotis/projects/routeshyft/docs/routeshyft/examples/wp-export-sample.json",
+  "outputPath": "/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/route-cutover-rehearsal-dry-run-2026-03-05.json",
+  "normalizedOutputPath": "/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/route-cutover-normalized-dry-run-2026-03-05.json",
+  "mode": "dry-run",
+  "apiBaseUrl": "http://127.0.0.1:3000",
+  "sourceType": "wordpress_fulfillment",
+  "writeMode": "api_only",
+  "sourceRowCount": 2,
+  "normalizedCount": 2,
+  "skippedDuplicateCount": 0,
+  "validationErrors": [],
+  "dryRunPlan": {
+    "plannedActionCount": 4,
+    "actions": [
+      {
+        "action": "POST /api/v1/route-bridge/fulfillment",
+        "rowNumber": 1,
+        "payload": {
+          "sourceType": "wordpress_fulfillment",
+          "sourceId": "wp-fulfillment-1001",
+          "orgUnitId": "org-route-bridge-1",
+          "externalRef": "wp-lineage-5001",
+          "wpWriteMode": "api_only"
+        }
+      },
+      {
+        "action": "POST /api/v1/route-bridge/fulfillment",
+        "rowNumber": 2,
+        "payload": {
+          "sourceType": "wordpress_fulfillment",
+          "sourceId": "wp-fulfillment-1002",
+          "orgUnitId": "org-route-bridge-1",
+          "externalRef": "wp-lineage-5002",
+          "wpWriteMode": "api_only"
+        }
+      },
+      {
+        "action": "POST /api/v1/route-bridge/fulfillment/:commitmentId/completion",
+        "rowNumber": 2,
+        "payload": {
+          "idempotencyKey": "wp-cutover-complete-wp-fulfillment-1002",
+          "bridgeLineageId": "wp-lineage-5002",
+          "reason": "Imported as already completed during WP cutover",
+          "wpWriteMode": "api_only"
+        }
+      },
+      {
+        "action": "GET /api/v1/route-bridge/reconciliation",
+        "query": {
+          "sourceType": "wordpress_fulfillment",
+          "orgUnitId": "org-route-bridge-1",
+          "limit": 5000
+        }
+      }
+    ]
+  },
+  "execution": null,
+  "finishedAtUtc": "2026-03-05T20:12:03.468Z",
+  "success": true
+}

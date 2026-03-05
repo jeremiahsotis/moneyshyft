@@ -21,6 +21,7 @@
     "quality-gates:epic0": "bash scripts/quality-gates-epic0.sh",
     "ci:local": "bash scripts/ci-local.sh",
     "promote:production": "bash scripts/promote-to-production.sh",
+    "cutover:rehearse:routeshyft": "node scripts/routeshyft/wp-cutover/rehearse-route-cutover.mjs",
     "nx": "nx",
     "build": "nx run-many -t build",
     "test": "nx run-many -t test",
