@@ -27,6 +27,7 @@ const isTestAuthHarnessEnabled = process.env.ENABLE_TEST_AUTH_HARNESS === 'true'
   && !!testPassword;
 
 const BCRYPT_ROUNDS = 12;
+const HARNESS_ORG_UNIT_NAME = 'Test Harness Org Unit';
 const getDb = (): Knex => {
   // Lazy-load to keep route module import-safe in unit tests that mock app wiring.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -78,6 +79,9 @@ const canUseTestAuthCredentials = (email: string, password: string): boolean => 
 
   return email.trim().toLowerCase() === testEmail.toLowerCase() && password === testPassword;
 };
+
+const normalizeHarnessRole = (role: string | null | undefined): 'admin' | 'member' =>
+  role?.trim().toLowerCase() === 'admin' ? 'admin' : 'member';
 
 const generateUniqueInvitationCode = async (): Promise<string> => {
   const db = getDb();
@@ -133,7 +137,15 @@ const createHarnessHousehold = async (): Promise<string> => {
   });
 };
 
-const ensureHarnessBaselineData = async (householdId: string): Promise<void> => {
+type HarnessUserContext = {
+  userId: string;
+  role: string | null | undefined;
+};
+
+const ensureHarnessBaselineData = async (
+  householdId: string,
+  harnessUser: HarnessUserContext | null = null,
+): Promise<void> => {
   const db = getDb();
 
   const existingAccount = await db('accounts')
@@ -177,6 +189,107 @@ const ensureHarnessBaselineData = async (householdId: string): Promise<void> => 
   }
 
   try {
+    const tenantNameRow = await db('households')
+      .where({ id: householdId })
+      .first(['name']);
+    const tenantName = typeof tenantNameRow?.name === 'string' && tenantNameRow.name.trim() !== ''
+      ? tenantNameRow.name.trim()
+      : 'Test Household';
+
+    await db
+      .withSchema('platform')
+      .table('tenants')
+      .insert({
+        id: householdId,
+        name: tenantName,
+        status: 'active',
+        created_at_utc: db.fn.now(),
+        updated_at_utc: db.fn.now(),
+      })
+      .onConflict('id')
+      .merge({
+        name: tenantName,
+        status: 'active',
+        updated_at_utc: db.fn.now(),
+      });
+
+    if (harnessUser?.userId) {
+      const normalizedHarnessRole = normalizeHarnessRole(harnessUser.role);
+      const tenantRoleSet = normalizedHarnessRole === 'admin' ? ['TENANT_ADMIN'] : ['TENANT_VIEWER'];
+      const orgUnitRoleSet = normalizedHarnessRole === 'admin' ? ['ORGUNIT_ADMIN'] : ['ORGUNIT_MEMBER'];
+
+      await db
+        .withSchema('platform')
+        .table('tenant_memberships')
+        .insert({
+          tenant_id: householdId,
+          user_id: harnessUser.userId,
+          role_set_json: JSON.stringify(tenantRoleSet),
+          created_at_utc: db.fn.now(),
+          updated_at_utc: db.fn.now(),
+        })
+        .onConflict(['tenant_id', 'user_id'])
+        .merge({
+          role_set_json: JSON.stringify(tenantRoleSet),
+          updated_at_utc: db.fn.now(),
+        });
+
+      await db
+        .withSchema('platform')
+        .table('org_units')
+        .insert({
+          tenant_id: householdId,
+          parent_org_unit_id: null,
+          type: 'ORG_UNIT',
+          node_type: 'ORGUNIT',
+          name: HARNESS_ORG_UNIT_NAME,
+          status: 'active',
+          created_at_utc: db.fn.now(),
+          updated_at_utc: db.fn.now(),
+        })
+        .onConflict(['tenant_id', 'name'])
+        .merge({
+          status: 'active',
+          updated_at_utc: db.fn.now(),
+        });
+
+      const harnessOrgUnit = await db
+        .withSchema('platform')
+        .table('org_units')
+        .where({
+          tenant_id: householdId,
+          name: HARNESS_ORG_UNIT_NAME,
+          status: 'active',
+        })
+        .first(['id']);
+
+      if (harnessOrgUnit?.id) {
+        await db
+          .withSchema('platform')
+          .table('org_unit_memberships as om')
+          .where('om.user_id', harnessUser.userId)
+          .whereIn('om.org_unit_id', db.withSchema('platform').table('org_units').where({ tenant_id: householdId }).select('id'))
+          .andWhere('om.org_unit_id', '!=', harnessOrgUnit.id)
+          .del();
+
+        await db
+          .withSchema('platform')
+          .table('org_unit_memberships')
+          .insert({
+            org_unit_id: harnessOrgUnit.id,
+            user_id: harnessUser.userId,
+            role_set_json: JSON.stringify(orgUnitRoleSet),
+            created_at_utc: db.fn.now(),
+            updated_at_utc: db.fn.now(),
+          })
+          .onConflict(['org_unit_id', 'user_id'])
+          .merge({
+            role_set_json: JSON.stringify(orgUnitRoleSet),
+            updated_at_utc: db.fn.now(),
+          });
+      }
+    }
+
     const modules = ['moneyshyft', 'connectshyft'] as const;
     for (const moduleKey of modules) {
       await db
@@ -222,7 +335,10 @@ const ensureHarnessUser = async (email: string, password: string): Promise<void>
         householdName: 'Test Household',
       });
       if (signupResult.user.householdId) {
-        await ensureHarnessBaselineData(signupResult.user.householdId);
+        await ensureHarnessBaselineData(signupResult.user.householdId, {
+          userId: signupResult.user.id,
+          role: signupResult.user.role,
+        });
       }
       return;
     } catch (error) {
@@ -258,8 +374,12 @@ const ensureHarnessUser = async (email: string, password: string): Promise<void>
   }
 
   const resolvedHouseholdId = (updates.household_id as string | undefined) ?? user.household_id ?? null;
+  const resolvedRole = (updates.role as string | undefined) ?? user.role ?? 'member';
   if (resolvedHouseholdId) {
-    await ensureHarnessBaselineData(resolvedHouseholdId);
+    await ensureHarnessBaselineData(resolvedHouseholdId, {
+      userId: user.id,
+      role: resolvedRole,
+    });
   }
 };
 
