@@ -196,6 +196,7 @@ GPT-5 Codex
 - tests/support/factories/connectShyftStoryG1Factory.ts
 - tests/support/factories/tenantRepositoryFactory.ts
 - tests/support/fixtures/connectShyftStoryG1.fixture.ts
+- tests/support/utils/policyScriptTestHarness.ts
 - tests/e2e/platform/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.spec.ts
 - tests/e2e/platform/c-2-thread-ensure-endpoint-with-conflict-safe-idempotency.spec.ts
 - tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.spec.ts
