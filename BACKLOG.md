@@ -27,6 +27,7 @@
 - Bulk edits for transactions
 - Accessibility: large text + high contrast
 - Supportive language library (shared copy for alerts/banners)
+- Legacy module API envelope migration (incremental): move existing `/api/v1/*` module routes from ad hoc JSON payloads to shared `success/refusal/systemError` helpers as each route is touched
 
 ## Milestone 2 — Reporting + Couples Collaboration (Jun → Sep)
 - Core reports: category spend, income vs expense, trend view

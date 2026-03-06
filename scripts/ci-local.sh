@@ -17,3 +17,9 @@ bash scripts/burn-in.sh 10 "$base_ref"
 
 echo "== quality gates =="
 bash scripts/quality-gates.sh
+
+branch="$(git branch --show-current 2>/dev/null || true)"
+if [[ "$branch" == "codex/epic-0-ops" ]]; then
+  echo "== epic-0 quality gates =="
+  bash scripts/quality-gates-epic0.sh
+fi

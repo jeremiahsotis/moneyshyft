@@ -18,5 +18,5 @@
 - Utility stores: `undo`, `wizard`, `celebration`
 
 ## Router + Service Layer
-- Router: `frontend/src/router/index.ts`
-- API adapter: `frontend/src/services/api.ts`
+- Router: `apps/routeshyft-web/src/router/index.ts`
+- API adapter: `apps/routeshyft-web/src/services/api.ts`
