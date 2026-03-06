@@ -131,18 +131,18 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `cat _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `cat _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
-- `rg -n "design token|contract boundary|volunteer" _bmad-output/planning-artifacts/*`
-- `cat apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts`
-- `cat apps/moneyshyft-web/src/features/connectshyft/readContracts.ts`
-- `npm run branch:ensure-workflow -- --workflow dev-story --story g-1-design-tokens-and-shared-conversation-primitives`
-- `npm run build --prefix apps/moneyshyft-web`
-- `npm run test:e2e -- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts`
-- `npm test`
-- `npm run branch:ensure-workflow -- --workflow dev-story --story _bmad-output/implementation-artifacts/g-1-design-tokens-and-shared-conversation-primitives.md`
-- `npx playwright test tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts --list`
-- `npx playwright test tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts --max-failures=1`
+- `cat _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (pass)
+- `cat _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml` (pass)
+- `rg -n "design token|contract boundary|volunteer" _bmad-output/planning-artifacts/*` (pass)
+- `cat apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts` (pass)
+- `cat apps/moneyshyft-web/src/features/connectshyft/readContracts.ts` (pass)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story g-1-design-tokens-and-shared-conversation-primitives` (pass)
+- `npm run build --prefix apps/moneyshyft-web` (pass)
+- `npm run test:e2e -- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts` (pass)
+- `npm test` (fail: non-story pre-existing suite failures)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story _bmad-output/implementation-artifacts/g-1-design-tokens-and-shared-conversation-primitives.md` (pass)
+- `npx playwright test tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts --list` (pass)
+- `npx playwright test tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts --max-failures=1` (blocked: ECONNREFUSED 127.0.0.1:3000)
 
 ### Completion Notes List
 
