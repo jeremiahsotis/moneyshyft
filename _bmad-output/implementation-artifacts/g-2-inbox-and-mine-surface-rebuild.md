@@ -155,7 +155,11 @@ GPT-5 Codex
 - `npm test -- --runInBand src/modules/connectshyft/__tests__/readContracts.test.ts` (apps/moneyshyft-api) (pass)
 - `npm test -- --runInBand src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` (apps/moneyshyft-api) (pass)
 - `npm test -- --runInBand src/modules/connectshyft/__tests__/providerRegistry.test.ts src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts src/modules/connectshyft/__tests__/readContracts.test.ts` (apps/moneyshyft-api) (pass)
+- `npm test -- --runInBand src/modules/connectshyft/__tests__/providerRegistry.test.ts src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` (apps/moneyshyft-api) (pass)
 - `npm run test:e2e -- tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts` (pass)
+- `npm run test:e2e -- tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts` (pass)
+- `npm run branch:ensure-workflow -- --workflow dev-story --story g-2-inbox-and-mine-surface-rebuild` (pass)
+- `npm run story:status:check` (pass)
 
 ### Completion Notes List
 
@@ -171,19 +175,35 @@ GPT-5 Codex
 - Propagated `targetPhone` + `body` from Inbox action UX through API route policies into provider dispatch adapters so SMS/call actions execute against selected neighbor numbers.
 - Hardened Mine ownership isolation by refusing mine-bucket reads without actor context, fail-closing read-model mine filtering when actor identity is absent, and removing claimed threads from non-owner Inbox queues.
 - Expanded backend/e2e assertions to validate dispatch payload semantics (`targetPhone`, `body`) and actor-context refusal behavior.
+- Removed serial execution constraints from g.2 automate suites and kept per-test setup deterministic for parallel-safe runs.
+- Split oversized provider-registry Jest suites into focused case modules plus shared helpers so each spec remains <=300 lines.
+- Replaced runtime option-count branching in g.2 E2E outbound workflow test with deterministic neighbor-response fixture shaping.
+- Added additional malformed actor-context API variants (space-only permutations) and validated deterministic refusal envelopes.
+- Replaced direct test-local `process.env` mutation in provider-registry signature guardrails with scoped env override helpers.
+- Synchronized sprint/story status metadata by aligning ConnectShyft sprint status for g.2 to `review`.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/g-2-inbox-and-mine-surface-rebuild.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- _bmad-output/test-artifacts/test-review.md
 - apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts
-- apps/moneyshyft-api/src/modules/connectshyft/__tests__/readContracts.test.ts
-- apps/moneyshyft-api/src/modules/connectshyft/providerRegistry.ts
-- apps/moneyshyft-api/src/modules/connectshyft/readContracts.ts
+- apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.dispatch-policy.test.ts
+- apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.resolution.test.ts
+- apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.signature.test.ts
+- apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.shared.ts
 - apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts
-- apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts
-- apps/moneyshyft-web/src/features/connectshyft/threads.ts
-- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue
+- apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts
+- apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts
+- apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.webhook-correlation-resolution.test.ts
+- apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.webhook-correlation-refusals.test.ts
+- apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.webhook-replay-signature.test.ts
+- apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.shared.ts
 - tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts
+- tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.shared.ts
+- tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.queue-layout.cases.ts
+- tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.dispatch-and-ownership.cases.ts
+- tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts
 
 ## Change Log
 
@@ -193,3 +213,5 @@ GPT-5 Codex
 - 2026-03-06: Resolved 5 review findings by removing Inbox claim/takeover controls, wiring inbox/thread outbound + lifecycle actions to real endpoints, adopting backend `display.preview`, and expanding E2E behavior assertions.
 - 2026-03-06: Reconciled story/git discrepancies by synchronizing debug evidence, file list, and senior-review remediation notes with branch-tracked changes.
 - 2026-03-06: Enforced actor-owned Mine queue semantics, propagated `targetPhone`/message payload through dispatch adapters, and added route/provider/e2e assertions to prevent dispatch regression.
+- 2026-03-06: Resolved g.2 test quality follow-ups by removing serial suite mode, splitting oversized specs into focused modules, adding scoped env overrides, expanding malformed actor-context coverage, and reconciling story metadata with branch file state.
+- 2026-03-06: Resolved sprint/story status mismatch by aligning `sprint-status-connectshyft.yaml` for g.2 to `review` and re-running status sync enforcement.

@@ -57,8 +57,6 @@ const resolveDispatchThreadId = async ({
 test.describe(
   'Story g.2 Inbox and Mine Surface Rebuild (Automate API Expansion)',
   () => {
-    test.describe.configure({ mode: 'serial' });
-
     test(
       '[G2-AUTO-API-301][P0] mine bucket refuses reads when actor context is missing to preserve actor-owned queue isolation @P0',
       async ({ request, storyG2Context, storyG2MemberHeaders, storyG2MineQuery }) => {
@@ -80,6 +78,58 @@ test.describe(
             bucket: 'mine',
           },
         });
+      },
+    );
+
+    test(
+      '[G2-AUTO-API-305][P1] mine bucket rejects malformed actor-context variants beyond whitespace-only headers @P1',
+      async ({ request, storyG2Context, storyG2MemberHeaders, storyG2MineQuery }) => {
+        const malformedVariants: Array<{
+          label: string;
+          headers: Record<string, string>;
+        }> = [
+          {
+            label: 'space-only actor header',
+            headers: {
+              ...storyG2MemberHeaders,
+              'x-test-connectshyft-user-id': '   ',
+            },
+          },
+          {
+            label: 'single-space actor header',
+            headers: {
+              ...storyG2MemberHeaders,
+              'x-test-connectshyft-user-id': ' ',
+            },
+          },
+          {
+            label: 'multi-space actor header',
+            headers: {
+              ...storyG2MemberHeaders,
+              'x-test-connectshyft-user-id': '      ',
+            },
+          },
+        ];
+
+        for (const variant of malformedVariants) {
+          await test.step(variant.label, async () => {
+            const response = await apiRequest(request, {
+              method: 'GET',
+              path: `${storyG2Context.paths.inbox}${storyG2MineQuery}`,
+              headers: variant.headers,
+            });
+
+            expect(response.status()).toBe(200);
+            const body = (await response.json()) as ConnectShyftEnvelope;
+            expect(body).toMatchObject({
+              ok: false,
+              code: 'CONNECTSHYFT_ACTOR_CONTEXT_REQUIRED',
+              data: {
+                bucket: 'mine',
+              },
+            });
+          });
+        }
       },
     );
 
