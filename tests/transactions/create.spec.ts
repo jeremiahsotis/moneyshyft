@@ -1,12 +1,30 @@
-import { test, expect } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+import { test, expect, type Page } from '@playwright/test';
 import { login } from '../helpers/auth';
 import { selectFirstNonEmptyOption, todayISO } from '../helpers/forms';
 import { deleteById } from '../helpers/cleanup';
 import { ensureAtLeastOneActiveBudgetAccount } from '../helpers/accounts';
 
+const createTenantScopedUser = async (page: Page): Promise<{ email: string; password: string }> => {
+  const email = `qa-transactions-${randomUUID().slice(0, 8)}@example.com`;
+  const password = 'SecurePass123!';
+  const response = await page.request.post('/api/v1/auth/signup', {
+    data: {
+      email,
+      password,
+      firstName: 'QA',
+      lastName: 'Transactions',
+      householdName: `QA Transactions Household ${Date.now()}`,
+    },
+  });
+  expect([200, 201]).toContain(response.status());
+  return { email, password };
+};
+
 test.describe('Transactions', () => {
   test.beforeEach(async ({ page }) => {
-    await login(page);
+    const credentials = await createTenantScopedUser(page);
+    await login(page, credentials);
   });
 
   test('creates a transaction @P0', async ({ page }) => {
