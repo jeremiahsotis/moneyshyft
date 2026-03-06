@@ -48,6 +48,7 @@ _bmad-output/test-artifacts/**
 
 # Durable summaries/reports
 !_bmad-output/test-artifacts/automation-summary.md
+!_bmad-output/test-artifacts/automation-summary-*.md
 !_bmad-output/test-artifacts/test-design-*.md
 !_bmad-output/test-artifacts/test-design-progress*.md
 !_bmad-output/test-artifacts/test-review*.md
@@ -55,6 +56,14 @@ _bmad-output/test-artifacts/**
 !_bmad-output/test-artifacts/framework-*.md
 !_bmad-output/test-artifacts/ci-pipeline-progress.md
 !_bmad-output/test-artifacts/atdd-checklist-*.md
+!_bmad-output/test-artifacts/adversarial-code-review-*.md
+!_bmad-output/test-artifacts/nfr-assessment*.md
+!_bmad-output/test-artifacts/atdd-api-tests-*-*.json
+!_bmad-output/test-artifacts/atdd-e2e-tests-*-*.json
+!_bmad-output/test-artifacts/atdd-summary-*-*.json
+_bmad-output/test-artifacts/atdd-api-tests-*-*-*.json
+_bmad-output/test-artifacts/atdd-e2e-tests-*-*-*.json
+_bmad-output/test-artifacts/atdd-summary-*-*-*.json
 
 # Policy-required/curated evidence
 !_bmad-output/test-artifacts/epic-f-*

@@ -13,8 +13,32 @@ is_allowed_artifact_path() {
     "${ARTIFACT_ROOT}/automation-summary.md")
       return 0
       ;;
+    "${ARTIFACT_ROOT}/automation-summary-"*.md)
+      return 0
+      ;;
     "${ARTIFACT_ROOT}/ci-pipeline-progress.md")
       return 0
+      ;;
+    "${ARTIFACT_ROOT}/adversarial-code-review-"*.md)
+      return 0
+      ;;
+    "${ARTIFACT_ROOT}/nfr-assessment"*.md)
+      return 0
+      ;;
+    "${ARTIFACT_ROOT}/atdd-api-tests-"*.json)
+      if [[ "$path" =~ ^${ARTIFACT_ROOT}/atdd-api-tests-[0-9]+-[0-9]+\.json$ ]]; then
+        return 0
+      fi
+      ;;
+    "${ARTIFACT_ROOT}/atdd-e2e-tests-"*.json)
+      if [[ "$path" =~ ^${ARTIFACT_ROOT}/atdd-e2e-tests-[0-9]+-[0-9]+\.json$ ]]; then
+        return 0
+      fi
+      ;;
+    "${ARTIFACT_ROOT}/atdd-summary-"*.json)
+      if [[ "$path" =~ ^${ARTIFACT_ROOT}/atdd-summary-[0-9]+-[0-9]+\.json$ ]]; then
+        return 0
+      fi
       ;;
     "${ARTIFACT_ROOT}/test-design-"*.md)
       return 0
@@ -71,7 +95,13 @@ if [[ "${#violations[@]}" -gt 0 ]]; then
   echo "Test artifact allowlist guard failed: staged test artifacts outside allowlist."
   echo "Allowed tracked patterns:"
   echo "  - ${ARTIFACT_ROOT}/automation-summary.md"
+  echo "  - ${ARTIFACT_ROOT}/automation-summary-*.md"
   echo "  - ${ARTIFACT_ROOT}/ci-pipeline-progress.md"
+  echo "  - ${ARTIFACT_ROOT}/adversarial-code-review-*.md"
+  echo "  - ${ARTIFACT_ROOT}/nfr-assessment*.md"
+  echo "  - ${ARTIFACT_ROOT}/atdd-api-tests-<epic>-<story>.json (numeric)"
+  echo "  - ${ARTIFACT_ROOT}/atdd-e2e-tests-<epic>-<story>.json (numeric)"
+  echo "  - ${ARTIFACT_ROOT}/atdd-summary-<epic>-<story>.json (numeric)"
   echo "  - ${ARTIFACT_ROOT}/test-design-*.md"
   echo "  - ${ARTIFACT_ROOT}/test-design-progress*.md"
   echo "  - ${ARTIFACT_ROOT}/test-review*.md"

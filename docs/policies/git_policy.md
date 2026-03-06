@@ -138,7 +138,13 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - `_bmad-output/test-artifacts` uses deny-by-default tracking.
 - New or modified staged files under `_bmad-output/test-artifacts/**` are allowed only when they match one of:
   - `_bmad-output/test-artifacts/automation-summary.md`
+  - `_bmad-output/test-artifacts/automation-summary-*.md`
   - `_bmad-output/test-artifacts/ci-pipeline-progress.md`
+  - `_bmad-output/test-artifacts/adversarial-code-review-*.md`
+  - `_bmad-output/test-artifacts/nfr-assessment*.md`
+  - `_bmad-output/test-artifacts/atdd-api-tests-<epic>-<story>.json` (numeric)
+  - `_bmad-output/test-artifacts/atdd-e2e-tests-<epic>-<story>.json` (numeric)
+  - `_bmad-output/test-artifacts/atdd-summary-<epic>-<story>.json` (numeric)
   - `_bmad-output/test-artifacts/test-design-*.md`
   - `_bmad-output/test-artifacts/test-design-progress*.md`
   - `_bmad-output/test-artifacts/test-review*.md`
