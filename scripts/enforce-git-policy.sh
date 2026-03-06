@@ -327,7 +327,16 @@ if [[ -n "${status_sync_story_file:-}" && -f "$status_sync_story_file" ]]; then
   fi
 fi
 
-node scripts/enforce-project-lane.js
+if [[ "$has_stories_dir" == "true" ]]; then
+  node scripts/enforce-project-lane.js
+else
+  if [[ "$is_production_promotion_context" == "true" ]]; then
+    echo "Project lane guard skipped: ${stories_dir} is excluded from production promotion snapshots."
+  else
+    echo "Policy check failed: missing stories directory: ${stories_dir}"
+    exit 1
+  fi
+fi
 if [[ "$has_stories_dir" == "true" ]]; then
   bash scripts/enforce-operability-closeout-guard.sh
 else
