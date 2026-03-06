@@ -6,7 +6,7 @@ EXCLUDE_FILE="$ROOT_DIR/.production-excludes"
 SOURCE_BRANCH="$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD)"
 TARGET_BRANCH="production"
 SOURCE_REQUIRED_BRANCH="codex/dev"
-MESSAGE="${1:-release: promote from ${SOURCE_BRANCH}}"
+MESSAGE="${1:-Chore: promote from ${SOURCE_BRANCH}}"
 
 if [[ ! -f "$EXCLUDE_FILE" ]]; then
   echo "Missing exclude file: $EXCLUDE_FILE"
