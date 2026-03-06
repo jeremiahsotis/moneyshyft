@@ -23,13 +23,47 @@ cleanup_pid_file() {
   fi
 
   if kill -0 "$pid" >/dev/null 2>&1; then
-    kill "$pid" >/dev/null 2>&1 || true
+    terminate_process_tree "$pid"
     echo "Stopped managed ${label} process (pid=$pid)"
   else
     echo "Managed ${label} process already stopped (pid=$pid)"
   fi
 
   rm -f "$pid_file"
+}
+
+terminate_process_tree() {
+  local pid="$1"
+  if [[ -z "$pid" ]]; then
+    return 0
+  fi
+
+  if ! kill -0 "$pid" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if command -v pgrep >/dev/null 2>&1; then
+    local child_pids
+    child_pids="$(pgrep -P "$pid" 2>/dev/null || true)"
+    if [[ -n "$child_pids" ]]; then
+      while IFS= read -r child_pid; do
+        [[ -z "$child_pid" ]] && continue
+        terminate_process_tree "$child_pid"
+      done <<< "$child_pids"
+    fi
+  fi
+
+  kill "$pid" >/dev/null 2>&1 || true
+
+  local attempt
+  for ((attempt = 1; attempt <= 20; attempt++)); do
+    if ! kill -0 "$pid" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.1
+  done
+
+  kill -9 "$pid" >/dev/null 2>&1 || true
 }
 
 cleanup_pid_file "$frontend_pid_file" "frontend"
