@@ -52,7 +52,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
         }),
       );
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-      await expect(page.getByRole('button', { name: /Text|Send Message/i })).toBeVisible();
+      await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toBeVisible();
       await expectThreadActions(page, ['Call', 'Text', 'Claim']);
 
@@ -65,7 +65,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
         }),
       );
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-      await expect(page.getByRole('button', { name: /Text|Send Message/i })).toBeVisible();
+      await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
       await expectThreadActions(page, ['Call', 'Text', 'Close']);
@@ -79,7 +79,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
         }),
       );
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-      await expect(page.getByRole('button', { name: /Text|Send Message/i })).toBeVisible();
+      await expect(page.getByTestId('connectshyft-send-message-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
       await expectThreadActions(page, ['Call', 'Send Message']);
     },
@@ -100,7 +100,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
         }),
       );
 
-      await page.getByRole('button', { name: /Send Message|Text/i }).click();
+      await page.getByTestId('connectshyft-send-text-thread-action').click();
       await expect(page.getByTestId('connectshyft-preference-override-modal')).toBeVisible();
       await expect(
         page.getByTestId('connectshyft-preference-override-reason-select'),
@@ -126,18 +126,16 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
         }),
       );
 
-      const threadIdChip = page.getByTestId('connectshyft-thread-id-chip');
-      const priorThreadIdText = await threadIdChip.textContent();
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Closed');
+      await page.getByTestId('connectshyft-send-message-thread-action').click();
 
-      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLOSED');
-      await page.getByRole('button', { name: /Send Message|Text/i }).click();
-
-      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');
       await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toContainText(
         /reopened/i,
       );
-      expect(priorThreadIdText?.trim().length).toBeGreaterThan(0);
-      await expect(threadIdChip).toContainText((priorThreadIdText || '').trim());
+      await expect(page).toHaveURL(
+        new RegExp(`/app/connectshyft/threads/${context.threadIds.closedPrefersNo}`),
+      );
     },
   );
 
@@ -180,7 +178,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
         }),
       );
 
-      await page.getByRole('button', { name: /Send Message|Text/i }).click();
+      await page.getByTestId('connectshyft-send-text-thread-action').click();
       await expect(page.getByTestId('connectshyft-policy-refusal-banner')).toContainText(
         /override reason/i,
       );
@@ -250,7 +248,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
         }),
       );
 
-      await page.getByRole('button', { name: /Send Message|Text/i }).click();
+      await page.getByTestId('connectshyft-send-text-thread-action').click();
       await expect(page.getByTestId('connectshyft-policy-success-banner')).toContainText(
         /policy guardrails satisfied/i,
       );
@@ -259,7 +257,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
         'polite',
       );
 
-      await page.getByRole('button', { name: /Send Message|Text/i }).click();
+      await page.getByTestId('connectshyft-send-text-thread-action').click();
       await expect(page.getByTestId('connectshyft-policy-error-banner')).toContainText(
         /policy guardrail validation failed/i,
       );

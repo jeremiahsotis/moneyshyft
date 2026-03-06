@@ -4,6 +4,7 @@ set -euo pipefail
 API_URL="${API_URL:-http://localhost:3001}"
 BASE_URL="${BASE_URL:-http://localhost:5174}"
 AUTO_START_STACK="${AUTO_START_STACK:-true}"
+PLAYWRIGHT_STACK_MODE="${PLAYWRIGHT_STACK_MODE:-always}"
 RUNTIME_DIR="${RUNTIME_DIR:-tests/artifacts/runtime}"
 BACKEND_LOG_FILE="${RUNTIME_DIR}/backend.log"
 FRONTEND_LOG_FILE="${RUNTIME_DIR}/frontend.log"
@@ -42,6 +43,16 @@ BACKEND_PID=""
 FRONTEND_PID=""
 BACKEND_STARTED=false
 FRONTEND_STARTED=false
+FORCE_MANAGED_STACK=false
+
+if [[ "$PLAYWRIGHT_STACK_MODE" != "always" && "$PLAYWRIGHT_STACK_MODE" != "auto" ]]; then
+  echo "Playwright preflight failed: PLAYWRIGHT_STACK_MODE must be 'always' or 'auto' (got '$PLAYWRIGHT_STACK_MODE')."
+  exit 1
+fi
+
+if [[ "$PLAYWRIGHT_STACK_MODE" == "always" ]]; then
+  FORCE_MANAGED_STACK=true
+fi
 
 validate_allowed_host() {
   local url="$1"
@@ -432,7 +443,7 @@ cleanup_pidfile_process() {
 
   if kill -0 "$pid" >/dev/null 2>&1; then
     echo "Cleaning stale managed $label process (pid=$pid)"
-    kill "$pid" >/dev/null 2>&1 || true
+    terminate_process_tree "$pid"
   fi
   rm -f "$pid_file"
 }
@@ -455,15 +466,49 @@ print_runtime_logs() {
 
 cleanup_started_processes() {
   if [[ "$FRONTEND_STARTED" == "true" && -n "$FRONTEND_PID" ]]; then
-    kill "$FRONTEND_PID" >/dev/null 2>&1 || true
+    terminate_process_tree "$FRONTEND_PID"
     wait "$FRONTEND_PID" >/dev/null 2>&1 || true
     rm -f "$FRONTEND_PID_FILE"
   fi
   if [[ "$BACKEND_STARTED" == "true" && -n "$BACKEND_PID" ]]; then
-    kill "$BACKEND_PID" >/dev/null 2>&1 || true
+    terminate_process_tree "$BACKEND_PID"
     wait "$BACKEND_PID" >/dev/null 2>&1 || true
     rm -f "$BACKEND_PID_FILE"
   fi
+}
+
+terminate_process_tree() {
+  local pid="$1"
+  if [[ -z "$pid" ]]; then
+    return 0
+  fi
+
+  if ! kill -0 "$pid" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if command -v pgrep >/dev/null 2>&1; then
+    local child_pids
+    child_pids="$(pgrep -P "$pid" 2>/dev/null || true)"
+    if [[ -n "$child_pids" ]]; then
+      while IFS= read -r child_pid; do
+        [[ -z "$child_pid" ]] && continue
+        terminate_process_tree "$child_pid"
+      done <<< "$child_pids"
+    fi
+  fi
+
+  kill "$pid" >/dev/null 2>&1 || true
+
+  local attempt
+  for ((attempt = 1; attempt <= 20; attempt++)); do
+    if ! kill -0 "$pid" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.1
+  done
+
+  kill -9 "$pid" >/dev/null 2>&1 || true
 }
 
 on_exit() {
@@ -514,8 +559,15 @@ if [[ ! -x "$FRONTEND_APP_DIR/node_modules/.bin/vite" ]]; then
   exit 1
 fi
 
+echo "Managed runtime policy: stack mode is '$PLAYWRIGHT_STACK_MODE'"
+
+cleanup_pidfile_process "$BACKEND_PID_FILE" "backend"
+cleanup_pidfile_process "$FRONTEND_PID_FILE" "frontend"
+
 backend_requires_managed_start=false
-if is_backend_healthy; then
+if [[ "$FORCE_MANAGED_STACK" == "true" ]]; then
+  backend_requires_managed_start=true
+elif is_backend_healthy; then
   if [[ "$ENABLE_TEST_CONNECTSHYFT_FLAGS" == "true" ]]; then
     backend_requires_managed_start=true
     if [[ "$AUTO_START_STACK" != "true" ]]; then
@@ -531,7 +583,7 @@ if is_backend_healthy; then
       echo "Playwright preflight failed: backend at $API_URL is occupied and no alternate port was found."
       exit 1
     fi
-    echo "Managed runtime policy: ConnectShyft override mode requires isolated backend; switching to managed backend on port $local_backend_port"
+    echo "Managed runtime policy: ConnectShyft test override mode requires isolated backend; switching to managed backend on port $local_backend_port"
     update_api_url_from_port "$local_backend_port"
   elif ! is_backend_ready_for_tests; then
     backend_requires_managed_start=true
@@ -561,7 +613,19 @@ if [[ "$backend_requires_managed_start" == "true" ]]; then
     exit 1
   fi
 
-  cleanup_pidfile_process "$BACKEND_PID_FILE" "backend"
+  if is_port_occupied "$backend_port"; then
+    local_backend_port="$(find_available_port "$backend_port" || true)"
+    if [[ -z "${local_backend_port:-}" ]]; then
+      echo "Playwright preflight failed: backend port $backend_port is occupied and no alternate managed port was found."
+      exit 1
+    fi
+    if [[ "$local_backend_port" == "$backend_port" ]]; then
+      echo "Playwright preflight failed: backend port $backend_port is occupied and no alternate managed port was found."
+      exit 1
+    fi
+    echo "Managed runtime policy: backend port $backend_port is occupied; switching managed backend to port $local_backend_port"
+    update_api_url_from_port "$local_backend_port"
+  fi
 
   echo "Managed runtime policy: running backend migrations"
   if ! run_backend_migrations; then
@@ -584,7 +648,9 @@ if [[ "$backend_requires_managed_start" == "true" ]]; then
 fi
 
 frontend_requires_managed_start=false
-if ! is_frontend_reachable; then
+if [[ "$FORCE_MANAGED_STACK" == "true" ]]; then
+  frontend_requires_managed_start=true
+elif ! is_frontend_reachable; then
   frontend_requires_managed_start=true
 fi
 
@@ -598,9 +664,7 @@ if [[ "$frontend_requires_managed_start" == "true" ]]; then
     exit 1
   fi
 
-  cleanup_pidfile_process "$FRONTEND_PID_FILE" "frontend"
-
-  if is_frontend_reachable; then
+  if is_port_occupied "$frontend_port"; then
     local_frontend_port="$(find_available_port "$frontend_port" || true)"
     if [[ -z "${local_frontend_port:-}" ]]; then
       echo "Playwright preflight failed: unable to find an available managed frontend port near $frontend_port."

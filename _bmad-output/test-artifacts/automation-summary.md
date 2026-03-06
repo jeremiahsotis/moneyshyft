@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-04T14:34:41Z'
+lastSaved: '2026-03-06T13:55:05Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -4583,3 +4583,207 @@ lastSaved: '2026-03-04T14:34:41Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` to score maintainability and quality-rubric alignment for Story e.6 automate coverage.
 - `[TR] Trace Requirements` to map Story e.6 acceptance criteria across ATDD and automate evidence before release cutover.
+
+## Story g.1 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+  - `@faker-js/faker`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/g-1-design-tokens-and-shared-conversation-primitives.md`
+  - Existing ATDD files found for Story g.1:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts`
+
+### Context Loaded
+- Test framework config loaded: `/Users/jeremiahotis/projects/connectshyft/playwright.config.ts`.
+- Existing test structure reviewed under `/Users/jeremiahotis/projects/connectshyft/tests`.
+- Story g.1 assets loaded:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryG1Factory.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryG1.fixture.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/components/connectshyft/connectShyftTokens.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/features/connectshyft/readContracts.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue`
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils and guidance:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+  - `playwright-cli.md`
+- Additional generation patterns:
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `api-testing-patterns.md`
+
+## Story g.1 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- `playwright-cli` availability confirmed and session started.
+- Attempted target: `http://127.0.0.1:5174`
+- Result: `net::ERR_CONNECTION_REFUSED` (no local runtime was active during discovery).
+- Session hygiene: `playwright-cli -s=tea-automate-g1 close` executed successfully.
+- Fallback applied: artifact and code-driven target selection.
+
+### Acceptance Criteria to Target Mapping
+- AC1 (token contract):
+  - verify CSS variable-driven primitives (`queue-card`, `pill`, `header`, `bubble`, `composer`, `action bar`) remain tokenized.
+  - verify responsive token scale progression and mode markers.
+- AC2 (shared primitives across surfaces):
+  - verify Inbox and Thread primitives expose deterministic test ids and accessibility hooks.
+- AC3 (display-safe copy):
+  - verify API and E2E visible operator copy suppress forbidden metadata tokens and raw identifier patterns.
+- AC4 (responsive behavior):
+  - verify mobile/tablet/desktop mode markers and min body text / tap target constraints.
+
+### Selected Test Levels
+- **API** (primary): read-envelope stability, bucket/state metadata, display-safe copy suppression, reusable action-label contract.
+- **E2E** (primary): token-driven primitive styling, responsive mode scaling, accessibility hooks and metadata suppression.
+
+### Priority Assignment
+- P0:
+  - envelope/context stability for story g.1 consumers.
+  - token-driven primitive style contract continuity in rendered surfaces.
+- P1:
+  - display-safe copy suppression checks.
+  - reusable action-label contract checks.
+  - responsive mode and scale non-regression checks.
+
+### Coverage Plan
+- API target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts`
+- E2E target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts`
+- Scope: `critical-paths`
+- ATDD duplication control:
+  - Existing `.atdd.*` files remain acceptance references.
+  - `.automate.*` files provide executable regression expansion with stable runtime data discovery.
+
+## Story g.1 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-03-06T13-55-05Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-03-06T13-55-05Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-03-06T13-55-05Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 4`
+- E2E subprocess status: `success: true`, `test_count: 3`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed for API and E2E in one pass.
+- Sequential equivalent would require two generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story g.1 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts`
+- `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts`
+
+### Fixture/Helper Aggregation
+- Reused existing fixture/helper assets:
+  - `tests/support/fixtures/connectShyftStoryG1.fixture.ts`
+  - `tests/support/factories/connectShyftStoryG1Factory.ts`
+  - `tests/helpers/auth.ts`
+  - `tests/support/helpers/apiClient.ts`
+- New shared fixture files created: none.
+
+### Summary Metrics
+- Total tests generated: `7`
+  - API tests: `4` (1 file)
+  - E2E tests: `3` (1 file)
+- Priority coverage:
+  - P0: `3`
+  - P1: `4`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-03-06T13-55-05Z.json`
+
+### Artifact Retention Path
+- Copied temp artifacts to test-artifact storage:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-1-2026-03-06T13-55-05Z/tea-automate-api-tests-2026-03-06T13-55-05Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-1-2026-03-06T13-55-05Z/tea-automate-e2e-tests-2026-03-06T13-55-05Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-1-2026-03-06T13-55-05Z/tea-automate-summary-2026-03-06T13-55-05Z.json`
+
+## Story g.1 Run - Step 4: Validate and Summarize
+
+### Coverage Plan by Test Level and Priority
+- API file (`g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts`):
+  - P0: 2, P1: 2, P2: 0, P3: 0
+- E2E file (`g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts`):
+  - P0: 1, P1: 2, P2: 0, P3: 0
+
+### Files Created or Updated
+- Created:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts`
+- Updated:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-summary.md`
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping by AC and priority: passed.
+- Generated suite parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts`
+  - Result: passed (`7` tests discovered in `2` files).
+- Generated suite execution validation:
+  - `npm run test:e2e -- tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts`
+  - Result: `7 passed`.
+- Quality checks on generated files:
+  - no hard waits (`waitForTimeout`) detected.
+  - no brittle CSS/XPath selectors added.
+  - deterministic test ids and aria-label assertions included.
+- CLI session cleanup:
+  - discovery session `tea-automate-g1` closed.
+- Temp artifact storage:
+  - subprocess and summary JSON artifacts persisted under `_bmad-output/test-artifacts/automation-runs/g-1-2026-03-06T13-55-05Z`.
+
+### Key Assumptions
+- ConnectShyft runtime dataset provides at least one inbox thread during test runs.
+- Test harness query flags (`module:on,inbox:on,escalation:on,webhooks:on`) remain supported.
+- Story g.1 frontend token/primitives contracts remain anchored to current component/read-contract files.
+
+### Risks
+- Browser discovery via `playwright-cli` was unavailable during pre-generation (`ERR_CONNECTION_REFUSED`) and target analysis used code/artifact fallback.
+- API payloads may omit some optional display projection fields; assertions were scoped to stable contract fields and safe-copy checks only when copy fields are present.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` to score maintainability/quality-rubric alignment for g.1 automate coverage.
+- `[TR] Trace Requirements` to map g.1 acceptance criteria across ATDD + automate suites for gate reporting.

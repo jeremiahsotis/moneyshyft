@@ -1,5 +1,6 @@
 import api from '@/services/api';
 import { buildConnectShyftTestOverrideHeaders } from '@/features/connectshyft/flags';
+import { sanitizeConnectShyftOperatorCopy } from '@/features/connectshyft/uiContracts';
 
 export type ConnectShyftThreadState = 'UNCLAIMED' | 'CLAIMED' | 'CLOSED';
 export type ConnectShyftInboxBucket = 'inbox' | 'mine';
@@ -34,6 +35,16 @@ export type ConnectShyftThreadSummary = {
   voicemailIndicator: boolean;
   voicemailLabel: string | null;
   summary: string;
+  display: {
+    title: string;
+    urgencyLabel: string;
+    stateLabel: string;
+    inboundContext: string;
+    outboundContext: string;
+    neighborContext: string;
+    conferenceContext: string;
+    voicemailLabel: string;
+  };
 };
 
 export type ConnectShyftThreadDetail = ConnectShyftThreadSummary & {
@@ -208,6 +219,18 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
   const preferredOutboundContext = parsePreferredOutboundContext(
     candidate.preferredOutboundContext ?? candidate.preferred_outbound_context,
   );
+  const state = normalizeState(candidate.state);
+  const urgencyLabel = normalizeString(candidate.urgencyLabel);
+  const lastInboundCsNumberId = normalizeString(
+    candidate.lastInboundCsNumberId ?? candidate.last_inbound_cs_number_id,
+  );
+  const preferredOutboundCsNumberId = normalizeString(
+    candidate.preferredOutboundCsNumberId ?? candidate.preferred_outbound_cs_number_id,
+  );
+  const safeSummary = sanitizeConnectShyftOperatorCopy(
+    normalizeString(candidate.summary),
+    'Conversation in progress.',
+  );
 
   const voicemailIndicator =
     candidate.voicemailIndicator === true || hasVoicemailTimelineEvent(candidate.timeline);
@@ -215,32 +238,60 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
     candidate.voicemailLabel ?? candidate.voicemail_label,
   );
   const voicemailLabel = explicitVoicemailLabel
-    || (voicemailIndicator
-      ? (normalizeState(candidate.state) === 'UNCLAIMED' ? 'Voicemail received' : 'Voicemail')
-      : '');
+    || (voicemailIndicator ? (state === 'UNCLAIMED' ? 'Voicemail received' : 'Voicemail') : '');
+
+  const displayStateLabel = state === 'UNCLAIMED'
+    ? 'Unclaimed'
+    : state === 'CLAIMED'
+      ? 'Claimed'
+      : 'Closed';
+  const displayUrgencyLabel = sanitizeConnectShyftOperatorCopy(
+    urgencyLabel,
+    state === 'UNCLAIMED' ? 'New conversation' : 'Active follow-up',
+  );
+  const displayInboundContext = lastInboundCsNumberId
+    ? 'cs-number inbound line configured'
+    : 'Inbound line unavailable';
+  const displayOutboundContext = preferredOutboundContext.label
+    ? sanitizeConnectShyftOperatorCopy(
+      preferredOutboundContext.label,
+      'cs-number outbound line configured',
+    )
+    : preferredOutboundCsNumberId
+      ? 'cs-number outbound line configured'
+      : 'Outbound line unavailable';
+  const displayVoicemailLabel = voicemailIndicator
+    ? sanitizeConnectShyftOperatorCopy(voicemailLabel, 'Voicemail waiting for review')
+    : '';
 
   return {
     threadId,
     orgUnitId: normalizeString(candidate.orgUnitId),
-    state: normalizeState(candidate.state),
+    state,
     claimedByUserId: normalizeString(
       candidate.claimedByUserId ?? candidate.claimed_by_user_id,
     ) || null,
     bucket: normalizeBucket(candidate.bucket),
     escalationStage: normalizeStage(candidate.escalationStage),
     priorityRank: normalizePriorityRank(candidate.priorityRank),
-    urgencyLabel: normalizeString(candidate.urgencyLabel),
+    urgencyLabel,
     lastActivityAtUtc: normalizeString(candidate.lastActivityAtUtc),
-    lastInboundCsNumberId: normalizeString(
-      candidate.lastInboundCsNumberId ?? candidate.last_inbound_cs_number_id,
-    ),
-    preferredOutboundCsNumberId: normalizeString(
-      candidate.preferredOutboundCsNumberId ?? candidate.preferred_outbound_cs_number_id,
-    ),
+    lastInboundCsNumberId,
+    preferredOutboundCsNumberId,
     preferredOutboundContext,
     voicemailIndicator,
     voicemailLabel: voicemailLabel || null,
-    summary: normalizeString(candidate.summary),
+    summary: safeSummary,
+    display: {
+      title: safeSummary,
+      urgencyLabel: displayUrgencyLabel,
+      stateLabel: displayStateLabel,
+      inboundContext: displayInboundContext,
+      outboundContext: displayOutboundContext,
+      neighborContext: `Neighbor context: ${safeSummary}`,
+      conferenceContext: `Conference context: ${displayOutboundContext}`,
+      voicemailLabel: displayVoicemailLabel,
+    },
   };
 };
 

@@ -92,75 +92,23 @@
             <li
               v-for="item in threadItems"
               :key="item.threadId"
-              class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
               :data-testid="`connectshyft-thread-card-${item.threadId}`"
             >
-              <div data-testid="connectshyft-thread-card" class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div class="min-w-0">
-                  <p data-testid="connectshyft-thread-card-body" class="text-base font-semibold leading-6 text-slate-900">
-                    {{ item.summary || item.threadId }}
-                  </p>
-                  <p
-                    v-if="item.urgencyLabel"
-                    class="mt-2 inline-flex rounded-md bg-amber-100 px-2 py-1 text-base font-semibold text-amber-900"
-                  >
-                    {{ item.urgencyLabel }}
-                  </p>
-                  <p
-                    data-testid="connectshyft-thread-last-inbound-number"
-                    class="mt-3 text-base text-slate-700"
-                  >
-                    Last inbound number: {{ item.lastInboundCsNumberId || 'n/a' }}
-                  </p>
-                  <p
-                    data-testid="connectshyft-thread-preferred-outbound-number"
-                    class="mt-1 text-base text-slate-700"
-                  >
-                    Preferred outbound number: {{ item.preferredOutboundCsNumberId || 'n/a' }}
-                  </p>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2 sm:justify-end">
-                  <span
-                    data-testid="connectshyft-thread-state-chip"
-                    class="rounded-md bg-slate-200 px-2 py-1 text-base font-semibold uppercase tracking-wide text-slate-700"
-                  >
-                    {{ item.state }}
-                  </span>
-                  <span
-                    data-testid="connectshyft-inbox-item-priority-rank"
-                    class="rounded-md border border-slate-300 bg-slate-100 px-2 py-1 text-base font-semibold text-slate-700"
-                  >
-                    {{ item.priorityRank }}
-                  </span>
-                  <span
-                    v-if="item.voicemailIndicator"
-                    :data-testid="`connectshyft-voicemail-indicator-${item.threadId}`"
-                    class="rounded-md bg-blue-100 px-2 py-1 text-base font-semibold text-blue-700"
-                  >
-                    Voicemail waiting
-                  </span>
-                  <span
-                    v-if="item.voicemailIndicator && item.voicemailLabel"
-                    :data-testid="`connectshyft-voicemail-label-${item.threadId}`"
-                    class="rounded-md border border-blue-200 bg-white px-2 py-1 text-base font-medium text-blue-800"
-                  >
-                    {{ item.voicemailLabel }}
-                  </span>
-                  <RouterLink
-                    :to="buildThreadDetailPath(item.threadId)"
-                    data-testid="connectshyft-thread-card-primary-action"
-                    :aria-label="`Open thread detail for ${item.summary || 'selected thread'}`"
-                    :style="tapTargetStyle"
-                    :class="[
-                      'inline-flex min-h-[44px] min-w-[88px] items-center justify-center rounded-lg bg-slate-900 px-4 text-base font-semibold text-white',
-                      focusRingClass,
-                    ]"
-                  >
-                    Open
-                  </RouterLink>
-                </div>
-              </div>
+              <ConnectShyftQueueCard
+                :thread-id="item.threadId"
+                :title="item.display.title"
+                :urgency-label="item.display.urgencyLabel"
+                :last-inbound-context="`Inbound line: ${item.display.inboundContext}`"
+                :preferred-outbound-context="`Outbound line: ${item.display.outboundContext}`"
+                :state-label="item.display.stateLabel"
+                :voicemail-indicator="item.voicemailIndicator"
+                :voicemail-label="item.display.voicemailLabel"
+                :thread-path="buildThreadDetailPath(item.threadId)"
+                primary-action-label="Open"
+                :primary-action-aria-label="`Open thread detail for ${item.display.title || 'selected thread'}`"
+                :focus-ring-class="focusRingClass"
+                :tap-target-style="tapTargetStyle"
+              />
             </li>
           </ul>
 
@@ -205,7 +153,7 @@
             </ul>
           </section>
 
-          <div class="flex flex-wrap gap-3">
+          <div data-testid="connectshyft-inbox-action-bar" class="flex flex-wrap gap-3">
             <button
               type="button"
               :data-testid="inboxActionCopy.openConversation.testId"
@@ -292,6 +240,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
+import ConnectShyftQueueCard from '@/components/connectshyft/ConnectShyftQueueCard.vue';
 import {
   DEFAULT_CONNECTSHYFT_AVAILABILITY,
   fetchConnectShyftAvailability,

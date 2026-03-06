@@ -90,3 +90,17 @@ runs:
           echo "Prebuilt Playwright browsers unavailable; using cached/install fallback."
           npx playwright install chromium
         fi
+
+        expected_chromium_path="$(node -e "const { chromium } = require('playwright'); process.stdout.write(chromium.executablePath());")"
+        if [ -x "$expected_chromium_path" ]; then
+          echo "Playwright chromium executable present at: $expected_chromium_path"
+        else
+          echo "Playwright chromium executable missing at: $expected_chromium_path"
+          echo "Installing Playwright chromium to satisfy runtime executable requirements..."
+          npx playwright install chromium
+          expected_chromium_path="$(node -e "const { chromium } = require('playwright'); process.stdout.write(chromium.executablePath());")"
+          if [ ! -x "$expected_chromium_path" ]; then
+            echo "Chromium executable still missing after install: $expected_chromium_path"
+            exit 1
+          fi
+        fi

@@ -19,7 +19,7 @@ const normalizeValue = (value: string | null | undefined): string | null => {
 };
 
 export const resolveTenantRequestContext = (req: Request): TenantRequestContext => {
-  const userTenant = normalizeValue(req.user?.activeTenantId || null);
+  const userTenant = normalizeValue(req.user?.activeTenantId || req.user?.householdId || null);
   const userOrgUnit = normalizeValue(req.user?.activeOrgUnitId || null);
   const tenantId = userTenant || 'public';
 

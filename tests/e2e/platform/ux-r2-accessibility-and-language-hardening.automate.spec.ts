@@ -69,6 +69,23 @@ const hasForbiddenToken = (
   return forbiddenTokens.some((token) => lowered.includes(token.toLowerCase()));
 };
 
+const submitAddNeighbor = async (page: Page, phone: string): Promise<void> => {
+  const toggle = page.getByTestId('connectshyft-add-neighbor-action');
+  const form = page.getByTestId('connectshyft-add-neighbor-form');
+  if (!(await form.isVisible())) {
+    await toggle.click();
+  }
+  if (!(await form.isVisible())) {
+    await toggle.click();
+  }
+  await expect(form).toBeVisible();
+
+  await form.getByTestId('connectshyft-add-neighbor-phone').fill(phone);
+  const submitAction = form.getByTestId('connectshyft-add-neighbor-submit-action');
+  await expect(submitAction).toBeVisible();
+  await submitAction.click();
+};
+
 test.describe('Story ux-r2 automate - accessibility and language hardening operator journeys', () => {
   test.describe.configure({ mode: 'serial' });
 
@@ -164,9 +181,7 @@ test.describe('Story ux-r2 automate - accessibility and language hardening opera
         /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i,
       );
 
-      await page.getByTestId('connectshyft-add-neighbor-action').click();
-      await page.getByTestId('connectshyft-add-neighbor-phone').fill('');
-      await page.getByTestId('connectshyft-add-neighbor-submit-action').click();
+      await submitAddNeighbor(page, '');
 
       const refusalBanner = page.getByTestId('connectshyft-feedback-banner');
       await expect(refusalBanner).toHaveAttribute('data-feedback-taxonomy', context.outcomeTaxonomy[1]);
@@ -248,9 +263,7 @@ test.describe('Story ux-r2 automate - accessibility and language hardening opera
         }),
       );
 
-      await page.getByTestId('connectshyft-add-neighbor-action').click();
-      await page.getByTestId('connectshyft-add-neighbor-phone').fill('+1 (555) 010-2048');
-      await page.getByTestId('connectshyft-add-neighbor-submit-action').click();
+      await submitAddNeighbor(page, '+1 (555) 010-2048');
       const feedbackBanner = page.getByTestId('connectshyft-feedback-banner');
       await expect(feedbackBanner).toHaveAttribute(
         'data-feedback-taxonomy',
@@ -258,9 +271,7 @@ test.describe('Story ux-r2 automate - accessibility and language hardening opera
       );
       await expect(feedbackBanner).toContainText(/^Success:/i);
 
-      await page.getByTestId('connectshyft-add-neighbor-action').click();
-      await page.getByTestId('connectshyft-add-neighbor-phone').fill('');
-      await page.getByTestId('connectshyft-add-neighbor-submit-action').click();
+      await submitAddNeighbor(page, '');
       await expect(feedbackBanner).toHaveAttribute(
         'data-feedback-taxonomy',
         context.outcomeTaxonomy[1],

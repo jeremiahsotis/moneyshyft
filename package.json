@@ -36,16 +36,18 @@
     "affected:test": "nx affected -t test",
     "affected:lint": "nx affected -t lint"
   },
-  "dependencies": {},
   "devDependencies": {
     "@faker-js/faker": "^9.9.0",
-    "@playwright/test": "^1.57.0",
-    "playwright": "^1.57.0",
-    "nx": "^20.0.0",
+    "@nx/eslint-plugin": "^20.0.0",
+    "@playwright/test": "^1.58.2",
     "eslint": "^9.0.0",
-    "@nx/eslint-plugin": "^20.0.0"
+    "nx": "^20.0.0",
+    "playwright": "^1.58.2"
   },
   "name": "moneyshyft-monorepo",
   "private": true,
-  "packageManager": "pnpm@10.28.0"
+  "packageManager": "pnpm@10.28.0",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3"
+  }
 }

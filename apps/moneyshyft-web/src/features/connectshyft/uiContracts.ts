@@ -1,3 +1,11 @@
+import {
+  CONNECTSHYFT_DESIGN_TOKENS,
+  CONNECTSHYFT_READABILITY_CONTRACT,
+  CONNECTSHYFT_REQUIRED_CSS_VARIABLES,
+  CONNECTSHYFT_RESPONSIVE_BREAKPOINTS,
+  CONNECTSHYFT_TOKEN_GROUPS,
+} from '@/components/connectshyft/connectShyftTokens';
+
 export type ConnectShyftFeedbackTaxonomy = 'success' | 'refusal' | 'error';
 
 export type ConnectShyftFeedback = {
@@ -15,9 +23,17 @@ type ConnectShyftActionContract = {
 };
 
 export const CONNECTSHYFT_ACCESSIBILITY_LOCKS = {
-  minBodyTextPx: 16,
-  minTapTargetPx: 44,
+  minBodyTextPx: CONNECTSHYFT_READABILITY_CONTRACT.minBodyTextPx,
+  minTapTargetPx: CONNECTSHYFT_READABILITY_CONTRACT.minTapTargetPx,
 } as const;
+
+export {
+  CONNECTSHYFT_DESIGN_TOKENS,
+  CONNECTSHYFT_READABILITY_CONTRACT,
+  CONNECTSHYFT_REQUIRED_CSS_VARIABLES,
+  CONNECTSHYFT_RESPONSIVE_BREAKPOINTS,
+  CONNECTSHYFT_TOKEN_GROUPS,
+};
 
 export const CONNECTSHYFT_FOCUS_RING_CLASS =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2';
@@ -28,6 +44,15 @@ export const CONNECTSHYFT_FORBIDDEN_COPY_TOKENS = [
   'org_unit',
   'tenant_id',
   'role_id',
+  'threadid',
+  'thread_id',
+  'priorityrank',
+  'priority_rank',
+  'routingmetadata',
+  'routing_metadata',
+  'last_inbound_cs_number_id',
+  'preferred_outbound_cs_number_id',
+  'cs_number_id',
 ] as const;
 
 const CONNECTSHYFT_CANONICAL_STATE_ACTIONS: Record<

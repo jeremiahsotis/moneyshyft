@@ -46,7 +46,7 @@ test.describe(
         expect(webhookResponse.status()).toBe(200);
 
         await page.goto(detailUrl);
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');
         await expect(escalationChip).toHaveText(
           baselineEscalationLabel || 'Needs urgent attention',
         );
@@ -71,7 +71,7 @@ test.describe(
         expect(missedInboundResponse.status()).toBe(200);
 
         await page.goto(detailUrl);
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');
         await expect(escalationChip).toHaveText(
           baselineEscalationLabel || 'Needs urgent attention',
         );

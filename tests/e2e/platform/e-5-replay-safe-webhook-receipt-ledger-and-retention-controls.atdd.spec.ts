@@ -104,7 +104,7 @@ test.describe(
         await detailRequest;
 
         await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
-        await expect(page.getByTestId('connectshyft-thread-id-chip')).toContainText(threadId);
+        await expect(page).toHaveURL(new RegExp(`/app/connectshyft/threads/${threadId}`));
         await expect(page.getByTestId('connectshyft-thread-state-chip')).toBeVisible();
       },
     );
@@ -238,7 +238,7 @@ test.describe(
         await detailRequest;
 
         await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
-        await expect(page.getByTestId('connectshyft-thread-id-chip')).toContainText(threadId);
+        await expect(page).toHaveURL(new RegExp(`/app/connectshyft/threads/${threadId}`));
         await expect(
           page.getByTestId('connectshyft-thread-metadata-last-inbound-number'),
         ).toBeVisible();

@@ -11,6 +11,7 @@ const mockSetAuthCookies = jest.fn();
 const mockRevokeSessionById = jest.fn();
 const mockRevokeSessionByRefreshToken = jest.fn();
 const mockGetUserById = jest.fn();
+const mockResolveActiveTenantIdForSession = jest.fn();
 const mockResolveActiveOrgUnitIdForSession = jest.fn();
 
 jest.mock('../../../../services/AuthService', () => ({
@@ -19,6 +20,8 @@ jest.mock('../../../../services/AuthService', () => ({
     signup: jest.fn(),
     login: jest.fn(),
     getUserById: (...args: unknown[]) => mockGetUserById(...args),
+    resolveActiveTenantIdForSession: (...args: unknown[]) =>
+      mockResolveActiveTenantIdForSession(...args),
     resolveActiveOrgUnitIdForSession: (...args: unknown[]) =>
       mockResolveActiveOrgUnitIdForSession(...args),
   },
@@ -111,6 +114,7 @@ describe('auth refresh route', () => {
       role: 'member',
       mustResetPassword: false,
     });
+    mockResolveActiveTenantIdForSession.mockResolvedValue('house-123');
     mockResolveActiveOrgUnitIdForSession.mockResolvedValue(null);
   });
 

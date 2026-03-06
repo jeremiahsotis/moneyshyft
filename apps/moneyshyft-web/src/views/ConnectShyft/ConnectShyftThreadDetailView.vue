@@ -49,83 +49,48 @@
             {{ detailLoadError }}
           </p>
 
-          <template v-else-if="threadDetail">
-            <header class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <p data-testid="connectshyft-thread-detail-body-copy" class="text-base font-semibold text-slate-900">
-                {{ threadDetail.summary || threadDetail.threadId }}
-              </p>
+          <template v-else-if="threadSurfaceModel">
+            <ConnectShyftThreadHeader
+              :title="threadSurfaceModel.display.title"
+              :neighbor-context-label="threadSurfaceModel.display.neighborContext"
+              :conference-context-label="threadSurfaceModel.display.conferenceContext"
+              :state-label="threadSurfaceModel.display.stateLabel"
+              :owner-label="threadSurfaceModel.state === 'CLAIMED' ? `Owner: ${threadSurfaceModel.claimedByUserId || 'unassigned'}` : ''"
+              :escalation-label="escalationChipLabel"
+              :inactivity-label="inactivityChipLabel"
+              :voicemail-indicator="threadSurfaceModel.voicemailIndicator"
+            />
 
-              <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                <p
-                  data-testid="connectshyft-thread-header-neighbor-context"
-                  class="rounded-md border border-slate-200 bg-white px-3 py-2 text-base text-slate-700"
-                >
-                  {{ neighborContextLabel }}
-                </p>
-                <p
-                  data-testid="connectshyft-thread-header-conference-context"
-                  class="rounded-md border border-slate-200 bg-white px-3 py-2 text-base text-slate-700"
-                >
-                  {{ conferenceContextLabel }}
-                </p>
-              </div>
+            <p
+              :data-testid="`connectshyft-responsive-mode-${responsiveMode}`"
+              class="rounded border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600"
+              :style="bodyTextStyle"
+            >
+              Responsive mode: {{ responsiveMode }}
+            </p>
 
-              <div class="mt-3 flex flex-wrap items-center gap-2 text-base">
-                <span
-                  data-testid="connectshyft-thread-id-chip"
-                  class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
-                >
-                  Thread {{ threadDetail.threadId }}
-                </span>
-                <span
-                  data-testid="connectshyft-thread-state-chip"
-                  class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
-                >
-                  {{ threadDetail.state }}
-                </span>
-                <span
-                  v-if="threadDetail.state === 'CLAIMED'"
-                  data-testid="connectshyft-thread-owner-chip"
-                  class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
-                >
-                  Owner: {{ threadDetail.claimedByUserId || 'unassigned' }}
-                </span>
-                <span
-                  data-testid="connectshyft-thread-escalation-chip"
-                  class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
-                >
-                  {{ escalationChipLabel }}
-                </span>
-                <span
-                  data-testid="connectshyft-thread-inactivity-chip"
-                  class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
-                >
-                  {{ inactivityChipLabel }}
-                </span>
-                <span
-                  v-if="threadDetail.voicemailIndicator"
-                  data-testid="connectshyft-voicemail-indicator"
-                  class="rounded-full border border-blue-200 bg-blue-100 px-2 py-1 font-semibold text-blue-800"
-                >
-                  Voicemail waiting
-                </span>
-              </div>
-            </header>
+            <ConnectShyftMessageBubble
+              title="Conversation summary"
+              :body="threadSurfaceModel.display.title"
+              :meta-label="threadSurfaceModel.display.neighborContext"
+            />
+
+            <ConnectShyftVoicemailCard
+              :visible="threadSurfaceModel.voicemailIndicator"
+              :label="threadSurfaceModel.display.voicemailLabel || 'Voicemail waiting for review'"
+            />
 
             <p
               data-testid="connectshyft-thread-metadata-last-inbound-number"
               class="text-base text-slate-700"
             >
-              Last inbound number: {{ threadDetail.lastInboundCsNumberId }}
+              Inbound line: {{ threadSurfaceModel.display.inboundContext }}
             </p>
             <p
               data-testid="connectshyft-thread-metadata-preferred-outbound-number"
               class="text-base text-slate-700"
             >
-              Preferred outbound number: {{ threadDetail.preferredOutboundCsNumberId }}
-              <span v-if="threadDetail.preferredOutboundContext.label">
-                · {{ threadDetail.preferredOutboundContext.label }}
-              </span>
+              Outbound line: {{ threadSurfaceModel.display.outboundContext }}
             </p>
 
             <p
@@ -198,42 +163,25 @@
               Hidden lifecycle transition detected. Refresh thread context and retry.
             </p>
 
-            <div data-testid="connectshyft-thread-actions" class="flex flex-wrap gap-2">
-              <button
-                v-for="action in visibleActions"
-                :key="action"
-                type="button"
-                :data-testid="resolveConnectShyftThreadActionContract(action).testId"
-                :aria-label="resolveConnectShyftThreadActionContract(action).ariaLabel"
-                :class="[
-                  'min-h-[44px] rounded bg-slate-900 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
-                  focusRingClass,
-                ]"
-                :style="tapTargetStyle"
-                :disabled="actionPending"
-                @click="handleThreadAction(action)"
-              >
-                <span data-testid="connectshyft-thread-action-label">
-                  {{ resolveConnectShyftThreadActionContract(action).label }}
-                </span>
-              </button>
+            <ConnectShyftThreadActionBar
+              :actions="visibleActions"
+              :action-pending="actionPending || addNeighborSubmitting"
+              :show-add-neighbor-action="!isViewerRole"
+              :focus-ring-class="focusRingClass"
+              :tap-target-style="tapTargetStyle"
+              @action="handleThreadAction"
+              @add-neighbor="toggleAddNeighborForm"
+            />
 
-              <button
-                v-if="!isViewerRole"
-                type="button"
-                data-testid="connectshyft-add-neighbor-action"
-                aria-label="Add Neighbor"
-                :class="[
-                  'min-h-[44px] rounded bg-emerald-700 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
-                  focusRingClass,
-                ]"
-                :style="tapTargetStyle"
-                :disabled="actionPending || addNeighborSubmitting"
-                @click="toggleAddNeighborForm"
-              >
-                Add Neighbor
-              </button>
-            </div>
+            <ConnectShyftComposer
+              v-model="composerMessage"
+              :disabled="actionPending || addNeighborSubmitting || isViewerRole"
+              :submit-disabled="composerSubmitDisabled"
+              submit-label="Send Message"
+              :focus-ring-class="focusRingClass"
+              :tap-target-style="tapTargetStyle"
+              @submit="submitComposerMessage"
+            />
 
             <section
               v-if="addNeighborFormOpen && !isViewerRole"
@@ -446,9 +394,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
+import ConnectShyftComposer from '@/components/connectshyft/ConnectShyftComposer.vue';
+import ConnectShyftMessageBubble from '@/components/connectshyft/ConnectShyftMessageBubble.vue';
+import ConnectShyftThreadActionBar from '@/components/connectshyft/ConnectShyftThreadActionBar.vue';
+import ConnectShyftThreadHeader from '@/components/connectshyft/ConnectShyftThreadHeader.vue';
+import ConnectShyftVoicemailCard from '@/components/connectshyft/ConnectShyftVoicemailCard.vue';
 import api from '@/services/api';
 import {
   DEFAULT_CONNECTSHYFT_AVAILABILITY,
@@ -465,8 +418,8 @@ import {
   CONNECTSHYFT_DEFAULT_SMS_OVERRIDE_REASONS,
   CONNECTSHYFT_FOCUS_RING_CLASS,
   createConnectShyftFeedback,
-  resolveConnectShyftThreadActionContract,
   resolveSafeVisibleThreadActions,
+  CONNECTSHYFT_RESPONSIVE_BREAKPOINTS,
   sanitizeConnectShyftOperatorCopy,
   type ConnectShyftFeedback,
   type ConnectShyftFeedbackTaxonomy,
@@ -496,8 +449,14 @@ const pendingPreferenceOverrideAction = ref<'Text' | 'Send Message' | null>(null
 const addNeighborFormOpen = ref(false);
 const addNeighborPhone = ref('');
 const addNeighborSubmitting = ref(false);
+const composerMessage = ref('');
 const preferenceOverrideModalRef = ref<HTMLElement | null>(null);
 const closeModalRef = ref<HTMLElement | null>(null);
+const viewportWidth = ref(
+  typeof window === 'undefined'
+    ? CONNECTSHYFT_RESPONSIVE_BREAKPOINTS.desktop
+    : window.innerWidth,
+);
 const focusRingClass = CONNECTSHYFT_FOCUS_RING_CLASS;
 const bodyTextStyle = {
   fontSize: `${CONNECTSHYFT_ACCESSIBILITY_LOCKS.minBodyTextPx}px`,
@@ -539,6 +498,52 @@ const threadId = computed(() => {
 const moduleAvailable = computed(() => availability.value.capabilities.module);
 const inboxAvailable = computed(() => availability.value.capabilities.inbox);
 const showUnavailableState = computed(() => !moduleAvailable.value || !inboxAvailable.value);
+
+const threadSurfaceModel = computed<ConnectShyftThreadDetail | null>(() => {
+  if (showUnavailableState.value) {
+    return null;
+  }
+
+  if (threadDetail.value) {
+    return threadDetail.value;
+  }
+
+  const fallbackThreadId = threadId.value || 'thread-unavailable';
+  return {
+    threadId: fallbackThreadId,
+    orgUnitId: '',
+    state: 'UNCLAIMED',
+    claimedByUserId: null,
+    bucket: 'inbox',
+    escalationStage: 0,
+    priorityRank: 0,
+    urgencyLabel: '',
+    lastActivityAtUtc: '',
+    lastInboundCsNumberId: '',
+    preferredOutboundCsNumberId: '',
+    preferredOutboundContext: {
+      csNumberId: '',
+      label: '',
+    },
+    voicemailIndicator: false,
+    voicemailLabel: null,
+    summary: 'Conversation unavailable.',
+    display: {
+      title: 'Conversation unavailable.',
+      urgencyLabel: 'Context unavailable',
+      stateLabel: 'Unclaimed',
+      inboundContext: 'Inbound line unavailable',
+      outboundContext: 'Outbound line unavailable',
+      neighborContext: 'Neighbor context unavailable',
+      conferenceContext: 'Conference context unavailable',
+      voicemailLabel: '',
+    },
+    actions: [],
+    lifecycle: {
+      reopenedByInbound: false,
+    },
+  };
+});
 
 const unavailableMessage = computed(() => {
   if (availability.value.refusal?.message) {
@@ -702,6 +707,24 @@ const visibleActions = computed<string[]>(() => {
   });
 });
 
+const responsiveMode = computed<'mobile' | 'tablet' | 'desktop'>(() => {
+  if (viewportWidth.value >= CONNECTSHYFT_RESPONSIVE_BREAKPOINTS.desktop) {
+    return 'desktop';
+  }
+
+  if (viewportWidth.value >= CONNECTSHYFT_RESPONSIVE_BREAKPOINTS.tablet) {
+    return 'tablet';
+  }
+
+  return 'mobile';
+});
+
+const composerSubmitDisabled = computed(() => {
+  const hasSendAction = visibleActions.value.includes('Send Message')
+    || visibleActions.value.includes('Text');
+  return actionPending.value || composerMessage.value.trim().length === 0 || !hasSendAction;
+});
+
 const showActionRefusalBanner = computed(() => {
   return isViewerRole.value || actionError.value.length > 0;
 });
@@ -728,30 +751,6 @@ const feedbackBannerClass = computed(() => {
   }
 
   return 'border-rose-200 bg-rose-50 text-rose-900';
-});
-
-const neighborContextLabel = computed(() => {
-  if (!threadDetail.value) {
-    return 'Neighbor context unavailable';
-  }
-
-  const summary = threadDetail.value.summary.trim();
-  if (summary.length > 0) {
-    return `Neighbor context: ${summary}`;
-  }
-
-  return 'Neighbor context: Active thread';
-});
-
-const conferenceContextLabel = computed(() => {
-  if (!threadDetail.value) {
-    return 'Conference context unavailable';
-  }
-
-  const label = threadDetail.value.preferredOutboundContext.label
-    || threadDetail.value.preferredOutboundCsNumberId
-    || 'Unassigned outbound conference line';
-  return `Conference context: ${label}`;
 });
 
 const parseThreadActions = (value: unknown): string[] | null => {
@@ -808,11 +807,42 @@ const applyThreadUpdate = (payload: unknown): void => {
   const urgencyLabel = typeof candidate.urgencyLabel === 'string'
     ? candidate.urgencyLabel.trim()
     : current.urgencyLabel;
+  const lastInboundCsNumberId = typeof candidate.lastInboundCsNumberId === 'string'
+    ? candidate.lastInboundCsNumberId
+    : typeof candidate.last_inbound_cs_number_id === 'string'
+      ? candidate.last_inbound_cs_number_id
+      : current.lastInboundCsNumberId;
+  const preferredOutboundCsNumberId = typeof candidate.preferredOutboundCsNumberId === 'string'
+    ? candidate.preferredOutboundCsNumberId
+    : typeof candidate.preferred_outbound_cs_number_id === 'string'
+      ? candidate.preferred_outbound_cs_number_id
+      : current.preferredOutboundCsNumberId;
   const nextActions = parseThreadActions(candidate.actions);
   const resolvedActions = resolveSafeVisibleThreadActions({
     state: nextState,
     rawActions: nextActions || current.actions,
   });
+  const displayStateLabel = nextState === 'UNCLAIMED'
+    ? 'Unclaimed'
+    : nextState === 'CLAIMED'
+      ? 'Claimed'
+      : 'Closed';
+  const displayUrgencyLabel = sanitizeConnectShyftOperatorCopy(
+    urgencyLabel,
+    nextState === 'UNCLAIMED' ? 'New conversation' : 'Active follow-up',
+  );
+  const displayInboundContext = lastInboundCsNumberId
+    ? 'cs-number inbound line configured'
+    : 'Inbound line unavailable';
+  const displayOutboundContext = current.preferredOutboundContext.label
+    ? sanitizeConnectShyftOperatorCopy(
+      current.preferredOutboundContext.label,
+      'cs-number outbound line configured',
+    )
+    : preferredOutboundCsNumberId
+      ? 'cs-number outbound line configured'
+      : 'Outbound line unavailable';
+  const displayTitle = current.display.title || current.summary || 'Conversation in progress.';
 
   threadDetail.value = {
     ...current,
@@ -820,17 +850,20 @@ const applyThreadUpdate = (payload: unknown): void => {
     claimedByUserId: claimedByUserId || null,
     escalationStage,
     urgencyLabel,
-    lastInboundCsNumberId: typeof candidate.lastInboundCsNumberId === 'string'
-      ? candidate.lastInboundCsNumberId
-      : typeof candidate.last_inbound_cs_number_id === 'string'
-        ? candidate.last_inbound_cs_number_id
-        : current.lastInboundCsNumberId,
-    preferredOutboundCsNumberId: typeof candidate.preferredOutboundCsNumberId === 'string'
-      ? candidate.preferredOutboundCsNumberId
-      : typeof candidate.preferred_outbound_cs_number_id === 'string'
-        ? candidate.preferred_outbound_cs_number_id
-        : current.preferredOutboundCsNumberId,
+    lastInboundCsNumberId,
+    preferredOutboundCsNumberId,
     actions: resolvedActions,
+    display: {
+      ...current.display,
+      title: displayTitle,
+      urgencyLabel: displayUrgencyLabel,
+      stateLabel: displayStateLabel,
+      inboundContext: displayInboundContext,
+      outboundContext: displayOutboundContext,
+      neighborContext: `Neighbor context: ${displayTitle}`,
+      conferenceContext: `Conference context: ${displayOutboundContext}`,
+      voicemailLabel: current.display.voicemailLabel || 'Voicemail waiting for review',
+    },
     lifecycle: {
       reopenedByInbound: current.lifecycle?.reopenedByInbound === true,
     },
@@ -901,6 +934,7 @@ const openPreferenceOverrideModal = (input: {
 const executeThreadAction = async (
   action: string,
   options: {
+    body?: string | null;
     overrideReason?: string | null;
     overrideNote?: string | null;
   } = {},
@@ -946,7 +980,7 @@ const executeThreadAction = async (
     payload = {
       ...payload,
       channel: 'sms',
-      body: 'Operator outbound message.',
+      body: options.body || 'Operator outbound message.',
       overrideReason: options.overrideReason || undefined,
       overrideNote: options.overrideNote || undefined,
     };
@@ -1284,11 +1318,33 @@ const handleThreadAction = (action: string): void => {
   void executeThreadAction(action);
 };
 
+const submitComposerMessage = (): void => {
+  const messageBody = composerMessage.value.trim();
+  if (!messageBody) {
+    return;
+  }
+
+  const preferredAction = visibleActions.value.includes('Send Message')
+    ? 'Send Message'
+    : visibleActions.value.includes('Text')
+      ? 'Text'
+      : null;
+  if (!preferredAction) {
+    return;
+  }
+
+  composerMessage.value = '';
+  void executeThreadAction(preferredAction, {
+    body: messageBody,
+  });
+};
+
 const refreshThreadDetail = async () => {
   availability.value = await fetchConnectShyftAvailability();
   if (showUnavailableState.value) {
     threadDetail.value = null;
     detailLoadError.value = '';
+    composerMessage.value = '';
     closeAddNeighborForm();
     closePreferenceOverrideModal();
     clearPolicyBanners();
@@ -1299,6 +1355,7 @@ const refreshThreadDetail = async () => {
   const detailResult = await fetchConnectShyftThreadDetail(threadId.value);
   if (!detailResult.ok) {
     threadDetail.value = null;
+    composerMessage.value = '';
     detailLoadError.value = sanitizeConnectShyftOperatorCopy(
       detailResult.message,
       'Unable to load thread detail.',
@@ -1321,6 +1378,7 @@ const refreshThreadDetail = async () => {
       rawActions: detailResult.thread.actions,
     }),
   };
+  composerMessage.value = '';
   detailLoadError.value = '';
   lifecycleToast.value = '';
   actionError.value = '';
@@ -1333,8 +1391,26 @@ const refreshThreadDetail = async () => {
   clearFeedbackBanner();
 };
 
+const updateViewportWidth = (): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  viewportWidth.value = window.innerWidth;
+};
+
 onMounted(() => {
+  updateViewportWidth();
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', updateViewportWidth);
+  }
   void refreshThreadDetail();
+});
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateViewportWidth);
+  }
 });
 
 watch(preferenceOverrideModalOpen, (isOpen) => {

@@ -55,21 +55,20 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
         }),
       );
 
-      const threadIdChip = page.getByTestId('connectshyft-thread-id-chip');
-      const priorThreadIdText = await threadIdChip.textContent();
-      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLOSED');
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Closed');
 
       // When outbound SMS is attempted without an override.
-      await page.getByRole('button', { name: /Send Message|Text/i }).click();
+      await page.getByTestId('connectshyft-send-message-thread-action').click();
 
       // Then the same thread is reopened and override modal blocks dispatch until reason selection.
-      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');
       await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toContainText(/reopened/i);
       await expect(page.getByTestId('connectshyft-preference-override-modal')).toBeVisible();
       await expect(page.getByTestId('connectshyft-preference-override-required-chip')).toBeVisible();
       await expect(page.getByTestId('connectshyft-preference-override-submit')).toBeDisabled();
-      expect(priorThreadIdText?.trim().length).toBeGreaterThan(0);
-      await expect(threadIdChip).toContainText((priorThreadIdText || '').trim());
+      await expect(page).toHaveURL(
+        new RegExp(`/app/connectshyft/threads/${context.threadIds.closedPrefersNo}`),
+      );
     },
   );
 
@@ -92,7 +91,7 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
       // When the action surface is rendered.
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Take Over' })).toBeVisible();
-      await expect(page.getByRole('button', { name: /Send Message|Text/i })).toBeVisible();
+      await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
 
       // Then action ordering and visibility remain deterministic and explicit.
@@ -116,7 +115,7 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
           orgUnitMemberships: [context.orgUnitId],
         }),
       );
-      await page.getByRole('button', { name: /Send Message|Text/i }).click();
+      await page.getByTestId('connectshyft-send-text-thread-action').click();
       await expect(page.getByTestId('connectshyft-preference-override-modal')).toBeVisible();
 
       // When a valid override is selected and submitted.

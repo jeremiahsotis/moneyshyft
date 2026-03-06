@@ -133,6 +133,34 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
   - `policy:check` enforces this guard automatically in `pull_request` CI.
   - Set `POLICY_ENFORCE_STORY_ARTIFACT_HYGIENE=true` to enforce locally before opening a PR.
 
+### Test Artifact Allowlist Guardrail (Mandatory)
+
+- `_bmad-output/test-artifacts` uses deny-by-default tracking.
+- New or modified staged files under `_bmad-output/test-artifacts/**` are allowed only when they match one of:
+  - `_bmad-output/test-artifacts/automation-summary.md`
+  - `_bmad-output/test-artifacts/automation-summary-*.md`
+  - `_bmad-output/test-artifacts/ci-pipeline-progress.md`
+  - `_bmad-output/test-artifacts/adversarial-code-review-*.md`
+  - `_bmad-output/test-artifacts/nfr-assessment*.md`
+  - `_bmad-output/test-artifacts/atdd-api-tests-<epic>-<story>.json` (numeric)
+  - `_bmad-output/test-artifacts/atdd-e2e-tests-<epic>-<story>.json` (numeric)
+  - `_bmad-output/test-artifacts/atdd-summary-<epic>-<story>.json` (numeric)
+  - `_bmad-output/test-artifacts/test-design-*.md`
+  - `_bmad-output/test-artifacts/test-design-progress*.md`
+  - `_bmad-output/test-artifacts/test-review*.md`
+  - `_bmad-output/test-artifacts/traceability*.md`
+  - `_bmad-output/test-artifacts/framework-*.md`
+  - `_bmad-output/test-artifacts/atdd-checklist-*.md`
+  - `_bmad-output/test-artifacts/epic-f-*`
+  - `_bmad-output/test-artifacts/release-evidence/**`
+  - `_bmad-output/test-artifacts/.gitignore`
+- All other test-artifact paths (for example `automation-runs/`, `automation-temp/`, `atdd-temp/`, `exploration/`, `test-review-temp/`) are non-durable run output and must remain untracked.
+- `.gitignore` enforces this by default; policy enforcement blocks bypass attempts (including `git add -f`) for non-allowlisted staged files.
+- Enforced by:
+  - `.gitignore` root allowlist block for `_bmad-output/test-artifacts`
+  - `scripts/enforce-test-artifact-allowlist.sh`
+  - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+
 ### Critical Capability Real-User Validation Guardrail (Mandatory)
 
 - Stories classified as `Critical Capability: yes` cannot close as `done` without real-user validation evidence.
