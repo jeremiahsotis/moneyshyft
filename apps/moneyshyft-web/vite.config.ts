@@ -5,7 +5,7 @@ import { fileURLToPath, URL } from 'node:url';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const moduleApiProxyTarget = env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:3000';
-  const adminApiProxyTarget = env.VITE_ADMIN_API_PROXY_TARGET || 'http://127.0.0.1:3100';
+  const adminApiProxyTarget = env.VITE_ADMIN_API_PROXY_TARGET || moduleApiProxyTarget;
   const devHost = env.VITE_DEV_HOST || '127.0.0.1';
   const devPort = Number(env.VITE_DEV_PORT || 5173);
 
