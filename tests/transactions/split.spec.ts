@@ -34,10 +34,10 @@ test.describe('Split transactions', () => {
     try {
       await ensureAtLeastOneActiveBudgetAccount(page);
       await page.goto('/transactions');
-      const tenantAdminShellVisible = await page
-        .getByRole('heading', { name: 'Tenant Administration' })
-        .isVisible({ timeout: 3000 })
-        .catch(() => false);
+      await page.waitForLoadState('domcontentloaded');
+      const tenantAdminShellVisible = (await page
+        .getByRole('heading', { name: /Tenant Administration/i })
+        .count()) > 0;
       test.skip(
         tenantAdminShellVisible,
         'Transactions UI is unavailable while tenant-admin shell is active for this session.',
