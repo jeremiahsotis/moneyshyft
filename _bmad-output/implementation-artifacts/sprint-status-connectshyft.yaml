@@ -425,6 +425,19 @@ story_dependencies:
     - f-1-provider-adapter-interface-and-provider-registry
     - f-2-canonical-comms-event-model-and-event-store
     - f-3-provider-leg-message-correlation-fallback-mapping
+  g-2-inbox-and-mine-surface-rebuild:
+    - g-1-design-tokens-and-shared-conversation-primitives
+  g-3-thread-detail-conversation-first-rebuild:
+    - g-1-design-tokens-and-shared-conversation-primitives
+  g-4-add-neighbor-and-directory-rebuild:
+    - g-1-design-tokens-and-shared-conversation-primitives
+  g-5-more-settings-volunteer-ia-and-admin-separation:
+    - g-2-inbox-and-mine-surface-rebuild
+  g-6-volunteer-contract-boundary-and-regression-hardening:
+    - g-2-inbox-and-mine-surface-rebuild
+    - g-3-thread-detail-conversation-first-rebuild
+    - g-4-add-neighbor-and-directory-rebuild
+    - g-5-more-settings-volunteer-ia-and-admin-separation
   ux-r1-mobile-first-inbox-mine-thread-redesign:
     - c-3-inbox-and-thread-detail-read-contracts
   ux-r2-accessibility-and-language-hardening:
