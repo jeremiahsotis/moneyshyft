@@ -297,4 +297,53 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
       ).toHaveCount(0);
     },
   );
+
+  test(
+    '[G2-AUTO-E2E-206][P1] thread-surface composer dispatches outbound message through the selected thread endpoint with deterministic payload body @P1',
+    async ({ page }) => {
+      const context = createStoryG2Context();
+      await login(page);
+
+      await page.goto(
+        buildStoryG2SurfaceUrl(context, {
+          bucket: 'inbox',
+          actorUserId: context.userId,
+          tenantRole: 'ORGUNIT_MEMBER',
+        }),
+      );
+
+      const firstTapTarget = page.getByTestId('connectshyft-queue-card-tap-target').first();
+      await expect(firstTapTarget).toBeVisible();
+      await firstTapTarget.click();
+      await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();
+
+      const messageBody = 'Automated g.2 thread composer dispatch verification.';
+      const composerInput = page.getByTestId('connectshyft-composer-input');
+      await expect(composerInput).toBeVisible();
+      await composerInput.fill(messageBody);
+
+      const dispatchResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/connectshyft/threads/')
+          && response.url().includes('/messages')
+          && response.request().method() === 'POST',
+      );
+      await page.getByTestId('connectshyft-composer-submit').click();
+      const dispatchResponse = await dispatchResponsePromise;
+      expect(dispatchResponse.ok()).toBeTruthy();
+
+      const dispatchPayload = dispatchResponse.request().postDataJSON() as {
+        body?: unknown;
+        targetPhone?: unknown;
+      };
+      expect(dispatchPayload.body).toBe(messageBody);
+      expect(dispatchPayload.targetPhone).toBeUndefined();
+
+      const dispatchBody = await dispatchResponse.json();
+      expect(dispatchBody).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED',
+      });
+    },
+  );
 });
