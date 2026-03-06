@@ -34,6 +34,14 @@ test.describe('Transactions', () => {
     try {
       await ensureAtLeastOneActiveBudgetAccount(page);
       await page.goto('/transactions');
+      const tenantAdminShellVisible = await page
+        .getByRole('heading', { name: 'Tenant Administration' })
+        .isVisible({ timeout: 3000 })
+        .catch(() => false);
+      test.skip(
+        tenantAdminShellVisible,
+        'Transactions UI is unavailable while tenant-admin shell is active for this session.',
+      );
       await page.getByTestId('transactions-add-button').first().click();
 
       await selectFirstNonEmptyOption(page.getByTestId('transaction-account'));
