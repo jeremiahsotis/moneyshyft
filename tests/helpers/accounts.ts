@@ -1,9 +1,18 @@
 import { expect, type Page } from '@playwright/test';
 
 export const ensureAtLeastOneActiveBudgetAccount = async (page: Page): Promise<void> => {
-  const accountsResponse = await page.request.get('/api/v1/accounts');
-  expect(accountsResponse.ok()).toBe(true);
-  const accountsBody = await accountsResponse.json();
+  let accountsBody: { data?: unknown } = { data: [] };
+  let accountsStatus = 0;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const accountsResponse = await page.request.get('/api/v1/accounts');
+    accountsStatus = accountsResponse.status();
+    if (accountsResponse.ok()) {
+      accountsBody = await accountsResponse.json();
+      break;
+    }
+    await page.waitForTimeout(200);
+  }
+  expect(accountsStatus).toBe(200);
   const accounts = Array.isArray(accountsBody?.data)
     ? accountsBody.data
     : [];
