@@ -1,25 +1,45 @@
 {
   "version": "0.3.6",
   "scripts": {
-    "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed",
-    "test:e2e:debug": "playwright test --debug",
+    "test:e2e": "bash scripts/run-playwright-with-preflight.sh",
+    "test:e2e:headed": "bash scripts/run-playwright-with-preflight.sh --headed",
+    "test:e2e:debug": "bash scripts/run-playwright-with-preflight.sh --debug",
+    "test:runtime:cleanup": "bash scripts/cleanup-test-runtime.sh",
+    "test:patch:intake": "bash scripts/test-verified-patch-intake.sh",
     "test:changed": "bash scripts/test-changed.sh",
     "test:burn-in": "bash scripts/burn-in.sh 10",
     "test:contracts:backend": "bash scripts/test-contracts-backend.sh",
+    "boundary:check": "node scripts/enforce-workspace-boundaries.js",
     "policy:check": "bash scripts/enforce-git-policy.sh",
+    "patch:apply:verified": "bash scripts/verified-patch-apply.sh",
+    "patch:intake:guard": "bash scripts/enforce-verified-patch-intake-guard.sh",
     "branch:ensure-workflow": "bash scripts/branch-ensure-workflow.sh",
+    "story:status:set": "bash scripts/story-status-transition.sh",
+    "story:status:check": "bash scripts/enforce-story-status-sync.sh",
+    "start:story-branch": "bash scripts/start-story-branch.sh",
     "quality-gates": "bash scripts/quality-gates.sh",
+    "quality-gates:epic0": "bash scripts/quality-gates-epic0.sh",
     "ci:local": "bash scripts/ci-local.sh",
-    "promote:production": "bash scripts/promote-to-production.sh"
+    "promote:production": "bash scripts/promote-to-production.sh",
+    "cutover:rehearse:routeshyft": "node scripts/routeshyft/wp-cutover/rehearse-route-cutover.mjs",
+    "cutover:shutdown:wp-writes": "node scripts/routeshyft/wp-cutover/shutdown-wp-direct-writes.mjs",
+    "nx": "nx",
+    "build": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "affected:build": "nx affected -t build",
+    "affected:test": "nx affected -t test",
+    "affected:lint": "nx affected -t lint"
   },
-  "dependencies": {
-    "uuid": "^13.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@faker-js/faker": "^9.9.0",
     "@playwright/test": "^1.57.0",
-    "@types/uuid": "^11.0.0",
-    "playwright": "^1.57.0"
-  }
+    "playwright": "^1.57.0",
+    "nx": "^20.0.0",
+    "eslint": "^9.0.0",
+    "@nx/eslint-plugin": "^20.0.0"
+  },
+  "name": "moneyshyft-monorepo",
+  "private": true,
+  "packageManager": "pnpm@10.28.0"
 }

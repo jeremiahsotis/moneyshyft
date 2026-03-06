@@ -1,0 +1,223 @@
+openapi: 3.0.3
+info:
+  title: ConnectShyft Comms Core API
+  version: "1.0.0"
+  description: |
+    Comms Core exposes endpoints for handling outbound calls/messages, receiving provider webhooks,
+    retrieving status, and streaming events. Telnyx is the selected provider for V1 but the design
+    anticipates additional providers.
+servers:
+  - url: https://api.connectshyft.com/v1/comms
+
+components:
+  schemas:
+    OutboundCallRequest:
+      type: object
+      required:
+        - conferenceId
+        - toNumber
+        - fromNumber
+      properties:
+        conferenceId:
+          type: string
+          format: uuid
+          description: UUID of the conference context for this call.
+        toNumber:
+          type: string
+          description: Destination phone number (E.164 format).
+        fromNumber:
+          type: string
+          description: The Telnyx number used for caller ID.
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Optional metadata to pass to provider (call_attempt_id is injected automatically).
+    OutboundCallResponse:
+      type: object
+      properties:
+        callAttemptId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          description: Initial status (e.g., initiated).
+    OutboundMessageRequest:
+      type: object
+      required:
+        - conferenceId
+        - toNumber
+        - fromNumber
+        - body
+      properties:
+        conferenceId:
+          type: string
+          format: uuid
+        toNumber:
+          type: string
+        fromNumber:
+          type: string
+        body:
+          type: string
+        mediaUrl:
+          type: string
+          format: uri
+          nullable: true
+    OutboundMessageResponse:
+      type: object
+      properties:
+        messageId:
+          type: string
+          format: uuid
+        status:
+          type: string
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        aggregateId:
+          type: string
+          format: uuid
+        aggregateType:
+          type: string
+        payload:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+
+paths:
+  /calls/outbound:
+    post:
+      summary: Initiate an outbound call
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OutboundCallRequest"
+      responses:
+        "200":
+          description: Call initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutboundCallResponse"
+
+  /messages/outbound:
+    post:
+      summary: Send an outbound SMS or MMS message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OutboundMessageRequest"
+      responses:
+        "200":
+          description: Message enqueued successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutboundMessageResponse"
+
+  /provider/telnyx/webhooks:
+    post:
+      summary: Receive Telnyx webhooks
+      description: |
+        Telnyx will POST call events and message events to this endpoint. The comms core
+        verifies the signature, extracts metadata (call_attempt_id) and converts the
+        provider event into canonical events.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Raw Telnyx webhook payload
+      responses:
+        "200":
+          description: Webhook processed
+
+  /status/call/{callAttemptId}:
+    get:
+      summary: Get the status of a call attempt
+      parameters:
+        - in: path
+          name: callAttemptId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Current status of the call
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  callAttemptId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                  providerLegIds:
+                    type: array
+                    items:
+                      type: string
+
+  /status/message/{messageId}:
+    get:
+      summary: Get the status of an outbound message
+      parameters:
+        - in: path
+          name: messageId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Current status of the message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messageId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                  providerMessageId:
+                    type: string
+
+  /events:
+    get:
+      summary: Stream canonical events
+      parameters:
+        - in: query
+          name: aggregateId
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: eventTypes
+          required: false
+          schema:
+            type: string
+            description: Comma-separated list of event types to filter
+      responses:
+        "200":
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
