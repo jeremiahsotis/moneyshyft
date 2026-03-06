@@ -29,7 +29,7 @@ ls -lh $BACKUP_FILE  # Verify backup exists and has size
 ### 2. PULL CHANGES
 ```bash
 git pull origin main
-ls -la apps/routeshyft-api/src/migrations/ | grep -E "004|009"
+ls -la src/src/migrations/ | grep -E "004|009"
 ```
 - [ ] Pulled successfully
 - [ ] See: `009_add_envelope_budgeting.ts` (new)

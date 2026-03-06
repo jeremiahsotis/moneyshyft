@@ -18,7 +18,6 @@ CREATE TABLE route.requests (
 CREATE TABLE route.runs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL,
-  org_unit_id uuid NOT NULL,
   run_date_local date NOT NULL,
   day_part text NOT NULL,
   status text NOT NULL,
@@ -29,7 +28,6 @@ CREATE TABLE route.runs (
 CREATE TABLE route.stops (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL,
-  org_unit_id uuid NOT NULL,
   run_id uuid NOT NULL REFERENCES route.runs(id) ON DELETE CASCADE,
   status text NOT NULL,
   address text NOT NULL,
@@ -44,9 +42,3 @@ CREATE TABLE route.completion_records (
   stop_id uuid NOT NULL REFERENCES route.stops(id) ON DELETE CASCADE,
   created_at_utc timestamptz NOT NULL DEFAULT now()
 );
-
-CREATE INDEX route_runs_tenant_orgunit_daypart_idx
-  ON route.runs (tenant_id, org_unit_id, run_date_local, day_part);
-
-CREATE INDEX route_stops_tenant_orgunit_run_seq_idx
-  ON route.stops (tenant_id, org_unit_id, run_id, sequence_index);

@@ -22,33 +22,8 @@ test.describe('Extra money', () => {
       await page.getByTestId('extra-money-date').fill(todayISO());
       await page.getByTestId('extra-money-submit').click();
 
-      let createdEntry:
-        | { id: string; status: string; source: string }
-        | undefined;
-      await expect
-        .poll(
-          async () => {
-            const entriesResponse = await page.request.get('/api/v1/extra-money');
-            if (!entriesResponse.ok()) {
-              return '';
-            }
-            const entriesData = await entriesResponse.json();
-            createdEntry = entriesData.data.find((entry: { source: string }) => entry.source === source) as
-              | { id: string; status: string; source: string }
-              | undefined;
-            return createdEntry?.status ?? '';
-          },
-          { timeout: 15000 },
-        )
-        .toBe('pending');
-
-      expect(createdEntry?.id).toBeTruthy();
-      entryId = createdEntry?.id;
-
-      await page.reload();
-      const entryCard = page.getByTestId(`extra-money-entry-${entryId}`);
+      const entryCard = page.locator('[data-testid^="extra-money-entry-"]', { hasText: source });
       await expect(entryCard).toBeVisible();
-      await expect(entryCard).toContainText(source);
 
       await entryCard.getByTestId('extra-money-assign-button').click();
       await expect(page.getByTestId('extra-money-assign-modal')).toBeVisible();

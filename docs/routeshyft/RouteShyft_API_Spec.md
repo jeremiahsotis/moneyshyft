@@ -22,21 +22,13 @@ RouteShyft as a module inside the Shyft monolith.
 
 ### 1.1 Tenancy
 
-All endpoints execute in a scoped platform context.
+All endpoints execute in a tenant context.
 
--   Authenticated requests resolve canonical context:
-    -   `tenant_id` (required)
-    -   `org_unit_id` (optional unless endpoint is orgUnit-scoped)
-    -   `scope_mode` (`TENANT` or `ORG_UNIT`)
--   Public endpoints resolve tenant by public site context only; they do
-    not bypass tenant isolation.
--   OrgUnit-scoped endpoints MUST reject missing/invalid orgUnit context.
--   OrgUnit context MUST belong to tenant and caller membership unless
-    caller has tenant-privileged capability.
--   Every response includes `tenant_id` when relevant and `org_unit_id`
-    for orgUnit-scoped payloads.
--   All DB queries MUST filter by `tenant_id`; orgUnit-scoped queries
-    MUST also filter by `org_unit_id`.
+-   Tenant is derived from auth context (staff/driver) or from request
+    configuration for public endpoints (e.g., site configuration, API
+    key-free).
+-   Every response includes `tenant_id` in `data` when relevant.
+-   All DB queries MUST filter by `tenant_id`.
 
 ### 1.2 Time handling (non-negotiable)
 
@@ -151,12 +143,10 @@ Public: - `HONEYPOT_BLOCKED` - `RATE_LIMITED` - `CAPTCHA_FAILED` -
 
 Staff: - `REQUEST_NOT_FOUND` - `INVALID_STATE_TRANSITION` -
 `CAPACITY_FULL_STAFF_NO_OVERBOOK` - `RUN_NOT_FOUND` - `STOP_NOT_FOUND` -
-`PUBLISH_CONSTRAINT_VIOLATION` - `POST_PUBLISH_GOVERNANCE_BLOCK` -
-`ORG_UNIT_REQUIRED` - `ORG_UNIT_INVALID` - `ORG_UNIT_FORBIDDEN`
+`PUBLISH_CONSTRAINT_VIOLATION` - `POST_PUBLISH_GOVERNANCE_BLOCK`
 
 Driver: - `STOP_NOT_ASSIGNED_TO_DRIVER` - `STOP_NOT_IN_TODAY_RUN` -
-`INVALID_STATE_TRANSITION` - `COMPLETION_ALREADY_RECORDED` -
-`ORG_UNIT_REQUIRED` - `ORG_UNIT_INVALID` - `ORG_UNIT_FORBIDDEN` (only if you
+`INVALID_STATE_TRANSITION` - `COMPLETION_ALREADY_RECORDED` (only if you
 choose to block multiple completions; default is allow multiple records,
 but UI should treat newest as canonical)
 

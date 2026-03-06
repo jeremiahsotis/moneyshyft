@@ -10,7 +10,6 @@
 
 ## Running Tests
 
-- Canonical local user-testing target: `http://localhost:5174` (do not switch to `127.0.0.1:5173`).
 - Headless:
   `npm run test:e2e`
 - Headed:
@@ -74,7 +73,7 @@
 
 ## Troubleshooting
 
-- If base URL is wrong, set `BASE_URL=http://localhost:5174` in `.env`.
+- If base URL is wrong, set `BASE_URL` in `.env`.
 - If auth tests fail, verify `TEST_EMAIL` and `TEST_PASSWORD`.
 - Open HTML report with:
   `npx playwright show-report tests/artifacts/playwright-report`

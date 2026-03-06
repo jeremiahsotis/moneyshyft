@@ -5,18 +5,18 @@
 - npm
 - PostgreSQL (local or Docker)
 
-## Backend (`apps/routeshyft-api/`)
+## Backend (`src/`)
 ```bash
-cd apps/routeshyft-api
+cd src
 npm install
 npm run dev
 npm run migrate:latest
 npm test
 ```
 
-## Frontend (`apps/routeshyft-web/`)
+## Frontend (`frontend/`)
 ```bash
-cd apps/routeshyft-web
+cd frontend
 npm install
 npm run dev
 npm run build

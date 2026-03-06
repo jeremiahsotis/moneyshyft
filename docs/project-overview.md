@@ -1,7 +1,7 @@
 # Project Overview
 
 ## Summary
-MoneyShyft is a family budgeting platform with a Vue 3 frontend and Express + TypeScript backend. The repository is currently a practical monorepo/multi-part layout with separate `apps/routeshyft-web/` and `apps/routeshyft-api/` applications.
+MoneyShyft is a family budgeting platform with a Vue 3 frontend and Express + TypeScript backend. The repository is currently a practical monorepo/multi-part layout with separate `frontend/` and `src/` applications.
 
 ## Repository Classification
 - Type: Monorepo (2 parts)
@@ -10,15 +10,15 @@ MoneyShyft is a family budgeting platform with a Vue 3 frontend and Express + Ty
 - Delivery model: Docker Compose for backend+DB and static frontend hosting
 
 ## Parts
-1. Backend (`apps/routeshyft-api/`)
-- Express API with modular route files under `apps/routeshyft-api/src/routes/api/v1`
-- Domain services under `apps/routeshyft-api/src/services`
-- Knex migrations and seeds under `apps/routeshyft-api/src/migrations` and `apps/routeshyft-api/src/seeds`
+1. Backend (`src/`)
+- Express API with modular route files under `src/src/routes/api/v1`
+- Domain services under `src/src/services`
+- Knex migrations and seeds under `src/src/migrations` and `src/src/seeds`
 
-2. Frontend (`apps/routeshyft-web/`)
+2. Frontend (`frontend/`)
 - Vue 3 SPA with Vue Router and Pinia
 - Domain-specific stores for budgeting, debts, goals, income, transactions, scenarios
-- Axios API adapter in `apps/routeshyft-web/src/services/api.ts`
+- Axios API adapter in `frontend/src/services/api.ts`
 
 ## Current Objective Context
 RouteShyft artifacts are staged under `docs/routeshyft/` and define a phased monolith migration path focused on a hardened platform kernel, then feature modules (OperationShift, RouteShift bridge, ResourceShift, etc.).
@@ -32,18 +32,18 @@ RouteShyft artifacts are staged under `docs/routeshyft/` and define a phased mon
 
 ## Canonical Conversion Sequence (Small PRs, No Deploy Breaks)
 1. Phase A: add target structure only (no moves)
-- Create folders: `apps/routeshyft-api/src/platform`, `apps/routeshyft-api/src/modules`, `apps/routeshyft-api/src/api`, `apps/routeshyft-api/src/db/migrations`, `apps/routeshyft-api/src/db/seeds`.
+- Create folders: `src/platform`, `src/modules`, `src/api`, `src/db/migrations`, `src/db/seeds`.
 - Add TS aliases in root `tsconfig.json`:
-  - `@platform/*` -> `apps/routeshyft-api/src/platform/*`
-  - `@modules/*` -> `apps/routeshyft-api/src/modules/*`
-  - `@api/*` -> `apps/routeshyft-api/src/api/*`
+  - `@platform/*` -> `src/platform/*`
+  - `@modules/*` -> `src/modules/*`
+  - `@api/*` -> `src/api/*`
 
 2. Phase B: canonical app entry and route registry
-- Add canonical `apps/routeshyft-api/src/app.ts` (create app, shared middleware, `registerRoutes(app)`).
-- Add `apps/routeshyft-api/src/api/registerRoutes.ts` and mount existing routes through it.
+- Add canonical `src/app.ts` (create app, shared middleware, `registerRoutes(app)`).
+- Add `src/api/registerRoutes.ts` and mount existing routes through it.
 - Keep existing entrypoint temporarily, but delegate to new app path.
 
-3. Phase C: move MoneyShyft into `apps/routeshyft-api/src/modules/money` mechanically
+3. Phase C: move MoneyShyft into `src/modules/money` mechanically
 - Create module skeleton: `api`, `application`, `domain`, `infrastructure`.
 - Move existing money routes/handlers with zero behavior change.
 - Keep URL paths stable to avoid client breaks.
@@ -53,12 +53,12 @@ RouteShyft artifacts are staged under `docs/routeshyft/` and define a phased mon
 - Refactor module usage toward platform helpers incrementally.
 
 5. Phase E: centralize migrations
-- Move migration source of truth to `apps/routeshyft-api/src/db/migrations` (and seeds to `apps/routeshyft-api/src/db/seeds`).
+- Move migration source of truth to `src/db/migrations` (and seeds to `src/db/seeds`).
 - Update knex config to point to new paths.
 - Introduce Postgres schemas (`platform`, `money`) before Route/Operations expansion.
 
 6. Phase F: add canary second module
-- Add `apps/routeshyft-api/src/modules/route/api/registerRouteRoutes.ts`.
+- Add `src/modules/route/api/registerRouteRoutes.ts`.
 - Provide `GET /api/route/_health` as structural proof.
 
 7. Phase G: add minimal internal command bus

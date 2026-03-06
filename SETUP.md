@@ -26,7 +26,7 @@ On the remote server:
 
 ### 3. Environment Files
 
-The `.env` file in `apps/routeshyft-api/` contains configuration. For production:
+The `.env` file in `src/` contains configuration. For production:
 - Use strong, unique passwords
 - Generate secure JWT secrets: `openssl rand -base64 32`
 - Never commit `.env` files to git
@@ -42,16 +42,15 @@ The `.env` file in `apps/routeshyft-api/` contains configuration. For production
 Playwright tests run against a live app. Set these env vars before running:
 
 ```bash
-export API_URL=http://127.0.0.1:3000
-export BASE_URL=http://127.0.0.1:5173
+export BASE_URL=http://localhost:5173
 export TEST_EMAIL=you@example.com
 export TEST_PASSWORD=yourpassword
 ```
 
-Start backend/frontend first, then run the suite:
+Run the suite:
 
 ```bash
-npm run test:e2e
+npx playwright test
 ```
 
 CI uses the same variables via GitHub Secrets:

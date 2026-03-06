@@ -16,7 +16,7 @@ MoneyShyft is a family-focused budgeting application built with Vue 3 + TypeScri
 
 ## Development Commands
 
-### Backend (apps/routeshyft-api/)
+### Backend (src/)
 ```bash
 # Development server with hot reload
 npm run dev
@@ -40,7 +40,7 @@ npm test                            # Run Jest tests
 npm test:watch                      # Run tests in watch mode
 ```
 
-### Frontend (apps/routeshyft-web/)
+### Frontend (frontend/)
 ```bash
 # Development server (runs on port 5173)
 npm run dev
@@ -69,7 +69,7 @@ docker-compose restart
 
 ## Architecture
 
-### Backend Structure (`apps/routeshyft-api/src/`)
+### Backend Structure (`src/src/`)
 
 **Core Application Flow:**
 - `server.ts` - Entry point, starts Express server with graceful shutdown
@@ -78,7 +78,7 @@ docker-compose restart
 
 **Database Architecture:**
 - **ORM:** Knex.js with TypeScript
-- **Migrations:** Located in `apps/routeshyft-api/src/migrations/`, use numbered prefixes (001_, 002_, etc.)
+- **Migrations:** Located in `src/src/migrations/`, use numbered prefixes (001_, 002_, etc.)
 - **Connection:** Database pool configured in `config/database.ts`
 - **Multi-tenancy:** All data scoped by `household_id` UUID
 
@@ -114,7 +114,7 @@ docker-compose restart
 6. Route handlers
 7. Error handler (catches all unhandled errors)
 
-### Frontend Structure (`apps/routeshyft-web/src/`)
+### Frontend Structure (`frontend/src/`)
 
 **Framework:** Vue 3 with Composition API + TypeScript
 
@@ -164,7 +164,7 @@ docker-compose restart
 
 **Migration Strategy:**
 - Migrations run automatically in production via Knex
-- Development: manually run `npm run migrate:latest` in `apps/routeshyft-api/` directory
+- Development: manually run `npm run migrate:latest` in src/ directory
 - Use `ts-node` to execute TypeScript migrations directly
 
 ## Development Workflow
@@ -173,13 +173,13 @@ docker-compose restart
 1. Copy `docker-compose.example.yml` to `docker-compose.yml` (gitignored)
 2. Update database credentials and JWT secrets
 3. Start services: `docker-compose up -d`
-4. Run migrations: `cd apps/routeshyft-api && npm run migrate:latest`
+4. Run migrations: `cd src && npm run migrate:latest`
 5. Seed recommended sections: `npm run seed:run`
-6. Start frontend: `cd apps/routeshyft-web && npm run dev`
-7. Start backend dev server: `cd apps/routeshyft-api && npm run dev`
+6. Start frontend: `cd frontend && npm run dev`
+7. Start backend dev server: `cd src && npm run dev`
 
 **Environment Variables:**
-- Backend: `apps/routeshyft-api/.env` (database URL, JWT secrets, frontend URL)
+- Backend: `src/.env` (database URL, JWT secrets, frontend URL)
 - Frontend: Vite env vars via `import.meta.env`
 - Both `.env` files are gitignored - never commit
 
@@ -242,6 +242,6 @@ PGPASSWORD=<password> psql -h localhost -U <username> -d moneyshyft
 - Frontend built and served via nginx as static files
 
 ## Production Deployment Details (Current)
-- Backend container built from `apps/routeshyft-api/Dockerfile.production` with `NODE_ENV=production`.
+- Backend container built from `src/Dockerfile` with `NODE_ENV=production`.
 - Prod migrations should use `npm run migrate:latest:prod` inside container.
-- Nginx serves `apps/routeshyft-web/dist` and proxies `/api/` to `127.0.0.1:3000`.
+- Nginx serves `frontend/dist` and proxies `/api/` to `127.0.0.1:3000`.

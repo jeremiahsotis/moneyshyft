@@ -8,6 +8,6 @@ Droplet filesystem storage
 
 ## Module Layout
 
-apps/routeshyft-api/src/modules/route/ - domain - application - infrastructure - api
+src/modules/route/ - domain - application - infrastructure - api
 
 Mounted at /api/v1/route/\* WP is thin frontend only.
