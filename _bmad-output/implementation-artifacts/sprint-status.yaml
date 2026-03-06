@@ -148,3 +148,12 @@ course_correction:
       - Monorepo workspace and lane-boundary migration approved as staged change
       - Shared-contact dedupe guardrails approved (no auto-merge on shared or unverified contact points)
       - Patch intake governance approved with check-first and repair/rebuild policy
+  cc-2026-03-06:
+    status: approved
+    scope: major
+    lane: connectshyft
+    proposal: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md
+    summary:
+      - Cross-epic ConnectShyft UX rebuild approved after user-testing failure persisted
+      - New epic CS-E7 approved for messaging-first volunteer surface rebuild
+      - Frontend-first rebuild with backend rule preservation and contract-boundary hardening approved

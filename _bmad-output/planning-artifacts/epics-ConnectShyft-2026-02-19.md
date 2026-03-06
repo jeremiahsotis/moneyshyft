@@ -161,6 +161,10 @@ Enable secure, idempotent provider ingestion for SMS/voice/transcription (Telnyx
 Introduce a provider-agnostic Comms Core adapter boundary so provider changes do not require domain-level rewrites.
 **FRs covered:** FR-CS-016, FR-CS-018, FR-CS-019, FR-CS-020, FR-CS-021, FR-CS-021a, FR-CS-024, FR-CS-025
 
+### Epic g: ConnectShyft UX Rebuild (CS-E7)
+Deliver a messaging-first volunteer UX rebuild that keeps engineering and routing complexity behind a display-safe contract boundary.
+**FRs covered:** FR-CS-005, FR-CS-013, FR-CS-014, FR-CS-016, FR-CS-022, FR-CS-023, FR-CS-024
+
 ## Epic a: Scoped Access and Operational Configuration
 
 Enable tenant and orgUnit administrators to safely activate ConnectShyft, enforce scope boundaries, and configure numbers/escalation rules.
@@ -735,6 +739,140 @@ So that Twilio-dependent paths are retired without breaking lifecycle behavior.
 **Given** a Twilio-coupled implementation path is invoked in ConnectShyft lanes
 **When** CI and policy checks run
 **Then** the change is blocked unless routed through approved adapter abstraction contracts.
+
+## Epic g: ConnectShyft UX Rebuild (CS-E7)
+
+Deliver a messaging-first volunteer UX rebuild that preserves locked routing/thread behavior while moving engineering and operations complexity out of primary user surfaces.
+
+### Story g.1: Design Tokens and Shared Conversation Primitives
+
+As a frontend engineer,
+I want a single token system and reusable conversation primitives,
+So that ConnectShyft surfaces share one visual language across breakpoints without duplicating UI logic.
+
+**Tracking ID:** CS-S7.1
+**NFRs:** NFR-CS-011
+
+**Acceptance Criteria:**
+
+**Given** the ConnectShyft rebuild starts
+**When** foundation components are implemented
+**Then** design tokens are defined for color, type, spacing, radius, shadows, and breakpoints
+**And** reusable primitives are available for queue cards, pills, thread headers, message bubbles, voicemail cards, composer, and thread action bar.
+
+**Given** volunteer-facing screens consume these primitives
+**When** render contracts are applied
+**Then** screens do not directly render raw internal fields (IDs, raw priority integers, raw routing metadata) as primary UI content.
+
+### Story g.2: Inbox and Mine Surface Rebuild
+
+As a frontline volunteer,
+I want Inbox and Mine to feel like calm messaging queues,
+So that I can triage quickly without parsing system internals.
+
+**Tracking ID:** CS-S7.2
+**FRs:** FR-CS-005, FR-CS-014
+**Depends On:** Story g.1
+
+**Acceptance Criteria:**
+
+**Given** Inbox or Mine is rendered
+**When** thread rows are displayed
+**Then** each row is a card-level tap target with human-readable summary, preview, timestamp, and context pills
+**And** primary UI does not expose raw state chips, priority integers, number IDs, or webhook/system metadata.
+
+**Given** queue ordering is evaluated
+**When** records are returned
+**Then** volunteer-facing ordering remains deterministic and maps to human urgency language
+**And** search remains persistent for queue views.
+
+### Story g.3: Thread Detail Conversation-First Rebuild
+
+As a volunteer handling a case conversation,
+I want thread detail to center on messaging actions and timeline context,
+So that I can respond quickly without navigating record-style chrome.
+
+**Tracking ID:** CS-S7.3
+**FRs:** FR-CS-013, FR-CS-016, FR-CS-024
+**Depends On:** Story g.1
+
+**Acceptance Criteria:**
+
+**Given** thread detail is open
+**When** header and body render
+**Then** neighbor, conference, and claim context are primary
+**And** voicemail appears as a first-class inline timeline item.
+
+**Given** action controls are shown
+**When** thread state is evaluated
+**Then** action sets remain explicit and locked by state:
+  - UNCLAIMED: Call, Text, Claim
+  - CLAIMED: Call, Text, Close
+  - CLOSED: Call, Send Message
+**And** policy/refusal messaging appears contextually (blocking when needed) without dominating default thread chrome.
+
+### Story g.4: Add Neighbor and Directory Rebuild
+
+As a volunteer,
+I want Add Neighbor and Directory flows to be clear and mobile-friendly,
+So that I can create/find people quickly and start the right conversation.
+
+**Tracking ID:** CS-S7.4
+**FRs:** FR-CS-004, FR-CS-006, FR-CS-007
+**Depends On:** Story g.1
+
+**Acceptance Criteria:**
+
+**Given** Add Neighbor is opened
+**When** the form is presented
+**Then** the flow supports first name, last name, primary phone, additional phone, email, address, prefers texting, shared phone, and optional notes.
+
+**Given** Directory is used
+**When** users search by name/phone
+**Then** results remain conference-scoped for volunteer workflows
+**And** users can open an existing active thread or start a new conversation using deterministic ensure behavior.
+
+### Story g.5: More/Settings Volunteer IA and Admin Separation
+
+As a volunteer,
+I want More/Settings to focus on volunteer tools,
+So that operational/admin configuration does not distract from communication work.
+
+**Tracking ID:** CS-S7.5
+**FRs:** FR-CS-001, FR-CS-002, FR-CS-003
+**Depends On:** Story g.2
+
+**Acceptance Criteria:**
+
+**Given** volunteer users open More/Settings
+**When** IA options are rendered
+**Then** the primary options are volunteer-facing (Directory, Settings, notification/display preferences, sign-out)
+**And** admin-only controls (availability, number mappings, escalation configuration) are role-gated or routed to a separate admin path.
+
+### Story g.6: Volunteer Contract Boundary and Regression Hardening
+
+As a release maintainer,
+I want explicit volunteer display contracts and regression gates,
+So that UX drift back to admin/system-first surfaces is prevented.
+
+**Tracking ID:** CS-S7.6
+**FRs:** FR-CS-005, FR-CS-017, FR-CS-024
+**NFRs:** NFR-CS-011
+**Depends On:** Story g.2, Story g.3, Story g.4, Story g.5
+
+**Acceptance Criteria:**
+
+**Given** read models are consumed by volunteer UI
+**When** adapters map backend truth to display contracts
+**Then** volunteer surfaces consume display-safe fields and suppress raw internal metadata by default.
+
+**Given** CI and QA gates run for CS-E7 stories
+**When** validations execute
+**Then** regression coverage verifies:
+  - internal-field suppression in volunteer-primary surfaces
+  - voicemail behavior lock (Mine/Inbox/thread timeline)
+  - responsive behavior (mobile full-screen thread, tablet split view, desktop three-column)
+  - accessibility constraints and action feedback consistency.
 
 \
 Acceptance Criteria Additions (locked):\

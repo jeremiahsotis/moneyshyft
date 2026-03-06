@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-detect-mode','step-02-load-context','step-03-risk-and-testability','step-04-coverage-plan','step-05-generate-output']
 lastStep: 'step-05-generate-output'
-lastSaved: '2026-03-03'
+lastSaved: '2026-03-06'
 ---
 
 # Test Design Workflow Progress
@@ -1121,3 +1121,106 @@ lastSaved: '2026-03-03'
   - Epic 1 scope remains limited to Stories 1.1-1.4 for this planning cycle.
   - Canonical refusal reason list remains locked during Story 1.4 implementation.
   - SignShyft code continues lane-isolated under `apps/signshyft-*` paths.
+
+## 2026-03-06 Run - Step 1 Output - Detect Mode & Prerequisites (Epic G)
+- Mode selected: **Epic-Level Mode**.
+- Selection reason: user intent explicitly targeted `testarch-test-design Epic G`.
+- Epic-level prerequisite check passed:
+  - Epic G stories `g-1`..`g-6` exist and are marked `ready-for-dev`.
+  - Story validation report confirms blocking findings = 0.
+  - Sprint status dependency graph includes Epic G sequencing (`g-2/g-3/g-4 -> g-1`, `g-5 -> g-2`, `g-6 -> g-2/g-3/g-4/g-5`).
+
+## 2026-03-06 Run - Step 2 Output - Load Context & Knowledge Base (Epic G)
+- Loaded config from `_bmad/tea/config.yaml`:
+  - `tea_use_playwright_utils: true`
+  - `tea_browser_automation: auto`
+  - `test_artifacts: _bmad-output/test-artifacts`
+- Loaded epic-level artifacts:
+  - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
+  - `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
+  - `_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md` (context)
+  - `_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md` (context)
+  - `_bmad-output/implementation-artifacts/g-1-design-tokens-and-shared-conversation-primitives.md`
+  - `_bmad-output/implementation-artifacts/g-2-inbox-and-mine-surface-rebuild.md`
+  - `_bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md`
+  - `_bmad-output/implementation-artifacts/g-4-add-neighbor-and-directory-rebuild.md`
+  - `_bmad-output/implementation-artifacts/g-5-more-settings-volunteer-ia-and-admin-separation.md`
+  - `_bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md`
+  - `_bmad-output/implementation-artifacts/story-validation-epic-g-2026-03-06.md`
+  - `_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+- Existing coverage scan summary:
+  - Extensive baseline exists for `ux-r1`..`ux-r4`, `c-*`, `d-*` API/E2E suites.
+  - No dedicated CS-S7 (`g-1`..`g-6`) story-aligned suites currently exist.
+  - Current volunteer surfaces still expose raw metadata tokens in key views (Inbox/Thread/More) and require explicit anti-regression checks.
+- Browser exploration (auto mode): skipped for this run in favor of code/doc evidence (target URL not specified in user request).
+- Knowledge fragments loaded:
+  - `_bmad/tea/testarch/knowledge/risk-governance.md`
+  - `_bmad/tea/testarch/knowledge/probability-impact.md`
+  - `_bmad/tea/testarch/knowledge/test-levels-framework.md`
+  - `_bmad/tea/testarch/knowledge/test-priorities-matrix.md`
+  - `_bmad/tea/testarch/knowledge/playwright-cli.md`
+
+## 2026-03-06 Run - Step 3 Output - Risk Assessment (Epic G)
+- System-level testability subsection is not applicable (epic-level mode).
+- Risk matrix generated with probability-impact scoring (`score = probability x impact`).
+- Highest risk:
+  - `R-G-001` display-contract leakage of raw internals in volunteer-primary surfaces (score 9).
+- High-priority risks (score >=6):
+  - `R-G-001` display-safe boundary leakage
+  - `R-G-002` state-action matrix/reopen drift
+  - `R-G-003` volunteer/admin IA separation bypass
+  - `R-G-004` Add Neighbor/Directory deterministic-write drift
+  - `R-G-005` voicemail ownership/timeline drift
+  - `R-G-006` CS-S7 coverage gap in CI
+  - `R-G-007` responsive interaction model drift
+- Priority order:
+  1. Volunteer-safe contract suppression (`R-G-001`)
+  2. Lifecycle/action determinism (`R-G-002`, `R-G-005`)
+  3. Role-gated IA boundaries (`R-G-003`)
+  4. Deterministic create/search/start behavior (`R-G-004`)
+  5. Delivery safety and drift prevention (`R-G-006`, `R-G-007`)
+
+## 2026-03-06 Run - Step 4 Output - Coverage Plan & Execution Strategy (Epic G)
+- Coverage matrix created for stories `g-1` through `g-6` with explicit risk links and non-duplicative test-level intent.
+- Priority model applied:
+  - P0: contract/lifecycle/authorization invariants with no workaround
+  - P1: high-impact interaction, IA, accessibility, and feedback consistency
+  - P2: contract hardening, performance smoke, and compatibility regression
+  - P3: exploratory and burn-in confidence checks
+- Execution strategy uses simple PR / Nightly / Weekly model:
+  - PR: P0 + P1 + fast P2 suites
+  - Nightly: full P2
+  - Weekly: P3 + burn-in
+- Interval-only effort estimates:
+  - P0: ~34-52 hours
+  - P1: ~28-44 hours
+  - P2: ~14-26 hours
+  - P3: ~4-10 hours
+  - Total: ~80-132 hours (~2.5-4 weeks)
+- Quality gates set:
+  - P0 pass rate = 100%
+  - P1 pass rate >=95%
+  - High-risk mitigations complete or formally waived
+  - Volunteer display-safe boundary has zero forbidden-field leaks
+  - Overall planned coverage target >=80%
+
+## 2026-03-06 Run - Step 5 Output - Generate Outputs & Validate (Epic G)
+- Mode used: **Epic-Level**
+- Epic selected: **Epic G (CS-E7)**
+- Output generated:
+  - `_bmad-output/test-artifacts/test-design-epic-G.md`
+- Validation summary against checklist:
+  - Risk matrix contains IDs/category/P-I-score/mitigation/owner/timeline.
+  - Coverage plan includes P0-P3 with risk links and non-duplicative level intent.
+  - Execution strategy is PR/Nightly/Weekly (simple model, no redundant test relisting).
+  - Estimates remain interval-based (no false precision).
+  - Quality gate criteria, assumptions/dependencies, not-in-scope, and interworking sections are present.
+- External documentation cross-check completed for recommendation alignment:
+  - Playwright best practices + parallelization
+  - Cypress test isolation
+  - Pact provider verification
+  - GitHub Actions workflow/job model
+- Open assumptions:
+  - Epic G dependency graph and ready-for-dev statuses remain authoritative.
+  - Locked lifecycle/routing semantics remain unchanged while presentation contracts are rebuilt.
+  - Existing UX-R/C/D baselines remain available as compatibility regression gates while CS-S7 suites are added.

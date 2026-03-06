@@ -1,0 +1,150 @@
+# Story g.1: Design Tokens and Shared Conversation Primitives
+
+Status: ready-for-dev
+
+<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
+
+## Story
+
+As a frontend engineer,
+I want a single token system and reusable conversation primitives,
+so that ConnectShyft surfaces share one visual language across breakpoints without duplicating UI logic.
+
+## Acceptance Criteria
+
+1. Given the ConnectShyft UX rebuild starts, when foundation components are implemented, then design tokens are defined for color, type, spacing, radius, shadows, and breakpoints.
+2. Given volunteer-facing surfaces consume shared primitives, when Inbox, Mine, and Thread are rendered, then queue cards, pills, thread headers, message bubbles, voicemail cards, composer, and thread action bar come from reusable primitives instead of per-view one-off markup.
+3. Given volunteer-facing screens render operational data, when presentation contracts are applied, then raw internal fields (IDs, raw priority integers, raw routing metadata) are not shown as primary UI content.
+4. Given responsive behavior is exercised, when mobile/tablet/desktop layouts are rendered, then tokenized spacing/typography scales consistently and touch-target constraints remain enforced.
+
+## Operability Guardrails
+
+- Guardrail Classification Reviewed: yes
+- Critical Capability: no
+- Access-Control Story: no
+- Backend/API Implies Human Operability: yes
+- Frontend/Operator Usability Criteria Included: yes
+- Operability Pairing Notes: Foundation primitives must keep volunteer-facing communication work scannable without exposing backend internals.
+- Real-User Validation Evidence: N/A - ready-for-dev planning artifact.
+- Real-User Validation Result: n/a
+- Role-Admin UI Path: N/A
+- Role-Admin UI Path Verified: n/a
+- Access-Control Exemption Rationale: Story focuses on reusable UI foundation and display contract safety, not role administration.
+
+## Tasks / Subtasks
+
+- [ ] Create ConnectShyft token contract and export surface (AC: 1)
+  - [ ] Define color, typography, spacing, radius, shadow, and breakpoint scales used by volunteer surfaces.
+  - [ ] Add token usage guidance in feature-level comments/docs to avoid ad hoc values.
+- [ ] Build reusable conversation primitives (AC: 2)
+  - [ ] Implement primitives for queue card, urgency/context pills, thread header, message bubble, voicemail card, composer, and action bar.
+  - [ ] Ensure primitives expose deterministic test ids and accessibility hooks.
+- [ ] Enforce display-safe rendering contracts (AC: 3)
+  - [ ] Route volunteer-primary copy through `uiContracts` sanitization helpers.
+  - [ ] Replace direct raw-field rendering in Inbox/Thread with display-safe mapped fields.
+- [ ] Validate responsive and accessibility baseline through primitives (AC: 4)
+  - [ ] Confirm min tap-target and min body text rules remain centralized and consumed.
+  - [ ] Add regression checks for mobile/tablet/desktop primitive behavior.
+
+## Dev Notes
+
+### Technical Requirements
+
+- Tracking ID: CS-S7.1.
+- NFR alignment: NFR-CS-011 (interaction performance/usability baseline and implementation-testable UX constraints).
+- Foundation contract must support downstream stories `g-2` through `g-6`.
+
+### Architecture Compliance
+
+- Keep canonical lifecycle semantics (`UNCLAIMED | CLAIMED | CLOSED`) intact; story changes are presentation-layer only.
+- Maintain frontend-backend contract separation: display-safe presentation adapters for volunteer UI.
+- Preserve module boundaries and existing `/api/v1/connectshyft/*` route contracts.
+
+### Library / Framework Requirements
+
+- Vue 3.5 + TypeScript strict typing for primitive props and emitted events.
+- Tailwind utility usage must flow from shared token constants and reusable classes.
+- Reuse existing `apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts` safety utilities for forbidden copy/internal token suppression.
+
+### File Structure Requirements
+
+- Add/extend primitives under `apps/moneyshyft-web/src/components/connectshyft/`.
+- Keep display-contract mapping under `apps/moneyshyft-web/src/features/connectshyft/readContracts.ts` and `apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts`.
+- Refactor view-level composition only in:
+  - `apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue`
+  - `apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue`
+
+### Testing Requirements
+
+- Add/extend front-end regression specs for primitive composition and forbidden-field suppression behavior.
+- Validate keyboard focus, aria labels, and touch-target constraints for reusable components.
+- Validate responsive rendering behavior at mobile/tablet/desktop breakpoints.
+
+### Previous Story Intelligence
+
+- `ux-r1` through `ux-r4` are marked done but user testing on 2026-03-06 found persistent operations-heavy UI drift.
+- Current Inbox/Thread views still expose internal technical metadata in primary surface copy.
+
+### Git Intelligence Summary
+
+- Existing implementation already includes display-safety helpers (`sanitizeConnectShyftOperatorCopy`) and action contract utilities, which should be extended rather than replaced.
+- Current views include raw metadata chips/labels (`threadId`, number IDs, priority rank) that this story must abstract away.
+
+### Latest Technical Information
+
+- Use current workspace stack from `_bmad-output/project-context.md`:
+  - Vue 3.5.13
+  - Vite 5.0.11
+  - Tailwind 3.4.1
+  - TypeScript strict mode
+
+### Project Context Reference
+
+- `_bmad-output/project-context.md`
+- `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (Epic g / Story g.1)
+- `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
+- `_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md`
+- `apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts`
+
+### Story Completion Status
+
+- Ultimate context engine analysis completed - comprehensive developer guide created.
+
+### Project Structure Notes
+
+- Preserve route-level wiring and keep new UI primitives within existing ConnectShyft feature boundaries.
+- Before implementation, run `npm run branch:ensure-workflow -- --workflow dev-story --story g-1-design-tokens-and-shared-conversation-primitives`.
+
+### References
+
+- `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
+- `_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md`
+- `apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue`
+- `apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue`
+
+## Dev Agent Record
+
+### Agent Model Used
+
+GPT-5 Codex
+
+### Debug Log References
+
+- `cat _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
+- `cat _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+- `rg -n "design token|contract boundary|volunteer" _bmad-output/planning-artifacts/*`
+- `cat apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts`
+- `cat apps/moneyshyft-web/src/features/connectshyft/readContracts.ts`
+
+### Completion Notes List
+
+- Created Story g.1 ready-for-dev context with token/primitives scope, display-safe rendering constraints, and implementation guardrails.
+
+### File List
+
+- _bmad-output/implementation-artifacts/g-1-design-tokens-and-shared-conversation-primitives.md
+
+## Change Log
+
+- 2026-03-06: Created Story g.1 ready-for-dev context document.

@@ -89,6 +89,14 @@ development_status:
   ux-r3-voicemail-and-indicator-behavior: done
   ux-r4-outbound-policy-guardrail-ui: done
   epic-ux-remediation-retrospective: optional
+  epic-g: in-progress
+  g-1-design-tokens-and-shared-conversation-primitives: ready-for-dev
+  g-2-inbox-and-mine-surface-rebuild: ready-for-dev
+  g-3-thread-detail-conversation-first-rebuild: ready-for-dev
+  g-4-add-neighbor-and-directory-rebuild: ready-for-dev
+  g-5-more-settings-volunteer-ia-and-admin-separation: ready-for-dev
+  g-6-volunteer-contract-boundary-and-regression-hardening: ready-for-dev
+  epic-g-retrospective: optional
 
 change_controls:
   connectshyft_scope_lock: true
@@ -100,6 +108,24 @@ change_controls:
   ux_remediation_approved_on: 2026-02-24
   ux_remediation_approved_by: Jeremiah
   ux_remediation_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/connectshyft-sprint-change-proposal-2026-02-24.md
+  ux_rebuild_epic_approved: true
+  ux_rebuild_epic_approved_on: 2026-03-06
+  ux_rebuild_epic_approved_by: Jeremiah
+  ux_rebuild_epic_id: CS-E7
+  ux_rebuild_epic_source: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md
+  ux_rebuild_epic_scope: major
+  ux_rebuild_epic_mode: batch
+  ux_rebuild_handoff:
+    scope: major
+    routed_to:
+      - product-manager
+      - architect
+      - product-owner
+      - scrum-master
+      - backend-dev
+      - frontend-dev
+      - qa-test-engineering
+    approved_on: 2026-03-06
   comms_provider_abstraction_approved: true
   comms_provider_abstraction_approved_on: 2026-02-27
   comms_provider_abstraction_approved_by: Jeremiah
@@ -399,6 +425,19 @@ story_dependencies:
     - f-1-provider-adapter-interface-and-provider-registry
     - f-2-canonical-comms-event-model-and-event-store
     - f-3-provider-leg-message-correlation-fallback-mapping
+  g-2-inbox-and-mine-surface-rebuild:
+    - g-1-design-tokens-and-shared-conversation-primitives
+  g-3-thread-detail-conversation-first-rebuild:
+    - g-1-design-tokens-and-shared-conversation-primitives
+  g-4-add-neighbor-and-directory-rebuild:
+    - g-1-design-tokens-and-shared-conversation-primitives
+  g-5-more-settings-volunteer-ia-and-admin-separation:
+    - g-2-inbox-and-mine-surface-rebuild
+  g-6-volunteer-contract-boundary-and-regression-hardening:
+    - g-2-inbox-and-mine-surface-rebuild
+    - g-3-thread-detail-conversation-first-rebuild
+    - g-4-add-neighbor-and-directory-rebuild
+    - g-5-more-settings-volunteer-ia-and-admin-separation
   ux-r1-mobile-first-inbox-mine-thread-redesign:
     - c-3-inbox-and-thread-detail-read-contracts
   ux-r2-accessibility-and-language-hardening:
