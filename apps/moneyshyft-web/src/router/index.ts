@@ -46,6 +46,18 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
   },
   {
+    path: '/admin/tenant',
+    name: 'admin-tenant',
+    component: () => import('@/views/Admin/TenantAdminView.vue'),
+    meta: { requiresAuth: true, requiresTenantAdmin: true, allowIncompleteSetup: true }
+  },
+  {
+    path: '/admin/system',
+    name: 'admin-system',
+    component: () => import('@/views/Admin/SystemAdminView.vue'),
+    meta: { requiresAuth: true, requiresSystemAdmin: true, allowIncompleteSetup: true }
+  },
+  {
     path: '/app/route/requests',
     name: 'moneyshyft-request-lifecycle',
     component: () => import('@/views/MoneyShyft/RouteRequestLifecycleView.vue'),
@@ -223,6 +235,34 @@ router.beforeEach(async (to, _from, next) => {
 
   if (authStore.isAuthenticated && (to.meta.requiresAuth || moduleGate)) {
     await accessStore.refresh();
+  }
+
+  const requiresSystemAdmin = to.meta.requiresSystemAdmin === true;
+  const requiresTenantAdmin = to.meta.requiresTenantAdmin === true;
+
+  if (authStore.isAuthenticated && (requiresSystemAdmin || requiresTenantAdmin)) {
+    if (!accessStore.hasAnyAdminAccess) {
+      next(accessStore.defaultAuthorizedPath);
+      return;
+    }
+
+    if (requiresSystemAdmin && !accessStore.canAccessSystemAdmin) {
+      if (accessStore.canAccessTenantAdmin) {
+        next('/admin/tenant');
+        return;
+      }
+      next(accessStore.defaultAuthorizedPath);
+      return;
+    }
+
+    if (requiresTenantAdmin && !accessStore.canAccessTenantAdmin) {
+      if (accessStore.canAccessSystemAdmin) {
+        next('/admin/system');
+        return;
+      }
+      next(accessStore.defaultAuthorizedPath);
+      return;
+    }
   }
 
   if (authStore.isAuthenticated && authStore.user?.mustResetPassword === true && to.name !== 'first-login-reset') {

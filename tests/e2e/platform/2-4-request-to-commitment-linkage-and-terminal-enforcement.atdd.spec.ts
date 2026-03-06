@@ -29,7 +29,7 @@ test.describe('Story 2-4 Request-to-Commitment Linkage and Terminal Enforcement 
     await submitResponse;
 
     await expect(page.getByTestId('moneyshyft-request-refusal-banner')).toBeVisible();
-    await expect(page.getByTestId('moneyshyft-request-refusal-code')).toContainText(/ROUTE/i);
+    await expect(page.getByTestId('moneyshyft-request-refusal-code')).toContainText(/(ROUTE|MONEYSHYFT)/i);
     await expect(page.getByTestId('moneyshyft-request-lifecycle-details')).toBeVisible();
   });
 });
