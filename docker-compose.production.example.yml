@@ -1,0 +1,74 @@
+services:
+  # If you already run a shared Postgres instance, you can remove this service
+  # and point DATABASE_URL in the API env file to your shared database.
+  postgres:
+    image: postgres:15-alpine
+    container_name: moneyshyft-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-moneyshyft}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-moneyshyft}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - max_connections=40
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+    volumes:
+      - moneyshyft_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-moneyshyft} -d ${POSTGRES_DB:-moneyshyft}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    mem_limit: 768m
+    cpus: "0.45"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - moneyshyft_internal
+
+  node:
+    build:
+      context: ./apps/moneyshyft-api
+      dockerfile: Dockerfile.production
+    container_name: moneyshyft-api
+    restart: unless-stopped
+    env_file:
+      - ${MONEYSHYFT_API_ENV_FILE:-/opt/moneyshyft/env/moneyshyft-api.env}
+    environment:
+      NODE_OPTIONS: --max-old-space-size=384
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    mem_limit: 512m
+    cpus: "0.55"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - moneyshyft_internal
+
+networks:
+  moneyshyft_internal:
+    driver: bridge
+
+volumes:
+  moneyshyft_postgres_data:
