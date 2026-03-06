@@ -97,3 +97,26 @@ Cross-epic ConnectShyft UX/UI remediation approved after user-testing evidence s
 - Closed-thread outbound behavior standardized: `CLOSED -> UNCLAIMED` on call/message tap (same thread, no new thread).
 - Voicemail behavior standardized: voicemail does not reset escalation/inactivity and does not move claimed threads from Mine to Inbox.
 - Canonical UX/API envelope language reinforced: `success | refusal | error`.
+
+## 2026-03-06 - Correct Course (PM)
+- Workflow: `_bmad/bmm/workflows/4-implementation/correct-course/workflow.yaml`
+- Mode: Batch
+- User approval: yes
+- Scope classification: Major
+
+### Issue Addressed
+Cross-epic ConnectShyft UX/UI failure persisted after prior remediation was marked done. User testing confirmed the volunteer-facing experience still surfaces engineering/ops details in primary views and does not meet messaging-first usability goals.
+
+### Artifacts Modified/Generated
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Routing/Handoff
+- Routed to: Product Manager + Architect (major-scope primary), Product Owner + Scrum Master, Frontend Dev, Backend Dev, QA.
+- Deliverables: approved sprint change proposal, new epic tracking (`CS-E7`), handoff plan with sequencing and regression criteria.
+
+### Approved Direction
+- New epic approved: `CS-E7` (`ConnectShyft UX Rebuild`).
+- Frontend-first volunteer-surface rebuild approved (Inbox/Mine/Thread/Add Neighbor/Directory/More+Settings IA).
+- Backend routing/thread invariants preserved; volunteer-safe response-shaping boundary hardened.
