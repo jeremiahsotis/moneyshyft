@@ -39,6 +39,10 @@ export type ConnectShyftProviderDispatchResult = {
   channel: 'call' | 'message';
   providerLegId: string | null;
   providerMessageId: string | null;
+  dispatchContext: {
+    targetPhone: string | null;
+    messageBodyProvided: boolean;
+  };
   adapterInvoked: true;
   providerBranchingInDomain: false;
 };
@@ -153,12 +157,15 @@ export interface ConnectShyftProviderAdapter {
     tenantId: string;
     orgUnitId: string;
     threadId: string;
+    targetPhone?: string;
     callPolicy?: ConnectShyftOutboundCallDispatchPolicy;
   }): Promise<ConnectShyftProviderDispatchResult>;
   dispatchOutboundMessage(input: {
     tenantId: string;
     orgUnitId: string;
     threadId: string;
+    body: string;
+    targetPhone?: string;
   }): Promise<ConnectShyftProviderDispatchResult>;
   validateInboundWebhookSignature(input: {
     req: ConnectShyftWebhookRequest;
@@ -798,6 +805,8 @@ const buildDispatchResult = (
     providerKey: string;
     channel: 'call' | 'message';
     threadId: string;
+    targetPhone?: string;
+    messageBody?: string;
   },
 ): ConnectShyftProviderDispatchResult => ({
   providerKey: input.providerKey,
@@ -808,6 +817,10 @@ const buildDispatchResult = (
   providerMessageId: input.channel === 'message'
     ? `${input.providerKey}-message-${input.threadId}`
     : null,
+  dispatchContext: {
+    targetPhone: normalizeString(input.targetPhone) || null,
+    messageBodyProvided: normalizeString(input.messageBody).length > 0,
+  },
   adapterInvoked: true,
   providerBranchingInDomain: false,
 });
@@ -858,6 +871,7 @@ const createAdapter = (input: {
       providerKey: input.providerKey,
       channel: 'call',
       threadId: dispatchInput.threadId,
+      targetPhone: dispatchInput.targetPhone,
     });
   },
   async dispatchOutboundMessage(dispatchInput) {
@@ -865,6 +879,8 @@ const createAdapter = (input: {
       providerKey: input.providerKey,
       channel: 'message',
       threadId: dispatchInput.threadId,
+      targetPhone: dispatchInput.targetPhone,
+      messageBody: dispatchInput.body,
     });
   },
   validateInboundWebhookSignature({ req }) {

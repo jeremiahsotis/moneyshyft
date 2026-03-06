@@ -530,6 +530,7 @@ const threadSurfaceModel = computed<ConnectShyftThreadDetail | null>(() => {
     summary: 'Conversation unavailable.',
     display: {
       title: 'Conversation unavailable.',
+      preview: 'Conversation details are unavailable.',
       urgencyLabel: 'Context unavailable',
       stateLabel: 'Unclaimed',
       inboundContext: 'Inbound line unavailable',

@@ -18,12 +18,15 @@ export type ConnectShyftNeighborPhone = {
   verificationStatus: 'verified' | 'unverified';
 };
 
+export type ConnectShyftTextingPreference = 'UNKNOWN' | 'YES' | 'NO';
+
 export type ConnectShyftNeighbor = {
   neighborId: string;
   tenantId: string;
   orgUnitId: string;
   firstName: string;
   lastName: string;
+  prefersTexting: ConnectShyftTextingPreference;
   phones: ConnectShyftNeighborPhone[];
   createdAtUtc?: string;
   updatedAtUtc?: string;
@@ -240,6 +243,14 @@ const parseNeighbor = (payload: unknown): ConnectShyftNeighbor | null => {
   }
 
   const rawNeighbor = payload as Partial<ConnectShyftNeighbor>;
+  const rawTextingPreference = (
+    payload as { prefers_texting?: unknown; prefersTexting?: unknown }
+  ).prefersTexting ?? (payload as { prefers_texting?: unknown }).prefers_texting;
+  const prefersTexting = rawTextingPreference === 'YES'
+    ? 'YES'
+    : rawTextingPreference === 'NO'
+      ? 'NO'
+      : 'UNKNOWN';
 
   const phones = Array.isArray(rawNeighbor.phones)
     ? rawNeighbor.phones
@@ -260,6 +271,7 @@ const parseNeighbor = (payload: unknown): ConnectShyftNeighbor | null => {
     orgUnitId: normalizeString(rawNeighbor.orgUnitId),
     firstName: normalizeString(rawNeighbor.firstName),
     lastName: normalizeString(rawNeighbor.lastName),
+    prefersTexting,
     phones,
     createdAtUtc: normalizeString(rawNeighbor.createdAtUtc),
     updatedAtUtc: normalizeString(rawNeighbor.updatedAtUtc),

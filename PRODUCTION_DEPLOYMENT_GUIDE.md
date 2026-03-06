@@ -1,415 +1,286 @@
-# Production Deployment Guide: Migration Rename Fix
+# MoneyShyft Production Deployment Guide
 
-**Date:** 2026-01-01
-**Fix:** Resolve duplicate migration numbering (004_ conflict)
-**Commit:** ab97ea1
+This guide is for the production topology you described:
+- Host-managed Nginx reverse proxy (shared with other sites)
+- Dockerized MoneyShyft API and Postgres
+- Static frontend files served by host Nginx
+- Small server profile (2 GB RAM, 1 vCPU, 25 GB SSD)
+- Domain lane: `money.shyftunity.com`
 
----
+## 0) Capacity Verdict for 2 GB / 1 vCPU
 
-## Overview
+This is feasible, not a giant problem, if you keep the deployment lean:
+- Keep Nginx on the host (do not run an extra Nginx container for this app)
+- Serve frontend as static files from disk (do not containerize frontend runtime)
+- Cap API memory (`NODE_OPTIONS=--max-old-space-size=384`)
+- Use conservative Postgres settings (included in the compose template)
+- Enable swap (recommended 2 GB) to avoid OOM during image/frontend builds
+- Keep Docker logs rotated and clean old images regularly
 
-This deployment fixes a critical migration numbering conflict where two migrations both had the prefix `004_`. The migration file has been renamed from `004_add_envelope_budgeting.ts` to `009_add_envelope_budgeting.ts`.
+Approximate RAM envelope on this server:
+- OS + host Nginx + background services: 350-600 MB
+- MoneyShyft API container: 180-450 MB
+- Postgres container (tuned): 250-700 MB
+- Remaining headroom is tight during build/deploy spikes; swap helps.
 
-**Impact:** Low-risk deployment - the migration has already been applied to production database. We're only updating tracking metadata.
-
-**Downtime:** ~30-60 seconds during container restart (optional - can do zero-downtime)
-
----
-
-## Pre-Deployment Checklist
-
-Before starting, ensure you have:
-
-- [ ] SSH access to production server
-- [ ] Database credentials (user: jeremiahotis, password: Oiruueu12, db: moneyshyft)
-- [ ] Sudo/docker permissions on production server
-- [ ] Backup strategy ready (see step 1 below)
-- [ ] Rollback plan reviewed (see end of document)
-
----
-
-## Deployment Steps
-
-### Step 1: Backup Production Database (CRITICAL)
-
-**Why:** Always backup before any database changes, even metadata updates.
+## 1) One-Time Server Prep
 
 ```bash
-# SSH into production server
-ssh user@your-production-server
+# Ubuntu/Debian example
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl git rsync
 
-# Create backup directory (if it doesn't exist)
-mkdir -p ~/moneyshyft-backups
+# Install Docker + Compose plugin if missing
+# (skip if already installed)
 
-# Create timestamped backup
-BACKUP_FILE=~/moneyshyft-backups/moneyshyft-$(date +%Y%m%d-%H%M%S).sql
-docker exec moneyshyft-postgres-1 pg_dump -U jeremiahotis moneyshyft > $BACKUP_FILE
+# Optional but strongly recommended on 2 GB RAM:
+# create 2 GB swap once
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
-# Verify backup was created
-ls -lh $BACKUP_FILE
-
-# Optional: compress the backup
-gzip $BACKUP_FILE
+# Create deploy directories
+sudo mkdir -p /opt/moneyshyft/env /opt/moneyshyft/backups /home/jeremiahotis/projects
+sudo chown -R "$USER":"$USER" /opt/moneyshyft
 ```
 
-**Expected output:** Backup file should be several MB in size (verify it's not empty)
-
----
-
-### Step 2: Verify Current State
+## 2) Clone Repo and Create Deployment Files
 
 ```bash
-# Check current Docker container status
-docker-compose ps
+cd /home/jeremiahotis/projects
+git clone https://github.com/jeremiahotis/moneyshyft.git connectshyft
+cd connectshyft
 
-# Verify current migrations in database
-docker exec moneyshyft-postgres-1 psql -U jeremiahotis -d moneyshyft -c "SELECT name FROM knex_migrations ORDER BY id;"
-
-# Look for BOTH of these entries:
-# - 004_add_debt_tracking.ts
-# - 004_add_envelope_budgeting.ts  ← This will be renamed to 009_
-
-# Check current migration files on disk
-ls -la ~/moneyshyft/apps/moneyshyft-api/src/migrations/ | grep -E "004|009"
+# Use the production compose template from this repo
+cp docker-compose.production.example.yml docker-compose.yml
 ```
 
-**Expected:** You should see `004_add_envelope_budgeting.ts` in both database and filesystem.
-
----
-
-### Step 3: Pull Latest Changes
+Create a local compose variable file (gitignored):
 
 ```bash
-# Navigate to project directory
-cd ~/moneyshyft
-
-# Stash any local changes (if you have environment-specific files)
-git stash
-
-# Pull latest changes from main branch
-git pull origin main
-
-# Verify the migration file was renamed
-ls -la apps/moneyshyft-api/src/migrations/ | grep -E "004|009"
+cat > .env <<'ENVVARS'
+POSTGRES_USER=moneyshyft
+POSTGRES_PASSWORD=change-this-strong-password
+POSTGRES_DB=moneyshyft
+MONEYSHYFT_API_ENV_FILE=/opt/moneyshyft/env/moneyshyft-api.env
+ENVVARS
 ```
 
-**Expected output:**
-```
-004_add_debt_tracking.ts       ← Still exists
-009_add_envelope_budgeting.ts  ← New name (was 004_add_envelope_budgeting.ts)
-```
-
-**Important:** If git pull fails due to local changes, see "Handling Local Changes" section below.
-
----
-
-### Step 4: Update Migration Tracking in Database
-
-**This is the CRITICAL step** - we must update the database to reflect the renamed migration.
+Create the API environment file outside git:
 
 ```bash
-# Update the knex_migrations table
-docker exec moneyshyft-postgres-1 psql -U jeremiahotis -d moneyshyft -c "
-UPDATE knex_migrations
-SET name = '009_add_envelope_budgeting.ts'
-WHERE name = '004_add_envelope_budgeting.ts';
-"
+cat > /opt/moneyshyft/env/moneyshyft-api.env <<'ENVFILE'
+NODE_ENV=production
+PORT=3000
 
-# Verify the update (should show "UPDATE 1")
-# Now verify the change
-docker exec moneyshyft-postgres-1 psql -U jeremiahotis -d moneyshyft -c "
-SELECT name FROM knex_migrations ORDER BY id;
-"
+# Option A (recommended on small servers): point to your existing shared Postgres instance.
+# Option B: use the Postgres service in docker-compose.yml (host=postgres).
+DATABASE_URL=postgresql://moneyshyft:change-this-strong-password@postgres:5432/moneyshyft
+
+FRONTEND_URL=https://money.shyftunity.com
+COOKIE_DOMAIN=money.shyftunity.com
+
+JWT_SECRET=replace-with-openssl-rand-base64-48
+JWT_REFRESH_SECRET=replace-with-openssl-rand-base64-48
+JWT_EXPIRY=15m
+JWT_REFRESH_EXPIRY=7d
+
+LOG_LEVEL=info
+MONEYSHYFT_WP_CUTOVER_STAGE=monolith_authoritative
+ENVFILE
 ```
 
-**Expected output:**
-```
-UPDATE 1
-
-# Then the SELECT should show:
-001_initial_schema.ts
-002_update_section_types.ts
-003_add_income_tracking.ts
-004_add_debt_tracking.ts        ← Only one 004 now
-009_add_envelope_budgeting.ts   ← Renamed
-005_add_household_invitation_codes.ts
-006_add_assignment_transfers.ts
-007_add_goal_contributions.ts
-008_add_debt_payment_plans.ts
-```
-
----
-
-### Step 5: Rebuild Docker Container
-
-**Option A: Zero-Downtime Deployment (Recommended)**
+Generate strong JWT secrets:
 
 ```bash
-# Build new image (doesn't stop current container)
-docker-compose build --no-cache node
-
-# Quick restart (typically 5-10 seconds downtime)
-docker-compose up -d --no-deps --force-recreate node
+openssl rand -base64 48
+openssl rand -base64 48
 ```
 
-**Option B: Full Rebuild (30-60 seconds downtime)**
+## 3) Frontend Build and Publish
+
+Recommended on this droplet: build in CI/local machine and upload `dist/`.
+If you build directly on server, install Node.js 20 first, then:
 
 ```bash
-# Stop all containers
-docker-compose down
-
-# Rebuild node container with fresh dependencies
-docker-compose build --no-cache node
-
-# Start all services
-docker-compose up -d
+cd /home/jeremiahotis/projects/connectshyft/apps/moneyshyft-web
+npm ci
+npm run build
 ```
 
----
+## 4) Nginx Site Config (Host-Managed)
 
-### Step 6: Verify Deployment
+Your server already has shared `shyftunity.com` Nginx config. Do not add a new global redirect block.
+Only verify/update the `money` lane to point at this repo's frontend dist and `money_api` upstream.
+
+Required upstream (you already have this):
+
+```nginx
+upstream money_api { server 127.0.0.1:3000; keepalive 32; }
+```
+
+Money lane server block:
+
+```nginx
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name money.shyftunity.com;
+
+    ssl_certificate     /etc/letsencrypt/live/shyftunity.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/shyftunity.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    root /home/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/dist;
+    index index.html;
+
+    location /api/ {
+        proxy_pass http://money_api;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
+
+If you keep your current deploy path layout (`/home/jeremiahotis/projects/shyft/...`), set `root` to that location instead. The important part is that it points at this app's built `dist` directory.
+
+Enable and reload:
 
 ```bash
-# Wait for services to start
-sleep 10
-
-# Check container status
-docker-compose ps
-# All containers should show "Up" status
-
-# Check backend logs for errors
-docker logs moneyshyft-node-1 --tail 50
-
-# Look for these success messages:
-# - "MoneyShyft API server running on 0.0.0.0:3000"
-# - "Database: postgres:5432/moneyshyft"
-# - No "Cannot find module" errors
-# - No "relation does not exist" errors
-
-# Verify migrations in database (should show 009_add_envelope_budgeting.ts)
-docker exec moneyshyft-postgres-1 psql -U jeremiahotis -d moneyshyft -c "
-SELECT name FROM knex_migrations WHERE name LIKE '009%' OR name LIKE '004%';
-"
-
-# Expected:
-# 004_add_debt_tracking.ts
-# 009_add_envelope_budgeting.ts
-
-# Test signup endpoint
-curl -X POST 'http://localhost:3000/api/v1/auth/signup' \
-  -H 'Content-Type: application/json' \
-  --data-raw '{
-    "email": "deployment-test@example.com",
-    "password": "Test12345",
-    "firstName": "Deploy",
-    "lastName": "Test",
-    "householdName": "Test Household"
-  }'
-
-# Expected: JSON response with user object, no errors
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
----
-
-### Step 7: Monitor Production
+## 5) Start Containers and Run Migrations
 
 ```bash
-# Watch logs for 2-3 minutes to catch any issues
-docker logs moneyshyft-node-1 -f
+cd /home/jeremiahotis/projects/connectshyft
 
-# Press Ctrl+C to stop watching
+# Build API image
+docker compose build node
 
-# Check nginx logs (on host since nginx runs outside Docker)
-sudo tail -f /var/log/nginx/error.log
+# Start database first (skip if using external/shared Postgres)
+docker compose up -d postgres
 
-# Monitor for any 500 errors or database connection issues
+# Run production migrations
+docker compose run --rm node npm run migrate:latest:prod
+
+# Start or restart API
+docker compose up -d node
 ```
 
----
-
-## Handling Local Changes
-
-If `git pull` fails due to local changes to `docker-compose.yml` or other environment-specific files:
+## 6) Smoke Checks
 
 ```bash
-# See what files have local changes
-git status
+# Containers healthy
+cd /home/jeremiahotis/projects/connectshyft
+docker compose ps
 
-# If it's docker-compose.yml (which is environment-specific):
-# 1. Create a temporary backup
-cp docker-compose.yml docker-compose.yml.backup
+# API health on loopback
+curl -f http://127.0.0.1:3000/health
 
-# 2. Pull changes
-git pull origin main
+# Public web check
+curl -I https://money.shyftunity.com
 
-# 3. If docker-compose.yml was overwritten, restore your backup
-cp docker-compose.yml.backup docker-compose.yml
+# API routing check (401/403 is acceptable for auth-protected routes)
+curl -i https://money.shyftunity.com/api/v1/auth/me
 
-# 4. Verify your DATABASE_URL and other env vars are correct
-cat docker-compose.yml | grep DATABASE_URL
+# API logs
+docker logs moneyshyft-api --tail 100
 ```
 
----
+## 7) Update / Redeploy Procedure
+
+```bash
+cd /home/jeremiahotis/projects/connectshyft
+
+# 1) Pull latest code
+git fetch origin
+git checkout main
+git pull --ff-only origin main
+
+# 2) Rebuild API image
+docker compose build node
+
+# 3) Backup DB before migrations (if using local postgres container)
+BACKUP_FILE="/opt/moneyshyft/backups/moneyshyft-$(date +%Y%m%d-%H%M%S).sql.gz"
+set -a; source .env; set +a
+docker exec moneyshyft-postgres pg_dump -U "${POSTGRES_USER:-moneyshyft}" "${POSTGRES_DB:-moneyshyft}" | gzip > "$BACKUP_FILE"
+
+# 4) Run migrations
+docker compose run --rm node npm run migrate:latest:prod
+
+# 5) Recreate API container
+docker compose up -d --no-deps --force-recreate node
+
+# 6) Rebuild + republish frontend
+cd /home/jeremiahotis/projects/connectshyft/apps/moneyshyft-web
+npm ci
+npm run build
+
+# 7) Reload nginx
+sudo nginx -t && sudo systemctl reload nginx
+```
 
 ## Rollback Procedure
 
-If something goes wrong during deployment:
+Rollback Step 1: Identify the last known-good commit and the latest verified backup artifact.
 
-### Rollback Step 1: Revert Database Change
-
-```bash
-# Revert the migration name back
-docker exec moneyshyft-postgres-1 psql -U jeremiahotis -d moneyshyft -c "
-UPDATE knex_migrations
-SET name = '004_add_envelope_budgeting.ts'
-WHERE name = '009_add_envelope_budgeting.ts';
-"
-```
-
-### Rollback Step 2: Revert Git Changes
+Rollback Step 2: Revert code and restart the API container image.
 
 ```bash
-cd ~/moneyshyft
+# Roll back code to known-good commit
+cd /home/jeremiahotis/projects/connectshyft
+git checkout <last-known-good-commit>
 
-# Revert to previous commit (before the migration rename)
-git revert ab97ea1 --no-edit
-
-# Or reset to previous commit (destructive)
-git reset --hard cc0ab7d  # The commit before the fix
+# Rebuild and restart API with old code
+docker compose build node
+docker compose up -d --no-deps --force-recreate node
 ```
 
-### Rollback Step 3: Rebuild Container
+Rollback Step 3: Validate API health and key operator journeys.
+
+Rollback Step 4: If migration/data issues are present, restore the database backup.
 
 ```bash
-docker-compose down
-docker-compose build --no-cache node
-docker-compose up -d
+cd /home/jeremiahotis/projects/connectshyft
+set -a; source .env; set +a
+gunzip -c /opt/moneyshyft/backups/<backup-file>.sql.gz | docker exec -i moneyshyft-postgres psql -U "${POSTGRES_USER:-moneyshyft}" "${POSTGRES_DB:-moneyshyft}"
 ```
 
-### Rollback Step 4: Restore from Backup (if needed)
+## 9) Operational Guardrails for a Small Droplet
 
-**Only use if database corruption occurred:**
+- Keep `3000` bound to loopback only (`127.0.0.1:3000:3000` in compose).
+- Do not publish Postgres (`5432`) publicly unless absolutely required.
+- Prune old images monthly:
+  - `docker image prune -af`
+- Monitor disk and memory:
+  - `df -h`
+  - `free -m`
+  - `docker stats --no-stream`
+- If memory pressure persists, first move Postgres to a managed/external instance.
 
-```bash
-# Stop containers
-docker-compose down
+## 10) Existing Shared Postgres Instead of Compose Postgres
 
-# Restore from backup
-BACKUP_FILE=~/moneyshyft-backups/moneyshyft-YYYYMMDD-HHMMSS.sql
-# (or .sql.gz if compressed)
+If your server already has a shared Postgres container/service, that is usually better on 2 GB RAM.
 
-# If compressed:
-gunzip $BACKUP_FILE.gz
+- Set `DATABASE_URL` in `/opt/moneyshyft/env/moneyshyft-api.env` to that shared DB.
+- Remove/disable the `postgres` service and `depends_on.postgres` in `docker-compose.yml`.
+- Run only the `node` service with `docker compose up -d node`.
 
-# Drop and recreate database
-docker-compose up -d postgres
-sleep 5
-docker exec moneyshyft-postgres-1 psql -U jeremiahotis -c "DROP DATABASE moneyshyft;"
-docker exec moneyshyft-postgres-1 psql -U jeremiahotis -c "CREATE DATABASE moneyshyft;"
-docker exec -i moneyshyft-postgres-1 psql -U jeremiahotis moneyshyft < $BACKUP_FILE
-
-# Restart all services
-docker-compose up -d
-```
-
----
-
-## Success Criteria
-
-Deployment is successful when:
-
-- ✅ All Docker containers are running (`docker-compose ps` shows "Up" status)
-- ✅ Backend logs show no errors
-- ✅ Database query shows `009_add_envelope_budgeting.ts` (not `004_add_envelope_budgeting.ts`)
-- ✅ Only ONE migration file with `004_` prefix exists in database
-- ✅ Signup endpoint returns successful response (200 OK)
-- ✅ No "relation does not exist" errors in logs
-- ✅ No "Cannot find module" errors in logs
-
----
-
-## Troubleshooting
-
-### Issue: "Cannot find module 'bcryptjs'" error
-
-**Solution:**
-```bash
-docker-compose down
-docker-compose build --no-cache node
-docker-compose up -d
-```
-
-### Issue: "relation 'users' does not exist" error
-
-**Solution:**
-```bash
-# Check if migrations table exists
-docker exec moneyshyft-postgres-1 psql -U jeremiahotis -d moneyshyft -c "\dt"
-
-# If users table is missing, restore from backup (see Rollback Step 4)
-
-# If users table exists, restart backend
-docker-compose restart node
-```
-
-### Issue: Signup endpoint returns 500 error
-
-**Solution:**
-```bash
-# Check detailed error logs
-docker logs moneyshyft-node-1 --tail 100
-
-# Look for database connection errors
-docker exec moneyshyft-postgres-1 psql -U jeremiahotis -d moneyshyft -c "SELECT 1;"
-
-# Verify DATABASE_URL in container
-docker exec moneyshyft-node-1 env | grep DATABASE_URL
-```
-
-### Issue: Container won't start
-
-**Solution:**
-```bash
-# Check why it's failing
-docker logs moneyshyft-node-1
-
-# Check docker-compose.yml syntax
-docker-compose config
-
-# Verify environment variables are set
-cat docker-compose.yml | grep -A 5 environment:
-```
-
----
-
-## Post-Deployment Tasks
-
-- [ ] Test signup from production frontend (if deployed)
-- [ ] Test login with existing user
-- [ ] Check application logs for 24 hours
-- [ ] Delete deployment test user: `deployment-test@example.com`
-- [ ] Archive this deployment guide with timestamp
-- [ ] Update team documentation with new migration numbering
-
----
-
-## Important Notes
-
-1. **This migration has already been applied** - We're only updating tracking metadata, not running new database changes
-2. **Database data is safe** - The Docker rebuild preserves all data in the `postgres_data` volume
-3. **Production `docker-compose.yml` is environment-specific** - Don't overwrite it from git
-4. **Nginx runs on host** - It's not affected by this deployment
-5. **Always backup first** - Even for "safe" deployments like this one
-
----
-
-## Questions or Issues?
-
-If you encounter any issues during deployment:
-
-1. Check the "Troubleshooting" section above
-2. Review the deployment logs carefully
-3. Use the rollback procedure if needed
-4. Verify the backup was created successfully before proceeding
-
-**Remember:** It's always better to rollback and investigate than to force through issues.
+This reduces RAM usage and startup overhead while preserving the same Nginx/API routing model.
