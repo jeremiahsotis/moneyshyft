@@ -346,7 +346,7 @@ lastSaved: '2026-03-06'
 ### Related Documents
 
 - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
 - `_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
 - `_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
 - `_bmad-output/implementation-artifacts/story-validation-epic-g-2026-03-06.md`

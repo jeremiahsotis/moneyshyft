@@ -101,7 +101,7 @@ so that operational/admin configuration does not distract from communication wor
 
 - `_bmad-output/project-context.md`
 - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (Epic g / Story g.5)
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
 - `_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md`
 - `apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftMoreView.vue`
 
@@ -117,7 +117,7 @@ so that operational/admin configuration does not distract from communication wor
 ### References
 
 - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
 - `_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md`
 - `apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftMoreView.vue`
 - `apps/moneyshyft-web/src/router/index.ts`
@@ -132,7 +132,7 @@ GPT-5 Codex
 ### Debug Log References
 
 - `cat _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `cat _bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md`
+- `cat _bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
 - `cat apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftMoreView.vue`
 - `cat apps/moneyshyft-web/src/router/index.ts`
 - `rg -n "connectshyft.*settings|moduleGate|requiresTenantAdmin|requiresSystemAdmin" apps/moneyshyft-web/src/router/index.ts`

@@ -102,7 +102,7 @@ so that ConnectShyft surfaces share one visual language across breakpoints witho
 
 - `_bmad-output/project-context.md`
 - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (Epic g / Story g.1)
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
 - `_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md`
 - `apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts`
 
@@ -118,7 +118,7 @@ so that ConnectShyft surfaces share one visual language across breakpoints witho
 ### References
 
 - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
 - `_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md`
 - `apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue`
 - `apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue`

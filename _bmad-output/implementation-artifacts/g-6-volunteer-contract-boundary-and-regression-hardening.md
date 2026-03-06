@@ -108,7 +108,7 @@ so that UX drift back to admin/system-first surfaces is prevented.
 
 - `_bmad-output/project-context.md`
 - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (Epic g / Story g.6)
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
 - `apps/moneyshyft-api/src/modules/connectshyft/readContracts.ts`
 - `apps/moneyshyft-web/src/features/connectshyft/readContracts.ts`
 
@@ -124,7 +124,7 @@ so that UX drift back to admin/system-first surfaces is prevented.
 ### References
 
 - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
 - `_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md`
 - `apps/moneyshyft-api/src/modules/connectshyft/readContracts.ts`
 - `apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts`
@@ -140,7 +140,7 @@ GPT-5 Codex
 ### Debug Log References
 
 - `cat _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `cat _bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md`
+- `cat _bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
 - `cat apps/moneyshyft-api/src/modules/connectshyft/readContracts.ts`
 - `cat apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts`
 - `cat apps/moneyshyft-web/src/features/connectshyft/readContracts.ts`

@@ -101,7 +101,7 @@ so that I can create/find people quickly and start the right conversation.
 
 - `_bmad-output/project-context.md`
 - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md` (Epic g / Story g.4)
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
 - `_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md`
 - `apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftNeighborCreateView.vue`
 
@@ -117,7 +117,7 @@ so that I can create/find people quickly and start the right conversation.
 ### References
 
 - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
 - `_bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md`
 - `apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftNeighborCreateView.vue`
 - `apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftNeighborProfileView.vue`

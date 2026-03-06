@@ -152,7 +152,7 @@ course_correction:
     status: approved
     scope: major
     lane: connectshyft
-    proposal: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md
+    proposal: /Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md
     summary:
       - Cross-epic ConnectShyft UX rebuild approved after user-testing failure persisted
       - New epic CS-E7 approved for messaging-first volunteer surface rebuild

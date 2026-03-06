@@ -108,7 +108,7 @@ Cross-epic ConnectShyft UX/UI remediation approved after user-testing evidence s
 Cross-epic ConnectShyft UX/UI failure persisted after prior remediation was marked done. User testing confirmed the volunteer-facing experience still surfaces engineering/ops details in primary views and does not meet messaging-first usability goals.
 
 ### Artifacts Modified/Generated
-- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-03-06.md`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
 - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/sprint-status.yaml`
 
