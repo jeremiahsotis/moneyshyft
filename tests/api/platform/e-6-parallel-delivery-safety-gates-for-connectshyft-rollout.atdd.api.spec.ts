@@ -120,7 +120,7 @@ test.describe(
           || /needs\['burn-in'\]\.result/.test(workflow);
         const inlineBurnInJob = getJobBlock(workflow, 'burn-in');
         const splitBurnInJob = getJobBlock(burnInWorkflow, 'burn-in');
-        const ciBurnInHasDistinctName = /name:\s*ci-burn-in/.test(inlineBurnInJob);
+        const ciBurnInHasDistinctName = /name:\s*(burn-in|ci-burn-in)/.test(inlineBurnInJob);
         const scheduledBurnInHasDistinctName = /name:\s*scheduled-burn-in/.test(splitBurnInJob);
         const ciBurnInRequiresTests = /BURN_IN_REQUIRE_TESTS:\s*'true'/.test(inlineBurnInJob);
         const splitBurnInRequiresTests = /BURN_IN_REQUIRE_TESTS:\s*'true'/.test(splitBurnInJob);

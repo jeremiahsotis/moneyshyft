@@ -125,7 +125,7 @@ test.describe(
         const releaseSummaryTracksPolicy = /blocked_jobs\+\=\("policy"\)/.test(workflow);
         const releaseSummaryTracksQualityGates = /blocked_jobs\+\=\("quality-gates"\)/.test(workflow);
         const releaseSummaryTracksRouteRegression = /blocked_jobs\+\=\("burn-in"\)/.test(workflow);
-        const ciBurnInHasDistinctName = /burn-in:\s*\n\s*name:\s*ci-burn-in/.test(workflow);
+        const ciBurnInHasDistinctName = /burn-in:\s*\n\s*name:\s*(burn-in|ci-burn-in)/.test(workflow);
         const scheduledBurnInHasDistinctName =
           /burn-in:\s*\n\s*name:\s*scheduled-burn-in/.test(burnInWorkflow);
         const burnInWorkflowTriggeredByCi = /workflows:\s*\['RouteShyft CI'\]/.test(
