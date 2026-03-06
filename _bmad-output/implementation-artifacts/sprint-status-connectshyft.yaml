@@ -89,13 +89,13 @@ development_status:
   ux-r3-voicemail-and-indicator-behavior: done
   ux-r4-outbound-policy-guardrail-ui: done
   epic-ux-remediation-retrospective: optional
-  epic-g: backlog
-  g-1-design-tokens-and-shared-conversation-primitives: backlog
-  g-2-inbox-and-mine-surface-rebuild: backlog
-  g-3-thread-detail-conversation-first-rebuild: backlog
-  g-4-add-neighbor-and-directory-rebuild: backlog
-  g-5-more-settings-volunteer-ia-and-admin-separation: backlog
-  g-6-volunteer-contract-boundary-and-regression-hardening: backlog
+  epic-g: in-progress
+  g-1-design-tokens-and-shared-conversation-primitives: ready-for-dev
+  g-2-inbox-and-mine-surface-rebuild: ready-for-dev
+  g-3-thread-detail-conversation-first-rebuild: ready-for-dev
+  g-4-add-neighbor-and-directory-rebuild: ready-for-dev
+  g-5-more-settings-volunteer-ia-and-admin-separation: ready-for-dev
+  g-6-volunteer-contract-boundary-and-regression-hardening: ready-for-dev
   epic-g-retrospective: optional
 
 change_controls:
