@@ -159,7 +159,15 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
         );
         await page.getByTestId('connectshyft-send-message-modal-submit').click();
         await expect(page.getByTestId('connectshyft-send-message-modal')).toBeHidden();
-        expect((await messageDispatchResponse).ok()).toBeTruthy();
+        const messageDispatch = await messageDispatchResponse;
+        expect(messageDispatch.ok()).toBeTruthy();
+        const messagePayload = messageDispatch.request().postDataJSON() as {
+          body?: unknown;
+          targetPhone?: unknown;
+        };
+        expect(messagePayload.body).toBe('Automated g.2 outbound message smoke test.');
+        expect(typeof messagePayload.targetPhone).toBe('string');
+        expect((messagePayload.targetPhone as string).trim().length).toBeGreaterThan(0);
       } else {
         await page.getByTestId('connectshyft-send-message-modal-close').click();
         await expect(page.getByTestId('connectshyft-send-message-modal')).toBeHidden();
@@ -179,7 +187,13 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
         );
         await page.getByTestId('connectshyft-make-call-modal-submit').click();
         await expect(page.getByTestId('connectshyft-make-call-modal')).toBeHidden();
-        expect((await callDispatchResponse).ok()).toBeTruthy();
+        const callDispatch = await callDispatchResponse;
+        expect(callDispatch.ok()).toBeTruthy();
+        const callPayload = callDispatch.request().postDataJSON() as {
+          targetPhone?: unknown;
+        };
+        expect(typeof callPayload.targetPhone).toBe('string');
+        expect((callPayload.targetPhone as string).trim().length).toBeGreaterThan(0);
       } else {
         await page.getByTestId('connectshyft-call-dialpad-input').fill('+12605550000');
         await page.getByTestId('connectshyft-make-call-modal-submit').click();

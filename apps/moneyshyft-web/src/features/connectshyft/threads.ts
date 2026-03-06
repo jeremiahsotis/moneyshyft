@@ -82,12 +82,14 @@ export type ConnectShyftThreadLifecycleActionInput = {
 export type ConnectShyftThreadDispatchCallInput = {
   threadId: string;
   orgUnitId: string;
+  targetPhone?: string | null;
 };
 
 export type ConnectShyftThreadDispatchMessageInput = {
   threadId: string;
   orgUnitId: string;
   body: string;
+  targetPhone?: string | null;
   overrideReason?: string | null;
   overrideNote?: string | null;
 };
@@ -435,6 +437,7 @@ export const dispatchConnectShyftThreadCall = async (
 ): Promise<ConnectShyftThreadActionResult> => {
   const threadId = normalizeString(input.threadId);
   const orgUnitId = normalizeString(input.orgUnitId);
+  const targetPhone = normalizeString(input.targetPhone);
   if (!threadId) {
     return {
       ok: false,
@@ -452,7 +455,10 @@ export const dispatchConnectShyftThreadCall = async (
 
   return executeConnectShyftThreadAction(
     `/connectshyft/threads/${encodeURIComponent(threadId)}/call`,
-    { orgUnitId },
+    {
+      orgUnitId,
+      targetPhone: targetPhone || undefined,
+    },
     'CONNECTSHYFT_THREAD_CALL_DISPATCH_REFUSED',
     'Unable to place the call right now.',
   );
@@ -464,6 +470,7 @@ export const dispatchConnectShyftThreadMessage = async (
   const threadId = normalizeString(input.threadId);
   const orgUnitId = normalizeString(input.orgUnitId);
   const body = normalizeString(input.body);
+  const targetPhone = normalizeString(input.targetPhone);
   if (!threadId) {
     return {
       ok: false,
@@ -492,6 +499,7 @@ export const dispatchConnectShyftThreadMessage = async (
       orgUnitId,
       channel: 'sms',
       body,
+      targetPhone: targetPhone || undefined,
       overrideReason: normalizeString(input.overrideReason) || undefined,
       overrideNote: normalizeString(input.overrideNote) || undefined,
     },

@@ -700,12 +700,18 @@ const resolveConnectShyftRequestedRole = (req: Request): string | null => {
 const resolveConnectShyftRequestedActorUserId = (req: Request): string | null => {
   if (isConnectShyftTestOverrideEnabled()) {
     const testOverrideUserId = req.header(TEST_USER_ID_HEADER);
-    if (typeof testOverrideUserId === 'string' && testOverrideUserId.trim().length > 0) {
-      return testOverrideUserId.trim();
+    if (typeof testOverrideUserId === 'string') {
+      const normalizedOverrideUserId = testOverrideUserId.trim();
+      return normalizedOverrideUserId.length > 0 ? normalizedOverrideUserId : null;
     }
   }
 
-  return req.user?.userId || null;
+  if (typeof req.user?.userId === 'string') {
+    const normalizedActorUserId = req.user.userId.trim();
+    return normalizedActorUserId.length > 0 ? normalizedActorUserId : null;
+  }
+
+  return null;
 };
 
 const resolveConnectShyftActiveThreadNeighborIds = (req: Request): Set<string> | null => {
@@ -3088,6 +3094,7 @@ const parseOutboundCallRequestPolicy = (req: Request): {
   autoRetry: boolean | null;
   redialPolicy: string | null;
   retryCount: number | null;
+  targetPhone: string | null;
 } => {
   const rawBody = req.body && typeof req.body === 'object'
     ? req.body as Record<string, unknown>
@@ -3105,6 +3112,11 @@ const parseOutboundCallRequestPolicy = (req: Request): {
 
   const transport = normalizeLifecycleString(resolveField('transport')).toLowerCase();
   const redialPolicy = normalizeLifecycleString(resolveField('redialPolicy')).toLowerCase();
+  const targetPhone = normalizeLifecycleString(
+    resolveField('targetPhone')
+    ?? resolveField('targetPhoneE164')
+    ?? resolveField('recipientPhone'),
+  );
 
   return {
     transport: transport || null,
@@ -3113,11 +3125,13 @@ const parseOutboundCallRequestPolicy = (req: Request): {
     retryCount:
       parseOptionalNonNegativeInteger(resolveField('retryCount'))
       ?? parseOptionalNonNegativeInteger(resolveField('maxRetries')),
+    targetPhone: targetPhone || null,
   };
 };
 
 const parseOutboundMessagePolicyRequest = (req: Request): {
   body: string;
+  targetPhone: string | null;
   overrideReason: string | null;
   overrideNote: string | null;
 } => {
@@ -3128,8 +3142,17 @@ const parseOutboundMessagePolicyRequest = (req: Request): {
   const nestedOverride = rawBody.override && typeof rawBody.override === 'object'
     ? rawBody.override as Record<string, unknown>
     : null;
+  const nestedTarget = rawBody.target && typeof rawBody.target === 'object'
+    ? rawBody.target as Record<string, unknown>
+    : null;
 
   const body = normalizeLifecycleString(rawBody.body);
+  const targetPhone = normalizeLifecycleString(
+    rawBody.targetPhone
+    ?? rawBody.targetPhoneE164
+    ?? rawBody.recipientPhone
+    ?? nestedTarget?.phone,
+  );
   const overrideReason = normalizeLifecycleString(
     rawBody.overrideReason
     ?? nestedOverride?.reason
@@ -3142,6 +3165,7 @@ const parseOutboundMessagePolicyRequest = (req: Request): {
 
   return {
     body,
+    targetPhone: targetPhone || null,
     overrideReason: overrideReason || null,
     overrideNote: overrideNote || null,
   };
@@ -4329,6 +4353,18 @@ router.get('/inbox', async (req: Request, res: Response) => {
   const requestedBucket = parseInboxBucketFromQuery(req.query?.bucket);
   const resolvedBucket: ConnectShyftInboxBucket = requestedBucket || 'inbox';
   const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  if (resolvedBucket === 'mine' && !actorUserId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_ACTOR_CONTEXT_REQUIRED',
+      message: 'Mine queue requires an authenticated actor context.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        bucket: resolvedBucket,
+      },
+    });
+    return;
+  }
   const items = await resolveConnectShyftInboxContractAsync({
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
@@ -6105,12 +6141,15 @@ const performOutboundAction = async (
         tenantId: context.tenantId,
         orgUnitId: context.orgUnitId,
         threadId,
+        targetPhone: outboundCallPolicyRequest?.targetPhone || undefined,
         callPolicy: outboundCallDispatchPolicy || undefined,
       })
       : await providerSelection.adapter.dispatchOutboundMessage({
         tenantId: context.tenantId,
         orgUnitId: context.orgUnitId,
         threadId,
+        body: outboundMessagePolicy?.body || '',
+        targetPhone: outboundMessagePolicy?.targetPhone || undefined,
       });
   } catch (error) {
     await rollbackPersistedSmsOverride();

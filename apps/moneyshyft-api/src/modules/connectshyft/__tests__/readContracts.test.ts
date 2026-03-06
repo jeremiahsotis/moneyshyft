@@ -37,7 +37,7 @@ describe('connectshyft read contracts', () => {
       bucket: 'inbox',
     });
 
-    expect(items[0]?.threadId).toBe('thread-c3-claimed-1002');
+    expect(items[0]?.threadId).toBe('thread-c3-unclaimed-1001');
 
     const stageTwoThreadIds = items
       .filter((item) => item.priorityRank === 2)
@@ -77,7 +77,7 @@ describe('connectshyft read contracts', () => {
     expect(operatorInbox.some((item) => item.threadId === 'thread-c3-claimed-voicemail-1004')).toBe(false);
     expect(operatorMine.map((item) => item.threadId)).toEqual(['thread-c3-claimed-voicemail-1004']);
 
-    expect(otherOperatorInbox.some((item) => item.threadId === 'thread-c3-claimed-voicemail-1004')).toBe(true);
+    expect(otherOperatorInbox.some((item) => item.threadId === 'thread-c3-claimed-voicemail-1004')).toBe(false);
     expect(otherOperatorMine.map((item) => item.threadId)).toEqual(['thread-c3-claimed-1002']);
   });
 

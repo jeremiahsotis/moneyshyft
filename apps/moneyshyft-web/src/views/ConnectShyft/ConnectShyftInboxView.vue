@@ -1141,6 +1141,7 @@ const executeThreadActionForThread = async (input: {
   orgUnitId: string;
   action: 'claim' | 'takeover' | 'close' | 'call' | 'message';
   body?: string;
+  targetPhone?: string | null;
 }): Promise<boolean> => {
   if (!input.threadId || !input.orgUnitId) {
     return false;
@@ -1158,11 +1159,13 @@ const executeThreadActionForThread = async (input: {
       ? await dispatchConnectShyftThreadCall({
         threadId: input.threadId,
         orgUnitId: input.orgUnitId,
+        targetPhone: input.targetPhone || undefined,
       })
       : await dispatchConnectShyftThreadMessage({
         threadId: input.threadId,
         orgUnitId: input.orgUnitId,
         body: input.body || '',
+        targetPhone: input.targetPhone || undefined,
       });
 
   if (!result.ok) {
@@ -1232,6 +1235,7 @@ const submitSendMessageModal = async (): Promise<void> => {
       orgUnitId: threadTarget.orgUnitId,
       action: 'message',
       body,
+      targetPhone: target.phoneValue,
     });
     if (!sent) {
       return;
@@ -1311,6 +1315,7 @@ const submitMakeCallModal = async (): Promise<void> => {
       threadId: threadTarget.threadId,
       orgUnitId: threadTarget.orgUnitId,
       action: 'call',
+      targetPhone: selectedTarget.phoneValue,
     });
     if (!called) {
       return;

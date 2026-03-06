@@ -1070,7 +1070,15 @@ const resolveSeedBucketMatch = (
   bucket: ConnectShyftInboxBucket,
   actorUserId?: string | null,
 ): boolean => {
-  return resolveSeedPerspectiveBucket(seed, actorUserId) === bucket;
+  if (seed.state === 'CLAIMED') {
+    if (!actorUserId) {
+      return false;
+    }
+
+    return bucket === 'mine' && seed.claimedByUserId === actorUserId;
+  }
+
+  return bucket === 'inbox';
 };
 
 const resolveAllSeedThreadSummaries = (scope: {
@@ -1415,10 +1423,10 @@ const filterRowsForBucket = (
         return claimedByUserId === scope.actorUserId;
       }
 
-      return true;
+      return false;
     }
 
-    if (scope.actorUserId && state === 'CLAIMED' && claimedByUserId === scope.actorUserId) {
+    if (state === 'CLAIMED') {
       return false;
     }
 

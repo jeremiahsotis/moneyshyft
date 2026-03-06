@@ -376,12 +376,17 @@ describe('connectshyft provider registry', () => {
       tenantId: 'tenant-connectshyft-f1',
       orgUnitId: 'org-connectshyft-f1-east',
       threadId: 'thread-f1-unclaimed-1001',
+      body: 'Provider registry dispatch body smoke test.',
     });
     expect(messageDispatch).toMatchObject({
       providerKey: 'telnyx',
       channel: 'message',
       providerLegId: null,
       providerMessageId: 'telnyx-message-thread-f1-unclaimed-1001',
+      dispatchContext: {
+        targetPhone: null,
+        messageBodyProvided: true,
+      },
       adapterInvoked: true,
       providerBranchingInDomain: false,
     });

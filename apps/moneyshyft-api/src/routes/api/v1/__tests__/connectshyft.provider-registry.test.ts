@@ -168,6 +168,7 @@ describe('connectshyft provider adapter registry route integration', () => {
       .send({
         orgUnitId: 'org-connectshyft-f1-east',
         providerKey: 'telnyx',
+        targetPhone: '+12605550199',
       });
 
     expect(response.status).toBe(200);
@@ -184,9 +185,35 @@ describe('connectshyft provider adapter registry route integration', () => {
         },
         dispatch: {
           channel: 'call',
+          dispatchContext: {
+            targetPhone: '+12605550199',
+            messageBodyProvided: false,
+          },
           adapterInvoked: true,
           providerBranchingInDomain: false,
         },
+      },
+    });
+  });
+
+  it('refuses mine bucket reads when actor context is missing', async () => {
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/inbox')
+      .query({
+        bucket: 'mine',
+      })
+      .set(buildHeaders({
+        'x-test-connectshyft-user-id': '   ',
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_ACTOR_CONTEXT_REQUIRED',
+      refusalType: 'business',
+      data: {
+        bucket: 'mine',
       },
     });
   });
@@ -1111,12 +1138,17 @@ describe('connectshyft provider adapter registry route integration', () => {
         providerKey: 'telnyx',
         channel: 'sms',
         body: 'Story f3 duplicate callback suppression test',
+        targetPhone: '+12605550142',
       });
 
     expect(messageResponse.status).toBe(200);
     const providerMessageId = messageResponse.body?.data?.dispatch?.providerMessageId as string;
     expect(typeof providerMessageId).toBe('string');
     expect(providerMessageId.length).toBeGreaterThan(0);
+    expect(messageResponse.body?.data?.dispatch?.dispatchContext).toMatchObject({
+      targetPhone: '+12605550142',
+      messageBodyProvided: true,
+    });
 
     const webhookPayload = {
       eventType: 'sms.delivered',
@@ -1187,6 +1219,10 @@ describe('connectshyft provider adapter registry route integration', () => {
           channel: 'message',
           providerLegId: null,
           providerMessageId: 'telnyx-message-thread-f1-unclaimed-1001',
+          dispatchContext: {
+            targetPhone: null,
+            messageBodyProvided: true,
+          },
           adapterInvoked: true,
           providerBranchingInDomain: false,
         }),
