@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+}
+
+@layer components {
+  /* Custom component styles will go here */
+}
+
+.privacy-mode .privacy-value {
+  filter: blur(6px);
+  transition: filter 150ms ease;
+}
+
+.privacy-mode .privacy-value:hover {
+  filter: blur(0);
+}

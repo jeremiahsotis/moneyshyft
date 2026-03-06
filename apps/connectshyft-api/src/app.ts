@@ -2,6 +2,8 @@ import express, { Application, Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import logger from './utils/logger';
+import { optionalAuth } from './middleware/auth';
+import { csrfProtection } from './platform/middleware/csrfProtection';
 import connectShyftRouter from './routes/api/v1/connectshyft';
 
 const app: Application = express();
@@ -13,6 +15,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(optionalAuth);
 
 app.use((req: Request, _res: Response, next: NextFunction) => {
   logger.info(`${req.method} ${req.path}`);
@@ -23,6 +26,7 @@ app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.use(csrfProtection);
 app.use('/api/v1/connectshyft', connectShyftRouter);
 
 app.use((req: Request, res: Response) => {
