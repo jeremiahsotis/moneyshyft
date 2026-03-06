@@ -169,7 +169,7 @@ jobs:
           retention-days: 30
 
   burn-in:
-    name: ci-burn-in
+    name: burn-in
     runs-on: ubuntu-latest
     needs: [test, changes]
     if: needs.changes.outputs.run_heavy_ci == 'true' && needs.test.result == 'success'

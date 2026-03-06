@@ -63,7 +63,11 @@ add_changed_files "git diff --name-only --diff-filter=AM"
 add_changed_files "git diff --cached --name-only --diff-filter=AM"
 add_changed_files "git ls-files --others --exclude-standard"
 
-if [[ -n "${GITHUB_BASE_REF:-}" ]] && git rev-parse --verify --quiet "origin/${GITHUB_BASE_REF}" >/dev/null; then
+if [[ "${GITHUB_BASE_REF:-}" == "production" ]] && git rev-parse --verify --quiet "origin/codex/dev" >/dev/null; then
+  # Promotion PRs should evaluate net-new story-file edits relative to codex/dev,
+  # not historical drift between production and development lanes.
+  add_changed_files "git diff --name-only --diff-filter=AM origin/codex/dev..HEAD"
+elif [[ -n "${GITHUB_BASE_REF:-}" ]] && git rev-parse --verify --quiet "origin/${GITHUB_BASE_REF}" >/dev/null; then
   add_changed_files "git diff --name-only --diff-filter=AM origin/${GITHUB_BASE_REF}...HEAD"
 elif git rev-parse --verify --quiet HEAD~1 >/dev/null; then
   add_changed_files "git diff --name-only --diff-filter=AM HEAD~1...HEAD"
