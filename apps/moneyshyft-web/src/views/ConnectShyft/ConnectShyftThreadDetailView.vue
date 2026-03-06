@@ -75,6 +75,7 @@
             </section>
 
             <ConnectShyftThreadHeader
+              v-if="threadDetail"
               :title="threadSurfaceModel.display.title"
               :neighbor-context-label="threadSurfaceModel.display.neighborContext"
               :conference-context-label="threadSurfaceModel.display.conferenceContext"

@@ -209,8 +209,8 @@ const shouldUseDbForWebhookReceipt = (
 ): boolean => {
   return Boolean(
     db
-    && input.tenantId.length > 0
-    && input.threadId.length > 0,
+    && UUID_PATTERN.test(input.tenantId)
+    && UUID_PATTERN.test(input.threadId),
   );
 };
 
