@@ -192,6 +192,10 @@ GPT-5 Codex
 - apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.resolution.test.ts
 - apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.signature.test.ts
 - apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.shared.ts
+- apps/moneyshyft-api/src/modules/connectshyft/__tests__/readContracts.test.ts
+- apps/moneyshyft-api/src/modules/connectshyft/neighbors.ts
+- apps/moneyshyft-api/src/modules/connectshyft/providerRegistry.ts
+- apps/moneyshyft-api/src/modules/connectshyft/readContracts.ts
 - apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts
 - apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts
 - apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts
@@ -199,11 +203,31 @@ GPT-5 Codex
 - apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.webhook-correlation-refusals.test.ts
 - apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.webhook-replay-signature.test.ts
 - apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.shared.ts
+- apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts
+- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftPrimaryNav.vue
+- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftQueueCard.vue
+- apps/moneyshyft-web/src/features/connectshyft/neighbors.ts
+- apps/moneyshyft-web/src/features/connectshyft/readContracts.ts
+- apps/moneyshyft-web/src/features/connectshyft/threads.ts
+- apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts
 - tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.shared.ts
 - tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.queue-layout.cases.ts
 - tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.dispatch-and-ownership.cases.ts
+- tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.atdd.spec.ts
+- tests/e2e/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.spec.ts
 - tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts
+- tests/api/platform/g-2-inbox-and-mine-surface-rebuild.atdd.api.spec.ts
+- tests/helpers/connectShyftStoryG2.ts
+- tests/support/factories/connectShyftStoryG2Factory.ts
+- tests/support/fixtures/connectShyftStoryG2.fixture.ts
+- apps/admin-api/node_modules
+- apps/connectshyft-api/node_modules
+- apps/connectshyft-web/node_modules
+- apps/moneyshyft-api/node_modules
+- apps/moneyshyft-web/node_modules
 
 ## Change Log
 
