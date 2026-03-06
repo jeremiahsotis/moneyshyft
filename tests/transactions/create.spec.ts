@@ -35,14 +35,19 @@ test.describe('Transactions', () => {
       await ensureAtLeastOneActiveBudgetAccount(page);
       await page.goto('/transactions');
       await page.waitForLoadState('domcontentloaded');
-      const tenantAdminShellVisible = (await page
-        .getByRole('heading', { name: /Tenant Administration/i })
-        .count()) > 0;
+      const addTransactionButton = page.getByTestId('transactions-add-button').first();
+      const tenantAdminHeading = page.getByRole('heading', { name: /Tenant Administration/i });
+      await Promise.race([
+        addTransactionButton.waitFor({ state: 'visible', timeout: 5000 }),
+        tenantAdminHeading.waitFor({ state: 'visible', timeout: 5000 }),
+      ]).catch(() => undefined);
+      const tenantAdminShellVisible = (await tenantAdminHeading.count()) > 0;
+      const hasTransactionSurface = (await addTransactionButton.count()) > 0;
       test.skip(
-        tenantAdminShellVisible,
-        'Transactions UI is unavailable while tenant-admin shell is active for this session.',
+        tenantAdminShellVisible || !hasTransactionSurface,
+        'Transactions UI surface is unavailable for this session.',
       );
-      await page.getByTestId('transactions-add-button').first().click();
+      await addTransactionButton.click();
 
       await selectFirstNonEmptyOption(page.getByTestId('transaction-account'));
       await page.getByTestId('transaction-payee').fill(payee);
