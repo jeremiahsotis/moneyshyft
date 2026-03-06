@@ -219,6 +219,11 @@ export function runPolicyScriptInTempRepo(
       true,
     );
     copyFileIfPresent(
+      join(scriptsDir, 'enforce-test-artifact-allowlist.sh'),
+      join(repoDir, 'scripts/enforce-test-artifact-allowlist.sh'),
+      true,
+    );
+    copyFileIfPresent(
       join(scriptsDir, 'enforce-story-artifact-hygiene.sh'),
       join(repoDir, 'scripts/enforce-story-artifact-hygiene.sh'),
       true,
