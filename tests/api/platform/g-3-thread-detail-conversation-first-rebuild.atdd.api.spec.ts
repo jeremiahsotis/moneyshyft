@@ -51,7 +51,7 @@ type ConnectShyftThreadEnvelope = {
 };
 
 test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD API RED)', () => {
-  test.skip(
+  test(
     '[G3-ATDD-API-001][P0] thread detail contract prioritizes neighbor conference and claim context while voicemail renders inline as first-class conversation content @P0',
     async ({ request, storyG3Context, storyG3OperatorHeaders }) => {
       const [claimedResponse, voicemailResponse] = await Promise.all([
@@ -93,7 +93,7 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD API RED)
     },
   );
 
-  test.skip(
+  test(
     '[G3-ATDD-API-002][P0] thread detail action matrix is explicitly locked by canonical lifecycle state contracts @P0',
     async ({ request, storyG3Context, storyG3OperatorHeaders }) => {
       const [unclaimedResponse, claimedResponse, closedResponse] = await Promise.all([
@@ -134,7 +134,7 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD API RED)
     },
   );
 
-  test.skip(
+  test(
     '[G3-ATDD-API-003][P1] refusal and policy feedback is contextual at action time and avoids persistent operations-heavy default chrome @P1',
     async ({
       request,
@@ -190,7 +190,7 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD API RED)
     },
   );
 
-  test.skip(
+  test(
     '[G3-ATDD-API-004][P0] CLOSED outbound action reopens same thread id to UNCLAIMED with deterministic lifecycle messaging and no inbound auto-reopen side effects @P0',
     async ({
       request,

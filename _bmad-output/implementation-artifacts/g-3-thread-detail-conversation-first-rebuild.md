@@ -1,6 +1,6 @@
 # Story g.3: Thread Detail Conversation-First Rebuild
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -28,27 +28,27 @@ so that I can respond quickly without navigating record-style chrome.
 - Access-Control Story: no
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
-- Operability Pairing Notes: Thread detail is the highest-frequency volunteer action surface and must preserve locked lifecycle semantics while reducing cognitive overhead.
-- Real-User Validation Evidence: N/A - ready-for-dev planning artifact.
-- Real-User Validation Result: n/a
+- Operability Pairing Notes: Thread detail now surfaces neighbor/conference/claim context first, renders voicemail inline in a conversation timeline, and keeps lifecycle/policy feedback contextual at action time with explicit locked action sets by state.
+- Real-User Validation Evidence: 2026-03-06 Playwright validations passed for volunteer journey (`npm run test:e2e -- tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts`) and API behavior contract (`npm run test:e2e -- tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts`).
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story is workflow action UX and lifecycle feedback hardening, not role-admin provisioning.
 
 ## Tasks / Subtasks
 
-- [ ] Rebuild thread header/body hierarchy to conversation-first layout (AC: 1, 2)
-  - [ ] Prioritize neighbor/conference/claim context above technical metadata.
-  - [ ] Render voicemail artifacts inline in timeline as first-class conversation events.
-- [ ] Enforce locked state-action matrix in UI contracts (AC: 3)
-  - [ ] Ensure visible actions are resolved strictly from canonical state.
-  - [ ] Keep takeover/close/refusal interactions deterministic and accessible.
-- [ ] Refactor policy/refusal feedback to contextual action-bound patterns (AC: 4)
-  - [ ] Show blocking messages only when action requires intervention.
-  - [ ] Remove persistent technical banners/chips from default thread chrome.
-- [ ] Preserve and surface closed-thread reopen semantics (AC: 5)
-  - [ ] Keep same-thread reopen behavior and lifecycle toast patterns explicit.
-  - [ ] Ensure inbound events do not reopen closed threads and messaging reflects that distinction.
+- [x] Rebuild thread header/body hierarchy to conversation-first layout (AC: 1, 2)
+  - [x] Prioritize neighbor/conference/claim context above technical metadata.
+  - [x] Render voicemail artifacts inline in timeline as first-class conversation events.
+- [x] Enforce locked state-action matrix in UI contracts (AC: 3)
+  - [x] Ensure visible actions are resolved strictly from canonical state.
+  - [x] Keep takeover/close/refusal interactions deterministic and accessible.
+- [x] Refactor policy/refusal feedback to contextual action-bound patterns (AC: 4)
+  - [x] Show blocking messages only when action requires intervention.
+  - [x] Remove persistent technical banners/chips from default thread chrome.
+- [x] Preserve and surface closed-thread reopen semantics (AC: 5)
+  - [x] Keep same-thread reopen behavior and lifecycle toast patterns explicit.
+  - [x] Ensure inbound events do not reopen closed threads and messaging reflects that distinction.
 
 ## Dev Notes
 
@@ -133,20 +133,36 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `cat _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `cat _bmad-output/planning-artifacts/ux-design-specification-ConnectShyft-2026-02-19.md`
-- `cat apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue`
-- `cat apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts`
-- `cat apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts`
+- `npm run branch:ensure-workflow -- --workflow dev-story --story g-3-thread-detail-conversation-first-rebuild`
+- `npm run story:status:set -- --story-file _bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md --status in-progress --lane connectshyft`
+- `npm run test:e2e -- tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts`
+- `npm run test:e2e -- tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts`
+- `npm test -- --runInBand src/modules/connectshyft/__tests__/readContracts.test.ts` (apps/moneyshyft-api)
+- `npm run build` (apps/moneyshyft-api)
+- `npm run build` (apps/moneyshyft-web)
+- `npm run policy:check`
 
 ### Completion Notes List
 
-- Created Story g.3 ready-for-dev context with conversation-first thread-detail requirements, locked lifecycle action matrix, and contextual feedback guardrails.
+- Rebuilt thread detail hierarchy to a conversation-first surface with explicit primary context panel (`neighbor`, `conference`, `claim`) and inline timeline events for voicemail-first rendering.
+- Extended backend and frontend read contracts to include `display.claimContext` plus normalized timeline fields (`conversationType`, `renderMode`, `firstClass`) for deterministic voicemail presentation.
+- Added/reused locked action matrix signaling in thread detail responses (`actionMatrix.lockedByState`) and kept action button visibility constrained to canonical lifecycle state.
+- Refactored policy/refusal/success feedback to contextual action-bound contracts via `uiFeedback.presentation="contextual-action-feedback"` and `chrome` defaults that disable persistent operations banners.
+- Preserved closed-thread reopen semantics with explicit lifecycle invariants in outbound responses (`sameThreadId`, `reopenedByInbound=false`, `noInboundAutoReopenSideEffects=true`) and verified UI lifecycle toast continuity.
+- Activated and passed G3 API/E2E ATDD coverage end-to-end for AC1-AC5.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- apps/moneyshyft-api/src/modules/connectshyft/readContracts.ts
+- apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts
+- apps/moneyshyft-web/src/features/connectshyft/readContracts.ts
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
+- tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts
+- tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts
 
 ## Change Log
 
 - 2026-03-06: Created Story g.3 ready-for-dev context document.
+- 2026-03-06: Implemented conversation-first thread detail rebuild (AC1-AC5), enabled G3 API/E2E ATDD coverage, and validated lifecycle/policy contracts.

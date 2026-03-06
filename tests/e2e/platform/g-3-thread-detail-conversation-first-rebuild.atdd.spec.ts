@@ -37,7 +37,7 @@ const buildStoryG3ThreadDetailUrl = (
 };
 
 test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD E2E RED)', () => {
-  test.skip(
+  test(
     '[G3-ATDD-E2E-001][P0] thread detail header/body prioritizes neighbor conference and claim context with conversation-first hierarchy @P0',
     async ({ page }) => {
       const context = createStoryG3Context();
@@ -68,7 +68,7 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD E2E RED)
     },
   );
 
-  test.skip(
+  test(
     '[G3-ATDD-E2E-002][P0] voicemail renders as first-class inline timeline conversation content in thread detail @P0',
     async ({ page }) => {
       const context = createStoryG3Context();
@@ -86,7 +86,7 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD E2E RED)
     },
   );
 
-  test.skip(
+  test(
     '[G3-ATDD-E2E-003][P0] visible thread actions remain explicitly locked by state matrix for UNCLAIMED CLAIMED and CLOSED @P0',
     async ({ page }) => {
       const context = createStoryG3Context();
@@ -119,7 +119,7 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD E2E RED)
     },
   );
 
-  test.skip(
+  test(
     '[G3-ATDD-E2E-004][P1] policy and refusal feedback appears contextually at action time without persistent operations-heavy chrome @P1',
     async ({ page }) => {
       const context = createStoryG3Context();
@@ -139,7 +139,7 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD E2E RED)
     },
   );
 
-  test.skip(
+  test(
     '[G3-ATDD-E2E-005][P0] CLOSED outbound action reopens same thread id with deterministic lifecycle messaging and no inbound auto-reopen side effects @P0',
     async ({ page }) => {
       const context = createStoryG3Context();
