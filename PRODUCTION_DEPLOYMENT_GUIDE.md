@@ -237,9 +237,11 @@ npm run build
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-## 8) Rollback
+## Rollback Procedure
 
-If deploy fails after migration/code rollout:
+Rollback Step 1: Identify the last known-good commit and the latest verified backup artifact.
+
+Rollback Step 2: Revert code and restart the API container image.
 
 ```bash
 # Roll back code to known-good commit
@@ -251,7 +253,9 @@ docker compose build node
 docker compose up -d --no-deps --force-recreate node
 ```
 
-If migration caused data issues, restore DB backup:
+Rollback Step 3: Validate API health and key operator journeys.
+
+Rollback Step 4: If migration/data issues are present, restore the database backup.
 
 ```bash
 cd /home/jeremiahotis/projects/connectshyft

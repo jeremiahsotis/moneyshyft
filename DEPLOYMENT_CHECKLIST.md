@@ -53,3 +53,9 @@ Use this with [PRODUCTION_DEPLOYMENT_GUIDE.md](./PRODUCTION_DEPLOYMENT_GUIDE.md)
 - [ ] Confirm backups exist in `/opt/moneyshyft/backups`
 - [ ] Confirm rollback target (commit/tag + backup file)
 - [ ] Remove unused Docker images if disk is tight
+
+## Quick Rollback:
+
+- [ ] Revert to the last known-good commit and redeploy API container image.
+- [ ] Restore the latest verified database backup if migration/data issues are detected.
+- [ ] See PRODUCTION_DEPLOYMENT_GUIDE.md → Rollback Step 4

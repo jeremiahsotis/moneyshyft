@@ -140,6 +140,7 @@
                     :state-label="item.display.stateLabel"
                     :voicemail-indicator="item.voicemailIndicator"
                     :voicemail-label="item.display.voicemailLabel"
+                    :thread-path="buildThreadDetailPath(item.threadId)"
                     :tap-target-aria-label="`Open thread detail for ${item.display.title || 'selected thread'}`"
                     :focus-ring-class="focusRingClass"
                     :tap-target-style="tapTargetStyle"
@@ -340,7 +341,7 @@
             </section>
 
             <aside
-              v-if="responsiveMode === 'desktop' && showThreadPanel"
+              v-if="responsiveMode === 'desktop'"
               data-testid="connectshyft-tertiary-panel"
               class="rounded-md border border-slate-200 bg-slate-50 p-3"
             >
@@ -1651,6 +1652,20 @@ const buildNeighborCreatePath = (): string => {
   const currentQuery = new URLSearchParams(window.location.search);
   const queryString = currentQuery.toString();
   const basePath = '/app/connectshyft/neighbors/new';
+
+  return queryString.length > 0
+    ? `${basePath}?${queryString}`
+    : basePath;
+};
+
+const buildThreadDetailPath = (threadId: string): string => {
+  if (typeof window === 'undefined') {
+    return `/app/connectshyft/threads/${encodeURIComponent(threadId)}`;
+  }
+
+  const currentQuery = new URLSearchParams(window.location.search);
+  const queryString = currentQuery.toString();
+  const basePath = `/app/connectshyft/threads/${encodeURIComponent(threadId)}`;
 
   return queryString.length > 0
     ? `${basePath}?${queryString}`

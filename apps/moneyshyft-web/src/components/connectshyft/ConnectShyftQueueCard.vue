@@ -104,14 +104,19 @@
         </div>
 
         <div class="flex justify-end">
-          <span
+          <RouterLink
+            :to="threadPath"
             data-testid="connectshyft-thread-card-primary-action"
             :aria-label="tapTargetAriaLabel"
-            class="inline-flex min-h-[44px] min-w-[88px] items-center justify-center rounded-lg bg-slate-900 px-4 font-semibold text-white"
+            :class="[
+              'inline-flex min-h-[44px] min-w-[88px] items-center justify-center rounded-lg bg-slate-900 px-4 font-semibold text-white',
+              focusRingClass,
+            ]"
             :style="tapTargetStyle"
+            @click.stop
           >
             Open
-          </span>
+          </RouterLink>
         </div>
       </div>
     </div>
@@ -119,6 +124,7 @@
 </template>
 
 <script setup lang="ts">
+import { RouterLink } from 'vue-router';
 import ConnectShyftPill from '@/components/connectshyft/ConnectShyftPill.vue';
 
 defineProps<{
@@ -133,6 +139,7 @@ defineProps<{
   stateLabel: string;
   voicemailIndicator: boolean;
   voicemailLabel: string;
+  threadPath: string;
   tapTargetAriaLabel: string;
   focusRingClass: string;
   tapTargetStyle: Record<string, string>;
