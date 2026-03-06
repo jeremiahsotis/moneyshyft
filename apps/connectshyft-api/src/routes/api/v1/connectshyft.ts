@@ -7595,6 +7595,22 @@ const handleInboundWebhook = async (
       neighborId: voiceNeighborId,
     });
   }
+  if (!thread && lifecycleContext?.syntheticThread) {
+    thread = buildSyntheticThread({
+      tenantId,
+      orgUnitId,
+      threadId: resolvedVoiceThreadId,
+      currentState: lifecycleContext.syntheticThread.state,
+      nextState: lifecycleContext.syntheticThread.state,
+      actorUserId: resolveWebhookActorUserId(req),
+      fallbackSummary: lifecycleContext.syntheticThread.summary,
+      fallbackNeighborId: voiceNeighborId || lifecycleContext.syntheticThread.neighborId,
+      fallbackLastInboundCsNumberId: lifecycleContext.syntheticThread.lastInboundCsNumberId,
+      fallbackPreferredOutboundCsNumberId: lifecycleContext.syntheticThread.preferredOutboundCsNumberId,
+      fallbackEscalationStage: lifecycleContext.syntheticThread.escalationStage,
+      fallbackNextEvaluationAtUtc: lifecycleContext.syntheticThread.nextEvaluationAtUtc,
+    });
+  }
 
   let routingDecision: 'voicemail_only' | 'intake_fallback' | 'accepted' = 'accepted';
   let timelineEventName: string =
