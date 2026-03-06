@@ -45,10 +45,12 @@ const resolveDispatchThreadId = async ({
   const inboxItems = toItems(await inboxResponse.json());
   const candidate = inboxItems.find(
     (item) => item.state === 'UNCLAIMED' && UUID_PATTERN.test(String(item.threadId ?? '').trim()),
-  ) ?? inboxItems.find((item) => UUID_PATTERN.test(String(item.threadId ?? '').trim()));
+  ) ?? inboxItems.find((item) => item.state === 'UNCLAIMED')
+    ?? inboxItems.find((item) => UUID_PATTERN.test(String(item.threadId ?? '').trim()))
+    ?? inboxItems[0];
 
   if (!candidate?.threadId) {
-    throw new Error('No UUID-backed dispatch candidate thread found in ConnectShyft inbox payload.');
+    throw new Error('No dispatch candidate thread found in ConnectShyft inbox payload.');
   }
 
   return candidate.threadId;

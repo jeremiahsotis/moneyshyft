@@ -300,17 +300,33 @@ class KnexConnectShyftSmsPreferenceOverrideStore {
     let neighborId = normalizeOptionalString(input.neighborId);
 
     if (!neighborId) {
-      const thread = await this.knexClient
-        .withSchema('connectshyft')
-        .table('cs_threads')
-        .where({
-          tenant_id: input.tenantId,
-          org_unit_id: input.orgUnitId,
-          id: input.threadId,
-        })
-        .first<{ neighbor_id?: unknown }>('neighbor_id');
+      if (!UUID_PATTERN.test(input.threadId)) {
+        return {
+          prefersTexting: 'UNKNOWN',
+          neighborId: null,
+          source: 'unknown',
+        };
+      }
 
-      neighborId = normalizeOptionalString(thread?.neighbor_id);
+      try {
+        const thread = await this.knexClient
+          .withSchema('connectshyft')
+          .table('cs_threads')
+          .where({
+            tenant_id: input.tenantId,
+            org_unit_id: input.orgUnitId,
+            id: input.threadId,
+          })
+          .first<{ neighbor_id?: unknown }>('neighbor_id');
+
+        neighborId = normalizeOptionalString(thread?.neighbor_id);
+      } catch {
+        return {
+          prefersTexting: 'UNKNOWN',
+          neighborId: null,
+          source: 'unknown',
+        };
+      }
     }
 
     if (!neighborId) {

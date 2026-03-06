@@ -68,6 +68,7 @@ import {
   parseConnectShyftInboxBucket,
   resolveConnectShyftThreadActions,
   resolveConnectShyftInboxContractAsync,
+  resolveConnectShyftThreadDetailContract,
   resolveConnectShyftThreadDetailContractAsync,
   type ConnectShyftInboxBucket,
   type ConnectShyftThreadDetailRecord,
@@ -1224,6 +1225,34 @@ const resolveSyntheticLifecycleThread = (
       return null;
     }
     return existing;
+  }
+
+  if (!UUID_PATTERN.test(input.threadId)) {
+    const seededThreadDetail = resolveConnectShyftThreadDetailContract({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId: input.threadId,
+    });
+
+    if (seededThreadDetail) {
+      const seededDescriptor: ConnectShyftSyntheticThreadDescriptor = {
+        tenantId: seededThreadDetail.tenantId,
+        orgUnitId: seededThreadDetail.orgUnitId,
+        state: seededThreadDetail.state,
+        claimedByUserId: seededThreadDetail.claimedByUserId,
+        escalationStage: seededThreadDetail.escalationStage,
+        nextEvaluationAtUtc: seededThreadDetail.state === 'UNCLAIMED'
+          ? seededThreadDetail.lastActivityAtUtc
+          : null,
+        neighborId: `neighbor-${seededThreadDetail.threadId}`,
+        lastInboundCsNumberId: seededThreadDetail.lastInboundCsNumberId,
+        preferredOutboundCsNumberId: seededThreadDetail.preferredOutboundCsNumberId,
+        summary: seededThreadDetail.summary,
+      };
+
+      CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS[input.threadId] = seededDescriptor;
+      return seededDescriptor;
+    }
   }
 
   if (!input.threadId.startsWith(CONNECTSHYFT_DYNAMIC_C5_THREAD_PREFIX)) {
@@ -3302,6 +3331,10 @@ const resolveNeighborIdForThreadCorrelation = async (input: {
     if (isValidConnectShyftNeighborIdentifier(normalizedSyntheticNeighborId)) {
       return normalizedSyntheticNeighborId;
     }
+  }
+
+  if (!UUID_PATTERN.test(normalizedThreadId)) {
+    return null;
   }
 
   try {
@@ -5984,7 +6017,9 @@ const performOutboundAction = async (
   };
 
   if (outboundAction === 'message' && outboundMessagePolicy) {
-    const preferenceNeighborId = lifecycleContext.syntheticThread?.neighborId || null;
+    const preferenceNeighborId = lifecycleContext.syntheticThread?.neighborId
+      || resolvedThreadNeighborId
+      || null;
     smsPreferenceDecision = await connectShyftSmsPreferenceOverrideService.resolvePreference({
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
