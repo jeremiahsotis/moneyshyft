@@ -2,15 +2,15 @@
 set -euo pipefail
 
 GUARD_SCOPE_PATHS=(
-  "apps/routeshyft-api/src/modules/connectshyft"
-  "apps/routeshyft-api/src/routes/api/v1/connectshyft.ts"
-  "apps/routeshyft-api/src/modules/route"
-  "apps/routeshyft-api/src/routes/api/v1/route.ts"
+  "apps/moneyshyft-api/src/modules/connectshyft"
+  "apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts"
+  "apps/moneyshyft-api/src/modules/route"
+  "apps/moneyshyft-api/src/routes/api/v1/route.ts"
   "apps/connectshyft-api/src/modules/connectshyft"
   "apps/connectshyft-api/src/routes/api/v1/connectshyft.ts"
 )
 APPROVED_ADAPTER_CONTRACT_FILES=(
-  "apps/routeshyft-api/src/modules/connectshyft/providerRegistry.ts"
+  "apps/moneyshyft-api/src/modules/connectshyft/providerRegistry.ts"
   "apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts"
 )
 TWILIO_COUPLING_PATTERN="from[[:space:]]+['\"]twilio['\"]|require\\(['\"]twilio['\"]\\)|new[[:space:]]+Twilio[[:space:]]*\\(|\\bTWILIO_(ACCOUNT_SID|AUTH_TOKEN|API_KEY|API_SECRET)\\b|api\\.twilio\\.com|x-twilio-signature"
@@ -59,15 +59,15 @@ collect_file_twilio_coupling_lines() {
 
 is_connectshyft_source_file() {
   local file="$1"
-  [[ "$file" == apps/routeshyft-api/src/modules/connectshyft/* \
-    || "$file" == apps/routeshyft-api/src/routes/api/v1/connectshyft.ts \
+  [[ "$file" == apps/moneyshyft-api/src/modules/connectshyft/* \
+    || "$file" == apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts \
     || "$file" == apps/connectshyft-api/src/modules/connectshyft/* \
     || "$file" == apps/connectshyft-api/src/routes/api/v1/connectshyft.ts ]]
 }
 
 is_route_source_file() {
   local file="$1"
-  [[ "$file" == apps/routeshyft-api/src/modules/route/* || "$file" == apps/routeshyft-api/src/routes/api/v1/route.ts ]]
+  [[ "$file" == apps/moneyshyft-api/src/modules/route/* || "$file" == apps/moneyshyft-api/src/routes/api/v1/route.ts ]]
 }
 
 is_approved_adapter_contract_file() {
@@ -130,7 +130,7 @@ if [[ "$scan_mode" == "full" ]] || (
 fi
 
 if [[ "${#changed_files[@]}" -eq 0 ]]; then
-  echo "ConnectShyft provider abstraction guard passed: no ConnectShyft/RouteShyft source changes detected."
+  echo "ConnectShyft provider abstraction guard passed: no ConnectShyft/MoneyShyft source changes detected."
   exit 0
 fi
 

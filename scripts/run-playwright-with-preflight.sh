@@ -253,7 +253,7 @@ build_tenant_probe_token() {
 const fs = require('fs');
 const path = require('path');
 
-const backendAppDir = process.env.PLAYWRIGHT_BACKEND_APP_DIR || 'apps/routeshyft-api';
+const backendAppDir = process.env.PLAYWRIGHT_BACKEND_APP_DIR || 'apps/moneyshyft-api';
 const backendEnvPath = path.resolve(process.cwd(), backendAppDir, '.env');
 let jwtSecret = (process.env.JWT_SECRET || '').trim();
 if (!jwtSecret) {
@@ -485,8 +485,8 @@ backend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.writ
 frontend_host="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.hostname);" "$BASE_URL")"
 frontend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.port || '5174');" "$BASE_URL")"
 
-BACKEND_APP_DIR="$(resolve_app_dir apps/routeshyft-api || true)"
-FRONTEND_APP_DIR="$(resolve_app_dir apps/routeshyft-web || true)"
+BACKEND_APP_DIR="$(resolve_app_dir apps/moneyshyft-api || true)"
+FRONTEND_APP_DIR="$(resolve_app_dir apps/moneyshyft-web || true)"
 
 if [[ -z "$BACKEND_APP_DIR" ]]; then
   echo "Playwright preflight failed: no backend app directory with package.json was found."

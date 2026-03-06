@@ -226,11 +226,11 @@ test.describe(
           ciPolicyContext.policyScript,
           ciPolicyContext.policyFile,
           {
-            branch: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
+            branch: 'codex/story-0-9-moneyshyft-ci-policy-gate-as-blocking-first-stage',
             event: 'local',
             commitSubject: '0-9: enforce f4 cutover guardrails in e2e',
             seedFiles: {
-              'apps/routeshyft-api/src/modules/connectshyft/twilio-direct-coupling-e2e.ts': [
+              'apps/moneyshyft-api/src/modules/connectshyft/twilio-direct-coupling-e2e.ts': [
                 "import twilio from 'twilio';",
                 '',
                 "export const createLeakyProviderClient = () => twilio('sid', 'token');",

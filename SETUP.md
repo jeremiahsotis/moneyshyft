@@ -26,7 +26,7 @@ On the remote server:
 
 ### 3. Environment Files
 
-The `.env` file in `apps/routeshyft-api/` contains configuration. For production:
+The `.env` file in `apps/moneyshyft-api/` contains configuration. For production:
 - Use strong, unique passwords
 - Generate secure JWT secrets: `openssl rand -base64 32`
 - Never commit `.env` files to git

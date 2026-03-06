@@ -1,5 +1,5 @@
 import { apiRequest } from '../../support/helpers/apiClient';
-import { test, expect } from '../../support/fixtures/routeShyftStory22.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory22.fixture';
 
 test.describe('Story 2-2 Donor Self-Service Pickup Intake with Capacity Check (Automate API Expansion)', () => {
   test.skip(
@@ -124,7 +124,7 @@ test.describe('Story 2-2 Donor Self-Service Pickup Intake with Capacity Check (A
 
       const crossTenantHeaders = {
         ...story22Headers,
-        'x-tenant-id': 'tenant-routeshyft-bravo',
+        'x-tenant-id': 'tenant-moneyshyft-bravo',
       };
 
       const detailResponse = await apiRequest(request, {

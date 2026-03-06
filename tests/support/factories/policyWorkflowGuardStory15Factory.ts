@@ -19,7 +19,7 @@ export function createPolicyWorkflowGuardStory15Context(
     policyFile: 'docs/policies/git_policy.md',
     storyId: '1-5',
     storyFile: '_bmad-output/implementation-artifacts/1-5-policy-gate-and-branch-workflow-guard-enforcement.md',
-    storyBranch: 'codex/story-1-5-routeshyft-policy-gate-and-branch-workflow-guard-enforcement',
+    storyBranch: 'codex/story-1-5-moneyshyft-policy-gate-and-branch-workflow-guard-enforcement',
     epicBranch: 'codex/epic-1-ops',
     ...overrides,
   };

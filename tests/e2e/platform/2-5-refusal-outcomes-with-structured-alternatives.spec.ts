@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { login } from '../../helpers/auth';
-import { createStory25Context } from '../../support/factories/routeShyftStory25Factory';
+import { createStory25Context } from '../../support/factories/moneyShyftStory25Factory';
 
 const buildRefusalUrl = (options: {
   tenantId: string;
@@ -38,14 +38,14 @@ test.describe('Story 2.5 automate - refusal outcomes requester/staff journeys', 
         }),
       );
 
-      await page.getByTestId('routeshyft-refusal-submit').click();
+      await page.getByTestId('moneyshyft-refusal-submit').click();
       await refusalSubmitResponse;
 
       await expect(page.getByRole('heading', { name: 'Refusal Outcomes' })).toBeVisible();
-      await expect(page.getByTestId('routeshyft-refusal-outcome-banner')).toBeVisible();
-      await expect(page.getByTestId('routeshyft-refusal-code')).toContainText(context.refusalCode);
-      await expect(page.getByTestId('routeshyft-refusal-alternatives-list')).toBeVisible();
-      await expect(page.getByTestId('routeshyft-refusal-next-steps')).toBeVisible();
+      await expect(page.getByTestId('moneyshyft-refusal-outcome-banner')).toBeVisible();
+      await expect(page.getByTestId('moneyshyft-refusal-code')).toContainText(context.refusalCode);
+      await expect(page.getByTestId('moneyshyft-refusal-alternatives-list')).toBeVisible();
+      await expect(page.getByTestId('moneyshyft-refusal-next-steps')).toBeVisible();
     },
   );
 
@@ -68,11 +68,11 @@ test.describe('Story 2.5 automate - refusal outcomes requester/staff journeys', 
         }),
       );
 
-      await page.getByTestId('routeshyft-refusal-submit').click();
+      await page.getByTestId('moneyshyft-refusal-submit').click();
       await refusalSubmitResponse;
 
-      await expect(page.getByTestId('routeshyft-refusal-audit-history')).toBeVisible();
-      await expect(page.getByTestId('routeshyft-refusal-audit-history')).toContainText(
+      await expect(page.getByTestId('moneyshyft-refusal-audit-history')).toBeVisible();
+      await expect(page.getByTestId('moneyshyft-refusal-audit-history')).toContainText(
         context.refusalCode,
       );
     },
@@ -99,10 +99,10 @@ test.describe('Story 2.5 automate - refusal outcomes requester/staff journeys', 
       );
       await historyResponse;
 
-      await expect(page.getByTestId('routeshyft-refusal-outcome-banner')).toBeVisible();
-      await expect(page.getByTestId('routeshyft-refusal-code')).toBeVisible();
-      await expect(page.getByTestId('routeshyft-refusal-audit-history')).toBeVisible();
-      await expect(page.getByTestId('routeshyft-refusal-audit-history')).not.toContainText(
+      await expect(page.getByTestId('moneyshyft-refusal-outcome-banner')).toBeVisible();
+      await expect(page.getByTestId('moneyshyft-refusal-code')).toBeVisible();
+      await expect(page.getByTestId('moneyshyft-refusal-audit-history')).toBeVisible();
+      await expect(page.getByTestId('moneyshyft-refusal-audit-history')).not.toContainText(
         'commitment-secret',
       );
     },

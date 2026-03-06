@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import { apiRequest } from '../../support/helpers/apiClient';
-import type { Story24Payload } from '../../support/factories/routeShyftStory24Factory';
+import type { Story24Payload } from '../../support/factories/moneyShyftStory24Factory';
 import { createTenantScopeHeaders } from '../../support/factories/tenantRepositoryFactory';
 
 type AuthScope = {
@@ -218,7 +218,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
     const createBody = await createResponse.json();
     expect(createBody).toMatchObject({
       ok: true,
-      code: 'ROUTESHYFT_DONOR_INTAKE_ACCEPTED',
+      code: 'MONEYSHYFT_DONOR_INTAKE_ACCEPTED',
       data: {
         requestId: expect.any(String),
         commitmentId: expect.any(String),
@@ -242,7 +242,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
     const detailBody = await detailResponse.json();
     expect(detailBody).toMatchObject({
       ok: true,
-      code: 'ROUTESHYFT_DONOR_INTAKE_COMMITMENT_LINKED',
+      code: 'MONEYSHYFT_DONOR_INTAKE_COMMITMENT_LINKED',
       data: {
         requestId,
         commitmentId,
@@ -308,7 +308,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
     const detailBody = await detailResponse.json();
     expect(detailBody).toMatchObject({
       ok: true,
-      code: 'ROUTESHYFT_DONOR_INTAKE_COMMITMENT_LINKED',
+      code: 'MONEYSHYFT_DONOR_INTAKE_COMMITMENT_LINKED',
       data: {
         requestId,
         requestLifecycleStatus: 'committed',
@@ -336,7 +336,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
     expect(refusalBody).toMatchObject({
       ok: false,
       refusalType: 'business',
-      code: 'ROUTESHYFT_DONOR_INTAKE_REFUSED',
+      code: 'MONEYSHYFT_DONOR_INTAKE_REFUSED',
       data: {
         requestId: expect.any(String),
         alternatives: expect.any(Array),
@@ -357,7 +357,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
     const detailBody = await detailResponse.json();
     expect(detailBody).toMatchObject({
       ok: true,
-      code: 'ROUTESHYFT_DONOR_INTAKE_REFUSED',
+      code: 'MONEYSHYFT_DONOR_INTAKE_REFUSED',
       data: {
         requestId,
         commitmentId: null,
@@ -383,7 +383,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
     const body = await response.json();
     expect(body).toMatchObject({
       ok: true,
-      code: 'ROUTESHYFT_INTAKE_RECONCILIATION_QUEUE',
+      code: 'MONEYSHYFT_INTAKE_RECONCILIATION_QUEUE',
       data: {
         staleThresholdMinutes: 60,
         guardrailStatus: expect.stringMatching(/^(clear|action_required)$/),
@@ -393,7 +393,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
 
     for (const item of body?.data?.items as Array<Record<string, unknown>>) {
       expect(item.tenantId).toBeUndefined();
-      expect(item.issueCode).toBe('ROUTESHYFT_REQUEST_TERMINAL_STATE_MISSING');
+      expect(item.issueCode).toBe('MONEYSHYFT_REQUEST_TERMINAL_STATE_MISSING');
       expect(typeof item.requestLifecycleStatus).toBe('string');
       expect(Array.isArray(item.reconciliationActions)).toBe(true);
     }
@@ -413,7 +413,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
       },
       data: {
         ...buildPayload(scoped, false),
-        tenantId: 'tenant-routeshyft-bravo',
+        tenantId: 'tenant-moneyshyft-bravo',
       },
     });
 
@@ -489,7 +489,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
     const createBody = await createResponse.json();
     expect(createBody).toMatchObject({
       ok: true,
-      code: 'ROUTESHYFT_DONOR_INTAKE_ACCEPTED',
+      code: 'MONEYSHYFT_DONOR_INTAKE_ACCEPTED',
       data: {
         timezone: 'America/Los_Angeles',
         timezoneSource: 'user',
@@ -532,7 +532,7 @@ test.describe('Story 2.4 automate - request-to-commitment linkage API coverage',
     const reconciliationBody = await reconciliationResponse.json();
     expect(reconciliationBody).toMatchObject({
       ok: true,
-      code: 'ROUTESHYFT_INTAKE_RECONCILIATION_QUEUE',
+      code: 'MONEYSHYFT_INTAKE_RECONCILIATION_QUEUE',
       data: {
         timezoneSource: 'user',
       },

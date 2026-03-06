@@ -51,13 +51,13 @@ test.describe(
               PROJECT_LANE: 'connectshyft',
             },
             seedFiles: {
-              'apps/routeshyft-api/src/modules/route/connectshyft-boundary-violation-e6.ts': [
+              'apps/moneyshyft-api/src/modules/route/connectshyft-boundary-violation-e6.ts': [
                 "import { resolveProviderForDispatch } from '../connectshyft/providerRegistry';",
                 '',
                 'export const leakingRouteBoundaryReference = resolveProviderForDispatch;',
                 '',
               ].join('\n'),
-              'apps/routeshyft-api/src/modules/route/connectshyft-dynamic-boundary-violation-e6.ts': [
+              'apps/moneyshyft-api/src/modules/route/connectshyft-dynamic-boundary-violation-e6.ts': [
                 "export const loadConnectShyftBoundary = async () => import('@modules/connectshyft/providerRegistry');",
                 '',
               ].join('\n'),

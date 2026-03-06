@@ -13,8 +13,8 @@ module.exports = {
             "allow": [],
             "depConstraints": [
               {
-                "sourceTag": "lane:routeshyft",
-                "onlyDependOnLibsWithTags": ["lane:routeshyft", "scope:shared"]
+                "sourceTag": "lane:moneyshyft",
+                "onlyDependOnLibsWithTags": ["lane:moneyshyft", "scope:shared"]
               },
               {
                 "sourceTag": "lane:connectshyft",

@@ -70,7 +70,7 @@ function runStatusTransitionConcurrencyHarness(storyStatusTransitionScript: stri
 
     writeFileSync(
       join(repoDir, '_bmad-output/implementation-artifacts/sprint-status.yaml'),
-      `project_lane: routeshyft
+      `project_lane: moneyshyft
 development_status:
   1-5-policy-gate-and-branch-workflow-guard-enforcement: review
 `,
@@ -91,7 +91,7 @@ Status: review
     execFileSync('git', ['config', 'user.name', 'Story Transition Harness'], { cwd: repoDir, stdio: 'ignore' });
     execFileSync('git', ['add', '.'], { cwd: repoDir, stdio: 'ignore' });
     execFileSync('git', ['commit', '-m', 'seed story transition harness'], { cwd: repoDir, stdio: 'ignore' });
-    execFileSync('git', ['checkout', '-b', 'codex/story-1-5-routeshyft-policy-harness'], { cwd: repoDir, stdio: 'ignore' });
+    execFileSync('git', ['checkout', '-b', 'codex/story-1-5-moneyshyft-policy-harness'], { cwd: repoDir, stdio: 'ignore' });
 
     const raceOutput = execFileSync(
       'bash',
@@ -252,7 +252,7 @@ function runStoryArtifactHygieneHarness(
   try {
     mkdirSync(join(repoDir, '_bmad-output/implementation-artifacts'), { recursive: true });
     mkdirSync(join(repoDir, 'scripts'), { recursive: true });
-    mkdirSync(join(repoDir, 'apps/routeshyft-api'), { recursive: true });
+    mkdirSync(join(repoDir, 'apps/moneyshyft-api'), { recursive: true });
 
     copyFileSync(storyArtifactScript, join(repoDir, 'scripts/enforce-story-artifact-hygiene.sh'));
 
@@ -276,7 +276,7 @@ function runStoryArtifactHygieneHarness(
       fileListEntries.push('- `_bmad-output/test-artifacts/epic-f-performance-evidence.json`');
     }
     if (options.includeNodeModulesMarkerInFileList) {
-      fileListEntries.push('- `apps/routeshyft-api/node_modules`');
+      fileListEntries.push('- `apps/moneyshyft-api/node_modules`');
     }
 
     writeFileSync(
@@ -309,8 +309,8 @@ function runStoryArtifactHygieneHarness(
       'utf8',
     );
 
-    mkdirSync(join(repoDir, 'apps/routeshyft-api/node_modules'), { recursive: true });
-    writeFileSync(join(repoDir, 'apps/routeshyft-api/node_modules/.keep'), 'ignore-marker\n', 'utf8');
+    mkdirSync(join(repoDir, 'apps/moneyshyft-api/node_modules'), { recursive: true });
+    writeFileSync(join(repoDir, 'apps/moneyshyft-api/node_modules/.keep'), 'ignore-marker\n', 'utf8');
 
     try {
       const output = execFileSync(
@@ -361,7 +361,7 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
     const policyRunsPolicyCheck = /\n\s*run:\s*npm run policy:check\b/.test(policyJob);
     const splitBurnInWorkflow = readFileSync('.github/workflows/burn-in.yml', 'utf8');
     const splitBurnInWorkflowRunTrigger =
-      /workflow_run:\s*\n\s*workflows:\s*\['RouteShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);
+      /workflow_run:\s*\n\s*workflows:\s*\['MoneyShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);
     const splitBurnInNeedsPrepare = getNeeds(getJobBlock(splitBurnInWorkflow, 'burn-in')).includes('prepare');
 
     const inlineBurnInGraph =
@@ -406,7 +406,7 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
   test('[P0] rejects story workflow branch mismatch with exact expected pattern diagnostics @P0', async ({
     story15Context,
   }) => {
-    const mismatchedBranch = 'codex/story-1-4-routeshyft-shared-response-envelope-and-refusal-helpers';
+    const mismatchedBranch = 'codex/story-1-4-moneyshyft-shared-response-envelope-and-refusal-helpers';
     const { output, status } = runBranchWorkflowGuardInTempRepo(story15Context.branchGuardScript, {
       branch: mismatchedBranch,
       workflow: '_bmad/tea/workflows/testarch/automate/workflow.yaml',
@@ -414,7 +414,7 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
     });
 
     const hasFailurePrefix = /Branch guard failed/.test(output);
-    const hasExpectedPattern = /Expected branch pattern:\s*codex\/story-1-5-routeshyft-<slug>/.test(output);
+    const hasExpectedPattern = /Expected branch pattern:\s*codex\/story-1-5-moneyshyft-<slug>/.test(output);
     const hasCurrentBranch = new RegExp(`Current branch:\\s*${escapeRegex(mismatchedBranch)}`).test(output);
 
     expect(status !== 0 && hasFailurePrefix && hasExpectedPattern && hasCurrentBranch).toBe(true);
@@ -430,7 +430,7 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
       baseRef: 'codex/dev',
       commitSubject: 'bad subject format',
       simulatePullRequestMergeCommit: true,
-      prMergeSubject: 'Merge pull request #15 from codex/story-1-5-routeshyft-policy-gate-and-branch-workflow-guard-enforcement',
+      prMergeSubject: 'Merge pull request #15 from codex/story-1-5-moneyshyft-policy-gate-and-branch-workflow-guard-enforcement',
       seedFiles: {
         '_bmad-output/implementation-artifacts/sprint-status.yaml': FEATURE_STORY_SPRINT_STATUS,
       },
@@ -492,7 +492,7 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
     expect(
       status !== 0
       && /changed file missing from File List -> _bmad-output\/test-artifacts\/epic-f-performance-evidence\.json/.test(output)
-      && /changed file missing from File List -> apps\/routeshyft-api\/node_modules/.test(output),
+      && /changed file missing from File List -> apps\/moneyshyft-api\/node_modules/.test(output),
     ).toBe(true);
   });
 
@@ -529,7 +529,7 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
   }) => {
     let output = '';
     try {
-      execFileSync('bash', [story15Context.branchGuardScript, '--workflow', 'automate'], {
+      execFileSync('bash', [story15Context.branchGuardScript, '--lane', 'moneyshyft', '--workflow', 'automate'], {
         env: {
           ...process.env,
           GITHUB_EVENT_NAME: 'local',

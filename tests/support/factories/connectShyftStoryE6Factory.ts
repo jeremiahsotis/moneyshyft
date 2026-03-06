@@ -27,9 +27,9 @@ export function createStoryE6Context(
     policyScript: 'scripts/enforce-git-policy.sh',
     branchGuardScript: 'scripts/branch-ensure-workflow.sh',
     policyFile: 'docs/policies/git_policy.md',
-    providerRegistryFile: 'apps/routeshyft-api/src/modules/connectshyft/providerRegistry.ts',
+    providerRegistryFile: 'apps/moneyshyft-api/src/modules/connectshyft/providerRegistry.ts',
     providerRegistryTestFile:
-      'apps/routeshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts',
+      'apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts',
     deploymentChecklistFile: 'DEPLOYMENT_CHECKLIST.md',
     productionGuideFile: 'PRODUCTION_DEPLOYMENT_GUIDE.md',
     ...overrides,

@@ -125,7 +125,7 @@ function ensureStoryFilesForActiveStatuses(repoDir: string, sprintStatusPath: st
 function resolveLaneSprintStatusEntries(repoDir: string): LaneSprintStatusEntry[] {
   const fallbackEntries: LaneSprintStatusEntry[] = [
     {
-      laneId: 'routeshyft',
+      laneId: 'moneyshyft',
       statusPath: join(repoDir, '_bmad-output/implementation-artifacts/sprint-status.yaml'),
     },
     {

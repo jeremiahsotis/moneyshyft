@@ -1,4 +1,4 @@
-import { test, expect } from '../../support/fixtures/routeShyftStory21.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory21.fixture';
 import { login } from '../../helpers/auth';
 
 function buildCommitmentsUiUrl(story21Context: {
@@ -33,7 +33,7 @@ test.describe(
             contentType: 'application/json',
             body: JSON.stringify({
               ok: true,
-              code: 'ROUTESHYFT_COMMITMENTS_RESOLVED',
+              code: 'MONEYSHYFT_COMMITMENTS_RESOLVED',
               data: {
                 commitments: [
                   {
@@ -52,10 +52,10 @@ test.describe(
         await page.goto(buildCommitmentsUiUrl(story21Context));
 
         await expect(page.getByRole('heading', { name: 'Commitments' })).toBeVisible();
-        await expect(page.getByTestId('routeshyft-commitment-status-badge')).toContainText('Draft');
-        await expect(page.getByTestId('routeshyft-commitment-transition-select')).toBeVisible();
-        await expect(page.getByTestId('routeshyft-commitment-transition-submit')).toBeEnabled();
-        await expect(page.getByTestId('routeshyft-commitment-transition-select')).not.toContainText('Completed');
+        await expect(page.getByTestId('moneyshyft-commitment-status-badge')).toContainText('Draft');
+        await expect(page.getByTestId('moneyshyft-commitment-transition-select')).toBeVisible();
+        await expect(page.getByTestId('moneyshyft-commitment-transition-submit')).toBeEnabled();
+        await expect(page.getByTestId('moneyshyft-commitment-transition-select')).not.toContainText('Completed');
       },
     );
 
@@ -73,7 +73,7 @@ test.describe(
             contentType: 'application/json',
             body: JSON.stringify({
               ok: true,
-              code: 'ROUTESHYFT_COMMITMENTS_RESOLVED',
+              code: 'MONEYSHYFT_COMMITMENTS_RESOLVED',
               data: {
                 commitments: [
                   {
@@ -100,7 +100,7 @@ test.describe(
             body: JSON.stringify({
               ok: false,
               refusalType: 'business',
-              code: 'ROUTESHYFT_COMMITMENT_TRANSITION_INVALID',
+              code: 'MONEYSHYFT_COMMITMENT_TRANSITION_INVALID',
               message: 'Invalid transition requested',
               data: {
                 commitmentId: story21Context.commitmentId,
@@ -117,15 +117,15 @@ test.describe(
         await login(page);
         await page.goto(buildCommitmentsUiUrl(story21Context));
 
-        await page.getByTestId('routeshyft-commitment-transition-select').selectOption('completed');
-        await page.getByTestId('routeshyft-commitment-transition-reason-input').fill('Attempt invalid transition');
-        await page.getByTestId('routeshyft-commitment-transition-submit').click();
+        await page.getByTestId('moneyshyft-commitment-transition-select').selectOption('completed');
+        await page.getByTestId('moneyshyft-commitment-transition-reason-input').fill('Attempt invalid transition');
+        await page.getByTestId('moneyshyft-commitment-transition-submit').click();
 
-        await expect(page.getByTestId('routeshyft-commitment-refusal-banner')).toBeVisible();
-        await expect(page.getByTestId('routeshyft-commitment-refusal-code')).toHaveText(
-          'ROUTESHYFT_COMMITMENT_TRANSITION_INVALID',
+        await expect(page.getByTestId('moneyshyft-commitment-refusal-banner')).toBeVisible();
+        await expect(page.getByTestId('moneyshyft-commitment-refusal-code')).toHaveText(
+          'MONEYSHYFT_COMMITMENT_TRANSITION_INVALID',
         );
-        await expect(page.getByTestId('routeshyft-commitment-refusal-details')).toContainText(
+        await expect(page.getByTestId('moneyshyft-commitment-refusal-details')).toContainText(
           'Use allowed transition path: draft -> scheduled',
         );
       },
@@ -145,7 +145,7 @@ test.describe(
             contentType: 'application/json',
             body: JSON.stringify({
               ok: true,
-              code: 'ROUTESHYFT_COMMITMENTS_RESOLVED',
+              code: 'MONEYSHYFT_COMMITMENTS_RESOLVED',
               data: {
                 commitments: [
                   {
@@ -163,8 +163,8 @@ test.describe(
         await login(page);
         await page.goto(buildCommitmentsUiUrl(story21Context));
 
-        await expect(page.getByTestId('routeshyft-commitment-status-badge')).toContainText('Completed');
-        await expect(page.getByTestId('routeshyft-commitment-transition-submit')).toBeDisabled();
+        await expect(page.getByTestId('moneyshyft-commitment-status-badge')).toContainText('Completed');
+        await expect(page.getByTestId('moneyshyft-commitment-transition-submit')).toBeDisabled();
       },
     );
 
@@ -184,7 +184,7 @@ test.describe(
             contentType: 'application/json',
             body: JSON.stringify({
               ok: true,
-              code: 'ROUTESHYFT_COMMITMENTS_RESOLVED',
+              code: 'MONEYSHYFT_COMMITMENTS_RESOLVED',
               data: {
                 commitments: [
                   {
@@ -213,7 +213,7 @@ test.describe(
             contentType: 'application/json',
             body: JSON.stringify({
               ok: true,
-              code: 'ROUTESHYFT_COMMITMENT_TRANSITION_APPLIED',
+              code: 'MONEYSHYFT_COMMITMENT_TRANSITION_APPLIED',
               data: {
                 commitment: {
                   id: story21Context.commitmentId,
@@ -229,11 +229,11 @@ test.describe(
         await login(page);
         await page.goto(buildCommitmentsUiUrl(story21Context));
 
-        await page.getByTestId('routeshyft-commitment-transition-select').selectOption('scheduled');
-        await page.getByTestId('routeshyft-commitment-transition-reason-input').fill(
+        await page.getByTestId('moneyshyft-commitment-transition-select').selectOption('scheduled');
+        await page.getByTestId('moneyshyft-commitment-transition-reason-input').fill(
           'Dispatcher confirmed assignment',
         );
-        await page.getByTestId('routeshyft-commitment-transition-submit').click();
+        await page.getByTestId('moneyshyft-commitment-transition-submit').click();
 
         expect(capturedRequestPayload).toMatchObject({
           toStatus: 'scheduled',

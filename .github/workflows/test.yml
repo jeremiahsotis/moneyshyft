@@ -1,4 +1,4 @@
-name: RouteShyft CI
+name: MoneyShyft CI
 
 on:
   pull_request:
@@ -48,8 +48,8 @@ jobs:
               - '.github/actions/**'
               - 'package.json'
               - 'package-lock.json'
-              - 'apps/routeshyft-api/package-lock.json'
-              - 'apps/routeshyft-web/package-lock.json'
+              - 'apps/moneyshyft-api/package-lock.json'
+              - 'apps/moneyshyft-web/package-lock.json'
       - id: decide
         run: |
           if [ "${{ github.event_name }}" != "pull_request" ]; then
@@ -394,7 +394,7 @@ jobs:
         run: |
           payload=$(cat <<JSON
           {
-            "text": "RouteShyft CI release-readiness blocked (${{ steps.release_readiness.outputs.blocked_jobs }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            "text": "MoneyShyft CI release-readiness blocked (${{ steps.release_readiness.outputs.blocked_jobs }}): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
           JSON
           )

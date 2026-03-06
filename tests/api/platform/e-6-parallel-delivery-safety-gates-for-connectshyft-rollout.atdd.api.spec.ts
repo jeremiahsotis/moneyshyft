@@ -38,7 +38,7 @@ test.describe(
               PROJECT_LANE: 'connectshyft',
             },
             seedFiles: {
-              'apps/routeshyft-api/src/modules/connectshyft/twilio-direct-coupling-e6.ts': [
+              'apps/moneyshyft-api/src/modules/connectshyft/twilio-direct-coupling-e6.ts': [
                 "import twilio from 'twilio';",
                 '',
                 "export const createDirectProviderClient = () => twilio('sid', 'token');",
@@ -59,7 +59,7 @@ test.describe(
               PROJECT_LANE: 'connectshyft',
             },
             seedFiles: {
-              'apps/routeshyft-api/src/modules/connectshyft/route-boundary-violation-e6.ts': [
+              'apps/moneyshyft-api/src/modules/connectshyft/route-boundary-violation-e6.ts': [
                 "import { CommitmentService } from '../route/application/commitmentService';",
                 '',
                 'export const leakingBoundaryReference = CommitmentService;',
@@ -80,7 +80,7 @@ test.describe(
               PROJECT_LANE: 'connectshyft',
             },
             seedFiles: {
-              'apps/routeshyft-api/src/modules/connectshyft/route-dynamic-boundary-violation-e6.ts': [
+              'apps/moneyshyft-api/src/modules/connectshyft/route-dynamic-boundary-violation-e6.ts': [
                 "export const leakingBoundaryReference = async () => import('../route/application/commitmentService');",
                 '',
               ].join('\n'),
@@ -107,7 +107,7 @@ test.describe(
     );
 
     test(
-      '[E6-ATDD-API-003][P0] merge gating enforces both RouteShyft regression lane completion and ConnectShyft quality gates before release-readiness turns ready @P0',
+      '[E6-ATDD-API-003][P0] merge gating enforces both MoneyShyft regression lane completion and ConnectShyft quality gates before release-readiness turns ready @P0',
       async ({ storyE6Context }) => {
         const workflow = readFileSync(storyE6Context.workflowFile, 'utf8');
         const burnInWorkflow = readFileSync(storyE6Context.burnInWorkflowFile, 'utf8');
@@ -128,7 +128,7 @@ test.describe(
           /BURN_IN_REQUIRE_TESTS/.test(testChangedScript)
           && /Running burn-in fallback spec suite/.test(testChangedScript);
         const burnInRunsOnCiCompletion =
-          /workflow_run:\s*\n\s*workflows:\s*\['RouteShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(
+          /workflow_run:\s*\n\s*workflows:\s*\['MoneyShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(
             burnInWorkflow,
           );
         const burnInHasPrPath = /run\.event === 'pull_request'/.test(burnInWorkflow);

@@ -42,10 +42,10 @@ Initialize the PRD workflow by detecting continuation state, discovering input d
 - 🚫 FORBIDDEN to look ahead to future steps or assume knowledge from them
 - 💬 Approach: Systematic setup with clear reporting to user
 - 🚪 Detect existing workflow state and handle continuation properly
-- 🛡️ Require `project_lane` selection before new document creation (`routeshyft`, `connectshyft`, or future lane)
+- 🛡️ Require `project_lane` selection before new document creation (`moneyshyft`, `connectshyft`, or future lane)
 - 🛡️ Ensure output filename follows lane naming:
   - ConnectShyft lane: filename must include `ConnectShyft`
-  - RouteShyft lane: filename must not include `ConnectShyft`
+  - MoneyShyft lane: filename must not include `ConnectShyft`
 
 ## EXECUTION PROTOCOLS:
 

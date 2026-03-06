@@ -30,7 +30,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     const qualityGatesJob = getJobBlock(workflow, 'quality-gates');
     const policyRunsGate = /\n\s*run:\s*npm run policy:check\b/.test(policyJob);
     const splitBurnInWorkflowRunTrigger =
-      /workflow_run:\s*\n\s*workflows:\s*\['RouteShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);
+      /workflow_run:\s*\n\s*workflows:\s*\['MoneyShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);
     const burnInDefined = burnInJob.length > 0 || (splitBurnInJob.length > 0 && splitBurnInWorkflowRunTrigger);
     const pullRequestIncludesProduction = /pull_request:\s*\n\s*branches:\s*\[[^\]]*\bproduction\b/.test(workflow);
     const pullRequestIncludesCodexDev = /pull_request:\s*\n\s*branches:\s*\[[^\]]*\bcodex\/dev\b/.test(workflow);
@@ -57,7 +57,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     const qualityGatesNeedsTest = qualityGateNeeds.includes('test');
     const qualityGatesNeedsBurnIn = qualityGateNeeds.includes('burn-in');
     const splitBurnInWorkflowRunTrigger =
-      /workflow_run:\s*\n\s*workflows:\s*\['RouteShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);
+      /workflow_run:\s*\n\s*workflows:\s*\['MoneyShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);
     const splitBurnInNeedsPrepare = getNeeds(getJobBlock(splitBurnInWorkflow, 'burn-in')).includes('prepare');
     const inlineBurnInGraph = inlineBurnInNeedsTest && qualityGatesNeedsTest && qualityGatesNeedsBurnIn;
     const splitBurnInGraph =
@@ -81,7 +81,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     const hasInlineTestCondition = /needs\.test\.result\s*==\s*'success'/.test(qualityGatesJob);
     const hasInlineBurnInCondition = /needs\['burn-in'\]\.result\s*==\s*'success'/.test(qualityGatesJob);
     const splitBurnInWorkflowRunTrigger =
-      /workflow_run:\s*\n\s*workflows:\s*\['RouteShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);
+      /workflow_run:\s*\n\s*workflows:\s*\['MoneyShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(splitBurnInWorkflow);
     const splitBurnInRequiresCiSuccess = /run\.conclusion !== 'success'/.test(splitBurnInWorkflow);
     const splitBurnInCondition =
       splitBurnInWorkflowRunTrigger &&
@@ -115,7 +115,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
       branch: 'main',
       event: 'local',
-      headRef: 'codex/story-0-9-routeshyft-ignored-in-local-mode',
+      headRef: 'codex/story-0-9-moneyshyft-ignored-in-local-mode',
       commitSubject: '0-9: local policy failure path',
     });
 
@@ -135,7 +135,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage', () => {
     // When checking JWT dependency resolution strategy
     const hasNodeModuleRequire = /return require\('jsonwebtoken'\);/.test(epic0QualityScript);
     const hasBackendFallbackRequire =
-      /return require\(path\.join\(root, '(?:apps\/routeshyft-api|src)\/node_modules\/jsonwebtoken'\)\);/.test(
+      /return require\(path\.join\(root, '(?:apps\/moneyshyft-api|src)\/node_modules\/jsonwebtoken'\)\);/.test(
         epic0QualityScript,
       );
 

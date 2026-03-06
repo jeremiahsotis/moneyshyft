@@ -1,5 +1,5 @@
 import { apiRequest } from '../../support/helpers/apiClient';
-import { test, expect } from '../../support/fixtures/routeShyftStory24.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory24.fixture';
 
 function detailPath(resourceCollection: string, requestId: string): string {
   return resourceCollection + '/' + requestId;
@@ -174,7 +174,7 @@ test.describe('Story 2-4 Request-to-Commitment Linkage and Terminal Enforcement 
     const body = await response.json();
     expect(body).toMatchObject({
       ok: true,
-      code: 'ROUTESHYFT_INTAKE_RECONCILIATION_QUEUE',
+      code: 'MONEYSHYFT_INTAKE_RECONCILIATION_QUEUE',
       data: {
         staleThresholdMinutes: 60,
         guardrailStatus: expect.stringMatching(/^(clear|action_required)$/),

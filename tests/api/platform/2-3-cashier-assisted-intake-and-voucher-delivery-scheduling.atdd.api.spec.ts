@@ -1,5 +1,5 @@
 import { apiRequest } from '../../support/helpers/apiClient';
-import { test, expect } from '../../support/fixtures/routeShyftStory23.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory23.fixture';
 
 function detailPath(resourceCollection: string, requestId: string): string {
   return resourceCollection + '/' + requestId;

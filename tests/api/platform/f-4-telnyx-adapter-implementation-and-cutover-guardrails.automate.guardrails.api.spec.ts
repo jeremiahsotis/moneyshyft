@@ -152,11 +152,11 @@ test.describe(
           ciPolicyContext.policyScript,
           ciPolicyContext.policyFile,
           {
-            branch: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
+            branch: 'codex/story-0-9-moneyshyft-ci-policy-gate-as-blocking-first-stage',
             event: 'local',
             commitSubject: '0-9: enforce provider abstraction cutover guard in f4',
             seedFiles: {
-              'apps/routeshyft-api/src/modules/connectshyft/twilio-direct-coupling.ts': [
+              'apps/moneyshyft-api/src/modules/connectshyft/twilio-direct-coupling.ts': [
                 "import twilio from 'twilio';",
                 '',
                 "export const createLeakyClient = () => twilio('sid', 'token');",
@@ -169,7 +169,7 @@ test.describe(
         const hasGuardFailure =
           /ConnectShyft provider abstraction guard failed: direct Twilio coupling detected/.test(result.output);
         const hasViolationPath =
-          /(?:apps\/routeshyft-api\/src\/modules\/connectshyft|src\/src\/modules\/connectshyft)\/twilio-direct-coupling\.ts/.test(
+          /(?:apps\/moneyshyft-api\/src\/modules\/connectshyft|src\/src\/modules\/connectshyft)\/twilio-direct-coupling\.ts/.test(
             result.output,
           );
         expect(result.status !== 0 && hasGuardFailure && hasViolationPath).toBe(true);

@@ -40,7 +40,7 @@ Initialize the product brief workflow by detecting continuation state and settin
 - 🚫 FORBIDDEN to look ahead to future steps or assume knowledge from them
 - 💬 Approach: Systematic setup with clear reporting to user
 - 📋 Detect existing workflow state and handle continuation properly
-- 🛡️ Require explicit `project_lane` selection (`routeshyft`, `connectshyft`, or future lane) before creating a new document
+- 🛡️ Require explicit `project_lane` selection (`moneyshyft`, `connectshyft`, or future lane) before creating a new document
 
 ## EXECUTION PROTOCOLS:
 

@@ -31,7 +31,7 @@ test.describe('Story 1.5 policy and branch guard maintainer journeys', () => {
       /Policy reference:\s*docs\/policies\/git_policy\.md/.test(policyResult.output) &&
       /npm run start:story-branch -- <story-id> <story-slug>/.test(policyResult.output);
     const branchGuardHasPatternAndCurrent =
-      /Expected branch pattern:\s*codex\/story-1-5-routeshyft-<slug>/.test(branchGuardResult.output) &&
+      /Expected branch pattern:\s*codex\/story-1-5-moneyshyft-<slug>/.test(branchGuardResult.output) &&
       /Current branch:\s*main/.test(branchGuardResult.output);
 
     expect(

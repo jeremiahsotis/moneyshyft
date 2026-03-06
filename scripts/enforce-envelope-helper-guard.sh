@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODULE_ROUTES_DIR="apps/routeshyft-api/src/routes/api/v1"
+MODULE_ROUTES_DIR="apps/moneyshyft-api/src/routes/api/v1"
 PLATFORM_CONTRACTS_FILE="${MODULE_ROUTES_DIR}/platform-contracts.ts"
 
 resolve_compare_range() {
@@ -78,9 +78,14 @@ ad_hoc_response_addition_lines() {
 
 resolve_legacy_route_path() {
   local file="$1"
+  local relative_path=""
 
-  if [[ "$file" =~ ^apps/routeshyft-api/src/routes/api/v1/(.+)$ ]]; then
-    echo "src/src/routes/api/v1/${BASH_REMATCH[1]}"
+  if [[ "$file" =~ ^apps/moneyshyft-api/src/routes/api/v1/(.+)$ ]]; then
+    relative_path="${BASH_REMATCH[1]}"
+    # Current monorepo predecessor path.
+    echo "apps/routeshyft-api/src/routes/api/v1/${relative_path}"
+    # Pre-monorepo predecessor path retained for older compare refs.
+    echo "src/src/routes/api/v1/${relative_path}"
     return 0
   fi
 
@@ -91,6 +96,7 @@ is_legacy_route_move_without_content_change() {
   local compare_left_ref="$1"
   local file="$2"
   local legacy_path=""
+  local candidate_path=""
   local head_blob=""
   local legacy_blob=""
 
@@ -98,14 +104,15 @@ is_legacy_route_move_without_content_change() {
     return 1
   fi
 
-  legacy_path="$(resolve_legacy_route_path "$file" || true)"
-  if [[ -z "$legacy_path" ]]; then
-    return 1
-  fi
-
-  if ! git cat-file -e "${compare_left_ref}:${legacy_path}" 2>/dev/null; then
-    return 1
-  fi
+  legacy_path=""
+  while IFS= read -r candidate_path; do
+    [[ -n "$candidate_path" ]] || continue
+    if git cat-file -e "${compare_left_ref}:${candidate_path}" 2>/dev/null; then
+      legacy_path="$candidate_path"
+      break
+    fi
+  done < <(resolve_legacy_route_path "$file" || true)
+  [[ -n "$legacy_path" ]] || return 1
 
   head_blob="$(git rev-parse "HEAD:${file}" 2>/dev/null || true)"
   legacy_blob="$(git rev-parse "${compare_left_ref}:${legacy_path}" 2>/dev/null || true)"
@@ -118,6 +125,7 @@ added_ad_hoc_responses_match_legacy_route_file() {
   local range="$2"
   local file="$3"
   local legacy_path=""
+  local candidate_path=""
   local legacy_content=""
   local found_any="false"
   local line=""
@@ -126,14 +134,15 @@ added_ad_hoc_responses_match_legacy_route_file() {
     return 1
   fi
 
-  legacy_path="$(resolve_legacy_route_path "$file" || true)"
-  if [[ -z "$legacy_path" ]]; then
-    return 1
-  fi
-
-  if ! git cat-file -e "${compare_left_ref}:${legacy_path}" 2>/dev/null; then
-    return 1
-  fi
+  legacy_path=""
+  while IFS= read -r candidate_path; do
+    [[ -n "$candidate_path" ]] || continue
+    if git cat-file -e "${compare_left_ref}:${candidate_path}" 2>/dev/null; then
+      legacy_path="$candidate_path"
+      break
+    fi
+  done < <(resolve_legacy_route_path "$file" || true)
+  [[ -n "$legacy_path" ]] || return 1
 
   legacy_content="$(git show "${compare_left_ref}:${legacy_path}" 2>/dev/null || true)"
   if [[ -z "$legacy_content" ]]; then

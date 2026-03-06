@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { generateAccessToken, type JWTPayload } from '../../../apps/routeshyft-api/src/utils/jwt';
+import { generateAccessToken, type JWTPayload } from '../../../apps/moneyshyft-api/src/utils/jwt';
 
 type TenantScopeOverrides = {
   tenantId?: string;
@@ -39,7 +39,7 @@ const hydrateJwtEnvFromBackendConfig = (): void => {
     return;
   }
 
-  const backendEnvPath = path.resolve(process.cwd(), 'apps/routeshyft-api/.env');
+  const backendEnvPath = path.resolve(process.cwd(), 'apps/moneyshyft-api/.env');
   if (!existsSync(backendEnvPath)) {
     return;
   }
