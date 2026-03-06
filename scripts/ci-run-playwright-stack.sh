@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -eq 0 ]]; then
+  echo "Usage: bash scripts/ci-run-playwright-stack.sh <command> [args...]"
+  exit 1
+fi
+
+runtime_dir="tests/artifacts/runtime"
+mkdir -p "$runtime_dir"
+backend_log="$runtime_dir/backend.log"
+frontend_log="$runtime_dir/frontend.log"
+
+: > "$backend_log"
+: > "$frontend_log"
+
+export TEST_ENV="${TEST_ENV:-local}"
+export TEST_EMAIL="${TEST_EMAIL:-test@example.com}"
+export TEST_PASSWORD="${TEST_PASSWORD:-test1234}"
+export ENABLE_TEST_AUTH_HARNESS="${ENABLE_TEST_AUTH_HARNESS:-true}"
+export ENABLE_TEST_CONNECTSHYFT_FLAGS="${ENABLE_TEST_CONNECTSHYFT_FLAGS:-true}"
+export JWT_SECRET="${JWT_SECRET:-test-jwt-secret}"
+export JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET:-test-jwt-refresh-secret}"
+export PLAYWRIGHT_BACKEND_NODE_ENV="${PLAYWRIGHT_BACKEND_NODE_ENV:-test}"
+export BASE_URL="${BASE_URL:-http://localhost:5174}"
+export API_URL="${API_URL:-http://localhost:3000}"
+export API_BASE_URL="${API_BASE_URL:-$API_URL}"
+export FRONTEND_URL="${FRONTEND_URL:-http://localhost:5174}"
+export VITE_API_PROXY_TARGET="${VITE_API_PROXY_TARGET:-http://localhost:3000}"
+export VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS="${VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS:-$ENABLE_TEST_CONNECTSHYFT_FLAGS}"
+export HOST="${HOST:-0.0.0.0}"
+export PORT="${PORT:-3000}"
+frontend_host="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.hostname);" "$BASE_URL")"
+frontend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.port || '5174');" "$BASE_URL")"
+
+print_runtime_logs() {
+  echo "==== Backend log tail ===="
+  if [[ -f "$backend_log" ]]; then
+    tail -n 200 "$backend_log" || true
+  else
+    echo "No backend log found"
+  fi
+  echo "==== Frontend log tail ===="
+  if [[ -f "$frontend_log" ]]; then
+    tail -n 200 "$frontend_log" || true
+  else
+    echo "No frontend log found"
+  fi
+}
+
+cleanup() {
+  local exit_code=$?
+  if [[ -n "${FRONTEND_PID:-}" ]]; then
+    kill "$FRONTEND_PID" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "${BACKEND_PID:-}" ]]; then
+    kill "$BACKEND_PID" >/dev/null 2>&1 || true
+  fi
+
+  if [[ "$exit_code" -ne 0 ]]; then
+    print_runtime_logs
+  fi
+}
+trap cleanup EXIT
+
+wait_for_http() {
+  local url="$1"
+  local label="$2"
+  local pid="${3:-}"
+  local attempts="${4:-30}"
+
+  for ((i = 1; i <= attempts; i++)); do
+    if [[ -n "$pid" ]] && ! kill -0 "$pid" 2>/dev/null; then
+      echo "Failed: $label process (PID $pid) died unexpectedly during startup."
+      return 1
+    fi
+    if curl --silent --show-error --fail --max-time 2 "$url" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "Timed out waiting for $label at $url"
+  return 1
+}
+
+echo "Ensuring pgcrypto extension is enabled"
+node <<'NODE'
+const path = require('node:path');
+
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  process.exit(0);
+}
+
+const knexFactory = require(path.resolve(process.cwd(), 'apps/routeshyft-api/node_modules/knex'));
+const db = knexFactory({
+  client: 'pg',
+  connection: databaseUrl,
+});
+
+(async () => {
+  await db.raw('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
+})()
+  .catch((error) => {
+    console.error('Failed to ensure pgcrypto extension:', error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await db.destroy();
+  });
+NODE
+
+echo "Running backend migrations"
+NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix apps/routeshyft-api
+
+echo "Verifying backend port $PORT is available..."
+node -e "
+const net = require('net');
+const port = Number(process.env.PORT);
+const server = net.createServer();
+server.once('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(\`ERROR: Port \${port} is already in use by another process! CI stack cannot start securely.\`);
+    process.exit(1);
+  }
+});
+server.once('listening', () => {
+  server.close();
+  process.exit(0);
+});
+server.listen(port);
+" || exit 1
+
+echo "Starting backend dev server"
+(cd apps/routeshyft-api && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run dev) > "$backend_log" 2>&1 &
+BACKEND_PID=$!
+
+echo "Starting frontend dev server"
+(cd apps/routeshyft-web && npm run dev -- --host "$frontend_host" --port "$frontend_port") > "$frontend_log" 2>&1 &
+FRONTEND_PID=$!
+
+wait_for_http "${API_URL%/}/health" "backend health endpoint" "$BACKEND_PID" 30 || {
+  echo "Backend failed to start or bind to ${API_URL%/}. Check logs for process conflicts or port mismatches."
+  exit 1
+}
+wait_for_http "${BASE_URL%/}/login" "frontend login page" "$FRONTEND_PID" 30 || {
+  echo "Frontend failed to start on ${BASE_URL%/}."
+  exit 1
+}
+
+echo "Running test command: $*"
+"$@"

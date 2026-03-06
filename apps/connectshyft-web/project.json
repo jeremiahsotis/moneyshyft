@@ -1,0 +1,42 @@
+{
+  "name": "connectshyft-web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/connectshyft-web/src",
+  "tags": ["lane:connectshyft", "type:app", "runtime:web"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/connectshyft-web",
+        "command": "npm run dev"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/connectshyft-web",
+        "command": "npm run build"
+      }
+    },
+    "preview": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/connectshyft-web",
+        "command": "npm run preview"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx playwright test tests/api/platform/8-4-lane-extraction-transition-strategy.api.spec.ts"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node scripts/enforce-workspace-boundaries.js"
+      }
+    }
+  }
+}

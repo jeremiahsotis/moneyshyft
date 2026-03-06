@@ -1,0 +1,267 @@
+name: RouteShyft Burn-in
+
+on:
+  workflow_run:
+    workflows: ['RouteShyft CI']
+    types: [completed]
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: 'Burn-in loop count'
+        required: false
+        default: '10'
+        type: string
+      target_ref:
+        description: 'Git ref/SHA to check out'
+        required: false
+        default: 'codex/dev'
+        type: string
+      base_ref:
+        description: 'Base ref used by scripts/burn-in.sh'
+        required: false
+        default: 'origin/production'
+        type: string
+      advisory:
+        description: 'Advisory mode (non-blocking) for manual runs'
+        required: false
+        default: 'false'
+        type: boolean
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  CI: true
+
+jobs:
+  prepare:
+    name: prepare-burn-in-context
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.plan.outputs.should_run }}
+      advisory: ${{ steps.plan.outputs.advisory }}
+      iterations: ${{ steps.plan.outputs.iterations }}
+      target_ref: ${{ steps.plan.outputs.target_ref }}
+      base_ref: ${{ steps.plan.outputs.base_ref }}
+      reason: ${{ steps.plan.outputs.reason }}
+      source_event: ${{ steps.plan.outputs.source_event }}
+    steps:
+      - name: Resolve burn-in execution plan
+        id: plan
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const isDocsOnlyPath = (value) =>
+              value.startsWith('docs/')
+              || value.startsWith('_bmad/')
+              || value.startsWith('_bmad-output/')
+              || value.endsWith('.md')
+              || value.endsWith('.mdx');
+
+            let shouldRun = false;
+            let advisory = false;
+            let iterations = 10;
+            let targetRef = '';
+            let baseRef = 'origin/production';
+            let reason = 'No burn-in context matched.';
+            let sourceEvent = context.eventName;
+
+            if (context.eventName === 'workflow_run') {
+              const run = context.payload.workflow_run;
+              sourceEvent = run?.event || 'workflow_run';
+
+              if (!run) {
+                reason = 'workflow_run payload missing.';
+              } else if (run.conclusion !== 'success') {
+                reason = `Skipping because RouteShyft CI concluded with '${run.conclusion}'.`;
+              } else if (run.event === 'pull_request') {
+                const prRef = run.pull_requests?.[0];
+                if (!prRef?.number) {
+                  reason = 'No pull request metadata attached to workflow_run event.';
+                } else {
+                  const pr = await github.rest.pulls.get({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: prRef.number,
+                  });
+                  const files = await github.paginate(
+                    github.rest.pulls.listFiles,
+                    {
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      pull_number: prRef.number,
+                      per_page: 100,
+                    },
+                  );
+
+                  const docsOnly = files.length > 0 && files.every((file) => isDocsOnlyPath(file.filename));
+                  if (docsOnly) {
+                    reason = `Skipping docs/story-artifact-only PR #${prRef.number}.`;
+                  } else {
+                    shouldRun = true;
+                    advisory = true;
+                    iterations = 3;
+                    targetRef = pr.data.head.sha;
+                    baseRef = `origin/${pr.data.base.ref}`;
+                    reason = `Advisory PR burn-in for #${prRef.number} (${iterations} loops).`;
+                  }
+                }
+              } else if (run.event === 'push') {
+                if (run.head_branch === 'production') {
+                  shouldRun = true;
+                  advisory = false;
+                  iterations = 10;
+                  targetRef = run.head_sha;
+                  baseRef = `${run.head_sha}^`;
+                  reason = 'Blocking production burn-in (10 loops).';
+                } else {
+                  reason = `Push event on '${run.head_branch}' is not eligible for burn-in.`;
+                }
+              } else if (run.event === 'merge_group') {
+                shouldRun = true;
+                advisory = false;
+                iterations = 10;
+                targetRef = run.head_sha;
+                baseRef = 'origin/production';
+                reason = 'Blocking merge_group burn-in (10 loops).';
+              } else {
+                reason = `Unsupported triggering event '${run.event}' from RouteShyft CI.`;
+              }
+            } else if (context.eventName === 'schedule') {
+              shouldRun = true;
+              advisory = false;
+              iterations = 10;
+              targetRef = 'codex/dev';
+              baseRef = 'origin/production';
+              sourceEvent = 'schedule';
+              reason = 'Nightly codex/dev burn-in (10 loops).';
+            } else if (context.eventName === 'workflow_dispatch') {
+              const parsedIterations = Number.parseInt(core.getInput('iterations') || '10', 10);
+              shouldRun = true;
+              advisory = (core.getInput('advisory') || 'false') === 'true';
+              iterations = Number.isInteger(parsedIterations) && parsedIterations > 0 ? parsedIterations : 10;
+              targetRef = core.getInput('target_ref') || 'codex/dev';
+              baseRef = core.getInput('base_ref') || 'origin/production';
+              sourceEvent = 'workflow_dispatch';
+              reason = `Manual burn-in dispatch (${iterations} loops).`;
+            }
+
+            core.setOutput('should_run', String(shouldRun));
+            core.setOutput('advisory', String(advisory));
+            core.setOutput('iterations', String(iterations));
+            core.setOutput('target_ref', targetRef || 'production');
+            core.setOutput('base_ref', baseRef);
+            core.setOutput('reason', reason);
+            core.setOutput('source_event', sourceEvent);
+
+  skip:
+    name: burn-in-skipped
+    runs-on: ubuntu-latest
+    needs: prepare
+    if: needs.prepare.outputs.should_run != 'true'
+    steps:
+      - name: Publish skip reason
+        run: |
+          {
+            echo "## Burn-in Summary"
+            echo ""
+            echo "- source-event: ${{ needs.prepare.outputs.source_event }}"
+            echo "- executed: no"
+            echo "- reason: ${{ needs.prepare.outputs.reason }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  burn-in:
+    name: scheduled-burn-in
+    runs-on: ubuntu-latest
+    needs: prepare
+    if: needs.prepare.outputs.should_run == 'true'
+    container:
+      image: mcr.microsoft.com/playwright:v1.57.0-jammy
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: moneyshyft_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d moneyshyft_ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/moneyshyft_ci
+      TEST_ENV: local
+      ENABLE_TEST_AUTH_HARNESS: 'true'
+      TEST_EMAIL: test@example.com
+      TEST_PASSWORD: test1234
+      BASE_URL: http://localhost:5174
+      API_URL: http://localhost:3000
+      API_BASE_URL: http://localhost:3000
+      FRONTEND_URL: http://localhost:5174
+      VITE_API_PROXY_TARGET: http://localhost:3000
+      BURN_IN_ADVISORY: ${{ needs.prepare.outputs.advisory }}
+      BURN_IN_ITERATIONS: ${{ needs.prepare.outputs.iterations }}
+      BURN_IN_BASE_REF: ${{ needs.prepare.outputs.base_ref }}
+      BURN_IN_SOURCE_EVENT: ${{ needs.prepare.outputs.source_event }}
+      BURN_IN_REQUIRE_TESTS: 'true'
+      BURN_IN_FALLBACK_SPECS: >-
+        tests/api/platform/2-1-commitment-domain-model-and-transition-rules.atdd.api.spec.ts
+        tests/e2e/platform/2-1-commitment-domain-model-and-transition-rules.atdd.spec.ts
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.prepare.outputs.target_ref }}
+      - uses: ./.github/actions/setup-ci-node-playwright
+        with:
+          install_src: 'true'
+          install_frontend: 'true'
+          ensure_playwright: 'true'
+      - name: Run burn-in loop
+        id: run_burn_in
+        run: |
+          set +e
+          bash scripts/ci-run-playwright-stack.sh bash scripts/burn-in.sh "$BURN_IN_ITERATIONS" "$BURN_IN_BASE_REF"
+          exit_code=$?
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+
+          if [ "$BURN_IN_ADVISORY" = "true" ] && [ "$exit_code" -ne 0 ]; then
+            echo "::warning::Advisory PR burn-in failed (exit $exit_code); merge is not blocked."
+            exit 0
+          fi
+
+          exit "$exit_code"
+      - name: Upload burn-in artifacts
+        if: always() && steps.run_burn_in.outputs.exit_code != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: burn-in-artifacts
+          path: |
+            tests/artifacts/test-results/
+            tests/artifacts/playwright-report/
+            tests/artifacts/junit/
+            tests/artifacts/runtime/
+          retention-days: 30
+      - name: Publish burn-in summary
+        if: always()
+        run: |
+          {
+            echo "## Burn-in Summary"
+            echo ""
+            echo "- source-event: $BURN_IN_SOURCE_EVENT"
+            echo "- advisory: $BURN_IN_ADVISORY"
+            echo "- iterations: $BURN_IN_ITERATIONS"
+            echo "- base-ref: $BURN_IN_BASE_REF"
+            echo "- reason: ${{ needs.prepare.outputs.reason }}"
+            echo "- exit-code: ${{ steps.run_burn_in.outputs.exit_code }}"
+          } >> "$GITHUB_STEP_SUMMARY"

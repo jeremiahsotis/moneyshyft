@@ -30,7 +30,7 @@ Layered modular backend:
 - CI must enforce policy gate first (`npm run policy:check`) before lint/test gates.
 - Branch/workflow guard command is required for story and epic operations:
 - `npm run branch:ensure-workflow -- --workflow <name-or-path> --story <story-key-or-story-file>`
-- `npm run branch:ensure-workflow -- --workflow <name-or-path> --epic <epic-number>`
+- `npm run branch:ensure-workflow -- --workflow <name-or-path> --epic <epic-id>`
 - Required CI target jobs for RouteShyft stream:
 1. `policy`
 2. `lint`
@@ -41,6 +41,6 @@ Layered modular backend:
 7. `report`
 
 ## Key Route Surface
-Representative route groups in `src/src/routes/api/v1/`:
+Representative route groups in `apps/routeshyft-api/src/routes/api/v1/`:
 - `auth`, `households`, `accounts`, `budgets`, `transactions`, `categories`
 - `debts`, `goals`, `income`, `extra-money`, `scenarios`, `tags`, `assignments`, `splits`, `settings`, `recurring-transactions`

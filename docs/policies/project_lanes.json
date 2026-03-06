@@ -1,0 +1,40 @@
+{
+  "defaultLane": "routeshyft",
+  "lanes": [
+    {
+      "id": "routeshyft",
+      "displayName": "RouteShyft",
+      "branchTokens": [
+        "routeshyft"
+      ],
+      "planningFilenameTokens": [],
+      "sprintStatusFile": "_bmad-output/implementation-artifacts/sprint-status.yaml"
+    },
+    {
+      "id": "connectshyft",
+      "displayName": "ConnectShyft",
+      "branchTokens": [
+        "connectshyft"
+      ],
+      "planningFilenameTokens": [
+        "connectshyft"
+      ],
+      "sprintStatusFile": "_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml"
+    },
+    {
+      "id": "signshyft",
+      "displayName": "SignShyft",
+      "branchTokens": [
+        "signshyft"
+      ],
+      "planningFilenameTokens": [
+        "signshyft"
+      ],
+      "sprintStatusFile": "_bmad-output/implementation-artifacts/sprint-status-signshyft.yaml"
+    }
+  ],
+  "planningRules": {
+    "planningDir": "_bmad-output/planning-artifacts",
+    "rootPlanningMarkdownDir": "_bmad-output"
+  }
+}

@@ -6,14 +6,14 @@
 
 ## Quick Reference
 1. Backend
-- Root: `src/`
+- Root: `apps/routeshyft-api/`
 - Stack: Express + TypeScript + Knex + PostgreSQL
-- Entry points: `src/src/server.ts`, `src/src/app.ts`
+- Entry points: `apps/routeshyft-api/src/server.ts`, `apps/routeshyft-api/src/app.ts`
 
 2. Frontend
-- Root: `frontend/`
+- Root: `apps/routeshyft-web/`
 - Stack: Vue 3 + Vite + Pinia + Vue Router
-- Entry point: `frontend/src/main.ts`
+- Entry point: `apps/routeshyft-web/src/main.ts`
 
 ## Generated Documentation
 - [Project Overview](./project-overview.md)
@@ -39,6 +39,10 @@
 - [Product Roadmap](../ROADMAP.md)
 - [Git Policy](./policies/git_policy.md)
 
+## Testing Runbooks
+- [ConnectShyft Epic A User Test Runbook](./testing/connectshyft-epic-a-user-test-runbook.md)
+- [ConnectShyft Epic A User Test Session Template](./testing/connectshyft-epic-a-user-test-session-template.md)
+
 ## RouteShyft Input Docs
 - [RouteShyft docs folder](./routeshyft/)
 
@@ -46,9 +50,9 @@
 - `ROADMAP.md` is a planning constraint source for sequencing and scope.
 - `docs/policies/git_policy.md` is mandatory policy input and CI enforcement source.
 - Execute conversion in small PRs using canonical sequence:
-1. Structure + TS aliases (`src/platform`, `src/modules`, `src/api`, `src/db/migrations`, `src/db/seeds`).
+1. Structure + TS aliases (`apps/routeshyft-api/src/platform`, `apps/routeshyft-api/src/modules`, `apps/routeshyft-api/src/api`, `apps/routeshyft-api/src/db/migrations`, `apps/routeshyft-api/src/db/seeds`).
 2. Canonical app entry + `registerRoutes`.
-3. Mechanical move of money module into `src/modules/money`.
+3. Mechanical move of money module into `apps/routeshyft-api/src/modules/money`.
 4. Platform kernel extraction (`db`, `tenancy`, envelope helpers, audit logger).
 5. Migration centralization and schema strategy.
 6. Canary route module with `/api/route/_health`.

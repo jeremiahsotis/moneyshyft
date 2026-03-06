@@ -12,10 +12,12 @@ docker-build/
 # Dependencies
 node_modules/
 */node_modules/
+apps/*/node_modules/
 
 # Build outputs
 dist/
 build/
+apps/*/dist/
 *.tsbuildinfo
 
 # Logs
@@ -36,6 +38,7 @@ pids
 coverage/
 .nyc_output
 tests/artifacts/
+.playwright-cli/
 
 # IDE
 .vscode/
@@ -70,6 +73,7 @@ temp/
 
 # Cache
 .cache/
+.nx/
 .parcel-cache/
 .vite/
 
