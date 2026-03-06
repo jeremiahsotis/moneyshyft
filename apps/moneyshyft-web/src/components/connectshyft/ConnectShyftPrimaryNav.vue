@@ -7,7 +7,7 @@
       <RouterLink
         v-for="item in navItems"
         :key="item.path"
-        :to="item.path"
+        :to="buildNavTarget(item.path)"
         :data-testid="item.testId"
         :aria-label="item.ariaLabel"
         :style="tapTargetStyle"
@@ -57,5 +57,12 @@ const isActive = (path: string): boolean => {
   }
 
   return route.path === path || route.path.startsWith(`${path}/`);
+};
+
+const buildNavTarget = (path: string): { path: string; query: typeof route.query } => {
+  return {
+    path,
+    query: route.query,
+  };
 };
 </script>

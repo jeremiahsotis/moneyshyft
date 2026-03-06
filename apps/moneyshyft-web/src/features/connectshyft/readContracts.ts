@@ -125,6 +125,29 @@ const normalizePriorityRank = (value: unknown): number => {
   return 5;
 };
 
+const resolveDisplayUrgencyLabel = (
+  priorityRank: number,
+  state: ConnectShyftThreadState,
+): string => {
+  if (priorityRank <= 1) {
+    return 'Urgent now';
+  }
+
+  if (priorityRank === 2) {
+    return 'High priority';
+  }
+
+  if (priorityRank === 3) {
+    return 'Follow up soon';
+  }
+
+  if (priorityRank === 4) {
+    return 'New message';
+  }
+
+  return state === 'UNCLAIMED' ? 'New conversation' : 'Routine follow-up';
+};
+
 const normalizeBucket = (value: unknown): ConnectShyftInboxBucket => {
   if (value === 'mine') {
     return 'mine';
@@ -227,6 +250,7 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
   const preferredOutboundCsNumberId = normalizeString(
     candidate.preferredOutboundCsNumberId ?? candidate.preferred_outbound_cs_number_id,
   );
+  const priorityRank = normalizePriorityRank(candidate.priorityRank);
   const safeSummary = sanitizeConnectShyftOperatorCopy(
     normalizeString(candidate.summary),
     'Conversation in progress.',
@@ -245,10 +269,7 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
     : state === 'CLAIMED'
       ? 'Claimed'
       : 'Closed';
-  const displayUrgencyLabel = sanitizeConnectShyftOperatorCopy(
-    urgencyLabel,
-    state === 'UNCLAIMED' ? 'New conversation' : 'Active follow-up',
-  );
+  const displayUrgencyLabel = resolveDisplayUrgencyLabel(priorityRank, state);
   const displayInboundContext = lastInboundCsNumberId
     ? 'cs-number inbound line configured'
     : 'Inbound line unavailable';
@@ -273,7 +294,7 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
     ) || null,
     bucket: normalizeBucket(candidate.bucket),
     escalationStage: normalizeStage(candidate.escalationStage),
-    priorityRank: normalizePriorityRank(candidate.priorityRank),
+    priorityRank,
     urgencyLabel,
     lastActivityAtUtc: normalizeString(candidate.lastActivityAtUtc),
     lastInboundCsNumberId,

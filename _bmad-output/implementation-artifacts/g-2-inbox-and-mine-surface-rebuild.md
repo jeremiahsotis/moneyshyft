@@ -1,6 +1,6 @@
 # Story g.2: Inbox and Mine Surface Rebuild
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -34,18 +34,18 @@ so that I can triage quickly without parsing system internals.
 
 ## Tasks / Subtasks
 
-- [ ] Rebuild Inbox and Mine queue layouts on shared primitives from g.1 (AC: 1, 4)
-  - [ ] Replace current mixed card/chip rendering with conversation-card rows and consistent summary metadata placement.
-  - [ ] Implement responsive interaction model for mobile full-screen thread, tablet split view, and desktop three-column behavior.
-- [ ] Implement display-safe queue contract mapping (AC: 2)
-  - [ ] Ensure volunteer surfaces use friendly urgency and context fields only.
-  - [ ] Remove primary exposure of raw thread id, number id, priority rank, and backend metadata labels.
-- [ ] Preserve deterministic ordering and persistent search behavior (AC: 3)
-  - [ ] Keep server-driven ordering contract and map to plain-language urgency pills.
-  - [ ] Persist query state between Inbox/Mine navigation and refresh actions.
-- [ ] Lock voicemail indicator behavior for queue ownership semantics (AC: 5)
-  - [ ] Keep claimed voicemail threads in Mine with visible voicemail indicators.
-  - [ ] Ensure voicemail events do not force Mine-owned cards back to Inbox.
+- [x] Rebuild Inbox and Mine queue layouts on shared primitives from g.1 (AC: 1, 4)
+  - [x] Replace current mixed card/chip rendering with conversation-card rows and consistent summary metadata placement.
+  - [x] Implement responsive interaction model for mobile full-screen thread, tablet split view, and desktop three-column behavior.
+- [x] Implement display-safe queue contract mapping (AC: 2)
+  - [x] Ensure volunteer surfaces use friendly urgency and context fields only.
+  - [x] Remove primary exposure of raw thread id, number id, priority rank, and backend metadata labels.
+- [x] Preserve deterministic ordering and persistent search behavior (AC: 3)
+  - [x] Keep server-driven ordering contract and map to plain-language urgency pills.
+  - [x] Persist query state between Inbox/Mine navigation and refresh actions.
+- [x] Lock voicemail indicator behavior for queue ownership semantics (AC: 5)
+  - [x] Keep claimed voicemail threads in Mine with visible voicemail indicators.
+  - [x] Ensure voicemail events do not force Mine-owned cards back to Inbox.
 
 ## Dev Notes
 
@@ -132,19 +132,30 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `cat _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `rg -n "Inbox|Mine|contract boundary|volunteer" _bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
-- `cat apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue`
-- `cat apps/moneyshyft-web/src/features/connectshyft/readContracts.ts`
+- `npm run branch:ensure-workflow -- --workflow dev-story --story g-2-inbox-and-mine-surface-rebuild.md` (pass)
+- `npm run test:e2e -- tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts` (pass)
+- `npm run test:e2e -- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts` (pass)
+- `npm run test:e2e -- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts tests/e2e/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.spec.ts tests/e2e/platform/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.spec.ts tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts` (pass)
 
 ### Completion Notes List
 
-- Created Story g.2 ready-for-dev context with queue rebuild scope, deterministic ordering constraints, and volunteer-safe rendering guardrails.
+- Rebuilt queue cards around a full-card tap target contract with summary, preview, timestamp, urgency/context pills, voicemail indicators, and accessible action hooks.
+- Refactored Inbox/Mine surface layout to support mobile full-screen thread, tablet split queue/thread, and desktop three-column queue/thread/context panels with deterministic responsive markers.
+- Implemented persistent queue search state synchronized to route query params across Inbox/Mine navigation and reload, while preserving deterministic server-driven row ordering.
+- Hardened display-safe read-model presentation by mapping urgency to human labels and keeping internal identifiers/metadata out of volunteer-primary queue copy.
+- Added executable g.2 automate coverage (`G2-AUTO-E2E-201..204`) and resolved cross-story regressions by restoring inline thread action/composer primitives and mobile DOM visibility semantics.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/g-2-inbox-and-mine-surface-rebuild.md
+- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftPrimaryNav.vue
+- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftQueueCard.vue
+- apps/moneyshyft-web/src/features/connectshyft/readContracts.ts
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue
+- tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts
 
 ## Change Log
 
 - 2026-03-06: Created Story g.2 ready-for-dev context document.
+- 2026-03-06: Implemented g.2 Inbox/Mine surface rebuild with queue-card tap targets, responsive queue-thread layouts, persistent queue search, display-safe urgency mapping, and voicemail ownership semantics.
+- 2026-03-06: Added g.2 automate E2E suite and validated regression parity across g.1, ux-r1, c.1, and g.2 platform specs.
