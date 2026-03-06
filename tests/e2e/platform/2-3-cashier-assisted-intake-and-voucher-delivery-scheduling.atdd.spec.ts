@@ -1,4 +1,4 @@
-import { test, expect } from '../../support/fixtures/routeShyftStory23.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory23.fixture';
 import { login } from '../../helpers/auth';
 
 test.describe('Story 2-3 Cashier-Assisted Intake and Voucher Delivery Scheduling (ATDD E2E RED)', () => {
@@ -13,8 +13,8 @@ test.describe('Story 2-3 Cashier-Assisted Intake and Voucher Delivery Scheduling
     await loadResponse;
 
     await expect(page.getByRole('heading', { name: 'Cashier Intake' })).toBeVisible();
-    await expect(page.getByTestId('routeshyft-cashier-intake-outcome')).toBeVisible();
-    await expect(page.getByTestId('routeshyft-cashier-intake-next-steps')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-cashier-intake-outcome')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-cashier-intake-next-steps')).toBeVisible();
   });
 
   test.skip('[P1] cashier sees parity-aligned refusal reasons and alternatives for invalid or constrained submissions @P1', async ({ page, story23Context }) => {
@@ -28,8 +28,8 @@ test.describe('Story 2-3 Cashier-Assisted Intake and Voucher Delivery Scheduling
     await page.getByRole('button', { name: 'Create Intake Request' }).click();
     await submitResponse;
 
-    await expect(page.getByTestId('routeshyft-cashier-intake-refusal-banner')).toBeVisible();
-    await expect(page.getByTestId('routeshyft-cashier-intake-refusal-code')).toHaveText(story23Context.refusalCode);
-    await expect(page.getByTestId('routeshyft-cashier-intake-alternatives')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-cashier-intake-refusal-banner')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-cashier-intake-refusal-code')).toHaveText(story23Context.refusalCode);
+    await expect(page.getByTestId('moneyshyft-cashier-intake-alternatives')).toBeVisible();
   });
 });

@@ -1,4 +1,4 @@
-import { test, expect } from '../../support/fixtures/routeShyftStory24.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory24.fixture';
 import { login } from '../../helpers/auth';
 
 test.describe('Story 2-4 Request-to-Commitment Linkage and Terminal Enforcement (ATDD E2E)', () => {
@@ -13,8 +13,8 @@ test.describe('Story 2-4 Request-to-Commitment Linkage and Terminal Enforcement 
     await loadResponse;
 
     await expect(page.getByRole('heading', { name: 'Request Lifecycle' })).toBeVisible();
-    await expect(page.getByTestId('routeshyft-request-terminal-status')).toBeVisible();
-    await expect(page.getByTestId('routeshyft-request-reconciliation-actions')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-request-terminal-status')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-request-reconciliation-actions')).toBeVisible();
   });
 
   test('[P1] operations view surfaces clear reconciliation actions for unresolved linkage or terminal failures @P1', async ({ page, story24Context }) => {
@@ -28,8 +28,8 @@ test.describe('Story 2-4 Request-to-Commitment Linkage and Terminal Enforcement 
     await page.getByRole('button', { name: 'Finalize Request' }).click();
     await submitResponse;
 
-    await expect(page.getByTestId('routeshyft-request-refusal-banner')).toBeVisible();
-    await expect(page.getByTestId('routeshyft-request-refusal-code')).toContainText(/ROUTE/i);
-    await expect(page.getByTestId('routeshyft-request-lifecycle-details')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-request-refusal-banner')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-request-refusal-code')).toContainText(/ROUTE/i);
+    await expect(page.getByTestId('moneyshyft-request-lifecycle-details')).toBeVisible();
   });
 });

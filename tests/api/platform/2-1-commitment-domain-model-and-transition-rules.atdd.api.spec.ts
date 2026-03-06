@@ -1,5 +1,5 @@
 import { apiRequest } from '../../support/helpers/apiClient';
-import { test, expect } from '../../support/fixtures/routeShyftStory21.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory21.fixture';
 
 function transitionPath(commitmentsCollection: string, commitmentId: string): string {
   return `${commitmentsCollection}/${commitmentId}/transition`;
@@ -20,7 +20,7 @@ test.describe('Story 2.1 Commitment Domain Model and Transition Rules (ATDD API 
       const createBody = await createResponse.json();
       expect(createBody).toMatchObject({
         ok: true,
-        code: 'ROUTESHYFT_COMMITMENT_CREATED',
+        code: 'MONEYSHYFT_COMMITMENT_CREATED',
         data: {
           commitment: {
             status: 'draft',
@@ -40,7 +40,7 @@ test.describe('Story 2.1 Commitment Domain Model and Transition Rules (ATDD API 
       const body = await response.json();
       expect(body).toMatchObject({
         ok: true,
-        code: 'ROUTESHYFT_COMMITMENT_TRANSITION_APPLIED',
+        code: 'MONEYSHYFT_COMMITMENT_TRANSITION_APPLIED',
         data: {
           commitment: {
             id: commitmentId,
@@ -68,7 +68,7 @@ test.describe('Story 2.1 Commitment Domain Model and Transition Rules (ATDD API 
       expect(body).toMatchObject({
         ok: false,
         refusalType: 'business',
-        code: 'ROUTESHYFT_COMMITMENT_TRANSITION_INVALID',
+        code: 'MONEYSHYFT_COMMITMENT_TRANSITION_INVALID',
         message: expect.stringContaining('transition'),
         data: {
           commitmentId: story21Context.commitmentId,
@@ -96,7 +96,7 @@ test.describe('Story 2.1 Commitment Domain Model and Transition Rules (ATDD API 
       expect(body).toMatchObject({
         ok: false,
         refusalType: 'business',
-        code: 'ROUTESHYFT_COMMITMENT_TERMINAL_STATE_IMMUTABLE',
+        code: 'MONEYSHYFT_COMMITMENT_TERMINAL_STATE_IMMUTABLE',
         data: {
           commitmentId: story21Context.commitmentId,
           terminalStatus: story21Context.terminalStatus,
@@ -120,7 +120,7 @@ test.describe('Story 2.1 Commitment Domain Model and Transition Rules (ATDD API 
       const body = await response.json();
       expect(body).toMatchObject({
         ok: true,
-        code: 'ROUTESHYFT_COMMITMENT_TRANSITION_APPLIED',
+        code: 'MONEYSHYFT_COMMITMENT_TRANSITION_APPLIED',
         data: {
           audit: {
             actorId: expect.any(String),

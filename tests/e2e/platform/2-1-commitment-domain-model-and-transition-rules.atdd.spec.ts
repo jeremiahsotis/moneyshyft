@@ -1,4 +1,4 @@
-import { test, expect } from '../../support/fixtures/routeShyftStory21.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory21.fixture';
 import { login } from '../../helpers/auth';
 
 test.describe('Story 2.1 Commitment Domain Model and Transition Rules (ATDD E2E RED)', () => {
@@ -19,10 +19,10 @@ test.describe('Story 2.1 Commitment Domain Model and Transition Rules (ATDD E2E 
       await lifecycleLoad;
 
       await expect(page.getByRole('heading', { name: 'Commitments' })).toBeVisible();
-      await expect(page.getByTestId('routeshyft-commitment-status-badge')).toContainText('Draft');
-      await expect(page.getByTestId('routeshyft-commitment-transition-select')).toBeVisible();
-      await expect(page.getByTestId('routeshyft-commitment-transition-submit')).toBeEnabled();
-      await expect(page.getByTestId('routeshyft-commitment-transition-select')).not.toContainText('Completed');
+      await expect(page.getByTestId('moneyshyft-commitment-status-badge')).toContainText('Draft');
+      await expect(page.getByTestId('moneyshyft-commitment-transition-select')).toBeVisible();
+      await expect(page.getByTestId('moneyshyft-commitment-transition-submit')).toBeEnabled();
+      await expect(page.getByTestId('moneyshyft-commitment-transition-select')).not.toContainText('Completed');
     },
   );
 
@@ -41,18 +41,18 @@ test.describe('Story 2.1 Commitment Domain Model and Transition Rules (ATDD E2E 
         `${story21Context.paths.commitmentsUi}?tenantId=${story21Context.tenantId}&orgUnitId=${story21Context.orgUnitId}`,
       );
 
-      await page.getByTestId('routeshyft-commitment-transition-select').selectOption('completed');
-      await page.getByTestId('routeshyft-commitment-transition-reason-input').fill(
+      await page.getByTestId('moneyshyft-commitment-transition-select').selectOption('completed');
+      await page.getByTestId('moneyshyft-commitment-transition-reason-input').fill(
         'Attempt invalid transition',
       );
-      await page.getByTestId('routeshyft-commitment-transition-submit').click();
+      await page.getByTestId('moneyshyft-commitment-transition-submit').click();
       await transitionResponse;
 
-      await expect(page.getByTestId('routeshyft-commitment-refusal-banner')).toBeVisible();
-      await expect(page.getByTestId('routeshyft-commitment-refusal-code')).toHaveText(
-        'ROUTESHYFT_COMMITMENT_TRANSITION_INVALID',
+      await expect(page.getByTestId('moneyshyft-commitment-refusal-banner')).toBeVisible();
+      await expect(page.getByTestId('moneyshyft-commitment-refusal-code')).toHaveText(
+        'MONEYSHYFT_COMMITMENT_TRANSITION_INVALID',
       );
-      await expect(page.getByTestId('routeshyft-commitment-refusal-details')).toContainText(
+      await expect(page.getByTestId('moneyshyft-commitment-refusal-details')).toContainText(
         'Use allowed transition path',
       );
     },

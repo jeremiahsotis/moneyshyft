@@ -18,7 +18,7 @@ type BranchGuardHarnessOptions = {
 };
 
 const FEATURE_STORY_ID = '1-1';
-const FEATURE_STORY_BRANCH = 'codex/story-1-1-routeshyft-tenant-context-resolution-and-isolation-guardrails';
+const FEATURE_STORY_BRANCH = 'codex/story-1-1-moneyshyft-tenant-context-resolution-and-isolation-guardrails';
 const FEATURE_STORY_FILE =
   '_bmad-output/implementation-artifacts/1-1-tenant-context-resolution-and-isolation-guardrails.md';
 const FEATURE_STORY_KEY = FEATURE_STORY_FILE.replace('_bmad-output/implementation-artifacts/', '').replace(/\.md$/, '');
@@ -114,7 +114,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
       branch: 'main',
       event: 'local',
-      headRef: 'codex/story-9-9-routeshyft-spoofed-branch',
+      headRef: 'codex/story-9-9-moneyshyft-spoofed-branch',
       commitSubject: '9-9: spoof attempt',
     });
 
@@ -130,11 +130,11 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
   }) => {
     // Given a story branch that introduces direct Twilio SDK coupling in ConnectShyft sources
     const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
-      branch: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
+      branch: 'codex/story-0-9-moneyshyft-ci-policy-gate-as-blocking-first-stage',
       event: 'local',
       commitSubject: '0-9: enforce provider abstraction cutover guard',
       seedFiles: {
-        'apps/routeshyft-api/src/modules/connectshyft/twilio-coupling.ts': [
+        'apps/moneyshyft-api/src/modules/connectshyft/twilio-coupling.ts': [
           "import twilio from 'twilio';",
           '',
           "export const createDirectTwilioClient = () => twilio('sid', 'token');",
@@ -146,7 +146,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     // Then policy should fail before downstream checks with explicit coupling diagnostics
     const hasGuardFailure = /ConnectShyft provider abstraction guard failed: direct Twilio coupling detected/.test(output);
     const hasViolationFile =
-      /(?:apps\/routeshyft-api\/src\/modules\/connectshyft|src\/src\/modules\/connectshyft)\/twilio-coupling\.ts/.test(
+      /(?:apps\/moneyshyft-api\/src\/modules\/connectshyft|src\/src\/modules\/connectshyft)\/twilio-coupling\.ts/.test(
         output,
       );
     expect(status !== 0 && hasGuardFailure && hasViolationFile).toBe(true);
@@ -157,11 +157,11 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
   }) => {
     // Given a story branch that introduces Twilio coupling in a TSX ConnectShyft file
     const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
-      branch: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
+      branch: 'codex/story-0-9-moneyshyft-ci-policy-gate-as-blocking-first-stage',
       event: 'local',
       commitSubject: '0-9: enforce provider abstraction cutover guard for tsx',
       seedFiles: {
-        'apps/routeshyft-api/src/modules/connectshyft/twilio-coupling.tsx': [
+        'apps/moneyshyft-api/src/modules/connectshyft/twilio-coupling.tsx': [
           "import twilio from 'twilio';",
           '',
           'export const TwilioButton = () => null;',
@@ -173,7 +173,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     // Then policy should fail with explicit TSX file diagnostics
     const hasGuardFailure = /ConnectShyft provider abstraction guard failed: direct Twilio coupling detected/.test(output);
     const hasViolationFile =
-      /(?:apps\/routeshyft-api\/src\/modules\/connectshyft|src\/src\/modules\/connectshyft)\/twilio-coupling\.tsx/.test(
+      /(?:apps\/moneyshyft-api\/src\/modules\/connectshyft|src\/src\/modules\/connectshyft)\/twilio-coupling\.tsx/.test(
         output,
       );
     expect(status !== 0 && hasGuardFailure && hasViolationFile).toBe(true);
@@ -184,16 +184,16 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
   }) => {
     // Given a pull request from a story branch targeting the wrong base branch
     const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
-      branch: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
+      branch: 'codex/story-0-9-moneyshyft-ci-policy-gate-as-blocking-first-stage',
       event: 'pull_request',
-      headRef: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
+      headRef: 'codex/story-0-9-moneyshyft-ci-policy-gate-as-blocking-first-stage',
       baseRef: 'production',
       commitSubject: '0-9: target wrong base',
     });
 
     // Then output should include explicit branch and base context for remediation
     const hasFailureHeadline = /Policy check failed: story pull requests must target codex\/dev/.test(output);
-    const hasHeadBranchContext = /Head branch:\s*codex\/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage/.test(
+    const hasHeadBranchContext = /Head branch:\s*codex\/story-0-9-moneyshyft-ci-policy-gate-as-blocking-first-stage/.test(
       output,
     );
     const hasBaseBranchContext = /Base branch:\s*production/.test(output);
@@ -230,7 +230,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
       execFileSync('bash', [ciPolicyContext.branchGuardScript, '--workflow', 'automate'], {
         env: {
           ...process.env,
-          GITHUB_HEAD_REF: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
+          GITHUB_HEAD_REF: 'codex/story-0-9-moneyshyft-ci-policy-gate-as-blocking-first-stage',
         },
         encoding: 'utf8',
       });
@@ -247,7 +247,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     ciPolicyContext,
   }) => {
     // Given a local repository branch that does not match the requested story id
-    const mismatchedBranch = 'codex/story-0-8-routeshyft-centralized-time-service-and-utc-local-rendering-contract';
+    const mismatchedBranch = 'codex/story-0-8-moneyshyft-centralized-time-service-and-utc-local-rendering-contract';
     const { output, status } = runBranchGuardInTempRepo(
       ciPolicyContext.branchGuardScript,
       createSprintStatus('done', 'approved'),
@@ -259,7 +259,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     );
 
     // When reading guard failure diagnostics
-    const hasExpectedPattern = /Expected branch pattern:\s*codex\/story-0-9-routeshyft-<slug>/.test(output);
+    const hasExpectedPattern = /Expected branch pattern:\s*codex\/story-0-9-moneyshyft-<slug>/.test(output);
     const hasCurrentBranch = new RegExp(`Current branch:\\s*${mismatchedBranch}`).test(output);
 
     // Then output should include concrete branch mismatch diagnostics
@@ -277,7 +277,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
         branch: 'main',
         story: '_bmad-output/implementation-artifacts/0-9-ci-policy-gate-as-blocking-first-stage.md',
         env: {
-          GITHUB_HEAD_REF: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
+          GITHUB_HEAD_REF: 'codex/story-0-9-moneyshyft-ci-policy-gate-as-blocking-first-stage',
         },
       },
     );
@@ -295,7 +295,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
       branch: 'codex/dev',
       event: 'local',
-      headRef: 'codex/story-0-9-routeshyft-ignored-in-local-mode',
+      headRef: 'codex/story-0-9-moneyshyft-ignored-in-local-mode',
       commitSubject: '0-9: local default branch run',
     });
 
@@ -311,7 +311,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
   test('[P1] story branches require matching commit subject story id @P1', async ({ ciPolicyContext }) => {
     // Given a story branch with a mismatched latest commit subject story id
     const { output, status } = runPolicyScriptInTempRepo(ciPolicyContext.policyScript, ciPolicyContext.policyFile, {
-      branch: 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage',
+      branch: 'codex/story-0-9-moneyshyft-ci-policy-gate-as-blocking-first-stage',
       event: 'local',
       commitSubject: '0-8: wrong story commit subject',
     });
@@ -325,7 +325,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
   test('[P1] local dirty worktrees defer commit-subject enforcement unless strict override is enabled @P1', async ({
     ciPolicyContext,
   }) => {
-    const branch = 'codex/story-0-9-routeshyft-ci-policy-gate-as-blocking-first-stage';
+    const branch = 'codex/story-0-9-moneyshyft-ci-policy-gate-as-blocking-first-stage';
     const sprintStatus = `development_status:
   0-9-ci-policy-gate-as-blocking-first-stage: in-progress
 `;
@@ -380,7 +380,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     // Then CI policy should block workflow progression with explicit corrected-kernel context
     const hasGateFailureMessage = /corrected kernel gate unmet \(Story 0-10 is not done\)/.test(output);
     const hasPolicyReference = /Policy reference:\s*docs\/policies\/git_policy\.md/.test(output);
-    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-routeshyft-tenant-context-resolution-and-isolation-guardrails\.md/.test(
+    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-moneyshyft-tenant-context-resolution-and-isolation-guardrails\.md/.test(
       output,
     );
     expect(status !== 0 && hasGateFailureMessage && hasPolicyReference && hasRemediationHint).toBe(true);
@@ -406,7 +406,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
       output,
     );
     const hasPolicyReference = /Policy reference:\s*docs\/policies\/git_policy\.md/.test(output);
-    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-routeshyft-tenant-context-resolution-and-isolation-guardrails\.md/.test(
+    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-moneyshyft-tenant-context-resolution-and-isolation-guardrails\.md/.test(
       output,
     );
     expect(status !== 0 && hasCourseCorrectionFailure && hasPolicyReference && hasRemediationHint).toBe(true);

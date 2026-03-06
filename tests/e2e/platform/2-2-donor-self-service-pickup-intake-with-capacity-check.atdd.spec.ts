@@ -1,4 +1,4 @@
-import { test, expect } from '../../support/fixtures/routeShyftStory22.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory22.fixture';
 import { login } from '../../helpers/auth';
 
 test.describe('Story 2-2 Donor Self-Service Pickup Intake with Capacity Check (ATDD E2E RED)', () => {
@@ -13,8 +13,8 @@ test.describe('Story 2-2 Donor Self-Service Pickup Intake with Capacity Check (A
     await loadResponse;
 
     await expect(page.getByRole('heading', { name: 'Donor Pickup Intake' })).toBeVisible();
-    await expect(page.getByTestId('routeshyft-donor-intake-slot-list')).toBeVisible();
-    await expect(page.getByTestId('routeshyft-donor-intake-next-steps')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-donor-intake-slot-list')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-donor-intake-next-steps')).toBeVisible();
   });
 
   test.skip('[P1] donor sees explicit refusal reason code and alternatives when no capacity is available @P1', async ({ page, story22Context }) => {
@@ -28,8 +28,8 @@ test.describe('Story 2-2 Donor Self-Service Pickup Intake with Capacity Check (A
     await page.getByRole('button', { name: 'Submit Pickup Request' }).click();
     await submitResponse;
 
-    await expect(page.getByTestId('routeshyft-donor-intake-refusal-banner')).toBeVisible();
-    await expect(page.getByTestId('routeshyft-donor-intake-refusal-code')).toHaveText(story22Context.refusalCode);
-    await expect(page.getByTestId('routeshyft-donor-intake-alternatives')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-donor-intake-refusal-banner')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-donor-intake-refusal-code')).toHaveText(story22Context.refusalCode);
+    await expect(page.getByTestId('moneyshyft-donor-intake-alternatives')).toBeVisible();
   });
 });

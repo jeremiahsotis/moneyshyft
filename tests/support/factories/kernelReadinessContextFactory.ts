@@ -40,7 +40,7 @@ export function createKernelReadinessContext(
     storyId: '0-10',
     routeStoryFile:
       '_bmad-output/implementation-artifacts/1-1-tenant-context-resolution-and-isolation-guardrails.md',
-    routeStoryBranch: 'codex/story-1-1-routeshyft-tenant-context-resolution-and-isolation-guardrails',
+    routeStoryBranch: 'codex/story-1-1-moneyshyft-tenant-context-resolution-and-isolation-guardrails',
     routeWorkflow: 'dev-story',
     qualityGateScript: 'scripts/quality-gates-epic0.sh',
     branchGuardScript: 'scripts/branch-ensure-workflow.sh',

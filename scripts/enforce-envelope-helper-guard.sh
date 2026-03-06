@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODULE_ROUTES_DIR="apps/routeshyft-api/src/routes/api/v1"
+MODULE_ROUTES_DIR="apps/moneyshyft-api/src/routes/api/v1"
 PLATFORM_CONTRACTS_FILE="${MODULE_ROUTES_DIR}/platform-contracts.ts"
 
 resolve_compare_range() {
@@ -79,7 +79,7 @@ ad_hoc_response_addition_lines() {
 resolve_legacy_route_path() {
   local file="$1"
 
-  if [[ "$file" =~ ^apps/routeshyft-api/src/routes/api/v1/(.+)$ ]]; then
+  if [[ "$file" =~ ^apps/moneyshyft-api/src/routes/api/v1/(.+)$ ]]; then
     echo "src/src/routes/api/v1/${BASH_REMATCH[1]}"
     return 0
   fi

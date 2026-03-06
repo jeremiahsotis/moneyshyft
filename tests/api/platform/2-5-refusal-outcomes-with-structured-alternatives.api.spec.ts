@@ -1,5 +1,5 @@
 import { apiRequest } from '../../support/helpers/apiClient';
-import { test, expect } from '../../support/fixtures/routeShyftStory25.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory25.fixture';
 
 const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
 

@@ -1,4 +1,4 @@
-import { test, expect } from '../../support/fixtures/routeShyftStory23.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory23.fixture';
 import { login } from '../../helpers/auth';
 
 const CASHIER_UI_IMPLEMENTATION_GAP =
@@ -26,11 +26,11 @@ test.describe('Story 2.3 automate - cashier-assisted intake operator journeys', 
           + story23Context.orgUnitId,
       );
 
-      await page.getByTestId('routeshyft-cashier-intake-submit').click();
+      await page.getByTestId('moneyshyft-cashier-intake-submit').click();
       await submitResponse;
 
-      await expect(page.getByTestId('routeshyft-cashier-intake-outcome')).toBeVisible();
-      await expect(page.getByTestId('routeshyft-cashier-intake-next-steps')).toBeVisible();
+      await expect(page.getByTestId('moneyshyft-cashier-intake-outcome')).toBeVisible();
+      await expect(page.getByTestId('moneyshyft-cashier-intake-next-steps')).toBeVisible();
     },
   );
 
@@ -53,14 +53,14 @@ test.describe('Story 2.3 automate - cashier-assisted intake operator journeys', 
           + story23Context.orgUnitId,
       );
 
-      await page.getByTestId('routeshyft-cashier-intake-submit').click();
+      await page.getByTestId('moneyshyft-cashier-intake-submit').click();
       await submitResponse;
 
-      await expect(page.getByTestId('routeshyft-cashier-intake-refusal-banner')).toBeVisible();
-      await expect(page.getByTestId('routeshyft-cashier-intake-refusal-code')).toContainText(
+      await expect(page.getByTestId('moneyshyft-cashier-intake-refusal-banner')).toBeVisible();
+      await expect(page.getByTestId('moneyshyft-cashier-intake-refusal-code')).toContainText(
         story23Context.refusalCode,
       );
-      await expect(page.getByTestId('routeshyft-cashier-intake-alternatives')).toBeVisible();
+      await expect(page.getByTestId('moneyshyft-cashier-intake-alternatives')).toBeVisible();
     },
   );
 

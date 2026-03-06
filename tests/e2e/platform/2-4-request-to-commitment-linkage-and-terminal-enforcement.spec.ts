@@ -1,4 +1,4 @@
-import { test, expect } from '../../support/fixtures/routeShyftStory24.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory24.fixture';
 import { login } from '../../helpers/auth';
 
 function buildUiPath(tenantId: string, orgUnitId: string): string {
@@ -22,8 +22,8 @@ test.describe('Story 2.4 automate - request lifecycle operator journeys', () => 
     await loadResponse;
 
     await expect(page.getByRole('heading', { name: 'Request Lifecycle' })).toBeVisible();
-    await expect(page.getByTestId('routeshyft-request-terminal-status')).toBeVisible();
-    await expect(page.getByTestId('routeshyft-request-reconciliation-actions')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-request-terminal-status')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-request-reconciliation-actions')).toBeVisible();
   });
 
   test('[P1] finalize action surfaces deterministic refusal code and lifecycle reconciliation details @P1', async ({ page, story24Context }) => {
@@ -36,12 +36,12 @@ test.describe('Story 2.4 automate - request lifecycle operator journeys', () => 
     );
 
     await page.goto(buildUiPath(story24Context.tenantId, story24Context.orgUnitId));
-    await page.getByTestId('routeshyft-request-finalize-submit').click();
+    await page.getByTestId('moneyshyft-request-finalize-submit').click();
     await submitResponse;
 
-    await expect(page.getByTestId('routeshyft-request-refusal-banner')).toBeVisible();
-    await expect(page.getByTestId('routeshyft-request-refusal-code')).toBeVisible();
-    await expect(page.getByTestId('routeshyft-request-lifecycle-details')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-request-refusal-banner')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-request-refusal-code')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-request-lifecycle-details')).toBeVisible();
   });
 
   test('[P1] lifecycle view preserves required request lifecycle test-id contract across refresh @P1', async ({ page, story24Context }) => {
@@ -72,7 +72,7 @@ test.describe('Story 2.4 automate - request lifecycle operator journeys', () => 
     await page.goto(buildUiPath(story24Context.tenantId, story24Context.orgUnitId));
     await loadResponse;
 
-    const details = page.getByTestId('routeshyft-request-lifecycle-details');
+    const details = page.getByTestId('moneyshyft-request-lifecycle-details');
     await expect(details).toBeVisible();
     await expect(details).not.toContainText(utcIsoPattern);
 
@@ -81,7 +81,7 @@ test.describe('Story 2.4 automate - request lifecycle operator journeys', () => 
         response.url().includes('/api/v1/route/intake/requests')
         && response.request().method() === 'POST',
     );
-    await page.getByTestId('routeshyft-request-finalize-submit').click();
+    await page.getByTestId('moneyshyft-request-finalize-submit').click();
     await submitResponse;
 
     await expect(details).not.toContainText(utcIsoPattern);

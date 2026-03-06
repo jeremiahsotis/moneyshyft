@@ -117,7 +117,7 @@ test.describe(
     );
 
     test(
-      '[E6-ATDD-E2E-002][P0] release-readiness summary blocks merge when ConnectShyft quality gates or RouteShyft regression lane are incomplete @P0',
+      '[E6-ATDD-E2E-002][P0] release-readiness summary blocks merge when ConnectShyft quality gates or MoneyShyft regression lane are incomplete @P0',
       async ({ storyE6Context }) => {
         const workflow = readFileSync(storyE6Context.workflowFile, 'utf8');
         const burnInWorkflow = readFileSync(storyE6Context.burnInWorkflowFile, 'utf8');
@@ -128,7 +128,7 @@ test.describe(
         const ciBurnInHasDistinctName = /burn-in:\s*\n\s*name:\s*(burn-in|ci-burn-in)/.test(workflow);
         const scheduledBurnInHasDistinctName =
           /burn-in:\s*\n\s*name:\s*scheduled-burn-in/.test(burnInWorkflow);
-        const burnInWorkflowTriggeredByCi = /workflows:\s*\['RouteShyft CI'\]/.test(
+        const burnInWorkflowTriggeredByCi = /workflows:\s*\['MoneyShyft CI'\]/.test(
           burnInWorkflow,
         );
         const burnInPullRequestFlowExists = /run\.event === 'pull_request'/.test(

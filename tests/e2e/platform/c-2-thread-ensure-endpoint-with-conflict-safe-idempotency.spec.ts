@@ -26,7 +26,7 @@ const resolveConnectShyftDbConnection = () => {
 };
 
 const createConnectShyftDbClient = () => {
-  const knexFactory = require('../../../apps/routeshyft-api/node_modules/knex');
+  const knexFactory = require('../../../apps/moneyshyft-api/node_modules/knex');
   return knexFactory({
     client: 'postgresql',
     connection: resolveConnectShyftDbConnection(),

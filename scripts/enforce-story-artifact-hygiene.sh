@@ -137,7 +137,7 @@ if [[ -s "$ignored_scope_markers_file" ]]; then
 fi
 
 sort -u "$changed_candidates_file" \
-  | grep -E '^(apps/routeshyft-api/|apps/routeshyft-web/|tests/|_bmad-output/test-artifacts/epic-f-[^[:space:]]+|apps/[^/]+/node_modules$)' \
+  | grep -E '^(apps/moneyshyft-api/|apps/moneyshyft-web/|tests/|_bmad-output/test-artifacts/epic-f-[^[:space:]]+|apps/[^/]+/node_modules$)' \
   > "$changed_required_file" || true
 
 if [[ ! -s "$changed_required_file" ]]; then

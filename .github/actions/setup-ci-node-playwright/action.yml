@@ -7,11 +7,11 @@ inputs:
     required: false
     default: .nvmrc
   install_frontend:
-    description: Install frontend dependencies via npm ci --prefix apps/routeshyft-web.
+    description: Install frontend dependencies via npm ci --prefix apps/moneyshyft-web.
     required: false
     default: 'false'
   install_src:
-    description: Install backend dependencies via npm ci --prefix apps/routeshyft-api.
+    description: Install backend dependencies via npm ci --prefix apps/moneyshyft-api.
     required: false
     default: 'false'
   ensure_playwright:
@@ -28,8 +28,8 @@ runs:
         cache: npm
         cache-dependency-path: |
           package-lock.json
-          apps/routeshyft-web/package-lock.json
-          apps/routeshyft-api/package-lock.json
+          apps/moneyshyft-web/package-lock.json
+          apps/moneyshyft-api/package-lock.json
 
     - name: Configure npm retry behavior
       shell: bash
@@ -48,28 +48,28 @@ runs:
       if: inputs.install_frontend == 'true'
       shell: bash
       run: |
-        if [ -f apps/routeshyft-web/package-lock.json ]; then
-          npm ci --prefix apps/routeshyft-web || npm ci --prefix apps/routeshyft-web || npm install --prefix apps/routeshyft-web --no-audit --fund=false
+        if [ -f apps/moneyshyft-web/package-lock.json ]; then
+          npm ci --prefix apps/moneyshyft-web || npm ci --prefix apps/moneyshyft-web || npm install --prefix apps/moneyshyft-web --no-audit --fund=false
         else
-          npm install --prefix apps/routeshyft-web --no-audit --fund=false
+          npm install --prefix apps/moneyshyft-web --no-audit --fund=false
         fi
 
     - name: Install backend dependencies
       if: inputs.install_src == 'true'
       shell: bash
       run: |
-        if [ -f apps/routeshyft-api/package-lock.json ]; then
-          npm ci --prefix apps/routeshyft-api --omit=dev || npm ci --prefix apps/routeshyft-api --omit=dev || npm install --prefix apps/routeshyft-api --omit=dev --no-audit --fund=false
+        if [ -f apps/moneyshyft-api/package-lock.json ]; then
+          npm ci --prefix apps/moneyshyft-api --omit=dev || npm ci --prefix apps/moneyshyft-api --omit=dev || npm install --prefix apps/moneyshyft-api --omit=dev --no-audit --fund=false
         else
-          npm install --prefix apps/routeshyft-api --omit=dev --no-audit --fund=false
+          npm install --prefix apps/moneyshyft-api --omit=dev --no-audit --fund=false
         fi
 
-        if [ -d apps/routeshyft-api/node_modules ]; then
+        if [ -d apps/moneyshyft-api/node_modules ]; then
           if [ -e apps/connectshyft-api/node_modules ] && [ ! -L apps/connectshyft-api/node_modules ]; then
             echo "apps/connectshyft-api/node_modules exists as a directory; leaving in place."
           else
             rm -f apps/connectshyft-api/node_modules
-            ln -s ../routeshyft-api/node_modules apps/connectshyft-api/node_modules
+            ln -s ../moneyshyft-api/node_modules apps/connectshyft-api/node_modules
           fi
         fi
 

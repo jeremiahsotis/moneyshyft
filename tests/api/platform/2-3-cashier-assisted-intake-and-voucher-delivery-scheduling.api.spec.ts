@@ -1,5 +1,5 @@
 import { apiRequest } from '../../support/helpers/apiClient';
-import { test, expect } from '../../support/fixtures/routeShyftStory23.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory23.fixture';
 
 const CASHIER_ROUTE_IMPLEMENTATION_GAP =
   "Story 2.3 API implementation is not present yet ('/api/v1/route/intake/cashier-requests').";

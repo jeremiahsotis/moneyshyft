@@ -50,10 +50,10 @@ To validate that all required input documents exist and extract all requirements
 - 🚫 FORBIDDEN to start creating epics or stories in this step
 - 💬 Extract requirements from ALL available documents
 - 🚪 POPULATE the template sections exactly as needed
-- 🛡️ Require `project_lane` before output generation (`routeshyft`, `connectshyft`, or future lane)
+- 🛡️ Require `project_lane` before output generation (`moneyshyft`, `connectshyft`, or future lane)
 - 🛡️ Enforce lane naming rule:
   - ConnectShyft lane artifacts include `ConnectShyft` in filename
-  - RouteShyft lane artifacts omit `ConnectShyft` token
+  - MoneyShyft lane artifacts omit `ConnectShyft` token
 
 ## EXECUTION PROTOCOLS:
 

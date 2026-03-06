@@ -7,11 +7,11 @@ const path = require('path');
 
 const repoRoot = process.cwd();
 
-const LANE_TAGS = ['lane:routeshyft', 'lane:connectshyft', 'lane:signshyft'];
+const LANE_TAGS = ['lane:moneyshyft', 'lane:connectshyft', 'lane:signshyft'];
 const SHARED_TAG = 'scope:shared';
-const LEGACY_LANE_TAGS = ['lane:moneyshyft'];
+const LEGACY_LANE_TAGS = ['lane:routeshyft'];
 const DEPENDENCY_RULES = {
-  'lane:routeshyft': ['lane:routeshyft', SHARED_TAG],
+  'lane:moneyshyft': ['lane:moneyshyft', SHARED_TAG],
   'lane:connectshyft': ['lane:connectshyft', SHARED_TAG],
   'lane:signshyft': ['lane:signshyft', SHARED_TAG],
   'scope:shared': [SHARED_TAG],
@@ -378,9 +378,9 @@ function validateDependencyConstraints(projectFiles, issues) {
     }
   }
 
-  const legacyConstraint = depConstraints.find((item) => item && item.sourceTag === 'lane:moneyshyft');
+  const legacyConstraint = depConstraints.find((item) => item && item.sourceTag === 'lane:routeshyft');
   if (legacyConstraint) {
-    issues.push(".eslintrc.cjs: remove legacy depConstraints for 'lane:moneyshyft'.");
+    issues.push(".eslintrc.cjs: remove legacy depConstraints for 'lane:routeshyft'.");
   }
 }
 

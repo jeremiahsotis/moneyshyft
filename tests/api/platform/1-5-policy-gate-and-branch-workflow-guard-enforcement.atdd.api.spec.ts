@@ -97,14 +97,14 @@ test.describe('Story 1.5 Policy Gate and Branch Workflow Guard Enforcement (ATDD
     '[P0] enforces story workflow branch alignment for ATDD and reports exact expected branch pattern on mismatch @P0',
     async ({ story15Context }) => {
       const { output, status } = runBranchWorkflowGuardInTempRepo(story15Context.branchGuardScript, {
-        branch: 'codex/story-1-4-routeshyft-shared-response-envelope-and-refusal-helpers',
+        branch: 'codex/story-1-4-moneyshyft-shared-response-envelope-and-refusal-helpers',
         workflow: '_bmad/tea/workflows/testarch/atdd/workflow.yaml',
         story: story15Context.storyFile,
       });
 
       const hasFailurePrefix = /Branch guard failed/.test(output);
-      const hasExpectedPattern = /Expected branch pattern:\s*codex\/story-1-5-routeshyft-<slug>/.test(output);
-      const hasCurrentBranch = /Current branch:\s*codex\/story-1-4-routeshyft-shared-response-envelope-and-refusal-helpers/.test(
+      const hasExpectedPattern = /Expected branch pattern:\s*codex\/story-1-5-moneyshyft-<slug>/.test(output);
+      const hasCurrentBranch = /Current branch:\s*codex\/story-1-4-moneyshyft-shared-response-envelope-and-refusal-helpers/.test(
         output,
       );
 
@@ -116,14 +116,14 @@ test.describe('Story 1.5 Policy Gate and Branch Workflow Guard Enforcement (ATDD
     story15Context,
   }) => {
     const { output, status } = runBranchWorkflowGuardInTempRepo(story15Context.branchGuardScript, {
-      branch: 'codex/story-1-5-routeshyft-policy-gate-and-branch-workflow-guard-enforcement',
+      branch: 'codex/story-1-5-moneyshyft-policy-gate-and-branch-workflow-guard-enforcement',
       workflow: 'sprint-planning',
       epic: '1',
     });
 
     const hasFailurePrefix = /Branch guard failed/.test(output);
     const hasExpectedBranch = /Expected branch:\s*codex\/epic-1-ops/.test(output);
-    const hasCurrentBranch = /Current branch:\s*codex\/story-1-5-routeshyft-policy-gate-and-branch-workflow-guard-enforcement/.test(
+    const hasCurrentBranch = /Current branch:\s*codex\/story-1-5-moneyshyft-policy-gate-and-branch-workflow-guard-enforcement/.test(
       output,
     );
 

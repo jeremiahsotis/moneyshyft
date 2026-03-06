@@ -23,7 +23,7 @@ test.describe('Story 1.5 Policy Gate and Branch Workflow Guard Enforcement (ATDD
         /npm run start:story-branch -- <story-id> <story-slug>/.test(policyResult.output) &&
         /Policy reference:\s*docs\/policies\/git_policy\.md/.test(policyResult.output);
       const branchGuardIncludesPatternAndCurrent =
-        /Expected branch pattern:\s*codex\/story-1-5-routeshyft-<slug>/.test(branchGuardResult.output) &&
+        /Expected branch pattern:\s*codex\/story-1-5-moneyshyft-<slug>/.test(branchGuardResult.output) &&
         /Current branch:\s*main/.test(branchGuardResult.output);
 
       expect(

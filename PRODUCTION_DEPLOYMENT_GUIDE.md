@@ -70,7 +70,7 @@ docker exec moneyshyft-postgres-1 psql -U jeremiahotis -d moneyshyft -c "SELECT 
 # - 004_add_envelope_budgeting.ts  ← This will be renamed to 009_
 
 # Check current migration files on disk
-ls -la ~/moneyshyft/apps/routeshyft-api/src/migrations/ | grep -E "004|009"
+ls -la ~/moneyshyft/apps/moneyshyft-api/src/migrations/ | grep -E "004|009"
 ```
 
 **Expected:** You should see `004_add_envelope_budgeting.ts` in both database and filesystem.
@@ -90,7 +90,7 @@ git stash
 git pull origin main
 
 # Verify the migration file was renamed
-ls -la apps/routeshyft-api/src/migrations/ | grep -E "004|009"
+ls -la apps/moneyshyft-api/src/migrations/ | grep -E "004|009"
 ```
 
 **Expected output:**

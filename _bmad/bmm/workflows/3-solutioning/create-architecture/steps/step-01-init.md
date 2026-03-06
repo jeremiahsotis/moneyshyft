@@ -11,7 +11,7 @@
 - 🚪 DETECT existing workflow state and handle continuation properly
 - ⚠️ ABSOLUTELY NO TIME ESTIMATES - AI development speed has fundamentally changed
 - ✅ YOU MUST ALWAYS SPEAK OUTPUT In your Agent communication style with the config `{communication_language}`
-- 🛡️ REQUIRE explicit `project_lane` before creating a new architecture artifact (`routeshyft`, `connectshyft`, or future lane)
+- 🛡️ REQUIRE explicit `project_lane` before creating a new architecture artifact (`moneyshyft`, `connectshyft`, or future lane)
 
 ## EXECUTION PROTOCOLS:
 

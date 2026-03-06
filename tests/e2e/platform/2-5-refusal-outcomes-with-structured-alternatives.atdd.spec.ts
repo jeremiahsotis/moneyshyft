@@ -1,4 +1,4 @@
-import { test, expect } from '../../support/fixtures/routeShyftStory25.fixture';
+import { test, expect } from '../../support/fixtures/moneyShyftStory25.fixture';
 import { login } from '../../helpers/auth';
 
 test.describe('Story 2-5 Refusal Outcomes with Structured Alternatives (ATDD E2E RED)', () => {
@@ -13,8 +13,8 @@ test.describe('Story 2-5 Refusal Outcomes with Structured Alternatives (ATDD E2E
     await loadResponse;
 
     await expect(page.getByRole('heading', { name: 'Refusal Outcomes' })).toBeVisible();
-    await expect(page.getByTestId('routeshyft-refusal-outcome-banner')).toBeVisible();
-    await expect(page.getByTestId('routeshyft-refusal-next-steps')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-refusal-outcome-banner')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-refusal-next-steps')).toBeVisible();
   });
 
   test.skip('[P1] refusal history view surfaces deterministic refusal metadata in audit timeline @P1', async ({ page, story25Context }) => {
@@ -28,8 +28,8 @@ test.describe('Story 2-5 Refusal Outcomes with Structured Alternatives (ATDD E2E
     await page.getByRole('button', { name: 'Record Refusal' }).click();
     await submitResponse;
 
-    await expect(page.getByTestId('routeshyft-refusal-code')).toBeVisible();
-    await expect(page.getByTestId('routeshyft-refusal-alternatives-list')).toHaveText(story25Context.refusalCode);
-    await expect(page.getByTestId('routeshyft-refusal-audit-history')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-refusal-code')).toBeVisible();
+    await expect(page.getByTestId('moneyshyft-refusal-alternatives-list')).toHaveText(story25Context.refusalCode);
+    await expect(page.getByTestId('moneyshyft-refusal-audit-history')).toBeVisible();
   });
 });
