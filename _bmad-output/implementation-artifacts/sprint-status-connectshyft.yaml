@@ -90,7 +90,7 @@ development_status:
   ux-r4-outbound-policy-guardrail-ui: done
   epic-ux-remediation-retrospective: optional
   epic-g: in-progress
-  g-1-design-tokens-and-shared-conversation-primitives: ready-for-dev
+  g-1-design-tokens-and-shared-conversation-primitives: review
   g-2-inbox-and-mine-surface-rebuild: ready-for-dev
   g-3-thread-detail-conversation-first-rebuild: ready-for-dev
   g-4-add-neighbor-and-directory-rebuild: ready-for-dev

@@ -1,6 +1,6 @@
 # Story g.1: Design Tokens and Shared Conversation Primitives
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -33,18 +33,18 @@ so that ConnectShyft surfaces share one visual language across breakpoints witho
 
 ## Tasks / Subtasks
 
-- [ ] Create ConnectShyft token contract and export surface (AC: 1)
-  - [ ] Define color, typography, spacing, radius, shadow, and breakpoint scales used by volunteer surfaces.
-  - [ ] Add token usage guidance in feature-level comments/docs to avoid ad hoc values.
-- [ ] Build reusable conversation primitives (AC: 2)
-  - [ ] Implement primitives for queue card, urgency/context pills, thread header, message bubble, voicemail card, composer, and action bar.
-  - [ ] Ensure primitives expose deterministic test ids and accessibility hooks.
-- [ ] Enforce display-safe rendering contracts (AC: 3)
-  - [ ] Route volunteer-primary copy through `uiContracts` sanitization helpers.
-  - [ ] Replace direct raw-field rendering in Inbox/Thread with display-safe mapped fields.
-- [ ] Validate responsive and accessibility baseline through primitives (AC: 4)
-  - [ ] Confirm min tap-target and min body text rules remain centralized and consumed.
-  - [ ] Add regression checks for mobile/tablet/desktop primitive behavior.
+- [x] Create ConnectShyft token contract and export surface (AC: 1)
+  - [x] Define color, typography, spacing, radius, shadow, and breakpoint scales used by volunteer surfaces.
+  - [x] Add token usage guidance in feature-level comments/docs to avoid ad hoc values.
+- [x] Build reusable conversation primitives (AC: 2)
+  - [x] Implement primitives for queue card, urgency/context pills, thread header, message bubble, voicemail card, composer, and action bar.
+  - [x] Ensure primitives expose deterministic test ids and accessibility hooks.
+- [x] Enforce display-safe rendering contracts (AC: 3)
+  - [x] Route volunteer-primary copy through `uiContracts` sanitization helpers.
+  - [x] Replace direct raw-field rendering in Inbox/Thread with display-safe mapped fields.
+- [x] Validate responsive and accessibility baseline through primitives (AC: 4)
+  - [x] Confirm min tap-target and min body text rules remain centralized and consumed.
+  - [x] Add regression checks for mobile/tablet/desktop primitive behavior.
 
 ## Dev Notes
 
@@ -136,15 +136,39 @@ GPT-5 Codex
 - `rg -n "design token|contract boundary|volunteer" _bmad-output/planning-artifacts/*`
 - `cat apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts`
 - `cat apps/moneyshyft-web/src/features/connectshyft/readContracts.ts`
+- `npm run branch:ensure-workflow -- --workflow dev-story --story g-1-design-tokens-and-shared-conversation-primitives`
+- `npm run build --prefix apps/moneyshyft-web`
+- `npm run test:e2e -- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts`
+- `npm test` (baseline suite currently has pre-existing unrelated failures outside g.1 scope)
 
 ### Completion Notes List
 
-- Created Story g.1 ready-for-dev context with token/primitives scope, display-safe rendering constraints, and implementation guardrails.
+- Implemented shared ConnectShyft token contract in `connectShyftTokens.ts` and wired required CSS variables/breakpoints in `main.css` and `uiContracts.ts`.
+- Added reusable conversation primitives (pill, queue card, thread header, message bubble, voicemail card, composer, thread action bar) and refactored Inbox/Thread detail views to consume them.
+- Extended read contract mapping with display-safe conversation fields and routed volunteer-primary copy through sanitization-aware display adapters.
+- Activated and updated g.1 ATDD e2e coverage for primitive composition, forbidden-field suppression, and responsive baseline checks (4/4 passing).
+- Full `npm test` regression run still reports pre-existing unrelated failures in other lanes/packages; no new g.1-specific failures were introduced.
 
 ### File List
 
+- apps/moneyshyft-web/src/assets/main.css
+- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftComposer.vue
+- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftMessageBubble.vue
+- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftPill.vue
+- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftQueueCard.vue
+- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftThreadActionBar.vue
+- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftThreadHeader.vue
+- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftVoicemailCard.vue
+- apps/moneyshyft-web/src/components/connectshyft/connectShyftTokens.ts
+- apps/moneyshyft-web/src/features/connectshyft/readContracts.ts
+- apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
+- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 - _bmad-output/implementation-artifacts/g-1-design-tokens-and-shared-conversation-primitives.md
 
 ## Change Log
 
 - 2026-03-06: Created Story g.1 ready-for-dev context document.
+- 2026-03-06: Implemented CS-S7.1 token contract, shared conversation primitives, display-safe read mapping, and story-specific regression tests; story advanced to review.
