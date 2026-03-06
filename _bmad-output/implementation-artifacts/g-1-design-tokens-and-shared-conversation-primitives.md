@@ -140,6 +140,9 @@ GPT-5 Codex
 - `npm run build --prefix apps/moneyshyft-web`
 - `npm run test:e2e -- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts`
 - `npm test`
+- `npm run branch:ensure-workflow -- --workflow dev-story --story _bmad-output/implementation-artifacts/g-1-design-tokens-and-shared-conversation-primitives.md`
+- `npx playwright test tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts --list`
+- `npx playwright test tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts --max-failures=1`
 
 ### Completion Notes List
 
@@ -149,9 +152,20 @@ GPT-5 Codex
 - Removed raw internal priority/thread identifiers from volunteer-primary surfaces (`priorityRank` badge and thread-id chip).
 - Expanded `uiContracts` forbidden-copy token list to cover raw priority/routing/thread identifier patterns used by this story lane.
 - Tightened g.1 ATDD e2e coverage to assert no raw internal thread ids/rank chips render and to validate keyboard focus plus aria-label hooks.
+- Converted g.1 API ATDD suite from RED-phase `test.skip` placeholders to executable contract checks with stable IDs (`G1-ATDD-API-001..004`).
+- Removed serial mode from g.1 automate API/E2E suites to restore parallel execution behavior.
+- Refactored duplicated g.1 E2E helper logic into `tests/helpers/connectShyftStoryG1.ts` and reduced ATDD E2E file size to 217 lines (under TEA 300-line target).
+- Removed fallback masking in ATDD E2E primitive assertions so missing queue/thread primitives fail explicitly.
+- Tightened automate API display-safe copy checks to assert every item has operator-primary copy before suppression validation (no skip-through branch).
+- Hardened test JWT bootstrap in `tests/support/factories/tenantRepositoryFactory.ts` to provide test fallback secrets when env secrets are absent.
 - Re-ran g.1 validation after fixes:
   - `npm run build --prefix apps/moneyshyft-web` ✅
   - `npm run test:e2e -- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts` ✅ (4/4)
+- Current local validation for latest g.1 test updates:
+  - `npm run branch:ensure-workflow -- --workflow dev-story --story _bmad-output/implementation-artifacts/g-1-design-tokens-and-shared-conversation-primitives.md` ✅
+  - `npx playwright test tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts --list` ✅ (8 tests discovered)
+  - `npx playwright test tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts --max-failures=1` ⚠️ blocked locally by `ECONNREFUSED 127.0.0.1:3000` (API service not running)
+  - `npx playwright test tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts --max-failures=1` ⚠️ blocked locally by `ERR_CONNECTION_REFUSED http://localhost:5174/login` (web app not running)
 - Full monorepo `npm test` currently fails outside this story’s changed surface:
   - `moneyshyft-api:test`: `src/__tests__/app-entrypoint-kernel.test.ts` (tenant context expectation mismatch), `src/modules/connectshyft/__tests__/neighbors.test.ts` (`listIdentityBoundaryNeighborsByPhoneValue` missing)
   - `connectshyft-api:test`: `src/modules/connectshyft/__tests__/neighbors.test.ts`
@@ -174,7 +188,12 @@ GPT-5 Codex
 - apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts
 - apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue
 - apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
+- tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts
+- tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts
 - tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts
+- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts
+- tests/helpers/connectShyftStoryG1.ts
+- tests/support/factories/tenantRepositoryFactory.ts
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 - _bmad-output/implementation-artifacts/g-1-design-tokens-and-shared-conversation-primitives.md
 
@@ -187,6 +206,12 @@ Date: 2026-03-06
   - raw thread id chip removed from thread header primary UI
   - forbidden-copy sanitization contract expanded for story-specific internal metadata leakage patterns
   - ATDD assertions strengthened for metadata suppression and accessibility hooks
+- Follow-up quality pass resolved g.1 test architecture findings:
+  - removed API `test.skip` coverage gaps for AC1-AC4
+  - removed unnecessary serial mode from automate suites
+  - eliminated primitive-coverage masking fallback branches in ATDD E2E tests
+  - extracted shared g.1 E2E helpers and reduced overlong ATDD file
+  - tightened per-item operator-copy assertions in automate API tests
 - Git/story discrepancy from prior clean-working-tree snapshot was resolved by applying and validating concrete code/test deltas in this review pass.
 
 ## Change Log
@@ -194,3 +219,4 @@ Date: 2026-03-06
 - 2026-03-06: Created Story g.1 ready-for-dev context document.
 - 2026-03-06: Implemented CS-S7.1 token contract, shared conversation primitives, display-safe read mapping, and story-specific regression tests; story advanced to review.
 - 2026-03-06: Resolved g.1 code-review findings by removing raw internal metadata from volunteer-primary UI, expanding copy-safety guards, tightening ATDD accessibility/suppression assertions, and adding symlink-safe node_modules ignore coverage.
+- 2026-03-06: Resolved TEA review findings by unskipping/rebuilding g.1 ATDD API coverage, removing automate serial mode, refactoring g.1 E2E helpers, eliminating fallback-masked primitive assertions, and tightening display-safe API test checks.

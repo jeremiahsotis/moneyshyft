@@ -54,10 +54,8 @@ const collectOperatorPrimaryCopy = (item: Record<string, unknown>): string => {
 test.describe(
   'Story g.1 Design Tokens and Shared Conversation Primitives (Automate API Expansion)',
   () => {
-    test.describe.configure({ mode: 'serial' });
-
     test(
-      '[P0] inbox and thread detail responses preserve canonical envelope keys and deterministic orgUnit context for shared primitive consumers @P0',
+      '[G1-AUTO-API-301][P0] inbox and thread detail responses preserve canonical envelope keys and deterministic orgUnit context for shared primitive consumers @P0',
       async ({ request, storyG1Context, storyG1MemberHeaders, storyG1InboxQuery }) => {
         const inboxResponse = await apiRequest(request, {
           method: 'GET',
@@ -114,7 +112,7 @@ test.describe(
     );
 
     test(
-      '[P0] inbox and mine buckets keep canonical state and metadata fields required by queue-card and pill primitives @P0',
+      '[G1-AUTO-API-302][P0] inbox and mine buckets keep canonical state and metadata fields required by queue-card and pill primitives @P0',
       async ({
         request,
         storyG1Context,
@@ -160,7 +158,7 @@ test.describe(
     );
 
     test(
-      '[P1] operator-primary copy fields remain display-safe and suppress forbidden identifiers in inbox payload contracts @P1',
+      '[G1-AUTO-API-303][P1] operator-primary copy fields remain display-safe and suppress forbidden identifiers in inbox payload contracts @P1',
       async ({ request, storyG1Context, storyG1MemberHeaders, storyG1InboxQuery }) => {
         const response = await apiRequest(request, {
           method: 'GET',
@@ -177,10 +175,7 @@ test.describe(
         expect(items.length).toBeGreaterThan(0);
         for (const item of items) {
           const operatorCopy = collectOperatorPrimaryCopy(item);
-          if (operatorCopy.length === 0) {
-            continue;
-          }
-
+          expect(operatorCopy.length).toBeGreaterThan(0);
           for (const forbiddenToken of storyG1Context.forbiddenPrimaryCopyTokens) {
             expect(operatorCopy).not.toContain(forbiddenToken);
           }
@@ -195,7 +190,7 @@ test.describe(
     );
 
     test(
-      '[P1] thread detail keeps canonical reusable action labels and preserves voicemail indicator when voicemail payloads are present @P1',
+      '[G1-AUTO-API-304][P1] thread detail keeps canonical reusable action labels and preserves voicemail indicator when voicemail payloads are present @P1',
       async ({
         request,
         storyG1Context,

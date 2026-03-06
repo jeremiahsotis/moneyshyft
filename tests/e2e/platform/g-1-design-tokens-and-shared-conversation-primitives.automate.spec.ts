@@ -1,90 +1,27 @@
-import { test, expect, type Locator, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { login } from '../../helpers/auth';
 import {
-  createStoryG1Context,
-  type StoryG1Context,
-} from '../../support/factories/connectShyftStoryG1Factory';
-
-const UUID_PATTERN =
-  /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
-
-const buildSurfaceUrl = (
-  context: StoryG1Context,
-  options: {
-    bucket: 'inbox' | 'mine';
-    actorUserId: string;
-    tenantRole: string;
-  },
-): string => {
-  const params = new URLSearchParams({
-    flags: 'module:on,inbox:on,escalation:on,webhooks:on',
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    actorUserId: options.actorUserId,
-    tenantRole: options.tenantRole,
-    orgUnitMemberships: context.orgUnitId,
-  });
-
-  const basePath = options.bucket === 'mine' ? context.paths.mineUi : context.paths.inboxUi;
-  return `${basePath}?${params.toString()}`;
-};
-
-const buildThreadDetailUrl = (
-  context: StoryG1Context,
-  options: {
-    threadId: string;
-    actorUserId: string;
-    tenantRole: string;
-  },
-): string => {
-  const params = new URLSearchParams({
-    flags: 'module:on,inbox:on,escalation:on,webhooks:on',
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    actorUserId: options.actorUserId,
-    tenantRole: options.tenantRole,
-    orgUnitMemberships: context.orgUnitId,
-  });
-
-  return `${context.paths.threadDetailUi}/${options.threadId}?${params.toString()}`;
-};
-
-const readStyleAttr = async (locator: Locator): Promise<string> =>
-  (await locator.getAttribute('style')) ?? '';
-
-const readFontSizePx = async (locator: Locator): Promise<number> =>
-  locator.evaluate((element) => Number.parseFloat(window.getComputedStyle(element).fontSize || '0'));
-
-const readMinHeightPx = async (locator: Locator): Promise<number> =>
-  locator.evaluate((element) => Number.parseFloat(window.getComputedStyle(element).minHeight || '0'));
-
-const readCssVariable = async (page: Page, name: string): Promise<string> =>
-  page.evaluate(
-    (variableName) => window.getComputedStyle(document.documentElement).getPropertyValue(variableName).trim(),
-    name,
-  );
-
-const parseCssSizeToPx = (value: string): number => {
-  const normalized = value.trim().toLowerCase();
-  if (normalized.endsWith('rem')) {
-    return Number.parseFloat(normalized) * 16;
-  }
-  return Number.parseFloat(normalized);
-};
+  buildStoryG1SurfaceUrl,
+  parseCssSizeToPx,
+  readCssVariable,
+  readFontSizePx,
+  readMinHeightPx,
+  readStyleAttr,
+  STORY_G1_UUID_PATTERN,
+} from '../../helpers/connectShyftStoryG1';
+import { createStoryG1Context } from '../../support/factories/connectShyftStoryG1Factory';
 
 test.describe(
   'Story g.1 Design Tokens and Shared Conversation Primitives (Automate E2E Expansion)',
   () => {
-    test.describe.configure({ mode: 'serial' });
-
     test(
-      '[P0] queue-card thread-header message-bubble composer and action-bar remain token-driven via shared CSS variable contracts @P0',
+      '[G1-AUTO-E2E-201][P0] queue-card thread-header message-bubble composer and action-bar remain token-driven via shared CSS variable contracts @P0',
       async ({ page }) => {
         const context = createStoryG1Context();
         await login(page);
 
         await page.goto(
-          buildSurfaceUrl(context, {
+          buildStoryG1SurfaceUrl(context, {
             bucket: 'inbox',
             actorUserId: context.userId,
             tenantRole: 'ORGUNIT_MEMBER',
@@ -133,7 +70,7 @@ test.describe(
     );
 
     test(
-      '[P1] mobile tablet and desktop detail layouts expose deterministic responsive-mode markers and non-regressive body token scaling @P1',
+      '[G1-AUTO-E2E-202][P1] mobile tablet and desktop detail layouts expose deterministic responsive-mode markers and non-regressive body token scaling @P1',
       async ({ page }) => {
         const context = createStoryG1Context();
         await login(page);
@@ -156,7 +93,7 @@ test.describe(
           });
 
           await page.goto(
-            buildSurfaceUrl(context, {
+            buildStoryG1SurfaceUrl(context, {
               bucket: 'inbox',
               actorUserId: context.userId,
               tenantRole: 'ORGUNIT_MEMBER',
@@ -165,17 +102,19 @@ test.describe(
           await expect(page.getByTestId('connectshyft-inbox-surface')).toBeVisible();
           await page.getByTestId('connectshyft-thread-card-primary-action').first().click();
           await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();
-          await expect(page.getByTestId(`connectshyft-responsive-mode-${viewport.mode}`)).toBeVisible();
+          await expect(
+            page.getByTestId(`connectshyft-responsive-mode-${viewport.mode}`),
+          ).toBeVisible();
 
-          const bodyTokenScale = parseCssSizeToPx(
-            await readCssVariable(page, '--cs-type-body-md'),
-          );
+          const bodyTokenScale = parseCssSizeToPx(await readCssVariable(page, '--cs-type-body-md'));
           tokenScaleValues.push(bodyTokenScale);
 
           const bodyFontSize = await readFontSizePx(
             page.getByTestId('connectshyft-thread-detail-body-copy'),
           );
-          const firstAction = page.locator('[data-testid^="connectshyft-"][data-testid$="-thread-action"]').first();
+          const firstAction = page
+            .locator('[data-testid^="connectshyft-"][data-testid$="-thread-action"]')
+            .first();
           await expect(firstAction).toBeVisible();
           const actionMinHeight = await readMinHeightPx(firstAction);
 
@@ -189,13 +128,13 @@ test.describe(
     );
 
     test(
-      '[P1] inbox and thread primitives keep deterministic aria-label hooks while suppressing internal metadata chips from volunteer-primary surfaces @P1',
+      '[G1-AUTO-E2E-203][P1] inbox and thread primitives keep deterministic aria-label hooks while suppressing internal metadata chips from volunteer-primary surfaces @P1',
       async ({ page }) => {
         const context = createStoryG1Context();
         await login(page);
 
         await page.goto(
-          buildSurfaceUrl(context, {
+          buildStoryG1SurfaceUrl(context, {
             bucket: 'inbox',
             actorUserId: context.userId,
             tenantRole: 'ORGUNIT_MEMBER',
@@ -206,14 +145,15 @@ test.describe(
         const openConversation = page.getByTestId('connectshyft-open-conversation-action');
         await expect(openConversation).toHaveAttribute('aria-label', /open a conversation/i);
 
-        const queueCardOpenAction = page.getByTestId('connectshyft-thread-card-primary-action').first();
+        const queueCardOpenAction = page
+          .getByTestId('connectshyft-thread-card-primary-action')
+          .first();
         await expect(queueCardOpenAction).toBeVisible();
         await expect(queueCardOpenAction).toHaveAttribute('aria-label', /open thread detail/i);
-        const inboxCopy = (
-          (await page.getByTestId('connectshyft-inbox-surface').textContent()) ?? ''
-        ).toLowerCase();
+        const inboxCopy =
+          ((await page.getByTestId('connectshyft-inbox-surface').textContent()) ?? '').toLowerCase();
 
-        await page.getByTestId('connectshyft-thread-card-primary-action').first().click();
+        await queueCardOpenAction.click();
         await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();
 
         const actionButtons = page.locator('[data-testid="connectshyft-thread-action-bar"] button');
@@ -226,11 +166,12 @@ test.describe(
         }
 
         await expect(page.locator('[data-testid="connectshyft-thread-id-chip"]')).toHaveCount(0);
-        await expect(page.locator('[data-testid="connectshyft-inbox-item-priority-rank"]')).toHaveCount(0);
+        await expect(page.locator('[data-testid="connectshyft-inbox-item-priority-rank"]')).toHaveCount(
+          0,
+        );
 
-        const threadCopy = (
-          (await page.getByTestId('connectshyft-thread-surface').textContent()) ?? ''
-        ).toLowerCase();
+        const threadCopy =
+          ((await page.getByTestId('connectshyft-thread-surface').textContent()) ?? '').toLowerCase();
         const visibleCopy = `${inboxCopy} ${threadCopy}`;
 
         for (const forbiddenToken of context.forbiddenPrimaryCopyTokens) {
@@ -239,7 +180,7 @@ test.describe(
         for (const threadId of Object.values(context.threadIds)) {
           expect(visibleCopy).not.toContain(threadId.toLowerCase());
         }
-        expect(visibleCopy).not.toMatch(UUID_PATTERN);
+        expect(visibleCopy).not.toMatch(STORY_G1_UUID_PATTERN);
         expect(visibleCopy).not.toMatch(/\bpriority\s*\d+\b/i);
       },
     );

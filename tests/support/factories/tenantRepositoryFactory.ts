@@ -40,32 +40,38 @@ const hydrateJwtEnvFromBackendConfig = (): void => {
   }
 
   const backendEnvPath = path.resolve(process.cwd(), 'apps/moneyshyft-api/.env');
-  if (!existsSync(backendEnvPath)) {
-    return;
+  if (existsSync(backendEnvPath)) {
+    const lines = readFileSync(backendEnvPath, 'utf8').split('\n');
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) {
+        continue;
+      }
+
+      const delimiterIndex = line.indexOf('=');
+      if (delimiterIndex <= 0) {
+        continue;
+      }
+
+      const key = line.slice(0, delimiterIndex).trim();
+      if (key !== 'JWT_SECRET' && key !== 'JWT_REFRESH_SECRET') {
+        continue;
+      }
+
+      if (process.env[key] !== undefined) {
+        continue;
+      }
+
+      process.env[key] = line.slice(delimiterIndex + 1).trim();
+    }
   }
 
-  const lines = readFileSync(backendEnvPath, 'utf8').split('\n');
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#')) {
-      continue;
-    }
+  if (!process.env.JWT_SECRET) {
+    process.env.JWT_SECRET = 'test-jwt-secret';
+  }
 
-    const delimiterIndex = line.indexOf('=');
-    if (delimiterIndex <= 0) {
-      continue;
-    }
-
-    const key = line.slice(0, delimiterIndex).trim();
-    if (key !== 'JWT_SECRET' && key !== 'JWT_REFRESH_SECRET') {
-      continue;
-    }
-
-    if (process.env[key] !== undefined) {
-      continue;
-    }
-
-    process.env[key] = line.slice(delimiterIndex + 1).trim();
+  if (!process.env.JWT_REFRESH_SECRET) {
+    process.env.JWT_REFRESH_SECRET = 'test-jwt-refresh-secret';
   }
 };
 
