@@ -133,15 +133,10 @@ export const CONNECTSHYFT_INBOX_ACTION_COPY = {
     ariaLabel: 'Send a message',
     testId: 'connectshyft-compose-message-action',
   },
-  claimThread: {
-    label: 'Claim Thread',
-    ariaLabel: 'Claim a thread',
-    testId: 'connectshyft-claim-thread-action',
-  },
-  takeoverThread: {
-    label: 'Take Over Thread',
-    ariaLabel: 'Take over a thread',
-    testId: 'connectshyft-take-over-thread-action',
+  makeCall: {
+    label: 'Make Call',
+    ariaLabel: 'Make a call',
+    testId: 'connectshyft-make-call-action',
   },
 } as const;
 

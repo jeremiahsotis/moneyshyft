@@ -131,7 +131,7 @@
                   <ConnectShyftQueueCard
                     :thread-id="item.threadId"
                     :summary="item.display.title"
-                    :preview="item.summary"
+                    :preview="item.display.preview"
                     :timestamp-label="formatQueueTimestamp(item.lastActivityAtUtc)"
                     :urgency-label="item.display.urgencyLabel"
                     :context-pills="buildQueueContextPills(item)"
@@ -224,6 +224,8 @@
                   type="button"
                   :data-testid="inboxActionCopy.composeMessage.testId"
                   :aria-label="inboxActionCopy.composeMessage.ariaLabel"
+                  :disabled="isViewerRole"
+                  @click="openSendMessageModal"
                   :style="tapTargetStyle"
                   :class="[
                     'min-h-[44px] rounded bg-slate-700 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400',
@@ -234,29 +236,17 @@
                 </button>
                 <button
                   type="button"
-                  :data-testid="inboxActionCopy.claimThread.testId"
-                  :aria-label="inboxActionCopy.claimThread.ariaLabel"
-                  :disabled="!canClaimThread"
+                  :data-testid="inboxActionCopy.makeCall.testId"
+                  :aria-label="inboxActionCopy.makeCall.ariaLabel"
+                  :disabled="isViewerRole"
+                  @click="openMakeCallModal"
                   :style="tapTargetStyle"
                   :class="[
                     'min-h-[44px] rounded bg-blue-600 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400',
                     focusRingClass,
                   ]"
                 >
-                  {{ inboxActionCopy.claimThread.label }}
-                </button>
-                <button
-                  type="button"
-                  :data-testid="inboxActionCopy.takeoverThread.testId"
-                  :aria-label="inboxActionCopy.takeoverThread.ariaLabel"
-                  :disabled="!canTakeoverThread"
-                  :style="tapTargetStyle"
-                  :class="[
-                    'min-h-[44px] rounded bg-indigo-600 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400',
-                    focusRingClass,
-                  ]"
-                >
-                  {{ inboxActionCopy.takeoverThread.label }}
+                  {{ inboxActionCopy.makeCall.label }}
                 </button>
               </div>
             </section>
@@ -312,7 +302,7 @@
 
                 <ConnectShyftThreadActionBar
                   :actions="selectedThreadActions"
-                  :action-pending="false"
+                  :action-pending="inlineActionPending"
                   :show-add-neighbor-action="!isViewerRole"
                   :focus-ring-class="focusRingClass"
                   :tap-target-style="tapTargetStyle"
@@ -402,6 +392,269 @@
       </p>
     </section>
 
+    <div
+      v-if="sendMessageModalOpen"
+      data-testid="connectshyft-send-message-modal"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 px-4"
+    >
+      <section class="w-full max-w-2xl rounded-lg bg-white p-4 shadow-xl sm:p-6">
+        <header class="mb-3 flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">Start new message</h2>
+            <p class="mt-1 text-sm text-slate-600">
+              Choose a texting-eligible neighbor phone and send the opening message.
+            </p>
+          </div>
+          <button
+            type="button"
+            data-testid="connectshyft-send-message-modal-close"
+            class="rounded border border-slate-300 px-3 py-1 text-sm text-slate-700"
+            :class="[focusRingClass]"
+            @click="closeSendMessageModal"
+          >
+            Close
+          </button>
+        </header>
+
+        <label
+          for="connectshyft-send-message-search"
+          class="block text-sm font-medium text-slate-700"
+        >
+          Search texting neighbors
+        </label>
+        <input
+          id="connectshyft-send-message-search"
+          v-model="sendMessageSearch"
+          data-testid="connectshyft-send-message-neighbor-search-input"
+          type="text"
+          placeholder="Search by neighbor or phone"
+          autocomplete="off"
+          :class="[
+            'mt-1 min-h-[44px] w-full rounded border border-slate-300 px-3 py-2 text-base text-slate-900',
+            focusRingClass,
+          ]"
+          :style="tapTargetStyle"
+        >
+
+        <div class="mt-3 max-h-48 overflow-y-auto rounded border border-slate-200 p-2">
+          <p
+            v-if="filteredTextingEligiblePhones.length === 0"
+            class="px-1 py-2 text-sm text-slate-600"
+          >
+            No neighbors with texting opt-in are available.
+          </p>
+          <label
+            v-for="option in filteredTextingEligiblePhones"
+            :key="option.key"
+            class="flex cursor-pointer items-center gap-3 rounded px-2 py-2 hover:bg-slate-50"
+          >
+            <input
+              v-model="selectedSendMessagePhoneKey"
+              :value="option.key"
+              data-testid="connectshyft-send-message-phone-option"
+              type="radio"
+              name="connectshyft-send-message-phone"
+            >
+            <span class="text-sm text-slate-800">
+              {{ option.neighborLabel }} · {{ option.phoneLabel }} · {{ option.phoneValue }}
+            </span>
+          </label>
+        </div>
+
+        <label
+          for="connectshyft-send-message-body"
+          class="mt-3 block text-sm font-medium text-slate-700"
+        >
+          Message
+        </label>
+        <textarea
+          id="connectshyft-send-message-body"
+          v-model="sendMessageBody"
+          data-testid="connectshyft-send-message-body-input"
+          rows="3"
+          placeholder="Type the opening message"
+          :class="[
+            'mt-1 w-full rounded border border-slate-300 px-3 py-2 text-base text-slate-900',
+            focusRingClass,
+          ]"
+        />
+
+        <div class="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700"
+            :class="[focusRingClass]"
+            @click="closeSendMessageModal"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            data-testid="connectshyft-send-message-modal-submit"
+            :disabled="sendMessagePending"
+            :class="[
+              'rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400',
+              focusRingClass,
+            ]"
+            @click="submitSendMessageModal"
+          >
+            {{ sendMessagePending ? 'Sending...' : 'Send Message' }}
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div
+      v-if="makeCallModalOpen"
+      data-testid="connectshyft-make-call-modal"
+      class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 px-4"
+    >
+      <section class="w-full max-w-2xl rounded-lg bg-white p-4 shadow-xl sm:p-6">
+        <header class="mb-3 flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">Make call</h2>
+            <p class="mt-1 text-sm text-slate-600">
+              Dial manually or select a neighbor phone to begin a call.
+            </p>
+          </div>
+          <button
+            type="button"
+            data-testid="connectshyft-make-call-modal-close"
+            class="rounded border border-slate-300 px-3 py-1 text-sm text-slate-700"
+            :class="[focusRingClass]"
+            @click="closeMakeCallModal"
+          >
+            Close
+          </button>
+        </header>
+
+        <label
+          for="connectshyft-call-dialpad-input"
+          class="block text-sm font-medium text-slate-700"
+        >
+          Dialpad
+        </label>
+        <input
+          id="connectshyft-call-dialpad-input"
+          v-model="callDialpadValue"
+          data-testid="connectshyft-call-dialpad-input"
+          type="text"
+          placeholder="+1 (260) 555-0100"
+          autocomplete="off"
+          :class="[
+            'mt-1 min-h-[44px] w-full rounded border border-slate-300 px-3 py-2 text-base text-slate-900',
+            focusRingClass,
+          ]"
+          :style="tapTargetStyle"
+        >
+
+        <div class="mt-2 grid grid-cols-3 gap-2">
+          <button
+            v-for="digit in dialpadDigits"
+            :key="`dialpad-${digit}`"
+            type="button"
+            data-testid="connectshyft-call-dialpad-button"
+            class="min-h-[44px] rounded border border-slate-300 bg-white text-base font-medium text-slate-800"
+            :class="[focusRingClass]"
+            :style="tapTargetStyle"
+            @click="appendDialpadDigit(digit)"
+          >
+            {{ digit }}
+          </button>
+        </div>
+
+        <div class="mt-2 flex gap-2">
+          <button
+            type="button"
+            data-testid="connectshyft-call-dialpad-backspace"
+            class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700"
+            :class="[focusRingClass]"
+            @click="removeDialpadDigit"
+          >
+            Backspace
+          </button>
+          <button
+            type="button"
+            data-testid="connectshyft-call-dialpad-clear"
+            class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700"
+            :class="[focusRingClass]"
+            @click="clearDialpad"
+          >
+            Clear
+          </button>
+        </div>
+
+        <label
+          for="connectshyft-make-call-search"
+          class="mt-4 block text-sm font-medium text-slate-700"
+        >
+          Or search neighbors
+        </label>
+        <input
+          id="connectshyft-make-call-search"
+          v-model="makeCallSearch"
+          data-testid="connectshyft-make-call-neighbor-search-input"
+          type="text"
+          placeholder="Search by neighbor or phone"
+          autocomplete="off"
+          :class="[
+            'mt-1 min-h-[44px] w-full rounded border border-slate-300 px-3 py-2 text-base text-slate-900',
+            focusRingClass,
+          ]"
+          :style="tapTargetStyle"
+        >
+
+        <div class="mt-3 max-h-40 overflow-y-auto rounded border border-slate-200 p-2">
+          <p
+            v-if="filteredCallablePhones.length === 0"
+            class="px-1 py-2 text-sm text-slate-600"
+          >
+            No callable neighbor phones are available.
+          </p>
+          <label
+            v-for="option in filteredCallablePhones"
+            :key="`call-${option.key}`"
+            class="flex cursor-pointer items-center gap-3 rounded px-2 py-2 hover:bg-slate-50"
+          >
+            <input
+              v-model="selectedCallPhoneKey"
+              :value="option.key"
+              data-testid="connectshyft-make-call-phone-option"
+              type="radio"
+              name="connectshyft-call-phone"
+              @change="callDialpadValue = option.phoneValue"
+            >
+            <span class="text-sm text-slate-800">
+              {{ option.neighborLabel }} · {{ option.phoneLabel }} · {{ option.phoneValue }}
+            </span>
+          </label>
+        </div>
+
+        <div class="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700"
+            :class="[focusRingClass]"
+            @click="closeMakeCallModal"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            data-testid="connectshyft-make-call-modal-submit"
+            :disabled="makeCallPending"
+            :class="[
+              'rounded bg-blue-700 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400',
+              focusRingClass,
+            ]"
+            @click="submitMakeCallModal"
+          >
+            {{ makeCallPending ? 'Calling...' : 'Make Call' }}
+          </button>
+        </div>
+      </section>
+    </div>
+
     <ConnectShyftPrimaryNav />
   </main>
 </template>
@@ -430,7 +683,12 @@ import {
   type ConnectShyftInboxActions,
   type ConnectShyftThreadSummary,
 } from '@/features/connectshyft/readContracts';
-import { ensureConnectShyftThread } from '@/features/connectshyft/threads';
+import {
+  dispatchConnectShyftThreadCall,
+  dispatchConnectShyftThreadMessage,
+  ensureConnectShyftThread,
+  performConnectShyftThreadLifecycleAction,
+} from '@/features/connectshyft/threads';
 import {
   CONNECTSHYFT_ACCESSIBILITY_LOCKS,
   CONNECTSHYFT_FOCUS_RING_CLASS,
@@ -468,6 +726,26 @@ const viewportWidth = ref(
 );
 const queueSearch = ref('');
 const inlineComposerMessage = ref('');
+const inlineActionPending = ref(false);
+const sendMessageModalOpen = ref(false);
+const sendMessageSearch = ref('');
+const sendMessageBody = ref('');
+const selectedSendMessagePhoneKey = ref('');
+const sendMessagePending = ref(false);
+const makeCallModalOpen = ref(false);
+const makeCallSearch = ref('');
+const selectedCallPhoneKey = ref('');
+const callDialpadValue = ref('');
+const makeCallPending = ref(false);
+const dialpadDigits = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'] as const;
+
+type ConnectShyftNeighborPhoneOption = {
+  key: string;
+  neighborId: string;
+  neighborLabel: string;
+  phoneLabel: string;
+  phoneValue: string;
+};
 
 const normalizeQueryValue = (value: unknown): string | null => {
   if (Array.isArray(value)) {
@@ -480,6 +758,17 @@ const normalizeQueryValue = (value: unknown): string | null => {
 
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
+};
+
+const normalizePhoneComparisonValue = (value: string): string => {
+  return value.replace(/[^+\d]/g, '').replace(/^\+/, '');
+};
+
+const resolveNeighborLabel = (neighbor: ConnectShyftNeighbor): string => {
+  const firstName = neighbor.firstName.trim();
+  const lastName = neighbor.lastName.trim();
+  const fullName = `${firstName} ${lastName}`.trim();
+  return fullName.length > 0 ? fullName : 'Neighbor';
 };
 
 const bucket = computed<'inbox' | 'mine'>(() => {
@@ -507,6 +796,60 @@ const responsiveMode = computed<'mobile' | 'tablet' | 'desktop'>(() => {
   return 'mobile';
 });
 
+const allNeighborPhoneOptions = computed<ConnectShyftNeighborPhoneOption[]>(() => {
+  return neighbors.value.flatMap((neighbor) => {
+    const neighborLabel = resolveNeighborLabel(neighbor);
+    return neighbor.phones.map((phone) => ({
+      key: `${neighbor.neighborId}:${phone.phoneId}`,
+      neighborId: neighbor.neighborId,
+      neighborLabel,
+      phoneLabel: phone.label || 'phone',
+      phoneValue: phone.value,
+    }));
+  });
+});
+
+const textingEligiblePhones = computed<ConnectShyftNeighborPhoneOption[]>(() => {
+  return neighbors.value.flatMap((neighbor) => {
+    if (neighbor.prefersTexting !== 'YES') {
+      return [];
+    }
+
+    const neighborLabel = resolveNeighborLabel(neighbor);
+    return neighbor.phones.map((phone) => ({
+      key: `${neighbor.neighborId}:${phone.phoneId}`,
+      neighborId: neighbor.neighborId,
+      neighborLabel,
+      phoneLabel: phone.label || 'phone',
+      phoneValue: phone.value,
+    }));
+  });
+});
+
+const filteredTextingEligiblePhones = computed<ConnectShyftNeighborPhoneOption[]>(() => {
+  const search = sendMessageSearch.value.trim().toLowerCase();
+  if (!search) {
+    return textingEligiblePhones.value;
+  }
+
+  return textingEligiblePhones.value.filter((option) => {
+    const haystack = `${option.neighborLabel} ${option.phoneLabel} ${option.phoneValue}`.toLowerCase();
+    return haystack.includes(search);
+  });
+});
+
+const filteredCallablePhones = computed<ConnectShyftNeighborPhoneOption[]>(() => {
+  const search = makeCallSearch.value.trim().toLowerCase();
+  if (!search) {
+    return allNeighborPhoneOptions.value;
+  }
+
+  return allNeighborPhoneOptions.value.filter((option) => {
+    const haystack = `${option.neighborLabel} ${option.phoneLabel} ${option.phoneValue}`.toLowerCase();
+    return haystack.includes(search);
+  });
+});
+
 const normalizedQueueSearch = computed(() => queueSearch.value.trim().toLowerCase());
 const visibleThreadItems = computed(() => {
   const search = normalizedQueueSearch.value;
@@ -517,6 +860,7 @@ const visibleThreadItems = computed(() => {
   return threadItems.value.filter((item) => {
     const haystack = [
       item.display.title,
+      item.display.preview,
       item.summary,
       item.display.urgencyLabel,
       item.display.stateLabel,
@@ -549,15 +893,28 @@ const selectedThreadActions = computed<string[]>(() => {
     rawActions.push('Take Over');
   }
 
-  return resolveSafeVisibleThreadActions({
+  const visibleActions = resolveSafeVisibleThreadActions({
     state: selectedThreadItem.value.state,
     rawActions,
+  });
+
+  return visibleActions.filter((action) => {
+    if (action === 'Claim') {
+      return escalationAvailable.value && threadActions.value.claim;
+    }
+    if (action === 'Take Over') {
+      return escalationAvailable.value && threadActions.value.takeover;
+    }
+    return true;
   });
 });
 const inlineComposerSubmitDisabled = computed(() => {
   const hasSendAction = selectedThreadActions.value.includes('Send Message')
     || selectedThreadActions.value.includes('Text');
-  return isViewerRole.value || inlineComposerMessage.value.trim().length === 0 || !hasSendAction;
+  return isViewerRole.value
+    || inlineActionPending.value
+    || inlineComposerMessage.value.trim().length === 0
+    || !hasSendAction;
 });
 
 const showThreadPanel = computed(() => selectedThreadItem.value !== null);
@@ -738,6 +1095,234 @@ const resolveInboxContext = (): {
   };
 };
 
+const resolveNeighborPhoneOptionByKey = (
+  key: string,
+  options: readonly ConnectShyftNeighborPhoneOption[],
+): ConnectShyftNeighborPhoneOption | null => {
+  if (!key) {
+    return null;
+  }
+
+  return options.find((option) => option.key === key) || null;
+};
+
+const ensureThreadForNeighborAction = async (
+  neighborId: string,
+): Promise<{ threadId: string; orgUnitId: string } | null> => {
+  const context = resolveInboxContext();
+  if (!context.orgUnitId) {
+    threadActionError.value = 'Select an orgUnit before starting a ConnectShyft conversation.';
+    return null;
+  }
+
+  const ensureResult = await ensureConnectShyftThread({
+    orgUnitId: context.orgUnitId,
+    neighborId,
+    source: 'VOICE',
+    lastInboundCsNumberId: context.lastInboundCsNumberId,
+    preferredOutboundCsNumberId: context.preferredOutboundCsNumberId,
+  });
+  if (!ensureResult.ok) {
+    threadActionError.value = sanitizeConnectShyftOperatorCopy(
+      ensureResult.message,
+      'Unable to open a conversation right now.',
+    );
+    return null;
+  }
+
+  return {
+    threadId: ensureResult.thread.threadId,
+    orgUnitId: context.orgUnitId,
+  };
+};
+
+const executeThreadActionForThread = async (input: {
+  threadId: string;
+  orgUnitId: string;
+  action: 'claim' | 'takeover' | 'close' | 'call' | 'message';
+  body?: string;
+}): Promise<boolean> => {
+  if (!input.threadId || !input.orgUnitId) {
+    return false;
+  }
+
+  const result = input.action === 'claim'
+    || input.action === 'takeover'
+    || input.action === 'close'
+    ? await performConnectShyftThreadLifecycleAction({
+      threadId: input.threadId,
+      orgUnitId: input.orgUnitId,
+      action: input.action,
+    })
+    : input.action === 'call'
+      ? await dispatchConnectShyftThreadCall({
+        threadId: input.threadId,
+        orgUnitId: input.orgUnitId,
+      })
+      : await dispatchConnectShyftThreadMessage({
+        threadId: input.threadId,
+        orgUnitId: input.orgUnitId,
+        body: input.body || '',
+      });
+
+  if (!result.ok) {
+    threadActionError.value = sanitizeConnectShyftOperatorCopy(
+      result.message,
+      'Unable to complete that thread action.',
+    );
+    return false;
+  }
+
+  threadActionError.value = '';
+  await loadThreadContracts();
+  selectedThreadId.value = input.threadId;
+  syncSelectedThreadForSurface();
+  return true;
+};
+
+const closeSendMessageModal = (): void => {
+  sendMessageModalOpen.value = false;
+  sendMessageSearch.value = '';
+  sendMessageBody.value = '';
+  selectedSendMessagePhoneKey.value = '';
+};
+
+const openSendMessageModal = (): void => {
+  if (isViewerRole.value) {
+    threadActionError.value = 'Send Message is unavailable for your access level.';
+    return;
+  }
+
+  threadActionError.value = '';
+  sendMessageSearch.value = '';
+  sendMessageBody.value = '';
+  selectedSendMessagePhoneKey.value = textingEligiblePhones.value[0]?.key || '';
+  sendMessageModalOpen.value = true;
+};
+
+const submitSendMessageModal = async (): Promise<void> => {
+  if (sendMessagePending.value || isViewerRole.value) {
+    return;
+  }
+
+  const target = resolveNeighborPhoneOptionByKey(
+    selectedSendMessagePhoneKey.value,
+    textingEligiblePhones.value,
+  );
+  if (!target) {
+    threadActionError.value = 'Choose a texting-eligible neighbor phone before sending.';
+    return;
+  }
+
+  const body = sendMessageBody.value.trim();
+  if (!body) {
+    threadActionError.value = 'Enter a message before sending.';
+    return;
+  }
+
+  sendMessagePending.value = true;
+  try {
+    const threadTarget = await ensureThreadForNeighborAction(target.neighborId);
+    if (!threadTarget) {
+      return;
+    }
+
+    const sent = await executeThreadActionForThread({
+      threadId: threadTarget.threadId,
+      orgUnitId: threadTarget.orgUnitId,
+      action: 'message',
+      body,
+    });
+    if (!sent) {
+      return;
+    }
+
+    closeSendMessageModal();
+    selectedThreadId.value = threadTarget.threadId;
+  } finally {
+    sendMessagePending.value = false;
+  }
+};
+
+const closeMakeCallModal = (): void => {
+  makeCallModalOpen.value = false;
+  makeCallSearch.value = '';
+  selectedCallPhoneKey.value = '';
+  callDialpadValue.value = '';
+};
+
+const openMakeCallModal = (): void => {
+  if (isViewerRole.value) {
+    threadActionError.value = 'Make Call is unavailable for your access level.';
+    return;
+  }
+
+  threadActionError.value = '';
+  makeCallSearch.value = '';
+  selectedCallPhoneKey.value = '';
+  callDialpadValue.value = '';
+  makeCallModalOpen.value = true;
+};
+
+const appendDialpadDigit = (digit: string): void => {
+  callDialpadValue.value = `${callDialpadValue.value}${digit}`;
+};
+
+const removeDialpadDigit = (): void => {
+  callDialpadValue.value = callDialpadValue.value.slice(0, -1);
+};
+
+const clearDialpad = (): void => {
+  callDialpadValue.value = '';
+};
+
+const resolveDialpadTarget = (): ConnectShyftNeighborPhoneOption | null => {
+  const normalizedDialpad = normalizePhoneComparisonValue(callDialpadValue.value);
+  if (!normalizedDialpad) {
+    return null;
+  }
+
+  return allNeighborPhoneOptions.value.find((option) => {
+    return normalizePhoneComparisonValue(option.phoneValue) === normalizedDialpad;
+  }) || null;
+};
+
+const submitMakeCallModal = async (): Promise<void> => {
+  if (makeCallPending.value || isViewerRole.value) {
+    return;
+  }
+
+  const selectedTarget =
+    resolveNeighborPhoneOptionByKey(selectedCallPhoneKey.value, allNeighborPhoneOptions.value)
+    || resolveDialpadTarget();
+  if (!selectedTarget) {
+    threadActionError.value = 'Choose a neighbor phone or dial a known neighbor number before calling.';
+    return;
+  }
+
+  makeCallPending.value = true;
+  try {
+    const threadTarget = await ensureThreadForNeighborAction(selectedTarget.neighborId);
+    if (!threadTarget) {
+      return;
+    }
+
+    const called = await executeThreadActionForThread({
+      threadId: threadTarget.threadId,
+      orgUnitId: threadTarget.orgUnitId,
+      action: 'call',
+    });
+    if (!called) {
+      return;
+    }
+
+    closeMakeCallModal();
+    selectedThreadId.value = threadTarget.threadId;
+  } finally {
+    makeCallPending.value = false;
+  }
+};
+
 const openConversation = async (): Promise<void> => {
   const context = resolveInboxContext();
   if (!context.orgUnitId) {
@@ -821,14 +1406,77 @@ const closeThreadSurface = (): void => {
   selectedThreadId.value = null;
 };
 
-const handleInlineThreadAction = (action: string): void => {
-  void action;
+const handleInlineThreadAction = async (action: string): Promise<void> => {
+  const selected = selectedThreadItem.value;
+  if (!selected || inlineActionPending.value) {
+    return;
+  }
+
+  if (action === 'Text' || action === 'Send Message') {
+    await handleInlineComposerSubmit();
+    return;
+  }
+
+  const actionMap: Record<string, 'claim' | 'takeover' | 'close' | 'call'> = {
+    Claim: 'claim',
+    'Take Over': 'takeover',
+    Close: 'close',
+    Call: 'call',
+  };
+  const mappedAction = actionMap[action];
+  if (!mappedAction) {
+    threadActionError.value = `Unsupported thread action: ${action}`;
+    return;
+  }
+
+  inlineActionPending.value = true;
+  try {
+    await executeThreadActionForThread({
+      threadId: selected.threadId,
+      orgUnitId: selected.orgUnitId,
+      action: mappedAction,
+    });
+  } finally {
+    inlineActionPending.value = false;
+  }
 };
 
-const handleInlineAddNeighbor = (): void => {};
+const handleInlineAddNeighbor = (): void => {
+  if (isViewerRole.value) {
+    threadActionError.value = 'Add Neighbor is unavailable for your access level.';
+    return;
+  }
 
-const handleInlineComposerSubmit = (): void => {
-  inlineComposerMessage.value = '';
+  threadActionError.value = '';
+  void router.push(buildNeighborCreatePath());
+};
+
+const handleInlineComposerSubmit = async (): Promise<void> => {
+  const selected = selectedThreadItem.value;
+  if (!selected || inlineActionPending.value) {
+    return;
+  }
+
+  const message = inlineComposerMessage.value.trim();
+  if (!message) {
+    threadActionError.value = 'Enter a message before sending.';
+    return;
+  }
+
+  inlineActionPending.value = true;
+  try {
+    const sent = await executeThreadActionForThread({
+      threadId: selected.threadId,
+      orgUnitId: selected.orgUnitId,
+      action: 'message',
+      body: message,
+    });
+    if (sent) {
+      inlineComposerMessage.value = '';
+    }
+  } finally {
+    inlineActionPending.value = false;
+  }
 };
 
 const updateViewportWidth = (): void => {
@@ -923,12 +1571,32 @@ watch([visibleThreadItems, responsiveMode], () => {
   syncSelectedThreadForSurface();
 }, { deep: true });
 
+watch(filteredTextingEligiblePhones, (options) => {
+  if (!sendMessageModalOpen.value) {
+    return;
+  }
+
+  const current = resolveNeighborPhoneOptionByKey(selectedSendMessagePhoneKey.value, options);
+  if (!current) {
+    selectedSendMessagePhoneKey.value = options[0]?.key || '';
+  }
+});
+
+watch(filteredCallablePhones, (options) => {
+  if (!makeCallModalOpen.value) {
+    return;
+  }
+
+  const current = resolveNeighborPhoneOptionByKey(selectedCallPhoneKey.value, options);
+  if (!current) {
+    selectedCallPhoneKey.value = options[0]?.key || '';
+  }
+});
+
 const moduleAvailable = computed(() => availability.value.capabilities.module);
 const inboxAvailable = computed(() => availability.value.capabilities.inbox);
 const escalationAvailable = computed(() => availability.value.capabilities.escalation);
 const webhooksAvailable = computed(() => availability.value.capabilities.webhooks);
-const canClaimThread = computed(() => escalationAvailable.value && threadActions.value.claim);
-const canTakeoverThread = computed(() => escalationAvailable.value && threadActions.value.takeover);
 
 const showUnavailableState = computed(() => !moduleAvailable.value || !inboxAvailable.value);
 

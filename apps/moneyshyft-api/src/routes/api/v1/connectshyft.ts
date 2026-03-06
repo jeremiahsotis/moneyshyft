@@ -1387,6 +1387,19 @@ const buildSyntheticThreadDetailRecord = (input: {
     : escalationStage === 1
       ? 'Needs attention soon'
       : 'Needs urgent attention';
+  const summary = normalizeLifecycleString(input.descriptor.summary) || 'Conversation in progress.';
+  const preview = summary === 'Conversation in progress.'
+    ? 'Latest incoming message is ready for review.'
+    : `Latest update: ${summary}`;
+  const stateLabel = input.descriptor.state === 'UNCLAIMED'
+    ? 'Unclaimed'
+    : input.descriptor.state === 'CLAIMED'
+      ? 'Claimed'
+      : 'Closed';
+  const outboundContextLabel = 'Provider-neutral dispatch line';
+  const inboundContextLabel = input.descriptor.lastInboundCsNumberId
+    ? 'cs-number inbound line configured'
+    : 'Inbound line unavailable';
 
   return {
     threadId: input.threadId,
@@ -1407,15 +1420,26 @@ const buildSyntheticThreadDetailRecord = (input: {
     preferred_outbound_cs_number_id: input.descriptor.preferredOutboundCsNumberId,
     preferredOutboundContext: {
       csNumberId: input.descriptor.preferredOutboundCsNumberId,
-      label: 'Provider-neutral dispatch line',
+      label: outboundContextLabel,
     },
     preferred_outbound_context: {
       cs_number_id: input.descriptor.preferredOutboundCsNumberId,
-      label: 'Provider-neutral dispatch line',
+      label: outboundContextLabel,
     },
     voicemailIndicator: false,
     voicemailLabel: null,
-    summary: input.descriptor.summary,
+    summary,
+    display: {
+      title: summary,
+      preview,
+      urgencyLabel: urgencyLabel || 'New conversation',
+      stateLabel,
+      inboundContext: inboundContextLabel,
+      outboundContext: outboundContextLabel,
+      neighborContext: `Neighbor context: ${summary}`,
+      conferenceContext: `Conference context: ${outboundContextLabel}`,
+      voicemailLabel: '',
+    },
     actions: resolveConnectShyftThreadActions(input.descriptor.state),
     lifecycle: {
       reopenedByInbound: false,

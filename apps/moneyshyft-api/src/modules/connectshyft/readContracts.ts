@@ -6,6 +6,7 @@ export type ConnectShyftThreadAction = 'Call' | 'Text' | 'Claim' | 'Close' | 'Se
 
 export type ConnectShyftThreadDisplayRecord = {
   title: string;
+  preview: string;
   urgencyLabel: string;
   stateLabel: string;
   inboundContext: string;
@@ -68,6 +69,7 @@ type ConnectShyftThreadSeed = {
   preferredOutboundLabel: string;
   voicemailIndicator: boolean;
   summary: string;
+  preview?: string;
 };
 
 type ConnectShyftThreadDbRow = {
@@ -851,6 +853,27 @@ const resolveSummaryFallback = (input: {
   return 'Closed conversation with documented outcome.';
 };
 
+const resolvePreviewFallback = (input: {
+  state: ConnectShyftThreadState;
+  voicemailIndicator: boolean;
+}): string => {
+  if (input.voicemailIndicator) {
+    return input.state === 'UNCLAIMED'
+      ? 'Voicemail was received and is ready for review.'
+      : 'Latest voicemail details are ready for review.';
+  }
+
+  if (input.state === 'UNCLAIMED') {
+    return 'Latest incoming message is ready for review.';
+  }
+
+  if (input.state === 'CLAIMED') {
+    return 'Continue this claimed conversation.';
+  }
+
+  return 'Review the most recent closed-thread update.';
+};
+
 const resolveDisplayStateLabel = (state: ConnectShyftThreadState): string => {
   if (state === 'UNCLAIMED') {
     return 'Unclaimed';
@@ -865,6 +888,7 @@ const resolveDisplayStateLabel = (state: ConnectShyftThreadState): string => {
 
 const buildDisplayProjection = (input: {
   summary: string;
+  preview: string;
   state: ConnectShyftThreadState;
   urgencyLabel: string;
   lastInboundCsNumberId: string;
@@ -880,6 +904,17 @@ const buildDisplayProjection = (input: {
       voicemailIndicator: input.voicemailIndicator,
     }),
   );
+  const previewFallback = resolvePreviewFallback({
+    state: input.state,
+    voicemailIndicator: input.voicemailIndicator,
+  });
+  const safePreviewCandidate = sanitizeConnectShyftOperatorCopy(
+    input.preview,
+    previewFallback,
+  );
+  const safePreview = safePreviewCandidate === safeSummary
+    ? previewFallback
+    : safePreviewCandidate;
   const displayUrgencyLabel = sanitizeConnectShyftOperatorCopy(
     input.urgencyLabel,
     input.state === 'UNCLAIMED' ? 'New conversation' : 'Active follow-up',
@@ -904,6 +939,7 @@ const buildDisplayProjection = (input: {
 
   return {
     title: safeSummary,
+    preview: safePreview,
     urgencyLabel: displayUrgencyLabel,
     stateLabel: resolveDisplayStateLabel(input.state),
     inboundContext,
@@ -960,11 +996,19 @@ const toSummaryRecord = (
       voicemailIndicator: seed.voicemailIndicator,
     }),
   );
+  const preview = sanitizeConnectShyftOperatorCopy(
+    seed.preview || seed.summary,
+    resolvePreviewFallback({
+      state: seed.state,
+      voicemailIndicator: seed.voicemailIndicator,
+    }),
+  );
   const voicemailLabel = seed.voicemailIndicator
     ? sanitizeConnectShyftOperatorCopy(rawVoicemailLabel, 'Voicemail waiting for review')
     : null;
   const display = buildDisplayProjection({
     summary,
+    preview,
     state: seed.state,
     urgencyLabel,
     lastInboundCsNumberId: seed.lastInboundCsNumberId,
@@ -1284,9 +1328,18 @@ const mapDbRowToSummary = (
     state,
   });
   const urgencyLabel = resolveConnectShyftUrgencyLabel(escalationStage);
+  const rawSummary = normalizeString(row.summary);
+  const rawPreview = normalizeString(row.preview ?? row.last_message_preview);
   const summary = sanitizeConnectShyftOperatorCopy(
-    normalizeString(row.summary ?? row.preview ?? row.last_message_preview),
+    rawSummary || rawPreview,
     resolveSummaryFallback({
+      state,
+      voicemailIndicator,
+    }),
+  );
+  const preview = sanitizeConnectShyftOperatorCopy(
+    rawPreview || rawSummary,
+    resolvePreviewFallback({
       state,
       voicemailIndicator,
     }),
@@ -1296,6 +1349,7 @@ const mapDbRowToSummary = (
     : null;
   const display = buildDisplayProjection({
     summary,
+    preview,
     state,
     urgencyLabel,
     lastInboundCsNumberId: normalizeString(row.last_inbound_cs_number_id),

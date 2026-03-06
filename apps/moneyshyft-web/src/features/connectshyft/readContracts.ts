@@ -37,6 +37,7 @@ export type ConnectShyftThreadSummary = {
   summary: string;
   display: {
     title: string;
+    preview: string;
     urgencyLabel: string;
     stateLabel: string;
     inboundContext: string;
@@ -232,6 +233,8 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
     voicemail_label?: unknown;
     timeline?: unknown;
     summary?: unknown;
+    preview?: unknown;
+    display?: unknown;
   };
 
   const threadId = normalizeString(candidate.threadId);
@@ -254,6 +257,10 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
   const safeSummary = sanitizeConnectShyftOperatorCopy(
     normalizeString(candidate.summary),
     'Conversation in progress.',
+  );
+  const safePreview = sanitizeConnectShyftOperatorCopy(
+    normalizeString(candidate.preview),
+    'Latest incoming message is ready for review.',
   );
 
   const voicemailIndicator =
@@ -284,6 +291,70 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
   const displayVoicemailLabel = voicemailIndicator
     ? sanitizeConnectShyftOperatorCopy(voicemailLabel, 'Voicemail waiting for review')
     : '';
+  const fallbackDisplay = {
+    title: safeSummary,
+    preview: safePreview === safeSummary
+      ? 'Open thread for latest message details.'
+      : safePreview,
+    urgencyLabel: displayUrgencyLabel,
+    stateLabel: displayStateLabel,
+    inboundContext: displayInboundContext,
+    outboundContext: displayOutboundContext,
+    neighborContext: `Neighbor context: ${safeSummary}`,
+    conferenceContext: `Conference context: ${displayOutboundContext}`,
+    voicemailLabel: displayVoicemailLabel,
+  };
+  const displayProjection = candidate.display && typeof candidate.display === 'object'
+    ? candidate.display as {
+      title?: unknown;
+      preview?: unknown;
+      urgencyLabel?: unknown;
+      stateLabel?: unknown;
+      inboundContext?: unknown;
+      outboundContext?: unknown;
+      neighborContext?: unknown;
+      conferenceContext?: unknown;
+      voicemailLabel?: unknown;
+    }
+    : null;
+  const display = {
+    title: sanitizeConnectShyftOperatorCopy(
+      normalizeString(displayProjection?.title),
+      fallbackDisplay.title,
+    ),
+    preview: sanitizeConnectShyftOperatorCopy(
+      normalizeString(displayProjection?.preview),
+      fallbackDisplay.preview,
+    ),
+    urgencyLabel: sanitizeConnectShyftOperatorCopy(
+      normalizeString(displayProjection?.urgencyLabel),
+      fallbackDisplay.urgencyLabel,
+    ),
+    stateLabel: sanitizeConnectShyftOperatorCopy(
+      normalizeString(displayProjection?.stateLabel),
+      fallbackDisplay.stateLabel,
+    ),
+    inboundContext: sanitizeConnectShyftOperatorCopy(
+      normalizeString(displayProjection?.inboundContext),
+      fallbackDisplay.inboundContext,
+    ),
+    outboundContext: sanitizeConnectShyftOperatorCopy(
+      normalizeString(displayProjection?.outboundContext),
+      fallbackDisplay.outboundContext,
+    ),
+    neighborContext: sanitizeConnectShyftOperatorCopy(
+      normalizeString(displayProjection?.neighborContext),
+      fallbackDisplay.neighborContext,
+    ),
+    conferenceContext: sanitizeConnectShyftOperatorCopy(
+      normalizeString(displayProjection?.conferenceContext),
+      fallbackDisplay.conferenceContext,
+    ),
+    voicemailLabel: sanitizeConnectShyftOperatorCopy(
+      normalizeString(displayProjection?.voicemailLabel),
+      fallbackDisplay.voicemailLabel,
+    ),
+  };
 
   return {
     threadId,
@@ -303,16 +374,7 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
     voicemailIndicator,
     voicemailLabel: voicemailLabel || null,
     summary: safeSummary,
-    display: {
-      title: safeSummary,
-      urgencyLabel: displayUrgencyLabel,
-      stateLabel: displayStateLabel,
-      inboundContext: displayInboundContext,
-      outboundContext: displayOutboundContext,
-      neighborContext: `Neighbor context: ${safeSummary}`,
-      conferenceContext: `Conference context: ${displayOutboundContext}`,
-      voicemailLabel: displayVoicemailLabel,
-    },
+    display,
   };
 };
 

@@ -124,6 +124,73 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
   );
 
   test(
+    '[G2-AUTO-E2E-205][P1] inbox send-message and make-call actions launch neighbor workflows and submit outbound requests @P1',
+    async ({ page }) => {
+      const context = createStoryG2Context();
+      await login(page);
+
+      await page.goto(
+        buildStoryG2SurfaceUrl(context, {
+          bucket: 'inbox',
+          actorUserId: context.userId,
+          tenantRole: 'ORGUNIT_MEMBER',
+        }),
+      );
+
+      const actionBar = page.getByTestId('connectshyft-inbox-action-bar');
+      await expect(actionBar).toBeVisible();
+      await expect(actionBar.getByTestId('connectshyft-claim-thread-action')).toHaveCount(0);
+      await expect(actionBar.getByTestId('connectshyft-take-over-thread-action')).toHaveCount(0);
+
+      await page.getByTestId('connectshyft-compose-message-action').click();
+      await expect(page.getByTestId('connectshyft-send-message-modal')).toBeVisible();
+
+      const messagePhoneOptions = page.getByTestId('connectshyft-send-message-phone-option');
+      if (await messagePhoneOptions.count() > 0) {
+        await messagePhoneOptions.first().check();
+        await page.getByTestId('connectshyft-send-message-body-input').fill(
+          'Automated g.2 outbound message smoke test.',
+        );
+        const messageDispatchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/connectshyft/threads/')
+            && response.url().includes('/messages')
+            && response.request().method() === 'POST',
+        );
+        await page.getByTestId('connectshyft-send-message-modal-submit').click();
+        await expect(page.getByTestId('connectshyft-send-message-modal')).toBeHidden();
+        expect((await messageDispatchResponse).ok()).toBeTruthy();
+      } else {
+        await page.getByTestId('connectshyft-send-message-modal-close').click();
+        await expect(page.getByTestId('connectshyft-send-message-modal')).toBeHidden();
+      }
+
+      await page.getByTestId('connectshyft-make-call-action').click();
+      await expect(page.getByTestId('connectshyft-make-call-modal')).toBeVisible();
+
+      const callablePhoneOptions = page.getByTestId('connectshyft-make-call-phone-option');
+      if (await callablePhoneOptions.count() > 0) {
+        await callablePhoneOptions.first().check();
+        const callDispatchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/connectshyft/threads/')
+            && response.url().includes('/call')
+            && response.request().method() === 'POST',
+        );
+        await page.getByTestId('connectshyft-make-call-modal-submit').click();
+        await expect(page.getByTestId('connectshyft-make-call-modal')).toBeHidden();
+        expect((await callDispatchResponse).ok()).toBeTruthy();
+      } else {
+        await page.getByTestId('connectshyft-call-dialpad-input').fill('+12605550000');
+        await page.getByTestId('connectshyft-make-call-modal-submit').click();
+        await expect(page.getByTestId('connectshyft-make-call-modal')).toBeVisible();
+        await page.getByTestId('connectshyft-make-call-modal-close').click();
+        await expect(page.getByTestId('connectshyft-make-call-modal')).toBeHidden();
+      }
+    },
+  );
+
+  test(
     '[G2-AUTO-E2E-203][P0] responsive queue-to-thread behavior uses mobile full-screen thread tablet split layout and desktop three-column workflow @P0',
     async ({ page }) => {
       const context = createStoryG2Context();

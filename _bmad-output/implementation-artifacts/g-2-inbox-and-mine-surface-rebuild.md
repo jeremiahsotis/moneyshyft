@@ -124,6 +124,19 @@ so that I can triage quickly without parsing system internals.
 - `apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue`
 - `apps/moneyshyft-web/src/components/connectshyft/ConnectShyftPrimaryNav.vue`
 
+## Senior Developer Review (AI)
+
+- 2026-03-06: Resolved 5 review findings and moved prior no-op inbox/thread controls to executable behavior.
+- Open question resolved:
+  - Question: Should Inbox-level `Claim Thread` / `Take Over Thread` remain available?
+  - Answer: No. Removed those Inbox-level controls and kept lifecycle ownership actions scoped to the selected thread surface.
+- Applied follow-up behavior changes requested during review remediation:
+  - Inbox `Send Message` now opens a neighbor phone selector limited to `prefersTexting=YES`, then ensures thread + dispatches outbound message.
+  - Inbox `Make Call` now opens a workflow with dialpad input plus neighbor search/selection, then ensures thread + dispatches outbound call.
+  - Thread panel actions/composer now call real lifecycle/outbound endpoints instead of no-op handlers.
+  - Queue cards now consume backend `display.preview` (instead of duplicating summary).
+  - Added automate E2E behavior checks for send/call workflows and aligned A.1 escalation-off expectations with removed Inbox claim/takeover controls.
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -136,6 +149,10 @@ GPT-5 Codex
 - `npm run test:e2e -- tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts` (pass)
 - `npm run test:e2e -- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts` (pass)
 - `npm run test:e2e -- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts tests/e2e/platform/ux-r1-mobile-first-inbox-mine-thread-redesign.spec.ts tests/e2e/platform/c-1-core-connectshyft-thread-schema-and-lifecycle-constraints.spec.ts tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts` (pass)
+- `npm run build` (apps/moneyshyft-web) (pass)
+- `npm run build` (apps/moneyshyft-api) (pass)
+- `npm test -- --runInBand src/modules/connectshyft/__tests__/readContracts.test.ts src/modules/connectshyft/__tests__/neighbors.test.ts` (apps/moneyshyft-api) (pass)
+- `npm run test:e2e -- tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts tests/e2e/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.spec.ts` (pass)
 
 ### Completion Notes List
 
@@ -144,14 +161,24 @@ GPT-5 Codex
 - Implemented persistent queue search state synchronized to route query params across Inbox/Mine navigation and reload, while preserving deterministic server-driven row ordering.
 - Hardened display-safe read-model presentation by mapping urgency to human labels and keeping internal identifiers/metadata out of volunteer-primary queue copy.
 - Added executable g.2 automate coverage (`G2-AUTO-E2E-201..204`) and resolved cross-story regressions by restoring inline thread action/composer primitives and mobile DOM visibility semantics.
+- Removed Inbox-level claim/takeover controls and replaced them with Inbox-level `Send Message` and `Make Call` workflows aligned to neighbor selection.
+- Implemented Inbox modal workflows for outbound messaging/calling with neighbor targeting, dialpad input, and endpoint-backed dispatch behavior.
+- Extended frontend/backend contracts for `display.preview` and neighbor `prefersTexting` so UI behavior follows backend-owned display and opt-in semantics.
+- Added behavior assertions for G.2 outbound controls (`G2-AUTO-E2E-205`) and updated A.1 escalation-off expectations to match the new Inbox action surface.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/g-2-inbox-and-mine-surface-rebuild.md
-- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftPrimaryNav.vue
-- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftQueueCard.vue
+- apps/moneyshyft-api/src/modules/connectshyft/neighbors.ts
+- apps/moneyshyft-api/src/modules/connectshyft/readContracts.ts
+- apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts
+- apps/moneyshyft-web/src/features/connectshyft/neighbors.ts
 - apps/moneyshyft-web/src/features/connectshyft/readContracts.ts
+- apps/moneyshyft-web/src/features/connectshyft/threads.ts
+- apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts
 - apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
+- tests/e2e/platform/a-1-connectshyft-feature-flag-and-availability-guardrails.spec.ts
 - tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts
 
 ## Change Log
@@ -159,3 +186,5 @@ GPT-5 Codex
 - 2026-03-06: Created Story g.2 ready-for-dev context document.
 - 2026-03-06: Implemented g.2 Inbox/Mine surface rebuild with queue-card tap targets, responsive queue-thread layouts, persistent queue search, display-safe urgency mapping, and voicemail ownership semantics.
 - 2026-03-06: Added g.2 automate E2E suite and validated regression parity across g.1, ux-r1, c.1, and g.2 platform specs.
+- 2026-03-06: Resolved 5 review findings by removing Inbox claim/takeover controls, wiring inbox/thread outbound + lifecycle actions to real endpoints, adopting backend `display.preview`, and expanding E2E behavior assertions.
+- 2026-03-06: Reconciled story/git discrepancies by synchronizing debug evidence, file list, and senior-review remediation notes with branch-tracked changes.

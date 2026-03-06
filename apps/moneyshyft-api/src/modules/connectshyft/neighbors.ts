@@ -73,12 +73,15 @@ export type ConnectShyftNeighborPhone = {
   updatedAtUtc: string;
 };
 
+export type ConnectShyftCanonicalTextingPreference = 'UNKNOWN' | 'YES' | 'NO';
+
 export type ConnectShyftNeighbor = {
   neighborId: string;
   tenantId: string;
   orgUnitId: string;
   firstName: string;
   lastName: string;
+  prefersTexting: ConnectShyftCanonicalTextingPreference;
   phones: ConnectShyftNeighborPhone[];
   createdAtUtc: string;
   updatedAtUtc: string;
@@ -318,6 +321,16 @@ const normalizeVerificationStatus = (
   return 'unverified';
 };
 
+const normalizeTextingPreference = (
+  value: unknown,
+): ConnectShyftCanonicalTextingPreference => {
+  if (value === 'YES' || value === 'NO' || value === 'UNKNOWN') {
+    return value;
+  }
+
+  return 'UNKNOWN';
+};
+
 const buildPhoneRequiredRefusal = (): NeighborRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED',
@@ -486,6 +499,7 @@ type DbNeighborRow = {
   org_unit_id: string;
   first_name: string;
   last_name: string;
+  prefers_texting?: string | null;
   created_at_utc: string | Date;
   updated_at_utc: string | Date;
 };
@@ -600,6 +614,7 @@ const mapRowsToNeighbor = (
   orgUnitId: neighborRow.org_unit_id,
   firstName: neighborRow.first_name,
   lastName: neighborRow.last_name,
+  prefersTexting: normalizeTextingPreference(neighborRow.prefers_texting),
   phones: sortPhones(phoneRows).map((phoneRow) => ({
     phoneId: phoneRow.id,
     label: phoneRow.label,
@@ -680,6 +695,7 @@ export class InMemoryConnectShyftNeighborStore {
       orgUnitId: input.orgUnitId,
       firstName: input.firstName,
       lastName: input.lastName,
+      prefersTexting: 'UNKNOWN',
       phones: input.phones.map((phone) => ({
         phoneId: randomUUID(),
         label: phone.label,
@@ -726,6 +742,7 @@ export class InMemoryConnectShyftNeighborStore {
       ...existing,
       firstName: input.firstName,
       lastName: input.lastName,
+      prefersTexting: existing.prefersTexting || 'UNKNOWN',
       updatedAtUtc: now,
       phones: input.phones.map((phone) => ({
         phoneId: randomUUID(),
@@ -950,6 +967,7 @@ export class KnexConnectShyftNeighborStore {
             org_unit_id: input.orgUnitId,
             first_name: input.firstName,
             last_name: input.lastName,
+            prefers_texting: 'UNKNOWN',
             created_at_utc: trx.fn.now(),
             updated_at_utc: trx.fn.now(),
           })
@@ -959,6 +977,7 @@ export class KnexConnectShyftNeighborStore {
             'org_unit_id',
             'first_name',
             'last_name',
+            'prefers_texting',
             'created_at_utc',
             'updated_at_utc',
           ]);
@@ -1024,6 +1043,7 @@ export class KnexConnectShyftNeighborStore {
         'org_unit_id',
         'first_name',
         'last_name',
+        'prefers_texting',
         'created_at_utc',
         'updated_at_utc',
       ]);
@@ -1060,6 +1080,7 @@ export class KnexConnectShyftNeighborStore {
         'org_unit_id',
         'first_name',
         'last_name',
+        'prefers_texting',
         'created_at_utc',
         'updated_at_utc',
       ]);
@@ -1156,6 +1177,7 @@ export class KnexConnectShyftNeighborStore {
             'org_unit_id',
             'first_name',
             'last_name',
+            'prefers_texting',
             'created_at_utc',
             'updated_at_utc',
           ]);
@@ -1228,6 +1250,7 @@ export class KnexConnectShyftNeighborStore {
           'org_unit_id',
           'first_name',
           'last_name',
+          'prefers_texting',
           'created_at_utc',
           'updated_at_utc',
         ]);
@@ -1333,6 +1356,7 @@ export class KnexConnectShyftNeighborStore {
           'org_unit_id',
           'first_name',
           'last_name',
+          'prefers_texting',
           'created_at_utc',
           'updated_at_utc',
         ]);

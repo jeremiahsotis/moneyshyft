@@ -31,6 +31,9 @@ type ConnectShyftEnvelope = {
   data?: {
     thread?: Partial<ConnectShyftThread>;
     threads?: Partial<ConnectShyftThread>[];
+    uiFeedback?: {
+      message?: unknown;
+    };
   };
 };
 
@@ -59,6 +62,42 @@ export type ConnectShyftEnsureThreadResult =
     ok: true;
     code: string;
     thread: ConnectShyftThread;
+  }
+  | {
+    ok: false;
+    code: string;
+    message: string;
+  };
+
+export type ConnectShyftThreadLifecycleAction = 'claim' | 'takeover' | 'close';
+
+export type ConnectShyftThreadLifecycleActionInput = {
+  threadId: string;
+  orgUnitId: string;
+  action: ConnectShyftThreadLifecycleAction;
+  reason?: string;
+  resolution?: string;
+};
+
+export type ConnectShyftThreadDispatchCallInput = {
+  threadId: string;
+  orgUnitId: string;
+};
+
+export type ConnectShyftThreadDispatchMessageInput = {
+  threadId: string;
+  orgUnitId: string;
+  body: string;
+  overrideReason?: string | null;
+  overrideNote?: string | null;
+};
+
+export type ConnectShyftThreadActionResult =
+  | {
+    ok: true;
+    code: string;
+    message: string;
+    thread: ConnectShyftThread | null;
   }
   | {
     ok: false;
@@ -153,6 +192,20 @@ const parseRefusalMessage = (payload: unknown, fallbackMessage: string): string 
   }
 
   return fallbackMessage;
+};
+
+const parseActionSuccessMessage = (payload: unknown, fallbackMessage: string): string => {
+  if (!payload || typeof payload !== 'object') {
+    return fallbackMessage;
+  }
+
+  const envelope = payload as ConnectShyftEnvelope;
+  const uiFeedbackMessage = normalizeString(envelope.data?.uiFeedback?.message);
+  if (uiFeedbackMessage) {
+    return uiFeedbackMessage;
+  }
+
+  return parseRefusalMessage(payload, fallbackMessage);
 };
 
 const resolveScopeFromQuery = (): { tenantId: string | null; orgUnitId: string | null } => {
@@ -296,4 +349,153 @@ export const ensureConnectShyftThread = async (
       ),
     };
   }
+};
+
+const executeConnectShyftThreadAction = async (
+  path: string,
+  payload: Record<string, unknown>,
+  fallbackCode: string,
+  fallbackMessage: string,
+): Promise<ConnectShyftThreadActionResult> => {
+  try {
+    const response = await api.post(path, payload, {
+      headers: buildConnectShyftTestOverrideHeaders(),
+    });
+    const envelope = response.data as ConnectShyftEnvelope;
+    if (envelope?.ok !== true) {
+      return {
+        ok: false,
+        code: normalizeString(envelope?.code) || fallbackCode,
+        message: parseRefusalMessage(response.data, fallbackMessage),
+      };
+    }
+
+    return {
+      ok: true,
+      code: normalizeString(envelope.code) || 'CONNECTSHYFT_THREAD_ACTION_COMPLETED',
+      message: parseActionSuccessMessage(response.data, 'Thread action completed.'),
+      thread: parseThread(envelope.data?.thread),
+    };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      code: `${fallbackCode}_REQUEST_FAILED`,
+      message: parseRefusalMessage(
+        (error as { response?: { data?: unknown } })?.response?.data,
+        fallbackMessage,
+      ),
+    };
+  }
+};
+
+export const performConnectShyftThreadLifecycleAction = async (
+  input: ConnectShyftThreadLifecycleActionInput,
+): Promise<ConnectShyftThreadActionResult> => {
+  const threadId = normalizeString(input.threadId);
+  if (!threadId) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
+      message: 'Thread id is required.',
+    };
+  }
+
+  const orgUnitId = normalizeString(input.orgUnitId);
+  if (!orgUnitId) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_ORGUNIT_REQUIRED',
+      message: 'orgUnitId is required.',
+    };
+  }
+
+  const actionPath = `/connectshyft/threads/${encodeURIComponent(threadId)}/${input.action}`;
+  const payload: Record<string, unknown> = {
+    orgUnitId,
+  };
+
+  if (input.action === 'takeover') {
+    payload.reason = normalizeString(input.reason) || 'operator-takeover';
+  }
+
+  if (input.action === 'close') {
+    payload.resolution = normalizeString(input.resolution) || 'operator-close';
+  }
+
+  return executeConnectShyftThreadAction(
+    actionPath,
+    payload,
+    `CONNECTSHYFT_THREAD_${input.action.toUpperCase()}_REFUSED`,
+    'Unable to complete that thread action.',
+  );
+};
+
+export const dispatchConnectShyftThreadCall = async (
+  input: ConnectShyftThreadDispatchCallInput,
+): Promise<ConnectShyftThreadActionResult> => {
+  const threadId = normalizeString(input.threadId);
+  const orgUnitId = normalizeString(input.orgUnitId);
+  if (!threadId) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
+      message: 'Thread id is required.',
+    };
+  }
+  if (!orgUnitId) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_ORGUNIT_REQUIRED',
+      message: 'orgUnitId is required.',
+    };
+  }
+
+  return executeConnectShyftThreadAction(
+    `/connectshyft/threads/${encodeURIComponent(threadId)}/call`,
+    { orgUnitId },
+    'CONNECTSHYFT_THREAD_CALL_DISPATCH_REFUSED',
+    'Unable to place the call right now.',
+  );
+};
+
+export const dispatchConnectShyftThreadMessage = async (
+  input: ConnectShyftThreadDispatchMessageInput,
+): Promise<ConnectShyftThreadActionResult> => {
+  const threadId = normalizeString(input.threadId);
+  const orgUnitId = normalizeString(input.orgUnitId);
+  const body = normalizeString(input.body);
+  if (!threadId) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
+      message: 'Thread id is required.',
+    };
+  }
+  if (!orgUnitId) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_ORGUNIT_REQUIRED',
+      message: 'orgUnitId is required.',
+    };
+  }
+  if (!body) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_MESSAGE_BODY_REQUIRED',
+      message: 'Enter a message before sending.',
+    };
+  }
+
+  return executeConnectShyftThreadAction(
+    `/connectshyft/threads/${encodeURIComponent(threadId)}/messages`,
+    {
+      orgUnitId,
+      channel: 'sms',
+      body,
+      overrideReason: normalizeString(input.overrideReason) || undefined,
+      overrideNote: normalizeString(input.overrideNote) || undefined,
+    },
+    'CONNECTSHYFT_THREAD_MESSAGE_DISPATCH_REFUSED',
+    'Unable to send the message right now.',
+  );
 };

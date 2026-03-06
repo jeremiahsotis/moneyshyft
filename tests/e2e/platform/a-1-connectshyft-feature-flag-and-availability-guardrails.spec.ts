@@ -54,8 +54,10 @@ test.describe(
       await expect(
         page.getByTestId('connectshyft-capability-maintenance-banner'),
       ).toContainText('Escalation controls are temporarily unavailable');
-      await expect(page.getByTestId('connectshyft-claim-thread-action').first()).toBeDisabled();
-      await expect(page.getByTestId('connectshyft-take-over-thread-action').first()).toBeDisabled();
+      await expect(page.getByTestId('connectshyft-compose-message-action')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-make-call-action')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-claim-thread-action')).toHaveCount(0);
+      await expect(page.getByTestId('connectshyft-take-over-thread-action')).toHaveCount(0);
     });
 
     test('[P1] inbox-disabled journey keeps inbox list hidden and explains capability-specific unavailability @P1', async ({
