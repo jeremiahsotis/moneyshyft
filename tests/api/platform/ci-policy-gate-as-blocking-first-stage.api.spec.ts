@@ -227,7 +227,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     // Given automate workflow validation without required --story input
     let output = '';
     try {
-      execFileSync('bash', [ciPolicyContext.branchGuardScript, '--workflow', 'automate'], {
+      execFileSync('bash', [ciPolicyContext.branchGuardScript, '--lane', 'moneyshyft', '--workflow', 'automate'], {
         env: {
           ...process.env,
           GITHUB_HEAD_REF: 'codex/story-0-9-moneyshyft-ci-policy-gate-as-blocking-first-stage',

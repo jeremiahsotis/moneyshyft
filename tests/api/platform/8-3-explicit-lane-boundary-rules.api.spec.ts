@@ -105,7 +105,7 @@ test.describe('Story 8.3 atdd - explicit lane boundary rules API coverage', () =
             name: 'moneyshyft-api',
             projectType: 'application',
             sourceRoot: 'apps/moneyshyft-api/src',
-            tags: ['lane:moneyshyft', 'type:app', 'runtime:node'],
+            tags: ['lane:routeshyft', 'type:app', 'runtime:node'],
           },
           null,
           2,
@@ -114,7 +114,7 @@ test.describe('Story 8.3 atdd - explicit lane boundary rules API coverage', () =
     });
 
     const hasBoundaryFailure = /Workspace boundary guard failed:/.test(output);
-    const hasLegacyTagDiagnostic = /legacy lane tag 'lane:moneyshyft'/.test(output);
+    const hasLegacyTagDiagnostic = /legacy lane tag 'lane:routeshyft'/.test(output);
 
     expect(status !== 0 && hasBoundaryFailure && hasLegacyTagDiagnostic).toBe(true);
   });

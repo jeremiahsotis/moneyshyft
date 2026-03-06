@@ -529,7 +529,7 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
   }) => {
     let output = '';
     try {
-      execFileSync('bash', [story15Context.branchGuardScript, '--workflow', 'automate'], {
+      execFileSync('bash', [story15Context.branchGuardScript, '--lane', 'moneyshyft', '--workflow', 'automate'], {
         env: {
           ...process.env,
           GITHUB_EVENT_NAME: 'local',

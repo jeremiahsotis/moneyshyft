@@ -1,9 +1,9 @@
 {
-  "defaultLane": "routeshyft",
+  "defaultLane": "moneyshyft",
   "lanes": [
     {
-      "id": "routeshyft",
-      "displayName": "RouteShyft",
+      "id": "moneyshyft",
+      "displayName": "MoneyShyft",
       "branchTokens": [
         "routeshyft"
       ],

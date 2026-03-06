@@ -39,8 +39,8 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
     expect(pathExists('apps', 'connectshyft-api', 'src', 'modules', 'connectshyft')).toBe(true);
     expect(pathExists('apps', 'connectshyft-web', 'src', 'features', 'connectshyft')).toBe(true);
 
-    expect(pathExists('apps', 'moneyshyft-api')).toBe(false);
-    expect(pathExists('apps', 'moneyshyft-web')).toBe(false);
+    expect(pathExists('apps', 'routeshyft-api')).toBe(false);
+    expect(pathExists('apps', 'routeshyft-web')).toBe(false);
     expect(pathExists('src')).toBe(false);
     expect(pathExists('frontend')).toBe(false);
 

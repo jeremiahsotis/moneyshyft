@@ -135,7 +135,7 @@ test.describe('Story 1.5 Policy Gate and Branch Workflow Guard Enforcement (ATDD
     async ({ story15Context }) => {
       let output = '';
       try {
-        execFileSync('bash', [story15Context.branchGuardScript, '--workflow', 'atdd'], {
+        execFileSync('bash', [story15Context.branchGuardScript, '--lane', 'moneyshyft', '--workflow', 'atdd'], {
           env: {
             ...process.env,
             GITHUB_EVENT_NAME: 'local',
