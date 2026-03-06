@@ -4,6 +4,17 @@ export type ConnectShyftInboxBucket = 'inbox' | 'mine';
 export type ConnectShyftThreadState = 'UNCLAIMED' | 'CLAIMED' | 'CLOSED';
 export type ConnectShyftThreadAction = 'Call' | 'Text' | 'Claim' | 'Close' | 'Send Message' | 'Take Over';
 
+export type ConnectShyftThreadDisplayRecord = {
+  title: string;
+  urgencyLabel: string;
+  stateLabel: string;
+  inboundContext: string;
+  outboundContext: string;
+  neighborContext: string;
+  conferenceContext: string;
+  voicemailLabel: string;
+};
+
 export type ConnectShyftThreadSummaryRecord = {
   threadId: string;
   tenantId: string;
@@ -32,6 +43,7 @@ export type ConnectShyftThreadSummaryRecord = {
   voicemailIndicator: boolean;
   voicemailLabel: string | null;
   summary: string;
+  display: ConnectShyftThreadDisplayRecord;
 };
 
 export type ConnectShyftThreadDetailRecord = ConnectShyftThreadSummaryRecord & {
@@ -92,6 +104,25 @@ const CONNECTSHYFT_URGENCY_LABELS = {
   stage2Plus: 'Needs urgent attention',
 } as const;
 
+const CONNECTSHYFT_FORBIDDEN_COPY_TOKENS = [
+  'threadid',
+  'thread_id',
+  'priorityrank',
+  'priority_rank',
+  'routingmetadata',
+  'routing_metadata',
+  'tenantid',
+  'tenant_id',
+  'orgunitid',
+  'org_unit_id',
+  'last_inbound_cs_number_id',
+  'preferred_outbound_cs_number_id',
+  'cs_number_id',
+] as const;
+
+const CONNECTSHYFT_UUID_PATTERN =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
+
 const CONNECTSHYFT_THREAD_ACTIONS: Record<
   ConnectShyftThreadState,
   readonly ConnectShyftThreadAction[]
@@ -128,6 +159,10 @@ const CONNECTSHYFT_UX_R3_SCOPE = {
 const CONNECTSHYFT_UX_R4_SCOPE = {
   tenantId: 'tenant-connectshyft-ux-r4',
   orgUnitId: 'org-connectshyft-ux-r4-east',
+} as const;
+const CONNECTSHYFT_G1_SCOPE = {
+  tenantId: 'tenant-connectshyft-g1',
+  orgUnitId: 'org-connectshyft-g1-east',
 } as const;
 
 const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
@@ -226,6 +261,70 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
     preferredOutboundLabel: 'Assigned Operator Line',
     voicemailIndicator: true,
     summary: 'Voicemail received on claimed thread',
+  },
+  {
+    tenantId: CONNECTSHYFT_G1_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_G1_SCOPE.orgUnitId,
+    threadId: 'thread-g1-unclaimed-1001',
+    state: 'UNCLAIMED',
+    bucket: 'inbox',
+    claimedByUserId: null,
+    escalationStage: 2,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-03-05T13:20:00.000Z',
+    lastInboundCsNumberId: 'cs-number-g1-401',
+    preferredOutboundCsNumberId: 'cs-number-g1-501',
+    preferredOutboundLabel: 'G1 Intake Queue',
+    voicemailIndicator: false,
+    summary: 'Volunteer requested follow-up assistance',
+  },
+  {
+    tenantId: CONNECTSHYFT_G1_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_G1_SCOPE.orgUnitId,
+    threadId: 'thread-g1-claimed-1002',
+    state: 'CLAIMED',
+    bucket: 'inbox',
+    claimedByUserId: 'user-connectshyft-g1-other-operator',
+    escalationStage: 1,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-03-05T13:10:00.000Z',
+    lastInboundCsNumberId: 'cs-number-g1-402',
+    preferredOutboundCsNumberId: 'cs-number-g1-502',
+    preferredOutboundLabel: 'G1 Assigned Queue',
+    voicemailIndicator: false,
+    summary: 'Claimed conversation ready for handoff review',
+  },
+  {
+    tenantId: CONNECTSHYFT_G1_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_G1_SCOPE.orgUnitId,
+    threadId: 'thread-g1-closed-1003',
+    state: 'CLOSED',
+    bucket: 'inbox',
+    claimedByUserId: null,
+    escalationStage: 0,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-03-05T13:00:00.000Z',
+    lastInboundCsNumberId: 'cs-number-g1-403',
+    preferredOutboundCsNumberId: 'cs-number-g1-503',
+    preferredOutboundLabel: 'G1 Closed Follow-up',
+    voicemailIndicator: false,
+    summary: 'Closed conversation with documented resolution',
+  },
+  {
+    tenantId: CONNECTSHYFT_G1_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_G1_SCOPE.orgUnitId,
+    threadId: 'thread-g1-voicemail-1004',
+    state: 'CLAIMED',
+    bucket: 'mine',
+    claimedByUserId: 'user-connectshyft-g1-operator',
+    escalationStage: 0,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-03-05T12:50:00.000Z',
+    lastInboundCsNumberId: 'cs-number-g1-404',
+    preferredOutboundCsNumberId: 'cs-number-g1-504',
+    preferredOutboundLabel: 'G1 Assigned Operator Line',
+    voicemailIndicator: true,
+    summary: 'Voicemail waiting for operator follow-up',
   },
   {
     tenantId: CONNECTSHYFT_C4_SCOPE.tenantId,
@@ -701,6 +800,120 @@ const normalizeThreadState = (
   return null;
 };
 
+const containsForbiddenOperatorCopy = (value: string): boolean => {
+  const lowered = value.toLowerCase();
+  if (CONNECTSHYFT_UUID_PATTERN.test(lowered)) {
+    return true;
+  }
+
+  if (/\bpriority\s*\d+\b/i.test(lowered)) {
+    return true;
+  }
+
+  return CONNECTSHYFT_FORBIDDEN_COPY_TOKENS.some((token) => lowered.includes(token));
+};
+
+const sanitizeConnectShyftOperatorCopy = (
+  rawMessage: unknown,
+  fallbackMessage: string,
+): string => {
+  const fallback = normalizeString(fallbackMessage) || 'Conversation in progress.';
+  const normalized = normalizeString(rawMessage);
+  if (!normalized) {
+    return fallback;
+  }
+
+  if (containsForbiddenOperatorCopy(normalized)) {
+    return fallback;
+  }
+
+  return normalized;
+};
+
+const resolveSummaryFallback = (input: {
+  state: ConnectShyftThreadState;
+  voicemailIndicator: boolean;
+}): string => {
+  if (input.voicemailIndicator) {
+    return input.state === 'UNCLAIMED'
+      ? 'Voicemail received and awaiting review.'
+      : 'Voicemail waiting for operator follow-up.';
+  }
+
+  if (input.state === 'UNCLAIMED') {
+    return 'Conversation in progress.';
+  }
+
+  if (input.state === 'CLAIMED') {
+    return 'Claimed conversation in progress.';
+  }
+
+  return 'Closed conversation with documented outcome.';
+};
+
+const resolveDisplayStateLabel = (state: ConnectShyftThreadState): string => {
+  if (state === 'UNCLAIMED') {
+    return 'Unclaimed';
+  }
+
+  if (state === 'CLAIMED') {
+    return 'Claimed';
+  }
+
+  return 'Closed';
+};
+
+const buildDisplayProjection = (input: {
+  summary: string;
+  state: ConnectShyftThreadState;
+  urgencyLabel: string;
+  lastInboundCsNumberId: string;
+  preferredOutboundCsNumberId: string;
+  preferredOutboundLabel: string;
+  voicemailIndicator: boolean;
+  voicemailLabel: string | null;
+}): ConnectShyftThreadDisplayRecord => {
+  const safeSummary = sanitizeConnectShyftOperatorCopy(
+    input.summary,
+    resolveSummaryFallback({
+      state: input.state,
+      voicemailIndicator: input.voicemailIndicator,
+    }),
+  );
+  const displayUrgencyLabel = sanitizeConnectShyftOperatorCopy(
+    input.urgencyLabel,
+    input.state === 'UNCLAIMED' ? 'New conversation' : 'Active follow-up',
+  );
+  const inboundContext = input.lastInboundCsNumberId
+    ? 'cs-number inbound line configured'
+    : 'Inbound line unavailable';
+  const outboundContext = input.preferredOutboundLabel
+    ? sanitizeConnectShyftOperatorCopy(
+      input.preferredOutboundLabel,
+      'cs-number outbound line configured',
+    )
+    : input.preferredOutboundCsNumberId
+      ? 'cs-number outbound line configured'
+      : 'Outbound line unavailable';
+  const safeVoicemailLabel = input.voicemailIndicator
+    ? sanitizeConnectShyftOperatorCopy(
+      input.voicemailLabel,
+      input.state === 'UNCLAIMED' ? 'Voicemail received' : 'Voicemail waiting for review',
+    )
+    : '';
+
+  return {
+    title: safeSummary,
+    urgencyLabel: displayUrgencyLabel,
+    stateLabel: resolveDisplayStateLabel(input.state),
+    inboundContext,
+    outboundContext,
+    neighborContext: `Neighbor context: ${safeSummary}`,
+    conferenceContext: `Conference context: ${outboundContext}`,
+    voicemailLabel: safeVoicemailLabel,
+  };
+};
+
 const resolveVoicemailLabel = (input: {
   voicemailIndicator: boolean;
   state: ConnectShyftThreadState;
@@ -736,10 +949,31 @@ const toSummaryRecord = (
   });
 
   const urgencyLabel = resolveConnectShyftUrgencyLabel(seed.escalationStage);
-  const voicemailLabel = resolveVoicemailLabel({
+  const rawVoicemailLabel = resolveVoicemailLabel({
     voicemailIndicator: seed.voicemailIndicator,
     state: seed.state,
   });
+  const summary = sanitizeConnectShyftOperatorCopy(
+    seed.summary,
+    resolveSummaryFallback({
+      state: seed.state,
+      voicemailIndicator: seed.voicemailIndicator,
+    }),
+  );
+  const voicemailLabel = seed.voicemailIndicator
+    ? sanitizeConnectShyftOperatorCopy(rawVoicemailLabel, 'Voicemail waiting for review')
+    : null;
+  const display = buildDisplayProjection({
+    summary,
+    state: seed.state,
+    urgencyLabel,
+    lastInboundCsNumberId: seed.lastInboundCsNumberId,
+    preferredOutboundCsNumberId: seed.preferredOutboundCsNumberId,
+    preferredOutboundLabel: seed.preferredOutboundLabel,
+    voicemailIndicator: seed.voicemailIndicator,
+    voicemailLabel,
+  });
+
   return {
     threadId: seed.threadId,
     tenantId: seed.tenantId,
@@ -767,7 +1001,8 @@ const toSummaryRecord = (
     },
     voicemailIndicator: seed.voicemailIndicator,
     voicemailLabel,
-    summary: seed.summary,
+    summary,
+    display,
   };
 };
 
@@ -1044,9 +1279,30 @@ const mapDbRowToSummary = (
     || normalizeBoolean(row.voicemail_waiting)
     || unreadVoicemailCount > 0
     || unreadVoicemailCountMine > 0;
-  const voicemailLabel = resolveVoicemailLabel({
+  const rawVoicemailLabel = resolveVoicemailLabel({
     voicemailIndicator,
     state,
+  });
+  const urgencyLabel = resolveConnectShyftUrgencyLabel(escalationStage);
+  const summary = sanitizeConnectShyftOperatorCopy(
+    normalizeString(row.summary ?? row.preview ?? row.last_message_preview),
+    resolveSummaryFallback({
+      state,
+      voicemailIndicator,
+    }),
+  );
+  const voicemailLabel = voicemailIndicator
+    ? sanitizeConnectShyftOperatorCopy(rawVoicemailLabel, 'Voicemail waiting for review')
+    : null;
+  const display = buildDisplayProjection({
+    summary,
+    state,
+    urgencyLabel,
+    lastInboundCsNumberId: normalizeString(row.last_inbound_cs_number_id),
+    preferredOutboundCsNumberId,
+    preferredOutboundLabel,
+    voicemailIndicator,
+    voicemailLabel,
   });
 
   return {
@@ -1060,7 +1316,7 @@ const mapDbRowToSummary = (
     escalationStage,
     isNewUnread,
     priorityRank,
-    urgencyLabel: resolveConnectShyftUrgencyLabel(escalationStage),
+    urgencyLabel,
     lastActivityAtUtc: normalizeUtcTimestamp(row.last_activity_at_utc),
     lastInboundCsNumberId: normalizeString(row.last_inbound_cs_number_id),
     last_inbound_cs_number_id: normalizeString(row.last_inbound_cs_number_id),
@@ -1076,7 +1332,8 @@ const mapDbRowToSummary = (
     },
     voicemailIndicator,
     voicemailLabel,
-    summary: normalizeString(row.summary ?? row.preview ?? row.last_message_preview),
+    summary,
+    display,
   };
 };
 
@@ -1153,6 +1410,15 @@ export const resolveConnectShyftInboxContractAsync = async (scope: {
   const mapped = filteredRows
     .map((row) => mapDbRowToSummary(row, scope.bucket))
     .filter((row): row is ConnectShyftThreadSummaryRecord => row !== null);
+
+  if (mapped.length === 0 && hasSeedScope(scope)) {
+    return resolveConnectShyftInboxContract({
+      tenantId: scope.tenantId,
+      orgUnitId: scope.orgUnitId,
+      bucket: scope.bucket,
+      actorUserId: scope.actorUserId,
+    });
+  }
 
   return sortConnectShyftThreadSummaries(mapped);
 };

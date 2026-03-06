@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-05T22:40:56.760Z",
+  "generatedAt": "2026-03-06T13:37:55.642Z",
   "storyScope": "epic-f",
   "sampleCounts": {
     "inbox": 25,
@@ -26,92 +26,17 @@
       "name": "inbox",
       "samples": [
         {
-          "durationMs": 4,
+          "durationMs": 7,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 4,
+          "durationMs": 6,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
+          "durationMs": 10,
           "status": 200,
           "ok": true
         },
@@ -126,94 +51,6 @@
           "ok": true
         },
         {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        }
-      ],
-      "p50": 5,
-      "p95": 5,
-      "p99": 6,
-      "min": 3,
-      "max": 6,
-      "avg": 4.52,
-      "successRate": 1,
-      "errorRate": 0
-    },
-    "threadDetail": {
-      "name": "thread_detail",
-      "samples": [
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 14,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
           "durationMs": 6,
           "status": 200,
           "ok": true
@@ -224,37 +61,62 @@
           "ok": true
         },
         {
+          "durationMs": 7,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 7,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 10,
+          "status": 200,
+          "ok": true
+        },
+        {
           "durationMs": 5,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 4,
+          "durationMs": 6,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 4,
+          "durationMs": 7,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 4,
+          "durationMs": 9,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 4,
+          "durationMs": 6,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 5,
+          "durationMs": 7,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 5,
+          "durationMs": 8,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 8,
           "status": 200,
           "ok": true
         },
@@ -264,7 +126,110 @@
           "ok": true
         },
         {
+          "durationMs": 6,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 9,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 9,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 6,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 6,
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "p50": 7,
+      "p95": 10,
+      "p99": 12,
+      "min": 4,
+      "max": 12,
+      "avg": 7.08,
+      "successRate": 1,
+      "errorRate": 0
+    },
+    "threadDetail": {
+      "name": "thread_detail",
+      "samples": [
+        {
+          "durationMs": 7,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 6,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 6,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 7,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 7,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 10,
+          "status": 200,
+          "ok": true
+        },
+        {
           "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 6,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 9,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 5,
           "status": 200,
           "ok": true
         },
@@ -279,130 +244,7 @@
           "ok": true
         },
         {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 9,
-          "status": 200,
-          "ok": true
-        }
-      ],
-      "p50": 4,
-      "p95": 12,
-      "p99": 14,
-      "min": 3,
-      "max": 14,
-      "avg": 5.32,
-      "successRate": 1,
-      "errorRate": 0
-    },
-    "events": {
-      "name": "events",
-      "samples": [
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 1,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
+          "durationMs": 7,
           "status": 200,
           "ok": true
         },
@@ -412,50 +254,12 @@
           "ok": true
         },
         {
-          "durationMs": 3,
+          "durationMs": 5,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        }
-      ],
-      "p50": 4,
-      "p95": 4,
-      "p99": 6,
-      "min": 1,
-      "max": 6,
-      "avg": 3.48,
-      "successRate": 1,
-      "errorRate": 0
-    },
-    "webhookIngestion": {
-      "name": "webhook_ingestion",
-      "samples": [
-        {
-          "durationMs": 10,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 11,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 9,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 12,
+          "durationMs": 5,
           "status": 200,
           "ok": true
         },
@@ -470,52 +274,75 @@
           "ok": true
         },
         {
-          "durationMs": 29,
+          "durationMs": 8,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 9,
+          "durationMs": 7,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 9,
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "p50": 6,
+      "p95": 9,
+      "p99": 10,
+      "min": 4,
+      "max": 10,
+      "avg": 6.32,
+      "successRate": 1,
+      "errorRate": 0
+    },
+    "events": {
+      "name": "events",
+      "samples": [
+        {
+          "durationMs": 7,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 11,
+          "durationMs": 6,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 16,
+          "durationMs": 6,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 12,
+          "durationMs": 6,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 9,
+          "durationMs": 6,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 21,
+          "durationMs": 5,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 11,
+          "durationMs": 6,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 10,
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
@@ -525,7 +352,110 @@
           "ok": true
         },
         {
-          "durationMs": 9,
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 6,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 6,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 6,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 6,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 6,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 8,
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "p50": 6,
+      "p95": 8,
+      "p99": 8,
+      "min": 3,
+      "max": 8,
+      "avg": 5.32,
+      "successRate": 1,
+      "errorRate": 0
+    },
+    "webhookIngestion": {
+      "name": "webhook_ingestion",
+      "samples": [
+        {
+          "durationMs": 18,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 15,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 15,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 13,
           "status": 200,
           "ok": true
         },
@@ -540,22 +470,32 @@
           "ok": true
         },
         {
+          "durationMs": 29,
+          "status": 200,
+          "ok": true
+        },
+        {
           "durationMs": 12,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 23,
+          "durationMs": 14,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 9,
+          "durationMs": 15,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 13,
+          "durationMs": 15,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 12,
           "status": 200,
           "ok": true
         },
@@ -563,14 +503,74 @@
           "durationMs": 17,
           "status": 200,
           "ok": true
+        },
+        {
+          "durationMs": 18,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 18,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 17,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 19,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 14,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 17,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 17,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 18,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 17,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 24,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 25,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 15,
+          "status": 200,
+          "ok": true
         }
       ],
-      "p50": 11,
-      "p95": 23,
+      "p50": 17,
+      "p95": 25,
       "p99": 29,
-      "min": 7,
+      "min": 12,
       "max": 29,
-      "avg": 12.48,
+      "avg": 16.84,
       "successRate": 1,
       "errorRate": 0
     }
@@ -581,6 +581,6 @@
   },
   "evidenceSources": [
     "tests/api/platform/f-epic-nfr-evidence.api.spec.ts",
-    "apps/routeshyft-api/src/routes/api/v1/connectshyft.ts"
+    "apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts"
   ]
 }
