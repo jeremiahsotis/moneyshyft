@@ -13,6 +13,7 @@ docker-build/
 node_modules/
 */node_modules/
 apps/*/node_modules/
+apps/*/node_modules
 
 # Build outputs
 dist/

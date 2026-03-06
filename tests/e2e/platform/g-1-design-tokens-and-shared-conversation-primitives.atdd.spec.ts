@@ -113,6 +113,25 @@ test.describe('Story g.1 Design Tokens and Shared Conversation Primitives (ATDD 
       expect(primaryActionMinHeightPx).toBeGreaterThanOrEqual(
         context.readability.minTapTargetPx,
       );
+
+      if ((await primaryActionLocator.count()) > 0) {
+        await expect(primaryActionLocator).toHaveAttribute('aria-label', /open thread detail/i);
+      } else {
+        await expect(fallbackPrimaryActionLocator).toHaveAttribute('aria-label', /open a conversation/i);
+      }
+
+      await page.locator('body').click();
+      await page.keyboard.press('Tab');
+      const keyboardFocusInfo = await page.evaluate(() => {
+        const active = document.activeElement as HTMLElement | null;
+        return {
+          tagName: active?.tagName.toLowerCase() ?? '',
+          testId: active?.getAttribute('data-testid') ?? '',
+        };
+      });
+
+      expect(['a', 'button', 'input', 'select', 'textarea']).toContain(keyboardFocusInfo.tagName);
+      expect(keyboardFocusInfo.testId.length).toBeGreaterThan(0);
     },
   );
 
@@ -240,8 +259,13 @@ test.describe('Story g.1 Design Tokens and Shared Conversation Primitives (ATDD 
       for (const forbiddenToken of context.forbiddenPrimaryCopyTokens) {
         expect(visibleCopy).not.toContain(forbiddenToken);
       }
+      for (const internalThreadId of Object.values(context.threadIds)) {
+        expect(visibleCopy).not.toContain(internalThreadId.toLowerCase());
+      }
       expect(visibleCopy).not.toMatch(UUID_PATTERN);
       expect(visibleCopy).not.toMatch(/\bpriority\s*\d+\b/i);
+      await expect(page.locator('[data-testid="connectshyft-inbox-item-priority-rank"]')).toHaveCount(0);
+      await expect(page.locator('[data-testid="connectshyft-thread-id-chip"]')).toHaveCount(0);
     },
   );
 

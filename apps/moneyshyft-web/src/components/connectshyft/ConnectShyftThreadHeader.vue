@@ -31,12 +31,6 @@
 
     <div class="mt-3 flex flex-wrap items-center gap-2">
       <ConnectShyftPill
-        test-id="connectshyft-thread-id-chip"
-        tone="neutral"
-        :label="threadIdLabel"
-        aria-label="Thread reference"
-      />
-      <ConnectShyftPill
         test-id="connectshyft-thread-state-chip"
         tone="neutral"
         :label="stateLabel"
@@ -79,7 +73,6 @@ defineProps<{
   title: string;
   neighborContextLabel: string;
   conferenceContextLabel: string;
-  threadIdLabel: string;
   stateLabel: string;
   ownerLabel: string;
   escalationLabel: string;

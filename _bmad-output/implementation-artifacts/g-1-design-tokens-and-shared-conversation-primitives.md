@@ -139,18 +139,28 @@ GPT-5 Codex
 - `npm run branch:ensure-workflow -- --workflow dev-story --story g-1-design-tokens-and-shared-conversation-primitives`
 - `npm run build --prefix apps/moneyshyft-web`
 - `npm run test:e2e -- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts`
-- `npm test` (baseline suite currently has pre-existing unrelated failures outside g.1 scope)
+- `npm test`
 
 ### Completion Notes List
 
 - Implemented shared ConnectShyft token contract in `connectShyftTokens.ts` and wired required CSS variables/breakpoints in `main.css` and `uiContracts.ts`.
 - Added reusable conversation primitives (pill, queue card, thread header, message bubble, voicemail card, composer, thread action bar) and refactored Inbox/Thread detail views to consume them.
 - Extended read contract mapping with display-safe conversation fields and routed volunteer-primary copy through sanitization-aware display adapters.
-- Activated and updated g.1 ATDD e2e coverage for primitive composition, forbidden-field suppression, and responsive baseline checks (4/4 passing).
-- Full `npm test` regression run still reports pre-existing unrelated failures in other lanes/packages; no new g.1-specific failures were introduced.
+- Removed raw internal priority/thread identifiers from volunteer-primary surfaces (`priorityRank` badge and thread-id chip).
+- Expanded `uiContracts` forbidden-copy token list to cover raw priority/routing/thread identifier patterns used by this story lane.
+- Tightened g.1 ATDD e2e coverage to assert no raw internal thread ids/rank chips render and to validate keyboard focus plus aria-label hooks.
+- Re-ran g.1 validation after fixes:
+  - `npm run build --prefix apps/moneyshyft-web` ✅
+  - `npm run test:e2e -- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts` ✅ (4/4)
+- Full monorepo `npm test` currently fails outside this story’s changed surface:
+  - `moneyshyft-api:test`: `src/__tests__/app-entrypoint-kernel.test.ts` (tenant context expectation mismatch), `src/modules/connectshyft/__tests__/neighbors.test.ts` (`listIdentityBoundaryNeighborsByPhoneValue` missing)
+  - `connectshyft-api:test`: `src/modules/connectshyft/__tests__/neighbors.test.ts`
+  - `admin-api:test`: `jest: command not found`
+  - `e2e:test`: multiple pre-existing failures in non-g.1 suites.
 
 ### File List
 
+- .gitignore
 - apps/moneyshyft-web/src/assets/main.css
 - apps/moneyshyft-web/src/components/connectshyft/ConnectShyftComposer.vue
 - apps/moneyshyft-web/src/components/connectshyft/ConnectShyftMessageBubble.vue
@@ -168,7 +178,19 @@ GPT-5 Codex
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
 - _bmad-output/implementation-artifacts/g-1-design-tokens-and-shared-conversation-primitives.md
 
+## Senior Developer Review (AI)
+
+Date: 2026-03-06
+
+- Re-ran adversarial review and fixed all previously reported HIGH/MEDIUM story-level issues:
+  - raw priority integer removed from queue card primary UI
+  - raw thread id chip removed from thread header primary UI
+  - forbidden-copy sanitization contract expanded for story-specific internal metadata leakage patterns
+  - ATDD assertions strengthened for metadata suppression and accessibility hooks
+- Git/story discrepancy from prior clean-working-tree snapshot was resolved by applying and validating concrete code/test deltas in this review pass.
+
 ## Change Log
 
 - 2026-03-06: Created Story g.1 ready-for-dev context document.
 - 2026-03-06: Implemented CS-S7.1 token contract, shared conversation primitives, display-safe read mapping, and story-specific regression tests; story advanced to review.
+- 2026-03-06: Resolved g.1 code-review findings by removing raw internal metadata from volunteer-primary UI, expanding copy-safety guards, tightening ATDD accessibility/suppression assertions, and adding symlink-safe node_modules ignore coverage.

@@ -101,7 +101,6 @@
                 :last-inbound-context="`Inbound line: ${item.display.inboundContext}`"
                 :preferred-outbound-context="`Outbound line: ${item.display.outboundContext}`"
                 :state-label="item.display.stateLabel"
-                :priority-rank="item.priorityRank"
                 :voicemail-indicator="item.voicemailIndicator"
                 :voicemail-label="item.display.voicemailLabel"
                 :thread-path="buildThreadDetailPath(item.threadId)"

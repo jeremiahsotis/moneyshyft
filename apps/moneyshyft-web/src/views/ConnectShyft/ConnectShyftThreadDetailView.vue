@@ -54,7 +54,6 @@
               :title="threadSurfaceModel.display.title"
               :neighbor-context-label="threadSurfaceModel.display.neighborContext"
               :conference-context-label="threadSurfaceModel.display.conferenceContext"
-              :thread-id-label="`Thread ${threadSurfaceModel.threadId}`"
               :state-label="threadSurfaceModel.display.stateLabel"
               :owner-label="threadSurfaceModel.state === 'CLAIMED' ? `Owner: ${threadSurfaceModel.claimedByUserId || 'unassigned'}` : ''"
               :escalation-label="escalationChipLabel"

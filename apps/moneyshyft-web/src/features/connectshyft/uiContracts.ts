@@ -44,6 +44,15 @@ export const CONNECTSHYFT_FORBIDDEN_COPY_TOKENS = [
   'org_unit',
   'tenant_id',
   'role_id',
+  'threadid',
+  'thread_id',
+  'priorityrank',
+  'priority_rank',
+  'routingmetadata',
+  'routing_metadata',
+  'last_inbound_cs_number_id',
+  'preferred_outbound_cs_number_id',
+  'cs_number_id',
 ] as const;
 
 const CONNECTSHYFT_CANONICAL_STATE_ACTIONS: Record<

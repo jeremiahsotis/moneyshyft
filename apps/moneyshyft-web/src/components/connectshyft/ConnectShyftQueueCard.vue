@@ -47,13 +47,6 @@
           :label="stateLabel"
           aria-label="Thread state"
         />
-        <span
-          data-testid="connectshyft-inbox-item-priority-rank"
-          class="rounded-md border border-slate-300 bg-slate-100 px-2 py-1 font-semibold text-slate-700"
-          :style="bodyCopyStyle"
-        >
-          {{ priorityRank }}
-        </span>
         <ConnectShyftPill
           v-if="voicemailIndicator"
           :test-id="`connectshyft-voicemail-indicator-${threadId}`"
@@ -95,7 +88,6 @@ defineProps<{
   lastInboundContext: string;
   preferredOutboundContext: string;
   stateLabel: string;
-  priorityRank: number;
   voicemailIndicator: boolean;
   voicemailLabel: string;
   threadPath: string;
