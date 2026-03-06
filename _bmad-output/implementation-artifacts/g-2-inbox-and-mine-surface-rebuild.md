@@ -196,6 +196,7 @@ GPT-5 Codex
 - apps/moneyshyft-api/src/modules/connectshyft/neighbors.ts
 - apps/moneyshyft-api/src/modules/connectshyft/providerRegistry.ts
 - apps/moneyshyft-api/src/modules/connectshyft/readContracts.ts
+- apps/moneyshyft-api/src/modules/connectshyft/smsPreferenceOverrides.ts
 - apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts
 - apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts
 - apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts
