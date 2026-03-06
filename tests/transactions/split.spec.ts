@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth';
 import { selectFirstNonEmptyOption, todayISO } from '../helpers/forms';
 import { deleteById } from '../helpers/cleanup';
+import { ensureAtLeastOneActiveBudgetAccount } from '../helpers/accounts';
 
 test.describe('Split transactions', () => {
   test.beforeEach(async ({ page }) => {
@@ -13,6 +14,7 @@ test.describe('Split transactions', () => {
     let createdId: string | undefined;
 
     try {
+      await ensureAtLeastOneActiveBudgetAccount(page);
       await page.goto('/transactions');
       await page.getByTestId('transactions-add-button').first().click();
 
