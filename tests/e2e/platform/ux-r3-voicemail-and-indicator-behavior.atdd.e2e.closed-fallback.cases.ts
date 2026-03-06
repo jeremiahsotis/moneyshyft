@@ -27,7 +27,7 @@ test.describe(
         const webhookBody = await webhookResponse.json();
         expect(webhookBody?.data?.timeline?.routingDecision).toBe('intake_fallback');
 
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toContainText('CLOSED');
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toContainText('Closed');
         await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toHaveCount(0);
       },
     );

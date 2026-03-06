@@ -56,7 +56,7 @@ test.describe(
         await page.getByRole('button', { name: 'Claim' }).click();
         await claimResponse;
 
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLAIMED');
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Claimed');
       },
     );
 
@@ -128,10 +128,8 @@ test.describe(
         await page.getByRole('button', { name: 'Call' }).click();
         await callResponse;
 
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
-        await expect(page.getByTestId('connectshyft-thread-id-chip')).toContainText(
-          context.threadIds.closed,
-        );
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');
+        await expect(page).toHaveURL(new RegExp(`/app/connectshyft/threads/${context.threadIds.closed}`));
         await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toContainText(
           'Conversation reopened',
         );
@@ -159,10 +157,10 @@ test.describe(
             && response.request().method() === 'POST',
         );
 
-        await page.getByRole('button', { name: 'Send Message' }).click();
+        await page.getByTestId('connectshyft-send-message-thread-action').click();
         await messageResponse;
 
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');
         await expect(page.getByTestId('connectshyft-thread-escalation-chip')).toContainText(
           /needs attention soon/i,
         );
@@ -185,7 +183,7 @@ test.describe(
           }),
         );
 
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLOSED');
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Closed');
         await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
         await expect(page.getByRole('button', { name: 'Take Over' })).toHaveCount(0);
         await expect(page.getByTestId('connectshyft-closed-thread-auto-reopen-banner')).toHaveCount(0);

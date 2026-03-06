@@ -94,7 +94,7 @@ test.describe(
         );
 
         await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLAIMED');
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Claimed');
 
         await apiRequest(request, {
           method: 'POST',

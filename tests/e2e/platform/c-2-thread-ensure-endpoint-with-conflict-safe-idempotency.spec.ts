@@ -135,14 +135,12 @@ test.describe(
 
           await expect(page.getByRole('heading', { name: 'ConnectShyft Inbox' })).toBeVisible();
 
-          const targetCard = page
-            .getByTestId('connectshyft-thread-card')
-            .filter({ hasText: ensurePayload.lastInboundCsNumberId });
+          const targetCard = page.getByTestId(`connectshyft-thread-card-${threadId}`);
           await expect(targetCard).toHaveCount(1);
 
           await targetCard.getByTestId('connectshyft-thread-card-primary-action').click();
           await expect(page).toHaveURL(new RegExp(`/app/connectshyft/threads/${threadId}`));
-          await expect(page.getByTestId('connectshyft-thread-id-chip')).toContainText(threadId);
+          await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
         } finally {
           await cleanupEnsuredThread({
             tenantId: context.tenantId,

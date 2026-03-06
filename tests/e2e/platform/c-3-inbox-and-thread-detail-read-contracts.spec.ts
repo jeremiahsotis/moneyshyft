@@ -82,12 +82,8 @@ test.describe(
           'thread-c3-new-unread-1005',
         ]);
 
-        await expect.poll(
-          async () => (await page
-            .getByTestId('connectshyft-inbox-item-priority-rank')
-            .allTextContents())
-            .map((value) => value.trim()),
-        ).toEqual(['1', '2', '2', '3', '4']);
+        await expect(page.locator('[data-testid="connectshyft-inbox-item-priority-rank"]'))
+          .toHaveCount(0);
 
         await expect(page.getByText(context.urgencyLabels.stage1)).toBeVisible();
         await expect(page.getByText(context.urgencyLabels.stage2Plus).first()).toBeVisible();
@@ -134,7 +130,7 @@ test.describe(
         await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
 
         await page.goto(buildThreadDetailUrl(context, context.threadIds.closed, context.userId));
-        await expect(page.getByRole('button', { name: 'Send Message' })).toBeVisible();
+        await expect(page.getByTestId('connectshyft-send-message-thread-action')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Close' })).toHaveCount(0);
       },
     );
@@ -150,9 +146,9 @@ test.describe(
         await expect(page.getByTestId('connectshyft-thread-metadata-last-inbound-number')).toContainText(
           /cs-number/i,
         );
-        await expect(page.getByTestId('connectshyft-thread-metadata-preferred-outbound-number')).toContainText(
-          /cs-number/i,
-        );
+        const outboundContext = page.getByTestId('connectshyft-thread-metadata-preferred-outbound-number');
+        await expect(outboundContext).toContainText(/outbound line:/i);
+        await expect(outboundContext).not.toContainText(/preferred[_\s-]?outbound.*id|cs-outbound-/i);
         await expect(page.getByTestId('connectshyft-thread-detail')).not.toContainText(/stage\s*\d+/i);
       },
     );

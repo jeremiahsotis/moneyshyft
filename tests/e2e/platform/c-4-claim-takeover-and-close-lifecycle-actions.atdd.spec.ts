@@ -44,7 +44,7 @@ test.describe('Story c.4 Claim Takeover and Close Lifecycle Actions (ATDD E2E RE
 
       await expect(page.getByRole('button', { name: 'Claim' })).toBeVisible();
       await page.getByRole('button', { name: 'Claim' }).click();
-      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLAIMED');
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Claimed');
 
       await page.goto(
         buildThreadUrl(context, {
@@ -75,13 +75,11 @@ test.describe('Story c.4 Claim Takeover and Close Lifecycle Actions (ATDD E2E RE
         }),
       );
 
-      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLOSED');
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Closed');
       await page.getByRole('button', { name: 'Call' }).click();
 
-      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
-      await expect(page.getByTestId('connectshyft-thread-id-chip')).toContainText(
-        context.threadIds.closed,
-      );
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');
+      await expect(page).toHaveURL(new RegExp('/app/connectshyft/threads/' + context.threadIds.closed));
       await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toContainText(
         'Conversation reopened',
       );
@@ -103,8 +101,8 @@ test.describe('Story c.4 Claim Takeover and Close Lifecycle Actions (ATDD E2E RE
         }),
       );
 
-      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLOSED');
-      await expect(page.getByRole('button', { name: 'Send Message' })).toBeVisible();
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Closed');
+      await expect(page.getByTestId('connectshyft-send-message-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
       await expect(page.getByTestId('connectshyft-closed-thread-auto-reopen-banner')).toHaveCount(0);
     },

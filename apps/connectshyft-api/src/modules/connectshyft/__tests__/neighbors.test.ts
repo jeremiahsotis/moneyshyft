@@ -841,6 +841,11 @@ describe('connectshyft async neighbor service', () => {
         error.code = '42703';
         throw error;
       }),
+      listIdentityBoundaryNeighborsByPhoneValue: jest.fn(async () => {
+        const error = new Error('column does not exist') as Error & { code: string };
+        error.code = '42703';
+        throw error;
+      }),
       updateNeighbor: jest.fn(async () => {
         const error = new Error('column does not exist') as Error & { code: string };
         error.code = '42703';

@@ -267,7 +267,7 @@ test.describe('Story ux-r3 automate - voicemail and indicator behavior journeys'
       await page.goto(
         buildThreadDetailUrl(storyUxR3Context, storyUxR3Context.threadIds.closedVoice),
       );
-      await expect(page.getByTestId('connectshyft-thread-state-chip')).toContainText('CLOSED');
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toContainText('Closed');
       await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toHaveCount(0);
 
       const detailResponse = await apiRequest(request, {

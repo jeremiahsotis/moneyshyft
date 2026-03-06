@@ -48,8 +48,8 @@ test.describe(
         );
 
         await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-        await expect(page.getByRole('button', { name: /Send Message|Text/i })).toBeVisible();
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+        await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');
 
         await page.getByRole('button', { name: 'Call' }).click();
 
@@ -78,7 +78,7 @@ test.describe(
           }),
         );
 
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLAIMED');
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Claimed');
         await page.getByRole('button', { name: 'Call' }).click();
 
         await expect(page.getByTestId('connectshyft-thread-action-refusal-banner')).toContainText(
@@ -89,7 +89,7 @@ test.describe(
           'refusal',
         );
         await expect(page.getByTestId('connectshyft-hidden-transition-warning')).toHaveCount(0);
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLAIMED');
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Claimed');
       },
     );
 
@@ -109,8 +109,8 @@ test.describe(
           }),
         );
 
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
-        await page.getByRole('button', { name: /Send Message|Text/i }).click();
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');
+        await page.getByTestId('connectshyft-send-text-thread-action').click();
 
         await expect(page.getByTestId('connectshyft-thread-action-refusal-banner')).toContainText(
           /unavailable|not registered|provider/i,
@@ -120,7 +120,7 @@ test.describe(
           'refusal',
         );
         await expect(page.getByTestId('connectshyft-hidden-transition-warning')).toHaveCount(0);
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');
       },
     );
   },

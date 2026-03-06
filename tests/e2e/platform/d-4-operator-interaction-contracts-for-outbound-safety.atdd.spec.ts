@@ -43,7 +43,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
         }),
       );
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-      await expect(page.getByRole('button', { name: /Text|Send Message/i })).toBeVisible();
+      await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toBeVisible();
 
       await page.setViewportSize({ width: 1024, height: 768 });
@@ -56,7 +56,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
         }),
       );
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-      await expect(page.getByRole('button', { name: /Text|Send Message/i })).toBeVisible();
+      await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
 
       await page.setViewportSize({ width: 390, height: 844 });
@@ -69,7 +69,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
         }),
       );
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-      await expect(page.getByRole('button', { name: /Send Message|Text/i })).toBeVisible();
+      await expect(page.getByTestId('connectshyft-send-message-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
     },
   );
@@ -91,7 +91,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
 
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Take Over' })).toBeVisible();
-      await expect(page.getByRole('button', { name: /Text|Send Message/i })).toBeVisible();
+      await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
     },
@@ -112,7 +112,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
         }),
       );
 
-      await page.getByRole('button', { name: /Send Message|Text/i }).focus();
+      await page.getByTestId('connectshyft-send-text-thread-action').focus();
       await page.keyboard.press('Enter');
 
       await expect(page.getByTestId('connectshyft-preference-override-modal')).toBeVisible();
@@ -146,10 +146,10 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
         }),
       );
 
-      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLOSED');
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Closed');
       await page.getByRole('button', { name: 'Call' }).click();
 
-      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');
       await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toContainText(
         /reopened/i,
       );
@@ -173,7 +173,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
         }),
       );
 
-      await page.getByRole('button', { name: /Send Message|Text/i }).click();
+      await page.getByTestId('connectshyft-send-text-thread-action').click();
       await expect(page.getByTestId('connectshyft-preference-override-submit')).toBeDisabled();
       await expect(page.getByTestId('connectshyft-policy-refusal-banner')).toContainText(
         /override reason/i,
@@ -215,10 +215,10 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
         }),
       );
 
-      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('CLOSED');
-      await page.getByRole('button', { name: /Send Message|Text/i }).click();
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Closed');
+      await page.getByTestId('connectshyft-send-message-thread-action').click();
 
-      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');
       await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toContainText(
         /reopened/i,
       );

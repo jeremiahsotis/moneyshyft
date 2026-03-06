@@ -69,26 +69,7 @@ describe('Story 0.1 - canonical app entrypoint and kernel middleware', () => {
       expect(registeredPaths).toEqual([
         '/api/v1/platform',
         '/api/v1/platform/admin',
-        '/api/v1/route',
-        '/api/v1/route-bridge',
-        '/api/v1/connectshyft',
-        '/api/v1/route',
         '/api/v1/auth',
-        '/api/v1/accounts',
-        '/api/v1/transactions',
-        '/api/v1/transactions',
-        '/api/v1/categories',
-        '/api/v1/goals',
-        '/api/v1/budgets',
-        '/api/v1/income',
-        '/api/v1/debts',
-        '/api/v1/assignments',
-        '/api/v1/households',
-        '/api/v1/recurring-transactions',
-        '/api/v1/extra-money',
-        '/api/v1/settings',
-        '/api/v1/scenarios',
-        '/api/v1/tags'
       ]);
     });
 
@@ -112,7 +93,7 @@ describe('Story 0.1 - canonical app entrypoint and kernel middleware', () => {
       });
     });
 
-    it('wraps MoneyShyft governed paths with entitlement middleware while leaving excluded paths unwrapped', () => {
+    it('mounts admin routes directly without money-module entitlement wrappers', () => {
       const app = {
         use: jest.fn()
       } as unknown as express.Application;
@@ -120,21 +101,11 @@ describe('Story 0.1 - canonical app entrypoint and kernel middleware', () => {
 
       registerV1RoutesWithLoader(app, routeLoader);
 
-      const accountsCall = (app.use as jest.Mock).mock.calls.find(
-        (call) => call[0] === '/api/v1/accounts'
-      );
-      const platformCall = (app.use as jest.Mock).mock.calls.find(
-        (call) => call[0] === '/api/v1/platform'
-      );
-
-      expect(accountsCall).toBeDefined();
-      expect(accountsCall).toHaveLength(3);
-      expect(typeof accountsCall![1]).toBe('function');
-      expect(typeof accountsCall![2]).toBe('function');
-
-      expect(platformCall).toBeDefined();
-      expect(platformCall).toHaveLength(2);
-      expect(typeof platformCall![1]).toBe('function');
+      for (const call of (app.use as jest.Mock).mock.calls) {
+        expect(call).toHaveLength(2);
+        expect(typeof call[0]).toBe('string');
+        expect(typeof call[1]).toBe('function');
+      }
     });
   });
 });

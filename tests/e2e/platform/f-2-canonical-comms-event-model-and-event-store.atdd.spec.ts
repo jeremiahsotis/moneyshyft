@@ -94,9 +94,9 @@ test.describe(
         );
 
         await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
-        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('UNCLAIMED');
+        await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');
         await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-        await expect(page.getByRole('button', { name: /Send Message|Text/i })).toBeVisible();
+        await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
 
         const callResponse = await apiRequest(request, {
           method: 'POST',

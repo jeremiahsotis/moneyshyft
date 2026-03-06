@@ -51,6 +51,7 @@ const ensureThread = async (
     preferredOutboundCsNumberId?: string;
   },
 ): Promise<{
+  threadId: string;
   neighborId: string;
   lastInboundCsNumberId: string;
   preferredOutboundCsNumberId: string;
@@ -80,7 +81,13 @@ const ensureThread = async (
   });
 
   expect(ensureResponse.status()).toBe(201);
-  return resolvedThreadContext;
+  const ensureBody = await ensureResponse.json();
+  const threadId = String(ensureBody?.data?.thread?.threadId || '');
+  expect(threadId).not.toHaveLength(0);
+  return {
+    ...resolvedThreadContext,
+    threadId,
+  };
 };
 
 test.describe(
@@ -102,17 +109,15 @@ test.describe(
         await page.goto(buildInboxUrl(context, context.userId, threadContext));
 
         await expect(page.getByRole('heading', { name: 'ConnectShyft Inbox' })).toBeVisible();
-        const targetCard = page
-          .getByTestId('connectshyft-thread-card')
-          .filter({ hasText: threadContext.lastInboundCsNumberId });
+        const targetCard = page.getByTestId(`connectshyft-thread-card-${threadContext.threadId}`);
         await expect(targetCard).toHaveCount(1);
-        await expect(targetCard).toContainText('UNCLAIMED');
+        await expect(targetCard).toContainText('Unclaimed');
         await expect(
           targetCard.getByTestId('connectshyft-thread-last-inbound-number'),
-        ).toContainText(threadContext.lastInboundCsNumberId);
+        ).toContainText('cs-number inbound line configured');
         await expect(
           targetCard.getByTestId('connectshyft-thread-preferred-outbound-number'),
-        ).toContainText(threadContext.preferredOutboundCsNumberId);
+        ).toContainText('cs-number outbound line configured');
       },
     );
 
@@ -149,13 +154,11 @@ test.describe(
         await openConversationAction.click();
         expect((await secondEnsureResponse).status()).toBe(201);
 
-        const targetCard = page
-          .getByTestId('connectshyft-thread-card')
-          .filter({ hasText: threadContext.lastInboundCsNumberId });
+        const targetCard = page.getByTestId(`connectshyft-thread-card-${threadContext.threadId}`);
         await expect(targetCard).toHaveCount(1);
         await expect(
           targetCard.getByTestId('connectshyft-thread-state-chip'),
-        ).toHaveText('UNCLAIMED');
+        ).toHaveText('Unclaimed');
       },
     );
 

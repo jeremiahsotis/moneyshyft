@@ -151,7 +151,7 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
       await expect(page.getByTestId('connectshyft-thread-header-neighbor-context')).toBeVisible();
       await expect(page.getByTestId('connectshyft-thread-header-conference-context')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Text' })).toBeVisible();
+      await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toBeVisible();
 
       await page.goto(
@@ -162,7 +162,7 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
         }),
       );
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Text' })).toBeVisible();
+      await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
 
@@ -174,7 +174,7 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
         }),
       );
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Send Message' })).toBeVisible();
+      await expect(page.getByTestId('connectshyft-send-message-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Close' })).toHaveCount(0);
     },
   );
@@ -225,11 +225,11 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
 
         await test.step(`action discoverability remains explicit on ${viewport.label}`, async () => {
           await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-          const sendMessageButton = page.getByRole('button', { name: 'Send Message' });
-          if ((await sendMessageButton.count()) > 0) {
-            await expect(sendMessageButton).toBeVisible();
+          const sendMessageAction = page.getByTestId('connectshyft-send-message-thread-action');
+          if ((await sendMessageAction.count()) > 0) {
+            await expect(sendMessageAction).toBeVisible();
           } else {
-            await expect(page.getByRole('button', { name: 'Text' })).toBeVisible();
+            await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
           }
           await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
           await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
