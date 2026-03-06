@@ -119,6 +119,15 @@ is_default_branch=false
 if [[ "$branch" == "main" || "$branch" == "master" || "$branch" == "codex/dev" || "$branch" == "production" ]]; then
   is_default_branch=true
 fi
+is_production_promotion_context=false
+if [[ "$branch" == "production" || "$base_branch" == "production" ]]; then
+  is_production_promotion_context=true
+fi
+stories_dir="_bmad-output/implementation-artifacts"
+has_stories_dir=false
+if [[ -d "$stories_dir" ]]; then
+  has_stories_dir=true
+fi
 
 if [[ "$event" == "pull_request" && ("$is_default_branch" == "true" || "$branch" == "detached") ]]; then
   echo "Policy check failed: pull requests must not run directly from $branch"
@@ -286,17 +295,26 @@ fi
 bash scripts/enforce-envelope-helper-guard.sh
 bash scripts/enforce-connectshyft-provider-abstraction-guard.sh
 node scripts/enforce-workspace-boundaries.js
-status_sync_args=(--status-file "$lane_sprint_status_file")
-if [[ -n "$story_branch_id" && -n "${story_branch_slug:-}" ]]; then
-  status_sync_key="${story_branch_id}-${story_branch_slug}"
-  status_sync_story_file="_bmad-output/implementation-artifacts/${status_sync_key}.md"
-  if [[ ! -f "$status_sync_story_file" ]] && [[ "$story_branch_slug" == "${LANE_SLUG_TOKEN}-"* ]]; then
-    status_sync_key="${story_branch_id}-${story_branch_slug#${LANE_SLUG_TOKEN}-}"
-    status_sync_story_file="_bmad-output/implementation-artifacts/${status_sync_key}.md"
+if [[ "$has_stories_dir" == "true" ]]; then
+  status_sync_args=(--status-file "$lane_sprint_status_file")
+  if [[ -n "$story_branch_id" && -n "${story_branch_slug:-}" ]]; then
+    status_sync_key="${story_branch_id}-${story_branch_slug}"
+    status_sync_story_file="${stories_dir}/${status_sync_key}.md"
+    if [[ ! -f "$status_sync_story_file" ]] && [[ "$story_branch_slug" == "${LANE_SLUG_TOKEN}-"* ]]; then
+      status_sync_key="${story_branch_id}-${story_branch_slug#${LANE_SLUG_TOKEN}-}"
+      status_sync_story_file="${stories_dir}/${status_sync_key}.md"
+    fi
+    status_sync_args+=(--story-key "$status_sync_key")
   fi
-  status_sync_args+=(--story-key "$status_sync_key")
+  bash scripts/enforce-story-status-sync.sh "${status_sync_args[@]}"
+else
+  if [[ "$is_production_promotion_context" == "true" ]]; then
+    echo "Story status sync check skipped: ${stories_dir} is excluded from production promotion snapshots."
+  else
+    echo "Policy check failed: missing stories directory: ${stories_dir}"
+    exit 1
+  fi
 fi
-bash scripts/enforce-story-status-sync.sh "${status_sync_args[@]}"
 
 if [[ -n "${status_sync_story_file:-}" && -f "$status_sync_story_file" ]]; then
   artifact_hygiene_base_ref="${base_branch:-codex/dev}"
@@ -310,7 +328,16 @@ if [[ -n "${status_sync_story_file:-}" && -f "$status_sync_story_file" ]]; then
 fi
 
 node scripts/enforce-project-lane.js
-bash scripts/enforce-operability-closeout-guard.sh
+if [[ "$has_stories_dir" == "true" ]]; then
+  bash scripts/enforce-operability-closeout-guard.sh
+else
+  if [[ "$is_production_promotion_context" == "true" ]]; then
+    echo "Operability closeout guard skipped: ${stories_dir} is excluded from production promotion snapshots."
+  else
+    echo "Policy check failed: missing stories directory: ${stories_dir}"
+    exit 1
+  fi
+fi
 bash scripts/enforce-verified-patch-intake-guard.sh
 
 echo "Policy check passed"
