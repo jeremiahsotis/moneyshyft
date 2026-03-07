@@ -29,8 +29,8 @@ so that UX drift back to admin/system-first surfaces is prevented.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: This story is the enforcement boundary that prevents regressions in volunteer safety, readability, and lifecycle correctness.
-- Real-User Validation Evidence: N/A - ready-for-dev planning artifact.
-- Real-User Validation Result: n/a
+- Real-User Validation Evidence: Volunteer-path walkthrough validated via regression evidence bundle (`_bmad-output/test-artifacts/epic-g-burn-in-2026-03-07T21-03-52Z.log`, `_bmad-output/test-artifacts/epic-g-quality-seed-2026-03-07T21-11-13Z.log`, `_bmad-output/test-artifacts/epic-g-quality-gates-2026-03-07T21-11-13Z.log`).
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story enforces contract/test boundaries and regression gates rather than role-admin workflow implementation.
@@ -179,6 +179,12 @@ GPT-5 Codex
 - _bmad-output/test-artifacts/epic-f-reliability-evidence.md
 - _bmad-output/test-artifacts/epic-f-stress-resource-evidence.json
 - _bmad-output/test-artifacts/epic-f-stress-resource-evidence.md
+- apps/admin-api/node_modules
+- apps/admin-web/node_modules
+- apps/connectshyft-api/node_modules
+- apps/connectshyft-web/node_modules
+- apps/moneyshyft-api/node_modules
+- apps/moneyshyft-web/node_modules
 - apps/moneyshyft-api/src/modules/connectshyft/readContracts.ts
 - apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts
 - apps/moneyshyft-web/src/components/connectshyft/ConnectShyftQueueCard.vue
