@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { useRoute } from 'vue-router';
+import { useRoute, type LocationQueryRaw } from 'vue-router';
 import { CONNECTSHYFT_ACCESSIBILITY_LOCKS } from '@/features/connectshyft/uiContracts';
 
 const route = useRoute();
@@ -57,6 +57,11 @@ const navItems = [
   },
 ];
 
+const TRANSIENT_QUERY_KEYS = new Set([
+  'settingsRefusal',
+  'settingsRefusedPath',
+]);
+
 const isActive = (path: string): boolean => {
   if (path === '/app/connectshyft/more') {
     return route.path.startsWith('/app/connectshyft/more')
@@ -66,10 +71,19 @@ const isActive = (path: string): boolean => {
   return route.path === path || route.path.startsWith(`${path}/`);
 };
 
-const buildNavTarget = (path: string): { path: string; query: typeof route.query } => {
+const buildNavTarget = (path: string): { path: string; query: LocationQueryRaw } => {
+  const query: LocationQueryRaw = {};
+
+  for (const [key, value] of Object.entries(route.query)) {
+    if (TRANSIENT_QUERY_KEYS.has(key)) {
+      continue;
+    }
+    query[key] = value;
+  }
+
   return {
     path,
-    query: route.query,
+    query,
   };
 };
 </script>

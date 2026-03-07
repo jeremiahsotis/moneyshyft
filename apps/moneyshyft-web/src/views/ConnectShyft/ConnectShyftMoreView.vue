@@ -32,6 +32,7 @@
             to="/app/connectshyft/directory"
             :style="tapTargetStyle"
             data-testid="connectshyft-more-option-directory"
+            aria-label="Open directory"
             class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
           >
             <p class="font-semibold text-slate-900">Directory</p>
@@ -39,9 +40,10 @@
           </RouterLink>
 
           <RouterLink
-            to="/settings"
+            to="/app/connectshyft/settings"
             :style="tapTargetStyle"
             data-testid="connectshyft-more-option-settings"
+            aria-label="Open ConnectShyft settings"
             class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
           >
             <p class="font-semibold text-slate-900">Settings</p>
@@ -70,6 +72,7 @@
             type="button"
             :style="tapTargetStyle"
             data-testid="connectshyft-more-option-sign-out"
+            aria-label="Sign out"
             class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
             @click="handleSignOut"
           >
