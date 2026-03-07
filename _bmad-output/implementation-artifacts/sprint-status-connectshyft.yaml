@@ -91,10 +91,10 @@ development_status:
   epic-ux-remediation-retrospective: optional
   epic-g: in-progress
   g-1-design-tokens-and-shared-conversation-primitives: done
-  g-2-inbox-and-mine-surface-rebuild: review
+  g-2-inbox-and-mine-surface-rebuild: done
   g-3-thread-detail-conversation-first-rebuild: done
-  g-4-add-neighbor-and-directory-rebuild: review
-  g-5-more-settings-volunteer-ia-and-admin-separation: review
+  g-4-add-neighbor-and-directory-rebuild: done
+  g-5-more-settings-volunteer-ia-and-admin-separation: done
   g-6-volunteer-contract-boundary-and-regression-hardening: ready-for-dev
   epic-g-retrospective: optional
 

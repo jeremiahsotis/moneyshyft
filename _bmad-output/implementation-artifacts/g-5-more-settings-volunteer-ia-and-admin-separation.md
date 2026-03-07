@@ -1,6 +1,6 @@
 # Story g.5: More/Settings Volunteer IA and Admin Separation
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
