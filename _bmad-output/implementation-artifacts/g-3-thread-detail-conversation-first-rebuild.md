@@ -160,11 +160,36 @@ GPT-5 Codex
 
 - _bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- _bmad-output/test-artifacts/atdd-checklist-g-3.md
+- _bmad-output/test-artifacts/automation-summary.md
+- _bmad-output/test-artifacts/epic-f-performance-evidence.json
+- _bmad-output/test-artifacts/epic-f-performance-evidence.md
+- _bmad-output/test-artifacts/epic-f-reliability-evidence.json
+- _bmad-output/test-artifacts/epic-f-reliability-evidence.md
+- _bmad-output/test-artifacts/epic-f-stress-resource-evidence.json
+- _bmad-output/test-artifacts/epic-f-stress-resource-evidence.md
+- _bmad-output/test-artifacts/test-review.md
+- apps/admin-api/node_modules
+- apps/connectshyft-api/node_modules
+- apps/connectshyft-web/node_modules
+- apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts
+- apps/connectshyft-api/src/modules/connectshyft/readContracts.ts
 - apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts
+- apps/moneyshyft-api/node_modules
+- apps/moneyshyft-api/src/modules/connectshyft/providerCorrelationMappings.ts
+- apps/moneyshyft-api/src/modules/connectshyft/readContracts.ts
+- apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts
+- apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.webhook-replay-signature.test.ts
+- apps/moneyshyft-web/node_modules
+- apps/moneyshyft-web/src/features/connectshyft/readContracts.ts
 - apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts
 - apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts
+- tests/api/platform/g-3-thread-detail-conversation-first-rebuild.automate.api.spec.ts
 - tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts
+- tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.automate.spec.ts
+- tests/support/factories/connectShyftStoryG3Factory.ts
+- tests/support/fixtures/connectShyftStoryG3.fixture.ts
 
 ## Senior Developer Review (AI)
 
