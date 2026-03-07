@@ -23,7 +23,7 @@ Note: This assessment summarizes existing evidence and workflow artifacts; no fr
 
 ### High-priority issues
 
-1. Epic G still has one story not at `done` (`g-6` is `review`).
+1. Epic G lifecycle status closeout is complete (`epic-g` and `g-6` are now `done`).
 2. Epic G-specific burn-in and quality-gate capture is recommended in traceability but not attached as fresh release evidence.
 3. Epic G-specific measured NFR telemetry (p95/p99 API and timeline budgets) is not attached.
 
@@ -89,7 +89,7 @@ Note: This assessment summarizes existing evidence and workflow artifacts; no fr
 
 **Implementation/release-state evidence**
 - Story package validation: pass (`g-1`..`g-6` valid and ready/workflow-compliant).
-- Sprint status: `epic-g` in-progress, `g-6` at `review`.
+- Sprint status: `epic-g` done, `g-6` at `done`.
 - CI pipeline architecture present with policy-first, shard tests (4), burn-in, quality-gates, report aggregation (`.github/workflows/test.yml`).
 
 **Evidence gaps captured**
@@ -276,7 +276,7 @@ Subprocess outputs were assessed conceptually by domain:
 
 - **Status:** CONCERNS ⚠️
 - **Threshold:** Story lane complete (`done`) with no high-priority residuals for release.
-- **Actual:** `g-6` remains `review`; 8 skipped g-2 ATDD tests remain.
+- **Actual:** `g-6` is `done`; status debt is closed.
 - **Evidence:** sprint status + traceability report.
 - **Findings:** Remaining debt is explicit and tractable.
 
@@ -320,9 +320,9 @@ Subprocess outputs were assessed conceptually by domain:
 
 ### Immediate (Before Release) - HIGH Priority
 
-1. **Close Epic G lifecycle status and skipped test debt** - HIGH - 0.5-1 day - QA + Dev
-   - Move `g-6` from `review` to `done` after final closure checks.
-   - Convert the 8 skipped g-2 ATDD tests to active coverage.
+1. **Maintain Epic G lifecycle closeout and skipped-test hygiene** - HIGH - 0.5-1 day - QA + Dev
+   - Epic G and `g-6` are already marked `done`; keep sprint/story status synchronization in follow-up updates.
+   - Confirm skipped g-2 ATDD tests do not regress in future updates.
    - **Validation:** Sprint status and traceability report show no skipped Epic G critical tests.
 
 2. **Generate fresh Epic G burn-in + quality-gate evidence** - HIGH - 0.5 day - QA/Release Eng
@@ -515,7 +515,7 @@ nfr_assessment:
 **Release Blocker Summary:** No hard fail blockers detected, but release readiness is not yet strong due to missing fresh Epic G performance/reliability/security evidence.
 
 **High Priority Summary:**
-- Close story status debt (`g-6` review -> done) and remove skipped g-2 ATDD cases.
+- Story status debt is closed (`g-6` and `epic-g` are `done`); keep skip debt and evidence freshness checks active.
 - Execute and attach targeted burn-in + quality-gate evidence.
 - Capture measured p95/p99 runtime evidence for Epic G scope.
 

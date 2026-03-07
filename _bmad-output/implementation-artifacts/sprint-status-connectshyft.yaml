@@ -83,13 +83,13 @@ development_status:
   f-3-provider-leg-message-correlation-fallback-mapping: done
   f-4-telnyx-adapter-implementation-and-cutover-guardrails: done
   epic-f-retrospective: optional
-  epic-ux-remediation: in-progress
+  epic-ux-remediation: done
   ux-r1-mobile-first-inbox-mine-thread-redesign: done
   ux-r2-accessibility-and-language-hardening: done
   ux-r3-voicemail-and-indicator-behavior: done
   ux-r4-outbound-policy-guardrail-ui: done
   epic-ux-remediation-retrospective: optional
-  epic-g: in-progress
+  epic-g: done
   g-1-design-tokens-and-shared-conversation-primitives: done
   g-2-inbox-and-mine-surface-rebuild: done
   g-3-thread-detail-conversation-first-rebuild: done
