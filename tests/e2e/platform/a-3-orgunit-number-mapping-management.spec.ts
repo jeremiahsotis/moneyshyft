@@ -34,8 +34,13 @@ const createScopedNumbersContext = (
 const buildNumbersUrl = (
   scope: NumberMappingScope,
   tenantRole = 'ORGUNIT_ADMIN',
-): string =>
-  `/app/connectshyft/settings/numbers?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=${encodeURIComponent(scope.tenantId)}&orgUnitId=${encodeURIComponent(scope.orgUnitId)}&tenantRole=${encodeURIComponent(tenantRole)}`;
+): string => {
+  const orgUnitMembershipsQuery = tenantRole === 'ORGUNIT_ADMIN'
+    ? `&orgUnitMemberships=${encodeURIComponent(scope.orgUnitId)}`
+    : '';
+
+  return `/app/connectshyft/settings/numbers?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=${encodeURIComponent(scope.tenantId)}&orgUnitId=${encodeURIComponent(scope.orgUnitId)}&tenantRole=${encodeURIComponent(tenantRole)}${orgUnitMembershipsQuery}`;
+};
 
 const saveNumberMapping = async (
   page: Page,

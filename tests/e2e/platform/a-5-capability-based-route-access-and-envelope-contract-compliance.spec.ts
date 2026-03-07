@@ -14,7 +14,7 @@ test.describe(
     test.describe.configure({ mode: 'serial' });
 
     test(
-      '[P0] orgUnit-member number mapping writes show deterministic refusal guidance and do not create persisted rows @P0',
+      '[P0] orgUnit-member number mapping admin-path deep links show deterministic refusal guidance and no admin controls @P0',
       async ({ page }) => {
         await login(page);
         await page.goto(
@@ -23,37 +23,18 @@ test.describe(
           ),
         );
 
-        await expect(
-          page.getByRole('heading', {
-            name: 'ConnectShyft Numbers & OrgUnit Config',
-          }),
-        ).toBeVisible();
-
-        await page.getByTestId('connectshyft-number-input').fill('+12605550991');
-        await page.getByTestId('connectshyft-number-label-input').fill('A5 Forbidden Number');
-
-        const saveResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/connectshyft/numbers')
-            && response.request().method() === 'POST',
+        await expect(page).toHaveURL(/\/app\/connectshyft\/settings\?/);
+        await expect(page.getByTestId('connectshyft-settings-refusal-guidance')).toBeVisible();
+        await expect(page.getByTestId('connectshyft-settings-refusal-guidance')).toContainText(
+          '/app/connectshyft/settings/numbers',
         );
-
-        await page.getByRole('button', { name: 'Save Number Mapping' }).click();
-        await saveResponse;
-
-        await expect(page.getByTestId('connectshyft-number-validation-error')).toContainText(
-          'authorized ConnectShyft role',
-        );
-        await expect(
-          page.getByTestId('connectshyft-number-mapping-row').filter({
-            hasText: 'A5 Forbidden Number',
-          }),
-        ).toHaveCount(0);
+        await expect(page.getByTestId('connectshyft-number-mappings-form')).toHaveCount(0);
+        await expect(page.getByTestId('connectshyft-more-admin-option-numbers')).toHaveCount(0);
       },
     );
 
     test(
-      '[P0] tenant-viewer escalation save attempts keep refusal guidance visible and hide success indicators @P0',
+      '[P0] tenant-viewer escalation admin-path deep links keep refusal guidance visible and hide admin controls @P0',
       async ({ page }) => {
         await login(page);
         await page.goto(
@@ -62,28 +43,13 @@ test.describe(
           ),
         );
 
-        await expect(
-          page.getByRole('heading', {
-            name: 'ConnectShyft Escalation Settings',
-          }),
-        ).toBeVisible();
-
-        await expect(page.getByTestId('connectshyft-escalation-validation-error')).toContainText(
-          'authorized orgUnit role',
+        await expect(page).toHaveURL(/\/app\/connectshyft\/settings\?/);
+        await expect(page.getByTestId('connectshyft-settings-refusal-guidance')).toBeVisible();
+        await expect(page.getByTestId('connectshyft-settings-refusal-guidance')).toContainText(
+          '/app/connectshyft/settings/escalation',
         );
-
-        const saveResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/connectshyft/escalation/config')
-            && response.request().method() === 'PUT',
-        );
-        await page.getByRole('button', { name: 'Save Escalation Settings' }).click();
-        await saveResponse;
-
-        await expect(page.getByTestId('connectshyft-escalation-validation-error')).toContainText(
-          'authorized orgUnit role',
-        );
-        await expect(page.getByTestId('connectshyft-escalation-save-success')).toHaveCount(0);
+        await expect(page.getByTestId('connectshyft-escalation-settings-form')).toHaveCount(0);
+        await expect(page.getByTestId('connectshyft-more-admin-option-escalation')).toHaveCount(0);
       },
     );
 
