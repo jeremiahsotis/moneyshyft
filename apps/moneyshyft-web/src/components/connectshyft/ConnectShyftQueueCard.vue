@@ -4,19 +4,16 @@
     class="rounded-xl border border-slate-200 p-1"
     :style="queueCardStyle"
   >
-    <div
-      role="button"
-      tabindex="0"
+    <button
+      type="button"
       data-testid="connectshyft-queue-card-tap-target"
       :aria-label="tapTargetAriaLabel"
       :style="tapTargetStyle"
       :class="[
-        'w-full rounded-xl p-3 text-left transition hover:bg-slate-50',
+        'w-full rounded-xl border-0 bg-transparent p-3 text-left transition hover:bg-slate-50',
         focusRingClass,
       ]"
       @click="emit('open-thread', threadId)"
-      @keydown.enter.prevent="emit('open-thread', threadId)"
-      @keydown.space.prevent="emit('open-thread', threadId)"
     >
       <div
         data-testid="connectshyft-thread-card"
@@ -102,23 +99,22 @@
             {{ preferredOutboundContext }}
           </p>
         </div>
-
-        <div class="flex justify-end">
-          <RouterLink
-            :to="threadPath"
-            data-testid="connectshyft-thread-card-primary-action"
-            :aria-label="tapTargetAriaLabel"
-            :class="[
-              'inline-flex min-h-[44px] min-w-[88px] items-center justify-center rounded-lg bg-slate-900 px-4 font-semibold text-white',
-              focusRingClass,
-            ]"
-            :style="tapTargetStyle"
-            @click.stop
-          >
-            Open
-          </RouterLink>
-        </div>
       </div>
+    </button>
+
+    <div class="flex justify-end px-3 pb-3">
+      <RouterLink
+        :to="threadPath"
+        data-testid="connectshyft-thread-card-primary-action"
+        :aria-label="tapTargetAriaLabel"
+        :class="[
+          'inline-flex min-h-[44px] min-w-[88px] items-center justify-center rounded-lg bg-slate-900 px-4 font-semibold text-white',
+          focusRingClass,
+        ]"
+        :style="tapTargetStyle"
+      >
+        Open
+      </RouterLink>
     </div>
   </article>
 </template>

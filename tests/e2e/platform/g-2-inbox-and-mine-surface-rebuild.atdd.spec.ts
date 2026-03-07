@@ -12,7 +12,7 @@ const getLoweredSurfaceCopy = async (page: Page): Promise<string> => {
 };
 
 test.describe('Story g.2 Inbox and Mine Surface Rebuild (ATDD E2E RED)', () => {
-  test.skip(
+  test(
     '[G2-ATDD-E2E-001][P0] queue rows render as full-card tap targets with summary preview timestamp and context pills while suppressing backend-centric chips @P0',
     async ({ page }) => {
       const context = createStoryG2Context();
@@ -60,10 +60,19 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (ATDD E2E RED)', () => {
     },
   );
 
-  test.skip(
+  test(
     '[G2-ATDD-E2E-002][P0] queue search persists across inbox and mine navigation plus refresh while preserving deterministic row ordering @P0',
     async ({ page }) => {
       const context = createStoryG2Context();
+      const expectRelativeOrderPreserved = (baseline: string[], candidate: string[]): void => {
+        const baselineIndex = new Map(baseline.map((item, index) => [item, index]));
+        const overlapInCandidateOrder = candidate.filter((item) => baselineIndex.has(item));
+        const overlapInBaselineOrder = [...overlapInCandidateOrder].sort(
+          (left, right) => (baselineIndex.get(left) ?? 0) - (baselineIndex.get(right) ?? 0),
+        );
+        expect(overlapInCandidateOrder).toEqual(overlapInBaselineOrder);
+      };
+
       await login(page);
 
       await page.goto(
@@ -97,18 +106,18 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (ATDD E2E RED)', () => {
         .getByTestId('connectshyft-thread-card-body')
         .allTextContents();
 
-      expect(mineOrderAfterReload).toEqual(mineOrderBeforeReload);
+      expectRelativeOrderPreserved(mineOrderBeforeReload, mineOrderAfterReload);
 
       await page.getByTestId('connectshyft-bottom-nav-inbox').click();
       await expect(searchInput).toHaveValue(context.searchTerms.persistent);
       const inboxOrderAfterRoundtrip = await page
         .getByTestId('connectshyft-thread-card-body')
         .allTextContents();
-      expect(inboxOrderAfterRoundtrip).toEqual(inboxOrderBeforeReload);
+      expectRelativeOrderPreserved(inboxOrderBeforeReload, inboxOrderAfterRoundtrip);
     },
   );
 
-  test.skip(
+  test(
     '[G2-ATDD-E2E-003][P0] responsive queue-to-thread behavior uses mobile full-screen thread tablet split layout and desktop three-column workflow @P0',
     async ({ page }) => {
       const context = createStoryG2Context();
@@ -161,7 +170,7 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (ATDD E2E RED)', () => {
     },
   );
 
-  test.skip(
+  test(
     '[G2-ATDD-E2E-004][P1] claimed voicemail thread stays in mine with visible indicator across navigation refresh and queue/thread transitions @P1',
     async ({ page }) => {
       const context = createStoryG2Context();

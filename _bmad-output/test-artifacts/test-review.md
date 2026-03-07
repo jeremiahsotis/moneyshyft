@@ -4,11 +4,11 @@ lastStep: 'step-04-generate-report'
 lastSaved: '2026-03-07'
 ---
 
-# Test Quality Review: g-4-add-neighbor-and-directory-rebuild
+# Test Quality Review: epic-g-suite
 
 **Quality Score**: 77/100 (C - Acceptable)
 **Review Date**: 2026-03-07
-**Review Scope**: directory (story artifact with linked test specs)
+**Review Scope**: directory (Epic G API + E2E suite)
 **Reviewer**: TEA Agent (Murat)
 
 ---
@@ -19,29 +19,23 @@ Note: This review audits existing tests; it does not generate tests.
 
 **Overall Assessment**: Acceptable
 
-**Recommendation**: Request Changes
+**Recommendation**: Approve with Comments
 
 ### Key Strengths
 
-✅ Strong explicit assertion coverage with 152 total `expect(...)` assertions across the reviewed g.4 suite.
-✅ No hard waits (`waitForTimeout`) or serial-only blocks were found.
-✅ Test IDs and priority markers are consistent (`[G4-...][P0|P1]` + `@P0/@P1`).
-✅ Network-first synchronization patterns (`waitForResponse` before action) are used in critical directory-start paths.
-✅ Story acceptance criteria AC1-AC5 are covered by at least one active E2E/API test path.
+- No hard waits detected (`waitForTimeout`, `cy.wait(ms)`): synchronization discipline is strong overall.
+- Strong traceability hygiene: 114 story-linked test IDs and 232 priority markers across the Epic G suite.
+- Broad scope coverage: 29 files, 110 executable tests spanning `g-1` through `g-6` plus cross-story `g-epic` regression.
 
 ### Key Weaknesses
 
-❌ API ATDD contract tests are fully skipped (`G4-ATDD-API-001..005`), leaving a major enforcement gap in CI.
-❌ Time-based seed generation via `Date.now()` introduces non-reproducible test data behavior.
-❌ Seeded entities are created in several tests without explicit per-test teardown guarantees.
-❌ Two files exceed the preferred 300-line maintainability threshold.
-❌ Helper logic is duplicated between g.4 E2E ATDD and automate specs.
+- Maintainability is the primary drag: several API files are 250+ lines and harder to review/debug quickly.
+- Wrapper/case coverage traceability needs tightening where files contain describe wrappers or case slices without direct `test(...)` blocks.
+- E2E runtime cost is elevated by repeated auth bootstrap patterns in `beforeEach` for multiple story suites.
 
 ### Summary
 
-This review covered story artifact `_bmad-output/implementation-artifacts/g-4-add-neighbor-and-directory-rebuild.md` plus four linked test files (2 E2E, 2 API). Test quality is directionally strong on assertions, selector strategy, and network synchronization. However, quality-gate confidence is reduced by one high-impact gap: the ATDD API suite is entirely skipped, which weakens direct CI protection for critical API acceptance behavior.
-
-Risk posture is moderate: no immediate flakiness anti-patterns (hard waits, random calls, serial bottlenecks), but deterministic replay and isolation discipline should be tightened before final sign-off.
+Epic G test quality is acceptable and merge-capable, with no critical blockers and solid coverage discipline across story and regression surfaces. The largest quality gap is maintainability/operational efficiency rather than correctness. Addressing file-size decomposition, wrapper traceability, and auth session reuse should move this suite from acceptable to good/excellent quickly.
 
 ---
 
@@ -49,237 +43,126 @@ Risk posture is moderate: no immediate flakiness anti-patterns (hard waits, rand
 
 | Criterion                            | Status  | Violations | Notes |
 | ------------------------------------ | ------- | ---------- | ----- |
-| BDD Format (Given-When-Then)         | ✅ PASS | 0          | Scenarios follow Given/When/Then structure in test comments and flow |
-| Test IDs                             | ✅ PASS | 0          | All tests include story-linked IDs |
-| Priority Markers (P0/P1/P2/P3)       | ✅ PASS | 0          | All cases are tagged P0/P1 |
+| BDD Format (Given-When-Then)         | ✅ PASS | 0          | Behavior-oriented titles and story-linked IDs are consistently present |
+| Test IDs                             | ✅ PASS | 0          | 114 IDs detected across Epic G files |
+| Priority Markers (P0/P1/P2/P3)       | ✅ PASS | 0          | 232 priority markers detected |
 | Hard Waits (sleep, waitForTimeout)   | ✅ PASS | 0          | No hard waits detected |
-| Determinism (no conditionals)        | ⚠️ WARN | 2          | `Date.now()` used for seed values in two automate specs |
-| Isolation (cleanup, no shared state) | ⚠️ WARN | 3          | Create/ensure flows seed data without explicit teardown in-file |
-| Fixture Patterns                     | ⚠️ WARN | 1          | Shared helper logic duplicated instead of centralized fixture/helper module |
-| Data Factories                       | ✅ PASS | 0          | Story factory payload/context utilities used consistently |
-| Network-First Pattern                | ✅ PASS | 0          | Response waits are registered before triggering actions |
-| Explicit Assertions                  | ✅ PASS | 0          | Assertions remain visible in test bodies |
-| Test Length (≤300 lines)             | ⚠️ WARN | 2          | 366-line and 301-line files exceed target size |
-| Test Duration (≤1.5 min)             | ⚠️ WARN | 1          | Runtime not measured here; high setup density suggests monitoring needed |
-| Flakiness Patterns                   | ⚠️ WARN | 2          | Time-dependent seeds and skipped critical API suite reduce reliability confidence |
+| Determinism (no conditionals)        | ⚠️ WARN | 12         | Low-severity navigation/context coupling patterns identified |
+| Isolation (cleanup, no shared state) | ⚠️ WARN | 9          | Shared module context + selective teardown gaps in some E2E files |
+| Fixture Patterns                     | ✅ PASS | 0          | Story fixtures/factory patterns are used consistently |
+| Data Factories                       | ✅ PASS | 0          | Factory/context helpers are broadly used across API/E2E |
+| Network-First Pattern                | ⚠️ WARN | 5          | Some files rely on implicit sync patterns; explicit network synchronization can improve reliability |
+| Explicit Assertions                  | ✅ PASS | 0          | Assertions are visible and extensive across the suite |
+| Test Length (≤300 lines)             | ⚠️ WARN | 16         | Multiple files exceed preferred maintainability range |
+| Test Duration (≤1.5 min)             | ⚠️ WARN | 5          | Static review indicates repeated auth setup contributes avoidable runtime overhead |
+| Flakiness Patterns                   | ⚠️ WARN | 12         | Mostly low-severity deterministic-coupling heuristics |
 
-**Total Violations**: 0 Critical, 4 High, 6 Medium, 1 Low
+**Total Violations**: 0 Critical, 0 High, 17 Medium, 30 Low
 
 ---
 
 ## Quality Score Breakdown
 
 ```text
-Starting Score:          100
-Critical Violations:     -0 × 10 = -0
-High Violations:         -4 × 5 = -20
-Medium Violations:       -6 × 2 = -12
-Low Violations:          -1 × 1 = -1
+Weighted Dimension Scoring:
 
-Bonus Points:
-  Excellent BDD:          +0
-  Comprehensive Fixtures: +0
-  Data Factories:         +5
-  Network-First:          +5
-  Perfect Isolation:      +0
-  All Test IDs:           +0
-                          --------
-Total Bonus:              +10
+Determinism:       88 × 0.25 = 22.00
+Isolation:         85 × 0.25 = 21.25
+Maintainability:   47 × 0.20 =  9.40
+Coverage:          83 × 0.15 = 12.45
+Performance:       78 × 0.15 = 11.70
 
-Final Score:              77/100
-Grade:                    C
+Final Score:                 76.80 → 77/100
+Grade:                       C
 ```
 
 ---
 
 ## Critical Issues (Must Fix)
 
-No critical issues detected. ✅
+No critical issues detected.
 
 ---
 
 ## Recommendations (Should Fix)
 
-### 1. Unskip the g.4 ATDD API suite to restore CI contract enforcement
-
-**Severity**: P1 (High)
-**Location**: `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.atdd.api.spec.ts:58`
-**Criterion**: Coverage
-**Knowledge Base**: [test-quality](../../../_bmad/tea/testarch/knowledge/test-quality.md)
-
-**Issue Description**:
-All five ATDD API tests are currently `test.skip(...)`. This removes direct CI enforcement for core contract behaviors tied to R-G-004 and can hide regressions that E2E alone may not catch quickly.
-
-**Current Code**:
-```typescript
-// ⚠️ Could be improved (current implementation)
-test.skip(
-  '[G4-ATDD-API-001][P0] add-neighbor create contract accepts ... @P0',
-  async (...) => { ... }
-);
-```
-
-**Recommended Improvement**:
-```typescript
-// ✅ Better approach (recommended)
-test(
-  '[G4-ATDD-API-001][P0] add-neighbor create contract accepts ... @P0',
-  async (...) => { ... }
-);
-```
-
-**Benefits**:
-Restores deterministic API-level protection for acceptance criteria and reduces reliance on broader E2E-only signals.
-
-**Priority**:
-P1 because it directly affects quality-gate trust in critical story behavior.
-
-### 2. Replace `Date.now()` seed generation with deterministic fixture-driven seeds
-
-**Severity**: P1 (High)
-**Location**: `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts:171`, `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts:126`
-**Criterion**: Determinism
-**Knowledge Base**: [test-quality](../../../_bmad/tea/testarch/knowledge/test-quality.md)
-
-**Issue Description**:
-Time-derived seed values make exact reruns harder to reproduce and reduce deterministic debugging behavior under retries.
-
-**Current Code**:
-```typescript
-// ⚠️ Could be improved (current implementation)
-const seedSuffix = Date.now().toString();
-```
-
-**Recommended Improvement**:
-```typescript
-// ✅ Better approach (recommended)
-const seedSuffix = `${test.info().workerIndex}-${test.info().repeatEachIndex}-${scenarioId}`;
-```
-
-**Benefits**:
-Predictable data generation across reruns and easier triage of failed cases.
-
-**Priority**:
-P1 due to direct impact on repeatability and failure diagnosis.
-
-### 3. Add teardown discipline for seeded neighbors/threads
+### 1. Split long API suites into smaller behavior-focused specs
 
 **Severity**: P2 (Medium)
-**Location**: `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts:205`, `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts:168`
-**Criterion**: Isolation
-**Knowledge Base**: [data-factories](../../../_bmad/tea/testarch/knowledge/data-factories.md)
+**Location**:
+- `tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts`
+- `tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts`
+- `tests/api/platform/g-2-inbox-and-mine-surface-rebuild.atdd.api.spec.ts`
+- `tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts`
+- `tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts`
+- `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.atdd.api.spec.ts`
+- `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts`
 
-**Issue Description**:
-Multiple tests create records via API helpers but do not explicitly track/delete created entities in test-local teardown.
-
-**Current Code**:
-```typescript
-// ⚠️ Could be improved (current implementation)
-await createNeighborSeed(request, context, { ... });
-```
-
-**Recommended Improvement**:
-```typescript
-// ✅ Better approach (recommended)
-const createdNeighborIds: string[] = [];
-afterEach(async ({ request }) => {
-  for (const neighborId of createdNeighborIds) {
-    await apiRequest(request, { method: 'DELETE', path: `${context.paths.neighborsCollection}/${neighborId}` });
-  }
-});
-```
-
-**Benefits**:
-Improves parallel-run safety and reduces environment state buildup.
-
-**Priority**:
-P2 because current uniqueness strategy mitigates immediate collisions, but cleanup remains best practice.
-
-### 4. Split oversized specs and centralize duplicated g.4 helper code
-
-**Severity**: P2 (Medium)
-**Location**: `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts:1`, `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts:1`
 **Criterion**: Maintainability
-**Knowledge Base**: [fixtures-composition](../../../_bmad/tea/testarch/knowledge/fixtures-composition.md)
+**Knowledge Base**: `test-quality.md`, `fixtures-composition.md`
 
-**Issue Description**:
-Two files exceed length guidance and helper functions are duplicated across E2E specs.
+Large files increase cognitive load and slow triage. Split by contract slice (read contract, lifecycle/feedback, role/access, refusal paths) for faster failures and easier ownership.
 
-**Current Code**:
-```typescript
-// ⚠️ Could be improved (current implementation)
-const buildStoryG4UrlParams = (...) => { ... };
-const createNeighborSeed = async (...) => { ... };
-```
+### 2. Make wrapper/case coverage mapping explicit in traceability output
 
-**Recommended Improvement**:
-```typescript
-// ✅ Better approach (recommended)
-import {
-  buildStoryG4AddNeighborUrl,
-  buildStoryG4DirectoryUrl,
-  createNeighborSeed,
-  ensureExistingThreadSeed,
-} from '../../support/helpers/connectShyftStoryG4Helpers';
-```
+**Severity**: P2 (Medium)
+**Location**:
+- `tests/api/platform/g-2-inbox-and-mine-surface-rebuild.atdd.api.spec.ts`
+- `tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.atdd.spec.ts`
+- `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.lifecycle-and-replay.cases.ts`
+- `tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.dispatch-and-ownership.cases.ts`
 
-**Benefits**:
-Lower maintenance overhead, fewer drift bugs, and clearer test intent per file.
+**Criterion**: Coverage
+**Knowledge Base**: `selective-testing.md`, `test-levels-framework.md`
 
-**Priority**:
-P2 because this impacts long-term quality more than immediate correctness.
+Where files are case/wrapper oriented, add explicit parent-spec trace links and ensure negative-path assertions are represented at parent execution level.
+
+### 3. Move repeated E2E auth bootstrap from `beforeEach` to storage-state/session fixtures
+
+**Severity**: P2 (Medium)
+**Location**:
+- `tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts:51`
+- `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts:21`
+- `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts:22`
+- `tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.spec.ts:12`
+
+**Criterion**: Performance
+**Knowledge Base**: `auth-session.md`, `test-quality.md`
+
+Runtime can be reduced by reusing stable auth state for deterministic role contexts rather than logging in repeatedly per test.
+
+### 4. Reduce module-level shared context coupling in E2E files
+
+**Severity**: P3 (Low)
+**Location**:
+- `tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts:48`
+- `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts:15`
+- `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts:16`
+- `tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.spec.ts:9`
+- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts:29`
+- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts:33`
+- `tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts:10`
+
+**Criterion**: Isolation / Determinism
+**Knowledge Base**: `data-factories.md`, `test-healing-patterns.md`
+
+Prefer fixture-scoped or per-test context generation to reduce hidden cross-test coupling risk.
 
 ---
 
 ## Best Practices Found
 
-### 1. Network-first request synchronization before user action
+### 1. No hard-wait anti-patterns
 
-**Location**: `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts:276`
-**Pattern**: network-first
-**Knowledge Base**: [network-first](../../../_bmad/tea/testarch/knowledge/network-first.md)
+Hard waits were not detected across Epic G suite files, indicating strong deterministic wait discipline.
 
-**Why This Is Good**:
-Response waiter is established before clicking action controls, reducing race conditions.
+### 2. Strong traceability metadata
 
-**Code Example**:
-```typescript
-const ensureResponse = page.waitForResponse(
-  (response) =>
-    response.url().includes('/api/v1/connectshyft/threads')
-    && response.request().method() === 'POST',
-);
-await existingCard.getByTestId('connectshyft-directory-start-conversation-action').click();
-const ensured = await ensureResponse;
-```
+Test title ID/priority conventions are consistently applied, supporting risk-based execution and triage.
 
-**Use as Reference**:
-Apply this pattern consistently for all async UI transitions relying on backend side effects.
+### 3. Balanced API + E2E strategy
 
-### 2. Strong explicit assertion style in story-focused checks
-
-**Location**: `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts:226`
-**Pattern**: explicit assertions
-**Knowledge Base**: [test-quality](../../../_bmad/tea/testarch/knowledge/test-quality.md)
-
-**Why This Is Good**:
-Assertions remain in test bodies and validate key contract fields directly.
-
-**Code Example**:
-```typescript
-expect(body).toMatchObject({
-  ok: true,
-  code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
-});
-expect(body.data?.neighbor?.phones).toEqual(
-  expect.arrayContaining([
-    expect.objectContaining({ label: 'mobile', isShared: true, isPrimary: true }),
-  ]),
-);
-```
-
-**Use as Reference**:
-Keep this explicit assertion style as tests evolve.
+Epic G includes both service/API contract checks and user-surface E2E coverage, consistent with a healthy test-level mix.
 
 ---
 
@@ -287,36 +170,23 @@ Keep this explicit assertion style as tests evolve.
 
 ### File Metadata
 
-- **Scope Files Reviewed**:
-  - `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts` (366 lines, 12.85 KB)
-  - `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts` (292 lines, 10.01 KB)
-  - `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.atdd.api.spec.ts` (272 lines, 10.40 KB)
-  - `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts` (301 lines, 9.59 KB)
-- **Test Framework**: Playwright
-- **Language**: TypeScript
+- **Review Scope**: Epic G suite (`g-1`..`g-6` + `g-epic`)
+- **Total Files Reviewed**: 29
+- **Total Size**: 5,908 lines, 226,568 bytes
+- **Test Framework**: Playwright (API + E2E)
 
 ### Test Structure
 
-- **Describe Blocks**: 4
-- **Test Cases (it/test)**: 19 total
-- **Skipped Cases**: 5 (`G4-ATDD-API-001..005`)
-- **Average File Length**: 307.75 lines per file
-- **Factories/Context Utilities**: `createStoryG4Context`, `createStoryG4NeighborCreatePayload`, `createStoryG4ThreadEnsurePayload`
+- **Describe Blocks**: 29
+- **Test Cases (`test(...)`)**: 110
+- **Test IDs Detected**: 114
+- **Priority Markers Detected**: 232
+- **Hard Waits Detected**: 0
 
-### Test Coverage Scope
+### Priority Distribution
 
-- **Priority Distribution**:
-  - P0 (Critical): 11 tests
-  - P1 (High): 8 tests
-  - P2 (Medium): 0 tests
-  - P3 (Low): 0 tests
-  - Unknown: 0 tests
-
-### Assertions Analysis
-
-- **Total Assertions**: 152
-- **Assertions per Test**: 8.0 (avg)
-- **Assertion Types**: status/code checks, URL checks, DOM visibility/content checks, payload shape checks, lifecycle metadata checks
+- **P0/P1 markers**: heavily represented across stories and epic-regression files
+- **Unknown priority**: minimal (markers are broadly present)
 
 ---
 
@@ -324,27 +194,36 @@ Keep this explicit assertion style as tests evolve.
 
 ### Related Artifacts
 
-- **Story File**: `_bmad-output/implementation-artifacts/g-4-add-neighbor-and-directory-rebuild.md`
+- **Story Files**:
+  - `_bmad-output/implementation-artifacts/g-1-design-tokens-and-shared-conversation-primitives.md`
+  - `_bmad-output/implementation-artifacts/g-2-inbox-and-mine-surface-rebuild.md`
+  - `_bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md`
+  - `_bmad-output/implementation-artifacts/g-4-add-neighbor-and-directory-rebuild.md`
+  - `_bmad-output/implementation-artifacts/g-5-more-settings-volunteer-ia-and-admin-separation.md`
+  - `_bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md`
+- **Epic Validation**: `_bmad-output/implementation-artifacts/story-validation-epic-g-2026-03-06.md`
 - **Test Design**: `_bmad-output/test-artifacts/test-design-epic-G.md`
 - **Framework Config**: `playwright.config.ts`
 
-### Acceptance Criteria Validation
+### Story-to-Test Coverage Snapshot
 
-| Acceptance Criterion | Test ID(s) | Status | Notes |
-| -------------------- | ---------- | ------ | ----- |
-| AC1: Add Neighbor supports required field set | G4-ATDD-E2E-001, G4-ATDD-API-001 (skipped) | ✅ Covered (partial API enforcement gap) | E2E active; API ATDD currently skipped |
-| AC2: Validation refusal is clear/no partial writes | G4-ATDD-E2E-002, G4-AUTO-API-304, G4-ATDD-API-002 (skipped) | ✅ Covered (partial API enforcement gap) | Active API automate case covers refusal contract |
-| AC3: Directory search remains conference-scoped | G4-ATDD-E2E-003, G4-ATDD-API-003 (skipped) | ✅ Covered (partial API enforcement gap) | E2E active; API ATDD skipped |
-| AC4: Deterministic ensure open/start behavior | G4-ATDD-E2E-004/005, G4-AUTO-API-301/302, G4-ATDD-API-004/005 (skipped) | ✅ Covered (partial API enforcement gap) | E2E + API automate active |
-| AC5: Mobile/tablet layout touch-friendly/context-visible | G4-ATDD-E2E-006 | ✅ Covered | E2E active |
+| Story / Scope | Representative Tests | Status |
+| ------------- | -------------------- | ------ |
+| g-1 | `g-1-*.atdd.*`, `g-1-*.automate.*` (API + E2E) | ✅ Covered |
+| g-2 | `g-2-*.atdd.*`, `g-2-*.automate.*` + case files | ✅ Covered |
+| g-3 | `g-3-*.atdd.*`, `g-3-*.automate.*` (API + E2E) | ✅ Covered |
+| g-4 | `g-4-*.atdd.*`, `g-4-*.automate.*` (API + E2E) | ✅ Covered |
+| g-5 | `g-5-*.atdd.*`, `g-5-*.automate.*` (API + E2E) | ✅ Covered |
+| g-6 | `g-6-*.atdd.*`, `g-6-*.automate.*` + lifecycle case files | ✅ Covered |
+| Epic regression | `g-epic-volunteer-ux-regression.automate.*` | ✅ Covered |
 
-**Coverage**: 5/5 criteria covered (100%), with a major caveat that API ATDD canonical cases are skipped.
+**Coverage**: 6/6 Epic G story families + epic-regression suite present
 
 ---
 
 ## Knowledge Base References
 
-This review consulted the following TEA knowledge fragments:
+This review consulted TEA knowledge fragments:
 
 - `test-quality.md`
 - `data-factories.md`
@@ -366,101 +245,60 @@ This review consulted the following TEA knowledge fragments:
 - `fixtures-composition.md`
 - `playwright-cli.md`
 
+External references cross-checked:
+
+- https://playwright.dev/docs/best-practices
+- https://playwright.dev/docs/locators
+- https://docs.cypress.io/api/commands/intercept
+- https://docs.pact.io/provider
+
 ---
 
 ## Next Steps
 
 ### Immediate Actions (Before Merge)
 
-1. **Activate API ATDD g.4 tests**
-   - Priority: P1
-   - Owner: QA + Backend
-   - Estimated Effort: 2-4 hours
-
-2. **Replace Date.now-based seeds with deterministic fixture seeds**
-   - Priority: P1
-   - Owner: QA
-   - Estimated Effort: 1-2 hours
-
-3. **Add cleanup discipline for seeded entities in g.4 suites**
-   - Priority: P2
-   - Owner: QA
-   - Estimated Effort: 2-3 hours
+1. Split high-length API files in g-1..g-4 into smaller behavior slices.
+2. Add explicit traceability notes for wrapper/case files to executable parent specs.
+3. Convert repeated E2E auth bootstrap to storage-state/session fixtures.
 
 ### Follow-up Actions (Future PRs)
 
-1. **Split oversized g.4 specs and extract shared helper module**
-   - Priority: P2
-   - Target: next_sprint
-
-2. **Track per-file duration in CI and enforce 1.5-minute threshold alerts**
-   - Priority: P3
-   - Target: backlog
+1. Normalize module-level context creation into fixture/test scope for lower coupling.
+2. Add lightweight negative-path assertions in case files where only happy-path behavior exists.
 
 ### Re-Review Needed?
 
-⚠️ Re-review after high-priority fixes - request changes, then re-review.
+- ✅ No mandatory re-review required for merge.
+- ⚠️ Recommended targeted re-review after maintainability and auth-setup optimizations.
 
 ---
 
 ## Decision
 
-**Recommendation**: Request Changes
+**Recommendation**: Approve with Comments
 
 **Rationale**:
-The test suite demonstrates good engineering hygiene in assertions, selector usage, and network synchronization, but the skipped ATDD API suite creates a material quality-gate gap for critical contract behavior. Because those tests are tagged P0/P1 and map directly to high-risk story outcomes, they should be re-enabled (or replaced with equivalent active contract tests) before final confidence can be granted.
 
-Time-dependent seed generation (`Date.now()`) and limited cleanup discipline are secondary but meaningful reliability concerns. Addressing those changes will improve deterministic reruns and reduce long-run flake risk.
-
-> Test quality is acceptable with 77/100 score, but high-priority coverage and determinism fixes are needed before merge confidence is complete.
-
----
-
-## Appendix
-
-### Violation Summary by Location
-
-| Line | Severity | Criterion | Issue | Fix |
-| ---- | -------- | --------- | ----- | --- |
-| 58 | P1 | Coverage | ATDD API tests are skipped | Unskip or port to active runnable assertions |
-| 171 | P1 | Determinism | `Date.now()` used for seeded data | Use deterministic fixture seed helper |
-| 126 | P1 | Determinism | `Date.now()` in API automate seed path | Use deterministic fixture seed helper |
-| 1 | P1 | Maintainability | ATDD E2E file exceeds 300 lines | Split by behavior area |
-| 205 | P2 | Isolation | Seeded neighbors without explicit teardown | Add fixture/local cleanup hooks |
-| 168 | P2 | Isolation | API-seeded E2E data lacks teardown | Add teardown tracking/deletion |
-| 127 | P2 | Isolation | API seeded entities not explicitly cleaned | Add fixture-managed cleanup |
-| 1 | P2 | Maintainability | Automate API file slightly over 300 lines | Split lifecycle vs refusal checks |
-| 71 | P2 | Fixture Patterns | Duplicated helper logic across E2E specs | Centralize shared g.4 helpers |
-| 57 | P2 | Coverage | API ATDD suite remains RED-placeholder | Promote to runnable green tests |
-| 205 | P3 | Performance | Repeated per-test seed overhead | Batch seed setup where safe |
-
-### Related Reviews
-
-| File | Score | Grade | Critical | Status |
-| ---- | ----- | ----- | -------- | ------ |
-| g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts | 79/100 | C | 0 | Needs follow-up |
-| g-4-add-neighbor-and-directory-rebuild.automate.spec.ts | 80/100 | B | 0 | Acceptable |
-| g-4-add-neighbor-and-directory-rebuild.atdd.api.spec.ts | 68/100 | D | 0 | Request changes |
-| g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts | 81/100 | B | 0 | Acceptable |
-
-**Suite Average**: 77/100 (C)
+Epic G coverage breadth and core correctness checks are solid, with no critical/high-severity defects detected in this static quality review. The suite’s main opportunity is maintainability and execution efficiency, not test correctness. Addressing decomposition, trace mapping, and auth setup reuse should materially improve score and long-term operability.
 
 ---
 
 ## Review Metadata
 
 **Generated By**: BMad TEA Agent (Test Architect)
-**Workflow**: testarch-test-review v5.0
-**Review ID**: test-review-g-4-add-neighbor-and-directory-rebuild-20260307
-**Timestamp**: 2026-03-07 12:06:18
+**Workflow**: testarch-test-review
+**Review ID**: test-review-epic-g-20260307
+**Timestamp**: 2026-03-07
 **Version**: 1.0
 
 ---
 
-## Feedback on This Review
+## Validation Notes
 
-1. Review TEA patterns in `_bmad/tea/testarch/knowledge/`
-2. Consult `_bmad/tea/testarch/tea-index.csv` for deeper guidance
-3. Request targeted follow-up on specific violations if needed
-
-This review is guidance, not rigid rules. Context matters; if a deviation is intentional, document it explicitly in test comments and PR notes.
+- CLI session cleanup confirmed: `playwright-cli -s=tea-review close`
+- Evidence artifacts captured under test artifact paths:
+  - `_bmad-output/test-artifacts/review-evidence.png`
+  - `.playwright-cli/traces/trace-1772909010406.trace`
+  - `.playwright-cli/traces/trace-1772909010406.network`
+- Subprocess outputs, aggregate summary, and CLI evidence log are stored in `_bmad-output/test-artifacts/review-run-2026-03-07T18-44-47-000Z/`.

@@ -95,7 +95,7 @@ development_status:
   g-3-thread-detail-conversation-first-rebuild: done
   g-4-add-neighbor-and-directory-rebuild: done
   g-5-more-settings-volunteer-ia-and-admin-separation: done
-  g-6-volunteer-contract-boundary-and-regression-hardening: ready-for-dev
+  g-6-volunteer-contract-boundary-and-regression-hardening: done
   epic-g-retrospective: optional
 
 change_controls:

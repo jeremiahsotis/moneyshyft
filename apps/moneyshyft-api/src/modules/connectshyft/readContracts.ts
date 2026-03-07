@@ -9,6 +9,7 @@ export type ConnectShyftThreadDisplayRecord = {
   preview: string;
   urgencyLabel: string;
   stateLabel: string;
+  ownerLabel: string;
   inboundContext: string;
   outboundContext: string;
   neighborContext: string;
@@ -953,12 +954,16 @@ const buildDisplayProjection = (input: {
       input.state === 'UNCLAIMED' ? 'Voicemail received' : 'Voicemail waiting for review',
     )
     : '';
+  const ownerLabel = input.state === 'CLAIMED'
+    ? 'Owner: Assigned operator'
+    : '';
 
   return {
     title: safeSummary,
     preview: safePreview,
     urgencyLabel: displayUrgencyLabel,
     stateLabel: resolveDisplayStateLabel(input.state),
+    ownerLabel,
     inboundContext,
     outboundContext,
     neighborContext: `Neighbor context: ${safeSummary}`,
