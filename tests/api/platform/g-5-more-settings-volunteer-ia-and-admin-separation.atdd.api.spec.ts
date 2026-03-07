@@ -10,6 +10,16 @@ type ConnectShyftEnvelope = {
     primaryOptions?: Array<{ key?: string; label?: string }>;
     adminOptions?: Array<{ key?: string; label?: string }>;
     pathways?: Array<{ path?: string; allowed?: boolean }>;
+    capabilities?: {
+      module?: boolean;
+      inbox?: boolean;
+      escalation?: boolean;
+      webhooks?: boolean;
+    };
+    orgUnitId?: string;
+    mappings?: unknown[];
+    escalationBaselineHours?: number;
+    updatedAtUtc?: string;
   };
 };
 
@@ -130,6 +140,60 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD A
 
       expect((adminBody.data?.adminOptions ?? []).length).toBeGreaterThan(0);
       expect(volunteerBody.data?.adminOptions ?? []).toHaveLength(0);
+
+      const availabilityResponse = await apiRequest(request, {
+        method: 'GET',
+        path: `${storyG5Context.paths.availability}?orgUnitId=${encodeURIComponent(storyG5Context.orgUnitId)}`,
+        headers: storyG5AdminHeaders,
+      });
+      const numbersResponse = await apiRequest(request, {
+        method: 'GET',
+        path: storyG5Context.paths.numbersCollection,
+        headers: storyG5AdminHeaders,
+      });
+      const escalationResponse = await apiRequest(request, {
+        method: 'GET',
+        path: storyG5Context.paths.escalationConfig,
+        headers: storyG5AdminHeaders,
+      });
+
+      expect(availabilityResponse.status()).toBe(200);
+      expect(numbersResponse.status()).toBe(200);
+      expect(escalationResponse.status()).toBe(200);
+
+      const availabilityBody = (await availabilityResponse.json()) as ConnectShyftEnvelope;
+      const numbersBody = (await numbersResponse.json()) as ConnectShyftEnvelope;
+      const escalationBody = (await escalationResponse.json()) as ConnectShyftEnvelope;
+
+      expect(availabilityBody).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_AVAILABILITY_RESOLVED',
+      });
+      expect(availabilityBody.data?.capabilities).toMatchObject({
+        module: true,
+        inbox: true,
+        escalation: true,
+        webhooks: true,
+      });
+
+      expect(numbersBody).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_NUMBER_MAPPINGS_RESOLVED',
+        data: {
+          orgUnitId: storyG5Context.orgUnitId,
+        },
+      });
+      expect(Array.isArray(numbersBody.data?.mappings)).toBe(true);
+
+      expect(escalationBody).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_ESCALATION_CONFIG_RESOLVED',
+        data: {
+          orgUnitId: storyG5Context.orgUnitId,
+        },
+      });
+      expect(typeof escalationBody.data?.escalationBaselineHours).toBe('number');
+      expect(typeof escalationBody.data?.updatedAtUtc).toBe('string');
     },
   );
 

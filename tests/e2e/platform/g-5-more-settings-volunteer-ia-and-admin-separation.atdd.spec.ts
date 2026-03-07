@@ -1,25 +1,72 @@
-import { test, expect } from '@playwright/test';
+import { test as base, expect } from '@playwright/test';
 import { login } from '../../helpers/auth';
 import {
   buildStoryG5AdminPathUrl,
   buildStoryG5MoreUrl,
   createStoryG5Context,
+  type StoryG5Context,
 } from '../../support/factories/connectShyftStoryG5Factory';
 
-const context = createStoryG5Context();
+type StoryG5Fixtures = {
+  storyG5Context: StoryG5Context;
+};
+
+type StoryG5WorkerFixtures = {
+  storyG5StorageState: Awaited<ReturnType<import('@playwright/test').BrowserContext['storageState']>>;
+};
+
+const test = base.extend<StoryG5Fixtures, StoryG5WorkerFixtures>({
+  storyG5Context: async ({}, use) => {
+    await use(createStoryG5Context());
+  },
+  storyG5StorageState: [
+    async ({ browser }, use) => {
+      const authContext = await browser.newContext({
+        baseURL: process.env.BASE_URL || 'http://localhost:5174',
+      });
+      const authPage = await authContext.newPage();
+      await login(authPage);
+      await use(await authContext.storageState());
+      await authContext.close();
+    },
+    { scope: 'worker' },
+  ],
+  storageState: async ({ storyG5StorageState }, use) => {
+    await use(storyG5StorageState);
+  },
+});
+
+const NO_REFUSAL_QUERY_KEYS = /^((?!settingsRefusal|settingsRefusedPath).)*$/;
+
+const VIEWPORT_SCENARIOS = [
+  {
+    id: 'G5-ATDD-E2E-005A',
+    label: 'mobile',
+    breakpoint: 'mobile',
+    layoutTestId: 'connectshyft-more-layout-mobile',
+  },
+  {
+    id: 'G5-ATDD-E2E-005B',
+    label: 'tablet',
+    breakpoint: 'tablet',
+    layoutTestId: 'connectshyft-more-layout-tablet',
+  },
+  {
+    id: 'G5-ATDD-E2E-005C',
+    label: 'desktop',
+    breakpoint: 'desktop',
+    layoutTestId: 'connectshyft-more-layout-desktop',
+  },
+] as const;
 
 test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD E2E)', () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page);
-  });
-
   test(
     '[G5-ATDD-E2E-001][P0] volunteer More/Settings shows volunteer-first IA options and excludes admin controls @P0',
-    async ({ page }) => {
-      await page.goto(buildStoryG5MoreUrl(context, {
+    async ({ page, storyG5Context }) => {
+      await page.goto(buildStoryG5MoreUrl(storyG5Context, {
         role: 'ORGUNIT_MEMBER',
-        userId: context.volunteerUserId,
-        orgUnitMemberships: [context.orgUnitId],
+        userId: storyG5Context.volunteerUserId,
+        orgUnitMemberships: [storyG5Context.orgUnitId],
       }));
 
       await expect(page.getByTestId('connectshyft-more-surface')).toBeVisible();
@@ -41,11 +88,11 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD E
 
   test(
     '[G5-ATDD-E2E-002][P0] volunteer deep-link to admin settings path returns refusal guidance and withholds privileged controls @P0',
-    async ({ page }) => {
-      await page.goto(buildStoryG5AdminPathUrl(context, context.paths.moreAvailabilityUi, {
+    async ({ page, storyG5Context }) => {
+      await page.goto(buildStoryG5AdminPathUrl(storyG5Context, storyG5Context.paths.moreAvailabilityUi, {
         role: 'ORGUNIT_MEMBER',
-        userId: context.volunteerUserId,
-        orgUnitMemberships: [context.orgUnitId],
+        userId: storyG5Context.volunteerUserId,
+        orgUnitMemberships: [storyG5Context.orgUnitId],
       }));
 
       await expect(page.getByTestId('connectshyft-settings-refusal-guidance')).toBeVisible();
@@ -55,26 +102,26 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD E
       await expect(page.getByTestId('connectshyft-availability-config-form')).toHaveCount(0);
       await expect(page.getByTestId('connectshyft-bottom-nav-inbox')).toHaveAttribute(
         'href',
-        /^((?!settingsRefusal|settingsRefusedPath).)*$/,
+        NO_REFUSAL_QUERY_KEYS,
       );
       await expect(page.getByTestId('connectshyft-bottom-nav-mine')).toHaveAttribute(
         'href',
-        /^((?!settingsRefusal|settingsRefusedPath).)*$/,
+        NO_REFUSAL_QUERY_KEYS,
       );
       await expect(page.getByTestId('connectshyft-bottom-nav-more')).toHaveAttribute(
         'href',
-        /^((?!settingsRefusal|settingsRefusedPath).)*$/,
+        NO_REFUSAL_QUERY_KEYS,
       );
     },
   );
 
   test(
     '[G5-ATDD-E2E-003][P1] authorized admin deep-link to explicit admin settings path resolves with admin nav state and controls @P1',
-    async ({ page }) => {
-      await page.goto(buildStoryG5AdminPathUrl(context, context.paths.moreNumbersUi, {
+    async ({ page, storyG5Context }) => {
+      await page.goto(buildStoryG5AdminPathUrl(storyG5Context, storyG5Context.paths.moreNumbersUi, {
         role: 'ORGUNIT_ADMIN',
-        userId: context.orgUnitAdminUserId,
-        orgUnitMemberships: [context.orgUnitId],
+        userId: storyG5Context.orgUnitAdminUserId,
+        orgUnitMemberships: [storyG5Context.orgUnitId],
       }));
 
       await expect(page.getByTestId('connectshyft-number-mapping-surface')).toBeVisible();
@@ -85,17 +132,17 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD E
 
   test(
     '[G5-ATDD-E2E-004][P0] role and scope context refresh updates pathway visibility and refuses admin settings access after downgrade @P0',
-    async ({ page }) => {
-      await page.goto(buildStoryG5AdminPathUrl(context, context.paths.moreEscalationUi, {
+    async ({ page, storyG5Context }) => {
+      await page.goto(buildStoryG5AdminPathUrl(storyG5Context, storyG5Context.paths.moreEscalationUi, {
         role: 'ORGUNIT_ADMIN',
-        userId: context.orgUnitAdminUserId,
-        orgUnitMemberships: [context.orgUnitId],
+        userId: storyG5Context.orgUnitAdminUserId,
+        orgUnitMemberships: [storyG5Context.orgUnitId],
       }));
       await expect(page.getByTestId('connectshyft-escalation-settings-surface')).toBeVisible();
 
-      await page.goto(buildStoryG5AdminPathUrl(context, context.paths.moreEscalationUi, {
+      await page.goto(buildStoryG5AdminPathUrl(storyG5Context, storyG5Context.paths.moreEscalationUi, {
         role: 'TENANT_VIEWER',
-        userId: context.tenantViewerUserId,
+        userId: storyG5Context.tenantViewerUserId,
         orgUnitMemberships: [],
       }));
 
@@ -104,53 +151,33 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD E
     },
   );
 
-  test(
-    '[G5-ATDD-E2E-005][P1] volunteer-first More/Settings IA remains clear and stable across mobile tablet and desktop breakpoints @P1',
-    async ({ page }) => {
-      const viewportMatrix = [
-        {
-          label: 'mobile',
-          width: context.breakpoints.mobile.width,
-          height: context.breakpoints.mobile.height,
-          layoutTestId: 'connectshyft-more-layout-mobile',
-        },
-        {
-          label: 'tablet',
-          width: context.breakpoints.tablet.width,
-          height: context.breakpoints.tablet.height,
-          layoutTestId: 'connectshyft-more-layout-tablet',
-        },
-        {
-          label: 'desktop',
-          width: context.breakpoints.desktop.width,
-          height: context.breakpoints.desktop.height,
-          layoutTestId: 'connectshyft-more-layout-desktop',
-        },
-      ];
-
-      for (const viewport of viewportMatrix) {
-        await page.setViewportSize({ width: viewport.width, height: viewport.height });
-        await page.goto(buildStoryG5MoreUrl(context, {
+  for (const viewport of VIEWPORT_SCENARIOS) {
+    test(
+      `[${viewport.id}][P1] volunteer-first More/Settings IA remains clear and stable on ${viewport.label} breakpoint @P1`,
+      async ({ page, storyG5Context }) => {
+        const breakpoint = storyG5Context.breakpoints[viewport.breakpoint];
+        await page.setViewportSize({ width: breakpoint.width, height: breakpoint.height });
+        await page.goto(buildStoryG5MoreUrl(storyG5Context, {
           role: 'ORGUNIT_MEMBER',
-          userId: context.volunteerUserId,
-          orgUnitMemberships: [context.orgUnitId],
+          userId: storyG5Context.volunteerUserId,
+          orgUnitMemberships: [storyG5Context.orgUnitId],
         }));
 
         await expect(page.getByTestId(viewport.layoutTestId)).toBeVisible();
         await expect(page.getByTestId('connectshyft-more-option-directory')).toBeVisible();
         await expect(page.getByTestId('connectshyft-more-option-sign-out')).toBeVisible();
         await expect(page.getByTestId('connectshyft-more-admin-option-availability')).toHaveCount(0);
-      }
-    },
-  );
+      },
+    );
+  }
 
   test(
     '[G5-ATDD-E2E-006][P1] volunteer More/Settings supports keyboard traversal and screen-reader labels for primary actions @P1',
-    async ({ page }) => {
-      await page.goto(buildStoryG5MoreUrl(context, {
+    async ({ page, storyG5Context }) => {
+      await page.goto(buildStoryG5MoreUrl(storyG5Context, {
         role: 'ORGUNIT_MEMBER',
-        userId: context.volunteerUserId,
-        orgUnitMemberships: [context.orgUnitId],
+        userId: storyG5Context.volunteerUserId,
+        orgUnitMemberships: [storyG5Context.orgUnitId],
       }));
 
       const directory = page.getByTestId('connectshyft-more-option-directory');
