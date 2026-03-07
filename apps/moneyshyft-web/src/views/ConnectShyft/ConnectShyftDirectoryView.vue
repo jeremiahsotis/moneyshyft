@@ -26,8 +26,8 @@
         class="mb-6 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"
       >
         <p class="font-medium text-slate-900">Active conference scope</p>
-        <p class="mt-1">Tenant: {{ scope?.tenantId || 'Resolving from server...' }}</p>
-        <p>orgUnit: {{ activeOrgUnitId || 'Resolving from server...' }}</p>
+        <p class="mt-1">Tenant context: {{ scope ? 'Resolved' : 'Resolving from server...' }}</p>
+        <p>Conference context: {{ activeOrgUnitId ? 'Active' : 'Resolving from server...' }}</p>
       </section>
 
       <section class="rounded-md border border-slate-200 p-4">
@@ -98,7 +98,7 @@
                   data-testid="connectshyft-directory-result-conference-chip"
                   class="mt-2 inline-flex rounded-full border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700"
                 >
-                  Conference: {{ neighbor.orgUnitId || activeOrgUnitId || 'unknown' }}
+                  Conference scoped
                 </p>
               </div>
 
@@ -171,11 +171,6 @@ const normalizePhoneDigits = (value: string): string => {
 };
 
 const activeOrgUnitId = computed<string>(() => {
-  const routeOrgUnitId = normalizeString(route.query.orgUnitId);
-  if (routeOrgUnitId.length > 0) {
-    return routeOrgUnitId;
-  }
-
   return scope.value?.orgUnitId || '';
 });
 
@@ -347,13 +342,9 @@ const startConversation = async (neighborId: string): Promise<void> => {
     return;
   }
 
-  const wasExistingThread = ensureResult.thread.createdAtUtc
-    && ensureResult.thread.updatedAtUtc
-    && ensureResult.thread.createdAtUtc !== ensureResult.thread.updatedAtUtc;
-
   const nextQuery = {
     ...route.query,
-    directoryNotice: wasExistingThread ? 'existing' : 'new',
+    directoryNotice: ensureResult.createdNewThread ? 'new' : 'existing',
   };
 
   await router.push({

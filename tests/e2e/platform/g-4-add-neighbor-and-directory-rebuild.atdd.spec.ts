@@ -1,170 +1,39 @@
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { login } from '../../helpers/auth';
-import { apiRequest } from '../../support/helpers/apiClient';
 import {
-  createStoryG4Context,
-  createStoryG4Headers,
-  createStoryG4NeighborCreatePayload,
-  createStoryG4ThreadEnsurePayload,
-  type StoryG4Context,
-} from '../../support/factories/connectShyftStoryG4Factory';
-
-type NeighborSeed = {
-  neighborId: string;
-  threadId?: string;
-};
-
-type ConnectShyftCreateNeighborEnvelope = {
-  ok?: boolean;
-  data?: {
-    neighbor?: {
-      neighborId?: string;
-      orgUnitId?: string;
-    };
-  };
-};
-
-type ConnectShyftEnsureThreadEnvelope = {
-  ok?: boolean;
-  data?: {
-    thread?: {
-      threadId?: string;
-    };
-  };
-};
-
-const buildStoryG4UrlParams = (
-  context: StoryG4Context,
-  options: {
-    actorUserId: string;
-    tenantRole: string;
-    orgUnitMemberships: string[];
-  },
-): string => {
-  const params = new URLSearchParams({
-    flags: 'module:on,inbox:on,escalation:on,webhooks:on',
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    actorUserId: options.actorUserId,
-    tenantRole: options.tenantRole,
-    orgUnitMemberships: options.orgUnitMemberships.join(','),
-  });
-
-  return params.toString();
-};
-
-const buildStoryG4AddNeighborUrl = (context: StoryG4Context): string => {
-  return `${context.paths.addNeighborUi}?${buildStoryG4UrlParams(context, {
-    actorUserId: context.userId,
-    tenantRole: 'ORGUNIT_MEMBER',
-    orgUnitMemberships: [context.orgUnitId],
-  })}`;
-};
-
-const buildStoryG4DirectoryUrl = (context: StoryG4Context): string => {
-  return `${context.paths.directoryUi}?${buildStoryG4UrlParams(context, {
-    actorUserId: context.userId,
-    tenantRole: 'ORGUNIT_MEMBER',
-    orgUnitMemberships: [context.orgUnitId],
-  })}`;
-};
-
-const readDirectoryScopeBadges = async (page: Page): Promise<string[]> => {
-  return page.getByTestId('connectshyft-directory-result-conference-chip').allTextContents();
-};
-
-const createNeighborSeed = async (
-  request: APIRequestContext,
-  context: StoryG4Context,
-  input: {
-    firstName: string;
-    lastName: string;
-    primaryPhone: string;
-    additionalPhone?: string;
-    orgUnitId?: string;
-    orgUnitMemberships?: string[];
-  },
-): Promise<NeighborSeed> => {
-  const headers = createStoryG4Headers(context, {
-    role: 'ORGUNIT_MEMBER',
-    userId: context.userId,
-    orgUnitId: input.orgUnitId ?? context.orgUnitId,
-    orgUnitMemberships: input.orgUnitMemberships ?? [input.orgUnitId ?? context.orgUnitId],
-  });
-
-  const response = await apiRequest(request, {
-    method: 'POST',
-    path: context.paths.neighborsCollection,
-    headers,
-    data: createStoryG4NeighborCreatePayload(context, {
-      orgUnitId: input.orgUnitId ?? context.orgUnitId,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      phones: [
-        {
-          label: 'mobile',
-          value: input.primaryPhone,
-          isShared: false,
-        },
-        ...(input.additionalPhone
-          ? [
-            {
-              label: 'home',
-              value: input.additionalPhone,
-              isShared: true,
-            },
-          ]
-          : []),
-      ],
-    }),
-  });
-
-  expect(response.status()).toBe(201);
-  const body = (await response.json()) as ConnectShyftCreateNeighborEnvelope;
-  expect(body.ok).toBe(true);
-
-  const neighborId = String(body.data?.neighbor?.neighborId ?? '').trim();
-  expect(neighborId.length).toBeGreaterThan(0);
-
-  return { neighborId };
-};
-
-const ensureExistingThreadSeed = async (
-  request: APIRequestContext,
-  context: StoryG4Context,
-  neighborId: string,
-): Promise<string> => {
-  const headers = createStoryG4Headers(context, {
-    role: 'ORGUNIT_MEMBER',
-    userId: context.userId,
-    orgUnitMemberships: [context.orgUnitId],
-  });
-
-  const payload = createStoryG4ThreadEnsurePayload(context, {
-    neighborId,
-  });
-
-  const response = await apiRequest(request, {
-    method: 'POST',
-    path: context.paths.threadsCollection,
-    headers,
-    data: payload,
-  });
-
-  expect(response.status()).toBe(201);
-  const body = (await response.json()) as ConnectShyftEnsureThreadEnvelope;
-  expect(body.ok).toBe(true);
-
-  const threadId = String(body.data?.thread?.threadId ?? '').trim();
-  expect(threadId.length).toBeGreaterThan(0);
-  return threadId;
-};
+  cleanupConnectShyftThreadAndNeighborState,
+  destroyConnectShyftDbActorClient,
+} from '../../support/helpers/connectShyftDbActor';
+import {
+  buildStoryG4AddNeighborUrl,
+  buildStoryG4DirectoryUrl,
+  createStoryG4NeighborSeed,
+  ensureStoryG4ThreadSeed,
+} from '../../support/helpers/connectShyftStoryG4TestHelpers';
+import { createStoryG4Context } from '../../support/factories/connectShyftStoryG4Factory';
 
 const context = createStoryG4Context();
 
 test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD E2E)', () => {
+  let createdNeighborIds: string[] = [];
+  let createdThreadIds: string[] = [];
+
   test.beforeEach(async ({ page }) => {
+    createdNeighborIds = [];
+    createdThreadIds = [];
     await login(page);
+  });
+
+  test.afterEach(async () => {
+    await cleanupConnectShyftThreadAndNeighborState({
+      tenantId: context.tenantId,
+      neighborIds: createdNeighborIds,
+      threadIds: createdThreadIds,
+    });
+  });
+
+  test.afterAll(async () => {
+    await destroyConnectShyftDbActorClient();
   });
 
   test(
@@ -206,23 +75,28 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD E2E)', () => {
   test(
     '[G4-ATDD-E2E-003][P0] directory search supports name and phone modes and keeps conference-scoped results for volunteer workflows @P0',
     async ({ page, request }) => {
-      await createNeighborSeed(request, context, {
+      const byNameSeed = await createStoryG4NeighborSeed(request, context, {
         firstName: context.searchTerms.byName,
         lastName: 'DirectoryNameScoped',
         primaryPhone: '+12605550199',
       });
-      await createNeighborSeed(request, context, {
+      createdNeighborIds.push(byNameSeed.neighborId);
+
+      const byPhoneSeed = await createStoryG4NeighborSeed(request, context, {
         firstName: context.searchTerms.byName,
         lastName: 'DirectoryPhoneScoped',
         primaryPhone: '+12605550120',
       });
-      await createNeighborSeed(request, context, {
+      createdNeighborIds.push(byPhoneSeed.neighborId);
+
+      const crossScopeSeed = await createStoryG4NeighborSeed(request, context, {
         firstName: context.searchTerms.byName,
         lastName: 'DirectoryCrossScope',
         primaryPhone: '+12605550999',
         orgUnitId: context.crossScopeOrgUnitId,
         orgUnitMemberships: [context.crossScopeOrgUnitId],
       });
+      createdNeighborIds.push(crossScopeSeed.neighborId);
 
       // Given volunteer opens Directory
       await page.goto(buildStoryG4DirectoryUrl(context));
@@ -234,10 +108,12 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD E2E)', () => {
       await expect(page.getByTestId('connectshyft-directory-result-card').first()).toBeVisible();
 
       // Then results stay conference scoped
-      const byNameScopeBadges = await readDirectoryScopeBadges(page);
+      await expect(page.getByTestId('connectshyft-directory-surface')).not.toContainText('DirectoryCrossScope');
+      const byNameScopeBadges = await page
+        .getByTestId('connectshyft-directory-result-conference-chip')
+        .allTextContents();
       for (const badge of byNameScopeBadges) {
-        expect(badge).toContain(context.orgUnitId);
-        expect(badge).not.toContain(context.crossScopeOrgUnitId);
+        expect(badge).toContain('Conference scoped');
       }
 
       // When searching by phone
@@ -246,10 +122,12 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD E2E)', () => {
       await expect(page.getByTestId('connectshyft-directory-result-card').first()).toBeVisible();
 
       // Then phone-mode results remain conference scoped too
-      const byPhoneScopeBadges = await readDirectoryScopeBadges(page);
+      await expect(page.getByTestId('connectshyft-directory-surface')).not.toContainText('DirectoryCrossScope');
+      const byPhoneScopeBadges = await page
+        .getByTestId('connectshyft-directory-result-conference-chip')
+        .allTextContents();
       for (const badge of byPhoneScopeBadges) {
-        expect(badge).toContain(context.orgUnitId);
-        expect(badge).not.toContain(context.crossScopeOrgUnitId);
+        expect(badge).toContain('Conference scoped');
       }
     },
   );
@@ -257,16 +135,19 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD E2E)', () => {
   test(
     '[G4-ATDD-E2E-004][P0] selecting a directory entry with an active thread opens that thread via deterministic ensure behavior and shows contextual reuse notice @P0',
     async ({ page, request }) => {
-      const existingNeighbor = await createNeighborSeed(request, context, {
+      const existingNeighbor = await createStoryG4NeighborSeed(request, context, {
         firstName: context.searchTerms.byName,
         lastName: 'DirectoryExistingThread',
         primaryPhone: '+12605550199',
       });
-      const existingThreadId = await ensureExistingThreadSeed(
+      createdNeighborIds.push(existingNeighbor.neighborId);
+
+      const existingThreadId = await ensureStoryG4ThreadSeed(
         request,
         context,
         existingNeighbor.neighborId,
       );
+      createdThreadIds.push(existingThreadId);
 
       // Given a directory entry known to have an active thread
       await page.goto(buildStoryG4DirectoryUrl(context));
@@ -293,11 +174,12 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD E2E)', () => {
   test(
     '[G4-ATDD-E2E-005][P1] selecting a directory entry without an active thread starts a new conversation and surfaces deterministic creation feedback @P1',
     async ({ page, request }) => {
-      const newCandidate = await createNeighborSeed(request, context, {
+      const newCandidate = await createStoryG4NeighborSeed(request, context, {
         firstName: context.searchTerms.byName,
         lastName: 'DirectoryNoThread',
         primaryPhone: '+12605550133',
       });
+      createdNeighborIds.push(newCandidate.neighborId);
 
       // Given a directory entry without an active thread
       await page.goto(buildStoryG4DirectoryUrl(context));

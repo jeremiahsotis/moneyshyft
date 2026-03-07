@@ -1,66 +1,40 @@
 import { apiRequest } from '../../support/helpers/apiClient';
+import {
+  cleanupConnectShyftThreadAndNeighborState,
+  destroyConnectShyftDbActorClient,
+} from '../../support/helpers/connectShyftDbActor';
+import {
+  buildStoryG4DeterministicPhone,
+} from '../../support/helpers/connectShyftStoryG4TestHelpers';
+import {
+  type ConnectShyftEnvelope,
+  listStoryG4Neighbors,
+} from '../../support/helpers/connectShyftStoryG4ApiHelpers';
 import { test, expect } from '../../support/fixtures/connectShyftStoryG4.fixture';
 import { createStoryG4NeighborCreatePayload } from '../../support/factories/connectShyftStoryG4Factory';
-
-type ConnectShyftNeighborPhone = {
-  label?: string;
-  value?: string;
-  isShared?: boolean;
-  isPrimary?: boolean;
-};
-
-type ConnectShyftNeighbor = {
-  neighborId?: string;
-  orgUnitId?: string;
-  phones?: ConnectShyftNeighborPhone[];
-};
-
-type ConnectShyftEnvelope = {
-  ok?: boolean;
-  code?: string;
-  message?: string;
-  data?: {
-    thread?: {
-      threadId?: string;
-      state?: string;
-      neighborId?: string;
-    };
-    lifecycle?: {
-      createdNewThread?: boolean;
-      reusedThreadId?: string;
-      ensuredActiveThread?: boolean;
-    };
-    neighbor?: ConnectShyftNeighbor;
-    neighbors?: ConnectShyftNeighbor[];
-    fieldErrors?: Array<{
-      field?: string;
-      reason?: string;
-      message?: string;
-    }>;
-  };
-};
-
-const buildUniquePhone = (suffixSeed: string): string => {
-  const digits = suffixSeed.replace(/\D/g, '').slice(-4).padStart(4, '0');
-  return `+1260555${digits}`;
-};
-
-const listNeighbors = async (
-  request: Parameters<typeof apiRequest>[0],
-  path: string,
-  headers: Record<string, string>,
-): Promise<ConnectShyftEnvelope> => {
-  const response = await apiRequest(request, {
-    method: 'GET',
-    path,
-    headers,
-  });
-
-  expect(response.status()).toBe(200);
-  return (await response.json()) as ConnectShyftEnvelope;
-};
+import { deterministicToken } from '../../support/utils/deterministicTestIds';
 
 test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate API Expansion)', () => {
+  let createdNeighborIds: string[] = [];
+  let createdThreadIds: string[] = [];
+
+  test.beforeEach(async () => {
+    createdNeighborIds = [];
+    createdThreadIds = [];
+  });
+
+  test.afterEach(async ({ storyG4Context }) => {
+    await cleanupConnectShyftThreadAndNeighborState({
+      tenantId: storyG4Context.tenantId,
+      neighborIds: createdNeighborIds,
+      threadIds: createdThreadIds,
+    });
+  });
+
+  test.afterAll(async () => {
+    await destroyConnectShyftDbActorClient();
+  });
+
   test(
     '[G4-AUTO-API-301][P0] deterministic ensure for known active neighbor returns lifecycle reuse metadata with createdNewThread=false @P0',
     async ({ request, storyG4Context, storyG4VolunteerHeaders, storyG4EnsureExistingThreadPayload }) => {
@@ -86,6 +60,7 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate API Expans
 
       const firstThreadId = String(firstBody.data?.thread?.threadId ?? '').trim();
       expect(firstThreadId.length).toBeGreaterThan(0);
+      createdThreadIds.push(firstThreadId);
 
       expect(firstBody).toMatchObject({
         ok: true,
@@ -122,8 +97,8 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate API Expans
 
   test(
     '[G4-AUTO-API-302][P0] ensure lifecycle for a newly created neighbor is deterministic across first and second invocation @P0',
-    async ({ request, storyG4Context, storyG4VolunteerHeaders, storyG4NeighborCreatePayload }) => {
-      const seedSuffix = Date.now().toString();
+    async ({ request, storyG4Context, storyG4VolunteerHeaders, storyG4NeighborCreatePayload }, testInfo) => {
+      const seedToken = deterministicToken(testInfo, 'g4-auto-api-302-seed', 8);
       const seededNeighborResponse = await apiRequest(request, {
         method: 'POST',
         path: storyG4Context.paths.neighborsCollection,
@@ -131,11 +106,11 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate API Expans
         data: {
           ...storyG4NeighborCreatePayload,
           firstName: 'G4',
-          lastName: `AutoEnsure${seedSuffix.slice(-4)}`,
+          lastName: `AutoEnsure${seedToken.slice(-4)}`,
           phones: [
             {
               label: 'mobile',
-              value: buildUniquePhone(seedSuffix),
+              value: buildStoryG4DeterministicPhone(testInfo, 'g4-auto-api-302-primary-phone'),
               isShared: false,
             },
           ],
@@ -146,6 +121,7 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate API Expans
       const seededNeighborBody = (await seededNeighborResponse.json()) as ConnectShyftEnvelope;
       const neighborId = String(seededNeighborBody.data?.neighbor?.neighborId ?? '').trim();
       expect(neighborId.length).toBeGreaterThan(0);
+      createdNeighborIds.push(neighborId);
 
       const ensurePayload = {
         orgUnitId: storyG4Context.orgUnitId,
@@ -177,6 +153,7 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate API Expans
 
       const firstThreadId = String(firstBody.data?.thread?.threadId ?? '').trim();
       expect(firstThreadId.length).toBeGreaterThan(0);
+      createdThreadIds.push(firstThreadId);
 
       expect(firstBody.data?.lifecycle?.ensuredActiveThread).toBe(true);
       expect(firstBody.data?.lifecycle?.createdNewThread).toBe(true);
@@ -191,14 +168,14 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate API Expans
 
   test(
     '[G4-AUTO-API-303][P1] add-neighbor creation preserves shared-phone metadata and canonical phone formatting in returned neighbor profile @P1',
-    async ({ request, storyG4Context, storyG4VolunteerHeaders }) => {
-      const seedSuffix = (Date.now() + 37).toString();
-      const primaryPhone = buildUniquePhone(seedSuffix);
-      const secondaryPhone = buildUniquePhone((Date.now() + 81).toString());
+    async ({ request, storyG4Context, storyG4VolunteerHeaders }, testInfo) => {
+      const seedToken = deterministicToken(testInfo, 'g4-auto-api-303-seed', 8);
+      const primaryPhone = buildStoryG4DeterministicPhone(testInfo, 'g4-auto-api-303-primary-phone');
+      const secondaryPhone = buildStoryG4DeterministicPhone(testInfo, 'g4-auto-api-303-secondary-phone');
 
       const payload = createStoryG4NeighborCreatePayload(storyG4Context, {
         firstName: 'G4',
-        lastName: `AutoShared${seedSuffix.slice(-4)}`,
+        lastName: `AutoShared${seedToken.slice(-4)}`,
         phones: [
           {
             label: 'mobile',
@@ -222,6 +199,9 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate API Expans
 
       expect(response.status()).toBe(201);
       const body = (await response.json()) as ConnectShyftEnvelope;
+      const neighborId = String(body.data?.neighbor?.neighborId ?? '').trim();
+      expect(neighborId.length).toBeGreaterThan(0);
+      createdNeighborIds.push(neighborId);
 
       expect(body).toMatchObject({
         ok: true,
@@ -249,14 +229,10 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate API Expans
 
   test(
     '[G4-AUTO-API-304][P1] refusal path for missing phone returns actionable field error and guarantees no partial create side effects @P1',
-    async ({
-      request,
-      storyG4Context,
-      storyG4VolunteerHeaders,
-    }) => {
-      const seedSuffix = (Date.now() + 101).toString();
+    async ({ request, storyG4Context, storyG4VolunteerHeaders }, testInfo) => {
+      const seedToken = deterministicToken(testInfo, 'g4-auto-api-304-refusal-seed', 8);
       const refusalFirstName = 'G4';
-      const refusalLastName = `AutoRefusal${seedSuffix.slice(-4)}`;
+      const refusalLastName = `AutoRefusal${seedToken.slice(-4)}`;
       const refusalPayload = createStoryG4NeighborCreatePayload(storyG4Context, {
         firstName: refusalFirstName,
         lastName: refusalLastName,
@@ -286,7 +262,7 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate API Expans
         ]),
       );
 
-      const afterRefusal = await listNeighbors(
+      const afterRefusal = await listStoryG4Neighbors(
         request,
         storyG4Context.paths.neighborsCollection,
         storyG4VolunteerHeaders,

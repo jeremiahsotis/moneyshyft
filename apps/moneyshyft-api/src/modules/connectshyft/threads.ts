@@ -106,6 +106,7 @@ type ThreadPersistenceEnsureResult =
   | {
     ok: true;
     thread: ConnectShyftThread;
+    createdNewThread: boolean;
   }
   | {
     ok: false;
@@ -185,6 +186,11 @@ export type ConnectShyftEnsureThreadResult =
     httpStatus: 201;
     data: {
       thread: ConnectShyftThread;
+      lifecycle: {
+        ensuredActiveThread: true;
+        createdNewThread: boolean;
+        reusedThreadId?: string;
+      };
     };
   }
   | ThreadRefusalResult;
@@ -722,6 +728,7 @@ export class InMemoryConnectShyftThreadStore {
         return {
           ok: true,
           thread: cloneThread(updated),
+          createdNewThread: false,
         };
       }
     }
@@ -768,6 +775,7 @@ export class InMemoryConnectShyftThreadStore {
     return {
       ok: true,
       thread: cloneThread(created),
+      createdNewThread: true,
     };
   }
 
@@ -953,6 +961,7 @@ export class KnexConnectShyftThreadStore {
           return {
             ok: true,
             thread: mapDbRowToThread(updated || existing),
+            createdNewThread: false,
           };
         }
 
@@ -1003,6 +1012,7 @@ export class KnexConnectShyftThreadStore {
         return {
           ok: true,
           thread: mapDbRowToThread(inserted),
+          createdNewThread: true,
         };
       });
     } catch (error) {
@@ -1047,6 +1057,7 @@ export class KnexConnectShyftThreadStore {
             return {
               ok: true,
               thread: mapDbRowToThread(updated || existing),
+              createdNewThread: false,
             };
           }
         }
@@ -1261,6 +1272,11 @@ export class ConnectShyftThreadService {
       httpStatus: 201,
       data: {
         thread: persisted.thread,
+        lifecycle: {
+          ensuredActiveThread: true,
+          createdNewThread: persisted.createdNewThread,
+          ...(persisted.createdNewThread ? {} : { reusedThreadId: persisted.thread.threadId }),
+        },
       },
     };
   }
@@ -1419,6 +1435,11 @@ export class AsyncConnectShyftThreadService {
         httpStatus: 201,
         data: {
           thread: persisted.thread,
+          lifecycle: {
+            ensuredActiveThread: true,
+            createdNewThread: persisted.createdNewThread,
+            ...(persisted.createdNewThread ? {} : { reusedThreadId: persisted.thread.threadId }),
+          },
         },
       };
     } catch (error) {

@@ -137,6 +137,9 @@ GPT-5 Codex
 - `npm run test:e2e -- tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts` (pass)
 - `npm run test:e2e -- tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts` (pass)
 - `npm run policy:check` (pass)
+- `npx nx run-many -t build --projects=moneyshyft-api,moneyshyft-web,connectshyft-api,connectshyft-web` (pass)
+- `npm run test:e2e -- tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts` (pass, post-review fixes)
+- `npm run policy:check` (pass, post-review fixes)
 
 ### Completion Notes List
 
@@ -145,19 +148,22 @@ GPT-5 Codex
 - Wired deterministic directory start-conversation actions through existing `POST /api/v1/connectshyft/threads` ensure semantics and surfaced non-disruptive existing/new thread notices after routing to thread detail.
 - Extended frontend neighbor contracts to carry additional intake fields and optional directory search params while keeping backward compatibility with existing neighbor-create flows.
 - Activated and passed Story g.4 ATDD E2E coverage with deterministic API seeding for scoped search and existing/new conversation-start behavior.
+- Applied code-review remediation: search query now triggers backend refresh, directory notice now uses explicit ensure lifecycle metadata, volunteer-facing copy no longer exposes raw tenant/orgUnit identifiers, primary phone now supports shared-flag capture, and Add Neighbor refusal copy now uses UI sanitization.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/g-4-add-neighbor-and-directory-rebuild.md
-- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
-- apps/moneyshyft-web/src/features/connectshyft/neighbors.ts
-- apps/moneyshyft-web/src/router/index.ts
+- apps/connectshyft-api/src/modules/connectshyft/threads.ts
+- apps/connectshyft-api/src/routes/api/v1/connectshyft.ts
+- apps/moneyshyft-api/src/modules/connectshyft/threads.ts
+- apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts
+- apps/moneyshyft-web/src/features/connectshyft/threads.ts
 - apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftNeighborCreateView.vue
 - apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftDirectoryView.vue
-- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts
 
 ## Change Log
 
 - 2026-03-06: Created Story g.4 ready-for-dev context document.
 - 2026-03-07: Implemented Add Neighbor + Directory rebuild (AC1-AC5), added deterministic thread start notices, and activated/passed g.4 E2E ATDD coverage.
+- 2026-03-07: Addressed senior review findings (deterministic ensure lifecycle flag, backend-backed directory refresh, shared-phone primary support, sanitized refusal copy, volunteer-safe scope copy) and revalidated builds + g.4 ATDD.

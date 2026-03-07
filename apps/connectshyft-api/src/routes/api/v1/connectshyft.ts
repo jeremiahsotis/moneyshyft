@@ -5686,6 +5686,7 @@ router.post('/threads', async (req: Request, res: Response) => {
     httpStatus: ensured.httpStatus,
     data: {
       thread: ensured.data.thread,
+      lifecycle: ensured.data.lifecycle,
     },
   });
 });

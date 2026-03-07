@@ -32,8 +32,8 @@
         class="mb-6 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"
       >
         <p class="font-medium text-slate-900">Active scope</p>
-        <p class="mt-1">Tenant: {{ scope?.tenantId || 'Resolving from server...' }}</p>
-        <p>orgUnit: {{ scope?.orgUnitId || 'Resolving from server...' }}</p>
+        <p class="mt-1">Tenant context: {{ scope ? 'Resolved' : 'Resolving from server...' }}</p>
+        <p>Conference context: {{ scope ? 'Active' : 'Resolving from server...' }}</p>
       </section>
 
       <form class="rounded-md border border-slate-200 p-4" novalidate @submit.prevent="handleCreate">
@@ -154,6 +154,16 @@
           <label class="inline-flex min-h-[44px] items-center gap-2 rounded border border-slate-200 px-3 py-2 text-sm text-slate-700">
             <input
               data-testid="connectshyft-neighbor-shared-phone-toggle"
+              v-model="primaryPhoneShared"
+              type="checkbox"
+              :disabled="isSubmitting"
+            >
+            Mark primary phone as shared
+          </label>
+
+          <label class="inline-flex min-h-[44px] items-center gap-2 rounded border border-slate-200 px-3 py-2 text-sm text-slate-700">
+            <input
+              data-testid="connectshyft-neighbor-additional-shared-phone-toggle"
               v-model="additionalPhoneShared"
               type="checkbox"
               :disabled="isSubmitting"
@@ -273,12 +283,16 @@ import {
   type ConnectShyftNeighborAddressInput,
   type ConnectShyftNeighborPhoneInput,
 } from '@/features/connectshyft/neighbors';
-import { CONNECTSHYFT_RESPONSIVE_BREAKPOINTS } from '@/features/connectshyft/uiContracts';
+import {
+  CONNECTSHYFT_RESPONSIVE_BREAKPOINTS,
+  sanitizeConnectShyftOperatorCopy,
+} from '@/features/connectshyft/uiContracts';
 
 const firstName = ref('');
 const lastName = ref('');
 const primaryPhoneValue = ref('');
 const primaryPhoneLabel = ref('mobile');
+const primaryPhoneShared = ref(false);
 const additionalPhoneValue = ref('');
 const additionalPhoneLabel = ref('home');
 const additionalPhoneShared = ref(false);
@@ -365,7 +379,7 @@ const buildPhonesPayload = (): ConnectShyftNeighborPhoneInput[] => {
     {
       label: normalize(primaryPhoneLabel.value) || 'mobile',
       value: primaryPhoneValue.value,
-      isShared: false,
+      isShared: primaryPhoneShared.value,
     },
   ];
 
@@ -416,7 +430,10 @@ const handleCreate = async (): Promise<void> => {
   isSubmitting.value = false;
 
   if (!result.ok) {
-    validationError.value = result.message;
+    validationError.value = sanitizeConnectShyftOperatorCopy(
+      result.message,
+      'Unable to create neighbor right now.',
+    );
     if (result.scope) {
       scope.value = result.scope;
     }
