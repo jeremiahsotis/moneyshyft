@@ -4,11 +4,11 @@ lastStep: 'step-04-generate-report'
 lastSaved: '2026-03-07'
 ---
 
-# Test Quality Review: g-6-volunteer-contract-boundary-and-regression-hardening
+# Test Quality Review: epic-g-suite
 
-**Quality Score**: 91/100 (A - Excellent)
+**Quality Score**: 77/100 (C - Acceptable)
 **Review Date**: 2026-03-07
-**Review Scope**: single (story artifact with linked test specs)
+**Review Scope**: directory (Epic G API + E2E suite)
 **Reviewer**: TEA Agent (Murat)
 
 ---
@@ -17,27 +17,25 @@ Note: This review audits existing tests; it does not generate tests.
 
 ## Executive Summary
 
-**Overall Assessment**: Excellent
+**Overall Assessment**: Acceptable
 
 **Recommendation**: Approve with Comments
 
 ### Key Strengths
 
-- Strong assertion density and explicit checks: 139 assertions across 20 tests (~6.95/test).
-- Good risk tagging discipline: 13 `P0` and 7 `P1` tests with story-linked IDs.
-- No hard waits (`waitForTimeout`, `cy.wait(ms)`) and no serial-mode constraints.
-- Coverage maps to all four g.6 acceptance criteria, including inbound/outbound `CLOSED` lifecycle locks.
-- Selector resilience is strong in E2E suites via `getByTestId(...)` with clear accessibility assertions.
+- No hard waits detected (`waitForTimeout`, `cy.wait(ms)`): synchronization discipline is strong overall.
+- Strong traceability hygiene: 114 story-linked test IDs and 232 priority markers across the Epic G suite.
+- Broad scope coverage: 29 files, 110 executable tests spanning `g-1` through `g-6` plus cross-story `g-epic` regression.
 
 ### Key Weaknesses
 
-- Two API spec files exceed the TEA maintainability length target (>300 lines): 407 and 370 lines.
-- E2E webhook payload IDs use `Date.now()` in three spots, which introduces avoidable time-coupled variability.
-- E2E suites perform UI login in `beforeEach`, which is reliable but slower than persisted auth state.
+- Maintainability is the primary drag: several API files are 250+ lines and harder to review/debug quickly.
+- Wrapper/case coverage traceability needs tightening where files contain describe wrappers or case slices without direct `test(...)` blocks.
+- E2E runtime cost is elevated by repeated auth bootstrap patterns in `beforeEach` for multiple story suites.
 
 ### Summary
 
-I reviewed story context from `_bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md` and the linked g.6 ATDD + automate API/E2E tests. The suite is high quality, merge-ready, and materially aligned to anti-regression goals for CS-E7. The main residual risk is maintainability (oversized API specs) plus minor determinism/performance refinements around timestamp ID generation and repeated UI login setup.
+Epic G test quality is acceptable and merge-capable, with no critical blockers and solid coverage discipline across story and regression surfaces. The largest quality gap is maintainability/operational efficiency rather than correctness. Addressing file-size decomposition, wrapper traceability, and auth session reuse should move this suite from acceptable to good/excellent quickly.
 
 ---
 
@@ -45,21 +43,21 @@ I reviewed story context from `_bmad-output/implementation-artifacts/g-6-volunte
 
 | Criterion                            | Status  | Violations | Notes |
 | ------------------------------------ | ------- | ---------- | ----- |
-| BDD Format (Given-When-Then)         | ✅ PASS | 0          | Test titles are behavior-driven and AC-aligned |
-| Test IDs                             | ✅ PASS | 0          | Story-linked IDs present throughout |
-| Priority Markers (P0/P1/P2/P3)       | ✅ PASS | 0          | All reviewed tests include P0/P1 markers |
-| Hard Waits (sleep, waitForTimeout)   | ✅ PASS | 0          | No hard wait anti-patterns detected |
-| Determinism (no conditionals)        | ⚠️ WARN | 2          | `Date.now()` used for webhook/event IDs |
-| Isolation (cleanup, no shared state) | ⚠️ WARN | 2          | Shared module-level `context` objects in E2E files |
-| Fixture Patterns                     | ✅ PASS | 0          | Typed fixture + context factory pattern used consistently |
-| Data Factories                       | ✅ PASS | 0          | Reusable story context/header factory pattern in place |
-| Network-First Pattern                | ⚠️ WARN | 1          | Strong assertions; no explicit network intercept-first pattern in these E2E specs |
-| Explicit Assertions                  | ✅ PASS | 0          | Assertions remain visible in test bodies |
-| Test Length (≤300 lines)             | ⚠️ WARN | 2          | Two API files exceed target length |
-| Test Duration (≤1.5 min)             | ⚠️ WARN | 2          | Static review; repeated UI login suggests optimization opportunity |
-| Flakiness Patterns                   | ⚠️ WARN | 1          | Timestamp-generated IDs can be made deterministic |
+| BDD Format (Given-When-Then)         | ✅ PASS | 0          | Behavior-oriented titles and story-linked IDs are consistently present |
+| Test IDs                             | ✅ PASS | 0          | 114 IDs detected across Epic G files |
+| Priority Markers (P0/P1/P2/P3)       | ✅ PASS | 0          | 232 priority markers detected |
+| Hard Waits (sleep, waitForTimeout)   | ✅ PASS | 0          | No hard waits detected |
+| Determinism (no conditionals)        | ⚠️ WARN | 12         | Low-severity navigation/context coupling patterns identified |
+| Isolation (cleanup, no shared state) | ⚠️ WARN | 9          | Shared module context + selective teardown gaps in some E2E files |
+| Fixture Patterns                     | ✅ PASS | 0          | Story fixtures/factory patterns are used consistently |
+| Data Factories                       | ✅ PASS | 0          | Factory/context helpers are broadly used across API/E2E |
+| Network-First Pattern                | ⚠️ WARN | 5          | Some files rely on implicit sync patterns; explicit network synchronization can improve reliability |
+| Explicit Assertions                  | ✅ PASS | 0          | Assertions are visible and extensive across the suite |
+| Test Length (≤300 lines)             | ⚠️ WARN | 16         | Multiple files exceed preferred maintainability range |
+| Test Duration (≤1.5 min)             | ⚠️ WARN | 5          | Static review indicates repeated auth setup contributes avoidable runtime overhead |
+| Flakiness Patterns                   | ⚠️ WARN | 12         | Mostly low-severity deterministic-coupling heuristics |
 
-**Total Violations**: 0 Critical, 0 High, 3 Medium, 7 Low
+**Total Violations**: 0 Critical, 0 High, 17 Medium, 30 Low
 
 ---
 
@@ -68,14 +66,14 @@ I reviewed story context from `_bmad-output/implementation-artifacts/g-6-volunte
 ```text
 Weighted Dimension Scoring:
 
-Determinism:       95 × 0.25 = 23.75
-Isolation:         93 × 0.25 = 23.25
-Maintainability:   84 × 0.20 = 16.80
-Coverage:          95 × 0.15 = 14.25
-Performance:       88 × 0.15 = 13.20
+Determinism:       88 × 0.25 = 22.00
+Isolation:         85 × 0.25 = 21.25
+Maintainability:   47 × 0.20 =  9.40
+Coverage:          83 × 0.15 = 12.45
+Performance:       78 × 0.15 = 11.70
 
-Final Score:                 91.25 → 91/100
-Grade:                       A
+Final Score:                 76.80 → 77/100
+Grade:                       C
 ```
 
 ---
@@ -88,58 +86,83 @@ No critical issues detected.
 
 ## Recommendations (Should Fix)
 
-### 1. Replace timestamp IDs in E2E payloads with deterministic helpers
-
-**Severity**: P1 (High)
-**Location**:
-- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts:215`
-- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts:216`
-- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts:154`
-**Criterion**: Determinism
-**Knowledge Base**: `test-quality.md`, `timing-debugging.md`
-
-Use deterministic token helpers (already used in API fixtures) for webhook/event IDs in E2E to reduce variability and improve reproducibility of replay/idempotency checks.
-
-### 2. Split oversized API spec files into focused chunks
+### 1. Split long API suites into smaller behavior-focused specs
 
 **Severity**: P2 (Medium)
 **Location**:
-- `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts`
-- `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.spec.ts`
+- `tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts`
+- `tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts`
+- `tests/api/platform/g-2-inbox-and-mine-surface-rebuild.atdd.api.spec.ts`
+- `tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts`
+- `tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts`
+- `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.atdd.api.spec.ts`
+- `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts`
+
 **Criterion**: Maintainability
-**Knowledge Base**: `test-quality.md`
+**Knowledge Base**: `test-quality.md`, `fixtures-composition.md`
 
-Both files exceed the 300-line target. Split by concern (display-contract suppression, lifecycle lock semantics, inbound lock, taxonomy/refusal behavior) to improve readability and failure triage.
+Large files increase cognitive load and slow triage. Split by contract slice (read contract, lifecycle/feedback, role/access, refusal paths) for faster failures and easier ownership.
 
-### 3. Shift E2E auth setup to storage state/session reuse
+### 2. Make wrapper/case coverage mapping explicit in traceability output
+
+**Severity**: P2 (Medium)
+**Location**:
+- `tests/api/platform/g-2-inbox-and-mine-surface-rebuild.atdd.api.spec.ts`
+- `tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.atdd.spec.ts`
+- `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.lifecycle-and-replay.cases.ts`
+- `tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.dispatch-and-ownership.cases.ts`
+
+**Criterion**: Coverage
+**Knowledge Base**: `selective-testing.md`, `test-levels-framework.md`
+
+Where files are case/wrapper oriented, add explicit parent-spec trace links and ensure negative-path assertions are represented at parent execution level.
+
+### 3. Move repeated E2E auth bootstrap from `beforeEach` to storage-state/session fixtures
+
+**Severity**: P2 (Medium)
+**Location**:
+- `tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts:51`
+- `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts:21`
+- `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts:22`
+- `tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.spec.ts:12`
+
+**Criterion**: Performance
+**Knowledge Base**: `auth-session.md`, `test-quality.md`
+
+Runtime can be reduced by reusing stable auth state for deterministic role contexts rather than logging in repeatedly per test.
+
+### 4. Reduce module-level shared context coupling in E2E files
 
 **Severity**: P3 (Low)
 **Location**:
-- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts:56`
-- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts:53`
-**Criterion**: Performance
-**Knowledge Base**: `test-quality.md`, `playwright.dev` auth/storage state docs
+- `tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts:48`
+- `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts:15`
+- `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts:16`
+- `tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.spec.ts:9`
+- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts:29`
+- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts:33`
+- `tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts:10`
 
-`beforeEach` UI login is reliable but expensive. Persisted `storageState` for stable role contexts can reduce runtime while preserving behavior checks.
+**Criterion**: Isolation / Determinism
+**Knowledge Base**: `data-factories.md`, `test-healing-patterns.md`
+
+Prefer fixture-scoped or per-test context generation to reduce hidden cross-test coupling risk.
 
 ---
 
 ## Best Practices Found
 
-### 1. Strong explicit assertion discipline
+### 1. No hard-wait anti-patterns
 
-- Assertions are direct and readable across API and E2E suites.
-- Feedback taxonomy, refusal envelopes, and lifecycle transitions are validated explicitly.
+Hard waits were not detected across Epic G suite files, indicating strong deterministic wait discipline.
 
-### 2. Contract-safe display checks are well implemented
+### 2. Strong traceability metadata
 
-- Forbidden internal fields/tokens are validated in both API payload and rendered UI pathways.
-- UUID/token suppression checks are included for volunteer-primary surfaces.
+Test title ID/priority conventions are consistently applied, supporting risk-based execution and triage.
 
-### 3. Responsive and accessibility intent is represented
+### 3. Balanced API + E2E strategy
 
-- Mobile/tablet/desktop layout contract checks are present.
-- Keyboard traversal and `aria-live`/feedback-taxonomy assertions are included.
+Epic G includes both service/API contract checks and user-surface E2E coverage, consistent with a healthy test-level mix.
 
 ---
 
@@ -147,34 +170,23 @@ Both files exceed the 300-line target. Split by concern (display-contract suppre
 
 ### File Metadata
 
-- **Scope Input Artifact**: `_bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md`
-- **Reviewed Files**:
-  - `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts` (407 lines)
-  - `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts` (238 lines)
-  - `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.spec.ts` (370 lines)
-  - `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts` (208 lines)
-- **Total Size**: 1,223 lines
+- **Review Scope**: Epic G suite (`g-1`..`g-6` + `g-epic`)
+- **Total Files Reviewed**: 29
+- **Total Size**: 5,908 lines, 226,568 bytes
 - **Test Framework**: Playwright (API + E2E)
 
 ### Test Structure
 
-- **Describe Blocks**: 4
-- **Test Cases**: 20
-- **Average Test Length**: ~61.15 lines/test
-- **Total Assertions**: 139
-- **Assertions/Test (avg)**: ~6.95
-- **Fixtures Used**: `connectShyftStoryG6.fixture` and helper fixtures
-- **Data Factories Used**: `createStoryG6Context`, `createStoryG6Headers`, URL/context builders
+- **Describe Blocks**: 29
+- **Test Cases (`test(...)`)**: 110
+- **Test IDs Detected**: 114
+- **Priority Markers Detected**: 232
+- **Hard Waits Detected**: 0
 
 ### Priority Distribution
 
-- **P0**: 13
-- **P1**: 7
-- **P2/P3**: 0
-
-### Test ID Coverage
-
-Detected IDs include: `G6-ATDD-API-001..005`, `G6-ATDD-E2E-001..006` (plus viewport-derived IDs), `G6-AUTO-API-301..304`, `G6-AUTO-E2E-301..305`.
+- **P0/P1 markers**: heavily represented across stories and epic-regression files
+- **Unknown priority**: minimal (markers are broadly present)
 
 ---
 
@@ -182,52 +194,63 @@ Detected IDs include: `G6-ATDD-API-001..005`, `G6-ATDD-E2E-001..006` (plus viewp
 
 ### Related Artifacts
 
-- **Story File**: `_bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md`
+- **Story Files**:
+  - `_bmad-output/implementation-artifacts/g-1-design-tokens-and-shared-conversation-primitives.md`
+  - `_bmad-output/implementation-artifacts/g-2-inbox-and-mine-surface-rebuild.md`
+  - `_bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md`
+  - `_bmad-output/implementation-artifacts/g-4-add-neighbor-and-directory-rebuild.md`
+  - `_bmad-output/implementation-artifacts/g-5-more-settings-volunteer-ia-and-admin-separation.md`
+  - `_bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md`
+- **Epic Validation**: `_bmad-output/implementation-artifacts/story-validation-epic-g-2026-03-06.md`
+- **Test Design**: `_bmad-output/test-artifacts/test-design-epic-G.md`
 - **Framework Config**: `playwright.config.ts`
 
-### Acceptance Criteria Validation
+### Story-to-Test Coverage Snapshot
 
-| Acceptance Criterion | Test ID(s) | Status | Notes |
-| -------------------- | ---------- | ------ | ----- |
-| AC1 display-safe volunteer contracts suppress internal metadata | `G6-ATDD-API-001`, `G6-ATDD-E2E-001`, `G6-AUTO-API-301`, `G6-AUTO-E2E-301` | ✅ Covered | API + UI suppression checks present |
-| AC2 regression coverage: suppression, voicemail lock, responsive behavior, accessibility/feedback consistency | `G6-ATDD-API-002`, `G6-ATDD-E2E-002`, viewport responsive set in `G6-ATDD-E2E` + `G6-AUTO-E2E-303`, accessibility in `G6-ATDD-E2E-005` | ✅ Covered | Broad API+E2E regression focus |
-| AC3 outbound on `CLOSED` keeps same-thread reopen semantics and deterministic feedback | `G6-ATDD-API-003`, `G6-ATDD-E2E-003`, `G6-AUTO-API-303` | ✅ Covered | Lifecycle + feedback assertions are explicit |
-| AC4 inbound on `CLOSED` never auto-reopens and reflects locked routing | `G6-ATDD-API-004`, `G6-ATDD-E2E-006`, `G6-AUTO-API-304`, `G6-AUTO-E2E-305` | ✅ Covered | Includes duplicate/replay-safe pathway |
+| Story / Scope | Representative Tests | Status |
+| ------------- | -------------------- | ------ |
+| g-1 | `g-1-*.atdd.*`, `g-1-*.automate.*` (API + E2E) | ✅ Covered |
+| g-2 | `g-2-*.atdd.*`, `g-2-*.automate.*` + case files | ✅ Covered |
+| g-3 | `g-3-*.atdd.*`, `g-3-*.automate.*` (API + E2E) | ✅ Covered |
+| g-4 | `g-4-*.atdd.*`, `g-4-*.automate.*` (API + E2E) | ✅ Covered |
+| g-5 | `g-5-*.atdd.*`, `g-5-*.automate.*` (API + E2E) | ✅ Covered |
+| g-6 | `g-6-*.atdd.*`, `g-6-*.automate.*` + lifecycle case files | ✅ Covered |
+| Epic regression | `g-epic-volunteer-ux-regression.automate.*` | ✅ Covered |
 
-**Coverage**: 4/4 criteria covered (100%)
+**Coverage**: 6/6 Epic G story families + epic-regression suite present
 
 ---
 
 ## Knowledge Base References
 
-This review used TEA knowledge fragments:
+This review consulted TEA knowledge fragments:
 
 - `test-quality.md`
 - `data-factories.md`
 - `test-levels-framework.md`
-- `selector-resilience.md`
-- `timing-debugging.md`
-- `fixtures-composition.md`
-- `overview.md`
-- `api-request.md`
-- `network-first.md`
-- `playwright-cli.md`
 - `selective-testing.md`
 - `test-healing-patterns.md`
+- `selector-resilience.md`
+- `timing-debugging.md`
+- `overview.md`
+- `api-request.md`
+- `network-recorder.md`
+- `auth-session.md`
+- `intercept-network-call.md`
+- `recurse.md`
+- `log.md`
+- `file-utils.md`
+- `burn-in.md`
+- `network-error-monitor.md`
+- `fixtures-composition.md`
+- `playwright-cli.md`
 
-External standards cross-check:
+External references cross-checked:
 
-- Playwright best practices and API docs:
-  - https://playwright.dev/docs/best-practices
-  - https://playwright.dev/docs/locators
-  - https://playwright.dev/docs/api/class-page#page-wait-for-timeout
-- Cypress intercept/wait patterns:
-  - https://docs.cypress.io/api/commands/intercept
-  - https://docs.cypress.io/api/commands/wait
-- Pact provider verification reference:
-  - https://docs.pact.io/provider
-- GitHub Actions job dependency docs:
-  - https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idneeds
+- https://playwright.dev/docs/best-practices
+- https://playwright.dev/docs/locators
+- https://docs.cypress.io/api/commands/intercept
+- https://docs.pact.io/provider
 
 ---
 
@@ -235,18 +258,19 @@ External standards cross-check:
 
 ### Immediate Actions (Before Merge)
 
-1. Replace `Date.now()`-based webhook/event IDs with deterministic helper IDs in E2E specs.
-2. Optionally split the two oversized API spec files to reduce review/debug complexity.
+1. Split high-length API files in g-1..g-4 into smaller behavior slices.
+2. Add explicit traceability notes for wrapper/case files to executable parent specs.
+3. Convert repeated E2E auth bootstrap to storage-state/session fixtures.
 
 ### Follow-up Actions (Future PRs)
 
-1. Move stable-role E2E authentication to `storageState` to reduce runtime.
-2. If cross-browser regressions emerge, add a lightweight WebKit/Firefox smoke lane for g.6 critical tests.
+1. Normalize module-level context creation into fixture/test scope for lower coupling.
+2. Add lightweight negative-path assertions in case files where only happy-path behavior exists.
 
 ### Re-Review Needed?
 
-- ✅ No re-review required to merge.
-- ⚠️ Re-review recommended after maintainability refactor (file splits) if completed in this sprint.
+- ✅ No mandatory re-review required for merge.
+- ⚠️ Recommended targeted re-review after maintainability and auth-setup optimizations.
 
 ---
 
@@ -256,22 +280,7 @@ External standards cross-check:
 
 **Rationale**:
 
-The g.6 suite is robust, acceptance-criteria complete, and regression-oriented in the right places (display-contract suppression, lifecycle lock semantics, replay-safe inbound behavior, responsive/a11y coverage). No merge-blocking quality defects were found. Remaining findings are optimization and maintainability improvements rather than correctness risks.
-
----
-
-## Appendix
-
-### Violation Summary by Location
-
-| File | Line | Severity | Criterion | Issue | Fix |
-| ---- | ---- | -------- | --------- | ----- | --- |
-| `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts` | 215-216 | P1 | Determinism | `Date.now()` payload IDs | Use deterministic helper IDs |
-| `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts` | 154 | P3 | Determinism | Timestamp suffix generation | Use deterministic helper IDs |
-| `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts` | file-level | P2 | Maintainability | 407-line file | Split by contract concern |
-| `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.spec.ts` | file-level | P2 | Maintainability | 370-line file | Split by actor/path concern |
-| `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts` | 56 | P3 | Performance | UI login every test | Move to storageState |
-| `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts` | 53 | P3 | Performance | UI login every test | Move to storageState |
+Epic G coverage breadth and core correctness checks are solid, with no critical/high-severity defects detected in this static quality review. The suite’s main opportunity is maintainability and execution efficiency, not test correctness. Addressing decomposition, trace mapping, and auth setup reuse should materially improve score and long-term operability.
 
 ---
 
@@ -279,6 +288,17 @@ The g.6 suite is robust, acceptance-criteria complete, and regression-oriented i
 
 **Generated By**: BMad TEA Agent (Test Architect)
 **Workflow**: testarch-test-review
-**Review ID**: test-review-g-6-volunteer-contract-boundary-and-regression-hardening-20260307
+**Review ID**: test-review-epic-g-20260307
 **Timestamp**: 2026-03-07
 **Version**: 1.0
+
+---
+
+## Validation Notes
+
+- CLI session cleanup confirmed: `playwright-cli -s=tea-review close`
+- Evidence artifacts captured under test artifact paths:
+  - `_bmad-output/test-artifacts/review-evidence.png`
+  - `.playwright-cli/traces/trace-1772909010406.trace`
+  - `.playwright-cli/traces/trace-1772909010406.network`
+- Subprocess outputs, aggregate summary, and CLI evidence log are stored in `_bmad-output/test-artifacts/review-run-2026-03-07T18-44-47-000Z/`.
