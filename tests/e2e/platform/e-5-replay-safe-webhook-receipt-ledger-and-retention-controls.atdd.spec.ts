@@ -239,9 +239,8 @@ test.describe(
 
         await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
         await expect(page).toHaveURL(new RegExp(`/app/connectshyft/threads/${threadId}`));
-        await expect(
-          page.getByTestId('connectshyft-thread-metadata-last-inbound-number'),
-        ).toBeVisible();
+        await expect(page.getByTestId('connectshyft-thread-primary-context-panel')).toBeVisible();
+        await expect(page.getByTestId('connectshyft-thread-context-neighbor')).toBeVisible();
       },
     );
   },

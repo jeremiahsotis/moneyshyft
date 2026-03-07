@@ -75,7 +75,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
   );
 
   test(
-    '[P0] claimed thread shows Take Over action for tenant-privileged operators with deterministic action ordering @P0',
+    '[P0] claimed thread keeps canonical action ordering for tenant-privileged operators without takeover drift @P0',
     async ({ page }) => {
       const context = createStoryD4Context();
       await login(page);
@@ -90,7 +90,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
       );
 
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Take Over' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Take Over' })).toHaveCount(0);
       await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);

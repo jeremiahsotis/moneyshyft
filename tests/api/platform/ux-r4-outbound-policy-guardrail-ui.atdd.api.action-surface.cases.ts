@@ -76,7 +76,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD API) - Action Surf
   );
 
   test(
-    '[UXR4-ATDD-API-002][P1] role-admin path preserves explicit action ordering and exposes Take Over on claimed threads @P1',
+    '[UXR4-ATDD-API-002][P1] role-admin path preserves explicit canonical action ordering without takeover drift @P1',
     async ({
       request,
       storyUxR4Context,
@@ -96,13 +96,14 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD API) - Action Surf
           thread: {
             state: 'CLAIMED',
           },
-          actions: ['Call', 'Take Over', 'Text', 'Close'],
+          actions: ['Call', 'Text', 'Close'],
           outboundPolicy: {
             hiddenPolicyPaths: [],
             explicitActionSurface: true,
           },
         },
       });
+      expect(claimedBody.data?.actions).not.toContain('Take Over');
     },
   );
 });

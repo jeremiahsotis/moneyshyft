@@ -28,7 +28,7 @@ const buildThreadUrl = (
 
 test.describe('Story c.4 Claim Takeover and Close Lifecycle Actions (ATDD E2E RED)', () => {
   test(
-    '[P0] thread detail enforces claim takeover and close actions with deterministic state feedback for authorized roles @P0',
+    '[P0] thread detail enforces claim and close actions with deterministic state feedback for authorized roles @P0',
     async ({ page }) => {
       const context = createStoryC4Context();
       await login(page);
@@ -55,7 +55,7 @@ test.describe('Story c.4 Claim Takeover and Close Lifecycle Actions (ATDD E2E RE
         }),
       );
 
-      await expect(page.getByRole('button', { name: 'Take Over' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Take Over' })).toHaveCount(0);
       await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
     },
   );

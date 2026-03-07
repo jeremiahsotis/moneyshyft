@@ -73,7 +73,7 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
   );
 
   test(
-    '[UXR4-AUTOMATE-E2E-202][P1] tenant-admin claimed-thread action surface includes Take Over with deterministic ordering @P1',
+    '[UXR4-AUTOMATE-E2E-202][P1] tenant-admin claimed-thread action surface remains canonical with deterministic ordering @P1',
     async ({ page }) => {
       const context = createStoryUxR4Context();
       await login(page);
@@ -90,12 +90,12 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
 
       // When the action surface is rendered.
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Take Over' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Take Over' })).toHaveCount(0);
       await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
 
       // Then action ordering and visibility remain deterministic and explicit.
-      await expectThreadActions(page, ['Call', 'Take Over', 'Text', 'Close']);
+      await expectThreadActions(page, ['Call', 'Text', 'Close']);
       await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
     },
   );

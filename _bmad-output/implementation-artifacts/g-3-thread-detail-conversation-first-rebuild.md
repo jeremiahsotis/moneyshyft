@@ -186,8 +186,19 @@ GPT-5 Codex
 - apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts
 - tests/api/platform/g-3-thread-detail-conversation-first-rebuild.automate.api.spec.ts
+- tests/api/platform/8-4-lane-extraction-transition-strategy.api.spec.ts
+- tests/api/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.api.spec.ts
+- tests/api/platform/ux-r4-outbound-policy-guardrail-ui.atdd.api.action-surface.cases.ts
+- tests/e2e/platform/c-3-inbox-and-thread-detail-read-contracts.spec.ts
+- tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.atdd.spec.ts
+- tests/e2e/platform/c-4-claim-takeover-and-close-lifecycle-actions.automate.spec.ts
+- tests/e2e/platform/c-5-deterministic-escalation-scheduler-with-claim-only-reset.automate.spec.ts
+- tests/e2e/platform/d-4-operator-interaction-contracts-for-outbound-safety.atdd.spec.ts
+- tests/e2e/platform/e-5-replay-safe-webhook-receipt-ledger-and-retention-controls.atdd.spec.ts
 - tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts
 - tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.automate.spec.ts
+- tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts
+- tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.automate.spec.ts
 - tests/support/factories/connectShyftStoryG3Factory.ts
 - tests/support/fixtures/connectShyftStoryG3.fixture.ts
 
