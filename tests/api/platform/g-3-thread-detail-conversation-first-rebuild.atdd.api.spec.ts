@@ -1,5 +1,6 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryG3.fixture';
+import type { APIRequestContext } from '@playwright/test';
 
 type ConnectShyftThreadEnvelope = {
   ok?: boolean;
@@ -50,9 +51,24 @@ type ConnectShyftThreadEnvelope = {
   };
 };
 
+const fetchThreadDetail = async (
+  request: APIRequestContext,
+  path: string,
+  headers: Record<string, string>,
+): Promise<ConnectShyftThreadEnvelope> => {
+  const response = await apiRequest(request, {
+    method: 'GET',
+    path,
+    headers,
+  });
+
+  expect(response.status()).toBe(200);
+  return (await response.json()) as ConnectShyftThreadEnvelope;
+};
+
 test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD API RED)', () => {
   test(
-    '[G3-ATDD-API-001][P0] thread detail contract prioritizes neighbor conference and claim context while voicemail renders inline as first-class conversation content @P0',
+    '[7.3-API-001][P0] thread detail contract prioritizes neighbor conference and claim context while voicemail renders inline as first-class conversation content @P0',
     async ({ request, storyG3Context, storyG3OperatorHeaders }) => {
       const [claimedResponse, voicemailResponse] = await Promise.all([
         apiRequest(request, {
@@ -94,48 +110,48 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD API RED)
   );
 
   test(
-    '[G3-ATDD-API-002][P0] thread detail action matrix is explicitly locked by canonical lifecycle state contracts @P0',
+    '[7.3-API-002][P0] UNCLAIMED thread actions are canonical and state-locked @P0',
     async ({ request, storyG3Context, storyG3OperatorHeaders }) => {
-      const [unclaimedResponse, claimedResponse, closedResponse] = await Promise.all([
-        apiRequest(request, {
-          method: 'GET',
-          path: `${storyG3Context.paths.threads}/${storyG3Context.threadIds.unclaimed}`,
-          headers: storyG3OperatorHeaders,
-        }),
-        apiRequest(request, {
-          method: 'GET',
-          path: `${storyG3Context.paths.threads}/${storyG3Context.threadIds.claimed}`,
-          headers: storyG3OperatorHeaders,
-        }),
-        apiRequest(request, {
-          method: 'GET',
-          path: `${storyG3Context.paths.threads}/${storyG3Context.threadIds.closed}`,
-          headers: storyG3OperatorHeaders,
-        }),
-      ]);
-
-      expect(unclaimedResponse.status()).toBe(200);
-      expect(claimedResponse.status()).toBe(200);
-      expect(closedResponse.status()).toBe(200);
-
-      const [unclaimedBody, claimedBody, closedBody] = (await Promise.all([
-        unclaimedResponse.json(),
-        claimedResponse.json(),
-        closedResponse.json(),
-      ])) as ConnectShyftThreadEnvelope[];
-
+      const unclaimedBody = await fetchThreadDetail(
+        request,
+        `${storyG3Context.paths.threads}/${storyG3Context.threadIds.unclaimed}`,
+        storyG3OperatorHeaders,
+      );
       expect(unclaimedBody.data?.actions).toEqual([...storyG3Context.expectedActions.unclaimed]);
-      expect(claimedBody.data?.actions).toEqual([...storyG3Context.expectedActions.claimed]);
-      expect(closedBody.data?.actions).toEqual([...storyG3Context.expectedActions.closed]);
-
       expect(unclaimedBody.data?.actionMatrix?.lockedByState).toBe(true);
+    },
+  );
+
+  test(
+    '[7.3-API-003][P0] CLAIMED thread actions are canonical and state-locked @P0',
+    async ({ request, storyG3Context, storyG3OperatorHeaders }) => {
+      const claimedBody = await fetchThreadDetail(
+        request,
+        `${storyG3Context.paths.threads}/${storyG3Context.threadIds.claimed}`,
+        storyG3OperatorHeaders,
+      );
+
+      expect(claimedBody.data?.actions).toEqual([...storyG3Context.expectedActions.claimed]);
       expect(claimedBody.data?.actionMatrix?.lockedByState).toBe(true);
+    },
+  );
+
+  test(
+    '[7.3-API-004][P0] CLOSED thread actions are canonical and state-locked @P0',
+    async ({ request, storyG3Context, storyG3OperatorHeaders }) => {
+      const closedBody = await fetchThreadDetail(
+        request,
+        `${storyG3Context.paths.threads}/${storyG3Context.threadIds.closed}`,
+        storyG3OperatorHeaders,
+      );
+
+      expect(closedBody.data?.actions).toEqual([...storyG3Context.expectedActions.closed]);
       expect(closedBody.data?.actionMatrix?.lockedByState).toBe(true);
     },
   );
 
   test(
-    '[G3-ATDD-API-002A][P1] claimed thread action matrix remains canonical for privileged roles without takeover drift @P1',
+    '[7.3-API-005][P1] claimed thread action matrix remains canonical for privileged roles without takeover drift @P1',
     async ({ request, storyG3Context, storyG3TenantAdminHeaders }) => {
       const response = await apiRequest(request, {
         method: 'GET',
@@ -153,7 +169,7 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD API RED)
   );
 
   test(
-    '[G3-ATDD-API-003][P1] refusal and policy feedback is contextual at action time and avoids persistent operations-heavy default chrome @P1',
+    '[7.3-API-006][P1] refusal and policy feedback is contextual at action time and avoids persistent operations-heavy default chrome @P1',
     async ({
       request,
       storyG3Context,
@@ -209,7 +225,7 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD API RED)
   );
 
   test(
-    '[G3-ATDD-API-004][P0] CLOSED outbound action reopens same thread id to UNCLAIMED with deterministic lifecycle messaging and no inbound auto-reopen side effects @P0',
+    '[7.3-API-007][P0] CLOSED outbound action reopens same thread id to UNCLAIMED with deterministic lifecycle messaging and no inbound auto-reopen side effects @P0',
     async ({
       request,
       storyG3Context,
