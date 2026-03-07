@@ -162,6 +162,7 @@ GPT-5 Codex
 - apps/connectshyft-api/src/modules/connectshyft/threads.ts
 - apps/connectshyft-api/src/routes/api/v1/connectshyft.ts
 - apps/connectshyft-web/node_modules
+- apps/connectshyft-web/src/features/connectshyft/threads.ts
 - apps/moneyshyft-api/node_modules
 - apps/moneyshyft-api/src/modules/connectshyft/threads.ts
 - apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts

@@ -7,6 +7,10 @@ import {
   type ConnectShyftEnvelope,
   listStoryG4Neighbors,
 } from '../../support/helpers/connectShyftStoryG4ApiHelpers';
+import {
+  buildStoryG4DeterministicPhone,
+  createStoryG4NeighborSeed,
+} from '../../support/helpers/connectShyftStoryG4TestHelpers';
 import { test, expect } from '../../support/fixtures/connectShyftStoryG4.fixture';
 
 test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD API)', () => {
@@ -125,7 +129,17 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD API)', () => {
 
   test(
     '[G4-ATDD-API-003][P0] directory search by name and phone remains conference scoped for volunteer workflows @P0',
-    async ({ request, storyG4Context, storyG4VolunteerHeaders }) => {
+    async ({ request, storyG4Context, storyG4VolunteerHeaders }, testInfo) => {
+      const scopedPrimaryPhone = buildStoryG4DeterministicPhone(testInfo, 'g4-atdd-api-003-scoped');
+      const phoneQuery = scopedPrimaryPhone.replace(/\D/g, '').slice(-10);
+
+      const scopedSeed = await createStoryG4NeighborSeed(request, storyG4Context, {
+        firstName: `${storyG4Context.searchTerms.byName} Scoped`,
+        lastName: 'Directory',
+        primaryPhone: scopedPrimaryPhone,
+      });
+      createdNeighborIds.push(scopedSeed.neighborId);
+
       // Given directory search by name and phone
       const byNameResponse = await apiRequest(request, {
         method: 'GET',
@@ -134,7 +148,7 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD API)', () => {
       });
       const byPhoneResponse = await apiRequest(request, {
         method: 'GET',
-        path: `${storyG4Context.paths.neighborsCollection}?query=${encodeURIComponent(storyG4Context.searchTerms.byPhone)}&mode=phone`,
+        path: `${storyG4Context.paths.neighborsCollection}?query=${encodeURIComponent(phoneQuery)}&mode=phone`,
         headers: storyG4VolunteerHeaders,
       });
 
@@ -158,6 +172,8 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD API)', () => {
         .toBe(true);
       expect(byPhoneNeighbors.some((neighbor) => neighbor.orgUnitId === storyG4Context.orgUnitId))
         .toBe(true);
+      expect(byNameNeighbors.some((neighbor) => neighbor.neighborId === scopedSeed.neighborId)).toBe(true);
+      expect(byPhoneNeighbors.some((neighbor) => neighbor.neighborId === scopedSeed.neighborId)).toBe(true);
 
       const byNameMatch = byNameNeighbors.some((neighbor) => {
         const haystack = `${neighbor.firstName ?? ''} ${neighbor.lastName ?? ''}`.toLowerCase();
@@ -167,7 +183,7 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD API)', () => {
 
       const byPhoneMatch = byPhoneNeighbors.some((neighbor) => {
         const phones = Array.isArray(neighbor.phones) ? neighbor.phones : [];
-        return phones.some((phone) => String(phone.value ?? '').replace(/\D/g, '').includes(storyG4Context.searchTerms.byPhone));
+        return phones.some((phone) => String(phone.value ?? '').replace(/\D/g, '').includes(phoneQuery));
       });
       expect(byPhoneMatch).toBe(true);
     },
