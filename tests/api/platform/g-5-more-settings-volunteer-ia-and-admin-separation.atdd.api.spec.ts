@@ -14,7 +14,7 @@ type ConnectShyftEnvelope = {
 };
 
 test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD API)', () => {
-  test.skip(
+  test(
     '[G5-ATDD-API-001][P0] volunteer settings navigation profile resolves volunteer-first IA options and excludes admin controls @P0',
     async ({ request, storyG5Context, storyG5VolunteerHeaders }) => {
       const response = await apiRequest(request, {
@@ -43,7 +43,7 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD A
     },
   );
 
-  test.skip(
+  test(
     '[G5-ATDD-API-002][P0] volunteer access to availability endpoint is refused with refusal envelope guidance @P0',
     async ({ request, storyG5Context, storyG5VolunteerHeaders }) => {
       const response = await apiRequest(request, {
@@ -63,7 +63,7 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD A
     },
   );
 
-  test.skip(
+  test(
     '[G5-ATDD-API-003][P0] volunteer access to number mapping and escalation config endpoints is refused without privileged payload leakage @P0',
     async ({ request, storyG5Context, storyG5VolunteerHeaders }) => {
       const numbersResponse = await apiRequest(request, {
@@ -99,7 +99,7 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD A
     },
   );
 
-  test.skip(
+  test(
     '[G5-ATDD-API-004][P1] authorized admin role can resolve explicit admin settings pathways while volunteer pathways remain unchanged @P1',
     async ({ request, storyG5Context, storyG5AdminHeaders, storyG5VolunteerHeaders }) => {
       const adminNavigation = await apiRequest(request, {
@@ -133,7 +133,7 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD A
     },
   );
 
-  test.skip(
+  test(
     '[G5-ATDD-API-005][P0] role and scope context refresh immediately re-evaluates admin pathway access and returns refusal after downgrade @P0',
     async ({ request, storyG5Context, storyG5AdminHeaders, storyG5ViewerHeaders }) => {
       const adminAccess = await apiRequest(request, {

@@ -1,5 +1,8 @@
 <template>
-  <main class="min-h-screen bg-slate-50 px-4 py-8">
+  <main
+    data-testid="connectshyft-availability-surface"
+    class="min-h-screen bg-slate-50 px-4 py-8 pb-32"
+  >
     <section class="mx-auto max-w-4xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <header class="mb-6">
         <h1 class="text-2xl font-semibold text-slate-900">
@@ -8,9 +11,18 @@
         <p class="mt-2 text-sm text-slate-600">
           Current module and sub-capability rollout state for this tenant.
         </p>
+        <p
+          data-testid="connectshyft-admin-settings-context-chip"
+          class="mt-3 inline-flex rounded-full border border-slate-300 bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700"
+        >
+          Admin Settings Path
+        </p>
       </header>
 
-      <section class="mb-6 rounded-md border border-slate-200 p-4">
+      <section
+        data-testid="connectshyft-availability-config-form"
+        class="mb-6 rounded-md border border-slate-200 p-4"
+      >
         <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
           Capability Status
         </h2>
@@ -86,11 +98,14 @@
         Replay webhook
       </button>
     </section>
+
+    <ConnectShyftPrimaryNav />
   </main>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
 import {
   DEFAULT_CONNECTSHYFT_AVAILABILITY,
   fetchConnectShyftAvailability,

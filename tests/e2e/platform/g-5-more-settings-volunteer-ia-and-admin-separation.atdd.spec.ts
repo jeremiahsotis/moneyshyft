@@ -13,7 +13,7 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD E
     await login(page);
   });
 
-  test.skip(
+  test(
     '[G5-ATDD-E2E-001][P0] volunteer More/Settings shows volunteer-first IA options and excludes admin controls @P0',
     async ({ page }) => {
       await page.goto(buildStoryG5MoreUrl(context, {
@@ -35,7 +35,7 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD E
     },
   );
 
-  test.skip(
+  test(
     '[G5-ATDD-E2E-002][P0] volunteer deep-link to admin settings path returns refusal guidance and withholds privileged controls @P0',
     async ({ page }) => {
       await page.goto(buildStoryG5AdminPathUrl(context, context.paths.moreAvailabilityUi, {
@@ -52,7 +52,7 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD E
     },
   );
 
-  test.skip(
+  test(
     '[G5-ATDD-E2E-003][P1] authorized admin deep-link to explicit admin settings path resolves with admin nav state and controls @P1',
     async ({ page }) => {
       await page.goto(buildStoryG5AdminPathUrl(context, context.paths.moreNumbersUi, {
@@ -67,7 +67,7 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD E
     },
   );
 
-  test.skip(
+  test(
     '[G5-ATDD-E2E-004][P0] role and scope context refresh updates pathway visibility and refuses admin settings access after downgrade @P0',
     async ({ page }) => {
       await page.goto(buildStoryG5AdminPathUrl(context, context.paths.moreEscalationUi, {
@@ -88,7 +88,7 @@ test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD E
     },
   );
 
-  test.skip(
+  test(
     '[G5-ATDD-E2E-005][P1] volunteer-first More/Settings IA remains clear and stable across mobile tablet and desktop breakpoints @P1',
     async ({ page }) => {
       const viewportMatrix = [

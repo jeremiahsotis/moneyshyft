@@ -15,6 +15,13 @@
         :class="isActive(item.path) ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'"
       >
         {{ item.label }}
+        <span
+          v-if="item.path === '/app/connectshyft/more' && isActive(item.path)"
+          data-testid="connectshyft-primary-nav-more-active"
+          class="sr-only"
+        >
+          More active
+        </span>
       </RouterLink>
     </div>
   </nav>
