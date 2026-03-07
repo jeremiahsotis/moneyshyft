@@ -5542,7 +5542,7 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
           eventType: 'connectshyft.voicemail.inline',
           payload: {
             eventName: 'connectshyft.voicemail.inline',
-            summary: thread.display.voicemailLabel || 'Voicemail received',
+            summary: thread.display?.voicemailLabel || thread.voicemailLabel || 'Voicemail received',
             metadata: {
               firstClass: true,
             },

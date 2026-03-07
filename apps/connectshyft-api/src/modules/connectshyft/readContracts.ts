@@ -4,6 +4,19 @@ export type ConnectShyftInboxBucket = 'inbox' | 'mine';
 export type ConnectShyftThreadState = 'UNCLAIMED' | 'CLAIMED' | 'CLOSED';
 export type ConnectShyftThreadAction = 'Call' | 'Text' | 'Claim' | 'Close' | 'Send Message' | 'Take Over';
 
+export type ConnectShyftThreadDisplayRecord = {
+  title: string;
+  preview: string;
+  urgencyLabel: string;
+  stateLabel: string;
+  inboundContext: string;
+  outboundContext: string;
+  neighborContext: string;
+  conferenceContext: string;
+  claimContext: string;
+  voicemailLabel: string;
+};
+
 export type ConnectShyftThreadSummaryRecord = {
   threadId: string;
   tenantId: string;
@@ -32,6 +45,7 @@ export type ConnectShyftThreadSummaryRecord = {
   voicemailIndicator: boolean;
   voicemailLabel: string | null;
   summary: string;
+  display?: ConnectShyftThreadDisplayRecord;
 };
 
 export type ConnectShyftThreadDetailRecord = ConnectShyftThreadSummaryRecord & {
