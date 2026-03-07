@@ -22,7 +22,7 @@ const createConnectShyftDbClient = () => {
     connection: resolveConnectShyftDbConnection(),
     pool: {
       min: 0,
-      max: 2,
+      max: 10,
     },
   });
 };
@@ -32,6 +32,15 @@ let connectShyftDbDestroyed = false;
 
 const buildInvitationCode = (tenantId: string): string =>
   tenantId.replace(/-/g, '').slice(0, 10).toUpperCase();
+
+const normalizeIds = (values: string[] | undefined): string[] =>
+  Array.from(
+    new Set(
+      (values ?? [])
+        .map((value) => String(value).trim())
+        .filter((value) => value.length > 0),
+    ),
+  );
 
 export const ensureConnectShyftDbActorUser = async (userId: string): Promise<void> => {
   const existingUser = await connectShyftDb('users')
@@ -70,6 +79,53 @@ export const ensureConnectShyftDbHousehold = async (tenantId: string): Promise<v
     })
     .onConflict('id')
     .ignore();
+};
+
+export const cleanupConnectShyftThreadAndNeighborState = async (input: {
+  tenantId: string;
+  threadIds?: string[];
+  neighborIds?: string[];
+}): Promise<void> => {
+  const threadIds = normalizeIds(input.threadIds);
+  const neighborIds = normalizeIds(input.neighborIds);
+
+  if (threadIds.length === 0 && neighborIds.length === 0) {
+    return;
+  }
+
+  try {
+    const threadsTable = connectShyftDb.withSchema('connectshyft').table('cs_threads');
+    const neighborsTable = connectShyftDb.withSchema('connectshyft').table('cs_neighbors');
+
+    if (threadIds.length > 0) {
+      await threadsTable
+        .clone()
+        .where({ tenant_id: input.tenantId })
+        .whereIn('id', threadIds)
+        .del();
+    }
+
+    if (neighborIds.length > 0) {
+      await threadsTable
+        .clone()
+        .where({ tenant_id: input.tenantId })
+        .whereIn('neighbor_id', neighborIds)
+        .del();
+
+      await neighborsTable
+        .clone()
+        .where({ tenant_id: input.tenantId })
+        .whereIn('id', neighborIds)
+        .del();
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('Unable to acquire a connection')) {
+      return;
+    }
+
+    throw error;
+  }
 };
 
 export const destroyConnectShyftDbActorClient = async (): Promise<void> => {

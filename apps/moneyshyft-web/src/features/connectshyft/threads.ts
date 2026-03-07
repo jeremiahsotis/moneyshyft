@@ -31,6 +31,9 @@ type ConnectShyftEnvelope = {
   data?: {
     thread?: Partial<ConnectShyftThread>;
     threads?: Partial<ConnectShyftThread>[];
+    lifecycle?: {
+      createdNewThread?: unknown;
+    };
     uiFeedback?: {
       message?: unknown;
     };
@@ -62,6 +65,7 @@ export type ConnectShyftEnsureThreadResult =
     ok: true;
     code: string;
     thread: ConnectShyftThread;
+    createdNewThread: boolean;
   }
   | {
     ok: false;
@@ -247,6 +251,25 @@ const parseThreads = (payload: unknown): ConnectShyftThread[] => {
     .filter((entry): entry is ConnectShyftThread => entry !== null);
 };
 
+const parseCreatedNewThread = (payload: unknown, thread: ConnectShyftThread): boolean => {
+  if (payload && typeof payload === 'object') {
+    const envelope = payload as ConnectShyftEnvelope;
+    if (envelope.data?.lifecycle?.createdNewThread === true) {
+      return true;
+    }
+
+    if (envelope.data?.lifecycle?.createdNewThread === false) {
+      return false;
+    }
+  }
+
+  if (thread.createdAtUtc && thread.updatedAtUtc) {
+    return thread.createdAtUtc === thread.updatedAtUtc;
+  }
+
+  return true;
+};
+
 export const fetchConnectShyftDueThreads = async (): Promise<ConnectShyftDueThreadsResult> => {
   const scope = resolveScopeFromQuery();
   const params: Record<string, string | number> = { limit: 50 };
@@ -340,6 +363,7 @@ export const ensureConnectShyftThread = async (
         ? envelope.code
         : 'CONNECTSHYFT_THREAD_ENSURED',
       thread,
+      createdNewThread: parseCreatedNewThread(response.data, thread),
     };
   } catch (error: unknown) {
     return {
