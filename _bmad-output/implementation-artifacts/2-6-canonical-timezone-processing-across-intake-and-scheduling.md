@@ -23,8 +23,8 @@ so that scheduling decisions are accurate and no user sees raw UTC.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Time displays must be operator-comprehensible and consistent across donor/cashier/dispatcher workflows.
-- Real-User Validation Evidence: Same record rendered for users in different timezones shows localized output without UTC leakage.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-02-27 validation run captured localized rendering and UTC-suppression paths via `cd src && npm test -- src/src/routes/api/v1/__tests__/route.timezone.test.ts` (pass: 6 tests) plus route integration suites (`route.test.ts`, `route.cashier-intake.test.ts`, `route.commitments.test.ts`) and frontend build verification (`cd frontend && npm run build`) in this story record.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: Story is time rendering correctness, not access administration.

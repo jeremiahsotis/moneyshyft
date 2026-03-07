@@ -24,8 +24,8 @@ so that refusal is explicit, understandable, and actionable.
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: Refusal UX must provide clear next-step alternatives and reason codes.
-- Real-User Validation Evidence: Requesters and staff can view refusal reason, alternatives, and audit trail in UI/API.
-- Real-User Validation Result: pending
+- Real-User Validation Evidence: 2026-02-27 remediation validation executed via `cd src && npm test -- src/modules/route/__tests__/refusalContracts.test.ts src/modules/route/__tests__/refusalService.test.ts src/routes/api/v1/__tests__/route.refusal.test.ts src/__tests__/app-entrypoint-kernel.test.ts` (pass: 4/4 suites, 22/22 tests), confirming refusal reason/alternatives and lifecycle/audit visibility paths.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: N/A
 - Role-Admin UI Path Verified: n/a
 - Access-Control Exemption Rationale: No access-control administration in scope.
