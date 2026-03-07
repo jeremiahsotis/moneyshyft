@@ -156,6 +156,7 @@ const loadError = ref('');
 const searchMode = ref<ConnectShyftNeighborSearchMode>('name');
 const searchQuery = ref('');
 const viewportWidth = ref<number>(typeof window === 'undefined' ? 1280 : window.innerWidth);
+let searchQueryReloadTimer: ReturnType<typeof setTimeout> | null = null;
 
 const normalizeString = (value: unknown): string => {
   if (typeof value !== 'string') {
@@ -308,6 +309,16 @@ const loadDirectory = async (): Promise<void> => {
   allNeighbors.value = listResult.neighbors;
 };
 
+const scheduleDirectoryReload = (): void => {
+  if (searchQueryReloadTimer) {
+    clearTimeout(searchQueryReloadTimer);
+  }
+
+  searchQueryReloadTimer = setTimeout(() => {
+    void loadDirectory();
+  }, 250);
+};
+
 const startConversation = async (neighborId: string): Promise<void> => {
   const context = readDirectoryContext();
   if (!context) {
@@ -363,9 +374,18 @@ onBeforeUnmount(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', updateViewportWidth);
   }
+
+  if (searchQueryReloadTimer) {
+    clearTimeout(searchQueryReloadTimer);
+    searchQueryReloadTimer = null;
+  }
 });
 
 watch(searchMode, () => {
   void loadDirectory();
+});
+
+watch(searchQuery, () => {
+  scheduleDirectoryReload();
 });
 </script>
