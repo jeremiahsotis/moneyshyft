@@ -13,6 +13,7 @@ export type ConnectShyftThreadDisplayRecord = {
   outboundContext: string;
   neighborContext: string;
   conferenceContext: string;
+  claimContext: string;
   voicemailLabel: string;
 };
 
@@ -603,6 +604,22 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R4_SCOPE.orgUnitId,
+    threadId: 'thread-g1-voicemail-1004',
+    state: 'CLAIMED',
+    bucket: 'mine',
+    claimedByUserId: 'user-connectshyft-ux-r4-operator',
+    escalationStage: 1,
+    isNewUnread: false,
+    lastActivityAtUtc: '2026-03-02T14:05:00.000Z',
+    lastInboundCsNumberId: 'cs-number-ux-r4-406',
+    preferredOutboundCsNumberId: 'cs-number-ux-r4-506',
+    preferredOutboundLabel: 'UX R4 Voicemail Follow-up',
+    voicemailIndicator: true,
+    summary: 'Voicemail waiting for operator follow-up',
+  },
+  {
+    tenantId: CONNECTSHYFT_UX_R4_SCOPE.tenantId,
+    orgUnitId: CONNECTSHYFT_UX_R4_SCOPE.orgUnitId,
     threadId: 'thread-ux-r4-closed-1003',
     state: 'CLOSED',
     bucket: 'inbox',
@@ -946,6 +963,11 @@ const buildDisplayProjection = (input: {
     outboundContext,
     neighborContext: `Neighbor context: ${safeSummary}`,
     conferenceContext: `Conference context: ${outboundContext}`,
+    claimContext: input.state === 'UNCLAIMED'
+      ? 'Claim context: Unclaimed conversation'
+      : input.state === 'CLAIMED'
+        ? 'Claim context: Claimed conversation'
+        : 'Claim context: Closed conversation',
     voicemailLabel: safeVoicemailLabel,
   };
 };

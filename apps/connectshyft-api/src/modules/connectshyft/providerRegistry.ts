@@ -153,12 +153,15 @@ export interface ConnectShyftProviderAdapter {
     tenantId: string;
     orgUnitId: string;
     threadId: string;
+    targetPhone?: string;
     callPolicy?: ConnectShyftOutboundCallDispatchPolicy;
   }): Promise<ConnectShyftProviderDispatchResult>;
   dispatchOutboundMessage(input: {
     tenantId: string;
     orgUnitId: string;
     threadId: string;
+    body?: string;
+    targetPhone?: string;
   }): Promise<ConnectShyftProviderDispatchResult>;
   validateInboundWebhookSignature(input: {
     req: ConnectShyftWebhookRequest;

@@ -50,7 +50,32 @@
           </p>
 
           <template v-else-if="threadSurfaceModel">
+            <section
+              data-testid="connectshyft-thread-primary-context-panel"
+              class="rounded-xl border border-slate-200 bg-slate-50 p-4"
+            >
+              <p
+                data-testid="connectshyft-thread-context-neighbor"
+                class="rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-700"
+              >
+                {{ threadSurfaceModel.display.neighborContext }}
+              </p>
+              <p
+                data-testid="connectshyft-thread-context-conference"
+                class="mt-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-700"
+              >
+                {{ threadSurfaceModel.display.conferenceContext }}
+              </p>
+              <p
+                data-testid="connectshyft-thread-context-claim"
+                class="mt-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-700"
+              >
+                {{ threadClaimContextLabel }}
+              </p>
+            </section>
+
             <ConnectShyftThreadHeader
+              v-if="threadDetail"
               :title="threadSurfaceModel.display.title"
               :neighbor-context-label="threadSurfaceModel.display.neighborContext"
               :conference-context-label="threadSurfaceModel.display.conferenceContext"
@@ -61,37 +86,38 @@
               :voicemail-indicator="threadSurfaceModel.voicemailIndicator"
             />
 
-            <p
-              :data-testid="`connectshyft-responsive-mode-${responsiveMode}`"
-              class="rounded border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600"
-              :style="bodyTextStyle"
-            >
-              Responsive mode: {{ responsiveMode }}
-            </p>
-
             <ConnectShyftMessageBubble
               title="Conversation summary"
               :body="threadSurfaceModel.display.title"
               :meta-label="threadSurfaceModel.display.neighborContext"
             />
 
+            <section
+              data-testid="connectshyft-thread-timeline"
+              class="rounded-xl border border-slate-200 bg-white p-3"
+            >
+              <p class="text-base font-semibold text-slate-900">Conversation timeline</p>
+              <div class="mt-2 space-y-2">
+                <article
+                  v-for="event in threadTimelineEvents"
+                  :key="`${event.eventName}-${event.occurredAtUtc}-${event.summary}`"
+                  :data-testid="event.conversationType === 'voicemail'
+                    ? 'connectshyft-thread-timeline-event-voicemail'
+                    : 'connectshyft-thread-timeline-event'"
+                  class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700"
+                >
+                  <p class="font-medium text-slate-900">{{ event.summary }}</p>
+                  <p class="text-sm text-slate-600">
+                    {{ event.conversationType === 'voicemail' ? 'Voicemail' : 'Timeline event' }}
+                  </p>
+                </article>
+              </div>
+            </section>
+
             <ConnectShyftVoicemailCard
               :visible="threadSurfaceModel.voicemailIndicator"
               :label="threadSurfaceModel.display.voicemailLabel || 'Voicemail waiting for review'"
             />
-
-            <p
-              data-testid="connectshyft-thread-metadata-last-inbound-number"
-              class="text-base text-slate-700"
-            >
-              Inbound line: {{ threadSurfaceModel.display.inboundContext }}
-            </p>
-            <p
-              data-testid="connectshyft-thread-metadata-preferred-outbound-number"
-              class="text-base text-slate-700"
-            >
-              Outbound line: {{ threadSurfaceModel.display.outboundContext }}
-            </p>
 
             <p
               v-if="showPreferenceOverrideRequiredChip"
@@ -137,6 +163,17 @@
               class="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-base text-emerald-900"
             >
               {{ policySuccessBanner }}
+            </p>
+
+            <p
+              v-if="contextualActionFeedback"
+              data-testid="connectshyft-thread-action-feedback-contextual"
+              role="status"
+              aria-live="polite"
+              class="rounded border px-3 py-2 text-base"
+              :class="contextualActionFeedbackClass"
+            >
+              {{ contextualActionFeedback.message }}
             </p>
 
             <p
@@ -394,7 +431,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
 import ConnectShyftComposer from '@/components/connectshyft/ConnectShyftComposer.vue';
@@ -419,7 +456,6 @@ import {
   CONNECTSHYFT_FOCUS_RING_CLASS,
   createConnectShyftFeedback,
   resolveSafeVisibleThreadActions,
-  CONNECTSHYFT_RESPONSIVE_BREAKPOINTS,
   sanitizeConnectShyftOperatorCopy,
   type ConnectShyftFeedback,
   type ConnectShyftFeedbackTaxonomy,
@@ -452,11 +488,6 @@ const addNeighborSubmitting = ref(false);
 const composerMessage = ref('');
 const preferenceOverrideModalRef = ref<HTMLElement | null>(null);
 const closeModalRef = ref<HTMLElement | null>(null);
-const viewportWidth = ref(
-  typeof window === 'undefined'
-    ? CONNECTSHYFT_RESPONSIVE_BREAKPOINTS.desktop
-    : window.innerWidth,
-);
 const focusRingClass = CONNECTSHYFT_FOCUS_RING_CLASS;
 const bodyTextStyle = {
   fontSize: `${CONNECTSHYFT_ACCESSIBILITY_LOCKS.minBodyTextPx}px`,
@@ -537,9 +568,11 @@ const threadSurfaceModel = computed<ConnectShyftThreadDetail | null>(() => {
       outboundContext: 'Outbound line unavailable',
       neighborContext: 'Neighbor context unavailable',
       conferenceContext: 'Conference context unavailable',
+      claimContext: 'Claim context unavailable',
       voicemailLabel: '',
     },
     actions: [],
+    timeline: [],
     lifecycle: {
       reopenedByInbound: false,
     },
@@ -693,6 +726,55 @@ const escalationChipLabel = computed(() => {
   return label || 'Monitoring';
 });
 
+const threadClaimContextLabel = computed(() => {
+  if (!threadSurfaceModel.value) {
+    return 'Claim context unavailable';
+  }
+
+  return threadSurfaceModel.value.display.claimContext
+    || (
+      threadSurfaceModel.value.state === 'UNCLAIMED'
+        ? 'Claim context: Unclaimed conversation'
+        : threadSurfaceModel.value.state === 'CLAIMED'
+          ? 'Claim context: Claimed conversation'
+          : 'Claim context: Closed conversation'
+    );
+});
+
+const threadTimelineEvents = computed(() => {
+  if (!threadSurfaceModel.value) {
+    return [];
+  }
+
+  if (threadSurfaceModel.value.timeline.length > 0) {
+    return threadSurfaceModel.value.timeline;
+  }
+
+  if (threadSurfaceModel.value.voicemailIndicator) {
+    return [
+      {
+        eventName: 'connectshyft.voicemail.placeholder',
+        conversationType: 'voicemail' as const,
+        renderMode: 'inline' as const,
+        firstClass: true,
+        occurredAtUtc: '',
+        summary: threadSurfaceModel.value.display.voicemailLabel || 'Voicemail received',
+      },
+    ];
+  }
+
+  return [
+    {
+      eventName: 'connectshyft.timeline.placeholder',
+      conversationType: 'lifecycle' as const,
+      renderMode: 'inline' as const,
+      firstClass: false,
+      occurredAtUtc: '',
+      summary: 'Conversation timeline is ready.',
+    },
+  ];
+});
+
 const visibleActions = computed<string[]>(() => {
   if (isViewerRole.value) {
     return [];
@@ -706,18 +788,6 @@ const visibleActions = computed<string[]>(() => {
     state: threadDetail.value.state,
     rawActions: threadDetail.value.actions,
   });
-});
-
-const responsiveMode = computed<'mobile' | 'tablet' | 'desktop'>(() => {
-  if (viewportWidth.value >= CONNECTSHYFT_RESPONSIVE_BREAKPOINTS.desktop) {
-    return 'desktop';
-  }
-
-  if (viewportWidth.value >= CONNECTSHYFT_RESPONSIVE_BREAKPOINTS.tablet) {
-    return 'tablet';
-  }
-
-  return 'mobile';
 });
 
 const composerSubmitDisabled = computed(() => {
@@ -736,6 +806,50 @@ const actionBannerMessage = computed(() => {
   }
 
   return actionError.value;
+});
+
+const contextualActionFeedback = computed<{
+  taxonomy: 'success' | 'refusal' | 'error';
+  message: string;
+} | null>(() => {
+  if (policyRefusalBanner.value) {
+    return {
+      taxonomy: 'refusal',
+      message: policyRefusalBanner.value,
+    };
+  }
+
+  if (policyErrorBanner.value) {
+    return {
+      taxonomy: 'error',
+      message: policyErrorBanner.value,
+    };
+  }
+
+  if (policySuccessBanner.value) {
+    return {
+      taxonomy: 'success',
+      message: policySuccessBanner.value,
+    };
+  }
+
+  return null;
+});
+
+const contextualActionFeedbackClass = computed(() => {
+  if (!contextualActionFeedback.value) {
+    return 'border-slate-300 bg-slate-50 text-slate-900';
+  }
+
+  if (contextualActionFeedback.value.taxonomy === 'success') {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-900';
+  }
+
+  if (contextualActionFeedback.value.taxonomy === 'refusal') {
+    return 'border-amber-200 bg-amber-50 text-amber-900';
+  }
+
+  return 'border-rose-200 bg-rose-50 text-rose-900';
 });
 
 const feedbackBannerClass = computed(() => {
@@ -863,6 +977,11 @@ const applyThreadUpdate = (payload: unknown): void => {
       outboundContext: displayOutboundContext,
       neighborContext: `Neighbor context: ${displayTitle}`,
       conferenceContext: `Conference context: ${displayOutboundContext}`,
+      claimContext: nextState === 'UNCLAIMED'
+        ? 'Claim context: Unclaimed conversation'
+        : nextState === 'CLAIMED'
+          ? 'Claim context: Claimed conversation'
+          : 'Claim context: Closed conversation',
       voicemailLabel: current.display.voicemailLabel || 'Voicemail waiting for review',
     },
     lifecycle: {
@@ -1392,26 +1511,8 @@ const refreshThreadDetail = async () => {
   clearFeedbackBanner();
 };
 
-const updateViewportWidth = (): void => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  viewportWidth.value = window.innerWidth;
-};
-
 onMounted(() => {
-  updateViewportWidth();
-  if (typeof window !== 'undefined') {
-    window.addEventListener('resize', updateViewportWidth);
-  }
   void refreshThreadDetail();
-});
-
-onBeforeUnmount(() => {
-  if (typeof window !== 'undefined') {
-    window.removeEventListener('resize', updateViewportWidth);
-  }
 });
 
 watch(preferenceOverrideModalOpen, (isOpen) => {

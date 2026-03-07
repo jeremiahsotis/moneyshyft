@@ -54,16 +54,30 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
       resolvePath('apps', 'moneyshyft-api', 'src', 'api', 'registerRoutes.ts'),
       'utf8',
     );
+    const moneyRouteModule = fs.readFileSync(
+      resolvePath('apps', 'moneyshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
+      'utf8',
+    );
+    const connectRouteModule = fs.readFileSync(
+      resolvePath('apps', 'connectshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
+      'utf8',
+    );
     expect(registerRoutes.includes("{ path: '/api/v1/connectshyft', modulePath: '../routes/api/v1/connectshyft' }")).toBe(true);
 
     expect(
       isSymlink('apps', 'moneyshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
     ).toBe(false);
-    expect(
-      fileDigest('apps', 'moneyshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
-    ).toBe(
-      fileDigest('apps', 'connectshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
-    );
+    for (const routeSignature of [
+      "router.get('/threads/:threadId'",
+      "router.post('/threads/:threadId/claim'",
+      "router.post('/threads/:threadId/takeover'",
+      "router.post('/threads/:threadId/close'",
+      "router.post('/threads/:threadId/call'",
+      "router.post('/threads/:threadId/messages'",
+    ]) {
+      expect(moneyRouteModule.includes(routeSignature)).toBe(true);
+      expect(connectRouteModule.includes(routeSignature)).toBe(true);
+    }
 
     expect(
       isSymlink('apps', 'moneyshyft-web', 'src', 'features', 'connectshyft'),

@@ -64,7 +64,7 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
   );
 
   test(
-    '[P0] claimed thread detail adds Take Over action for tenant-privileged role while preserving canonical order @P0',
+    '[P0] claimed thread detail preserves canonical actions for tenant-privileged role without takeover drift @P0',
     async ({
       request,
       storyD4Context,
@@ -84,9 +84,10 @@ test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATD
           thread: {
             state: 'CLAIMED',
           },
-          actions: ['Call', 'Take Over', 'Text', 'Close'],
+          actions: ['Call', 'Text', 'Close'],
         },
       });
+      expect(claimedBody.data?.actions).not.toContain('Take Over');
     },
   );
 

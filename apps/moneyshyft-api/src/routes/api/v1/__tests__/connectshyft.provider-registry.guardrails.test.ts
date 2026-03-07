@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import * as ProviderRegistry from '../../../../modules/connectshyft/providerRegistry';
 import {
@@ -201,7 +202,7 @@ describe('connectshyft provider adapter registry route integration - guardrails'
 
   it('returns provider-neutral number mapping contract fields in route responses', async () => {
     const app = buildApp();
-    const providerNumberE164 = '+12609991234';
+    const providerNumberE164 = `+1260${randomUUID().replace(/\D/g, '').slice(0, 7).padEnd(7, '0')}`;
     const createResponse = await request(app)
       .post('/api/v1/connectshyft/numbers')
       .set(buildHeaders({

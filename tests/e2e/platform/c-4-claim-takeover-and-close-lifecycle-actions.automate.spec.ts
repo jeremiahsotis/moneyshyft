@@ -61,7 +61,7 @@ test.describe(
     );
 
     test(
-      '[P0] claimed thread detail for orgUnit admin shows takeover and close actions with ownership indicator context @P0',
+      '[P0] claimed thread detail for orgUnit admin keeps canonical close action set with ownership indicator context @P0',
       async ({ page }) => {
         const context = createStoryC4Context();
         await login(page);
@@ -75,7 +75,7 @@ test.describe(
           }),
         );
 
-        await expect(page.getByRole('button', { name: 'Take Over' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Take Over' })).toHaveCount(0);
         await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
         await expect(page.getByTestId('connectshyft-thread-owner-chip')).toContainText(/owner/i);
       },

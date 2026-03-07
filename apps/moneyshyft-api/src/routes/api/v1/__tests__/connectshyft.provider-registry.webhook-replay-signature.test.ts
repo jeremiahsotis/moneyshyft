@@ -1,4 +1,4 @@
-import { generateKeyPairSync, sign as signPayload } from 'node:crypto';
+import { generateKeyPairSync, randomUUID, sign as signPayload } from 'node:crypto';
 import request from 'supertest';
 import {
   buildApp,
@@ -35,7 +35,7 @@ describe('connectshyft provider adapter registry route integration - webhook rep
     const webhookPayload = {
       eventType: 'sms.delivered',
       providerKey: 'telnyx',
-      providerEventId: 'provider-event-f3-duplicate-1001',
+      providerEventId: `provider-event-f3-duplicate-${randomUUID()}`,
       providerMessageId,
     };
 

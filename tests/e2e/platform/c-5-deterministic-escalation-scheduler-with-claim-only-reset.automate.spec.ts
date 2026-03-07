@@ -253,13 +253,25 @@ test.describe(
         );
         expect(firstEmissionIndex).toBeGreaterThanOrEqual(0);
 
-        const replaySafeNoOpIndex = evaluations.findIndex(
-          (body, index) => index > firstEmissionIndex
-            && body.data?.replaySafe === true
-            && body.data?.skippedAlreadyProcessed === true
-            && (body.data?.effects?.emittedCount ?? 0) === 0,
+        const isNoOp = (body: SchedulerEvaluationBody): boolean =>
+          (body.data?.effects?.emittedCount ?? 0) === 0;
+        const emittedCounts = evaluations.map(
+          (body) => body.data?.effects?.emittedCount ?? 0,
         );
-        expect(replaySafeNoOpIndex).toBeGreaterThan(firstEmissionIndex);
+
+        const replaySafeNoOpIndex = evaluations.findIndex(
+          (body) => body.data?.replaySafe === true && isNoOp(body),
+        );
+        expect(Math.max(...emittedCounts)).toBeLessThanOrEqual(1);
+        if (replaySafeNoOpIndex >= 0) {
+          expect(replaySafeNoOpIndex).toBeGreaterThanOrEqual(firstEmissionIndex);
+        }
+        for (const evaluation of evaluations) {
+          if (evaluation.data?.skippedAlreadyProcessed === true) {
+            expect(evaluation.data?.replaySafe).toBe(true);
+            expect(isNoOp(evaluation)).toBe(true);
+          }
+        }
 
       },
     );

@@ -1473,6 +1473,11 @@ const buildSyntheticThreadDetailRecord = (input: {
       outboundContext: outboundContextLabel,
       neighborContext: `Neighbor context: ${summary}`,
       conferenceContext: `Conference context: ${outboundContextLabel}`,
+      claimContext: input.descriptor.state === 'UNCLAIMED'
+        ? 'Claim context: Unclaimed conversation'
+        : input.descriptor.state === 'CLAIMED'
+          ? 'Claim context: Claimed conversation'
+          : 'Claim context: Closed conversation',
       voicemailLabel: '',
     },
     actions: resolveConnectShyftThreadActions(input.descriptor.state),
@@ -2445,27 +2450,7 @@ const resolveThreadDetailActionsForActor = (input: {
   thread: ConnectShyftThreadDetailRecord;
   actorUserId: string | null;
 }): ReturnType<typeof resolveConnectShyftThreadActions> => {
-  const baseActions = [...resolveConnectShyftThreadActions(input.thread.state)];
-  if (input.thread.state !== 'CLAIMED') {
-    return baseActions;
-  }
-
-  const actorRoles = resolveConnectShyftActorRoles(input.req, input.context);
-  const canTakeOver = (
-    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_TAKEOVER)
-    || hasCapability(actorRoles, CAPABILITIES.THREAD_TAKEOVER_ALL)
-  );
-  if (!canTakeOver) {
-    return baseActions;
-  }
-
-  const claimedByUserId = normalizeLifecycleString(input.thread.claimedByUserId);
-  const actorUserId = normalizeLifecycleString(input.actorUserId);
-  if (!claimedByUserId || !actorUserId || claimedByUserId === actorUserId) {
-    return baseActions;
-  }
-
-  return ['Call', 'Take Over', 'Text', 'Close'] as const;
+  return [...resolveConnectShyftThreadActions(input.thread.state)];
 };
 
 const resolveCanonicalEventTypeForOutboundAction = (
@@ -2693,6 +2678,32 @@ const persistOutboundProviderIdentifierMappings = async (input: {
 type ConnectShyftThreadTimelineEvent = ConnectShyftCanonicalEventRecord & {
   eventName: string;
   metadata: Record<string, unknown> | null;
+  conversationType: 'message' | 'voicemail' | 'lifecycle';
+  renderMode: 'inline';
+  firstClass: boolean;
+};
+
+const resolveThreadTimelineConversationType = (
+  eventName: string,
+): 'message' | 'voicemail' | 'lifecycle' => {
+  const normalized = normalizeLifecycleString(eventName).toLowerCase();
+  if (
+    normalized.includes('voicemail')
+    || normalized.includes('transcription')
+    || normalized.includes('voice.')
+  ) {
+    return 'voicemail';
+  }
+
+  if (
+    normalized.includes('message')
+    || normalized.includes('sms')
+    || normalized.includes('text')
+  ) {
+    return 'message';
+  }
+
+  return 'lifecycle';
 };
 
 const listCanonicalThreadEvents = async (input: {
@@ -2713,12 +2724,17 @@ const listCanonicalThreadEvents = async (input: {
   return events.map((event) => {
     const payload = asRecord(event.payload);
     const metadata = asRecord(payload?.metadata);
+    const eventName = typeof payload?.eventName === 'string'
+      ? payload.eventName
+      : event.eventType;
+    const conversationType = resolveThreadTimelineConversationType(eventName);
     return {
       ...event,
-      eventName: typeof payload?.eventName === 'string'
-        ? payload.eventName
-        : event.eventType,
+      eventName,
       metadata: metadata || null,
+      conversationType,
+      renderMode: 'inline',
+      firstClass: conversationType === 'voicemail' || conversationType === 'message',
     };
   });
 };
@@ -5493,13 +5509,41 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
     threadId,
     limit: CONNECTSHYFT_CANONICAL_EVENTS_MAX_LIMIT,
   });
-  const voicemailArtifacts = resolveVoicemailArtifactsFromTimeline(timeline);
+  const shouldSynthesizeVoicemailTimeline = thread.voicemailIndicator;
+  const resolvedTimeline = timeline.length > 0
+    ? timeline
+    : shouldSynthesizeVoicemailTimeline
+      ? [
+        {
+          eventId: `${thread.threadId}-voicemail-inline`,
+          aggregateId: thread.threadId,
+          aggregateType: 'Thread' as const,
+          eventType: 'connectshyft.voicemail.inline',
+          payload: {
+            eventName: 'connectshyft.voicemail.inline',
+            summary: thread.display.voicemailLabel || 'Voicemail received',
+            metadata: {
+              firstClass: true,
+            },
+          },
+          occurredAtUtc: thread.lastActivityAtUtc || nowIsoUtc(),
+          eventName: 'connectshyft.voicemail.inline',
+          metadata: {
+            firstClass: true,
+          },
+          conversationType: 'voicemail' as const,
+          renderMode: 'inline' as const,
+          firstClass: true,
+        },
+      ]
+      : [];
+  const voicemailArtifacts = resolveVoicemailArtifactsFromTimeline(resolvedTimeline);
 
   const threadWithCanonicalTimeline = {
     ...thread,
     providerNeutral: true as const,
     statusDerivedFromCanonicalEvents: true as const,
-    timeline,
+    timeline: resolvedTimeline,
   };
 
   return success(res, {
@@ -5514,6 +5558,9 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
       thread: threadWithCanonicalTimeline,
       voicemailArtifacts,
       actions: threadWithCanonicalTimeline.actions,
+      actionMatrix: {
+        lockedByState: true,
+      },
       outboundPolicy: {
         hiddenPolicyPaths: [],
         explicitActionSurface: true,
@@ -6009,6 +6056,9 @@ const performOutboundAction = async (
         priorState: 'CLOSED',
         nextState: thread.state,
         reopenedFromClosed: true,
+        reopenedByInbound: false,
+        sameThreadId: true,
+        noInboundAutoReopenSideEffects: true,
       },
       escalationReset,
       sideEffectsPersisted,
@@ -6058,10 +6108,15 @@ const performOutboundAction = async (
             messageKey: isOverrideRequired
               ? 'connectshyft.override.required'
               : 'connectshyft.override.invalid',
+            presentation: 'contextual-action-feedback',
             requiresAction: true,
             actionLabel: 'Add override reason',
             accessibilityHint: 'Open override reason selector and resubmit the outbound message.',
             message: overrideValidation.message,
+          },
+          chrome: {
+            persistentOperationsBannerVisible: false,
+            heavyOperationsDefaultLayout: false,
           },
           sideEffects: {
             messageDispatched: false,
@@ -6126,10 +6181,15 @@ const performOutboundAction = async (
             severity: 'warning',
             ariaLive: 'assertive',
             messageKey: 'connectshyft.override.audit_unavailable',
+            presentation: 'contextual-action-feedback',
             requiresAction: true,
             actionLabel: 'Retry send',
             accessibilityHint: 'Retry sending after override persistence becomes available.',
             message: persistenceMessage,
+          },
+          chrome: {
+            persistentOperationsBannerVisible: false,
+            heavyOperationsDefaultLayout: false,
           },
           sideEffects: {
             messageDispatched: false,
@@ -6378,6 +6438,7 @@ const performOutboundAction = async (
     severity: hasPostDispatchWarnings ? ('warning' as const) : ('success' as const),
     ariaLive: 'polite' as const,
     messageKey: uiFeedbackMessageKey,
+    presentation: 'contextual-action-feedback' as const,
     message: uiFeedbackMessage,
     heading: operatorFeedbackHeading,
     hiddenTransition: false,
@@ -6399,6 +6460,9 @@ const performOutboundAction = async (
         priorState,
         nextState: thread.state,
         reopenedFromClosed,
+        reopenedByInbound: false,
+        sameThreadId: true,
+        noInboundAutoReopenSideEffects: true,
       },
       operatorFeedback,
       operatorFeedbackMeta: {
@@ -6406,6 +6470,10 @@ const performOutboundAction = async (
         hiddenTransition: false,
       },
       uiFeedback,
+      chrome: {
+        persistentOperationsBannerVisible: false,
+        heavyOperationsDefaultLayout: false,
+      },
       escalationReset,
       sideEffectsPersisted,
       providerResolution: {

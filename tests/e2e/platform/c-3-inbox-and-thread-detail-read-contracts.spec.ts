@@ -136,19 +136,18 @@ test.describe(
     );
 
     test(
-      '[P1] thread detail renders outbound-context metadata while hiding raw escalation stage internals @P1',
+      '[P1] thread detail renders context-first metadata panels while hiding raw escalation stage internals @P1',
       async ({ page }) => {
         const context = createStoryC3Context();
         await login(page);
 
         await page.goto(buildThreadDetailUrl(context, context.threadIds.claimed, context.userId));
 
-        await expect(page.getByTestId('connectshyft-thread-metadata-last-inbound-number')).toContainText(
-          /cs-number/i,
-        );
-        const outboundContext = page.getByTestId('connectshyft-thread-metadata-preferred-outbound-number');
-        await expect(outboundContext).toContainText(/outbound line:/i);
-        await expect(outboundContext).not.toContainText(/preferred[_\s-]?outbound.*id|cs-outbound-/i);
+        await expect(page.getByTestId('connectshyft-thread-primary-context-panel')).toBeVisible();
+        await expect(page.getByTestId('connectshyft-thread-context-neighbor')).toBeVisible();
+        const conferenceContext = page.getByTestId('connectshyft-thread-context-conference');
+        await expect(conferenceContext).toBeVisible();
+        await expect(conferenceContext).not.toContainText(/preferred[_\s-]?outbound.*id|cs-outbound-/i);
         await expect(page.getByTestId('connectshyft-thread-detail')).not.toContainText(/stage\s*\d+/i);
       },
     );

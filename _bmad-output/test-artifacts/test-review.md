@@ -1,43 +1,51 @@
 ---
-stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03f-aggregate-scores', 'step-04-generate-report']
+stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-quality-evaluation', 'step-03f-aggregate-scores', 'step-04-generate-report']
 lastStep: 'step-04-generate-report'
-lastSaved: '2026-03-06T20:03:56.267Z'
+lastSaved: '2026-03-06'
 ---
 
-# Test Quality Review: g-2-inbox-and-mine-surface-rebuild
+# Test Quality Review: g-3-thread-detail-conversation-first-rebuild
 
-**Quality Score**: 75/100 (C - Acceptable)
+**Quality Score**: 96/100 (A - Good)
 **Review Date**: 2026-03-06
-**Review Scope**: single (story-seeded: 5 related test files)
-**Reviewer**: Murat (TEA Agent)
+**Review Scope**: single (story artifact with linked test specs)
+**Reviewer**: TEA Agent (Murat)
+
+> Resolution Update (2026-03-06): All four low-priority findings in this report were implemented in the g.3 API/E2E specs and revalidated (26/26 passing with `--repeat-each=2`).
 
 ---
-
-Note: This review audits existing tests; it does not generate tests.
 
 ## Executive Summary
 
-**Overall Assessment**: Acceptable
+**Overall Assessment**: Good
 
-**Recommendation**: Request Changes
+**Recommendation**: Approve with Comments
 
 ### Key Strengths
 
-- No hard waits (`waitForTimeout`, `sleep`, `setTimeout`) detected across reviewed files.
-- Strong story-level traceability in active g.2 automate suites (`G2-AUTO-E2E-*`, `G2-AUTO-API-*`) with clear P0/P1 labeling.
-- Coverage is strong for core g.2 acceptance behaviors: queue card rendering, display-safe copy, deterministic queue search/order, responsive layouts, voicemail ownership, and outbound dispatch contracts.
+- Deterministic assertions with zero hard waits (`waitForTimeout`) in reviewed specs.
+- Strong explicit assertion density (60 total assertions across 11 tests).
+- Clear priority and test ID tagging (`[G3-ATDD-...][P0|P1]` and `@P0/@P1`).
+- Repeated burn-in validation passed (`--repeat-each=3`, 33/33 passing).
+- API and E2E both validate the same story acceptance targets (AC1-AC5).
 
 ### Key Weaknesses
 
-- Two story-critical suites are locked to serial mode, reducing isolation confidence and CI throughput.
-- Maintainability debt is high: 3 files exceed 300 lines, including one very large route integration suite (1354 lines).
-- Negative-path depth is thinner than happy-path depth for outbound dispatch/refusal UX and actor-context malformed variants.
+- Repeated setup pattern in E2E (`createStoryG3Context()` + `login(page)`) adds maintenance overhead.
+- One DOM ordering assertion uses raw `page.evaluate` + `querySelector` instead of locator-first patterns.
+- Some tests bundle multiple assertions/scenarios, reducing failure localization granularity.
+- Test ID format is consistent but not aligned with the strict `{EPIC}.{STORY}-{LEVEL}-{SEQ}` convention from TEA guidance.
 
 ### Summary
 
-The g.2 test surface is functionally strong and meaningfully aligned with story outcomes, but quality is constrained by execution-model and maintainability risks. Serial suite configuration and oversized specs increase long-term flake/perf pressure, while medium-depth negative-path gaps leave some regression exposure.
+Review targeted `_bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md` and the linked specs:
+`tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts` and
+`tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts`.
 
-With targeted fixes, this can move to an approve-with-comments state quickly; for now, request changes is the safer gate decision.
+No critical flakiness or blocking quality defects were found. Execution evidence supports stability:
+- API spec: 5/5 pass
+- E2E spec: 6/6 pass
+- Burn-in (`--repeat-each=3`): 33/33 pass
 
 ---
 
@@ -45,245 +53,181 @@ With targeted fixes, this can move to an approve-with-comments state quickly; fo
 
 | Criterion                            | Status  | Violations | Notes |
 | ------------------------------------ | ------- | ---------- | ----- |
-| BDD Format (Given-When-Then)         | WARN    | 63         | Scenario intent is clear, but strict Given/When/Then title format is not consistently used. |
-| Test IDs                             | WARN    | 53         | Story IDs are strong in g.2 automate suites; most backend Jest tests lack explicit IDs. |
-| Priority Markers (P0/P1/P2/P3)       | WARN    | 53         | Priority markers are present in g.2 automate suites only; backend suites are mostly untagged. |
-| Hard Waits (sleep, waitForTimeout)   | PASS    | 0          | No hard wait anti-patterns detected. |
-| Determinism (no conditionals)        | WARN    | 4          | Branching on runtime option counts and dynamic timestamp generation introduces small variance. |
-| Isolation (cleanup, no shared state) | FAIL    | 3          | Two serial-mode suite constraints plus process-global env mutation risk in route integration tests. |
-| Fixture Patterns                     | PASS    | 0          | Story factory/fixture usage is consistent in g.2 automate suites. |
-| Data Factories                       | PASS    | 0          | Factory-backed story context pattern is applied (`createStoryG2Context`). |
-| Network-First Pattern                | WARN    | 1          | `waitForResponse` usage exists, but limited explicit intercept-before-navigate mocking patterns. |
-| Explicit Assertions                  | PASS    | 0          | Assertions are explicit and frequent across suites. |
-| Test Length (<=300 lines)            | FAIL    | 3          | Three files exceed the maintainability threshold (350, 715, 1354 lines). |
-| Test Duration (<=1.5 min)            | WARN    | 4          | Serial mode and large integration footprint likely increase CI wall-clock time. |
-| Flakiness Patterns                   | WARN    | 5          | Serial-mode coupling and runtime-branching patterns increase medium risk. |
+| BDD Format (Given-When-Then)         | ⚠️ WARN | 1          | Titles are strong but not consistently explicit G/W/T structure |
+| Test IDs                             | ✅ PASS | 0          | All tests carry story/test IDs |
+| Priority Markers (P0/P1/P2/P3)       | ✅ PASS | 0          | Priorities present and consistent |
+| Hard Waits (sleep, waitForTimeout)   | ✅ PASS | 0          | No hard waits detected |
+| Determinism (no conditionals)        | ✅ PASS | 0          | No control-flow randomness in specs |
+| Isolation (cleanup, no shared state) | ✅ PASS | 0          | Repeated-run evidence stable under parallel workers |
+| Fixture Patterns                     | ⚠️ WARN | 1          | E2E repeats setup instead of shared fixture/beforeEach |
+| Data Factories                       | ✅ PASS | 0          | Factory context used consistently |
+| Network-First Pattern                | ⚠️ WARN | 1          | Integration style does not consistently use explicit network syncs |
+| Explicit Assertions                  | ✅ PASS | 0          | Assertions are explicit in test bodies |
+| Test Length (≤300 lines)             | ✅ PASS | 0          | 201 lines (E2E), 250 lines (API) |
+| Test Duration (≤1.5 min)             | ✅ PASS | 0          | Single-run and repeat runs complete quickly |
+| Flakiness Patterns                   | ✅ PASS | 0          | No flaky behavior observed in repeat run |
 
-**Total Violations**: 0 Critical, 7 High, 10 Medium, 3 Low
+**Total Violations**: 0 Critical, 0 High, 0 Medium, 4 Low
 
 ---
 
 ## Quality Score Breakdown
 
 ```text
-Weighted Model (Step-03f aggregate):
+Starting Score:          100
+Critical Violations:     -0 × 10 = -0
+High Violations:         -0 × 5 = -0
+Medium Violations:       -0 × 2 = -0
+Low Violations:          -4 × 1 = -4
 
-Determinism (25%):      86 x 0.25 = 21.50
-Isolation (25%):        75 x 0.25 = 18.75
-Maintainability (20%):  55 x 0.20 = 11.00
-Coverage (15%):         88 x 0.15 = 13.20
-Performance (15%):      70 x 0.15 = 10.50
-                         ------------
-Final Score:                         74.95 -> 75/100
-Grade:                               C
+Bonus Points:
+  Excellent BDD:          +0
+  Comprehensive Fixtures: +0
+  Data Factories:         +0
+  Network-First:          +0
+  Perfect Isolation:      +0
+  All Test IDs:           +0
+                          --------
+Total Bonus:              +0
+
+Final Score:              96/100
+Grade:                    A
 ```
 
 ---
 
 ## Critical Issues (Must Fix)
 
-No P0 critical issues were detected.
-
-### 1. Serial execution mode in g.2 E2E automate suite
-
-**Severity**: P1 (High)  
-**Location**: `tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts:15`  
-**Criterion**: Isolation / Performance  
-**Knowledge Base**: [test-quality.md](../../_bmad/tea/testarch/knowledge/test-quality.md)
-
-**Issue Description**:  
-Suite-level serial mode reduces parallel safety and can mask order coupling.
-
-**Current Code**:
-
-```typescript
-test.describe.configure({ mode: 'serial' });
-```
-
-**Recommended Fix**:
-
-```typescript
-// Prefer default parallel mode
-// Keep serial only around explicitly dependent sub-scenarios
-```
-
-**Why This Matters**:  
-Parallel-safe suites provide better reliability signal and lower CI runtime.
-
----
-
-### 2. Serial execution mode in g.2 API automate suite
-
-**Severity**: P1 (High)  
-**Location**: `tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts:60`  
-**Criterion**: Isolation / Performance  
-**Knowledge Base**: [test-quality.md](../../_bmad/tea/testarch/knowledge/test-quality.md)
-
-**Issue Description**:  
-API automate suite is forced to serial execution despite largely independent request-level cases.
-
-**Current Code**:
-
-```typescript
-test.describe.configure({ mode: 'serial' });
-```
-
-**Recommended Fix**:
-
-```typescript
-// Remove serial mode and rely on deterministic per-test setup
-```
-
-**Why This Matters**:  
-Serial mode directly lowers test throughput and can hide isolation defects.
-
----
-
-### 3. Oversized provider-registry route integration suite
-
-**Severity**: P1 (High)  
-**Location**: `apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts:115`  
-**Criterion**: Maintainability / Performance  
-**Knowledge Base**: [test-quality.md](../../_bmad/tea/testarch/knowledge/test-quality.md)
-
-**Issue Description**:  
-The file is 1354 lines and carries dense mixed concerns (dispatch, webhook correlation, signature, replay behavior).
-
-**Current Code**:
-
-```typescript
-describe('connectshyft provider adapter registry route integration', () => {
-```
-
-**Recommended Fix**:
-
-```typescript
-// Split by concern:
-// - provider dispatch routing
-// - webhook correlation and conflict handling
-// - signature validation
-// - replay safety / idempotency
-```
-
-**Why This Matters**:  
-Large mixed suites slow triage, increase reviewer load, and reduce change isolation.
+No critical issues detected. ✅
 
 ---
 
 ## Recommendations (Should Fix)
 
-### 1. Split runtime-branching E2E paths into dedicated scenarios
+### 1. Consolidate repeated E2E setup into a shared fixture or `beforeEach`
 
-**Severity**: P2 (Medium)  
-**Location**: `tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts:149` and `:180`  
-**Criterion**: Determinism  
-**Knowledge Base**: [timing-debugging.md](../../_bmad/tea/testarch/knowledge/timing-debugging.md)
+**Severity**: P3 (Low)
+**Location**: `tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts`
+**Criterion**: Fixture Patterns
+**Knowledge Base**: [fixtures-composition](../../../_bmad/tea/testarch/knowledge/fixtures-composition.md)
 
-**Issue Description**:  
-Current flow branches on live option count availability.
-
-**Current Code**:
-
-```typescript
-if (await messagePhoneOptions.count() > 0) {
-```
-
-**Recommended Improvement**:
-
-```typescript
-// scenario A: fixture with callable/textable options present
-// scenario B: fixture without options present
-```
-
-**Benefits**: deterministic single-path tests and clearer failure signal.
-
----
-
-### 2. Reduce process-global env mutation in route integration tests
-
-**Severity**: P2 (Medium)  
-**Location**: `apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts:1268`  
-**Criterion**: Isolation  
-**Knowledge Base**: [test-quality.md](../../_bmad/tea/testarch/knowledge/test-quality.md)
-
-**Issue Description**:  
-Some cases mutate `process.env` within test flow.
+**Issue Description**:
+Each test independently creates context and performs login, increasing maintenance and setup drift risk.
 
 **Current Code**:
-
 ```typescript
-process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'false';
+const context = createStoryG3Context();
+await login(page);
 ```
 
 **Recommended Improvement**:
-
 ```typescript
-// Wrap env overrides in scoped helper with guaranteed restoration
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
+
+const context = createStoryG3Context();
 ```
 
-**Benefits**: stronger isolation and safer parallelization potential.
+### 2. Prefer locator-based geometry checks over raw `page.evaluate` DOM querying
 
----
+**Severity**: P3 (Low)
+**Location**: `tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts:62`
+**Criterion**: Maintainability
+**Knowledge Base**: [selector-resilience](../../../_bmad/tea/testarch/knowledge/selector-resilience.md)
 
-### 3. Expand negative-path coverage for outbound dispatch UX
+**Issue Description**:
+`page.evaluate` + `document.querySelector` bypasses Playwright locator ergonomics and can make failures harder to diagnose.
 
-**Severity**: P2 (Medium)  
-**Location**: `tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts:127`  
-**Criterion**: Coverage  
-**Knowledge Base**: [selective-testing.md](../../_bmad/tea/testarch/knowledge/selective-testing.md)
-
-**Issue Description**:  
-Outbound positive flows are covered, but refusal/failure UX pathways have less E2E depth.
+**Current Code**:
+```typescript
+const ordering = await page.evaluate(() => {
+  const ids = [/* ... */];
+  return ids.map((id) => {
+    const node = document.querySelector(`[data-testid="${id}"]`);
+    return node ? (node as HTMLElement).getBoundingClientRect().top : Number.POSITIVE_INFINITY;
+  });
+});
+```
 
 **Recommended Improvement**:
-
 ```typescript
-// Add E2E assertions for provider refusal and transient dispatch failure UX states
+const neighborTop = (await page.getByTestId('connectshyft-thread-context-neighbor').boundingBox())?.y ?? Infinity;
+const conferenceTop = (await page.getByTestId('connectshyft-thread-context-conference').boundingBox())?.y ?? Infinity;
+const claimTop = (await page.getByTestId('connectshyft-thread-context-claim').boundingBox())?.y ?? Infinity;
+expect(neighborTop).toBeLessThanOrEqual(conferenceTop);
+expect(conferenceTop).toBeLessThanOrEqual(claimTop);
 ```
 
-**Benefits**: higher confidence in real-user failure handling.
+### 3. Split multi-assertion API cases when possible for tighter failure localization
 
----
+**Severity**: P3 (Low)
+**Location**: `tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts:97`
+**Criterion**: Maintainability
+**Knowledge Base**: [test-quality](../../../_bmad/tea/testarch/knowledge/test-quality.md)
 
-### 4. Add malformed actor-context API variants beyond whitespace user-id
+**Issue Description**:
+Some tests validate multiple state variants in one block; a single mismatch can obscure which scenario regressed first.
 
-**Severity**: P2 (Medium)  
-**Location**: `tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts:63`  
-**Criterion**: Coverage  
-**Knowledge Base**: [api-request.md](../../_bmad/tea/testarch/knowledge/api-request.md)
-
-**Issue Description**:  
-Boundary validation exists, but malformed actor-context permutations are limited.
+**Current Code**:
+```typescript
+const [unclaimedResponse, claimedResponse, closedResponse] = await Promise.all([/* ... */]);
+// ... many assertions
+```
 
 **Recommended Improvement**:
-
 ```typescript
-// Add variants: missing orgunit, mismatched tenant/orgunit, malformed membership payload
+// keep current broad test, but add focused micro-tests per state
+// e.g., one test for UNCLAIMED matrix, one for CLAIMED, one for CLOSED
 ```
 
-**Benefits**: tighter regression protection for access-control edge conditions.
+### 4. Optionally align test ID format to TEA canonical pattern
+
+**Severity**: P3 (Low)
+**Location**: `tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts:50`
+**Criterion**: Test IDs
+**Knowledge Base**: [test-levels-framework](../../../_bmad/tea/testarch/knowledge/test-levels-framework.md)
+
+**Issue Description**:
+Current IDs are consistent and useful, but TEA canonical format recommends `{EPIC}.{STORY}-{LEVEL}-{SEQ}`.
+
+**Current Code**:
+```typescript
+'[G3-ATDD-E2E-001][P0] ...'
+```
+
+**Recommended Improvement**:
+```typescript
+'[7.3-E2E-001][P0] ...'
+```
 
 ---
 
 ## Best Practices Found
 
-### 1. Strong story traceability in active automate tests
+### 1. Explicit priority and traceable story test IDs
 
-**Location**: g.2 automate API/E2E files  
-**Pattern**: explicit `G2-AUTO-*` IDs with P0/P1 tags  
-**Knowledge Base**: [selective-testing.md](../../_bmad/tea/testarch/knowledge/selective-testing.md)
+**Location**: both reviewed test files
+**Pattern**: test metadata traceability
+**Knowledge Base**: [selective-testing](../../../_bmad/tea/testarch/knowledge/selective-testing.md)
 
-### 2. Good deterministic wait discipline
+Tests consistently use both ID + priority tags, enabling selective execution and clear mapping.
 
-**Location**: reviewed files aggregate  
-**Pattern**: no hard waits, explicit `waitForResponse` where needed  
-**Knowledge Base**: [timing-debugging.md](../../_bmad/tea/testarch/knowledge/timing-debugging.md)
+### 2. No hard waits and explicit assertion bodies
 
-### 3. Strong assertion density in high-risk backend integration surfaces
+**Location**: both reviewed test files
+**Pattern**: deterministic wait discipline
+**Knowledge Base**: [test-quality](../../../_bmad/tea/testarch/knowledge/test-quality.md)
 
-**Location**: `connectshyft.provider-registry.test.ts` and related suites  
-**Pattern**: explicit contract-level `toMatchObject` and refusal metadata checks  
-**Knowledge Base**: [test-quality.md](../../_bmad/tea/testarch/knowledge/test-quality.md)
+No use of `waitForTimeout`; assertions stay in the test body and are easy to read.
+
+### 3. Balanced API + E2E coverage for the same acceptance criteria
+
+**Location**: both reviewed test files
+**Pattern**: layered confidence model
+**Knowledge Base**: [test-levels-framework](../../../_bmad/tea/testarch/knowledge/test-levels-framework.md)
+
+The suite validates contract behavior via API and user workflows via E2E for the same story scope.
 
 ---
 
@@ -291,193 +235,113 @@ Boundary validation exists, but malformed actor-context permutations are limited
 
 ### File Metadata
 
-- **Reviewed Files**:
-  - `tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts`
-  - `tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts`
-  - `apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts`
-  - `apps/moneyshyft-api/src/modules/connectshyft/__tests__/readContracts.test.ts`
-  - `apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts`
-- **File Size**: 2872 lines, 94.79 KB (aggregate)
-- **Test Frameworks**: Playwright, Jest
-- **Language**: TypeScript
+- **Story artifact**: `_bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md`
+- **E2E file**: `tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts`
+- **API file**: `tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts`
+- **Framework**: Playwright (`@playwright/test`)
 
 ### Test Structure
 
-- **Describe Blocks**: 7
-- **Test Cases**: 63
-- **Skipped Tests**: 0
-- **Average Test Length**: 45.59 lines per test (aggregate)
-- **Fixtures/Factories Noted**: `createStoryG2Context`, story fixture wrappers, request/build header helpers
+- **Describe blocks**: 2 total (1 per file)
+- **Test cases**: 11 total (6 E2E, 5 API)
+- **Assertions**: 60 total (24 E2E, 36 API)
+- **Hard waits**: 0
+- **Conditionals in test bodies**: 0
+- **Try/catch in test bodies**: 0
 
-### Test Coverage Scope
+### Duration Evidence
 
-- **Story IDs present**: `G2-AUTO-E2E-201..206`, `G2-AUTO-API-301..304`
-- **Priority Distribution**:
-  - P0 (Critical): 5 tests
-  - P1 (High): 5 tests
-  - P2 (Medium): 0 tests
-  - P3 (Low): 0 tests
-  - Unknown/untagged: 53 tests
-
-### Assertions Analysis
-
-- **Total Assertions**: 249
-- **Assertions per Test**: 3.95 (average)
-- **Common Assertion Types**: `toBe`, `toEqual`, `toMatchObject`, `toHaveCount`, `toBeVisible`
+- Single run API: 5 passed in ~0.9s
+- Single run E2E: 6 passed in ~7.0s
+- Repeat run (both files, `--repeat-each=3`): 33 passed in ~16.6s
 
 ---
 
 ## Context and Integration
 
-### Related Artifacts
+### Related Artifacts Found
 
-- **Story File**: `_bmad-output/implementation-artifacts/g-2-inbox-and-mine-surface-rebuild.md`
-- **Test Design**: `_bmad-output/test-artifacts/test-design-epic-G.md`
-- **ATDD Checklist**: `_bmad-output/test-artifacts/atdd-checklist-g-2.md`
+- Story file: `_bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md`
+- Test design context: `_bmad-output/test-artifacts/test-design-epic-G.md`
+- Framework config: `playwright.config.ts`
 
-### Acceptance Criteria Validation
+### Acceptance Criteria Mapping (Story g.3)
 
-| Acceptance Criterion | Test IDs | Status | Notes |
-| -------------------- | -------- | ------ | ----- |
-| AC1 card-level queue row rendering and context pills | `G2-AUTO-E2E-201` | Covered | Includes suppression checks and tap-target behavior. |
-| AC2 display-safe volunteer copy (no backend-centric tokens) | `G2-AUTO-E2E-201` | Covered | Validates forbidden token and raw-id suppression. |
-| AC3 deterministic ordering and persistent search | `G2-AUTO-E2E-202` | Covered | Verifies queue search persistence and order stability across reload/navigation. |
-| AC4 responsive queue/thread behavior by breakpoint | `G2-AUTO-E2E-203` | Covered | Mobile/tablet/desktop layout assertions included. |
-| AC5 claimed voicemail remains in Mine with indicator | `G2-AUTO-E2E-204`, `G2-AUTO-API-302` | Covered | E2E and API both assert ownership semantics. |
+| Acceptance Criterion | Coverage | Notes |
+| --- | --- | --- |
+| AC1 context-first hierarchy | ✅ Covered | E2E + API assertions for neighbor/conference/claim surfaces |
+| AC2 voicemail first-class inline | ✅ Covered | E2E timeline rendering + API timeline contract |
+| AC3 locked state-action matrix | ✅ Covered | API + E2E for UNCLAIMED/CLAIMED/CLOSED, plus privileged role variant |
+| AC4 contextual policy/refusal feedback | ✅ Covered | E2E interaction + API envelope/chrome assertions |
+| AC5 closed outbound reopen semantics | ✅ Covered | API + E2E assert same-thread reopen and lifecycle feedback |
 
-**Coverage**: 5/5 acceptance criteria covered (100%).
+**Coverage**: 5/5 criteria covered (100%)
 
 ---
 
 ## Knowledge Base References
 
-This review consulted the following TEA fragments:
+This review consulted:
 
-- [test-quality.md](../../_bmad/tea/testarch/knowledge/test-quality.md)
-- [data-factories.md](../../_bmad/tea/testarch/knowledge/data-factories.md)
-- [test-levels-framework.md](../../_bmad/tea/testarch/knowledge/test-levels-framework.md)
-- [selective-testing.md](../../_bmad/tea/testarch/knowledge/selective-testing.md)
-- [test-healing-patterns.md](../../_bmad/tea/testarch/knowledge/test-healing-patterns.md)
-- [selector-resilience.md](../../_bmad/tea/testarch/knowledge/selector-resilience.md)
-- [timing-debugging.md](../../_bmad/tea/testarch/knowledge/timing-debugging.md)
-- [overview.md](../../_bmad/tea/testarch/knowledge/overview.md)
-- [api-request.md](../../_bmad/tea/testarch/knowledge/api-request.md)
-- [network-recorder.md](../../_bmad/tea/testarch/knowledge/network-recorder.md)
-- [auth-session.md](../../_bmad/tea/testarch/knowledge/auth-session.md)
-- [intercept-network-call.md](../../_bmad/tea/testarch/knowledge/intercept-network-call.md)
-- [recurse.md](../../_bmad/tea/testarch/knowledge/recurse.md)
-- [log.md](../../_bmad/tea/testarch/knowledge/log.md)
-- [file-utils.md](../../_bmad/tea/testarch/knowledge/file-utils.md)
-- [burn-in.md](../../_bmad/tea/testarch/knowledge/burn-in.md)
-- [network-error-monitor.md](../../_bmad/tea/testarch/knowledge/network-error-monitor.md)
-- [fixtures-composition.md](../../_bmad/tea/testarch/knowledge/fixtures-composition.md)
-- [playwright-cli.md](../../_bmad/tea/testarch/knowledge/playwright-cli.md)
+- `test-quality.md`
+- `data-factories.md`
+- `test-levels-framework.md`
+- `selective-testing.md`
+- `test-healing-patterns.md`
+- `selector-resilience.md`
+- `timing-debugging.md`
+- `overview.md`
+- `api-request.md`
+- `network-recorder.md`
+- `auth-session.md`
+- `intercept-network-call.md`
+- `recurse.md`
+- `log.md`
+- `file-utils.md`
+- `burn-in.md`
+- `network-error-monitor.md`
+- `fixtures-composition.md`
+- `playwright-cli.md`
+
+External cross-check references:
+
+- https://playwright.dev/docs/best-practices
+- https://playwright.dev/docs/test-parallel
+- https://docs.cypress.io/app/core-concepts/test-isolation
+- https://docs.pact.io/getting_started/provider_verification
 
 ---
 
 ## Next Steps
 
-### Immediate Actions (Before Merge)
+### Immediate
 
-1. Remove serial mode from both g.2 automate suites unless dependency is explicitly justified.
-   - Priority: P1
-   - Owner: QA / story implementer
-   - Estimated Effort: 30-60 minutes
+1. Keep the current suite merge-eligible (no blocking defects found).
+2. Optionally implement low-priority maintainability cleanups in a follow-up PR.
 
-2. Split oversized provider-registry test files into domain-focused suites.
-   - Priority: P1
-   - Owner: Backend test owners
-   - Estimated Effort: 2-4 hours
+### Follow-up
 
-3. Add negative-flow coverage for outbound refusal/error paths and actor-context malformed variants.
-   - Priority: P1
-   - Owner: QA + API owners
-   - Estimated Effort: 1-2 hours
-
-### Follow-up Actions (Future PRs)
-
-1. Add stable test IDs and priority tags to backend Jest suites for stronger selective execution governance.
-   - Priority: P2
-   - Target: next sprint
-
-2. Evaluate storage-state login reuse for E2E suite runtime optimization.
-   - Priority: P2
-   - Target: next sprint
+1. Add a `beforeEach` for shared E2E setup.
+2. Add one micro-test split for API matrix states if failure granularity becomes a pain point.
 
 ### Re-Review Needed?
 
-Yes. Re-review recommended after P1 actions are addressed.
+✅ No re-review required for merge.
 
 ---
 
 ## Decision
 
-**Recommendation**: Request Changes
+**Recommendation**: Approve with Comments
 
 **Rationale**:
-
-The reviewed g.2 suite has good behavioral coverage and clean hard-wait discipline, but quality gates are held back by serial-mode execution and maintainability overhead from oversized specs. These issues are fixable and localized, but they affect reliability signal and CI efficiency enough to justify a request-changes decision.
-
----
-
-## Appendix
-
-### Violation Summary by Location
-
-| Line | Severity | Criterion | Issue | Fix |
-| ---- | -------- | --------- | ----- | --- |
-| `tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts:15` | P1 | Isolation/Performance | Serial mode | Remove suite-level serial mode |
-| `tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts:60` | P1 | Isolation/Performance | Serial mode | Remove suite-level serial mode |
-| `apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts:115` | P1 | Maintainability | File is 1354 lines | Split by concern |
-| `apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:34` | P1 | Maintainability | File is 715 lines | Split by concern |
-| `tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts:14` | P1 | Maintainability | File is 350 lines | Split by behavior domain |
-| `tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts:149` | P2 | Determinism | Runtime branching by option count | Create deterministic scenario splits |
-| `tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts:180` | P2 | Determinism | Runtime branching by option count | Create deterministic scenario splits |
-| `apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts:1268` | P2 | Isolation | Process-global env mutation | Use scoped env override helper |
-| `apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:530` | P3 | Determinism | Dynamic timestamp generation | Prefer fixed timestamps where practical |
-| `apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts:643` | P3 | Determinism | Dynamic number generation from time | Prefer deterministic unique fixture strategy |
-
-### Quality Trends
-
-| Review Date | Score | Grade | Critical Issues | Trend |
-| ----------- | ----- | ----- | --------------- | ----- |
-| 2026-03-06 | 75/100 | C | 0 | New baseline for Story g.2 |
-
-### Related Reviews
-
-| File | Score Impact | Status |
-| ---- | ------------ | ------ |
-| `tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts` | Medium | Needs serial-mode and branching cleanup |
-| `tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts` | Medium | Needs serial-mode cleanup and extra boundary variants |
-| `apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts` | Medium | Needs file-size decomposition |
-| `apps/moneyshyft-api/src/modules/connectshyft/__tests__/readContracts.test.ts` | Low | Acceptable, minor maintainability debt |
-| `apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts` | High | Needs decomposition and env-scope hardening |
-
-**Suite Average**: 75/100 (C)
+Test quality is high and stable with 96/100. No critical/high defects and no observed flakiness under repeated parallel execution. Remaining items are low-priority maintainability improvements and do not block release confidence.
 
 ---
 
 ## Review Metadata
 
-**Generated By**: BMad TEA Agent (Test Architect)
-**Workflow**: testarch-test-review v5.0 (step-file architecture)
-**Review ID**: test-review-g-2-inbox-and-mine-surface-rebuild-20260306
-**Timestamp**: 2026-03-06T20:03:56.267Z
-**Version**: 1.0
-
----
-
-## Workflow Artifacts
-
-- `/tmp/tea-test-review-determinism-2026-03-06T19-56-24-979Z.json`
-- `/tmp/tea-test-review-isolation-2026-03-06T19-56-24-979Z.json`
-- `/tmp/tea-test-review-maintainability-2026-03-06T19-56-24-979Z.json`
-- `/tmp/tea-test-review-coverage-2026-03-06T19-56-24-979Z.json`
-- `/tmp/tea-test-review-performance-2026-03-06T19-56-24-979Z.json`
-- `/tmp/tea-test-review-summary-2026-03-06T19-56-24-979Z.json`
-- `_bmad-output/test-artifacts/test-review-temp/tea-test-review-determinism-2026-03-06T19-56-24-979Z.json`
-- `_bmad-output/test-artifacts/test-review-temp/tea-test-review-isolation-2026-03-06T19-56-24-979Z.json`
-- `_bmad-output/test-artifacts/test-review-temp/tea-test-review-maintainability-2026-03-06T19-56-24-979Z.json`
-- `_bmad-output/test-artifacts/test-review-temp/tea-test-review-coverage-2026-03-06T19-56-24-979Z.json`
-- `_bmad-output/test-artifacts/test-review-temp/tea-test-review-performance-2026-03-06T19-56-24-979Z.json`
-- `_bmad-output/test-artifacts/test-review-temp/tea-test-review-summary-2026-03-06T19-56-24-979Z.json`
+**Generated By**: BMad TEA Agent (Test Architect)  
+**Workflow**: testarch-test-review v5.0  
+**Review ID**: test-review-g-3-thread-detail-conversation-first-rebuild-20260306  
+**Timestamp**: 2026-03-06

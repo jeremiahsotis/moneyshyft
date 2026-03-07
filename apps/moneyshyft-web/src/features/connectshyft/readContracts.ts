@@ -44,12 +44,23 @@ export type ConnectShyftThreadSummary = {
     outboundContext: string;
     neighborContext: string;
     conferenceContext: string;
+    claimContext: string;
     voicemailLabel: string;
   };
 };
 
+export type ConnectShyftThreadTimelineEvent = {
+  eventName: string;
+  conversationType: 'message' | 'voicemail' | 'lifecycle';
+  renderMode: 'inline';
+  firstClass: boolean;
+  occurredAtUtc: string;
+  summary: string;
+};
+
 export type ConnectShyftThreadDetail = ConnectShyftThreadSummary & {
   actions: string[];
+  timeline: ConnectShyftThreadTimelineEvent[];
   lifecycle: {
     reopenedByInbound: boolean;
   };
@@ -206,6 +217,104 @@ const hasVoicemailTimelineEvent = (payload: unknown): boolean => {
   });
 };
 
+const resolveTimelineConversationType = (input: {
+  eventName: string;
+  provided?: unknown;
+}): 'message' | 'voicemail' | 'lifecycle' => {
+  if (input.provided === 'message' || input.provided === 'voicemail' || input.provided === 'lifecycle') {
+    return input.provided;
+  }
+
+  const normalized = input.eventName.toLowerCase();
+  if (
+    normalized.includes('voicemail')
+    || normalized.includes('transcription')
+    || normalized.includes('voice.')
+  ) {
+    return 'voicemail';
+  }
+
+  if (
+    normalized.includes('message')
+    || normalized.includes('sms')
+    || normalized.includes('text')
+  ) {
+    return 'message';
+  }
+
+  return 'lifecycle';
+};
+
+const resolveTimelineSummary = (input: {
+  eventName: string;
+  conversationType: 'message' | 'voicemail' | 'lifecycle';
+  candidate: Record<string, unknown>;
+}): string => {
+  const explicit = sanitizeConnectShyftOperatorCopy(
+    normalizeString(input.candidate.summary),
+    '',
+  );
+  if (explicit) {
+    return explicit;
+  }
+
+  if (input.conversationType === 'voicemail') {
+    return 'Voicemail received';
+  }
+
+  if (input.conversationType === 'message') {
+    return 'Message activity recorded';
+  }
+
+  return sanitizeConnectShyftOperatorCopy(
+    input.eventName.replace(/[_\.]+/g, ' '),
+    'Lifecycle activity recorded',
+  );
+};
+
+const parseThreadTimeline = (payload: unknown): ConnectShyftThreadTimelineEvent[] => {
+  if (!Array.isArray(payload)) {
+    return [];
+  }
+
+  return payload
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return null;
+      }
+
+      const candidate = entry as Record<string, unknown>;
+      const eventName = normalizeString(
+        candidate.eventName ?? candidate.event_name ?? candidate.eventType ?? candidate.event_type,
+      );
+      if (!eventName) {
+        return null;
+      }
+
+      const conversationType = resolveTimelineConversationType({
+        eventName,
+        provided: candidate.conversationType,
+      });
+      const occurredAtUtc = normalizeString(
+        candidate.occurredAtUtc ?? candidate.occurred_at_utc ?? candidate.createdAtUtc ?? candidate.created_at_utc,
+      );
+
+      return {
+        eventName,
+        conversationType,
+        renderMode: 'inline',
+        firstClass: candidate.firstClass === true || conversationType !== 'lifecycle',
+        occurredAtUtc,
+        summary: resolveTimelineSummary({
+          eventName,
+          conversationType,
+          candidate,
+        }),
+      };
+    })
+    .filter((entry): entry is ConnectShyftThreadTimelineEvent => entry !== null);
+};
+
 const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null => {
   if (!payload || typeof payload !== 'object') {
     return null;
@@ -302,6 +411,11 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
     outboundContext: displayOutboundContext,
     neighborContext: `Neighbor context: ${safeSummary}`,
     conferenceContext: `Conference context: ${displayOutboundContext}`,
+    claimContext: state === 'UNCLAIMED'
+      ? 'Claim context: Unclaimed conversation'
+      : state === 'CLAIMED'
+        ? 'Claim context: Claimed conversation'
+        : 'Claim context: Closed conversation',
     voicemailLabel: displayVoicemailLabel,
   };
   const displayProjection = candidate.display && typeof candidate.display === 'object'
@@ -314,6 +428,7 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
       outboundContext?: unknown;
       neighborContext?: unknown;
       conferenceContext?: unknown;
+      claimContext?: unknown;
       voicemailLabel?: unknown;
     }
     : null;
@@ -349,6 +464,10 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
     conferenceContext: sanitizeConnectShyftOperatorCopy(
       normalizeString(displayProjection?.conferenceContext),
       fallbackDisplay.conferenceContext,
+    ),
+    claimContext: sanitizeConnectShyftOperatorCopy(
+      normalizeString(displayProjection?.claimContext),
+      fallbackDisplay.claimContext,
     ),
     voicemailLabel: sanitizeConnectShyftOperatorCopy(
       normalizeString(displayProjection?.voicemailLabel),
@@ -390,6 +509,7 @@ const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null =>
 
   const candidate = payload as {
     actions?: unknown;
+    timeline?: unknown;
     lifecycle?: {
       reopenedByInbound?: unknown;
     };
@@ -404,6 +524,7 @@ const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null =>
   return {
     ...summary,
     actions,
+    timeline: parseThreadTimeline(candidate.timeline),
     lifecycle: {
       reopenedByInbound: candidate.lifecycle?.reopenedByInbound === true,
     },
