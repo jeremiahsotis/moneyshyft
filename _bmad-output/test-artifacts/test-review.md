@@ -4,11 +4,11 @@ lastStep: 'step-04-generate-report'
 lastSaved: '2026-03-07'
 ---
 
-# Test Quality Review: g-4-add-neighbor-and-directory-rebuild
+# Test Quality Review: g-5-more-settings-volunteer-ia-and-admin-separation
 
-**Quality Score**: 77/100 (C - Acceptable)
+**Quality Score**: 94/100 (A - Excellent)
 **Review Date**: 2026-03-07
-**Review Scope**: directory (story artifact with linked test specs)
+**Review Scope**: single (story artifact with linked test specs)
 **Reviewer**: TEA Agent (Murat)
 
 ---
@@ -17,31 +17,29 @@ Note: This review audits existing tests; it does not generate tests.
 
 ## Executive Summary
 
-**Overall Assessment**: Acceptable
+**Overall Assessment**: Excellent
 
-**Recommendation**: Request Changes
+**Recommendation**: Approve with Comments
 
 ### Key Strengths
 
-✅ Strong explicit assertion coverage with 152 total `expect(...)` assertions across the reviewed g.4 suite.
-✅ No hard waits (`waitForTimeout`) or serial-only blocks were found.
-✅ Test IDs and priority markers are consistent (`[G4-...][P0|P1]` + `@P0/@P1`).
-✅ Network-first synchronization patterns (`waitForResponse` before action) are used in critical directory-start paths.
-✅ Story acceptance criteria AC1-AC5 are covered by at least one active E2E/API test path.
+✅ Determinism hygiene is strong: no `waitForTimeout`, `Math.random()`, `Date.now()`, `test.skip`, or serial-only execution in reviewed specs.
+✅ Test IDs and risk markers are consistent (`[G5-...][P0|P1]` and `@P0/@P1`) across API + E2E suites.
+✅ Role-gated refusal behavior is asserted explicitly, including non-leakage checks for privileged payload fields.
+✅ Accessibility and responsive checks are present (keyboard traversal + ARIA labels + mobile/tablet/desktop validation).
+✅ Coverage maps cleanly to Story g.5 acceptance criteria for volunteer IA focus and admin separation.
 
 ### Key Weaknesses
 
-❌ API ATDD contract tests are fully skipped (`G4-ATDD-API-001..005`), leaving a major enforcement gap in CI.
-❌ Time-based seed generation via `Date.now()` introduces non-reproducible test data behavior.
-❌ Seeded entities are created in several tests without explicit per-test teardown guarantees.
-❌ Two files exceed the preferred 300-line maintainability threshold.
-❌ Helper logic is duplicated between g.4 E2E ATDD and automate specs.
+❌ API ATDD coverage does not yet include explicit positive admin-success reads for each admin endpoint (availability, numbers, escalation).
+❌ E2E login setup runs in `beforeEach`, increasing suite runtime versus persisted auth state.
+❌ One E2E test loops all breakpoints in a single case, reducing failure isolation clarity.
 
 ### Summary
 
-This review covered story artifact `_bmad-output/implementation-artifacts/g-4-add-neighbor-and-directory-rebuild.md` plus four linked test files (2 E2E, 2 API). Test quality is directionally strong on assertions, selector strategy, and network synchronization. However, quality-gate confidence is reduced by one high-impact gap: the ATDD API suite is entirely skipped, which weakens direct CI protection for critical API acceptance behavior.
+This review used story artifact context from `_bmad-output/implementation-artifacts/g-5-more-settings-volunteer-ia-and-admin-separation.md`, then analyzed linked g.5 ATDD API and E2E tests. Overall test quality is high with robust assertion density, stable selector usage, clear role-path validation, and strong negative-path coverage for unauthorized admin access.
 
-Risk posture is moderate: no immediate flakiness anti-patterns (hard waits, random calls, serial bottlenecks), but deterministic replay and isolation discipline should be tightened before final sign-off.
+Main remaining risk is coverage depth on authorized admin success contracts at endpoint level. The current suite proves volunteer safety and route-level gating well, but adding explicit positive endpoint assertions for admin configuration surfaces will tighten contract confidence.
 
 ---
 
@@ -49,45 +47,37 @@ Risk posture is moderate: no immediate flakiness anti-patterns (hard waits, rand
 
 | Criterion                            | Status  | Violations | Notes |
 | ------------------------------------ | ------- | ---------- | ----- |
-| BDD Format (Given-When-Then)         | ✅ PASS | 0          | Scenarios follow Given/When/Then structure in test comments and flow |
-| Test IDs                             | ✅ PASS | 0          | All tests include story-linked IDs |
-| Priority Markers (P0/P1/P2/P3)       | ✅ PASS | 0          | All cases are tagged P0/P1 |
+| BDD Format (Given-When-Then)         | ✅ PASS | 0          | Scenarios are behavior-driven and acceptance-criteria aligned |
+| Test IDs                             | ✅ PASS | 0          | All tests carry story-linked IDs |
+| Priority Markers (P0/P1/P2/P3)       | ✅ PASS | 0          | All tests are tagged P0/P1 |
 | Hard Waits (sleep, waitForTimeout)   | ✅ PASS | 0          | No hard waits detected |
-| Determinism (no conditionals)        | ⚠️ WARN | 2          | `Date.now()` used for seed values in two automate specs |
-| Isolation (cleanup, no shared state) | ⚠️ WARN | 3          | Create/ensure flows seed data without explicit teardown in-file |
-| Fixture Patterns                     | ⚠️ WARN | 1          | Shared helper logic duplicated instead of centralized fixture/helper module |
-| Data Factories                       | ✅ PASS | 0          | Story factory payload/context utilities used consistently |
-| Network-First Pattern                | ✅ PASS | 0          | Response waits are registered before triggering actions |
-| Explicit Assertions                  | ✅ PASS | 0          | Assertions remain visible in test bodies |
-| Test Length (≤300 lines)             | ⚠️ WARN | 2          | 366-line and 301-line files exceed target size |
-| Test Duration (≤1.5 min)             | ⚠️ WARN | 1          | Runtime not measured here; high setup density suggests monitoring needed |
-| Flakiness Patterns                   | ⚠️ WARN | 2          | Time-dependent seeds and skipped critical API suite reduce reliability confidence |
+| Determinism (no conditionals)        | ✅ PASS | 0          | No time/random anti-patterns found |
+| Isolation (cleanup, no shared state) | ⚠️ WARN | 1          | One low-risk suite-level shared context object |
+| Fixture Patterns                     | ✅ PASS | 0          | Project fixtures and typed helpers are used consistently |
+| Data Factories                       | ✅ PASS | 0          | Story context/factory patterns in place |
+| Network-First Pattern                | ⚠️ WARN | 1          | Strong assertions, but no explicit request interception assertions in E2E |
+| Explicit Assertions                  | ✅ PASS | 0          | Assertions are visible and direct |
+| Test Length (≤300 lines)             | ✅ PASS | 0          | Files are 165 and 177 lines |
+| Test Duration (≤1.5 min)             | ⚠️ WARN | 1          | Static review only; repeated UI login suggests optimization opportunity |
+| Flakiness Patterns                   | ✅ PASS | 0          | No obvious flake anti-patterns identified |
 
-**Total Violations**: 0 Critical, 4 High, 6 Medium, 1 Low
+**Total Violations**: 0 Critical, 0 High, 2 Medium, 3 Low
 
 ---
 
 ## Quality Score Breakdown
 
 ```text
-Starting Score:          100
-Critical Violations:     -0 × 10 = -0
-High Violations:         -4 × 5 = -20
-Medium Violations:       -6 × 2 = -12
-Low Violations:          -1 × 1 = -1
+Weighted Dimension Scoring:
 
-Bonus Points:
-  Excellent BDD:          +0
-  Comprehensive Fixtures: +0
-  Data Factories:         +5
-  Network-First:          +5
-  Perfect Isolation:      +0
-  All Test IDs:           +0
-                          --------
-Total Bonus:              +10
+Determinism:      100 × 0.25 = 25.00
+Isolation:         95 × 0.25 = 23.75
+Maintainability:   93 × 0.20 = 18.60
+Coverage:          88 × 0.15 = 13.20
+Performance:       90 × 0.15 = 13.50
 
-Final Score:              77/100
-Grade:                    C
+Final Score:                 94.05 → 94/100
+Grade:                       A
 ```
 
 ---
@@ -100,186 +90,145 @@ No critical issues detected. ✅
 
 ## Recommendations (Should Fix)
 
-### 1. Unskip the g.4 ATDD API suite to restore CI contract enforcement
+### 1. Add explicit authorized-admin positive endpoint contract checks
 
 **Severity**: P1 (High)
-**Location**: `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.atdd.api.spec.ts:58`
+**Location**: `tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.api.spec.ts:103`
 **Criterion**: Coverage
 **Knowledge Base**: [test-quality](../../../_bmad/tea/testarch/knowledge/test-quality.md)
 
 **Issue Description**:
-All five ATDD API tests are currently `test.skip(...)`. This removes direct CI enforcement for core contract behaviors tied to R-G-004 and can hide regressions that E2E alone may not catch quickly.
+The API suite verifies admin option visibility in settings navigation, but does not assert successful authorized reads for each explicit admin endpoint path.
 
 **Current Code**:
 ```typescript
 // ⚠️ Could be improved (current implementation)
-test.skip(
-  '[G4-ATDD-API-001][P0] add-neighbor create contract accepts ... @P0',
-  async (...) => { ... }
-);
+expect((adminBody.data?.adminOptions ?? []).length).toBeGreaterThan(0);
 ```
 
 **Recommended Improvement**:
 ```typescript
 // ✅ Better approach (recommended)
-test(
-  '[G4-ATDD-API-001][P0] add-neighbor create contract accepts ... @P0',
-  async (...) => { ... }
-);
+const availabilityResponse = await apiRequest(request, {
+  method: 'GET',
+  path: `${storyG5Context.paths.availability}?orgUnitId=${encodeURIComponent(storyG5Context.orgUnitId)}`,
+  headers: storyG5AdminHeaders,
+});
+expect(availabilityResponse.status()).toBe(200);
+expect((await availabilityResponse.json()) as ConnectShyftEnvelope).toMatchObject({ ok: true });
 ```
 
 **Benefits**:
-Restores deterministic API-level protection for acceptance criteria and reduces reliance on broader E2E-only signals.
+Tightens contract confidence for privileged admin paths and reduces chance of false-green navigation-only checks.
 
 **Priority**:
-P1 because it directly affects quality-gate trust in critical story behavior.
+P1 due to direct quality-gate value on role-gated admin contracts.
 
-### 2. Replace `Date.now()` seed generation with deterministic fixture-driven seeds
-
-**Severity**: P1 (High)
-**Location**: `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts:171`, `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts:126`
-**Criterion**: Determinism
-**Knowledge Base**: [test-quality](../../../_bmad/tea/testarch/knowledge/test-quality.md)
-
-**Issue Description**:
-Time-derived seed values make exact reruns harder to reproduce and reduce deterministic debugging behavior under retries.
-
-**Current Code**:
-```typescript
-// ⚠️ Could be improved (current implementation)
-const seedSuffix = Date.now().toString();
-```
-
-**Recommended Improvement**:
-```typescript
-// ✅ Better approach (recommended)
-const seedSuffix = `${test.info().workerIndex}-${test.info().repeatEachIndex}-${scenarioId}`;
-```
-
-**Benefits**:
-Predictable data generation across reruns and easier triage of failed cases.
-
-**Priority**:
-P1 due to direct impact on repeatability and failure diagnosis.
-
-### 3. Add teardown discipline for seeded neighbors/threads
+### 2. Replace repeated UI login in `beforeEach` with persisted auth state where possible
 
 **Severity**: P2 (Medium)
-**Location**: `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts:205`, `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts:168`
-**Criterion**: Isolation
-**Knowledge Base**: [data-factories](../../../_bmad/tea/testarch/knowledge/data-factories.md)
+**Location**: `tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts:12`
+**Criterion**: Performance
+**Knowledge Base**: [auth-session](../../../_bmad/tea/testarch/knowledge/auth-session.md)
 
 **Issue Description**:
-Multiple tests create records via API helpers but do not explicitly track/delete created entities in test-local teardown.
+UI login for each test increases runtime and can amplify infra-related noise.
 
 **Current Code**:
 ```typescript
 // ⚠️ Could be improved (current implementation)
-await createNeighborSeed(request, context, { ... });
+test.beforeEach(async ({ page }) => {
+  await login(page);
+});
 ```
 
 **Recommended Improvement**:
 ```typescript
 // ✅ Better approach (recommended)
-const createdNeighborIds: string[] = [];
-afterEach(async ({ request }) => {
-  for (const neighborId of createdNeighborIds) {
-    await apiRequest(request, { method: 'DELETE', path: `${context.paths.neighborsCollection}/${neighborId}` });
-  }
+// Use pre-authenticated storage state or auth-session fixture for role variants
+export default defineConfig({
+  use: { storageState: 'tests/auth/volunteer.json' }
 });
 ```
 
 **Benefits**:
-Improves parallel-run safety and reduces environment state buildup.
+Shorter suite execution, lower setup variance, improved CI throughput.
 
 **Priority**:
-P2 because current uniqueness strategy mitigates immediate collisions, but cleanup remains best practice.
+P2 because this is optimization, not correctness risk.
 
-### 4. Split oversized specs and centralize duplicated g.4 helper code
+### 3. Split multi-viewport loop into parameterized test cases
 
-**Severity**: P2 (Medium)
-**Location**: `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts:1`, `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts:1`
+**Severity**: P3 (Low)
+**Location**: `tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts:108`
 **Criterion**: Maintainability
-**Knowledge Base**: [fixtures-composition](../../../_bmad/tea/testarch/knowledge/fixtures-composition.md)
+**Knowledge Base**: [selective-testing](../../../_bmad/tea/testarch/knowledge/selective-testing.md)
 
 **Issue Description**:
-Two files exceed length guidance and helper functions are duplicated across E2E specs.
+Three viewport validations run in one test body, which can hide which breakpoint failed first.
 
 **Current Code**:
 ```typescript
-// ⚠️ Could be improved (current implementation)
-const buildStoryG4UrlParams = (...) => { ... };
-const createNeighborSeed = async (...) => { ... };
+for (const viewport of viewportMatrix) {
+  // assertions...
+}
 ```
 
 **Recommended Improvement**:
 ```typescript
-// ✅ Better approach (recommended)
-import {
-  buildStoryG4AddNeighborUrl,
-  buildStoryG4DirectoryUrl,
-  createNeighborSeed,
-  ensureExistingThreadSeed,
-} from '../../support/helpers/connectShyftStoryG4Helpers';
+for (const viewport of viewportMatrix) {
+  test(`[${viewport.label}] volunteer IA remains clear`, async ({ page }) => {
+    // viewport-specific assertions
+  });
+}
 ```
 
 **Benefits**:
-Lower maintenance overhead, fewer drift bugs, and clearer test intent per file.
+Cleaner failure signatures and better selective reruns by scenario.
 
 **Priority**:
-P2 because this impacts long-term quality more than immediate correctness.
+P3 low urgency, high readability payoff.
 
 ---
 
 ## Best Practices Found
 
-### 1. Network-first request synchronization before user action
+### 1. Strong refusal-envelope and non-leakage assertions
 
-**Location**: `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts:276`
-**Pattern**: network-first
-**Knowledge Base**: [network-first](../../../_bmad/tea/testarch/knowledge/network-first.md)
-
-**Why This Is Good**:
-Response waiter is established before clicking action controls, reducing race conditions.
-
-**Code Example**:
-```typescript
-const ensureResponse = page.waitForResponse(
-  (response) =>
-    response.url().includes('/api/v1/connectshyft/threads')
-    && response.request().method() === 'POST',
-);
-await existingCard.getByTestId('connectshyft-directory-start-conversation-action').click();
-const ensured = await ensureResponse;
-```
-
-**Use as Reference**:
-Apply this pattern consistently for all async UI transitions relying on backend side effects.
-
-### 2. Strong explicit assertion style in story-focused checks
-
-**Location**: `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts:226`
-**Pattern**: explicit assertions
+**Location**: `tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.api.spec.ts:86`
+**Pattern**: explicit negative contract checks
 **Knowledge Base**: [test-quality](../../../_bmad/tea/testarch/knowledge/test-quality.md)
 
 **Why This Is Good**:
-Assertions remain in test bodies and validate key contract fields directly.
+The suite validates refusal envelopes and confirms privileged payload sections are absent (`not.toHaveProperty`).
 
 **Code Example**:
 ```typescript
-expect(body).toMatchObject({
-  ok: true,
-  code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
-});
-expect(body.data?.neighbor?.phones).toEqual(
-  expect.arrayContaining([
-    expect.objectContaining({ label: 'mobile', isShared: true, isPrimary: true }),
-  ]),
-);
+expect(numbersBody).not.toHaveProperty('data.mappings');
+expect(escalationBody).not.toHaveProperty('data.recipients');
 ```
 
 **Use as Reference**:
-Keep this explicit assertion style as tests evolve.
+Apply the same non-leakage assertion style to all role-gated endpoints.
+
+### 2. Accessibility-aware keyboard and ARIA checks in ATDD E2E
+
+**Location**: `tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts:156`
+**Pattern**: accessibility contract assertions
+**Knowledge Base**: [selector-resilience](../../../_bmad/tea/testarch/knowledge/selector-resilience.md)
+
+**Why This Is Good**:
+The suite validates focus traversal and label accessibility, which are often omitted in story ATDD tests.
+
+**Code Example**:
+```typescript
+await page.keyboard.press('Tab');
+await expect(settings).toBeFocused();
+await expect(page.getByTestId('connectshyft-bottom-nav-inbox')).toHaveAttribute('aria-label', 'Open Inbox');
+```
+
+**Use as Reference**:
+Keep keyboard + screen-reader assertions as a standard pattern in volunteer-facing UI stories.
 
 ---
 
@@ -288,35 +237,36 @@ Keep this explicit assertion style as tests evolve.
 ### File Metadata
 
 - **Scope Files Reviewed**:
-  - `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts` (366 lines, 12.85 KB)
-  - `tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts` (292 lines, 10.01 KB)
-  - `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.atdd.api.spec.ts` (272 lines, 10.40 KB)
-  - `tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts` (301 lines, 9.59 KB)
+  - `tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.api.spec.ts` (165 lines, 6.19 KB)
+  - `tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts` (177 lines, 7.47 KB)
 - **Test Framework**: Playwright
 - **Language**: TypeScript
 
 ### Test Structure
 
-- **Describe Blocks**: 4
-- **Test Cases (it/test)**: 19 total
-- **Skipped Cases**: 5 (`G4-ATDD-API-001..005`)
-- **Average File Length**: 307.75 lines per file
-- **Factories/Context Utilities**: `createStoryG4Context`, `createStoryG4NeighborCreatePayload`, `createStoryG4ThreadEnsurePayload`
+- **Describe Blocks**: 2
+- **Test Cases**: 11 total
+- **Skipped Cases**: 0
+- **Average File Length**: 171 lines
+- **Fixtures/Factories Used**:
+  - `../../support/fixtures/connectShyftStoryG5.fixture`
+  - `createStoryG5Context()`
+  - `apiRequest()` helper
 
 ### Test Coverage Scope
 
 - **Priority Distribution**:
-  - P0 (Critical): 11 tests
-  - P1 (High): 8 tests
+  - P0 (Critical): 7 tests
+  - P1 (High): 4 tests
   - P2 (Medium): 0 tests
   - P3 (Low): 0 tests
   - Unknown: 0 tests
 
 ### Assertions Analysis
 
-- **Total Assertions**: 152
-- **Assertions per Test**: 8.0 (avg)
-- **Assertion Types**: status/code checks, URL checks, DOM visibility/content checks, payload shape checks, lifecycle metadata checks
+- **Total Assertions**: 59
+- **Assertions per Test**: 5.36 (avg)
+- **Assertion Types**: response envelope checks, payload non-leakage checks, DOM visibility/count, focus order, ARIA label contracts, route link checks
 
 ---
 
@@ -324,7 +274,7 @@ Keep this explicit assertion style as tests evolve.
 
 ### Related Artifacts
 
-- **Story File**: `_bmad-output/implementation-artifacts/g-4-add-neighbor-and-directory-rebuild.md`
+- **Story File**: `_bmad-output/implementation-artifacts/g-5-more-settings-volunteer-ia-and-admin-separation.md`
 - **Test Design**: `_bmad-output/test-artifacts/test-design-epic-G.md`
 - **Framework Config**: `playwright.config.ts`
 
@@ -332,13 +282,12 @@ Keep this explicit assertion style as tests evolve.
 
 | Acceptance Criterion | Test ID(s) | Status | Notes |
 | -------------------- | ---------- | ------ | ----- |
-| AC1: Add Neighbor supports required field set | G4-ATDD-E2E-001, G4-ATDD-API-001 (skipped) | ✅ Covered (partial API enforcement gap) | E2E active; API ATDD currently skipped |
-| AC2: Validation refusal is clear/no partial writes | G4-ATDD-E2E-002, G4-AUTO-API-304, G4-ATDD-API-002 (skipped) | ✅ Covered (partial API enforcement gap) | Active API automate case covers refusal contract |
-| AC3: Directory search remains conference-scoped | G4-ATDD-E2E-003, G4-ATDD-API-003 (skipped) | ✅ Covered (partial API enforcement gap) | E2E active; API ATDD skipped |
-| AC4: Deterministic ensure open/start behavior | G4-ATDD-E2E-004/005, G4-AUTO-API-301/302, G4-ATDD-API-004/005 (skipped) | ✅ Covered (partial API enforcement gap) | E2E + API automate active |
-| AC5: Mobile/tablet layout touch-friendly/context-visible | G4-ATDD-E2E-006 | ✅ Covered | E2E active |
+| AC1: Volunteer-first More/Settings options | G5-ATDD-E2E-001, G5-ATDD-API-001 | ✅ Covered | Primary option set + no admin options for volunteer |
+| AC2: Admin controls role-gated/segregated | G5-ATDD-E2E-002, G5-ATDD-API-002, G5-ATDD-API-003 | ✅ Covered | Refusal guidance + payload non-leakage checks |
+| AC3: Role/scope refresh preserves authorization boundaries | G5-ATDD-E2E-003, G5-ATDD-E2E-004, G5-ATDD-API-004, G5-ATDD-API-005 | ✅ Covered | Includes downgrade refusal path |
+| AC4: Volunteer IA stable across breakpoints | G5-ATDD-E2E-005, G5-ATDD-E2E-006 | ✅ Covered | Breakpoint layout + keyboard/screen-reader checks |
 
-**Coverage**: 5/5 criteria covered (100%), with a major caveat that API ATDD canonical cases are skipped.
+**Coverage**: 4/4 criteria covered (100%), with one medium-depth recommendation on admin endpoint positive contract detail.
 
 ---
 
@@ -347,6 +296,11 @@ Keep this explicit assertion style as tests evolve.
 This review consulted the following TEA knowledge fragments:
 
 - `test-quality.md`
+- `fixture-architecture.md`
+- `network-first.md`
+- `playwright-config.md`
+- `component-tdd.md`
+- `ci-burn-in.md`
 - `data-factories.md`
 - `test-levels-framework.md`
 - `selective-testing.md`
@@ -372,78 +326,40 @@ This review consulted the following TEA knowledge fragments:
 
 ### Immediate Actions (Before Merge)
 
-1. **Activate API ATDD g.4 tests**
+1. **Add positive admin endpoint API assertions for availability/numbers/escalation**
    - Priority: P1
    - Owner: QA + Backend
    - Estimated Effort: 2-4 hours
 
-2. **Replace Date.now-based seeds with deterministic fixture seeds**
-   - Priority: P1
+2. **Optimize auth setup in E2E tests**
+   - Priority: P2
    - Owner: QA
    - Estimated Effort: 1-2 hours
 
-3. **Add cleanup discipline for seeded entities in g.4 suites**
-   - Priority: P2
-   - Owner: QA
-   - Estimated Effort: 2-3 hours
-
 ### Follow-up Actions (Future PRs)
 
-1. **Split oversized g.4 specs and extract shared helper module**
-   - Priority: P2
+1. **Split viewport matrix loop into parameterized tests**
+   - Priority: P3
    - Target: next_sprint
 
-2. **Track per-file duration in CI and enforce 1.5-minute threshold alerts**
+2. **Extract shared refusal-query assertion helper**
    - Priority: P3
-   - Target: backlog
+   - Target: next_sprint
 
 ### Re-Review Needed?
 
-⚠️ Re-review after high-priority fixes - request changes, then re-review.
+✅ Optional re-review after P1 coverage enhancement. Current suite is mergeable with comments.
 
 ---
 
 ## Decision
 
-**Recommendation**: Request Changes
+**Recommendation**: Approve with Comments
 
 **Rationale**:
-The test suite demonstrates good engineering hygiene in assertions, selector usage, and network synchronization, but the skipped ATDD API suite creates a material quality-gate gap for critical contract behavior. Because those tests are tagged P0/P1 and map directly to high-risk story outcomes, they should be re-enabled (or replaced with equivalent active contract tests) before final confidence can be granted.
+The reviewed g.5 ATDD suite provides strong behavioral coverage for volunteer/admin IA separation, refusal guidance, accessibility, and responsive behavior. Determinism and structural hygiene are solid. Remaining issues are primarily depth and optimization improvements, not merge-blocking correctness defects.
 
-Time-dependent seed generation (`Date.now()`) and limited cleanup discipline are secondary but meaningful reliability concerns. Addressing those changes will improve deterministic reruns and reduce long-run flake risk.
-
-> Test quality is acceptable with 77/100 score, but high-priority coverage and determinism fixes are needed before merge confidence is complete.
-
----
-
-## Appendix
-
-### Violation Summary by Location
-
-| Line | Severity | Criterion | Issue | Fix |
-| ---- | -------- | --------- | ----- | --- |
-| 58 | P1 | Coverage | ATDD API tests are skipped | Unskip or port to active runnable assertions |
-| 171 | P1 | Determinism | `Date.now()` used for seeded data | Use deterministic fixture seed helper |
-| 126 | P1 | Determinism | `Date.now()` in API automate seed path | Use deterministic fixture seed helper |
-| 1 | P1 | Maintainability | ATDD E2E file exceeds 300 lines | Split by behavior area |
-| 205 | P2 | Isolation | Seeded neighbors without explicit teardown | Add fixture/local cleanup hooks |
-| 168 | P2 | Isolation | API-seeded E2E data lacks teardown | Add teardown tracking/deletion |
-| 127 | P2 | Isolation | API seeded entities not explicitly cleaned | Add fixture-managed cleanup |
-| 1 | P2 | Maintainability | Automate API file slightly over 300 lines | Split lifecycle vs refusal checks |
-| 71 | P2 | Fixture Patterns | Duplicated helper logic across E2E specs | Centralize shared g.4 helpers |
-| 57 | P2 | Coverage | API ATDD suite remains RED-placeholder | Promote to runnable green tests |
-| 205 | P3 | Performance | Repeated per-test seed overhead | Batch seed setup where safe |
-
-### Related Reviews
-
-| File | Score | Grade | Critical | Status |
-| ---- | ----- | ----- | -------- | ------ |
-| g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts | 79/100 | C | 0 | Needs follow-up |
-| g-4-add-neighbor-and-directory-rebuild.automate.spec.ts | 80/100 | B | 0 | Acceptable |
-| g-4-add-neighbor-and-directory-rebuild.atdd.api.spec.ts | 68/100 | D | 0 | Request changes |
-| g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts | 81/100 | B | 0 | Acceptable |
-
-**Suite Average**: 77/100 (C)
+> Test quality is excellent at 94/100. Merge is reasonable with one prioritized follow-up on admin positive endpoint contracts.
 
 ---
 
@@ -451,16 +367,17 @@ Time-dependent seed generation (`Date.now()`) and limited cleanup discipline are
 
 **Generated By**: BMad TEA Agent (Test Architect)
 **Workflow**: testarch-test-review v5.0
-**Review ID**: test-review-g-4-add-neighbor-and-directory-rebuild-20260307
-**Timestamp**: 2026-03-07 12:06:18
+**Review ID**: test-review-g-5-more-settings-volunteer-ia-and-admin-separation-20260307
+**Timestamp**: 2026-03-07T14:33:11Z
 **Version**: 1.0
 
 ---
 
-## Feedback on This Review
+## Subprocess Artifacts
 
-1. Review TEA patterns in `_bmad/tea/testarch/knowledge/`
-2. Consult `_bmad/tea/testarch/tea-index.csv` for deeper guidance
-3. Request targeted follow-up on specific violations if needed
-
-This review is guidance, not rigid rules. Context matters; if a deviation is intentional, document it explicitly in test comments and PR notes.
+- `/tmp/tea-test-review-determinism-2026-03-07T14-33-11Z.json`
+- `/tmp/tea-test-review-isolation-2026-03-07T14-33-11Z.json`
+- `/tmp/tea-test-review-maintainability-2026-03-07T14-33-11Z.json`
+- `/tmp/tea-test-review-coverage-2026-03-07T14-33-11Z.json`
+- `/tmp/tea-test-review-performance-2026-03-07T14-33-11Z.json`
+- `/tmp/tea-test-review-summary-2026-03-07T14-33-11Z.json`
