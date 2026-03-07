@@ -1,31 +1,118 @@
 ---
 stepsCompleted: ['step-01-load-context', 'step-02-define-thresholds', 'step-03-gather-evidence', 'step-04e-aggregate-nfr', 'step-05-generate-report']
 lastStep: 'step-05-generate-report'
-lastSaved: '2026-03-02T14:32:10Z'
+lastSaved: '2026-03-07T20:48:54Z'
 ---
 
-# NFR Assessment - Epic F (Comms Core Provider Abstraction and Telnyx Cutover)
+# NFR Assessment - Epic G (ConnectShyft UX Rebuild, CS-E7)
 
-**Date:** 2026-03-02  
-**Story Scope:** `f-1` through `f-4`  
-**Overall Status:** PASS ✅
+**Date:** 2026-03-07  
+**Story Scope:** `g-1` through `g-6`  
+**Overall Status:** CONCERNS ⚠️
 
 ---
 
-Note: This assessment includes fresh evidence generated on 2026-03-02 from targeted security and NFR workload runs.
+Note: This assessment summarizes existing evidence and workflow artifacts; no fresh performance/load/security scan execution was run in this workflow.
 
 ## Executive Summary
 
-**Assessment:** 29 PASS, 0 CONCERNS, 0 FAIL (ADR checklist criteria)  
-**Blockers:** 0 release-readiness blockers remain  
-**High Priority Issues:** 0  
-**Recommendation:** Blockers 1, 2, and 3 remain resolved, and all ADR checklist evidence categories are now explicitly satisfied for Epic F release readiness.
+**Assessment:** 21 PASS, 8 CONCERNS, 0 FAIL (ADR checklist criteria)  
+**Blockers:** 0 hard blockers (release still not recommended without closing high-priority concerns)  
+**High Priority Issues:** 3  
+**Recommendation:** Epic G functional coverage and UX contract hardening are strong, but release confidence is limited by missing fresh Epic G performance/reliability evidence and unfinished burn-in/gate capture.
 
-### Blocker status update
+### High-priority issues
 
-1. Epic F implementation lane closure (`f-1`/`f-2`/`f-3` and `epic-f` status) -> **RESOLVED**
-2. PRD performance thresholds lacked measured evidence -> **RESOLVED**
-3. Operational reliability evidence (uptime/error-rate/MTTR) missing -> **RESOLVED**
+1. Epic G still has one story not at `done` (`g-6` is `review`).
+2. Epic G-specific burn-in and quality-gate capture is recommended in traceability but not attached as fresh release evidence.
+3. Epic G-specific measured NFR telemetry (p95/p99 API and timeline budgets) is not attached.
+
+---
+
+## Step Outputs (Workflow Trace)
+
+### Step 1 - Load Context & Knowledge Base
+
+**Prerequisites**
+- Implementation accessible: yes (`apps/moneyshyft-api`, `apps/moneyshyft-web`, `tests/`).
+- Evidence sources available: yes (`_bmad-output/test-artifacts/*`, story artifacts, sprint status, traceability/review reports).
+
+**Configuration**
+- `tea_browser_automation`: `auto` (from `_bmad/tea/config.yaml`).
+
+**Knowledge Fragments Loaded**
+- `adr-quality-readiness-checklist.md`
+- `ci-burn-in.md`
+- `test-quality.md`
+- `playwright-config.md`
+- `error-handling.md`
+- `playwright-cli.md`
+
+**Artifacts Loaded**
+- PRD: `_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
+- Architecture: `_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
+- Sprint-change proposal: `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
+- Epic G story set: `_bmad-output/implementation-artifacts/g-1-*.md` .. `g-6-*.md`
+- Story validation: `_bmad-output/implementation-artifacts/story-validation-epic-g-2026-03-06.md`
+- Sprint status: `_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+- Test design: `_bmad-output/test-artifacts/test-design-epic-G.md`
+- Traceability: `_bmad-output/test-artifacts/traceability-report.md`
+- Test review: `_bmad-output/test-artifacts/test-review.md`
+
+### Step 2 - Define NFR Categories & Thresholds
+
+**Categories Used (ADR 8 categories)**
+1. Testability & Automation
+2. Test Data Strategy
+3. Scalability & Availability
+4. Disaster Recovery
+5. Security
+6. Monitorability/Debuggability/Manageability
+7. QoS/QoE
+8. Deployability
+
+**Threshold Matrix**
+- Performance API threshold: `p95 <= 750ms`, `p99 <= 1500ms` (PRD NFR-11).
+- Webhook ingest threshold: `p95 <= 1000ms`, `p99 <= 2000ms`; timeline visibility `p95 <= 5000ms` (PRD NFR-12).
+- Quality gate thresholds (Epic G test design): `P0 100%`, `P1 >=95%`, overall automated coverage `>=80%`.
+- Deterministic lifecycle threshold: canonical state model and closed-thread outbound reopen/no inbound auto-reopen lock.
+- Security threshold: signature validation, scope isolation, and refusal envelope safety from architecture/PRD contracts.
+
+### Step 3 - Gather Evidence
+
+**Coverage and quality evidence**
+- Traceability pass: 27/27 criteria mapped, 100% P0 and 100% P1 coverage.
+- Epic G suite discovery: 32 files, 112 tests, 118 priority markers.
+- `test.skip` findings: 8 (all in g-2 ATDD API/E2E).
+- Hard waits in Epic G files: none detected (`waitForTimeout`/`sleep` search).
+- Test quality review score: `77/100` (Acceptable), with maintainability and isolation/perf warnings.
+
+**Implementation/release-state evidence**
+- Story package validation: pass (`g-1`..`g-6` valid and ready/workflow-compliant).
+- Sprint status: `epic-g` in-progress, `g-6` at `review`.
+- CI pipeline architecture present with policy-first, shard tests (4), burn-in, quality-gates, report aggregation (`.github/workflows/test.yml`).
+
+**Evidence gaps captured**
+- No fresh Epic G-specific p95/p99 measurements attached.
+- No fresh Epic G release burn-in artifact attached in this run.
+- No fresh Epic G-focused vulnerability scan bundle attached in this run.
+
+### Step 4 - Parallel Domain Assessment (Aggregated)
+
+Subprocess outputs were assessed conceptually by domain:
+- Security: MEDIUM risk (good authz gating evidence, but no fresh Epic G scan bundle).
+- Performance: MEDIUM risk (thresholds defined; missing fresh measured run evidence).
+- Reliability: MEDIUM risk (strong deterministic contracts/tests; burn-in evidence gap remains).
+- Scalability: LOW-MEDIUM risk (architecture supports scale, but no fresh Epic G load envelope attached).
+
+**Aggregated overall risk:** MEDIUM
+
+**Subprocess Artifacts**
+- `/tmp/tea-nfr-security-2026-03-07T20-51-38Z.json`
+- `/tmp/tea-nfr-performance-2026-03-07T20-51-38Z.json`
+- `/tmp/tea-nfr-reliability-2026-03-07T20-51-38Z.json`
+- `/tmp/tea-nfr-scalability-2026-03-07T20-51-38Z.json`
+- `/tmp/tea-nfr-summary-2026-03-07T20-51-38Z.json`
 
 ---
 
@@ -33,38 +120,41 @@ Note: This assessment includes fresh evidence generated on 2026-03-02 from targe
 
 ### Response Time (p95/p99)
 
-- **Status:** PASS ✅
-- **Threshold:** `p95 <= 750ms`, `p99 <= 1500ms` for inbox/thread; `p95 <= 1000ms`, `p99 <= 2000ms` for webhook ingestion
-- **Actual:**
-  - Inbox: `p95=2ms`, `p99=2ms`
-  - Thread detail: `p95=3ms`, `p99=3ms`
-  - Webhook ingestion: `p95=2ms`, `p99=2ms`
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-performance-evidence.json`
-- **Findings:** Current Epic F harness runs well inside PRD latency budgets.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** `p95 <= 750ms`, `p99 <= 1500ms` for inbox/thread endpoints.
+- **Actual:** UNKNOWN for Epic G-specific release candidate.
+- **Evidence:** PRD thresholds + no fresh Epic G measurement artifact.
+- **Findings:** Thresholds are clearly defined, but release evidence is incomplete.
 
-### Throughput / Replay Baseline
+### Throughput
 
-- **Status:** PASS ✅
-- **Threshold:** No explicit numeric throughput SLA in Epic F release packet; replay/load profile required
-- **Actual:** Baseline run 25/25 success plus high-concurrency stress run (`400` requests, `20x20` mixed workload, `1159.42 req/s`, `0%` error)
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-performance-evidence.json`, `_bmad-output/test-artifacts/epic-f-stress-resource-evidence.json`
-- **Findings:** Throughput and replay behavior are now backed by explicit concurrent stress evidence.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** No explicit Epic G throughput SLA beyond PRD latency budgets and CI stability goals.
+- **Actual:** UNKNOWN for Epic G-specific release candidate.
+- **Evidence:** Traceability/review coverage exists; no throughput artifact attached for Epic G.
+- **Findings:** Throughput confidence is inferred, not measured.
 
 ### Resource Usage
 
-- **Status:** PASS ✅
-- **Threshold:** CPU/memory/APM evidence attached for release
-- **Actual:** Resource sampling available during stress run; peak CPU `46.40%`, peak RSS `242.81 MB` with no request failures
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-stress-resource-evidence.json`, `_bmad-output/test-artifacts/epic-f-stress-resource-evidence.md`
-- **Findings:** Runtime resource profile is now explicitly captured for Epic F stress workload.
+- **CPU Usage**
+  - **Status:** CONCERNS ⚠️
+  - **Threshold:** Resource profile expected for release packet.
+  - **Actual:** UNKNOWN for Epic G.
+  - **Evidence:** No Epic G resource profile artifact attached.
 
-### Scalability (perf-linked)
+- **Memory Usage**
+  - **Status:** CONCERNS ⚠️
+  - **Threshold:** Resource profile expected for release packet.
+  - **Actual:** UNKNOWN for Epic G.
+  - **Evidence:** No Epic G memory profile artifact attached.
 
-- **Status:** PASS ✅
-- **Threshold:** Scale confidence supported by explicit stress profile evidence
-- **Actual:** High-concurrency stress profile executed (`400` requests, `20x20` parallelism) with `p95=12ms`, `p99=24ms`, `0%` errors
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-stress-resource-evidence.json`, `_bmad-output/test-artifacts/epic-f-stress-resource-evidence.md`
-- **Findings:** Explicit scalability evidence now meets release-packet expectations for Epic F scope.
+### Scalability
+
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Maintain deterministic behavior and acceptable latency under operational load.
+- **Actual:** Functional scaling assumptions hold architecturally; no Epic G-specific load profile attached.
+- **Evidence:** Architecture + test design + CI sharding config.
+- **Findings:** Design is sound; direct performance evidence is still needed.
 
 ---
 
@@ -73,42 +163,42 @@ Note: This assessment includes fresh evidence generated on 2026-03-02 from targe
 ### Authentication Strength
 
 - **Status:** PASS ✅
-- **Threshold:** Deterministic provider-dispatch/refusal contract enforcement
-- **Actual:** Implemented and mapped in API/E2E traces
-- **Evidence:** `_bmad-output/test-artifacts/traceability-report.md`
-- **Findings:** Authn/refusal behavior is explicit and deterministic.
+- **Threshold:** Role/capability and context-gated access in volunteer/admin IA.
+- **Actual:** Verified in g-5 and g-6 story/test artifacts (role-gated settings and refusal guidance).
+- **Evidence:** `_bmad-output/implementation-artifacts/g-5-more-settings-volunteer-ia-and-admin-separation.md`, `_bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md`
+- **Findings:** Authn/authz UX gates are explicitly tested and enforced.
 
 ### Authorization Controls
 
 - **Status:** PASS ✅
-- **Threshold:** Policy-gated route behavior + anti-coupling CI enforcement
-- **Actual:** Policy checks and abstraction guard pass
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-quality-gates-evidence.txt`, `scripts/enforce-connectshyft-provider-abstraction-guard.sh`
-- **Findings:** Route/policy controls are actively enforced.
+- **Threshold:** Unauthorized admin paths denied with deterministic refusal-style behavior.
+- **Actual:** Implemented and tested across API/E2E paths.
+- **Evidence:** g-5 artifact + traceability coverage matrix.
+- **Findings:** Authorization boundary is a clear Epic G strength.
 
 ### Data Protection
 
-- **Status:** PASS ✅
-- **Threshold:** Encryption-at-rest/key-management evidence included in release packet
-- **Actual:** Explicit evidence now present for NFR12/NFR12a controls (env-managed secrets, hashed refresh-token persistence, redaction/no-plaintext checks)
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-encryption-key-management-evidence.json`, `_bmad-output/test-artifacts/epic-f-encryption-key-management-evidence.md`
-- **Findings:** Data-protection control verification artifacts are now attached.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** No sensitive/internal operational identifiers in volunteer-primary UI surfaces.
+- **Actual:** Contract boundary implemented; fresh security-scan bundle not attached for Epic G.
+- **Evidence:** g-1/g-6 artifacts + test-review + traceability.
+- **Findings:** Presentation-level protection is strong; formal scan evidence remains stale for this epic.
 
 ### Vulnerability Management
 
-- **Status:** PASS ✅
-- **Threshold:** SAST/DAST/dependency scan outputs available in artifacts
-- **Actual:** Dependency audits executed for root/backend/frontend with `0` vulnerabilities after remediation; SAST suite `6/6` pass; DAST suite `17/17` pass
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-security-scan-evidence.json`, `_bmad-output/test-artifacts/epic-f-security-scan-evidence.md`
-- **Findings:** Security scan evidence gap is closed with passing outputs.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Current security scan evidence attached for release candidate.
+- **Actual:** Epic F scan artifacts exist; Epic G-specific security evidence bundle not attached.
+- **Evidence:** Existing security artifacts are prior-epic scoped.
+- **Findings:** Carry-over confidence exists, but release packet should include fresh scan snapshot.
 
 ### Compliance
 
-- **Status:** PASS ✅
-- **Standards:** SOC2/GDPR partial; HIPAA/PCI-DSS not primary for this scope
-- **Actual:** PARTIAL baseline with explicit control verification now documented for security/privacy handling obligations in scope
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-encryption-key-management-evidence.json`, `_bmad-output/test-artifacts/epic-f-security-scan-evidence.json`
-- **Findings:** Compliance evidence quality is materially improved and no longer blocked on missing control artifacts.
+- **Status:** CONCERNS ⚠️
+- **Standards:** SOC2/GDPR partial controls via existing tenancy/audit/refusal patterns.
+- **Actual:** Partial assurance via prior controls and contract tests; no Epic G-specific compliance evidence refresh.
+- **Evidence:** PRD/architecture + story/test artifacts.
+- **Findings:** No critical compliance defect found, but evidence refresh is required for strong sign-off.
 
 ---
 
@@ -116,51 +206,51 @@ Note: This assessment includes fresh evidence generated on 2026-03-02 from targe
 
 ### Availability (Uptime)
 
-- **Status:** PASS ✅
-- **Threshold:** `>=99%` synthetic probe uptime
-- **Actual:** `100%` (`120/120` successful probes across `/health` + kernel health)
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-reliability-evidence.json`
-- **Findings:** Reliability probes show stable service availability in this environment.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Operational reliability evidence in release packet.
+- **Actual:** UNKNOWN for Epic G-specific run.
+- **Evidence:** No Epic G uptime probe artifact attached.
+- **Findings:** Reliability is inferred from passing functional suites, not measured uptime.
 
 ### Error Rate
 
-- **Status:** PASS ✅
-- **Threshold:** `<=1%`
-- **Actual:** `0.00%`
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-reliability-evidence.json`
-- **Findings:** No probe errors observed.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Error-rate evidence for release candidate.
+- **Actual:** UNKNOWN for Epic G-specific run.
+- **Evidence:** No Epic G error-rate artifact attached.
+- **Findings:** Needs measured evidence.
 
 ### MTTR
 
-- **Status:** PASS ✅
-- **Threshold:** Explicit MTTR evidence present
-- **Actual:** `0.00s` in probe run (no incidents requiring recovery)
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-reliability-evidence.json`
-- **Findings:** Probe window had no outages.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Recovery responsiveness evidence for release candidate.
+- **Actual:** UNKNOWN for Epic G-specific run.
+- **Evidence:** No Epic G MTTR/incident drill artifact attached.
+- **Findings:** Needs explicit reliability evidence.
 
 ### Fault Tolerance
 
 - **Status:** PASS ✅
-- **Threshold:** Deterministic fail-closed and replay-safe behavior
-- **Actual:** Implemented and tested
-- **Evidence:** `_bmad-output/implementation-artifacts/f-3-provider-leg-message-correlation-fallback-mapping.md`
-- **Findings:** Fallback/refusal/dedupe behavior remains deterministic.
+- **Threshold:** Deterministic lifecycle handling and refusal paths under policy/state boundaries.
+- **Actual:** Locked behavior and tests present (closed-thread reopen vs inbound no-auto-reopen).
+- **Evidence:** g-3/g-6 artifacts + traceability matrix.
+- **Findings:** Contract-level resilience behavior appears robust.
 
-### CI/Quality Stability
+### CI Burn-In (Stability)
 
-- **Status:** PASS ✅
-- **Threshold:** P0 100% and P1 >=95%, mandatory security suites executed
-- **Actual:** `P0 100%`, `P1 100%`, required security suites passed
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-quality-gates-evidence.txt`
-- **Findings:** Quality gates are currently clean.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Burn-in evidence captured for release candidate (10-loop recommendation in workflow guidance).
+- **Actual:** Traceability explicitly recommends running targeted burn-in + quality gates before release.
+- **Evidence:** `_bmad-output/test-artifacts/traceability-report.md`
+- **Findings:** Burn-in recommendation is open.
 
 ### Disaster Recovery
 
-- **Status:** PASS ✅
-- **Threshold:** RTO/RPO drill evidence attached
-- **Actual:** DR drill executed with `rtoMs=1703` (target `<=30000`) and `rpoRecordsLost=0`
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-dr-drill-evidence.json`, `_bmad-output/test-artifacts/epic-f-dr-drill-evidence.md`
-- **Findings:** DR evidence is now explicitly captured with passing RTO/RPO gates.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** DR evidence refreshed when release-scope changes impact operational behavior.
+- **Actual:** No Epic G-specific DR evidence attached.
+- **Evidence:** None attached for Epic G.
+- **Findings:** Not a direct UX blocker, but evidence remains incomplete for full NFR sign-off.
 
 ---
 
@@ -169,74 +259,181 @@ Note: This assessment includes fresh evidence generated on 2026-03-02 from targe
 ### Test Coverage
 
 - **Status:** PASS ✅
-- **Threshold:** `>=80%` planned Epic F matrix coverage
-- **Actual:** `100%` (`16/16` mapped criteria) and no skipped direct Epic F tests
+- **Threshold:** `>=80%` planned Epic G matrix coverage; P0 100%, P1 >=95%.
+- **Actual:** 100% matrix coverage (27/27), P0 100%, P1 100%.
 - **Evidence:** `_bmad-output/test-artifacts/traceability-report.md`
-- **Findings:** Coverage and traceability are complete for Epic F criteria.
+- **Findings:** Coverage depth is strong.
 
 ### Code Quality
 
-- **Status:** PASS ✅
-- **Threshold:** Deterministic IDs and maintainable suite sizing
-- **Actual:** Deterministic helper adoption + suite split evidence present
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-implementation-evidence.md`
-- **Findings:** Prior maintainability issues were addressed.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Maintainable suite structure and deterministic patterns.
+- **Actual:** `77/100` quality score with maintainability warnings.
+- **Evidence:** `_bmad-output/test-artifacts/test-review.md`
+- **Findings:** No critical defect; maintainability/perf hygiene needs follow-through.
 
 ### Technical Debt
 
-- **Status:** PASS ✅
-- **Threshold:** Story lane closure and final validation completed
-- **Actual:** Epic F lane is closed (`epic-f` + `f-1`..`f-4` all `done`) and policy closeout guard passes.
-- **Evidence:** `_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
-- **Findings:** Delivery/governance closeout for Epic F is complete.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Story lane complete (`done`) with no high-priority residuals for release.
+- **Actual:** `g-6` remains `review`; 8 skipped g-2 ATDD tests remain.
+- **Evidence:** sprint status + traceability report.
+- **Findings:** Remaining debt is explicit and tractable.
 
 ### Documentation Completeness
 
 - **Status:** PASS ✅
-- **Threshold:** Story/test/NFR/traceability artifacts are coherent and current
-- **Actual:** Strong artifact chain, now including perf + reliability evidence files
-- **Evidence:** `_bmad-output/test-artifacts/epic-f-performance-evidence.md`, `_bmad-output/test-artifacts/epic-f-reliability-evidence.md`
-- **Findings:** Documentation evidence is now materially stronger.
+- **Threshold:** Coherent artifact chain from story -> test design -> traceability -> review.
+- **Actual:** Artifact chain present and current.
+- **Evidence:** Epic G implementation/test artifacts listed in Related Artifacts.
+- **Findings:** Documentation quality is good.
 
-### Test Quality
+### Test Quality (from test-review)
 
-- **Status:** PASS ✅
-- **Threshold:** Deterministic execution, no skipped direct Epic F suites, quality gates pass
-- **Actual:** Passing evidence in traceability + quality-gates outputs
-- **Evidence:** `_bmad-output/test-artifacts/traceability-report.md`, `_bmad-output/test-artifacts/epic-f-quality-gates-evidence.txt`
-- **Findings:** Test quality posture is strong for release-gate evaluation.
+- **Status:** CONCERNS ⚠️
+- **Threshold:** Strong deterministic/isolated suite with healthy maintainability profile.
+- **Actual:** Acceptable (`77/100`), no critical issues, medium/low improvement items open.
+- **Evidence:** `_bmad-output/test-artifacts/test-review.md`
+- **Findings:** Quality is merge-capable, not yet release-excellent.
 
 ---
 
 ## Quick Wins
 
-1 quick win identified:
+4 quick wins identified:
 
-1. **Attach APM runtime export alongside stress profile** (Observability) - MEDIUM - 0.5 day
+1. **Unskip remaining g-2 ATDD tests** (Reliability) - HIGH - 0.5 day
+   - Activate the 8 `test.skip` scenarios in g-2 API/E2E ATDD suites.
+
+2. **Run targeted Epic G burn-in + quality gates and store artifacts** (Reliability/Deployability) - HIGH - 0.5 day
+   - Execute `scripts/burn-in.sh 10` and `scripts/quality-gates.sh`; attach outputs.
+
+3. **Split oversized g-2 ATDD API suite** (Maintainability) - MEDIUM - 0.5 day
+   - Reduce file size and speed triage.
+
+4. **Reuse storage-state/session fixtures for repeated E2E auth setup** (Performance/Maintainability) - MEDIUM - 1 day
+   - Reduce runtime overhead and isolate auth setup.
 
 ---
 
 ## Recommended Actions
 
-### Immediate (Before Release) - HIGH
+### Immediate (Before Release) - HIGH Priority
 
-1. **No additional high-priority remediations open for Epic F** - HIGH - complete
-   - Security scan, encryption/key-management, stress/resource evidence, DR drill evidence, and test-data strategy evidence are now attached.
+1. **Close Epic G lifecycle status and skipped test debt** - HIGH - 0.5-1 day - QA + Dev
+   - Move `g-6` from `review` to `done` after final closure checks.
+   - Convert the 8 skipped g-2 ATDD tests to active coverage.
+   - **Validation:** Sprint status and traceability report show no skipped Epic G critical tests.
 
-### Short-term (Next Sprint) - MEDIUM
+2. **Generate fresh Epic G burn-in + quality-gate evidence** - HIGH - 0.5 day - QA/Release Eng
+   - Run targeted burn-in and gate scripts on Epic G branch/release candidate.
+   - Archive artifacts under `_bmad-output/test-artifacts/`.
+   - **Validation:** Attached run logs show successful iterations and gate pass thresholds.
 
-1. **Attach APM resource profile export** - MEDIUM - 0.5 day - SRE
-   - Add CPU/memory utilization snapshots for critical Epic F paths.
+3. **Attach measured Epic G performance evidence** - HIGH - 1 day - Backend + QA
+   - Capture p95/p99 for inbox/thread + timeline visibility under realistic load.
+   - **Validation:** Meets PRD thresholds or includes approved mitigation with owner/date.
 
-### Long-term (Backlog) - LOW
+### Short-term (Next Sprint) - MEDIUM Priority
 
-1. **Schedule DR drill cadence (RTO/RPO)** - LOW - 2-3 days - SRE + Platform
+1. **Address maintainability findings from test-review** - MEDIUM - 1-2 days - QA
+   - Split large suites and tighten wrapper/case trace mapping.
+
+2. **Refresh Epic G-focused security evidence pack** - MEDIUM - 1 day - Security/Platform
+   - Produce current dependency + SAST/DAST snapshot for release packet parity.
+
+### Long-term (Backlog) - LOW Priority
+
+1. **Automate periodic Epic G regression health digest** - LOW - 1-2 days - QA/Release Eng
+   - Weekly summary combining traceability, quality score drift, and burn-in trends.
+
+---
+
+## Monitoring Hooks
+
+5 monitoring hooks recommended:
+
+### Performance Monitoring
+
+- [ ] Capture API p95/p99 for inbox/thread endpoints per release candidate.
+  - **Owner:** Backend + QA
+  - **Deadline:** Before Epic G release approval
+
+- [ ] Track timeline visibility p95 from webhook/action to UI visibility.
+  - **Owner:** Backend + QA
+  - **Deadline:** Before Epic G release approval
+
+### Security Monitoring
+
+- [ ] Refresh vulnerability scan report bundle (deps + static analysis) for Epic G release packet.
+  - **Owner:** Security/Platform
+  - **Deadline:** Before Epic G release approval
+
+### Reliability Monitoring
+
+- [ ] Publish burn-in stability trend (pass/fail by iteration) for Epic G critical tests.
+  - **Owner:** QA/Release Eng
+  - **Deadline:** Before Epic G release approval
+
+### Alerting Thresholds
+
+- [ ] Alert if P0 < 100% or P1 < 95% on Epic G gate runs.
+  - **Owner:** QA/Release Eng
+  - **Deadline:** Immediate
+
+---
+
+## Fail-Fast Mechanisms
+
+4 fail-fast mechanisms recommended:
+
+### Circuit Breakers (Reliability)
+
+- [ ] Keep CI release candidate promotion blocked when burn-in or quality-gates are missing/failing.
+  - **Owner:** Release Engineering
+  - **Estimated Effort:** low
+
+### Rate Limiting (Performance)
+
+- [ ] Add explicit release check that performance evidence artifacts are present before tag promotion.
+  - **Owner:** QA/Release Engineering
+  - **Estimated Effort:** low
+
+### Validation Gates (Security)
+
+- [ ] Require fresh security evidence bundle timestamp for release candidate sign-off.
+  - **Owner:** Security/Platform
+  - **Estimated Effort:** low
+
+### Smoke Tests (Maintainability)
+
+- [ ] Enforce no new `test.skip` in Epic G suites at PR gate.
+  - **Owner:** QA
+  - **Estimated Effort:** low
 
 ---
 
 ## Evidence Gaps
 
-0 evidence gaps remain.
+3 evidence gaps identified:
+
+- [ ] **Epic G performance telemetry bundle** (Performance)
+  - **Owner:** Backend + QA
+  - **Deadline:** Pre-release
+  - **Suggested Evidence:** p95/p99 results for inbox/thread/timeline flows with run metadata.
+  - **Impact:** Medium confidence on runtime NFR compliance.
+
+- [ ] **Epic G burn-in + quality-gate artifact set** (Reliability/Deployability)
+  - **Owner:** QA + Release Eng
+  - **Deadline:** Pre-release
+  - **Suggested Evidence:** `scripts/burn-in.sh 10`, `scripts/quality-gates.sh` outputs and summary.
+  - **Impact:** Medium confidence on flake/stability resilience.
+
+- [ ] **Epic G-focused vulnerability evidence refresh** (Security)
+  - **Owner:** Security/Platform
+  - **Deadline:** Pre-release
+  - **Suggested Evidence:** current dependency scan + static/dynamic security outputs.
+  - **Impact:** Medium confidence on current vulnerability posture.
 
 ---
 
@@ -248,13 +445,13 @@ Note: This assessment includes fresh evidence generated on 2026-03-02 from targe
 | --- | --- | --- | --- | --- | --- |
 | 1. Testability & Automation | 4/4 | 4 | 0 | 0 | PASS ✅ |
 | 2. Test Data Strategy | 3/3 | 3 | 0 | 0 | PASS ✅ |
-| 3. Scalability & Availability | 4/4 | 4 | 0 | 0 | PASS ✅ |
-| 4. Disaster Recovery | 3/3 | 3 | 0 | 0 | PASS ✅ |
-| 5. Security | 4/4 | 4 | 0 | 0 | PASS ✅ |
-| 6. Monitorability, Debuggability & Manageability | 4/4 | 4 | 0 | 0 | PASS ✅ |
-| 7. QoS & QoE | 4/4 | 4 | 0 | 0 | PASS ✅ |
-| 8. Deployability | 3/3 | 3 | 0 | 0 | PASS ✅ |
-| **Total** | **29/29** | **29** | **0** | **0** | **PASS ✅** |
+| 3. Scalability & Availability | 3/4 | 3 | 1 | 0 | CONCERNS ⚠️ |
+| 4. Disaster Recovery | 2/3 | 2 | 1 | 0 | CONCERNS ⚠️ |
+| 5. Security | 3/4 | 3 | 1 | 0 | CONCERNS ⚠️ |
+| 6. Monitorability, Debuggability & Manageability | 2/4 | 2 | 2 | 0 | CONCERNS ⚠️ |
+| 7. QoS & QoE | 2/4 | 2 | 2 | 0 | CONCERNS ⚠️ |
+| 8. Deployability | 2/3 | 2 | 1 | 0 | CONCERNS ⚠️ |
+| **Total** | **21/29** | **21** | **8** | **0** | **CONCERNS ⚠️** |
 
 ---
 
@@ -262,80 +459,71 @@ Note: This assessment includes fresh evidence generated on 2026-03-02 from targe
 
 ```yaml
 nfr_assessment:
-  date: '2026-03-02'
-  story_id: 'epic-f'
-  feature_name: 'Comms Core Provider Abstraction and Telnyx Cutover'
-  adr_checklist_score: '29/29'
+  date: '2026-03-07'
+  story_id: 'epic-g'
+  feature_name: 'ConnectShyft UX Rebuild (CS-E7)'
+  adr_checklist_score: '21/29'
   categories:
     testability_automation: 'PASS'
     test_data_strategy: 'PASS'
-    scalability_availability: 'PASS'
-    disaster_recovery: 'PASS'
-    security: 'PASS'
-    monitorability: 'PASS'
-    qos_qoe: 'PASS'
-    deployability: 'PASS'
-  overall_status: 'PASS'
+    scalability_availability: 'CONCERNS'
+    disaster_recovery: 'CONCERNS'
+    security: 'CONCERNS'
+    monitorability: 'CONCERNS'
+    qos_qoe: 'CONCERNS'
+    deployability: 'CONCERNS'
+  overall_status: 'CONCERNS'
   critical_issues: 0
-  high_priority_issues: 0
-  medium_priority_issues: 1
-  concerns: 0
+  high_priority_issues: 3
+  medium_priority_issues: 5
+  concerns: 8
   blockers: false
-  quick_wins: 1
-  evidence_gaps: 0
+  quick_wins: 4
+  evidence_gaps: 3
   recommendations:
-    - 'Attach APM runtime export alongside stress profile evidence.'
+    - 'Close g-6 and remove remaining skipped g-2 ATDD tests.'
+    - 'Run and attach Epic G burn-in + quality-gate evidence before release.'
+    - 'Attach fresh Epic G performance and security evidence bundle.'
 ```
 
 ---
 
 ## Related Artifacts
 
-- `_bmad-output/implementation-artifacts/f-1-provider-adapter-interface-and-provider-registry.md`
-- `_bmad-output/implementation-artifacts/f-2-canonical-comms-event-model-and-event-store.md`
-- `_bmad-output/implementation-artifacts/f-3-provider-leg-message-correlation-fallback-mapping.md`
-- `_bmad-output/implementation-artifacts/f-4-telnyx-adapter-implementation-and-cutover-guardrails.md`
-- `_bmad-output/test-artifacts/test-design-epic-F.md`
+- `_bmad-output/implementation-artifacts/g-1-design-tokens-and-shared-conversation-primitives.md`
+- `_bmad-output/implementation-artifacts/g-2-inbox-and-mine-surface-rebuild.md`
+- `_bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md`
+- `_bmad-output/implementation-artifacts/g-4-add-neighbor-and-directory-rebuild.md`
+- `_bmad-output/implementation-artifacts/g-5-more-settings-volunteer-ia-and-admin-separation.md`
+- `_bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md`
+- `_bmad-output/implementation-artifacts/story-validation-epic-g-2026-03-06.md`
+- `_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+- `_bmad-output/test-artifacts/test-design-epic-G.md`
 - `_bmad-output/test-artifacts/traceability-report.md`
-- `_bmad-output/test-artifacts/epic-f-implementation-evidence.md`
-- `_bmad-output/test-artifacts/epic-f-performance-evidence.json`
-- `_bmad-output/test-artifacts/epic-f-performance-evidence.md`
-- `_bmad-output/test-artifacts/epic-f-reliability-evidence.json`
-- `_bmad-output/test-artifacts/epic-f-reliability-evidence.md`
-- `_bmad-output/test-artifacts/epic-f-stress-resource-evidence.json`
-- `_bmad-output/test-artifacts/epic-f-stress-resource-evidence.md`
-- `_bmad-output/test-artifacts/epic-f-quality-gates-evidence.txt`
-- `_bmad-output/test-artifacts/epic-f-npm-audit-root.json`
-- `_bmad-output/test-artifacts/epic-f-npm-audit-backend.json`
-- `_bmad-output/test-artifacts/epic-f-npm-audit-frontend.json`
-- `_bmad-output/test-artifacts/epic-f-security-scan-evidence.json`
-- `_bmad-output/test-artifacts/epic-f-security-scan-evidence.md`
-- `_bmad-output/test-artifacts/epic-f-encryption-key-management-evidence.json`
-- `_bmad-output/test-artifacts/epic-f-encryption-key-management-evidence.md`
-- `_bmad-output/test-artifacts/epic-f-dast-security-suite.report.json`
-- `_bmad-output/test-artifacts/epic-f-sast-security-tests.txt`
-- `_bmad-output/test-artifacts/epic-f-dr-drill-evidence.json`
-- `_bmad-output/test-artifacts/epic-f-dr-drill-evidence.md`
-- `_bmad-output/test-artifacts/epic-f-test-data-strategy-evidence.json`
-- `_bmad-output/test-artifacts/epic-f-test-data-strategy-evidence.md`
+- `_bmad-output/test-artifacts/traceability-matrix.md`
+- `_bmad-output/test-artifacts/test-review.md`
+- `_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
+- `_bmad-output/planning-artifacts/architecture-ConnectShyft-2026-02-19.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-connectshyft-2026-03-06.md`
+- `.github/workflows/test.yml`
+- `playwright.config.ts`
 
 ---
 
 ## Recommendations Summary
 
-**Resolved now:**
-- Epic F implementation lane closure (`epic-f`, `f-1`, `f-2`, `f-3`, `f-4` all `done`) with closeout policy checks passing.
-- Performance measurement evidence for PRD latency thresholds.
-- Reliability evidence for uptime/error-rate/MTTR (synthetic probe run).
-- Quality gates and required security suites passing evidence.
-- Security scan evidence (dependency audit + SAST + DAST) with green gates.
-- Encryption/key-management control evidence (NFR12/NFR12a) with explicit verification artifacts.
-- High-concurrency stress and runtime resource-profile evidence.
-- DR drill evidence (RTO/RPO) with passing gate output.
-- Test-data strategy evidence for segregation, synthetic generation, teardown, and long-window readiness support.
+**Release Blocker Summary:** No hard fail blockers detected, but release readiness is not yet strong due to missing fresh Epic G performance/reliability/security evidence.
 
-**Remaining concerns for release packet completion:**
-- None.
+**High Priority Summary:**
+- Close story status debt (`g-6` review -> done) and remove skipped g-2 ATDD cases.
+- Execute and attach targeted burn-in + quality-gate evidence.
+- Capture measured p95/p99 runtime evidence for Epic G scope.
+
+**Medium Priority Summary:**
+- Improve suite maintainability from test-review findings.
+- Refresh Epic G vulnerability evidence packet.
+
+**Next Steps:** Complete the 3 evidence gaps, then re-run this NFR assessment for release sign-off.
 
 ---
 
@@ -343,17 +531,32 @@ nfr_assessment:
 
 **NFR Assessment:**
 
-- Overall Status: PASS ✅
+- Overall Status: CONCERNS ⚠️
 - Critical Issues: 0
-- High Priority Issues: 0
-- Concerns: 0
-- Evidence Gaps: 0
+- High Priority Issues: 3
+- Concerns: 8
+- Evidence Gaps: 3
 
-**Gate Status:** PASS ✅
+**Gate Status:** CONCERNS ⚠️
 
-**Generated:** 2026-03-02  
+**Next Actions:**
+
+- If PASS ✅: Proceed to release gate.
+- If CONCERNS ⚠️: Close HIGH items and evidence gaps, then re-run `NR`.
+- If FAIL ❌: Resolve fail categories first, then re-run `NR`.
+
+**Generated:** 2026-03-07  
 **Workflow:** testarch-nfr v5.0
 
 ---
+
+## External Documentation Cross-Check (Current Official)
+
+Recommendations were checked against current official docs:
+- Playwright auth/session reuse: https://playwright.dev/docs/auth
+- Playwright testing best practices: https://playwright.dev/docs/best-practices
+- Cypress test isolation: https://docs.cypress.io/app/core-concepts/test-isolation
+- Pact provider verification guidance: https://docs.pact.io/getting_started/provider_verification
+- GitHub Actions matrix fail-fast and workflow syntax: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategyfail-fast
 
 <!-- Powered by BMAD-CORE™ -->
