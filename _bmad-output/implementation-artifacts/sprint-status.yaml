@@ -100,7 +100,7 @@ development_status:
   7-2-pos-origin-commitment-and-completion-linkage: backlog
   7-3-expansion-guardrails-and-consent-readiness-gates: backlog
   epic-7-retrospective: optional
-  epic-8: in-progress
+  epic-8: done
   8-1-workspace-scaffold-and-nx-baseline: done
   8-2-mechanical-app-moves-with-history-preservation: done
   8-3-explicit-lane-boundary-rules: done

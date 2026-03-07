@@ -50,26 +50,26 @@ development_status:
   a-4-escalation-baseline-and-recipient-configuration: done
   a-5-capability-based-route-access-and-envelope-contract-compliance: done
   epic-a-retrospective: done
-  epic-b: in-progress
+  epic-b: done
   b-1-tenant-scoped-neighbor-creation-with-required-phone: done
   b-2-shared-tenant-identity-and-shared-phone-indicators: done
   b-3-relationship-gated-neighbor-edits-with-provenance-audit: done
   b-4-role-restricted-neighbor-merge-with-irreversible-confirmation: done
   epic-b-retrospective: optional
-  epic-c: in-progress
+  epic-c: done
   c-1-core-connectshyft-thread-schema-and-lifecycle-constraints: done
   c-2-thread-ensure-endpoint-with-conflict-safe-idempotency: done
   c-3-inbox-and-thread-detail-read-contracts: done
   c-4-claim-takeover-and-close-lifecycle-actions: done
   c-5-deterministic-escalation-scheduler-with-claim-only-reset: done
   epic-c-retrospective: optional
-  epic-d: in-progress
+  epic-d: done
   d-1-outbound-sms-call-actions-that-preserve-escalation-semantics: done
   d-2-preference-override-enforcement-for-outbound-sms: done
   d-3-outbound-audit-outbox-and-refusal-envelope-integration: done
   d-4-operator-interaction-contracts-for-outbound-safety: done
   epic-d-retrospective: optional
-  epic-e: in-progress
+  epic-e: done
   e-1-verified-webhook-ingress-and-deterministic-context-routing: done
   e-2-inbound-sms-processing-with-active-thread-ensure: done
   e-3-inbound-voice-webhook-to-voicemail-artifact-pipeline: done
