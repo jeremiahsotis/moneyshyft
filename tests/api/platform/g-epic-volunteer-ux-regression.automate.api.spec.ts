@@ -2,6 +2,7 @@ import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryG6.fixture';
 import {
   collectPrimaryCopy,
+  type InboundWebhookEnvelope,
   type QueueEnvelope,
   readItems,
   resolveFeedbackTaxonomy,
@@ -131,6 +132,58 @@ test.describe('Epic G Volunteer UX Regression (Automate API Expansion)', () => {
 
       expect(String(refusalBody.data?.uiFeedback?.message ?? '')).not.toMatch(/auto-reopen/i);
       expect(String(errorBody.data?.uiFeedback?.message ?? '')).not.toMatch(/auto-reopen/i);
+    },
+  );
+
+  test(
+    '[GEPIC-AUTO-API-303][P0] inbound webhook activity on CLOSED threads remains replay-safe and never auto-reopens volunteer thread state @P0',
+    async ({
+      request,
+      storyG6Context,
+      storyG6AdminHeaders,
+      storyG6VolunteerHeaders,
+      storyG6InboundClosedPayload,
+    }) => {
+      const webhookResponse = await apiRequest(request, {
+        method: 'POST',
+        path: storyG6Context.paths.inboundWebhook,
+        headers: storyG6AdminHeaders,
+        data: storyG6InboundClosedPayload,
+      });
+
+      expect(webhookResponse.status()).toBe(200);
+      const webhookBody = (await webhookResponse.json()) as InboundWebhookEnvelope;
+      expect(webhookBody).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          thread: {
+            threadId: storyG6Context.threadIds.closedInbound,
+            state: 'CLOSED',
+          },
+          lifecycle: {
+            reopenedByInbound: false,
+          },
+          timeline: {
+            routingDecision: 'intake_fallback',
+          },
+        },
+      });
+
+      const detailResponse = await apiRequest(request, {
+        method: 'GET',
+        path: `${storyG6Context.paths.threads}/${storyG6Context.threadIds.closedInbound}`,
+        headers: storyG6VolunteerHeaders,
+      });
+
+      expect(detailResponse.status()).toBe(200);
+      const detailBody = (await detailResponse.json()) as ThreadDetailEnvelope;
+      expect(detailBody.data?.thread).toMatchObject({
+        threadId: storyG6Context.threadIds.closedInbound,
+        state: 'CLOSED',
+      });
+      expect(detailBody.data?.lifecycle?.reopenedByInbound).not.toBe(true);
+      expect(String(detailBody.data?.uiFeedback?.message ?? '')).not.toMatch(/reopened|auto-reopen/i);
     },
   );
 });

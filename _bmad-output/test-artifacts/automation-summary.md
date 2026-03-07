@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-07T18:30:49Z'
+lastSaved: '2026-03-07T20:27:52Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -5566,3 +5566,100 @@ lastSaved: '2026-03-07T18:30:49Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for maintainability and anti-flake scoring.
 - `[TR] Trace Requirements` to map Epic G acceptance criteria to ATDD + automate coverage matrix.
+
+## Run 2026-03-07T20-23-49Z - Epic G (TA)
+
+### Step 1 - Preflight and Context
+
+- Framework verification:
+  - `playwright.config.ts` exists.
+  - `package.json` includes `@playwright/test` and `playwright`.
+- Execution mode: **BMad-Integrated**.
+- Epic G artifacts loaded:
+  - `_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
+  - `_bmad-output/test-artifacts/test-design-epic-G.md`
+  - `_bmad-output/implementation-artifacts/g-1-*.md` through `g-6-*.md`
+  - `_bmad-output/test-artifacts/atdd-checklist-g-1.md` through `atdd-checklist-g-6.md`
+- Existing automation/test inventory reviewed:
+  - API: `tests/api/platform/g-epic-volunteer-ux-regression.automate.api.spec.ts`
+  - E2E: `tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts`
+  - Story-level `g-1..g-6` ATDD/automate suites.
+- TEA config flags:
+  - `tea_use_playwright_utils: true`
+  - `tea_browser_automation: auto`
+- Knowledge fragments loaded (core + playwright-utils + CLI):
+  - `test-levels-framework`, `test-priorities-matrix`, `data-factories`, `selective-testing`, `ci-burn-in`, `test-quality`
+  - `overview`, `api-request`, `network-recorder`, `auth-session`, `intercept-network-call`, `recurse`, `log`, `file-utils`, `burn-in`, `network-error-monitor`, `fixtures-composition`, `playwright-cli`
+- Official documentation cross-check completed against:
+  - Playwright docs (`playwright.dev`)
+  - Cypress docs (`docs.cypress.io`)
+  - Pact docs (`docs.pact.io`)
+  - GitHub Actions docs (`docs.github.com`)
+
+### Step 2 - Identify Automation Targets
+
+- Browser exploration (`playwright-cli`, auto mode):
+  - Session opened successfully.
+  - Target app URL (`http://localhost:5174/...`) returned `ERR_CONNECTION_REFUSED`.
+  - Session closed cleanly (`playwright-cli -s=tea-automate close`).
+  - Fallback used: code/artifact-driven target selection.
+- Epic G target mapping:
+  - AC cluster A (display-safe boundary, internal-field suppression): API + E2E P0.
+  - AC cluster B (feedback taxonomy consistency, lifecycle determinism): API P1.
+  - AC cluster C (responsive surface lock, queue/thread continuity): E2E P1.
+  - AC cluster D (CLOSED inbound no-auto-reopen lock): API + E2E P0.
+- Coverage scope selected: `critical-paths` (epic regression layer only, no duplicate story-level expansion beyond cross-story checks).
+- Output targets:
+  - `tests/api/platform/g-epic-volunteer-ux-regression.automate.api.spec.ts`
+  - `tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts`
+
+### Step 3 - Parallel Generation and Aggregation
+
+- Subprocess artifacts generated:
+  - `/tmp/tea-automate-api-tests-2026-03-07T20-23-49Z.json`
+  - `/tmp/tea-automate-e2e-tests-2026-03-07T20-23-49Z.json`
+  - `/tmp/tea-automate-summary-2026-03-07T20-23-49Z.json`
+- Aggregated run artifacts stored under test artifacts:
+  - `_bmad-output/test-artifacts/automation-runs/g-epic-2026-03-07T20-23-49Z/tea-automate-api-tests-2026-03-07T20-23-49Z.json`
+  - `_bmad-output/test-artifacts/automation-runs/g-epic-2026-03-07T20-23-49Z/tea-automate-e2e-tests-2026-03-07T20-23-49Z.json`
+  - `_bmad-output/test-artifacts/automation-runs/g-epic-2026-03-07T20-23-49Z/tea-automate-summary-2026-03-07T20-23-49Z.json`
+- Epic-level tests regenerated/expanded:
+  - API: added `GEPIC-AUTO-API-303` (CLOSED inbound webhook lock, no auto-reopen).
+  - E2E: added `GEPIC-AUTO-E2E-303` (volunteer UI CLOSED inbound lock visibility).
+- Aggregate counts:
+  - Total tests: 6
+  - API: 3
+  - E2E: 3
+  - Priority mix: P0=4, P1=2
+
+### Step 4 - Validate and Summarize
+
+- Validation checklist highlights:
+  - Framework readiness: pass.
+  - Coverage mapping to Epic G ACs: pass.
+  - CLI session hygiene: pass (session explicitly closed).
+  - Temp artifact hygiene: pass (run copies preserved in `_bmad-output/test-artifacts/automation-runs/...`).
+- Test registration validation:
+  - `npx playwright test tests/api/platform/g-epic-volunteer-ux-regression.automate.api.spec.ts tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts --list`
+  - Result: 6 tests discovered across 2 files.
+- Assumptions/risks:
+  - Browser snapshotting remains blocked until local app services are running.
+  - Existing story-level `g-*` suites remain source-of-truth for deeper per-story behavior; epic suite intentionally stays cross-story and lean.
+- Recommended next workflow: `RV` (test-review) on the two epic files, then `TR` (trace) for Epic G requirement-to-test gate evidence.
+
+#### Step 4 Validation Addendum
+
+- Runtime smoke execution attempted:
+  - `npx playwright test tests/api/platform/g-epic-volunteer-ux-regression.automate.api.spec.ts tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts --max-failures=1`
+- Result: failed early due local service unavailability.
+  - Primary blocker: `connect ECONNREFUSED 127.0.0.1:3000` on ConnectShyft API calls.
+  - E2E run interrupted after first API failure because `--max-failures=1` stopped execution.
+
+#### Step 4 Validation Rerun (Stack-Managed)
+
+- Command:
+  - `bash scripts/ci-run-playwright-stack.sh npx playwright test tests/api/platform/g-epic-volunteer-ux-regression.automate.api.spec.ts tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts`
+- Result: **6 passed**.
+- Notes:
+  - API and web stack booted via preflight script (migrations + health/login wait).
+  - One assertion was aligned to current detail contract semantics (`reopenedByInbound` may be omitted, but must never be `true`).
