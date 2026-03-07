@@ -145,16 +145,16 @@ GPT-5 Codex
 - `cat apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts`
 - `cat apps/moneyshyft-web/src/features/connectshyft/readContracts.ts`
 - `cat apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts`
-- `npm run branch:ensure-workflow -- --workflow dev-story --story g-6-volunteer-contract-boundary-and-regression-hardening`
-- `bash scripts/ci-run-playwright-stack.sh npx playwright test tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts`
-- `bash scripts/ci-run-playwright-stack.sh npx playwright test tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts`
-- `bash scripts/test-changed.sh origin/production`
-- `npm run quality-gates`
-- `npm run policy:check`
+- `npm run branch:ensure-workflow -- --workflow dev-story --story g-6-volunteer-contract-boundary-and-regression-hardening` (pass)
+- `bash scripts/ci-run-playwright-stack.sh npx playwright test tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts` (pass)
+- `bash scripts/ci-run-playwright-stack.sh npx playwright test tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts` (pass)
+- `bash scripts/test-changed.sh origin/production` (pass)
+- `npm run quality-gates` (pass)
+- `npm run policy:check` (pass)
 - `npx playwright test tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts`
-- `npm run build`
+- `npm run build` (pass)
 - `ENABLE_TEST_CONNECTSHYFT_FLAGS=true ENABLE_TEST_AUTH_HARNESS=true JWT_SECRET=test-jwt-secret JWT_REFRESH_SECRET=test-jwt-refresh-secret NODE_ENV=test npm run dev`
-- `ENABLE_TEST_AUTH_HARNESS=true ENABLE_TEST_CONNECTSHYFT_FLAGS=true TEST_ENV=local JWT_SECRET=test-jwt-secret JWT_REFRESH_SECRET=test-jwt-refresh-secret npx playwright test tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts`
+- `ENABLE_TEST_AUTH_HARNESS=true ENABLE_TEST_CONNECTSHYFT_FLAGS=true TEST_ENV=local JWT_SECRET=test-jwt-secret JWT_REFRESH_SECRET=test-jwt-refresh-secret npx playwright test tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts` (pass)
 
 ### Completion Notes List
 
@@ -173,13 +173,33 @@ GPT-5 Codex
 
 ### File List
 
+- _bmad-output/test-artifacts/epic-f-performance-evidence.json
+- _bmad-output/test-artifacts/epic-f-performance-evidence.md
+- _bmad-output/test-artifacts/epic-f-reliability-evidence.json
+- _bmad-output/test-artifacts/epic-f-reliability-evidence.md
+- _bmad-output/test-artifacts/epic-f-stress-resource-evidence.json
+- _bmad-output/test-artifacts/epic-f-stress-resource-evidence.md
 - apps/moneyshyft-api/src/modules/connectshyft/readContracts.ts
 - apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts
 - apps/moneyshyft-web/src/components/connectshyft/ConnectShyftQueueCard.vue
 - apps/moneyshyft-web/src/features/connectshyft/readContracts.ts
 - apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue
 - apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
+- tests/api/platform/g-2-inbox-and-mine-surface-rebuild.atdd.api.spec.ts
+- tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.lifecycle-and-feedback.cases.ts
 - tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts
+- tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.lifecycle-and-replay.cases.ts
+- tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.spec.ts
+- tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.shared.ts
+- tests/api/platform/g-epic-nfr-performance-evidence.api.spec.ts
+- tests/api/platform/g-epic-volunteer-ux-regression.automate.api.spec.ts
+- tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.atdd.spec.ts
+- tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts
+- tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts
+- tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts
+- tests/support/factories/connectShyftStoryG6Factory.ts
+- tests/support/fixtures/connectShyftStoryG6.fixture.ts
+- tests/support/fixtures/connectShyftStoryG6E2e.fixture.ts
 - _bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md
 
 ## Change Log
