@@ -285,7 +285,7 @@
                   :neighbor-context-label="selectedThreadItem.display.neighborContext"
                   :conference-context-label="selectedThreadItem.display.conferenceContext"
                   :state-label="selectedThreadItem.display.stateLabel"
-                  :owner-label="selectedThreadItem.state === 'CLAIMED' ? `Owner: ${selectedThreadItem.claimedByUserId || 'unassigned'}` : ''"
+                  :owner-label="selectedThreadItem.display.ownerLabel"
                   :escalation-label="selectedThreadItem.display.urgencyLabel"
                   inactivity-label="Inactivity stable"
                   :voicemail-indicator="selectedThreadItem.voicemailIndicator"

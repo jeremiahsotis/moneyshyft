@@ -151,6 +151,10 @@ GPT-5 Codex
 - `bash scripts/test-changed.sh origin/production`
 - `npm run quality-gates`
 - `npm run policy:check`
+- `npx playwright test tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts`
+- `npm run build`
+- `ENABLE_TEST_CONNECTSHYFT_FLAGS=true ENABLE_TEST_AUTH_HARNESS=true JWT_SECRET=test-jwt-secret JWT_REFRESH_SECRET=test-jwt-refresh-secret NODE_ENV=test npm run dev`
+- `ENABLE_TEST_AUTH_HARNESS=true ENABLE_TEST_CONNECTSHYFT_FLAGS=true TEST_ENV=local JWT_SECRET=test-jwt-secret JWT_REFRESH_SECRET=test-jwt-refresh-secret npx playwright test tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts`
 
 ### Completion Notes List
 
@@ -160,16 +164,26 @@ GPT-5 Codex
 - Hardened volunteer accessibility path by adding explicit `aria-label` to `connectshyft-queue-search-input` and aligning keyboard traversal assertions to real tab order.
 - Added feedback taxonomy fallback assertion logic for action outcomes so success/refusal/error semantics remain deterministic even when taxonomy is envelope-derived.
 - Validation evidence: `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts` (5/5 pass), `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts` (8/8 pass), `scripts/test-changed.sh origin/production` (pass), `npm run quality-gates` (P0 100%, P1 100%), `npm run policy:check` (pass).
+- Removed raw owner-id exposure from volunteer surfaces by shifting to display-safe owner labels in read-contract projections and views.
+- Resolved accessibility regression by removing nested interactive controls in queue cards (tap-target button and primary link are now sibling controls).
+- Hardened API feedback taxonomy assertion to require `error` taxonomy explicitly on error-path responses.
+- Updated G6 API taxonomy test error-path fixture to use a deterministic client-refusal route (`POST /api/v1/connectshyft/threads` with forbidden client-supplied `threadId`) so `error` taxonomy is asserted against stable behavior.
+- Synced story File List with current git changes to clear review discrepancies.
+- Validation update: `npm run build` (pass). `bash scripts/ci-run-playwright-stack.sh npx playwright test tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts` (5/5 pass). Direct command parity also verified with test-harness env (5/5 pass).
 
 ### File List
 
+- apps/moneyshyft-api/src/modules/connectshyft/readContracts.ts
+- apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts
+- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftQueueCard.vue
+- apps/moneyshyft-web/src/features/connectshyft/readContracts.ts
 - apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftInboxView.vue
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts
-- tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts
-- tests/support/factories/connectShyftStoryG6Factory.ts
 - _bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md
 
 ## Change Log
 
 - 2026-03-06: Created Story g.6 ready-for-dev context document.
 - 2026-03-07: Implemented Story g.6 regression hardening by activating API/E2E contract gates, aligning UX-R4 volunteer context fixtures, tightening accessibility assertions, and validating policy/quality gates.
+- 2026-03-07: Fixed CR findings by removing raw owner-id display usage, restructuring queue-card interactions for accessibility compliance, tightening API taxonomy assertions, and reconciling story file-list discrepancies with git.

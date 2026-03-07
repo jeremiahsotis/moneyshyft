@@ -375,16 +375,21 @@ test.describe('Story g.6 Volunteer Contract Boundary and Regression Hardening (A
       });
       const errorResponse = await apiRequest(request, {
         method: 'POST',
-        path: `${storyG6Context.paths.threads}/thread-g6-missing/close`,
+        path: storyG6Context.paths.threads,
         headers: storyG6VolunteerHeaders,
         data: {
           orgUnitId: storyG6Context.orgUnitId,
+          neighborId: storyG6Context.neighborIds.closedInbound,
+          source: 'VOICE',
+          threadId: 'thread-g6-client-forbidden',
+          lastInboundCsNumberId: 'cs-number-ux-r4-403',
+          preferredOutboundCsNumberId: 'cs-number-ux-r4-503',
         },
       });
 
       expect(successResponse.status()).toBe(200);
       expect(refusalResponse.status()).toBe(200);
-      expect(errorResponse.status()).toBe(200);
+      expect(errorResponse.status()).toBe(400);
 
       const successBody = (await successResponse.json()) as ThreadDetailEnvelope;
       const refusalBody = (await refusalResponse.json()) as ThreadDetailEnvelope;
@@ -393,7 +398,8 @@ test.describe('Story g.6 Volunteer Contract Boundary and Regression Hardening (A
       expect(resolveFeedbackTaxonomy(successBody)).toBe('success');
       expect(refusalBody.refusalType).toBe('business');
       expect(resolveFeedbackTaxonomy(refusalBody)).toBe('refusal');
-      expect(resolveFeedbackTaxonomy(errorBody)).toBeTruthy();
+      expect(errorBody.refusalType).toBe('client');
+      expect(resolveFeedbackTaxonomy(errorBody)).toBe('error');
       expect(String(refusalBody.data?.uiFeedback?.message ?? '')).not.toMatch(/reopened|auto-reopen/i);
       expect(String(errorBody.data?.uiFeedback?.message ?? '')).not.toMatch(/reopened|auto-reopen/i);
     },

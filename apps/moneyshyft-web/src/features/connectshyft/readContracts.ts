@@ -40,6 +40,7 @@ export type ConnectShyftThreadSummary = {
     preview: string;
     urgencyLabel: string;
     stateLabel: string;
+    ownerLabel: string;
     inboundContext: string;
     outboundContext: string;
     neighborContext: string;
@@ -407,6 +408,7 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
       : safePreview,
     urgencyLabel: displayUrgencyLabel,
     stateLabel: displayStateLabel,
+    ownerLabel: state === 'CLAIMED' ? 'Owner: Assigned operator' : '',
     inboundContext: displayInboundContext,
     outboundContext: displayOutboundContext,
     neighborContext: `Neighbor context: ${safeSummary}`,
@@ -424,6 +426,7 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
       preview?: unknown;
       urgencyLabel?: unknown;
       stateLabel?: unknown;
+      ownerLabel?: unknown;
       inboundContext?: unknown;
       outboundContext?: unknown;
       neighborContext?: unknown;
@@ -449,6 +452,12 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
       normalizeString(displayProjection?.stateLabel),
       fallbackDisplay.stateLabel,
     ),
+    ownerLabel: state === 'CLAIMED'
+      ? sanitizeConnectShyftOperatorCopy(
+        normalizeString(displayProjection?.ownerLabel),
+        fallbackDisplay.ownerLabel,
+      )
+      : '',
     inboundContext: sanitizeConnectShyftOperatorCopy(
       normalizeString(displayProjection?.inboundContext),
       fallbackDisplay.inboundContext,

@@ -96,7 +96,7 @@
               :neighbor-context-label="threadSurfaceModel.display.neighborContext"
               :conference-context-label="threadSurfaceModel.display.conferenceContext"
               :state-label="threadSurfaceModel.display.stateLabel"
-              :owner-label="threadSurfaceModel.state === 'CLAIMED' ? `Owner: ${threadSurfaceModel.claimedByUserId || 'unassigned'}` : ''"
+              :owner-label="threadSurfaceModel.display.ownerLabel"
               :escalation-label="escalationChipLabel"
               :inactivity-label="inactivityChipLabel"
               :voicemail-indicator="threadSurfaceModel.voicemailIndicator"
@@ -589,6 +589,7 @@ const threadSurfaceModel = computed<ConnectShyftThreadDetail | null>(() => {
       preview: 'Conversation details are unavailable.',
       urgencyLabel: 'Context unavailable',
       stateLabel: 'Unclaimed',
+      ownerLabel: '',
       inboundContext: 'Inbound line unavailable',
       outboundContext: 'Outbound line unavailable',
       neighborContext: 'Neighbor context unavailable',

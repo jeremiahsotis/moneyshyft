@@ -1518,6 +1518,7 @@ const buildSyntheticThreadDetailRecord = (input: {
       preview,
       urgencyLabel: urgencyLabel || 'New conversation',
       stateLabel,
+      ownerLabel: input.descriptor.state === 'CLAIMED' ? 'Owner: Assigned operator' : '',
       inboundContext: inboundContextLabel,
       outboundContext: outboundContextLabel,
       neighborContext: `Neighbor context: ${summary}`,
