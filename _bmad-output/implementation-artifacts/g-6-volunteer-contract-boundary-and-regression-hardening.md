@@ -1,6 +1,6 @@
 # Story g.6: Volunteer Contract Boundary and Regression Hardening
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
