@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-07T11:54:53Z'
+lastSaved: '2026-03-07T14:26:52Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -5279,3 +5279,59 @@ lastSaved: '2026-03-07T11:54:53Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` to score maintainability and anti-flake quality for g.4 automate additions.
 - `[TR] Trace Requirements` to refresh g.4 acceptance-criteria traceability across ATDD + automate suites.
+
+## Story g.5 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/g-5-more-settings-volunteer-ia-and-admin-separation.md`
+  - Existing ATDD files found for Story g.5:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts`
+
+## Story g.5 Run - Step 2: Identify Automation Targets
+
+### Coverage Strategy
+- Scope selected: `critical-paths`
+- Existing ATDD coverage retained and non-duplicative expansion generated in `.automate` suites.
+
+### Generated Targets
+- API: `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.api.spec.ts`
+- E2E: `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.spec.ts`
+
+### Priority Allocation
+- P0: 5 tests
+- P1: 3 tests
+- P2/P3: 0
+
+## Story g.5 Run - Step 3C: Aggregate Test Generation Results
+
+### Output Files
+- Added API automate suite with 4 tests (pathway permissions, membership mismatch, refusal envelope integrity).
+- Added E2E automate suite with 4 tests (admin-card routing, query-key cleanup, route-guard refusal UX).
+
+### Run Artifacts
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-5-2026-03-07T14-26-31Z/tea-automate-api-tests-2026-03-07T14-26-31Z.json`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-5-2026-03-07T14-26-31Z/tea-automate-e2e-tests-2026-03-07T14-26-31Z.json`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-5-2026-03-07T14-26-31Z/tea-automate-summary-2026-03-07T14-26-31Z.json`
+
+## Story g.5 Run - Step 4: Validate and Summarize
+
+### Validation Command
+- `npm run test:e2e -- tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.api.spec.ts tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.spec.ts`
+
+### Validation Result
+- Passed: 8/8 tests.
+- New suites are deterministic and aligned with existing fixture and routing patterns.
+
+### Recommended Next Workflow
+- `RV` (test-review) for quality scoring and maintainability checks.
+- `TR` (traceability) for AC-to-automate mapping across ATDD + automate layers.
