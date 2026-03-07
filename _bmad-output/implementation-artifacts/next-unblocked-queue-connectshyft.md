@@ -1,19 +1,17 @@
 # ConnectShyft Next Unblocked Queue
 
-Generated: 2026-02-26
-Focus: Close b-3 review and unlock b-4 start
+Generated: 2026-03-07
+Focus: Queue closed for Epics A-G (all current stories marked done)
 
 ## Immediate Queue
 
-1. `b-3-relationship-gated-neighbor-edits-with-provenance-audit`
-   - Status: `review`
-   - Next action: final closeout transition to `done`
-2. `b-4-role-restricted-neighbor-merge-with-irreversible-confirmation`
-   - Status: `ready-for-dev`
-   - Dependency status: `b-3-relationship-gated-neighbor-edits-with-provenance-audit: review` (start only after `done`)
+1. No immediate unblocked queue items.
+   - Status: `clear`
+   - Next action: wait for new story creation or approved scope changes.
 
 ## Notes
 
 - Keep `development_status` values constrained to:
   - `backlog`, `ready-for-dev`, `in-progress`, `review`, `done`
 - Track temporary blocked states under `blocked_story_registry` in sprint status.
+- This queue snapshot was refreshed after status synchronization closed stale Epic B/C/D/E and Epic G metadata drift.
