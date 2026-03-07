@@ -1,15 +1,15 @@
 ---
 stepsCompleted: ['step-01-load-context', 'step-02-discover-tests', 'step-03-map-criteria', 'step-04-analyze-gaps', 'step-05-gate-decision']
 lastStep: 'step-05-gate-decision'
-lastSaved: '2026-03-02T03:32:06Z'
+lastSaved: '2026-03-07T19:06:02Z'
 ---
 
-# Traceability Workflow Report - Epic F
+# Traceability Workflow Report - Epic G
 
 ## Step 1 Output - Load Context & Knowledge Base
 
 ### Prerequisites
-- Acceptance criteria source found: `_bmad-output/implementation-artifacts/f-1..f-4*.md`
+- Acceptance criteria source found: `_bmad-output/implementation-artifacts/g-1..g-6*.md`
 - Test suite source found: `tests/`
 
 ### Knowledge Fragments Loaded
@@ -20,222 +20,85 @@ lastSaved: '2026-03-02T03:32:06Z'
 - `_bmad/tea/testarch/knowledge/selective-testing.md`
 
 ### Artifacts Loaded
-- Story artifacts: `f-1`, `f-2`, `f-3`, `f-4`
-- Test design: `_bmad-output/test-artifacts/test-design-epic-F.md`
-- Test review: `_bmad-output/test-artifacts/test-review.md`
-- NFR assessment: `_bmad-output/test-artifacts/nfr-assessment.md`
+- Story artifacts: `g-1`, `g-2`, `g-3`, `g-4`, `g-5`, `g-6`
+- Test design: `_bmad-output/test-artifacts/test-design-epic-G.md`
+- Automation summary: `_bmad-output/test-artifacts/automation-summary.md`
+- Story validation: `_bmad-output/implementation-artifacts/story-validation-epic-g-2026-03-06.md`
 - Sprint status: `_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
 - PRD context: `_bmad-output/planning-artifacts/prd-ConnectShyft-2026-02-19.md`
 
 ## Step 2 Output - Discover & Catalog Tests
 
 ### Discovery Results
-- Epic F story files discovered: 12 (`tests/api/platform/f-*` + `tests/e2e/platform/f-*`)
-- Related CI guardrail evidence file discovered: `tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts`
-- Direct Epic F tests discovered: 48
-- Additional related policy tests discovered: 17
+- Epic G story criteria discovered: 27 (`g-1`..`g-6` acceptance criteria)
+- Epic G test files discovered: 32 (`tests/api/platform/g-*` + `tests/e2e/platform/g-*`, includes shared helpers)
+- Direct Epic G test definitions discovered: 114
 
 ### Level Classification
-- API-level tests: 29 (direct Epic F)
-- E2E-level tests: 19 (direct Epic F)
-- Related policy API tests: 17
-- Component tests: 0
+- API-level test definitions: 56
+- E2E-level test definitions: 58
+- Component tests under `tests/`: 0
 - Unit tests under `tests/`: 0
 
 ### Metadata
-- Priority markers in direct Epic F suites: @P0=27, @P1=21
-- Skipped tests in direct Epic F suites: 0
+- Priority markers in Epic G suites: @P0=68, @P1=46
+- Skipped tests detected: 8 (all in `g-2` ATDD API/E2E suites)
 - Hard waits detected: 0
-- Date.now dynamic ID usages detected: 6
+- `Date.now()` dynamic ID usages detected: 0
 
 ## Step 3 Output - Map Criteria to Tests
 
-- Acceptance criteria mapped: 16 (F1..F4 AC1..AC4)
-- Criteria with mapped tests: 16
+- Acceptance criteria mapped: 27 (G1..G6 ACs)
+- Criteria with mapped tests: 27
 - Criteria with no mapped tests: 0
 - Duplicate mapping concerns requiring consolidation: none blocking
 
-# Traceability Matrix - Epic F (f-1..f-4)
+# Traceability Matrix - Epic G (g-1..g-6)
 
-**Date:** 2026-03-02  
+**Date:** 2026-03-07  
 **Evaluator:** Jeremiah (TEA Agent)
 
 ## Coverage Summary
 
 | Priority | Total Criteria | FULL Coverage | Coverage % | Status |
 | --- | ---: | ---: | ---: | --- |
-| P0 | 8 | 8 | 100% | PASS |
-| P1 | 8 | 8 | 100% | PASS |
+| P0 | 21 | 21 | 100% | PASS |
+| P1 | 6 | 6 | 100% | PASS |
 | P2 | 0 | 0 | 100% | PASS |
 | P3 | 0 | 0 | 100% | PASS |
-| **Total** | **16** | **16** | **100%** | **PASS** |
+| **Total** | **27** | **27** | **100%** | **PASS** |
 
 ## Traceability Matrix
 
 | Criterion | Story | Priority | Coverage | Mapped Tests |
 | --- | --- | --- | --- | --- |
-| F1-AC1 | f-1 | P0 | FULL | `F1-API-ATDD-01`, `F1-API-AUTO-01`, `F1-E2E-AUTO-01` |
-| F1-AC2 | f-1 | P0 | FULL | `F1-API-ATDD-03`, `F1-API-AUTO-02`, `F1-E2E-ATDD-02` |
-| F1-AC3 | f-1 | P1 | FULL | `F1-API-ATDD-05`, `F4-API-AUTO-06`, `CI-API-02` |
-| F1-AC4 | f-1 | P1 | FULL | `F1-API-ATDD-04`, `F1-E2E-AUTO-03`, `F1-E2E-ATDD-02` |
-| F2-AC1 | f-2 | P0 | FULL | `F2-API-ATDD-01`, `F2-API-AUTO-01`, `F2-E2E-AUTO-01` |
-| F2-AC2 | f-2 | P0 | FULL | `F2-API-ATDD-02`, `F2-API-AUTO-02`, `F2-E2E-AUTO-02` |
-| F2-AC3 | f-2 | P1 | FULL | `F2-API-ATDD-03`, `F2-API-AUTO-03`, `F2-E2E-ATDD-02` |
-| F2-AC4 | f-2 | P1 | FULL | `F2-API-ATDD-04`, `F2-API-AUTO-04`, `F2-E2E-ATDD-03` |
-| F3-AC1 | f-3 | P0 | FULL | `F3-API-ATDD-01`, `F3-API-ATDD-04`, `F3-E2E-ATDD-01` |
-| F3-AC2 | f-3 | P0 | FULL | `F3-API-ATDD-01`, `F3-API-ATDD-03`, `F3-E2E-ATDD-02` |
-| F3-AC3 | f-3 | P1 | FULL | `F3-API-ATDD-04`, `F3-E2E-ATDD-03`, `F4-API-AUTO-02` |
-| F3-AC4 | f-3 | P1 | FULL | `F3-API-ATDD-02`, `F3-E2E-ATDD-02`, `F3-E2E-ATDD-03` |
-| F4-AC1 | f-4 | P0 | FULL | `F4-API-AUTO-01`, `F4-E2E-AUTO-01`, `F4-E2E-AUTO-02` |
-| F4-AC2 | f-4 | P0 | FULL | `F4-API-AUTO-02`, `F4-E2E-AUTO-02` |
-| F4-AC3 | f-4 | P1 | FULL | `F4-API-AUTO-06`, `F4-E2E-AUTO-03`, `CI-API-02` |
-| F4-AC4 | f-4 | P1 | FULL | `F4-API-AUTO-03`, `F4-API-AUTO-04`, `F4-API-AUTO-05`, `F4-E2E-AUTO-01` |
-
-## Detailed Mapping
-
-### F1-AC1 (P0)
-Provider resolution dispatches outbound/inbound operations through deterministic adapter selection for enabled providers.
-
-Coverage: **FULL**
-Tests:
-  - `F1-API-ATDD-01` - tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts:7 (API)
-  - `F1-API-AUTO-01` - tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.automate.api.spec.ts:16 (API)
-  - `F1-E2E-AUTO-01` - tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.automate.spec.ts:18 (E2E)
-
-### F1-AC2 (P0)
-Disabled or missing providers return deterministic refusal with no partial writes.
-
-Coverage: **FULL**
-Tests:
-  - `F1-API-ATDD-03` - tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts:80 (API)
-  - `F1-API-AUTO-02` - tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.automate.api.spec.ts:62 (API)
-  - `F1-E2E-ATDD-02` - tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.spec.ts:65 (E2E)
-
-### F1-AC3 (P1)
-Domain handlers avoid Twilio-specific branching and use adapter contracts.
-
-Coverage: **FULL**
-Tests:
-  - `F1-API-ATDD-05` - tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts:161 (API)
-  - `F4-API-AUTO-06` - tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts:346 (API)
-  - `CI-API-02` - tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts:128 (API)
-
-### F1-AC4 (P1)
-Operator-visible refusal metadata is explicit and confirms no hidden lifecycle mutation.
-
-Coverage: **FULL**
-Tests:
-  - `F1-API-ATDD-04` - tests/api/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.api.spec.ts:118 (API)
-  - `F1-E2E-AUTO-03` - tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.automate.spec.ts:174 (E2E)
-  - `F1-E2E-ATDD-02` - tests/e2e/platform/f-1-provider-adapter-interface-and-provider-registry.atdd.spec.ts:65 (E2E)
-
-### F2-AC1 (P0)
-Canonical event store persists aggregate id/type, event type, payload, and UTC timestamp with consistent schema.
-
-Coverage: **FULL**
-Tests:
-  - `F2-API-ATDD-01` - tests/api/platform/f-2-canonical-comms-event-model-and-event-store.atdd.api.spec.ts:53 (API)
-  - `F2-API-AUTO-01` - tests/api/platform/f-2-canonical-comms-event-model-and-event-store.automate.api.spec.ts:58 (API)
-  - `F2-E2E-AUTO-01` - tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.automate.spec.ts:46 (E2E)
-
-### F2-AC2 (P0)
-Canonical translation shields downstream handlers from provider-specific fields.
-
-Coverage: **FULL**
-Tests:
-  - `F2-API-ATDD-02` - tests/api/platform/f-2-canonical-comms-event-model-and-event-store.atdd.api.spec.ts:123 (API)
-  - `F2-API-AUTO-02` - tests/api/platform/f-2-canonical-comms-event-model-and-event-store.automate.api.spec.ts:151 (API)
-  - `F2-E2E-AUTO-02` - tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.automate.spec.ts:160 (E2E)
-
-### F2-AC3 (P1)
-Canonical events queries by aggregate id/event type remain deterministic and provider-neutral.
-
-Coverage: **FULL**
-Tests:
-  - `F2-API-ATDD-03` - tests/api/platform/f-2-canonical-comms-event-model-and-event-store.atdd.api.spec.ts:175 (API)
-  - `F2-API-AUTO-03` - tests/api/platform/f-2-canonical-comms-event-model-and-event-store.automate.api.spec.ts:210 (API)
-  - `F2-E2E-ATDD-02` - tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.atdd.spec.ts:184 (E2E)
-
-### F2-AC4 (P1)
-Operator timeline/status output remains provider-neutral, stable, and deterministically ordered.
-
-Coverage: **FULL**
-Tests:
-  - `F2-API-ATDD-04` - tests/api/platform/f-2-canonical-comms-event-model-and-event-store.atdd.api.spec.ts:226 (API)
-  - `F2-API-AUTO-04` - tests/api/platform/f-2-canonical-comms-event-model-and-event-store.automate.api.spec.ts:291 (API)
-  - `F2-E2E-ATDD-03` - tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.atdd.spec.ts:282 (E2E)
-
-### F3-AC1 (P0)
-Provider leg/message identifiers are persisted with provider-scoped uniqueness constraints.
-
-Coverage: **FULL**
-Tests:
-  - `F3-API-ATDD-01` - tests/api/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.api.spec.ts:17 (API)
-  - `F3-API-ATDD-04` - tests/api/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.api.spec.ts:187 (API)
-  - `F3-E2E-ATDD-01` - tests/e2e/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.spec.ts:21 (E2E)
-
-### F3-AC2 (P0)
-Metadata-missing callbacks resolve via provider identifier fallback or deterministic refusal.
-
-Coverage: **FULL**
-Tests:
-  - `F3-API-ATDD-01` - tests/api/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.api.spec.ts:17 (API)
-  - `F3-API-ATDD-03` - tests/api/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.api.spec.ts:148 (API)
-  - `F3-E2E-ATDD-02` - tests/e2e/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.spec.ts:135 (E2E)
-
-### F3-AC3 (P1)
-Duplicate provider identifiers/callbacks are replay-safe and prevent duplicate domain writes.
-
-Coverage: **FULL**
-Tests:
-  - `F3-API-ATDD-04` - tests/api/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.api.spec.ts:187 (API)
-  - `F3-E2E-ATDD-03` - tests/e2e/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.spec.ts:203 (E2E)
-  - `F4-API-AUTO-02` - tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts:80 (API)
-
-### F3-AC4 (P1)
-Resolved/refused fallback outcomes remain deterministic and avoid phantom lifecycle updates in operator contracts.
-
-Coverage: **FULL**
-Tests:
-  - `F3-API-ATDD-02` - tests/api/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.api.spec.ts:86 (API)
-  - `F3-E2E-ATDD-02` - tests/e2e/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.spec.ts:135 (E2E)
-  - `F3-E2E-ATDD-03` - tests/e2e/platform/f-3-provider-leg-message-correlation-fallback-mapping.atdd.spec.ts:203 (E2E)
-
-### F4-AC1 (P0)
-Telnyx-enabled outbound/inbound flows preserve lifecycle and envelope contract parity.
-
-Coverage: **FULL**
-Tests:
-  - `F4-API-AUTO-01` - tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts:25 (API)
-  - `F4-E2E-AUTO-01` - tests/e2e/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.spec.ts:25 (E2E)
-  - `F4-E2E-AUTO-02` - tests/e2e/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.spec.ts:120 (E2E)
-
-### F4-AC2 (P0)
-Telnyx webhook signature/canonical translation feeds deterministic correlation and replay-safe paths.
-
-Coverage: **FULL**
-Tests:
-  - `F4-API-AUTO-02` - tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts:80 (API)
-  - `F4-E2E-AUTO-02` - tests/e2e/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.spec.ts:120 (E2E)
-
-### F4-AC3 (P1)
-CI/policy checks block direct Twilio-coupled implementation outside approved adapter contracts.
-
-Coverage: **FULL**
-Tests:
-  - `F4-API-AUTO-06` - tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts:346 (API)
-  - `F4-E2E-AUTO-03` - tests/e2e/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.spec.ts:216 (E2E)
-  - `CI-API-02` - tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts:128 (API)
-
-### F4-AC4 (P1)
-Staged rollout allow-list and rollback behavior is explicit, auditable, and fail-closed.
-
-Coverage: **FULL**
-Tests:
-  - `F4-API-AUTO-03` - tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts:173 (API)
-  - `F4-API-AUTO-04` - tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts:223 (API)
-  - `F4-API-AUTO-05` - tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts:269 (API)
-  - `F4-E2E-AUTO-01` - tests/e2e/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.spec.ts:25 (E2E)
+| G1-AC1 | g-1 | P0 | FULL | `G1-ATDD-API-001`, `G1-ATDD-E2E-001`, `G1-AUTO-E2E-201` |
+| G1-AC2 | g-1 | P0 | FULL | `G1-ATDD-API-002`, `G1-ATDD-E2E-002`, `G1-AUTO-E2E-201` |
+| G1-AC3 | g-1 | P0 | FULL | `G1-ATDD-API-003`, `G1-ATDD-E2E-003`, `G1-AUTO-E2E-203` |
+| G1-AC4 | g-1 | P1 | FULL | `G1-ATDD-API-004`, `G1-ATDD-E2E-004`, `G1-AUTO-E2E-202` |
+| G2-AC1 | g-2 | P0 | FULL | `G2-ATDD-API-001`, `G2-AUTO-E2E-201`, `GEPIC-AUTO-E2E-301` |
+| G2-AC2 | g-2 | P0 | FULL | `G2-ATDD-API-004`, `G2-AUTO-E2E-201`, `GEPIC-AUTO-API-301` |
+| G2-AC3 | g-2 | P0 | FULL | `G2-ATDD-API-002`, `G2-AUTO-E2E-202`, `GEPIC-AUTO-E2E-301` |
+| G2-AC4 | g-2 | P0 | FULL | `G2-ATDD-E2E-003`, `G2-AUTO-E2E-203`, `GEPIC-AUTO-E2E-302` |
+| G2-AC5 | g-2 | P1 | FULL | `G2-ATDD-E2E-004`, `G2-AUTO-API-302`, `G2-AUTO-E2E-204` |
+| G3-AC1 | g-3 | P0 | FULL | `7.3-API-001`, `7.3-E2E-001`, `G3-AUTO-E2E-204` |
+| G3-AC2 | g-3 | P0 | FULL | `7.3-API-001`, `7.3-E2E-002`, `G3-AUTO-API-203` |
+| G3-AC3 | g-3 | P0 | FULL | `7.3-API-002`, `7.3-API-003`, `7.3-API-004`, `7.3-E2E-003` |
+| G3-AC4 | g-3 | P1 | FULL | `7.3-API-006`, `7.3-E2E-005`, `G3-AUTO-E2E-202` |
+| G3-AC5 | g-3 | P0 | FULL | `7.3-API-007`, `7.3-E2E-006`, `G3-AUTO-API-202` |
+| G4-AC1 | g-4 | P0 | FULL | `G4-ATDD-API-001`, `G4-ATDD-E2E-001`, `G4-AUTO-API-303` |
+| G4-AC2 | g-4 | P0 | FULL | `G4-ATDD-API-002`, `G4-AUTO-API-304`, `G4-ATDD-E2E-002` |
+| G4-AC3 | g-4 | P0 | FULL | `G4-ATDD-API-003`, `G4-ATDD-E2E-003`, `G4-AUTO-E2E-301` |
+| G4-AC4 | g-4 | P0 | FULL | `G4-ATDD-API-004`, `G4-ATDD-API-005`, `G4-AUTO-API-301`, `G4-AUTO-API-302`, `G4-ATDD-E2E-004`, `G4-ATDD-E2E-005` |
+| G4-AC5 | g-4 | P1 | FULL | `G4-ATDD-E2E-006`, `G4-AUTO-E2E-303`, `G4-AUTO-E2E-304` |
+| G5-AC1 | g-5 | P0 | FULL | `G5-ATDD-API-001`, `G5-ATDD-E2E-001`, `G5-AUTO-API-301` |
+| G5-AC2 | g-5 | P0 | FULL | `G5-ATDD-API-002`, `G5-ATDD-API-003`, `G5-ATDD-E2E-002`, `G5-AUTO-E2E-301` |
+| G5-AC3 | g-5 | P0 | FULL | `G5-ATDD-API-005`, `G5-ATDD-E2E-004`, `G5-AUTO-API-303` |
+| G5-AC4 | g-5 | P1 | FULL | `G5-ATDD-E2E-006`, `G5-AUTO-E2E-303`, `GEPIC-AUTO-E2E-302` |
+| G6-AC1 | g-6 | P0 | FULL | `G6-ATDD-API-001`, `G6-ATDD-E2E-001`, `GEPIC-AUTO-API-301` |
+| G6-AC2 | g-6 | P1 | FULL | `G6-ATDD-API-002`, `G6-ATDD-E2E-002`, `G6-ATDD-E2E-005`, `G6-AUTO-E2E-303` |
+| G6-AC3 | g-6 | P0 | FULL | `G6-ATDD-API-003`, `G6-AUTO-API-303`, `G6-ATDD-E2E-003` |
+| G6-AC4 | g-6 | P0 | FULL | `G6-ATDD-API-004`, `G6-AUTO-API-304`, `G6-ATDD-E2E-006`, `G6-AUTO-E2E-305` |
 
 ## Gap Analysis
 
@@ -249,21 +112,18 @@ Tests:
 
 | Test Level | Criteria Covered | Coverage % |
 | --- | ---: | ---: |
-| E2E | 15 | 94% |
-| API | 16 | 100% |
+| E2E | 27 | 100% |
+| API | 24 | 89% |
 | COMPONENT | 0 | 0% |
 | UNIT | 0 | 0% |
 
 ## Quality Observations
 
-- No skipped tests were detected in Epic F API/E2E story suites.
-- No hard waits (`waitForTimeout` / `sleep`) were detected.
-- Date-derived dynamic identifiers were detected in several suites; deterministic helper IDs are recommended.
-- Oversized suites (>300 LOC):
-  - tests/api/platform/f-2-canonical-comms-event-model-and-event-store.automate.api.spec.ts
-  - tests/api/platform/f-4-telnyx-adapter-implementation-and-cutover-guardrails.automate.api.spec.ts
-  - tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.atdd.spec.ts
-  - tests/e2e/platform/f-2-canonical-comms-event-model-and-event-store.automate.spec.ts
+- Skipped tests detected in g-2 ATDD suites: 8 (`tests/api/platform/g-2-*.atdd.api.spec.ts` + `tests/e2e/platform/g-2-*.atdd.spec.ts`).
+- No hard waits (`waitForTimeout` / `sleep`) were detected in Epic G API/E2E suites.
+- No `Date.now()` dynamic ID usage was detected in Epic G API/E2E suites.
+- Oversized suite (>300 LOC):
+  - `tests/api/platform/g-2-inbox-and-mine-surface-rebuild.atdd.api.spec.ts` (309 LOC)
 
 ## Phase 2 Gate Decision
 
@@ -272,20 +132,19 @@ Tests:
 **Rationale:** P0 coverage is 100% and overall coverage is 100% (target: 90%).
 
 ### Recommended Actions
-- [MEDIUM] Replace Date.now-based dynamic IDs in Epic F specs with deterministic test ID helpers to improve rerun determinism.
-- [MEDIUM] Split oversized Epic F spec files (>300 LOC) into capability-focused suites for maintainability and faster triage.
-- [LOW] Re-run NFR evidence collection (performance/reliability artifacts) before release promotion, even though traceability coverage is complete.
+- [MEDIUM] Convert or unskip the remaining g-2 ATDD tests so ATDD and automate lanes both provide active execution signal.
+- [LOW] Split `g-2-inbox-and-mine-surface-rebuild.atdd.api.spec.ts` into smaller suites to stay under the 300 LOC maintainability threshold.
+- [LOW] Run a targeted Epic G CI burn-in capture (`scripts/burn-in.sh 10` + `scripts/quality-gates.sh`) before final release sign-off.
 
 ## Generated Artifacts
 
-- Coverage matrix JSON: /tmp/tea-trace-coverage-matrix-2026-03-02T03-32-06Z.json
-- Traceability report: _bmad-output/test-artifacts/traceability-report.md
-- Matrix document: _bmad-output/test-artifacts/traceability-matrix.md
-
+- Coverage matrix JSON: `/tmp/tea-trace-coverage-matrix-2026-03-07T19-06-02Z.json`
+- Traceability report: `_bmad-output/test-artifacts/traceability-report.md`
+- Matrix document: `_bmad-output/test-artifacts/traceability-matrix.md`
 
 ## Step 4 Output - Analyze Gaps (Phase 1 Complete)
 
-- Coverage matrix JSON generated: /tmp/tea-trace-coverage-matrix-2026-03-02T03-32-06Z.json
+- Coverage matrix JSON generated: `/tmp/tea-trace-coverage-matrix-2026-03-07T19-06-02Z.json`
 - Critical gaps: 0
 - High gaps: 0
 - Medium gaps: 0
@@ -300,11 +159,11 @@ Tests:
 - Rationale: P0 coverage is 100% and overall coverage is 100% (target: 90%).
 
 ### Top Recommendations
-- [MEDIUM] Replace Date.now-based dynamic IDs in Epic F specs with deterministic test ID helpers to improve rerun determinism.
-- [MEDIUM] Split oversized Epic F spec files (>300 LOC) into capability-focused suites for maintainability and faster triage.
-- [LOW] Re-run NFR evidence collection (performance/reliability artifacts) before release promotion, even though traceability coverage is complete.
+- [MEDIUM] Convert or unskip remaining g-2 ATDD tests so ATDD and automate lanes both provide active execution signal.
+- [LOW] Split oversized g-2 ATDD API suite (`309 LOC`) into focused files for maintainability.
+- [LOW] Run targeted Epic G burn-in and quality gate scripts before release promotion.
 
 ### Output Files
 - /Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/traceability-report.md
 - /Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/traceability-matrix.md
-- /tmp/tea-trace-coverage-matrix-2026-03-02T03-32-06Z.json
+- /tmp/tea-trace-coverage-matrix-2026-03-07T19-06-02Z.json
