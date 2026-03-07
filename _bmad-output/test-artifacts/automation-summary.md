@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-07T14:26:52Z'
+lastSaved: '2026-03-07T17:52:22Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -5335,3 +5335,82 @@ lastSaved: '2026-03-07T14:26:52Z'
 ### Recommended Next Workflow
 - `RV` (test-review) for quality scoring and maintainability checks.
 - `TR` (traceability) for AC-to-automate mapping across ATDD + automate layers.
+
+## Story g.6 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md`
+  - Existing ATDD files found for Story g.6:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts`
+
+## Story g.6 Run - Step 2: Identify Automation Targets
+
+### Coverage Strategy
+- Scope selected: `critical-paths`
+- Existing ATDD coverage retained; automate expansion focused on boundary/refusal permutations and replay-safe lifecycle regressions.
+
+### Generated Targets
+- API: `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.spec.ts`
+- E2E: `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts`
+
+### Priority Allocation
+- P0: 5 tests
+- P1: 4 tests
+- P2/P3: 0
+
+## Story g.6 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-03-07T17-51-35Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-03-07T17-51-35Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-03-07T17-51-35Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 4`
+- E2E subprocess status: `success: true`, `test_count: 5`
+- Both output files present and JSON-valid.
+
+## Story g.6 Run - Step 3C: Aggregate Test Generation Results
+
+### Output Files
+- Added API automate suite with 4 tests (tenant-privileged boundary reads, non-capability refusal contracts, repeated CLOSED outbound reopen determinism, duplicate inbound replay-safety).
+- Added E2E automate suite with 5 tests (tenant-privileged inbox safety, non-capability refusal UX, mobile back-navigation contract, override-refusal feedback hygiene, duplicate inbound no-auto-reopen cues).
+
+### Run Artifacts
+- `/tmp/tea-automate-api-tests-2026-03-07T17-51-35Z.json`
+- `/tmp/tea-automate-e2e-tests-2026-03-07T17-51-35Z.json`
+- `/tmp/tea-automate-summary-2026-03-07T17-51-35Z.json`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-6-2026-03-07T17-51-35Z/tea-automate-api-tests-2026-03-07T17-51-35Z.json`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-6-2026-03-07T17-51-35Z/tea-automate-e2e-tests-2026-03-07T17-51-35Z.json`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-6-2026-03-07T17-51-35Z/tea-automate-summary-2026-03-07T17-51-35Z.json`
+
+## Story g.6 Run - Step 4: Validate and Summarize
+
+### Validation Commands
+- `npx playwright test --list tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.spec.ts tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts`
+- `bash scripts/ci-run-playwright-stack.sh npx playwright test tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.spec.ts tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts`
+
+### Validation Result
+- Passed: 9/9 tests.
+- API suite: 4/4 passed.
+- E2E suite: 5/5 passed.
+- New suites are deterministic and aligned with Story g.6 contract boundaries.
+
+### Recommended Next Workflow
+- `RV` (test-review) for maintainability and anti-flake scoring.
+- `TR` (traceability) to map Story g.6 ACs to ATDD + automate coverage.
