@@ -28,11 +28,20 @@ const buildStoryG3UrlParams = (
 const buildStoryG3ThreadDetailUrl = (
   context: StoryG3Context,
   threadId: string,
+  options: {
+    actorUserId?: string;
+    tenantRole?: string;
+    orgUnitMemberships?: string[];
+  } = {},
 ): string => {
+  const actorUserId = options.actorUserId ?? context.userId;
+  const tenantRole = options.tenantRole ?? 'ORGUNIT_MEMBER';
+  const orgUnitMemberships = options.orgUnitMemberships ?? [context.orgUnitId];
+
   return `${context.paths.threadDetailUi}/${threadId}?${buildStoryG3UrlParams(context, {
-    actorUserId: context.userId,
-    tenantRole: 'ORGUNIT_MEMBER',
-    orgUnitMemberships: [context.orgUnitId],
+    actorUserId,
+    tenantRole,
+    orgUnitMemberships,
   })}`;
 };
 
@@ -116,6 +125,32 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD E2E RED)
           .filter((label) => label.length > 0);
         expect(labels).toEqual(scenario.expectedActions);
       }
+    },
+  );
+
+  test(
+    '[G3-ATDD-E2E-003A][P1] claimed thread action bar stays canonical for privileged role contexts @P1',
+    async ({ page }) => {
+      const context = createStoryG3Context();
+      await login(page);
+
+      await page.goto(buildStoryG3ThreadDetailUrl(
+        context,
+        context.threadIds.claimed,
+        {
+          actorUserId: context.adminUserId,
+          tenantRole: 'TENANT_ADMIN',
+          orgUnitMemberships: [context.orgUnitId],
+        },
+      ));
+      await expect(page.getByTestId('connectshyft-thread-action-bar')).toBeVisible();
+
+      const labels = (await page.getByTestId('connectshyft-thread-action-label').allTextContents())
+        .map((label) => label.trim())
+        .filter((label) => label.length > 0);
+
+      expect(labels).toEqual([...context.expectedActions.claimed]);
+      expect(labels).not.toContain('Take Over');
     },
   );
 

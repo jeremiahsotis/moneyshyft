@@ -86,14 +86,6 @@
               :voicemail-indicator="threadSurfaceModel.voicemailIndicator"
             />
 
-            <p
-              :data-testid="`connectshyft-responsive-mode-${responsiveMode}`"
-              class="rounded border border-slate-200 bg-slate-50 px-3 py-1 text-slate-600"
-              :style="bodyTextStyle"
-            >
-              Responsive mode: {{ responsiveMode }}
-            </p>
-
             <ConnectShyftMessageBubble
               title="Conversation summary"
               :body="threadSurfaceModel.display.title"
@@ -126,19 +118,6 @@
               :visible="threadSurfaceModel.voicemailIndicator"
               :label="threadSurfaceModel.display.voicemailLabel || 'Voicemail waiting for review'"
             />
-
-            <p
-              data-testid="connectshyft-thread-metadata-last-inbound-number"
-              class="text-base text-slate-700"
-            >
-              Inbound line: {{ threadSurfaceModel.display.inboundContext }}
-            </p>
-            <p
-              data-testid="connectshyft-thread-metadata-preferred-outbound-number"
-              class="text-base text-slate-700"
-            >
-              Outbound line: {{ threadSurfaceModel.display.outboundContext }}
-            </p>
 
             <p
               v-if="showPreferenceOverrideRequiredChip"
@@ -452,7 +431,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
 import ConnectShyftComposer from '@/components/connectshyft/ConnectShyftComposer.vue';
@@ -477,7 +456,6 @@ import {
   CONNECTSHYFT_FOCUS_RING_CLASS,
   createConnectShyftFeedback,
   resolveSafeVisibleThreadActions,
-  CONNECTSHYFT_RESPONSIVE_BREAKPOINTS,
   sanitizeConnectShyftOperatorCopy,
   type ConnectShyftFeedback,
   type ConnectShyftFeedbackTaxonomy,
@@ -510,11 +488,6 @@ const addNeighborSubmitting = ref(false);
 const composerMessage = ref('');
 const preferenceOverrideModalRef = ref<HTMLElement | null>(null);
 const closeModalRef = ref<HTMLElement | null>(null);
-const viewportWidth = ref(
-  typeof window === 'undefined'
-    ? CONNECTSHYFT_RESPONSIVE_BREAKPOINTS.desktop
-    : window.innerWidth,
-);
 const focusRingClass = CONNECTSHYFT_FOCUS_RING_CLASS;
 const bodyTextStyle = {
   fontSize: `${CONNECTSHYFT_ACCESSIBILITY_LOCKS.minBodyTextPx}px`,
@@ -815,18 +788,6 @@ const visibleActions = computed<string[]>(() => {
     state: threadDetail.value.state,
     rawActions: threadDetail.value.actions,
   });
-});
-
-const responsiveMode = computed<'mobile' | 'tablet' | 'desktop'>(() => {
-  if (viewportWidth.value >= CONNECTSHYFT_RESPONSIVE_BREAKPOINTS.desktop) {
-    return 'desktop';
-  }
-
-  if (viewportWidth.value >= CONNECTSHYFT_RESPONSIVE_BREAKPOINTS.tablet) {
-    return 'tablet';
-  }
-
-  return 'mobile';
 });
 
 const composerSubmitDisabled = computed(() => {
@@ -1550,26 +1511,8 @@ const refreshThreadDetail = async () => {
   clearFeedbackBanner();
 };
 
-const updateViewportWidth = (): void => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  viewportWidth.value = window.innerWidth;
-};
-
 onMounted(() => {
-  updateViewportWidth();
-  if (typeof window !== 'undefined') {
-    window.addEventListener('resize', updateViewportWidth);
-  }
   void refreshThreadDetail();
-});
-
-onBeforeUnmount(() => {
-  if (typeof window !== 'undefined') {
-    window.removeEventListener('resize', updateViewportWidth);
-  }
 });
 
 watch(preferenceOverrideModalOpen, (isOpen) => {

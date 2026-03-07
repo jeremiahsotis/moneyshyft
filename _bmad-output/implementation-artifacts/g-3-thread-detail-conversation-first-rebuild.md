@@ -1,6 +1,6 @@
 # Story g.3: Thread Detail Conversation-First Rebuild
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -150,19 +150,36 @@ GPT-5 Codex
 - Refactored policy/refusal/success feedback to contextual action-bound contracts via `uiFeedback.presentation="contextual-action-feedback"` and `chrome` defaults that disable persistent operations banners.
 - Preserved closed-thread reopen semantics with explicit lifecycle invariants in outbound responses (`sameThreadId`, `reopenedByInbound=false`, `noInboundAutoReopenSideEffects=true`) and verified UI lifecycle toast continuity.
 - Activated and passed G3 API/E2E ATDD coverage end-to-end for AC1-AC5.
+- Enforced strict canonical action matrix on thread detail for all roles (removed `Take Over` action drift from claimed-state response shaping and UI filtering).
+- Removed thread-id substring voicemail synthesis fallback so first-class voicemail timeline rendering remains tied to voicemail indicators/artifacts.
+- Reduced persistent technical chrome in default thread detail by removing responsive debug banner and always-on inbound/outbound metadata lines.
+- Added privileged-role API/E2E regression coverage to ensure claimed-state actions stay canonical and exclude takeover drift.
+- Reconciled story-to-git traceability by aligning the story File List to the actual remediation diff.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md
 - _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
-- apps/moneyshyft-api/src/modules/connectshyft/readContracts.ts
 - apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts
-- apps/moneyshyft-web/src/features/connectshyft/readContracts.ts
+- apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts
 - apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts
 - tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts
+
+## Senior Developer Review (AI)
+
+- Reviewer: Amelia (GPT-5 Codex)
+- Date: 2026-03-06
+- Outcome: Changes Requested findings resolved and revalidated.
+- Resolution Summary:
+  - Canonical state-action matrix lock now applies consistently across roles in thread detail contracts and UI action rendering.
+  - Voicemail timeline fallback no longer infers voicemail from thread-id naming.
+  - Default thread chrome no longer includes persistent responsive/debug and metadata lines identified as operations-heavy artifacts.
+  - Added regression coverage for privileged-role action matrix behavior to prevent takeover drift.
+  - Story file list and review traceability updated to match the remediation diff.
 
 ## Change Log
 
 - 2026-03-06: Created Story g.3 ready-for-dev context document.
 - 2026-03-06: Implemented conversation-first thread detail rebuild (AC1-AC5), enabled G3 API/E2E ATDD coverage, and validated lifecycle/policy contracts.
+- 2026-03-06: Resolved code review findings by enforcing canonical action matrix behavior, removing voicemail-id heuristic fallback, reducing persistent technical chrome, adding privileged-role regression tests, and reconciling story/git traceability.

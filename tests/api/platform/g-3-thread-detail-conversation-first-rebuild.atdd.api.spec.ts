@@ -135,6 +135,24 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD API RED)
   );
 
   test(
+    '[G3-ATDD-API-002A][P1] claimed thread action matrix remains canonical for privileged roles without takeover drift @P1',
+    async ({ request, storyG3Context, storyG3TenantAdminHeaders }) => {
+      const response = await apiRequest(request, {
+        method: 'GET',
+        path: `${storyG3Context.paths.threads}/${storyG3Context.threadIds.claimed}`,
+        headers: storyG3TenantAdminHeaders,
+      });
+
+      expect(response.status()).toBe(200);
+      const body = (await response.json()) as ConnectShyftThreadEnvelope;
+      expect(body.ok).toBe(true);
+      expect(body.data?.actions).toEqual([...storyG3Context.expectedActions.claimed]);
+      expect(body.data?.actions).not.toContain('Take Over');
+      expect(body.data?.actionMatrix?.lockedByState).toBe(true);
+    },
+  );
+
+  test(
     '[G3-ATDD-API-003][P1] refusal and policy feedback is contextual at action time and avoids persistent operations-heavy default chrome @P1',
     async ({
       request,

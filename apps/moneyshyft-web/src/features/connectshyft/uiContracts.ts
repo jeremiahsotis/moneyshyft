@@ -227,14 +227,5 @@ export const resolveSafeVisibleThreadActions = (input: {
     return [];
   }
 
-  const normalizedRawActions = input.rawActions
-    .map((action) => action.trim())
-    .filter((action) => action.length > 0);
-  const rawActionSet = new Set(normalizedRawActions);
-
-  if (input.state === 'CLAIMED' && rawActionSet.has('Take Over')) {
-    return ['Call', 'Take Over', 'Text', 'Close'];
-  }
-
   return [...canonicalActions];
 };
