@@ -157,10 +157,15 @@ GPT-5 Codex
 - _bmad-output/test-artifacts/atdd-checklist-g-4.md
 - _bmad-output/test-artifacts/automation-summary.md
 - _bmad-output/test-artifacts/test-review.md
+- apps/admin-api/node_modules
+- apps/connectshyft-api/node_modules
 - apps/connectshyft-api/src/modules/connectshyft/threads.ts
 - apps/connectshyft-api/src/routes/api/v1/connectshyft.ts
+- apps/connectshyft-web/node_modules
+- apps/moneyshyft-api/node_modules
 - apps/moneyshyft-api/src/modules/connectshyft/threads.ts
 - apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts
+- apps/moneyshyft-web/node_modules
 - apps/moneyshyft-web/src/features/connectshyft/neighbors.ts
 - apps/moneyshyft-web/src/features/connectshyft/threads.ts
 - apps/moneyshyft-web/src/router/index.ts
