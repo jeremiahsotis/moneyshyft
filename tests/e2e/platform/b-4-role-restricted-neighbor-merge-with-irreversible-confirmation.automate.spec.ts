@@ -8,7 +8,7 @@ import {
   type StoryB4Context,
 } from '../../support/factories/connectShyftStoryB4Factory';
 
-const DB_CONNECTION_RETRY_LIMIT = 2;
+const DB_CONNECTION_RETRY_LIMIT = 8;
 
 const isDbConnectionAcquireError = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
@@ -30,7 +30,7 @@ const withDbConnectionRetry = async <T>(
         throw error;
       }
 
-      await wait(200 * (attempt + 1));
+      await wait(500 * (attempt + 1));
     }
   }
 };
