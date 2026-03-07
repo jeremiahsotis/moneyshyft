@@ -1,5 +1,9 @@
-import { test, expect, type Page } from '@playwright/test';
-import { login } from '../../helpers/auth';
+import {
+  test,
+  expect,
+  type Page,
+  type TestInfo,
+} from '../../support/fixtures/connectShyftStoryG6E2e.fixture';
 import {
   buildStoryG6SurfaceUrl,
   buildStoryG6ThreadDetailUrl,
@@ -7,6 +11,10 @@ import {
   createStoryG6Headers,
   type StoryG6Context,
 } from '../../support/factories/connectShyftStoryG6Factory';
+import {
+  deterministicProviderEventId,
+  deterministicToken,
+} from '../../support/utils/deterministicTestIds';
 
 type ViewportScenario = {
   id: string;
@@ -53,10 +61,6 @@ const collectVisibleSurfaceCopy = async (scopeTestId: string, page: Page): Promi
 };
 
 test.describe('Story g.6 Volunteer Contract Boundary and Regression Hardening (ATDD E2E RED)', () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page);
-  });
-
   test(
     '[G6-ATDD-E2E-001][P0] volunteer-primary Inbox and Mine surfaces render display-safe contracts and suppress admin/system-first metadata chips @P0',
     async ({ page }) => {
@@ -203,7 +207,7 @@ test.describe('Story g.6 Volunteer Contract Boundary and Regression Hardening (A
 
   test(
     '[G6-ATDD-E2E-006][P0] inbound activity on CLOSED threads keeps volunteer UI locked and never auto-reopens thread state @P0',
-    async ({ page }) => {
+    async ({ page }, testInfo: TestInfo) => {
       const webhookResponse = await page.request.post(context.paths.inboundWebhook, {
         headers: createStoryG6Headers(context, {
           role: 'ORGUNIT_ADMIN',
@@ -212,8 +216,12 @@ test.describe('Story g.6 Volunteer Contract Boundary and Regression Hardening (A
         }),
         data: {
           provider: 'telnyx',
-          providerEventId: `provider-event-g6-e2e-${Date.now()}`,
-          providerLegId: `leg-g6-e2e-${Date.now()}`,
+          providerEventId: deterministicProviderEventId(
+            'provider-event-g6-e2e',
+            testInfo,
+            'g6-atdd-e2e-006-event',
+          ),
+          providerLegId: `leg-g6-e2e-${deterministicToken(testInfo, 'g6-atdd-e2e-006-leg')}`,
           eventType: context.events.inboundMissedCall,
           tenantId: context.tenantId,
           orgUnitId: context.orgUnitId,

@@ -1,11 +1,19 @@
-import { test, expect, type Page } from '@playwright/test';
-import { login } from '../../helpers/auth';
+import {
+  test,
+  expect,
+  type Page,
+  type TestInfo,
+} from '../../support/fixtures/connectShyftStoryG6E2e.fixture';
 import {
   buildStoryG6SurfaceUrl,
   buildStoryG6ThreadDetailUrl,
   createStoryG6Context,
   createStoryG6Headers,
 } from '../../support/factories/connectShyftStoryG6Factory';
+import {
+  deterministicProviderEventId,
+  deterministicToken,
+} from '../../support/utils/deterministicTestIds';
 
 type InboundWebhookEnvelope = {
   ok?: boolean;
@@ -50,10 +58,6 @@ const collectVisibleSurfaceCopy = async (scopeTestId: string, page: Page): Promi
 test.describe(
   'Story g.6 Volunteer Contract Boundary and Regression Hardening (Automate E2E Expansion)',
   () => {
-    test.beforeEach(async ({ page }) => {
-      await login(page);
-    });
-
     test(
       '[G6-AUTO-E2E-301][P0] tenant-privileged volunteer inbox surface stays available without orgUnit membership and still suppresses internal metadata chips @P0',
       async ({ page }) => {
@@ -150,12 +154,18 @@ test.describe(
 
     test(
       '[G6-AUTO-E2E-305][P1] duplicate CLOSED inbound webhook events keep volunteer thread state locked with replay-safe suppression and no auto-reopen cues @P1',
-      async ({ page }) => {
-        const eventSuffix = `${Date.now()}`;
+      async ({ page }, testInfo: TestInfo) => {
         const webhookPayload = {
           provider: 'telnyx',
-          providerEventId: `provider-event-g6-e2e-duplicate-${eventSuffix}`,
-          providerLegId: `leg-g6-e2e-duplicate-${eventSuffix}`,
+          providerEventId: deterministicProviderEventId(
+            'provider-event-g6-e2e-duplicate',
+            testInfo,
+            'g6-auto-e2e-305-event',
+          ),
+          providerLegId: `leg-g6-e2e-duplicate-${deterministicToken(
+            testInfo,
+            'g6-auto-e2e-305-leg',
+          )}`,
           eventType: context.events.inboundMissedCall,
           tenantId: context.tenantId,
           orgUnitId: context.orgUnitId,
