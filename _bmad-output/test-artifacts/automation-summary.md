@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-07T03:31:29Z'
+lastSaved: '2026-03-07T11:54:53Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -5060,3 +5060,222 @@ lastSaved: '2026-03-07T03:31:29Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` for quality scoring and additional maintainability checks.
 - `[TR] Trace Requirements` to map g.3 acceptance criteria to ATDD + automate coverage.
+
+## Story g.4 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+  - `@faker-js/faker`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/g-4-add-neighbor-and-directory-rebuild.md`
+  - Existing ATDD files found for Story g.4:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-4-add-neighbor-and-directory-rebuild.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts`
+
+### Context Loaded
+- Story g.4 implementation and test assets reviewed:
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftNeighborCreateView.vue`
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftDirectoryView.vue`
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/features/connectshyft/neighbors.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/features/connectshyft/threads.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/fixtures/connectShyftStoryG4.fixture.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/support/factories/connectShyftStoryG4Factory.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils and supporting patterns:
+  - `overview.md`
+  - `api-request.md`
+  - `network-recorder.md`
+  - `auth-session.md`
+  - `intercept-network-call.md`
+  - `recurse.md`
+  - `log.md`
+  - `file-utils.md`
+  - `burn-in.md`
+  - `network-error-monitor.md`
+  - `fixtures-composition.md`
+- Additional generation patterns:
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `api-testing-patterns.md`
+  - `playwright-cli.md`
+
+### Browser Exploration
+- Attempted `playwright-cli` exploration with session `tea-automate`.
+- Target attempted: `http://127.0.0.1:5174/app/connectshyft/directory`
+- Result: `net::ERR_CONNECTION_REFUSED` (local app was not running in standalone CLI context).
+- Session hygiene completed: `playwright-cli -s=tea-automate close`.
+- Fallback applied: code and artifact-driven analysis.
+
+### Official Guidance Cross-Check
+- Playwright locator and waiting guidance reviewed:
+  - `https://playwright.dev/docs/locators`
+  - `https://playwright.dev/docs/api/class-page#page-wait-for-response`
+- Cypress element-selection guidance reviewed:
+  - `https://docs.cypress.io/app/core-concepts/best-practices`
+- Pact verification guidance reviewed:
+  - `https://docs.pact.io/provider`
+- GitHub Actions matrix/fail-fast guidance reviewed:
+  - `https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs`
+
+## Story g.4 Run - Step 2: Identify Automation Targets
+
+### Coverage Gaps Selected for Automate Expansion
+- Existing ATDD files cover primary happy paths for AC1-AC5.
+- Automate expansion focused on deterministic edge and contract depth:
+  - API:
+    - ensure lifecycle reuse metadata consistency
+    - new-thread ensure determinism on repeat invocation
+    - shared-phone metadata persistence in create responses
+    - refusal no-partial-write guarantees using unique-name absence checks
+  - E2E:
+    - directory search query/mode backend refresh behavior
+    - add-neighbor refusal variant with additional-only phone input
+    - existing/new directory notices remain volunteer-safe (no tenant/orgUnit leakage)
+
+### Selected Test Levels
+- **API (primary)**: service contract semantics and refusal invariants.
+- **E2E (secondary)**: volunteer workflow behavior and safe-copy UX guarantees.
+
+### Priority Assignment
+- P0:
+  - deterministic ensure lifecycle reuse semantics.
+  - query/mode refresh behavior under directory search interactions.
+- P1:
+  - shared-phone metadata preservation.
+  - refusal no-partial-write guard.
+  - volunteer-safe notice copy checks for existing/new thread paths.
+
+### Coverage Plan Outputs
+- API target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts`
+- E2E target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts`
+- Scope: `critical-paths`.
+
+## Story g.4 Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-03-07T11-54-53Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-03-07T11-54-53Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-03-07T11-54-53Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 4`
+- E2E subprocess status: `success: true`, `test_count: 4`
+- Both output files present and JSON-valid.
+
+### Performance Report
+- Parallel orchestration completed in a single pass for API and E2E generation.
+- Sequential equivalent would require two generation passes.
+- Performance gain target met: `~50% faster than sequential`.
+
+## Story g.4 Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts`
+- `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts`
+
+### Fixture/Helper Aggregation
+- Reused existing fixture/helper assets:
+  - `tests/support/fixtures/connectShyftStoryG4.fixture.ts`
+  - `tests/support/factories/connectShyftStoryG4Factory.ts`
+  - `tests/support/helpers/apiClient.ts`
+  - `tests/helpers/auth.ts`
+- New shared fixture files created: none.
+
+### Summary Metrics
+- Total tests generated: `8`
+  - API tests: `4` (1 file)
+  - E2E tests: `4` (1 file)
+- Priority coverage:
+  - P0: `3`
+  - P1: `5`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-03-07T11-54-53Z.json`
+
+### Artifact Retention Path
+- Copied temp artifacts to test-artifact storage:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-4-2026-03-07T11-54-53Z/tea-automate-api-tests-2026-03-07T11-54-53Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-4-2026-03-07T11-54-53Z/tea-automate-e2e-tests-2026-03-07T11-54-53Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-4-2026-03-07T11-54-53Z/tea-automate-summary-2026-03-07T11-54-53Z.json`
+
+## Story g.4 Run - Step 4: Validate and Summarize
+
+### Coverage Plan by Test Level and Priority
+- API file (`g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts`):
+  - P0: 2, P1: 2, P2: 0, P3: 0
+- E2E file (`g-4-add-neighbor-and-directory-rebuild.automate.spec.ts`):
+  - P0: 1, P1: 3, P2: 0, P3: 0
+- Combined execution set:
+  - Total: 8 tests
+  - P0: 3
+  - P1: 5
+
+### Files Created or Updated
+- Created:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts`
+- Updated:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-summary.md`
+
+### Validation Results
+- Framework readiness: passed.
+- Coverage mapping and ATDD-duplication avoidance: passed.
+- Generated suite parse/discovery validation:
+  - `npx playwright test --list tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts`
+  - Result: passed (`8` tests discovered in `2` files).
+- Generated suite execution validation:
+  - `npm run test:e2e -- tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts`
+  - Result: `8 passed`.
+
+### Healing Actions During Validation
+- `G4-AUTO-API-301` updated from fixed-thread-id assertion to deterministic two-invocation lifecycle reuse assertion (stable across dynamic runtime seed state).
+- `G4-AUTO-API-304` updated from global-neighbor-count comparison to unique-name absence assertion to remove parallel-run race sensitivity.
+
+### Quality Checks
+- No hard waits (`waitForTimeout`) introduced.
+- No brittle CSS/XPath selectors introduced.
+- Deterministic response assertions and explicit refusal-field checks included.
+- Playwright CLI session closed after exploration attempt.
+- Temp artifacts persisted under `_bmad-output/test-artifacts/automation-runs/g-4-2026-03-07T11-54-53Z`.
+
+### Key Assumptions
+- Story g.4 seeded fixture context continues to provide valid tenant/orgUnit role overrides for deterministic thread and neighbor workflows.
+- Ensure-thread lifecycle contract remains:
+  - `data.lifecycle.createdNewThread`
+  - `data.lifecycle.reusedThreadId` when reusing an existing active thread.
+
+### Risks
+- Live browser exploration remained unavailable in standalone CLI mode (`ERR_CONNECTION_REFUSED`), so selector generation relied on artifact/code analysis and execution validation.
+- If backend envelope fields drift for thread lifecycle metadata, API contract assertions will fail intentionally and require explicit contract update.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` to score maintainability and anti-flake quality for g.4 automate additions.
+- `[TR] Trace Requirements` to refresh g.4 acceptance-criteria traceability across ATDD + automate suites.
