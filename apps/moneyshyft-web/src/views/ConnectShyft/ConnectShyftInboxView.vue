@@ -113,6 +113,7 @@
                 v-model="queueSearch"
                 data-testid="connectshyft-queue-search-input"
                 type="text"
+                aria-label="Search queue"
                 placeholder="Search summaries or context"
                 autocomplete="off"
                 :class="[

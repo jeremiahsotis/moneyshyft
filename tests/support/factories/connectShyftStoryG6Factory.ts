@@ -2,6 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { connectShyftCapabilityEnvelopeData } from '../../fixtures/test-data';
 import { createTenantScopeHeaders } from './tenantRepositoryFactory';
 
+const STORY_G6_DEFAULT_SCOPE = {
+  tenantId: 'tenant-connectshyft-ux-r4',
+  orgUnitId: 'org-connectshyft-ux-r4-east',
+  volunteerUserId: 'user-connectshyft-ux-r4-operator',
+  adminUserId: 'user-connectshyft-ux-r4-admin',
+  viewerUserId: 'user-connectshyft-ux-r4-viewer',
+} as const;
+
 export type ConnectShyftFlags = {
   connectshyft_enabled: boolean;
   connectshyft_inbox_enabled: boolean;
@@ -48,6 +56,7 @@ export type StoryG6Context = {
   csrfToken: string;
   threadIds: {
     unclaimed: string;
+    unclaimedPrefersNo: string;
     claimed: string;
     mineVoicemail: string;
     closedOutbound: string;
@@ -85,9 +94,9 @@ export type StoryG6Context = {
     desktop: { width: 1440; height: 900 };
   };
   focusOrder: readonly [
-    'connectshyft-bottom-nav-inbox',
-    'connectshyft-bottom-nav-mine',
-    'connectshyft-bottom-nav-more'
+    'connectshyft-queue-search-input',
+    'connectshyft-queue-card-tap-target',
+    'connectshyft-thread-card-primary-action'
   ];
   flags: ConnectShyftFlags;
   paths: {
@@ -105,23 +114,24 @@ export function createStoryG6Context(
 ): StoryG6Context {
   return {
     storyId: 'g-6',
-    tenantId: overrides.tenantId ?? connectShyftCapabilityEnvelopeData.tenantAlphaId,
-    orgUnitId: overrides.orgUnitId ?? connectShyftCapabilityEnvelopeData.orgUnitAlphaEastId,
+    tenantId: overrides.tenantId ?? STORY_G6_DEFAULT_SCOPE.tenantId,
+    orgUnitId: overrides.orgUnitId ?? STORY_G6_DEFAULT_SCOPE.orgUnitId,
     role: overrides.role ?? 'ORGUNIT_MEMBER',
-    userId: overrides.userId ?? 'user-connectshyft-g6-volunteer',
-    adminUserId: connectShyftCapabilityEnvelopeData.orgUnitAdminUserId,
-    viewerUserId: connectShyftCapabilityEnvelopeData.tenantViewerUserId,
+    userId: overrides.userId ?? STORY_G6_DEFAULT_SCOPE.volunteerUserId,
+    adminUserId: STORY_G6_DEFAULT_SCOPE.adminUserId,
+    viewerUserId: STORY_G6_DEFAULT_SCOPE.viewerUserId,
     correlationId: overrides.correlationId ?? `corr-story-g6-${randomUUID().slice(0, 8)}`,
     csrfToken: overrides.csrfToken ?? `csrf-story-g6-${randomUUID().slice(0, 8)}`,
     threadIds: {
       unclaimed: 'thread-ux-r4-unclaimed-1001',
+      unclaimedPrefersNo: 'thread-ux-r4-unclaimed-prefers-no-1004',
       claimed: 'thread-ux-r4-claimed-1002',
       mineVoicemail: 'thread-g1-voicemail-1004',
       closedOutbound: 'thread-ux-r4-closed-prefers-no-1005',
-      closedInbound: 'thread-ux-r3-closed-voice-1003',
+      closedInbound: 'thread-ux-r4-closed-1003',
     },
     neighborIds: {
-      closedInbound: 'neighbor-connectshyft-ux-r3-closed-1003',
+      closedInbound: 'neighbor-connectshyft-ux-r4-1003',
     },
     events: {
       inboundMissedCall: 'voice.missed_inbound_call',
@@ -152,9 +162,9 @@ export function createStoryG6Context(
       desktop: { width: 1440, height: 900 },
     },
     focusOrder: [
-      'connectshyft-bottom-nav-inbox',
-      'connectshyft-bottom-nav-mine',
-      'connectshyft-bottom-nav-more',
+      'connectshyft-queue-search-input',
+      'connectshyft-queue-card-tap-target',
+      'connectshyft-thread-card-primary-action',
     ],
     flags: {
       ...connectShyftCapabilityEnvelopeData.flagsAllEnabled,
