@@ -1,6 +1,6 @@
 # Story g.4: Add Neighbor and Directory Rebuild
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -34,18 +34,18 @@ so that I can create/find people quickly and start the right conversation.
 
 ## Tasks / Subtasks
 
-- [ ] Rebuild Add Neighbor form flow for conversation-first onboarding (AC: 1, 2, 5)
-  - [ ] Expand form model to support complete required field set and optional notes.
-  - [ ] Preserve clear refusal messaging for validation failures and policy constraints.
-- [ ] Introduce/refresh volunteer Directory surface (AC: 3, 5)
-  - [ ] Implement conference-scoped search by name and phone.
-  - [ ] Ensure mobile-first list interactions and quick open/start actions.
-- [ ] Wire deterministic thread start behavior from directory entries (AC: 4)
-  - [ ] Reuse existing thread ensure endpoint semantics.
-  - [ ] Show non-disruptive notice when routing to existing active thread.
-- [ ] Align Add Neighbor + Directory primitives with g.1 foundation (AC: 1, 3, 5)
-  - [ ] Use shared token/primitives and avoid ad hoc UI components.
-  - [ ] Keep volunteer-primary copy free of internal identifiers.
+- [x] Rebuild Add Neighbor form flow for conversation-first onboarding (AC: 1, 2, 5)
+  - [x] Expand form model to support complete required field set and optional notes.
+  - [x] Preserve clear refusal messaging for validation failures and policy constraints.
+- [x] Introduce/refresh volunteer Directory surface (AC: 3, 5)
+  - [x] Implement conference-scoped search by name and phone.
+  - [x] Ensure mobile-first list interactions and quick open/start actions.
+- [x] Wire deterministic thread start behavior from directory entries (AC: 4)
+  - [x] Reuse existing thread ensure endpoint semantics.
+  - [x] Show non-disruptive notice when routing to existing active thread.
+- [x] Align Add Neighbor + Directory primitives with g.1 foundation (AC: 1, 3, 5)
+  - [x] Use shared token/primitives and avoid ad hoc UI components.
+  - [x] Keep volunteer-primary copy free of internal identifiers.
 
 ## Dev Notes
 
@@ -131,19 +131,33 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `cat _bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`
-- `cat apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftNeighborCreateView.vue`
-- `rg -n "Directory|Neighbor|search|Add Neighbor" apps/moneyshyft-web/src/views/ConnectShyft/*.vue`
-- `cat apps/moneyshyft-web/src/router/index.ts`
+- `npm run branch:ensure-workflow -- --workflow dev-story --story g-4-add-neighbor-and-directory-rebuild` (pass)
+- `npm run story:status:set -- --story-file _bmad-output/implementation-artifacts/g-4-add-neighbor-and-directory-rebuild.md --status in-progress --lane connectshyft` (pass)
+- `npx nx run moneyshyft-web:build` (pass)
+- `npm run test:e2e -- tests/e2e/platform/b-1-tenant-scoped-neighbor-creation-with-required-phone.spec.ts` (pass)
+- `npm run test:e2e -- tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts` (pass)
+- `npm run policy:check` (pass)
 
 ### Completion Notes List
 
-- Created Story g.4 ready-for-dev context for volunteer-friendly Add Neighbor/Directory rebuild with deterministic thread-start guardrails.
+- Rebuilt Add Neighbor flow with a full intake model (primary/additional phones, email, address, prefers-texting toggle, shared-phone toggle, optional notes) and preserved deterministic refusal messaging for missing required contact input.
+- Added conference-scoped Directory UI route (`/app/connectshyft/directory`) with name/phone search modes, mobile/tablet layout markers, and context panel visibility for volunteer workflows.
+- Wired deterministic directory start-conversation actions through existing `POST /api/v1/connectshyft/threads` ensure semantics and surfaced non-disruptive existing/new thread notices after routing to thread detail.
+- Extended frontend neighbor contracts to carry additional intake fields and optional directory search params while keeping backward compatibility with existing neighbor-create flows.
+- Activated and passed Story g.4 ATDD E2E coverage with deterministic API seeding for scoped search and existing/new conversation-start behavior.
 
 ### File List
 
 - _bmad-output/implementation-artifacts/g-4-add-neighbor-and-directory-rebuild.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- apps/moneyshyft-web/src/features/connectshyft/neighbors.ts
+- apps/moneyshyft-web/src/router/index.ts
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftNeighborCreateView.vue
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftDirectoryView.vue
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
+- tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts
 
 ## Change Log
 
 - 2026-03-06: Created Story g.4 ready-for-dev context document.
+- 2026-03-07: Implemented Add Neighbor + Directory rebuild (AC1-AC5), added deterministic thread start notices, and activated/passed g.4 E2E ATDD coverage.

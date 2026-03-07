@@ -8,6 +8,22 @@ export type ConnectShyftNeighborPhoneInput = {
   verificationStatus?: 'verified' | 'unverified';
 };
 
+export type ConnectShyftNeighborAddressInput = {
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+};
+
+export type ConnectShyftNeighborAddress = {
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+};
+
 export type ConnectShyftNeighborPhone = {
   phoneId: string;
   label: string;
@@ -27,6 +43,9 @@ export type ConnectShyftNeighbor = {
   firstName: string;
   lastName: string;
   prefersTexting: ConnectShyftTextingPreference;
+  email?: string;
+  notes?: string;
+  address?: ConnectShyftNeighborAddress;
   phones: ConnectShyftNeighborPhone[];
   createdAtUtc?: string;
   updatedAtUtc?: string;
@@ -113,6 +132,10 @@ export type ConnectShyftNeighborCreateInput = {
   firstName: string;
   lastName: string;
   phones: ConnectShyftNeighborPhoneInput[];
+  email?: string;
+  address?: ConnectShyftNeighborAddressInput;
+  prefersTexting?: ConnectShyftTextingPreference;
+  notes?: string;
 };
 
 export type ConnectShyftNeighborCreateResult =
@@ -183,6 +206,13 @@ export type ConnectShyftNeighborListResult =
     scope: ConnectShyftNeighborScope | null;
   };
 
+export type ConnectShyftNeighborSearchMode = 'name' | 'phone';
+
+export type ConnectShyftNeighborListInput = {
+  query?: string;
+  mode?: ConnectShyftNeighborSearchMode;
+};
+
 export type ConnectShyftNeighborMergeInput = {
   orgUnitId?: string;
   sourceNeighborId: string;
@@ -216,6 +246,11 @@ const normalizeString = (value: unknown): string => {
   }
 
   return value.trim();
+};
+
+const normalizeOptionalString = (value: unknown): string | undefined => {
+  const normalized = normalizeString(value);
+  return normalized.length > 0 ? normalized : undefined;
 };
 
 const parseNeighborPhone = (payload: unknown): ConnectShyftNeighborPhone | null => {
@@ -265,6 +300,38 @@ const parseNeighbor = (payload: unknown): ConnectShyftNeighbor | null => {
       })
     : [];
 
+  const rawAddress = (payload as {
+    address?: {
+      line1?: unknown;
+      line2?: unknown;
+      city?: unknown;
+      state?: unknown;
+      postalCode?: unknown;
+      postal_code?: unknown;
+    };
+  }).address;
+
+  const addressLine1 = normalizeOptionalString(rawAddress?.line1);
+  const addressCity = normalizeOptionalString(rawAddress?.city);
+  const addressState = normalizeOptionalString(rawAddress?.state);
+  const addressPostalCode = normalizeOptionalString(
+    rawAddress?.postalCode ?? rawAddress?.postal_code,
+  );
+  const parsedAddress = (
+    addressLine1
+    && addressCity
+    && addressState
+    && addressPostalCode
+  )
+    ? {
+      line1: addressLine1,
+      line2: normalizeOptionalString(rawAddress?.line2),
+      city: addressCity,
+      state: addressState,
+      postalCode: addressPostalCode,
+    }
+    : undefined;
+
   return {
     neighborId: normalizeString(rawNeighbor.neighborId),
     tenantId: normalizeString(rawNeighbor.tenantId),
@@ -272,6 +339,9 @@ const parseNeighbor = (payload: unknown): ConnectShyftNeighbor | null => {
     firstName: normalizeString(rawNeighbor.firstName),
     lastName: normalizeString(rawNeighbor.lastName),
     prefersTexting,
+    email: normalizeOptionalString((payload as { email?: unknown }).email),
+    notes: normalizeOptionalString((payload as { notes?: unknown }).notes),
+    address: parsedAddress,
     phones,
     createdAtUtc: normalizeString(rawNeighbor.createdAtUtc),
     updatedAtUtc: normalizeString(rawNeighbor.updatedAtUtc),
@@ -503,6 +573,10 @@ export const createConnectShyftNeighbor = async (
     firstName: input.firstName,
     lastName: input.lastName,
     phones: input.phones,
+    email: input.email,
+    address: input.address,
+    prefersTexting: input.prefersTexting,
+    notes: input.notes,
   };
 
   try {
@@ -672,9 +746,21 @@ export const updateConnectShyftNeighborProfile = async (
   }
 };
 
-export const fetchConnectShyftNeighborsCollection = async (): Promise<ConnectShyftNeighborListResult> => {
+export const fetchConnectShyftNeighborsCollection = async (
+  input: ConnectShyftNeighborListInput = {},
+): Promise<ConnectShyftNeighborListResult> => {
+  const params: Record<string, string> = {};
+  const query = normalizeString(input.query);
+  if (query.length > 0) {
+    params.query = query;
+  }
+  if (input.mode === 'name' || input.mode === 'phone') {
+    params.mode = input.mode;
+  }
+
   try {
     const response = await api.get('/connectshyft/neighbors', {
+      params,
       headers: buildConnectShyftTestOverrideHeaders(),
     });
 

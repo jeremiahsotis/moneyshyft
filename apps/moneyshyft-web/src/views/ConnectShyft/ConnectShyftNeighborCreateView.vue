@@ -1,16 +1,36 @@
 <template>
   <main class="min-h-screen bg-slate-50 px-4 py-8">
-    <section class="mx-auto max-w-4xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+    <section
+      data-testid="connectshyft-add-neighbor-surface"
+      class="mx-auto max-w-4xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+    >
       <header class="mb-6">
         <h1 class="text-2xl font-semibold text-slate-900">
           Create Neighbor
         </h1>
         <p class="mt-2 text-sm text-slate-600">
-          Create a tenant-scoped neighbor record with at least one phone value.
+          Capture volunteer-friendly contact details and start a conversation quickly.
         </p>
+        <RouterLink
+          :to="directoryPath"
+          class="mt-3 inline-flex min-h-[44px] items-center rounded border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+        >
+          Open Directory
+        </RouterLink>
       </header>
 
-      <section class="mb-6 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+      <p
+        v-if="layoutMarkerTestId"
+        :data-testid="layoutMarkerTestId"
+        class="mb-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+      >
+        {{ layoutMarkerCopy }}
+      </p>
+
+      <section
+        data-testid="connectshyft-add-neighbor-context-panel"
+        class="mb-6 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"
+      >
         <p class="font-medium text-slate-900">Active scope</p>
         <p class="mt-1">Tenant: {{ scope?.tenantId || 'Resolving from server...' }}</p>
         <p>orgUnit: {{ scope?.orgUnitId || 'Resolving from server...' }}</p>
@@ -26,7 +46,7 @@
               type="text"
               autocomplete="off"
               :disabled="isSubmitting"
-              class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+              class="min-h-[44px] rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
             >
           </label>
 
@@ -38,32 +58,35 @@
               type="text"
               autocomplete="off"
               :disabled="isSubmitting"
-              class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+              class="min-h-[44px] rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
             >
           </label>
         </div>
 
         <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <label class="flex flex-col gap-1 text-sm text-slate-700">
-            Phone value
+          <label
+            data-testid="connectshyft-neighbor-primary-phone-input"
+            class="flex flex-col gap-1 text-sm text-slate-700"
+          >
+            Primary phone
             <input
               data-testid="connectshyft-neighbor-phone-input"
-              v-model="phoneValue"
+              v-model="primaryPhoneValue"
               type="text"
               autocomplete="off"
               placeholder="+1 (260) 555-0199"
               :disabled="isSubmitting"
-              class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+              class="min-h-[44px] rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
             >
           </label>
 
           <label class="flex flex-col gap-1 text-sm text-slate-700">
-            Phone label
+            Primary phone label
             <select
               data-testid="connectshyft-neighbor-phone-label-select"
-              v-model="phoneLabel"
+              v-model="primaryPhoneLabel"
               :disabled="isSubmitting"
-              class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+              class="min-h-[44px] rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
             >
               <option value="mobile">mobile</option>
               <option value="home">home</option>
@@ -72,6 +95,133 @@
             </select>
           </label>
         </div>
+
+        <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label class="flex flex-col gap-1 text-sm text-slate-700">
+            Additional phone
+            <input
+              data-testid="connectshyft-neighbor-additional-phone-input"
+              v-model="additionalPhoneValue"
+              type="text"
+              autocomplete="off"
+              placeholder="+1 (260) 555-0120"
+              :disabled="isSubmitting"
+              class="min-h-[44px] rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+            >
+          </label>
+
+          <label class="flex flex-col gap-1 text-sm text-slate-700">
+            Additional phone label
+            <select
+              v-model="additionalPhoneLabel"
+              :disabled="isSubmitting"
+              class="min-h-[44px] rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+            >
+              <option value="home">home</option>
+              <option value="mobile">mobile</option>
+              <option value="work">work</option>
+              <option value="other">other</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label class="flex flex-col gap-1 text-sm text-slate-700">
+            Email
+            <input
+              data-testid="connectshyft-neighbor-email-input"
+              v-model="email"
+              type="email"
+              autocomplete="off"
+              placeholder="neighbor@example.org"
+              :disabled="isSubmitting"
+              class="min-h-[44px] rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+            >
+          </label>
+
+          <label class="inline-flex min-h-[44px] items-center gap-2 rounded border border-slate-200 px-3 py-2 text-sm text-slate-700">
+            <input
+              data-testid="connectshyft-neighbor-prefers-texting-toggle"
+              v-model="prefersTexting"
+              type="checkbox"
+              :disabled="isSubmitting"
+            >
+            Prefers texting
+          </label>
+        </div>
+
+        <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label class="inline-flex min-h-[44px] items-center gap-2 rounded border border-slate-200 px-3 py-2 text-sm text-slate-700">
+            <input
+              data-testid="connectshyft-neighbor-shared-phone-toggle"
+              v-model="additionalPhoneShared"
+              type="checkbox"
+              :disabled="isSubmitting"
+            >
+            Mark additional phone as shared
+          </label>
+        </div>
+
+        <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label class="flex flex-col gap-1 text-sm text-slate-700 md:col-span-2">
+            Address line 1
+            <input
+              data-testid="connectshyft-neighbor-address-line1-input"
+              v-model="addressLine1"
+              type="text"
+              autocomplete="off"
+              :disabled="isSubmitting"
+              class="min-h-[44px] rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+            >
+          </label>
+
+          <label class="flex flex-col gap-1 text-sm text-slate-700">
+            City
+            <input
+              data-testid="connectshyft-neighbor-address-city-input"
+              v-model="addressCity"
+              type="text"
+              autocomplete="off"
+              :disabled="isSubmitting"
+              class="min-h-[44px] rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+            >
+          </label>
+
+          <label class="flex flex-col gap-1 text-sm text-slate-700">
+            State
+            <input
+              data-testid="connectshyft-neighbor-address-state-input"
+              v-model="addressState"
+              type="text"
+              autocomplete="off"
+              :disabled="isSubmitting"
+              class="min-h-[44px] rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+            >
+          </label>
+
+          <label class="flex flex-col gap-1 text-sm text-slate-700">
+            Postal code
+            <input
+              data-testid="connectshyft-neighbor-address-postal-input"
+              v-model="addressPostalCode"
+              type="text"
+              autocomplete="off"
+              :disabled="isSubmitting"
+              class="min-h-[44px] rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+            >
+          </label>
+        </div>
+
+        <label class="mt-3 flex flex-col gap-1 text-sm text-slate-700">
+          Notes (optional)
+          <textarea
+            data-testid="connectshyft-neighbor-notes-textarea"
+            v-model="notes"
+            rows="3"
+            :disabled="isSubmitting"
+            class="min-h-[44px] rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+          />
+        </label>
 
         <p
           v-if="validationError"
@@ -100,8 +250,9 @@
         <div class="mt-4">
           <button
             type="submit"
+            data-testid="connectshyft-neighbor-submit-action"
             :disabled="isSubmitting"
-            class="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+            class="min-h-[44px] rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
           >
             Create Neighbor
           </button>
@@ -112,33 +263,141 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import {
   createConnectShyftNeighbor,
   fetchConnectShyftNeighborScope,
   type ConnectShyftNeighborScope,
   type ConnectShyftNeighbor,
+  type ConnectShyftNeighborAddressInput,
+  type ConnectShyftNeighborPhoneInput,
 } from '@/features/connectshyft/neighbors';
+import { CONNECTSHYFT_RESPONSIVE_BREAKPOINTS } from '@/features/connectshyft/uiContracts';
 
 const firstName = ref('');
 const lastName = ref('');
-const phoneValue = ref('');
-const phoneLabel = ref('mobile');
+const primaryPhoneValue = ref('');
+const primaryPhoneLabel = ref('mobile');
+const additionalPhoneValue = ref('');
+const additionalPhoneLabel = ref('home');
+const additionalPhoneShared = ref(false);
+const email = ref('');
+const addressLine1 = ref('');
+const addressCity = ref('');
+const addressState = ref('');
+const addressPostalCode = ref('');
+const prefersTexting = ref(false);
+const notes = ref('');
+
 const isSubmitting = ref(false);
 const validationError = ref('');
 const successMessage = ref('');
 const createdNeighbor = ref<ConnectShyftNeighbor | null>(null);
 const scope = ref<ConnectShyftNeighborScope | null>(null);
+const viewportWidth = ref<number>(typeof window === 'undefined' ? 1280 : window.innerWidth);
+const route = useRoute();
+
+const normalize = (value: string): string => value.trim();
+
+const directoryPath = computed(() => {
+  return {
+    path: '/app/connectshyft/directory',
+    query: route.query,
+  };
+});
+
+const hasCompleteAddress = computed<boolean>(() => {
+  return normalize(addressLine1.value).length > 0
+    && normalize(addressCity.value).length > 0
+    && normalize(addressState.value).length > 0
+    && normalize(addressPostalCode.value).length > 0;
+});
+
+const layoutMarkerTestId = computed<string | null>(() => {
+  if (viewportWidth.value <= CONNECTSHYFT_RESPONSIVE_BREAKPOINTS.mobile) {
+    return 'connectshyft-add-neighbor-layout-mobile';
+  }
+
+  if (viewportWidth.value <= CONNECTSHYFT_RESPONSIVE_BREAKPOINTS.tablet) {
+    return 'connectshyft-add-neighbor-layout-tablet';
+  }
+
+  return null;
+});
+
+const layoutMarkerCopy = computed<string>(() => {
+  if (layoutMarkerTestId.value === 'connectshyft-add-neighbor-layout-mobile') {
+    return 'Mobile Add Neighbor layout active';
+  }
+
+  if (layoutMarkerTestId.value === 'connectshyft-add-neighbor-layout-tablet') {
+    return 'Tablet Add Neighbor layout active';
+  }
+
+  return 'Desktop Add Neighbor layout active';
+});
+
+const updateViewportWidth = (): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  viewportWidth.value = window.innerWidth;
+};
 
 onMounted(async () => {
   scope.value = await fetchConnectShyftNeighborScope();
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', updateViewportWidth);
+  }
 });
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateViewportWidth);
+  }
+});
+
+const buildPhonesPayload = (): ConnectShyftNeighborPhoneInput[] => {
+  const phones: ConnectShyftNeighborPhoneInput[] = [
+    {
+      label: normalize(primaryPhoneLabel.value) || 'mobile',
+      value: primaryPhoneValue.value,
+      isShared: false,
+    },
+  ];
+
+  if (normalize(additionalPhoneValue.value).length > 0) {
+    phones.push({
+      label: normalize(additionalPhoneLabel.value) || 'home',
+      value: additionalPhoneValue.value,
+      isShared: additionalPhoneShared.value,
+    });
+  }
+
+  return phones;
+};
+
+const buildAddressPayload = (): ConnectShyftNeighborAddressInput | undefined => {
+  if (!hasCompleteAddress.value) {
+    return undefined;
+  }
+
+  return {
+    line1: normalize(addressLine1.value),
+    city: normalize(addressCity.value),
+    state: normalize(addressState.value),
+    postalCode: normalize(addressPostalCode.value),
+  };
+};
 
 const handleCreate = async (): Promise<void> => {
   validationError.value = '';
   successMessage.value = '';
 
-  if (phoneValue.value.trim().length === 0) {
+  if (normalize(primaryPhoneValue.value).length === 0) {
     validationError.value = 'Provide at least one phone to create a neighbor.';
     createdNeighbor.value = null;
     return;
@@ -148,12 +407,11 @@ const handleCreate = async (): Promise<void> => {
   const result = await createConnectShyftNeighbor({
     firstName: firstName.value,
     lastName: lastName.value,
-    phones: [
-      {
-        label: phoneLabel.value,
-        value: phoneValue.value,
-      },
-    ],
+    phones: buildPhonesPayload(),
+    email: normalize(email.value) || undefined,
+    address: buildAddressPayload(),
+    prefersTexting: prefersTexting.value ? 'YES' : 'NO',
+    notes: normalize(notes.value) || undefined,
   });
   isSubmitting.value = false;
 

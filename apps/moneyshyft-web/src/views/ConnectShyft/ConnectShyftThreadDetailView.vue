@@ -43,6 +43,22 @@
           </p>
 
           <p
+            v-if="directoryNoticeType === 'existing'"
+            data-testid="connectshyft-directory-existing-thread-notice"
+            class="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-base text-blue-900"
+          >
+            Opened your existing active conversation for this neighbor.
+          </p>
+
+          <p
+            v-if="directoryNoticeType === 'new'"
+            data-testid="connectshyft-directory-new-thread-notice"
+            class="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-base text-emerald-900"
+          >
+            Started a new conversation for this neighbor.
+          </p>
+
+          <p
             v-if="detailLoadError"
             class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
           >
@@ -524,6 +540,15 @@ const isViewerRole = computed(() => role.value === 'TENANT_VIEWER');
 const threadId = computed(() => {
   const rawValue = route.params.threadId;
   return typeof rawValue === 'string' ? rawValue.trim() : '';
+});
+
+const directoryNoticeType = computed<'existing' | 'new' | null>(() => {
+  const rawValue = route.query.directoryNotice;
+  if (rawValue === 'existing' || rawValue === 'new') {
+    return rawValue;
+  }
+
+  return null;
 });
 
 const moduleAvailable = computed(() => availability.value.capabilities.module);
