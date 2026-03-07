@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-06T19:50:19Z'
+lastSaved: '2026-03-07T03:31:29Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -4930,3 +4930,133 @@ lastSaved: '2026-03-06T19:50:19Z'
 ### Recommended Next Workflow
 - `[RV] Review Tests` to score maintainability and anti-flake quality for g.2 automate additions.
 - `[TR] Trace Requirements` to refresh g.2 AC traceability across ATDD + automate suites for reporting.
+
+## Story g.3 Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Story artifact loaded: `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md`
+  - Existing ATDD files found for Story g.3:
+    - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts`
+    - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts`
+
+### Context Loaded
+- Thread detail implementation and contracts reviewed:
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue`
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/features/connectshyft/uiContracts.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/features/connectshyft/readContracts.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts`
+- Existing test structure and nearby automation patterns reviewed:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/ux-r4-outbound-policy-guardrail-ui.automate.api.spec.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/ux-r4-outbound-policy-guardrail-ui.automate.spec.ts`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core: `test-levels-framework.md`, `test-priorities-matrix.md`, `data-factories.md`, `selective-testing.md`, `ci-burn-in.md`, `test-quality.md`
+- Playwright Utils: `overview.md`, `api-request.md`, `network-recorder.md`, `auth-session.md`, `intercept-network-call.md`, `recurse.md`, `log.md`, `file-utils.md`, `burn-in.md`, `network-error-monitor.md`, `fixtures-composition.md`
+- Browser automation reference: `playwright-cli.md`
+
+## Story g.3 Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- Attempted Playwright CLI exploration with session `tea-automate`.
+- Result: page load failed with `net::ERR_CONNECTION_REFUSED` for `http://localhost:5174` in standalone CLI mode.
+- Session hygiene completed: CLI session closed successfully.
+- Fallback applied: code/artifact-driven selector and flow analysis.
+
+### Coverage Gap and Target Selection
+- Existing ATDD tests already cover core AC1-AC5 happy-path contracts.
+- Automation expansion targets selected for edge/negative behavior:
+  - API:
+    - Invalid override reason refusal metadata and side-effect lock
+    - CLOSED outbound message reopen-with-refusal semantics
+    - Voicemail classification guardrail (no voicemail leakage to non-voicemail threads)
+  - E2E:
+    - Closed-thread override gating flow
+    - Override submit success/audit feedback clearing refusal state
+    - Viewer-role action lock enforcement
+    - Non-voicemail thread timeline guardrail
+
+### Test Level and Priority Plan
+- **API (primary)**: policy/lifecycle contracts and refusal envelopes.
+- **E2E (secondary)**: operator flow and UI action/timeline behavior.
+- Priority assignments:
+  - P0: 3 scenarios
+  - P1: 4 scenarios
+  - P2/P3: 0
+
+### Coverage Plan Outputs
+- `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-3-thread-detail-conversation-first-rebuild.automate.api.spec.ts`
+- `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.automate.spec.ts`
+
+## Story g.3 Run - Step 3C: Aggregate Test Generation Results
+
+### Parallel Subprocess Outputs
+- API subprocess output:
+  - `/tmp/tea-automate-api-tests-2026-03-07T03-30-42Z.json`
+- E2E subprocess output:
+  - `/tmp/tea-automate-e2e-tests-2026-03-07T03-30-42Z.json`
+- Aggregated summary:
+  - `/tmp/tea-automate-summary-2026-03-07T03-30-42Z.json`
+- Artifact copies stored under test artifacts folder:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/tea-automate-api-tests-2026-03-07T03-30-42Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/tea-automate-e2e-tests-2026-03-07T03-30-42Z.json`
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/tea-automate-summary-2026-03-07T03-30-42Z.json`
+
+### Files Written to Disk
+- `tests/api/platform/g-3-thread-detail-conversation-first-rebuild.automate.api.spec.ts`
+- `tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.automate.spec.ts`
+
+### Fixture/Helper Aggregation
+- Reused existing fixtures/helpers:
+  - `tests/support/fixtures/connectShyftStoryG3.fixture.ts`
+  - `tests/support/factories/connectShyftStoryG3Factory.ts`
+  - `tests/support/helpers/apiClient.ts`
+  - `tests/helpers/auth.ts`
+- No new fixture infrastructure required for this story slice.
+
+### Summary Metrics
+- Total tests generated: `7`
+  - API tests: `3` (1 file)
+  - E2E tests: `4` (1 file)
+- Priority coverage:
+  - P0: `3`
+  - P1: `4`
+  - P2: `0`
+  - P3: `0`
+
+## Story g.3 Run - Step 4: Validate and Summarize
+
+### Checklist Validation
+- Framework readiness: passed.
+- Coverage mapping and duplicate-avoidance versus ATDD: passed.
+- Test quality checks: passed.
+  - No hard waits (`waitForTimeout`) used.
+  - No brittle selector strategy introduced.
+  - All test names include priority tags.
+- CLI session cleanup: passed (session `tea-automate` closed).
+- Temp artifacts: persisted under `_bmad-output/test-artifacts` for run traceability.
+
+### Test Execution Evidence
+- Command executed:
+  - `npm run test:e2e -- tests/api/platform/g-3-thread-detail-conversation-first-rebuild.automate.api.spec.ts tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.automate.spec.ts`
+- Result: **7 passed**.
+
+### Assumptions and Risks
+- Assumption: synthetic thread fixtures continue to model policy/lifecycle behavior deterministically for g.3 IDs.
+- Risk: if canonical thread fixture payloads drift, timeline classification assertions may require update.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for quality scoring and additional maintainability checks.
+- `[TR] Trace Requirements` to map g.3 acceptance criteria to ATDD + automate coverage.
