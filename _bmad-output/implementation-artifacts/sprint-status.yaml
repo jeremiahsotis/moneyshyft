@@ -61,13 +61,13 @@ development_status:
   1-5-policy-gate-and-branch-workflow-guard-enforcement: done
   1-6-security-controls-and-redaction-verification: done
   epic-1-retrospective: done
-  epic-2: in-progress
+  epic-2: done
   2-1-commitment-domain-model-and-transition-rules: done
-  2-2-donor-self-service-pickup-intake-with-capacity-check: review
+  2-2-donor-self-service-pickup-intake-with-capacity-check: done
   2-3-cashier-assisted-intake-and-voucher-delivery-scheduling: done
   2-4-request-to-commitment-linkage-and-terminal-enforcement: done
-  2-5-refusal-outcomes-with-structured-alternatives: in-progress
-  2-6-canonical-timezone-processing-across-intake-and-scheduling: review
+  2-5-refusal-outcomes-with-structured-alternatives: done
+  2-6-canonical-timezone-processing-across-intake-and-scheduling: done
   epic-2-retrospective: optional
   epic-3: backlog
   3-1-unified-dispatcher-queue-and-triage-attributes: backlog
