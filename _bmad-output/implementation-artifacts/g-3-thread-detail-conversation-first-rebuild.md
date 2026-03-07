@@ -133,14 +133,14 @@ GPT-5 Codex
 
 ### Debug Log References
 
-- `npm run branch:ensure-workflow -- --workflow dev-story --story g-3-thread-detail-conversation-first-rebuild`
-- `npm run story:status:set -- --story-file _bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md --status in-progress --lane connectshyft`
-- `npm run test:e2e -- tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts`
-- `npm run test:e2e -- tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts`
-- `npm test -- --runInBand src/modules/connectshyft/__tests__/readContracts.test.ts` (apps/moneyshyft-api)
-- `npm run build` (apps/moneyshyft-api)
-- `npm run build` (apps/moneyshyft-web)
-- `npm run policy:check`
+- `npm run branch:ensure-workflow -- --workflow dev-story --story g-3-thread-detail-conversation-first-rebuild` (pass)
+- `npm run story:status:set -- --story-file _bmad-output/implementation-artifacts/g-3-thread-detail-conversation-first-rebuild.md --status in-progress --lane connectshyft` (pass)
+- `npm run test:e2e -- tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts` (pass)
+- `npm run test:e2e -- tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts` (pass)
+- `npm test -- --runInBand src/modules/connectshyft/__tests__/readContracts.test.ts` (apps/moneyshyft-api) (pass)
+- `npm run build` (apps/moneyshyft-api) (pass)
+- `npm run build` (apps/moneyshyft-web) (pass)
+- `npm run policy:check` (pass)
 
 ### Completion Notes List
 
