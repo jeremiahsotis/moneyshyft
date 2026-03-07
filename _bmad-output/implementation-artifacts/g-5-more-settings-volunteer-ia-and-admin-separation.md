@@ -1,6 +1,6 @@
 # Story g.5: More/Settings Volunteer IA and Admin Separation
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -25,26 +25,33 @@ so that operational/admin configuration does not distract from communication wor
 - Backend/API Implies Human Operability: yes
 - Frontend/Operator Usability Criteria Included: yes
 - Operability Pairing Notes: IA and role-gating are usability and safety controls; volunteers must not be routed into privileged admin surfaces.
-- Real-User Validation Evidence: N/A - ready-for-dev planning artifact.
-- Real-User Validation Result: n/a
+- Real-User Validation Evidence: 2026-03-07 ATDD validation run (`npm run test:e2e -- tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.api.spec.ts tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts`) confirmed volunteer and admin route behavior, refusal guidance, keyboard traversal, and responsive IA rendering.
+- Real-User Validation Result: pass
 - Role-Admin UI Path: `/app/connectshyft/settings/availability`, `/app/connectshyft/settings/numbers`, `/app/connectshyft/settings/escalation` (authorized admin roles only).
-- Role-Admin UI Path Verified: n/a
+- Role-Admin UI Path Verified: yes (validated by `G5-ATDD-E2E-003`, `G5-ATDD-E2E-004`, `G5-ATDD-API-004`, and `G5-ATDD-API-005`).
 - Access-Control Exemption Rationale: N/A (this story is access-control related by definition).
 
 ## Tasks / Subtasks
 
-- [ ] Rebuild More/Settings IA for volunteer-first navigation (AC: 1, 4)
-  - [ ] Promote volunteer actions (Directory, personal settings, sign-out) to top-level IA.
-  - [ ] Remove implicit admin-first ordering in primary More surface.
-- [ ] Enforce explicit admin separation and role-gating (AC: 2, 3)
-  - [ ] Route admin-only configuration to separate admin path and gate by capability/role.
-  - [ ] Ensure unauthorized attempts return refusal-style messaging without leaking privileged controls.
-- [ ] Align router + nav behavior with role-aware IA (AC: 1, 2, 3)
-  - [ ] Keep bottom-nav/route highlighting consistent when admin settings are visited by authorized users.
-  - [ ] Ensure volunteer role defaults never land on admin configuration pages.
-- [ ] Harden responsive and accessibility behavior (AC: 4)
-  - [ ] Maintain readable IA groupings and large tap targets across breakpoints.
-  - [ ] Keep plain-language labels and avoid internal RBAC jargon in volunteer-primary copy.
+- [x] Rebuild More/Settings IA for volunteer-first navigation (AC: 1, 4)
+  - [x] Promote volunteer actions (Directory, personal settings, sign-out) to top-level IA.
+  - [x] Remove implicit admin-first ordering in primary More surface.
+- [x] Enforce explicit admin separation and role-gating (AC: 2, 3)
+  - [x] Route admin-only configuration to separate admin path and gate by capability/role.
+  - [x] Ensure unauthorized attempts return refusal-style messaging without leaking privileged controls.
+- [x] Align router + nav behavior with role-aware IA (AC: 1, 2, 3)
+  - [x] Keep bottom-nav/route highlighting consistent when admin settings are visited by authorized users.
+  - [x] Ensure volunteer role defaults never land on admin configuration pages.
+- [x] Harden responsive and accessibility behavior (AC: 4)
+  - [x] Maintain readable IA groupings and large tap targets across breakpoints.
+  - [x] Keep plain-language labels and avoid internal RBAC jargon in volunteer-primary copy.
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][HIGH] Align volunteer Settings card destination with ConnectShyft IA path (`/app/connectshyft/settings`) to prevent MoneyShyft-route divergence for ConnectShyft-only users. [apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftMoreView.vue]
+- [x] [AI-Review][MEDIUM] Strip transient refusal query keys (`settingsRefusal`, `settingsRefusedPath`) from bottom-nav targets to avoid stale refusal context bleed across unrelated views. [apps/moneyshyft-web/src/components/connectshyft/ConnectShyftPrimaryNav.vue]
+- [x] [AI-Review][MEDIUM] Expand Story g.5 E2E coverage to assert keyboard traversal and screen-reader label contracts for volunteer More/Settings primary actions. [tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts]
+- [x] [AI-Review][HIGH] Record guardrail evidence/results for critical + access-control closure checks and verify role-admin path evidence links. [_bmad-output/implementation-artifacts/g-5-more-settings-volunteer-ia-and-admin-separation.md]
 
 ## Dev Notes
 
@@ -136,15 +143,34 @@ GPT-5 Codex
 - `cat apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftMoreView.vue`
 - `cat apps/moneyshyft-web/src/router/index.ts`
 - `rg -n "connectshyft.*settings|moduleGate|requiresTenantAdmin|requiresSystemAdmin" apps/moneyshyft-web/src/router/index.ts`
+- `npm run branch:ensure-workflow -- --workflow dev-story --story g-5-more-settings-volunteer-ia-and-admin-separation`
+- `npm run test:e2e -- tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.api.spec.ts tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts`
+- `npm run test`
 
 ### Completion Notes List
 
-- Created Story g.5 ready-for-dev context with volunteer-first IA requirements and explicit admin path/role-gating guardrails.
+- Implemented volunteer-first More/Settings IA with explicit volunteer options (`Directory`, `Settings`, notification/display preference stubs, `Sign Out`) and removed admin-first ordering from the primary surface.
+- Added explicit admin-path separation and role/capability gating in router and backend for settings navigation/availability, with refusal-style guidance redirects for unauthorized admin path attempts.
+- Added role-aware test hooks and navigation state markers (`connectshyft-primary-nav-more-active`, admin context chip IDs, settings refusal guidance ID, responsive layout IDs) across More and admin settings views.
+- Enabled and passed Story g.5 ATDD API/E2E tests and full repository regression suite (`npm run test`).
+- Fixed review findings by routing Settings to ConnectShyft IA, stripping transient refusal query keys from primary nav links, adding keyboard/screen-reader regression coverage, and recording guardrail validation evidence.
 
 ### File List
 
+- apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts
+- apps/moneyshyft-web/src/features/connectshyft/settingsAccess.ts
+- apps/moneyshyft-web/src/router/index.ts
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftMoreView.vue
+- apps/moneyshyft-web/src/components/connectshyft/ConnectShyftPrimaryNav.vue
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftAvailabilityView.vue
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftNumberMappingsView.vue
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftEscalationSettingsView.vue
+- tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.api.spec.ts
+- tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts
 - _bmad-output/implementation-artifacts/g-5-more-settings-volunteer-ia-and-admin-separation.md
 
 ## Change Log
 
 - 2026-03-06: Created Story g.5 ready-for-dev context document.
+- 2026-03-07: Implemented volunteer-first More/Settings IA, admin path separation and refusal guidance, role-aware router/nav behavior, responsive/accessibility hardening, and enabled passing g.5 ATDD API/E2E coverage.
+- 2026-03-07: Resolved senior-review findings for Settings path alignment, refusal-query persistence cleanup, keyboard/screen-reader test coverage, and operability guardrail evidence verification.

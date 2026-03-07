@@ -42,43 +42,58 @@ const normalizeIds = (values: string[] | undefined): string[] =>
     ),
   );
 
-export const ensureConnectShyftDbActorUser = async (userId: string): Promise<void> => {
-  const existingUser = await connectShyftDb('users')
-    .where({ id: userId })
-    .first<{ id: string }>('id');
-  if (existingUser) {
-    return;
+const withEphemeralConnectShyftDbClient = async <T>(
+  operation: (db: ReturnType<typeof createConnectShyftDbClient>) => Promise<T>,
+): Promise<T> => {
+  const db = createConnectShyftDbClient();
+  try {
+    return await operation(db);
+  } finally {
+    await db.destroy();
   }
+};
 
-  await connectShyftDb('users')
-    .insert({
-      id: userId,
-      email: `connectshyft-actor-${userId}@example.test`,
-      password_hash: 'test-password-hash',
-      first_name: 'ConnectShyft',
-      last_name: 'Actor',
-      role: 'member',
-    })
-    .onConflict('id')
-    .ignore();
+export const ensureConnectShyftDbActorUser = async (userId: string): Promise<void> => {
+  await withEphemeralConnectShyftDbClient(async (db) => {
+    const existingUser = await db('users')
+      .where({ id: userId })
+      .first<{ id: string }>('id');
+    if (existingUser) {
+      return;
+    }
+
+    await db('users')
+      .insert({
+        id: userId,
+        email: `connectshyft-actor-${userId}@example.test`,
+        password_hash: 'test-password-hash',
+        first_name: 'ConnectShyft',
+        last_name: 'Actor',
+        role: 'member',
+      })
+      .onConflict('id')
+      .ignore();
+  });
 };
 
 export const ensureConnectShyftDbHousehold = async (tenantId: string): Promise<void> => {
-  const existingHousehold = await connectShyftDb('households')
-    .where({ id: tenantId })
-    .first<{ id: string }>('id');
-  if (existingHousehold) {
-    return;
-  }
+  await withEphemeralConnectShyftDbClient(async (db) => {
+    const existingHousehold = await db('households')
+      .where({ id: tenantId })
+      .first<{ id: string }>('id');
+    if (existingHousehold) {
+      return;
+    }
 
-  await connectShyftDb('households')
-    .insert({
-      id: tenantId,
-      name: `ConnectShyft ${tenantId.slice(0, 8)}`,
-      invitation_code: buildInvitationCode(tenantId),
-    })
-    .onConflict('id')
-    .ignore();
+    await db('households')
+      .insert({
+        id: tenantId,
+        name: `ConnectShyft ${tenantId.slice(0, 8)}`,
+        invitation_code: buildInvitationCode(tenantId),
+      })
+      .onConflict('id')
+      .ignore();
+  });
 };
 
 export const cleanupConnectShyftThreadAndNeighborState = async (input: {

@@ -10,74 +10,38 @@ test.describe(
   'Story a.5 Capability-Based Route Access and Envelope Contract Compliance (ATDD E2E)',
   () => {
     test(
-      '[P0] orgUnit-member number mapping writes are refused with deterministic operator feedback @P0',
+      '[P0] orgUnit-member number mapping admin-path deep links are redirected to deterministic refusal guidance @P0',
       async ({ page }) => {
         await login(page);
         await page.goto(
           '/app/connectshyft/settings/numbers?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_MEMBER&orgUnitMemberships=org-connectshyft-alpha-east',
         );
 
-        await expect(
-          page.getByRole('heading', {
-            name: 'ConnectShyft Numbers & OrgUnit Config',
-          }),
-        ).toBeVisible();
-
-        await page.getByTestId('connectshyft-number-input').fill('+12605550991');
-        await page.getByTestId('connectshyft-number-label-input').fill('A5 Forbidden Number');
-
-        const saveResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/connectshyft/numbers')
-            && response.request().method() === 'POST',
+        await expect(page).toHaveURL(/\/app\/connectshyft\/settings\?/);
+        await expect(page.getByTestId('connectshyft-settings-refusal-guidance')).toBeVisible();
+        await expect(page.getByTestId('connectshyft-settings-refusal-guidance')).toContainText(
+          '/app/connectshyft/settings/numbers',
         );
-
-        await page.getByRole('button', { name: 'Save Number Mapping' }).click();
-        await saveResponse;
-
-        await expect(page.getByTestId('connectshyft-number-validation-error')).toContainText(
-          'authorized ConnectShyft role',
-        );
-
-        await expect(
-          page.getByTestId('connectshyft-number-mapping-row').filter({
-            hasText: 'A5 Forbidden Number',
-          }),
-        ).toHaveCount(0);
+        await expect(page.getByTestId('connectshyft-number-mappings-form')).toHaveCount(0);
+        await expect(page.getByTestId('connectshyft-more-admin-option-numbers')).toHaveCount(0);
       },
     );
 
     test(
-      '[P0] tenant-viewer escalation settings access shows refusal envelope guidance and no success state @P0',
+      '[P0] tenant-viewer escalation admin-path deep links are redirected with refusal guidance and no admin controls @P0',
       async ({ page }) => {
         await login(page);
         await page.goto(
           '/app/connectshyft/settings/escalation?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=TENANT_VIEWER',
         );
 
-        await expect(
-          page.getByRole('heading', {
-            name: 'ConnectShyft Escalation Settings',
-          }),
-        ).toBeVisible();
-
-        await expect(page.getByTestId('connectshyft-escalation-validation-error')).toContainText(
-          'authorized orgUnit role',
+        await expect(page).toHaveURL(/\/app\/connectshyft\/settings\?/);
+        await expect(page.getByTestId('connectshyft-settings-refusal-guidance')).toBeVisible();
+        await expect(page.getByTestId('connectshyft-settings-refusal-guidance')).toContainText(
+          '/app/connectshyft/settings/escalation',
         );
-
-        const saveResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/connectshyft/escalation/config')
-            && response.request().method() === 'PUT',
-        );
-
-        await page.getByRole('button', { name: 'Save Escalation Settings' }).click();
-        await saveResponse;
-
-        await expect(page.getByTestId('connectshyft-escalation-validation-error')).toContainText(
-          'authorized orgUnit role',
-        );
-        await expect(page.getByTestId('connectshyft-escalation-save-success')).toHaveCount(0);
+        await expect(page.getByTestId('connectshyft-escalation-settings-form')).toHaveCount(0);
+        await expect(page.getByTestId('connectshyft-more-admin-option-escalation')).toHaveCount(0);
       },
     );
 

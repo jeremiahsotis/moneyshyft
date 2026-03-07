@@ -8,6 +8,33 @@ import {
   type StoryB4Context,
 } from '../../support/factories/connectShyftStoryB4Factory';
 
+const DB_CONNECTION_RETRY_LIMIT = 8;
+
+const isDbConnectionAcquireError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('Unable to acquire a connection');
+};
+
+const wait = async (ms: number): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+const withDbConnectionRetry = async <T>(
+  operation: () => Promise<T>,
+): Promise<T> => {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isDbConnectionAcquireError(error) || attempt >= DB_CONNECTION_RETRY_LIMIT) {
+        throw error;
+      }
+
+      await wait(500 * (attempt + 1));
+    }
+  }
+};
+
 const buildNeighborProfileUrl = (
   context: StoryB4Context,
   seeded: { sourceNeighborId: string; survivorNeighborId: string },
@@ -73,33 +100,35 @@ const seedNeighborPair = async (
   request: Parameters<typeof apiRequest>[0],
   context: StoryB4Context,
 ): Promise<{ sourceNeighborId: string; survivorNeighborId: string }> => {
-  await ensureConnectShyftDbHousehold(context.tenantId);
-  const seedHeaders = createStoryB4Headers(context, {
-    role: 'TENANT_ADMIN',
-    userId: context.tenantAdminUserId,
-    orgUnitId: context.primaryOrgUnitId,
-    orgUnitMemberships: [context.primaryOrgUnitId],
-  });
-  const suffix = Date.now().toString(36);
-  const sourceNeighborId = await seedNeighbor(
-    request,
-    context.paths.neighborsCollection,
-    seedHeaders,
-    `Source-${suffix}`,
-    'Neighbor',
-  );
-  const survivorNeighborId = await seedNeighbor(
-    request,
-    context.paths.neighborsCollection,
-    seedHeaders,
-    `Survivor-${suffix}`,
-    'Neighbor',
-  );
+  return withDbConnectionRetry(async () => {
+    await ensureConnectShyftDbHousehold(context.tenantId);
+    const seedHeaders = createStoryB4Headers(context, {
+      role: 'TENANT_ADMIN',
+      userId: context.tenantAdminUserId,
+      orgUnitId: context.primaryOrgUnitId,
+      orgUnitMemberships: [context.primaryOrgUnitId],
+    });
+    const suffix = Date.now().toString(36);
+    const sourceNeighborId = await seedNeighbor(
+      request,
+      context.paths.neighborsCollection,
+      seedHeaders,
+      `Source-${suffix}`,
+      'Neighbor',
+    );
+    const survivorNeighborId = await seedNeighbor(
+      request,
+      context.paths.neighborsCollection,
+      seedHeaders,
+      `Survivor-${suffix}`,
+      'Neighbor',
+    );
 
-  return {
-    sourceNeighborId,
-    survivorNeighborId,
-  };
+    return {
+      sourceNeighborId,
+      survivorNeighborId,
+    };
+  });
 };
 
 test.describe(

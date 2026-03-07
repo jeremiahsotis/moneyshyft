@@ -5,6 +5,9 @@ import { login } from '../../helpers/auth';
 const buildEscalationUrl = (query: string): string =>
   `/app/connectshyft/settings/escalation?flags=module:on,inbox:on,escalation:on,webhooks:on&${query}`;
 
+const ADMIN_ESCALATION_QUERY =
+  'tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_ADMIN&orgUnitMemberships=org-connectshyft-alpha-east';
+
 const fillValidRecipients = async (page: Page): Promise<void> => {
   await page.getByTestId('connectshyft-escalation-recipient-primary').selectOption(
     'user-connectshyft-a4-primary-recipient',
@@ -27,9 +30,7 @@ test.describe(
       async ({ page }) => {
         await login(page);
         await page.goto(
-          buildEscalationUrl(
-            'tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_ADMIN',
-          ),
+          buildEscalationUrl(ADMIN_ESCALATION_QUERY),
         );
 
         await expect(
@@ -61,9 +62,7 @@ test.describe(
       async ({ page }) => {
         await login(page);
         await page.goto(
-          buildEscalationUrl(
-            'tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_ADMIN',
-          ),
+          buildEscalationUrl(ADMIN_ESCALATION_QUERY),
         );
 
         await page.getByTestId('connectshyft-escalation-baseline-input').fill('25');
@@ -82,9 +81,7 @@ test.describe(
       async ({ page }) => {
         await login(page);
         await page.goto(
-          buildEscalationUrl(
-            'tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_ADMIN',
-          ),
+          buildEscalationUrl(ADMIN_ESCALATION_QUERY),
         );
 
         await page.getByTestId('connectshyft-escalation-baseline-input').fill('4');
@@ -106,9 +103,7 @@ test.describe(
       async ({ page }) => {
         await login(page);
         await page.goto(
-          buildEscalationUrl(
-            'tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_ADMIN',
-          ),
+          buildEscalationUrl(ADMIN_ESCALATION_QUERY),
         );
 
         await page.getByTestId('connectshyft-escalation-baseline-input').fill('7');
@@ -147,9 +142,7 @@ test.describe(
       async ({ page }) => {
         await login(page);
         await page.goto(
-          buildEscalationUrl(
-            'tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_ADMIN',
-          ),
+          buildEscalationUrl(ADMIN_ESCALATION_QUERY),
         );
 
         await expect(
