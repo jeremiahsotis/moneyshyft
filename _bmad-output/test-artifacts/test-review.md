@@ -4,9 +4,9 @@ lastStep: 'step-04-generate-report'
 lastSaved: '2026-03-07'
 ---
 
-# Test Quality Review: g-5-more-settings-volunteer-ia-and-admin-separation
+# Test Quality Review: g-6-volunteer-contract-boundary-and-regression-hardening
 
-**Quality Score**: 94/100 (A - Excellent)
+**Quality Score**: 91/100 (A - Excellent)
 **Review Date**: 2026-03-07
 **Review Scope**: single (story artifact with linked test specs)
 **Reviewer**: TEA Agent (Murat)
@@ -23,23 +23,21 @@ Note: This review audits existing tests; it does not generate tests.
 
 ### Key Strengths
 
-✅ Determinism hygiene is strong: no `waitForTimeout`, `Math.random()`, `Date.now()`, `test.skip`, or serial-only execution in reviewed specs.
-✅ Test IDs and risk markers are consistent (`[G5-...][P0|P1]` and `@P0/@P1`) across API + E2E suites.
-✅ Role-gated refusal behavior is asserted explicitly, including non-leakage checks for privileged payload fields.
-✅ Accessibility and responsive checks are present (keyboard traversal + ARIA labels + mobile/tablet/desktop validation).
-✅ Coverage maps cleanly to Story g.5 acceptance criteria for volunteer IA focus and admin separation.
+- Strong assertion density and explicit checks: 139 assertions across 20 tests (~6.95/test).
+- Good risk tagging discipline: 13 `P0` and 7 `P1` tests with story-linked IDs.
+- No hard waits (`waitForTimeout`, `cy.wait(ms)`) and no serial-mode constraints.
+- Coverage maps to all four g.6 acceptance criteria, including inbound/outbound `CLOSED` lifecycle locks.
+- Selector resilience is strong in E2E suites via `getByTestId(...)` with clear accessibility assertions.
 
 ### Key Weaknesses
 
-❌ API ATDD coverage does not yet include explicit positive admin-success reads for each admin endpoint (availability, numbers, escalation).
-❌ E2E login setup runs in `beforeEach`, increasing suite runtime versus persisted auth state.
-❌ One E2E test loops all breakpoints in a single case, reducing failure isolation clarity.
+- Two API spec files exceed the TEA maintainability length target (>300 lines): 407 and 370 lines.
+- E2E webhook payload IDs use `Date.now()` in three spots, which introduces avoidable time-coupled variability.
+- E2E suites perform UI login in `beforeEach`, which is reliable but slower than persisted auth state.
 
 ### Summary
 
-This review used story artifact context from `_bmad-output/implementation-artifacts/g-5-more-settings-volunteer-ia-and-admin-separation.md`, then analyzed linked g.5 ATDD API and E2E tests. Overall test quality is high with robust assertion density, stable selector usage, clear role-path validation, and strong negative-path coverage for unauthorized admin access.
-
-Main remaining risk is coverage depth on authorized admin success contracts at endpoint level. The current suite proves volunteer safety and route-level gating well, but adding explicit positive endpoint assertions for admin configuration surfaces will tighten contract confidence.
+I reviewed story context from `_bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md` and the linked g.6 ATDD + automate API/E2E tests. The suite is high quality, merge-ready, and materially aligned to anti-regression goals for CS-E7. The main residual risk is maintainability (oversized API specs) plus minor determinism/performance refinements around timestamp ID generation and repeated UI login setup.
 
 ---
 
@@ -47,21 +45,21 @@ Main remaining risk is coverage depth on authorized admin success contracts at e
 
 | Criterion                            | Status  | Violations | Notes |
 | ------------------------------------ | ------- | ---------- | ----- |
-| BDD Format (Given-When-Then)         | ✅ PASS | 0          | Scenarios are behavior-driven and acceptance-criteria aligned |
-| Test IDs                             | ✅ PASS | 0          | All tests carry story-linked IDs |
-| Priority Markers (P0/P1/P2/P3)       | ✅ PASS | 0          | All tests are tagged P0/P1 |
-| Hard Waits (sleep, waitForTimeout)   | ✅ PASS | 0          | No hard waits detected |
-| Determinism (no conditionals)        | ✅ PASS | 0          | No time/random anti-patterns found |
-| Isolation (cleanup, no shared state) | ⚠️ WARN | 1          | One low-risk suite-level shared context object |
-| Fixture Patterns                     | ✅ PASS | 0          | Project fixtures and typed helpers are used consistently |
-| Data Factories                       | ✅ PASS | 0          | Story context/factory patterns in place |
-| Network-First Pattern                | ⚠️ WARN | 1          | Strong assertions, but no explicit request interception assertions in E2E |
-| Explicit Assertions                  | ✅ PASS | 0          | Assertions are visible and direct |
-| Test Length (≤300 lines)             | ✅ PASS | 0          | Files are 165 and 177 lines |
-| Test Duration (≤1.5 min)             | ⚠️ WARN | 1          | Static review only; repeated UI login suggests optimization opportunity |
-| Flakiness Patterns                   | ✅ PASS | 0          | No obvious flake anti-patterns identified |
+| BDD Format (Given-When-Then)         | ✅ PASS | 0          | Test titles are behavior-driven and AC-aligned |
+| Test IDs                             | ✅ PASS | 0          | Story-linked IDs present throughout |
+| Priority Markers (P0/P1/P2/P3)       | ✅ PASS | 0          | All reviewed tests include P0/P1 markers |
+| Hard Waits (sleep, waitForTimeout)   | ✅ PASS | 0          | No hard wait anti-patterns detected |
+| Determinism (no conditionals)        | ⚠️ WARN | 2          | `Date.now()` used for webhook/event IDs |
+| Isolation (cleanup, no shared state) | ⚠️ WARN | 2          | Shared module-level `context` objects in E2E files |
+| Fixture Patterns                     | ✅ PASS | 0          | Typed fixture + context factory pattern used consistently |
+| Data Factories                       | ✅ PASS | 0          | Reusable story context/header factory pattern in place |
+| Network-First Pattern                | ⚠️ WARN | 1          | Strong assertions; no explicit network intercept-first pattern in these E2E specs |
+| Explicit Assertions                  | ✅ PASS | 0          | Assertions remain visible in test bodies |
+| Test Length (≤300 lines)             | ⚠️ WARN | 2          | Two API files exceed target length |
+| Test Duration (≤1.5 min)             | ⚠️ WARN | 2          | Static review; repeated UI login suggests optimization opportunity |
+| Flakiness Patterns                   | ⚠️ WARN | 1          | Timestamp-generated IDs can be made deterministic |
 
-**Total Violations**: 0 Critical, 0 High, 2 Medium, 3 Low
+**Total Violations**: 0 Critical, 0 High, 3 Medium, 7 Low
 
 ---
 
@@ -70,13 +68,13 @@ Main remaining risk is coverage depth on authorized admin success contracts at e
 ```text
 Weighted Dimension Scoring:
 
-Determinism:      100 × 0.25 = 25.00
-Isolation:         95 × 0.25 = 23.75
-Maintainability:   93 × 0.20 = 18.60
-Coverage:          88 × 0.15 = 13.20
-Performance:       90 × 0.15 = 13.50
+Determinism:       95 × 0.25 = 23.75
+Isolation:         93 × 0.25 = 23.25
+Maintainability:   84 × 0.20 = 16.80
+Coverage:          95 × 0.15 = 14.25
+Performance:       88 × 0.15 = 13.20
 
-Final Score:                 94.05 → 94/100
+Final Score:                 91.25 → 91/100
 Grade:                       A
 ```
 
@@ -84,151 +82,64 @@ Grade:                       A
 
 ## Critical Issues (Must Fix)
 
-No critical issues detected. ✅
+No critical issues detected.
 
 ---
 
 ## Recommendations (Should Fix)
 
-### 1. Add explicit authorized-admin positive endpoint contract checks
+### 1. Replace timestamp IDs in E2E payloads with deterministic helpers
 
 **Severity**: P1 (High)
-**Location**: `tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.api.spec.ts:103`
-**Criterion**: Coverage
-**Knowledge Base**: [test-quality](../../../_bmad/tea/testarch/knowledge/test-quality.md)
+**Location**:
+- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts:215`
+- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts:216`
+- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts:154`
+**Criterion**: Determinism
+**Knowledge Base**: `test-quality.md`, `timing-debugging.md`
 
-**Issue Description**:
-The API suite verifies admin option visibility in settings navigation, but does not assert successful authorized reads for each explicit admin endpoint path.
+Use deterministic token helpers (already used in API fixtures) for webhook/event IDs in E2E to reduce variability and improve reproducibility of replay/idempotency checks.
 
-**Current Code**:
-```typescript
-// ⚠️ Could be improved (current implementation)
-expect((adminBody.data?.adminOptions ?? []).length).toBeGreaterThan(0);
-```
-
-**Recommended Improvement**:
-```typescript
-// ✅ Better approach (recommended)
-const availabilityResponse = await apiRequest(request, {
-  method: 'GET',
-  path: `${storyG5Context.paths.availability}?orgUnitId=${encodeURIComponent(storyG5Context.orgUnitId)}`,
-  headers: storyG5AdminHeaders,
-});
-expect(availabilityResponse.status()).toBe(200);
-expect((await availabilityResponse.json()) as ConnectShyftEnvelope).toMatchObject({ ok: true });
-```
-
-**Benefits**:
-Tightens contract confidence for privileged admin paths and reduces chance of false-green navigation-only checks.
-
-**Priority**:
-P1 due to direct quality-gate value on role-gated admin contracts.
-
-### 2. Replace repeated UI login in `beforeEach` with persisted auth state where possible
+### 2. Split oversized API spec files into focused chunks
 
 **Severity**: P2 (Medium)
-**Location**: `tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts:12`
-**Criterion**: Performance
-**Knowledge Base**: [auth-session](../../../_bmad/tea/testarch/knowledge/auth-session.md)
+**Location**:
+- `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts`
+- `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.spec.ts`
+**Criterion**: Maintainability
+**Knowledge Base**: `test-quality.md`
 
-**Issue Description**:
-UI login for each test increases runtime and can amplify infra-related noise.
+Both files exceed the 300-line target. Split by concern (display-contract suppression, lifecycle lock semantics, inbound lock, taxonomy/refusal behavior) to improve readability and failure triage.
 
-**Current Code**:
-```typescript
-// ⚠️ Could be improved (current implementation)
-test.beforeEach(async ({ page }) => {
-  await login(page);
-});
-```
-
-**Recommended Improvement**:
-```typescript
-// ✅ Better approach (recommended)
-// Use pre-authenticated storage state or auth-session fixture for role variants
-export default defineConfig({
-  use: { storageState: 'tests/auth/volunteer.json' }
-});
-```
-
-**Benefits**:
-Shorter suite execution, lower setup variance, improved CI throughput.
-
-**Priority**:
-P2 because this is optimization, not correctness risk.
-
-### 3. Split multi-viewport loop into parameterized test cases
+### 3. Shift E2E auth setup to storage state/session reuse
 
 **Severity**: P3 (Low)
-**Location**: `tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts:108`
-**Criterion**: Maintainability
-**Knowledge Base**: [selective-testing](../../../_bmad/tea/testarch/knowledge/selective-testing.md)
+**Location**:
+- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts:56`
+- `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts:53`
+**Criterion**: Performance
+**Knowledge Base**: `test-quality.md`, `playwright.dev` auth/storage state docs
 
-**Issue Description**:
-Three viewport validations run in one test body, which can hide which breakpoint failed first.
-
-**Current Code**:
-```typescript
-for (const viewport of viewportMatrix) {
-  // assertions...
-}
-```
-
-**Recommended Improvement**:
-```typescript
-for (const viewport of viewportMatrix) {
-  test(`[${viewport.label}] volunteer IA remains clear`, async ({ page }) => {
-    // viewport-specific assertions
-  });
-}
-```
-
-**Benefits**:
-Cleaner failure signatures and better selective reruns by scenario.
-
-**Priority**:
-P3 low urgency, high readability payoff.
+`beforeEach` UI login is reliable but expensive. Persisted `storageState` for stable role contexts can reduce runtime while preserving behavior checks.
 
 ---
 
 ## Best Practices Found
 
-### 1. Strong refusal-envelope and non-leakage assertions
+### 1. Strong explicit assertion discipline
 
-**Location**: `tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.api.spec.ts:86`
-**Pattern**: explicit negative contract checks
-**Knowledge Base**: [test-quality](../../../_bmad/tea/testarch/knowledge/test-quality.md)
+- Assertions are direct and readable across API and E2E suites.
+- Feedback taxonomy, refusal envelopes, and lifecycle transitions are validated explicitly.
 
-**Why This Is Good**:
-The suite validates refusal envelopes and confirms privileged payload sections are absent (`not.toHaveProperty`).
+### 2. Contract-safe display checks are well implemented
 
-**Code Example**:
-```typescript
-expect(numbersBody).not.toHaveProperty('data.mappings');
-expect(escalationBody).not.toHaveProperty('data.recipients');
-```
+- Forbidden internal fields/tokens are validated in both API payload and rendered UI pathways.
+- UUID/token suppression checks are included for volunteer-primary surfaces.
 
-**Use as Reference**:
-Apply the same non-leakage assertion style to all role-gated endpoints.
+### 3. Responsive and accessibility intent is represented
 
-### 2. Accessibility-aware keyboard and ARIA checks in ATDD E2E
-
-**Location**: `tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts:156`
-**Pattern**: accessibility contract assertions
-**Knowledge Base**: [selector-resilience](../../../_bmad/tea/testarch/knowledge/selector-resilience.md)
-
-**Why This Is Good**:
-The suite validates focus traversal and label accessibility, which are often omitted in story ATDD tests.
-
-**Code Example**:
-```typescript
-await page.keyboard.press('Tab');
-await expect(settings).toBeFocused();
-await expect(page.getByTestId('connectshyft-bottom-nav-inbox')).toHaveAttribute('aria-label', 'Open Inbox');
-```
-
-**Use as Reference**:
-Keep keyboard + screen-reader assertions as a standard pattern in volunteer-facing UI stories.
+- Mobile/tablet/desktop layout contract checks are present.
+- Keyboard traversal and `aria-live`/feedback-taxonomy assertions are included.
 
 ---
 
@@ -236,37 +147,34 @@ Keep keyboard + screen-reader assertions as a standard pattern in volunteer-faci
 
 ### File Metadata
 
-- **Scope Files Reviewed**:
-  - `tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.api.spec.ts` (165 lines, 6.19 KB)
-  - `tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts` (177 lines, 7.47 KB)
-- **Test Framework**: Playwright
-- **Language**: TypeScript
+- **Scope Input Artifact**: `_bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md`
+- **Reviewed Files**:
+  - `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts` (407 lines)
+  - `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts` (238 lines)
+  - `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.spec.ts` (370 lines)
+  - `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts` (208 lines)
+- **Total Size**: 1,223 lines
+- **Test Framework**: Playwright (API + E2E)
 
 ### Test Structure
 
-- **Describe Blocks**: 2
-- **Test Cases**: 11 total
-- **Skipped Cases**: 0
-- **Average File Length**: 171 lines
-- **Fixtures/Factories Used**:
-  - `../../support/fixtures/connectShyftStoryG5.fixture`
-  - `createStoryG5Context()`
-  - `apiRequest()` helper
+- **Describe Blocks**: 4
+- **Test Cases**: 20
+- **Average Test Length**: ~61.15 lines/test
+- **Total Assertions**: 139
+- **Assertions/Test (avg)**: ~6.95
+- **Fixtures Used**: `connectShyftStoryG6.fixture` and helper fixtures
+- **Data Factories Used**: `createStoryG6Context`, `createStoryG6Headers`, URL/context builders
 
-### Test Coverage Scope
+### Priority Distribution
 
-- **Priority Distribution**:
-  - P0 (Critical): 7 tests
-  - P1 (High): 4 tests
-  - P2 (Medium): 0 tests
-  - P3 (Low): 0 tests
-  - Unknown: 0 tests
+- **P0**: 13
+- **P1**: 7
+- **P2/P3**: 0
 
-### Assertions Analysis
+### Test ID Coverage
 
-- **Total Assertions**: 59
-- **Assertions per Test**: 5.36 (avg)
-- **Assertion Types**: response envelope checks, payload non-leakage checks, DOM visibility/count, focus order, ARIA label contracts, route link checks
+Detected IDs include: `G6-ATDD-API-001..005`, `G6-ATDD-E2E-001..006` (plus viewport-derived IDs), `G6-AUTO-API-301..304`, `G6-AUTO-E2E-301..305`.
 
 ---
 
@@ -274,51 +182,52 @@ Keep keyboard + screen-reader assertions as a standard pattern in volunteer-faci
 
 ### Related Artifacts
 
-- **Story File**: `_bmad-output/implementation-artifacts/g-5-more-settings-volunteer-ia-and-admin-separation.md`
-- **Test Design**: `_bmad-output/test-artifacts/test-design-epic-G.md`
+- **Story File**: `_bmad-output/implementation-artifacts/g-6-volunteer-contract-boundary-and-regression-hardening.md`
 - **Framework Config**: `playwright.config.ts`
 
 ### Acceptance Criteria Validation
 
 | Acceptance Criterion | Test ID(s) | Status | Notes |
 | -------------------- | ---------- | ------ | ----- |
-| AC1: Volunteer-first More/Settings options | G5-ATDD-E2E-001, G5-ATDD-API-001 | ✅ Covered | Primary option set + no admin options for volunteer |
-| AC2: Admin controls role-gated/segregated | G5-ATDD-E2E-002, G5-ATDD-API-002, G5-ATDD-API-003 | ✅ Covered | Refusal guidance + payload non-leakage checks |
-| AC3: Role/scope refresh preserves authorization boundaries | G5-ATDD-E2E-003, G5-ATDD-E2E-004, G5-ATDD-API-004, G5-ATDD-API-005 | ✅ Covered | Includes downgrade refusal path |
-| AC4: Volunteer IA stable across breakpoints | G5-ATDD-E2E-005, G5-ATDD-E2E-006 | ✅ Covered | Breakpoint layout + keyboard/screen-reader checks |
+| AC1 display-safe volunteer contracts suppress internal metadata | `G6-ATDD-API-001`, `G6-ATDD-E2E-001`, `G6-AUTO-API-301`, `G6-AUTO-E2E-301` | ✅ Covered | API + UI suppression checks present |
+| AC2 regression coverage: suppression, voicemail lock, responsive behavior, accessibility/feedback consistency | `G6-ATDD-API-002`, `G6-ATDD-E2E-002`, viewport responsive set in `G6-ATDD-E2E` + `G6-AUTO-E2E-303`, accessibility in `G6-ATDD-E2E-005` | ✅ Covered | Broad API+E2E regression focus |
+| AC3 outbound on `CLOSED` keeps same-thread reopen semantics and deterministic feedback | `G6-ATDD-API-003`, `G6-ATDD-E2E-003`, `G6-AUTO-API-303` | ✅ Covered | Lifecycle + feedback assertions are explicit |
+| AC4 inbound on `CLOSED` never auto-reopens and reflects locked routing | `G6-ATDD-API-004`, `G6-ATDD-E2E-006`, `G6-AUTO-API-304`, `G6-AUTO-E2E-305` | ✅ Covered | Includes duplicate/replay-safe pathway |
 
-**Coverage**: 4/4 criteria covered (100%), with one medium-depth recommendation on admin endpoint positive contract detail.
+**Coverage**: 4/4 criteria covered (100%)
 
 ---
 
 ## Knowledge Base References
 
-This review consulted the following TEA knowledge fragments:
+This review used TEA knowledge fragments:
 
 - `test-quality.md`
-- `fixture-architecture.md`
-- `network-first.md`
-- `playwright-config.md`
-- `component-tdd.md`
-- `ci-burn-in.md`
 - `data-factories.md`
 - `test-levels-framework.md`
-- `selective-testing.md`
-- `test-healing-patterns.md`
 - `selector-resilience.md`
 - `timing-debugging.md`
+- `fixtures-composition.md`
 - `overview.md`
 - `api-request.md`
-- `network-recorder.md`
-- `auth-session.md`
-- `intercept-network-call.md`
-- `recurse.md`
-- `log.md`
-- `file-utils.md`
-- `burn-in.md`
-- `network-error-monitor.md`
-- `fixtures-composition.md`
+- `network-first.md`
 - `playwright-cli.md`
+- `selective-testing.md`
+- `test-healing-patterns.md`
+
+External standards cross-check:
+
+- Playwright best practices and API docs:
+  - https://playwright.dev/docs/best-practices
+  - https://playwright.dev/docs/locators
+  - https://playwright.dev/docs/api/class-page#page-wait-for-timeout
+- Cypress intercept/wait patterns:
+  - https://docs.cypress.io/api/commands/intercept
+  - https://docs.cypress.io/api/commands/wait
+- Pact provider verification reference:
+  - https://docs.pact.io/provider
+- GitHub Actions job dependency docs:
+  - https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idneeds
 
 ---
 
@@ -326,29 +235,18 @@ This review consulted the following TEA knowledge fragments:
 
 ### Immediate Actions (Before Merge)
 
-1. **Add positive admin endpoint API assertions for availability/numbers/escalation**
-   - Priority: P1
-   - Owner: QA + Backend
-   - Estimated Effort: 2-4 hours
-
-2. **Optimize auth setup in E2E tests**
-   - Priority: P2
-   - Owner: QA
-   - Estimated Effort: 1-2 hours
+1. Replace `Date.now()`-based webhook/event IDs with deterministic helper IDs in E2E specs.
+2. Optionally split the two oversized API spec files to reduce review/debug complexity.
 
 ### Follow-up Actions (Future PRs)
 
-1. **Split viewport matrix loop into parameterized tests**
-   - Priority: P3
-   - Target: next_sprint
-
-2. **Extract shared refusal-query assertion helper**
-   - Priority: P3
-   - Target: next_sprint
+1. Move stable-role E2E authentication to `storageState` to reduce runtime.
+2. If cross-browser regressions emerge, add a lightweight WebKit/Firefox smoke lane for g.6 critical tests.
 
 ### Re-Review Needed?
 
-✅ Optional re-review after P1 coverage enhancement. Current suite is mergeable with comments.
+- ✅ No re-review required to merge.
+- ⚠️ Re-review recommended after maintainability refactor (file splits) if completed in this sprint.
 
 ---
 
@@ -357,27 +255,30 @@ This review consulted the following TEA knowledge fragments:
 **Recommendation**: Approve with Comments
 
 **Rationale**:
-The reviewed g.5 ATDD suite provides strong behavioral coverage for volunteer/admin IA separation, refusal guidance, accessibility, and responsive behavior. Determinism and structural hygiene are solid. Remaining issues are primarily depth and optimization improvements, not merge-blocking correctness defects.
 
-> Test quality is excellent at 94/100. Merge is reasonable with one prioritized follow-up on admin positive endpoint contracts.
+The g.6 suite is robust, acceptance-criteria complete, and regression-oriented in the right places (display-contract suppression, lifecycle lock semantics, replay-safe inbound behavior, responsive/a11y coverage). No merge-blocking quality defects were found. Remaining findings are optimization and maintainability improvements rather than correctness risks.
+
+---
+
+## Appendix
+
+### Violation Summary by Location
+
+| File | Line | Severity | Criterion | Issue | Fix |
+| ---- | ---- | -------- | --------- | ----- | --- |
+| `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts` | 215-216 | P1 | Determinism | `Date.now()` payload IDs | Use deterministic helper IDs |
+| `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts` | 154 | P3 | Determinism | Timestamp suffix generation | Use deterministic helper IDs |
+| `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.api.spec.ts` | file-level | P2 | Maintainability | 407-line file | Split by contract concern |
+| `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.spec.ts` | file-level | P2 | Maintainability | 370-line file | Split by actor/path concern |
+| `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts` | 56 | P3 | Performance | UI login every test | Move to storageState |
+| `tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts` | 53 | P3 | Performance | UI login every test | Move to storageState |
 
 ---
 
 ## Review Metadata
 
 **Generated By**: BMad TEA Agent (Test Architect)
-**Workflow**: testarch-test-review v5.0
-**Review ID**: test-review-g-5-more-settings-volunteer-ia-and-admin-separation-20260307
-**Timestamp**: 2026-03-07T14:33:11Z
+**Workflow**: testarch-test-review
+**Review ID**: test-review-g-6-volunteer-contract-boundary-and-regression-hardening-20260307
+**Timestamp**: 2026-03-07
 **Version**: 1.0
-
----
-
-## Subprocess Artifacts
-
-- `/tmp/tea-test-review-determinism-2026-03-07T14-33-11Z.json`
-- `/tmp/tea-test-review-isolation-2026-03-07T14-33-11Z.json`
-- `/tmp/tea-test-review-maintainability-2026-03-07T14-33-11Z.json`
-- `/tmp/tea-test-review-coverage-2026-03-07T14-33-11Z.json`
-- `/tmp/tea-test-review-performance-2026-03-07T14-33-11Z.json`
-- `/tmp/tea-test-review-summary-2026-03-07T14-33-11Z.json`

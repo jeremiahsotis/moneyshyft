@@ -1,7 +1,7 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-03-07T17:52:22Z'
+lastSaved: '2026-03-07T18:30:49Z'
 ---
 
 ## Step 1 - Preflight and Context
@@ -5414,3 +5414,155 @@ lastSaved: '2026-03-07T17:52:22Z'
 ### Recommended Next Workflow
 - `RV` (test-review) for maintainability and anti-flake scoring.
 - `TR` (traceability) to map Story g.6 ACs to ATDD + automate coverage.
+
+## Epic G Run - Step 1: Preflight and Context
+
+### Framework Verification
+- Framework detected: `playwright.config.ts` exists at repository root.
+- Test dependencies detected in `/Users/jeremiahotis/projects/connectshyft/package.json`:
+  - `@playwright/test`
+  - `playwright`
+- Result: Framework readiness check passed.
+
+### Execution Mode
+- Mode selected: **BMad-Integrated**.
+- Basis:
+  - Epic context loaded from `/Users/jeremiahotis/projects/connectshyft/_bmad-output/planning-artifacts/epics-ConnectShyft-2026-02-19.md`.
+  - Epic G test-design loaded from `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/test-design-epic-G.md`.
+  - Existing story-level coverage loaded (`g-1`..`g-6` ATDD + automate files).
+
+### Context Loaded
+- Existing test structure reviewed under `/Users/jeremiahotis/projects/connectshyft/tests`.
+- Existing Epic G automate coverage inspected to avoid duplicate scenario generation.
+- Epic validation context loaded from:
+  - `/Users/jeremiahotis/projects/connectshyft/_bmad-output/implementation-artifacts/story-validation-epic-g-2026-03-06.md`
+
+### TEA Config Flags
+- `tea_use_playwright_utils: true`
+- `tea_browser_automation: auto`
+
+### Knowledge Fragments Loaded
+- Core:
+  - `test-levels-framework.md`
+  - `test-priorities-matrix.md`
+  - `data-factories.md`
+  - `selective-testing.md`
+  - `ci-burn-in.md`
+  - `test-quality.md`
+- Playwright Utils and supporting patterns:
+  - `overview.md`, `api-request.md`, `network-recorder.md`, `auth-session.md`, `intercept-network-call.md`, `recurse.md`, `log.md`, `file-utils.md`, `burn-in.md`, `network-error-monitor.md`, `fixtures-composition.md`
+- Additional generation patterns:
+  - `api-testing-patterns.md`
+  - `fixture-architecture.md`
+  - `network-first.md`
+  - `selector-resilience.md`
+  - `playwright-cli.md`
+
+## Epic G Run - Step 2: Identify Automation Targets
+
+### Browser Exploration
+- Playwright CLI exploration executed with managed runtime stack:
+  - `bash scripts/ci-run-playwright-stack.sh bash -lc 'playwright-cli -s=tea-automate open http://localhost:5174/app/connectshyft/inbox && playwright-cli -s=tea-automate snapshot && playwright-cli -s=tea-automate close'`
+- Result: frontend/backend were reachable; snapshot capture succeeded.
+- Session hygiene completed: `playwright-cli -s=tea-automate close`.
+- Discovery artifacts:
+  - `.playwright-cli/page-2026-03-07T18-30-49-039Z.yml`
+  - `.playwright-cli/page-2026-03-07T18-30-49-159Z.yml`
+
+### Coverage Gap Selection (Epic-Level)
+- Existing story suites already cover many single-story paths; Epic-level cross-story regression gaps selected:
+  - API: cross-surface display-safe contract assertions across inbox/mine/thread in one suite.
+  - API: deterministic feedback taxonomy matrix across success/refusal/error action paths.
+  - E2E: queue-search persistence across inbox/mine/thread transitions in a unified volunteer flow.
+  - E2E: explicit tablet/desktop responsive layout lock in automate lane.
+
+### Coverage Plan Outputs
+- API target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-epic-volunteer-ux-regression.automate.api.spec.ts`
+- E2E target file:
+  - `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts`
+- Scope: `critical-paths`
+
+## Epic G Run - Step 3: Parallel Test Generation Orchestration
+
+### Subprocess Launch
+- Timestamp:
+  - `2026-03-07T18-24-07Z`
+- API subprocess output target:
+  - `/tmp/tea-automate-api-tests-2026-03-07T18-24-07Z.json`
+- E2E subprocess output target:
+  - `/tmp/tea-automate-e2e-tests-2026-03-07T18-24-07Z.json`
+- Execution mode:
+  - `PARALLEL (API + E2E)`
+
+### Completion Verification
+- API subprocess status: `success: true`, `test_count: 2`
+- E2E subprocess status: `success: true`, `test_count: 2`
+- Both output files present and JSON-valid.
+
+## Epic G Run - Step 3C: Aggregate Test Generation Results
+
+### Files Written to Disk
+- `/Users/jeremiahotis/projects/connectshyft/tests/api/platform/g-epic-volunteer-ux-regression.automate.api.spec.ts`
+- `/Users/jeremiahotis/projects/connectshyft/tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts`
+
+### Fixture/Helper Aggregation
+- Reused existing fixture/helper assets:
+  - `tests/support/fixtures/connectShyftStoryG6.fixture.ts`
+  - `tests/support/fixtures/connectShyftStoryG6E2e.fixture.ts`
+  - `tests/support/factories/connectShyftStoryG6Factory.ts`
+  - `tests/support/helpers/apiClient.ts`
+  - `tests/helpers/auth.ts`
+  - `tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.shared.ts`
+- New shared fixture files created: none.
+
+### Summary Metrics
+- Total tests generated: `4`
+  - API tests: `2` (1 file)
+  - E2E tests: `2` (1 file)
+- Priority coverage:
+  - P0: `2`
+  - P1: `2`
+  - P2: `0`
+  - P3: `0`
+- Summary artifact:
+  - `/tmp/tea-automate-summary-2026-03-07T18-24-07Z.json`
+
+### Artifact Retention Path
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-epic-2026-03-07T18-24-07Z/tea-automate-api-tests-2026-03-07T18-24-07Z.json`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-epic-2026-03-07T18-24-07Z/tea-automate-e2e-tests-2026-03-07T18-24-07Z.json`
+- `/Users/jeremiahotis/projects/connectshyft/_bmad-output/test-artifacts/automation-runs/g-epic-2026-03-07T18-24-07Z/tea-automate-summary-2026-03-07T18-24-07Z.json`
+
+## Epic G Run - Step 4: Validate and Summarize
+
+### Checklist Validation
+- Framework readiness: passed.
+- Coverage mapping and duplicate-avoidance against existing `g-1`..`g-6` suites: passed.
+- Test quality checks: passed.
+  - No hard waits (`waitForTimeout`) used.
+  - No brittle CSS/XPath selector strategy introduced.
+  - All test names include priority tags.
+- CLI session cleanup: passed (`tea-automate` session closed).
+- Temp artifacts retained under `_bmad-output/test-artifacts/automation-runs/g-epic-2026-03-07T18-24-07Z`.
+
+### Validation Commands
+- Discovery:
+  - `npx playwright test --list tests/api/platform/g-epic-volunteer-ux-regression.automate.api.spec.ts tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts`
+- Execution:
+  - `npm run test:e2e -- tests/api/platform/g-epic-volunteer-ux-regression.automate.api.spec.ts tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts`
+
+### Validation Result
+- Passed: `4/4` tests.
+- API suite: `2/2` passed.
+- E2E suite: `2/2` passed.
+
+### Key Assumptions
+- Epic G context IDs in `connectShyftStoryG6Factory` remain the canonical seed contract for volunteer UX boundary regression checks.
+- Volunteer queue and thread display-safe field suppression rules remain source-of-truth in shared G6 contract helpers.
+
+### Risks
+- None for discovery connectivity; managed-stack Playwright CLI discovery now succeeds deterministically.
+
+### Recommended Next Workflow
+- `[RV] Review Tests` for maintainability and anti-flake scoring.
+- `[TR] Trace Requirements` to map Epic G acceptance criteria to ATDD + automate coverage matrix.
