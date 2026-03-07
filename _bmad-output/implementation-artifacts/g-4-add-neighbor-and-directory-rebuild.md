@@ -153,14 +153,29 @@ GPT-5 Codex
 ### File List
 
 - _bmad-output/implementation-artifacts/g-4-add-neighbor-and-directory-rebuild.md
+- _bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml
+- _bmad-output/test-artifacts/atdd-checklist-g-4.md
+- _bmad-output/test-artifacts/automation-summary.md
+- _bmad-output/test-artifacts/test-review.md
 - apps/connectshyft-api/src/modules/connectshyft/threads.ts
 - apps/connectshyft-api/src/routes/api/v1/connectshyft.ts
 - apps/moneyshyft-api/src/modules/connectshyft/threads.ts
 - apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts
+- apps/moneyshyft-web/src/features/connectshyft/neighbors.ts
 - apps/moneyshyft-web/src/features/connectshyft/threads.ts
+- apps/moneyshyft-web/src/router/index.ts
+- apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftThreadDetailView.vue
 - apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftNeighborCreateView.vue
 - apps/moneyshyft-web/src/views/ConnectShyft/ConnectShyftDirectoryView.vue
+- tests/api/platform/g-4-add-neighbor-and-directory-rebuild.atdd.api.spec.ts
+- tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts
 - tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts
+- tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts
+- tests/support/factories/connectShyftStoryG4Factory.ts
+- tests/support/fixtures/connectShyftStoryG4.fixture.ts
+- tests/support/helpers/connectShyftDbActor.ts
+- tests/support/helpers/connectShyftStoryG4ApiHelpers.ts
+- tests/support/helpers/connectShyftStoryG4TestHelpers.ts
 
 ## Change Log
 
