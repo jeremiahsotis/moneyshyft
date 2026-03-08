@@ -41,7 +41,7 @@
 - [x] T006 [P] Normalize canonical frontend path expectations in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/two_part_brief.md`
 - [x] T007 [P] Lock migration authority language in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/database_ownership_and_migration_authority.md`
 - [x] T008 Define single-server deployment prerequisites in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/quickstart.md`
-- [ ] T009 Align acceptance evidence checkpoints with scope in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/acceptance_test_matrix.md`
+- [x] T009 Align acceptance evidence checkpoints with scope in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/acceptance_test_matrix.md`
 - [ ] T010 Lock required environment artifact list in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/developer_execution_packet.md`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
