@@ -50,9 +50,9 @@ Canonical ports:
 - `connectshyft-api` -> `3002`
 
 Canonical frontend paths:
-- `/home/jeremiahotis/projects/shyftunity/apps/admin-web/dist`
-- `/home/jeremiahotis/projects/shyftunity/apps/moneyshyft-web/dist`
-- `/home/jeremiahotis/projects/shyftunity/apps/connectshyft-web/dist`
+- `admin-web` -> `/home/jeremiahotis/projects/shyftunity/apps/admin-web/dist`
+- `moneyshyft-web` -> `/home/jeremiahotis/projects/shyftunity/apps/moneyshyft-web/dist`
+- `connectshyft-web` -> `/home/jeremiahotis/projects/shyftunity/apps/connectshyft-web/dist`
 
 Repo names, env file names, Docker service names, and Nginx roots must match this naming.
 
