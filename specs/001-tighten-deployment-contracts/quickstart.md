@@ -7,7 +7,21 @@ applied consistently and reproducibly on a small production server.
 
 ## Prerequisites
 
-- Access to target production host with Nginx and Docker available.
+- Access to the target single-server production host where host-managed Nginx
+  is already installed and responsible for public ingress.
+- Access to shared host PostgreSQL (not containerized) for all lane APIs.
+- Docker Engine and Docker Compose plugin installed on the host.
+- Node.js 20 available on the host for frontend build output generation.
+- Git and GitHub CLI (`gh`) installed for deployment and release workflow
+  operations.
+- Sufficient privileges to manage deployment env files, Nginx configuration,
+  and host PostgreSQL connectivity settings.
+- Canonical API ports reserved on the host:
+  - `admin-api:3100`
+  - `money-api:3000`
+  - `connect-api:3002`
+- Single-server footprint assumption for this round: all three lane APIs run on
+  one host and bind to localhost-only ports behind host Nginx.
 - Deployment env files provisioned outside git.
 - Updated lane frontend `dist/` artifacts available.
 - Ability to execute route and health checks.
