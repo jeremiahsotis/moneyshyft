@@ -2,10 +2,12 @@
 
 ## Current temporary rule
 
-Until shared DB ownership is centralized:
-- `admin-api` is the only production migration runner
+Until shared DB ownership is centralized, this deployment-phase rule applies for spec 001:
+- `admin-api` is the temporary authoritative production migration runner
 - `admin-api` is the only production seed runner
-- production never runs migration commands from MoneyShyft or ConnectShyft independently
+- `money-api` does not run migrations in production
+- `connect-api` does not run migrations in production
+- production migration execution happens once, from one authority only (`admin-api`)
 
 ## Why this is necessary
 
