@@ -33,15 +33,25 @@ Using:
 - `moneyshyft-api` -> `3000`
 - `connectshyft-api` -> `3002`
 
-### Frontend roots
-- `/home/jeremiahotis/projects/shyftunity/apps/admin-web/dist`
-- `/home/jeremiahotis/projects/shyftunity/apps/moneyshyft-web/dist`
-- `/home/jeremiahotis/projects/shyftunity/apps/connectshyft-web/dist`
+### Required environment artifacts (spec 001 deployment-tightening scope only)
+This list is explicit and complete for this round. It is limited to the current three-lane deployment model and must not expand into future lanes, future domains, or unrelated infrastructure.
 
-### Env files
+#### Lane API env files (required)
 - `/opt/shyftunity/env/admin-api.env`
 - `/opt/shyftunity/env/moneyshyft-api.env`
 - `/opt/shyftunity/env/connectshyft-api.env`
+
+#### Required lane API env posture
+- Shared host Postgres connectivity is required via `host.docker.internal` with host-gateway mapping.
+- Each lane API env must set its canonical lane API port: `admin-api=3100`, `moneyshyft-api=3000`, `connectshyft-api=3002`.
+- Scope remains the three lanes only: `admin`, `money`, and `connect`.
+
+#### Current lane frontend URLs and static roots (where relevant)
+- `https://admin.shyftunity.com` -> `/home/jeremiahotis/projects/shyftunity/apps/admin-web/dist`
+- `https://money.shyftunity.com` -> `/home/jeremiahotis/projects/shyftunity/apps/moneyshyft-web/dist`
+- `https://connect.shyftunity.com` -> `/home/jeremiahotis/projects/shyftunity/apps/connectshyft-web/dist`
+
+This artifact contract remains aligned to the current deployment model only: host Nginx, host Postgres, Dockerized Node APIs, static frontend builds, and the three-lane scope.
 
 ## Required implementation work
 
