@@ -5,6 +5,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Repository Location
 - GitHub: https://github.com/jeremiahotis/moneyshyft.git
 
+## Constitution Precedence
+- The authoritative architecture and workflow policy is
+  `.specify/memory/constitution.md` (ShyftUnity Platform Constitution).
+- Platform shell/auth authority remains `admin-web` + `admin-api`.
+- Lane routing MUST delegate `/api/v1/auth/*` and `/api/v1/platform/admin/*` to
+  `admin-api`; other lane `/api` routes resolve to lane APIs.
+- Production topology expectations are mandatory: host Nginx reverse proxy,
+  localhost-only API container bindings, static frontend assets served by Nginx,
+  and shared Postgres compatibility with `admin-api` migration ownership.
+
 ## GitHub Issues & Milestones Policy
 - Always use GitHub Issues and Milestones as the source of truth.
 - Always mark items done and add notes with status, plan, and current progress.

@@ -12,10 +12,10 @@ Use this with [PRODUCTION_DEPLOYMENT_GUIDE.md](./PRODUCTION_DEPLOYMENT_GUIDE.md)
 
 ## Config
 
-- [ ] Repo cloned to `/home/jeremiahotis/projects/connectshyft`
+- [ ] Repo cloned to `/home/jeremiahotis/projects/shyftunity`
 - [ ] `docker-compose.yml` created from `docker-compose.production.example.yml`
 - [ ] Local `.env` created with `POSTGRES_*` and `MONEYSHYFT_API_ENV_FILE`
-- [ ] API env file created at `/opt/moneyshyft/env/moneyshyft-api.env`
+- [ ] API env file created at `/opt/shyftunity/env/moneyshyft-api.env`
 - [ ] `NODE_ENV=production`
 - [ ] `DATABASE_URL` points to correct database
 - [ ] `FRONTEND_URL=https://money.shyftunity.com`
@@ -24,7 +24,7 @@ Use this with [PRODUCTION_DEPLOYMENT_GUIDE.md](./PRODUCTION_DEPLOYMENT_GUIDE.md)
 ## Frontend
 
 - [ ] Frontend built (`apps/moneyshyft-web/dist`)
-- [ ] Nginx `money.shyftunity.com` root points to `/home/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/dist`
+- [ ] Nginx `money.shyftunity.com` root points to `/home/jeremiahotis/projects/shyftunity/apps/moneyshyft-web/dist`
 - [ ] Nginx upstream `money_api` points to `127.0.0.1:3000`
 - [ ] Nginx `/api/` proxy points to `http://127.0.0.1:3000`
 - [ ] `sudo nginx -t` passes
@@ -50,7 +50,7 @@ Use this with [PRODUCTION_DEPLOYMENT_GUIDE.md](./PRODUCTION_DEPLOYMENT_GUIDE.md)
 ## Post-Deploy
 
 - [ ] Monitor memory/disk (`free -m`, `df -h`, `docker stats --no-stream`)
-- [ ] Confirm backups exist in `/opt/moneyshyft/backups`
+- [ ] Confirm backups exist in `/opt/shyftunity/backups`
 - [ ] Confirm rollback target (commit/tag + backup file)
 - [ ] Remove unused Docker images if disk is tight
 
