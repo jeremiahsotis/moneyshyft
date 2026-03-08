@@ -74,3 +74,10 @@ Docker:
   - `scripts/test-changed.sh origin/main`
   - `scripts/quality-gates.sh`
   - `npm run test:contracts:backend`
+
+## Active Technologies
+- TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose (001-tighten-deployment-contracts)
+- Shared host-managed PostgreSQL (single instance) (001-tighten-deployment-contracts)
+
+## Recent Changes
+- 001-tighten-deployment-contracts: Added TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose

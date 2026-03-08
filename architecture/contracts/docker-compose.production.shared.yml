@@ -1,0 +1,75 @@
+services:
+  admin-api:
+    build:
+      context: ./apps/admin-api
+      dockerfile: Dockerfile.production
+    container_name: admin-api
+    restart: unless-stopped
+    env_file:
+      - /opt/shyftunity/env/admin-api.env
+    environment:
+      NODE_OPTIONS: --max-old-space-size=384
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:3100:3100"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3100/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  moneyshyft-api:
+    build:
+      context: ./apps/moneyshyft-api
+      dockerfile: Dockerfile.production
+    container_name: moneyshyft-api
+    restart: unless-stopped
+    env_file:
+      - /opt/shyftunity/env/moneyshyft-api.env
+    environment:
+      NODE_OPTIONS: --max-old-space-size=384
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  connectshyft-api:
+    build:
+      context: ./apps/connectshyft-api
+      dockerfile: Dockerfile.production
+    container_name: connectshyft-api
+    restart: unless-stopped
+    env_file:
+      - /opt/shyftunity/env/connectshyft-api.env
+    environment:
+      NODE_OPTIONS: --max-old-space-size=384
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:3002:3002"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3002/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

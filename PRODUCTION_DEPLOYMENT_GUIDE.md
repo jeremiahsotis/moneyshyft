@@ -42,16 +42,16 @@ sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 # Create deploy directories
-sudo mkdir -p /opt/moneyshyft/env /opt/moneyshyft/backups /home/jeremiahotis/projects
-sudo chown -R "$USER":"$USER" /opt/moneyshyft
+sudo mkdir -p /opt/shyftunity/env /opt/shyftunity/backups /home/jeremiahotis/projects
+sudo chown -R "$USER":"$USER" /opt/shyftunity
 ```
 
 ## 2) Clone Repo and Create Deployment Files
 
 ```bash
 cd /home/jeremiahotis/projects
-git clone https://github.com/jeremiahotis/moneyshyft.git connectshyft
-cd connectshyft
+git clone https://github.com/jeremiahotis/moneyshyft.git shyftunity
+cd shyftunity
 
 # Use the production compose template from this repo
 cp docker-compose.production.example.yml docker-compose.yml
@@ -61,23 +61,23 @@ Create a local compose variable file (gitignored):
 
 ```bash
 cat > .env <<'ENVVARS'
-POSTGRES_USER=moneyshyft
+POSTGRES_USER=jeremiahotis
 POSTGRES_PASSWORD=change-this-strong-password
 POSTGRES_DB=moneyshyft
-MONEYSHYFT_API_ENV_FILE=/opt/moneyshyft/env/moneyshyft-api.env
+MONEYSHYFT_API_ENV_FILE=/opt/shyftunity/env/moneyshyft-api.env
 ENVVARS
 ```
 
 Create the API environment file outside git:
 
 ```bash
-cat > /opt/moneyshyft/env/moneyshyft-api.env <<'ENVFILE'
+cat > /opt/shyftunity/env/moneyshyft-api.env <<'ENVFILE'
 NODE_ENV=production
 PORT=3000
 
 # Option A (recommended on small servers): point to your existing shared Postgres instance.
 # Option B: use the Postgres service in docker-compose.yml (host=postgres).
-DATABASE_URL=postgresql://moneyshyft:change-this-strong-password@postgres:5432/moneyshyft
+DATABASE_URL=postgresql://jeremiahotis:change-this-strong-password@postgres:5432/moneyshyft
 
 FRONTEND_URL=https://money.shyftunity.com
 COOKIE_DOMAIN=money.shyftunity.com
@@ -105,7 +105,7 @@ Recommended on this droplet: build in CI/local machine and upload `dist/`.
 If you build directly on server, install Node.js 20 first, then:
 
 ```bash
-cd /home/jeremiahotis/projects/connectshyft/apps/moneyshyft-web
+cd /home/jeremiahotis/projects/shyftunity/apps/moneyshyft-web
 npm ci
 npm run build
 ```
@@ -125,8 +125,9 @@ Money lane server block:
 
 ```nginx
 server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    Http2 on;
     server_name money.shyftunity.com;
 
     ssl_certificate     /etc/letsencrypt/live/shyftunity.com/fullchain.pem;
@@ -134,7 +135,7 @@ server {
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
 
-    root /home/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/dist;
+    root /home/jeremiahotis/projects/shyftunity/apps/moneyshyft-web/dist;
     index index.html;
 
     location /api/ {
@@ -157,8 +158,6 @@ server {
 }
 ```
 
-If you keep your current deploy path layout (`/home/jeremiahotis/projects/shyft/...`), set `root` to that location instead. The important part is that it points at this app's built `dist` directory.
-
 Enable and reload:
 
 ```bash
@@ -169,7 +168,7 @@ sudo systemctl reload nginx
 ## 5) Start Containers and Run Migrations
 
 ```bash
-cd /home/jeremiahotis/projects/connectshyft
+cd /home/jeremiahotis/projects/shyftunity
 
 # Build API image
 docker compose build node
@@ -188,7 +187,7 @@ docker compose up -d node
 
 ```bash
 # Containers healthy
-cd /home/jeremiahotis/projects/connectshyft
+cd /home/jeremiahotis/projects/shyftunity
 docker compose ps
 
 # API health on loopback
@@ -207,7 +206,7 @@ docker logs moneyshyft-api --tail 100
 ## 7) Update / Redeploy Procedure
 
 ```bash
-cd /home/jeremiahotis/projects/connectshyft
+cd /home/jeremiahotis/projects/shyftunity
 
 # 1) Pull latest code
 git fetch origin
@@ -218,7 +217,7 @@ git pull --ff-only origin main
 docker compose build node
 
 # 3) Backup DB before migrations (if using local postgres container)
-BACKUP_FILE="/opt/moneyshyft/backups/moneyshyft-$(date +%Y%m%d-%H%M%S).sql.gz"
+BACKUP_FILE="/opt/shyftunity/backups/moneyshyft-$(date +%Y%m%d-%H%M%S).sql.gz"
 set -a; source .env; set +a
 docker exec moneyshyft-postgres pg_dump -U "${POSTGRES_USER:-moneyshyft}" "${POSTGRES_DB:-moneyshyft}" | gzip > "$BACKUP_FILE"
 
@@ -229,7 +228,7 @@ docker compose run --rm node npm run migrate:latest:prod
 docker compose up -d --no-deps --force-recreate node
 
 # 6) Rebuild + republish frontend
-cd /home/jeremiahotis/projects/connectshyft/apps/moneyshyft-web
+cd /home/jeremiahotis/projects/shyftunity/apps/moneyshyft-web
 npm ci
 npm run build
 
@@ -245,7 +244,7 @@ Rollback Step 2: Revert code and restart the API container image.
 
 ```bash
 # Roll back code to known-good commit
-cd /home/jeremiahotis/projects/connectshyft
+cd /home/jeremiahotis/projects/shyftunity
 git checkout <last-known-good-commit>
 
 # Rebuild and restart API with old code
@@ -258,9 +257,9 @@ Rollback Step 3: Validate API health and key operator journeys.
 Rollback Step 4: If migration/data issues are present, restore the database backup.
 
 ```bash
-cd /home/jeremiahotis/projects/connectshyft
+cd /home/jeremiahotis/projects/shyftunity
 set -a; source .env; set +a
-gunzip -c /opt/moneyshyft/backups/<backup-file>.sql.gz | docker exec -i moneyshyft-postgres psql -U "${POSTGRES_USER:-moneyshyft}" "${POSTGRES_DB:-moneyshyft}"
+gunzip -c /opt/shyftunity/backups/<backup-file>.sql.gz | docker exec -i moneyshyft-postgres psql -U "${POSTGRES_USER:-moneyshyft}" "${POSTGRES_DB:-moneyshyft}"
 ```
 
 ## 9) Operational Guardrails for a Small Droplet
@@ -279,7 +278,7 @@ gunzip -c /opt/moneyshyft/backups/<backup-file>.sql.gz | docker exec -i moneyshy
 
 If your server already has a shared Postgres container/service, that is usually better on 2 GB RAM.
 
-- Set `DATABASE_URL` in `/opt/moneyshyft/env/moneyshyft-api.env` to that shared DB.
+- Set `DATABASE_URL` in `/opt/shyftunity/env/moneyshyft-api.env` to that shared DB.
 - Remove/disable the `postgres` service and `depends_on.postgres` in `docker-compose.yml`.
 - Run only the `node` service with `docker compose up -d node`.
 
