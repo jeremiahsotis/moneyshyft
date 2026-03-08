@@ -38,8 +38,8 @@ It does not yet cover the rest of the commented-out lanes except where future-sa
 
 ### API loopback ports
 - `admin-api` -> `127.0.0.1:3100`
-- `moneyshyft-api` -> `127.0.0.1:3000`
-- `connectshyft-api` -> `127.0.0.1:3002`
+- `money-api` -> `127.0.0.1:3000`
+- `connect-api` -> `127.0.0.1:3002`
 
 ## Routing contract
 
@@ -49,12 +49,12 @@ It does not yet cover the rest of the commented-out lanes except where future-sa
 ### Money
 - `/api/v1/auth/*` -> `admin-api`
 - `/api/v1/platform/admin/*` -> `admin-api`
-- all other `/api/*` -> `moneyshyft-api`
+- all other `/api/*` -> `money-api`
 
 ### Connect
 - `/api/v1/auth/*` -> `admin-api`
 - `/api/v1/platform/admin/*` -> `admin-api`
-- all other `/api/*` -> `connectshyft-api`
+- all other `/api/*` -> `connect-api`
 
 ## Shared Postgres contract
 
