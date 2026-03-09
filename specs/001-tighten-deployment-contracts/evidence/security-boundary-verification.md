@@ -39,3 +39,27 @@ This document records the ingress and port exposure rules for the 001-tighten-de
 - [ ] Localhost binding is enforced for lane APIs
 - [ ] Lane routing flows through Nginx
 - [ ] Shared Postgres is not exposed as a public lane dependency
+
+## Validation Steps
+
+1. Confirm only Nginx is publicly listening:
+   - `sudo ss -ltnp | rg ":443|:80|:3100|:3000|:3002|:5432"`
+   - Expected: public listeners on `:443`/`:80` for Nginx only; API and DB ports not public.
+2. Confirm API containers are loopback-bound in compose contract:
+   - `rg -n "127\\.0\\.0\\.1:3100|127\\.0\\.0\\.1:3000|127\\.0\\.0\\.1:3002" architecture/contracts/docker-compose.production.shared.yml`
+3. Confirm PostgreSQL is not exposed in production compose scope:
+   - `rg -n "5432|postgres" architecture/contracts/docker-compose.production.shared.yml`
+   - Expected: no public Postgres port publish rule for lane APIs.
+4. Confirm ingress routing boundaries are enforced by Nginx config:
+   - `rg -n "/api/v1/auth|/api/v1/platform/admin|proxy_pass" architecture/contracts/nginx/shyftunity-admin-money-connect.conf`
+   - Expected: delegated auth/platform-admin routes target `admin-api`; lane routes target lane APIs.
+5. Confirm no direct external API ingress bypass:
+   - `curl -I https://admin.shyftunity.com/api/health`
+   - `curl -I https://money.shyftunity.com/api/health`
+   - `curl -I https://connect.shyftunity.com/api/health`
+   - Expected: responses served through Nginx domain ingress, not direct API port access.
+
+## Evidence Capture
+- Save `ss` output proving no public API or Postgres listeners.
+- Save compose and nginx grep outputs proving loopback-only API binding and delegated ingress routing.
+- Save curl headers proving domain-based ingress through Nginx.

@@ -9,13 +9,16 @@
 
 ## Database Authority Requirements
 
-- `admin-api` is the only production migration/seed runner for this phase.
-- Money and Connect APIs MUST NOT run independent production migrations.
+- Host-managed shared PostgreSQL is the authoritative production database for in-scope lanes.
+- `admin-api` is the only production migration and seed runner for this phase.
+- Lane APIs (`moneyshyft-api`, `connectshyft-api`) MUST NOT run production migrations or seeds.
+- All API containers connect to the shared database through environment-defined database variables.
 
 ## Security Requirements
 
 - No API service is publicly exposed.
 - All external API traffic enters through Nginx.
+- PostgreSQL is not publicly exposed and is reachable by internal services only.
 - Shared session behavior across lanes remains functional.
 
 ## Runbook Reproducibility Requirements
@@ -33,4 +36,5 @@ A deployment is accepted only if evidence exists for:
 3. Lane API routing correctness for non-delegated API paths.
 4. Health checks for all API services.
 5. Shared Postgres connectivity for all in-scope APIs.
-6. No public API port exposure.
+6. Database migration authority enforced to `admin-api` only.
+7. No public API or database port exposure.

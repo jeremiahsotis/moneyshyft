@@ -19,12 +19,15 @@ Using:
 
 - Host Nginx remains the reverse proxy and static file server.
 - Host Postgres remains the shared production database.
+- Shared Postgres is host-managed and must not be publicly exposed.
 - APIs run in Docker containers bound to loopback only.
 - Frontends are built to static `dist/` output and served by host Nginx.
 - `admin.shyftunity.com` is the temporary shell host and platform auth authority.
 - `money.shyftunity.com` and `connect.shyftunity.com` must delegate `/api/v1/auth/*` and `/api/v1/platform/admin/*` to `admin-api`.
 - Lane-specific `/api/*` traffic routes to the lane API.
 - No Postgres container in production for these lanes.
+- Only `admin-api` is allowed to run production migrations and seeds.
+- `moneyshyft-api` and `connectshyft-api` must never run production migrations or seeds.
 
 ## Canonical ports and paths
 
@@ -44,6 +47,8 @@ This list is explicit and complete for this round. It is limited to the current 
 #### Required lane API env posture
 - Shared host Postgres connectivity is required via `host.docker.internal` with host-gateway mapping.
 - Each lane API env must set its canonical lane API port: `admin-api=3100`, `moneyshyft-api=3000`, `connectshyft-api=3002`.
+- Each lane API env must define: `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, and `DATABASE_SSL_MODE`.
+- Environment templates define required variables only; secrets are provided out-of-repo at deploy time.
 - Scope remains the three lanes only: `admin`, `money`, and `connect`.
 
 #### Current lane frontend URLs and static roots (where relevant)
