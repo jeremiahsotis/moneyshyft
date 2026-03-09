@@ -81,7 +81,7 @@
 - [x] T020 [US2] Update Nginx production routing rules in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/nginx/shyftunity-admin-money-connect.conf`
 - [x] T021 [P] [US2] Align routing requirements in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/production_deployment_contract.md`
 - [x] T022 [P] [US2] Align acceptance routing checks in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/acceptance_test_matrix.md`
-- [ ] T023 [US2] Add executable routing verification steps in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/routing-verification-matrix.md`
+- [x] T023 [US2] Add executable routing verification steps in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/routing-verification-matrix.md`
 - [ ] T024 [US2] Update quickstart routing validation steps in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/quickstart.md`
 
 **Checkpoint**: User Story 2 is independently complete when delegated and lane-local route ownership validates correctly for all in-scope domains.
