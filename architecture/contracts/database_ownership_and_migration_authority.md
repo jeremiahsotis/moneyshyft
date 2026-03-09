@@ -1,13 +1,15 @@
 # Database Ownership and Migration Authority
 
-## Current temporary rule
+## Current authoritative rule
 
-Until shared DB ownership is centralized, this deployment-phase rule applies for spec 001:
-- `admin-api` is the temporary authoritative production migration runner
+For spec 001 deployment hardening, the following rule is mandatory:
+- shared host-managed PostgreSQL is the single production database authority
+- `admin-api` is the authoritative production migration runner
 - `admin-api` is the only production seed runner
-- `money-api` does not run migrations in production
-- `connect-api` does not run migrations in production
+- `moneyshyft-api` does not run migrations in production
+- `connectshyft-api` does not run migrations in production
 - production migration execution happens once, from one authority only (`admin-api`)
+- lane APIs connect through environment-defined DB variables; secrets are externalized and not committed
 
 ## Why this is necessary
 

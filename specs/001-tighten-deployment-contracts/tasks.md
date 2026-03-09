@@ -96,14 +96,14 @@
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Normalize DB authority contract language in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/contracts/deployment-verification-contract.md`
-- [ ] T026 [US3] Update centralized migration authority guidance in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/database_ownership_and_migration_authority.md`
-- [ ] T027 [P] [US3] Align DB and security guardrails in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/developer_execution_packet.md`
-- [ ] T028 [P] [US3] Align environment templates for shared DB connectivity in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/env/admin-api.env.example`
-- [ ] T029 [P] [US3] Align environment templates for shared DB connectivity in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/env/moneyshyft-api.env.example`
-- [ ] T030 [P] [US3] Align environment templates for shared DB connectivity in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/env/connectshyft-api.env.example`
-- [ ] T031 [US3] Add DB authority validation evidence steps in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/database-authority-verification.md`
-- [ ] T032 [US3] Add API exposure and ingress validation evidence steps in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/security-boundary-verification.md`
+- [x] T025 [US3] Normalize DB authority contract language in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/contracts/deployment-verification-contract.md`
+- [x] T026 [US3] Update centralized migration authority guidance in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/database_ownership_and_migration_authority.md`
+- [x] T027 [P] [US3] Align DB and security guardrails in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/developer_execution_packet.md`
+- [x] T028 [P] [US3] Align environment templates for shared DB connectivity in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/env/admin-api.env.example`
+- [x] T029 [P] [US3] Align environment templates for shared DB connectivity in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/env/moneyshyft-api.env.example`
+- [x] T030 [P] [US3] Align environment templates for shared DB connectivity in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/env/connectshyft-api.env.example`
+- [x] T031 [US3] Add DB authority validation evidence steps in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/database-authority-verification.md`
+- [x] T032 [US3] Add API exposure and ingress validation evidence steps in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/security-boundary-verification.md`
 
 **Checkpoint**: User Story 3 is independently complete when shared DB authority and security boundary checks pass with documented evidence.
 
