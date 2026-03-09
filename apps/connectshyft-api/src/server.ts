@@ -1,8 +1,18 @@
 import app from './app';
 import logger from './utils/logger';
 
-const PORT = parseInt(process.env.PORT || '3002', 10);
-const HOST = process.env.HOST || '0.0.0.0';
+const CANONICAL_PORT = 3002;
+const PORT = parseInt(process.env.PORT || `${CANONICAL_PORT}`, 10);
+const DEFAULT_HOST = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';
+const HOST = process.env.HOST || DEFAULT_HOST;
+
+if (process.env.NODE_ENV === 'production' && PORT !== CANONICAL_PORT) {
+  throw new Error(`connect-api must run on canonical production port ${CANONICAL_PORT}, received ${PORT}`);
+}
+
+if (process.env.NODE_ENV === 'production' && !['127.0.0.1', 'localhost'].includes(HOST)) {
+  throw new Error(`connect-api must bind to localhost in production, received HOST=${HOST}`);
+}
 
 const server = app.listen(PORT, HOST, () => {
   logger.info(`ConnectShyft API server running on ${HOST}:${PORT}`);

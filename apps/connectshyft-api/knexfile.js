@@ -1,17 +1,16 @@
-import { Knex } from 'knex';
-import './config/loadEnv';
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
-const readEnv = (primary: string, fallback: string): string | undefined => {
+const readEnv = (primary, fallback) => {
   const value = process.env[primary] ?? process.env[fallback];
   if (typeof value !== 'string') {
     return undefined;
   }
-
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const resolveRequiredEnv = (primary: string, fallback: string): string => {
+const resolveRequiredEnv = (primary, fallback) => {
   const value = readEnv(primary, fallback);
   if (value) {
     return value;
@@ -24,12 +23,22 @@ const resolveRequiredEnv = (primary: string, fallback: string): string => {
   throw new Error(`${primary} (${fallback}) must be set via environment/secret manager`);
 };
 
-const validateDatabaseEnv = (): void => {
+const blockLaneProdMigrationExecution = (serviceName) => {
+  const commandLine = process.argv.join(' ');
+  const isKnexInvocation = commandLine.includes('knex');
+  const isMigrationOrSeed = commandLine.includes('migrate:') || commandLine.includes('seed:');
+
+  if (process.env.NODE_ENV === 'production' && isKnexInvocation && isMigrationOrSeed) {
+    throw new Error(`${serviceName} is not authorized to execute production migrations or seeds`);
+  }
+};
+
+const validateDatabaseEnv = () => {
   if (process.env.NODE_ENV === 'test') {
     return;
   }
 
-  const databaseUrl = process.env.DATABASE_URL?.trim();
+  const databaseUrl = process.env.DATABASE_URL && process.env.DATABASE_URL.trim();
   if (databaseUrl) {
     return;
   }
@@ -45,20 +54,7 @@ const validateDatabaseEnv = (): void => {
   }
 };
 
-const resolveDbPassword = (): string => {
-  const password = readEnv('DATABASE_PASSWORD', 'DB_PASSWORD');
-  if (password) {
-    return password;
-  }
-
-  if (process.env.NODE_ENV === 'test') {
-    return 'test-db-password';
-  }
-
-  throw new Error('DB_PASSWORD must be set via environment/secret manager when DATABASE_URL is not provided');
-};
-
-const buildNonProductionConnection = (): string | Knex.StaticConnectionConfig => {
+const buildConnection = () => {
   validateDatabaseEnv();
 
   if (process.env.DATABASE_URL) {
@@ -76,66 +72,46 @@ const buildNonProductionConnection = (): string | Knex.StaticConnectionConfig =>
     port: parsedPort,
     database: resolveRequiredEnv('DATABASE_NAME', 'DB_NAME'),
     user: resolveRequiredEnv('DATABASE_USER', 'DB_USER'),
-    password: resolveDbPassword(),
+    password: resolveRequiredEnv('DATABASE_PASSWORD', 'DB_PASSWORD')
   };
 };
 
-const config: { [key: string]: Knex.Config } = {
+blockLaneProdMigrationExecution('connect-api');
+
+module.exports = {
   development: {
     client: 'postgresql',
-    connection: buildNonProductionConnection(),
+    connection: buildConnection(),
     pool: {
       min: 2,
       max: 10
     },
     migrations: {
       tableName: 'knex_migrations',
-      directory: './migrations',
+      directory: './src/migrations',
       extension: 'ts'
     },
     seeds: {
-      directory: './seeds/dev',
-      extension: 'ts'
-    }
-  },
-
-  test: {
-    client: 'postgresql',
-    connection: buildNonProductionConnection(),
-    pool: {
-      min: 2,
-      max: 10
-    },
-    migrations: {
-      tableName: 'knex_migrations',
-      directory: './migrations',
-      extension: 'ts'
-    },
-    seeds: {
-      directory: './seeds/dev',
+      directory: './src/seeds/dev',
       extension: 'ts'
     }
   },
 
   production: {
     client: 'postgresql',
-    connection: process.env.DATABASE_URL || buildNonProductionConnection(),
+    connection: buildConnection(),
     pool: {
       min: 2,
       max: 20
     },
     migrations: {
       tableName: 'knex_migrations',
-      directory: './migrations',
-      extension: 'js'  // Use compiled JavaScript files in production
+      directory: path.join(__dirname, 'dist', 'migrations'),
+      extension: 'js'
     },
     seeds: {
-      directory: './seeds/production',
-      extension: 'js'  // Use compiled JavaScript files in production
+      directory: './dist/seeds/production',
+      extension: 'js'
     }
   }
 };
-
-// Use CommonJS export for Knex compatibility
-// TypeScript will compile this to module.exports
-export = config;
