@@ -57,7 +57,7 @@
 ### Implementation for User Story 1
 
 - [x] T011 [US1] Normalize production runbook sequence in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/production_runbook.md`
-- [ ] T012 [US1] Update top-level deployment workflow and prerequisites in `/Users/jeremiahotis/projects/connectshyft/PRODUCTION_DEPLOYMENT_GUIDE.md`
+- [x] T012 [US1] Update top-level deployment workflow and prerequisites in `/Users/jeremiahotis/projects/connectshyft/PRODUCTION_DEPLOYMENT_GUIDE.md`
 - [ ] T013 [P] [US1] Align operational checklist with reproducible flow in `/Users/jeremiahotis/projects/connectshyft/DEPLOYMENT_CHECKLIST.md`
 - [ ] T014 [P] [US1] Align compose topology and service coverage in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/docker-compose.production.shared.yml`
 - [ ] T015 [US1] Align API production packaging contract for admin in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/dockerfiles/admin-api.Dockerfile.production`
