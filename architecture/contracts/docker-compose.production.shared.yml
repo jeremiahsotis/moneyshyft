@@ -24,14 +24,14 @@ services:
         max-size: "10m"
         max-file: "5"
 
-  moneyshyft-api:
+  money-api:
     build:
       context: ./apps/moneyshyft-api
       dockerfile: Dockerfile.production
-    container_name: moneyshyft-api
+    container_name: money-api
     restart: unless-stopped
     env_file:
-      - /opt/shyftunity/env/moneyshyft-api.env
+      - /opt/shyftunity/env/money-api.env
     environment:
       NODE_OPTIONS: --max-old-space-size=384
     extra_hosts:
@@ -49,14 +49,14 @@ services:
         max-size: "10m"
         max-file: "5"
 
-  connectshyft-api:
+  connect-api:
     build:
       context: ./apps/connectshyft-api
       dockerfile: Dockerfile.production
-    container_name: connectshyft-api
+    container_name: connect-api
     restart: unless-stopped
     env_file:
-      - /opt/shyftunity/env/connectshyft-api.env
+      - /opt/shyftunity/env/connect-api.env
     environment:
       NODE_OPTIONS: --max-old-space-size=384
     extra_hosts:
