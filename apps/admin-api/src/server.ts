@@ -3,15 +3,15 @@ import logger from './utils/logger';
 
 const CANONICAL_PORT = 3100;
 const PORT = parseInt(process.env.PORT || `${CANONICAL_PORT}`, 10);
-const DEFAULT_HOST = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';
+const DEFAULT_HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '0.0.0.0';
 const HOST = process.env.HOST || DEFAULT_HOST;
 
 if (process.env.NODE_ENV === 'production' && PORT !== CANONICAL_PORT) {
   throw new Error(`admin-api must run on canonical production port ${CANONICAL_PORT}, received ${PORT}`);
 }
 
-if (process.env.NODE_ENV === 'production' && !['127.0.0.1', 'localhost'].includes(HOST)) {
-  throw new Error(`admin-api must bind to localhost in production, received HOST=${HOST}`);
+if (process.env.NODE_ENV === 'production' && !['0.0.0.0', '127.0.0.1', 'localhost'].includes(HOST)) {
+  throw new Error(`admin-api must bind to a local interface in production, received HOST=${HOST}`);
 }
 
 const server = app.listen(PORT, HOST, () => {
