@@ -16,8 +16,7 @@
 - `GET https://admin.shyftunity.com` returns HTML and loads the SPA shell.
 
 ### API routing
-- `GET https://admin.shyftunity.com/api/v1/auth/me` reaches `admin-api`
-- `GET https://admin.shyftunity.com/api/v1/platform/admin/tenants` reaches `admin-api`
+- all `/api/*` requests on `admin.shyftunity.com` reach `admin-api`
 
 ## MoneyShyft
 
@@ -25,13 +24,13 @@
 - `GET https://money.shyftunity.com` returns HTML and loads the MoneyShyft SPA.
 
 ### Auth routing
-- `GET https://money.shyftunity.com/api/v1/auth/me` reaches `admin-api`
+- `/api/v1/auth/*` requests reach `admin-api`
 
 ### Platform admin routing
-- `GET https://money.shyftunity.com/api/v1/platform/admin/tenants` reaches `admin-api`
+- `/api/v1/platform/admin/*` requests reach `admin-api`
 
 ### Lane routing
-- lane-specific `/api/*` requests reach `moneyshyft-api`
+- all other `/api/*` requests reach `money-api`
 
 ## ConnectShyft
 
@@ -39,13 +38,13 @@
 - `GET https://connect.shyftunity.com` returns HTML and loads the ConnectShyft SPA.
 
 ### Auth routing
-- `GET https://connect.shyftunity.com/api/v1/auth/me` reaches `admin-api`
+- `/api/v1/auth/*` requests reach `admin-api`
 
 ### Platform admin routing
-- `GET https://connect.shyftunity.com/api/v1/platform/admin/tenants` reaches `admin-api`
+- `/api/v1/platform/admin/*` requests reach `admin-api`
 
 ### Lane routing
-- lane-specific `/api/*` requests reach `connectshyft-api`
+- all other `/api/*` requests reach `connect-api`
 
 ## Shared Postgres
 - all three API containers show the same target `DATABASE_URL` host and DB name
