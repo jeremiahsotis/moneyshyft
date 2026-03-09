@@ -9,6 +9,7 @@ This document is the execution evidence template for proving the production depl
 - Environment:
 - Release/Commit:
 - Host:
+- Execution ID:
 
 ## Preconditions Checklist
 - [ ] Host Nginx access confirmed
@@ -30,6 +31,14 @@ This document is the execution evidence template for proving the production depl
 | 7 | Nginx config validation and reload |  |  |  |
 | 8 | Verification checks (web, routing, health, DB, security) |  |  |  |
 
+## Packaging Contract Verification
+
+| Lane | Dockerfile Evidence | Dependency Install Pattern | Build/Prune Pattern | Runtime Port |
+|---|---|---|---|---|
+| admin-api |  | `npm ci` with lockfile | `npm run build` then `npm prune --omit=dev` | `3100` |
+| money-api |  | `npm ci` with lockfile | `npm run build` then `npm prune --omit=dev` | `3000` |
+| connect-api |  | `npm ci` with lockfile | `npm run build` then `npm prune --omit=dev` | `3002` |
+
 ## Acceptance Evidence Mapping
 
 | Requirement | Evidence Reference | Result (pass/fail) |
@@ -47,6 +56,7 @@ This document is the execution evidence template for proving the production depl
 - Outcome equivalence confirmed: [ ] yes [ ] no
 - Undocumented manual intervention required: [ ] no [ ] yes
 - If yes, describe deviation:
+- Verification diffs reviewed (routes/health/ports/images): [ ] yes [ ] no
 
 ## Final Outcome
 - Overall reproducibility result: [ ] pass [ ] fail
