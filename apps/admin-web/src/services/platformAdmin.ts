@@ -288,6 +288,7 @@ export type TenantPerson = {
   firstName: string;
   lastName: string;
   role: string;
+  nodeId?: string | null;
   mustResetPassword: boolean;
   lastLoginAt?: string;
 };
