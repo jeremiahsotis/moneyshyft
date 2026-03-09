@@ -38,12 +38,18 @@ applied consistently and reproducibly on a small production server.
 
 ## Step 2: Apply routing contract
 
-1. Apply Nginx lane routing configuration.
+1. Apply Nginx lane routing configuration with this matching order per lane host:
+   - `/api/v1/auth/*`
+   - `/api/v1/platform/admin/*`
+   - all other `/api/*`
 2. Validate syntax (`nginx -t`) and reload Nginx.
-3. Confirm delegated routes for money/connect:
-   - `/api/v1/auth/*` -> admin-api
-   - `/api/v1/platform/admin/*` -> admin-api
-4. Confirm other lane `/api/*` routes go to lane API.
+3. Execute
+   `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/routing-verification-matrix.md`
+   steps to run probe requests for admin, money, and connect hosts and capture
+   evidence artifacts.
+4. Confirm probe results satisfy route ownership:
+   - money/connect delegated routes (`/api/v1/auth/*`, `/api/v1/platform/admin/*`) -> `admin-api` (`admin_api`, `127.0.0.1:3100`)
+   - lane-local `/api/*` routes -> lane APIs (`money_api`/`connect_api` and `admin_api` for admin lane)
 
 ## Step 3: Apply runtime and DB authority contract
 
