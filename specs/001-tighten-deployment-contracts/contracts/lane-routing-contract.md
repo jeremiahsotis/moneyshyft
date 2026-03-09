@@ -12,7 +12,7 @@
 
 - Domain: `admin.shyftunity.com`
 - Frontend owner: `admin-web`
-- API rule: `/api/*` -> `admin-api`
+- API rule: all `/api/*` -> `admin-api`
 
 ### Money Lane
 
@@ -21,7 +21,7 @@
 - API rules:
   - `/api/v1/auth/*` -> `admin-api`
   - `/api/v1/platform/admin/*` -> `admin-api`
-  - other `/api/*` -> `money-api`
+  - all other `/api/*` -> `money-api`
 
 ### Connect Lane
 
@@ -30,7 +30,15 @@
 - API rules:
   - `/api/v1/auth/*` -> `admin-api`
   - `/api/v1/platform/admin/*` -> `admin-api`
-  - other `/api/*` -> `connect-api`
+  - all other `/api/*` -> `connect-api`
+
+## Route Matching Order
+
+Apply route ownership matching in this order for each lane host:
+
+1. `/api/v1/auth/*`
+2. `/api/v1/platform/admin/*`
+3. all other `/api/*`
 
 ## Canonical API Ports
 
