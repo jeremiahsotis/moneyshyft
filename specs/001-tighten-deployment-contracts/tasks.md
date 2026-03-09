@@ -78,7 +78,7 @@
 ### Implementation for User Story 2
 
 - [x] T019 [US2] Normalize lane routing contract definitions in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/contracts/lane-routing-contract.md`
-- [ ] T020 [US2] Update Nginx production routing rules in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/nginx/shyftunity-admin-money-connect.conf`
+- [x] T020 [US2] Update Nginx production routing rules in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/nginx/shyftunity-admin-money-connect.conf`
 - [ ] T021 [P] [US2] Align routing requirements in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/production_deployment_contract.md`
 - [ ] T022 [P] [US2] Align acceptance routing checks in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/acceptance_test_matrix.md`
 - [ ] T023 [US2] Add executable routing verification steps in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/routing-verification-matrix.md`
