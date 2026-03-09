@@ -162,7 +162,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useAccessStore } from '@/stores/access';
 import { useRouter, useRoute } from 'vue-router';
@@ -237,30 +237,12 @@ function togglePrivacyMode() {
   showUserMenu.value = false;
 }
 
-const refreshAccess = async (): Promise<void> => {
-  if (!authStore.isAuthenticated) {
-    accessStore.clear();
-    return;
-  }
-
-  await accessStore.refresh({ tenantId: authStore.user?.householdId || undefined });
-};
-
 onMounted(() => {
   const stored = localStorage.getItem(PRIVACY_KEY);
   if (stored === 'on') {
     applyPrivacyMode(true);
   }
-
-  void refreshAccess();
 });
-
-watch(
-  () => [authStore.isAuthenticated, authStore.user?.householdId],
-  () => {
-    void refreshAccess();
-  }
-);
 
 async function handleLogout() {
   showUserMenu.value = false;

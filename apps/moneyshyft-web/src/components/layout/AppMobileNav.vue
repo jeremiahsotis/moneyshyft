@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue';
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useAccessStore } from '@/stores/access';
@@ -66,25 +66,6 @@ function isActive(path: string): boolean {
   return route.path === path || route.path.startsWith(path + '/');
 }
 
-const refreshAccess = async (): Promise<void> => {
-  if (!authStore.isAuthenticated) {
-    accessStore.clear();
-    return;
-  }
-
-  await accessStore.refresh({ tenantId: authStore.user?.householdId || undefined });
-};
-
-onMounted(() => {
-  void refreshAccess();
-});
-
-watch(
-  () => [authStore.isAuthenticated, authStore.user?.householdId],
-  () => {
-    void refreshAccess();
-  }
-);
 </script>
 
 <style scoped>
