@@ -62,7 +62,7 @@
 - [x] T014 [P] [US1] Align compose topology and service coverage in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/docker-compose.production.shared.yml`
 - [x] T015 [US1] Align API production packaging contract for admin in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/dockerfiles/admin-api.Dockerfile.production`
 - [x] T016 [P] [US1] Align API production packaging contract for money in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/dockerfiles/moneyshyft-api.Dockerfile.production`
-- [ ] T017 [P] [US1] Align API production packaging contract for connect in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/dockerfiles/connectshyft-api.Dockerfile.production`
+- [x] T017 [P] [US1] Align API production packaging contract for connect in `/Users/jeremiahotis/projects/connectshyft/architecture/contracts/dockerfiles/connectshyft-api.Dockerfile.production`
 - [ ] T018 [US1] Record reproducibility execution proof template in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/runbook-reproducibility.md`
 
 **Checkpoint**: User Story 1 is independently complete when reproducible deployment steps and packaging contracts are aligned for all three lanes.
