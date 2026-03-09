@@ -25,8 +25,8 @@
 **Purpose**: Prepare deployment-tightening workspace artifacts and baseline references
 
 - [x] T001 Create deployment evidence directory at `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/`
-- [ ] T002 Create lane routing verification matrix document at `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/routing-verification-matrix.md`
-- [ ] T003 [P] Create shared DB authority verification document at `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/database-authority-verification.md`
+- [x] T002 Create lane routing verification matrix document at `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/routing-verification-matrix.md`
+- [x] T003 [P] Create shared DB authority verification document at `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/database-authority-verification.md`
 - [x] T004 [P] Create ingress and port exposure verification document at `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/security-boundary-verification.md`
 
 ---
