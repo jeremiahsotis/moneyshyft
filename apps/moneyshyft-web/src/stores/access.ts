@@ -19,6 +19,8 @@ export const useAccessStore = defineStore('access', () => {
   });
   const isLoading = ref(false);
   const error = ref<string | null>(null);
+  let inFlightRefresh: Promise<void> | null = null;
+  let inFlightRefreshKey: string | null = null;
 
   const capabilitySet = computed(() => new Set(capabilities.value));
 
@@ -69,27 +71,50 @@ export const useAccessStore = defineStore('access', () => {
     tenantId?: string | null;
     orgUnitId?: string | null;
   } = {}): Promise<void> => {
-    isLoading.value = true;
-    error.value = null;
+    const normalizedParams = {
+      tenantId: params.tenantId || undefined,
+      orgUnitId: params.orgUnitId || undefined,
+    };
+    const refreshKey = JSON.stringify(normalizedParams);
+
+    if (inFlightRefresh && inFlightRefreshKey === refreshKey) {
+      await inFlightRefresh;
+      return;
+    }
+
+    inFlightRefreshKey = refreshKey;
+    inFlightRefresh = (async () => {
+      isLoading.value = true;
+      error.value = null;
+
+      try {
+        const data = await evaluateRbac(normalizedParams);
+        roles.value = Array.isArray(data.roles) ? data.roles : [];
+        capabilities.value = Array.isArray(data.capabilities) ? data.capabilities : [];
+        moduleEntitlements.value = {
+          connectshyft: data.moduleEntitlements?.connectshyft === true,
+          moneyshyft: data.moduleEntitlements?.moneyshyft === true,
+        };
+      } catch (err: any) {
+        roles.value = [];
+        capabilities.value = [];
+        moduleEntitlements.value = {
+          connectshyft: false,
+          moneyshyft: false,
+        };
+        error.value = err?.response?.data?.message || err?.message || 'Failed to load access capabilities';
+      } finally {
+        isLoading.value = false;
+      }
+    })();
 
     try {
-      const data = await evaluateRbac(params);
-      roles.value = Array.isArray(data.roles) ? data.roles : [];
-      capabilities.value = Array.isArray(data.capabilities) ? data.capabilities : [];
-      moduleEntitlements.value = {
-        connectshyft: data.moduleEntitlements?.connectshyft === true,
-        moneyshyft: data.moduleEntitlements?.moneyshyft === true,
-      };
-    } catch (err: any) {
-      roles.value = [];
-      capabilities.value = [];
-      moduleEntitlements.value = {
-        connectshyft: false,
-        moneyshyft: false,
-      };
-      error.value = err?.response?.data?.message || err?.message || 'Failed to load access capabilities';
+      await inFlightRefresh;
     } finally {
-      isLoading.value = false;
+      if (inFlightRefreshKey === refreshKey) {
+        inFlightRefresh = null;
+        inFlightRefreshKey = null;
+      }
     }
   };
 

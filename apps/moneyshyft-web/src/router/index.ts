@@ -250,7 +250,7 @@ router.beforeEach(async (to, _from, next) => {
   const moduleGate = resolveGovernedModule(to.meta.moduleGate);
 
   if (authStore.isAuthenticated && (to.meta.requiresAuth || moduleGate)) {
-    await accessStore.refresh();
+    await accessStore.refresh({ tenantId: authStore.user?.householdId || undefined });
   }
 
   const requiresConnectShyftAdminSettings = to.meta.requiresConnectShyftAdminSettings === true;
