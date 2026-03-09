@@ -56,6 +56,20 @@ It does not yet cover the rest of the commented-out lanes except where future-sa
 - `/api/v1/platform/admin/*` -> `admin-api`
 - all other `/api/*` -> `connect-api`
 
+### Route matching order
+
+Apply route ownership matching in this order for each lane host:
+
+1. `/api/v1/auth/*`
+2. `/api/v1/platform/admin/*`
+3. all other `/api/*`
+
+### Routing validation requirements
+
+- Delegated auth and platform-admin routes on money and connect must resolve to `admin-api`.
+- Lane-local API routes must resolve to the lane API (`money-api` or `connect-api`).
+- Any routing policy deviation requires contract amendment before rollout.
+
 ## Shared Postgres contract
 
 - one shared database is used by Admin, MoneyShyft, and ConnectShyft
