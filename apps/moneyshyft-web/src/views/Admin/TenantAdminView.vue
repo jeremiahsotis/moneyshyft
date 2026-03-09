@@ -958,7 +958,11 @@ const refreshPeople = async (): Promise<void> => {
     peopleTotal.value = response.total;
 
     for (const person of people.value) {
-      resetPersonDraft(person.id, roleFromRaw(person.role), inferPersonNodeId(person.id));
+      resetPersonDraft(
+        person.id,
+        roleFromRaw(person.role),
+        person.nodeId || inferPersonNodeId(person.id),
+      );
     }
   } catch (error: any) {
     setError(peopleError, error, 'Failed to load people');
