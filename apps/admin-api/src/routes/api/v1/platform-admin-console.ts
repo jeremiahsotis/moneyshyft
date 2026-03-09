@@ -2597,6 +2597,7 @@ router.get('/people', async (req: Request, res: Response) => {
 
     const userIds = users.map((user: any) => String(user.id));
     const tenantRolesByUser = new Map<string, string[]>();
+    const nodeByUser = new Map<string, string>();
 
     if (userIds.length > 0) {
       const membershipRows = await db
@@ -2608,6 +2609,24 @@ router.get('/people', async (req: Request, res: Response) => {
 
       membershipRows.forEach((row: any) => {
         tenantRolesByUser.set(String(row.user_id), parseRoleSet(row.role_set_json));
+      });
+
+      const orgMembershipRows = await db
+        .withSchema('platform')
+        .table('org_unit_memberships as oum')
+        .join('org_units as ou', 'ou.id', 'oum.org_unit_id')
+        .whereIn('oum.user_id', userIds)
+        .andWhere('ou.tenant_id', access.tenantId)
+        .orderBy('ou.created_at_utc', 'asc')
+        .orderBy('oum.created_at_utc', 'asc')
+        .select(['oum.user_id as user_id', 'oum.org_unit_id as org_unit_id']);
+
+      orgMembershipRows.forEach((row: any) => {
+        const userId = String(row.user_id);
+        const orgUnitId = String(row.org_unit_id);
+        if (!nodeByUser.has(userId) && isUuid(orgUnitId)) {
+          nodeByUser.set(userId, orgUnitId);
+        }
       });
     }
 
@@ -2625,6 +2644,7 @@ router.get('/people', async (req: Request, res: Response) => {
           firstName: user.first_name,
           lastName: user.last_name,
           role: toPlainTenantRole(tenantRolesByUser.get(String(user.id)) || []),
+          nodeId: nodeByUser.get(String(user.id)) || null,
           mustResetPassword: user.must_reset_password === true,
           lastLoginAt: user.last_login_at,
         })),
