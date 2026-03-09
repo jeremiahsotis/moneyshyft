@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --cs-color-surface: #ffffff;
+    --cs-color-surface-subtle: #f8fafc;
+    --cs-color-text-primary: #0f172a;
+    --cs-color-text-secondary: #334155;
+    --cs-color-accent-urgency: #b45309;
+    --cs-color-accent-context: #1d4ed8;
+    --cs-type-heading-lg: 1.5rem;
+    --cs-type-body-md: 1rem;
+    --cs-type-body-sm: 0.9375rem;
+    --cs-type-label-sm: 0.875rem;
+    --cs-space-1: 0.25rem;
+    --cs-space-2: 0.5rem;
+    --cs-space-3: 0.75rem;
+    --cs-space-4: 1rem;
+    --cs-space-6: 1.5rem;
+    --cs-radius-chip: 0.5rem;
+    --cs-radius-card: 0.75rem;
+    --cs-shadow-card: 0 8px 24px -16px rgb(15 23 42 / 0.35);
+    --cs-breakpoint-mobile: 390px;
+    --cs-breakpoint-tablet: 834px;
+    --cs-breakpoint-desktop: 1280px;
+  }
+
+  @media (min-width: 834px) {
+    :root {
+      --cs-type-body-md: 1.0625rem;
+      --cs-space-4: 1.125rem;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    :root {
+      --cs-type-body-md: 1.125rem;
+      --cs-space-4: 1.25rem;
+      --cs-shadow-card: 0 10px 28px -16px rgb(15 23 42 / 0.35);
+    }
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+}
+
+@layer components {
+  /* Custom component styles will go here */
+}
+
+.privacy-mode .privacy-value {
+  filter: blur(6px);
+  transition: filter 150ms ease;
+}
+
+.privacy-mode .privacy-value:hover {
+  filter: blur(0);
+}
