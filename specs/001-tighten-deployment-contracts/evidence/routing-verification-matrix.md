@@ -38,39 +38,71 @@ This matrix aligns with:
 
 ## Execution steps
 
-1. Generate a unique probe token:
+1. Generate a unique probe token and output directory:
 
 ```bash
 PROBE="routing-$(date +%s)"
+OUT_DIR="/tmp/${PROBE}"
+mkdir -p "${OUT_DIR}"
+echo "Probe token: ${PROBE}"
+echo "Output dir: ${OUT_DIR}"
 ```
 
-2. Execute probe requests for each matrix row:
+2. Execute probe requests for each matrix row and capture response headers:
 
 ```bash
-curl -skI "https://admin.shyftunity.com/api/v1/auth/__routing_probe__?probe=${PROBE}"
-curl -skI "https://admin.shyftunity.com/api/v1/platform/admin/__routing_probe__?probe=${PROBE}"
-curl -skI "https://admin.shyftunity.com/api/v1/__routing_probe__?probe=${PROBE}"
+set -euo pipefail
 
-curl -skI "https://money.shyftunity.com/api/v1/auth/__routing_probe__?probe=${PROBE}"
-curl -skI "https://money.shyftunity.com/api/v1/platform/admin/__routing_probe__?probe=${PROBE}"
-curl -skI "https://money.shyftunity.com/api/v1/__routing_probe__?probe=${PROBE}"
+declare -a ROUTES=(
+  "admin.shyftunity.com|/api/v1/auth/__routing_probe__|admin_api|admin-api"
+  "admin.shyftunity.com|/api/v1/platform/admin/__routing_probe__|admin_api|admin-api"
+  "admin.shyftunity.com|/api/v1/__routing_probe__|admin_api|admin-api"
+  "money.shyftunity.com|/api/v1/auth/__routing_probe__|admin_api|admin-api"
+  "money.shyftunity.com|/api/v1/platform/admin/__routing_probe__|admin_api|admin-api"
+  "money.shyftunity.com|/api/v1/__routing_probe__|money_api|moneyshyft-api"
+  "connect.shyftunity.com|/api/v1/auth/__routing_probe__|admin_api|admin-api"
+  "connect.shyftunity.com|/api/v1/platform/admin/__routing_probe__|admin_api|admin-api"
+  "connect.shyftunity.com|/api/v1/__routing_probe__|connect_api|connectshyft-api"
+)
 
-curl -skI "https://connect.shyftunity.com/api/v1/auth/__routing_probe__?probe=${PROBE}"
-curl -skI "https://connect.shyftunity.com/api/v1/platform/admin/__routing_probe__?probe=${PROBE}"
-curl -skI "https://connect.shyftunity.com/api/v1/__routing_probe__?probe=${PROBE}"
+printf "domain,path,expected_upstream,expected_service,status_code\n" > "${OUT_DIR}/probe-results.csv"
+
+for row in "${ROUTES[@]}"; do
+  IFS='|' read -r domain path expected_upstream expected_service <<< "${row}"
+  url="https://${domain}${path}?probe=${PROBE}"
+  header_file="${OUT_DIR}/$(echo "${domain}${path}" | tr '/.' '__').headers"
+  status_code="$(curl -skS -o /dev/null -D "${header_file}" -w "%{http_code}" "${url}")"
+
+  printf "%s,%s,%s,%s,%s\n" "${domain}" "${path}" "${expected_upstream}" "${expected_service}" "${status_code}" >> "${OUT_DIR}/probe-results.csv"
+  echo "${domain} ${path} -> HTTP ${status_code}"
+
+  if [[ "${status_code}" -lt 200 || "${status_code}" -ge 500 ]]; then
+    echo "FAIL: unexpected status for ${url}"
+    exit 1
+  fi
+done
+
+cat "${OUT_DIR}/probe-results.csv"
 ```
 
-3. Confirm expected upstream target from Nginx logs (match by probe token):
+3. Confirm every probe is present in Nginx access logs:
 
 ```bash
-sudo rg "probe=${PROBE}" /var/log/nginx/access.log
+sudo rg "probe=${PROBE}" /var/log/nginx/access.log > "${OUT_DIR}/nginx-routing-lines.log"
+wc -l "${OUT_DIR}/nginx-routing-lines.log"
 ```
 
-4. Validate each hit routes to the expected loopback target:
+4. Validate each row routes to the expected upstream and loopback target (based on Nginx access log fields):
 
-- `admin_api` rows resolve to `127.0.0.1:3100`
-- `money_api` rows resolve to `127.0.0.1:3000`
-- `connect_api` rows resolve to `127.0.0.1:3002`
+```bash
+rg "admin_api|money_api|connect_api|127.0.0.1:3100|127.0.0.1:3000|127.0.0.1:3002" "${OUT_DIR}/nginx-routing-lines.log"
+```
+
+- `admin_api` rows must resolve to `127.0.0.1:3100`
+- `money_api` rows must resolve to `127.0.0.1:3000`
+- `connect_api` rows must resolve to `127.0.0.1:3002`
+
+5. Save evidence artifacts from `${OUT_DIR}` with the deployment verification record.
 
 ## Pass criteria
 
