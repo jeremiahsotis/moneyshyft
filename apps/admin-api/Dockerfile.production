@@ -1,29 +1,31 @@
-FROM node:20-alpine
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+COPY package.json ./
+COPY package-lock.json ./
 COPY knexfile.js ./
 COPY tsconfig.json ./
 
-# Install ALL dependencies (including dev dependencies for building)
 RUN npm ci && npm cache clean --force
 
-# Copy source code
 COPY . .
 
-# Build TypeScript to JavaScript
 RUN npm run build
+RUN npm prune --omit=dev && npm cache clean --force
 
-# Remove dev dependencies to reduce image size
-RUN npm prune --production && npm cache clean --force
+FROM node:20-alpine AS runtime
+
+WORKDIR /app
 
 ENV NODE_ENV=production
-ENV NODE_OPTIONS="--max-old-space-size=512"
+ENV NODE_OPTIONS="--max-old-space-size=384"
 
-EXPOSE 3000
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/knexfile.js ./knexfile.js
 
-# Run the correct entry point
+EXPOSE 3100
+
 CMD ["node", "dist/server.js"]
-

@@ -108,6 +108,8 @@ Batch execution note: `T019` through `T024` are complete and aligned to canonica
 
 **Checkpoint**: User Story 3 is independently complete when shared DB authority and security boundary checks pass with documented evidence.
 
+Enforcement pass sync (2026-03-09): runtime/configuration enforcement implemented and revalidated for T014, T015, T016, T017, T020, T026, T028, T029, and T030.
+
 ---
 
 ## Phase 6: Polish & Cross-Cutting Concerns

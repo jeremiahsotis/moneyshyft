@@ -2,9 +2,53 @@ import { Pool } from 'pg';
 import logger from '../utils/logger';
 import './loadEnv';
 
+const readEnv = (primary: string, fallback: string): string | undefined => {
+  const value = process.env[primary] ?? process.env[fallback];
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const resolveRequiredEnv = (primary: string, fallback: string): string => {
+  const value = readEnv(primary, fallback);
+  if (value) {
+    return value;
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    return `test-${primary.toLowerCase()}`;
+  }
+
+  throw new Error(`${primary} (${fallback}) must be set via environment/secret manager`);
+};
+
+const validateDatabaseEnv = (): void => {
+  if (process.env.NODE_ENV === 'test') {
+    return;
+  }
+
+  const databaseUrl = process.env.DATABASE_URL?.trim();
+  if (databaseUrl) {
+    return;
+  }
+
+  resolveRequiredEnv('DATABASE_HOST', 'DB_HOST');
+  resolveRequiredEnv('DATABASE_PORT', 'DB_PORT');
+  resolveRequiredEnv('DATABASE_NAME', 'DB_NAME');
+  resolveRequiredEnv('DATABASE_USER', 'DB_USER');
+  resolveRequiredEnv('DATABASE_PASSWORD', 'DB_PASSWORD');
+
+  if (process.env.NODE_ENV === 'production') {
+    resolveRequiredEnv('DATABASE_SSL_MODE', 'DB_SSL_MODE');
+  }
+};
+
 const resolveDbPassword = (): string => {
-  const password = process.env.DB_PASSWORD;
-  if (typeof password === 'string' && password.trim().length > 0) {
+  const password = readEnv('DATABASE_PASSWORD', 'DB_PASSWORD');
+  if (password) {
     return password;
   }
 
@@ -17,6 +61,8 @@ const resolveDbPassword = (): string => {
 
 // Parse DATABASE_URL or use individual env vars
 const getDatabaseConfig = () => {
+  validateDatabaseEnv();
+
   if (process.env.DATABASE_URL) {
     const url = new URL(process.env.DATABASE_URL);
     return {
@@ -28,11 +74,17 @@ const getDatabaseConfig = () => {
     };
   }
 
+  const portValue = resolveRequiredEnv('DATABASE_PORT', 'DB_PORT');
+  const parsedPort = parseInt(portValue, 10);
+  if (Number.isNaN(parsedPort)) {
+    throw new Error(`DATABASE_PORT must be numeric, received '${portValue}'`);
+  }
+
   return {
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME || 'moneyshyft',
-    user: process.env.DB_USER || 'jeremiahotis',
+    host: resolveRequiredEnv('DATABASE_HOST', 'DB_HOST'),
+    port: parsedPort,
+    database: resolveRequiredEnv('DATABASE_NAME', 'DB_NAME'),
+    user: resolveRequiredEnv('DATABASE_USER', 'DB_USER'),
     password: resolveDbPassword(),
   };
 };

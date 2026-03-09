@@ -3,7 +3,7 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 
 const resolveEnvCandidates = (): string[] => {
-  const explicitEnvFile = process.env.MONEYSHYFT_API_ENV_FILE;
+  const explicitEnvFile = process.env.CONNECT_API_ENV_FILE || process.env.CONNECTSHYFT_API_ENV_FILE;
   const candidates = [
     explicitEnvFile,
     path.resolve(process.cwd(), '.env'),
@@ -38,7 +38,7 @@ const loadEnvFromCandidates = (): void => {
   }
 
   if (loadedPaths.length > 0) {
-    process.env.MONEYSHYFT_ENV_LOADED_PATHS = loadedPaths.join(path.delimiter);
+    process.env.CONNECTSHYFT_ENV_LOADED_PATHS = loadedPaths.join(path.delimiter);
   }
 };
 

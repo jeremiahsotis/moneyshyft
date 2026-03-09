@@ -3,7 +3,7 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 
 const resolveEnvCandidates = (): string[] => {
-  const explicitEnvFile = process.env.ADMIN_API_ENV_FILE || process.env.MONEYSHYFT_API_ENV_FILE;
+  const explicitEnvFile = process.env.ADMIN_API_ENV_FILE;
   const candidates = [
     explicitEnvFile,
     path.resolve(process.cwd(), '.env'),
