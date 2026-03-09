@@ -1,6 +1,7 @@
 # MoneyShyft Production Deployment Guide
 
 This guide is for the production topology you described:
+
 - Single production server deployment target
 - Host-managed Nginx reverse proxy as the public ingress layer
 - Shared host-managed Postgres (not containerized)
@@ -11,6 +12,7 @@ This guide is for the production topology you described:
 ## 0) Capacity Verdict for 2 GB / 1 vCPU
 
 This is feasible, not a giant problem, if you keep the deployment lean:
+
 - Keep Nginx on the host (do not run an extra Nginx container for this app)
 - Serve frontend as static files from disk (do not containerize frontend runtime)
 - Cap API memory (`NODE_OPTIONS=--max-old-space-size=384`)
@@ -19,6 +21,7 @@ This is feasible, not a giant problem, if you keep the deployment lean:
 - Keep Docker logs rotated and clean old images regularly
 
 Approximate RAM envelope on this server:
+
 - OS + host Nginx + background services: 350-600 MB
 - Three Node API containers combined: 550-1200 MB (workload-dependent)
 - Host-managed Postgres service: 250-700 MB (outside Docker)
@@ -146,6 +149,7 @@ npm run build
 
 Nginx remains host-managed and is the only public ingress layer.
 Validate that lane roots and API upstreams match the deployment contract for:
+
 - `admin.shyftunity.com` -> `/home/jeremiahotis/projects/shyftunity/apps/admin-web/dist`
 - `money.shyftunity.com` -> `/home/jeremiahotis/projects/shyftunity/apps/moneyshyft-web/dist`
 - `connect.shyftunity.com` -> `/home/jeremiahotis/projects/shyftunity/apps/connectshyft-web/dist`
@@ -173,13 +177,13 @@ sudo systemctl reload nginx
 cd /home/jeremiahotis/projects/shyftunity
 
 # Build API images
-docker compose build admin-api moneyshyft-api connectshyft-api
+docker compose build admin-api money-api connect-api
 
 # Run production migrations from the authority only
 docker compose run --rm admin-api npm run migrate:latest:prod
 
 # Start or restart APIs
-docker compose up -d admin-api moneyshyft-api connectshyft-api
+docker compose up -d admin-api money-api connect-api
 ```
 
 ## 6) Smoke Checks
@@ -314,6 +318,7 @@ gunzip -c /opt/shyftunity/backups/<backup-file>.sql.gz | psql "<host-postgres-co
 ## 10) Deployment Model Boundaries
 
 This guide intentionally covers one deployment model only:
+
 - single production server target
 - host-managed Nginx ingress
 - shared host-managed Postgres
@@ -321,6 +326,7 @@ This guide intentionally covers one deployment model only:
 - host-built static frontends served by Nginx
 
 Out of scope in this guide:
+
 - alternate deployment models
 - containerized Postgres
 - additional deployment lanes
