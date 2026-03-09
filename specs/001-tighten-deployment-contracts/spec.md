@@ -2,7 +2,7 @@
 
 **Feature Branch**: `001-tighten-deployment-contracts`  
 **Created**: 2026-03-08  
-**Status**: Draft  
+**Status**: Finalized  
 **Input**: User description: "Specification Name: deployment-tightening-round"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -22,10 +22,11 @@ all in-scope lanes are reachable and healthy without ad hoc fixes.
 
 1. **Given** a clean production server with required prerequisites, **When** the
    deployment runbook is executed, **Then** Admin, MoneyShyft, and ConnectShyft
-   are deployed successfully with their intended domain entry points.
+   are deployed successfully with their intended domain entry points and
+   canonical API bindings (`3100`, `3000`, `3002`) behind host Nginx.
 2. **Given** an existing deployment, **When** the same runbook is re-run for an
    update, **Then** deployment completes without manual path, port, or route
-   corrections.
+   corrections and yields the same three-lane service topology.
 
 ---
 
@@ -46,12 +47,15 @@ lane-local paths.
 
 1. **Given** traffic to `money.shyftunity.com` or `connect.shyftunity.com`,
    **When** the request path is `/api/v1/auth/*` or `/api/v1/platform/admin/*`,
-   **Then** traffic resolves to the admin authority API.
+   **Then** traffic resolves to the admin authority API (`admin-api` via
+   `admin_api` upstream on loopback `127.0.0.1:3100`).
 2. **Given** traffic to `money.shyftunity.com` or `connect.shyftunity.com`,
    **When** the request path is another lane API path under `/api/*`, **Then**
-   traffic resolves to the corresponding lane API.
+   traffic resolves to the corresponding lane API (`money_api` or
+   `connect_api`) using lane-owned upstreams only.
 3. **Given** traffic to `admin.shyftunity.com`, **When** the request path is
-   `/api/*`, **Then** traffic resolves to the admin API.
+   `/api/*`, **Then** traffic resolves to the admin API (`admin_api`) as
+   documented in the lane routing contract and verification matrix.
 
 ---
 
@@ -72,10 +76,24 @@ publicly exposed outside the reverse proxy boundary.
 1. **Given** production deployment, **When** database connectivity and migration
    operations are reviewed, **Then** all in-scope APIs connect to one shared
    Postgres instance and production migrations are run only by the admin
-   authority service.
+   authority service (`admin-api`), with money/connect APIs excluded from
+   production migration execution.
 2. **Given** deployed API services, **When** external network exposure is
-   evaluated, **Then** API ports are not publicly reachable and external traffic
-   enters through Nginx only.
+   evaluated, **Then** API ports are loopback-bound and not publicly reachable,
+   PostgreSQL is not publicly exposed for lane ingress, and all external API
+   traffic enters through host Nginx only.
+
+### Acceptance Evidence Alignment
+
+- Reproducible three-lane deployment validation is captured in:
+  `/specs/001-tighten-deployment-contracts/evidence/runbook-reproducibility.md`
+  and `/specs/001-tighten-deployment-contracts/evidence/final-validation-report.md`.
+- Routing delegation and lane-local ownership validation is captured in:
+  `/specs/001-tighten-deployment-contracts/evidence/routing-verification-matrix.md`.
+- Shared database authority validation is captured in:
+  `/specs/001-tighten-deployment-contracts/evidence/database-authority-verification.md`.
+- Ingress and security boundary validation is captured in:
+  `/specs/001-tighten-deployment-contracts/evidence/security-boundary-verification.md`.
 
 ---
 

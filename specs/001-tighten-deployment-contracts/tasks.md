@@ -113,10 +113,10 @@
 
 **Purpose**: Final consistency pass and release-readiness proof across all stories
 
-- [ ] T033 [P] Update feature-level summary and traceability in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/plan.md`
-- [ ] T034 [P] Reconcile final spec acceptance criteria wording with executed tasks in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/spec.md`
-- [ ] T035 Consolidate final acceptance evidence index in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/README.md`
-- [ ] T036 Perform end-to-end quickstart validation and capture outcomes in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/final-validation-report.md`
+- [x] T033 [P] Update feature-level summary and traceability in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/plan.md`
+- [x] T034 [P] Reconcile final spec acceptance criteria wording with executed tasks in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/spec.md`
+- [x] T035 Consolidate final acceptance evidence index in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/README.md`
+- [x] T036 Perform end-to-end quickstart validation and capture outcomes in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/evidence/final-validation-report.md`
 
 ---
 
