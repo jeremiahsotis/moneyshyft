@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
@@ -11,10 +11,18 @@ RUN npm ci && npm cache clean --force
 COPY . .
 
 RUN npm run build
-RUN npm prune --production && npm cache clean --force
+RUN npm prune --omit=dev && npm cache clean --force
+
+FROM node:20-alpine AS runtime
+
+WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=384"
+
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
 
 EXPOSE 3100
 
