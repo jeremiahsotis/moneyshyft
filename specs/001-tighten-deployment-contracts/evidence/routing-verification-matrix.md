@@ -19,8 +19,8 @@ This matrix aligns with:
 | Nginx upstream | Service target | Loopback target |
 |---|---|---|
 | `admin_api` | `admin-api` | `127.0.0.1:3100` |
-| `money_api` | `moneyshyft-api` (money lane API authority) | `127.0.0.1:3000` |
-| `connect_api` | `connectshyft-api` (connect lane API authority) | `127.0.0.1:3002` |
+| `money_api` | `money-api` (money lane API authority) | `127.0.0.1:3000` |
+| `connect_api` | `connect-api` (connect lane API authority) | `127.0.0.1:3002` |
 
 ## Lane routing verification matrix
 
@@ -31,10 +31,10 @@ This matrix aligns with:
 | `admin.shyftunity.com` | Admin lane-local API | other `/api/*` | `/api/v1/__routing_probe__` | `admin_api` | `admin-api` |
 | `money.shyftunity.com` | Delegated auth | `/api/v1/auth/*` | `/api/v1/auth/__routing_probe__` | `admin_api` | `admin-api` |
 | `money.shyftunity.com` | Delegated platform admin | `/api/v1/platform/admin/*` | `/api/v1/platform/admin/__routing_probe__` | `admin_api` | `admin-api` |
-| `money.shyftunity.com` | Money lane-local API | other `/api/*` | `/api/v1/__routing_probe__` | `money_api` | `moneyshyft-api` |
+| `money.shyftunity.com` | Money lane-local API | other `/api/*` | `/api/v1/__routing_probe__` | `money_api` | `money-api` |
 | `connect.shyftunity.com` | Delegated auth | `/api/v1/auth/*` | `/api/v1/auth/__routing_probe__` | `admin_api` | `admin-api` |
 | `connect.shyftunity.com` | Delegated platform admin | `/api/v1/platform/admin/*` | `/api/v1/platform/admin/__routing_probe__` | `admin_api` | `admin-api` |
-| `connect.shyftunity.com` | Connect lane-local API | other `/api/*` | `/api/v1/__routing_probe__` | `connect_api` | `connectshyft-api` |
+| `connect.shyftunity.com` | Connect lane-local API | other `/api/*` | `/api/v1/__routing_probe__` | `connect_api` | `connect-api` |
 
 ## Execution steps
 
@@ -59,10 +59,10 @@ declare -a ROUTES=(
   "admin.shyftunity.com|/api/v1/__routing_probe__|admin_api|admin-api"
   "money.shyftunity.com|/api/v1/auth/__routing_probe__|admin_api|admin-api"
   "money.shyftunity.com|/api/v1/platform/admin/__routing_probe__|admin_api|admin-api"
-  "money.shyftunity.com|/api/v1/__routing_probe__|money_api|moneyshyft-api"
+  "money.shyftunity.com|/api/v1/__routing_probe__|money_api|money-api"
   "connect.shyftunity.com|/api/v1/auth/__routing_probe__|admin_api|admin-api"
   "connect.shyftunity.com|/api/v1/platform/admin/__routing_probe__|admin_api|admin-api"
-  "connect.shyftunity.com|/api/v1/__routing_probe__|connect_api|connectshyft-api"
+  "connect.shyftunity.com|/api/v1/__routing_probe__|connect_api|connect-api"
 )
 
 printf "domain,path,expected_upstream,expected_service,status_code\n" > "${OUT_DIR}/probe-results.csv"

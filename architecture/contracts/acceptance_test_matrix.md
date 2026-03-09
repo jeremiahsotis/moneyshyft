@@ -46,6 +46,12 @@
 ### Lane routing
 - all other `/api/*` requests reach `connect-api`
 
+## Routing match order enforcement
+- delegated matches are evaluated before lane-local `/api/*`:
+  1. `/api/v1/auth/*`
+  2. `/api/v1/platform/admin/*`
+  3. all other `/api/*`
+
 ## Shared Postgres
 - all three API containers show the same target `DATABASE_URL` host and DB name
 - `pg_stat_activity` confirms live connections from all three services
