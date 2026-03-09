@@ -56,7 +56,7 @@ It does not yet cover the rest of the commented-out lanes except where future-sa
 - `/api/v1/platform/admin/*` -> `admin-api`
 - all other `/api/*` -> `connect-api`
 
-### Route matching order
+### Route matching order (required)
 
 Apply route ownership matching in this order for each lane host:
 
@@ -66,8 +66,8 @@ Apply route ownership matching in this order for each lane host:
 
 ### Routing validation requirements
 
-- Delegated auth and platform-admin routes on money and connect must resolve to `admin-api`.
-- Lane-local API routes must resolve to the lane API (`money-api` or `connect-api`).
+- Delegated auth and platform-admin routes on money and connect must resolve to `admin-api` only.
+- Lane-local API routes must resolve to the lane API only (`money-api` for money, `connect-api` for connect, `admin-api` for admin).
 - Any routing policy deviation requires contract amendment before rollout.
 
 ## Shared Postgres contract

@@ -42,13 +42,14 @@ Apply route ownership matching in this order for each lane host:
 
 ## Canonical API Ports
 
-- `admin-api`: `3100`
-- `money-api`: `3000`
-- `connect-api`: `3002`
+- `admin-api`: `127.0.0.1:3100`
+- `money-api`: `127.0.0.1:3000`
+- `connect-api`: `127.0.0.1:3002`
 
 ## Validation Requirements
 
 - Delegated auth/platform-admin routes on money/connect MUST resolve to
-  `admin-api`.
-- Lane-local API routes MUST resolve to the lane API.
+  `admin-api` only.
+- Lane-local API routes MUST resolve to the lane API only (`money-api` for
+  money, `connect-api` for connect, `admin-api` for admin).
 - Any route-policy deviation requires constitution amendment before rollout.

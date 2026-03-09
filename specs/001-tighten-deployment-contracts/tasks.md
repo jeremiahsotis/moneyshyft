@@ -85,6 +85,7 @@
 - [x] T024 [US2] Update quickstart routing validation steps in `/Users/jeremiahotis/projects/connectshyft/specs/001-tighten-deployment-contracts/quickstart.md`
 
 **Checkpoint**: User Story 2 is independently complete when delegated and lane-local route ownership validates correctly for all in-scope domains.
+Batch execution note: `T019` through `T024` are complete and aligned to canonical routing ownership (`admin-api`, `money-api`, `connect-api`) and ports (`3100`, `3000`, `3002`).
 
 ---
 

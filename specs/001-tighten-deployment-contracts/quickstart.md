@@ -50,6 +50,8 @@ applied consistently and reproducibly on a small production server.
 4. Confirm probe results satisfy route ownership:
    - money/connect delegated routes (`/api/v1/auth/*`, `/api/v1/platform/admin/*`) -> `admin-api` (`admin_api`, `127.0.0.1:3100`)
    - lane-local `/api/*` routes -> lane APIs (`money_api`/`connect_api` and `admin_api` for admin lane)
+5. Record the probe CSV and matched Nginx access-log lines as routing evidence
+   for acceptance review.
 
 ## Step 3: Apply runtime and DB authority contract
 
