@@ -73,6 +73,15 @@ const routes: RouteRecordRaw[] = [
       allowIncompleteSetup: true,
     }
   },
+  {
+    path: '/admin/forbidden',
+    name: 'admin-forbidden',
+    component: () => import('@/views/Admin/AdminForbiddenView.vue'),
+    meta: {
+      requiresAuth: true,
+      allowIncompleteSetup: true,
+    }
+  },
 ];
 
 const router = createRouter({
@@ -94,7 +103,9 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   if (authStore.isAuthenticated && (to.meta.requiresAuth || to.meta.adminScope)) {
-    await accessStore.refresh();
+    await accessStore.refresh({
+      tenantId: authStore.user?.activeTenantId || authStore.user?.householdId || undefined,
+    });
   }
 
   if (authStore.isAuthenticated && authStore.user?.mustResetPassword === true && to.name !== 'first-login-reset') {
@@ -134,7 +145,7 @@ router.beforeEach(async (to, _from, next) => {
       } else if (accessStore.canAccessTenantAdmin) {
         next({ name: 'admin-tenant' });
       } else {
-        next({ name: 'admin-home' });
+        next({ name: 'admin-forbidden' });
       }
       return;
     }

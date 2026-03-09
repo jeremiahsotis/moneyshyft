@@ -42,20 +42,20 @@ export const useAccessStore = defineStore('access', () => {
   const canAccessMoneyShyft = computed(() => moduleEntitlements.value.moneyshyft === true);
 
   const defaultAuthorizedPath = computed(() => {
-    if (canAccessMoneyShyft.value) {
-      return '/';
-    }
-
-    if (canAccessConnectShyft.value) {
-      return '/app/connectshyft/inbox';
-    }
-
     if (canAccessSystemAdmin.value) {
       return '/admin/system';
     }
 
     if (canAccessTenantAdmin.value) {
       return '/admin/tenant';
+    }
+
+    if (canAccessMoneyShyft.value) {
+      return '/';
+    }
+
+    if (canAccessConnectShyft.value) {
+      return '/app/connectshyft/inbox';
     }
 
     return '/budget/setup';
