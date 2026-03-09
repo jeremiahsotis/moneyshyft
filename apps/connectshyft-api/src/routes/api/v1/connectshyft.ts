@@ -483,8 +483,47 @@ const actorFromRequest = (req: Request): PlatformAdminActorContext => ({
   activeTenantId: req.user?.activeTenantId || null,
 });
 
-const resolveTenantIdFromRequest = (req: Request): string | null => {
-  return req.user?.activeTenantId || null;
+const resolveTenantIdFromRequest = async (req: Request): Promise<string | null> => {
+  const directTenantCandidates = [
+    req.user?.activeTenantId || null,
+    req.user?.householdId || null,
+    req.tenantContext?.tenantId || null,
+    req.tenantId || null,
+  ]
+    .map((value) => normalizeNonEmptyString(value))
+    .filter((value): value is string => value !== null)
+    .filter((value) => UUID_PATTERN.test(value));
+
+  if (directTenantCandidates.length > 0) {
+    return directTenantCandidates[0];
+  }
+
+  const actorUserId = normalizeNonEmptyString(req.user?.userId || null);
+  if (!actorUserId || !UUID_PATTERN.test(actorUserId)) {
+    return null;
+  }
+
+  const membershipRows = await loadPlatformDb()
+    .withSchema('platform')
+    .table('tenant_memberships')
+    .where('user_id', actorUserId)
+    .select('tenant_id')
+    .orderBy('tenant_id', 'asc')
+    .limit(2);
+
+  const membershipTenantIds = Array.from(
+    new Set(
+      membershipRows
+        .map((row) => normalizeNonEmptyString((row as { tenant_id?: unknown }).tenant_id))
+        .filter((value): value is string => value !== null && UUID_PATTERN.test(value)),
+    ),
+  );
+
+  if (membershipTenantIds.length === 1) {
+    return membershipTenantIds[0];
+  }
+
+  return null;
 };
 
 const resolveConnectShyftFallbackOrgUnitId = async (
@@ -495,7 +534,7 @@ const resolveConnectShyftFallbackOrgUnitId = async (
   }
 
   const actorUserId = req.user?.userId || null;
-  const tenantId = resolveTenantIdFromRequest(req);
+  const tenantId = await resolveTenantIdFromRequest(req);
   if (!actorUserId || !tenantId || !UUID_PATTERN.test(tenantId)) {
     return null;
   }
@@ -548,6 +587,55 @@ const resolveConnectShyftFallbackOrgUnitId = async (
   return normalizeNonEmptyString((tenantOrgUnitRows[0] as { id?: unknown }).id);
 };
 
+const resolveConnectShyftEnabledByOrgUnitOverride = async (
+  req: Request,
+  tenantId: string,
+): Promise<boolean> => {
+  if (!UUID_PATTERN.test(tenantId)) {
+    return false;
+  }
+
+  const directOrgUnitCandidates = [
+    req.tenantContext?.orgUnitId || null,
+    req.orgUnitId || null,
+    req.user?.activeOrgUnitId || null,
+  ]
+    .map((value) => normalizeNonEmptyString(value))
+    .filter((value): value is string => value !== null && UUID_PATTERN.test(value));
+
+  const actorUserId = normalizeNonEmptyString(req.user?.userId || null);
+  const membershipOrgUnitIds = actorUserId && UUID_PATTERN.test(actorUserId)
+    ? (
+      await loadPlatformDb()
+        .withSchema('platform')
+        .table('org_unit_memberships as om')
+        .join('org_units as ou', 'ou.id', 'om.org_unit_id')
+        .where('om.user_id', actorUserId)
+        .andWhere('ou.tenant_id', tenantId)
+        .select('om.org_unit_id as orgUnitId')
+        .orderBy('om.org_unit_id', 'asc')
+    )
+      .map((row) => normalizeNonEmptyString((row as { orgUnitId?: unknown }).orgUnitId))
+      .filter((value): value is string => value !== null && UUID_PATTERN.test(value))
+    : [];
+
+  const scopedOrgUnitIds = Array.from(new Set([...directOrgUnitCandidates, ...membershipOrgUnitIds]));
+  if (scopedOrgUnitIds.length === 0) {
+    return false;
+  }
+
+  const enabledOverride = await loadPlatformDb()
+    .withSchema('platform')
+    .table('org_unit_module_overrides')
+    .where('tenant_id', tenantId)
+    .andWhere('module_key', 'connectshyft')
+    .whereIn('org_unit_id', scopedOrgUnitIds)
+    .andWhere('enabled', true)
+    .first(['id']);
+
+  return Boolean(enabledOverride);
+};
+
 const TEST_TENANT_OVERRIDE_HEADER = 'x-test-connectshyft-tenant-id';
 
 const shouldBypassTestHarnessEntitlementLookup = (req: Request, tenantId: string): boolean => {
@@ -567,7 +655,7 @@ const resolveEntitlementAwareConnectShyftFlags = async (
   req: Request,
 ): Promise<{ flags: ConnectShyftFeatureFlags; entitlementDecision: Awaited<ReturnType<typeof evaluateActorTenantModuleEntitlement>> | null }> => {
   const resolvedFlags = resolveConnectShyftFeatureFlags(req);
-  const tenantId = resolveTenantIdFromRequest(req);
+  const tenantId = await resolveTenantIdFromRequest(req);
   if (!tenantId) {
     return {
       flags: resolvedFlags,
@@ -588,10 +676,12 @@ const resolveEntitlementAwareConnectShyftFlags = async (
     tenantId,
     'connectshyft',
   );
+  const orgUnitScopedEnablement = await resolveConnectShyftEnabledByOrgUnitOverride(req, tenantId);
+  const moduleEnabled = entitlementDecision.enabled || orgUnitScopedEnablement;
 
   return {
     flags: mergeConnectShyftFlagsWithEntitlement(resolvedFlags, {
-      moduleEnabled: entitlementDecision.enabled,
+      moduleEnabled,
     }),
     entitlementDecision,
   };

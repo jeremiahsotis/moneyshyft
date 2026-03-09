@@ -34,10 +34,10 @@ const CONNECTSHYFT_FLAG_ENV_MAP: Record<keyof ConnectShyftFeatureFlags, string> 
 };
 
 const DEFAULT_CONNECTSHYFT_FLAGS: ConnectShyftFeatureFlags = {
-  connectshyft_enabled: false,
-  connectshyft_inbox_enabled: false,
-  connectshyft_escalation_enabled: false,
-  connectshyft_webhooks_enabled: false,
+  connectshyft_enabled: true,
+  connectshyft_inbox_enabled: true,
+  connectshyft_escalation_enabled: true,
+  connectshyft_webhooks_enabled: true,
 };
 
 const MODULE_DISABLED_RESPONSE: Omit<ConnectShyftRefusalEvaluation, 'ok'> = {
@@ -81,6 +81,13 @@ const parseBooleanEnv = (value: string | undefined): boolean => {
     || normalized === 'enabled';
 };
 
+const parseOptionalBooleanEnv = (value: string | undefined): boolean | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  return parseBooleanEnv(value);
+};
+
 const isNodeTestEnv = (): boolean => process.env.NODE_ENV?.trim().toLowerCase() === 'test';
 
 const parseFlags = (raw: unknown): ConnectShyftFeatureFlags => {
@@ -98,14 +105,18 @@ const parseFlags = (raw: unknown): ConnectShyftFeatureFlags => {
 };
 
 const resolveServerConnectShyftFeatureFlags = (): ConnectShyftFeatureFlags => ({
-  connectshyft_enabled: parseBooleanEnv(process.env[CONNECTSHYFT_FLAG_ENV_MAP.connectshyft_enabled]),
-  connectshyft_inbox_enabled: parseBooleanEnv(process.env[CONNECTSHYFT_FLAG_ENV_MAP.connectshyft_inbox_enabled]),
-  connectshyft_escalation_enabled: parseBooleanEnv(
-    process.env[CONNECTSHYFT_FLAG_ENV_MAP.connectshyft_escalation_enabled],
-  ),
-  connectshyft_webhooks_enabled: parseBooleanEnv(
-    process.env[CONNECTSHYFT_FLAG_ENV_MAP.connectshyft_webhooks_enabled],
-  ),
+  connectshyft_enabled:
+    parseOptionalBooleanEnv(process.env[CONNECTSHYFT_FLAG_ENV_MAP.connectshyft_enabled])
+    ?? DEFAULT_CONNECTSHYFT_FLAGS.connectshyft_enabled,
+  connectshyft_inbox_enabled:
+    parseOptionalBooleanEnv(process.env[CONNECTSHYFT_FLAG_ENV_MAP.connectshyft_inbox_enabled])
+    ?? DEFAULT_CONNECTSHYFT_FLAGS.connectshyft_inbox_enabled,
+  connectshyft_escalation_enabled:
+    parseOptionalBooleanEnv(process.env[CONNECTSHYFT_FLAG_ENV_MAP.connectshyft_escalation_enabled])
+    ?? DEFAULT_CONNECTSHYFT_FLAGS.connectshyft_escalation_enabled,
+  connectshyft_webhooks_enabled:
+    parseOptionalBooleanEnv(process.env[CONNECTSHYFT_FLAG_ENV_MAP.connectshyft_webhooks_enabled])
+    ?? DEFAULT_CONNECTSHYFT_FLAGS.connectshyft_webhooks_enabled,
 });
 
 export const isConnectShyftTestOverrideEnabled = (): boolean =>
@@ -148,7 +159,7 @@ export const mergeConnectShyftFlagsWithEntitlement = (
     return { ...flags };
   }
 
-  const moduleEnabled = flags.connectshyft_enabled && entitlement.moduleEnabled;
+  const moduleEnabled = entitlement.moduleEnabled;
   if (!moduleEnabled) {
     return {
       connectshyft_enabled: false,
