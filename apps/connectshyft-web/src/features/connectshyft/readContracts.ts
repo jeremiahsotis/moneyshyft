@@ -17,6 +17,7 @@ export type ConnectShyftInboxContext = {
 
 export type ConnectShyftThreadSummary = {
   threadId: string;
+  neighborId: string | null;
   orgUnitId: string;
   state: ConnectShyftThreadState;
   stateLabel: string;
@@ -291,6 +292,8 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
 
   const candidate = payload as {
     threadId?: unknown;
+    neighborId?: unknown;
+    neighbor_id?: unknown;
     orgUnitId?: unknown;
     state?: unknown;
     claimedByUserId?: unknown;
@@ -344,6 +347,7 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
 
   return {
     threadId,
+    neighborId: normalizeString(candidate.neighborId ?? candidate.neighbor_id) || null,
     orgUnitId: normalizeString(candidate.orgUnitId),
     state,
     stateLabel: display.stateLabel || state,

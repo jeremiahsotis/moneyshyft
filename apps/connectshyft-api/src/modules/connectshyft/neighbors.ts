@@ -79,6 +79,7 @@ export type ConnectShyftNeighbor = {
   orgUnitId: string;
   firstName: string;
   lastName: string;
+  prefersTexting: 'UNKNOWN' | 'YES' | 'NO';
   phones: ConnectShyftNeighborPhone[];
   createdAtUtc: string;
   updatedAtUtc: string;
@@ -486,6 +487,7 @@ type DbNeighborRow = {
   org_unit_id: string;
   first_name: string;
   last_name: string;
+  prefers_texting?: string | null;
   created_at_utc: string | Date;
   updated_at_utc: string | Date;
 };
@@ -515,6 +517,14 @@ const toIsoUtc = (value: string | Date): string => {
   }
 
   return value;
+};
+
+const normalizeTextingPreference = (value: unknown): 'UNKNOWN' | 'YES' | 'NO' => {
+  if (value === 'YES' || value === 'NO' || value === 'UNKNOWN') {
+    return value;
+  }
+
+  return 'UNKNOWN';
 };
 
 const sortPhones = (phoneRows: DbNeighborPhoneRow[]): DbNeighborPhoneRow[] => {
@@ -600,6 +610,7 @@ const mapRowsToNeighbor = (
   orgUnitId: neighborRow.org_unit_id,
   firstName: neighborRow.first_name,
   lastName: neighborRow.last_name,
+  prefersTexting: normalizeTextingPreference(neighborRow.prefers_texting),
   phones: sortPhones(phoneRows).map((phoneRow) => ({
     phoneId: phoneRow.id,
     label: phoneRow.label,
@@ -950,6 +961,7 @@ export class KnexConnectShyftNeighborStore {
             org_unit_id: input.orgUnitId,
             first_name: input.firstName,
             last_name: input.lastName,
+            prefers_texting: 'UNKNOWN',
             created_at_utc: trx.fn.now(),
             updated_at_utc: trx.fn.now(),
           })
@@ -959,6 +971,7 @@ export class KnexConnectShyftNeighborStore {
             'org_unit_id',
             'first_name',
             'last_name',
+            'prefers_texting',
             'created_at_utc',
             'updated_at_utc',
           ]);
@@ -1024,6 +1037,7 @@ export class KnexConnectShyftNeighborStore {
         'org_unit_id',
         'first_name',
         'last_name',
+        'prefers_texting',
         'created_at_utc',
         'updated_at_utc',
       ]);
@@ -1060,6 +1074,7 @@ export class KnexConnectShyftNeighborStore {
         'org_unit_id',
         'first_name',
         'last_name',
+        'prefers_texting',
         'created_at_utc',
         'updated_at_utc',
       ]);
@@ -1156,6 +1171,7 @@ export class KnexConnectShyftNeighborStore {
             'org_unit_id',
             'first_name',
             'last_name',
+            'prefers_texting',
             'created_at_utc',
             'updated_at_utc',
           ]);

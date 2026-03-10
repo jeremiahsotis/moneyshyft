@@ -27,9 +27,9 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
       await expect(cardTapTarget).toBeVisible();
       await expect(cardTapTarget).toHaveAttribute('aria-label', /open thread/i);
 
-      await expect(firstQueueCard.getByTestId('connectshyft-queue-card-summary')).toBeVisible();
-      await expect(firstQueueCard.getByTestId('connectshyft-queue-card-preview')).toBeVisible();
-      await expect(firstQueueCard.getByTestId('connectshyft-queue-card-timestamp')).toBeVisible();
+      await expect(firstQueueCard.getByTestId('connectshyft-queue-card-summary')).toHaveText(/\S+/);
+      await expect(firstQueueCard.getByTestId('connectshyft-queue-card-preview')).toHaveText(/\S+/);
+      await expect(firstQueueCard.getByTestId('connectshyft-queue-card-timestamp')).toHaveText(/\S+/);
       await expect(firstQueueCard.getByTestId('connectshyft-queue-context-pill').first()).toBeVisible();
 
       const loweredCopy = await getLoweredSurfaceCopy(page);
