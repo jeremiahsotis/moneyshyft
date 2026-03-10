@@ -7,6 +7,9 @@ forbidden_paths=(
   "apps/moneyshyft-web/src/views/ConnectShyft"
   "apps/moneyshyft-web/src/components/connectshyft"
   "apps/moneyshyft-web/src/features/connectshyft"
+  "apps/admin-web/src/views/ConnectShyft"
+  "apps/admin-web/src/components/connectshyft"
+  "apps/admin-web/src/features/connectshyft"
 )
 
 violations=()
@@ -18,7 +21,7 @@ for path in "${forbidden_paths[@]}"; do
 done
 
 if [[ ${#violations[@]} -gt 0 ]]; then
-  echo "ConnectShyft lane convergence guard failed. Duplicate UI found in money lane:"
+  echo "ConnectShyft lane convergence guard failed. Duplicate UI found outside the ConnectShyft lane:"
   for v in "${violations[@]}"; do
     echo "- $v"
   done
