@@ -134,7 +134,6 @@ import {
   fetchConnectShyftNeighborsCollection,
   type ConnectShyftNeighbor,
   type ConnectShyftNeighborScope,
-  type ConnectShyftNeighborSearchMode,
 } from '@/features/connectshyft/neighbors';
 import { ensureConnectShyftThread } from '@/features/connectshyft/threads';
 import {
@@ -144,6 +143,7 @@ import {
 
 const DEFAULT_THREAD_INBOUND_NUMBER_ID = 'cs-number-default-inbound';
 const DEFAULT_THREAD_OUTBOUND_NUMBER_ID = 'cs-number-default-outbound';
+type ConnectShyftNeighborSearchMode = 'name' | 'phone';
 
 const route = useRoute();
 const router = useRouter();
@@ -285,10 +285,7 @@ const loadDirectory = async (): Promise<void> => {
 
   scope.value = await fetchConnectShyftNeighborScope();
 
-  const listResult = await fetchConnectShyftNeighborsCollection({
-    mode: searchMode.value,
-    query: searchQuery.value,
-  });
+  const listResult = await fetchConnectShyftNeighborsCollection();
 
   isLoading.value = false;
 

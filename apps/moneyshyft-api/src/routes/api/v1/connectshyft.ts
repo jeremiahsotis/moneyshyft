@@ -247,7 +247,7 @@ type ConnectShyftSyntheticThreadDescriptor = {
 };
 
 const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSyntheticThreadDescriptor> = {
-  'thread-c4-unclaimed-1001': {
+  '483a4c51-e677-422a-8bc6-faeea89c6dcf': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'UNCLAIMED',
@@ -259,7 +259,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-501',
     summary: 'Unclaimed intake ready for assignment',
   },
-  'thread-c4-claimed-1002': {
+  '6fb01cbc-069d-485a-86f7-ee72359543b9': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'CLAIMED',
@@ -271,7 +271,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-502',
     summary: 'Claimed thread eligible for takeover/close',
   },
-  'thread-c4-closed-1003': {
+  '2f6bbd34-49c7-4400-8982-889c996ab87b': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'CLOSED',
@@ -283,7 +283,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-503',
     summary: 'Closed thread awaiting explicit outbound reopen',
   },
-  'thread-d4-unclaimed-1001': {
+  '4332bb8e-940f-4927-8320-a8d3f3093d72': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'UNCLAIMED',
@@ -295,7 +295,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-501',
     summary: 'Unclaimed intake ready for policy-safe outbound action',
   },
-  'thread-d4-claimed-1002': {
+  '0b3060e8-d0e1-4366-8655-8c7ec44cf0ee': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'CLAIMED',
@@ -307,7 +307,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-502',
     summary: 'Claimed thread eligible for close action',
   },
-  'thread-d4-closed-1003': {
+  '20ab942f-27c6-4ae5-8af2-06b727c36b2a': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'CLOSED',
@@ -319,7 +319,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-503',
     summary: 'Closed thread awaiting explicit same-thread reopen',
   },
-  'thread-d4-closed-prefers-no-1005': {
+  '06a77807-6575-4c63-8824-38a89f9dae12': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'CLOSED',
@@ -331,7 +331,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-505',
     summary: 'Closed thread with prefers_texting=NO policy.',
   },
-  'thread-d4-unclaimed-prefers-no-1004': {
+  '59b44eb4-c8e7-4cd1-8a22-bbeceb871dd7': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'UNCLAIMED',
@@ -343,7 +343,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-504',
     summary: 'Unclaimed thread with prefers_texting=NO policy.',
   },
-  'thread-ux-r4-unclaimed-1001': {
+  '1641c3dd-4d4c-4997-8b72-ae4876649b37': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'UNCLAIMED',
@@ -355,7 +355,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-ux-r4-501',
     summary: 'Unclaimed thread with explicit outbound guardrail controls.',
   },
-  'thread-ux-r4-claimed-1002': {
+  '69c239d2-8f02-4202-8cec-a7f0de61cbf7': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'CLAIMED',
@@ -367,7 +367,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-ux-r4-502',
     summary: 'Claimed thread with deterministic policy-safe outbound controls.',
   },
-  'thread-ux-r4-closed-1003': {
+  'aedcda71-42b7-4857-8a0a-70013e01d4cd': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'CLOSED',
@@ -379,7 +379,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-ux-r4-503',
     summary: 'Closed thread requiring explicit same-thread reopen before outbound.',
   },
-  'thread-ux-r4-unclaimed-prefers-no-1004': {
+  '21f2866f-37ff-42da-80fc-0b5d2c3bc09d': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'UNCLAIMED',
@@ -391,7 +391,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-ux-r4-504',
     summary: 'Unclaimed thread with prefers_texting=NO policy.',
   },
-  'thread-ux-r4-closed-prefers-no-1005': {
+  'e37b00e0-228f-43c0-8c70-b3d0a5bfad40': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'CLOSED',
@@ -415,7 +415,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-701',
     summary: 'Unclaimed thread pending deterministic escalation evaluation',
   },
-  'thread-c4-unclaimed-pref-no-1004': {
+  'cc9bb30e-4b36-4419-8563-819432f4ba14': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'UNCLAIMED',
@@ -427,7 +427,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-504',
     summary: 'Unclaimed thread with prefers_texting=NO policy.',
   },
-  'thread-c4-closed-pref-no-1005': {
+  '935eed99-c710-49e8-838d-ab25d02ca821': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'CLOSED',
@@ -1304,7 +1304,10 @@ const resolveSyntheticLifecycleThread = (
     }
   }
 
-  if (!input.threadId.startsWith(CONNECTSHYFT_DYNAMIC_C5_THREAD_PREFIX)) {
+  if (
+    input.tenantId !== 'tenant-connectshyft-c5'
+    && !input.threadId.startsWith(CONNECTSHYFT_DYNAMIC_C5_THREAD_PREFIX)
+  ) {
     return null;
   }
 
@@ -1333,6 +1336,7 @@ const updateSyntheticLifecycleThread = (thread: ConnectShyftThread): void => {
   // Story c.5 scheduler contracts require synthetic thread progression to persist.
   if (
     isConnectShyftTestOverrideEnabled()
+    && thread.tenantId !== 'tenant-connectshyft-c5'
     && !thread.threadId.startsWith('thread-c5-')
   ) {
     return;

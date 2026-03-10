@@ -1,5 +1,7 @@
 export type ConnectShyftFeedbackTaxonomy = 'success' | 'refusal' | 'error';
 
+export { CONNECTSHYFT_RESPONSIVE_BREAKPOINTS } from '@/components/connectshyft/connectShyftTokens';
+
 export type ConnectShyftFeedback = {
   taxonomy: ConnectShyftFeedbackTaxonomy;
   message: string;

@@ -414,7 +414,6 @@ import {
   CONNECTSHYFT_DEFAULT_SMS_OVERRIDE_REASONS,
   CONNECTSHYFT_FOCUS_RING_CLASS,
   createConnectShyftFeedback,
-  resolveConnectShyftThreadActionContract,
   resolveSafeVisibleThreadActions,
   sanitizeConnectShyftOperatorCopy,
   type ConnectShyftFeedback,

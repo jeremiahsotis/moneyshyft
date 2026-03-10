@@ -100,7 +100,7 @@
                 :preview="item.summary || 'No preview available'"
                 :timestamp-label="item.lastActivityAtUtc || 'Now'"
                 :urgency-label="item.urgencyLabel || ''"
-                :context-pills="[item.inboxLabel || bucketTitle]"
+                :context-pills="[item.bucket === 'mine' ? 'Mine' : 'Inbox']"
                 :last-inbound-context="`Last inbound number: ${item.lastInboundCsNumberId || 'n/a'}`"
                 :preferred-outbound-context="`Preferred outbound number: ${item.preferredOutboundCsNumberId || 'n/a'}`"
                 :state-label="item.state"
