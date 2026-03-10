@@ -1,6 +1,9 @@
 <template>
-  <main class="min-h-screen bg-slate-50 px-4 py-8">
-    <section class="mx-auto max-w-4xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+  <main class="min-h-screen bg-slate-50 px-4 py-8 pb-32">
+    <section
+      data-testid="connectshyft-escalation-settings-surface"
+      class="mx-auto max-w-4xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+    >
       <header class="mb-6">
         <h1 class="text-2xl font-semibold text-slate-900">
           ConnectShyft Escalation Settings
@@ -11,9 +14,20 @@
         <p class="mt-2 text-sm text-slate-600">
           Escalation resets only when a thread is claimed. Outbound actions without claim do not reset escalation, and baseline hours directly affect scheduler timing.
         </p>
+        <p
+          data-testid="connectshyft-admin-settings-context-chip"
+          class="mt-3 inline-flex rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700"
+        >
+          Admin settings context
+        </p>
       </header>
 
-      <form class="rounded-md border border-slate-200 p-4" novalidate @submit.prevent="handleSave">
+      <form
+        data-testid="connectshyft-escalation-settings-form"
+        class="rounded-md border border-slate-200 p-4"
+        novalidate
+        @submit.prevent="handleSave"
+      >
         <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
           Escalation Configuration
         </h2>
@@ -134,11 +148,14 @@
         </div>
       </form>
     </section>
+
+    <ConnectShyftPrimaryNav />
   </main>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
 import {
   connectShyftEscalationRecipientScopes,
   fetchConnectShyftEscalationRecipientOptions,

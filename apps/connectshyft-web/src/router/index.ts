@@ -13,8 +13,14 @@ import ConnectShyftDirectoryView from '../views/ConnectShyft/ConnectShyftDirecto
 import ConnectShyftAvailabilityView from '../views/ConnectShyft/ConnectShyftAvailabilityView.vue';
 import ConnectShyftNumberMappingsView from '../views/ConnectShyft/ConnectShyftNumberMappingsView.vue';
 import ConnectShyftEscalationSettingsView from '../views/ConnectShyft/ConnectShyftEscalationSettingsView.vue';
+import { resolveConnectShyftAdminAccessFromQuery } from '@/features/connectshyft/settingsAccess';
 
 const CONNECTSHYFT_APP_PREFIX = '/app/connectshyft';
+const CONNECTSHYFT_ADMIN_SETTINGS_PATHS = new Set([
+  '/app/connectshyft/settings/availability',
+  '/app/connectshyft/settings/numbers',
+  '/app/connectshyft/settings/escalation',
+]);
 
 const extractCurrentUser = (payload: unknown): Record<string, unknown> | null => {
   if (!payload || typeof payload !== 'object') {
@@ -150,6 +156,19 @@ router.beforeEach(async (to) => {
 
   const authenticated = await refreshSessionState();
   if (authenticated) {
+    if (CONNECTSHYFT_ADMIN_SETTINGS_PATHS.has(to.path)) {
+      const canAccessAdminSettings = resolveConnectShyftAdminAccessFromQuery(to.query);
+      if (canAccessAdminSettings === false) {
+        return {
+          path: '/app/connectshyft/settings',
+          query: {
+            ...to.query,
+            refusedPath: to.path,
+          },
+        };
+      }
+    }
+
     return true;
   }
 

@@ -73,7 +73,7 @@ test.describe(
               .map((node) => node.getAttribute('data-testid') || '')
               .filter((value) => value.length > 0)
               .map((value) => value.replace('connectshyft-thread-card-', ''))
-              .filter((value) => value.startsWith('thread-'))),
+              .filter((value) => /^[0-9a-f-]{36}$/i.test(value))),
         ).toEqual([
           context.threadIds.claimed,
           context.threadIds.unclaimed,

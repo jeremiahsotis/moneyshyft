@@ -87,9 +87,9 @@ export function createStoryF2Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-f2-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimed: '7c9f777e-5fbc-4543-8fcc-2559bb512f34',
-      claimed: '95ac11fe-9ec3-4778-87e2-8da034c7df57',
-      closed: 'cba872d3-c432-4f7a-8c20-1c5d85fe56ff',
+      unclaimed: 'thread-f2-unclaimed-1001',
+      claimed: 'thread-f2-claimed-1002',
+      closed: 'thread-f2-closed-1003',
     },
     providers: {
       enabledPrimary: 'telnyx',

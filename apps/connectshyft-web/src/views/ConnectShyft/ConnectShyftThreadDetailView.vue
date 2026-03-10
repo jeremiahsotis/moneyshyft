@@ -23,17 +23,12 @@
         data-testid="connectshyft-thread-detail"
         class="rounded-md border border-slate-200 p-4"
       >
-        <div data-testid="connectshyft-thread-surface" class="space-y-4" :style="bodyTextStyle">
-          <p
-            v-if="feedbackBanner"
-            data-testid="connectshyft-feedback-banner"
-            :data-feedback-taxonomy="feedbackBanner.taxonomy"
-            class="rounded border px-3 py-2 text-base"
-            :class="feedbackBannerClass"
-          >
-            {{ feedbackBanner.message }}
-          </p>
-
+        <div
+          v-if="threadDetail || detailLoadError"
+          data-testid="connectshyft-thread-surface"
+          class="space-y-4"
+          :style="bodyTextStyle"
+        >
           <p
             data-testid="connectshyft-live-region-status"
             aria-live="polite"
@@ -42,47 +37,27 @@
             {{ feedbackBanner ? feedbackBanner.announcement : '' }}
           </p>
 
-          <p
-            v-if="detailLoadError"
-            class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
+          <section
+            v-if="showContextualActionFeedback"
+            data-testid="connectshyft-thread-action-feedback-contextual"
+            class="space-y-3"
           >
-            {{ detailLoadError }}
-          </p>
-
-          <template v-else-if="threadDetail">
-            <ConnectShyftThreadHeader
-              :title="threadDetail.summary || threadDetail.threadId"
-              :neighbor-context-label="neighborContextLabel"
-              :conference-context-label="conferenceContextLabel"
-              :state-label="threadDetail.state"
-              :owner-label="threadDetail.state === 'CLAIMED' ? `Owner: ${threadDetail.claimedByUserId || 'unassigned'}` : ''"
-              :escalation-label="escalationChipLabel"
-              :inactivity-label="inactivityChipLabel"
-              :voicemail-indicator="threadDetail.voicemailIndicator === true"
-            />
-
             <p
-              data-testid="connectshyft-thread-metadata-last-inbound-number"
-              class="text-base text-slate-700"
+              v-if="feedbackBanner"
+              data-testid="connectshyft-feedback-banner"
+              :data-feedback-taxonomy="feedbackBanner.taxonomy"
+              class="rounded border px-3 py-2 text-base"
+              :class="feedbackBannerClass"
             >
-              Last inbound number: {{ threadDetail.lastInboundCsNumberId }}
-            </p>
-            <p
-              data-testid="connectshyft-thread-metadata-preferred-outbound-number"
-              class="text-base text-slate-700"
-            >
-              Preferred outbound number: {{ threadDetail.preferredOutboundCsNumberId }}
-              <span v-if="threadDetail.preferredOutboundContext.label">
-                · {{ threadDetail.preferredOutboundContext.label }}
-              </span>
+              {{ feedbackBanner.message }}
             </p>
 
             <p
-              v-if="showPreferenceOverrideRequiredChip"
-              data-testid="connectshyft-preference-override-required-chip"
-              class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
+              v-if="directoryNoticeMessage"
+              :data-testid="directoryNoticeTestId"
+              class="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-base text-emerald-900"
             >
-              Override required for outbound SMS. Add an approved reason before sending.
+              {{ directoryNoticeMessage }}
             </p>
 
             <p
@@ -146,6 +121,51 @@
             >
               Hidden lifecycle transition detected. Refresh thread context and retry.
             </p>
+          </section>
+
+          <p
+            v-if="detailLoadError"
+            class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
+          >
+            {{ detailLoadError }}
+          </p>
+
+          <template v-else-if="threadDetail">
+            <ConnectShyftThreadHeader
+              :title="threadDetail.summary || threadDetail.threadId"
+              :neighbor-context-label="neighborContextLabel"
+              :conference-context-label="conferenceContextLabel"
+              :claim-context-label="claimContextLabel"
+              :state-label="threadDetail.stateLabel || threadDetail.state"
+              :owner-label="threadDetail.state === 'CLAIMED' ? `Owner: ${threadDetail.claimedByUserId || 'unassigned'}` : ''"
+              :escalation-label="escalationChipLabel"
+              :inactivity-label="inactivityChipLabel"
+              :voicemail-indicator="threadDetail.voicemailIndicator === true"
+            />
+
+            <p
+              data-testid="connectshyft-thread-metadata-last-inbound-number"
+              class="text-base text-slate-700"
+            >
+              Last inbound number: {{ threadDetail.lastInboundCsNumberId }}
+            </p>
+            <p
+              data-testid="connectshyft-thread-metadata-preferred-outbound-number"
+              class="text-base text-slate-700"
+            >
+              Preferred outbound number: {{ threadDetail.preferredOutboundCsNumberId }}
+              <span v-if="threadDetail.preferredOutboundContext.label">
+                · {{ threadDetail.preferredOutboundContext.label }}
+              </span>
+            </p>
+
+            <p
+              v-if="showPreferenceOverrideRequiredChip"
+              data-testid="connectshyft-preference-override-required-chip"
+              class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
+            >
+              Override required for outbound SMS. Add an approved reason before sending.
+            </p>
 
             <ConnectShyftThreadActionBar
               :actions="visibleActions"
@@ -156,6 +176,29 @@
               @action="handleThreadAction"
               @add-neighbor="toggleAddNeighborForm"
             />
+
+            <section data-testid="connectshyft-thread-timeline" class="space-y-2">
+              <article
+                v-for="event in timelineEvents"
+                :key="event.eventId"
+                data-testid="connectshyft-thread-timeline-event"
+                class="rounded border border-slate-200 bg-slate-50 px-3 py-2"
+              >
+                <p
+                  v-if="event.conversationType === 'voicemail'"
+                  data-testid="connectshyft-thread-timeline-event-voicemail"
+                  class="font-medium text-slate-900"
+                >
+                  {{ event.summary }}
+                </p>
+                <p v-else class="font-medium text-slate-900">
+                  {{ event.summary }}
+                </p>
+                <p class="mt-1 text-sm text-slate-600">
+                  {{ event.eventName }}
+                </p>
+              </article>
+            </section>
 
             <ConnectShyftMessageBubble
               title="Thread summary"
@@ -173,7 +216,7 @@
               v-model="threadComposerBody"
               :disabled="actionPending"
               :submit-disabled="threadComposerBody.trim().length === 0"
-              submit-label="Queue Message"
+              submit-label="Send Message"
               :focus-ring-class="focusRingClass"
               :tap-target-style="tapTargetStyle"
               @submit="submitThreadComposerDraft"
@@ -469,6 +512,30 @@ const CONNECTSHYFT_MODAL_FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
+const resolveStateLabel = (state: ConnectShyftThreadDetail['state']): string => {
+  if (state === 'CLAIMED') {
+    return 'Claimed';
+  }
+
+  if (state === 'CLOSED') {
+    return 'Closed';
+  }
+
+  return 'Unclaimed';
+};
+
+const resolveClaimContextLabelFromState = (state: ConnectShyftThreadDetail['state']): string => {
+  if (state === 'CLAIMED') {
+    return 'Claim context: Claimed conversation';
+  }
+
+  if (state === 'CLOSED') {
+    return 'Claim context: Closed conversation';
+  }
+
+  return 'Claim context: Unclaimed conversation';
+};
+
 const role = computed(() => {
   const rawRole = typeof route.query.tenantRole === 'string'
     ? route.query.tenantRole
@@ -591,11 +658,12 @@ const trapModalFocus = (event: KeyboardEvent, container: HTMLElement | null): vo
 };
 
 const submitThreadComposerDraft = (): void => {
-  if (threadComposerBody.value.trim().length === 0) {
+  const body = threadComposerBody.value.trim();
+  if (body.length === 0) {
     return;
   }
 
-  threadComposerBody.value = '';
+  void executeThreadAction('Send Message', { body });
 };
 
 const handlePreferenceOverrideModalKeydown = (event: KeyboardEvent): void => {
@@ -687,17 +755,48 @@ const feedbackBannerClass = computed(() => {
   return 'border-rose-200 bg-rose-50 text-rose-900';
 });
 
+const directoryNoticeTestId = computed(() => {
+  if (route.query.directoryNotice === 'existing') {
+    return 'connectshyft-directory-existing-thread-notice';
+  }
+
+  if (route.query.directoryNotice === 'new') {
+    return 'connectshyft-directory-new-thread-notice';
+  }
+
+  return '';
+});
+
+const directoryNoticeMessage = computed(() => {
+  if (route.query.directoryNotice === 'existing') {
+    return 'Opened the existing active conversation for this neighbor.';
+  }
+
+  if (route.query.directoryNotice === 'new') {
+    return 'Started a new conversation for this neighbor.';
+  }
+
+  return '';
+});
+
+const showContextualActionFeedback = computed(() => {
+  return feedbackBanner.value !== null
+    || directoryNoticeMessage.value.length > 0
+    || showActionRefusalBanner.value
+    || policyRefusalBanner.value.length > 0
+    || policyErrorBanner.value.length > 0
+    || policySuccessBanner.value.length > 0
+    || policySuccessAuditReason.value.length > 0
+    || lifecycleToast.value.length > 0
+    || hiddenTransitionWarning.value;
+});
+
 const neighborContextLabel = computed(() => {
   if (!threadDetail.value) {
     return 'Neighbor context unavailable';
   }
 
-  const summary = threadDetail.value.summary.trim();
-  if (summary.length > 0) {
-    return `Neighbor context: ${summary}`;
-  }
-
-  return 'Neighbor context: Active thread';
+  return threadDetail.value.neighborContextLabel || 'Neighbor context: Active thread';
 });
 
 const conferenceContextLabel = computed(() => {
@@ -705,10 +804,37 @@ const conferenceContextLabel = computed(() => {
     return 'Conference context unavailable';
   }
 
-  const label = threadDetail.value.preferredOutboundContext.label
-    || threadDetail.value.preferredOutboundCsNumberId
-    || 'Unassigned outbound conference line';
-  return `Conference context: ${label}`;
+  return threadDetail.value.conferenceContextLabel || 'Conference context unavailable';
+});
+
+const claimContextLabel = computed(() => {
+  if (!threadDetail.value) {
+    return 'Claim context unavailable';
+  }
+
+  return threadDetail.value.claimContextLabel
+    || resolveClaimContextLabelFromState(threadDetail.value.state);
+});
+
+const timelineEvents = computed(() => {
+  if (!threadDetail.value) {
+    return [];
+  }
+
+  if (threadDetail.value.timeline.length > 0) {
+    return threadDetail.value.timeline;
+  }
+
+  return [
+    {
+      eventId: `${threadDetail.value.threadId}-summary`,
+      eventName: 'connectshyft.timeline.summary',
+      summary: threadDetail.value.voicemailIndicator
+        ? (threadDetail.value.voicemailLabel || 'Voicemail received')
+        : (threadDetail.value.preview || threadDetail.value.summary || 'Conversation activity recorded.'),
+      conversationType: threadDetail.value.voicemailIndicator ? 'voicemail' : 'message',
+    },
+  ];
 });
 
 const parseThreadActions = (value: unknown): string[] | null => {
@@ -732,6 +858,7 @@ const applyThreadUpdate = (payload: unknown): void => {
 
   const candidate = payload as {
     state?: unknown;
+    stateLabel?: unknown;
     claimedByUserId?: unknown;
     claimed_by_user_id?: unknown;
     urgencyLabel?: unknown;
@@ -742,6 +869,10 @@ const applyThreadUpdate = (payload: unknown): void => {
     last_inbound_cs_number_id?: unknown;
     preferredOutboundCsNumberId?: unknown;
     preferred_outbound_cs_number_id?: unknown;
+    display?: {
+      stateLabel?: unknown;
+      claimContext?: unknown;
+    };
     actions?: unknown;
   };
 
@@ -765,6 +896,14 @@ const applyThreadUpdate = (payload: unknown): void => {
   const urgencyLabel = typeof candidate.urgencyLabel === 'string'
     ? candidate.urgencyLabel.trim()
     : current.urgencyLabel;
+  const stateLabel = typeof candidate.stateLabel === 'string'
+    ? candidate.stateLabel.trim()
+    : typeof candidate.display?.stateLabel === 'string'
+      ? candidate.display.stateLabel.trim()
+      : resolveStateLabel(nextState);
+  const claimContextLabel = typeof candidate.display?.claimContext === 'string'
+    ? candidate.display.claimContext.trim()
+    : resolveClaimContextLabelFromState(nextState);
   const nextActions = parseThreadActions(candidate.actions);
   const resolvedActions = resolveSafeVisibleThreadActions({
     state: nextState,
@@ -774,9 +913,11 @@ const applyThreadUpdate = (payload: unknown): void => {
   threadDetail.value = {
     ...current,
     state: nextState,
+    stateLabel,
     claimedByUserId: claimedByUserId || null,
     escalationStage,
     urgencyLabel,
+    claimContextLabel,
     lastInboundCsNumberId: typeof candidate.lastInboundCsNumberId === 'string'
       ? candidate.lastInboundCsNumberId
       : typeof candidate.last_inbound_cs_number_id === 'string'
@@ -860,6 +1001,7 @@ const executeThreadAction = async (
   options: {
     overrideReason?: string | null;
     overrideNote?: string | null;
+    body?: string | null;
   } = {},
 ): Promise<boolean> => {
   if (!threadDetail.value || !threadId.value) {
@@ -903,7 +1045,7 @@ const executeThreadAction = async (
     payload = {
       ...payload,
       channel: 'sms',
-      body: 'Operator outbound message.',
+      body: options.body || 'Operator outbound message.',
       overrideReason: options.overrideReason || undefined,
       overrideNote: options.overrideNote || undefined,
     };
@@ -1099,6 +1241,9 @@ const executeThreadAction = async (
       uiFeedbackMessage,
       'Thread action completed.',
     );
+    if (action === 'Send Message' && options.body) {
+      threadComposerBody.value = '';
+    }
     return true;
   } catch (error: unknown) {
     const payload = (

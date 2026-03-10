@@ -10,9 +10,15 @@ runtime_dir="tests/artifacts/runtime"
 mkdir -p "$runtime_dir"
 backend_log="$runtime_dir/backend.log"
 frontend_log="$runtime_dir/frontend.log"
+money_frontend_log="$runtime_dir/money-frontend.log"
+connect_frontend_log="$runtime_dir/connect-frontend.log"
+frontend_proxy_log="$runtime_dir/frontend-proxy.log"
 
 : > "$backend_log"
 : > "$frontend_log"
+: > "$money_frontend_log"
+: > "$connect_frontend_log"
+: > "$frontend_proxy_log"
 
 export TEST_ENV="${TEST_ENV:-local}"
 export TEST_EMAIL="${TEST_EMAIL:-test@example.com}"
@@ -30,13 +36,24 @@ export VITE_API_PROXY_TARGET="${VITE_API_PROXY_TARGET:-http://localhost:3000}"
 export VITE_ADMIN_API_PROXY_TARGET="${VITE_ADMIN_API_PROXY_TARGET:-$API_URL}"
 export VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS="${VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS:-$ENABLE_TEST_CONNECTSHYFT_FLAGS}"
 export PLAYWRIGHT_FRONTEND_APP_DIR="${PLAYWRIGHT_FRONTEND_APP_DIR:-apps/connectshyft-web}"
+export PLAYWRIGHT_MULTI_FRONTEND_PROXY="${PLAYWRIGHT_MULTI_FRONTEND_PROXY:-auto}"
 export HOST="${HOST:-0.0.0.0}"
 export PORT="${PORT:-3000}"
 frontend_host="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.hostname);" "$BASE_URL")"
 frontend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.port || '5174');" "$BASE_URL")"
+internal_frontend_host="${PLAYWRIGHT_INTERNAL_FRONTEND_HOST:-127.0.0.1}"
+money_frontend_dir="apps/moneyshyft-web"
+connect_frontend_dir="apps/connectshyft-web"
 frontend_app_dir="$PLAYWRIGHT_FRONTEND_APP_DIR"
+use_multi_frontend_proxy=false
 
-if [[ ! -f "$frontend_app_dir/package.json" ]]; then
+if [[ "$PLAYWRIGHT_MULTI_FRONTEND_PROXY" != "false" \
+  && -f "$money_frontend_dir/package.json" \
+  && -f "$connect_frontend_dir/package.json" ]]; then
+  use_multi_frontend_proxy=true
+fi
+
+if [[ "$use_multi_frontend_proxy" != "true" && ! -f "$frontend_app_dir/package.json" ]]; then
   echo "Frontend app directory '$frontend_app_dir' is invalid. Set PLAYWRIGHT_FRONTEND_APP_DIR to a valid app path."
   exit 1
 fi
@@ -54,10 +71,31 @@ print_runtime_logs() {
   else
     echo "No frontend log found"
   fi
+  if [[ -f "$money_frontend_log" ]]; then
+    echo "==== MoneyShyft frontend log tail ===="
+    tail -n 200 "$money_frontend_log" || true
+  fi
+  if [[ -f "$connect_frontend_log" ]]; then
+    echo "==== ConnectShyft frontend log tail ===="
+    tail -n 200 "$connect_frontend_log" || true
+  fi
+  if [[ -f "$frontend_proxy_log" ]]; then
+    echo "==== Frontend proxy log tail ===="
+    tail -n 200 "$frontend_proxy_log" || true
+  fi
 }
 
 cleanup() {
   local exit_code=$?
+  if [[ -n "${FRONTEND_PROXY_PID:-}" ]]; then
+    kill "$FRONTEND_PROXY_PID" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "${MONEY_FRONTEND_PID:-}" ]]; then
+    kill "$MONEY_FRONTEND_PID" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "${CONNECT_FRONTEND_PID:-}" ]]; then
+    kill "$CONNECT_FRONTEND_PID" >/dev/null 2>&1 || true
+  fi
   if [[ -n "${FRONTEND_PID:-}" ]]; then
     kill "$FRONTEND_PID" >/dev/null 2>&1 || true
   fi
@@ -144,18 +182,70 @@ echo "Starting backend dev server"
 (cd apps/moneyshyft-api && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run dev) > "$backend_log" 2>&1 &
 BACKEND_PID=$!
 
-echo "Starting frontend dev server"
-(cd "$frontend_app_dir" && VITE_API_PROXY_TARGET="$API_URL" VITE_ADMIN_API_PROXY_TARGET="$VITE_ADMIN_API_PROXY_TARGET" npm run dev -- --host "$frontend_host" --port "$frontend_port") > "$frontend_log" 2>&1 &
-FRONTEND_PID=$!
-
 wait_for_http "${API_URL%/}/health" "backend health endpoint" "$BACKEND_PID" 30 || {
   echo "Backend failed to start or bind to ${API_URL%/}. Check logs for process conflicts or port mismatches."
   exit 1
 }
-wait_for_http "${BASE_URL%/}/login" "frontend login page" "$FRONTEND_PID" 30 || {
-  echo "Frontend failed to start on ${BASE_URL%/}."
-  exit 1
-}
+
+if [[ "$use_multi_frontend_proxy" == "true" ]]; then
+  money_frontend_port=$((frontend_port + 1))
+  connect_frontend_port=$((frontend_port + 2))
+  money_frontend_url="http://${internal_frontend_host}:${money_frontend_port}"
+  connect_frontend_url="http://${internal_frontend_host}:${connect_frontend_port}"
+
+  echo "Starting MoneyShyft frontend dev server on ${money_frontend_url}"
+  (cd "$money_frontend_dir" && \
+    VITE_API_PROXY_TARGET="$API_URL" \
+    VITE_ADMIN_API_PROXY_TARGET="$VITE_ADMIN_API_PROXY_TARGET" \
+    npm run dev -- --host "$internal_frontend_host" --port "$money_frontend_port") \
+    > "$money_frontend_log" 2>&1 &
+  MONEY_FRONTEND_PID=$!
+
+  echo "Starting ConnectShyft frontend dev server on ${connect_frontend_url}"
+  (cd "$connect_frontend_dir" && \
+    VITE_API_PROXY_TARGET="$API_URL" \
+    VITE_ADMIN_API_PROXY_TARGET="$VITE_ADMIN_API_PROXY_TARGET" \
+    npm run dev -- --host "$internal_frontend_host" --port "$connect_frontend_port") \
+    > "$connect_frontend_log" 2>&1 &
+  CONNECT_FRONTEND_PID=$!
+
+  wait_for_http "${money_frontend_url}/login" "MoneyShyft frontend login page" "$MONEY_FRONTEND_PID" 30 || {
+    echo "MoneyShyft frontend failed to start on ${money_frontend_url}."
+    exit 1
+  }
+  wait_for_http "${connect_frontend_url}/login" "ConnectShyft frontend login page" "$CONNECT_FRONTEND_PID" 30 || {
+    echo "ConnectShyft frontend failed to start on ${connect_frontend_url}."
+    exit 1
+  }
+
+  echo "Starting unified frontend proxy on ${BASE_URL%/}"
+  (env \
+    BASE_URL="$BASE_URL" \
+    PLAYWRIGHT_PROXY_HOST="$frontend_host" \
+    PLAYWRIGHT_PROXY_PORT="$frontend_port" \
+    PLAYWRIGHT_API_PROXY_TARGET="$API_URL" \
+    PLAYWRIGHT_MONEY_FRONTEND_URL="$money_frontend_url" \
+    PLAYWRIGHT_CONNECT_FRONTEND_URL="$connect_frontend_url" \
+    node scripts/playwright-frontend-proxy.mjs) > "$frontend_proxy_log" 2>&1 &
+  FRONTEND_PROXY_PID=$!
+
+  wait_for_http "${BASE_URL%/}/login" "frontend login page" "$FRONTEND_PROXY_PID" 30 || {
+    echo "Unified frontend proxy failed to start on ${BASE_URL%/}."
+    exit 1
+  }
+else
+  echo "Starting frontend dev server"
+  (cd "$frontend_app_dir" && \
+    VITE_API_PROXY_TARGET="$API_URL" \
+    VITE_ADMIN_API_PROXY_TARGET="$VITE_ADMIN_API_PROXY_TARGET" \
+    npm run dev -- --host "$frontend_host" --port "$frontend_port") > "$frontend_log" 2>&1 &
+  FRONTEND_PID=$!
+
+  wait_for_http "${BASE_URL%/}/login" "frontend login page" "$FRONTEND_PID" 30 || {
+    echo "Frontend failed to start on ${BASE_URL%/}."
+    exit 1
+  }
+fi
 
 echo "Running test command: $*"
 "$@"

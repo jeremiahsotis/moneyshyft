@@ -102,9 +102,9 @@ export function createStoryE1Context(
       overrides.csrfToken ?? `csrf-story-e1-${nextStoryE1Token()}`,
     threadIds: {
       // Story e.1 ingress tests piggyback on known synthetic thread ids used by provider stories.
-      unclaimed: '04ef797d-1451-4b34-8a00-0770592a15ff',
-      claimed: 'fb041342-b3df-4484-8677-f06c2c3cc8d5',
-      closed: 'dae5f38c-1998-4efa-856c-b22043bce2f2',
+      unclaimed: 'thread-f1-unclaimed-1001',
+      claimed: 'thread-f1-claimed-1002',
+      closed: 'thread-f1-closed-1003',
     },
     providers: {
       enabledPrimary: 'telnyx',

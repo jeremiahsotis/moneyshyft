@@ -12,22 +12,39 @@
       {{ title }}
     </p>
 
-    <div class="mt-3 grid gap-2 sm:grid-cols-2">
+    <section data-testid="connectshyft-thread-primary-context-panel" class="mt-3 space-y-2">
+      <div
+        data-testid="connectshyft-thread-context-neighbor"
+        class="rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-700"
+      >
+        <p
+          data-testid="connectshyft-thread-header-neighbor-context"
+          :style="bodyCopyStyle"
+        >
+          {{ neighborContextLabel }}
+        </p>
+      </div>
+
+      <div
+        data-testid="connectshyft-thread-context-conference"
+        class="rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-700"
+      >
+        <p
+          data-testid="connectshyft-thread-header-conference-context"
+          :style="bodyCopyStyle"
+        >
+          {{ conferenceContextLabel }}
+        </p>
+      </div>
+
       <p
-        data-testid="connectshyft-thread-header-neighbor-context"
+        data-testid="connectshyft-thread-context-claim"
         class="rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-700"
         :style="bodyCopyStyle"
       >
-        {{ neighborContextLabel }}
+        {{ claimContextLabel }}
       </p>
-      <p
-        data-testid="connectshyft-thread-header-conference-context"
-        class="rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-700"
-        :style="bodyCopyStyle"
-      >
-        {{ conferenceContextLabel }}
-      </p>
-    </div>
+    </section>
 
     <div class="mt-3 flex flex-wrap items-center gap-2">
       <ConnectShyftPill
@@ -73,6 +90,7 @@ defineProps<{
   title: string;
   neighborContextLabel: string;
   conferenceContextLabel: string;
+  claimContextLabel: string;
   stateLabel: string;
   ownerLabel: string;
   escalationLabel: string;

@@ -44,7 +44,8 @@ test.describe(
         expect(await readStyleAttr(bodyCopy)).toContain('var(--cs-type-body-md)');
 
         await page.getByTestId('connectshyft-thread-card-primary-action').first().click();
-        await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();
+        await expect(page).toHaveURL(/\/app\/connectshyft\/threads\//);
+        await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
 
         const threadHeader = page.getByTestId('connectshyft-thread-header');
         await expect(threadHeader).toBeVisible();
@@ -101,7 +102,8 @@ test.describe(
           );
           await expect(page.getByTestId('connectshyft-inbox-surface')).toBeVisible();
           await page.getByTestId('connectshyft-thread-card-primary-action').first().click();
-          await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();
+          await expect(page).toHaveURL(/\/app\/connectshyft\/threads\//);
+          await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
           const responsiveModeMarker = page.getByTestId(`connectshyft-responsive-mode-${viewport.mode}`);
           if (await responsiveModeMarker.count()) {
             await expect(responsiveModeMarker).toBeVisible();
@@ -158,7 +160,8 @@ test.describe(
           ((await page.getByTestId('connectshyft-inbox-surface').textContent()) ?? '').toLowerCase();
 
         await queueCardOpenAction.click();
-        await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();
+        await expect(page).toHaveURL(/\/app\/connectshyft\/threads\//);
+        await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
 
         const actionButtons = page.locator('[data-testid="connectshyft-thread-action-bar"] button');
         const actionCount = await actionButtons.count();

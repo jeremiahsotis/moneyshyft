@@ -660,9 +660,18 @@ export const updateConnectShyftNeighborProfile = async (
   }
 };
 
-export const fetchConnectShyftNeighborsCollection = async (): Promise<ConnectShyftNeighborListResult> => {
+export const fetchConnectShyftNeighborsCollection = async (
+  options: {
+    mode?: 'name' | 'phone';
+    query?: string;
+  } = {},
+): Promise<ConnectShyftNeighborListResult> => {
   try {
     const response = await api.get('/connectshyft/neighbors', {
+      params: {
+        mode: options.mode,
+        query: options.query,
+      },
       headers: buildConnectShyftTestOverrideHeaders(),
     });
 

@@ -285,7 +285,10 @@ const loadDirectory = async (): Promise<void> => {
 
   scope.value = await fetchConnectShyftNeighborScope();
 
-  const listResult = await fetchConnectShyftNeighborsCollection();
+  const listResult = await fetchConnectShyftNeighborsCollection({
+    mode: searchMode.value,
+    query: searchQuery.value.trim(),
+  });
 
   isLoading.value = false;
 
