@@ -7,7 +7,7 @@ inputs:
     required: false
     default: .nvmrc
   install_frontend:
-    description: Install frontend dependencies via npm ci --prefix apps/moneyshyft-web.
+    description: Install frontend dependencies for lane frontends.
     required: false
     default: 'false'
   install_src:
@@ -29,6 +29,7 @@ runs:
         cache-dependency-path: |
           package-lock.json
           apps/moneyshyft-web/package-lock.json
+          apps/connectshyft-web/package-lock.json
           apps/moneyshyft-api/package-lock.json
 
     - name: Configure npm retry behavior
@@ -52,6 +53,12 @@ runs:
           npm ci --prefix apps/moneyshyft-web || npm ci --prefix apps/moneyshyft-web || npm install --prefix apps/moneyshyft-web --no-audit --fund=false
         else
           npm install --prefix apps/moneyshyft-web --no-audit --fund=false
+        fi
+
+        if [ -f apps/connectshyft-web/package-lock.json ]; then
+          npm ci --prefix apps/connectshyft-web || npm ci --prefix apps/connectshyft-web || npm install --prefix apps/connectshyft-web --no-audit --fund=false
+        else
+          npm install --prefix apps/connectshyft-web --no-audit --fund=false
         fi
 
     - name: Install backend dependencies
