@@ -24,6 +24,7 @@ export type ConnectShyftNeighbor = {
   orgUnitId: string;
   firstName: string;
   lastName: string;
+  prefersTexting: 'UNKNOWN' | 'YES' | 'NO';
   phones: ConnectShyftNeighborPhone[];
   createdAtUtc?: string;
   updatedAtUtc?: string;
@@ -239,7 +240,9 @@ const parseNeighbor = (payload: unknown): ConnectShyftNeighbor | null => {
     return null;
   }
 
-  const rawNeighbor = payload as Partial<ConnectShyftNeighbor>;
+  const rawNeighbor = payload as Partial<ConnectShyftNeighbor> & {
+    prefers_texting?: unknown;
+  };
 
   const phones = Array.isArray(rawNeighbor.phones)
     ? rawNeighbor.phones
@@ -260,6 +263,16 @@ const parseNeighbor = (payload: unknown): ConnectShyftNeighbor | null => {
     orgUnitId: normalizeString(rawNeighbor.orgUnitId),
     firstName: normalizeString(rawNeighbor.firstName),
     lastName: normalizeString(rawNeighbor.lastName),
+    prefersTexting:
+      rawNeighbor.prefersTexting === 'YES'
+      || rawNeighbor.prefersTexting === 'NO'
+      || rawNeighbor.prefersTexting === 'UNKNOWN'
+        ? rawNeighbor.prefersTexting
+        : rawNeighbor.prefers_texting === 'YES'
+          || rawNeighbor.prefers_texting === 'NO'
+          || rawNeighbor.prefers_texting === 'UNKNOWN'
+          ? rawNeighbor.prefers_texting
+          : 'UNKNOWN',
     phones,
     createdAtUtc: normalizeString(rawNeighbor.createdAtUtc),
     updatedAtUtc: normalizeString(rawNeighbor.updatedAtUtc),

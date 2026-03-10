@@ -5,6 +5,17 @@ import {
   type StoryUxR1Context,
 } from '../../support/factories/connectShyftStoryUxR1Factory';
 
+const UX_R1_UUID_PATTERN =
+  /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;
+
+const UX_R1_FORBIDDEN_COPY = [
+  'capability status',
+  'search and open deterministic connectshyft queue work',
+  'last inbound number',
+  'preferred outbound number',
+  'thread detail',
+] as const;
+
 const buildSurfaceUrl = (
   context: StoryUxR1Context,
   options: {
@@ -44,6 +55,16 @@ const buildThreadDetailUrl = (
   });
 
   return `${context.paths.threadDetailUi}/${options.threadId}?${params.toString()}`;
+};
+
+const expectVolunteerFacingCopy = async (copy: string): Promise<void> => {
+  const loweredCopy = copy.toLowerCase();
+
+  for (const forbiddenToken of UX_R1_FORBIDDEN_COPY) {
+    expect(loweredCopy).not.toContain(forbiddenToken);
+  }
+
+  expect(loweredCopy).not.toMatch(UX_R1_UUID_PATTERN);
 };
 
 test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator journeys', () => {
@@ -109,9 +130,18 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
       const inboxTapTargetHeight = await inboxPrimaryAction.evaluate((element) =>
         Number.parseFloat(window.getComputedStyle(element).minHeight),
       );
+      const inboxCopy = (await page.getByTestId('connectshyft-inbox-surface').textContent()) ?? '';
 
       expect(inboxFontSize).toBeGreaterThanOrEqual(context.readability.minBodyTextPx);
       expect(inboxTapTargetHeight).toBeGreaterThanOrEqual(context.readability.minTapTargetPx);
+      await expect(page.getByTestId('connectshyft-inbox-summary-copy')).toContainText(
+        /neighbor.*follow-up/i,
+      );
+      await expect(page.getByTestId('connectshyft-queue-search-input')).toHaveAttribute(
+        'placeholder',
+        'Search neighbors',
+      );
+      await expectVolunteerFacingCopy(inboxCopy);
 
       await page.goto(
         buildSurfaceUrl(context, {
@@ -129,9 +159,14 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
       const mineTapTargetHeight = await minePrimaryAction.evaluate((element) =>
         Number.parseFloat(window.getComputedStyle(element).minHeight),
       );
+      const mineCopy = (await page.getByTestId('connectshyft-inbox-surface').textContent()) ?? '';
 
       expect(mineFontSize).toBeGreaterThanOrEqual(context.readability.minBodyTextPx);
       expect(mineTapTargetHeight).toBeGreaterThanOrEqual(context.readability.minTapTargetPx);
+      await expect(page.getByTestId('connectshyft-inbox-summary-copy')).toContainText(
+        /follow-up/i,
+      );
+      await expectVolunteerFacingCopy(mineCopy);
     },
   );
 
@@ -148,11 +183,19 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
           tenantRole: 'ORGUNIT_MEMBER',
         }),
       );
+      await expect(page.getByTestId('connectshyft-thread-primary-context-panel')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-thread-context-neighbor')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-thread-context-conference')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-thread-context-claim')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-neighbor-snapshot')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-thread-timeline')).toBeVisible();
       await expect(page.getByTestId('connectshyft-thread-header-neighbor-context')).toBeVisible();
       await expect(page.getByTestId('connectshyft-thread-header-conference-context')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
       await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toBeVisible();
+      const unclaimedCopy = (await page.getByTestId('connectshyft-thread-surface').textContent()) ?? '';
+      await expectVolunteerFacingCopy(unclaimedCopy);
 
       await page.goto(
         buildThreadDetailUrl(context, {
@@ -165,6 +208,8 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
       await expect(page.getByTestId('connectshyft-send-text-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Claim' })).toHaveCount(0);
+      const claimedCopy = (await page.getByTestId('connectshyft-thread-surface').textContent()) ?? '';
+      await expectVolunteerFacingCopy(claimedCopy);
 
       await page.goto(
         buildThreadDetailUrl(context, {
@@ -176,6 +221,8 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
       await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();
       await expect(page.getByTestId('connectshyft-send-message-thread-action')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Close' })).toHaveCount(0);
+      const closedCopy = (await page.getByTestId('connectshyft-thread-surface').textContent()) ?? '';
+      await expectVolunteerFacingCopy(closedCopy);
     },
   );
 
@@ -212,6 +259,7 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
         await expect(page.getByTestId('connectshyft-thread-header-conference-context')).toBeVisible();
         await expect(page.getByTestId('connectshyft-voicemail-indicator')).toBeVisible();
         await expect(page.getByTestId('connectshyft-thread-actions')).toBeVisible();
+        await expect(page.getByTestId('connectshyft-thread-timeline-event-voicemail').first()).toBeVisible();
         const actionLabels = (await page
           .getByTestId('connectshyft-thread-actions')
           .locator('button')
@@ -222,6 +270,8 @@ test.describe('Story ux-r1 automate - mobile-first inbox/mine/thread operator jo
         expect(actionLabels.some((label) => label === 'Text' || label === 'Send Message')).toBe(
           true,
         );
+        const viewportCopy = (await page.getByTestId('connectshyft-thread-surface').textContent()) ?? '';
+        await expectVolunteerFacingCopy(viewportCopy);
 
         await test.step(`action discoverability remains explicit on ${viewport.label}`, async () => {
           await expect(page.getByRole('button', { name: 'Call' })).toBeVisible();

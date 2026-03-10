@@ -1,18 +1,26 @@
 <template>
-  <main class="min-h-screen bg-slate-50 px-4 py-6 pb-32 sm:py-8">
-    <section class="mx-auto max-w-3xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-      <header class="mb-6">
-        <h1 v-if="showUnavailableState" class="text-2xl font-semibold text-slate-900">
-          ConnectShyft unavailable
-        </h1>
-        <h1 v-else class="text-2xl font-semibold text-slate-900">
-          ConnectShyft Thread Detail
-        </h1>
+  <main class="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(219,234,254,0.8),_transparent_32%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_100%)] px-4 py-6 pb-44 sm:px-6 sm:py-8">
+    <section class="mx-auto max-w-7xl">
+      <header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 v-if="showUnavailableState" class="text-3xl font-semibold tracking-tight text-slate-900">
+            ConnectShyft unavailable
+          </h1>
+          <h1 v-else class="text-3xl font-semibold tracking-tight text-slate-900">
+            {{ threadDisplayName }}
+          </h1>
+          <p
+            v-if="!showUnavailableState"
+            class="mt-2 text-base font-medium text-slate-500"
+          >
+            Conversation-first follow-up with neighbor context kept in view.
+          </p>
+        </div>
 
         <p
           v-if="showUnavailableState"
           :style="bodyTextStyle"
-          class="mt-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
+          class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
         >
           {{ unavailableMessage }}
         </p>
@@ -21,12 +29,10 @@
       <section
         v-if="!showUnavailableState"
         data-testid="connectshyft-thread-detail"
-        class="rounded-md border border-slate-200 p-4"
       >
         <div
-          v-if="threadDetail || detailLoadError"
           data-testid="connectshyft-thread-surface"
-          class="space-y-4"
+          class="space-y-5 pb-24"
           :style="bodyTextStyle"
         >
           <p
@@ -38,7 +44,7 @@
           </p>
 
           <section
-            v-if="showContextualActionFeedback"
+            v-if="showContextualActionFeedback || detailLoadError"
             data-testid="connectshyft-thread-action-feedback-contextual"
             class="space-y-3"
           >
@@ -46,7 +52,7 @@
               v-if="feedbackBanner"
               data-testid="connectshyft-feedback-banner"
               :data-feedback-taxonomy="feedbackBanner.taxonomy"
-              class="rounded border px-3 py-2 text-base"
+              class="rounded-2xl border px-4 py-3 text-base"
               :class="feedbackBannerClass"
             >
               {{ feedbackBanner.message }}
@@ -55,7 +61,7 @@
             <p
               v-if="directoryNoticeMessage"
               :data-testid="directoryNoticeTestId"
-              class="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-base text-emerald-900"
+              class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-base text-emerald-900"
             >
               {{ directoryNoticeMessage }}
             </p>
@@ -63,7 +69,7 @@
             <p
               v-if="showActionRefusalBanner"
               data-testid="connectshyft-thread-action-refusal-banner"
-              class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
+              class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
             >
               {{ actionBannerMessage }}
             </p>
@@ -73,7 +79,7 @@
               data-testid="connectshyft-policy-refusal-banner"
               role="alert"
               aria-live="assertive"
-              class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
+              class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
             >
               {{ policyRefusalBanner }}
             </p>
@@ -83,7 +89,7 @@
               data-testid="connectshyft-policy-error-banner"
               role="alert"
               aria-live="assertive"
-              class="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-base text-rose-900"
+              class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-base text-rose-900"
             >
               {{ policyErrorBanner }}
             </p>
@@ -93,7 +99,7 @@
               data-testid="connectshyft-policy-success-banner"
               role="status"
               aria-live="polite"
-              class="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-base text-emerald-900"
+              class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-base text-emerald-900"
             >
               {{ policySuccessBanner }}
             </p>
@@ -101,7 +107,7 @@
             <p
               v-if="policySuccessAuditReason"
               data-testid="connectshyft-preference-override-audit-chip"
-              class="rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-base font-medium text-emerald-900"
+              class="inline-flex rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-base font-medium text-emerald-900"
             >
               Override reason: {{ policySuccessAuditReason }}
             </p>
@@ -109,7 +115,7 @@
             <p
               v-if="lifecycleToast"
               data-testid="connectshyft-thread-reopened-toast"
-              class="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-base text-emerald-900"
+              class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-base text-emerald-900"
             >
               {{ lifecycleToast }}
             </p>
@@ -117,313 +123,348 @@
             <p
               v-if="hiddenTransitionWarning"
               data-testid="connectshyft-hidden-transition-warning"
-              class="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-base text-rose-900"
+              class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-base text-rose-900"
             >
               Hidden lifecycle transition detected. Refresh thread context and retry.
             </p>
+
+            <p
+              v-if="detailLoadError"
+              class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
+            >
+              {{ detailLoadError }}
+            </p>
           </section>
 
-          <p
-            v-if="detailLoadError"
-            class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
-          >
-            {{ detailLoadError }}
-          </p>
+          <template v-if="threadDetail">
+            <div class="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_22rem]">
+              <section class="space-y-5">
+                <ConnectShyftThreadHeader
+                  :title="threadDisplayName"
+                  :neighbor-context-label="neighborContextLabel"
+                  :conference-context-label="threadConferenceLabel"
+                  :claim-context-label="threadClaimLabel"
+                  :state-label="threadDetail.stateLabel || threadDetail.state"
+                  :owner-label="threadOwnerLabel"
+                  :escalation-label="escalationChipLabel"
+                  :inactivity-label="inactivityChipLabel"
+                  :voicemail-indicator="threadDetail.voicemailIndicator === true"
+                />
 
-          <template v-else-if="threadDetail">
-            <ConnectShyftThreadHeader
-              :title="threadDetail.summary || threadDetail.threadId"
-              :neighbor-context-label="neighborContextLabel"
-              :conference-context-label="conferenceContextLabel"
-              :claim-context-label="claimContextLabel"
-              :state-label="threadDetail.stateLabel || threadDetail.state"
-              :owner-label="threadDetail.state === 'CLAIMED' ? `Owner: ${threadDetail.claimedByUserId || 'unassigned'}` : ''"
-              :escalation-label="escalationChipLabel"
-              :inactivity-label="inactivityChipLabel"
-              :voicemail-indicator="threadDetail.voicemailIndicator === true"
-            />
-
-            <p
-              data-testid="connectshyft-thread-metadata-last-inbound-number"
-              class="text-base text-slate-700"
-            >
-              Last inbound number: {{ threadDetail.lastInboundCsNumberId }}
-            </p>
-            <p
-              data-testid="connectshyft-thread-metadata-preferred-outbound-number"
-              class="text-base text-slate-700"
-            >
-              Preferred outbound number: {{ threadDetail.preferredOutboundCsNumberId }}
-              <span v-if="threadDetail.preferredOutboundContext.label">
-                · {{ threadDetail.preferredOutboundContext.label }}
-              </span>
-            </p>
-
-            <p
-              v-if="showPreferenceOverrideRequiredChip"
-              data-testid="connectshyft-preference-override-required-chip"
-              class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
-            >
-              Override required for outbound SMS. Add an approved reason before sending.
-            </p>
-
-            <ConnectShyftThreadActionBar
-              :actions="visibleActions"
-              :action-pending="actionPending"
-              :show-add-neighbor-action="!isViewerRole"
-              :focus-ring-class="focusRingClass"
-              :tap-target-style="tapTargetStyle"
-              @action="handleThreadAction"
-              @add-neighbor="toggleAddNeighborForm"
-            />
-
-            <section data-testid="connectshyft-thread-timeline" class="space-y-2">
-              <article
-                v-for="event in timelineEvents"
-                :key="event.eventId"
-                data-testid="connectshyft-thread-timeline-event"
-                class="rounded border border-slate-200 bg-slate-50 px-3 py-2"
-              >
                 <p
-                  v-if="event.conversationType === 'voicemail'"
-                  data-testid="connectshyft-thread-timeline-event-voicemail"
-                  class="font-medium text-slate-900"
+                  v-if="showPreferenceOverrideRequiredChip"
+                  data-testid="connectshyft-preference-override-required-chip"
+                  class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
                 >
-                  {{ event.summary }}
+                  Override required for outbound SMS. Add an approved reason before sending.
                 </p>
-                <p v-else class="font-medium text-slate-900">
-                  {{ event.summary }}
-                </p>
-                <p class="mt-1 text-sm text-slate-600">
-                  {{ event.eventName }}
-                </p>
-              </article>
-            </section>
 
-            <ConnectShyftMessageBubble
-              title="Thread summary"
-              :body="threadDetail.summary || threadDetail.threadId"
-              :meta-label="threadDetail.lastActivityAtUtc || ''"
-              tone="inbound"
-            />
+                <section class="rounded-[32px] border border-slate-200 bg-white/90 p-5 shadow-[0_28px_90px_-56px_rgba(15,23,42,0.45)]">
+                  <div class="border-b border-slate-200 pb-4">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                      Connected conversation
+                    </p>
+                    <p class="mt-2 text-base text-slate-500">
+                      {{ threadConferenceLabel }}
+                    </p>
+                  </div>
 
-            <ConnectShyftVoicemailCard
-              :visible="threadDetail.voicemailIndicator === true"
-              :label="threadDetail.voicemailLabel || 'Voicemail waiting'"
-            />
+                  <section
+                    data-testid="connectshyft-thread-timeline"
+                    class="mt-5 space-y-4"
+                  >
+                    <article
+                      v-for="(event, index) in timelineEvents"
+                      :key="event.eventId"
+                      data-testid="connectshyft-thread-timeline-event"
+                      class="space-y-2"
+                    >
+                      <div
+                        v-if="event.conversationType === 'voicemail'"
+                        data-testid="connectshyft-thread-timeline-event-voicemail"
+                        class="rounded-[28px] border border-slate-200 bg-white px-4 py-4 shadow-[0_20px_70px_-54px_rgba(15,23,42,0.4)]"
+                      >
+                        <p class="text-lg font-semibold text-slate-900">
+                          Voicemail received
+                        </p>
+                        <p class="mt-2 text-base leading-8 text-slate-600">
+                          {{ event.summary }}
+                        </p>
+                        <button
+                          type="button"
+                          class="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-base font-semibold text-white"
+                          :style="tapTargetStyle"
+                        >
+                          Play recording
+                        </button>
+                      </div>
 
-            <ConnectShyftComposer
-              v-model="threadComposerBody"
-              :disabled="actionPending"
-              :submit-disabled="threadComposerBody.trim().length === 0"
-              submit-label="Send Message"
-              :focus-ring-class="focusRingClass"
-              :tap-target-style="tapTargetStyle"
-              @submit="submitThreadComposerDraft"
-            />
+                      <ConnectShyftMessageBubble
+                        v-else
+                        :title="formatTimelineEventTitle(event.eventName)"
+                        :body="event.summary"
+                        :meta-label="index === 0 ? threadTimestampLabel : ''"
+                        :tone="resolveTimelineTone(index)"
+                      />
+                    </article>
+                  </section>
+                </section>
 
-            <section
-              v-if="addNeighborFormOpen && !isViewerRole"
-              data-testid="connectshyft-add-neighbor-form"
-              class="rounded border border-slate-300 bg-slate-50 p-4"
-            >
-              <p class="text-base text-slate-900">
-                Add a neighbor contact to this orgUnit context.
-              </p>
-              <label class="mt-3 block text-base text-slate-700" for="connectshyft-add-neighbor-phone">
-                Phone number
-              </label>
-              <input
-                id="connectshyft-add-neighbor-phone"
-                v-model="addNeighborPhone"
-                data-testid="connectshyft-add-neighbor-phone"
-                type="text"
-                autocomplete="off"
-                placeholder="+1 (555) 555-0100"
-                :class="[
-                  'mt-2 min-h-[44px] w-full rounded border border-slate-300 px-3 py-2 text-base text-slate-900',
-                  focusRingClass,
-                ]"
-                :style="tapTargetStyle"
-                :disabled="addNeighborSubmitting || actionPending"
-              >
-              <div class="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  data-testid="connectshyft-add-neighbor-submit-action"
-                  :class="[
-                    'min-h-[44px] rounded bg-emerald-700 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
-                    focusRingClass,
-                  ]"
-                  :style="tapTargetStyle"
-                  :disabled="addNeighborSubmitting || actionPending"
-                  @click="submitAddNeighbor"
-                >
-                  {{ addNeighborSubmitting ? 'Adding...' : 'Add Neighbor' }}
-                </button>
-                <button
-                  type="button"
-                  :class="[
-                    'min-h-[44px] rounded border border-slate-300 px-4 py-2 text-base font-medium text-slate-700',
-                    focusRingClass,
-                  ]"
-                  :style="tapTargetStyle"
-                  :disabled="addNeighborSubmitting || actionPending"
-                  @click="closeAddNeighborForm"
-                >
-                  Cancel
-                </button>
-              </div>
-            </section>
-
-            <section
-              v-if="preferenceOverrideModalOpen"
-              ref="preferenceOverrideModalRef"
-              data-testid="connectshyft-preference-override-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="connectshyft-preference-override-title"
-              class="rounded border border-slate-300 bg-slate-50 p-4"
-              @keydown="handlePreferenceOverrideModalKeydown"
-            >
-              <h2
-                id="connectshyft-preference-override-title"
-                class="text-base font-semibold text-slate-900"
-              >
-                Outbound SMS policy requires an approved override reason.
-              </h2>
-              <label
-                class="mt-3 block text-base text-slate-700"
-                for="connectshyft-preference-override-reason-select"
-              >
-                Override reason
-              </label>
-              <select
-                id="connectshyft-preference-override-reason-select"
-                v-model="preferenceOverrideReason"
-                data-testid="connectshyft-preference-override-reason-select"
-                aria-label="Override reason"
-                :class="[
-                  'mt-2 min-h-[44px] w-full rounded border border-slate-300 px-3 py-2 text-base text-slate-900',
-                  focusRingClass,
-                ]"
-                :style="tapTargetStyle"
-                :disabled="actionPending"
-              >
-                <option value="">Select override reason</option>
-                <option
-                  v-for="reason in preferenceOverrideReasonOptions"
-                  :key="reason"
-                  :value="reason"
-                >
-                  {{ formatOverrideReason(reason) }}
-                </option>
-              </select>
-
-              <label
-                class="mt-3 block text-base text-slate-700"
-                for="connectshyft-preference-override-note-input"
-              >
-                Override note (optional)
-              </label>
-              <textarea
-                id="connectshyft-preference-override-note-input"
-                v-model="preferenceOverrideNote"
-                data-testid="connectshyft-preference-override-note-input"
-                rows="3"
-                :class="[
-                  'mt-2 min-h-[44px] w-full rounded border border-slate-300 px-3 py-2 text-base text-slate-900',
-                  focusRingClass,
-                ]"
-                :style="tapTargetStyle"
-                :disabled="actionPending"
-              />
-
-              <p
-                v-if="preferenceOverrideError"
-                data-testid="connectshyft-preference-override-error"
-                role="alert"
-                aria-live="assertive"
-                class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900"
-              >
-                {{ preferenceOverrideError }}
-              </p>
-
-              <div class="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  data-testid="connectshyft-preference-override-submit"
-                  :class="[
-                    'min-h-[44px] rounded bg-slate-900 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
-                    focusRingClass,
-                  ]"
-                  :style="tapTargetStyle"
-                  :disabled="preferenceOverrideSubmitDisabled"
-                  @click="submitPreferenceOverride"
-                >
-                  {{ actionPending ? 'Sending...' : 'Send with override' }}
-                </button>
-                <button
-                  type="button"
-                  :class="[
-                    'min-h-[44px] rounded border border-slate-300 px-4 py-2 text-base font-medium text-slate-700',
-                    focusRingClass,
-                  ]"
-                  :style="tapTargetStyle"
+                <ConnectShyftComposer
+                  v-model="threadComposerBody"
                   :disabled="actionPending"
-                  @click="closePreferenceOverrideModal"
-                >
-                  Cancel
-                </button>
-              </div>
-            </section>
+                  :submit-disabled="threadComposerBody.trim().length === 0"
+                  submit-label="Send Message"
+                  :focus-ring-class="focusRingClass"
+                  :tap-target-style="tapTargetStyle"
+                  @submit="submitThreadComposerDraft"
+                />
 
-            <section
-              v-if="closeModalOpen"
-              ref="closeModalRef"
-              data-testid="connectshyft-close-thread-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="connectshyft-close-thread-title"
-              class="rounded border border-slate-300 bg-slate-50 p-4"
-              @keydown="handleCloseModalKeydown"
-            >
-              <h2
-                id="connectshyft-close-thread-title"
-                class="text-base font-semibold text-slate-900"
-              >
-                Are you sure you want to close this thread?
-              </h2>
-              <div class="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  :class="[
-                    'min-h-[44px] rounded bg-slate-900 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
-                    focusRingClass,
-                  ]"
-                  :style="tapTargetStyle"
-                  :disabled="actionPending"
-                  @click="confirmCloseThread"
+                <ConnectShyftThreadActionBar
+                  :actions="visibleActions"
+                  :action-pending="actionPending"
+                  :show-add-neighbor-action="!isViewerRole"
+                  :focus-ring-class="focusRingClass"
+                  :tap-target-style="tapTargetStyle"
+                  @action="handleThreadAction"
+                  @add-neighbor="toggleAddNeighborForm"
+                />
+
+                <section
+                  v-if="addNeighborFormOpen && !isViewerRole"
+                  data-testid="connectshyft-add-neighbor-form"
+                  class="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.35)]"
                 >
-                  Confirm Close
-                </button>
-                <button
-                  type="button"
-                  :class="[
-                    'min-h-[44px] rounded border border-slate-300 px-4 py-2 text-base font-medium text-slate-700',
-                    focusRingClass,
-                  ]"
-                  :style="tapTargetStyle"
-                  :disabled="actionPending"
-                  @click="closeModalOpen = false"
+                  <p class="text-lg font-semibold text-slate-900">
+                    Add a neighbor contact
+                  </p>
+                  <p class="mt-2 text-base text-slate-500">
+                    Keep the follow-up in this conference without breaking the volunteer workflow.
+                  </p>
+                  <label class="mt-4 block text-base text-slate-700" for="connectshyft-add-neighbor-phone">
+                    Phone number
+                  </label>
+                  <input
+                    id="connectshyft-add-neighbor-phone"
+                    v-model="addNeighborPhone"
+                    data-testid="connectshyft-add-neighbor-phone"
+                    type="text"
+                    autocomplete="off"
+                    placeholder="+1 (555) 555-0100"
+                    :class="[
+                      'mt-2 min-h-[44px] w-full rounded-2xl border border-slate-200 px-4 py-3 text-base text-slate-900',
+                      focusRingClass,
+                    ]"
+                    :style="tapTargetStyle"
+                    :disabled="addNeighborSubmitting || actionPending"
+                  >
+                  <div class="mt-4 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      data-testid="connectshyft-add-neighbor-submit-action"
+                      :class="[
+                        'min-h-[44px] rounded-full bg-emerald-700 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
+                        focusRingClass,
+                      ]"
+                      :style="tapTargetStyle"
+                      :disabled="addNeighborSubmitting || actionPending"
+                      @click="submitAddNeighbor"
+                    >
+                      {{ addNeighborSubmitting ? 'Adding...' : 'Add Neighbor' }}
+                    </button>
+                    <button
+                      type="button"
+                      :class="[
+                        'min-h-[44px] rounded-full border border-slate-200 bg-white px-4 py-2 text-base font-medium text-slate-700',
+                        focusRingClass,
+                      ]"
+                      :style="tapTargetStyle"
+                      :disabled="addNeighborSubmitting || actionPending"
+                      @click="closeAddNeighborForm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </section>
+
+                <section
+                  v-if="preferenceOverrideModalOpen"
+                  ref="preferenceOverrideModalRef"
+                  data-testid="connectshyft-preference-override-modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="connectshyft-preference-override-title"
+                  class="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.35)]"
+                  @keydown="handlePreferenceOverrideModalKeydown"
                 >
-                  Cancel
-                </button>
-              </div>
-            </section>
+                  <h2
+                    id="connectshyft-preference-override-title"
+                    class="text-lg font-semibold text-slate-900"
+                  >
+                    Outbound SMS policy requires an approved override reason.
+                  </h2>
+                  <label
+                    class="mt-4 block text-base text-slate-700"
+                    for="connectshyft-preference-override-reason-select"
+                  >
+                    Override reason
+                  </label>
+                  <select
+                    id="connectshyft-preference-override-reason-select"
+                    v-model="preferenceOverrideReason"
+                    data-testid="connectshyft-preference-override-reason-select"
+                    aria-label="Override reason"
+                    :class="[
+                      'mt-2 min-h-[44px] w-full rounded-2xl border border-slate-200 px-4 py-3 text-base text-slate-900',
+                      focusRingClass,
+                    ]"
+                    :style="tapTargetStyle"
+                    :disabled="actionPending"
+                  >
+                    <option value="">Select override reason</option>
+                    <option
+                      v-for="reason in preferenceOverrideReasonOptions"
+                      :key="reason"
+                      :value="reason"
+                    >
+                      {{ formatOverrideReason(reason) }}
+                    </option>
+                  </select>
+
+                  <label
+                    class="mt-4 block text-base text-slate-700"
+                    for="connectshyft-preference-override-note-input"
+                  >
+                    Override note (optional)
+                  </label>
+                  <textarea
+                    id="connectshyft-preference-override-note-input"
+                    v-model="preferenceOverrideNote"
+                    data-testid="connectshyft-preference-override-note-input"
+                    rows="3"
+                    :class="[
+                      'mt-2 min-h-[44px] w-full rounded-2xl border border-slate-200 px-4 py-3 text-base text-slate-900',
+                      focusRingClass,
+                    ]"
+                    :style="tapTargetStyle"
+                    :disabled="actionPending"
+                  />
+
+                  <p
+                    v-if="preferenceOverrideError"
+                    data-testid="connectshyft-preference-override-error"
+                    role="alert"
+                    aria-live="assertive"
+                    class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
+                  >
+                    {{ preferenceOverrideError }}
+                  </p>
+
+                  <div class="mt-4 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      data-testid="connectshyft-preference-override-submit"
+                      :class="[
+                        'min-h-[44px] rounded-full bg-slate-900 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
+                        focusRingClass,
+                      ]"
+                      :style="tapTargetStyle"
+                      :disabled="preferenceOverrideSubmitDisabled"
+                      @click="submitPreferenceOverride"
+                    >
+                      {{ actionPending ? 'Sending...' : 'Send with override' }}
+                    </button>
+                    <button
+                      type="button"
+                      :class="[
+                        'min-h-[44px] rounded-full border border-slate-200 bg-white px-4 py-2 text-base font-medium text-slate-700',
+                        focusRingClass,
+                      ]"
+                      :style="tapTargetStyle"
+                      :disabled="actionPending"
+                      @click="closePreferenceOverrideModal"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </section>
+
+                <section
+                  v-if="closeModalOpen"
+                  ref="closeModalRef"
+                  data-testid="connectshyft-close-thread-modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="connectshyft-close-thread-title"
+                  class="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.35)]"
+                  @keydown="handleCloseModalKeydown"
+                >
+                  <h2
+                    id="connectshyft-close-thread-title"
+                    class="text-lg font-semibold text-slate-900"
+                  >
+                    Are you sure you want to close this thread?
+                  </h2>
+                  <div class="mt-4 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      :class="[
+                        'min-h-[44px] rounded-full bg-slate-900 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
+                        focusRingClass,
+                      ]"
+                      :style="tapTargetStyle"
+                      :disabled="actionPending"
+                      @click="confirmCloseThread"
+                    >
+                      Confirm Close
+                    </button>
+                    <button
+                      type="button"
+                      :class="[
+                        'min-h-[44px] rounded-full border border-slate-200 bg-white px-4 py-2 text-base font-medium text-slate-700',
+                        focusRingClass,
+                      ]"
+                      :style="tapTargetStyle"
+                      :disabled="actionPending"
+                      @click="closeModalOpen = false"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </section>
+              </section>
+
+              <aside class="space-y-5">
+                <ConnectShyftNeighborSnapshot
+                  :neighbor="threadNeighbor"
+                  :title="threadDisplayName"
+                  :subtitle="threadConferenceLabel"
+                  :note="threadSnapshotNote"
+                />
+
+                <section class="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.35)]">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                    Latest update
+                  </p>
+                  <ConnectShyftMessageBubble
+                    class="mt-4"
+                    title="Conversation at a glance"
+                    :body="threadPreviewText"
+                    :meta-label="threadTimestampLabel"
+                    tone="system"
+                  />
+                  <ConnectShyftVoicemailCard
+                    :visible="threadDetail.voicemailIndicator === true"
+                    :label="threadDetail.voicemailLabel || 'Voicemail waiting'"
+                  />
+                </section>
+              </aside>
+            </div>
           </template>
 
-          <p v-else class="text-base text-slate-600">Loading thread detail...</p>
+          <p v-else-if="!detailLoadError" class="rounded-2xl border border-slate-200 bg-white/90 px-4 py-6 text-base text-slate-600">
+            Loading thread detail...
+          </p>
         </div>
       </section>
     </section>
@@ -437,6 +478,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ConnectShyftComposer from '@/components/connectshyft/ConnectShyftComposer.vue';
 import ConnectShyftMessageBubble from '@/components/connectshyft/ConnectShyftMessageBubble.vue';
+import ConnectShyftNeighborSnapshot from '@/components/connectshyft/ConnectShyftNeighborSnapshot.vue';
 import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
 import ConnectShyftThreadActionBar from '@/components/connectshyft/ConnectShyftThreadActionBar.vue';
 import ConnectShyftThreadHeader from '@/components/connectshyft/ConnectShyftThreadHeader.vue';
@@ -447,7 +489,18 @@ import {
   fetchConnectShyftAvailability,
   buildConnectShyftTestOverrideHeaders,
 } from '@/features/connectshyft/flags';
-import { createConnectShyftNeighbor } from '@/features/connectshyft/neighbors';
+import {
+  createConnectShyftNeighbor,
+  fetchConnectShyftNeighborsCollection,
+  type ConnectShyftNeighbor,
+} from '@/features/connectshyft/neighbors';
+import {
+  formatConnectShyftTimestamp,
+  resolveConnectShyftClaimLabel,
+  resolveConnectShyftConferenceLabel,
+  resolveConnectShyftNeighborName,
+  resolveConnectShyftPreviewText,
+} from '@/features/connectshyft/presentation';
 import {
   fetchConnectShyftThreadDetail,
   type ConnectShyftThreadDetail,
@@ -466,6 +519,7 @@ import {
 const route = useRoute();
 const availability = ref({ ...DEFAULT_CONNECTSHYFT_AVAILABILITY });
 const threadDetail = ref<ConnectShyftThreadDetail | null>(null);
+const threadNeighbors = ref<ConnectShyftNeighbor[]>([]);
 const detailLoadError = ref('');
 const lifecycleToast = ref('');
 const actionError = ref('');
@@ -543,6 +597,15 @@ const role = computed(() => {
       ? route.query.role
       : '';
   return rawRole.trim().toUpperCase();
+});
+
+const actorUserId = computed(() => {
+  const rawActorUserId = typeof route.query.actorUserId === 'string'
+    ? route.query.actorUserId
+    : typeof route.query.userId === 'string'
+      ? route.query.userId
+      : '';
+  return rawActorUserId.trim() || null;
 });
 
 const isViewerRole = computed(() => role.value === 'TENANT_VIEWER');
@@ -791,6 +854,18 @@ const showContextualActionFeedback = computed(() => {
     || hiddenTransitionWarning.value;
 });
 
+const neighborsById = computed(() => {
+  return new Map(threadNeighbors.value.map((neighbor) => [neighbor.neighborId, neighbor]));
+});
+
+const threadNeighbor = computed<ConnectShyftNeighbor | null>(() => {
+  if (!threadDetail.value?.neighborId) {
+    return null;
+  }
+
+  return neighborsById.value.get(threadDetail.value.neighborId) || null;
+});
+
 const neighborContextLabel = computed(() => {
   if (!threadDetail.value) {
     return 'Neighbor context unavailable';
@@ -799,21 +874,64 @@ const neighborContextLabel = computed(() => {
   return threadDetail.value.neighborContextLabel || 'Neighbor context: Active thread';
 });
 
-const conferenceContextLabel = computed(() => {
+const threadDisplayName = computed(() => {
   if (!threadDetail.value) {
-    return 'Conference context unavailable';
+    return 'ConnectShyft Thread';
   }
 
-  return threadDetail.value.conferenceContextLabel || 'Conference context unavailable';
+  return resolveConnectShyftNeighborName(threadDetail.value, threadNeighbor.value);
 });
 
-const claimContextLabel = computed(() => {
+const threadConferenceLabel = computed(() => {
   if (!threadDetail.value) {
-    return 'Claim context unavailable';
+    return 'Conference follow-up queue';
   }
 
-  return threadDetail.value.claimContextLabel
-    || resolveClaimContextLabelFromState(threadDetail.value.state);
+  return resolveConnectShyftConferenceLabel(threadDetail.value);
+});
+
+const threadClaimLabel = computed(() => {
+  if (!threadDetail.value) {
+    return 'Ready to claim';
+  }
+
+  return resolveConnectShyftClaimLabel(threadDetail.value, actorUserId.value);
+});
+
+const threadOwnerLabel = computed(() => {
+  if (!threadDetail.value || threadDetail.value.state !== 'CLAIMED') {
+    return '';
+  }
+
+  if (actorUserId.value && threadDetail.value.claimedByUserId === actorUserId.value) {
+    return 'Owner: you';
+  }
+
+  return 'Owner: another volunteer';
+});
+
+const threadPreviewText = computed(() => {
+  if (!threadDetail.value) {
+    return 'Conversation activity recorded.';
+  }
+
+  return resolveConnectShyftPreviewText(threadDetail.value);
+});
+
+const threadTimestampLabel = computed(() => {
+  if (!threadDetail.value) {
+    return '';
+  }
+
+  return formatConnectShyftTimestamp(threadDetail.value.lastActivityAtUtc);
+});
+
+const threadSnapshotNote = computed(() => {
+  if (threadDetail.value?.voicemailIndicator) {
+    return 'Keep the voicemail and the next volunteer step visible without leaking routing internals into the conversation flow.';
+  }
+
+  return 'Keep the case conversation front and center. Conference, claim status, and key contact context stay visible without cluttering the timeline.';
 });
 
 const timelineEvents = computed(() => {
@@ -836,6 +954,24 @@ const timelineEvents = computed(() => {
     },
   ];
 });
+
+const formatTimelineEventTitle = (eventName: string): string => {
+  const normalized = eventName
+    .replace(/^connectshyft\./i, '')
+    .replace(/^timeline\./i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\./g, ' ')
+    .trim();
+  if (!normalized) {
+    return 'Conversation update';
+  }
+
+  return normalized.replace(/\b\w/g, (token) => token.toUpperCase());
+};
+
+const resolveTimelineTone = (index: number): 'inbound' | 'outbound' => {
+  return index % 2 === 0 ? 'inbound' : 'outbound';
+};
 
 const parseThreadActions = (value: unknown): string[] | null => {
   if (!Array.isArray(value)) {
@@ -1386,17 +1522,31 @@ const handleThreadAction = (action: string): void => {
   void executeThreadAction(action);
 };
 
+const loadThreadNeighbors = async (): Promise<void> => {
+  const neighborsResult = await fetchConnectShyftNeighborsCollection();
+  if (!neighborsResult.ok) {
+    threadNeighbors.value = [];
+    return;
+  }
+
+  threadNeighbors.value = neighborsResult.neighbors;
+};
+
 const refreshThreadDetail = async () => {
   availability.value = await fetchConnectShyftAvailability();
   if (showUnavailableState.value) {
     threadDetail.value = null;
+    threadNeighbors.value = [];
     detailLoadError.value = '';
+    threadComposerBody.value = '';
     closeAddNeighborForm();
     closePreferenceOverrideModal();
     clearPolicyBanners();
     clearFeedbackBanner();
     return;
   }
+
+  await loadThreadNeighbors();
 
   const detailResult = await fetchConnectShyftThreadDetail(threadId.value);
   if (!detailResult.ok) {
@@ -1405,6 +1555,7 @@ const refreshThreadDetail = async () => {
       detailResult.message,
       'Unable to load thread detail.',
     );
+    threadComposerBody.value = '';
     setFeedbackBanner(
       'error',
       detailLoadError.value,
@@ -1426,6 +1577,7 @@ const refreshThreadDetail = async () => {
   detailLoadError.value = '';
   lifecycleToast.value = '';
   actionError.value = '';
+  threadComposerBody.value = '';
   hiddenTransitionWarning.value = false;
   closeModalOpen.value = false;
   inactivityReset.value = false;

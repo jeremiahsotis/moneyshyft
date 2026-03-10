@@ -45,7 +45,7 @@ export type StoryUxR2Context = {
     minBodyTextPx: 16;
     minTapTargetPx: 44;
   };
-  actionVerbSet: readonly ['Add', 'Call', 'Send', 'Text', 'Claim', 'Close', 'Take'];
+  actionVerbSet: readonly ['Add', 'Call', 'Send', 'Text', 'Claim', 'Close', 'Take', 'Play'];
   forbiddenCopyTokens: readonly ['rbac', 'uuid', 'org_unit', 'tenant_id', 'role_id'];
   focusOrder: readonly [
     'connectshyft-thread-card-primary-action',
@@ -93,7 +93,7 @@ export function createStoryUxR2Context(
       minBodyTextPx: 16,
       minTapTargetPx: 44,
     },
-    actionVerbSet: ['Add', 'Call', 'Send', 'Text', 'Claim', 'Close', 'Take'],
+    actionVerbSet: ['Add', 'Call', 'Send', 'Text', 'Claim', 'Close', 'Take', 'Play'],
     forbiddenCopyTokens: ['rbac', 'uuid', 'org_unit', 'tenant_id', 'role_id'],
     focusOrder: [
       'connectshyft-thread-card-primary-action',

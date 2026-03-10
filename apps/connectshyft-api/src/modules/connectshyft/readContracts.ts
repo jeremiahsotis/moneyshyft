@@ -19,6 +19,7 @@ export type ConnectShyftThreadDisplayRecord = {
 
 export type ConnectShyftThreadSummaryRecord = {
   threadId: string;
+  neighborId: string | null;
   tenantId: string;
   orgUnitId: string;
   state: ConnectShyftThreadState;
@@ -59,6 +60,7 @@ type ConnectShyftThreadSeed = {
   tenantId: string;
   orgUnitId: string;
   threadId: string;
+  neighborId?: string | null;
   state: ConnectShyftThreadState;
   bucket: ConnectShyftInboxBucket;
   claimedByUserId: string | null;
@@ -74,6 +76,7 @@ type ConnectShyftThreadSeed = {
 
 type ConnectShyftThreadDbRow = {
   thread_id: string;
+  neighbor_id?: string | null;
   tenant_id: string;
   org_unit_id: string;
   state: string;
@@ -756,6 +759,7 @@ const toSummaryRecord = (
   });
   return {
     threadId: seed.threadId,
+    neighborId: normalizeString(seed.neighborId) || null,
     tenantId: seed.tenantId,
     orgUnitId: seed.orgUnitId,
     state: seed.state,
@@ -928,6 +932,7 @@ const resolveDbSelectableColumns = (
   ];
 
   const optionalColumns = [
+    'neighbor_id',
     'claimed_by_user_id',
     'escalation_stage',
     'is_new_unread',
@@ -1065,6 +1070,7 @@ const mapDbRowToSummary = (
 
   return {
     threadId,
+    neighborId: normalizeOptionalString(row.neighbor_id),
     tenantId,
     orgUnitId,
     state,

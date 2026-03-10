@@ -1,52 +1,51 @@
 <template>
   <header
     data-testid="connectshyft-thread-header"
-    class="rounded-xl border border-slate-200 bg-slate-50 p-4"
+    class="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-[0_28px_90px_-56px_rgba(15,23,42,0.45)]"
     :style="headerStyle"
   >
-    <p
-      data-testid="connectshyft-thread-detail-body-copy"
-      class="font-semibold text-slate-900"
-      :style="bodyCopyStyle"
-    >
-      {{ title }}
-    </p>
-
-    <section data-testid="connectshyft-thread-primary-context-panel" class="mt-3 space-y-2">
-      <div
-        data-testid="connectshyft-thread-context-neighbor"
-        class="rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-700"
-      >
+    <div class="flex flex-col gap-4 border-b border-slate-200 pb-4">
+      <div data-testid="connectshyft-thread-context-neighbor">
         <p
           data-testid="connectshyft-thread-header-neighbor-context"
-          :style="bodyCopyStyle"
+          class="text-3xl font-semibold tracking-tight text-slate-900"
         >
-          {{ neighborContextLabel }}
+          {{ title }}
         </p>
       </div>
 
-      <div
-        data-testid="connectshyft-thread-context-conference"
-        class="rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-700"
-      >
-        <p
-          data-testid="connectshyft-thread-header-conference-context"
-          :style="bodyCopyStyle"
+      <div class="flex flex-col gap-2 text-base text-slate-500">
+        <div
+          data-testid="connectshyft-thread-context-conference"
+          class="flex flex-wrap items-center gap-x-3 gap-y-1"
         >
-          {{ conferenceContextLabel }}
-        </p>
+          <p
+            data-testid="connectshyft-thread-header-conference-context"
+            class="font-medium"
+            :style="bodyCopyStyle"
+          >
+            {{ conferenceContextLabel }}
+          </p>
+        </div>
+
+        <div
+          data-testid="connectshyft-thread-context-claim"
+          class="flex flex-wrap items-center gap-x-3 gap-y-1"
+        >
+          <p
+            class="font-medium"
+            :style="bodyCopyStyle"
+          >
+            {{ claimContextLabel }}
+          </p>
+        </div>
       </div>
+    </div>
 
-      <p
-        data-testid="connectshyft-thread-context-claim"
-        class="rounded-md border border-slate-200 bg-white px-3 py-2 text-slate-700"
-        :style="bodyCopyStyle"
-      >
-        {{ claimContextLabel }}
-      </p>
-    </section>
-
-    <div class="mt-3 flex flex-wrap items-center gap-2">
+    <div
+      data-testid="connectshyft-thread-primary-context-panel"
+      class="mt-4 flex flex-wrap items-center gap-2"
+    >
       <ConnectShyftPill
         test-id="connectshyft-thread-state-chip"
         tone="neutral"
@@ -80,6 +79,14 @@
         aria-label="Voicemail waiting"
       />
     </div>
+
+    <p
+      data-testid="connectshyft-thread-detail-body-copy"
+      class="sr-only"
+      :style="bodyCopyStyle"
+    >
+      {{ neighborContextLabel }}
+    </p>
   </header>
 </template>
 
