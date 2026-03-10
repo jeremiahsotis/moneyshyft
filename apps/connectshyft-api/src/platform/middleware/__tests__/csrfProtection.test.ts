@@ -19,9 +19,9 @@ describe('csrfProtection middleware', () => {
 
   it('rejects authenticated state-changing requests without CSRF token', async () => {
     const app = buildApp();
+    const postResource = request(app).post('/resource') as any;
 
-    const response = await request(app)
-      .post('/resource')
+    const response = await postResource
       .set('Cookie', ['access_token=access-token']);
 
     expect(response.status).toBe(403);
@@ -34,9 +34,9 @@ describe('csrfProtection middleware', () => {
 
   it('rejects authenticated state-changing requests with invalid CSRF token', async () => {
     const app = buildApp();
+    const postResource = request(app).post('/resource') as any;
 
-    const response = await request(app)
-      .post('/resource')
+    const response = await postResource
       .set('Cookie', ['access_token=access-token', 'csrf_token=cookie-token'])
       .set('X-CSRF-Token', 'header-token');
 
@@ -50,9 +50,9 @@ describe('csrfProtection middleware', () => {
 
   it('allows authenticated state-changing requests with matching CSRF token', async () => {
     const app = buildApp();
+    const postResource = request(app).post('/resource') as any;
 
-    const response = await request(app)
-      .post('/resource')
+    const response = await postResource
       .set('Cookie', ['access_token=access-token', 'csrf_token=csrf-token'])
       .set('X-CSRF-Token', 'csrf-token');
 
@@ -62,9 +62,9 @@ describe('csrfProtection middleware', () => {
 
   it('does not enforce CSRF on safe methods', async () => {
     const app = buildApp();
+    const getResource = request(app).get('/resource') as any;
 
-    const response = await request(app)
-      .get('/resource')
+    const response = await getResource
       .set('Cookie', ['access_token=access-token']);
 
     expect(response.status).toBe(200);

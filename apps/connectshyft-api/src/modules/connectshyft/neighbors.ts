@@ -691,6 +691,7 @@ export class InMemoryConnectShyftNeighborStore {
       orgUnitId: input.orgUnitId,
       firstName: input.firstName,
       lastName: input.lastName,
+      prefersTexting: 'UNKNOWN',
       phones: input.phones.map((phone) => ({
         phoneId: randomUUID(),
         label: phone.label,
