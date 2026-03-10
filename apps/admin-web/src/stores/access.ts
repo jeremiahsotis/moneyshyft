@@ -38,7 +38,6 @@ export const useAccessStore = defineStore('access', () => {
     () => canAccessSystemAdmin.value || canAccessTenantAdmin.value
   );
 
-  const canAccessConnectShyft = computed(() => moduleEntitlements.value.connectshyft === true);
   const canAccessMoneyShyft = computed(() => moduleEntitlements.value.moneyshyft === true);
 
   const defaultAuthorizedPath = computed(() => {
@@ -54,11 +53,7 @@ export const useAccessStore = defineStore('access', () => {
       return '/';
     }
 
-    if (canAccessConnectShyft.value) {
-      return '/app/connectshyft/inbox';
-    }
-
-    return '/budget/setup';
+    return '/admin';
   });
 
   const hasCapability = (capability: string): boolean => capabilitySet.value.has(capability);
@@ -111,7 +106,6 @@ export const useAccessStore = defineStore('access', () => {
     error,
     canAccessSystemAdmin,
     canAccessTenantAdmin,
-    canAccessConnectShyft,
     canAccessMoneyShyft,
     defaultAuthorizedPath,
     hasAnyAdminAccess,

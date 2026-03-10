@@ -187,11 +187,6 @@ const moneyNavItems = [
   { name: 'goals', label: 'Goals', icon: '🎯', path: '/goals' },
 ];
 
-const connectShyftNavItems = [
-  { name: 'connectshyft-inbox', label: 'ConnectShyft', icon: '📬', path: '/app/connectshyft/inbox' },
-  { name: 'connectshyft-availability', label: 'Availability', icon: '🛰️', path: '/app/connectshyft/settings/availability' },
-];
-
 const adminNavPath = computed(() => (
   accessStore.canAccessSystemAdmin ? '/admin/system' : '/admin/tenant'
 ));
@@ -201,10 +196,6 @@ const navItems = computed(() => {
 
   if (authStore.isAuthenticated && accessStore.canAccessMoneyShyft) {
     items.push(...moneyNavItems);
-  }
-
-  if (authStore.isAuthenticated && accessStore.canAccessConnectShyft) {
-    items.push(...connectShyftNavItems);
   }
 
   if (authStore.isAuthenticated && accessStore.hasAnyAdminAccess) {
