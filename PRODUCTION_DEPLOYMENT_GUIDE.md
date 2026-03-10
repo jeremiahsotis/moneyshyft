@@ -209,8 +209,8 @@ curl -i https://connect.shyftunity.com/api/v1/auth/me
 
 # API logs
 docker logs admin-api --tail 100
-docker logs moneyshyft-api --tail 100
-docker logs connectshyft-api --tail 100
+docker logs money-api --tail 100
+docker logs connect-api --tail 100
 ```
 
 ## 7) Update / Redeploy Procedure
