@@ -113,7 +113,7 @@ export function createStoryB3Context(
       overrides.csrfToken
       ?? `csrf-story-b3-${randomUUID().slice(0, 8)}`,
     neighborId,
-    activeThreadId: `thread-b3-${randomUUID().slice(0, 8)}`,
+    activeThreadId: randomUUID(),
     baseFirstName: 'Mina',
     baseLastName: 'Lopez',
     relatedUpdateFirstName: 'Mina Governed',

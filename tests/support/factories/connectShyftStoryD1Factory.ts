@@ -79,9 +79,9 @@ export function createStoryD1Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-d1-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimed: 'thread-d1-unclaimed-1001',
-      claimed: 'thread-d1-claimed-1002',
-      closed: 'thread-d1-closed-1003',
+      unclaimed: '5693c23c-0af5-49f1-8da9-6a5201c15bb9',
+      claimed: 'f989691b-ff65-46a0-8442-3ce02c35c5c4',
+      closed: '1457b99b-40c7-40dc-838c-4acbb57696e7',
     },
     eventNames: {
       reopenedByUser: 'connectshyft.thread_reopened_by_user',

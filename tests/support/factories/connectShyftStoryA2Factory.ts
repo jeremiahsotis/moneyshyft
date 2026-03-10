@@ -55,7 +55,7 @@ export type StoryA2Context = {
 export function createStoryA2Context(
   overrides: StoryA2ContextOverrides = {},
 ): StoryA2Context {
-  const threadId = overrides.threadId ?? 'thread-a2-1001';
+  const threadId = overrides.threadId ?? '95b4a6ab-e19c-4fc3-8032-b750cff921b5';
 
   return {
     storyId: 'a-2',

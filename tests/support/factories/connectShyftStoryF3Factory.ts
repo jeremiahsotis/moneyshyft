@@ -89,9 +89,9 @@ export function createStoryF3Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-f3-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimed: 'thread-f1-unclaimed-1001',
-      claimed: 'thread-f1-claimed-1002',
-      closed: 'thread-f1-closed-1003',
+      unclaimed: '04ef797d-1451-4b34-8a00-0770592a15ff',
+      claimed: 'fb041342-b3df-4484-8677-f06c2c3cc8d5',
+      closed: 'dae5f38c-1998-4efa-856c-b22043bce2f2',
     },
     providers: {
       enabledPrimary: 'telnyx',

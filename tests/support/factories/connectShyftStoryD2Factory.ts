@@ -80,9 +80,9 @@ export function createStoryD2Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-d2-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimedPrefersNo: 'thread-d2-unclaimed-prefers-no-1001',
-      closedPrefersNo: 'thread-d2-closed-prefers-no-1002',
-      claimedPrefersYes: 'thread-d2-claimed-prefers-yes-1003',
+      unclaimedPrefersNo: '04d4acdb-3bca-4020-8398-68092a7256d7',
+      closedPrefersNo: '5c5546e2-3224-4b2c-8371-e40721f3b821',
+      claimedPrefersYes: '9e115c59-e083-456e-871c-ba443653ae7b',
     },
     refusalCodes: {
       overrideRequired: 'CONNECTSHYFT_OUTBOUND_OVERRIDE_REASON_REQUIRED',

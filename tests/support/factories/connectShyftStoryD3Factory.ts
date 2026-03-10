@@ -83,9 +83,9 @@ export function createStoryD3Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-d3-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimed: 'thread-d3-unclaimed-1001',
-      claimed: 'thread-d3-claimed-1002',
-      closed: 'thread-d3-closed-1003',
+      unclaimed: '29949311-1e3a-4694-8d29-4793254892b4',
+      claimed: 'f5bd8fc7-87f0-4e01-846c-a2daf1d6f796',
+      closed: 'a809e146-b54d-457b-8033-8909b0f8b243',
     },
     eventNames: {
       reopenedByUser: 'connectshyft.thread_reopened_by_user',

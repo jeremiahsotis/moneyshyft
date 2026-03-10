@@ -1,5 +1,6 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryUxR2.fixture';
+import { randomUUID } from 'node:crypto';
 
 test.describe('Story ux-r2 Accessibility and Language Hardening (ATDD API RED)', () => {
   test.skip(
@@ -145,7 +146,7 @@ test.describe('Story ux-r2 Accessibility and Language Hardening (ATDD API RED)',
       });
       const closeErrorResponse = await apiRequest(request, {
         method: 'POST',
-        path: `${storyUxR2Context.paths.threadDetail}/thread-ux-r2-missing/close`,
+        path: `${storyUxR2Context.paths.threadDetail}/${randomUUID()}/close`,
         headers: storyUxR2AdminHeaders,
         data: storyUxR2ClosePayload,
       });

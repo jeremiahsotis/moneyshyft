@@ -123,15 +123,15 @@ export function createStoryG6Context(
     correlationId: overrides.correlationId ?? `corr-story-g6-${randomUUID().slice(0, 8)}`,
     csrfToken: overrides.csrfToken ?? `csrf-story-g6-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimed: 'thread-ux-r4-unclaimed-1001',
-      unclaimedPrefersNo: 'thread-ux-r4-unclaimed-prefers-no-1004',
-      claimed: 'thread-ux-r4-claimed-1002',
-      mineVoicemail: 'thread-g1-voicemail-1004',
-      closedOutbound: 'thread-ux-r4-closed-prefers-no-1005',
-      closedInbound: 'thread-ux-r4-closed-1003',
+      unclaimed: '1641c3dd-4d4c-4997-8b72-ae4876649b37',
+      unclaimedPrefersNo: '21f2866f-37ff-42da-80fc-0b5d2c3bc09d',
+      claimed: '69c239d2-8f02-4202-8cec-a7f0de61cbf7',
+      mineVoicemail: 'f5b54c4b-95a6-4201-8d2a-fa373d79e905',
+      closedOutbound: 'e37b00e0-228f-43c0-8c70-b3d0a5bfad40',
+      closedInbound: 'aedcda71-42b7-4857-8a0a-70013e01d4cd',
     },
     neighborIds: {
-      closedInbound: 'neighbor-connectshyft-ux-r4-1003',
+      closedInbound: '64ee5ffe-d8be-4dc7-833f-7034f254d81b',
     },
     events: {
       inboundMissedCall: 'voice.missed_inbound_call',

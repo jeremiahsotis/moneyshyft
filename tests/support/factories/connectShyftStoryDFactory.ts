@@ -88,11 +88,11 @@ export function createStoryDContext(
     correlationId: overrides.correlationId ?? `corr-story-d-${randomUUID().slice(0, 8)}`,
     csrfToken: overrides.csrfToken ?? `csrf-story-d-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimed: 'thread-c4-unclaimed-1001',
-      claimed: 'thread-c4-claimed-1002',
-      closed: 'thread-c4-closed-1003',
-      prefersNoUnclaimed: 'thread-c4-unclaimed-pref-no-1004',
-      prefersNoClosed: 'thread-c4-closed-pref-no-1005',
+      unclaimed: '483a4c51-e677-422a-8bc6-faeea89c6dcf',
+      claimed: '6fb01cbc-069d-485a-86f7-ee72359543b9',
+      closed: '2f6bbd34-49c7-4400-8982-889c996ab87b',
+      prefersNoUnclaimed: 'cc9bb30e-4b36-4419-8563-819432f4ba14',
+      prefersNoClosed: '935eed99-c710-49e8-838d-ab25d02ca821',
     },
     paths: {
       threads: '/api/v1/connectshyft/threads',

@@ -85,14 +85,14 @@ export function createStoryUxR3Context(
     correlationId: overrides.correlationId ?? 'corr-story-ux-r3-default',
     csrfToken: overrides.csrfToken ?? 'csrf-story-ux-r3-default',
     threadIds: {
-      unclaimedVoicemail: 'thread-ux-r3-unclaimed-voicemail-1001',
-      claimedVoicemail: 'thread-ux-r3-claimed-voicemail-1002',
-      closedVoice: 'thread-ux-r3-closed-voice-1003',
+      unclaimedVoicemail: 'c5d1de83-5a0e-45e0-8f25-eba1bd21a985',
+      claimedVoicemail: 'b58069cc-1ab6-4ada-8a95-c468780a45a3',
+      closedVoice: 'cba65a18-a1bc-45c3-838d-72f80135d6af',
     },
     neighborIds: {
-      unclaimed: 'neighbor-connectshyft-ux-r3-unclaimed-1001',
-      claimed: 'neighbor-connectshyft-ux-r3-claimed-1002',
-      closed: 'neighbor-connectshyft-ux-r3-closed-1003',
+      unclaimed: '2625dabf-6ec9-4310-842a-b1ef702f9804',
+      claimed: '4a5dbc1f-e9dc-4e65-8d90-d43ba977ae8f',
+      closed: 'd7c92906-d073-4c6c-8c31-773f8959780d',
     },
     events: {
       inboundVoicemail: 'voice.voicemail',

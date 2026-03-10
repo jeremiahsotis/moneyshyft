@@ -71,7 +71,7 @@ test.describe(
           headers,
           data: {
             orgUnitId: 'invalid-orgunit-context',
-            neighborId: 'neighbor-a2-1001',
+            neighborId: '1cbb4746-3bbf-4211-8022-756c2ff3caca',
           },
         });
 
@@ -102,7 +102,7 @@ test.describe(
           headers,
           data: {
             orgUnitId: connectShyftContextEnforcementData.orgUnitBravoNorthId,
-            neighborId: 'neighbor-a2-1002',
+            neighborId: '5b556ebb-4622-4d66-87c0-06cc9dd0fa6c',
           },
         });
 

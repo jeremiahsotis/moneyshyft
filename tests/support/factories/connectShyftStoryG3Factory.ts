@@ -104,12 +104,12 @@ export function createStoryG3Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-g3-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimed: 'thread-ux-r4-unclaimed-1001',
-      claimed: 'thread-ux-r4-claimed-1002',
-      closed: 'thread-ux-r4-closed-1003',
-      unclaimedPrefersNo: 'thread-ux-r4-unclaimed-prefers-no-1004',
-      closedPrefersNo: 'thread-ux-r4-closed-prefers-no-1005',
-      voicemailClaimed: 'thread-g1-voicemail-1004',
+      unclaimed: '1641c3dd-4d4c-4997-8b72-ae4876649b37',
+      claimed: '69c239d2-8f02-4202-8cec-a7f0de61cbf7',
+      closed: 'aedcda71-42b7-4857-8a0a-70013e01d4cd',
+      unclaimedPrefersNo: '21f2866f-37ff-42da-80fc-0b5d2c3bc09d',
+      closedPrefersNo: 'e37b00e0-228f-43c0-8c70-b3d0a5bfad40',
+      voicemailClaimed: 'f5b54c4b-95a6-4201-8d2a-fa373d79e905',
     },
     expectedActions: {
       unclaimed: ['Call', 'Text', 'Claim'],

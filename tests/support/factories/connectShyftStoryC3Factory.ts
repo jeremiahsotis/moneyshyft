@@ -83,10 +83,10 @@ export function createStoryC3Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-c3-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimed: 'thread-c3-unclaimed-1001',
-      claimed: 'thread-c3-claimed-1002',
-      closed: 'thread-c3-closed-1003',
-      voicemailClaimed: 'thread-c3-claimed-voicemail-1004',
+      unclaimed: '90ca1c73-be82-48c6-8ba0-504e872ad211',
+      claimed: '2686f12a-b7dc-4ab2-8de2-70b05684198b',
+      closed: '47e2e20d-f3bc-4c0d-87a6-d3f0b0cbe69e',
+      voicemailClaimed: '7ce62a91-60dd-4869-8816-d782f26b85d1',
     },
     flags: { ...DEFAULT_FLAGS },
     urgencyLabels: {

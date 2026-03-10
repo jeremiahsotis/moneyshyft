@@ -65,7 +65,7 @@ export function createStoryC1Context(
     storyId: 'c-1',
     tenantId: overrides.tenantId ?? 'tenant-connectshyft-c1',
     orgUnitId: overrides.orgUnitId ?? 'org-connectshyft-c1-east',
-    neighborId: overrides.neighborId ?? 'neighbor-connectshyft-c1-1001',
+    neighborId: overrides.neighborId ?? 'df5f35d6-5f36-49df-8205-26b5fdb65125',
     role: overrides.role ?? 'ORGUNIT_MEMBER',
     userId: overrides.userId ?? 'user-connectshyft-c1-operator',
     correlationId:

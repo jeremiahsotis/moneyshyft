@@ -208,7 +208,7 @@ test.describe('Story ux-r2 Accessibility and Language Hardening (ATDD E2E RED)',
 
       await page.goto(
         buildThreadDetailUrl(context, {
-          threadId: 'thread-ux-r2-missing',
+          threadId: '9bc76801-bdc4-4640-8abf-843d6cfaf4fe',
           actorUserId: context.userId,
           tenantRole: 'ORGUNIT_MEMBER',
         }),

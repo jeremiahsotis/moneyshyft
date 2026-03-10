@@ -46,7 +46,7 @@ test.describe(
         });
         const duplicateBurstPayload = {
           ...burstPayload,
-          neighborId: 'neighbor-connectshyft-e5-burst-1001',
+          neighborId: '4b658da7-8aad-40da-8634-0df01a65170c',
         };
 
         const startedAtMs = performance.now();

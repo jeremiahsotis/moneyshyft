@@ -40,7 +40,7 @@ test.describe(
         headers: storyA1FlagsOffHeaders,
         data: {
           orgUnitId: storyA1Context.orgUnitId,
-          neighborId: 'neighbor-a-1001',
+          neighborId: '8fe68cd0-eaa7-43d4-897c-09f591a2d4ac',
         },
       });
 

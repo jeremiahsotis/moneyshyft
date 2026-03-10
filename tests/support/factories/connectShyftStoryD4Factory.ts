@@ -82,11 +82,11 @@ export function createStoryD4Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-d4-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimed: 'thread-d4-unclaimed-1001',
-      claimed: 'thread-d4-claimed-1002',
-      closed: 'thread-d4-closed-1003',
-      unclaimedPrefersNo: 'thread-d4-unclaimed-prefers-no-1004',
-      closedPrefersNo: 'thread-d4-closed-prefers-no-1005',
+      unclaimed: '4332bb8e-940f-4927-8320-a8d3f3093d72',
+      claimed: '0b3060e8-d0e1-4366-8655-8c7ec44cf0ee',
+      closed: '20ab942f-27c6-4ae5-8af2-06b727c36b2a',
+      unclaimedPrefersNo: '59b44eb4-c8e7-4cd1-8a22-bbeceb871dd7',
+      closedPrefersNo: '06a77807-6575-4c63-8824-38a89f9dae12',
     },
     refusalCodes: {
       overrideRequired: 'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED',

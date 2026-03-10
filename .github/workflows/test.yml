@@ -124,6 +124,7 @@ jobs:
       API_BASE_URL: http://localhost:3000
       FRONTEND_URL: http://localhost:5174
       VITE_API_PROXY_TARGET: http://localhost:3000
+      PLAYWRIGHT_FRONTEND_APP_DIR: apps/connectshyft-web
     strategy:
       fail-fast: false
       matrix:
@@ -200,6 +201,7 @@ jobs:
       API_BASE_URL: http://localhost:3000
       FRONTEND_URL: http://localhost:5174
       VITE_API_PROXY_TARGET: http://localhost:3000
+      PLAYWRIGHT_FRONTEND_APP_DIR: apps/connectshyft-web
       BURN_IN_REQUIRE_TESTS: 'true'
       BURN_IN_FALLBACK_SPECS: >-
         tests/api/platform/2-1-commitment-domain-model-and-transition-rules.atdd.api.spec.ts

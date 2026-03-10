@@ -75,7 +75,7 @@ export function createStoryC5Context(
   const contextSuffix = randomUUID().slice(0, 8);
   const tenantId = overrides.tenantId ?? 'tenant-connectshyft-c5';
   const orgUnitId = overrides.orgUnitId ?? `org-connectshyft-c5-${contextSuffix}`;
-  const threadId = overrides.threadId ?? `thread-c5-unclaimed-${contextSuffix}`;
+  const threadId = overrides.threadId ?? randomUUID();
 
   return {
     storyId: 'c-5',

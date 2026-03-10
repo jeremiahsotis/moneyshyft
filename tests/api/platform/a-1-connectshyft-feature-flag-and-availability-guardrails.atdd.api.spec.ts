@@ -55,7 +55,7 @@ test.describe('Story a.1 ConnectShyft Feature Flag and Availability Guardrails (
       headers,
       data: {
         orgUnitId: 'org-connectshyft-east',
-        neighborId: 'neighbor-a-1001',
+        neighborId: '8fe68cd0-eaa7-43d4-897c-09f591a2d4ac',
       },
     });
 
@@ -92,7 +92,7 @@ test.describe('Story a.1 ConnectShyft Feature Flag and Availability Guardrails (
 
     const claimResponse = await apiRequest(request, {
       method: 'POST',
-      path: '/api/v1/connectshyft/threads/thread-a-1001/claim',
+      path: '/api/v1/connectshyft/threads/09b12634-9bf8-4e11-8503-3ed4eca5b89a/claim',
       headers,
       data: {
         reason: 'operator-claim',

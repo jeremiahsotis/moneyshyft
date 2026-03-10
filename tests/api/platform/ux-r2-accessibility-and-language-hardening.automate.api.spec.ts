@@ -1,5 +1,6 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryUxR2.fixture';
+import { randomUUID } from 'node:crypto';
 import { createStoryUxR2Headers } from '../../support/factories/connectShyftStoryUxR2Factory';
 import {
   createStory14BusinessRefusalProbe,
@@ -235,7 +236,7 @@ test.describe(
         });
         const closeErrorResponse = await apiRequest(request, {
           method: 'POST',
-          path: `${storyUxR2Context.paths.threadDetail}/thread-ux-r2-missing/close`,
+          path: `${storyUxR2Context.paths.threadDetail}/${randomUUID()}/close`,
           headers: storyUxR2AdminHeaders,
           data: storyUxR2ClosePayload,
         });

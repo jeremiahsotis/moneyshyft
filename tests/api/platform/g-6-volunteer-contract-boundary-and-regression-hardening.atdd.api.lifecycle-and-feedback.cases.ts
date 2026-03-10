@@ -85,7 +85,7 @@ test.describe('Story g.6 Volunteer Contract Boundary and Regression Hardening (A
           orgUnitId: storyG6Context.orgUnitId,
           neighborId: storyG6Context.neighborIds.closedInbound,
           source: 'VOICE',
-          threadId: 'thread-g6-client-forbidden',
+          threadId: '2ddca35b-9ca0-4f2a-8827-31f5f4f83699',
           lastInboundCsNumberId: 'cs-number-ux-r4-403',
           preferredOutboundCsNumberId: 'cs-number-ux-r4-503',
         },

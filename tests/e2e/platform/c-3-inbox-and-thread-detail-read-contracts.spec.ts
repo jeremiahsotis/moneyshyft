@@ -77,9 +77,9 @@ test.describe(
         ).toEqual([
           context.threadIds.claimed,
           context.threadIds.unclaimed,
-          'thread-c3-unclaimed-1006',
+          '05a64891-ba69-4385-8bb9-140f01e0d243',
           context.threadIds.closed,
-          'thread-c3-new-unread-1005',
+          '212a5375-c931-48fb-84c0-0eb4f1e3282b',
         ]);
 
         await expect(page.locator('[data-testid="connectshyft-inbox-item-priority-rank"]'))
