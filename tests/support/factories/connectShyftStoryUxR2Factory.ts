@@ -86,8 +86,8 @@ export function createStoryUxR2Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-ux-r2-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      claimed: 'thread-ux-r1-claimed-voicemail-1004',
-      closed: 'thread-ux-r1-closed-1003',
+      claimed: '85719c17-ad5d-4ba6-8cde-5c9418122032',
+      closed: '7ebd0097-67e4-4511-8533-68006906beb8',
     },
     readability: {
       minBodyTextPx: 16,

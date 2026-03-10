@@ -42,7 +42,7 @@ test.describe(
         });
         const replayPayload = {
           ...webhookPayload,
-          neighborId: 'neighbor-connectshyft-e5-duplicate-1001',
+          neighborId: '04eccf46-0c56-495f-8d01-6c4f819548dd',
         };
 
         const { body: firstBody } = await postStoryE5InboundWebhook({

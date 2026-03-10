@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
 import { test, expect } from '@playwright/test';
 
 const repoRoot = process.cwd();
@@ -9,17 +8,6 @@ const resolvePath = (...segments: string[]): string => path.join(repoRoot, ...se
 
 const pathExists = (...segments: string[]): boolean => fs.existsSync(resolvePath(...segments));
 const resolveRealPath = (...segments: string[]): string => fs.realpathSync(resolvePath(...segments));
-const fileDigest = (...segments: string[]): string => createHash('sha256')
-  .update(fs.readFileSync(resolvePath(...segments)))
-  .digest('hex');
-const isDirectory = (...segments: string[]): boolean => {
-  try {
-    return fs.statSync(resolvePath(...segments)).isDirectory();
-  } catch {
-    return false;
-  }
-};
-
 const isSymlink = (...segments: string[]): boolean => {
   try {
     return fs.lstatSync(resolvePath(...segments)).isSymbolicLink();
@@ -83,10 +71,11 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
       isSymlink('apps', 'moneyshyft-web', 'src', 'features', 'connectshyft'),
     ).toBe(false);
     expect(
-      fileDigest('apps', 'moneyshyft-web', 'src', 'features', 'connectshyft', 'threads.ts'),
-    ).toBe(
-      fileDigest('apps', 'connectshyft-web', 'src', 'features', 'connectshyft', 'threads.ts'),
-    );
+      pathExists('apps', 'moneyshyft-web', 'src', 'features', 'connectshyft', 'threads.ts'),
+    ).toBe(false);
+    expect(
+      pathExists('apps', 'connectshyft-web', 'src', 'features', 'connectshyft', 'threads.ts'),
+    ).toBe(true);
   });
 
   test('[P1] workspace and CI descriptors recognize extracted lane app locations @P1', () => {
@@ -98,10 +87,10 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
     const connectWebProject = fs.readFileSync(resolvePath('apps', 'connectshyft-web', 'project.json'), 'utf8');
 
     expect(workflow.includes('apps/moneyshyft-api/package-lock.json')).toBe(true);
-    expect(workflow.includes('apps/moneyshyft-web/package-lock.json')).toBe(true);
+    expect(workflow.includes('apps/connectshyft-web/package-lock.json')).toBe(true);
 
     expect(setupAction.includes('apps/moneyshyft-api/package-lock.json')).toBe(true);
-    expect(setupAction.includes('apps/moneyshyft-web/package-lock.json')).toBe(true);
+    expect(setupAction.includes('apps/connectshyft-web/package-lock.json')).toBe(true);
 
     expect(routeProject.includes('apps/moneyshyft-api/src')).toBe(true);
     expect(webProject.includes('apps/moneyshyft-web/src')).toBe(true);

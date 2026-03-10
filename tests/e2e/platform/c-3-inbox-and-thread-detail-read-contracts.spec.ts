@@ -73,13 +73,13 @@ test.describe(
               .map((node) => node.getAttribute('data-testid') || '')
               .filter((value) => value.length > 0)
               .map((value) => value.replace('connectshyft-thread-card-', ''))
-              .filter((value) => value.startsWith('thread-'))),
+              .filter((value) => /^[0-9a-f-]{36}$/i.test(value))),
         ).toEqual([
           context.threadIds.claimed,
           context.threadIds.unclaimed,
-          'thread-c3-unclaimed-1006',
+          '05a64891-ba69-4385-8bb9-140f01e0d243',
           context.threadIds.closed,
-          'thread-c3-new-unread-1005',
+          '212a5375-c931-48fb-84c0-0eb4f1e3282b',
         ]);
 
         await expect(page.locator('[data-testid="connectshyft-inbox-item-priority-rank"]'))

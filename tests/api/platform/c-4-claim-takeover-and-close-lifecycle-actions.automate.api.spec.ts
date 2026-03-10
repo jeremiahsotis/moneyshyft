@@ -175,7 +175,7 @@ test.describe(
     test(
       '[P1] lifecycle actions on unknown thread ids are refused with deterministic not-found envelopes @P1',
       async ({ request, storyC4Context, storyC4MemberHeaders, storyC4ClaimPayload }) => {
-        const missingThreadId = `thread-c4-missing-${randomUUID().slice(0, 8)}`;
+        const missingThreadId = randomUUID();
         const response = await apiRequest(request, {
           method: 'POST',
           path: `${storyC4Context.paths.threads}/${missingThreadId}/claim`,

@@ -78,18 +78,29 @@ export const ensureConnectShyftDbActorUser = async (userId: string): Promise<voi
 
 export const ensureConnectShyftDbHousehold = async (tenantId: string): Promise<void> => {
   await withEphemeralConnectShyftDbClient(async (db) => {
+    const defaultHouseholdName = `ConnectShyft ${tenantId.slice(0, 8)}`;
     const existingHousehold = await db('households')
       .where({ id: tenantId })
-      .first<{ id: string }>('id');
-    if (existingHousehold) {
-      return;
+      .first<{ id: string; name: string }>('id', 'name');
+
+    const householdName = existingHousehold?.name || defaultHouseholdName;
+
+    if (!existingHousehold) {
+      await db('households')
+        .insert({
+          id: tenantId,
+          name: householdName,
+          invitation_code: buildInvitationCode(tenantId),
+        })
+        .onConflict('id')
+        .ignore();
     }
 
-    await db('households')
+    await db.withSchema('platform').table('tenants')
       .insert({
         id: tenantId,
-        name: `ConnectShyft ${tenantId.slice(0, 8)}`,
-        invitation_code: buildInvitationCode(tenantId),
+        name: householdName,
+        status: 'active',
       })
       .onConflict('id')
       .ignore();

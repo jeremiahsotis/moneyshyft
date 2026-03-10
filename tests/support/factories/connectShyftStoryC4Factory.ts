@@ -80,9 +80,9 @@ export function createStoryC4Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-c4-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimed: 'thread-c4-unclaimed-1001',
-      claimed: 'thread-c4-claimed-1002',
-      closed: 'thread-c4-closed-1003',
+      unclaimed: '483a4c51-e677-422a-8bc6-faeea89c6dcf',
+      claimed: '6fb01cbc-069d-485a-86f7-ee72359543b9',
+      closed: '2f6bbd34-49c7-4400-8982-889c996ab87b',
     },
     eventNames: {
       claimed: 'connectshyft.thread.claimed',

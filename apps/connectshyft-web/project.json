@@ -19,6 +19,12 @@
         "command": "npm run build"
       }
     },
+    "verify-connectshyft-ui": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx run connectshyft-web:build && bash scripts/verify-connectshyft-route-ownership.sh"
+      }
+    },
     "preview": {
       "executor": "nx:run-commands",
       "options": {

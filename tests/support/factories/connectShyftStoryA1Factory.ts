@@ -73,7 +73,7 @@ export function createStoryA1Context(
 ): StoryA1Context {
   const tenantId = overrides.tenantId ?? connectShyftFeatureFlagData.tenantId;
   const orgUnitId = overrides.orgUnitId ?? connectShyftFeatureFlagData.orgUnitId;
-  const threadId = overrides.threadId ?? 'thread-a-1001';
+  const threadId = overrides.threadId ?? '09b12634-9bf8-4e11-8503-3ed4eca5b89a';
 
   return {
     storyId: 'a-1',

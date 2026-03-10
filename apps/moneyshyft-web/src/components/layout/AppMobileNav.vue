@@ -36,20 +36,11 @@ const moneyNavItems = [
   { name: 'transactions', label: 'Activity', icon: '📝', path: '/transactions' },
 ];
 
-const connectShyftNavItems = [
-  { name: 'connectshyft-inbox', label: 'Inbox', icon: '📬', path: '/app/connectshyft/inbox' },
-  { name: 'connectshyft-availability', label: 'Avail', icon: '🛰️', path: '/app/connectshyft/settings/availability' },
-];
-
 const navItems = computed(() => {
   const items: Array<{ name: string; label: string; icon: string; path: string }> = [];
 
   if (authStore.isAuthenticated && accessStore.canAccessMoneyShyft) {
     items.push(...moneyNavItems);
-  }
-
-  if (authStore.isAuthenticated && accessStore.canAccessConnectShyft) {
-    items.push(...connectShyftNavItems);
   }
 
   if (authStore.isAuthenticated && accessStore.hasAnyAdminAccess) {

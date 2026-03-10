@@ -6,6 +6,9 @@ base_ref="${1:-origin/production}"
 echo "== policy =="
 npm run policy:check
 
+echo "== connectshyft route ownership =="
+bash scripts/verify-connectshyft-route-ownership.sh
+
 echo "== lint (or discovery fallback) =="
 bash scripts/lint-or-discovery.sh
 

@@ -7,7 +7,10 @@
       <RouterLink
         v-for="item in navItems"
         :key="item.path"
-        :to="item.path"
+        :to="{
+          path: item.path,
+          query: sanitizedQuery(),
+        }"
         :data-testid="item.testId"
         :aria-label="item.ariaLabel"
         :style="tapTargetStyle"
@@ -15,12 +18,20 @@
         :class="isActive(item.path) ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'"
       >
         {{ item.label }}
+        <span
+          v-if="item.path === '/app/connectshyft/more' && isActive(item.path)"
+          data-testid="connectshyft-primary-nav-more-active"
+          class="ml-2 rounded bg-white/20 px-2 py-0.5 text-xs"
+        >
+          More active
+        </span>
       </RouterLink>
     </div>
   </nav>
 </template>
 
 <script setup lang="ts">
+import type { LocationQueryRaw } from 'vue-router';
 import { useRoute } from 'vue-router';
 import { CONNECTSHYFT_ACCESSIBILITY_LOCKS } from '@/features/connectshyft/uiContracts';
 
@@ -49,6 +60,17 @@ const navItems = [
     testId: 'connectshyft-bottom-nav-more',
   },
 ];
+
+const sanitizedQuery = (): LocationQueryRaw => {
+  const {
+    refusedPath: _refusedPath,
+    settingsRefusal: _settingsRefusal,
+    settingsRefusedPath: _settingsRefusedPath,
+    ...rest
+  } = route.query;
+
+  return rest as LocationQueryRaw;
+};
 
 const isActive = (path: string): boolean => {
   if (path === '/app/connectshyft/more') {

@@ -19,6 +19,12 @@
         "command": "npm run build"
       }
     },
+    "verify-moneyshyft-ui": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "nx run moneyshyft-web:build"
+      }
+    },
     "preview": {
       "executor": "nx:run-commands",
       "options": {

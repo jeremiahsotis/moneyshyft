@@ -69,7 +69,7 @@ export type StoryA5Context = {
 export function createStoryA5Context(
   overrides: StoryA5ContextOverrides = {},
 ): StoryA5Context {
-  const threadId = overrides.threadId ?? 'thread-a5-2001';
+  const threadId = overrides.threadId ?? '03e7ea47-70ed-48c5-8880-4d88c1888bdb';
   const existingMappingId =
     overrides.existingMappingId ?? connectShyftCapabilityEnvelopeData.existingMappingId;
 

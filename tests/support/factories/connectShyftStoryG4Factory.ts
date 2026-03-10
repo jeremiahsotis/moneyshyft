@@ -124,11 +124,11 @@ export function createStoryG4Context(
       byPhone: '2605550199',
     },
     neighborIds: {
-      existing: 'neighbor-g4-existing-1001',
-      newCandidate: 'neighbor-g4-new-1002',
+      existing: '5128e0b5-2bd2-4ae4-8297-65e36f631b37',
+      newCandidate: 'd3051607-f43b-43c3-8990-8239dbd57943',
     },
     threadIds: {
-      existingActive: 'thread-g4-existing-1001',
+      existingActive: 'ab3ebb00-e2bc-438f-888b-c33e7966a400',
     },
     testData: {
       primaryPhoneRaw: '+1 (260) 555-0199',

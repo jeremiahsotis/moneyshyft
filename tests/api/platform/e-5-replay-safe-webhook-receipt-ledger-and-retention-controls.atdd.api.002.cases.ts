@@ -41,7 +41,7 @@ test.describe(
         });
         const acceptedPayload = {
           ...firstSeenPayload,
-          neighborId: 'neighbor-connectshyft-e5-first-seen-1001',
+          neighborId: '2d74c0c1-4b2c-48e6-8422-287315c13710',
         };
 
         const { body } = await postStoryE5InboundWebhook({

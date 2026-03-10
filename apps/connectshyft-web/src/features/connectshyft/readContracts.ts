@@ -19,6 +19,7 @@ export type ConnectShyftThreadSummary = {
   threadId: string;
   orgUnitId: string;
   state: ConnectShyftThreadState;
+  stateLabel: string;
   claimedByUserId: string | null;
   bucket: ConnectShyftInboxBucket;
   escalationStage: number;
@@ -26,7 +27,12 @@ export type ConnectShyftThreadSummary = {
   urgencyLabel: string;
   lastActivityAtUtc: string;
   lastInboundCsNumberId: string;
+  lastInboundContext: string;
   preferredOutboundCsNumberId: string;
+  preferredOutboundContextLabel: string;
+  neighborContextLabel: string;
+  conferenceContextLabel: string;
+  claimContextLabel: string;
   preferredOutboundContext: {
     csNumberId: string;
     label: string;
@@ -34,10 +40,19 @@ export type ConnectShyftThreadSummary = {
   voicemailIndicator: boolean;
   voicemailLabel: string | null;
   summary: string;
+  preview: string;
+};
+
+export type ConnectShyftTimelineEvent = {
+  eventId: string;
+  eventName: string;
+  summary: string;
+  conversationType: string;
 };
 
 export type ConnectShyftThreadDetail = ConnectShyftThreadSummary & {
   actions: string[];
+  timeline: ConnectShyftTimelineEvent[];
   lifecycle: {
     reopenedByInbound: boolean;
   };
@@ -149,6 +164,104 @@ const parsePreferredOutboundContext = (
   };
 };
 
+const parseDisplayRecord = (
+  payload: unknown,
+): {
+  title: string;
+  preview: string;
+  urgencyLabel: string;
+  stateLabel: string;
+  inboundContext: string;
+  outboundContext: string;
+  neighborContext: string;
+  conferenceContext: string;
+  claimContext: string;
+  voicemailLabel: string;
+} => {
+  if (!payload || typeof payload !== 'object') {
+    return {
+      title: '',
+      preview: '',
+      urgencyLabel: '',
+      stateLabel: '',
+      inboundContext: '',
+      outboundContext: '',
+      neighborContext: '',
+      conferenceContext: '',
+      claimContext: '',
+      voicemailLabel: '',
+    };
+  }
+
+  const candidate = payload as {
+    title?: unknown;
+    preview?: unknown;
+    urgencyLabel?: unknown;
+    stateLabel?: unknown;
+    inboundContext?: unknown;
+    outboundContext?: unknown;
+    neighborContext?: unknown;
+    conferenceContext?: unknown;
+    claimContext?: unknown;
+    voicemailLabel?: unknown;
+  };
+
+  return {
+    title: normalizeString(candidate.title),
+    preview: normalizeString(candidate.preview),
+    urgencyLabel: normalizeString(candidate.urgencyLabel),
+    stateLabel: normalizeString(candidate.stateLabel),
+    inboundContext: normalizeString(candidate.inboundContext),
+    outboundContext: normalizeString(candidate.outboundContext),
+    neighborContext: normalizeString(candidate.neighborContext),
+    conferenceContext: normalizeString(candidate.conferenceContext),
+    claimContext: normalizeString(candidate.claimContext),
+    voicemailLabel: normalizeString(candidate.voicemailLabel),
+  };
+};
+
+const parseTimelineEvents = (payload: unknown): ConnectShyftTimelineEvent[] => {
+  if (!Array.isArray(payload)) {
+    return [];
+  }
+
+  return payload
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') {
+        return null;
+      }
+
+      const candidate = entry as {
+        eventId?: unknown;
+        eventName?: unknown;
+        eventType?: unknown;
+        conversationType?: unknown;
+        payload?: {
+          summary?: unknown;
+        };
+        summary?: unknown;
+      };
+
+      const eventId = normalizeString(candidate.eventId);
+      const eventName = normalizeString(candidate.eventName ?? candidate.eventType);
+      const summary = normalizeString(candidate.payload?.summary ?? candidate.summary);
+      const conversationType = normalizeString(candidate.conversationType)
+        || (eventName.toLowerCase().includes('voicemail') ? 'voicemail' : 'message');
+
+      if (!eventId && !eventName) {
+        return null;
+      }
+
+      return {
+        eventId: eventId || eventName,
+        eventName: eventName || 'connectshyft.timeline.event',
+        summary: summary || 'Conversation activity recorded.',
+        conversationType,
+      };
+    })
+    .filter((event): event is ConnectShyftTimelineEvent => event !== null);
+};
+
 const hasVoicemailTimelineEvent = (payload: unknown): boolean => {
   if (!Array.isArray(payload)) {
     return false;
@@ -198,6 +311,8 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
     voicemail_label?: unknown;
     timeline?: unknown;
     summary?: unknown;
+    preview?: unknown;
+    display?: unknown;
   };
 
   const threadId = normalizeString(candidate.threadId);
@@ -208,6 +323,10 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
   const preferredOutboundContext = parsePreferredOutboundContext(
     candidate.preferredOutboundContext ?? candidate.preferred_outbound_context,
   );
+  const display = parseDisplayRecord(candidate.display);
+  const summary = display.title || normalizeString(candidate.summary);
+  const preview = display.preview || summary;
+  const state = normalizeState(candidate.state);
 
   const voicemailIndicator =
     candidate.voicemailIndicator === true || hasVoicemailTimelineEvent(candidate.timeline);
@@ -215,32 +334,43 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
     candidate.voicemailLabel ?? candidate.voicemail_label,
   );
   const voicemailLabel = explicitVoicemailLabel
+    || display.voicemailLabel
     || (voicemailIndicator
       ? (normalizeState(candidate.state) === 'UNCLAIMED' ? 'Voicemail received' : 'Voicemail')
       : '');
+  const conferenceContextLabel = display.conferenceContext
+    || `Conference context: ${display.outboundContext || preferredOutboundContext.label || preferredOutboundContext.csNumberId || 'Unassigned outbound conference line'}`;
+  const summaryText = summary || 'Active thread';
 
   return {
     threadId,
     orgUnitId: normalizeString(candidate.orgUnitId),
-    state: normalizeState(candidate.state),
+    state,
+    stateLabel: display.stateLabel || state,
     claimedByUserId: normalizeString(
       candidate.claimedByUserId ?? candidate.claimed_by_user_id,
     ) || null,
     bucket: normalizeBucket(candidate.bucket),
     escalationStage: normalizeStage(candidate.escalationStage),
     priorityRank: normalizePriorityRank(candidate.priorityRank),
-    urgencyLabel: normalizeString(candidate.urgencyLabel),
+    urgencyLabel: display.urgencyLabel || normalizeString(candidate.urgencyLabel),
     lastActivityAtUtc: normalizeString(candidate.lastActivityAtUtc),
     lastInboundCsNumberId: normalizeString(
       candidate.lastInboundCsNumberId ?? candidate.last_inbound_cs_number_id,
     ),
+    lastInboundContext: display.inboundContext,
     preferredOutboundCsNumberId: normalizeString(
       candidate.preferredOutboundCsNumberId ?? candidate.preferred_outbound_cs_number_id,
     ),
+    preferredOutboundContextLabel: display.outboundContext || preferredOutboundContext.label,
+    neighborContextLabel: display.neighborContext || `Neighbor context: ${summaryText}`,
+    conferenceContextLabel,
+    claimContextLabel: display.claimContext || `Claim context: ${display.stateLabel || state}`,
     preferredOutboundContext,
     voicemailIndicator,
     voicemailLabel: voicemailLabel || null,
-    summary: normalizeString(candidate.summary),
+    summary,
+    preview,
   };
 };
 
@@ -256,6 +386,7 @@ const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null =>
 
   const candidate = payload as {
     actions?: unknown;
+    timeline?: unknown;
     lifecycle?: {
       reopenedByInbound?: unknown;
     };
@@ -270,6 +401,7 @@ const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null =>
   return {
     ...summary,
     actions,
+    timeline: parseTimelineEvents(candidate.timeline),
     lifecycle: {
       reopenedByInbound: candidate.lifecycle?.reopenedByInbound === true,
     },

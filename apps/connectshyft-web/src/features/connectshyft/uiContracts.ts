@@ -1,5 +1,7 @@
 export type ConnectShyftFeedbackTaxonomy = 'success' | 'refusal' | 'error';
 
+export { CONNECTSHYFT_RESPONSIVE_BREAKPOINTS } from '@/components/connectshyft/connectShyftTokens';
+
 export type ConnectShyftFeedback = {
   taxonomy: ConnectShyftFeedbackTaxonomy;
   message: string;
@@ -107,6 +109,11 @@ export const CONNECTSHYFT_INBOX_ACTION_COPY = {
     label: 'Send Message',
     ariaLabel: 'Send a message',
     testId: 'connectshyft-compose-message-action',
+  },
+  makeCall: {
+    label: 'Make Call',
+    ariaLabel: 'Make a call',
+    testId: 'connectshyft-make-call-action',
   },
   claimThread: {
     label: 'Claim Thread',

@@ -173,7 +173,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_DEFAULT_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId,
-    threadId: 'thread-c3-claimed-1002',
+    threadId: '2686f12a-b7dc-4ab2-8de2-70b05684198b',
     state: 'CLAIMED',
     bucket: 'inbox',
     claimedByUserId: 'user-connectshyft-c3-other-operator',
@@ -189,7 +189,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_DEFAULT_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId,
-    threadId: 'thread-c3-unclaimed-1001',
+    threadId: '90ca1c73-be82-48c6-8ba0-504e872ad211',
     state: 'UNCLAIMED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -205,13 +205,13 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_DEFAULT_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId,
-    threadId: 'thread-c3-unclaimed-1006',
+    threadId: '05a64891-ba69-4385-8bb9-140f01e0d243',
     state: 'UNCLAIMED',
     bucket: 'inbox',
     claimedByUserId: null,
     escalationStage: 2,
     isNewUnread: false,
-    lastActivityAtUtc: '2026-02-24T19:20:00.000Z',
+    lastActivityAtUtc: '2026-02-24T19:19:00.000Z',
     lastInboundCsNumberId: 'cs-number-106',
     preferredOutboundCsNumberId: 'cs-number-206',
     preferredOutboundLabel: 'Overflow Dispatch',
@@ -221,7 +221,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_DEFAULT_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId,
-    threadId: 'thread-c3-closed-1003',
+    threadId: '47e2e20d-f3bc-4c0d-87a6-d3f0b0cbe69e',
     state: 'CLOSED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -237,7 +237,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_DEFAULT_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId,
-    threadId: 'thread-c3-new-unread-1005',
+    threadId: '212a5375-c931-48fb-84c0-0eb4f1e3282b',
     state: 'UNCLAIMED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -253,7 +253,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_DEFAULT_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_DEFAULT_SCOPE.orgUnitId,
-    threadId: 'thread-c3-claimed-voicemail-1004',
+    threadId: '7ce62a91-60dd-4869-8816-d782f26b85d1',
     state: 'CLAIMED',
     bucket: 'mine',
     claimedByUserId: 'user-connectshyft-c3-operator',
@@ -269,7 +269,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_G1_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_G1_SCOPE.orgUnitId,
-    threadId: 'thread-g1-unclaimed-1001',
+    threadId: '04333bc3-018d-4fd3-84da-5d39a8767d30',
     state: 'UNCLAIMED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -285,7 +285,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_G1_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_G1_SCOPE.orgUnitId,
-    threadId: 'thread-g1-claimed-1002',
+    threadId: '1e6b1c89-40ad-4a47-8e0a-784db5b0c9d8',
     state: 'CLAIMED',
     bucket: 'inbox',
     claimedByUserId: 'user-connectshyft-g1-other-operator',
@@ -301,7 +301,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_G1_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_G1_SCOPE.orgUnitId,
-    threadId: 'thread-g1-closed-1003',
+    threadId: 'd78671f5-edc5-42af-86e0-97342ccc3968',
     state: 'CLOSED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -317,7 +317,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_G1_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_G1_SCOPE.orgUnitId,
-    threadId: 'thread-g1-voicemail-1004',
+    threadId: 'f5b54c4b-95a6-4201-8d2a-fa373d79e905',
     state: 'CLAIMED',
     bucket: 'mine',
     claimedByUserId: 'user-connectshyft-g1-operator',
@@ -333,7 +333,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_C4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_C4_SCOPE.orgUnitId,
-    threadId: 'thread-c4-unclaimed-1001',
+    threadId: '483a4c51-e677-422a-8bc6-faeea89c6dcf',
     state: 'UNCLAIMED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -349,7 +349,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_C4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_C4_SCOPE.orgUnitId,
-    threadId: 'thread-c4-claimed-1002',
+    threadId: '6fb01cbc-069d-485a-86f7-ee72359543b9',
     state: 'CLAIMED',
     bucket: 'inbox',
     claimedByUserId: 'user-connectshyft-c4-other-operator',
@@ -365,7 +365,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_C4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_C4_SCOPE.orgUnitId,
-    threadId: 'thread-c4-closed-1003',
+    threadId: '2f6bbd34-49c7-4400-8982-889c996ab87b',
     state: 'CLOSED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -381,7 +381,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_D4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_D4_SCOPE.orgUnitId,
-    threadId: 'thread-d4-unclaimed-1001',
+    threadId: '4332bb8e-940f-4927-8320-a8d3f3093d72',
     state: 'UNCLAIMED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -397,7 +397,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_D4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_D4_SCOPE.orgUnitId,
-    threadId: 'thread-d4-claimed-1002',
+    threadId: '0b3060e8-d0e1-4366-8655-8c7ec44cf0ee',
     state: 'CLAIMED',
     bucket: 'inbox',
     claimedByUserId: 'user-connectshyft-d4-other-operator',
@@ -413,7 +413,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_D4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_D4_SCOPE.orgUnitId,
-    threadId: 'thread-d4-closed-1003',
+    threadId: '20ab942f-27c6-4ae5-8af2-06b727c36b2a',
     state: 'CLOSED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -429,7 +429,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_D4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_D4_SCOPE.orgUnitId,
-    threadId: 'thread-d4-closed-prefers-no-1005',
+    threadId: '06a77807-6575-4c63-8824-38a89f9dae12',
     state: 'CLOSED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -445,7 +445,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_D4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_D4_SCOPE.orgUnitId,
-    threadId: 'thread-d4-unclaimed-prefers-no-1004',
+    threadId: '59b44eb4-c8e7-4cd1-8a22-bbeceb871dd7',
     state: 'UNCLAIMED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -461,7 +461,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R1_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R1_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r1-unclaimed-1001',
+    threadId: 'f6b1825d-1465-4c4f-826e-dc7e77dfc4dd',
     state: 'UNCLAIMED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -477,7 +477,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R1_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R1_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r1-claimed-1002',
+    threadId: '40ab0a06-27a0-45ff-8ea4-6d82e6f41222',
     state: 'CLAIMED',
     bucket: 'inbox',
     claimedByUserId: 'user-connectshyft-ux-r1-other-operator',
@@ -493,7 +493,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R1_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R1_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r1-closed-1003',
+    threadId: '7ebd0097-67e4-4511-8533-68006906beb8',
     state: 'CLOSED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -509,7 +509,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R1_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R1_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r1-claimed-voicemail-1004',
+    threadId: '85719c17-ad5d-4ba6-8cde-5c9418122032',
     state: 'CLAIMED',
     bucket: 'mine',
     claimedByUserId: 'user-connectshyft-ux-r1-operator',
@@ -525,7 +525,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R3_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R3_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r3-unclaimed-voicemail-1001',
+    threadId: 'c5d1de83-5a0e-45e0-8f25-eba1bd21a985',
     state: 'UNCLAIMED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -541,7 +541,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R3_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R3_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r3-claimed-voicemail-1002',
+    threadId: 'b58069cc-1ab6-4ada-8a95-c468780a45a3',
     state: 'CLAIMED',
     bucket: 'mine',
     claimedByUserId: 'user-connectshyft-ux-r3-operator',
@@ -557,7 +557,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R3_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R3_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r3-closed-voice-1003',
+    threadId: 'cba65a18-a1bc-45c3-838d-72f80135d6af',
     state: 'CLOSED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -573,7 +573,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R4_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r4-unclaimed-1001',
+    threadId: '1641c3dd-4d4c-4997-8b72-ae4876649b37',
     state: 'UNCLAIMED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -589,7 +589,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R4_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r4-claimed-1002',
+    threadId: '69c239d2-8f02-4202-8cec-a7f0de61cbf7',
     state: 'CLAIMED',
     bucket: 'inbox',
     claimedByUserId: 'user-connectshyft-ux-r4-other-operator',
@@ -605,7 +605,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R4_SCOPE.orgUnitId,
-    threadId: 'thread-g1-voicemail-1004',
+    threadId: 'f5b54c4b-95a6-4201-8d2a-fa373d79e905',
     state: 'CLAIMED',
     bucket: 'mine',
     claimedByUserId: 'user-connectshyft-ux-r4-operator',
@@ -621,7 +621,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R4_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r4-closed-1003',
+    threadId: 'aedcda71-42b7-4857-8a0a-70013e01d4cd',
     state: 'CLOSED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -637,7 +637,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R4_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r4-unclaimed-prefers-no-1004',
+    threadId: '21f2866f-37ff-42da-80fc-0b5d2c3bc09d',
     state: 'UNCLAIMED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -653,7 +653,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R4_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R4_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r4-closed-prefers-no-1005',
+    threadId: 'e37b00e0-228f-43c0-8c70-b3d0a5bfad40',
     state: 'CLOSED',
     bucket: 'inbox',
     claimedByUserId: null,

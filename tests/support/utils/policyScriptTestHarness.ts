@@ -209,6 +209,11 @@ export function runPolicyScriptInTempRepo(
       true,
     );
     copyFileIfPresent(
+      join(scriptsDir, 'enforce-connectshyft-lane-convergence-guard.sh'),
+      join(repoDir, 'scripts/enforce-connectshyft-lane-convergence-guard.sh'),
+      true,
+    );
+    copyFileIfPresent(
       join(scriptsDir, 'enforce-story-status-sync.sh'),
       join(repoDir, 'scripts/enforce-story-status-sync.sh'),
       true,

@@ -9,11 +9,18 @@ import ConnectShyftMoreView from '../views/ConnectShyft/ConnectShyftMoreView.vue
 import ConnectShyftThreadDetailView from '../views/ConnectShyft/ConnectShyftThreadDetailView.vue';
 import ConnectShyftNeighborProfileView from '../views/ConnectShyft/ConnectShyftNeighborProfileView.vue';
 import ConnectShyftNeighborCreateView from '../views/ConnectShyft/ConnectShyftNeighborCreateView.vue';
+import ConnectShyftDirectoryView from '../views/ConnectShyft/ConnectShyftDirectoryView.vue';
 import ConnectShyftAvailabilityView from '../views/ConnectShyft/ConnectShyftAvailabilityView.vue';
 import ConnectShyftNumberMappingsView from '../views/ConnectShyft/ConnectShyftNumberMappingsView.vue';
 import ConnectShyftEscalationSettingsView from '../views/ConnectShyft/ConnectShyftEscalationSettingsView.vue';
+import { resolveConnectShyftAdminAccessFromQuery } from '@/features/connectshyft/settingsAccess';
 
 const CONNECTSHYFT_APP_PREFIX = '/app/connectshyft';
+const CONNECTSHYFT_ADMIN_SETTINGS_PATHS = new Set([
+  '/app/connectshyft/settings/availability',
+  '/app/connectshyft/settings/numbers',
+  '/app/connectshyft/settings/escalation',
+]);
 
 const extractCurrentUser = (payload: unknown): Record<string, unknown> | null => {
   if (!payload || typeof payload !== 'object') {
@@ -95,9 +102,19 @@ const router = createRouter({
       component: ConnectShyftMoreView,
     },
     {
+      path: '/app/connectshyft/settings',
+      name: 'connectshyft-settings',
+      component: ConnectShyftMoreView,
+    },
+    {
       path: '/app/connectshyft/threads/:threadId',
       name: 'connectshyft-thread',
       component: ConnectShyftThreadDetailView,
+    },
+    {
+      path: '/app/connectshyft/directory',
+      name: 'connectshyft-directory',
+      component: ConnectShyftDirectoryView,
     },
     {
       path: '/app/connectshyft/neighbors/new',
@@ -139,6 +156,19 @@ router.beforeEach(async (to) => {
 
   const authenticated = await refreshSessionState();
   if (authenticated) {
+    if (CONNECTSHYFT_ADMIN_SETTINGS_PATHS.has(to.path)) {
+      const canAccessAdminSettings = resolveConnectShyftAdminAccessFromQuery(to.query);
+      if (canAccessAdminSettings === false) {
+        return {
+          path: '/app/connectshyft/settings',
+          query: {
+            ...to.query,
+            refusedPath: to.path,
+          },
+        };
+      }
+    }
+
     return true;
   }
 

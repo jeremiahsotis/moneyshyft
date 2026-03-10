@@ -128,7 +128,7 @@ test.describe(
           /BURN_IN_REQUIRE_TESTS/.test(testChangedScript)
           && /Running burn-in fallback spec suite/.test(testChangedScript);
         const burnInRunsOnCiCompletion =
-          /workflow_run:\s*\n\s*workflows:\s*\['MoneyShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(
+          /workflow_run:\s*\n\s*workflows:\s*\['ConnectShyft CI'\]\s*\n\s*types:\s*\[completed\]/.test(
             burnInWorkflow,
           );
         const burnInHasPrPath = /run\.event === 'pull_request'/.test(burnInWorkflow);

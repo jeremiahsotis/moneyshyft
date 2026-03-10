@@ -114,10 +114,10 @@ export function createStoryG1Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-g1-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimed: 'thread-g1-unclaimed-1001',
-      claimed: 'thread-g1-claimed-1002',
-      closed: 'thread-g1-closed-1003',
-      voicemailClaimed: 'thread-g1-voicemail-1004',
+      unclaimed: '04333bc3-018d-4fd3-84da-5d39a8767d30',
+      claimed: '1e6b1c89-40ad-4a47-8e0a-784db5b0c9d8',
+      closed: 'd78671f5-edc5-42af-86e0-97342ccc3968',
+      voicemailClaimed: 'f5b54c4b-95a6-4201-8d2a-fa373d79e905',
     },
     tokenContract: {
       groups: ['color', 'typography', 'spacing', 'radius', 'shadow', 'breakpoint'],

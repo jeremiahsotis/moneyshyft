@@ -128,7 +128,7 @@ test.describe(
         const ciBurnInHasDistinctName = /burn-in:\s*\n\s*name:\s*(burn-in|ci-burn-in)/.test(workflow);
         const scheduledBurnInHasDistinctName =
           /burn-in:\s*\n\s*name:\s*scheduled-burn-in/.test(burnInWorkflow);
-        const burnInWorkflowTriggeredByCi = /workflows:\s*\['MoneyShyft CI'\]/.test(
+        const burnInWorkflowTriggeredByCi = /workflows:\s*\['ConnectShyft CI'\]/.test(
           burnInWorkflow,
         );
         const burnInPullRequestFlowExists = /run\.event === 'pull_request'/.test(

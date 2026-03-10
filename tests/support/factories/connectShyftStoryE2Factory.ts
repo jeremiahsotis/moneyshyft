@@ -89,9 +89,9 @@ export function createStoryE2Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-e2-${randomUUID().slice(0, 8)}`,
     neighborIds: {
-      existingActive: 'neighbor-connectshyft-e2-active-1001',
-      inboundCreate: 'neighbor-connectshyft-e2-inbound-1002',
-      inboundDuplicate: 'neighbor-connectshyft-e2-duplicate-1003',
+      existingActive: 'c615fb03-4216-4694-8d74-0307e3b3a067',
+      inboundCreate: '9d20a1a0-3443-4732-8da7-37e8e96e603b',
+      inboundDuplicate: '003929f6-8a22-4262-8ac3-0d2f8a5f7bc1',
     },
     providers: {
       enabledPrimary: 'telnyx',

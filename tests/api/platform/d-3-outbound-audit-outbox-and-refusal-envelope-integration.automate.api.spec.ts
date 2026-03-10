@@ -53,11 +53,23 @@ const readCount = async (query: ReturnType<typeof connectShyftDb.withSchema>): P
 
 const ensureDbTenant = async (tenantId: string): Promise<void> => {
   const invitationCode = tenantId.replace(/-/g, '').slice(0, 10);
+  const tenantName = `Story d3 tenant ${tenantId.slice(0, 8)}`;
   await connectShyftDb('households')
     .insert({
       id: tenantId,
-      name: `Story d3 tenant ${tenantId.slice(0, 8)}`,
+      name: tenantName,
       invitation_code: invitationCode,
+    })
+    .onConflict('id')
+    .ignore();
+
+  await connectShyftDb
+    .withSchema('platform')
+    .table('tenants')
+    .insert({
+      id: tenantId,
+      name: tenantName,
+      status: 'active',
     })
     .onConflict('id')
     .ignore();
