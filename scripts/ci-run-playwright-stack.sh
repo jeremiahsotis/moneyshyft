@@ -27,11 +27,19 @@ export API_URL="${API_URL:-http://localhost:3000}"
 export API_BASE_URL="${API_BASE_URL:-$API_URL}"
 export FRONTEND_URL="${FRONTEND_URL:-http://localhost:5174}"
 export VITE_API_PROXY_TARGET="${VITE_API_PROXY_TARGET:-http://localhost:3000}"
+export VITE_ADMIN_API_PROXY_TARGET="${VITE_ADMIN_API_PROXY_TARGET:-$API_URL}"
 export VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS="${VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS:-$ENABLE_TEST_CONNECTSHYFT_FLAGS}"
+export PLAYWRIGHT_FRONTEND_APP_DIR="${PLAYWRIGHT_FRONTEND_APP_DIR:-apps/moneyshyft-web}"
 export HOST="${HOST:-0.0.0.0}"
 export PORT="${PORT:-3000}"
 frontend_host="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.hostname);" "$BASE_URL")"
 frontend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.port || '5174');" "$BASE_URL")"
+frontend_app_dir="$PLAYWRIGHT_FRONTEND_APP_DIR"
+
+if [[ ! -f "$frontend_app_dir/package.json" ]]; then
+  echo "Frontend app directory '$frontend_app_dir' is invalid. Set PLAYWRIGHT_FRONTEND_APP_DIR to a valid app path."
+  exit 1
+fi
 
 print_runtime_logs() {
   echo "==== Backend log tail ===="
@@ -137,7 +145,7 @@ echo "Starting backend dev server"
 BACKEND_PID=$!
 
 echo "Starting frontend dev server"
-(cd apps/connectshyft-web && npm run dev -- --host "$frontend_host" --port "$frontend_port") > "$frontend_log" 2>&1 &
+(cd "$frontend_app_dir" && VITE_API_PROXY_TARGET="$API_URL" VITE_ADMIN_API_PROXY_TARGET="$VITE_ADMIN_API_PROXY_TARGET" npm run dev -- --host "$frontend_host" --port "$frontend_port") > "$frontend_log" 2>&1 &
 FRONTEND_PID=$!
 
 wait_for_http "${API_URL%/}/health" "backend health endpoint" "$BACKEND_PID" 30 || {

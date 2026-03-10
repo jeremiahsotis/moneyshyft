@@ -18,12 +18,14 @@ ENABLE_TEST_CONNECTSHYFT_FLAGS="${ENABLE_TEST_CONNECTSHYFT_FLAGS:-true}"
 PLAYWRIGHT_BACKEND_NODE_ENV="${PLAYWRIGHT_BACKEND_NODE_ENV:-test}"
 PLAYWRIGHT_DATABASE_URL="${PLAYWRIGHT_DATABASE_URL:-}"
 PLAYWRIGHT_POSTGRES_CONTAINER="${PLAYWRIGHT_POSTGRES_CONTAINER:-moneyshyft-postgres-1}"
+PLAYWRIGHT_FRONTEND_APP_DIR="${PLAYWRIGHT_FRONTEND_APP_DIR:-apps/moneyshyft-web}"
 
 export API_URL
 export API_BASE_URL="$API_URL"
 export BASE_URL
 export FRONTEND_URL="${FRONTEND_URL:-$BASE_URL}"
 export VITE_API_PROXY_TARGET="${VITE_API_PROXY_TARGET:-$API_URL}"
+export VITE_ADMIN_API_PROXY_TARGET="${VITE_ADMIN_API_PROXY_TARGET:-$API_URL}"
 export TEST_ENV
 export TEST_EMAIL
 export TEST_PASSWORD
@@ -531,7 +533,7 @@ frontend_host="$(node -e "const u = new URL(process.argv[1]); process.stdout.wri
 frontend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.port || '5174');" "$BASE_URL")"
 
 BACKEND_APP_DIR="$(resolve_app_dir apps/moneyshyft-api || true)"
-FRONTEND_APP_DIR="$(resolve_app_dir apps/connectshyft-web || true)"
+FRONTEND_APP_DIR="$(resolve_app_dir "$PLAYWRIGHT_FRONTEND_APP_DIR" apps/moneyshyft-web apps/connectshyft-web || true)"
 
 if [[ -z "$BACKEND_APP_DIR" ]]; then
   echo "Playwright preflight failed: no backend app directory with package.json was found."
@@ -547,6 +549,7 @@ export PLAYWRIGHT_BACKEND_APP_DIR="$BACKEND_APP_DIR"
 export NODE_PATH="$(pwd)/$BACKEND_APP_DIR/node_modules${NODE_PATH:+:$NODE_PATH}"
 
 ensure_runtime_node_modules_link "apps/connectshyft-api/node_modules" "$(pwd)/$BACKEND_APP_DIR/node_modules"
+ensure_runtime_node_modules_link "apps/moneyshyft-web/node_modules" "$(pwd)/$FRONTEND_APP_DIR/node_modules"
 ensure_runtime_node_modules_link "apps/connectshyft-web/node_modules" "$(pwd)/$FRONTEND_APP_DIR/node_modules"
 
 if [[ ! -x "$BACKEND_APP_DIR/node_modules/.bin/ts-node-dev" && ! -x "$BACKEND_APP_DIR/node_modules/.bin/ts-node" ]]; then
@@ -679,7 +682,7 @@ if [[ "$frontend_requires_managed_start" == "true" ]]; then
   fi
 
   echo "Managed runtime policy: starting frontend for this test run at $BASE_URL"
-  (cd "$FRONTEND_APP_DIR" && VITE_API_PROXY_TARGET="$API_URL" VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS="$ENABLE_TEST_CONNECTSHYFT_FLAGS" npm run dev -- --host "$frontend_host" --port "$frontend_port" --strictPort) >"$FRONTEND_LOG_FILE" 2>&1 &
+  (cd "$FRONTEND_APP_DIR" && VITE_API_PROXY_TARGET="$API_URL" VITE_ADMIN_API_PROXY_TARGET="$VITE_ADMIN_API_PROXY_TARGET" VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS="$ENABLE_TEST_CONNECTSHYFT_FLAGS" npm run dev -- --host "$frontend_host" --port "$frontend_port" --strictPort) >"$FRONTEND_LOG_FILE" 2>&1 &
   FRONTEND_PID=$!
   FRONTEND_STARTED=true
   echo "$FRONTEND_PID" > "$FRONTEND_PID_FILE"
