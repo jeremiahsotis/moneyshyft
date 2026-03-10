@@ -157,6 +157,7 @@ const searchMode = ref<ConnectShyftNeighborSearchMode>('name');
 const searchQuery = ref('');
 const viewportWidth = ref<number>(typeof window === 'undefined' ? 1280 : window.innerWidth);
 let searchQueryReloadTimer: ReturnType<typeof setTimeout> | null = null;
+let directoryLoadRequestId = 0;
 
 const normalizeString = (value: unknown): string => {
   if (typeof value !== 'string') {
@@ -280,15 +281,23 @@ const readDirectoryContext = (): {
 };
 
 const loadDirectory = async (): Promise<void> => {
+  const requestId = ++directoryLoadRequestId;
   isLoading.value = true;
   loadError.value = '';
 
-  scope.value = await fetchConnectShyftNeighborScope();
+  const resolvedScope = await fetchConnectShyftNeighborScope();
+  if (requestId !== directoryLoadRequestId) {
+    return;
+  }
+  scope.value = resolvedScope;
 
   const listResult = await fetchConnectShyftNeighborsCollection({
     mode: searchMode.value,
     query: searchQuery.value.trim(),
   });
+  if (requestId !== directoryLoadRequestId) {
+    return;
+  }
 
   isLoading.value = false;
 
@@ -362,6 +371,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  directoryLoadRequestId += 1;
+
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', updateViewportWidth);
   }

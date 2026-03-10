@@ -15,6 +15,11 @@ import { createStoryG4Context } from '../../support/factories/connectShyftStoryG
 
 const context = createStoryG4Context();
 
+const formatDirectoryPhoneQuery = (rawPhone: string): string => {
+  const digits = rawPhone.replace(/\D/g, '').replace(/^1/, '');
+  return digits.replace(/^(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3');
+};
+
 test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate E2E Expansion)', () => {
   let createdNeighborIds: string[] = [];
   let createdThreadIds: string[] = [];
@@ -40,15 +45,17 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate E2E Expans
   test(
     '[G4-AUTO-E2E-301][P0] directory search input updates trigger backend refresh with mode and query parameters before rendering filtered results @P0',
     async ({ page, request }, testInfo) => {
+      const primaryPhone = buildStoryG4DeterministicPhone(testInfo, 'g4-auto-e2e-301-primary-phone');
       const seededNeighbor = await createStoryG4NeighborSeed(request, context, {
         firstName: context.searchTerms.byName,
         lastName: 'AutoReloadDirectory',
-        primaryPhone: buildStoryG4DeterministicPhone(testInfo, 'g4-auto-e2e-301-primary-phone'),
+        primaryPhone,
       });
       createdNeighborIds.push(seededNeighbor.neighborId);
 
       await page.goto(buildStoryG4DirectoryUrl(context));
       await expect(page.getByTestId('connectshyft-directory-surface')).toBeVisible();
+      const seededCard = page.getByTestId(`connectshyft-directory-result-card-${seededNeighbor.neighborId}`);
 
       const expectedNameQuery = context.searchTerms.byName;
       const waitForNameRefresh = page.waitForResponse((response) => {
@@ -69,8 +76,9 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate E2E Expans
       await page.getByTestId('connectshyft-directory-search-input').fill(expectedNameQuery);
       const nameRefreshResponse = await waitForNameRefresh;
       expect(nameRefreshResponse.status()).toBe(200);
+      await expect(seededCard).toBeVisible();
 
-      const formattedPhoneQuery = '(260) 555-0199';
+      const formattedPhoneQuery = formatDirectoryPhoneQuery(primaryPhone);
       const waitForPhoneRefresh = page.waitForResponse((response) => {
         if (!response.url().includes('/api/v1/connectshyft/neighbors')) {
           return false;
@@ -90,7 +98,7 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate E2E Expans
       const phoneRefreshResponse = await waitForPhoneRefresh;
       expect(phoneRefreshResponse.status()).toBe(200);
 
-      await expect(page.getByTestId('connectshyft-directory-result-card').first()).toBeVisible();
+      await expect(seededCard).toBeVisible();
     },
   );
 
