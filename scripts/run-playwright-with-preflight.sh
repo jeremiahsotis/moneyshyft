@@ -531,7 +531,7 @@ frontend_host="$(node -e "const u = new URL(process.argv[1]); process.stdout.wri
 frontend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.port || '5174');" "$BASE_URL")"
 
 BACKEND_APP_DIR="$(resolve_app_dir apps/moneyshyft-api || true)"
-FRONTEND_APP_DIR="$(resolve_app_dir apps/moneyshyft-web || true)"
+FRONTEND_APP_DIR="$(resolve_app_dir apps/connectshyft-web || true)"
 
 if [[ -z "$BACKEND_APP_DIR" ]]; then
   echo "Playwright preflight failed: no backend app directory with package.json was found."

@@ -50,67 +50,16 @@
           </p>
 
           <template v-else-if="threadDetail">
-            <header class="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <p data-testid="connectshyft-thread-detail-body-copy" class="text-base font-semibold text-slate-900">
-                {{ threadDetail.summary || threadDetail.threadId }}
-              </p>
-
-              <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                <p
-                  data-testid="connectshyft-thread-header-neighbor-context"
-                  class="rounded-md border border-slate-200 bg-white px-3 py-2 text-base text-slate-700"
-                >
-                  {{ neighborContextLabel }}
-                </p>
-                <p
-                  data-testid="connectshyft-thread-header-conference-context"
-                  class="rounded-md border border-slate-200 bg-white px-3 py-2 text-base text-slate-700"
-                >
-                  {{ conferenceContextLabel }}
-                </p>
-              </div>
-
-              <div class="mt-3 flex flex-wrap items-center gap-2 text-base">
-                <span
-                  data-testid="connectshyft-thread-id-chip"
-                  class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
-                >
-                  Thread {{ threadDetail.threadId }}
-                </span>
-                <span
-                  data-testid="connectshyft-thread-state-chip"
-                  class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
-                >
-                  {{ threadDetail.state }}
-                </span>
-                <span
-                  v-if="threadDetail.state === 'CLAIMED'"
-                  data-testid="connectshyft-thread-owner-chip"
-                  class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
-                >
-                  Owner: {{ threadDetail.claimedByUserId || 'unassigned' }}
-                </span>
-                <span
-                  data-testid="connectshyft-thread-escalation-chip"
-                  class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
-                >
-                  {{ escalationChipLabel }}
-                </span>
-                <span
-                  data-testid="connectshyft-thread-inactivity-chip"
-                  class="rounded-full border border-slate-300 bg-white px-2 py-1 text-slate-800"
-                >
-                  {{ inactivityChipLabel }}
-                </span>
-                <span
-                  v-if="threadDetail.voicemailIndicator"
-                  data-testid="connectshyft-voicemail-indicator"
-                  class="rounded-full border border-blue-200 bg-blue-100 px-2 py-1 font-semibold text-blue-800"
-                >
-                  Voicemail waiting
-                </span>
-              </div>
-            </header>
+            <ConnectShyftThreadHeader
+              :title="threadDetail.summary || threadDetail.threadId"
+              :neighbor-context-label="neighborContextLabel"
+              :conference-context-label="conferenceContextLabel"
+              :state-label="threadDetail.state"
+              :owner-label="threadDetail.state === 'CLAIMED' ? `Owner: ${threadDetail.claimedByUserId || 'unassigned'}` : ''"
+              :escalation-label="escalationChipLabel"
+              :inactivity-label="inactivityChipLabel"
+              :voicemail-indicator="threadDetail.voicemailIndicator === true"
+            />
 
             <p
               data-testid="connectshyft-thread-metadata-last-inbound-number"
@@ -198,42 +147,37 @@
               Hidden lifecycle transition detected. Refresh thread context and retry.
             </p>
 
-            <div data-testid="connectshyft-thread-actions" class="flex flex-wrap gap-2">
-              <button
-                v-for="action in visibleActions"
-                :key="action"
-                type="button"
-                :data-testid="resolveConnectShyftThreadActionContract(action).testId"
-                :aria-label="resolveConnectShyftThreadActionContract(action).ariaLabel"
-                :class="[
-                  'min-h-[44px] rounded bg-slate-900 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
-                  focusRingClass,
-                ]"
-                :style="tapTargetStyle"
-                :disabled="actionPending"
-                @click="handleThreadAction(action)"
-              >
-                <span data-testid="connectshyft-thread-action-label">
-                  {{ resolveConnectShyftThreadActionContract(action).label }}
-                </span>
-              </button>
+            <ConnectShyftThreadActionBar
+              :actions="visibleActions"
+              :action-pending="actionPending"
+              :show-add-neighbor-action="!isViewerRole"
+              :focus-ring-class="focusRingClass"
+              :tap-target-style="tapTargetStyle"
+              @action="handleThreadAction"
+              @add-neighbor="toggleAddNeighborForm"
+            />
 
-              <button
-                v-if="!isViewerRole"
-                type="button"
-                data-testid="connectshyft-add-neighbor-action"
-                aria-label="Add Neighbor"
-                :class="[
-                  'min-h-[44px] rounded bg-emerald-700 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
-                  focusRingClass,
-                ]"
-                :style="tapTargetStyle"
-                :disabled="actionPending || addNeighborSubmitting"
-                @click="toggleAddNeighborForm"
-              >
-                Add Neighbor
-              </button>
-            </div>
+            <ConnectShyftMessageBubble
+              title="Thread summary"
+              :body="threadDetail.summary || threadDetail.threadId"
+              :meta-label="threadDetail.lastActivityAtUtc || ''"
+              tone="inbound"
+            />
+
+            <ConnectShyftVoicemailCard
+              :visible="threadDetail.voicemailIndicator === true"
+              :label="threadDetail.voicemailLabel || 'Voicemail waiting'"
+            />
+
+            <ConnectShyftComposer
+              v-model="threadComposerBody"
+              :disabled="actionPending"
+              :submit-disabled="threadComposerBody.trim().length === 0"
+              submit-label="Queue Message"
+              :focus-ring-class="focusRingClass"
+              :tap-target-style="tapTargetStyle"
+              @submit="submitThreadComposerDraft"
+            />
 
             <section
               v-if="addNeighborFormOpen && !isViewerRole"
@@ -448,7 +392,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import ConnectShyftComposer from '@/components/connectshyft/ConnectShyftComposer.vue';
+import ConnectShyftMessageBubble from '@/components/connectshyft/ConnectShyftMessageBubble.vue';
 import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
+import ConnectShyftThreadActionBar from '@/components/connectshyft/ConnectShyftThreadActionBar.vue';
+import ConnectShyftThreadHeader from '@/components/connectshyft/ConnectShyftThreadHeader.vue';
+import ConnectShyftVoicemailCard from '@/components/connectshyft/ConnectShyftVoicemailCard.vue';
 import api from '@/services/api';
 import {
   DEFAULT_CONNECTSHYFT_AVAILABILITY,
@@ -496,6 +445,7 @@ const pendingPreferenceOverrideAction = ref<'Text' | 'Send Message' | null>(null
 const addNeighborFormOpen = ref(false);
 const addNeighborPhone = ref('');
 const addNeighborSubmitting = ref(false);
+const threadComposerBody = ref('');
 const preferenceOverrideModalRef = ref<HTMLElement | null>(null);
 const closeModalRef = ref<HTMLElement | null>(null);
 const focusRingClass = CONNECTSHYFT_FOCUS_RING_CLASS;
@@ -639,6 +589,14 @@ const trapModalFocus = (event: KeyboardEvent, container: HTMLElement | null): vo
     event.preventDefault();
     first.focus();
   }
+};
+
+const submitThreadComposerDraft = (): void => {
+  if (threadComposerBody.value.trim().length === 0) {
+    return;
+  }
+
+  threadComposerBody.value = '';
 };
 
 const handlePreferenceOverrideModalKeydown = (event: KeyboardEvent): void => {

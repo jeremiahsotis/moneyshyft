@@ -1,17 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useAccessStore } from '@/stores/access';
-import {
-  hasConnectShyftAdminSettingsCapability,
-  resolveConnectShyftAdminAccessFromQuery,
-} from '@/features/connectshyft/settingsAccess';
 import pinia from '@/pinia';
 import type { RouteRecordRaw } from 'vue-router';
 
-type GovernedModule = 'connectshyft' | 'moneyshyft';
+type GovernedModule = 'moneyshyft';
 
 const resolveGovernedModule = (value: unknown): GovernedModule | null => {
-  if (value === 'connectshyft' || value === 'moneyshyft') {
+  if (value === 'moneyshyft') {
     return value;
   }
 
@@ -66,72 +62,6 @@ const routes: RouteRecordRaw[] = [
     name: 'moneyshyft-request-lifecycle',
     component: () => import('@/views/MoneyShyft/RouteRequestLifecycleView.vue'),
     meta: { requiresAuth: true }
-  },
-  {
-    path: '/app/connectshyft/inbox',
-    name: 'connectshyft-inbox',
-    component: () => import('@/views/ConnectShyft/ConnectShyftInboxView.vue'),
-    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
-  },
-  {
-    path: '/app/connectshyft/mine',
-    name: 'connectshyft-mine',
-    component: () => import('@/views/ConnectShyft/ConnectShyftInboxView.vue'),
-    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
-  },
-  {
-    path: '/app/connectshyft/more',
-    name: 'connectshyft-more',
-    component: () => import('@/views/ConnectShyft/ConnectShyftMoreView.vue'),
-    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
-  },
-  {
-    path: '/app/connectshyft/settings',
-    name: 'connectshyft-settings',
-    component: () => import('@/views/ConnectShyft/ConnectShyftMoreView.vue'),
-    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
-  },
-  {
-    path: '/app/connectshyft/threads/:threadId',
-    name: 'connectshyft-thread-detail',
-    component: () => import('@/views/ConnectShyft/ConnectShyftThreadDetailView.vue'),
-    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
-  },
-  {
-    path: '/app/connectshyft/settings/availability',
-    name: 'connectshyft-availability',
-    component: () => import('@/views/ConnectShyft/ConnectShyftAvailabilityView.vue'),
-    meta: { requiresAuth: true, moduleGate: 'connectshyft', requiresConnectShyftAdminSettings: true }
-  },
-  {
-    path: '/app/connectshyft/settings/numbers',
-    name: 'connectshyft-number-mappings',
-    component: () => import('@/views/ConnectShyft/ConnectShyftNumberMappingsView.vue'),
-    meta: { requiresAuth: true, moduleGate: 'connectshyft', requiresConnectShyftAdminSettings: true }
-  },
-  {
-    path: '/app/connectshyft/settings/escalation',
-    name: 'connectshyft-escalation-settings',
-    component: () => import('@/views/ConnectShyft/ConnectShyftEscalationSettingsView.vue'),
-    meta: { requiresAuth: true, moduleGate: 'connectshyft', requiresConnectShyftAdminSettings: true }
-  },
-  {
-    path: '/app/connectshyft/neighbors/new',
-    name: 'connectshyft-neighbor-create',
-    component: () => import('@/views/ConnectShyft/ConnectShyftNeighborCreateView.vue'),
-    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
-  },
-  {
-    path: '/app/connectshyft/directory',
-    name: 'connectshyft-directory',
-    component: () => import('@/views/ConnectShyft/ConnectShyftDirectoryView.vue'),
-    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
-  },
-  {
-    path: '/app/connectshyft/neighbors/:neighborId',
-    name: 'connectshyft-neighbor-profile',
-    component: () => import('@/views/ConnectShyft/ConnectShyftNeighborProfileView.vue'),
-    meta: { requiresAuth: true, moduleGate: 'connectshyft' }
   },
   {
     path: '/accounts',
@@ -251,30 +181,6 @@ router.beforeEach(async (to, _from, next) => {
 
   if (authStore.isAuthenticated && (to.meta.requiresAuth || moduleGate)) {
     await accessStore.refresh({ tenantId: authStore.user?.householdId || undefined });
-  }
-
-  const requiresConnectShyftAdminSettings = to.meta.requiresConnectShyftAdminSettings === true;
-  if (authStore.isAuthenticated && requiresConnectShyftAdminSettings) {
-    const queryScopedAccess = resolveConnectShyftAdminAccessFromQuery(to.query);
-    const capabilityScopedAccess = hasConnectShyftAdminSettingsCapability({
-      hasAnyAdminAccess: accessStore.hasAnyAdminAccess,
-      hasCapability: accessStore.hasCapability,
-    });
-    const canAccessAdminSettings = queryScopedAccess === null
-      ? capabilityScopedAccess
-      : queryScopedAccess;
-
-    if (!canAccessAdminSettings) {
-      next({
-        path: '/app/connectshyft/settings',
-        query: {
-          ...to.query,
-          settingsRefusal: 'admin-path-forbidden',
-          settingsRefusedPath: to.path,
-        },
-      });
-      return;
-    }
   }
 
   const requiresSystemAdmin = to.meta.requiresSystemAdmin === true;

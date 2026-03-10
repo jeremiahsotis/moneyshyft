@@ -1,0 +1,87 @@
+connectshyft-web project targets
+{
+  "name": "connectshyft-web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/connectshyft-web/src",
+  "tags": ["lane:connectshyft", "type:app", "runtime:web"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/connectshyft-web",
+        "command": "npm run dev"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/connectshyft-web",
+        "command": "npm run build"
+      }
+    },
+    "preview": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/connectshyft-web",
+        "command": "npm run preview"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx playwright test tests/api/platform/8-4-lane-extraction-transition-strategy.api.spec.ts"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node scripts/enforce-workspace-boundaries.js"
+      }
+    }
+  }
+}
+
+moneyshyft-web project targets
+{
+  "name": "moneyshyft-web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/moneyshyft-web/src",
+  "tags": ["lane:moneyshyft", "type:app", "runtime:web"],
+  "targets": {
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/moneyshyft-web",
+        "command": "npm run dev"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/moneyshyft-web",
+        "command": "npm run build"
+      }
+    },
+    "preview": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/moneyshyft-web",
+        "command": "npm run preview"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node scripts/enforce-workspace-boundaries.js"
+      }
+    }
+  }
+}
+
+playwright stack scripts
+/Users/jeremiahotis/projects/connectshyft/scripts/ci-run-playwright-stack.sh:139:echo "Starting frontend dev server"
+/Users/jeremiahotis/projects/connectshyft/scripts/ci-run-playwright-stack.sh:140:(cd apps/moneyshyft-web && npm run dev -- --host "$frontend_host" --port "$frontend_port") > "$frontend_log" 2>&1 &
+/Users/jeremiahotis/projects/connectshyft/scripts/run-playwright-with-preflight.sh:534:FRONTEND_APP_DIR="$(resolve_app_dir apps/moneyshyft-web || true)"
+/Users/jeremiahotis/projects/connectshyft/scripts/run-playwright-with-preflight.sh:550:ensure_runtime_node_modules_link "apps/connectshyft-web/node_modules" "$(pwd)/$FRONTEND_APP_DIR/node_modules"

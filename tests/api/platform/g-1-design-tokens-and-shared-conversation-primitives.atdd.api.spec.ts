@@ -3,7 +3,7 @@ import {
   CONNECTSHYFT_REQUIRED_CSS_VARIABLES,
   CONNECTSHYFT_RESPONSIVE_BREAKPOINTS,
   CONNECTSHYFT_TOKEN_GROUPS,
-} from '../../../apps/moneyshyft-web/src/components/connectshyft/connectShyftTokens';
+} from '../../../apps/connectshyft-web/src/components/connectshyft/connectShyftTokens';
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryG1.fixture';
 

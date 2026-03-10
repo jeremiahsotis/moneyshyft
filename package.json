@@ -9,6 +9,7 @@
     "test:changed": "bash scripts/test-changed.sh",
     "test:burn-in": "bash scripts/burn-in.sh 10",
     "test:contracts:backend": "bash scripts/test-contracts-backend.sh",
+    "connectshyft:lane:guard": "bash scripts/enforce-connectshyft-lane-convergence-guard.sh",
     "boundary:check": "node scripts/enforce-workspace-boundaries.js",
     "policy:check": "bash scripts/enforce-git-policy.sh",
     "patch:apply:verified": "bash scripts/verified-patch-apply.sh",

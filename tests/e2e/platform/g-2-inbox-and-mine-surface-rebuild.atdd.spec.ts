@@ -57,6 +57,7 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (ATDD E2E RED)', () => {
 
       await cardTapTarget.click();
       await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-thread-action-bar')).toBeVisible();
     },
   );
 

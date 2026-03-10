@@ -137,7 +137,7 @@ echo "Starting backend dev server"
 BACKEND_PID=$!
 
 echo "Starting frontend dev server"
-(cd apps/moneyshyft-web && npm run dev -- --host "$frontend_host" --port "$frontend_port") > "$frontend_log" 2>&1 &
+(cd apps/connectshyft-web && npm run dev -- --host "$frontend_host" --port "$frontend_port") > "$frontend_log" 2>&1 &
 FRONTEND_PID=$!
 
 wait_for_http "${API_URL%/}/health" "backend health endpoint" "$BACKEND_PID" 30 || {

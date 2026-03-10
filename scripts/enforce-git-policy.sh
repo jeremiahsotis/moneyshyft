@@ -294,6 +294,7 @@ fi
 
 bash scripts/enforce-envelope-helper-guard.sh
 bash scripts/enforce-connectshyft-provider-abstraction-guard.sh
+bash scripts/enforce-connectshyft-lane-convergence-guard.sh
 bash scripts/enforce-test-artifact-allowlist.sh
 node scripts/enforce-workspace-boundaries.js
 if [[ "$has_stories_dir" == "true" ]]; then
