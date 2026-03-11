@@ -1,0 +1,649 @@
+{
+  "generatedAt": "2026-03-10T16:27:07.414Z",
+  "storyScope": "epic-f",
+  "probeWindowMs": 133,
+  "probesPerEndpoint": 60,
+  "totalSamples": 120,
+  "totalFailures": 0,
+  "uptimeRatio": 1,
+  "errorRate": 0,
+  "mttrSeconds": 0,
+  "endpoints": {
+    "health": {
+      "name": "health",
+      "samples": [
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 0,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 0,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 0,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 0,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "p50": 1,
+      "p95": 2,
+      "p99": 2,
+      "min": 0,
+      "max": 2,
+      "avg": 1,
+      "successRate": 1,
+      "errorRate": 0
+    },
+    "kernelHealth": {
+      "name": "kernel_health",
+      "samples": [
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        }
+      ],
+      "p50": 1,
+      "p95": 2,
+      "p99": 2,
+      "min": 1,
+      "max": 2,
+      "avg": 1.1833333333333333,
+      "successRate": 1,
+      "errorRate": 0
+    }
+  },
+  "incidents": [],
+  "gate": {
+    "uptimeAtLeast99": true,
+    "errorRateAtMost1Pct": true
+  },
+  "evidenceSources": [
+    "tests/api/platform/f-epic-nfr-evidence.api.spec.ts",
+    "apps/moneyshyft-api/src/app.ts",
+    "apps/moneyshyft-api/src/routes/api/v1/platform-contracts.ts"
+  ]
+}

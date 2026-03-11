@@ -1,0 +1,40 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts",
+      "content": "import { test, expect } from '@playwright/test';\nimport { login } from '../../helpers/auth';\nimport {\n  createStoryG3Context,\n  type StoryG3Context,\n} from '../../support/factories/connectShyftStoryG3Factory';\n\nconst buildStoryG3UrlParams = (\n  context: StoryG3Context,\n  options: {\n    actorUserId: string;\n    tenantRole: string;\n    orgUnitMemberships: string[];\n  },\n): string => {\n  const params = new URLSearchParams({\n    flags: 'module:on,inbox:on,escalation:on,webhooks:on',\n    tenantId: context.tenantId,\n    orgUnitId: context.orgUnitId,\n    actorUserId: options.actorUserId,\n    tenantRole: options.tenantRole,\n    orgUnitMemberships: options.orgUnitMemberships.join(','),\n  });\n\n  return params.toString();\n};\n\nconst buildStoryG3ThreadDetailUrl = (\n  context: StoryG3Context,\n  threadId: string,\n): string => {\n  return `${context.paths.threadDetailUi}/${threadId}?${buildStoryG3UrlParams(context, {\n    actorUserId: context.userId,\n    tenantRole: 'ORGUNIT_MEMBER',\n    orgUnitMemberships: [context.orgUnitId],\n  })}`;\n};\n\ntest.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD E2E RED)', () => {\n  test.skip(\n    '[G3-ATDD-E2E-001][P0] thread detail header/body prioritizes neighbor conference and claim context with conversation-first hierarchy @P0',\n    async ({ page }) => {\n      const context = createStoryG3Context();\n      await login(page);\n\n      await page.goto(buildStoryG3ThreadDetailUrl(context, context.threadIds.claimed));\n      await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();\n\n      await expect(page.getByTestId('connectshyft-thread-primary-context-panel')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-thread-context-neighbor')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-thread-context-conference')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-thread-context-claim')).toBeVisible();\n\n      const ordering = await page.evaluate(() => {\n        const ids = [\n          'connectshyft-thread-context-neighbor',\n          'connectshyft-thread-context-conference',\n          'connectshyft-thread-context-claim',\n        ];\n        return ids.map((id) => {\n          const node = document.querySelector(`[data-testid=\"${id}\"]`);\n          return node ? (node as HTMLElement).getBoundingClientRect().top : Number.POSITIVE_INFINITY;\n        });\n      });\n\n      expect(ordering[0]).toBeLessThanOrEqual(ordering[1]);\n      expect(ordering[1]).toBeLessThanOrEqual(ordering[2]);\n    },\n  );\n\n  test.skip(\n    '[G3-ATDD-E2E-002][P0] voicemail renders as first-class inline timeline conversation content in thread detail @P0',\n    async ({ page }) => {\n      const context = createStoryG3Context();\n      await login(page);\n\n      await page.goto(buildStoryG3ThreadDetailUrl(context, context.threadIds.voicemailClaimed));\n\n      await expect(page.getByTestId('connectshyft-thread-timeline')).toBeVisible();\n      await expect(\n        page.getByTestId('connectshyft-thread-timeline-event-voicemail').first(),\n      ).toBeVisible();\n      await expect(\n        page.getByTestId('connectshyft-thread-timeline-event-voicemail').first(),\n      ).toContainText(/voicemail/i);\n    },\n  );\n\n  test.skip(\n    '[G3-ATDD-E2E-003][P0] visible thread actions remain explicitly locked by state matrix for UNCLAIMED CLAIMED and CLOSED @P0',\n    async ({ page }) => {\n      const context = createStoryG3Context();\n      await login(page);\n\n      const scenarios = [\n        {\n          threadId: context.threadIds.unclaimed,\n          expectedActions: [...context.expectedActions.unclaimed],\n        },\n        {\n          threadId: context.threadIds.claimed,\n          expectedActions: [...context.expectedActions.claimed],\n        },\n        {\n          threadId: context.threadIds.closed,\n          expectedActions: [...context.expectedActions.closed],\n        },\n      ];\n\n      for (const scenario of scenarios) {\n        await page.goto(buildStoryG3ThreadDetailUrl(context, scenario.threadId));\n        await expect(page.getByTestId('connectshyft-thread-action-bar')).toBeVisible();\n\n        const labels = (await page.getByTestId('connectshyft-thread-action-label').allTextContents())\n          .map((label) => label.trim())\n          .filter((label) => label.length > 0);\n        expect(labels).toEqual(scenario.expectedActions);\n      }\n    },\n  );\n\n  test.skip(\n    '[G3-ATDD-E2E-004][P1] policy and refusal feedback appears contextually at action time without persistent operations-heavy chrome @P1',\n    async ({ page }) => {\n      const context = createStoryG3Context();\n      await login(page);\n\n      await page.goto(\n        buildStoryG3ThreadDetailUrl(context, context.threadIds.unclaimedPrefersNo),\n      );\n\n      await page.getByTestId('connectshyft-send-text-thread-action').click();\n      await expect(page.getByTestId('connectshyft-policy-refusal-banner')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-thread-action-feedback-contextual')).toBeVisible();\n\n      for (const persistentChromeTestId of context.forbiddenPersistentChromeTestIds) {\n        await expect(page.locator(`[data-testid=\"${persistentChromeTestId}\"]`)).toHaveCount(0);\n      }\n    },\n  );\n\n  test.skip(\n    '[G3-ATDD-E2E-005][P0] CLOSED outbound action reopens same thread id with deterministic lifecycle messaging and no inbound auto-reopen side effects @P0',\n    async ({ page }) => {\n      const context = createStoryG3Context();\n      await login(page);\n\n      await page.goto(\n        buildStoryG3ThreadDetailUrl(context, context.threadIds.closedPrefersNo),\n      );\n      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Closed');\n\n      await page.getByTestId('connectshyft-send-message-thread-action').click();\n\n      await expect(page.getByTestId('connectshyft-thread-state-chip')).toHaveText('Unclaimed');\n      await expect(page).toHaveURL(\n        new RegExp(`/app/connectshyft/threads/${context.threadIds.closedPrefersNo}`),\n      );\n      await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toContainText(\n        /reopened/i,\n      );\n      await expect(page.getByTestId('connectshyft-hidden-transition-warning')).toHaveCount(0);\n      await expect(page.getByTestId('connectshyft-thread-inbound-auto-reopen-indicator')).toHaveCount(0);\n    },\n  );\n});\n",
+      "description": "ATDD E2E tests for Story g.3 thread detail conversation-first rebuild (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Conversation-first thread detail hierarchy",
+        "Voicemail inline timeline rendering in thread detail",
+        "Locked lifecycle action matrix in thread UI",
+        "Contextual action-time refusal/success feedback",
+        "Closed-thread outbound reopen UX and lifecycle messaging"
+      ],
+      "priority_coverage": {
+        "P0": 4,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "connectShyftStoryG3Factory",
+    "connectShyftStoryG3Fixture",
+    "story-g3-thread-detail-testids"
+  ],
+  "knowledge_fragments_used": [
+    "selector-resilience",
+    "network-first",
+    "timing-debugging",
+    "test-quality",
+    "playwright-cli"
+  ],
+  "test_count": 5,
+  "tdd_phase": "RED",
+  "summary": "Generated 5 FAILING E2E tests for Story g.3 thread detail conversation-first rebuild"
+}

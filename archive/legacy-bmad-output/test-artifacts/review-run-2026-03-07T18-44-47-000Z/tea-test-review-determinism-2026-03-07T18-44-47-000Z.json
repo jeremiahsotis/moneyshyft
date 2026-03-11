@@ -1,0 +1,129 @@
+{
+  "dimension": "determinism",
+  "score": 88,
+  "max_score": 100,
+  "grade": "B",
+  "violations": [
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 19,
+      "severity": "LOW",
+      "category": "potential-race",
+      "description": "Navigation without explicit file-level synchronization hint.",
+      "suggestion": "Confirm critical navigations have deterministic waits where needed.",
+      "code_snippet": "ait login(page);        await page.goto(         buildStoryG1SurfaceUrl(context, {           bucket: 'inbox',           actorUserId: context.userId,           tenantRole:"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts",
+      "line": 23,
+      "severity": "LOW",
+      "category": "potential-race",
+      "description": "Navigation without explicit file-level synchronization hint.",
+      "suggestion": "Confirm critical navigations have deterministic waits where needed.",
+      "code_snippet": "t login(page);          await page.goto(           buildStoryG1SurfaceUrl(context, {             bucket: 'inbox',             actorUserId: context.userId,             ten"
+    },
+    {
+      "file": "tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts",
+      "line": 48,
+      "severity": "LOW",
+      "category": "module-context",
+      "description": "Module-level generated context may increase hidden coupling.",
+      "suggestion": "Prefer per-test/per-fixture generated context when practical.",
+      "code_snippet": "gUnitMemberships,   })}`; };  const context = createStoryG3Context();  test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD E2E RED)', () => {   test.b"
+    },
+    {
+      "file": "tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.automate.spec.ts",
+      "line": 57,
+      "severity": "LOW",
+      "category": "potential-race",
+      "description": "Navigation without explicit file-level synchronization hint.",
+      "suggestion": "Confirm critical navigations have deterministic waits where needed.",
+      "code_snippet": "ait login(page);        await page.goto(         buildStoryG3ThreadDetailUrl(context, context.threadIds.closedPrefersNo),       );       await expect(page.getByTestId('co"
+    },
+    {
+      "file": "tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts",
+      "line": 15,
+      "severity": "LOW",
+      "category": "module-context",
+      "description": "Module-level generated context may increase hidden coupling.",
+      "suggestion": "Prefer per-test/per-fixture generated context when practical.",
+      "code_snippet": "connectShyftStoryG4Factory';  const context = createStoryG4Context();  test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD E2E)', () => {   let createdNeigh"
+    },
+    {
+      "file": "tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts",
+      "line": 16,
+      "severity": "LOW",
+      "category": "module-context",
+      "description": "Module-level generated context may increase hidden coupling.",
+      "suggestion": "Prefer per-test/per-fixture generated context when practical.",
+      "code_snippet": "connectShyftStoryG4Factory';  const context = createStoryG4Context();  test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate E2E Expansion)', () => {   le"
+    },
+    {
+      "file": "tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts",
+      "line": 66,
+      "severity": "LOW",
+      "category": "potential-race",
+      "description": "Navigation without explicit file-level synchronization hint.",
+      "suggestion": "Confirm critical navigations have deterministic waits where needed.",
+      "code_snippet": "G5Context }) => {       await page.goto(buildStoryG5MoreUrl(storyG5Context, {         role: 'ORGUNIT_MEMBER',         userId: storyG5Context.volunteerUserId,         orgU"
+    },
+    {
+      "file": "tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.spec.ts",
+      "line": 9,
+      "severity": "LOW",
+      "category": "module-context",
+      "description": "Module-level generated context may increase hidden coupling.",
+      "suggestion": "Prefer per-test/per-fixture generated context when practical.",
+      "code_snippet": "connectShyftStoryG5Factory';  const context = createStoryG5Context();  test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (Automate E2E Expansion)',"
+    },
+    {
+      "file": "tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts",
+      "line": 29,
+      "severity": "LOW",
+      "category": "module-context",
+      "description": "Module-level generated context may increase hidden coupling.",
+      "suggestion": "Prefer per-test/per-fixture generated context when practical.",
+      "code_snippet": "][0-9a-f]{3}-[0-9a-f]{12}/i;  const context = createStoryG6Context();  const volunteerActor = {   role: 'ORGUNIT_MEMBER',   userId: context.userId,   orgUnitMemberships: "
+    },
+    {
+      "file": "tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts",
+      "line": 64,
+      "severity": "LOW",
+      "category": "potential-race",
+      "description": "Navigation without explicit file-level synchronization hint.",
+      "suggestion": "Confirm critical navigations have deterministic waits where needed.",
+      "code_snippet": "({ page }) => {         await page.goto(buildStoryG6SurfaceUrl(context, 'inbox', tenantViewerActor));          await expect(page.getByTestId('connectshyft-inbox-surface')"
+    },
+    {
+      "file": "tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts",
+      "line": 33,
+      "severity": "LOW",
+      "category": "module-context",
+      "description": "Module-level generated context may increase hidden coupling.",
+      "suggestion": "Prefer per-test/per-fixture generated context when practical.",
+      "code_snippet": "][0-9a-f]{3}-[0-9a-f]{12}/i;  const context = createStoryG6Context();  const volunteerActor = {   role: 'ORGUNIT_MEMBER',   userId: context.userId,   orgUnitMemberships: "
+    },
+    {
+      "file": "tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts",
+      "line": 10,
+      "severity": "LOW",
+      "category": "module-context",
+      "description": "Module-level generated context may increase hidden coupling.",
+      "suggestion": "Prefer per-test/per-fixture generated context when practical.",
+      "code_snippet": "][0-9a-f]{3}-[0-9a-f]{12}/i;  const context = createStoryG6Context();  const volunteerActor = {   role: 'ORGUNIT_MEMBER',   userId: context.userId,   orgUnitMemberships: "
+    }
+  ],
+  "passed_checks": 162,
+  "failed_checks": 12,
+  "total_checks": 174,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 12
+  },
+  "recommendations": [
+    "Audit navigation-heavy specs for explicit synchronization around async state transitions.",
+    "Prefer fixture-scoped context generation over module-scoped mutable context."
+  ],
+  "summary": "Determinism check found 12 violations in Epic G scope."
+}

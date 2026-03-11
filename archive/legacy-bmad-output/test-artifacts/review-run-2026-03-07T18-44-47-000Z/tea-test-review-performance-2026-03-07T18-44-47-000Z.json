@@ -1,0 +1,78 @@
+{
+  "dimension": "performance",
+  "score": 78,
+  "max_score": 100,
+  "grade": "C",
+  "violations": [
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "large-file-runtime-risk",
+      "description": "Large file (310 lines) can skew shard/runtime balance.",
+      "suggestion": "Split very large specs to improve parallel shard efficiency."
+    },
+    {
+      "file": "tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts",
+      "line": 51,
+      "severity": "MEDIUM",
+      "category": "repeated-auth-setup",
+      "description": "Repeated UI auth setup can increase suite runtime.",
+      "suggestion": "Use storageState/session fixtures for stable auth setup.",
+      "code_snippet": "TDD E2E RED)', () => {   test.beforeEach(async ({ page }) => {     await login(page);   });    test(     '[7.3-E2E-001][P0] thread detail header/body prioritizes neighbor"
+    },
+    {
+      "file": "tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts",
+      "line": 21,
+      "severity": "MEDIUM",
+      "category": "repeated-auth-setup",
+      "description": "Repeated UI auth setup can increase suite runtime.",
+      "suggestion": "Use storageState/session fixtures for stable auth setup.",
+      "code_snippet": "adIds: string[] = [];    test.beforeEach(async ({ page }) => {     createdNeighborIds = [];     createdThreadIds = [];     await login(page);   });    test.afterEach(asyn"
+    },
+    {
+      "file": "tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts",
+      "line": 22,
+      "severity": "MEDIUM",
+      "category": "repeated-auth-setup",
+      "description": "Repeated UI auth setup can increase suite runtime.",
+      "suggestion": "Use storageState/session fixtures for stable auth setup.",
+      "code_snippet": "adIds: string[] = [];    test.beforeEach(async ({ page }) => {     createdNeighborIds = [];     createdThreadIds = [];     await login(page);   });    test.afterEach(asyn"
+    },
+    {
+      "file": "tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.spec.ts",
+      "line": 12,
+      "severity": "MEDIUM",
+      "category": "repeated-auth-setup",
+      "description": "Repeated UI auth setup can increase suite runtime.",
+      "suggestion": "Use storageState/session fixtures for stable auth setup.",
+      "code_snippet": "E Expansion)', () => {   test.beforeEach(async ({ page }) => {     await login(page);   });    test(     '[G5-AUTO-E2E-301][P0] orgUnit admin without membership is redire"
+    }
+  ],
+  "passed_checks": 111,
+  "failed_checks": 5,
+  "total_checks": 116,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 4,
+    "LOW": 1
+  },
+  "performance_metrics": {
+    "serial_file_count": 0,
+    "repeated_auth_setup_files": [
+      "tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts",
+      "tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts",
+      "tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts",
+      "tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.spec.ts"
+    ],
+    "large_files_over_300": [
+      "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.atdd.api.spec.ts"
+    ],
+    "avg_test_duration_estimate": "not executed (static analysis)"
+  },
+  "recommendations": [
+    "Split >300-line specs to improve runtime distribution across CI shards.",
+    "Move repeated auth bootstrap from beforeEach to storageState/session fixtures."
+  ],
+  "summary": "Performance check found 5 violations in Epic G scope."
+}

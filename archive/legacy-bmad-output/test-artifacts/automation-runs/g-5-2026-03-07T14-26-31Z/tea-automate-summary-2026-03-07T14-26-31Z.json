@@ -1,0 +1,42 @@
+{
+  "total_tests": 8,
+  "api_tests": 4,
+  "e2e_tests": 4,
+  "fixtures_created": 0,
+  "api_test_files": 1,
+  "e2e_test_files": 1,
+  "priority_coverage": {
+    "P0": 5,
+    "P1": 3,
+    "P2": 0,
+    "P3": 0
+  },
+  "knowledge_fragments_used": [
+    "test-levels-framework",
+    "test-priorities-matrix",
+    "data-factories",
+    "selective-testing",
+    "ci-burn-in",
+    "test-quality",
+    "overview",
+    "api-request",
+    "network-recorder",
+    "auth-session",
+    "intercept-network-call",
+    "recurse",
+    "log",
+    "file-utils",
+    "burn-in",
+    "network-error-monitor",
+    "fixtures-composition",
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience",
+    "api-testing-patterns",
+    "playwright-cli"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential",
+  "validated_with": "npm run test:e2e -- tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.api.spec.ts tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.spec.ts",
+  "generated_at_utc": "2026-03-07T14:26:31.643Z"
+}

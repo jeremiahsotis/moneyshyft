@@ -1,0 +1,36 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts",
+      "content": "import { test, expect } from '@playwright/test';\nimport { login } from '../../helpers/auth';\nimport {\n  buildStoryG5AdminPathUrl,\n  buildStoryG5MoreUrl,\n  createStoryG5Context,\n} from '../../support/factories/connectShyftStoryG5Factory';\n\nconst context = createStoryG5Context();\n\ntest.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (ATDD E2E)', () => {\n  test.beforeEach(async ({ page }) => {\n    await login(page);\n  });\n\n  test.skip(\n    '[G5-ATDD-E2E-001][P0] volunteer More/Settings shows volunteer-first IA options and excludes admin controls @P0',\n    async ({ page }) => {\n      await page.goto(buildStoryG5MoreUrl(context, {\n        role: 'ORGUNIT_MEMBER',\n        userId: context.volunteerUserId,\n        orgUnitMemberships: [context.orgUnitId],\n      }));\n\n      await expect(page.getByTestId('connectshyft-more-surface')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-more-option-directory')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-more-option-settings')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-more-option-notifications')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-more-option-display-preferences')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-more-option-sign-out')).toBeVisible();\n\n      await expect(page.getByTestId('connectshyft-more-admin-option-availability')).toHaveCount(0);\n      await expect(page.getByTestId('connectshyft-more-admin-option-numbers')).toHaveCount(0);\n      await expect(page.getByTestId('connectshyft-more-admin-option-escalation')).toHaveCount(0);\n    },\n  );\n\n  test.skip(\n    '[G5-ATDD-E2E-002][P0] volunteer deep-link to admin settings path returns refusal guidance and withholds privileged controls @P0',\n    async ({ page }) => {\n      await page.goto(buildStoryG5AdminPathUrl(context, context.paths.moreAvailabilityUi, {\n        role: 'ORGUNIT_MEMBER',\n        userId: context.volunteerUserId,\n        orgUnitMemberships: [context.orgUnitId],\n      }));\n\n      await expect(page.getByTestId('connectshyft-settings-refusal-guidance')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-settings-refusal-guidance')).toContainText(\n        /authorized|admin|permission/i,\n      );\n      await expect(page.getByTestId('connectshyft-availability-config-form')).toHaveCount(0);\n    },\n  );\n\n  test.skip(\n    '[G5-ATDD-E2E-003][P1] authorized admin deep-link to explicit admin settings path resolves with admin nav state and controls @P1',\n    async ({ page }) => {\n      await page.goto(buildStoryG5AdminPathUrl(context, context.paths.moreNumbersUi, {\n        role: 'ORGUNIT_ADMIN',\n        userId: context.orgUnitAdminUserId,\n        orgUnitMemberships: [context.orgUnitId],\n      }));\n\n      await expect(page.getByTestId('connectshyft-number-mapping-surface')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-primary-nav-more-active')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-admin-settings-context-chip')).toContainText(/admin/i);\n    },\n  );\n\n  test.skip(\n    '[G5-ATDD-E2E-004][P0] role and scope context refresh updates pathway visibility and refuses admin settings access after downgrade @P0',\n    async ({ page }) => {\n      await page.goto(buildStoryG5AdminPathUrl(context, context.paths.moreEscalationUi, {\n        role: 'ORGUNIT_ADMIN',\n        userId: context.orgUnitAdminUserId,\n        orgUnitMemberships: [context.orgUnitId],\n      }));\n      await expect(page.getByTestId('connectshyft-escalation-settings-surface')).toBeVisible();\n\n      await page.goto(buildStoryG5AdminPathUrl(context, context.paths.moreEscalationUi, {\n        role: 'TENANT_VIEWER',\n        userId: context.tenantViewerUserId,\n        orgUnitMemberships: [],\n      }));\n\n      await expect(page.getByTestId('connectshyft-settings-refusal-guidance')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-escalation-settings-form')).toHaveCount(0);\n    },\n  );\n\n  test.skip(\n    '[G5-ATDD-E2E-005][P1] volunteer-first More/Settings IA remains clear and stable across mobile tablet and desktop breakpoints @P1',\n    async ({ page }) => {\n      const viewportMatrix = [\n        {\n          label: 'mobile',\n          width: context.breakpoints.mobile.width,\n          height: context.breakpoints.mobile.height,\n          layoutTestId: 'connectshyft-more-layout-mobile',\n        },\n        {\n          label: 'tablet',\n          width: context.breakpoints.tablet.width,\n          height: context.breakpoints.tablet.height,\n          layoutTestId: 'connectshyft-more-layout-tablet',\n        },\n        {\n          label: 'desktop',\n          width: context.breakpoints.desktop.width,\n          height: context.breakpoints.desktop.height,\n          layoutTestId: 'connectshyft-more-layout-desktop',\n        },\n      ];\n\n      for (const viewport of viewportMatrix) {\n        await page.setViewportSize({ width: viewport.width, height: viewport.height });\n        await page.goto(buildStoryG5MoreUrl(context, {\n          role: 'ORGUNIT_MEMBER',\n          userId: context.volunteerUserId,\n          orgUnitMemberships: [context.orgUnitId],\n        }));\n\n        await expect(page.getByTestId(viewport.layoutTestId)).toBeVisible();\n        await expect(page.getByTestId('connectshyft-more-option-directory')).toBeVisible();\n        await expect(page.getByTestId('connectshyft-more-option-sign-out')).toBeVisible();\n        await expect(page.getByTestId('connectshyft-more-admin-option-availability')).toHaveCount(0);\n      }\n    },\n  );\n});\n",
+      "description": "ATDD E2E tests for g.5 volunteer IA/admin separation (RED PHASE)",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Volunteer IA options in More/Settings are volunteer-focused",
+        "Admin settings are separated and role-gated",
+        "Denied routes show refusal-style guidance",
+        "Responsive IA remains stable across breakpoints"
+      ],
+      "priority_coverage": {
+        "P0": 3,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "connectShyftStoryG5Factory",
+    "connectShyftStoryG5UiUrlBuilders"
+  ],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "test_count": 5,
+  "tdd_phase": "RED",
+  "summary": "Generated 5 FAILING E2E tests for Story g.5 More/Settings volunteer IA and admin separation"
+}

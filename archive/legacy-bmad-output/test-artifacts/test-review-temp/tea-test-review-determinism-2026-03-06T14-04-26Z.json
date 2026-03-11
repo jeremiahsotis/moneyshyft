@@ -1,0 +1,58 @@
+{
+  "dimension": "determinism",
+  "score": 80,
+  "max_score": 100,
+  "grade": "B",
+  "violations": [
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 152,
+      "severity": "MEDIUM",
+      "category": "conditional-test-flow",
+      "description": "Queue-card assertions are conditional, so tests may pass even when shared primitives fail to render.",
+      "suggestion": "Seed deterministic fixture data and assert queue-card/pill primitives unconditionally.",
+      "code_snippet": "if ((await inboxQueueCard.count()) > 0) { ... } else { await expect(inbox-surface).toBeVisible(); }"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 181,
+      "severity": "MEDIUM",
+      "category": "fallback-branching",
+      "description": "Thread-detail validation path has multiple fallback branches that weaken deterministic coverage.",
+      "suggestion": "Stabilize fixture setup so thread-header path is always exercised in this scenario.",
+      "code_snippet": "if ((await page.getByTestId('connectshyft-thread-header').count()) === 0) { ... }"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts",
+      "line": 180,
+      "severity": "LOW",
+      "category": "conditional-assert-skip",
+      "description": "Per-item safety assertions can be skipped when operatorCopy is empty.",
+      "suggestion": "Assert minimum non-empty primary copy contract before suppression checks.",
+      "code_snippet": "if (operatorCopy.length === 0) { continue; }"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 117,
+      "severity": "LOW",
+      "category": "dual-path-assertion",
+      "description": "Aria-label validation is split across fallback branches, reducing consistency of assertion scope.",
+      "suggestion": "Standardize primary-action test id contract and assert one deterministic path.",
+      "code_snippet": "if ((await primaryActionLocator.count()) > 0) { ... } else { ... }"
+    }
+  ],
+  "passed_checks": 18,
+  "failed_checks": 4,
+  "total_checks": 22,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 2,
+    "LOW": 2
+  },
+  "recommendations": [
+    "Eliminate fallback-only branches in core P0 scenarios",
+    "Require deterministic fixture data so primitives always render in ATDD runs",
+    "Avoid skipping per-item copy assertions when projection data is empty"
+  ],
+  "summary": "Determinism is generally solid (no hard waits/randomness), but conditional fallback logic weakens assertion strictness."
+}

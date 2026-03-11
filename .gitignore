@@ -1,6 +1,8 @@
 # Environment variables - NEVER commit these
 .env
 .env.*
+.env.local
+.env.*.local
 !.env.example
 
 # Docker - local setup differs from remote
@@ -20,6 +22,8 @@ dist/
 build/
 apps/*/dist/
 *.tsbuildinfo
+.nx/cache/
+.playwright/
 
 # Logs
 *.log
@@ -27,6 +31,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+Pnpm-debug.log*
 logs/
 
 # Runtime data
@@ -89,6 +94,7 @@ _bmad-output/test-artifacts/atdd-summary-*-*-*.json
 
 # OS
 .DS_Store
+__MACOSX/
 Thumbs.db
 
 # Temporary files
@@ -103,7 +109,7 @@ temp/
 
 # Cache
 .cache/
-.nx/
+.nx/cache/
 .parcel-cache/
 .vite/
 

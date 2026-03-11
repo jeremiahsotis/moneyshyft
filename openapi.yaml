@@ -3,9 +3,10 @@ info:
   title: ConnectShyft Comms Core API
   version: "1.0.0"
   description: |
-    Comms Core exposes endpoints for handling outbound calls/messages, receiving provider webhooks,
-    retrieving status, and streaming events. Telnyx is the selected provider for V1 but the design
-    anticipates additional providers.
+    Comms Core exposes endpoints for handling outbound calls/messages, receiving provider
+    webhooks, retrieving status, and streaming events. Telnyx is the selected provider for V1 
+    but the design anticipates additional providers.
+
 servers:
   - url: https://api.connectshyft.com/v1/comms
 

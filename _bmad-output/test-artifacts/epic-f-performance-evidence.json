@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-07T16:45:00.330Z",
+  "generatedAt": "2026-03-10T21:05:25.853Z",
   "storyScope": "epic-f",
   "sampleCounts": {
     "inbox": 25,
@@ -26,37 +26,102 @@
       "name": "inbox",
       "samples": [
         {
-          "durationMs": 3,
+          "durationMs": 2,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 6,
+          "durationMs": 1,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
+          "durationMs": 2,
           "status": 200,
           "ok": true
         },
         {
           "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
           "status": 200,
           "ok": true
         },
@@ -81,82 +146,17 @@
           "ok": true
         },
         {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
           "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
           "status": 200,
           "ok": true
         }
       ],
-      "p50": 3,
-      "p95": 5,
-      "p99": 6,
-      "min": 2,
-      "max": 6,
-      "avg": 3.44,
+      "p50": 2,
+      "p95": 4,
+      "p99": 4,
+      "min": 1,
+      "max": 4,
+      "avg": 2.44,
       "successRate": 1,
       "errorRate": 0
     },
@@ -164,72 +164,7 @@
       "name": "thread_detail",
       "samples": [
         {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 6,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
           "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
           "status": 200,
           "ok": true
         },
@@ -249,7 +184,22 @@
           "ok": true
         },
         {
-          "durationMs": 4,
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 7,
           "status": 200,
           "ok": true
         },
@@ -259,7 +209,52 @@
           "ok": true
         },
         {
-          "durationMs": 5,
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
           "status": 200,
           "ok": true
         },
@@ -274,7 +269,12 @@
           "ok": true
         },
         {
-          "durationMs": 3,
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
           "status": 200,
           "ok": true
         },
@@ -289,12 +289,12 @@
           "ok": true
         }
       ],
-      "p50": 3,
-      "p95": 5,
-      "p99": 6,
-      "min": 2,
-      "max": 6,
-      "avg": 3.28,
+      "p50": 2,
+      "p95": 4,
+      "p99": 7,
+      "min": 1,
+      "max": 7,
+      "avg": 2.4,
       "successRate": 1,
       "errorRate": 0
     },
@@ -307,7 +307,32 @@
           "ok": true
         },
         {
-          "durationMs": 4,
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
           "status": 200,
           "ok": true
         },
@@ -317,7 +342,17 @@
           "ok": true
         },
         {
-          "durationMs": 4,
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 1,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 2,
           "status": 200,
           "ok": true
         },
@@ -347,16 +382,6 @@
           "ok": true
         },
         {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
           "durationMs": 2,
           "status": 200,
           "ok": true
@@ -372,37 +397,17 @@
           "ok": true
         },
         {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
           "durationMs": 3,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 3,
+          "durationMs": 1,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 2,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
+          "durationMs": 1,
           "status": 200,
           "ok": true
         },
@@ -412,27 +417,22 @@
           "ok": true
         },
         {
-          "durationMs": 3,
+          "durationMs": 1,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 3,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 3,
+          "durationMs": 1,
           "status": 200,
           "ok": true
         }
       ],
-      "p50": 3,
-      "p95": 4,
-      "p99": 4,
+      "p50": 2,
+      "p95": 3,
+      "p99": 3,
       "min": 1,
-      "max": 4,
-      "avg": 2.6,
+      "max": 3,
+      "avg": 1.72,
       "successRate": 1,
       "errorRate": 0
     },
@@ -440,7 +440,32 @@
       "name": "webhook_ingestion",
       "samples": [
         {
-          "durationMs": 6,
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 3,
           "status": 200,
           "ok": true
         },
@@ -450,17 +475,37 @@
           "ok": true
         },
         {
-          "durationMs": 8,
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 6,
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
         {
-          "durationMs": 6,
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
@@ -470,12 +515,32 @@
           "ok": true
         },
         {
-          "durationMs": 7,
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 5,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 6,
           "status": 200,
           "ok": true
         },
         {
           "durationMs": 7,
+          "status": 200,
+          "ok": true
+        },
+        {
+          "durationMs": 4,
           "status": 200,
           "ok": true
         },
@@ -490,72 +555,7 @@
           "ok": true
         },
         {
-          "durationMs": 8,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 8,
-          "status": 200,
-          "ok": true
-        },
-        {
           "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 7,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 8,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 6,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 7,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 5,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 4,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 6,
-          "status": 200,
-          "ok": true
-        },
-        {
-          "durationMs": 7,
           "status": 200,
           "ok": true
         },
@@ -565,12 +565,12 @@
           "ok": true
         }
       ],
-      "p50": 6,
-      "p95": 8,
-      "p99": 8,
-      "min": 4,
-      "max": 8,
-      "avg": 6.08,
+      "p50": 4,
+      "p95": 7,
+      "p99": 7,
+      "min": 3,
+      "max": 7,
+      "avg": 4.52,
       "successRate": 1,
       "errorRate": 0
     }

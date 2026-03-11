@@ -1,0 +1,102 @@
+{
+  "dimension": "isolation",
+  "score": 85,
+  "max_score": 100,
+  "grade": "B",
+  "violations": [
+    {
+      "file": "tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts",
+      "line": 51,
+      "severity": "MEDIUM",
+      "category": "cleanup-gap",
+      "description": "Stateful setup detected without explicit teardown in file.",
+      "suggestion": "Use deterministic cleanup or isolated ephemeral fixtures.",
+      "code_snippet": "TDD E2E RED)', () => {   test.beforeEach(async ({ page }) => {     await login(page);   });    test(     '[7.3-E2E-001][P0] thread detail header/body prioritizes neighbor"
+    },
+    {
+      "file": "tests/e2e/platform/g-3-thread-detail-conversation-first-rebuild.atdd.spec.ts",
+      "line": 48,
+      "severity": "LOW",
+      "category": "shared-module-context",
+      "description": "Shared module-level context can couple tests in a file.",
+      "suggestion": "Instantiate context in fixtures or per-test setup.",
+      "code_snippet": "gUnitMemberships,   })}`; };  const context = createStoryG3Context();  test.describe('Story g.3 Thread Detail Conversation-First Rebuild (ATDD E2E RED)', () => {   test.b"
+    },
+    {
+      "file": "tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts",
+      "line": 15,
+      "severity": "LOW",
+      "category": "shared-module-context",
+      "description": "Shared module-level context can couple tests in a file.",
+      "suggestion": "Instantiate context in fixtures or per-test setup.",
+      "code_snippet": "connectShyftStoryG4Factory';  const context = createStoryG4Context();  test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD E2E)', () => {   let createdNeigh"
+    },
+    {
+      "file": "tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.automate.spec.ts",
+      "line": 16,
+      "severity": "LOW",
+      "category": "shared-module-context",
+      "description": "Shared module-level context can couple tests in a file.",
+      "suggestion": "Instantiate context in fixtures or per-test setup.",
+      "code_snippet": "connectShyftStoryG4Factory';  const context = createStoryG4Context();  test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate E2E Expansion)', () => {   le"
+    },
+    {
+      "file": "tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.spec.ts",
+      "line": 12,
+      "severity": "MEDIUM",
+      "category": "cleanup-gap",
+      "description": "Stateful setup detected without explicit teardown in file.",
+      "suggestion": "Use deterministic cleanup or isolated ephemeral fixtures.",
+      "code_snippet": "E Expansion)', () => {   test.beforeEach(async ({ page }) => {     await login(page);   });    test(     '[G5-AUTO-E2E-301][P0] orgUnit admin without membership is redire"
+    },
+    {
+      "file": "tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.automate.spec.ts",
+      "line": 9,
+      "severity": "LOW",
+      "category": "shared-module-context",
+      "description": "Shared module-level context can couple tests in a file.",
+      "suggestion": "Instantiate context in fixtures or per-test setup.",
+      "code_snippet": "connectShyftStoryG5Factory';  const context = createStoryG5Context();  test.describe('Story g.5 More/Settings Volunteer IA and Admin Separation (Automate E2E Expansion)',"
+    },
+    {
+      "file": "tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts",
+      "line": 29,
+      "severity": "LOW",
+      "category": "shared-module-context",
+      "description": "Shared module-level context can couple tests in a file.",
+      "suggestion": "Instantiate context in fixtures or per-test setup.",
+      "code_snippet": "][0-9a-f]{3}-[0-9a-f]{12}/i;  const context = createStoryG6Context();  const volunteerActor = {   role: 'ORGUNIT_MEMBER',   userId: context.userId,   orgUnitMemberships: "
+    },
+    {
+      "file": "tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts",
+      "line": 33,
+      "severity": "LOW",
+      "category": "shared-module-context",
+      "description": "Shared module-level context can couple tests in a file.",
+      "suggestion": "Instantiate context in fixtures or per-test setup.",
+      "code_snippet": "][0-9a-f]{3}-[0-9a-f]{12}/i;  const context = createStoryG6Context();  const volunteerActor = {   role: 'ORGUNIT_MEMBER',   userId: context.userId,   orgUnitMemberships: "
+    },
+    {
+      "file": "tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts",
+      "line": 10,
+      "severity": "LOW",
+      "category": "shared-module-context",
+      "description": "Shared module-level context can couple tests in a file.",
+      "suggestion": "Instantiate context in fixtures or per-test setup.",
+      "code_snippet": "][0-9a-f]{3}-[0-9a-f]{12}/i;  const context = createStoryG6Context();  const volunteerActor = {   role: 'ORGUNIT_MEMBER',   userId: context.userId,   orgUnitMemberships: "
+    }
+  ],
+  "passed_checks": 136,
+  "failed_checks": 9,
+  "total_checks": 145,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 2,
+    "LOW": 7
+  },
+  "recommendations": [
+    "Pair stateful setup with explicit teardown or ephemeral fixture boundaries.",
+    "Move module-level context creation into fixture/test scope where feasible."
+  ],
+  "summary": "Isolation check found 9 violations in Epic G scope."
+}
