@@ -39,10 +39,12 @@ module.exports = {
                 "group": [
                   "packages/shared-*/src/*",
                   "**/packages/shared-*/src/*",
+                  "domains/*/*",
+                  "**/domains/*/*",
                   "@*/shared-*/*",
                   "shared-*/*"
                 ],
-                "message": "Deep imports across shared package boundaries are forbidden. Re-export from src/index.ts and import from the package root."
+                "message": "Deep imports across shared package/domain boundaries are forbidden. Re-export from the public root entrypoint and import from that root."
               }
             ]
           }

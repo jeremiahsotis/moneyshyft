@@ -19,3 +19,5 @@ Does not belong here:
 Rules:
 - Anything reusable across ConnectShyft, ProgramShyft, CaseShyft, or People Core should start here.
 - App code may consume this domain but must not redefine its canonical behavior locally.
+- Consumers should import shared communication APIs from `/Users/jeremiahotis/projects/connectshyft/domains/communication/index.ts`, not deep paths such as `domains/communication/phone/*`.
+- Phone normalization is caller-configured through `PhoneNormalizationContext`; lane code owns env/config resolution while the shared domain stays deterministic and side-effect free.

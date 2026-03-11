@@ -1,9 +1,7 @@
 import { createHash } from 'node:crypto';
+import { normalizePhone } from '../../../../../domains/communication';
 import { CAPABILITIES, hasCapability } from '../../platform/rbac/capabilities';
-
-const E164_PHONE_PATTERN = /^\+[1-9]\d{1,14}$/;
-const REMOVABLE_PHONE_CHARS_PATTERN = /[\s().-]/g;
-const INVALID_PHONE_CHAR_PATTERN = /[A-Za-z]/;
+import { resolveConnectShyftPhoneNormalizationContext } from './phoneIdentityContext';
 
 const normalizeNonEmptyString = (value: unknown): string => {
   if (typeof value !== 'string') {
@@ -11,29 +9,6 @@ const normalizeNonEmptyString = (value: unknown): string => {
   }
 
   return value.trim();
-};
-
-const normalizePhoneValue = (value: string): string | null => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  if (INVALID_PHONE_CHAR_PATTERN.test(trimmed)) {
-    return null;
-  }
-
-  const compact = trimmed.replace(REMOVABLE_PHONE_CHARS_PATTERN, '');
-  if (!/^\+?\d+$/.test(compact)) {
-    return null;
-  }
-
-  const normalized = compact.startsWith('+') ? compact : `+${compact}`;
-  if (!E164_PHONE_PATTERN.test(normalized)) {
-    return null;
-  }
-
-  return normalized;
 };
 
 const normalizeVerificationStatus = (
@@ -367,13 +342,13 @@ const buildIdentityMatchInvalidPhoneRefusal = (
 ): ConnectShyftIdentityBoundaryResult => ({
   ok: false,
   code: 'CONNECTSHYFT_NEIGHBOR_PHONE_INVALID_FORMAT',
-  message: 'Provide a valid phone value (for example, +12605550199).',
+  message: 'Provide a valid phone number (for example, 2605550199).',
   data: {
     fieldErrors: [
       {
         field: 'phones',
         reason: 'INVALID_FORMAT',
-        message: 'Provide a valid phone value (for example, +12605550199).',
+        message: 'Provide a valid phone number (for example, 2605550199).',
       },
     ],
     idempotency,
@@ -433,7 +408,11 @@ type PreparedIdentityBoundaryEvaluation = {
 const prepareIdentityBoundaryEvaluation = (
   input: ConnectShyftIdentityBoundaryRequest,
 ): PreparedIdentityBoundaryEvaluation => {
-  const normalizedContactPointValue = normalizePhoneValue(normalizeNonEmptyString(input.contactPoint?.value));
+  const resolvedPhone = normalizePhone(
+    normalizeNonEmptyString(input.contactPoint?.value),
+    resolveConnectShyftPhoneNormalizationContext('user_entered'),
+  );
+  const normalizedContactPointValue = resolvedPhone.ok ? resolvedPhone.phone.normalizedE164 : null;
   const isShared = input.contactPoint?.isShared === true;
   const verificationStatus = normalizeVerificationStatus(input.contactPoint?.verificationStatus);
   const excludeNeighborId = normalizeNonEmptyString(input.excludeNeighborId);

@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node --transpile-only src/server.ts",
-    "build": "tsc",
+    "build": "tsc && node ./scripts/writeDistServerEntrypoint.js",
     "start": "node dist/server.js",
     "migrate:latest": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development migrate:latest",
     "migrate:latest:prod": "NODE_ENV=production node ./scripts/enforceProdMigrationAuthority.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production migrate:latest",
@@ -14,8 +14,8 @@
     "migrate:make": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development migrate:make",
     "seed:run": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development seed:run",
     "seed:run:prod": "NODE_ENV=production node ./scripts/enforceProdMigrationAuthority.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production seed:run",
-    "test": "jest --runInBand --testPathPattern=connectshyft",
-    "test:connectshyft": "jest --runInBand --testPathPattern=connectshyft",
+    "test": "NODE_ENV=test jest --runInBand --testPathPattern=connectshyft",
+    "test:connectshyft": "NODE_ENV=test jest --runInBand --testPathPattern=connectshyft",
     "test:watch": "jest --watch"
   },
   "dependencies": {
