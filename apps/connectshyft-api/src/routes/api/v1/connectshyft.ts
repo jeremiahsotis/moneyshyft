@@ -1528,6 +1528,7 @@ const buildSyntheticThreadDetailRecord = (input: {
 
   return {
     threadId: input.threadId,
+    neighborId: input.descriptor.neighborId || null,
     tenantId: input.descriptor.tenantId,
     orgUnitId: input.descriptor.orgUnitId,
     state: input.descriptor.state,
