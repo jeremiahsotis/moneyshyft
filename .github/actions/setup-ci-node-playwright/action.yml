@@ -94,12 +94,8 @@ runs:
         fi
 
         if [ -d apps/moneyshyft-api/node_modules ]; then
-          if [ -e apps/connectshyft-api/node_modules ] && [ ! -L apps/connectshyft-api/node_modules ]; then
-            echo "apps/connectshyft-api/node_modules exists as a directory; leaving in place."
-          else
-            rm -f apps/connectshyft-api/node_modules
-            ln -s ../moneyshyft-api/node_modules apps/connectshyft-api/node_modules
-          fi
+          rm -rf apps/connectshyft-api/node_modules
+          cp -a apps/moneyshyft-api/node_modules apps/connectshyft-api/node_modules
         fi
 
     - name: Install backend test dependencies
@@ -118,14 +114,8 @@ runs:
           npm install --prefix apps/moneyshyft-api --no-audit --fund=false
         fi
 
-        for app_dir in apps/connectshyft-api; do
-          if [ -e "$app_dir/node_modules" ] && [ ! -L "$app_dir/node_modules" ]; then
-            echo "$app_dir/node_modules exists as a directory; leaving in place."
-          else
-            rm -f "$app_dir/node_modules"
-            ln -s ../moneyshyft-api/node_modules "$app_dir/node_modules"
-          fi
-        done
+        rm -rf apps/connectshyft-api/node_modules
+        cp -a apps/moneyshyft-api/node_modules apps/connectshyft-api/node_modules
 
     - name: Cache Playwright browsers (fallback)
       if: inputs.ensure_playwright == 'true'
