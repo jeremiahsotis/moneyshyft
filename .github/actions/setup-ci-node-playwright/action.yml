@@ -44,10 +44,27 @@ runs:
         npm config set fetch-retry-mintimeout 10000
         npm config set fetch-retry-maxtimeout 120000
 
+    - name: Enable declared package manager
+      shell: bash
+      run: |
+        corepack enable
+
+        declared_package_manager="$(node -p "require('./package.json').packageManager || ''")"
+        if [[ "$declared_package_manager" == pnpm@* ]]; then
+          corepack prepare "$declared_package_manager" --activate
+          pnpm --version
+        fi
+
     - name: Install root dependencies
       shell: bash
       run: |
-        npm ci || npm ci || npm install --no-audit --fund=false
+        if [ -f pnpm-lock.yaml ]; then
+          pnpm install --frozen-lockfile || pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+        elif [ -f package-lock.json ]; then
+          npm ci || npm ci || npm install --no-audit --fund=false
+        else
+          npm install --no-audit --fund=false
+        fi
 
     - name: Install frontend dependencies
       if: inputs.install_frontend == 'true'
