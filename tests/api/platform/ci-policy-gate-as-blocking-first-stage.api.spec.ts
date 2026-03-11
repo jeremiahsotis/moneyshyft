@@ -380,7 +380,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     // Then CI policy should block workflow progression with explicit corrected-kernel context
     const hasGateFailureMessage = /corrected kernel gate unmet \(Story 0-10 is not done\)/.test(output);
     const hasPolicyReference = /Policy reference:\s*docs\/policies\/git_policy\.md/.test(output);
-    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-moneyshyft-tenant-context-resolution-and-isolation-guardrails\.md/.test(
+    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story 1-1-moneyshyft-tenant-context-resolution-and-isolation-guardrails/.test(
       output,
     );
     expect(status !== 0 && hasGateFailureMessage && hasPolicyReference && hasRemediationHint).toBe(true);
@@ -406,7 +406,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
       output,
     );
     const hasPolicyReference = /Policy reference:\s*docs\/policies\/git_policy\.md/.test(output);
-    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story _bmad-output\/implementation-artifacts\/1-1-moneyshyft-tenant-context-resolution-and-isolation-guardrails\.md/.test(
+    const hasRemediationHint = /npm run branch:ensure-workflow -- --workflow code-review --story 1-1-moneyshyft-tenant-context-resolution-and-isolation-guardrails/.test(
       output,
     );
     expect(status !== 0 && hasCourseCorrectionFailure && hasPolicyReference && hasRemediationHint).toBe(true);
@@ -459,7 +459,7 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
     expect(status !== 0 && hasCorrectionFailure).toBe(true);
   });
 
-  test('[P1] branch workflow guard advances past corrected-kernel gate checks when prerequisites are satisfied @P1', async ({
+  test('[P1] branch workflow guard skips deprecated BMAD Phase-0 readiness artifacts after corrected-kernel prerequisites are satisfied @P1', async ({
     ciPolicyContext,
   }) => {
     // Given local workflow guard invocation where corrected-kernel gate is satisfied
@@ -468,9 +468,10 @@ test.describe('Story 0.9 atdd - ci policy gate as blocking first stage API cover
       createSprintStatus('done', 'approved'),
     );
 
-    // Then corrected-kernel checks should pass and next guard should fail on missing Phase-0 readiness evidence
-    const reachedPhase0Guard = /Phase-0 readiness incomplete/.test(output);
+    // Then corrected-kernel checks should pass without requiring deprecated BMAD Phase-0 artifacts
+    const skippedLegacyPhase0Guard = /Phase-0 readiness check skipped: legacy BMAD implementation artifacts are deprecated/.test(output);
     const stillBlockedByKernelGate = /Kernel gate failed/.test(output);
-    expect(status !== 0 && reachedPhase0Guard && !stillBlockedByKernelGate).toBe(true);
+    const branchGuardPassed = /Branch guard passed for story workflow/.test(output);
+    expect(status === 0 && skippedLegacyPhase0Guard && branchGuardPassed && !stillBlockedByKernelGate).toBe(true);
   });
 });

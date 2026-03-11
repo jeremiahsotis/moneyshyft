@@ -101,9 +101,10 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
   - `scripts/enforce-envelope-helper-guard.sh`
   - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
 
-### Story Status Sync Guardrail (Mandatory)
+### Story Status Sync Guardrail (Legacy BMAD Only)
 
-- Story file `Status:` and `_bmad-output/implementation-artifacts/sprint-status.yaml` `development_status` must stay synchronized.
+- `_bmad-output/implementation-artifacts` is deprecated and is no longer required for normal development or CI.
+- If a legacy BMAD implementation-artifact tree is present, story file `Status:` and its legacy sprint-status `development_status` entry must stay synchronized.
 - A status mismatch is a blocking policy violation.
 - Closeout transitions (`review`, `done`) must be moved through the automation command, not manual paired edits.
 - Required transition command:
@@ -114,7 +115,7 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - Enforced by:
   - `scripts/story-status-transition.sh`
   - `scripts/enforce-story-status-sync.sh`
-  - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+  - `scripts/enforce-git-policy.sh` (via `npm run policy:check` only when legacy BMAD implementation artifacts are present)
 
 ### Story Artifact Hygiene Guardrail (Mandatory for PR Validation)
 
@@ -161,7 +162,7 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
   - `scripts/enforce-test-artifact-allowlist.sh`
   - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
 
-### Critical Capability Real-User Validation Guardrail (Mandatory)
+### Critical Capability Real-User Validation Guardrail (Legacy BMAD Story Files Only)
 
 - Stories classified as `Critical Capability: yes` cannot close as `done` without real-user validation evidence.
 - Automation-only validation is insufficient for closeout on critical capabilities.
@@ -170,9 +171,9 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
   - `Real-User Validation Result` must be `pass`.
 - Enforced by:
   - `scripts/enforce-operability-closeout-guard.sh`
-  - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+  - `scripts/enforce-git-policy.sh` (via `npm run policy:check` only when legacy BMAD implementation artifacts are present)
 
-### Access-Control UI Closeout Guardrail (Mandatory)
+### Access-Control UI Closeout Guardrail (Legacy BMAD Story Files Only)
 
 - No access-control story can close as `done` without a verified role-admin UI path.
 - Stories classified as `Access-Control Story: yes` must include:
@@ -181,9 +182,9 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - Stories that appear access-control related but are not classified as such must include explicit exemption rationale.
 - Enforced by:
   - `scripts/enforce-operability-closeout-guard.sh`
-  - `scripts/enforce-git-policy.sh` (via `npm run policy:check`)
+  - `scripts/enforce-git-policy.sh` (via `npm run policy:check` only when legacy BMAD implementation artifacts are present)
 
-### Planning Operability Coupling Guardrail (Mandatory)
+### Planning Operability Coupling Guardrail (Legacy BMAD Story Files Only)
 
 - If a backend/API contract implies human operability, planning artifacts must include frontend/operator usability criteria.
 - Story closeout must confirm this coupling via guardrail fields:
@@ -206,11 +207,11 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 
 ## 5) Story Creation Inside Epics (`create-story`)
 
-- `create-story` uses sprint tracking as primary source (`sprint-status.yaml`) to choose/create the next story.
+- Legacy `create-story` automation uses sprint tracking as primary source (`sprint-status.yaml`) to choose/create the next story.
 - It parses story key as `epic-story-title` (example: `4-018-model-router-...` or `a-1-connectshyft-...`) and sets `story_id` as `epic.story`.
 - If it is first story in an epic, epic status is moved to `in-progress` when appropriate.
 - It halts if epic is `done` (cannot create new story in a completed epic).
-- It writes story output to implementation artifacts (`_bmad-output/implementation-artifacts/<story_key>.md`).
+- Legacy BMAD runs write story output to implementation artifacts (`_bmad-output/implementation-artifacts/<story_key>.md`).
 - It sets new story status to `ready-for-dev`.
 - It updates sprint status entry for that story to `ready-for-dev`.
 
@@ -223,14 +224,14 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
 - Current lane mapping:
   - `connectshyft` lane:
     - planning artifacts include `ConnectShyft` in filename
-    - sprint status file: `_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
+    - legacy sprint status file: `_bmad-output/implementation-artifacts/sprint-status-connectshyft.yaml`
   - `signshyft` lane:
     - planning artifacts include `SignShyft` in filename
-    - sprint status file: `_bmad-output/implementation-artifacts/sprint-status-signshyft.yaml`
+    - legacy sprint status file: `_bmad-output/implementation-artifacts/sprint-status-signshyft.yaml`
   - `routeshyft` lane:
     - planning artifacts omit `ConnectShyft` token
-    - sprint status file: `_bmad-output/implementation-artifacts/sprint-status.yaml`
-- Shared implementation story files under `_bmad-output/implementation-artifacts/[epic-story].md` are cross-lane foundation artifacts and are allowed in both product repos.
+    - legacy sprint status file: `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- Shared implementation story files under `_bmad-output/implementation-artifacts/[epic-story].md` are legacy BMAD artifacts and are no longer required by `policy:check`.
 - Future modules must register a new lane in `docs/policies/project_lanes.json` before planning artifacts are created.
 - Lane enforcement is mandatory through:
   - `scripts/project-lane-context.js`
@@ -241,6 +242,8 @@ Source material was imported from `~/Downloads/git_policy.md` and adapted for th
   - `docs/policies/workspace_boundary_rules.md`
 
 ## 7) BMAD Safety / Artifact Boundaries
+
+- `_bmad-output/implementation-artifacts` is deprecated. Do not add new blocking CI or policy dependencies that require it to exist.
 
 - Discover workflows via manifests; no hard-coded workflow lists.
 - Execute via deterministic harness.

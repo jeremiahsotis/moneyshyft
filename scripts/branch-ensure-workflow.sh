@@ -52,6 +52,15 @@ if [[ -z "$workflow" ]]; then
   exit 1
 fi
 
+is_legacy_bmad_implementation_path() {
+  local value="${1:-}"
+  value="${value#./}"
+  [[ "$value" == "_bmad-output/implementation-artifacts" \
+    || "$value" == "_bmad-output/implementation-artifacts/"* \
+    || "$value" == */"_bmad-output/implementation-artifacts" \
+    || "$value" == */"_bmad-output/implementation-artifacts/"* ]]
+}
+
 normalize_workflow_key() {
   local raw="$1"
   local lower
@@ -253,6 +262,10 @@ ensure_corrected_kernel_gate() {
   fi
 
   if [[ ! -f "$sprint_status_file" ]]; then
+    if is_legacy_bmad_implementation_path "$sprint_status_file"; then
+      echo "Kernel gate skipped: legacy BMAD sprint status file is absent: $sprint_status_file"
+      return 0
+    fi
     echo "Kernel gate failed: missing $sprint_status_file"
     exit 1
   fi
@@ -474,15 +487,19 @@ if [[ "$workflow_key" =~ $story_workflow_regex ]]; then
 
   if requires_phase0_readiness "$story_id"; then
     if ! is_phase0_readiness_complete "$phase0_status_file"; then
-      echo "Phase-0 readiness incomplete"
-      echo "Complete Story 0.10 kernel readiness verification suite first"
-      echo "Readiness status file: $phase0_status_file"
-      echo "Run: npm run test:e2e -- $readiness_api_spec"
-      echo "Run: npm run branch:ensure-workflow -- --workflow $workflow --story $story_input"
-      exit 1
+      if is_legacy_bmad_implementation_path "$phase0_status_file" && [[ ! -f "$phase0_status_file" ]]; then
+        echo "Phase-0 readiness check skipped: legacy BMAD implementation artifacts are deprecated and $phase0_status_file is absent."
+      else
+        echo "Phase-0 readiness incomplete"
+        echo "Complete Story 0.10 kernel readiness verification suite first"
+        echo "Readiness status file: $phase0_status_file"
+        echo "Run: npm run test:e2e -- $readiness_api_spec"
+        echo "Run: npm run branch:ensure-workflow -- --workflow $workflow --story $story_input"
+        exit 1
+      fi
+    else
+      echo "Phase-0 readiness verified"
     fi
-
-    echo "Phase-0 readiness verified"
   fi
 
   echo "Branch guard passed for story workflow"

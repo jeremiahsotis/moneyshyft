@@ -445,6 +445,26 @@ test.describe('Story 1.5 policy gate and branch workflow guard enforcement API c
     expect(status !== 0 && hasFailureHeadline && indicatesPrHeadSubject).toBe(true);
   });
 
+  test('[P1] policy check skips deprecated BMAD implementation-artifact guards when the legacy tree is absent @P1', async ({
+    story15Context,
+  }) => {
+    const { output, status } = runPolicyScriptInTempRepo(story15Context.policyScript, story15Context.policyFile, {
+      branch: story15Context.storyBranch,
+      event: 'local',
+      commitSubject: '1-5: policy diagnostics without legacy BMAD artifacts',
+      seedLegacyImplementationArtifacts: false,
+    });
+
+    expect(
+      status === 0
+      && /corrected kernel gate skipped because legacy BMAD sprint status file is absent/.test(output)
+      && /Story status sync check skipped: legacy BMAD implementation artifacts are deprecated/.test(output)
+      && /Project lane guard skipped: legacy BMAD implementation artifacts are deprecated/.test(output)
+      && /Operability closeout guard skipped: legacy BMAD implementation artifacts are deprecated/.test(output)
+      && /Policy check passed/.test(output),
+    ).toBe(true);
+  });
+
   test('[P0] automation-backed status transitions are single-winner under concurrency and keep sprint/story synchronized @P0', async ({
     story15Context,
   }) => {

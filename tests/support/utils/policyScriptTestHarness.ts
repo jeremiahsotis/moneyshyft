@@ -12,6 +12,7 @@ type PolicyScriptHarnessOptions = {
   prMergeSubject?: string;
   simulatePullRequestMergeCommit?: boolean;
   leaveWorktreeDirty?: boolean;
+  seedLegacyImplementationArtifacts?: boolean;
   seedFiles?: Record<string, string>;
   env?: Record<string, string>;
 };
@@ -185,6 +186,7 @@ export function runPolicyScriptInTempRepo(
   const branch = options.branch;
   const commitSubject = options.commitSubject ?? '0-9: policy harness seed';
   const baseBranch = options.baseRef ?? 'codex/dev';
+  const seedLegacyImplementationArtifacts = options.seedLegacyImplementationArtifacts ?? true;
   const scriptsDir = dirname(scriptAbsolutePath);
   const sourceRepoRoot = resolve(scriptsDir, '..');
   const docsPoliciesDir = resolve(scriptsDir, '../docs/policies');
@@ -275,14 +277,16 @@ export function runPolicyScriptInTempRepo(
       writeFileSync(absolutePath, contents);
     }
 
-    const laneSprintStatusEntries = resolveLaneSprintStatusEntries(repoDir);
-    for (const entry of laneSprintStatusEntries) {
-      if (!existsSync(entry.statusPath)) {
-        mkdirSync(dirname(entry.statusPath), { recursive: true });
-        writeFileSync(entry.statusPath, 'development_status:\n', 'utf8');
+    if (seedLegacyImplementationArtifacts) {
+      const laneSprintStatusEntries = resolveLaneSprintStatusEntries(repoDir);
+      for (const entry of laneSprintStatusEntries) {
+        if (!existsSync(entry.statusPath)) {
+          mkdirSync(dirname(entry.statusPath), { recursive: true });
+          writeFileSync(entry.statusPath, 'development_status:\n', 'utf8');
+        }
+        ensureProjectLaneMetadata(entry.statusPath, entry.laneId);
+        ensureStoryFilesForActiveStatuses(repoDir, entry.statusPath);
       }
-      ensureProjectLaneMetadata(entry.statusPath, entry.laneId);
-      ensureStoryFilesForActiveStatuses(repoDir, entry.statusPath);
     }
 
     execFileSync('git', ['init'], { cwd: repoDir, stdio: 'ignore' });
