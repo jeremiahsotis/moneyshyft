@@ -3,6 +3,7 @@ import {
   cleanupConnectShyftWebhookReceipts,
   loadConnectShyftWebhookReceiptMetrics,
   markConnectShyftWebhookReceiptProcessingResult,
+  recordConnectShyftBridgeLegProviderIdentifierMapping,
   recordConnectShyftWebhookReceipt,
   recordConnectShyftProviderIdentifierMapping,
   resetConnectShyftProviderCorrelationStateForTests,
@@ -64,6 +65,40 @@ describe('connectshyft provider correlation mappings', () => {
       providerIdentifier: 'telnyx-msg-f3-1001',
       threadId: 'thread-f3-unclaimed-1001',
       internalReferenceId: 'canonical-message-f3-1001',
+    });
+  });
+
+  it('records provider call-leg mappings against persisted bridge-leg ids', async () => {
+    const mapping = await recordConnectShyftBridgeLegProviderIdentifierMapping({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'telnyx',
+      providerIdentifier: 'telnyx-leg-bridge-f3-1001',
+      bridgeLegId: 'bridge-leg-neighbor-f3-1001',
+    });
+
+    expect(mapping).toMatchObject({
+      status: 'created',
+      mapping: {
+        providerName: 'telnyx',
+        identifierKind: 'call_leg',
+        providerIdentifier: 'telnyx-leg-bridge-f3-1001',
+        internalReferenceId: 'bridge-leg-neighbor-f3-1001',
+      },
+    });
+
+    const resolved = await resolveConnectShyftProviderCorrelationByIdentifiers({
+      providerName: 'telnyx',
+      providerLegId: 'telnyx-leg-bridge-f3-1001',
+    });
+
+    expect(resolved).toMatchObject({
+      ok: true,
+      source: 'provider_leg_id',
+      correlation: {
+        internalCallReferenceId: 'bridge-leg-neighbor-f3-1001',
+      },
     });
   });
 

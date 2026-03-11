@@ -1,4 +1,5 @@
 import {
+  BridgeFailureCode,
   BridgeLegRecord,
   BridgeLegStatus,
   BridgeSessionAggregate,
@@ -7,39 +8,71 @@ import {
   ProviderBridgeEvent,
 } from './bridgeSessionTypes'
 
-const allowedSessionTransitions: Record<BridgeSessionStatus, BridgeSessionStatus[]> = {
-  created: ['operator_dialing', 'canceled', 'expired', 'failed'],
-  operator_dialing: ['operator_answered', 'failed', 'canceled', 'expired'],
-  operator_answered: ['neighbor_dialing', 'failed', 'canceled'],
-  neighbor_dialing: ['neighbor_answered', 'failed', 'canceled', 'expired'],
-  neighbor_answered: ['bridged', 'failed', 'canceled'],
-  bridged: ['completed', 'failed', 'canceled'],
-  completed: [],
-  failed: [],
-  canceled: [],
-  expired: [],
+const sessionOrder: Record<BridgeSessionStatus, number> = {
+  created: 0,
+  operator_dialing: 1,
+  operator_answered: 2,
+  neighbor_dialing: 3,
+  neighbor_answered: 4,
+  bridged: 5,
+  completed: 6,
+  failed: 6,
+  canceled: 6,
+  expired: 6,
 }
 
-const allowedLegTransitions: Record<BridgeLegStatus, BridgeLegStatus[]> = {
-  created: ['dialing', 'canceled', 'failed'],
-  dialing: ['ringing', 'answered', 'failed', 'canceled'],
-  ringing: ['answered', 'failed', 'canceled'],
-  answered: ['completed', 'failed', 'canceled'],
-  completed: [],
-  failed: [],
-  canceled: [],
+const legOrder: Record<BridgeLegStatus, number> = {
+  created: 0,
+  dialing: 1,
+  ringing: 2,
+  answered: 3,
+  completed: 4,
+  failed: 4,
+  canceled: 4,
 }
 
-function assertSessionTransition(from: BridgeSessionStatus, to: BridgeSessionStatus): void {
-  if (!allowedSessionTransitions[from].includes(to)) {
-    throw new Error(`Invalid bridge session transition: ${from} -> ${to}`)
+const terminalSessionStatuses = new Set<BridgeSessionStatus>(['completed', 'failed', 'canceled', 'expired'])
+const terminalLegStatuses = new Set<BridgeLegStatus>(['completed', 'failed', 'canceled'])
+
+const resolveEventTime = (occurredAt?: Date): Date => occurredAt ?? new Date()
+
+const isSessionTerminal = (status: BridgeSessionStatus): boolean => terminalSessionStatuses.has(status)
+
+const isLegTerminal = (status: BridgeLegStatus): boolean => terminalLegStatuses.has(status)
+
+const shouldAdvanceSession = (
+  current: BridgeSessionStatus,
+  next: BridgeSessionStatus,
+): boolean => {
+  if (current === next) {
+    return false
   }
+
+  if (isSessionTerminal(current)) {
+    return false
+  }
+
+  if (isSessionTerminal(next)) {
+    return true
+  }
+
+  return sessionOrder[next] >= sessionOrder[current]
 }
 
-function assertLegTransition(from: BridgeLegStatus, to: BridgeLegStatus): void {
-  if (!allowedLegTransitions[from].includes(to)) {
-    throw new Error(`Invalid bridge leg transition: ${from} -> ${to}`)
+const shouldAdvanceLeg = (current: BridgeLegStatus, next: BridgeLegStatus): boolean => {
+  if (current === next) {
+    return false
   }
+
+  if (isLegTerminal(current)) {
+    return false
+  }
+
+  if (isLegTerminal(next)) {
+    return true
+  }
+
+  return legOrder[next] >= legOrder[current]
 }
 
 export function transitionSession(
@@ -47,13 +80,25 @@ export function transitionSession(
   nextStatus: BridgeSessionStatus,
   changes: Partial<BridgeSessionRecord> = {},
 ): BridgeSessionRecord {
-  assertSessionTransition(session.status, nextStatus)
+  if (!shouldAdvanceSession(session.status, nextStatus)) {
+    return {
+      ...session,
+      ...changes,
+      updatedAt: changes.updatedAt ?? session.updatedAt,
+    }
+  }
+
+  const updatedAt = changes.updatedAt instanceof Date ? changes.updatedAt : new Date()
+  const completedAt = nextStatus === 'completed'
+    ? (changes.completedAt instanceof Date ? changes.completedAt : session.completedAt ?? updatedAt)
+    : session.completedAt ?? null
+
   return {
     ...session,
     ...changes,
     status: nextStatus,
-    updatedAt: new Date(),
-    completedAt: nextStatus === 'completed' ? new Date() : session.completedAt ?? null,
+    updatedAt,
+    completedAt,
   }
 }
 
@@ -62,20 +107,81 @@ export function transitionLeg(
   nextStatus: BridgeLegStatus,
   changes: Partial<BridgeLegRecord> = {},
 ): BridgeLegRecord {
-  assertLegTransition(leg.status, nextStatus)
-  const now = new Date()
+  if (!shouldAdvanceLeg(leg.status, nextStatus)) {
+    return {
+      ...leg,
+      ...changes,
+      updatedAt: changes.updatedAt ?? leg.updatedAt,
+    }
+  }
+
+  const updatedAt = changes.updatedAt instanceof Date ? changes.updatedAt : new Date()
+  const startedAt = nextStatus === 'dialing'
+    ? (changes.startedAt instanceof Date ? changes.startedAt : leg.startedAt ?? updatedAt)
+    : leg.startedAt ?? null
+  const answeredAt = nextStatus === 'answered'
+    ? (changes.answeredAt instanceof Date ? changes.answeredAt : leg.answeredAt ?? updatedAt)
+    : leg.answeredAt ?? null
+  const endedAt = isLegTerminal(nextStatus)
+    ? (changes.endedAt instanceof Date ? changes.endedAt : leg.endedAt ?? updatedAt)
+    : leg.endedAt ?? null
 
   return {
     ...leg,
     ...changes,
     status: nextStatus,
-    updatedAt: now,
-    startedAt: nextStatus === 'dialing' && !leg.startedAt ? now : leg.startedAt ?? null,
-    answeredAt: nextStatus === 'answered' && !leg.answeredAt ? now : leg.answeredAt ?? null,
-    endedAt:
-      nextStatus === 'completed' || nextStatus === 'failed' || nextStatus === 'canceled'
-        ? now
-        : leg.endedAt ?? null,
+    updatedAt,
+    startedAt,
+    answeredAt,
+    endedAt,
+  }
+}
+
+const applyFailure = (input: {
+  aggregate: BridgeSessionAggregate
+  legRole: 'operator' | 'neighbor' | 'bridge'
+  failureCode: BridgeFailureCode
+  failureMessage?: string
+  occurredAt?: Date
+}): BridgeSessionAggregate => {
+  const failureMessage = input.failureMessage ?? null
+  const failureAt = resolveEventTime(input.occurredAt)
+  const session = transitionSession(input.aggregate.session, 'failed', {
+    failureCode: input.failureCode,
+    failureMessage,
+    updatedAt: failureAt,
+  })
+
+  if (input.legRole === 'operator') {
+    return {
+      session,
+      operatorLeg: transitionLeg(input.aggregate.operatorLeg, 'failed', {
+        failureCode: input.failureCode,
+        failureMessage,
+        endedAt: failureAt,
+        updatedAt: failureAt,
+      }),
+      neighborLeg: input.aggregate.neighborLeg,
+    }
+  }
+
+  if (input.legRole === 'neighbor') {
+    return {
+      session,
+      operatorLeg: input.aggregate.operatorLeg,
+      neighborLeg: transitionLeg(input.aggregate.neighborLeg, 'failed', {
+        failureCode: input.failureCode,
+        failureMessage,
+        endedAt: failureAt,
+        updatedAt: failureAt,
+      }),
+    }
+  }
+
+  return {
+    session,
+    operatorLeg: input.aggregate.operatorLeg,
+    neighborLeg: input.aggregate.neighborLeg,
   }
 }
 
@@ -83,102 +189,110 @@ export function applyProviderBridgeEvent(
   aggregate: BridgeSessionAggregate,
   event: ProviderBridgeEvent,
 ): BridgeSessionAggregate {
-  const { session, operatorLeg, neighborLeg } = aggregate
-
   switch (event.type) {
-    case 'operator_call_created':
+    case 'operator_call_created': {
+      const updatedAt = new Date()
+      const operatorLeg = transitionLeg(aggregate.operatorLeg, 'ringing', {
+        providerCallId: event.providerCallId,
+        updatedAt,
+      })
       return {
-        session,
-        operatorLeg: { ...operatorLeg, providerCallId: event.providerCallId, updatedAt: new Date() },
+        session: transitionSession(aggregate.session, 'operator_dialing', { updatedAt }),
+        operatorLeg,
+        neighborLeg: aggregate.neighborLeg,
+      }
+    }
+    case 'neighbor_call_created': {
+      const updatedAt = new Date()
+      const neighborLeg = transitionLeg(aggregate.neighborLeg, 'ringing', {
+        providerCallId: event.providerCallId,
+        updatedAt,
+      })
+      return {
+        session: transitionSession(aggregate.session, 'neighbor_dialing', { updatedAt }),
+        operatorLeg: aggregate.operatorLeg,
         neighborLeg,
       }
-
-    case 'neighbor_call_created':
-      return {
-        session,
-        operatorLeg,
-        neighborLeg: { ...neighborLeg, providerCallId: event.providerCallId, updatedAt: new Date() },
-      }
-
+    }
     case 'operator_answered': {
-      const preparedSession =
-        session.status === 'operator_dialing' ? session : transitionSession(session, 'operator_dialing')
-      const preparedLeg =
-        operatorLeg.status === 'ringing' ? operatorLeg : transitionLeg(operatorLeg, 'ringing')
-
+      const occurredAt = resolveEventTime(event.occurredAt)
       return {
-        session: transitionSession(preparedSession, 'operator_answered'),
-        operatorLeg: transitionLeg(preparedLeg, 'answered'),
-        neighborLeg,
+        session: transitionSession(aggregate.session, 'operator_answered', {
+          updatedAt: occurredAt,
+        }),
+        operatorLeg: transitionLeg(aggregate.operatorLeg, 'answered', {
+          providerCallId: event.providerCallId,
+          answeredAt: occurredAt,
+          updatedAt: occurredAt,
+        }),
+        neighborLeg: aggregate.neighborLeg,
       }
     }
-
     case 'neighbor_answered': {
-      const preparedSession =
-        session.status === 'neighbor_dialing' ? session : transitionSession(session, 'neighbor_dialing')
-      const preparedLeg =
-        neighborLeg.status === 'ringing' ? neighborLeg : transitionLeg(neighborLeg, 'ringing')
-
+      const occurredAt = resolveEventTime(event.occurredAt)
       return {
-        session: transitionSession(preparedSession, 'neighbor_answered'),
-        operatorLeg,
-        neighborLeg: transitionLeg(preparedLeg, 'answered'),
+        session: transitionSession(aggregate.session, 'neighbor_answered', {
+          updatedAt: occurredAt,
+        }),
+        operatorLeg: aggregate.operatorLeg,
+        neighborLeg: transitionLeg(aggregate.neighborLeg, 'answered', {
+          providerCallId: event.providerCallId,
+          answeredAt: occurredAt,
+          updatedAt: occurredAt,
+        }),
       }
     }
-
-    case 'bridge_connected':
+    case 'bridge_connected': {
+      const occurredAt = resolveEventTime(event.occurredAt)
       return {
-        session: transitionSession(session, 'bridged'),
-        operatorLeg,
-        neighborLeg,
+        session: transitionSession(aggregate.session, 'bridged', {
+          updatedAt: occurredAt,
+        }),
+        operatorLeg: aggregate.operatorLeg,
+        neighborLeg: aggregate.neighborLeg,
       }
-
+    }
     case 'operator_failed':
-      return {
-        session: transitionSession(session, 'failed', {
-          failureCode: 'operator_call_failed',
-          failureMessage: event.reason ?? null,
-        }),
-        operatorLeg: transitionLeg(operatorLeg, 'failed', {
-          failureCode: 'operator_call_failed',
-          failureMessage: event.reason ?? null,
-        }),
-        neighborLeg,
-      }
-
+      return applyFailure({
+        aggregate,
+        legRole: 'operator',
+        failureCode: 'operator_failed',
+        failureMessage: event.reason,
+        occurredAt: event.occurredAt,
+      })
     case 'neighbor_failed':
-      return {
-        session: transitionSession(session, 'failed', {
-          failureCode: 'neighbor_call_failed',
-          failureMessage: event.reason ?? null,
-        }),
-        operatorLeg,
-        neighborLeg: transitionLeg(neighborLeg, 'failed', {
-          failureCode: 'neighbor_call_failed',
-          failureMessage: event.reason ?? null,
-        }),
-      }
-
+      return applyFailure({
+        aggregate,
+        legRole: 'neighbor',
+        failureCode: 'neighbor_failed',
+        failureMessage: event.reason,
+        occurredAt: event.occurredAt,
+      })
     case 'bridge_failed':
-      return {
-        session: transitionSession(session, 'failed', {
-          failureCode: 'bridge_failed',
-          failureMessage: event.reason ?? null,
-        }),
-        operatorLeg,
-        neighborLeg,
-      }
-
+      return applyFailure({
+        aggregate,
+        legRole: 'bridge',
+        failureCode: 'bridge_failed',
+        failureMessage: event.reason,
+        occurredAt: event.occurredAt,
+      })
     case 'completed': {
-      const preparedSession =
-        session.status === 'bridged' ? session : transitionSession(session, 'bridged')
+      const occurredAt = resolveEventTime(event.occurredAt)
+      const session = transitionSession(aggregate.session, 'completed', {
+        completedAt: occurredAt,
+        updatedAt: occurredAt,
+      })
 
       return {
-        session: transitionSession(preparedSession, 'completed'),
-        operatorLeg:
-          operatorLeg.status === 'answered' ? transitionLeg(operatorLeg, 'completed') : operatorLeg,
-        neighborLeg:
-          neighborLeg.status === 'answered' ? transitionLeg(neighborLeg, 'completed') : neighborLeg,
+        session,
+        operatorLeg: transitionLeg(aggregate.operatorLeg, 'completed', {
+          endedAt: occurredAt,
+          updatedAt: occurredAt,
+        }),
+        neighborLeg: transitionLeg(aggregate.neighborLeg, 'completed', {
+          endedAt: occurredAt,
+          updatedAt: occurredAt,
+        }),
       }
     }
   }

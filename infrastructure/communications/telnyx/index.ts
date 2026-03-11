@@ -7,6 +7,9 @@ import {
   type TelephonyProviderEvent,
   type TelephonyProviderEventTranslationInput,
   type TelephonySendSmsCommand,
+  type TelephonyStartBridgeOutboundCallCommand,
+  type TelephonyStartBridgeSessionCommand,
+  type TelephonyStartBridgeSessionResult,
   type TelephonyStartOutboundCallCommand,
   type TelephonyWebhookHeaders,
   type TelephonyWebhookVerificationInput,
@@ -27,6 +30,7 @@ const PROVIDER_SPECIFIC_KEYS = new Set([
   'callControlId',
   'call_leg_id',
   'call_control_id',
+  'call_session_id',
   'message_id',
   'telnyxMessageId',
   'telnyxCallControlId',
@@ -319,7 +323,7 @@ const buildSmsPayload = (
 
 const buildOutboundCallPayload = (
   config: ReturnType<typeof resolveConfig>,
-  command: TelephonyStartOutboundCallCommand,
+  command: TelephonyStartOutboundCallCommand | TelephonyStartBridgeOutboundCallCommand,
 ): Record<string, unknown> => {
   if (!config.connectionId) {
     throw new Error('Set TELNYX_CONNECTION_ID for Telnyx outbound call initiation.')
@@ -334,6 +338,22 @@ const buildOutboundCallPayload = (
     from: config.fromNumber,
     to: assertConfiguredTargetPhone(command.targetPhone),
   }
+}
+
+const buildBridgePayload = (
+  command: TelephonyStartBridgeSessionCommand,
+): Record<string, unknown> => {
+  const payload: Record<string, unknown> = {
+    call_control_id: command.neighborProviderCallId,
+    call_control_id_to_bridge_with: command.neighborProviderCallId,
+  }
+
+  const idempotencyKey = normalizeString(command.idempotencyKey)
+  if (idempotencyKey) {
+    payload.command_id = idempotencyKey
+  }
+
+  return payload
 }
 
 const requestTelnyx = async (
@@ -514,8 +534,8 @@ export function createTelnyxAdapter(
       })
 
       const providerLegId =
-        normalizeString(data.data?.call_leg_id)
-        || normalizeString(data.data?.call_control_id)
+        normalizeString(data.data?.call_control_id)
+        || normalizeString(data.data?.call_leg_id)
         || normalizeString(data.data?.id)
 
       return assertValidCallDispatchResult({
@@ -528,6 +548,50 @@ export function createTelnyxAdapter(
         providerBranchingInDomain: false,
         requestedAt: requestStartedAt,
       })
+    },
+    async startBridgeOutboundCall(command) {
+      const requestStartedAt = new Date((options.now ?? Date.now)()).toISOString()
+      const { response, data } = await requestTelnyx({
+        options,
+        path: '/calls',
+        body: buildOutboundCallPayload(resolveConfig(options), command),
+        idempotencyKey: command.idempotencyKey,
+      })
+
+      const providerLegId =
+        normalizeString(data.data?.call_control_id)
+        || normalizeString(data.data?.call_leg_id)
+        || normalizeString(data.data?.id)
+
+      return assertValidCallDispatchResult({
+        providerKey: 'telnyx',
+        channel: 'call',
+        providerLegId,
+        providerMessageId: null,
+        providerRequestId: normalizeString(response.headers.get('x-request-id')),
+        adapterInvoked: true,
+        providerBranchingInDomain: false,
+        requestedAt: requestStartedAt,
+      })
+    },
+    async startBridgeSession(command): Promise<TelephonyStartBridgeSessionResult> {
+      const requestStartedAt = new Date((options.now ?? Date.now)()).toISOString()
+      const { response } = await requestTelnyx({
+        options,
+        path: `/calls/${encodeURIComponent(command.operatorProviderCallId)}/actions/bridge`,
+        body: buildBridgePayload(command),
+        idempotencyKey: command.idempotencyKey,
+      })
+
+      return {
+        providerKey: 'telnyx',
+        bridgeSessionId: command.bridgeSessionId,
+        bridgeEstablished: true,
+        providerRequestId: normalizeString(response.headers.get('x-request-id')),
+        adapterInvoked: true,
+        providerBranchingInDomain: false,
+        requestedAt: requestStartedAt,
+      }
     },
     verifyWebhook(input) {
       return verifyTelnyxWebhook(input, options)

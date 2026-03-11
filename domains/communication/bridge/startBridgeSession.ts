@@ -1,33 +1,12 @@
 import {
-  BridgeLegRecord,
   BridgeSessionAggregate,
   BridgeSessionRecord,
+  BridgeLegRecord,
+  BridgeSessionRepository,
+  BridgeTelephonyProvider,
   StartBridgeSessionCommand,
 } from './bridgeSessionTypes'
-import { transitionLeg, transitionSession } from './bridgeStateMachine'
-
-export type BridgeSessionRepository = {
-  createSession(session: BridgeSessionRecord): Promise<void>
-  createLeg(leg: BridgeLegRecord): Promise<void>
-  saveAggregate(aggregate: BridgeSessionAggregate): Promise<void>
-  getAggregateBySessionId(sessionId: string): Promise<BridgeSessionAggregate | null>
-}
-
-export type StartOutboundCallInput = {
-  bridgeSessionId: string
-  legRole: 'operator' | 'neighbor'
-  toContactPointId: string
-  fromContactPointId?: string
-}
-
-export type BridgeTelephonyProvider = {
-  startOutboundCall(input: StartOutboundCallInput): Promise<{ providerCallId: string }>
-  startBridgeSession(input: {
-    bridgeSessionId: string
-    operatorProviderCallId: string
-    neighborProviderCallId: string
-  }): Promise<void>
-}
+import { applyProviderBridgeEvent, transitionLeg, transitionSession } from './bridgeStateMachine'
 
 export type IdGenerator = () => string
 
@@ -47,11 +26,12 @@ export function buildStartBridgeSession(deps: {
     const session: BridgeSessionRecord = {
       id: sessionId,
       tenantId: command.tenantId,
+      orgUnitId: command.orgUnitId,
       threadId: command.threadId,
       operatorParticipantId: command.operatorParticipantId,
-      targetParticipantId: command.targetParticipantId,
+      neighborParticipantId: command.neighborParticipantId,
       operatorContactPointId: command.operatorContactPointId,
-      targetContactPointId: command.targetContactPointId,
+      neighborContactPointId: command.neighborContactPointId,
       selectedOutboundContactPointId: command.selectedOutboundContactPointId ?? null,
       status: 'created',
       failureCode: null,
@@ -67,6 +47,7 @@ export function buildStartBridgeSession(deps: {
     const operatorLeg: BridgeLegRecord = {
       id: idGenerator(),
       tenantId: command.tenantId,
+      orgUnitId: command.orgUnitId,
       bridgeSessionId: sessionId,
       legRole: 'operator',
       contactPointId: command.operatorContactPointId,
@@ -84,9 +65,10 @@ export function buildStartBridgeSession(deps: {
     const neighborLeg: BridgeLegRecord = {
       id: idGenerator(),
       tenantId: command.tenantId,
+      orgUnitId: command.orgUnitId,
       bridgeSessionId: sessionId,
       legRole: 'neighbor',
-      contactPointId: command.targetContactPointId,
+      contactPointId: command.neighborContactPointId,
       providerCallId: null,
       status: 'created',
       startedAt: null,
@@ -102,24 +84,25 @@ export function buildStartBridgeSession(deps: {
     await repository.createLeg(operatorLeg)
     await repository.createLeg(neighborLeg)
 
-    const dialingSession = transitionSession(session, 'operator_dialing')
-    const dialingOperatorLeg = transitionLeg(operatorLeg, 'dialing')
+    const dialingAggregate: BridgeSessionAggregate = {
+      session: transitionSession(session, 'operator_dialing'),
+      operatorLeg: transitionLeg(operatorLeg, 'dialing'),
+      neighborLeg,
+    }
 
     const operatorCall = await telephonyProvider.startOutboundCall({
       bridgeSessionId: sessionId,
+      legId: operatorLeg.id,
       legRole: 'operator',
       toContactPointId: command.operatorContactPointId,
-      fromContactPointId: command.selectedOutboundContactPointId,
+      fromContactPointId: command.selectedOutboundContactPointId ?? null,
     })
 
-    const aggregate: BridgeSessionAggregate = {
-      session: dialingSession,
-      operatorLeg: {
-        ...dialingOperatorLeg,
-        providerCallId: operatorCall.providerCallId,
-      },
-      neighborLeg,
-    }
+    const aggregate = applyProviderBridgeEvent(dialingAggregate, {
+      type: 'operator_call_created',
+      bridgeSessionId: sessionId,
+      providerCallId: operatorCall.providerCallId,
+    })
 
     await repository.saveAggregate(aggregate)
 

@@ -79,6 +79,7 @@ describe('Telnyx adapter', () => {
       buildResponse({
         data: {
           call_leg_id: 'telnyx-leg-2001',
+          call_control_id: 'telnyx-control-2001',
         },
       }),
     )
@@ -123,11 +124,70 @@ describe('Telnyx adapter', () => {
     expect(result).toMatchObject({
       providerKey: 'telnyx',
       channel: 'call',
-      providerLegId: 'telnyx-leg-2001',
+      providerLegId: 'telnyx-control-2001',
       providerMessageId: null,
       adapterInvoked: true,
       providerBranchingInDomain: false,
       requestedAt: '2026-03-11T12:05:00.000Z',
+    })
+  })
+
+  it('bridges two provider call legs through the Telnyx call-control endpoint', async () => {
+    const fetchMock: jest.MockedFunction<typeof fetch> = jest.fn()
+    fetchMock.mockResolvedValue(
+      buildResponse(
+        {
+          data: {
+            result: 'ok',
+          },
+        },
+        {
+          headers: {
+            'x-request-id': 'req-bridge-3001',
+          },
+        },
+      ),
+    )
+
+    const adapter = createTelnyxAdapter({
+      apiKey: 'telnyx-test-key',
+      fromNumber: '+12605550199',
+      connectionId: '2084000000000000001',
+      fetchImpl: fetchMock,
+      now: () => Date.parse('2026-03-11T12:06:00.000Z'),
+    })
+
+    const result = await adapter.startBridgeSession?.({
+      providerKey: 'telnyx',
+      bridgeSessionId: 'bridge-session-1001',
+      operatorProviderCallId: 'telnyx-control-operator-1001',
+      neighborProviderCallId: 'telnyx-control-neighbor-1001',
+      idempotencyKey: 'idem-bridge-001',
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.telnyx.com/v2/calls/telnyx-control-operator-1001/actions/bridge',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer telnyx-test-key',
+          'Idempotency-Key': 'idem-bridge-001',
+        }),
+      }),
+    )
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      call_control_id: 'telnyx-control-neighbor-1001',
+      call_control_id_to_bridge_with: 'telnyx-control-neighbor-1001',
+      command_id: 'idem-bridge-001',
+    })
+    expect(result).toEqual({
+      providerKey: 'telnyx',
+      bridgeSessionId: 'bridge-session-1001',
+      bridgeEstablished: true,
+      providerRequestId: 'req-bridge-3001',
+      adapterInvoked: true,
+      providerBranchingInDomain: false,
+      requestedAt: '2026-03-11T12:06:00.000Z',
     })
   })
 
@@ -237,6 +297,38 @@ describe('Telnyx adapter', () => {
         eventType: 'call.connected',
         delivery: {
           status: 'connected',
+        },
+      },
+      providerNeutral: true,
+      providerSpecificFieldsStripped: true,
+      providerBranchingInDomain: false,
+    })
+  })
+
+  it('translates answered bridge-leg events without leaking Telnyx identifiers', () => {
+    const adapter = createTelnyxAdapter({
+      apiKey: 'telnyx-test-key',
+    })
+
+    expect(
+      adapter.translateProviderEvent({
+        rawEventType: 'call.answered',
+        payload: {
+          call_control_id: 'telnyx-control-operator-1001',
+          call_leg_id: 'telnyx-leg-operator-1001',
+          eventType: 'call.answered',
+          call_session_id: 'telnyx-session-1001',
+          occurrence: {
+            leg: 'operator',
+          },
+        },
+      }),
+    ).toEqual({
+      eventType: 'CallAnswered',
+      payload: {
+        eventType: 'call.answered',
+        occurrence: {
+          leg: 'operator',
         },
       },
       providerNeutral: true,

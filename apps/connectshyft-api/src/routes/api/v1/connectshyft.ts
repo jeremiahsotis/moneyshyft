@@ -114,6 +114,11 @@ import {
   recordConnectShyftProviderIdentifierMapping,
   resolveConnectShyftProviderCorrelationByIdentifiers,
 } from '../../../modules/connectshyft/providerCorrelationMappings';
+import {
+  handleConnectShyftBridgeWebhookEvent,
+  loadConnectShyftBridgeAggregateByThreadId,
+  startConnectShyftBridgeSession,
+} from '../../../modules/connectshyft/bridgeSessions';
 import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService';
 
 const router = Router();
@@ -890,6 +895,47 @@ const normalizeLifecycleString = (value: unknown): string => {
   return value.trim();
 };
 
+const buildProviderNeutralBridgeSessionState = (aggregate: {
+  session: {
+    id: string;
+    status: string;
+    failureCode?: string | null;
+    failureMessage?: string | null;
+  };
+  operatorLeg: {
+    id: string;
+    status: string;
+    failureCode?: string | null;
+    failureMessage?: string | null;
+  };
+  neighborLeg: {
+    id: string;
+    status: string;
+    failureCode?: string | null;
+    failureMessage?: string | null;
+  };
+}): ConnectShyftBridgeSessionStateContract => ({
+  bridgeSessionId: aggregate.session.id,
+  status: aggregate.session.status,
+  sessionState: aggregate.session.status,
+  failureCode: normalizeLifecycleString(aggregate.session.failureCode) || null,
+  failureMessage: normalizeLifecycleString(aggregate.session.failureMessage) || null,
+  operatorLegState: aggregate.operatorLeg.status,
+  neighborLegState: aggregate.neighborLeg.status,
+  operatorLeg: {
+    legId: aggregate.operatorLeg.id,
+    status: aggregate.operatorLeg.status,
+    failureCode: normalizeLifecycleString(aggregate.operatorLeg.failureCode) || null,
+    failureMessage: normalizeLifecycleString(aggregate.operatorLeg.failureMessage) || null,
+  },
+  neighborLeg: {
+    legId: aggregate.neighborLeg.id,
+    status: aggregate.neighborLeg.status,
+    failureCode: normalizeLifecycleString(aggregate.neighborLeg.failureCode) || null,
+    failureMessage: normalizeLifecycleString(aggregate.neighborLeg.failureMessage) || null,
+  },
+});
+
 type ConnectShyftWebhookCorrelationSource = 'metadata' | 'provider_fallback' | 'number_mapping';
 
 type ConnectShyftResolvedWebhookCorrelation =
@@ -919,6 +965,38 @@ type ConnectShyftResolvedWebhookCorrelation =
     providerEventId: string | null;
     providerNumberE164: string | null;
   };
+
+type ConnectShyftBridgeCorrelationMapping = {
+  deterministic: true;
+  operatorLegMapping: 'created' | 'duplicate' | 'ignored' | 'error';
+  neighborLegMapping: 'created' | 'duplicate' | 'ignored' | 'error';
+  error: {
+    code: 'CONNECTSHYFT_PROVIDER_CORRELATION_PERSISTENCE_UNAVAILABLE';
+    message: string;
+  } | null;
+};
+
+type ConnectShyftBridgeSessionStateContract = {
+  bridgeSessionId: string;
+  status: string;
+  sessionState: string;
+  failureCode: string | null;
+  failureMessage: string | null;
+  operatorLegState: string;
+  neighborLegState: string;
+  operatorLeg: {
+    legId: string;
+    status: string;
+    failureCode: string | null;
+    failureMessage: string | null;
+  };
+  neighborLeg: {
+    legId: string;
+    status: string;
+    failureCode: string | null;
+    failureMessage: string | null;
+  };
+};
 
 const asRecord = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -3268,6 +3346,7 @@ const parseOutboundCallRequestPolicy = (req: Request): {
   redialPolicy: string | null;
   retryCount: number | null;
   targetPhone: string | null;
+  operatorContactPointId: string | null;
 } => {
   const rawBody = req.body && typeof req.body === 'object'
     ? req.body as Record<string, unknown>
@@ -3290,6 +3369,12 @@ const parseOutboundCallRequestPolicy = (req: Request): {
     ?? resolveField('targetPhoneE164')
     ?? resolveField('recipientPhone'),
   );
+  const operatorContactPointId = normalizeLifecycleString(
+    resolveField('operatorPhoneId')
+    ?? resolveField('operatorContactPointId')
+    ?? resolveField('operatorPhone')
+    ?? resolveField('operatorCallbackPhone'),
+  );
 
   return {
     transport: transport || null,
@@ -3299,6 +3384,7 @@ const parseOutboundCallRequestPolicy = (req: Request): {
       parseOptionalNonNegativeInteger(resolveField('retryCount'))
       ?? parseOptionalNonNegativeInteger(resolveField('maxRetries')),
     targetPhone: targetPhone || null,
+    operatorContactPointId: operatorContactPointId || null,
   };
 };
 
@@ -5684,6 +5770,10 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
     statusDerivedFromCanonicalEvents: true as const,
     timeline: resolvedTimeline,
   };
+  const activeBridgeSession = await loadConnectShyftBridgeAggregateByThreadId({
+    tenantId: context.tenantId,
+    threadId,
+  });
 
   return success(res, {
     code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
@@ -5695,6 +5785,9 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
         bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
       },
       thread: threadWithCanonicalTimeline,
+      bridgeSession: activeBridgeSession
+        ? buildProviderNeutralBridgeSessionState(activeBridgeSession)
+        : null,
       voicemailArtifacts,
       actions: threadWithCanonicalTimeline.actions,
       actionMatrix: {
@@ -6071,6 +6164,9 @@ const performOutboundAction = async (
     targetPhone: outboundAction === 'call'
       ? outboundCallPolicyRequest?.targetPhone || null
       : outboundMessagePolicy?.targetPhone || null,
+    operatorContactPointId: outboundAction === 'call'
+      ? outboundCallPolicyRequest?.operatorContactPointId || null
+      : null,
     body: outboundMessagePolicy?.body || null,
     callPolicy: outboundCallDispatchPolicy,
   });
@@ -6127,6 +6223,8 @@ const performOutboundAction = async (
   let persistedSmsOverride: ConnectShyftPersistedSmsOverride | null = null;
   let sideEffectsPersisted = false;
   let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
+  let bridgeSessionState: ConnectShyftBridgeSessionStateContract | null = null;
+  let bridgeCorrelationMapping: ConnectShyftBridgeCorrelationMapping | null = null;
 
   if (lifecycleContext.detail) {
     thread = buildThreadFromDetailRecord(lifecycleContext.detail, {
@@ -6397,18 +6495,105 @@ const performOutboundAction = async (
     }
   };
 
+  let operatorContactPointId: string | null = null;
+  let neighborContactPointId: string | null = null;
+  if (outboundAction === 'call') {
+    operatorContactPointId = outboundCallPolicyRequest?.operatorContactPointId || null;
+    if (!operatorContactPointId) {
+      respondConnectShyftBusinessRefusal(res, {
+        code: 'CONNECTSHYFT_OPERATOR_CALLBACK_REQUIRED',
+        message: 'Outbound bridge calls require an operator callback number.',
+        data: {
+          context,
+          threadId,
+          providerResolution: {
+            ...providerSelection.providerResolution,
+            adapterInterfaceVersion: providerSelection.adapter.adapterInterfaceVersion,
+            providerBranchingInDomain: false,
+          },
+          sideEffects: {
+            dispatchAttempted: false,
+            lifecycleMutationApplied,
+            auditPersisted: false,
+          },
+          ...buildReopenLifecycleData(),
+        },
+      });
+      return;
+    }
+
+    neighborContactPointId = outboundCallPolicyRequest?.targetPhone || null;
+    if (!neighborContactPointId && thread.neighborId) {
+      const resolvedNeighbor = await connectShyftNeighborServiceAsync.resolveNeighbor({
+        tenantId: context.tenantId,
+        neighborId: thread.neighborId,
+        actorRoles,
+      });
+      if (resolvedNeighbor.ok) {
+        neighborContactPointId = resolvedNeighbor.data.neighbor.phones
+          .filter((phone) => phone.isActive !== false)
+          .sort((left, right) => left.sortOrder - right.sortOrder)
+          [0]?.value || null;
+      }
+    }
+
+    if (!neighborContactPointId) {
+      respondConnectShyftBusinessRefusal(res, {
+        code: 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED',
+        message: 'Outbound bridge calls require a dialable neighbor phone.',
+        data: {
+          context,
+          threadId,
+          providerResolution: {
+            ...providerSelection.providerResolution,
+            adapterInterfaceVersion: providerSelection.adapter.adapterInterfaceVersion,
+            providerBranchingInDomain: false,
+          },
+          sideEffects: {
+            dispatchAttempted: false,
+            lifecycleMutationApplied,
+            auditPersisted: false,
+          },
+          ...buildReopenLifecycleData(),
+        },
+      });
+      return;
+    }
+  }
+
   let providerDispatch: ConnectShyftProviderDispatchResult;
   try {
     providerDispatch = outboundAction === 'call'
-      ? await providerSelection.adapter.startOutboundCall({
-        tenantId: context.tenantId,
-        orgUnitId: context.orgUnitId,
-        threadId,
-        providerKey: providerSelection.providerResolution.resolvedProvider,
-        idempotencyKey: outboundDispatchIdempotencyKey || undefined,
-        targetPhone: outboundCallPolicyRequest?.targetPhone || undefined,
-        callPolicy: outboundCallDispatchPolicy || undefined,
-      })
+      ? await (async () => {
+        const bridgeStart = await startConnectShyftBridgeSession({
+          tenantId: context.tenantId,
+          orgUnitId: context.orgUnitId,
+          threadId,
+          operatorParticipantId: actorUserId || 'unknown-operator',
+          neighborParticipantId: thread.neighborId,
+          operatorContactPointId: operatorContactPointId || '',
+          neighborContactPointId: neighborContactPointId || '',
+          selectedOutboundContactPointId: thread.preferredOutboundCsNumberId || null,
+          providerKey: providerSelection.providerResolution.resolvedProvider,
+          providerAdapter: providerSelection.adapter,
+          idempotencyKey: outboundDispatchIdempotencyKey || undefined,
+          auditCorrelationId: outboundDispatchReplayKey || undefined,
+          callPolicy: outboundCallDispatchPolicy || undefined,
+        });
+
+        bridgeSessionState = buildProviderNeutralBridgeSessionState(bridgeStart.aggregate);
+        bridgeCorrelationMapping = bridgeStart.correlationMapping;
+
+        return {
+          providerKey: providerSelection.providerResolution.resolvedProvider,
+          channel: 'call' as const,
+          providerLegId: bridgeStart.aggregate.operatorLeg.providerCallId || null,
+          providerMessageId: null,
+          adapterInvoked: true as const,
+          providerBranchingInDomain: false as const,
+          requestedAt: bridgeStart.aggregate.operatorLeg.updatedAt.toISOString(),
+        };
+      })()
       : await providerSelection.adapter.sendSms({
         tenantId: context.tenantId,
         orgUnitId: context.orgUnitId,
@@ -6547,14 +6732,26 @@ const performOutboundAction = async (
     });
   }
 
-  let correlationMapping: Awaited<ReturnType<typeof persistOutboundProviderIdentifierMappings>> = {
+  let correlationMapping: Record<string, unknown> = {
     deterministic: true,
     callLegMapping: 'ignored',
     messageMapping: 'ignored',
     error: null,
   };
 
-  if (canonicalEvent) {
+  const resolvedBridgeCorrelationMapping =
+    bridgeCorrelationMapping as ConnectShyftBridgeCorrelationMapping | null;
+
+  if (outboundAction === 'call' && resolvedBridgeCorrelationMapping) {
+    correlationMapping = resolvedBridgeCorrelationMapping;
+    if (resolvedBridgeCorrelationMapping.error) {
+      postDispatchWarnings.push({
+        stage: 'provider-correlation',
+        code: resolvedBridgeCorrelationMapping.error.code,
+        message: resolvedBridgeCorrelationMapping.error.message,
+      });
+    }
+  } else if (canonicalEvent) {
     correlationMapping = await persistOutboundProviderIdentifierMappings({
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
@@ -6563,11 +6760,13 @@ const performOutboundAction = async (
       dispatch: providerDispatch,
       canonicalEventId: canonicalEvent.eventId,
     });
-    if (correlationMapping.error) {
+    const outboundProviderCorrelation =
+      correlationMapping as Awaited<ReturnType<typeof persistOutboundProviderIdentifierMappings>>;
+    if (outboundProviderCorrelation.error) {
       postDispatchWarnings.push({
         stage: 'provider-correlation',
-        code: correlationMapping.error.code,
-        message: correlationMapping.error.message,
+        code: outboundProviderCorrelation.error.code,
+        message: outboundProviderCorrelation.error.message,
       });
     }
   } else if (providerDispatch.providerLegId || providerDispatch.providerMessageId) {
@@ -6665,6 +6864,7 @@ const performOutboundAction = async (
       ? {
           call: CONNECTSHYFT_OUTBOUND_CALL_POLICY,
           autoClaimPolicy: CONNECTSHYFT_OUTBOUND_CALL_AUTO_CLAIM_POLICY,
+          bridgeSession: bridgeSessionState,
         }
       : {
           preferencePolicy: {
@@ -6845,6 +7045,9 @@ const handleInboundWebhook = async (
   const tenantId = correlation.tenantId;
   const orgUnitId = correlation.orgUnitId;
   const threadId = correlation.threadId;
+  const webhookPersistenceDb = isConnectShyftTestOverrideEnabled()
+    ? undefined
+    : loadPlatformDb();
   const requestWithRawBody = req as Request & { rawBody?: Buffer | string };
 
   const rolloutContextValidation = resolveConnectShyftProviderAdapter({
@@ -6949,7 +7152,7 @@ const handleInboundWebhook = async (
         callbackProviderEventId: callbackPayload.correlation.providerEventId || null,
         voicemailArtifactId: callbackPayload.correlation.voicemailArtifactId || null,
       },
-      db: loadPlatformDb(),
+      db: webhookPersistenceDb,
     });
     if (transcriptionReceipt.error) {
       refusal(res, {
@@ -7083,7 +7286,7 @@ const handleInboundWebhook = async (
           : !hasPersistedVoicemailCorrelation
             ? 'callback_correlation_unresolved'
             : 'transcript_text_missing',
-        db: loadPlatformDb(),
+        db: webhookPersistenceDb,
       });
       refusal(res, {
         code: 'CONNECTSHYFT_TRANSCRIPTION_CORRELATION_INVALID',
@@ -7165,7 +7368,7 @@ const handleInboundWebhook = async (
         providerMessageId: correlation.providerMessageId,
         status: 'FAILED_RETRYABLE',
         failureReason: 'canonical_event_persistence_error',
-        db: loadPlatformDb(),
+        db: webhookPersistenceDb,
       });
       refusal(res, {
         code: 'CONNECTSHYFT_TRANSCRIPTION_ATTACHMENT_UNAVAILABLE',
@@ -7207,7 +7410,7 @@ const handleInboundWebhook = async (
       providerLegId: correlation.providerLegId,
       providerMessageId: correlation.providerMessageId,
       status: 'APPLIED',
-      db: loadPlatformDb(),
+      db: webhookPersistenceDb,
     });
 
     success(res, {
@@ -7270,7 +7473,7 @@ const handleInboundWebhook = async (
       providerMessageId: correlation.providerMessageId,
       providerNumberE164: correlation.providerNumberE164,
     },
-    db: loadPlatformDb(),
+    db: webhookPersistenceDb,
   });
   if (webhookReceipt.error) {
     refusal(res, {
@@ -7328,7 +7531,7 @@ const handleInboundWebhook = async (
       providerMessageId: correlation.providerMessageId,
       status,
       failureReason: failureReason || null,
-      db: loadPlatformDb(),
+      db: webhookPersistenceDb,
     });
   };
 
@@ -7365,6 +7568,66 @@ const handleInboundWebhook = async (
           suppressedDomainWrites: true,
           dedupeKey: webhookReceipt.dedupeKey,
         },
+        sideEffects: {
+          lifecycleMutationApplied: false,
+          canonicalEventPersisted: false,
+          outboxPersisted: false,
+        },
+      },
+    });
+    return;
+  }
+
+  const bridgeWebhookProgression = await handleConnectShyftBridgeWebhookEvent({
+    tenantId,
+    orgUnitId,
+    threadId,
+    providerKey: providerSelection.providerResolution.resolvedProvider,
+    providerAdapter: providerSelection.adapter,
+    providerLegId: correlation.providerLegId,
+    eventType,
+    occurredAt: isStrictUtcIsoTimestamp(normalizeLifecycleString(req.body?.occurredAt))
+      ? new Date(normalizeLifecycleString(req.body?.occurredAt))
+      : undefined,
+    reason:
+      normalizeLifecycleString(req.body?.reason)
+      || normalizeLifecycleString(req.body?.hangupCause)
+      || normalizeLifecycleString(req.body?.hangup_cause)
+      || null,
+    callPolicy: CONNECTSHYFT_OUTBOUND_CALL_POLICY,
+  });
+  if (bridgeWebhookProgression.handled) {
+    await markWebhookReceipt('APPLIED');
+    success(res, {
+      code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+      message: 'Inbound webhook accepted',
+      data: {
+        eventType,
+        providerResolution: {
+          ...providerSelection.providerResolution,
+          adapterInvoked: true,
+        },
+        correlation: {
+          source: correlation.source,
+          deterministic: true,
+          threadId,
+          tenantId,
+          orgUnitId,
+          providerLegId: correlation.providerLegId,
+          providerMessageId: correlation.providerMessageId,
+          providerEventId: correlation.providerEventId,
+          providerNumberE164: correlation.providerNumberE164,
+        },
+        replaySafe: {
+          duplicate: false,
+          suppressedDomainWrites: false,
+          dedupeKey: webhookReceipt.dedupeKey,
+        },
+        bridgeSession: bridgeWebhookProgression.aggregate
+          ? buildProviderNeutralBridgeSessionState(bridgeWebhookProgression.aggregate)
+          : null,
+        bridgeEvent: bridgeWebhookProgression.domainEvent,
+        correlationMapping: bridgeWebhookProgression.correlationMapping,
         sideEffects: {
           lifecycleMutationApplied: false,
           canonicalEventPersisted: false,
