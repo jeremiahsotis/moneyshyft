@@ -80,6 +80,8 @@ Docker:
 - Shared host-managed PostgreSQL (single instance) (001-tighten-deployment-contracts)
 - TypeScript (ES2022) on Node.js >=20 + Express, Knex, pg, Jest/ts-jest, root-level shared communication domain source under `domains/communication` (002-phone-identity)
 - Shared PostgreSQL; current ConnectShyft phone persistence in `connectshyft.cs_neighbor_phones` must evolve toward `communication_contact_point`-equivalent canonical fields (002-phone-identity)
+- TypeScript (ES2022) on Node.js >=20 + Express, Knex, pg, Jest/ts-jest, root shared communication domain source under `domains/communication`, root infrastructure adapter source under `infrastructure/communications`, existing ConnectShyft provider registry and outbound route contracts (003-telnyx-outbound-adapter)
+- Shared PostgreSQL; current ConnectShyft provider correlation and webhook receipt tables (`connectshyft.cs_provider_identifier_mappings`, `connectshyft.cs_webhook_receipts`) remain the CS-003 persistence equivalents for provider references and replay-safe receipts (003-telnyx-outbound-adapter)
 
 ## Recent Changes
 - 001-tighten-deployment-contracts: Added TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose
