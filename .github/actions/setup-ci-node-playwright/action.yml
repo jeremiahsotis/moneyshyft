@@ -32,6 +32,7 @@ runs:
         cache: npm
         cache-dependency-path: |
           package-lock.json
+          apps/admin-api/package-lock.json
           apps/moneyshyft-web/package-lock.json
           apps/connectshyft-web/package-lock.json
           apps/moneyshyft-api/package-lock.json
@@ -105,13 +106,19 @@ runs:
       if: inputs.install_backend_test_deps == 'true'
       shell: bash
       run: |
+        if [ -f apps/admin-api/package-lock.json ]; then
+          npm ci --prefix apps/admin-api || npm ci --prefix apps/admin-api || npm install --prefix apps/admin-api --no-audit --fund=false
+        else
+          npm install --prefix apps/admin-api --no-audit --fund=false
+        fi
+
         if [ -f apps/moneyshyft-api/package-lock.json ]; then
           npm ci --prefix apps/moneyshyft-api || npm ci --prefix apps/moneyshyft-api || npm install --prefix apps/moneyshyft-api --no-audit --fund=false
         else
           npm install --prefix apps/moneyshyft-api --no-audit --fund=false
         fi
 
-        for app_dir in apps/admin-api apps/connectshyft-api; do
+        for app_dir in apps/connectshyft-api; do
           if [ -e "$app_dir/node_modules" ] && [ ! -L "$app_dir/node_modules" ]; then
             echo "$app_dir/node_modules exists as a directory; leaving in place."
           else
