@@ -19,6 +19,9 @@ const resolveRequiredEnv = (primary: string, fallback: string): string => {
   }
 
   if (process.env.NODE_ENV === 'test') {
+    if (primary === 'DATABASE_PORT') {
+      return '5432';
+    }
     return `test-${primary.toLowerCase()}`;
   }
 
