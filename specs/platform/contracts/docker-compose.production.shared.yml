@@ -51,8 +51,8 @@ services:
 
   connect-api:
     build:
-      context: ./apps/connectshyft-api
-      dockerfile: Dockerfile.production
+      context: .
+      dockerfile: ./apps/connectshyft-api/Dockerfile.production
     container_name: connect-api
     restart: unless-stopped
     env_file:
