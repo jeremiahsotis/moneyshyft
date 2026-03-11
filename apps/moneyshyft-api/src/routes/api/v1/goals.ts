@@ -4,6 +4,7 @@ import { asyncHandler } from '../../../middleware/errorHandler';
 import { authenticateToken, requireHouseholdAccess } from '../../../middleware/auth';
 import { validateRequest } from '../../../middleware/validate';
 import { createGoalSchema, updateGoalSchema, addContributionSchema } from '../../../validators/goal.validators';
+import { readString } from '../../../utils/requestValue';
 
 const router = Router();
 
@@ -31,7 +32,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
  * Get a specific goal by ID
  */
 router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId!;
 
   const goal = await GoalService.getGoalById(id, householdId);
@@ -63,7 +64,7 @@ router.post('/', validateRequest(createGoalSchema), asyncHandler(async (req: Req
  * Update a goal
  */
 router.patch('/:id', validateRequest(updateGoalSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId!;
   const updateData = req.body;
 
@@ -80,7 +81,7 @@ router.patch('/:id', validateRequest(updateGoalSchema), asyncHandler(async (req:
  * Delete a goal
  */
 router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId!;
 
   await GoalService.deleteGoal(id, householdId);
@@ -96,7 +97,7 @@ router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
  * Add a contribution to a goal
  */
 router.post('/:id/contributions', validateRequest(addContributionSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId!;
   const userId = req.user!.userId;
   const contributionData = req.body;
@@ -114,7 +115,7 @@ router.post('/:id/contributions', validateRequest(addContributionSchema), asyncH
  * Get all contributions for a goal
  */
 router.get('/:id/contributions', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId!;
 
   const contributions = await GoalService.getGoalContributions(id, householdId);

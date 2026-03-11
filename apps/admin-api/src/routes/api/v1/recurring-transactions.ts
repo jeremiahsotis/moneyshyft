@@ -9,6 +9,7 @@ import {
   skipInstanceSchema,
   updateInstanceSchema
 } from '../../../validators/recurring.validators';
+import { readInteger, readOneOf, readString } from '../../../utils/requestValue';
 
 const router = Router();
 
@@ -76,7 +77,7 @@ router.get(
 router.get(
   '/:id',
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = readString(req.params.id)!;
     const householdId = req.user!.householdId;
 
     if (!householdId) {
@@ -100,7 +101,7 @@ router.patch(
   '/:id',
   validateRequest(updateRecurringSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = readString(req.params.id)!;
     const householdId = req.user!.householdId;
 
     if (!householdId) {
@@ -127,7 +128,7 @@ router.patch(
 router.delete(
   '/:id',
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = readString(req.params.id)!;
     const householdId = req.user!.householdId;
 
     if (!householdId) {
@@ -150,7 +151,7 @@ router.delete(
 router.post(
   '/:id/toggle-auto-post',
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = readString(req.params.id)!;
     const householdId = req.user!.householdId;
 
     if (!householdId) {
@@ -173,7 +174,7 @@ router.post(
 router.post(
   '/:id/generate-instances',
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = readString(req.params.id)!;
     const householdId = req.user!.householdId;
     const daysAhead = req.body.days_ahead || 30;
 
@@ -206,7 +207,7 @@ router.get(
   '/instances/pending',
   asyncHandler(async (req: Request, res: Response) => {
     const householdId = req.user!.householdId;
-    const daysAhead = parseInt(req.query.days as string) || 7;
+    const daysAhead = readInteger(req.query.days) || 7;
 
     if (!householdId) {
       return res.status(403).json({ error: 'User must belong to a household' });
@@ -232,7 +233,7 @@ router.get(
   '/instances/all',
   asyncHandler(async (req: Request, res: Response) => {
     const householdId = req.user!.householdId;
-    const status = req.query.status as any;
+    const status = readOneOf(req.query.status, ['pending', 'approved', 'posted', 'skipped'] as const);
 
     if (!householdId) {
       return res.status(403).json({ error: 'User must belong to a household' });
@@ -254,7 +255,7 @@ router.get(
 router.post(
   '/instances/:id/approve',
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = readString(req.params.id)!;
     const householdId = req.user!.householdId;
     const userId = req.user!.userId;
 
@@ -283,7 +284,7 @@ router.post(
   '/instances/:id/skip',
   validateRequest(skipInstanceSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = readString(req.params.id)!;
     const householdId = req.user!.householdId;
     const userId = req.user!.userId;
     const { reason } = req.body;
@@ -313,7 +314,7 @@ router.post(
 router.post(
   '/instances/:id/post',
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = readString(req.params.id)!;
     const householdId = req.user!.householdId;
     const userId = req.user!.userId;
 
@@ -342,7 +343,7 @@ router.patch(
   '/instances/:id',
   validateRequest(updateInstanceSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = readString(req.params.id)!;
     const householdId = req.user!.householdId;
 
     if (!householdId) {

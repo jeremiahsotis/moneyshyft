@@ -4,6 +4,7 @@ import { authenticateToken } from '../../../middleware/auth';
 import { validateRequest } from '../../../middleware/validate';
 import { TagService } from '../../../services/TagService';
 import { createTagSchema, updateTagSchema } from '../../../validators/tag.validators';
+import { readString } from '../../../utils/requestValue';
 
 const router = Router();
 
@@ -53,7 +54,7 @@ router.post('/', validateRequest(createTagSchema), asyncHandler(async (req: Requ
  * Update a tag
  */
 router.patch('/:id', validateRequest(updateTagSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
   const updateData = req.body;
 
@@ -74,7 +75,7 @@ router.patch('/:id', validateRequest(updateTagSchema), asyncHandler(async (req: 
  * Delete a tag
  */
 router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {

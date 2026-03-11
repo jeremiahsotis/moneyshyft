@@ -9,6 +9,7 @@ import {
   createCategorySchema,
   updateCategorySchema
 } from '../../../validators/category.validators';
+import { readString } from '../../../utils/requestValue';
 
 const router = Router();
 
@@ -63,7 +64,7 @@ router.post('/sections', validateRequest(createSectionSchema), asyncHandler(asyn
  * Update a section
  */
 router.patch('/sections/:id', validateRequest(updateSectionSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
   const updateData = req.body;
 
@@ -84,7 +85,7 @@ router.patch('/sections/:id', validateRequest(updateSectionSchema), asyncHandler
  * Delete a section
  */
 router.delete('/sections/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {
@@ -127,7 +128,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
  * Get a specific category by ID
  */
 router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {
@@ -167,7 +168,7 @@ router.post('/', validateRequest(createCategorySchema), asyncHandler(async (req:
  * Update a category
  */
 router.patch('/:id', validateRequest(updateCategorySchema), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
   const updateData = req.body;
 
@@ -188,7 +189,7 @@ router.patch('/:id', validateRequest(updateCategorySchema), asyncHandler(async (
  * Delete a category
  */
 router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {

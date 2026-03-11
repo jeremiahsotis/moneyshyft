@@ -10,6 +10,7 @@ import {
   bulkSetAllocationsSchema,
   assignAccountBalanceSchema
 } from '../../../validators/budget.validators';
+import { readString } from '../../../utils/requestValue';
 
 const router = Router();
 
@@ -24,7 +25,7 @@ router.use(requireHouseholdAccess);
  */
 router.get('/:month/summary', asyncHandler(async (req: Request, res: Response) => {
   const householdId = req.user!.householdId!;
-  const { month } = req.params;
+  const month = readString(req.params.month)!;
 
   // Parse month parameter
   const monthDate = new Date(month);
@@ -46,7 +47,7 @@ router.get('/:month/summary', asyncHandler(async (req: Request, res: Response) =
  */
 router.put('/:month/notes', validateRequest(updateBudgetMonthSchema), asyncHandler(async (req: Request, res: Response) => {
   const householdId = req.user!.householdId!;
-  const { month } = req.params;
+  const month = readString(req.params.month)!;
   const { notes } = req.body;
 
   const monthDate = new Date(month);
@@ -68,7 +69,7 @@ router.put('/:month/notes', validateRequest(updateBudgetMonthSchema), asyncHandl
  */
 router.get('/:month/allocations', asyncHandler(async (req: Request, res: Response) => {
   const householdId = req.user!.householdId!;
-  const { month } = req.params;
+  const month = readString(req.params.month)!;
 
   const monthDate = new Date(month);
   if (isNaN(monthDate.getTime())) {
@@ -89,7 +90,7 @@ router.get('/:month/allocations', asyncHandler(async (req: Request, res: Respons
  */
 router.post('/:month/allocations', validateRequest(setBudgetAllocationSchema), asyncHandler(async (req: Request, res: Response) => {
   const householdId = req.user!.householdId!;
-  const { month } = req.params;
+  const month = readString(req.params.month)!;
   const allocationData = req.body;
 
   const monthDate = new Date(month);
@@ -111,7 +112,7 @@ router.post('/:month/allocations', validateRequest(setBudgetAllocationSchema), a
  */
 router.post('/:month/allocations/bulk', validateRequest(bulkSetAllocationsSchema), asyncHandler(async (req: Request, res: Response) => {
   const householdId = req.user!.householdId!;
-  const { month } = req.params;
+  const month = readString(req.params.month)!;
   const { allocations } = req.body;
 
   const monthDate = new Date(month);
@@ -134,7 +135,7 @@ router.post('/:month/allocations/bulk', validateRequest(bulkSetAllocationsSchema
  */
 router.delete('/allocations/:id', asyncHandler(async (req: Request, res: Response) => {
   const householdId = req.user!.householdId!;
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
 
   await BudgetService.deleteAllocation(householdId, id);
 
