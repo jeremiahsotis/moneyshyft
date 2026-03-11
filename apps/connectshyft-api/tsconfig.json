@@ -24,6 +24,6 @@
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*", "../../domains/communication/**/*"],
+  "include": ["src/**/*", "../../domains/communication/**/*", "../../infrastructure/communications/**/*"],
   "exclude": ["node_modules", "dist"]
 }

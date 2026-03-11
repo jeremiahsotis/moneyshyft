@@ -4,6 +4,7 @@ WORKDIR /workspace/apps/connectshyft-api
 
 COPY apps/connectshyft-api ../../apps/connectshyft-api
 COPY domains ../../domains
+COPY infrastructure ../../infrastructure
 
 RUN npm install && npm cache clean --force
 

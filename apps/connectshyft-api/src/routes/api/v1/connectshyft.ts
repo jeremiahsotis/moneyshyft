@@ -1,6 +1,10 @@
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { Request, Response, Router } from 'express';
 import type { Knex } from 'knex';
+import {
+  InMemoryTelephonyDispatchLedger,
+  buildTelephonyDispatchReplayKey,
+} from '../../../../../../domains/communication';
 import { refusal, success } from '../../../platform/envelopes/response';
 import { CAPABILITIES, hasCapability } from '../../../platform/rbac/capabilities';
 import {
@@ -49,7 +53,9 @@ import {
   type ConnectShyftValidatedSmsOverride,
 } from '../../../modules/connectshyft/smsPreferenceOverrides';
 import {
+  buildConnectShyftWebhookVerificationInput,
   ConnectShyftProviderDispatchPolicyError,
+  mapConnectShyftWebhookVerificationResult,
   resolveConnectShyftProviderAdapter,
   resolveConnectShyftRequestedProviderKey,
   type ConnectShyftOutboundCallDispatchPolicy,
@@ -183,6 +189,11 @@ const CONNECTSHYFT_LEGACY_ROLE_ALIASES: Record<string, string> = {
 
 type ConnectShyftOutboundAction = 'call' | 'message';
 type ConnectShyftNeighborMergeFailureStage = 'before-commit' | 'after-dependent-repoint';
+type ConnectShyftOutboundDispatchReplayRecord = {
+  code: 'CONNECTSHYFT_THREAD_CALL_DISPATCHED' | 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED';
+  message: 'ConnectShyft outbound call dispatched' | 'ConnectShyft outbound message dispatched';
+  data: Record<string, unknown>;
+};
 
 type ConnectShyftSyntheticThreadDescriptor = {
   tenantId: string;
@@ -465,10 +476,16 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
 };
 const CONNECTSHYFT_DYNAMIC_C5_THREAD_PREFIX = 'thread-c5-unclaimed-';
 const CONNECTSHYFT_DYNAMIC_C5_THREAD_TEMPLATE_ID = 'thread-c5-unclaimed-1001';
+const connectShyftOutboundDispatchReplayLedger =
+  new InMemoryTelephonyDispatchLedger<ConnectShyftOutboundDispatchReplayRecord>();
 
 const loadPlatformDb = (): Knex => {
   const knexModule = require('../../../config/knex') as { default: Knex };
   return knexModule.default;
+};
+
+export const resetConnectShyftOutboundDispatchReplayLedgerForTests = (): void => {
+  connectShyftOutboundDispatchReplayLedger.clear();
 };
 
 const connectShyftEscalationConfigService = new ConnectShyftEscalationConfigService(
@@ -3327,6 +3344,16 @@ const parseOutboundMessagePolicyRequest = (req: Request): {
   };
 };
 
+const parseOutboundDispatchIdempotencyKey = (req: Request): string | null => {
+  const headerIdempotencyKey = normalizeLifecycleString(req.header('Idempotency-Key'));
+  if (headerIdempotencyKey) {
+    return headerIdempotencyKey;
+  }
+
+  const bodyIdempotencyKey = normalizeLifecycleString(req.body?.idempotencyKey);
+  return bodyIdempotencyKey || null;
+};
+
 const enforceOutboundCallPolicyRequest = (
   req: Request,
   res: Response,
@@ -6026,6 +6053,42 @@ const performOutboundAction = async (
   const outboundMessagePolicy = outboundAction === 'message'
     ? parseOutboundMessagePolicyRequest(req)
     : null;
+  const outboundDispatchIdempotencyKey = parseOutboundDispatchIdempotencyKey(req);
+  const outboundCallDispatchPolicy: ConnectShyftOutboundCallDispatchPolicy | null = outboundAction === 'call'
+    ? {
+      transport: outboundCallPolicyRequest?.transport || CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT,
+      autoRetry: outboundCallPolicyRequest?.autoRetry === true,
+      redialPolicy: outboundCallPolicyRequest?.redialPolicy || CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_REDIAL_POLICY,
+    }
+    : null;
+  const outboundDispatchReplayKey = buildTelephonyDispatchReplayKey({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId,
+    providerKey: providerSelection.providerResolution.resolvedProvider,
+    action: outboundAction,
+    idempotencyKey: outboundDispatchIdempotencyKey,
+    targetPhone: outboundAction === 'call'
+      ? outboundCallPolicyRequest?.targetPhone || null
+      : outboundMessagePolicy?.targetPhone || null,
+    body: outboundMessagePolicy?.body || null,
+    callPolicy: outboundCallDispatchPolicy,
+  });
+  const replayedDispatch = connectShyftOutboundDispatchReplayLedger.get(outboundDispatchReplayKey);
+  if (replayedDispatch) {
+    success(res, {
+      code: replayedDispatch.code,
+      message: replayedDispatch.message,
+      data: {
+        ...replayedDispatch.data,
+        replaySafe: {
+          duplicate: true,
+          replayKey: outboundDispatchReplayKey,
+        },
+      },
+    });
+    return;
+  }
   const lifecycleContext = await resolveLifecycleContext({
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
@@ -6334,28 +6397,24 @@ const performOutboundAction = async (
     }
   };
 
-  const outboundCallDispatchPolicy: ConnectShyftOutboundCallDispatchPolicy | null = outboundAction === 'call'
-    ? {
-      transport: outboundCallPolicyRequest?.transport || CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT,
-      autoRetry: outboundCallPolicyRequest?.autoRetry === true,
-      redialPolicy: outboundCallPolicyRequest?.redialPolicy || CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_REDIAL_POLICY,
-    }
-    : null;
-
   let providerDispatch: ConnectShyftProviderDispatchResult;
   try {
     providerDispatch = outboundAction === 'call'
-      ? await providerSelection.adapter.dispatchOutboundCall({
+      ? await providerSelection.adapter.startOutboundCall({
         tenantId: context.tenantId,
         orgUnitId: context.orgUnitId,
         threadId,
+        providerKey: providerSelection.providerResolution.resolvedProvider,
+        idempotencyKey: outboundDispatchIdempotencyKey || undefined,
         targetPhone: outboundCallPolicyRequest?.targetPhone || undefined,
         callPolicy: outboundCallDispatchPolicy || undefined,
       })
-      : await providerSelection.adapter.dispatchOutboundMessage({
+      : await providerSelection.adapter.sendSms({
         tenantId: context.tenantId,
         orgUnitId: context.orgUnitId,
         threadId,
+        providerKey: providerSelection.providerResolution.resolvedProvider,
+        idempotencyKey: outboundDispatchIdempotencyKey || undefined,
         body: outboundMessagePolicy?.body || '',
         targetPhone: outboundMessagePolicy?.targetPhone || undefined,
       });
@@ -6556,89 +6615,102 @@ const performOutboundAction = async (
     heading: operatorFeedbackHeading,
     hiddenTransition: false,
   };
+  const responseCode = outboundAction === 'call'
+    ? 'CONNECTSHYFT_THREAD_CALL_DISPATCHED'
+    : 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED';
+  const responseMessage = outboundAction === 'call'
+    ? 'ConnectShyft outbound call dispatched'
+    : 'ConnectShyft outbound message dispatched';
+  const responseData: Record<string, unknown> = {
+    threadId,
+    context,
+    thread,
+    lifecycleEvent,
+    lifecycle: {
+      priorState,
+      nextState: thread.state,
+      reopenedFromClosed,
+      reopenedByInbound: false,
+      sameThreadId: true,
+      noInboundAutoReopenSideEffects: true,
+    },
+    operatorFeedback,
+    operatorFeedbackMeta: {
+      heading: operatorFeedbackHeading,
+      hiddenTransition: false,
+    },
+    uiFeedback,
+    chrome: {
+      persistentOperationsBannerVisible: false,
+      heavyOperationsDefaultLayout: false,
+    },
+    escalationReset,
+    sideEffectsPersisted,
+    providerResolution: {
+      ...providerSelection.providerResolution,
+      adapterInterfaceVersion: providerSelection.adapter.adapterInterfaceVersion,
+      providerBranchingInDomain: false,
+    },
+    canonicalEvent,
+    dispatch: providerDispatch,
+    correlationMapping,
+    replaySafe: {
+      duplicate: false,
+      replayKey: outboundDispatchReplayKey,
+    },
+    ...(postDispatchWarnings.length > 0
+      ? { postDispatchWarnings }
+      : {}),
+    ...(outboundAction === 'call'
+      ? {
+          call: CONNECTSHYFT_OUTBOUND_CALL_POLICY,
+          autoClaimPolicy: CONNECTSHYFT_OUTBOUND_CALL_AUTO_CLAIM_POLICY,
+        }
+      : {
+          preferencePolicy: {
+            prefersTexting: smsPreferenceDecision?.prefersTexting || 'UNKNOWN',
+            source: smsPreferenceDecision?.source || 'unknown',
+            overrideRequired: smsPreferenceDecision?.prefersTexting === 'NO',
+            overrideAccepted: smsPreferenceDecision?.prefersTexting !== 'NO'
+              || Boolean(validatedSmsOverride),
+            ...(validatedSmsOverride
+              ? {
+                override: {
+                  reason: validatedSmsOverride.reason,
+                  note: validatedSmsOverride.note,
+                  overrideId: persistedSmsOverride?.overrideId || null,
+                  durability: persistedSmsOverride?.durability || null,
+                  createdAtUtc: persistedSmsOverride?.createdAtUtc || null,
+                  audit: persistedSmsOverride
+                    ? {
+                      eventName: persistedSmsOverride.messageEventName,
+                      metadata: persistedSmsOverride.auditMetadata,
+                    }
+                    : null,
+                },
+              }
+              : {}),
+          },
+          sideEffects: {
+            messageDispatched: true,
+            lifecycleMutationApplied: reopenedFromClosed,
+            auditPersisted: Boolean(persistedSmsOverride),
+          },
+        }),
+    ...(sideEffects || {}),
+    ...(outboundDispatch ? { outboundDispatch } : {}),
+  };
+
+  connectShyftOutboundDispatchReplayLedger.remember(outboundDispatchReplayKey, {
+    code: responseCode,
+    message: responseMessage,
+    data: responseData,
+  });
 
   success(res, {
-    code: outboundAction === 'call'
-      ? 'CONNECTSHYFT_THREAD_CALL_DISPATCHED'
-      : 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED',
-    message: outboundAction === 'call'
-      ? 'ConnectShyft outbound call dispatched'
-      : 'ConnectShyft outbound message dispatched',
-    data: {
-      threadId,
-      context,
-      thread,
-      lifecycleEvent,
-      lifecycle: {
-        priorState,
-        nextState: thread.state,
-        reopenedFromClosed,
-        reopenedByInbound: false,
-        sameThreadId: true,
-        noInboundAutoReopenSideEffects: true,
-      },
-      operatorFeedback,
-      operatorFeedbackMeta: {
-        heading: operatorFeedbackHeading,
-        hiddenTransition: false,
-      },
-      uiFeedback,
-      chrome: {
-        persistentOperationsBannerVisible: false,
-        heavyOperationsDefaultLayout: false,
-      },
-      escalationReset,
-      sideEffectsPersisted,
-      providerResolution: {
-        ...providerSelection.providerResolution,
-        adapterInterfaceVersion: providerSelection.adapter.adapterInterfaceVersion,
-        providerBranchingInDomain: false,
-      },
-      canonicalEvent,
-      dispatch: providerDispatch,
-      correlationMapping,
-      ...(postDispatchWarnings.length > 0
-        ? { postDispatchWarnings }
-        : {}),
-      ...(outboundAction === 'call'
-        ? {
-            call: CONNECTSHYFT_OUTBOUND_CALL_POLICY,
-            autoClaimPolicy: CONNECTSHYFT_OUTBOUND_CALL_AUTO_CLAIM_POLICY,
-          }
-        : {
-            preferencePolicy: {
-              prefersTexting: smsPreferenceDecision?.prefersTexting || 'UNKNOWN',
-              source: smsPreferenceDecision?.source || 'unknown',
-              overrideRequired: smsPreferenceDecision?.prefersTexting === 'NO',
-              overrideAccepted: smsPreferenceDecision?.prefersTexting !== 'NO'
-                || Boolean(validatedSmsOverride),
-              ...(validatedSmsOverride
-                ? {
-                  override: {
-                    reason: validatedSmsOverride.reason,
-                    note: validatedSmsOverride.note,
-                    overrideId: persistedSmsOverride?.overrideId || null,
-                    durability: persistedSmsOverride?.durability || null,
-                    createdAtUtc: persistedSmsOverride?.createdAtUtc || null,
-                    audit: persistedSmsOverride
-                      ? {
-                        eventName: persistedSmsOverride.messageEventName,
-                        metadata: persistedSmsOverride.auditMetadata,
-                      }
-                      : null,
-                  },
-                }
-                : {}),
-            },
-            sideEffects: {
-              messageDispatched: true,
-              lifecycleMutationApplied: reopenedFromClosed,
-              auditPersisted: Boolean(persistedSmsOverride),
-            },
-          }),
-      ...(sideEffects || {}),
-      ...(outboundDispatch ? { outboundDispatch } : {}),
-    },
+    code: responseCode,
+    message: responseMessage,
+    data: responseData,
   });
   return;
 };
@@ -6667,7 +6739,14 @@ const handleInboundWebhook = async (
     return;
   }
 
-  const signatureDecision = providerSelection.adapter.validateInboundWebhookSignature({ req });
+  const signatureDecision = mapConnectShyftWebhookVerificationResult(
+    providerSelection.adapter.verifyWebhook(
+      buildConnectShyftWebhookVerificationInput({
+        req,
+        providerKey: providerSelection.providerResolution.resolvedProvider,
+      }),
+    ),
+  );
   if (!signatureDecision.ok) {
     const signatureMessageKey = signatureDecision.refusal.code === 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING'
       ? 'connectshyft.webhook.signature.missing'
@@ -6709,7 +6788,7 @@ const handleInboundWebhook = async (
     return;
   }
 
-  const canonicalTranslation = providerSelection.adapter.toCanonicalEvent({
+  const canonicalTranslation = providerSelection.adapter.translateProviderEvent({
     rawEventType: normalizeLifecycleString(req.body?.eventType) || 'sms.inbound',
     payload: req.body,
   });

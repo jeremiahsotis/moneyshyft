@@ -1,6 +1,15 @@
-import { createPublicKey, verify } from 'node:crypto';
+import {
+  assertValidCallDispatchResult,
+  assertValidSmsDispatchResult,
+  type TelephonyDispatchResult,
+  type TelephonyOutboundCallPolicy,
+  type TelephonyProviderAdapter,
+  type TelephonyProviderEvent,
+  type TelephonyWebhookVerificationInput,
+  type TelephonyWebhookVerificationResult,
+} from '../../../../../domains/communication';
+import { createTelnyxAdapter } from '../../../../../infrastructure/communications/telnyx';
 import { isConnectShyftTestOverrideEnabled } from './featureFlags';
-import { sanitizeConnectShyftCanonicalPayload } from './canonicalEvents';
 
 const DEFAULT_ENABLED_PROVIDERS = ['telnyx'];
 const ENABLED_PROVIDERS_ENV = 'CONNECTSHYFT_ENABLED_PROVIDERS';
@@ -11,12 +20,9 @@ const TEST_DISABLED_PROVIDERS_HEADER = 'x-test-connectshyft-disabled-providers';
 const TEST_REQUESTED_PROVIDER_HEADER = 'x-test-connectshyft-provider-requested';
 const TEST_PROVIDER_ROLLOUT_ALLOWLIST_HEADER = 'x-test-connectshyft-provider-rollout-allowlist';
 const TEST_ENFORCE_WEBHOOK_SIGNATURE_HEADER = 'x-test-connectshyft-enforce-webhook-signature';
-const TEST_TELNYX_PUBLIC_KEY_HEADER = 'x-test-connectshyft-telnyx-public-key';
-const TELNYX_SIGNATURE_HEADER = 'telnyx-signature-ed25519';
-const TELNYX_TIMESTAMP_HEADER = 'telnyx-timestamp';
-const TELNYX_PUBLIC_KEY_ENV = 'TELNYX_PUBLIC_KEY';
 const CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS_ENV = 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS';
-const DEFAULT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS = 300;
+const TEST_PROVIDER_PUBLIC_KEY_HEADER = 'x-test-connectshyft-provider-public-key';
+const TEST_PROVIDER_PUBLIC_KEY_LEGACY_HEADER = 'x-test-connectshyft-telnyx-public-key';
 const CONNECTSHYFT_REQUIRED_CALL_TRANSPORT = 'bridge';
 const CONNECTSHYFT_REQUIRED_CALL_REDIAL_POLICY = 'manual_only';
 
@@ -34,20 +40,9 @@ export type ConnectShyftProviderResolution = {
   reason?: ConnectShyftProviderResolutionReason;
 };
 
-export type ConnectShyftProviderDispatchResult = {
-  providerKey: string;
-  channel: 'call' | 'message';
-  providerLegId: string | null;
-  providerMessageId: string | null;
-  adapterInvoked: true;
-  providerBranchingInDomain: false;
-};
+export type ConnectShyftProviderDispatchResult = TelephonyDispatchResult;
 
-export type ConnectShyftOutboundCallDispatchPolicy = {
-  transport: string;
-  autoRetry: boolean;
-  redialPolicy: string;
-};
+export type ConnectShyftOutboundCallDispatchPolicy = TelephonyOutboundCallPolicy;
 
 export class ConnectShyftProviderDispatchPolicyError extends Error {
   readonly code:
@@ -69,13 +64,7 @@ export class ConnectShyftProviderDispatchPolicyError extends Error {
   }
 }
 
-export type ConnectShyftProviderCanonicalEvent = {
-  eventType: string;
-  payload: Record<string, unknown>;
-  providerNeutral: true;
-  providerSpecificFieldsStripped: true;
-  providerBranchingInDomain: false;
-};
+export type ConnectShyftProviderCanonicalEvent = TelephonyProviderEvent;
 
 export type ConnectShyftProviderSideEffectsContract = {
   dispatchAttempted: false;
@@ -130,6 +119,7 @@ type ConnectShyftWebhookRequest = ConnectShyftHeaderReader & {
   url?: string;
   tenantId?: string | null;
   orgUnitId?: string | null;
+  headers?: Record<string, unknown>;
 };
 
 type ConnectShyftProviderRolloutAllowlistRule = {
@@ -146,31 +136,7 @@ type ConnectShyftProviderRolloutAllowlistParseResult = {
   invalid: boolean;
 };
 
-export interface ConnectShyftProviderAdapter {
-  providerKey: string;
-  adapterInterfaceVersion: 'v1';
-  dispatchOutboundCall(input: {
-    tenantId: string;
-    orgUnitId: string;
-    threadId: string;
-    targetPhone?: string;
-    callPolicy?: ConnectShyftOutboundCallDispatchPolicy;
-  }): Promise<ConnectShyftProviderDispatchResult>;
-  dispatchOutboundMessage(input: {
-    tenantId: string;
-    orgUnitId: string;
-    threadId: string;
-    body?: string;
-    targetPhone?: string;
-  }): Promise<ConnectShyftProviderDispatchResult>;
-  validateInboundWebhookSignature(input: {
-    req: ConnectShyftWebhookRequest;
-  }): ConnectShyftWebhookSignatureResult;
-  toCanonicalEvent(input: {
-    rawEventType: string;
-    payload: unknown;
-  }): ConnectShyftProviderCanonicalEvent;
-}
+export type ConnectShyftProviderAdapter = TelephonyProviderAdapter;
 
 export type ConnectShyftProviderResolutionSuccess = {
   ok: true;
@@ -548,70 +514,6 @@ const isProviderAllowedByRolloutAllowlist = (input: {
   return false;
 };
 
-const resolveWebhookPayloadForSignature = (req: ConnectShyftWebhookRequest): string => {
-  if (typeof req.rawBody === 'string') {
-    return req.rawBody;
-  }
-
-  if (Buffer.isBuffer(req.rawBody)) {
-    return req.rawBody.toString('utf8');
-  }
-
-  if (typeof req.body === 'string') {
-    return req.body;
-  }
-
-  if (!req.body || typeof req.body !== 'object') {
-    return '';
-  }
-
-  try {
-    return JSON.stringify(req.body);
-  } catch (_error) {
-    return '';
-  }
-};
-
-const parseTelnyxSignatureHeader = (header: string): Buffer | null => {
-  const normalized = normalizeString(header);
-  if (!normalized) {
-    return null;
-  }
-
-  if (/^[a-f0-9]+$/i.test(normalized) && normalized.length % 2 === 0) {
-    return Buffer.from(normalized, 'hex');
-  }
-
-  try {
-    const parsed = Buffer.from(normalized, 'base64');
-    return parsed.length > 0 ? parsed : null;
-  } catch (_error) {
-    return null;
-  }
-};
-
-const parseWebhookTimestampMs = (timestamp: string): number | null => {
-  const normalized = normalizeString(timestamp);
-  if (!/^\d+$/.test(normalized)) {
-    return null;
-  }
-
-  const parsed = Number.parseInt(normalized, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return null;
-  }
-
-  // Telnyx sends unix seconds; tolerate millisecond epoch values if configured upstream.
-  return parsed > 1_000_000_000_000 ? parsed : parsed * 1000;
-};
-
-const resolveWebhookSignatureMaxAgeMs = (): number => {
-  const configured = parsePositiveInteger(
-    process.env[CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS_ENV],
-  );
-  return (configured ?? DEFAULT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS) * 1000;
-};
-
 const shouldBypassWebhookSignatureValidation = (
   req: ConnectShyftWebhookRequest,
 ): boolean => {
@@ -625,143 +527,12 @@ const shouldBypassWebhookSignatureValidation = (
   return !enforceValidation;
 };
 
-const resolveTelnyxPublicKey = (
-  req?: ConnectShyftWebhookRequest,
-): ReturnType<typeof createPublicKey> | null => {
-  if (req && isConnectShyftTestOverrideEnabled()) {
-    const testPublicKey = readHeader(req, TEST_TELNYX_PUBLIC_KEY_HEADER);
-    if (testPublicKey) {
-      const candidateKeys = [testPublicKey];
-      try {
-        const decoded = Buffer.from(testPublicKey, 'base64').toString('utf8').trim();
-        if (decoded && decoded !== testPublicKey) {
-          candidateKeys.push(decoded);
-        }
-      } catch (_error) {
-        // Ignore base64 decode failures and keep raw header candidate.
-      }
-
-      for (const candidate of candidateKeys) {
-        try {
-          return createPublicKey(candidate);
-        } catch (_error) {
-          // Try next candidate.
-        }
-      }
-      return null;
-    }
+const payloadToRecord = (payload: unknown): Record<string, unknown> => {
+  if (!payload || typeof payload !== 'object') {
+    return {};
   }
 
-  const rawKey = normalizeString(process.env[TELNYX_PUBLIC_KEY_ENV]);
-  if (!rawKey) {
-    return null;
-  }
-
-  try {
-    return createPublicKey(rawKey);
-  } catch (_error) {
-    return null;
-  }
-};
-
-const validateTelnyxWebhookSignature = (
-  req: ConnectShyftWebhookRequest,
-): ConnectShyftWebhookSignatureResult => {
-  if (shouldBypassWebhookSignatureValidation(req)) {
-    return { ok: true };
-  }
-
-  const telnyxPublicKey = resolveTelnyxPublicKey(req);
-  if (!telnyxPublicKey) {
-    return {
-      ok: false,
-      refusal: {
-        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED',
-        message: 'Webhook signature validation is not configured for Telnyx.',
-        refusalType: 'business',
-        httpStatus: 503,
-      },
-    };
-  }
-
-  const incomingSignature = readHeader(
-    req,
-    TELNYX_SIGNATURE_HEADER,
-    `x-${TELNYX_SIGNATURE_HEADER}`,
-  );
-  const incomingTimestamp = readHeader(
-    req,
-    TELNYX_TIMESTAMP_HEADER,
-    `x-${TELNYX_TIMESTAMP_HEADER}`,
-  );
-  if (!incomingSignature || !incomingTimestamp) {
-    return {
-      ok: false,
-      refusal: {
-        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING',
-        message: 'Telnyx webhook signature headers are required.',
-        refusalType: 'client',
-        httpStatus: 401,
-      },
-    };
-  }
-
-  const parsedSignature = parseTelnyxSignatureHeader(incomingSignature);
-  if (!parsedSignature) {
-    return {
-      ok: false,
-      refusal: {
-        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',
-        message: 'Webhook signature validation failed.',
-        refusalType: 'client',
-        httpStatus: 401,
-      },
-    };
-  }
-
-  const signedPayload = Buffer.from(
-    `${incomingTimestamp}|${resolveWebhookPayloadForSignature(req)}`,
-    'utf8',
-  );
-  let isValidSignature = false;
-  try {
-    isValidSignature = verify(
-      null,
-      signedPayload,
-      telnyxPublicKey,
-      parsedSignature,
-    );
-  } catch (_error) {
-    isValidSignature = false;
-  }
-
-  if (!isValidSignature) {
-    return {
-      ok: false,
-      refusal: {
-        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',
-        message: 'Webhook signature validation failed.',
-        refusalType: 'client',
-        httpStatus: 401,
-      },
-    };
-  }
-
-  const webhookTimestampMs = parseWebhookTimestampMs(incomingTimestamp);
-  const maxAgeMs = resolveWebhookSignatureMaxAgeMs();
-  if (!webhookTimestampMs || Math.abs(Date.now() - webhookTimestampMs) > maxAgeMs) {
-    return {
-      ok: false,
-      refusal: {
-        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',
-        message: 'Webhook signature timestamp is outside the allowed replay window.',
-        refusalType: 'client',
-        httpStatus: 401,
-      },
-    };
-  }
-
-  return { ok: true };
+  return payload as Record<string, unknown>;
 };
 
 const toCanonicalEventType = (rawEventType: string): string => {
@@ -774,7 +545,7 @@ const toCanonicalEventType = (rawEventType: string): string => {
     return 'CallConnected';
   }
 
-  if (normalized === 'call.attempt.started' || normalized === 'voice.started') {
+  if (normalized === 'call.attempt.started' || normalized === 'call.initiated') {
     return 'CallAttemptStarted';
   }
 
@@ -792,37 +563,136 @@ const toCanonicalEventType = (rawEventType: string): string => {
 
   return normalized
     .split(/[._-]+/)
-    .map((part) => part ? `${part.charAt(0).toUpperCase()}${part.slice(1)}` : '')
+    .map((part) => (part ? `${part.charAt(0).toUpperCase()}${part.slice(1)}` : ''))
     .join('') || 'MessageQueued';
 };
 
-const buildDispatchResult = (
-  input: {
-    providerKey: string;
-    channel: 'call' | 'message';
-    threadId: string;
-  },
-): ConnectShyftProviderDispatchResult => ({
+const collectWebhookHeaders = (
+  req: ConnectShyftWebhookRequest,
+): TelephonyWebhookVerificationInput['headers'] => {
+  const collected: TelephonyWebhookVerificationInput['headers'] = {};
+
+  if (req.headers && typeof req.headers === 'object') {
+    Object.entries(req.headers).forEach(([name, value]) => {
+      if (typeof value === 'string' || Array.isArray(value)) {
+        collected[name.toLowerCase()] = value;
+      }
+    });
+  }
+
+  [
+    TEST_ENFORCE_WEBHOOK_SIGNATURE_HEADER,
+    TEST_PROVIDER_PUBLIC_KEY_HEADER,
+    TEST_PROVIDER_PUBLIC_KEY_LEGACY_HEADER,
+  ].forEach((headerName) => {
+    const value = req.header(headerName);
+    if (typeof value === 'string' && value.trim().length > 0) {
+      collected[headerName.toLowerCase()] = value;
+    }
+  });
+
+  return collected;
+};
+
+export const buildConnectShyftWebhookVerificationInput = (input: {
+  req: ConnectShyftWebhookRequest;
+  providerKey: string;
+}): TelephonyWebhookVerificationInput => ({
   providerKey: input.providerKey,
-  channel: input.channel,
-  providerLegId: input.channel === 'call'
-    ? `${input.providerKey}-call-leg-${input.threadId}`
-    : null,
-  providerMessageId: input.channel === 'message'
-    ? `${input.providerKey}-message-${input.threadId}`
-    : null,
-  adapterInvoked: true,
-  providerBranchingInDomain: false,
+  headers: collectWebhookHeaders(input.req),
+  rawBody: input.req.rawBody,
+  payload: input.req.body,
+  requestPath: input.req.originalUrl || input.req.url,
+  protocol: input.req.protocol,
+  verification: {
+    enforceValidation: !shouldBypassWebhookSignatureValidation(input.req),
+    publicKeyPem: readHeader(
+      input.req,
+      TEST_PROVIDER_PUBLIC_KEY_HEADER,
+      TEST_PROVIDER_PUBLIC_KEY_LEGACY_HEADER,
+    ) || null,
+    maxAgeSeconds: parsePositiveInteger(
+      process.env[CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS_ENV],
+    ),
+  },
 });
 
-const createAdapter = (input: {
-  providerKey: string;
-  validateInboundWebhookSignature?: (req: ConnectShyftWebhookRequest) => ConnectShyftWebhookSignatureResult;
-}): ConnectShyftProviderAdapter => ({
-  providerKey: input.providerKey,
+export const mapConnectShyftWebhookVerificationResult = (
+  result: TelephonyWebhookVerificationResult,
+): ConnectShyftWebhookSignatureResult => {
+  if (result.ok) {
+    return result;
+  }
+
+  const refusalCode = result.refusal.code === 'WEBHOOK_SIGNATURE_NOT_CONFIGURED'
+    ? 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED'
+    : result.refusal.code === 'WEBHOOK_SIGNATURE_MISSING'
+      ? 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING'
+      : 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID';
+
+  return {
+    ok: false,
+    refusal: {
+      code: refusalCode,
+      message: result.refusal.message,
+      refusalType: result.refusal.refusalType,
+      httpStatus: result.refusal.httpStatus,
+    },
+  };
+};
+
+const buildMockSandboxAdapter = (
+  providerKey: string,
+): ConnectShyftProviderAdapter => ({
+  providerKey,
   adapterInterfaceVersion: 'v1',
-  async dispatchOutboundCall(dispatchInput) {
-    const requestedTransport = normalizeString(dispatchInput.callPolicy?.transport).toLowerCase();
+  async sendSms(command) {
+    return assertValidSmsDispatchResult({
+      providerKey,
+      channel: 'message',
+      providerLegId: null,
+      providerMessageId: `${providerKey}-message-${command.threadId}`,
+      adapterInvoked: true,
+      providerBranchingInDomain: false,
+    });
+  },
+  async startOutboundCall(command) {
+    return assertValidCallDispatchResult({
+      providerKey,
+      channel: 'call',
+      providerLegId: `${providerKey}-call-leg-${command.threadId}`,
+      providerMessageId: null,
+      adapterInvoked: true,
+      providerBranchingInDomain: false,
+    });
+  },
+  verifyWebhook(input) {
+    if (input.verification?.enforceValidation === false) {
+      return { ok: true };
+    }
+    return { ok: true };
+  },
+  translateProviderEvent({ rawEventType, payload }) {
+    return {
+      eventType: toCanonicalEventType(rawEventType),
+      payload: payloadToRecord(payload),
+      providerNeutral: true,
+      providerSpecificFieldsStripped: true,
+      providerBranchingInDomain: false,
+    };
+  },
+});
+
+const createGuardrailedAdapter = (
+  baseAdapter: TelephonyProviderAdapter,
+): ConnectShyftProviderAdapter => ({
+  providerKey: baseAdapter.providerKey,
+  adapterInterfaceVersion: baseAdapter.adapterInterfaceVersion,
+  async sendSms(command) {
+    return baseAdapter.sendSms(command);
+  },
+  async startOutboundCall(command) {
+    const requestedTransport = normalizeString(command.callPolicy?.transport).toLowerCase();
     if (
       requestedTransport.length > 0
       && requestedTransport !== CONNECTSHYFT_REQUIRED_CALL_TRANSPORT
@@ -837,8 +707,8 @@ const createAdapter = (input: {
       });
     }
 
-    const requestedRedialPolicy = normalizeString(dispatchInput.callPolicy?.redialPolicy).toLowerCase();
-    const requestedAutoRetry = dispatchInput.callPolicy?.autoRetry === true;
+    const requestedRedialPolicy = normalizeString(command.callPolicy?.redialPolicy).toLowerCase();
+    const requestedAutoRetry = command.callPolicy?.autoRetry === true;
     if (
       requestedAutoRetry
       || (
@@ -857,52 +727,28 @@ const createAdapter = (input: {
       });
     }
 
-    return buildDispatchResult({
-      providerKey: input.providerKey,
-      channel: 'call',
-      threadId: dispatchInput.threadId,
-    });
+    return baseAdapter.startOutboundCall(command);
   },
-  async dispatchOutboundMessage(dispatchInput) {
-    return buildDispatchResult({
-      providerKey: input.providerKey,
-      channel: 'message',
-      threadId: dispatchInput.threadId,
-    });
+  verifyWebhook(input) {
+    return baseAdapter.verifyWebhook(input);
   },
-  validateInboundWebhookSignature({ req }) {
-    if (input.validateInboundWebhookSignature) {
-      return input.validateInboundWebhookSignature(req);
-    }
-    return { ok: true };
-  },
-  toCanonicalEvent({ rawEventType, payload }) {
-    return {
-      eventType: toCanonicalEventType(rawEventType),
-      payload: sanitizeConnectShyftCanonicalPayload(payloadToRecord(payload)),
-      providerNeutral: true,
-      providerSpecificFieldsStripped: true,
-      providerBranchingInDomain: false,
-    };
+  translateProviderEvent(input) {
+    return baseAdapter.translateProviderEvent(input);
   },
 });
 
-const payloadToRecord = (payload: unknown): Record<string, unknown> => {
-  if (!payload || typeof payload !== 'object') {
-    return {};
+const resolveProviderAdapter = (
+  providerKey: string,
+): ConnectShyftProviderAdapter | null => {
+  if (providerKey === 'telnyx') {
+    return createGuardrailedAdapter(createTelnyxAdapter());
   }
 
-  return payload as Record<string, unknown>;
-};
+  if (providerKey === 'mock-sandbox') {
+    return createGuardrailedAdapter(buildMockSandboxAdapter(providerKey));
+  }
 
-const PROVIDER_ADAPTERS: Record<string, ConnectShyftProviderAdapter> = {
-  telnyx: createAdapter({
-    providerKey: 'telnyx',
-    validateInboundWebhookSignature: validateTelnyxWebhookSignature,
-  }),
-  'mock-sandbox': createAdapter({
-    providerKey: 'mock-sandbox',
-  }),
+  return null;
 };
 
 export const resolveConnectShyftRequestedProviderKey = (
@@ -969,7 +815,7 @@ export const resolveConnectShyftProviderAdapter = (input: {
     });
   }
 
-  const adapter = PROVIDER_ADAPTERS[resolvedProvider];
+  const adapter = resolveProviderAdapter(resolvedProvider);
   if (!adapter) {
     return buildProviderResolutionRefusal({
       code: 'CONNECTSHYFT_PROVIDER_UNAVAILABLE',
