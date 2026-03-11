@@ -5,12 +5,18 @@ import {
 } from '../neighbors';
 
 describe('connectshyft neighbor service', () => {
+  const originalEnv = process.env;
   let store: InMemoryConnectShyftNeighborStore;
   let service: ConnectShyftNeighborService;
 
   beforeEach(() => {
+    process.env = { ...originalEnv };
     store = new InMemoryConnectShyftNeighborStore();
     service = new ConnectShyftNeighborService(store);
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   it('creates tenant-scoped neighbors with normalized phone values', () => {
@@ -41,6 +47,9 @@ describe('connectshyft neighbor service', () => {
             expect.objectContaining({
               label: 'mobile',
               value: '+12605550199',
+              displayNational: '(260) 555-0199',
+              countryCode: '1',
+              nationalNumber: '2605550199',
               sortOrder: 0,
               isPrimary: true,
             }),
@@ -59,6 +68,41 @@ describe('connectshyft neighbor service', () => {
     );
     expect(scopedNeighbors).toHaveLength(1);
     expect(scopedNeighbors[0].neighborId).toBe(result.data.neighbor.neighborId);
+  });
+
+  it('creates tenant-scoped neighbors from seven-digit local input when a default area code is configured', () => {
+    process.env.CONNECTSHYFT_PHONE_DEFAULT_AREA_CODE = '260';
+
+    const result = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '5550199',
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
+      data: {
+        neighbor: {
+          phones: [
+            expect.objectContaining({
+              value: '+12605550199',
+              displayNational: '(260) 555-0199',
+              countryCode: '1',
+              nationalNumber: '2605550199',
+            }),
+          ],
+        },
+      },
+    });
   });
 
   it('refuses create requests that omit phone entries', () => {

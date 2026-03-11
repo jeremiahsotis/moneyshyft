@@ -30,8 +30,8 @@ export function createStoryE6Context(
     providerRegistryFile: 'apps/moneyshyft-api/src/modules/connectshyft/providerRegistry.ts',
     providerRegistryTestFile:
       'apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts',
-    deploymentChecklistFile: 'DEPLOYMENT_CHECKLIST.md',
-    productionGuideFile: 'PRODUCTION_DEPLOYMENT_GUIDE.md',
+    deploymentChecklistFile: 'docs/DEPLOYMENT_CHECKLIST.md',
+    productionGuideFile: 'docs/PRODUCTION_DEPLOYMENT_GUIDE.md',
     ...overrides,
   };
 }

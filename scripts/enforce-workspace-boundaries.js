@@ -10,13 +10,14 @@ const repoRoot = process.cwd();
 const LANE_TAGS = ['lane:moneyshyft', 'lane:connectshyft', 'lane:signshyft'];
 const SHARED_TAG = 'scope:shared';
 const LEGACY_LANE_TAGS = ['lane:routeshyft'];
+const SHARED_PROJECT_ROOT_PREFIXES = ['packages/shared-', 'domains/'];
 const DEPENDENCY_RULES = {
   'lane:moneyshyft': ['lane:moneyshyft', SHARED_TAG],
   'lane:connectshyft': ['lane:connectshyft', SHARED_TAG],
   'lane:signshyft': ['lane:signshyft', SHARED_TAG],
   'scope:shared': [SHARED_TAG],
 };
-const SCAN_ROOTS = ['apps', 'tools', 'packages', 'libs'];
+const SCAN_ROOTS = ['apps', 'tools', 'packages', 'libs', 'domains'];
 const IGNORE_DIRS = new Set(['node_modules', '.git', 'dist', 'coverage', '.nx', '.cache']);
 const SOURCE_FILE_PATTERN = /\.(ts|tsx|js|jsx|mjs|cjs|vue)$/i;
 
@@ -93,15 +94,14 @@ function collectProjectJsonFiles() {
   return Array.from(new Set(files)).sort();
 }
 
-function collectSharedPackageDirs() {
-  const packagesRoot = path.join(repoRoot, 'packages');
-  if (!fs.existsSync(packagesRoot)) {
-    return [];
-  }
-  return fs
-    .readdirSync(packagesRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name.startsWith('shared-'))
-    .map((entry) => normalizeRelative(path.join('packages', entry.name)))
+function isSharedProjectRoot(projectRoot) {
+  return SHARED_PROJECT_ROOT_PREFIXES.some((prefix) => projectRoot.startsWith(prefix));
+}
+
+function collectSharedProjectDirs(projectDescriptors) {
+  return projectDescriptors
+    .filter((descriptor) => descriptor.hasSharedTag)
+    .map((descriptor) => descriptor.projectRoot)
     .sort();
 }
 
@@ -250,10 +250,16 @@ function isWorkspaceSourceFile(filePath) {
 function isDisallowedSharedImport(specifier, sourceFile) {
   const directSharedPathPattern = /packages\/shared-[^/]+\/src(?:\/.*)?$/;
   const directSharedIndexPattern = /packages\/shared-[^/]+\/src\/index(?:\.[a-z0-9]+)?$/i;
+  const directDomainPathPattern = /^domains\/[^/]+\/.+$/;
+  const directDomainIndexPattern = /^domains\/[^/]+\/index(?:\.[a-z0-9]+)?$/i;
   const scopedSharedDeepPattern = /^@[^/]+\/shared-[^/]+\/.+/;
   const unscopedSharedDeepPattern = /^shared-[^/]+\/.+/;
 
   if (scopedSharedDeepPattern.test(specifier) || unscopedSharedDeepPattern.test(specifier)) {
+    return true;
+  }
+
+  if (directDomainPathPattern.test(specifier) && !directDomainIndexPattern.test(specifier)) {
     return true;
   }
 
@@ -267,6 +273,9 @@ function isDisallowedSharedImport(specifier, sourceFile) {
 
   const sourceAbsolute = path.join(repoRoot, sourceFile);
   const resolved = normalizeRelative(path.relative(repoRoot, path.resolve(path.dirname(sourceAbsolute), specifier)));
+  if (directDomainPathPattern.test(resolved) && !directDomainIndexPattern.test(resolved)) {
+    return true;
+  }
   if (directSharedPathPattern.test(resolved) && !directSharedIndexPattern.test(resolved)) {
     return true;
   }
@@ -276,7 +285,7 @@ function isDisallowedSharedImport(specifier, sourceFile) {
 
 function validateProjectTags(projectFiles, issues) {
   for (const descriptor of projectFiles) {
-    const { projectFile, tags, laneTags, hasSharedTag } = descriptor;
+    const { projectFile, projectRoot, tags, laneTags, hasSharedTag } = descriptor;
 
     if (tags.length === 0) {
       issues.push(`${projectFile}: missing tags[] classification. Add exactly one lane:* tag or scope:shared.`);
@@ -300,20 +309,20 @@ function validateProjectTags(projectFiles, issues) {
     const classificationCount = laneTags.length + (hasSharedTag ? 1 : 0);
     if (classificationCount === 0) {
       issues.push(
-        `${projectFile}: must include exactly one lane tag (${LANE_TAGS.join(', ')}) or '${SHARED_TAG}' for shared packages.`,
+        `${projectFile}: must include exactly one lane tag (${LANE_TAGS.join(', ')}) or '${SHARED_TAG}' for shared projects.`,
       );
     }
     if (classificationCount > 1) {
       issues.push(`${projectFile}: ambiguous classification. Do not combine lane:* tags with '${SHARED_TAG}'.`);
     }
 
-    if (projectFile.startsWith('packages/shared-') && !hasSharedTag) {
-      issues.push(`${projectFile}: shared package projects must include '${SHARED_TAG}'.`);
+    if (isSharedProjectRoot(projectRoot) && !hasSharedTag) {
+      issues.push(`${projectFile}: shared projects must include '${SHARED_TAG}'.`);
     }
 
-    if (!projectFile.startsWith('packages/shared-') && hasSharedTag) {
+    if (!isSharedProjectRoot(projectRoot) && hasSharedTag) {
       issues.push(
-        `${projectFile}: '${SHARED_TAG}' is only allowed for projects under packages/shared-*; use exactly one lane tag.`,
+        `${projectFile}: '${SHARED_TAG}' is only allowed for projects under packages/shared-* or domains/*; use exactly one lane tag.`,
       );
     }
   }
@@ -384,24 +393,29 @@ function validateDependencyConstraints(projectFiles, issues) {
   }
 }
 
-function validateSharedPackageEntrypoints(sharedPackageDirs, issues) {
-  for (const packageDir of sharedPackageDirs) {
-    const publicEntrypoint = path.join(repoRoot, packageDir, 'src/index.ts');
-    if (!fs.existsSync(publicEntrypoint)) {
+function validateSharedProjectEntrypoints(sharedProjectDirs, issues) {
+  for (const projectDir of sharedProjectDirs) {
+    const candidateEntrypoints = [
+      path.join(repoRoot, projectDir, 'src/index.ts'),
+      path.join(repoRoot, projectDir, 'index.ts'),
+    ];
+    if (!candidateEntrypoints.some((candidate) => fs.existsSync(candidate))) {
       issues.push(
-        `${packageDir}: missing public entrypoint src/index.ts. Shared packages must expose a single import boundary.`,
+        `${projectDir}: missing public entrypoint src/index.ts or index.ts. Shared projects must expose a single import boundary.`,
       );
     }
   }
 }
 
-function validateDeepImports(issues) {
+function validateDeepImports(projectDescriptors, issues) {
+  const lookup = buildProjectLookup(projectDescriptors);
   let candidateFiles = gatherChangedFiles().filter((file) => isWorkspaceSourceFile(file));
   if (candidateFiles.length === 0) {
     candidateFiles = runLines('git ls-files').filter((file) => isWorkspaceSourceFile(file));
   }
 
   for (const file of candidateFiles) {
+    const sourceProject = findOwningProjectForWorkspacePath(file, lookup);
     const absolutePath = path.join(repoRoot, file);
     if (!fs.existsSync(absolutePath)) {
       continue;
@@ -420,8 +434,13 @@ function validateDeepImports(issues) {
       const specifiers = extractImportSpecifiers(line);
       for (const specifier of specifiers) {
         if (isDisallowedSharedImport(specifier, file)) {
+          const targetProject = findProjectForSpecifier(specifier, file, lookup);
+          if (sourceProject && targetProject && sourceProject.projectFile === targetProject.projectFile) {
+            continue;
+          }
+
           issues.push(
-            `${file}:${index + 1}: deep/shared boundary import '${specifier}' is forbidden. Import shared packages through the package root and re-export via src/index.ts.`,
+            `${file}:${index + 1}: deep/shared boundary import '${specifier}' is forbidden. Import shared projects through their public root entrypoints.`,
           );
         }
       }
@@ -599,7 +618,7 @@ function validateCrossLaneImports(projectDescriptors, issues) {
         }
 
         issues.push(
-          `${file}:${index + 1}: cross-lane import '${specifier}' is forbidden (${sourceClass} -> ${targetClass}). Route cross-lane contracts through packages/shared-* and import from package root APIs.`,
+          `${file}:${index + 1}: cross-lane import '${specifier}' is forbidden (${sourceClass} -> ${targetClass}). Route cross-lane contracts through packages/shared-* or domains/* and import from public root APIs.`,
         );
       }
     }
@@ -613,10 +632,10 @@ function fail(issues) {
   }
   console.error('Remediation:');
   console.error(
-    `  1. Add exactly one lane tag (${LANE_TAGS.join(', ')}) to each workspace project, or '${SHARED_TAG}' for shared packages.`,
+    `  1. Add exactly one lane tag (${LANE_TAGS.join(', ')}) to each workspace project, or '${SHARED_TAG}' for shared projects.`,
   );
   console.error("  2. Keep lane dependencies isolated to same-lane + scope:shared in .eslintrc.cjs.");
-  console.error("  3. Expose shared package APIs via src/index.ts and remove deep imports across package boundaries.");
+  console.error("  3. Expose shared project APIs via src/index.ts or index.ts and remove deep imports across shared boundaries.");
   process.exit(1);
 }
 
@@ -629,12 +648,12 @@ function main() {
   const issues = [];
   const projectFiles = collectProjectJsonFiles();
   const projectDescriptors = extractProjectDescriptors(projectFiles, issues);
-  const sharedPackageDirs = collectSharedPackageDirs();
+  const sharedProjectDirs = collectSharedProjectDirs(projectDescriptors);
 
   validateProjectTags(projectDescriptors, issues);
   validateDependencyConstraints(projectFiles, issues);
-  validateSharedPackageEntrypoints(sharedPackageDirs, issues);
-  validateDeepImports(issues);
+  validateSharedProjectEntrypoints(sharedProjectDirs, issues);
+  validateDeepImports(projectDescriptors, issues);
   validateCrossLaneImports(projectDescriptors, issues);
 
   if (issues.length > 0) {
@@ -642,7 +661,7 @@ function main() {
   }
 
   console.log(
-    `Workspace boundary guard passed (projects=${projectFiles.length}, sharedPackages=${sharedPackageDirs.length})`,
+    `Workspace boundary guard passed (projects=${projectFiles.length}, sharedProjects=${sharedProjectDirs.length})`,
   );
 }
 

@@ -65,6 +65,16 @@ const buildNonProductionConnection = (): string | Knex.StaticConnectionConfig =>
     return process.env.DATABASE_URL;
   }
 
+  if (process.env.NODE_ENV === 'test') {
+    return {
+      host: '127.0.0.1',
+      port: 5432,
+      database: 'connectshyft_test',
+      user: 'postgres',
+      password: 'test-db-password',
+    };
+  }
+
   const portValue = resolveRequiredEnv('DATABASE_PORT', 'DB_PORT');
   const parsedPort = parseInt(portValue, 10);
   if (Number.isNaN(parsedPort)) {

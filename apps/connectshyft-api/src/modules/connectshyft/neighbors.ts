@@ -1,4 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import {
+  normalizePhone,
+  type PhoneSource,
+  type PhoneUsageType,
+  type PhoneValidationStatus,
+} from '../../../../../domains/communication';
 import { CAPABILITIES, hasCapability } from '../../platform/rbac/capabilities';
 import db from '../../config/knex';
 import {
@@ -12,6 +18,7 @@ import {
   type ConnectShyftIdentityBoundaryReplay,
   type ConnectShyftIdentityBoundaryResult as ConnectShyftIdentityMatchResult,
 } from './identityBoundary';
+import { resolveConnectShyftPhoneNormalizationContext } from './phoneIdentityContext';
 
 type QueryBuilderLike = {
   withSchema(schema: string): QueryBuilderLike;
@@ -40,9 +47,6 @@ type KnexLike = QueryBuilderLike & {
   transaction<T>(handler: (trx: KnexTransactionLike) => Promise<T>): Promise<T>;
 };
 
-const E164_PHONE_PATTERN = /^\+[1-9]\d{1,14}$/;
-const REMOVABLE_PHONE_CHARS_PATTERN = /[\s().-]/g;
-const INVALID_PHONE_CHAR_PATTERN = /[A-Za-z]/;
 export const CONNECTSHYFT_NEIGHBOR_MERGE_CONFIRMATION_PHRASE = 'IRREVERSIBLE MERGE';
 
 export type ConnectShyftNeighborPhoneInput = {
@@ -55,20 +59,39 @@ export type ConnectShyftNeighborPhoneInput = {
 type NormalizedConnectShyftNeighborPhoneInput = {
   label: string;
   value: string;
+  rawInput: string;
+  normalizedE164: string;
+  displayNational: string;
+  countryCode: string;
+  nationalNumber: string;
+  extension?: string;
+  validationStatus: PhoneValidationStatus;
+  usageType: PhoneUsageType;
+  source: PhoneSource;
   sortOrder: number;
   isPrimary: boolean;
   isShared: boolean;
   verificationStatus: 'verified' | 'unverified';
+  isActive: boolean;
 };
 
 export type ConnectShyftNeighborPhone = {
   phoneId: string;
   label: string;
   value: string;
+  rawInput: string | null;
+  displayNational: string | null;
+  countryCode: string | null;
+  nationalNumber: string | null;
+  extension?: string | null;
+  validationStatus: PhoneValidationStatus;
+  usageType: PhoneUsageType;
+  source: PhoneSource;
   sortOrder: number;
   isPrimary: boolean;
   isShared: boolean;
   verificationStatus: 'verified' | 'unverified';
+  isActive: boolean;
   createdAtUtc: string;
   updatedAtUtc: string;
 };
@@ -286,29 +309,6 @@ const normalizePhoneLabel = (value: unknown): string => {
   return normalized;
 };
 
-const normalizePhoneValue = (value: string): string | null => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  if (INVALID_PHONE_CHAR_PATTERN.test(trimmed)) {
-    return null;
-  }
-
-  const compact = trimmed.replace(REMOVABLE_PHONE_CHARS_PATTERN, '');
-  if (!/^\+?\d+$/.test(compact)) {
-    return null;
-  }
-
-  const normalized = compact.startsWith('+') ? compact : `+${compact}`;
-  if (!E164_PHONE_PATTERN.test(normalized)) {
-    return null;
-  }
-
-  return normalized;
-};
-
 const normalizeVerificationStatus = (
   value: unknown,
 ): 'verified' | 'unverified' => {
@@ -337,13 +337,13 @@ const buildPhoneRequiredRefusal = (): NeighborRefusalResult => ({
 const buildPhoneInvalidFormatRefusal = (): NeighborRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_NEIGHBOR_PHONE_INVALID_FORMAT',
-  message: 'Provide a valid phone value (for example, +12605550199).',
+  message: 'Provide a valid phone number (for example, 2605550199).',
   data: {
     fieldErrors: [
       {
         field: 'phones',
         reason: 'INVALID_FORMAT',
-        message: 'Provide a valid phone value (for example, +12605550199).',
+        message: 'Provide a valid phone number (for example, 2605550199).',
       },
     ],
   },
@@ -428,22 +428,32 @@ const normalizePhones = (
     return buildPhoneRequiredRefusal();
   }
 
+  const context = resolveConnectShyftPhoneNormalizationContext('user_entered');
   const normalizedPhones: NormalizedConnectShyftNeighborPhoneInput[] = [];
   for (let index = 0; index < phones.length; index += 1) {
     const phone = phones[index];
-    const normalizedValue = normalizePhoneValue(normalizeNonEmptyString(phone?.value));
-
-    if (!normalizedValue) {
+    const resolvedPhone = normalizePhone(normalizeNonEmptyString(phone?.value), context);
+    if (!resolvedPhone.ok) {
       return buildPhoneInvalidFormatRefusal();
     }
 
     normalizedPhones.push({
       label: normalizePhoneLabel(phone?.label),
-      value: normalizedValue,
+      value: resolvedPhone.phone.normalizedE164,
+      rawInput: resolvedPhone.phone.rawInput,
+      normalizedE164: resolvedPhone.phone.normalizedE164,
+      displayNational: resolvedPhone.phone.displayNational,
+      countryCode: resolvedPhone.phone.countryCode,
+      nationalNumber: resolvedPhone.phone.nationalNumber,
+      extension: resolvedPhone.phone.extension,
+      validationStatus: resolvedPhone.phone.validationStatus,
+      usageType: resolvedPhone.phone.usageType,
+      source: resolvedPhone.phone.source,
       sortOrder: index,
       isPrimary: index === 0,
       isShared: phone?.isShared === true,
       verificationStatus: normalizeVerificationStatus(phone?.verificationStatus),
+      isActive: true,
     });
   }
 
@@ -498,10 +508,20 @@ type DbNeighborPhoneRow = {
   tenant_id: string;
   label: string;
   value_e164: string;
+  raw_input?: string | null;
+  normalized_e164?: string | null;
+  display_national?: string | null;
+  country_code?: string | null;
+  national_number?: string | null;
+  extension?: string | null;
+  validation_status?: PhoneValidationStatus | null;
+  usage_type?: PhoneUsageType | null;
+  source?: PhoneSource | null;
   sort_order: number;
   is_primary: boolean;
   is_shared?: boolean | null;
   verification_status?: string | null;
+  is_active?: boolean | null;
   created_at_utc: string | Date;
   updated_at_utc: string | Date;
 };
@@ -527,6 +547,33 @@ const normalizeTextingPreference = (value: unknown): 'UNKNOWN' | 'YES' | 'NO' =>
   return 'UNKNOWN';
 };
 
+const normalizePhoneValidationStatus = (value: unknown): PhoneValidationStatus => {
+  if (value === 'valid' || value === 'invalid' || value === 'needs_review') {
+    return value;
+  }
+
+  return 'valid';
+};
+
+const normalizePhoneUsageType = (value: unknown): PhoneUsageType => {
+  if (value === 'mobile' || value === 'landline' || value === 'unknown') {
+    return value;
+  }
+
+  return 'unknown';
+};
+
+const normalizePhoneSource = (value: unknown): PhoneSource => {
+  if (value === 'user_entered' || value === 'imported' || value === 'system_generated') {
+    return value;
+  }
+
+  return 'user_entered';
+};
+
+const resolveStoredPhoneValue = (phoneRow: DbNeighborPhoneRow): string =>
+  normalizeNonEmptyString(phoneRow.normalized_e164 || phoneRow.value_e164);
+
 const sortPhones = (phoneRows: DbNeighborPhoneRow[]): DbNeighborPhoneRow[] => {
   return phoneRows
     .slice()
@@ -548,7 +595,7 @@ const mergePhoneRows = (
 
   [...sortPhones(survivorPhoneRows), ...sortPhones(sourcePhoneRows)].forEach((phone) => {
     const label = normalizePhoneLabel(phone.label);
-    const value = normalizeNonEmptyString(phone.value_e164);
+    const value = resolveStoredPhoneValue(phone);
     if (!value) {
       return;
     }
@@ -562,10 +609,20 @@ const mergePhoneRows = (
     merged.push({
       label,
       value,
+      rawInput: normalizeNonEmptyString(phone.raw_input || value),
+      normalizedE164: value,
+      displayNational: normalizeNonEmptyString(phone.display_national || value),
+      countryCode: normalizeNonEmptyString(phone.country_code),
+      nationalNumber: normalizeNonEmptyString(phone.national_number),
+      extension: normalizeNonEmptyString(phone.extension) || undefined,
+      validationStatus: normalizePhoneValidationStatus(phone.validation_status),
+      usageType: normalizePhoneUsageType(phone.usage_type),
+      source: normalizePhoneSource(phone.source),
       sortOrder: merged.length,
       isPrimary: merged.length === 0,
       isShared: phone.is_shared === true,
       verificationStatus: normalizeVerificationStatus(phone.verification_status),
+      isActive: phone.is_active !== false,
     });
   });
 
@@ -614,11 +671,20 @@ const mapRowsToNeighbor = (
   phones: sortPhones(phoneRows).map((phoneRow) => ({
     phoneId: phoneRow.id,
     label: phoneRow.label,
-    value: phoneRow.value_e164,
+    value: resolveStoredPhoneValue(phoneRow),
+    rawInput: phoneRow.raw_input || null,
+    displayNational: phoneRow.display_national || null,
+    countryCode: phoneRow.country_code || null,
+    nationalNumber: phoneRow.national_number || null,
+    extension: phoneRow.extension || null,
+    validationStatus: normalizePhoneValidationStatus(phoneRow.validation_status),
+    usageType: normalizePhoneUsageType(phoneRow.usage_type),
+    source: normalizePhoneSource(phoneRow.source),
     sortOrder: phoneRow.sort_order,
     isPrimary: phoneRow.is_primary,
     isShared: phoneRow.is_shared === true,
     verificationStatus: normalizeVerificationStatus(phoneRow.verification_status),
+    isActive: phoneRow.is_active !== false,
     createdAtUtc: toIsoUtc(phoneRow.created_at_utc),
     updatedAtUtc: toIsoUtc(phoneRow.updated_at_utc),
   })),
@@ -696,10 +762,19 @@ export class InMemoryConnectShyftNeighborStore {
         phoneId: randomUUID(),
         label: phone.label,
         value: phone.value,
+        rawInput: phone.rawInput,
+        displayNational: phone.displayNational,
+        countryCode: phone.countryCode,
+        nationalNumber: phone.nationalNumber,
+        extension: phone.extension || null,
+        validationStatus: phone.validationStatus,
+        usageType: phone.usageType,
+        source: phone.source,
         sortOrder: phone.sortOrder,
         isPrimary: phone.isPrimary,
         isShared: phone.isShared,
         verificationStatus: phone.verificationStatus,
+        isActive: phone.isActive,
         createdAtUtc: now,
         updatedAtUtc: now,
       })),
@@ -743,10 +818,19 @@ export class InMemoryConnectShyftNeighborStore {
         phoneId: randomUUID(),
         label: phone.label,
         value: phone.value,
+        rawInput: phone.rawInput,
+        displayNational: phone.displayNational,
+        countryCode: phone.countryCode,
+        nationalNumber: phone.nationalNumber,
+        extension: phone.extension || null,
+        validationStatus: phone.validationStatus,
+        usageType: phone.usageType,
+        source: phone.source,
         sortOrder: phone.sortOrder,
         isPrimary: phone.isPrimary,
         isShared: phone.isShared,
         verificationStatus: phone.verificationStatus,
+        isActive: phone.isActive,
         createdAtUtc: now,
         updatedAtUtc: now,
       })),
@@ -789,10 +873,20 @@ export class InMemoryConnectShyftNeighborStore {
         tenant_id: survivorNeighbor.tenantId,
         label: phone.label,
         value_e164: phone.value,
+        raw_input: phone.rawInput,
+        normalized_e164: phone.value,
+        display_national: phone.displayNational,
+        country_code: phone.countryCode,
+        national_number: phone.nationalNumber,
+        extension: phone.extension,
+        validation_status: phone.validationStatus,
+        usage_type: phone.usageType,
+        source: phone.source,
         sort_order: phone.sortOrder,
         is_primary: phone.isPrimary,
         is_shared: phone.isShared,
         verification_status: phone.verificationStatus,
+        is_active: phone.isActive,
         created_at_utc: phone.createdAtUtc,
         updated_at_utc: phone.updatedAtUtc,
       })),
@@ -802,10 +896,20 @@ export class InMemoryConnectShyftNeighborStore {
         tenant_id: sourceNeighbor.tenantId,
         label: phone.label,
         value_e164: phone.value,
+        raw_input: phone.rawInput,
+        normalized_e164: phone.value,
+        display_national: phone.displayNational,
+        country_code: phone.countryCode,
+        national_number: phone.nationalNumber,
+        extension: phone.extension,
+        validation_status: phone.validationStatus,
+        usage_type: phone.usageType,
+        source: phone.source,
         sort_order: phone.sortOrder,
         is_primary: phone.isPrimary,
         is_shared: phone.isShared,
         verification_status: phone.verificationStatus,
+        is_active: phone.isActive,
         created_at_utc: phone.createdAtUtc,
         updated_at_utc: phone.updatedAtUtc,
       })),
@@ -819,10 +923,19 @@ export class InMemoryConnectShyftNeighborStore {
         phoneId: randomUUID(),
         label: phone.label,
         value: phone.value,
+        rawInput: phone.rawInput,
+        displayNational: phone.displayNational,
+        countryCode: phone.countryCode,
+        nationalNumber: phone.nationalNumber,
+        extension: phone.extension || null,
+        validationStatus: phone.validationStatus,
+        usageType: phone.usageType,
+        source: phone.source,
         sortOrder: phone.sortOrder,
         isPrimary: phone.isPrimary,
         isShared: phone.isShared,
         verificationStatus: phone.verificationStatus,
+        isActive: phone.isActive,
         createdAtUtc: now,
         updatedAtUtc: now,
       })),
@@ -939,10 +1052,20 @@ export class KnexConnectShyftNeighborStore {
       'tenant_id',
       'label',
       'value_e164',
+      'raw_input',
+      'normalized_e164',
+      'display_national',
+      'country_code',
+      'national_number',
+      'extension',
+      'validation_status',
+      'usage_type',
+      'source',
       'sort_order',
       'is_primary',
       'is_shared',
       'verification_status',
+      'is_active',
       'created_at_utc',
       'updated_at_utc',
     ];
@@ -990,10 +1113,20 @@ export class KnexConnectShyftNeighborStore {
           tenant_id: input.tenantId,
           label: phone.label,
           value_e164: phone.value,
+          raw_input: phone.rawInput,
+          normalized_e164: phone.normalizedE164,
+          display_national: phone.displayNational,
+          country_code: phone.countryCode,
+          national_number: phone.nationalNumber,
+          extension: phone.extension || null,
+          validation_status: phone.validationStatus,
+          usage_type: phone.usageType,
+          source: phone.source,
           sort_order: phone.sortOrder,
           is_primary: phone.isPrimary,
           is_shared: phone.isShared,
           verification_status: phone.verificationStatus,
+          is_active: phone.isActive,
           created_at_utc: trx.fn.now(),
           updated_at_utc: trx.fn.now(),
         }));
@@ -1114,7 +1247,7 @@ export class KnexConnectShyftNeighborStore {
       .table('cs_neighbor_phones')
       .where({
         tenant_id: tenantId,
-        value_e164: phoneValue,
+        normalized_e164: phoneValue,
       })
       .orderBy('neighbor_id', 'asc')
       .orderBy('sort_order', 'asc')
@@ -1136,7 +1269,7 @@ export class KnexConnectShyftNeighborStore {
       const existing = phonesByNeighborId.get(row.neighbor_id) || [];
       existing.push({
         phoneId: row.id,
-        value: row.value_e164,
+        value: resolveStoredPhoneValue(row),
         isShared: row.is_shared === true,
         verificationStatus: normalizeVerificationStatus(row.verification_status),
       });
@@ -1199,10 +1332,20 @@ export class KnexConnectShyftNeighborStore {
           tenant_id: input.tenantId,
           label: phone.label,
           value_e164: phone.value,
+          raw_input: phone.rawInput,
+          normalized_e164: phone.normalizedE164,
+          display_national: phone.displayNational,
+          country_code: phone.countryCode,
+          national_number: phone.nationalNumber,
+          extension: phone.extension || null,
+          validation_status: phone.validationStatus,
+          usage_type: phone.usageType,
+          source: phone.source,
           sort_order: phone.sortOrder,
           is_primary: phone.isPrimary,
           is_shared: phone.isShared,
           verification_status: phone.verificationStatus,
+          is_active: phone.isActive,
           created_at_utc: trx.fn.now(),
           updated_at_utc: trx.fn.now(),
         }));
@@ -1305,10 +1448,20 @@ export class KnexConnectShyftNeighborStore {
               tenant_id: input.tenantId,
               label: phone.label,
               value_e164: phone.value,
+              raw_input: phone.rawInput,
+              normalized_e164: phone.normalizedE164,
+              display_national: phone.displayNational,
+              country_code: phone.countryCode,
+              national_number: phone.nationalNumber,
+              extension: phone.extension || null,
+              validation_status: phone.validationStatus,
+              usage_type: phone.usageType,
+              source: phone.source,
               sort_order: phone.sortOrder,
               is_primary: phone.isPrimary,
               is_shared: phone.isShared,
               verification_status: phone.verificationStatus,
+              is_active: phone.isActive,
               created_at_utc: trx.fn.now(),
               updated_at_utc: trx.fn.now(),
             })),
