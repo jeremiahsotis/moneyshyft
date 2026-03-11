@@ -1,0 +1,76 @@
+{
+  "dimension": "maintainability",
+  "score": 66,
+  "max_score": 100,
+  "grade": "C",
+  "violations": [
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "file-too-long",
+      "description": "File exceeds TEA DoD target (<300 lines), increasing cognitive load and debugging cost.",
+      "suggestion": "Split by AC into focused files (tokens/primitives, display-safety, responsive behavior).",
+      "code_snippet": "335-line single spec file"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 11,
+      "severity": "MEDIUM",
+      "category": "duplicate-helpers",
+      "description": "URL builder and context helpers are duplicated across ATDD and automate E2E specs.",
+      "suggestion": "Extract shared g-1 URL/test utilities under tests/support/helpers/connectshyft-g1.ts",
+      "code_snippet": "const buildSurfaceUrl = (...) => { ... }"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts",
+      "line": 11,
+      "severity": "MEDIUM",
+      "category": "duplicate-helpers",
+      "description": "Automate spec repeats route builders and css reader helpers from ATDD spec.",
+      "suggestion": "Reuse shared helper module with typed exports for URL and metric readers.",
+      "code_snippet": "const buildThreadDetailUrl = (...) => { ... }"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 80,
+      "severity": "MEDIUM",
+      "category": "id-format",
+      "description": "Tests only encode priority labels; structured story-level test IDs are missing.",
+      "suggestion": "Adopt stable IDs like G1-ATDD-API-001 in titles for traceability.",
+      "code_snippet": "'[P0] ... @P0'"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 181,
+      "severity": "MEDIUM",
+      "category": "branch-density",
+      "description": "Nested fallback branches increase complexity and reduce readability in core scenarios.",
+      "suggestion": "Normalize fixture preconditions and split alternate paths into separate tests.",
+      "code_snippet": "if (...) { if (...) { if (...) { ... } } }"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts",
+      "line": 25,
+      "severity": "LOW",
+      "category": "inline-data-walkers",
+      "description": "Inline object-walking utility logic is dense and repeated for payload extraction.",
+      "suggestion": "Extract reusable projection helper with explicit typing and unit tests.",
+      "code_snippet": "const collectOperatorPrimaryCopy = (item) => { ... }"
+    }
+  ],
+  "passed_checks": 14,
+  "failed_checks": 8,
+  "total_checks": 22,
+  "violation_summary": {
+    "HIGH": 1,
+    "MEDIUM": 4,
+    "LOW": 1
+  },
+  "recommendations": [
+    "Split oversized E2E ATDD file into AC-scoped specs",
+    "Deduplicate g-1 helper logic across ATDD and automate suites",
+    "Adopt structured test IDs for story-level traceability"
+  ],
+  "summary": "Maintainability is the weakest dimension due to oversize file scope, duplicated helpers, and branch-heavy scenarios."
+}

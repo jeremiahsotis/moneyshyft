@@ -1,0 +1,58 @@
+{
+  "dimension": "coverage",
+  "score": 88,
+  "max_score": 100,
+  "grade": "B",
+  "violations": [
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 127,
+      "severity": "MEDIUM",
+      "category": "edge-case-depth",
+      "description": "Primary outbound flow is covered, but deeper failure-mode assertions (provider outages, refusal payload UX) are limited at E2E level.",
+      "suggestion": "Add explicit negative-flow E2E assertions for dispatch refusal and transient provider failure UX messaging.",
+      "code_snippet": "'[G2-AUTO-E2E-205][P1] inbox send-message and make-call actions launch neighbor workflows and submit outbound requests @P1',"
+    },
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts",
+      "line": 63,
+      "severity": "MEDIUM",
+      "category": "boundary-variants",
+      "description": "Actor-context boundary is validated, but additional malformed actor/header variants are not exhaustively covered in this suite.",
+      "suggestion": "Add malformed/partial actor-context permutations to tighten boundary regression detection.",
+      "code_snippet": "'[G2-AUTO-API-301][P0] mine bucket refuses reads when actor context is missing to preserve actor-owned queue isolation @P0',"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 208,
+      "severity": "LOW",
+      "category": "nfr-observability",
+      "description": "Responsive behavior is functionally asserted, but no explicit performance thresholds are asserted for breakpoint transitions.",
+      "suggestion": "Optionally add lightweight perf/timing assertions for key layout transitions in CI-safe ranges.",
+      "code_snippet": "'[G2-AUTO-E2E-203][P0] responsive queue-to-thread behavior uses mobile full-screen thread tablet split layout and desktop three-column workflow @P0',"
+    }
+  ],
+  "passed_checks": 9,
+  "failed_checks": 3,
+  "total_checks": 12,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 2,
+    "LOW": 1
+  },
+  "coverage_gaps": {
+    "untested_endpoints": [],
+    "untested_user_paths": [
+      "E2E refusal/error path UX for outbound dispatch"
+    ],
+    "missing_error_scenarios": [
+      "Malformed actor-context permutations beyond whitespace-only user-id"
+    ]
+  },
+  "recommendations": [
+    "Add explicit negative E2E dispatch-refusal assertions.",
+    "Expand API boundary variants for actor-context malformed inputs.",
+    "Consider optional performance NFR checks for responsive transitions."
+  ],
+  "summary": "Coverage is strong for g.2 acceptance behaviors with limited medium-depth gaps in negative-path breadth."
+}

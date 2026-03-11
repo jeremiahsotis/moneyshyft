@@ -1,0 +1,58 @@
+{
+  "dimension": "determinism",
+  "score": 86,
+  "max_score": 100,
+  "grade": "B",
+  "violations": [
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 149,
+      "severity": "MEDIUM",
+      "category": "conditional-branching",
+      "description": "Test flow branches on runtime option counts, creating multi-path behavior that can hide deterministic failures.",
+      "suggestion": "Split each branch into explicit scenarios so each test has one deterministic path.",
+      "code_snippet": "if (await messagePhoneOptions.count() > 0) {"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 180,
+      "severity": "MEDIUM",
+      "category": "conditional-branching",
+      "description": "Make-call flow branches on option availability instead of enforcing explicit fixture preconditions.",
+      "suggestion": "Use fixed fixture states or separate tests for \"with options\" and \"without options\" paths.",
+      "code_snippet": "if (await callablePhoneOptions.count() > 0) {"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts",
+      "line": 530,
+      "severity": "LOW",
+      "category": "time-dependency",
+      "description": "Runtime timestamps are generated in signature tests; this is mostly safe but can reduce exact reproducibility in edge timing windows.",
+      "suggestion": "Prefer fixed timestamps for deterministic replay-oriented crypto/signature scenarios where feasible.",
+      "code_snippet": "const timestamp = Math.trunc(Date.now() / 1000).toString();"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts",
+      "line": 643,
+      "severity": "LOW",
+      "category": "time-dependency",
+      "description": "Dynamic timestamp/number generation is used in integration tests, introducing slight nondeterministic variance.",
+      "suggestion": "Use deterministic seeded values in scenarios where uniqueness can be handled by fixture setup.",
+      "code_snippet": "const providerNumberE164 = `+1260${Date.now().toString().slice(-7)}`;"
+    }
+  ],
+  "passed_checks": 21,
+  "failed_checks": 4,
+  "total_checks": 25,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 2,
+    "LOW": 2
+  },
+  "recommendations": [
+    "Split conditional E2E branches into deterministic scenario-specific tests.",
+    "Use fixture-preconditioned data instead of branching on discovered UI option counts.",
+    "Prefer fixed timestamps for replay-sensitive signature validations where practical."
+  ],
+  "summary": "Determinism is strong overall with 4 violations (2 MEDIUM, 2 LOW)."
+}

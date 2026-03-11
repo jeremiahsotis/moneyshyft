@@ -1,0 +1,75 @@
+{
+  "dimension": "maintainability",
+  "score": 55,
+  "max_score": 100,
+  "grade": "F",
+  "violations": [
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 14,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Test file length is 350 lines, exceeding maintainability guidance for focused suites.",
+      "suggestion": "Split by behavior domain and extract common setup/helpers.",
+      "code_snippet": "test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)', () => {"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts",
+      "line": 34,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Test file length is 715 lines, exceeding maintainability guidance for focused suites.",
+      "suggestion": "Split by behavior domain and extract common setup/helpers.",
+      "code_snippet": "describe('connectshyft provider registry', () => {"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts",
+      "line": 115,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Test file length is 1354 lines, exceeding maintainability guidance for focused suites.",
+      "suggestion": "Split by behavior domain and extract common setup/helpers.",
+      "code_snippet": "describe('connectshyft provider adapter registry route integration', () => {"
+    },
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts",
+      "line": 57,
+      "severity": "MEDIUM",
+      "category": "file-growth",
+      "description": "Test file length is 215 lines; this increases maintenance cost and review complexity.",
+      "suggestion": "Refactor into smaller behavior-focused files and helper modules.",
+      "code_snippet": "test.describe("
+    },
+    {
+      "file": "apps/moneyshyft-api/src/modules/connectshyft/__tests__/readContracts.test.ts",
+      "line": 9,
+      "severity": "MEDIUM",
+      "category": "file-growth",
+      "description": "Test file length is 238 lines; this increases maintenance cost and review complexity.",
+      "suggestion": "Refactor into smaller behavior-focused files and helper modules.",
+      "code_snippet": "describe('connectshyft read contracts', () => {"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts",
+      "line": 115,
+      "severity": "MEDIUM",
+      "category": "high-case-density",
+      "description": "Large integration suite contains many scenarios in one file, making triage and ownership slower.",
+      "suggestion": "Segment by capability (dispatch, webhook correlation, signature validation, replay safety).",
+      "code_snippet": "describe('connectshyft provider adapter registry route integration', () => {"
+    }
+  ],
+  "passed_checks": 9,
+  "failed_checks": 6,
+  "violation_summary": {
+    "HIGH": 3,
+    "MEDIUM": 3,
+    "LOW": 0
+  },
+  "recommendations": [
+    "Split oversized specs into narrower suites by capability.",
+    "Extract repeated request/header setup and correlation helpers.",
+    "Keep each file below 300 lines where practical for faster review and debugging."
+  ],
+  "summary": "Maintainability is constrained by oversized files and high scenario density (6 total violations)."
+}

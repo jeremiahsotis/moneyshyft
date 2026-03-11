@@ -1,0 +1,2304 @@
+{
+  "apps/admin-api": {
+    "root": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "name": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "tags": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "tags.npm:public": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.0": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.1": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.2": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.3": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.4": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.5": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.6": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.7": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.8": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.description": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageName": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageMain": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.isInPackageManagerWorkspaces": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.executor": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.options": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.metadata": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.options.script": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.metadata.scriptContent": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.metadata.runCommand": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.executor": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.options": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.metadata": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.options.script": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.metadata.scriptContent": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.metadata.runCommand": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.executor": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.options": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.metadata": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.options.script": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.metadata.scriptContent": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.metadata.runCommand": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.executor": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.options": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.metadata": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.options.script": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.metadata.scriptContent": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.metadata.runCommand": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.executor": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.options": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.metadata": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.options.script": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.metadata.scriptContent": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.metadata.runCommand": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.executor": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.options": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.metadata": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.options.script": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.metadata.scriptContent": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.metadata.runCommand": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.executor": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.options": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.metadata": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.options.script": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.metadata.scriptContent": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.metadata.runCommand": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.executor": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.options": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.metadata": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.options.script": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.metadata.scriptContent": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.metadata.runCommand": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.executor": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.options": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.metadata": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.options.script": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.metadata.scriptContent": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.metadata.runCommand": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.executor": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.dependsOn": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.options": [
+      "apps/admin-api/package.json",
+      "nx/core/package-json"
+    ],
+    "$schema": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "sourceRoot": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.lane:connectshyft": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.type:app": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.runtime:node": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.executor": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.cwd": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.command": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.executor": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.cwd": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.command": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start.executor": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start.options": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start.options.cwd": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start.options.command": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.executor": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.cwd": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.command": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.executor": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options.command": [
+      "apps/admin-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  },
+  "apps/admin-web": {
+    "root": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "name": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "tags": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "tags.npm:public": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.0": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageName": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.isInPackageManagerWorkspaces": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.executor": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.options": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.metadata": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.options.script": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.metadata.scriptContent": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.metadata.runCommand": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.executor": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.dependsOn": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.options": [
+      "apps/admin-web/package.json",
+      "nx/core/package-json"
+    ],
+    "$schema": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "sourceRoot": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.lane:connectshyft": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.type:app": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.runtime:web": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.executor": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.cwd": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.command": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.executor": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.cwd": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.command": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.executor": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.options": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.options.cwd": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.options.command": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.executor": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options.command": [
+      "apps/admin-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  },
+  "apps/connectshyft-api": {
+    "root": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "name": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "tags": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "tags.npm:public": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.0": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.1": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.2": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.3": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.4": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.5": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.6": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.7": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.8": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.description": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageName": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageMain": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.isInPackageManagerWorkspaces": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.executor": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.options": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.metadata": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.options.script": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.metadata.scriptContent": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.metadata.runCommand": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.executor": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.options": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.metadata": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.options.script": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.metadata.scriptContent": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.metadata.runCommand": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.executor": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.options": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.metadata": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.options.script": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.metadata.scriptContent": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.metadata.runCommand": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.executor": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.options": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.metadata": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.options.script": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.metadata.scriptContent": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.metadata.runCommand": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.executor": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.options": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.metadata": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.options.script": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.metadata.scriptContent": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.metadata.runCommand": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.executor": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.options": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.metadata": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.options.script": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.metadata.scriptContent": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.metadata.runCommand": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.executor": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.options": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.metadata": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.options.script": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.metadata.scriptContent": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.metadata.runCommand": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.executor": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.options": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.metadata": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.options.script": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.metadata.scriptContent": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.metadata.runCommand": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.executor": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.options": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.metadata": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.options.script": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.metadata.scriptContent": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.metadata.runCommand": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.executor": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.dependsOn": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.options": [
+      "apps/connectshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "$schema": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "sourceRoot": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.lane:connectshyft": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.type:app": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.runtime:node": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.executor": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.cwd": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.command": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.executor": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.cwd": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.command": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start.executor": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start.options": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start.options.cwd": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start.options.command": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.executor": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.cwd": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.command": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.executor": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options.command": [
+      "apps/connectshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  },
+  "apps/connectshyft-web": {
+    "root": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "name": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "tags": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "tags.npm:public": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.0": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageName": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.isInPackageManagerWorkspaces": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.executor": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.options": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.metadata": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.options.script": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.metadata.scriptContent": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.metadata.runCommand": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.executor": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.dependsOn": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.options": [
+      "apps/connectshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "$schema": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "sourceRoot": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.lane:connectshyft": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.type:app": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.runtime:web": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.executor": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.cwd": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.command": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.executor": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.cwd": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.command": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.verify-connectshyft-ui": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.verify-connectshyft-ui.executor": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.verify-connectshyft-ui.options": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.verify-connectshyft-ui.options.command": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.executor": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.options": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.options.cwd": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.options.command": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.executor": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.command": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.executor": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options.command": [
+      "apps/connectshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  },
+  "apps/moneyshyft-api": {
+    "root": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "name": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "tags": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "tags.npm:public": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.0": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.1": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.2": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.3": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.4": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.5": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.6": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.7": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.8": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.description": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageName": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageMain": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.isInPackageManagerWorkspaces": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.executor": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.options": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.metadata": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.options.script": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.metadata.scriptContent": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest.metadata.runCommand": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.executor": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.options": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.metadata": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.options.script": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.metadata.scriptContent": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:latest:prod.metadata.runCommand": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.executor": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.options": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.metadata": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.options.script": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.metadata.scriptContent": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback.metadata.runCommand": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.executor": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.options": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.metadata": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.options.script": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.metadata.scriptContent": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:rollback:prod.metadata.runCommand": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.executor": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.options": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.metadata": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.options.script": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.metadata.scriptContent": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.migrate:make.metadata.runCommand": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.executor": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.options": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.metadata": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.options.script": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.metadata.scriptContent": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run.metadata.runCommand": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.executor": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.options": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.metadata": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.options.script": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.metadata.scriptContent": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.seed:run:prod.metadata.runCommand": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.executor": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.options": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.metadata": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.options.script": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.metadata.scriptContent": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:connectshyft.metadata.runCommand": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.executor": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.options": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.metadata": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.options.script": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.metadata.scriptContent": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.test:watch.metadata.runCommand": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.executor": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.dependsOn": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.options": [
+      "apps/moneyshyft-api/package.json",
+      "nx/core/package-json"
+    ],
+    "$schema": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "sourceRoot": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.lane:moneyshyft": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.type:app": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.runtime:node": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.executor": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.cwd": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.command": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.executor": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.cwd": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.command": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start.executor": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start.options": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start.options.cwd": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.start.options.command": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.executor": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.cwd": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.command": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.executor": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options.command": [
+      "apps/moneyshyft-api/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  },
+  "apps/moneyshyft-web": {
+    "root": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "name": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "tags": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "tags.npm:public": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.targetGroups.NPM Scripts.0": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.packageName": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "metadata.js.isInPackageManagerWorkspaces": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.executor": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.options": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.metadata": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.options.script": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.metadata.scriptContent": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.build:prod.metadata.runCommand": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.executor": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.dependsOn": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "targets.nx-release-publish.options": [
+      "apps/moneyshyft-web/package.json",
+      "nx/core/package-json"
+    ],
+    "$schema": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "sourceRoot": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.lane:moneyshyft": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.type:app": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.runtime:web": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.executor": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.cwd": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.dev.options.command": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.executor": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.cwd": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.options.command": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.verify-moneyshyft-ui": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.verify-moneyshyft-ui.executor": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.verify-moneyshyft-ui.options": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.verify-moneyshyft-ui.options.command": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.executor": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.options": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.options.cwd": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.preview.options.command": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.executor": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.lint.options.command": [
+      "apps/moneyshyft-web/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.build.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.build.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.lint.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  },
+  "tools/e2e": {
+    "root": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "name": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "$schema": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "projectType": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "sourceRoot": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "tags": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.lane:moneyshyft": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.type:tool": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "tags.scope:test": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.executor": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.options.command": [
+      "tools/e2e/project.json",
+      "nx/core/project-json"
+    ],
+    "targets.test.cache": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.inputs": [
+      "nx.json",
+      "nx/target-defaults"
+    ],
+    "targets.test.parallelism": [
+      "nx.json",
+      "nx/target-defaults"
+    ]
+  }
+}

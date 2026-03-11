@@ -1,0 +1,72 @@
+{
+  "dimension": "coverage",
+  "score": 83,
+  "max_score": 100,
+  "grade": "B",
+  "violations": [
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "MEDIUM",
+      "category": "wrapper-without-direct-tests",
+      "description": "File has describe wrapper but no direct test(...) blocks.",
+      "suggestion": "Ensure executable parent specs cover this file explicitly."
+    },
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "assertion-density",
+      "description": "Assertion density appears low relative to test count.",
+      "suggestion": "Add outcome assertions for key behavior branches."
+    },
+    {
+      "file": "tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.lifecycle-and-replay.cases.ts",
+      "line": 1,
+      "severity": "MEDIUM",
+      "category": "missing-negative-paths",
+      "description": "No explicit negative/error-path indicators detected.",
+      "suggestion": "Add refusal/error-path checks for this scenario set."
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.atdd.spec.ts",
+      "line": 1,
+      "severity": "MEDIUM",
+      "category": "wrapper-without-direct-tests",
+      "description": "File has describe wrapper but no direct test(...) blocks.",
+      "suggestion": "Ensure executable parent specs cover this file explicitly."
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.dispatch-and-ownership.cases.ts",
+      "line": 1,
+      "severity": "MEDIUM",
+      "category": "missing-negative-paths",
+      "description": "No explicit negative/error-path indicators detected.",
+      "suggestion": "Add refusal/error-path checks for this scenario set."
+    }
+  ],
+  "passed_checks": 111,
+  "failed_checks": 5,
+  "total_checks": 116,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 4,
+    "LOW": 1
+  },
+  "coverage_gaps": {
+    "wrapper_files_without_direct_tests": [
+      "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.atdd.api.spec.ts",
+      "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.atdd.spec.ts"
+    ],
+    "files_without_negative_paths": [
+      "tests/api/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.api.lifecycle-and-replay.cases.ts",
+      "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.dispatch-and-ownership.cases.ts"
+    ]
+  },
+  "recommendations": [
+    "Map wrapper/case files to executable parent specs in traceability output.",
+    "Improve assertion density in sparse-assertion files.",
+    "Increase explicit negative-path assertions in files lacking refusal/error checks."
+  ],
+  "summary": "Coverage check found 5 violations in Epic G scope."
+}

@@ -1,0 +1,165 @@
+{
+  "dimension": "maintainability",
+  "score": 47,
+  "max_score": 100,
+  "grade": "F",
+  "violations": [
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "MEDIUM",
+      "category": "large-file",
+      "description": "File length 290 lines is approaching maintainability risk.",
+      "suggestion": "Consider splitting into smaller specs/case modules.",
+      "code_snippet": "// 290 lines"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts",
+      "line": 1,
+      "severity": "MEDIUM",
+      "category": "large-file",
+      "description": "File length 265 lines is approaching maintainability risk.",
+      "suggestion": "Consider splitting into smaller specs/case modules.",
+      "code_snippet": "// 265 lines"
+    },
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "MEDIUM",
+      "category": "large-file",
+      "description": "File length 310 lines is approaching maintainability risk.",
+      "suggestion": "Consider splitting into smaller specs/case modules.",
+      "code_snippet": "// 310 lines"
+    },
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts",
+      "line": 1,
+      "severity": "MEDIUM",
+      "category": "large-file",
+      "description": "File length 267 lines is approaching maintainability risk.",
+      "suggestion": "Consider splitting into smaller specs/case modules.",
+      "code_snippet": "// 267 lines"
+    },
+    {
+      "file": "tests/api/platform/g-3-thread-detail-conversation-first-rebuild.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "MEDIUM",
+      "category": "large-file",
+      "description": "File length 267 lines is approaching maintainability risk.",
+      "suggestion": "Consider splitting into smaller specs/case modules.",
+      "code_snippet": "// 267 lines"
+    },
+    {
+      "file": "tests/api/platform/g-3-thread-detail-conversation-first-rebuild.automate.api.spec.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "moderate-size",
+      "description": "File length 233 lines is moderate; monitor growth.",
+      "suggestion": "Avoid adding unrelated scenarios to already long files.",
+      "code_snippet": "// 233 lines"
+    },
+    {
+      "file": "tests/api/platform/g-4-add-neighbor-and-directory-rebuild.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "MEDIUM",
+      "category": "large-file",
+      "description": "File length 259 lines is approaching maintainability risk.",
+      "suggestion": "Consider splitting into smaller specs/case modules.",
+      "code_snippet": "// 259 lines"
+    },
+    {
+      "file": "tests/api/platform/g-4-add-neighbor-and-directory-rebuild.automate.api.spec.ts",
+      "line": 1,
+      "severity": "MEDIUM",
+      "category": "large-file",
+      "description": "File length 278 lines is approaching maintainability risk.",
+      "suggestion": "Consider splitting into smaller specs/case modules.",
+      "code_snippet": "// 278 lines"
+    },
+    {
+      "file": "tests/api/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.api.spec.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "moderate-size",
+      "description": "File length 230 lines is moderate; monitor growth.",
+      "suggestion": "Avoid adding unrelated scenarios to already long files.",
+      "code_snippet": "// 230 lines"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "moderate-size",
+      "description": "File length 218 lines is moderate; monitor growth.",
+      "suggestion": "Avoid adding unrelated scenarios to already long files.",
+      "code_snippet": "// 218 lines"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.atdd.spec.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "moderate-size",
+      "description": "File length 205 lines is moderate; monitor growth.",
+      "suggestion": "Avoid adding unrelated scenarios to already long files.",
+      "code_snippet": "// 205 lines"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.dispatch-and-ownership.cases.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "moderate-size",
+      "description": "File length 216 lines is moderate; monitor growth.",
+      "suggestion": "Avoid adding unrelated scenarios to already long files.",
+      "code_snippet": "// 216 lines"
+    },
+    {
+      "file": "tests/e2e/platform/g-4-add-neighbor-and-directory-rebuild.atdd.spec.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "moderate-size",
+      "description": "File length 249 lines is moderate; monitor growth.",
+      "suggestion": "Avoid adding unrelated scenarios to already long files.",
+      "code_snippet": "// 249 lines"
+    },
+    {
+      "file": "tests/e2e/platform/g-5-more-settings-volunteer-ia-and-admin-separation.atdd.spec.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "moderate-size",
+      "description": "File length 205 lines is moderate; monitor growth.",
+      "suggestion": "Avoid adding unrelated scenarios to already long files.",
+      "code_snippet": "// 205 lines"
+    },
+    {
+      "file": "tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.atdd.spec.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "moderate-size",
+      "description": "File length 247 lines is moderate; monitor growth.",
+      "suggestion": "Avoid adding unrelated scenarios to already long files.",
+      "code_snippet": "// 247 lines"
+    },
+    {
+      "file": "tests/e2e/platform/g-6-volunteer-contract-boundary-and-regression-hardening.automate.spec.ts",
+      "line": 1,
+      "severity": "LOW",
+      "category": "moderate-size",
+      "description": "File length 219 lines is moderate; monitor growth.",
+      "suggestion": "Avoid adding unrelated scenarios to already long files.",
+      "code_snippet": "// 219 lines"
+    }
+  ],
+  "passed_checks": 100,
+  "failed_checks": 16,
+  "total_checks": 116,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 7,
+    "LOW": 9
+  },
+  "recommendations": [
+    "Plan opportunistic splits for 250+ line files.",
+    "Keep medium-sized files focused to prevent further bloat."
+  ],
+  "summary": "Maintainability check found 16 violations in Epic G scope."
+}

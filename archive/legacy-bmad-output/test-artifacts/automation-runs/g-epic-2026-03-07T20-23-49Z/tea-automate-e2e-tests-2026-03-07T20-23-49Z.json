@@ -1,0 +1,32 @@
+{
+  "success": true,
+  "subprocess": "e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts",
+      "content": "import { test, expect } from '../../support/fixtures/connectShyftStoryG6E2e.fixture';\nimport {\n  buildStoryG6SurfaceUrl,\n  buildStoryG6ThreadDetailUrl,\n  createStoryG6Context,\n  createStoryG6Headers,\n} from '../../support/factories/connectShyftStoryG6Factory';\nimport {\n  deterministicProviderEventId,\n  deterministicToken,\n} from '../../support/utils/deterministicTestIds';\n\nconst UUID_PATTERN =\n  /[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i;\n\nconst context = createStoryG6Context();\n\nconst volunteerActor = {\n  role: 'ORGUNIT_MEMBER',\n  userId: context.userId,\n  orgUnitMemberships: [context.orgUnitId],\n};\n\ntest.describe('Epic G Volunteer UX Regression (Automate E2E Expansion)', () => {\n  test(\n    '[GEPIC-AUTO-E2E-301][P0] queue-search context survives inbox to mine to thread transitions while volunteer-primary copy remains display-safe @P0',\n    async ({ page }) => {\n      await page.goto(buildStoryG6SurfaceUrl(context, 'inbox', volunteerActor));\n      await expect(page.getByTestId('connectshyft-inbox-surface')).toBeVisible();\n\n      const searchInput = page.getByTestId('connectshyft-queue-search-input');\n      await expect(searchInput).toBeVisible();\n      await searchInput.fill('voicemail');\n      await expect(page).toHaveURL(/queueSearch=voicemail/i);\n\n      await page.getByTestId('connectshyft-bottom-nav-mine').click();\n      await expect(page).toHaveURL(/\\/app\\/connectshyft\\/mine/i);\n      await expect(searchInput).toHaveValue('voicemail');\n\n      await page.getByTestId('connectshyft-queue-card-tap-target').first().click();\n      await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();\n      await expect(page.getByTestId('connectshyft-thread-id-chip')).toHaveCount(0);\n      await expect(page.getByTestId('connectshyft-system-metadata-chip')).toHaveCount(0);\n\n      const threadCopy = ((await page.getByTestId('connectshyft-thread-surface').textContent()) ?? '').toLowerCase();\n      for (const token of context.forbiddenPrimaryCopyTokens) {\n        expect(threadCopy).not.toContain(token);\n      }\n      expect(threadCopy).not.toMatch(UUID_PATTERN);\n\n      await page.getByTestId('connectshyft-bottom-nav-inbox').click();\n      await expect(page).toHaveURL(/\\/app\\/connectshyft\\/inbox/i);\n      await expect(searchInput).toHaveValue('voicemail');\n    },\n  );\n\n  test(\n    '[GEPIC-AUTO-E2E-302][P1] tablet and desktop thread layouts keep split and three-column contracts deterministic after queue-card navigation @P1',\n    async ({ page }) => {\n      const responsiveMatrix = [\n        {\n          viewport: context.breakpoints.tablet,\n          layoutTestId: 'connectshyft-layout-tablet-split',\n          requiresTertiary: false,\n        },\n        {\n          viewport: context.breakpoints.desktop,\n          layoutTestId: 'connectshyft-layout-desktop-three-column',\n          requiresTertiary: true,\n        },\n      ] as const;\n\n      for (const scenario of responsiveMatrix) {\n        await page.setViewportSize({\n          width: scenario.viewport.width,\n          height: scenario.viewport.height,\n        });\n\n        await page.goto(buildStoryG6SurfaceUrl(context, 'inbox', volunteerActor));\n        await expect(page.getByTestId('connectshyft-inbox-surface')).toBeVisible();\n\n        await page.getByTestId('connectshyft-queue-card-tap-target').first().click();\n        await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();\n        await expect(page.getByTestId(scenario.layoutTestId)).toBeVisible();\n        await expect(page.getByTestId('connectshyft-queue-panel')).toBeVisible();\n        await expect(page.getByTestId('connectshyft-thread-panel')).toBeVisible();\n\n        if (scenario.requiresTertiary) {\n          await expect(page.getByTestId('connectshyft-tertiary-panel')).toBeVisible();\n        }\n      }\n    },\n  );\n\n  test(\n    '[GEPIC-AUTO-E2E-303][P0] inbound events on CLOSED threads never auto-reopen thread detail state in volunteer surfaces @P0',\n    async ({ page }, testInfo) => {\n      const webhookResponse = await page.request.post(context.paths.inboundWebhook, {\n        headers: createStoryG6Headers(context, {\n          role: 'ORGUNIT_ADMIN',\n          userId: context.adminUserId,\n          orgUnitMemberships: [context.orgUnitId],\n        }),\n        data: {\n          provider: 'telnyx',\n          providerEventId: deterministicProviderEventId(\n            'provider-event-g-epic-e2e',\n            testInfo,\n            'g-epic-e2e-303-event',\n          ),\n          providerLegId: `leg-g-epic-e2e-${deterministicToken(testInfo, 'g-epic-e2e-303-leg')}`,\n          eventType: context.events.inboundMissedCall,\n          tenantId: context.tenantId,\n          orgUnitId: context.orgUnitId,\n          threadId: context.threadIds.closedInbound,\n          neighborId: context.neighborIds.closedInbound,\n          payload: {\n            missedCall: true,\n          },\n        },\n      });\n\n      expect(webhookResponse.status()).toBe(200);\n\n      await page.goto(\n        buildStoryG6ThreadDetailUrl(context, context.threadIds.closedInbound, volunteerActor),\n      );\n      await expect(page.getByTestId('connectshyft-thread-state-chip')).toContainText('Closed');\n      await expect(page.getByTestId('connectshyft-thread-reopened-toast')).toHaveCount(0);\n      await expect(page.getByTestId('connectshyft-thread-inbound-auto-reopen-indicator')).toHaveCount(0);\n    },\n  );\n});\n",
+      "description": "Epic G cross-story E2E regression coverage for queue persistence, responsive layout contracts, and CLOSED inbound lifecycle lock",
+      "priority_coverage": {
+        "P0": 2,
+        "P1": 1,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "storyG6StorageState",
+    "storyG6Context",
+    "storyG6Headers",
+    "deterministicTestIds"
+  ],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience",
+    "playwright-cli",
+    "test-quality"
+  ],
+  "test_count": 3,
+  "summary": "Generated 3 Epic G E2E regression tests in one file."
+}

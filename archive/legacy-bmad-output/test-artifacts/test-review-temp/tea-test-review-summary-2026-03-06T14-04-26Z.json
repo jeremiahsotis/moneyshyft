@@ -1,0 +1,362 @@
+{
+  "overall_score": 77,
+  "overall_grade": "C",
+  "quality_assessment": "Acceptable",
+  "dimension_scores": {
+    "determinism": 80,
+    "isolation": 92,
+    "maintainability": 66,
+    "coverage": 62,
+    "performance": 76
+  },
+  "dimension_grades": {
+    "determinism": "B",
+    "isolation": "A",
+    "maintainability": "C",
+    "coverage": "D",
+    "performance": "C"
+  },
+  "violations_summary": {
+    "total": 22,
+    "HIGH": 7,
+    "MEDIUM": 11,
+    "LOW": 4
+  },
+  "all_violations": [
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 152,
+      "severity": "MEDIUM",
+      "category": "conditional-test-flow",
+      "description": "Queue-card assertions are conditional, so tests may pass even when shared primitives fail to render.",
+      "suggestion": "Seed deterministic fixture data and assert queue-card/pill primitives unconditionally.",
+      "code_snippet": "if ((await inboxQueueCard.count()) > 0) { ... } else { await expect(inbox-surface).toBeVisible(); }",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 181,
+      "severity": "MEDIUM",
+      "category": "fallback-branching",
+      "description": "Thread-detail validation path has multiple fallback branches that weaken deterministic coverage.",
+      "suggestion": "Stabilize fixture setup so thread-header path is always exercised in this scenario.",
+      "code_snippet": "if ((await page.getByTestId('connectshyft-thread-header').count()) === 0) { ... }",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts",
+      "line": 180,
+      "severity": "LOW",
+      "category": "conditional-assert-skip",
+      "description": "Per-item safety assertions can be skipped when operatorCopy is empty.",
+      "suggestion": "Assert minimum non-empty primary copy contract before suppression checks.",
+      "code_snippet": "if (operatorCopy.length === 0) { continue; }",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 117,
+      "severity": "LOW",
+      "category": "dual-path-assertion",
+      "description": "Aria-label validation is split across fallback branches, reducing consistency of assertion scope.",
+      "suggestion": "Standardize primary-action test id contract and assert one deterministic path.",
+      "code_snippet": "if ((await primaryActionLocator.count()) > 0) { ... } else { ... }",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts",
+      "line": 78,
+      "severity": "MEDIUM",
+      "category": "serial-suite",
+      "description": "Suite-level serial mode reduces isolation guarantees and can hide latent order coupling.",
+      "suggestion": "Use parallel mode by default and isolate any truly dependent scenario into a dedicated block.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "isolation"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts",
+      "line": 57,
+      "severity": "LOW",
+      "category": "serial-suite",
+      "description": "API automate suite is forced serial despite read-oriented scenarios.",
+      "suggestion": "Allow parallel execution to validate independence and improve CI throughput.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "isolation"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "file-too-long",
+      "description": "File exceeds TEA DoD target (<300 lines), increasing cognitive load and debugging cost.",
+      "suggestion": "Split by AC into focused files (tokens/primitives, display-safety, responsive behavior).",
+      "code_snippet": "335-line single spec file",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 11,
+      "severity": "MEDIUM",
+      "category": "duplicate-helpers",
+      "description": "URL builder and context helpers are duplicated across ATDD and automate E2E specs.",
+      "suggestion": "Extract shared g-1 URL/test utilities under tests/support/helpers/connectshyft-g1.ts",
+      "code_snippet": "const buildSurfaceUrl = (...) => { ... }",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts",
+      "line": 11,
+      "severity": "MEDIUM",
+      "category": "duplicate-helpers",
+      "description": "Automate spec repeats route builders and css reader helpers from ATDD spec.",
+      "suggestion": "Reuse shared helper module with typed exports for URL and metric readers.",
+      "code_snippet": "const buildThreadDetailUrl = (...) => { ... }",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 80,
+      "severity": "MEDIUM",
+      "category": "id-format",
+      "description": "Tests only encode priority labels; structured story-level test IDs are missing.",
+      "suggestion": "Adopt stable IDs like G1-ATDD-API-001 in titles for traceability.",
+      "code_snippet": "'[P0] ... @P0'",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 181,
+      "severity": "MEDIUM",
+      "category": "branch-density",
+      "description": "Nested fallback branches increase complexity and reduce readability in core scenarios.",
+      "suggestion": "Normalize fixture preconditions and split alternate paths into separate tests.",
+      "code_snippet": "if (...) { if (...) { if (...) { ... } } }",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts",
+      "line": 25,
+      "severity": "LOW",
+      "category": "inline-data-walkers",
+      "description": "Inline object-walking utility logic is dense and repeated for payload extraction.",
+      "suggestion": "Extract reusable projection helper with explicit typing and unit tests.",
+      "code_snippet": "const collectOperatorPrimaryCopy = (item) => { ... }",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 80,
+      "severity": "HIGH",
+      "category": "skipped-atdd-test",
+      "description": "AC1 API ATDD contract test is still skipped.",
+      "suggestion": "Remove test.skip and make the token-contract assertion executable in CI.",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 117,
+      "severity": "HIGH",
+      "category": "skipped-atdd-test",
+      "description": "AC2 API ATDD primitive-contract test is still skipped.",
+      "suggestion": "Unskip and verify primitive metadata contract through stable API fixtures.",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 162,
+      "severity": "HIGH",
+      "category": "skipped-atdd-test",
+      "description": "AC3 API ATDD display-safe projection test is still skipped.",
+      "suggestion": "Enable execution to ensure metadata suppression remains merge-blocking.",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 204,
+      "severity": "HIGH",
+      "category": "skipped-atdd-test",
+      "description": "AC4 API ATDD responsive breakpoint contract test is still skipped.",
+      "suggestion": "Unskip and enforce token-scale/touch-target API contract checks.",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 152,
+      "severity": "MEDIUM",
+      "category": "fallback-mask",
+      "description": "Fallback visibility assertions can mask missing primitive-specific checks.",
+      "suggestion": "Add explicit failure when expected primitive test ids are absent for covered AC paths.",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts",
+      "line": 180,
+      "severity": "MEDIUM",
+      "category": "partial-copy-validation",
+      "description": "Display-safe assertions are bypassed for empty operator copy values.",
+      "suggestion": "Assert non-empty projection first, then run suppression checks for every item.",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts",
+      "line": 78,
+      "severity": "HIGH",
+      "category": "serial-execution",
+      "description": "Automate E2E suite disables parallelization using serial mode.",
+      "suggestion": "Run in parallel and isolate only order-dependent scenarios.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "performance"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts",
+      "line": 57,
+      "severity": "HIGH",
+      "category": "serial-execution",
+      "description": "Automate API suite also enforces serial mode without demonstrated state coupling.",
+      "suggestion": "Remove serial mode to reduce wall-clock CI time.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "performance"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 82,
+      "severity": "MEDIUM",
+      "category": "repeat-login-navigation",
+      "description": "Each scenario performs full login + multi-page navigation, increasing runtime overhead.",
+      "suggestion": "Use storageState/session fixture and focused setup utilities per test intent.",
+      "dimension": "performance"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts",
+      "line": 148,
+      "severity": "MEDIUM",
+      "category": "viewport-loop-navigation",
+      "description": "Viewport loop replays full navigation flow three times in one test, increasing test duration.",
+      "suggestion": "Split per-breakpoint checks into parametrized tests for parallel workers.",
+      "dimension": "performance"
+    }
+  ],
+  "high_severity_violations": [
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 1,
+      "severity": "HIGH",
+      "category": "file-too-long",
+      "description": "File exceeds TEA DoD target (<300 lines), increasing cognitive load and debugging cost.",
+      "suggestion": "Split by AC into focused files (tokens/primitives, display-safety, responsive behavior).",
+      "code_snippet": "335-line single spec file",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 80,
+      "severity": "HIGH",
+      "category": "skipped-atdd-test",
+      "description": "AC1 API ATDD contract test is still skipped.",
+      "suggestion": "Remove test.skip and make the token-contract assertion executable in CI.",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 117,
+      "severity": "HIGH",
+      "category": "skipped-atdd-test",
+      "description": "AC2 API ATDD primitive-contract test is still skipped.",
+      "suggestion": "Unskip and verify primitive metadata contract through stable API fixtures.",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 162,
+      "severity": "HIGH",
+      "category": "skipped-atdd-test",
+      "description": "AC3 API ATDD display-safe projection test is still skipped.",
+      "suggestion": "Enable execution to ensure metadata suppression remains merge-blocking.",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 204,
+      "severity": "HIGH",
+      "category": "skipped-atdd-test",
+      "description": "AC4 API ATDD responsive breakpoint contract test is still skipped.",
+      "suggestion": "Unskip and enforce token-scale/touch-target API contract checks.",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts",
+      "line": 78,
+      "severity": "HIGH",
+      "category": "serial-execution",
+      "description": "Automate E2E suite disables parallelization using serial mode.",
+      "suggestion": "Run in parallel and isolate only order-dependent scenarios.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "performance"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts",
+      "line": 57,
+      "severity": "HIGH",
+      "category": "serial-execution",
+      "description": "Automate API suite also enforces serial mode without demonstrated state coupling.",
+      "suggestion": "Remove serial mode to reduce wall-clock CI time.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "performance"
+    }
+  ],
+  "top_10_recommendations": [
+    {
+      "dimension": "maintainability",
+      "recommendation": "Split oversized E2E ATDD file into AC-scoped specs",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "maintainability",
+      "recommendation": "Deduplicate g-1 helper logic across ATDD and automate suites",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "maintainability",
+      "recommendation": "Adopt structured test IDs for story-level traceability",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "coverage",
+      "recommendation": "Unskip all 4 API ATDD tests to restore AC-level contract coverage",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "coverage",
+      "recommendation": "Tighten E2E primitive assertions to fail when required primitives are absent",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "coverage",
+      "recommendation": "Require non-empty operator copy contracts before suppression checks",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Eliminate fallback-only branches in core P0 scenarios",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Require deterministic fixture data so primitives always render in ATDD runs",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Avoid skipping per-item copy assertions when projection data is empty",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "isolation",
+      "recommendation": "Remove serial mode where tests do not share mutable state",
+      "impact": "MEDIUM"
+    }
+  ],
+  "subprocess_execution": "PARALLEL (5 quality dimensions)",
+  "performance_gain": "~60% faster than sequential",
+  "timestamp": "2026-03-06T14-04-26Z"
+}

@@ -1,0 +1,16 @@
+
+> moneyshyft@0.3.6 test
+> jest --runInBand src/platform/audit/__tests__/redaction.test.ts src/routes/api/v1/__tests__/platform-contracts.redaction.test.ts src/platform/sessions/__tests__/PlatformSessionStore.test.ts src/platform/middleware/__tests__/csrfProtection.test.ts src/utils/__tests__/jwt.cookiePolicy.test.ts src/routes/api/v1/__tests__/auth.refresh.test.ts
+
+PASS src/platform/middleware/__tests__/csrfProtection.test.ts
+PASS src/routes/api/v1/__tests__/platform-contracts.redaction.test.ts
+PASS src/routes/api/v1/__tests__/auth.refresh.test.ts
+PASS src/utils/__tests__/jwt.cookiePolicy.test.ts
+PASS src/platform/sessions/__tests__/PlatformSessionStore.test.ts
+PASS src/platform/audit/__tests__/redaction.test.ts
+
+Test Suites: 6 passed, 6 total
+Tests:       22 passed, 22 total
+Snapshots:   0 total
+Time:        2.043 s
+Ran all test suites matching /src\/platform\/audit\/__tests__\/redaction.test.ts|src\/routes\/api\/v1\/__tests__\/platform-contracts.redaction.test.ts|src\/platform\/sessions\/__tests__\/PlatformSessionStore.test.ts|src\/platform\/middleware\/__tests__\/csrfProtection.test.ts|src\/utils\/__tests__\/jwt.cookiePolicy.test.ts|src\/routes\/api\/v1\/__tests__\/auth.refresh.test.ts/i.
