@@ -24,6 +24,7 @@ apps/*/dist/
 *.tsbuildinfo
 .nx/cache/
 .playwright/
+_bmad-output/
 
 # Logs
 *.log

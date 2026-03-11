@@ -78,6 +78,8 @@ Docker:
 ## Active Technologies
 - TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose (001-tighten-deployment-contracts)
 - Shared host-managed PostgreSQL (single instance) (001-tighten-deployment-contracts)
+- TypeScript (ES2022) on Node.js >=20 + Express, Knex, pg, Jest/ts-jest, root-level shared communication domain source under `domains/communication` (002-phone-identity)
+- Shared PostgreSQL; current ConnectShyft phone persistence in `connectshyft.cs_neighbor_phones` must evolve toward `communication_contact_point`-equivalent canonical fields (002-phone-identity)
 
 ## Recent Changes
 - 001-tighten-deployment-contracts: Added TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose
