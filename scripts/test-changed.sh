@@ -9,6 +9,16 @@ is_truthy() {
   [[ "$value" == "1" || "$value" == "true" || "$value" == "yes" || "$value" == "on" ]]
 }
 
+run_playwright_specs() {
+  if is_truthy "${PLAYWRIGHT_CI_STACK_ACTIVE:-false}"; then
+    echo "Reusing active Playwright CI stack for selected specs."
+    npx playwright test "$@"
+    return
+  fi
+
+  npm run test:e2e -- "$@"
+}
+
 resolve_burn_in_fallback_specs() {
   local configured="${BURN_IN_FALLBACK_SPECS:-}"
   local fallback_specs=()
@@ -53,7 +63,7 @@ if [[ ${#changed_specs[@]} -eq 0 ]]; then
 
     echo "No changed spec files detected against $base_ref. Running burn-in fallback spec suite."
     printf ' - %s\n' "${fallback_specs[@]}"
-    npm run test:e2e -- "${fallback_specs[@]}"
+    run_playwright_specs "${fallback_specs[@]}"
     exit 0
   fi
 
@@ -64,4 +74,4 @@ fi
 echo "Running changed specs (${#changed_specs[@]}) against $base_ref"
 printf ' - %s\n' "${changed_specs[@]}"
 
-npm run test:e2e -- "${changed_specs[@]}"
+run_playwright_specs "${changed_specs[@]}"

@@ -14,6 +14,10 @@ inputs:
     description: Install backend dependencies via npm ci --prefix apps/moneyshyft-api.
     required: false
     default: 'false'
+  install_backend_test_deps:
+    description: Install full backend test dependencies and link sibling API app node_modules.
+    required: false
+    default: 'false'
   ensure_playwright:
     description: Ensure Playwright browsers exist (prefer prebuilt image; fallback to cached/install).
     required: false
@@ -79,6 +83,25 @@ runs:
             ln -s ../moneyshyft-api/node_modules apps/connectshyft-api/node_modules
           fi
         fi
+
+    - name: Install backend test dependencies
+      if: inputs.install_backend_test_deps == 'true'
+      shell: bash
+      run: |
+        if [ -f apps/moneyshyft-api/package-lock.json ]; then
+          npm ci --prefix apps/moneyshyft-api || npm ci --prefix apps/moneyshyft-api || npm install --prefix apps/moneyshyft-api --no-audit --fund=false
+        else
+          npm install --prefix apps/moneyshyft-api --no-audit --fund=false
+        fi
+
+        for app_dir in apps/admin-api apps/connectshyft-api; do
+          if [ -e "$app_dir/node_modules" ] && [ ! -L "$app_dir/node_modules" ]; then
+            echo "$app_dir/node_modules exists as a directory; leaving in place."
+          else
+            rm -f "$app_dir/node_modules"
+            ln -s ../moneyshyft-api/node_modules "$app_dir/node_modules"
+          fi
+        done
 
     - name: Cache Playwright browsers (fallback)
       if: inputs.ensure_playwright == 'true'

@@ -369,18 +369,23 @@ export const seedStoryE4VoicemailScenario = async ({
   webhookHeaderLabel,
 }: StoryE4ScenarioSeedInput): Promise<StoryE4SeededVoicemailContext> => {
   const scenarioToken = buildStoryE4ScenarioToken(suite, scenarioId);
+  const runScopedScenarioToken = `${scenarioToken}-${deterministicToken(
+    testInfo,
+    `story-e4-scenario-${scenarioToken}`,
+    6,
+  )}`;
   return seedStoryE4VoicemailWithCallbackCorrelation({
     request,
     testInfo,
     numberMappingLabel:
-      numberMappingLabel ?? `Story e.4 mapped number (${scenarioToken})`,
-    neighborId: neighborId ?? `neighbor-connectshyft-e4-${scenarioToken}`,
-    inboundNumberId: inboundNumberId ?? `cs-inbound-e4-seed-${scenarioToken}`,
-    outboundNumberId: outboundNumberId ?? `cs-outbound-e4-seed-${scenarioToken}`,
-    seedLabel: seedLabel ?? `e4-seed-${scenarioToken}`,
+      numberMappingLabel ?? `Story e.4 mapped number (${runScopedScenarioToken})`,
+    neighborId: neighborId ?? `neighbor-connectshyft-e4-${runScopedScenarioToken}`,
+    inboundNumberId: inboundNumberId ?? `cs-inbound-e4-seed-${runScopedScenarioToken}`,
+    outboundNumberId: outboundNumberId ?? `cs-outbound-e4-seed-${runScopedScenarioToken}`,
+    seedLabel: seedLabel ?? `e4-seed-${runScopedScenarioToken}`,
     providerEventNamespace:
       providerEventNamespace ?? `provider-event-e4-${suite}-seed`,
-    webhookHeaderLabel: webhookHeaderLabel ?? `e4-seed-${scenarioToken}`,
+    webhookHeaderLabel: webhookHeaderLabel ?? `e4-seed-${runScopedScenarioToken}`,
   });
 };
 

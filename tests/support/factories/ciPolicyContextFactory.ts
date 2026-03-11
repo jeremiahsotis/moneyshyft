@@ -15,7 +15,7 @@ export function createCiPolicyContext(overrides: Partial<CiPolicyContext> = {}):
     policyFile: 'docs/policies/git_policy.md',
     branchGuardScript: 'scripts/branch-ensure-workflow.sh',
     protectedBranches: ['main', 'master', 'codex/dev', 'production'],
-    downstreamJobs: ['lint', 'test', 'burn-in', 'quality-gates'],
+    downstreamJobs: ['lint', 'test', 'backend-jest', 'burn-in', 'quality-gates'],
     remediationHint: 'Create or switch to a matching story branch and rerun the workflow guard command.',
     ...overrides,
   };

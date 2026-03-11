@@ -32,7 +32,7 @@
     "dev:connectshyft-api": "nx run connectshyft-api:dev",
     "dev:connectshyft-web": "nx run connectshyft-web:dev",
     "build": "nx run-many -t build",
-    "test": "nx run-many -t test",
+    "test": "nx run-many -t test --exclude=e2e,connectshyft-api",
     "affected:build": "nx affected -t build",
     "affected:test": "nx affected -t test",
     "affected:lint": "nx affected -t lint"

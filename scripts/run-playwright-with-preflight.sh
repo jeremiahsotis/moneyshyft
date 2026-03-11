@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT_DIR="$(pwd)"
 API_URL="${API_URL:-http://localhost:3001}"
 BASE_URL="${BASE_URL:-http://localhost:5174}"
 AUTO_START_STACK="${AUTO_START_STACK:-true}"
@@ -241,6 +242,10 @@ run_backend_migrations() {
   local initial_database_url="${DATABASE_URL:-$PLAYWRIGHT_DATABASE_URL}"
   if [[ -n "$initial_database_url" ]]; then
     export DATABASE_URL="$initial_database_url"
+  fi
+
+  if ! (cd "$ROOT_DIR" && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" node scripts/repair-platform-events-outbox.cjs) >>"$BACKEND_LOG_FILE" 2>&1; then
+    return 1
   fi
 
   if (cd "$BACKEND_APP_DIR" && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1; then

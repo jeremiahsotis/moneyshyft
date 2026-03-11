@@ -1,4 +1,5 @@
 import { Knex } from 'knex';
+import os from 'os';
 import './config/loadEnv';
 
 const readEnv = (primary: string, fallback: string): string | undefined => {
@@ -61,11 +62,30 @@ const resolveDbPassword = (): string => {
   throw new Error('DB_PASSWORD must be set via environment/secret manager when DATABASE_URL is not provided');
 };
 
+const buildTestConnection = (): Knex.StaticConnectionConfig => ({
+  host: '127.0.0.1',
+  port: 5432,
+  database: 'moneyshyft_ci',
+  user: readEnv('DATABASE_USER', 'DB_USER') || process.env.USER || os.userInfo().username,
+  password: readEnv('DATABASE_PASSWORD', 'DB_PASSWORD'),
+});
+
 const buildNonProductionConnection = (): string | Knex.StaticConnectionConfig => {
   validateDatabaseEnv();
 
+  const testDatabaseUrl = process.env.NODE_ENV === 'test'
+    ? process.env.MONEYSHYFT_TEST_DATABASE_URL?.trim()
+    : undefined;
+  if (testDatabaseUrl) {
+    return testDatabaseUrl;
+  }
+
   if (process.env.DATABASE_URL) {
     return process.env.DATABASE_URL;
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    return buildTestConnection();
   }
 
   const portValue = resolveRequiredEnv('DATABASE_PORT', 'DB_PORT');

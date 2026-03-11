@@ -38,6 +38,7 @@ jobs:
             "test (shard 2)"
             "test (shard 3)"
             "test (shard 4)"
+            "backend-jest"
             "quality-gates"
             "burn-in"
           )

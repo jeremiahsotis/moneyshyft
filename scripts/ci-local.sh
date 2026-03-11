@@ -12,6 +12,9 @@ bash scripts/verify-connectshyft-route-ownership.sh
 echo "== lint (or discovery fallback) =="
 bash scripts/lint-or-discovery.sh
 
+echo "== backend jest/workspace test surface =="
+bash scripts/ci-run-playwright-stack.sh bash scripts/backend-jest-ci.sh
+
 echo "== test changed =="
 bash scripts/test-changed.sh "$base_ref"
 

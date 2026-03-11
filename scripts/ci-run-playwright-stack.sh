@@ -37,6 +37,7 @@ export VITE_ADMIN_API_PROXY_TARGET="${VITE_ADMIN_API_PROXY_TARGET:-$API_URL}"
 export VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS="${VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS:-$ENABLE_TEST_CONNECTSHYFT_FLAGS}"
 export PLAYWRIGHT_FRONTEND_APP_DIR="${PLAYWRIGHT_FRONTEND_APP_DIR:-apps/connectshyft-web}"
 export PLAYWRIGHT_MULTI_FRONTEND_PROXY="${PLAYWRIGHT_MULTI_FRONTEND_PROXY:-auto}"
+export PLAYWRIGHT_CI_STACK_ACTIVE=true
 export HOST="${HOST:-0.0.0.0}"
 export PORT="${PORT:-3000}"
 frontend_host="$(node -e "const u = new URL(process.argv[1]); process.stdout.write(u.hostname);" "$BASE_URL")"
@@ -85,23 +86,58 @@ print_runtime_logs() {
   fi
 }
 
+terminate_process_tree() {
+  local pid="$1"
+  if [[ -z "$pid" ]]; then
+    return 0
+  fi
+
+  if ! kill -0 "$pid" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if command -v pgrep >/dev/null 2>&1; then
+    local child_pids
+    child_pids="$(pgrep -P "$pid" 2>/dev/null || true)"
+    if [[ -n "$child_pids" ]]; then
+      while IFS= read -r child_pid; do
+        [[ -z "$child_pid" ]] && continue
+        terminate_process_tree "$child_pid"
+      done <<< "$child_pids"
+    fi
+  fi
+
+  kill "$pid" >/dev/null 2>&1 || true
+
+  local attempt
+  for ((attempt = 1; attempt <= 20; attempt++)); do
+    if ! kill -0 "$pid" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.1
+  done
+
+  kill -9 "$pid" >/dev/null 2>&1 || true
+}
+
+cleanup_pid() {
+  local pid="${1:-}"
+
+  if [[ -z "$pid" ]]; then
+    return 0
+  fi
+
+  terminate_process_tree "$pid"
+  wait "$pid" >/dev/null 2>&1 || true
+}
+
 cleanup() {
   local exit_code=$?
-  if [[ -n "${FRONTEND_PROXY_PID:-}" ]]; then
-    kill "$FRONTEND_PROXY_PID" >/dev/null 2>&1 || true
-  fi
-  if [[ -n "${MONEY_FRONTEND_PID:-}" ]]; then
-    kill "$MONEY_FRONTEND_PID" >/dev/null 2>&1 || true
-  fi
-  if [[ -n "${CONNECT_FRONTEND_PID:-}" ]]; then
-    kill "$CONNECT_FRONTEND_PID" >/dev/null 2>&1 || true
-  fi
-  if [[ -n "${FRONTEND_PID:-}" ]]; then
-    kill "$FRONTEND_PID" >/dev/null 2>&1 || true
-  fi
-  if [[ -n "${BACKEND_PID:-}" ]]; then
-    kill "$BACKEND_PID" >/dev/null 2>&1 || true
-  fi
+  cleanup_pid "${FRONTEND_PROXY_PID:-}"
+  cleanup_pid "${MONEY_FRONTEND_PID:-}"
+  cleanup_pid "${CONNECT_FRONTEND_PID:-}"
+  cleanup_pid "${FRONTEND_PID:-}"
+  cleanup_pid "${BACKEND_PID:-}"
 
   if [[ "$exit_code" -ne 0 ]]; then
     print_runtime_logs
@@ -157,6 +193,9 @@ const db = knexFactory({
   });
 NODE
 
+echo "Ensuring platform events/outbox tables are present"
+NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" node scripts/repair-platform-events-outbox.cjs
+
 echo "Running backend migrations"
 NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix apps/moneyshyft-api
 
@@ -197,7 +236,7 @@ if [[ "$use_multi_frontend_proxy" == "true" ]]; then
   (cd "$money_frontend_dir" && \
     VITE_API_PROXY_TARGET="$API_URL" \
     VITE_ADMIN_API_PROXY_TARGET="$VITE_ADMIN_API_PROXY_TARGET" \
-    npm run dev -- --host "$internal_frontend_host" --port "$money_frontend_port") \
+    npm run dev -- --host "$internal_frontend_host" --port "$money_frontend_port" --strictPort) \
     > "$money_frontend_log" 2>&1 &
   MONEY_FRONTEND_PID=$!
 
@@ -205,7 +244,7 @@ if [[ "$use_multi_frontend_proxy" == "true" ]]; then
   (cd "$connect_frontend_dir" && \
     VITE_API_PROXY_TARGET="$API_URL" \
     VITE_ADMIN_API_PROXY_TARGET="$VITE_ADMIN_API_PROXY_TARGET" \
-    npm run dev -- --host "$internal_frontend_host" --port "$connect_frontend_port") \
+    npm run dev -- --host "$internal_frontend_host" --port "$connect_frontend_port" --strictPort) \
     > "$connect_frontend_log" 2>&1 &
   CONNECT_FRONTEND_PID=$!
 
@@ -238,7 +277,7 @@ else
   (cd "$frontend_app_dir" && \
     VITE_API_PROXY_TARGET="$API_URL" \
     VITE_ADMIN_API_PROXY_TARGET="$VITE_ADMIN_API_PROXY_TARGET" \
-    npm run dev -- --host "$frontend_host" --port "$frontend_port") > "$frontend_log" 2>&1 &
+    npm run dev -- --host "$frontend_host" --port "$frontend_port" --strictPort) > "$frontend_log" 2>&1 &
   FRONTEND_PID=$!
 
   wait_for_http "${BASE_URL%/}/login" "frontend login page" "$FRONTEND_PID" 30 || {
