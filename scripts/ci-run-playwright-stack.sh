@@ -193,11 +193,11 @@ const db = knexFactory({
   });
 NODE
 
-echo "Ensuring platform events/outbox tables are present"
-NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" node scripts/repair-platform-events-outbox.cjs
-
 echo "Running backend migrations"
 NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix apps/moneyshyft-api
+
+echo "Ensuring platform events/outbox tables are present"
+NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" node scripts/repair-platform-events-outbox.cjs
 
 echo "Verifying backend port $PORT is available..."
 node -e "

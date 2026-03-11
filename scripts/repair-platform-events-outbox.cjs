@@ -30,8 +30,17 @@ if (!config) {
 const knex = knexFactory(config);
 
 const hasTable = (tableName) => knex.schema.withSchema('platform').hasTable(tableName);
+const REQUIRED_EXTENSIONS = ['pgcrypto', 'uuid-ossp'];
+
+const ensureRequiredExtensions = async () => {
+  for (const extensionName of REQUIRED_EXTENSIONS) {
+    await knex.raw(`CREATE EXTENSION IF NOT EXISTS "${extensionName}"`);
+  }
+};
 
 (async () => {
+  await ensureRequiredExtensions();
+
   const [hasEvents, hasOutbox] = await Promise.all([
     hasTable('events'),
     hasTable('outbox_events'),
