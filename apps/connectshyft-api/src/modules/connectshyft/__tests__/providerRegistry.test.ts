@@ -1,5 +1,6 @@
 import { generateKeyPairSync, sign as signPayload } from 'node:crypto';
 import {
+  buildConnectShyftWebhookVerificationInput,
   ConnectShyftProviderDispatchPolicyError,
   resolveConnectShyftProviderAdapter,
   resolveConnectShyftRequestedProviderKey,
@@ -21,6 +22,7 @@ const buildRequest = (input?: {
 
   return {
     body: input?.body || {},
+    headers: normalizedHeaders,
     rawBody: input?.rawBody,
     originalUrl: '/api/v1/connectshyft/webhooks/inbound',
     protocol: 'https',
@@ -347,10 +349,10 @@ describe('connectshyft provider registry', () => {
           'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx', 'mock-sandbox']),
         },
         body: {
-          providerKey: 'telnyx',
+          providerKey: 'mock-sandbox',
         },
       }),
-      operation: 'webhook',
+      operation: 'message',
     });
 
     expect(result.ok).toBe(true);
@@ -358,45 +360,52 @@ describe('connectshyft provider registry', () => {
       throw new Error('Expected adapter resolution to succeed');
     }
 
-    const callDispatch = await result.adapter.dispatchOutboundCall({
+    const callDispatch = await result.adapter.startOutboundCall({
       tenantId: 'tenant-connectshyft-f1',
       orgUnitId: 'org-connectshyft-f1-east',
       threadId: 'thread-f1-unclaimed-1001',
+      providerKey: 'mock-sandbox',
+      targetPhone: '+12605550111',
     });
     expect(callDispatch).toMatchObject({
-      providerKey: 'telnyx',
+      providerKey: 'mock-sandbox',
       channel: 'call',
-      providerLegId: 'telnyx-call-leg-thread-f1-unclaimed-1001',
+      providerLegId: 'mock-sandbox-call-leg-thread-f1-unclaimed-1001',
       providerMessageId: null,
       adapterInvoked: true,
       providerBranchingInDomain: false,
     });
 
-    const messageDispatch = await result.adapter.dispatchOutboundMessage({
+    const messageDispatch = await result.adapter.sendSms({
       tenantId: 'tenant-connectshyft-f1',
       orgUnitId: 'org-connectshyft-f1-east',
       threadId: 'thread-f1-unclaimed-1001',
+      providerKey: 'mock-sandbox',
+      body: 'Need assistance',
     });
     expect(messageDispatch).toMatchObject({
-      providerKey: 'telnyx',
+      providerKey: 'mock-sandbox',
       channel: 'message',
       providerLegId: null,
-      providerMessageId: 'telnyx-message-thread-f1-unclaimed-1001',
+      providerMessageId: 'mock-sandbox-message-thread-f1-unclaimed-1001',
       adapterInvoked: true,
       providerBranchingInDomain: false,
     });
 
-    const signatureDecision = result.adapter.validateInboundWebhookSignature({
-      req: buildRequest({
+    const signatureDecision = result.adapter.verifyWebhook(
+      buildConnectShyftWebhookVerificationInput({
+        providerKey: 'mock-sandbox',
+        req: buildRequest({
         body: {
           eventType: 'call.connected',
         },
+        }),
       }),
-    });
+    );
     expect(signatureDecision).toEqual({ ok: true });
 
     expect(
-      result.adapter.toCanonicalEvent({
+      result.adapter.translateProviderEvent({
         rawEventType: 'call.connected',
         payload: {},
       }),
@@ -425,10 +434,11 @@ describe('connectshyft provider registry', () => {
     }
 
     await expect(
-      result.adapter.dispatchOutboundCall({
+      result.adapter.startOutboundCall({
         tenantId: 'tenant-connectshyft-f1',
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
+        providerKey: 'telnyx',
         callPolicy: {
           transport: 'sip',
           autoRetry: false,
@@ -440,10 +450,11 @@ describe('connectshyft provider registry', () => {
     });
 
     await expect(
-      result.adapter.dispatchOutboundCall({
+      result.adapter.startOutboundCall({
         tenantId: 'tenant-connectshyft-f1',
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
+        providerKey: 'telnyx',
         callPolicy: {
           transport: 'bridge',
           autoRetry: true,
@@ -489,22 +500,25 @@ describe('connectshyft provider registry', () => {
       throw new Error('Expected adapter resolution to succeed');
     }
 
-    const signatureDecision = result.adapter.validateInboundWebhookSignature({
-      req: buildRequest({
+    const signatureDecision = result.adapter.verifyWebhook(
+      buildConnectShyftWebhookVerificationInput({
+        providerKey: 'telnyx',
+        req: buildRequest({
         body: {
           eventType: 'voice.connected',
         },
         headers: {
           'x-test-connectshyft-enforce-webhook-signature': 'true',
-          'x-test-connectshyft-telnyx-public-key': testPublicKey,
+          'x-test-connectshyft-provider-public-key': testPublicKey,
         },
+        }),
       }),
-    });
+    );
 
     expect(signatureDecision).toMatchObject({
       ok: false,
       refusal: {
-        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING',
+        code: 'WEBHOOK_SIGNATURE_MISSING',
         httpStatus: 401,
       },
     });
@@ -542,18 +556,21 @@ describe('connectshyft provider registry', () => {
       throw new Error('Expected adapter resolution to succeed');
     }
 
-    const signatureDecision = result.adapter.validateInboundWebhookSignature({
-      req: buildRequest({
+    const signatureDecision = result.adapter.verifyWebhook(
+      buildConnectShyftWebhookVerificationInput({
+        providerKey: 'telnyx',
+        req: buildRequest({
         body: payload,
         rawBody,
         headers: {
           'x-test-connectshyft-enforce-webhook-signature': 'true',
-          'x-test-connectshyft-telnyx-public-key': testPublicKey,
+          'x-test-connectshyft-provider-public-key': testPublicKey,
           'telnyx-timestamp': timestamp,
           'telnyx-signature-ed25519': signature,
         },
+        }),
       }),
-    });
+    );
 
     expect(signatureDecision).toEqual({ ok: true });
   });
@@ -580,18 +597,21 @@ describe('connectshyft provider registry', () => {
       format: 'pem',
     }).toString();
 
-    const signatureDecision = result.adapter.validateInboundWebhookSignature({
-      req: buildRequest({
+    const signatureDecision = result.adapter.verifyWebhook(
+      buildConnectShyftWebhookVerificationInput({
+        providerKey: 'telnyx',
+        req: buildRequest({
         body: {
           eventType: 'voice.connected',
         },
+        }),
       }),
-    });
+    );
 
     expect(signatureDecision).toMatchObject({
       ok: false,
       refusal: {
-        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING',
+        code: 'WEBHOOK_SIGNATURE_MISSING',
         httpStatus: 401,
       },
     });
@@ -635,16 +655,19 @@ describe('connectshyft provider registry', () => {
       throw new Error('Expected adapter resolution to succeed');
     }
 
-    const signatureDecision = result.adapter.validateInboundWebhookSignature({
-      req: buildRequest({
+    const signatureDecision = result.adapter.verifyWebhook(
+      buildConnectShyftWebhookVerificationInput({
+        providerKey: 'telnyx',
+        req: buildRequest({
         body: payload,
         rawBody,
         headers: {
           'telnyx-timestamp': timestamp,
           'telnyx-signature-ed25519': signature,
         },
+        }),
       }),
-    });
+    );
 
     expect(signatureDecision).toEqual({ ok: true });
   });
@@ -687,21 +710,24 @@ describe('connectshyft provider registry', () => {
       throw new Error('Expected adapter resolution to succeed');
     }
 
-    const signatureDecision = result.adapter.validateInboundWebhookSignature({
-      req: buildRequest({
+    const signatureDecision = result.adapter.verifyWebhook(
+      buildConnectShyftWebhookVerificationInput({
+        providerKey: 'telnyx',
+        req: buildRequest({
         body: payload,
         rawBody,
         headers: {
           'telnyx-timestamp': staleTimestamp,
           'telnyx-signature-ed25519': signature,
         },
+        }),
       }),
-    });
+    );
 
     expect(signatureDecision).toMatchObject({
       ok: false,
       refusal: {
-        code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',
+        code: 'WEBHOOK_SIGNATURE_INVALID',
         httpStatus: 401,
       },
     });

@@ -1,9 +1,14 @@
 module.exports = {
   testEnvironment: 'node',
-  roots: ['<rootDir>/src', '<rootDir>/../../domains/communication'],
+  roots: [
+    '<rootDir>/src',
+    '<rootDir>/../../domains/communication',
+    '<rootDir>/../../infrastructure/communications',
+  ],
   testMatch: [
     '<rootDir>/src/**/__tests__/**/*.test.ts',
     '<rootDir>/../../domains/communication/**/__tests__/**/*.test.ts',
+    '<rootDir>/../../infrastructure/communications/**/__tests__/**/*.test.ts',
   ],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   moduleFileExtensions: ['ts', 'js', 'json'],

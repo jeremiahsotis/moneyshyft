@@ -2,3 +2,4 @@
 // Expand exports as the domain grows.
 
 export * from './phone'
+export * from './telephony'
