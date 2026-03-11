@@ -45,6 +45,15 @@ try {
 NODE
 }
 
+is_legacy_bmad_implementation_path() {
+  local value="${1:-}"
+  value="${value#./}"
+  [[ "$value" == "_bmad-output/implementation-artifacts" \
+    || "$value" == "_bmad-output/implementation-artifacts/"* \
+    || "$value" == */"_bmad-output/implementation-artifacts" \
+    || "$value" == */"_bmad-output/implementation-artifacts/"* ]]
+}
+
 allow_dirty=false
 lane_override=""
 while [[ $# -gt 0 ]]; do
@@ -163,23 +172,27 @@ status_file="${SPRINT_STATUS_FILE:-$LANE_SPRINT_STATUS_FILE}"
 
 if [[ "$epic_id" =~ ^[0-9]+$ && "$epic_id" != "0" ]]; then
   if [[ ! -f "$status_file" ]]; then
-    echo "Kernel gate failed: missing $status_file"
-    exit 1
-  fi
+    if is_legacy_bmad_implementation_path "$status_file"; then
+      echo "Kernel gate skipped: legacy BMAD sprint status file is absent: $status_file"
+    else
+      echo "Kernel gate failed: missing $status_file"
+      exit 1
+    fi
+  else
+    if ! grep -Eq '0-10-kernel-readiness-verification-suite:\s*done' "$status_file"; then
+      echo "Kernel gate failed: Story 0-10 is not done. Cannot start feature story branch $story_id yet."
+      exit 1
+    fi
 
-  if ! grep -Eq '0-10-kernel-readiness-verification-suite:\s*done' "$status_file"; then
-    echo "Kernel gate failed: Story 0-10 is not done. Cannot start feature story branch $story_id yet."
-    exit 1
-  fi
-
-  if ! awk '
-    /cc-2026-02-18:/ { in_block=1; next }
-    in_block && /^[^[:space:]]/ { in_block=0 }
-    in_block && /status:[[:space:]]*approved/ { ok=1 }
-    END { exit ok ? 0 : 1 }
-  ' "$status_file"; then
-    echo "Kernel gate failed: course correction cc-2026-02-18 is not approved."
-    exit 1
+    if ! awk '
+      /cc-2026-02-18:/ { in_block=1; next }
+      in_block && /^[^[:space:]]/ { in_block=0 }
+      in_block && /status:[[:space:]]*approved/ { ok=1 }
+      END { exit ok ? 0 : 1 }
+    ' "$status_file"; then
+      echo "Kernel gate failed: course correction cc-2026-02-18 is not approved."
+      exit 1
+    fi
   fi
 fi
 

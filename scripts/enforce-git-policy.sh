@@ -36,7 +36,7 @@ print_recovery() {
   echo "Remediation:"
   if [[ -n "$story_id" && -n "$story_slug" ]]; then
     echo "  npm run start:story-branch -- $story_id $story_slug"
-    echo "  npm run branch:ensure-workflow -- --workflow $workflow_hint --story _bmad-output/implementation-artifacts/${story_id}-${story_slug}.md"
+    echo "  npm run branch:ensure-workflow -- --workflow $workflow_hint --story ${story_id}-${story_slug}"
   else
     echo "  npm run start:story-branch -- <story-id> <story-slug>"
     echo "  npm run branch:ensure-workflow -- --workflow $workflow_hint --story <story-key-or-story-file>"
@@ -90,6 +90,15 @@ has_local_worktree_changes() {
   local status_output
   status_output="$(git status --porcelain --untracked-files=normal 2>/dev/null || true)"
   [[ -n "$status_output" ]]
+}
+
+is_legacy_bmad_implementation_path() {
+  local value="${1:-}"
+  value="${value#./}"
+  [[ "$value" == "_bmad-output/implementation-artifacts" \
+    || "$value" == "_bmad-output/implementation-artifacts/"* \
+    || "$value" == */"_bmad-output/implementation-artifacts" \
+    || "$value" == */"_bmad-output/implementation-artifacts/"* ]]
 }
 
 if [[ ! -f "$POLICY_FILE" ]]; then
@@ -205,6 +214,10 @@ enforce_corrected_kernel_gate_for_story() {
   fi
 
   if [[ ! -f "$status_file" ]]; then
+    if is_legacy_bmad_implementation_path "$status_file"; then
+      echo "Policy check note: corrected kernel gate skipped because legacy BMAD sprint status file is absent: $status_file"
+      return 0
+    fi
     echo "Policy check failed: missing $status_file required for corrected kernel gate enforcement"
     print_policy_context
     print_recovery "$workflow_hint"
@@ -310,7 +323,9 @@ if [[ "$has_stories_dir" == "true" ]]; then
   fi
   bash scripts/enforce-story-status-sync.sh "${status_sync_args[@]}"
 else
-  if [[ "$is_production_promotion_context" == "true" ]]; then
+  if is_legacy_bmad_implementation_path "$stories_dir"; then
+    echo "Story status sync check skipped: legacy BMAD implementation artifacts are deprecated and ${stories_dir} is absent."
+  elif [[ "$is_production_promotion_context" == "true" ]]; then
     echo "Story status sync check skipped: ${stories_dir} is excluded from production promotion snapshots."
   else
     echo "Policy check failed: missing stories directory: ${stories_dir}"
@@ -332,7 +347,9 @@ fi
 if [[ "$has_stories_dir" == "true" ]]; then
   node scripts/enforce-project-lane.js
 else
-  if [[ "$is_production_promotion_context" == "true" ]]; then
+  if is_legacy_bmad_implementation_path "$stories_dir"; then
+    echo "Project lane guard skipped: legacy BMAD implementation artifacts are deprecated and ${stories_dir} is absent."
+  elif [[ "$is_production_promotion_context" == "true" ]]; then
     echo "Project lane guard skipped: ${stories_dir} is excluded from production promotion snapshots."
   else
     echo "Policy check failed: missing stories directory: ${stories_dir}"
@@ -342,7 +359,9 @@ fi
 if [[ "$has_stories_dir" == "true" ]]; then
   bash scripts/enforce-operability-closeout-guard.sh
 else
-  if [[ "$is_production_promotion_context" == "true" ]]; then
+  if is_legacy_bmad_implementation_path "$stories_dir"; then
+    echo "Operability closeout guard skipped: legacy BMAD implementation artifacts are deprecated and ${stories_dir} is absent."
+  elif [[ "$is_production_promotion_context" == "true" ]]; then
     echo "Operability closeout guard skipped: ${stories_dir} is excluded from production promotion snapshots."
   else
     echo "Policy check failed: missing stories directory: ${stories_dir}"
