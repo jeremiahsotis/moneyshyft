@@ -1,11 +1,17 @@
 import { createPublicKey, verify } from 'node:crypto'
 import {
   assertValidCallDispatchResult,
+  assertValidEndCallResult,
   assertValidSmsDispatchResult,
   type TelephonyDispatchResult,
+  type TelephonyEndCallCommand,
+  type TelephonyEndCallResult,
+  type TelephonyProviderEventCorrelation,
   type TelephonyProviderAdapter,
+  type TelephonyProviderFailureCategory,
   type TelephonyProviderEvent,
   type TelephonyProviderEventTranslationInput,
+  TelephonyProviderFailure,
   type TelephonySendSmsCommand,
   type TelephonyStartBridgeOutboundCallCommand,
   type TelephonyStartBridgeSessionCommand,
@@ -21,6 +27,9 @@ const DEFAULT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS = 300
 const TELNYX_SIGNATURE_HEADER = 'telnyx-signature-ed25519'
 const TELNYX_TIMESTAMP_HEADER = 'telnyx-timestamp'
 const PROVIDER_SPECIFIC_KEYS = new Set([
+  'id',
+  'from',
+  'to',
   'providerKey',
   'providerName',
   'providerMessageId',
@@ -56,6 +65,11 @@ type TelnyxDispatchResponseBody = {
     call_leg_id?: unknown
     call_control_id?: unknown
   }
+  errors?: Array<{
+    code?: unknown
+    title?: unknown
+    detail?: unknown
+  }>
 }
 
 const normalizeString = (value: unknown): string => {
@@ -72,6 +86,22 @@ const normalizePayloadRecord = (payload: unknown): Record<string, unknown> => {
   }
 
   return payload as Record<string, unknown>
+}
+
+const readStringFromPayloadSources = (
+  sources: Array<Record<string, unknown>>,
+  candidates: string[],
+): string | null => {
+  for (const source of sources) {
+    for (const candidate of candidates) {
+      const value = normalizeString(source[candidate])
+      if (value) {
+        return value
+      }
+    }
+  }
+
+  return null
 }
 
 const sanitizePayloadValue = (value: unknown): unknown => {
@@ -95,7 +125,17 @@ const sanitizePayloadValue = (value: unknown): unknown => {
       return
     }
 
-    sanitized[key] = sanitizePayloadValue(entry)
+    const sanitizedEntry = sanitizePayloadValue(entry)
+    if (
+      sanitizedEntry
+      && typeof sanitizedEntry === 'object'
+      && !Array.isArray(sanitizedEntry)
+      && Object.keys(sanitizedEntry as Record<string, unknown>).length === 0
+    ) {
+      return
+    }
+
+    sanitized[key] = sanitizedEntry
   })
 
   return sanitized
@@ -238,7 +278,11 @@ const toCanonicalEventType = (rawEventType: string): string => {
 const resolveFetch = (fetchImpl?: typeof globalThis.fetch): typeof globalThis.fetch => {
   const resolved = fetchImpl ?? globalThis.fetch
   if (typeof resolved !== 'function') {
-    throw new Error('Global fetch is unavailable for the Telnyx adapter.')
+    throw buildTelnyxProviderFailure({
+      message: 'Global fetch is unavailable for the Telnyx adapter.',
+      category: 'auth_configuration',
+      retryable: false,
+    })
   }
 
   return resolved
@@ -281,14 +325,32 @@ const parseJsonResponse = async (response: Response): Promise<TelnyxDispatchResp
   try {
     return JSON.parse(bodyText) as TelnyxDispatchResponseBody
   } catch (_error) {
-    throw new Error(`Telnyx response was not valid JSON (status ${response.status}).`)
+    throw new TelephonyProviderFailure({
+      message: `Telnyx response was not valid JSON (status ${response.status}).`,
+      classification: {
+        providerKey: 'telnyx',
+        category: 'unknown_provider_failure',
+        retryable: false,
+        httpStatus: response.status,
+        providerCode: null,
+      },
+    })
   }
 }
 
 const assertConfiguredTargetPhone = (targetPhone: string | undefined): string => {
   const resolved = normalizeString(targetPhone)
   if (!resolved) {
-    throw new Error('Telnyx dispatch requires targetPhone for provider-backed delivery.')
+    throw new TelephonyProviderFailure({
+      message: 'Telnyx dispatch requires targetPhone for provider-backed delivery.',
+      classification: {
+        providerKey: 'telnyx',
+        category: 'invalid_request',
+        retryable: false,
+        httpStatus: null,
+        providerCode: null,
+      },
+    })
   }
 
   return resolved
@@ -300,7 +362,16 @@ const buildSmsPayload = (
 ): Record<string, unknown> => {
   const text = normalizeString(command.body)
   if (!text) {
-    throw new Error('Telnyx SMS dispatch requires a non-empty body.')
+    throw new TelephonyProviderFailure({
+      message: 'Telnyx SMS dispatch requires a non-empty body.',
+      classification: {
+        providerKey: 'telnyx',
+        category: 'invalid_request',
+        retryable: false,
+        httpStatus: null,
+        providerCode: null,
+      },
+    })
   }
 
   const payload: Record<string, unknown> = {
@@ -318,7 +389,16 @@ const buildSmsPayload = (
     return payload
   }
 
-  throw new Error('Set TELNYX_FROM_NUMBER or TELNYX_MESSAGING_PROFILE_ID for Telnyx SMS dispatch.')
+  throw new TelephonyProviderFailure({
+    message: 'Set TELNYX_FROM_NUMBER or TELNYX_MESSAGING_PROFILE_ID for Telnyx SMS dispatch.',
+    classification: {
+      providerKey: 'telnyx',
+      category: 'auth_configuration',
+      retryable: false,
+      httpStatus: null,
+      providerCode: null,
+    },
+  })
 }
 
 const buildOutboundCallPayload = (
@@ -326,11 +406,29 @@ const buildOutboundCallPayload = (
   command: TelephonyStartOutboundCallCommand | TelephonyStartBridgeOutboundCallCommand,
 ): Record<string, unknown> => {
   if (!config.connectionId) {
-    throw new Error('Set TELNYX_CONNECTION_ID for Telnyx outbound call initiation.')
+    throw new TelephonyProviderFailure({
+      message: 'Set TELNYX_CONNECTION_ID for Telnyx outbound call initiation.',
+      classification: {
+        providerKey: 'telnyx',
+        category: 'auth_configuration',
+        retryable: false,
+        httpStatus: null,
+        providerCode: null,
+      },
+    })
   }
 
   if (!config.fromNumber) {
-    throw new Error('Set TELNYX_FROM_NUMBER for Telnyx outbound call initiation.')
+    throw new TelephonyProviderFailure({
+      message: 'Set TELNYX_FROM_NUMBER for Telnyx outbound call initiation.',
+      classification: {
+        providerKey: 'telnyx',
+        category: 'auth_configuration',
+        retryable: false,
+        httpStatus: null,
+        providerCode: null,
+      },
+    })
   }
 
   return {
@@ -356,6 +454,83 @@ const buildBridgePayload = (
   return payload
 }
 
+const buildEndCallPayload = (
+  command: TelephonyEndCallCommand,
+): Record<string, unknown> => {
+  const idempotencyKey = normalizeString(command.idempotencyKey)
+  return idempotencyKey
+    ? { command_id: idempotencyKey }
+    : {}
+}
+
+const classifyTelnyxResponseFailure = (
+  response: Response,
+): {
+  category: TelephonyProviderFailureCategory
+  retryable: boolean
+} => {
+  if (response.status === 401 || response.status === 403) {
+    return {
+      category: 'auth_configuration',
+      retryable: false,
+    }
+  }
+
+  if (response.status === 429 || response.status >= 500) {
+    return {
+      category: 'temporary_provider_failure',
+      retryable: true,
+    }
+  }
+
+  if (response.status >= 400 && response.status < 500) {
+    return {
+      category: 'invalid_request',
+      retryable: false,
+    }
+  }
+
+  return {
+    category: 'unknown_provider_failure',
+    retryable: false,
+  }
+}
+
+const buildTelnyxProviderFailure = (input: {
+  message: string
+  category: TelephonyProviderFailureCategory
+  retryable: boolean
+  httpStatus?: number | null
+  providerCode?: string | null
+}): TelephonyProviderFailure => new TelephonyProviderFailure({
+  message: input.message,
+  classification: {
+    providerKey: 'telnyx',
+    category: input.category,
+    retryable: input.retryable,
+    httpStatus: input.httpStatus ?? null,
+    providerCode: normalizeString(input.providerCode) || null,
+  },
+})
+
+const extractTelnyxErrorMessage = (
+  response: Response,
+  data: TelnyxDispatchResponseBody,
+): {
+  message: string
+  providerCode: string | null
+} => {
+  const firstError = Array.isArray(data.errors) ? data.errors[0] : null
+  const providerCode = normalizeString(firstError?.code) || null
+  const detail = normalizeString(firstError?.detail)
+  const title = normalizeString(firstError?.title)
+
+  return {
+    message: detail || title || `Telnyx request failed with status ${response.status}.`,
+    providerCode,
+  }
+}
+
 const requestTelnyx = async (
   input: {
     options: TelnyxAdapterOptions
@@ -366,28 +541,77 @@ const requestTelnyx = async (
 ): Promise<{ response: Response; data: TelnyxDispatchResponseBody }> => {
   const config = resolveConfig(input.options)
   if (!config.apiKey) {
-    throw new Error('TELNYX_API_KEY is required for real Telnyx dispatch.')
+    throw buildTelnyxProviderFailure({
+      message: 'TELNYX_API_KEY is required for real Telnyx dispatch.',
+      category: 'auth_configuration',
+      retryable: false,
+    })
   }
 
   const fetchImpl = resolveFetch(input.options.fetchImpl)
-  const response = await fetchImpl(`${config.apiBaseUrl}${input.path}`, {
-    method: 'POST',
-    headers: buildRequestHeaders({
-      apiKey: config.apiKey,
-      idempotencyKey: input.idempotencyKey,
-    }),
-    body: JSON.stringify(input.body),
-  })
+  let response: Response
+  try {
+    response = await fetchImpl(`${config.apiBaseUrl}${input.path}`, {
+      method: 'POST',
+      headers: buildRequestHeaders({
+        apiKey: config.apiKey,
+        idempotencyKey: input.idempotencyKey,
+      }),
+      body: JSON.stringify(input.body),
+    })
+  } catch (error) {
+    throw buildTelnyxProviderFailure({
+      message: error instanceof Error
+        ? error.message
+        : 'Telnyx request failed before a response was received.',
+      category: 'temporary_provider_failure',
+      retryable: true,
+    })
+  }
 
   const data = await parseJsonResponse(response)
   if (!response.ok) {
-    const errorMessage =
-      normalizeString((data.data as Record<string, unknown> | undefined)?.id)
-      || `Telnyx request failed with status ${response.status}.`
-    throw new Error(errorMessage)
+    const failure = classifyTelnyxResponseFailure(response)
+    const errorDetails = extractTelnyxErrorMessage(response, data)
+    throw buildTelnyxProviderFailure({
+      message: errorDetails.message,
+      category: failure.category,
+      retryable: failure.retryable,
+      httpStatus: response.status,
+      providerCode: errorDetails.providerCode,
+    })
   }
 
   return { response, data }
+}
+
+const extractProviderEventCorrelation = (
+  payload: unknown,
+): TelephonyProviderEventCorrelation => {
+  const normalizedPayload = normalizePayloadRecord(payload)
+  const data = normalizePayloadRecord(normalizedPayload.data)
+  const dataPayload = normalizePayloadRecord(data.payload)
+  const sources = [normalizedPayload, dataPayload, data]
+
+  return {
+    providerLegId: readStringFromPayloadSources(sources, [
+      'call_control_id',
+      'call_leg_id',
+    ]),
+    providerMessageId: readStringFromPayloadSources(sources, [
+      'message_uuid',
+      'message_id',
+    ]),
+    providerEventId: readStringFromPayloadSources(sources, [
+      'event_id',
+      'id',
+    ]),
+    providerNumber: readStringFromPayloadSources(sources, [
+      'to',
+      'to_number',
+      'toNumber',
+    ]),
+  }
 }
 
 const buildProviderEvent = (
@@ -395,6 +619,7 @@ const buildProviderEvent = (
 ): TelephonyProviderEvent => ({
   eventType: toCanonicalEventType(input.rawEventType),
   payload: sanitizePayloadValue(normalizePayloadRecord(input.payload)) as Record<string, unknown>,
+  correlation: extractProviderEventCorrelation(input.payload),
   providerNeutral: true,
   providerSpecificFieldsStripped: true,
   providerBranchingInDomain: false,
@@ -592,6 +817,25 @@ export function createTelnyxAdapter(
         providerBranchingInDomain: false,
         requestedAt: requestStartedAt,
       }
+    },
+    async endCall(command): Promise<TelephonyEndCallResult> {
+      const requestStartedAt = new Date((options.now ?? Date.now)()).toISOString()
+      const { response } = await requestTelnyx({
+        options,
+        path: `/calls/${encodeURIComponent(command.providerLegId)}/actions/hangup`,
+        body: buildEndCallPayload(command),
+        idempotencyKey: command.idempotencyKey,
+      })
+
+      return assertValidEndCallResult({
+        providerKey: 'telnyx',
+        providerLegId: command.providerLegId,
+        ended: true,
+        providerRequestId: normalizeString(response.headers.get('x-request-id')),
+        adapterInvoked: true,
+        providerBranchingInDomain: false,
+        requestedAt: requestStartedAt,
+      })
     },
     verifyWebhook(input) {
       return verifyTelnyxWebhook(input, options)

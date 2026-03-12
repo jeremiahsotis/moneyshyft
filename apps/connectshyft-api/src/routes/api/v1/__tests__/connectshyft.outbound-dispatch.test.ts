@@ -1,4 +1,5 @@
 import connectShyftRouter, { resetConnectShyftOutboundDispatchReplayLedgerForTests } from '../connectshyft';
+import { TelephonyProviderFailure } from '../../../../../../../domains/communication';
 import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents';
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings';
@@ -7,6 +8,27 @@ const toCanonicalEventType = (rawEventType: string): string => rawEventType
   .split(/[._-]+/)
   .map((part) => (part ? `${part.charAt(0).toUpperCase()}${part.slice(1)}` : ''))
   .join('');
+
+const toProviderCorrelation = (payload: unknown) => {
+  const source = payload && typeof payload === 'object'
+    ? payload as Record<string, unknown>
+    : {};
+
+  return {
+    providerLegId: typeof source.provider_leg_id === 'string'
+      ? source.provider_leg_id
+      : (typeof source.providerLegId === 'string' ? source.providerLegId : null),
+    providerMessageId: typeof source.provider_message_id === 'string'
+      ? source.provider_message_id
+      : (typeof source.providerMessageId === 'string' ? source.providerMessageId : null),
+    providerEventId: typeof source.provider_event_id === 'string'
+      ? source.provider_event_id
+      : (typeof source.providerEventId === 'string' ? source.providerEventId : null),
+    providerNumber: typeof source.to === 'string'
+      ? source.to
+      : (typeof source.to_number === 'string' ? source.to_number : null),
+  };
+};
 
 const sendSmsMock = jest.fn(async (command: { threadId: string }) => ({
   providerKey: 'telnyx',
@@ -42,21 +64,32 @@ const startBridgeSessionMock = jest.fn(async (command: { bridgeSessionId: string
 }));
 
 const verifyWebhookMock = jest.fn(() => ({ ok: true as const }));
+const endCallMock = jest.fn(async (command: { providerLegId: string }) => ({
+  providerKey: 'telnyx',
+  providerLegId: command.providerLegId,
+  ended: true as const,
+  providerRequestId: 'req-end-call-4001',
+  adapterInvoked: true as const,
+  providerBranchingInDomain: false as const,
+  requestedAt: '2026-03-11T12:07:00.000Z',
+}));
 const translateProviderEventMock = jest.fn(({ rawEventType, payload }: { rawEventType: string; payload: unknown }) => ({
   eventType: toCanonicalEventType(rawEventType),
   payload: (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>,
+  correlation: toProviderCorrelation(payload),
   providerNeutral: true as const,
   providerSpecificFieldsStripped: true as const,
   providerBranchingInDomain: false as const,
 }));
 
-jest.mock('../../../../../../../infrastructure/communications/telnyx', () => ({
-  createTelnyxAdapter: jest.fn(() => ({
+jest.mock('../../../../../../../infrastructure/communications', () => ({
+  resolveTelephonyProviderAdapter: jest.fn(() => ({
     providerKey: 'telnyx',
     adapterInterfaceVersion: 'v1',
     sendSms: sendSmsMock,
     startOutboundCall: startOutboundCallMock,
     startBridgeSession: startBridgeSessionMock,
+    endCall: endCallMock,
     verifyWebhook: verifyWebhookMock,
     translateProviderEvent: translateProviderEventMock,
   })),
@@ -183,6 +216,7 @@ describe('connectshyft outbound dispatch routes', () => {
     verifyWebhookMock.mockClear();
     translateProviderEventMock.mockClear();
     startBridgeSessionMock.mockClear();
+    endCallMock.mockClear();
     resetConnectShyftCanonicalEventsForTests();
     resetConnectShyftBridgeSessionStateForTests();
     resetConnectShyftProviderCorrelationStateForTests();
@@ -335,5 +369,43 @@ describe('connectshyft outbound dispatch routes', () => {
       code: 'CONNECTSHYFT_OPERATOR_CALLBACK_REQUIRED',
     });
     expect(startOutboundCallMock).not.toHaveBeenCalled();
+  });
+
+  it('surfaces normalized provider failure classification without changing the top-level refusal code', async () => {
+    sendSmsMock.mockRejectedValueOnce(new TelephonyProviderFailure({
+      message: 'Rate limited by provider',
+      classification: {
+        providerKey: 'telnyx',
+        category: 'temporary_provider_failure',
+        retryable: true,
+        httpStatus: 429,
+        providerCode: 'rate_limited',
+      },
+    }));
+
+    const response = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/messages',
+      headers: buildHeaders(),
+      body: {
+        providerKey: 'telnyx',
+        body: 'Need assistance',
+        targetPhone: '+12605550111',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_PROVIDER_DISPATCH_FAILED',
+      data: {
+        providerFailureClassification: {
+          providerKey: 'telnyx',
+          category: 'temporary_provider_failure',
+          retryable: true,
+          httpStatus: 429,
+          providerCode: 'rate_limited',
+        },
+      },
+    });
   });
 });

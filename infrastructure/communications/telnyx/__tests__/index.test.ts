@@ -191,6 +191,59 @@ describe('Telnyx adapter', () => {
     })
   })
 
+  it('ends active calls through the Telnyx hangup endpoint', async () => {
+    const fetchMock: jest.MockedFunction<typeof fetch> = jest.fn()
+    fetchMock.mockResolvedValue(
+      buildResponse(
+        {
+          data: {
+            result: 'ok',
+          },
+        },
+        {
+          headers: {
+            'x-request-id': 'req-hangup-4001',
+          },
+        },
+      ),
+    )
+
+    const adapter = createTelnyxAdapter({
+      apiKey: 'telnyx-test-key',
+      fetchImpl: fetchMock,
+      now: () => Date.parse('2026-03-11T12:07:00.000Z'),
+    })
+
+    const result = await adapter.endCall({
+      providerKey: 'telnyx',
+      providerLegId: 'telnyx-control-2001',
+      idempotencyKey: 'idem-hangup-001',
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.telnyx.com/v2/calls/telnyx-control-2001/actions/hangup',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer telnyx-test-key',
+          'Idempotency-Key': 'idem-hangup-001',
+        }),
+      }),
+    )
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      command_id: 'idem-hangup-001',
+    })
+    expect(result).toEqual({
+      providerKey: 'telnyx',
+      providerLegId: 'telnyx-control-2001',
+      ended: true,
+      providerRequestId: 'req-hangup-4001',
+      adapterInvoked: true,
+      providerBranchingInDomain: false,
+      requestedAt: '2026-03-11T12:07:00.000Z',
+    })
+  })
+
   it('fails deterministically when TELNYX_API_KEY is missing', async () => {
     const adapter = createTelnyxAdapter({
       fromNumber: '+12605550199',
@@ -206,7 +259,16 @@ describe('Telnyx adapter', () => {
         body: 'Need assistance',
         targetPhone: '+12605550111',
       }),
-    ).rejects.toThrow('TELNYX_API_KEY is required for real Telnyx dispatch.')
+    ).rejects.toMatchObject({
+      message: 'TELNYX_API_KEY is required for real Telnyx dispatch.',
+      classification: {
+        providerKey: 'telnyx',
+        category: 'auth_configuration',
+        retryable: false,
+        httpStatus: null,
+        providerCode: null,
+      },
+    })
   })
 
   it('verifies Telnyx webhook signatures with Ed25519 public keys', () => {
@@ -272,6 +334,149 @@ describe('Telnyx adapter', () => {
     })
   })
 
+  it.each([
+    {
+      status: 400,
+      expectedCategory: 'invalid_request',
+      expectedRetryable: false,
+    },
+    {
+      status: 401,
+      expectedCategory: 'auth_configuration',
+      expectedRetryable: false,
+    },
+    {
+      status: 403,
+      expectedCategory: 'auth_configuration',
+      expectedRetryable: false,
+    },
+    {
+      status: 429,
+      expectedCategory: 'temporary_provider_failure',
+      expectedRetryable: true,
+    },
+    {
+      status: 503,
+      expectedCategory: 'temporary_provider_failure',
+      expectedRetryable: true,
+    },
+  ])(
+    'classifies Telnyx HTTP failures for status $status',
+    async ({ status, expectedCategory, expectedRetryable }) => {
+      const fetchMock: jest.MockedFunction<typeof fetch> = jest.fn()
+      fetchMock.mockResolvedValue(
+        buildResponse(
+          {
+            errors: [
+              {
+                code: `telnyx-${status}`,
+                detail: `failure-${status}`,
+              },
+            ],
+          },
+          {
+            status,
+          },
+        ),
+      )
+
+      const adapter = createTelnyxAdapter({
+        apiKey: 'telnyx-test-key',
+        fromNumber: '+12605550199',
+        fetchImpl: fetchMock,
+      })
+
+      await expect(
+        adapter.sendSms({
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+          threadId: 'thread-f1-unclaimed-1001',
+          providerKey: 'telnyx',
+          body: 'Need assistance',
+          targetPhone: '+12605550111',
+        }),
+      ).rejects.toMatchObject({
+        message: `failure-${status}`,
+        classification: {
+          providerKey: 'telnyx',
+          category: expectedCategory,
+          retryable: expectedRetryable,
+          httpStatus: status,
+          providerCode: `telnyx-${status}`,
+        },
+      })
+    },
+  )
+
+  it('classifies transport failures as temporary provider failures', async () => {
+    const fetchMock: jest.MockedFunction<typeof fetch> = jest.fn()
+    fetchMock.mockRejectedValue(new Error('socket hang up'))
+
+    const adapter = createTelnyxAdapter({
+      apiKey: 'telnyx-test-key',
+      fromNumber: '+12605550199',
+      fetchImpl: fetchMock,
+    })
+
+    await expect(
+      adapter.sendSms({
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        threadId: 'thread-f1-unclaimed-1001',
+        providerKey: 'telnyx',
+        body: 'Need assistance',
+        targetPhone: '+12605550111',
+      }),
+    ).rejects.toMatchObject({
+      message: 'socket hang up',
+      classification: {
+        providerKey: 'telnyx',
+        category: 'temporary_provider_failure',
+        retryable: true,
+        httpStatus: null,
+        providerCode: null,
+      },
+    })
+  })
+
+  it('classifies invalid JSON responses as unknown provider failures', async () => {
+    const fetchMock: jest.MockedFunction<typeof fetch> = jest.fn()
+    fetchMock.mockResolvedValue(
+      new Response('not-json', {
+        status: 502,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
+
+    const adapter = createTelnyxAdapter({
+      apiKey: 'telnyx-test-key',
+      fromNumber: '+12605550199',
+      fetchImpl: fetchMock,
+    })
+
+    await expect(
+      adapter.sendSms({
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        threadId: 'thread-f1-unclaimed-1001',
+        providerKey: 'telnyx',
+        body: 'Need assistance',
+        targetPhone: '+12605550111',
+      }),
+    ).rejects.toMatchObject({
+      message: 'Telnyx response was not valid JSON (status 502).',
+      classification: {
+        providerKey: 'telnyx',
+        category: 'unknown_provider_failure',
+        retryable: false,
+        httpStatus: 502,
+        providerCode: null,
+      },
+    })
+  })
+
   it('translates provider events into sanitized provider-neutral payloads', () => {
     const adapter = createTelnyxAdapter({
       apiKey: 'telnyx-test-key',
@@ -281,10 +486,12 @@ describe('Telnyx adapter', () => {
       adapter.translateProviderEvent({
         rawEventType: 'call.connected',
         payload: {
-          eventType: 'call.connected',
-          telnyxCallControlId: 'telnyx-raw-001',
-          providerPayload: {
-            call_control_id: 'telnyx-raw-001',
+          data: {
+            id: 'evt-1001',
+            payload: {
+              call_control_id: 'telnyx-raw-001',
+              to: '+12605550199',
+            },
           },
           delivery: {
             status: 'connected',
@@ -294,10 +501,15 @@ describe('Telnyx adapter', () => {
     ).toEqual({
       eventType: 'CallConnected',
       payload: {
-        eventType: 'call.connected',
         delivery: {
           status: 'connected',
         },
+      },
+      correlation: {
+        providerLegId: 'telnyx-raw-001',
+        providerMessageId: null,
+        providerEventId: 'evt-1001',
+        providerNumber: '+12605550199',
       },
       providerNeutral: true,
       providerSpecificFieldsStripped: true,
@@ -314,10 +526,14 @@ describe('Telnyx adapter', () => {
       adapter.translateProviderEvent({
         rawEventType: 'call.answered',
         payload: {
-          call_control_id: 'telnyx-control-operator-1001',
-          call_leg_id: 'telnyx-leg-operator-1001',
-          eventType: 'call.answered',
-          call_session_id: 'telnyx-session-1001',
+          data: {
+            id: 'evt-1002',
+            payload: {
+              call_control_id: 'telnyx-control-operator-1001',
+              call_leg_id: 'telnyx-leg-operator-1001',
+              call_session_id: 'telnyx-session-1001',
+            },
+          },
           occurrence: {
             leg: 'operator',
           },
@@ -326,10 +542,15 @@ describe('Telnyx adapter', () => {
     ).toEqual({
       eventType: 'CallAnswered',
       payload: {
-        eventType: 'call.answered',
         occurrence: {
           leg: 'operator',
         },
+      },
+      correlation: {
+        providerLegId: 'telnyx-control-operator-1001',
+        providerMessageId: null,
+        providerEventId: 'evt-1002',
+        providerNumber: null,
       },
       providerNeutral: true,
       providerSpecificFieldsStripped: true,

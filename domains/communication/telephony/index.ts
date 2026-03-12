@@ -58,6 +58,22 @@ export type TelephonyStartBridgeSessionResult = {
   requestedAt?: string
 }
 
+export type TelephonyEndCallCommand = {
+  providerKey: string
+  providerLegId: string
+  idempotencyKey?: string
+}
+
+export type TelephonyEndCallResult = {
+  providerKey: string
+  providerLegId: string
+  ended: true
+  providerRequestId?: string | null
+  adapterInvoked: true
+  providerBranchingInDomain: false
+  requestedAt?: string
+}
+
 export type TelephonyDispatchResult = {
   providerKey: string
   channel: TelephonyDispatchChannel
@@ -102,13 +118,52 @@ export type TelephonyProviderEventTranslationInput = {
   payload: unknown
 }
 
+export type TelephonyProviderEventCorrelation = {
+  providerLegId: string | null
+  providerMessageId: string | null
+  providerEventId: string | null
+  providerNumber: string | null
+}
+
 export type TelephonyProviderEvent = {
   eventType: string
   payload: Record<string, unknown>
+  correlation: TelephonyProviderEventCorrelation
   providerNeutral: true
   providerSpecificFieldsStripped: true
   providerBranchingInDomain: false
 }
+
+export type TelephonyProviderFailureCategory =
+  | 'auth_configuration'
+  | 'temporary_provider_failure'
+  | 'invalid_request'
+  | 'unknown_provider_failure'
+
+export type TelephonyProviderFailureClassification = {
+  providerKey: string
+  category: TelephonyProviderFailureCategory
+  retryable: boolean
+  httpStatus: number | null
+  providerCode: string | null
+}
+
+export class TelephonyProviderFailure extends Error {
+  readonly classification: TelephonyProviderFailureClassification
+
+  constructor(input: {
+    message: string
+    classification: TelephonyProviderFailureClassification
+  }) {
+    super(input.message)
+    this.name = 'TelephonyProviderFailure'
+    this.classification = input.classification
+  }
+}
+
+export const isTelephonyProviderFailure = (
+  error: unknown,
+): error is TelephonyProviderFailure => error instanceof TelephonyProviderFailure
 
 export interface TelephonyProviderAdapter {
   providerKey: string
@@ -123,7 +178,7 @@ export interface TelephonyProviderAdapter {
   startBridgeSession?: (
     command: TelephonyStartBridgeSessionCommand,
   ) => Promise<TelephonyStartBridgeSessionResult>
-  endCall?: (command: unknown) => Promise<unknown>
+  endCall(command: TelephonyEndCallCommand): Promise<TelephonyEndCallResult>
 }
 
 export type TelephonyDispatchReplayKeyInput = {
@@ -226,6 +281,18 @@ const normalizeDispatchResult = (
   requestedAt: normalizeString(result.requestedAt) || undefined,
 })
 
+const normalizeEndCallResult = (
+  result: TelephonyEndCallResult,
+): TelephonyEndCallResult => ({
+  providerKey: normalizeString(result.providerKey).toLowerCase(),
+  providerLegId: normalizeString(result.providerLegId),
+  ended: true,
+  providerRequestId: normalizeString(result.providerRequestId) || null,
+  adapterInvoked: true,
+  providerBranchingInDomain: false,
+  requestedAt: normalizeString(result.requestedAt) || undefined,
+})
+
 export const assertValidSmsDispatchResult = (
   result: TelephonyDispatchResult,
 ): TelephonyDispatchResult => {
@@ -267,6 +334,22 @@ export const assertValidCallDispatchResult = (
 
   if (normalized.providerMessageId) {
     throw new Error('Call dispatch results must not include providerMessageId.')
+  }
+
+  return normalized
+}
+
+export const assertValidEndCallResult = (
+  result: TelephonyEndCallResult,
+): TelephonyEndCallResult => {
+  const normalized = normalizeEndCallResult(result)
+
+  if (!normalized.providerKey) {
+    throw new Error('End-call results require providerKey.')
+  }
+
+  if (!normalized.providerLegId) {
+    throw new Error('End-call results require providerLegId.')
   }
 
   return normalized

@@ -4,6 +4,7 @@ import type { Knex } from 'knex';
 import {
   InMemoryTelephonyDispatchLedger,
   buildTelephonyDispatchReplayKey,
+  isTelephonyProviderFailure,
 } from '../../../../../../domains/communication';
 import { refusal, success } from '../../../platform/envelopes/response';
 import { CAPABILITIES, hasCapability } from '../../../platform/rbac/capabilities';
@@ -1005,82 +1006,6 @@ const asRecord = (value: unknown): Record<string, unknown> | null => {
   return value as Record<string, unknown>;
 };
 
-const readWebhookIdentifierFromSources = (
-  sources: Array<Record<string, unknown> | null>,
-  candidates: string[],
-): string | null => {
-  for (const source of sources) {
-    if (!source) {
-      continue;
-    }
-    for (const candidate of candidates) {
-      const value = normalizeLifecycleString(source[candidate]);
-      if (value) {
-        return value;
-      }
-    }
-  }
-  return null;
-};
-
-const extractWebhookProviderIdentifiers = (body: unknown): {
-  providerLegId: string | null;
-  providerMessageId: string | null;
-  providerEventId: string | null;
-} => {
-  const payload = asRecord(body);
-  const providerPayload = asRecord(payload?.providerPayload);
-  const data = asRecord(payload?.data);
-  const dataPayload = asRecord(data?.payload);
-  const sources = [payload, providerPayload, dataPayload, data];
-
-  return {
-    providerLegId: readWebhookIdentifierFromSources(sources, [
-      'providerLegId',
-      'provider_leg_id',
-      'callControlId',
-      'call_control_id',
-      'telnyxCallControlId',
-    ]),
-    providerMessageId: readWebhookIdentifierFromSources(sources, [
-      'providerMessageId',
-      'provider_message_id',
-      'messageUuid',
-      'message_uuid',
-      'telnyxMessageId',
-      'telnyx_message_id',
-    ]),
-    providerEventId: readWebhookIdentifierFromSources(sources, [
-      'providerEventId',
-      'provider_event_id',
-      'eventId',
-      'event_id',
-      'id',
-    ]),
-  };
-};
-
-const extractWebhookProviderNumber = (body: unknown): string | null => {
-  const payload = asRecord(body);
-  const providerPayload = asRecord(payload?.providerPayload);
-  const data = asRecord(payload?.data);
-  const dataPayload = asRecord(data?.payload);
-  const sources = [payload, providerPayload, dataPayload, data];
-
-  return readWebhookIdentifierFromSources(sources, [
-    'providerNumberE164',
-    'provider_number_e164',
-    'to',
-    'toNumber',
-    'to_number',
-    'recipient',
-    'recipientNumber',
-    'recipient_number',
-    'twilioNumberE164',
-    'twilio_number_e164',
-  ]);
-};
-
 const normalizeRoutingSlug = (value: string): string => {
   const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   return normalized || 'unknown';
@@ -1184,14 +1109,24 @@ const resolveWebhookCorrelationFailure = (
 const resolveInboundWebhookCorrelation = async (input: {
   body: unknown;
   providerName: string;
+  providerCorrelation: {
+    providerLegId: string | null;
+    providerMessageId: string | null;
+    providerEventId: string | null;
+    providerNumber: string | null;
+  };
   tenantIdHint?: string | null;
 }): Promise<ConnectShyftResolvedWebhookCorrelation> => {
   const payload = asRecord(input.body);
   const tenantId = normalizeLifecycleString(payload?.tenantId);
   const orgUnitId = normalizeLifecycleString(payload?.orgUnitId);
   const threadId = normalizeLifecycleString(payload?.threadId);
-  const providerIdentifiers = extractWebhookProviderIdentifiers(input.body);
-  const providerNumberE164 = extractWebhookProviderNumber(input.body);
+  const providerIdentifiers = {
+    providerLegId: normalizeLifecycleString(input.providerCorrelation.providerLegId),
+    providerMessageId: normalizeLifecycleString(input.providerCorrelation.providerMessageId),
+    providerEventId: normalizeLifecycleString(input.providerCorrelation.providerEventId),
+  };
+  const providerNumberE164 = normalizeLifecycleString(input.providerCorrelation.providerNumber);
   const tenantScopeHint = normalizeLifecycleString(input.tenantIdHint || null);
   const numberMappingTenantScope = tenantId
     || (tenantScopeHint.toLowerCase() !== 'public' ? tenantScopeHint : '')
@@ -6646,6 +6581,9 @@ const performOutboundAction = async (
           lifecycleMutationApplied,
           auditPersisted: Boolean(persistedSmsOverride),
         },
+        providerFailureClassification: isTelephonyProviderFailure(error)
+          ? error.classification
+          : null,
         error: error instanceof Error ? error.message : 'unknown-provider-dispatch-error',
         ...buildReopenLifecycleData(),
       },
@@ -6999,6 +6937,7 @@ const handleInboundWebhook = async (
   const correlation = await resolveInboundWebhookCorrelation({
     body: req.body,
     providerName: providerSelection.providerResolution.resolvedProvider,
+    providerCorrelation: canonicalTranslation.correlation,
     tenantIdHint: req.tenantId || null,
   });
   if (!correlation.ok) {
@@ -7722,10 +7661,10 @@ const handleInboundWebhook = async (
         neighborId,
         actorUserId,
         lastInboundCsNumberId: `sms-inbound:${normalizeRoutingSlug(
-          correlation.providerNumberE164 || extractWebhookProviderNumber(req.body) || neighborId,
+          correlation.providerNumberE164 || canonicalTranslation.correlation.providerNumber || neighborId,
         )}`,
         preferredOutboundCsNumberId: `sms-outbound:${normalizeRoutingSlug(
-          extractWebhookProviderNumber(req.body) || neighborId,
+          canonicalTranslation.correlation.providerNumber || neighborId,
         )}`,
         eventType: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundSmsAppended,
         buildCanonicalPayload: (threadState) => buildConnectShyftInboundSmsCanonicalPayload({

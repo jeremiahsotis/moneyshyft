@@ -8,6 +8,27 @@ const toCanonicalEventType = (rawEventType: string): string => rawEventType
   .map((part) => (part ? `${part.charAt(0).toUpperCase()}${part.slice(1)}` : ''))
   .join('')
 
+const toProviderCorrelation = (payload: unknown) => {
+  const source = payload && typeof payload === 'object'
+    ? payload as Record<string, unknown>
+    : {}
+
+  return {
+    providerLegId: typeof source.provider_leg_id === 'string'
+      ? source.provider_leg_id
+      : (typeof source.providerLegId === 'string' ? source.providerLegId : null),
+    providerMessageId: typeof source.provider_message_id === 'string'
+      ? source.provider_message_id
+      : (typeof source.providerMessageId === 'string' ? source.providerMessageId : null),
+    providerEventId: typeof source.provider_event_id === 'string'
+      ? source.provider_event_id
+      : (typeof source.providerEventId === 'string' ? source.providerEventId : null),
+    providerNumber: typeof source.to === 'string'
+      ? source.to
+      : (typeof source.to_number === 'string' ? source.to_number : null),
+  }
+}
+
 const sendSmsMock = jest.fn()
 const startOutboundCallMock = jest.fn(async (command: { threadId: string; targetPhone?: string }) => ({
   providerKey: 'telnyx',
@@ -35,21 +56,32 @@ const startBridgeSessionMock = jest.fn(async (command: {
   requestedAt: '2026-03-11T12:06:00.000Z',
 }))
 const verifyWebhookMock = jest.fn(() => ({ ok: true as const }))
+const endCallMock = jest.fn(async (command: { providerLegId: string }) => ({
+  providerKey: 'telnyx',
+  providerLegId: command.providerLegId,
+  ended: true as const,
+  providerRequestId: 'req-end-call-4001',
+  adapterInvoked: true as const,
+  providerBranchingInDomain: false as const,
+  requestedAt: '2026-03-11T12:07:00.000Z',
+}))
 const translateProviderEventMock = jest.fn(({ rawEventType, payload }: { rawEventType: string; payload: unknown }) => ({
   eventType: toCanonicalEventType(rawEventType),
   payload: (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>,
+  correlation: toProviderCorrelation(payload),
   providerNeutral: true as const,
   providerSpecificFieldsStripped: true as const,
   providerBranchingInDomain: false as const,
 }))
 
-jest.mock('../../../../../../../infrastructure/communications/telnyx', () => ({
-  createTelnyxAdapter: jest.fn(() => ({
+jest.mock('../../../../../../../infrastructure/communications', () => ({
+  resolveTelephonyProviderAdapter: jest.fn(() => ({
     providerKey: 'telnyx',
     adapterInterfaceVersion: 'v1',
     sendSms: sendSmsMock,
     startOutboundCall: startOutboundCallMock,
     startBridgeSession: startBridgeSessionMock,
+    endCall: endCallMock,
     verifyWebhook: verifyWebhookMock,
     translateProviderEvent: translateProviderEventMock,
   })),
@@ -175,6 +207,7 @@ describe('connectshyft bridge webhook flow', () => {
     sendSmsMock.mockClear()
     startOutboundCallMock.mockClear()
     startBridgeSessionMock.mockClear()
+    endCallMock.mockClear()
     verifyWebhookMock.mockClear()
     translateProviderEventMock.mockClear()
     resetConnectShyftCanonicalEventsForTests()

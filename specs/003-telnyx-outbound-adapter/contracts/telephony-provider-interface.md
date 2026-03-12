@@ -23,6 +23,11 @@ Define the shared telephony boundary used by app code and implemented by provide
 
 - `TelephonyProviderAdapter`
 - `TelephonyDispatchResult`
+- `TelephonyEndCallCommand`
+- `TelephonyEndCallResult`
+- `TelephonyProviderEventCorrelation`
+- `TelephonyProviderFailureClassification`
+- `TelephonyProviderFailure`
 - `TelephonySendSmsCommand`
 - `TelephonyStartOutboundCallCommand`
 - `TelephonyWebhookVerificationInput`
@@ -70,6 +75,22 @@ Define the shared telephony boundary used by app code and implemented by provide
 - `adapterInvoked = true`
 - `providerBranchingInDomain = false`
 
+### `endCall(command)`
+
+**Input**
+
+- `providerKey`
+- `providerLegId`
+- optional `idempotencyKey`
+
+**Output**
+
+- `providerKey`
+- `providerLegId`
+- `ended = true`
+- `adapterInvoked = true`
+- `providerBranchingInDomain = false`
+
 ### `verifyWebhook(input)`
 
 **Input**
@@ -98,10 +119,25 @@ Define the shared telephony boundary used by app code and implemented by provide
 
 - canonical event type
 - sanitized provider-neutral payload
+- normalized correlation metadata:
+  - `providerLegId`
+  - `providerMessageId`
+  - `providerEventId`
+  - `providerNumber`
 - `providerNeutral = true`
 - `providerSpecificFieldsStripped = true`
 - `providerBranchingInDomain = false`
 
+### Provider failure classification
+
+Provider-backed dispatch failures must surface normalized classifications rather than raw vendor errors.
+
+- `auth_configuration`
+- `temporary_provider_failure`
+- `invalid_request`
+- `unknown_provider_failure`
+- `retryable`
+
 ## Deferred Surface
 
-The contract may expose `startBridgeSession(command)` and `endCall(command)` as future-compatible methods, but CS-003 only needs real implementations for SMS and outbound call initiation.
+The contract may still expose `startBridgeSession(command)` as a future-compatible method, but `endCall(command)` is now part of the concrete shared adapter surface.
