@@ -46,16 +46,14 @@ export type ConnectShyftCanonicalEventListFilters = {
 };
 
 const CONNECTSHYFT_PROVIDER_SPECIFIC_KEYS = new Set([
-  'twilioCallSid',
-  'telnyxCallControlId',
   'providerLegId',
   'providerMessageId',
   'providerPayload',
   'providerName',
   'providerKey',
   'providerEventId',
+  'providerNumber',
   'providerNumberE164',
-  'twilioNumberE164',
 ]);
 
 const inMemoryCanonicalEvents: ConnectShyftStoredCanonicalEvent[] = [];
@@ -118,8 +116,7 @@ const sanitizePayloadValue = (value: unknown): unknown => {
   Object.entries(value as Record<string, unknown>).forEach(([key, entryValue]) => {
     if (
       CONNECTSHYFT_PROVIDER_SPECIFIC_KEYS.has(key)
-      || key.toLowerCase().startsWith('twilio')
-      || key.toLowerCase().startsWith('telnyx')
+      || key.toLowerCase().startsWith('provider')
     ) {
       return;
     }

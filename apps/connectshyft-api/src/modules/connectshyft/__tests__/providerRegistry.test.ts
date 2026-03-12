@@ -412,8 +412,27 @@ describe('connectshyft provider registry', () => {
     ).toEqual({
       eventType: 'CallConnected',
       payload: {},
+      correlation: {
+        providerLegId: null,
+        providerMessageId: null,
+        providerEventId: null,
+        providerNumber: null,
+      },
       providerNeutral: true,
       providerSpecificFieldsStripped: true,
+      providerBranchingInDomain: false,
+    });
+
+    await expect(
+      result.adapter.endCall({
+        providerKey: 'mock-sandbox',
+        providerLegId: 'mock-sandbox-call-leg-thread-f1-unclaimed-1001',
+      }),
+    ).resolves.toMatchObject({
+      providerKey: 'mock-sandbox',
+      providerLegId: 'mock-sandbox-call-leg-thread-f1-unclaimed-1001',
+      ended: true,
+      adapterInvoked: true,
       providerBranchingInDomain: false,
     });
   });

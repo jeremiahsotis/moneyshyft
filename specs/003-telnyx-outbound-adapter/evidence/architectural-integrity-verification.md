@@ -1,7 +1,7 @@
 # CS-003 Architectural Integrity Verification
 
 Date: March 12, 2026
-Verification target: merged implementation PR `#216` (`Feat: implement CS-003 Telnyx outbound adapter`)
+Verification target: CS-003a remediation of merged implementation PR `#216` (`Feat: implement CS-003 Telnyx outbound adapter`)
 
 ## Scope
 
@@ -31,7 +31,10 @@ node /Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/jest@29.7.0_@t
   --config jest.config.js \
   --runTestsByPath \
   src/modules/connectshyft/__tests__/providerRegistry.test.ts \
+  src/modules/connectshyft/__tests__/canonicalEvents.test.ts \
+  src/modules/connectshyft/__tests__/bridgeSessions.test.ts \
   src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts \
   ../../domains/communication/telephony/__tests__/index.test.ts \
   ../../infrastructure/communications/telnyx/__tests__/index.test.ts
 ```
@@ -42,13 +45,15 @@ node /Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/jest@29.7.0_@t
 |-------|--------|-------|
 | `apps/connectshyft-api` TypeScript build | PASS | `npm run build` succeeded |
 | Workspace boundary guard | PASS | `node scripts/enforce-workspace-boundaries.js` succeeded |
-| CS-003 target Jest suites | PASS | `4` suites passed, `31` tests passed |
+| CS-003a focused Jest suites | PASS | `7` suites passed, `54` tests passed |
 | Provider interface under `domains/communication/telephony` | PASS | See `/domains/communication/telephony/index.ts` |
 | Telnyx adapter under `infrastructure/communications/telnyx` | PASS | See `/infrastructure/communications/telnyx/index.ts` |
 | No Telnyx imports under `/domains/communication/bridge` | PASS | No matches found |
 | Provider events translated before entering shared domain contracts | PASS | Telnyx adapter exposes `translateProviderEvent(...)` and returns sanitized provider-neutral events |
-| No Telnyx imports under `/apps` | FAIL | `apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts` imports `createTelnyxAdapter` directly |
-| Telnyx request/payload handling exists only inside adapter | FAIL | app-layer webhook correlation and sanitization still reference Telnyx-specific field names |
+| No Telnyx imports under `/apps` | PASS | Provider registry resolves adapters through `/infrastructure/communications/index.ts` |
+| Telnyx request/payload handling exists only inside adapter | PASS | webhook correlation normalization and provider error classification now originate in infrastructure |
+| `endCall(command)` implemented on the shared adapter surface | PASS | typed contract exists in `/domains/communication/telephony/index.ts` and Telnyx implementation exists in `/infrastructure/communications/telnyx/index.ts` |
+| Provider failures normalized above infrastructure | PASS | dispatch errors expose provider-neutral classification and retryability |
 
 ## Verified Architecture Strengths
 
@@ -62,39 +67,46 @@ node /Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/jest@29.7.0_@t
 5. Provider event translation strips provider-specific fields before returning the event object to consumers.
 6. The focused CS-003 tests cover interface assertions, adapter request/response mapping, outbound dispatch behavior, and webhook verification/translation.
 
-## Architectural Deviations
+## Remediation Summary
 
-### 1. Direct Telnyx adapter import under `/apps`
+### 1. Provider construction is no longer app-owned
 
-File:
+Current state:
 
-- `/Users/jeremiahotis/projects/connectshyft/apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts`
-
-Current behavior:
-
-- `providerRegistry.ts` imports `createTelnyxAdapter` directly from `/infrastructure/communications/telnyx`.
-- This makes the application layer aware of the concrete provider implementation rather than resolving it through a provider-neutral composition boundary.
+- `providerRegistry.ts` no longer imports or constructs `createTelnyxAdapter` directly.
+- app-layer provider resolution now depends on `/infrastructure/communications/index.ts`, which owns the Telnyx composition seam.
 
 Impact:
 
-- The implementation still avoids raw Telnyx request execution in app code, but the strict "no Telnyx imports under `/apps`" boundary is not satisfied.
+- the strict "no Telnyx import under `/apps`" boundary is now satisfied without changing ConnectShyft rollout/policy behavior.
 
-### 2. App-layer references to Telnyx-specific webhook/correlation field names
+### 2. Webhook correlation is now provider-neutral above infrastructure
 
-Files:
+Current state:
 
-- `/Users/jeremiahotis/projects/connectshyft/apps/connectshyft-api/src/routes/api/v1/connectshyft.ts`
-- `/Users/jeremiahotis/projects/connectshyft/apps/connectshyft-api/src/modules/connectshyft/canonicalEvents.ts`
-
-Current behavior:
-
-- app-layer logic still recognizes keys such as `telnyxCallControlId`, `telnyxMessageId`, and related provider-specific webhook identifiers.
-- This means some provider-shape awareness remains outside the infrastructure adapter.
+- Telnyx-specific correlation extraction moved into infrastructure translation.
+- route-level webhook handling now consumes normalized correlation metadata from translated provider events.
+- canonical event sanitization now strips generic provider metadata only and no longer knows provider brand names.
 
 Impact:
 
-- The route/domain-adjacent application layer is still partially coupled to Telnyx payload conventions.
-- The implementation is functionally correct, but it does not fully satisfy the strongest form of adapter isolation described in the PR template.
+- app services no longer interpret Telnyx-specific webhook field names directly.
+
+### 3. `endCall` is now part of the real shared adapter contract
+
+Current state:
+
+- `/domains/communication/telephony/index.ts` now defines typed `TelephonyEndCallCommand` and `TelephonyEndCallResult`.
+- `/infrastructure/communications/telnyx/index.ts` implements the Telnyx hangup command behind that provider-neutral surface.
+- registry/guardrail layers pass the capability through unchanged.
+
+### 4. Provider failures are now normalized above infrastructure
+
+Current state:
+
+- the shared telephony contract now defines normalized provider failure categories and retryability.
+- the Telnyx adapter throws classified provider-neutral failures for config, HTTP, network, and parse failures.
+- ConnectShyft outbound refusal payloads surface that normalized classification without changing the existing top-level refusal code.
 
 ## Out-of-Scope Checks
 
@@ -107,16 +119,20 @@ Impact:
 
 ## Conclusion
 
-CS-003 is functionally verified and mostly aligned with the ADR/provider-boundary intent, but it is not perfectly isolated at the application boundary.
+CS-003a resolves the four blocking architectural deviations identified during the original CS-003 verification.
 
 Current architectural status:
 
 - Shared provider contract: compliant
 - Infrastructure adapter placement: compliant
 - Event translation and webhook verification: compliant
-- Strict app-layer provider isolation: not fully compliant
+- Strict app-layer provider isolation: compliant
+- Typed `endCall` support: compliant
+- Normalized provider failure classification: compliant
 
-Recommended follow-up:
+Follow-up status:
 
-1. Remove the direct `createTelnyxAdapter` import from `/apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts` by introducing a provider-neutral adapter registry/composition seam outside app code.
-2. Move Telnyx-specific webhook identifier extraction and sanitization fully into infrastructure translation/correlation helpers so app code only consumes canonical provider-neutral fields.
+1. Direct Telnyx imports under `/apps` are removed.
+2. App-layer Telnyx-specific correlation handling is removed.
+3. `endCall` is implemented behind the provider-neutral interface.
+4. Provider failure classification is normalized for downstream CS-005 use.

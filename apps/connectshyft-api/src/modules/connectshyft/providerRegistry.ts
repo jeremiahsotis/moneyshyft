@@ -1,6 +1,8 @@
 import {
   assertValidCallDispatchResult,
+  assertValidEndCallResult,
   assertValidSmsDispatchResult,
+  type TelephonyEndCallResult,
   type TelephonyDispatchResult,
   type TelephonyOutboundCallPolicy,
   type TelephonyProviderAdapter,
@@ -8,7 +10,7 @@ import {
   type TelephonyWebhookVerificationInput,
   type TelephonyWebhookVerificationResult,
 } from '../../../../../domains/communication';
-import { createTelnyxAdapter } from '../../../../../infrastructure/communications/telnyx';
+import { resolveTelephonyProviderAdapter } from '../../../../../infrastructure/communications';
 import { isConnectShyftTestOverrideEnabled } from './featureFlags';
 
 const DEFAULT_ENABLED_PROVIDERS = ['telnyx'];
@@ -685,6 +687,15 @@ const buildMockSandboxAdapter = (
       providerBranchingInDomain: false,
     };
   },
+  async endCall(command): Promise<TelephonyEndCallResult> {
+    return assertValidEndCallResult({
+      providerKey,
+      providerLegId: command.providerLegId,
+      ended: true,
+      adapterInvoked: true,
+      providerBranchingInDomain: false,
+    });
+  },
   verifyWebhook(input) {
     if (input.verification?.enforceValidation === false) {
       return { ok: true };
@@ -695,6 +706,12 @@ const buildMockSandboxAdapter = (
     return {
       eventType: toCanonicalEventType(rawEventType),
       payload: payloadToRecord(payload),
+      correlation: {
+        providerLegId: null,
+        providerMessageId: null,
+        providerEventId: null,
+        providerNumber: null,
+      },
       providerNeutral: true,
       providerSpecificFieldsStripped: true,
       providerBranchingInDomain: false,
@@ -780,20 +797,20 @@ const createGuardrailedAdapter = (
 
     return baseAdapter.startBridgeSession(command);
   },
+  async endCall(command) {
+    return baseAdapter.endCall(command);
+  },
 });
 
 const resolveProviderAdapter = (
   providerKey: string,
 ): ConnectShyftProviderAdapter | null => {
-  if (providerKey === 'telnyx') {
-    return createGuardrailedAdapter(createTelnyxAdapter());
-  }
-
   if (providerKey === 'mock-sandbox') {
     return createGuardrailedAdapter(buildMockSandboxAdapter(providerKey));
   }
 
-  return null;
+  const baseAdapter = resolveTelephonyProviderAdapter(providerKey);
+  return baseAdapter ? createGuardrailedAdapter(baseAdapter) : null;
 };
 
 export const resolveConnectShyftRequestedProviderKey = (

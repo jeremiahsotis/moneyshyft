@@ -22,10 +22,10 @@ describe('connectshyft canonical event store', () => {
     const payload = sanitizeConnectShyftCanonicalPayload({
       threadState: 'UNCLAIMED',
       providerPayload: {
-        telnyxCallControlId: 'telnyx-123',
+        providerLegId: 'provider-leg-hidden',
       },
       nested: {
-        twilioCallSid: 'twilio-123',
+        providerMessageId: 'provider-message-hidden',
         keep: true,
       },
       providerLegId: 'provider-leg-1001',
@@ -59,7 +59,7 @@ describe('connectshyft canonical event store', () => {
       payload: {
         direction: 'inbound',
         channel: 'voice',
-        telnyxCallControlId: 'telnyx-hidden',
+        providerLegId: 'provider-leg-hidden',
       },
       occurredAtUtc: '2026-02-28T09:00:02.000Z',
     });

@@ -32,9 +32,24 @@ const startBridgeSessionMock = jest.fn(async (input: { bridgeSessionId: string }
   requestedAt: '2026-03-11T12:05:00.000Z',
 }))
 const verifyWebhookMock = jest.fn(() => ({ ok: true as const }))
+const endCallMock = jest.fn(async (input: { providerLegId: string }) => ({
+  providerKey: 'telnyx',
+  providerLegId: input.providerLegId,
+  ended: true as const,
+  providerRequestId: 'req-end-call-1001',
+  adapterInvoked: true as const,
+  providerBranchingInDomain: false as const,
+  requestedAt: '2026-03-11T12:07:00.000Z',
+}))
 const translateProviderEventMock = jest.fn(({ rawEventType, payload }: { rawEventType: string; payload: unknown }) => ({
   eventType: rawEventType,
   payload: (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>,
+  correlation: {
+    providerLegId: null,
+    providerMessageId: null,
+    providerEventId: null,
+    providerNumber: null,
+  },
   providerNeutral: true as const,
   providerSpecificFieldsStripped: true as const,
   providerBranchingInDomain: false as const,
@@ -49,6 +64,7 @@ const providerAdapter: ConnectShyftProviderAdapter = {
   verifyWebhook: verifyWebhookMock,
   translateProviderEvent: translateProviderEventMock,
   startBridgeSession: startBridgeSessionMock,
+  endCall: endCallMock,
 }
 
 const baseInput = {
@@ -78,6 +94,7 @@ describe('connectshyft bridgeSessions', () => {
     startOutboundCallMock.mockReset()
     startBridgeOutboundCallMock.mockClear()
     startBridgeSessionMock.mockClear()
+    endCallMock.mockClear()
     verifyWebhookMock.mockClear()
     translateProviderEventMock.mockClear()
     resetConnectShyftBridgeSessionStateForTests()
