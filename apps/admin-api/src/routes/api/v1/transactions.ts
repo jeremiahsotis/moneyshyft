@@ -4,6 +4,7 @@ import { asyncHandler } from '../../../middleware/errorHandler';
 import { authenticateToken } from '../../../middleware/auth';
 import { validateRequest } from '../../../middleware/validate';
 import { createTransactionSchema, createTransferSchema, updateTransactionSchema } from '../../../validators/transaction.validators';
+import { readDate, readInteger, readNumber, readOneOf, readString } from '../../../utils/requestValue';
 
 const router = Router();
 
@@ -24,16 +25,16 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
 
   // Parse query parameters
   const filters = {
-    account_id: req.query.account_id as string | undefined,
-    category_id: req.query.category_id as string | undefined,
-    start_date: req.query.start_date ? new Date(req.query.start_date as string) : undefined,
-    end_date: req.query.end_date ? new Date(req.query.end_date as string) : undefined,
-    limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
-    offset: req.query.offset ? parseInt(req.query.offset as string) : undefined,
-    min_amount: req.query.min_amount ? parseFloat(req.query.min_amount as string) : undefined,
-    max_amount: req.query.max_amount ? parseFloat(req.query.max_amount as string) : undefined,
-    search: req.query.search as string | undefined,
-    type: req.query.type as 'income' | 'expense' | 'transfer' | undefined
+    account_id: readString(req.query.account_id),
+    category_id: readString(req.query.category_id),
+    start_date: readDate(req.query.start_date),
+    end_date: readDate(req.query.end_date),
+    limit: readInteger(req.query.limit),
+    offset: readInteger(req.query.offset),
+    min_amount: readNumber(req.query.min_amount),
+    max_amount: readNumber(req.query.max_amount),
+    search: readString(req.query.search),
+    type: readOneOf(req.query.type, ['income', 'expense', 'transfer'] as const)
   };
 
   const transactions = await TransactionService.getAllTransactions(householdId, filters);
@@ -50,7 +51,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
  * Get a specific transaction by ID
  */
 router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {
@@ -113,7 +114,7 @@ router.post('/', validateRequest(createTransactionSchema), asyncHandler(async (r
  * Update a transaction
  */
 router.patch('/:id', validateRequest(updateTransactionSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
   const updateData = req.body;
 
@@ -134,7 +135,7 @@ router.patch('/:id', validateRequest(updateTransactionSchema), asyncHandler(asyn
  * Delete a transaction
  */
 router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {
@@ -154,7 +155,7 @@ router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
  * Mark a transaction as cleared
  */
 router.patch('/:id/clear', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {
@@ -174,7 +175,7 @@ router.patch('/:id/clear', asyncHandler(async (req: Request, res: Response) => {
  * Mark a transaction as reconciled
  */
 router.patch('/:id/reconcile', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {

@@ -5,6 +5,7 @@ import { asyncHandler } from '../../../middleware/errorHandler';
 import { authenticateToken } from '../../../middleware/auth';
 import { validateRequest } from '../../../middleware/validate';
 import { createAccountSchema, updateAccountSchema } from '../../../validators/account.validators';
+import { readString } from '../../../utils/requestValue';
 
 const router = Router();
 
@@ -46,7 +47,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
  * Get a specific account by ID
  */
 router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {
@@ -86,7 +87,7 @@ router.post('/', validateRequest(createAccountSchema), asyncHandler(async (req: 
  * Update an account
  */
 router.patch('/:id', validateRequest(updateAccountSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
   const updateData = req.body;
 
@@ -107,7 +108,7 @@ router.patch('/:id', validateRequest(updateAccountSchema), asyncHandler(async (r
  * Delete an account (soft delete if has transactions)
  */
 router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {
@@ -127,7 +128,7 @@ router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
  * Get detailed credit card status with messaging
  */
 router.get('/:id/credit-card-status', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {

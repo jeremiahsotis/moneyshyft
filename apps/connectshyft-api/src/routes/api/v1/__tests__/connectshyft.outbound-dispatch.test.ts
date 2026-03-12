@@ -51,6 +51,12 @@ const buildHeaders = (extra: Record<string, string> = {}): Record<string, string
   'x-test-connectshyft-role': 'ORGUNIT_MEMBER',
   'x-test-connectshyft-user-id': 'user-connectshyft-f1-primary-operator',
   'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+  'x-test-connectshyft-flags': JSON.stringify({
+    connectshyft_enabled: true,
+    connectshyft_inbox_enabled: true,
+    connectshyft_escalation_enabled: true,
+    connectshyft_webhooks_enabled: true,
+  }),
   ...extra,
 });
 

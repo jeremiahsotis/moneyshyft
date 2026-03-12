@@ -13,6 +13,8 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
+      "supertest": ["./src/types/supertest"],
+      "supertest/lib/test": ["./src/types/supertest"],
       "*": ["./node_modules/@types/*", "./node_modules/*"]
     },
     "preserveSymlinks": true,

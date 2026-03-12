@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import os from 'os';
 import logger from '../utils/logger';
 import './loadEnv';
 
@@ -19,6 +20,9 @@ const resolveRequiredEnv = (primary: string, fallback: string): string => {
   }
 
   if (process.env.NODE_ENV === 'test') {
+    if (primary === 'DATABASE_PORT') {
+      return '5432';
+    }
     return `test-${primary.toLowerCase()}`;
   }
 
@@ -59,9 +63,31 @@ const resolveDbPassword = (): string => {
   throw new Error('DB_PASSWORD must be set via environment/secret manager when DATABASE_URL is not provided');
 };
 
+const getTestDatabaseConfig = () => ({
+  host: '127.0.0.1',
+  port: 5432,
+  database: 'moneyshyft_ci',
+  user: readEnv('DATABASE_USER', 'DB_USER') || process.env.USER || os.userInfo().username,
+  password: readEnv('DATABASE_PASSWORD', 'DB_PASSWORD'),
+});
+
 // Parse DATABASE_URL or use individual env vars
 const getDatabaseConfig = () => {
   validateDatabaseEnv();
+
+  const testDatabaseUrl = process.env.NODE_ENV === 'test'
+    ? process.env.MONEYSHYFT_TEST_DATABASE_URL?.trim()
+    : undefined;
+  if (testDatabaseUrl) {
+    const url = new URL(testDatabaseUrl);
+    return {
+      host: url.hostname,
+      port: parseInt(url.port || '5432'),
+      database: url.pathname.slice(1),
+      user: url.username,
+      password: url.password,
+    };
+  }
 
   if (process.env.DATABASE_URL) {
     const url = new URL(process.env.DATABASE_URL);
@@ -72,6 +98,10 @@ const getDatabaseConfig = () => {
       user: url.username,
       password: url.password,
     };
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    return getTestDatabaseConfig();
   }
 
   const portValue = resolveRequiredEnv('DATABASE_PORT', 'DB_PORT');

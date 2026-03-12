@@ -113,6 +113,7 @@ test.describe(
           'policy',
           'lint',
           'test',
+          'backend-jest',
           'burn-in',
           'quality-gates',
         ]);

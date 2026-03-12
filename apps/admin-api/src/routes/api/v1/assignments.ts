@@ -11,6 +11,7 @@ import {
   setAssignedAmountSchema
 } from '../../../validators/assignment.validators';
 import knex from '../../../config/knex';
+import { readString } from '../../../utils/requestValue';
 
 const router = Router();
 
@@ -22,7 +23,7 @@ router.use(authenticateToken);
  * Get all assignments for a month
  */
 router.get('/:month', asyncHandler(async (req: Request, res: Response) => {
-  const { month } = req.params;
+  const month = readString(req.params.month)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {
@@ -92,7 +93,7 @@ router.post('/auto', validateRequest(autoAssignSchema), asyncHandler(async (req:
  * Delete an assignment (unassign)
  */
 router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {
@@ -112,7 +113,7 @@ router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
  * Get assignments for a specific income transaction
  */
 router.get('/transaction/:transactionId', asyncHandler(async (req: Request, res: Response) => {
-  const { transactionId } = req.params;
+  const transactionId = readString(req.params.transactionId)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {

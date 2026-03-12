@@ -4,6 +4,7 @@ import { asyncHandler } from '../../../middleware/errorHandler';
 import { authenticateToken } from '../../../middleware/auth';
 import { validateRequest } from '../../../middleware/validate';
 import { createSplitSchema, updateSplitSchema, unsplitTransactionSchema } from '../../../validators/split.validators';
+import { readString } from '../../../utils/requestValue';
 
 const router = Router();
 
@@ -18,7 +19,7 @@ router.post(
   '/:id/split',
   validateRequest(createSplitSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = readString(req.params.id)!;
     const householdId = req.user!.householdId;
     const userId = req.user!.userId;
     const { splits } = req.body;
@@ -43,7 +44,7 @@ router.post(
 router.get(
   '/:id/splits',
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = readString(req.params.id)!;
     const householdId = req.user!.householdId;
 
     if (!householdId) {
@@ -67,7 +68,7 @@ router.patch(
   '/:id/splits',
   validateRequest(updateSplitSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = readString(req.params.id)!;
     const householdId = req.user!.householdId;
     const userId = req.user!.userId;
     const { splits } = req.body;
@@ -93,7 +94,7 @@ router.delete(
   '/:id/split',
   validateRequest(unsplitTransactionSchema),
   asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = readString(req.params.id)!;
     const householdId = req.user!.householdId;
     const { category_id } = req.body;
 

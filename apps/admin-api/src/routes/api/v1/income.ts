@@ -7,6 +7,7 @@ import {
   createIncomeSourceSchema,
   updateIncomeSourceSchema
 } from '../../../validators/income.validators';
+import { readString } from '../../../utils/requestValue';
 
 const router = Router();
 
@@ -60,7 +61,7 @@ router.post('/', validateRequest(createIncomeSourceSchema), asyncHandler(async (
  * Update an income source
  */
 router.patch('/:id', validateRequest(updateIncomeSourceSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {
@@ -80,7 +81,7 @@ router.patch('/:id', validateRequest(updateIncomeSourceSchema), asyncHandler(asy
  * Delete an income source
  */
 router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId;
 
   if (!householdId) {

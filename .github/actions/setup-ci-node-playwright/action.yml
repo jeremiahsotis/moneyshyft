@@ -14,6 +14,10 @@ inputs:
     description: Install backend dependencies via npm ci --prefix apps/moneyshyft-api.
     required: false
     default: 'false'
+  install_backend_test_deps:
+    description: Install full backend test dependencies and link sibling API app node_modules.
+    required: false
+    default: 'false'
   ensure_playwright:
     description: Ensure Playwright browsers exist (prefer prebuilt image; fallback to cached/install).
     required: false
@@ -28,6 +32,7 @@ runs:
         cache: npm
         cache-dependency-path: |
           package-lock.json
+          apps/admin-api/package-lock.json
           apps/moneyshyft-web/package-lock.json
           apps/connectshyft-web/package-lock.json
           apps/moneyshyft-api/package-lock.json
@@ -40,10 +45,27 @@ runs:
         npm config set fetch-retry-mintimeout 10000
         npm config set fetch-retry-maxtimeout 120000
 
+    - name: Enable declared package manager
+      shell: bash
+      run: |
+        corepack enable
+
+        declared_package_manager="$(node -p "require('./package.json').packageManager || ''")"
+        if [[ "$declared_package_manager" == pnpm@* ]]; then
+          corepack prepare "$declared_package_manager" --activate
+          pnpm --version
+        fi
+
     - name: Install root dependencies
       shell: bash
       run: |
-        npm ci || npm ci || npm install --no-audit --fund=false
+        if [ -f pnpm-lock.yaml ]; then
+          pnpm install --frozen-lockfile || pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+        elif [ -f package-lock.json ]; then
+          npm ci || npm ci || npm install --no-audit --fund=false
+        else
+          npm install --no-audit --fund=false
+        fi
 
     - name: Install frontend dependencies
       if: inputs.install_frontend == 'true'
@@ -72,13 +94,28 @@ runs:
         fi
 
         if [ -d apps/moneyshyft-api/node_modules ]; then
-          if [ -e apps/connectshyft-api/node_modules ] && [ ! -L apps/connectshyft-api/node_modules ]; then
-            echo "apps/connectshyft-api/node_modules exists as a directory; leaving in place."
-          else
-            rm -f apps/connectshyft-api/node_modules
-            ln -s ../moneyshyft-api/node_modules apps/connectshyft-api/node_modules
-          fi
+          rm -rf apps/connectshyft-api/node_modules
+          cp -a apps/moneyshyft-api/node_modules apps/connectshyft-api/node_modules
         fi
+
+    - name: Install backend test dependencies
+      if: inputs.install_backend_test_deps == 'true'
+      shell: bash
+      run: |
+        if [ -f apps/admin-api/package-lock.json ]; then
+          npm ci --prefix apps/admin-api || npm ci --prefix apps/admin-api || npm install --prefix apps/admin-api --no-audit --fund=false
+        else
+          npm install --prefix apps/admin-api --no-audit --fund=false
+        fi
+
+        if [ -f apps/moneyshyft-api/package-lock.json ]; then
+          npm ci --prefix apps/moneyshyft-api || npm ci --prefix apps/moneyshyft-api || npm install --prefix apps/moneyshyft-api --no-audit --fund=false
+        else
+          npm install --prefix apps/moneyshyft-api --no-audit --fund=false
+        fi
+
+        rm -rf apps/connectshyft-api/node_modules
+        cp -a apps/moneyshyft-api/node_modules apps/connectshyft-api/node_modules
 
     - name: Cache Playwright browsers (fallback)
       if: inputs.ensure_playwright == 'true'

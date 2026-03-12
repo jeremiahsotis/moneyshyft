@@ -9,6 +9,7 @@ import {
   addDebtPaymentSchema,
   calculatePayoffSchema,
 } from '../../../validators/debt.validators';
+import { readString } from '../../../utils/requestValue';
 
 const router = Router();
 router.use(authenticateToken);
@@ -106,7 +107,7 @@ router.get('/active-plan', asyncHandler(async (req: Request, res: Response) => {
  * Get a single debt by ID
  */
 router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId!;
 
   const debt = await DebtService.getDebtById(id, householdId);
@@ -137,7 +138,7 @@ router.post('/', validateRequest(createDebtSchema), asyncHandler(async (req: Req
  * Update a debt
  */
 router.patch('/:id', validateRequest(updateDebtSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId!;
 
   const debt = await DebtService.updateDebt(id, householdId, req.body);
@@ -153,7 +154,7 @@ router.patch('/:id', validateRequest(updateDebtSchema), asyncHandler(async (req:
  * Delete a debt
  */
 router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId!;
 
   await DebtService.deleteDebt(id, householdId);
@@ -169,7 +170,7 @@ router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
  * Add a payment to a debt
  */
 router.post('/:id/payments', validateRequest(addDebtPaymentSchema), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId!;
   const userId = req.user!.userId;
 
@@ -187,7 +188,7 @@ router.post('/:id/payments', validateRequest(addDebtPaymentSchema), asyncHandler
  * Get payment history for a debt
  */
 router.get('/:id/payments', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = readString(req.params.id)!;
   const householdId = req.user!.householdId!;
 
   const payments = await DebtService.getPayments(id, householdId);

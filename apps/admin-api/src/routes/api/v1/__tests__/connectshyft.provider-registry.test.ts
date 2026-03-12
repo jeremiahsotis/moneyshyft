@@ -1,5 +1,5 @@
 import express from 'express';
-import { generateKeyPairSync, sign as signPayload } from 'node:crypto';
+import { generateKeyPairSync, randomUUID, sign as signPayload } from 'node:crypto';
 import request from 'supertest';
 import * as PlatformAdminService from '../../../../services/PlatformAdminService';
 import * as ProviderRegistry from '../../../../modules/connectshyft/providerRegistry';
@@ -1111,6 +1111,7 @@ describe('connectshyft provider adapter registry route integration', () => {
         providerKey: 'telnyx',
         channel: 'sms',
         body: 'Story f3 duplicate callback suppression test',
+        targetPhone: '+12605550142',
       });
 
     expect(messageResponse.status).toBe(200);
@@ -1121,7 +1122,7 @@ describe('connectshyft provider adapter registry route integration', () => {
     const webhookPayload = {
       eventType: 'sms.delivered',
       providerKey: 'telnyx',
-      providerEventId: 'provider-event-f3-duplicate-1001',
+      providerEventId: `provider-event-f3-duplicate-${randomUUID()}`,
       providerMessageId,
     };
 

@@ -11,6 +11,7 @@ type ReleaseReadinessInputs = {
   lint: string;
   runHeavyCi: 'true' | 'false';
   test: string;
+  backendJest: string;
   burnIn: string;
   qualityGates: string;
 };
@@ -42,6 +43,7 @@ function renderReleaseReadinessScript(
     .replaceAll('${{ needs.lint.result }}', inputs.lint)
     .replaceAll('${{ needs.changes.outputs.run_heavy_ci }}', inputs.runHeavyCi)
     .replaceAll('${{ needs.test.result }}', inputs.test)
+    .replaceAll("${{ needs['backend-jest'].result }}", inputs.backendJest)
     .replaceAll("${{ needs['burn-in'].result }}", inputs.burnIn)
     .replaceAll("${{ needs['quality-gates'].result }}", inputs.qualityGates);
 }
@@ -123,6 +125,8 @@ test.describe(
         const burnInWorkflow = readFileSync(storyE6Context.burnInWorkflowFile, 'utf8');
 
         const releaseSummaryTracksPolicy = /blocked_jobs\+\=\("policy"\)/.test(workflow);
+        const releaseSummaryTracksBackendJest =
+          /blocked_jobs\+\=\("backend-jest"\)/.test(workflow);
         const releaseSummaryTracksQualityGates = /blocked_jobs\+\=\("quality-gates"\)/.test(workflow);
         const releaseSummaryTracksRouteRegression = /blocked_jobs\+\=\("burn-in"\)/.test(workflow);
         const ciBurnInHasDistinctName = /burn-in:\s*\n\s*name:\s*(burn-in|ci-burn-in)/.test(workflow);
@@ -136,6 +140,7 @@ test.describe(
         );
 
         expect(releaseSummaryTracksPolicy).toBe(true);
+        expect(releaseSummaryTracksBackendJest).toBe(true);
         expect(releaseSummaryTracksQualityGates).toBe(true);
         expect(releaseSummaryTracksRouteRegression).toBe(true);
         expect(ciBurnInHasDistinctName).toBe(true);
@@ -183,6 +188,7 @@ test.describe(
           lint: 'success',
           runHeavyCi: 'true',
           test: 'success',
+          backendJest: 'success',
           burnIn: 'success',
           qualityGates: 'success',
         });
