@@ -15,6 +15,7 @@ describe('communication telephony domain', () => {
       providerKey: 'telnyx',
       action: 'message',
       idempotencyKey: 'idem-001',
+      actorId: 'user-connectshyft-f1-primary-operator',
       body: 'Need assistance',
       targetPhone: '+12605550111',
     })
@@ -26,6 +27,7 @@ describe('communication telephony domain', () => {
       providerKey: 'telnyx',
       action: 'message',
       idempotencyKey: 'idem-001',
+      actorId: 'user-connectshyft-f1-primary-operator',
       body: 'Need assistance',
       targetPhone: '+12605550111',
     })
@@ -37,13 +39,27 @@ describe('communication telephony domain', () => {
       providerKey: 'telnyx',
       action: 'message',
       idempotencyKey: 'idem-001',
+      actorId: 'user-connectshyft-f1-primary-operator',
       body: 'Changed copy',
+      targetPhone: '+12605550111',
+    })
+
+    const changedActor = buildTelephonyDispatchReplayKey({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: 'thread-f1-unclaimed-1001',
+      providerKey: 'telnyx',
+      action: 'message',
+      idempotencyKey: 'idem-001',
+      actorId: 'user-connectshyft-f1-secondary-operator',
+      body: 'Need assistance',
       targetPhone: '+12605550111',
     })
 
     expect(first).toBeTruthy()
     expect(first).toBe(duplicate)
     expect(changedPayload).not.toBe(first)
+    expect(changedActor).not.toBe(first)
   })
 
   it('stores and replays dispatch snapshots in the in-memory ledger', () => {

@@ -51,7 +51,17 @@ const startBridgeSessionMock = jest.fn(async (command: {
   providerBranchingInDomain: false as const,
   requestedAt: '2026-03-11T12:06:00.000Z',
 }))
-const verifyWebhookMock = jest.fn(() => ({ ok: true as const }))
+const verifyWebhookMock = jest.fn(
+  (): { ok: true } | {
+    ok: false
+    refusal: {
+      code: 'WEBHOOK_SIGNATURE_NOT_CONFIGURED' | 'WEBHOOK_SIGNATURE_MISSING' | 'WEBHOOK_SIGNATURE_INVALID'
+      message: string
+      refusalType: 'business' | 'client'
+      httpStatus: 401 | 503
+    }
+  } => ({ ok: true as const }),
+)
 const endCallMock = jest.fn(async (command: { providerLegId: string }) => ({
   providerKey: 'telnyx',
   providerLegId: command.providerLegId,
@@ -261,6 +271,42 @@ describe('connectshyft bridge webhook flow', () => {
     expect(startOutboundCallMock).toHaveBeenCalledWith(expect.objectContaining({
       targetPhone: '+12605550155',
     }))
+  })
+
+  it('rejects unverified webhooks before receipt processing or bridge side effects', async () => {
+    verifyWebhookMock.mockReturnValueOnce({
+      ok: false as const,
+      refusal: {
+        code: 'WEBHOOK_SIGNATURE_INVALID' as const,
+        message: 'Signature invalid',
+        refusalType: 'business' as const,
+        httpStatus: 401 as const,
+      },
+    })
+
+    const response = await invokeRoute({
+      url: '/webhooks/inbound',
+      headers: buildHeaders(),
+      body: {
+        eventType: 'call.answered',
+        providerEventId: 'provider-event-webhook-invalid-1001',
+        providerLegId: 'provider-leg-webhook-invalid-1001',
+      },
+    })
+
+    expect(response.status).toBe(401)
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',
+      data: {
+        signatureValidation: {
+          verified: false,
+        },
+      },
+    })
+    expect(translateProviderEventMock).not.toHaveBeenCalled()
+    expect(startOutboundCallMock).not.toHaveBeenCalled()
+    expect(startBridgeSessionMock).not.toHaveBeenCalled()
   })
 
   it('advances operator answered to neighbor dialing and bridges on neighbor answered', async () => {

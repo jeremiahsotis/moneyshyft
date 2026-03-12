@@ -4,3 +4,5 @@
 export * from './phone'
 export * from './telephony'
 export * from './bridge'
+export * from './reliability'
+export * from './audit'

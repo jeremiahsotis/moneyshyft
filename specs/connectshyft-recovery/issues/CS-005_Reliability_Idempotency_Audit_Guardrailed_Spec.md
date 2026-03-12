@@ -6,9 +6,14 @@ This issue is governed by the ConnectShyft Recovery Execution Packet:
 
 PRs must use the ConnectShyft Recovery template:
 
-.github/pull_request_template/connectshyft_recovery.md
+.github/pull_request_template/cs-005-reliability-idempotency-audit.md
 
 PRs that do not reference the Execution Packet will not be accepted.
+
+# CS-005 Verification PR Template
+
+Use:
+/.github/pull_request_template/cs-005-reliability-verification.md
 
 ## A. Outcome
 Messaging and calling operations become retry‑safe and auditable.

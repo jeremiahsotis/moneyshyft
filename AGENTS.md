@@ -82,6 +82,8 @@ Docker:
 - Shared PostgreSQL; current ConnectShyft phone persistence in `connectshyft.cs_neighbor_phones` must evolve toward `communication_contact_point`-equivalent canonical fields (002-phone-identity)
 - TypeScript (ES2022) on Node.js >=20 + Jest, ts-jest, Express route test harnesses, shared communication domain modules under `domains/communication`, ConnectShyft module tests under `apps/connectshyft-api`, and repository boundary enforcement via `node scripts/enforce-workspace-boundaries.js` (004-bridge-test-fixture-normalization)
 - N/A for new behavior; existing shared PostgreSQL-backed bridge, correlation, and webhook models remain unchanged because CS-004b is test-only cleanup (004-bridge-test-fixture-normalization)
+- TypeScript (ES2022) on Node.js >=20 + Express, Knex, `pg`, Jest, ts-jest, shared communication domain modules under `domains/communication`, ConnectShyft route/module services under `apps/connectshyft-api`, and repository boundary enforcement via `node scripts/enforce-workspace-boundaries.js` (005-reliability-idempotency-audit)
+- Shared PostgreSQL using existing ConnectShyft bridge-session, message, provider-correlation, and webhook-receipt tables plus new durable `communication_idempotency_record` and `communication_audit_log`-equivalent persistence and minimal retry metadata on reliability-owned records where required (005-reliability-idempotency-audit)
 
 ## Recent Changes
 - 001-tighten-deployment-contracts: Added TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose

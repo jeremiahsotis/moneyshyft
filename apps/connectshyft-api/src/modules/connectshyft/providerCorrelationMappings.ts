@@ -11,6 +11,12 @@ export type ConnectShyftWebhookReceiptProcessingStatus =
   | 'APPLIED'
   | 'FAILED_RETRYABLE'
   | 'FAILED_TERMINAL';
+export type ConnectShyftWebhookFailureClassification = {
+  category: string;
+  retryable: boolean;
+  httpStatus?: number | null;
+  providerCode?: string | null;
+};
 export type ConnectShyftProviderCorrelationRefusalReason =
   | 'missing-identifiers'
   | 'not-found'
@@ -89,6 +95,8 @@ const inMemoryWebhookReceiptStates = new Map<string, {
   attemptCount: number;
   correlationKeys: Record<string, unknown> | null;
   failureReason: string | null;
+  nextRetryAtUtc: string | null;
+  lastFailureClassification: ConnectShyftWebhookFailureClassification | null;
 }>();
 
 const normalizeString = (value: unknown): string => {
@@ -929,6 +937,8 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
   dedupeKey: string | null;
   status: ConnectShyftWebhookReceiptProcessingStatus;
   attemptCount: number;
+  nextRetryAtUtc?: string | null;
+  lastFailureClassification?: ConnectShyftWebhookFailureClassification | null;
   error?: {
     code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_PERSISTENCE_UNAVAILABLE';
     message: string;
@@ -1006,6 +1016,8 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
         attemptCount: 1,
         correlationKeys,
         failureReason: null,
+        nextRetryAtUtc: null,
+        lastFailureClassification: null,
       });
       return {
         deterministic: true,
@@ -1035,6 +1047,8 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
       attemptCount: nextAttemptCount,
       correlationKeys: correlationKeys || existing.correlationKeys,
       failureReason: nextStatus === 'APPLIED' ? existing.failureReason : null,
+      nextRetryAtUtc: nextStatus === 'APPLIED' ? null : existing.nextRetryAtUtc,
+      lastFailureClassification: nextStatus === 'APPLIED' ? null : existing.lastFailureClassification,
     });
 
     return {
@@ -1044,6 +1058,8 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
       dedupeKey,
       status: nextStatus,
       attemptCount: nextAttemptCount,
+      nextRetryAtUtc: existing.nextRetryAtUtc,
+      lastFailureClassification: existing.lastFailureClassification,
     };
   }
 
@@ -1081,6 +1097,8 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
         attempt_count: 1,
         correlation_keys: correlationKeys,
         failure_reason: null,
+        next_retry_at_utc: null,
+        last_failure_classification: null,
       })
       .onConflict(['tenant_id', 'provider_name', 'sid', 'event_type'])
       .ignore()
@@ -1138,6 +1156,8 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
         attempt_count: nextAttemptCount,
         correlation_keys: correlationKeys || null,
         failure_reason: null,
+        next_retry_at_utc: null,
+        last_failure_classification: null,
       });
 
     return {
@@ -1147,6 +1167,8 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
       dedupeKey,
       status: nextStatus,
       attemptCount: nextAttemptCount,
+      nextRetryAtUtc: null,
+      lastFailureClassification: null,
     };
   } catch (error) {
     return {
@@ -1177,6 +1199,8 @@ export const markConnectShyftWebhookReceiptProcessingResult = async (input: {
   providerMessageId?: string | null;
   status: ConnectShyftWebhookReceiptProcessingStatus;
   failureReason?: string | null;
+  nextRetryAtUtc?: string | null;
+  lastFailureClassification?: ConnectShyftWebhookFailureClassification | null;
   db?: Knex;
 }): Promise<{
   deterministic: true;
@@ -1202,6 +1226,8 @@ export const markConnectShyftWebhookReceiptProcessingResult = async (input: {
   });
   const status = normalizeWebhookReceiptProcessingStatus(input.status);
   const failureReason = normalizeString(input.failureReason || null) || null;
+  const nextRetryAtUtc = normalizeString(input.nextRetryAtUtc || null) || null;
+  const lastFailureClassification = input.lastFailureClassification || null;
   const now = new Date().toISOString();
 
   if (!tenantId || !providerName || (!dedupeKey && !receiptIdentity)) {
@@ -1234,6 +1260,10 @@ export const markConnectShyftWebhookReceiptProcessingResult = async (input: {
       lastSeenAtUtc: now,
       failureReason: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
         ? failureReason
+        : null,
+      nextRetryAtUtc: status === 'FAILED_RETRYABLE' ? nextRetryAtUtc : null,
+      lastFailureClassification: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
+        ? lastFailureClassification
         : null,
     });
     inMemoryUpdated = true;
@@ -1272,6 +1302,10 @@ export const markConnectShyftWebhookReceiptProcessingResult = async (input: {
       correlationKeys: null,
       failureReason: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
         ? failureReason
+        : null,
+      nextRetryAtUtc: status === 'FAILED_RETRYABLE' ? nextRetryAtUtc : null,
+      lastFailureClassification: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
+        ? lastFailureClassification
         : null,
     });
     inMemoryUpdated = true;
@@ -1315,6 +1349,10 @@ export const markConnectShyftWebhookReceiptProcessingResult = async (input: {
         processed_at_utc: now,
         failure_reason: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
           ? failureReason
+          : null,
+        next_retry_at_utc: status === 'FAILED_RETRYABLE' ? nextRetryAtUtc : null,
+        last_failure_classification: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
+          ? lastFailureClassification
           : null,
       });
 
