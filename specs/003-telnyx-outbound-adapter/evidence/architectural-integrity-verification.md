@@ -12,6 +12,8 @@ This document verifies the current CS-003 Telnyx outbound adapter implementation
 - `/specs/connectshyft-recovery/Canonical_Data_Model_Note_Communication_Infrastructure.md`
 - `/specs/connectshyft-recovery/issues/CS-003_Telnyx_Adapter_Guardrailed_Spec.md`
 
+Scope-sensitive checks in this document are evaluated against merged PR `#216`'s file set, because the current repository state also contains later CS-004 bridge-flow work that intentionally extends the adapter surface beyond original CS-003 scope.
+
 ## Commands Executed
 
 Executed locally on March 12, 2026:
