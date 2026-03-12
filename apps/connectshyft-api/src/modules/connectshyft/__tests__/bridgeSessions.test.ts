@@ -11,11 +11,11 @@ import type { ConnectShyftProviderAdapter } from '../providerRegistry'
 const sendSmsMock = jest.fn()
 const startOutboundCallMock = jest.fn()
 const startBridgeOutboundCallMock = jest.fn(async (input: { legRole: string; threadId: string }) => ({
-  providerKey: 'telnyx',
+  providerKey: 'provider-a',
   channel: 'call' as const,
   providerLegId: input.legRole === 'operator'
-    ? `telnyx-leg-operator-${input.threadId}`
-    : `telnyx-leg-neighbor-${input.threadId}`,
+    ? `provider-leg-operator-${input.threadId}`
+    : `provider-leg-neighbor-${input.threadId}`,
   providerMessageId: null,
   providerRequestId: `req-${input.legRole}-${input.threadId}`,
   adapterInvoked: true as const,
@@ -23,7 +23,7 @@ const startBridgeOutboundCallMock = jest.fn(async (input: { legRole: string; thr
   requestedAt: '2026-03-11T12:00:00.000Z',
 }))
 const startBridgeSessionMock = jest.fn(async (input: { bridgeSessionId: string }) => ({
-  providerKey: 'telnyx',
+  providerKey: 'provider-a',
   bridgeSessionId: input.bridgeSessionId,
   bridgeEstablished: true as const,
   providerRequestId: 'req-bridge-1001',
@@ -33,7 +33,7 @@ const startBridgeSessionMock = jest.fn(async (input: { bridgeSessionId: string }
 }))
 const verifyWebhookMock = jest.fn(() => ({ ok: true as const }))
 const endCallMock = jest.fn(async (input: { providerLegId: string }) => ({
-  providerKey: 'telnyx',
+  providerKey: 'provider-a',
   providerLegId: input.providerLegId,
   ended: true as const,
   providerRequestId: 'req-end-call-1001',
@@ -56,7 +56,7 @@ const translateProviderEventMock = jest.fn(({ rawEventType, payload }: { rawEven
 }))
 
 const providerAdapter: ConnectShyftProviderAdapter = {
-  providerKey: 'telnyx',
+  providerKey: 'provider-a',
   adapterInterfaceVersion: 'v1',
   sendSms: sendSmsMock,
   startOutboundCall: startOutboundCallMock,
@@ -76,7 +76,7 @@ const baseInput = {
   operatorContactPointId: '+12605550155',
   neighborContactPointId: '+12605550111',
   selectedOutboundContactPointId: 'cs-number-501',
-  providerKey: 'telnyx',
+  providerKey: 'provider-a',
   providerAdapter,
 } as const
 
@@ -151,7 +151,7 @@ describe('connectshyft bridgeSessions', () => {
       tenantId: baseInput.tenantId,
       orgUnitId: baseInput.orgUnitId,
       threadId: baseInput.threadId,
-      providerKey: 'telnyx',
+  providerKey: 'provider-a',
       providerAdapter,
       providerLegId: started.aggregate.operatorLeg.providerCallId || null,
       eventType: 'CallAnswered',
@@ -191,7 +191,7 @@ describe('connectshyft bridgeSessions', () => {
         status: 'neighbor_dialing',
       },
       neighborLeg: {
-        providerCallId: 'telnyx-leg-neighbor-thread-f1-unclaimed-1001',
+        providerCallId: 'provider-leg-neighbor-thread-f1-unclaimed-1001',
         status: 'ringing',
       },
     })
@@ -209,7 +209,7 @@ describe('connectshyft bridgeSessions', () => {
       tenantId: baseInput.tenantId,
       orgUnitId: baseInput.orgUnitId,
       threadId: baseInput.threadId,
-      providerKey: 'telnyx',
+      providerKey: 'provider-a',
       providerAdapter,
       providerLegId: started.aggregate.operatorLeg.providerCallId || null,
       eventType: 'CallAnswered',
@@ -219,7 +219,7 @@ describe('connectshyft bridgeSessions', () => {
       tenantId: baseInput.tenantId,
       orgUnitId: baseInput.orgUnitId,
       threadId: baseInput.threadId,
-      providerKey: 'telnyx',
+      providerKey: 'provider-a',
       providerAdapter,
       providerLegId: afterOperatorAnswer.aggregate?.neighborLeg.providerCallId || null,
       eventType: 'CallAnswered',
@@ -229,7 +229,7 @@ describe('connectshyft bridgeSessions', () => {
       tenantId: baseInput.tenantId,
       orgUnitId: baseInput.orgUnitId,
       threadId: baseInput.threadId,
-      providerKey: 'telnyx',
+      providerKey: 'provider-a',
       providerAdapter,
       providerLegId: afterNeighborAnswer.aggregate?.neighborLeg.providerCallId || null,
       eventType: 'CallCompleted',
@@ -267,7 +267,7 @@ describe('connectshyft bridgeSessions', () => {
       tenantId: baseInput.tenantId,
       orgUnitId: baseInput.orgUnitId,
       threadId: baseInput.threadId,
-      providerKey: 'telnyx',
+      providerKey: 'provider-a',
       providerAdapter,
       providerLegId: started.aggregate.operatorLeg.providerCallId || null,
       eventType: 'CallAnswered',
@@ -277,7 +277,7 @@ describe('connectshyft bridgeSessions', () => {
       tenantId: baseInput.tenantId,
       orgUnitId: baseInput.orgUnitId,
       threadId: baseInput.threadId,
-      providerKey: 'telnyx',
+      providerKey: 'provider-a',
       providerAdapter,
       providerLegId: afterOperatorAnswer.aggregate?.neighborLeg.providerCallId || null,
       eventType: 'CallFailed',

@@ -14,18 +14,14 @@ const toProviderCorrelation = (payload: unknown) => {
     : {}
 
   return {
-    providerLegId: typeof source.provider_leg_id === 'string'
-      ? source.provider_leg_id
-      : (typeof source.providerLegId === 'string' ? source.providerLegId : null),
-    providerMessageId: typeof source.provider_message_id === 'string'
-      ? source.provider_message_id
-      : (typeof source.providerMessageId === 'string' ? source.providerMessageId : null),
-    providerEventId: typeof source.provider_event_id === 'string'
-      ? source.provider_event_id
-      : (typeof source.providerEventId === 'string' ? source.providerEventId : null),
-    providerNumber: typeof source.to === 'string'
-      ? source.to
-      : (typeof source.to_number === 'string' ? source.to_number : null),
+    providerLegId: typeof source.providerLegId === 'string' ? source.providerLegId : null,
+    providerMessageId: typeof source.providerMessageId === 'string' ? source.providerMessageId : null,
+    providerEventId: typeof source.providerEventId === 'string' ? source.providerEventId : null,
+    providerNumber: typeof source.providerNumber === 'string'
+      ? source.providerNumber
+      : (typeof source.to === 'string'
+        ? source.to
+        : (typeof source.to_number === 'string' ? source.to_number : null)),
   }
 }
 
@@ -34,8 +30,8 @@ const startOutboundCallMock = jest.fn(async (command: { threadId: string; target
   providerKey: 'telnyx',
   channel: 'call' as const,
   providerLegId: command.targetPhone === '+12605550155'
-    ? `telnyx-leg-operator-${command.threadId}`
-    : `telnyx-leg-neighbor-${command.threadId}`,
+    ? `provider-leg-operator-${command.threadId}`
+    : `provider-leg-neighbor-${command.threadId}`,
   providerMessageId: null,
   providerRequestId: 'req-call-2001',
   adapterInvoked: true as const,
@@ -238,7 +234,7 @@ describe('connectshyft bridge webhook flow', () => {
       data: {
         dispatch: {
           providerKey: 'telnyx',
-          providerLegId: 'telnyx-leg-operator-thread-f1-unclaimed-1001',
+          providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
         },
         bridgeSession: {
           bridgeSessionId: expect.any(String),
@@ -289,7 +285,7 @@ describe('connectshyft bridge webhook flow', () => {
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
         eventType: 'call.answered',
-        provider_leg_id: 'telnyx-leg-operator-thread-f1-unclaimed-1001',
+        providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
       },
     })
 
@@ -330,7 +326,7 @@ describe('connectshyft bridge webhook flow', () => {
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
         eventType: 'call.answered',
-        provider_leg_id: 'telnyx-leg-neighbor-thread-f1-unclaimed-1001',
+        providerLegId: 'provider-leg-neighbor-thread-f1-unclaimed-1001',
       },
     })
 
@@ -360,8 +356,8 @@ describe('connectshyft bridge webhook flow', () => {
     })
     expect(startBridgeSessionMock).toHaveBeenCalledTimes(1)
     expect(startBridgeSessionMock).toHaveBeenCalledWith(expect.objectContaining({
-      operatorProviderCallId: 'telnyx-leg-operator-thread-f1-unclaimed-1001',
-      neighborProviderCallId: 'telnyx-leg-neighbor-thread-f1-unclaimed-1001',
+      operatorProviderCallId: 'provider-leg-operator-thread-f1-unclaimed-1001',
+      neighborProviderCallId: 'provider-leg-neighbor-thread-f1-unclaimed-1001',
     }))
   })
 
@@ -384,8 +380,8 @@ describe('connectshyft bridge webhook flow', () => {
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
         eventType: 'call.answered',
-        provider_event_id: 'bridge-operator-answered-1001',
-        provider_leg_id: 'telnyx-leg-operator-thread-f1-unclaimed-1001',
+        providerEventId: 'provider-event-operator-answered-1001',
+        providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
       },
     })
     const operatorAnsweredDuplicate = await invokeRoute({
@@ -396,8 +392,8 @@ describe('connectshyft bridge webhook flow', () => {
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
         eventType: 'call.answered',
-        provider_event_id: 'bridge-operator-answered-1001',
-        provider_leg_id: 'telnyx-leg-operator-thread-f1-unclaimed-1001',
+        providerEventId: 'provider-event-operator-answered-1001',
+        providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
       },
     })
 
@@ -434,7 +430,7 @@ describe('connectshyft bridge webhook flow', () => {
       },
     })
     expect((operatorAnsweredDuplicate.body as any).data.replaySafe.dedupeKey)
-      .toContain('bridge-operator-answered-1001')
+      .toContain('provider-event-operator-answered-1001')
     expect(startOutboundCallMock).toHaveBeenCalledTimes(2)
     expect(startBridgeSessionMock).toHaveBeenCalledTimes(0)
   })
@@ -458,7 +454,7 @@ describe('connectshyft bridge webhook flow', () => {
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
         eventType: 'call.answered',
-        provider_leg_id: 'telnyx-leg-operator-thread-f1-unclaimed-1001',
+        providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
       },
     })
     await invokeRoute({
@@ -469,7 +465,7 @@ describe('connectshyft bridge webhook flow', () => {
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
         eventType: 'call.answered',
-        provider_leg_id: 'telnyx-leg-neighbor-thread-f1-unclaimed-1001',
+        providerLegId: 'provider-leg-neighbor-thread-f1-unclaimed-1001',
       },
     })
 
@@ -481,8 +477,8 @@ describe('connectshyft bridge webhook flow', () => {
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
         eventType: 'call.completed',
-        provider_event_id: 'bridge-completed-1001',
-        provider_leg_id: 'telnyx-leg-neighbor-thread-f1-unclaimed-1001',
+        providerEventId: 'provider-event-completed-1001',
+        providerLegId: 'provider-leg-neighbor-thread-f1-unclaimed-1001',
       },
     })
     const completedReplay = await invokeRoute({
@@ -493,8 +489,8 @@ describe('connectshyft bridge webhook flow', () => {
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
         eventType: 'call.completed',
-        provider_event_id: 'bridge-completed-1001',
-        provider_leg_id: 'telnyx-leg-neighbor-thread-f1-unclaimed-1001',
+        providerEventId: 'provider-event-completed-1001',
+        providerLegId: 'provider-leg-neighbor-thread-f1-unclaimed-1001',
       },
     })
 
@@ -555,7 +551,7 @@ describe('connectshyft bridge webhook flow', () => {
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
         eventType: 'call.answered',
-        provider_leg_id: 'telnyx-leg-operator-thread-f1-unclaimed-1001',
+        providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
       },
     })
 
@@ -567,7 +563,7 @@ describe('connectshyft bridge webhook flow', () => {
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
         eventType: 'call.failed',
-        provider_leg_id: 'telnyx-leg-neighbor-thread-f1-unclaimed-1001',
+        providerLegId: 'provider-leg-neighbor-thread-f1-unclaimed-1001',
         reason: 'neighbor_declined',
       },
     })
@@ -617,7 +613,7 @@ describe('connectshyft bridge webhook flow', () => {
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
         eventType: 'call.answered',
-        provider_leg_id: 'telnyx-leg-operator-thread-f1-unclaimed-1001',
+        providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
       },
     })
     await invokeRoute({
@@ -628,7 +624,7 @@ describe('connectshyft bridge webhook flow', () => {
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
         eventType: 'call.answered',
-        provider_leg_id: 'telnyx-leg-neighbor-thread-f1-unclaimed-1001',
+        providerLegId: 'provider-leg-neighbor-thread-f1-unclaimed-1001',
       },
     })
     await invokeRoute({
@@ -639,8 +635,8 @@ describe('connectshyft bridge webhook flow', () => {
         orgUnitId: 'org-connectshyft-f1-east',
         threadId: 'thread-f1-unclaimed-1001',
         eventType: 'call.completed',
-        provider_event_id: 'bridge-completed-refresh-1001',
-        provider_leg_id: 'telnyx-leg-neighbor-thread-f1-unclaimed-1001',
+        providerEventId: 'provider-event-completed-refresh-1001',
+        providerLegId: 'provider-leg-neighbor-thread-f1-unclaimed-1001',
       },
     })
 
