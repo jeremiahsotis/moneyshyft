@@ -3,3 +3,4 @@
 
 export * from './phone'
 export * from './telephony'
+export * from './bridge'

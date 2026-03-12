@@ -1,6 +1,12 @@
 import connectShyftRouter, { resetConnectShyftOutboundDispatchReplayLedgerForTests } from '../connectshyft';
+import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents';
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings';
+
+const toCanonicalEventType = (rawEventType: string): string => rawEventType
+  .split(/[._-]+/)
+  .map((part) => (part ? `${part.charAt(0).toUpperCase()}${part.slice(1)}` : ''))
+  .join('');
 
 const sendSmsMock = jest.fn(async (command: { threadId: string }) => ({
   providerKey: 'telnyx',
@@ -13,20 +19,31 @@ const sendSmsMock = jest.fn(async (command: { threadId: string }) => ({
   requestedAt: '2026-03-11T12:00:00.000Z',
 }));
 
-const startOutboundCallMock = jest.fn(async (command: { threadId: string }) => ({
+const startOutboundCallMock = jest.fn(async (command: { threadId: string; targetPhone?: string }) => ({
   providerKey: 'telnyx',
   channel: 'call' as const,
-  providerLegId: `telnyx-leg-${command.threadId}`,
+  providerLegId: command.targetPhone === '+12605550155'
+    ? `telnyx-leg-operator-${command.threadId}`
+    : `telnyx-leg-neighbor-${command.threadId}`,
   providerMessageId: null,
   providerRequestId: 'req-call-2001',
   adapterInvoked: true as const,
   providerBranchingInDomain: false as const,
   requestedAt: '2026-03-11T12:05:00.000Z',
 }));
+const startBridgeSessionMock = jest.fn(async (command: { bridgeSessionId: string }) => ({
+  providerKey: 'telnyx',
+  bridgeSessionId: command.bridgeSessionId,
+  bridgeEstablished: true as const,
+  providerRequestId: 'req-bridge-3001',
+  adapterInvoked: true as const,
+  providerBranchingInDomain: false as const,
+  requestedAt: '2026-03-11T12:06:00.000Z',
+}));
 
 const verifyWebhookMock = jest.fn(() => ({ ok: true as const }));
 const translateProviderEventMock = jest.fn(({ rawEventType, payload }: { rawEventType: string; payload: unknown }) => ({
-  eventType: rawEventType,
+  eventType: toCanonicalEventType(rawEventType),
   payload: (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>,
   providerNeutral: true as const,
   providerSpecificFieldsStripped: true as const,
@@ -39,6 +56,7 @@ jest.mock('../../../../../../../infrastructure/communications/telnyx', () => ({
     adapterInterfaceVersion: 'v1',
     sendSms: sendSmsMock,
     startOutboundCall: startOutboundCallMock,
+    startBridgeSession: startBridgeSessionMock,
     verifyWebhook: verifyWebhookMock,
     translateProviderEvent: translateProviderEventMock,
   })),
@@ -164,7 +182,9 @@ describe('connectshyft outbound dispatch routes', () => {
     startOutboundCallMock.mockClear();
     verifyWebhookMock.mockClear();
     translateProviderEventMock.mockClear();
+    startBridgeSessionMock.mockClear();
     resetConnectShyftCanonicalEventsForTests();
+    resetConnectShyftBridgeSessionStateForTests();
     resetConnectShyftProviderCorrelationStateForTests();
     resetConnectShyftOutboundDispatchReplayLedgerForTests();
   });
@@ -241,12 +261,13 @@ describe('connectshyft outbound dispatch routes', () => {
     }));
   });
 
-  it('returns providerLegId values for outbound calls without exposing bridge-session state', async () => {
+  it('starts a persisted bridge session for outbound calls and returns bridge-session state', async () => {
     const response = await invokeRoute({
       url: '/threads/thread-f1-unclaimed-1001/call',
       headers: buildHeaders(),
       body: {
         providerKey: 'telnyx',
+        operatorPhoneId: '+12605550155',
         targetPhone: '+12605550111',
       },
     });
@@ -258,7 +279,7 @@ describe('connectshyft outbound dispatch routes', () => {
       data: {
         dispatch: {
           providerKey: 'telnyx',
-          providerLegId: 'telnyx-leg-thread-f1-unclaimed-1001',
+          providerLegId: 'telnyx-leg-operator-thread-f1-unclaimed-1001',
           providerMessageId: null,
         },
         call: {
@@ -266,21 +287,53 @@ describe('connectshyft outbound dispatch routes', () => {
           autoRetry: false,
           redialPolicy: 'manual_only',
         },
+        bridgeSession: {
+          status: 'operator_dialing',
+          operatorLeg: {
+            status: 'ringing',
+          },
+          neighborLeg: {
+            status: 'created',
+          },
+        },
+        correlationMapping: {
+          deterministic: true,
+          operatorLegMapping: 'created',
+          neighborLegMapping: 'ignored',
+        },
         replaySafe: {
           duplicate: false,
         },
       },
     });
-    expect((response.body as any).data.bridgeSession).toBeUndefined();
+    expect((response.body as any).data.bridgeSession.bridgeSessionId).toBeTruthy();
     expect(startOutboundCallMock).toHaveBeenCalledTimes(1);
     expect(startOutboundCallMock).toHaveBeenCalledWith(expect.objectContaining({
       providerKey: 'telnyx',
-      targetPhone: '+12605550111',
+      targetPhone: '+12605550155',
       callPolicy: {
         transport: 'bridge',
         autoRetry: false,
         redialPolicy: 'manual_only',
       },
     }));
+  });
+
+  it('refuses outbound bridge calls when no operator callback number is provided', async () => {
+    const response = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/call',
+      headers: buildHeaders(),
+      body: {
+        providerKey: 'telnyx',
+        targetPhone: '+12605550111',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_OPERATOR_CALLBACK_REQUIRED',
+    });
+    expect(startOutboundCallMock).not.toHaveBeenCalled();
   });
 });

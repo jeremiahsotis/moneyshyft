@@ -666,6 +666,25 @@ const buildMockSandboxAdapter = (
       providerBranchingInDomain: false,
     });
   },
+  async startBridgeOutboundCall(command) {
+    return assertValidCallDispatchResult({
+      providerKey,
+      channel: 'call',
+      providerLegId: `${providerKey}-bridge-leg-${command.legRole}-${command.bridgeSessionId}`,
+      providerMessageId: null,
+      adapterInvoked: true,
+      providerBranchingInDomain: false,
+    });
+  },
+  async startBridgeSession(command) {
+    return {
+      providerKey,
+      bridgeSessionId: command.bridgeSessionId,
+      bridgeEstablished: true,
+      adapterInvoked: true,
+      providerBranchingInDomain: false,
+    };
+  },
   verifyWebhook(input) {
     if (input.verification?.enforceValidation === false) {
       return { ok: true };
@@ -729,11 +748,37 @@ const createGuardrailedAdapter = (
 
     return baseAdapter.startOutboundCall(command);
   },
+  async startBridgeOutboundCall(command) {
+    if (!baseAdapter.startBridgeOutboundCall) {
+      return baseAdapter.startOutboundCall({
+        tenantId: command.tenantId,
+        orgUnitId: command.orgUnitId,
+        threadId: command.threadId,
+        providerKey: command.providerKey,
+        idempotencyKey: command.idempotencyKey,
+        targetPhone: command.targetPhone,
+        callPolicy: {
+          transport: CONNECTSHYFT_REQUIRED_CALL_TRANSPORT,
+          autoRetry: false,
+          redialPolicy: CONNECTSHYFT_REQUIRED_CALL_REDIAL_POLICY,
+        },
+      });
+    }
+
+    return baseAdapter.startBridgeOutboundCall(command);
+  },
   verifyWebhook(input) {
     return baseAdapter.verifyWebhook(input);
   },
   translateProviderEvent(input) {
     return baseAdapter.translateProviderEvent(input);
+  },
+  async startBridgeSession(command) {
+    if (!baseAdapter.startBridgeSession) {
+      throw new Error(`Provider ${baseAdapter.providerKey} does not support bridge control.`);
+    }
+
+    return baseAdapter.startBridgeSession(command);
   },
 });
 

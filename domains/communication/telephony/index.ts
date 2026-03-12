@@ -31,6 +31,33 @@ export type TelephonyStartOutboundCallCommand = TelephonyDispatchCommandBase & {
   callPolicy?: TelephonyOutboundCallPolicy
 }
 
+export type TelephonyBridgeLegRole = 'operator' | 'neighbor'
+
+export type TelephonyStartBridgeOutboundCallCommand = TelephonyDispatchCommandBase & {
+  bridgeSessionId: string
+  legId: string
+  legRole: TelephonyBridgeLegRole
+  fromContactPointId?: string | null
+}
+
+export type TelephonyStartBridgeSessionCommand = {
+  providerKey: string
+  bridgeSessionId: string
+  operatorProviderCallId: string
+  neighborProviderCallId: string
+  idempotencyKey?: string
+}
+
+export type TelephonyStartBridgeSessionResult = {
+  providerKey: string
+  bridgeSessionId: string
+  bridgeEstablished: true
+  providerRequestId?: string | null
+  adapterInvoked: true
+  providerBranchingInDomain: false
+  requestedAt?: string
+}
+
 export type TelephonyDispatchResult = {
   providerKey: string
   channel: TelephonyDispatchChannel
@@ -88,9 +115,14 @@ export interface TelephonyProviderAdapter {
   adapterInterfaceVersion: 'v1'
   sendSms(command: TelephonySendSmsCommand): Promise<TelephonyDispatchResult>
   startOutboundCall(command: TelephonyStartOutboundCallCommand): Promise<TelephonyDispatchResult>
+  startBridgeOutboundCall?: (
+    command: TelephonyStartBridgeOutboundCallCommand,
+  ) => Promise<TelephonyDispatchResult>
   verifyWebhook(input: TelephonyWebhookVerificationInput): TelephonyWebhookVerificationResult
   translateProviderEvent(input: TelephonyProviderEventTranslationInput): TelephonyProviderEvent
-  startBridgeSession?: (command: unknown) => Promise<unknown>
+  startBridgeSession?: (
+    command: TelephonyStartBridgeSessionCommand,
+  ) => Promise<TelephonyStartBridgeSessionResult>
   endCall?: (command: unknown) => Promise<unknown>
 }
 
@@ -102,6 +134,7 @@ export type TelephonyDispatchReplayKeyInput = {
   action: 'call' | 'message'
   idempotencyKey?: string | null
   targetPhone?: string | null
+  operatorContactPointId?: string | null
   body?: string | null
   callPolicy?: TelephonyOutboundCallPolicy | null
 }
@@ -138,6 +171,7 @@ export const buildTelephonyDispatchReplayKey = (
 
   const fingerprint = JSON.stringify({
     targetPhone: normalizeString(input.targetPhone),
+    operatorContactPointId: normalizeString(input.operatorContactPointId),
     body: normalizeString(input.body),
     callPolicy: sanitizeReplayCallPolicy(input.callPolicy),
   })

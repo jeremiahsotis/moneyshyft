@@ -595,6 +595,34 @@ export const recordConnectShyftProviderIdentifierMapping = async (input: {
   }
 };
 
+export const recordConnectShyftBridgeLegProviderIdentifierMapping = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  providerName: string;
+  providerIdentifier: string;
+  bridgeLegId: string;
+  createdAtUtc?: string;
+  db?: Knex;
+}): Promise<{
+  status: 'created' | 'duplicate' | 'ignored' | 'error';
+  mapping: ConnectShyftProviderIdentifierMapping | null;
+  errorCode?: 'CONNECTSHYFT_PROVIDER_CORRELATION_PERSISTENCE_UNAVAILABLE';
+  errorMessage?: string;
+}> => {
+  return recordConnectShyftProviderIdentifierMapping({
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    threadId: input.threadId,
+    providerName: input.providerName,
+    identifierKind: 'call_leg',
+    providerIdentifier: input.providerIdentifier,
+    internalReferenceId: input.bridgeLegId,
+    createdAtUtc: input.createdAtUtc,
+    db: input.db,
+  });
+};
+
 export const resolveConnectShyftProviderCorrelationByIdentifiers = async (input: {
   providerName: string;
   providerLegId?: string | null;
