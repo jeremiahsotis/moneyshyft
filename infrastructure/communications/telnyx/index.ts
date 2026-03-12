@@ -845,3 +845,7 @@ export function createTelnyxAdapter(
     },
   }
 }
+
+export const createTelephonyProviderAdapter = (
+  options: TelnyxAdapterOptions = {},
+): TelephonyProviderAdapter => createTelnyxAdapter(options)
