@@ -80,6 +80,8 @@ Docker:
 - Shared host-managed PostgreSQL (single instance) (001-tighten-deployment-contracts)
 - TypeScript (ES2022) on Node.js >=20 + Express, Knex, pg, Jest/ts-jest, root-level shared communication domain source under `domains/communication` (002-phone-identity)
 - Shared PostgreSQL; current ConnectShyft phone persistence in `connectshyft.cs_neighbor_phones` must evolve toward `communication_contact_point`-equivalent canonical fields (002-phone-identity)
+- TypeScript (ES2022) on Node.js >=20 + Jest, ts-jest, Express route test harnesses, shared communication domain modules under `domains/communication`, ConnectShyft module tests under `apps/connectshyft-api`, and repository boundary enforcement via `node scripts/enforce-workspace-boundaries.js` (004-bridge-test-fixture-normalization)
+- N/A for new behavior; existing shared PostgreSQL-backed bridge, correlation, and webhook models remain unchanged because CS-004b is test-only cleanup (004-bridge-test-fixture-normalization)
 
 ## Recent Changes
 - 001-tighten-deployment-contracts: Added TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose

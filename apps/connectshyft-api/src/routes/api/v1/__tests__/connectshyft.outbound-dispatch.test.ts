@@ -15,18 +15,14 @@ const toProviderCorrelation = (payload: unknown) => {
     : {};
 
   return {
-    providerLegId: typeof source.provider_leg_id === 'string'
-      ? source.provider_leg_id
-      : (typeof source.providerLegId === 'string' ? source.providerLegId : null),
-    providerMessageId: typeof source.provider_message_id === 'string'
-      ? source.provider_message_id
-      : (typeof source.providerMessageId === 'string' ? source.providerMessageId : null),
-    providerEventId: typeof source.provider_event_id === 'string'
-      ? source.provider_event_id
-      : (typeof source.providerEventId === 'string' ? source.providerEventId : null),
-    providerNumber: typeof source.to === 'string'
-      ? source.to
-      : (typeof source.to_number === 'string' ? source.to_number : null),
+    providerLegId: typeof source.providerLegId === 'string' ? source.providerLegId : null,
+    providerMessageId: typeof source.providerMessageId === 'string' ? source.providerMessageId : null,
+    providerEventId: typeof source.providerEventId === 'string' ? source.providerEventId : null,
+    providerNumber: typeof source.providerNumber === 'string'
+      ? source.providerNumber
+      : (typeof source.to === 'string'
+        ? source.to
+        : (typeof source.to_number === 'string' ? source.to_number : null)),
   };
 };
 
@@ -34,7 +30,7 @@ const sendSmsMock = jest.fn(async (command: { threadId: string }) => ({
   providerKey: 'telnyx',
   channel: 'message' as const,
   providerLegId: null,
-  providerMessageId: `telnyx-message-${command.threadId}`,
+  providerMessageId: `provider-message-${command.threadId}`,
   providerRequestId: 'req-sms-1001',
   adapterInvoked: true as const,
   providerBranchingInDomain: false as const,
@@ -45,8 +41,8 @@ const startOutboundCallMock = jest.fn(async (command: { threadId: string; target
   providerKey: 'telnyx',
   channel: 'call' as const,
   providerLegId: command.targetPhone === '+12605550155'
-    ? `telnyx-leg-operator-${command.threadId}`
-    : `telnyx-leg-neighbor-${command.threadId}`,
+    ? `provider-leg-operator-${command.threadId}`
+    : `provider-leg-neighbor-${command.threadId}`,
   providerMessageId: null,
   providerRequestId: 'req-call-2001',
   adapterInvoked: true as const,
@@ -251,7 +247,7 @@ describe('connectshyft outbound dispatch routes', () => {
       data: {
         dispatch: {
           providerKey: 'telnyx',
-          providerMessageId: 'telnyx-message-thread-f1-unclaimed-1001',
+          providerMessageId: 'provider-message-thread-f1-unclaimed-1001',
           providerLegId: null,
         },
         correlationMapping: {
@@ -277,7 +273,7 @@ describe('connectshyft outbound dispatch routes', () => {
       data: {
         dispatch: {
           providerKey: 'telnyx',
-          providerMessageId: 'telnyx-message-thread-f1-unclaimed-1001',
+          providerMessageId: 'provider-message-thread-f1-unclaimed-1001',
         },
         replaySafe: {
           duplicate: true,
@@ -313,7 +309,7 @@ describe('connectshyft outbound dispatch routes', () => {
       data: {
         dispatch: {
           providerKey: 'telnyx',
-          providerLegId: 'telnyx-leg-operator-thread-f1-unclaimed-1001',
+          providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
           providerMessageId: null,
         },
         call: {

@@ -20,17 +20,17 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       identifierKind: 'call_leg',
-      providerIdentifier: 'telnyx-leg-f3-1001',
+      providerIdentifier: 'provider-leg-f3-1001',
       internalReferenceId: 'canonical-call-f3-1001',
     });
 
     expect(callRecord.status).toBe('created');
     expect(callRecord.mapping).toMatchObject({
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       identifierKind: 'call_leg',
-      providerIdentifier: 'telnyx-leg-f3-1001',
+      providerIdentifier: 'provider-leg-f3-1001',
       threadId: 'thread-f3-unclaimed-1001',
       internalReferenceId: 'canonical-call-f3-1001',
     });
@@ -39,9 +39,9 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       identifierKind: 'call_leg',
-      providerIdentifier: 'telnyx-leg-f3-1001',
+      providerIdentifier: 'provider-leg-f3-1001',
       internalReferenceId: 'canonical-call-f3-duplicate',
     });
 
@@ -52,17 +52,17 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       identifierKind: 'message',
-      providerIdentifier: 'telnyx-msg-f3-1001',
+      providerIdentifier: 'provider-message-f3-1001',
       internalReferenceId: 'canonical-message-f3-1001',
     });
 
     expect(messageRecord.status).toBe('created');
     expect(messageRecord.mapping).toMatchObject({
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       identifierKind: 'message',
-      providerIdentifier: 'telnyx-msg-f3-1001',
+      providerIdentifier: 'provider-message-f3-1001',
       threadId: 'thread-f3-unclaimed-1001',
       internalReferenceId: 'canonical-message-f3-1001',
     });
@@ -73,24 +73,24 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
-      providerIdentifier: 'telnyx-leg-bridge-f3-1001',
+      providerName: 'provider-a',
+      providerIdentifier: 'provider-leg-bridge-f3-1001',
       bridgeLegId: 'bridge-leg-neighbor-f3-1001',
     });
 
     expect(mapping).toMatchObject({
       status: 'created',
       mapping: {
-        providerName: 'telnyx',
+        providerName: 'provider-a',
         identifierKind: 'call_leg',
-        providerIdentifier: 'telnyx-leg-bridge-f3-1001',
+        providerIdentifier: 'provider-leg-bridge-f3-1001',
         internalReferenceId: 'bridge-leg-neighbor-f3-1001',
       },
     });
 
     const resolved = await resolveConnectShyftProviderCorrelationByIdentifiers({
-      providerName: 'telnyx',
-      providerLegId: 'telnyx-leg-bridge-f3-1001',
+      providerName: 'provider-a',
+      providerLegId: 'provider-leg-bridge-f3-1001',
     });
 
     expect(resolved).toMatchObject({
@@ -107,15 +107,15 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       identifierKind: 'call_leg',
-      providerIdentifier: 'telnyx-leg-f3-1001',
+      providerIdentifier: 'provider-leg-f3-1001',
       internalReferenceId: 'canonical-call-f3-1001',
     });
 
     const resolvedByCallLeg = await resolveConnectShyftProviderCorrelationByIdentifiers({
-      providerName: 'telnyx',
-      providerLegId: 'telnyx-leg-f3-1001',
+      providerName: 'provider-a',
+      providerLegId: 'provider-leg-f3-1001',
     });
 
     expect(resolvedByCallLeg).toMatchObject({
@@ -132,15 +132,15 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       identifierKind: 'message',
-      providerIdentifier: 'telnyx-msg-f3-1001',
+      providerIdentifier: 'provider-message-f3-1001',
       internalReferenceId: 'canonical-message-f3-1001',
     });
 
     const resolvedByMessage = await resolveConnectShyftProviderCorrelationByIdentifiers({
-      providerName: 'telnyx',
-      providerMessageId: 'telnyx-msg-f3-1001',
+      providerName: 'provider-a',
+      providerMessageId: 'provider-message-f3-1001',
     });
 
     expect(resolvedByMessage).toMatchObject({
@@ -159,9 +159,9 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       identifierKind: 'call_leg',
-      providerIdentifier: 'telnyx-leg-f3-1001',
+      providerIdentifier: 'provider-leg-f3-1001',
       internalReferenceId: 'canonical-call-f3-1001',
     });
 
@@ -169,16 +169,16 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-claimed-1002',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       identifierKind: 'message',
-      providerIdentifier: 'telnyx-msg-f3-1002',
+      providerIdentifier: 'provider-message-f3-1002',
       internalReferenceId: 'canonical-message-f3-1002',
     });
 
     const resolution = await resolveConnectShyftProviderCorrelationByIdentifiers({
-      providerName: 'telnyx',
-      providerLegId: 'telnyx-leg-f3-1001',
-      providerMessageId: 'telnyx-msg-f3-1002',
+      providerName: 'provider-a',
+      providerLegId: 'provider-leg-f3-1001',
+      providerMessageId: 'provider-message-f3-1002',
     });
 
     expect(resolution).toEqual({
@@ -189,7 +189,7 @@ describe('connectshyft provider correlation mappings', () => {
 
   it('returns deterministic refusal reasons when fallback cannot resolve', async () => {
     const missingIdentifiers = await resolveConnectShyftProviderCorrelationByIdentifiers({
-      providerName: 'telnyx',
+      providerName: 'provider-a',
     });
     expect(missingIdentifiers).toEqual({
       ok: false,
@@ -197,8 +197,8 @@ describe('connectshyft provider correlation mappings', () => {
     });
 
     const notFound = await resolveConnectShyftProviderCorrelationByIdentifiers({
-      providerName: 'telnyx',
-      providerLegId: 'telnyx-leg-f3-unknown',
+      providerName: 'provider-a',
+      providerLegId: 'provider-leg-f3-unknown',
     });
     expect(notFound).toEqual({
       ok: false,
@@ -211,10 +211,10 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'CallConnected',
       providerEventId: 'provider-event-f3-1001',
-      providerLegId: 'telnyx-leg-f3-1001',
+      providerLegId: 'provider-leg-f3-1001',
     });
 
     expect(first).toEqual({
@@ -227,10 +227,10 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'CallConnected',
       providerEventId: 'provider-event-f3-1001',
-      providerLegId: 'telnyx-leg-f3-1001',
+      providerLegId: 'provider-leg-f3-1001',
     });
 
     expect(duplicate).toEqual({
@@ -245,30 +245,30 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'MessageDelivered',
       providerEventId: 'provider-event-f3-shared-by-type',
-      providerMessageId: 'telnyx-msg-f3-shared-by-type',
+      providerMessageId: 'provider-message-f3-shared-by-type',
     });
 
     const firstVoice = await recordConnectShyftWebhookReceipt({
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'CallConnected',
       providerEventId: 'provider-event-f3-shared-by-type',
-      providerLegId: 'telnyx-leg-f3-shared-by-type',
+      providerLegId: 'provider-leg-f3-shared-by-type',
     });
 
     const duplicateMessage = await recordConnectShyftWebhookReceipt({
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'MessageDelivered',
       providerEventId: 'provider-event-f3-shared-by-type',
-      providerMessageId: 'telnyx-msg-f3-shared-by-type',
+      providerMessageId: 'provider-message-f3-shared-by-type',
     });
 
     expect(firstMessage.duplicate).toBe(false);
@@ -284,10 +284,10 @@ describe('connectshyft provider correlation mappings', () => {
           tenantId: 'tenant-connectshyft-f3',
           orgUnitId: 'org-connectshyft-f3-east',
           threadId: 'thread-f3-unclaimed-1001',
-          providerName: 'telnyx',
+          providerName: 'provider-a',
           canonicalEventType: 'MessageDelivered',
           providerEventId: 'provider-event-f3-concurrent-burst',
-          providerMessageId: 'telnyx-msg-f3-concurrent-burst',
+          providerMessageId: 'provider-message-f3-concurrent-burst',
         }),
       ),
     );
@@ -305,10 +305,10 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'VoiceTranscriptionCompleted',
       providerEventId: 'provider-event-f3-transcription-1001',
-      providerLegId: 'telnyx-leg-f3-1001',
+      providerLegId: 'provider-leg-f3-1001',
     });
 
     expect(first).toMatchObject({
@@ -321,7 +321,7 @@ describe('connectshyft provider correlation mappings', () => {
 
     const markedRetryableFailure = await markConnectShyftWebhookReceiptProcessingResult({
       tenantId: 'tenant-connectshyft-f3',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       dedupeKey: first.dedupeKey,
       status: 'FAILED_RETRYABLE',
       failureReason: 'canonical_event_persistence_error',
@@ -332,10 +332,10 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'VoiceTranscriptionCompleted',
       providerEventId: 'provider-event-f3-transcription-1001',
-      providerLegId: 'telnyx-leg-f3-1001',
+      providerLegId: 'provider-leg-f3-1001',
     });
 
     expect(second).toMatchObject({
@@ -348,7 +348,7 @@ describe('connectshyft provider correlation mappings', () => {
 
     const markedApplied = await markConnectShyftWebhookReceiptProcessingResult({
       tenantId: 'tenant-connectshyft-f3',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       dedupeKey: first.dedupeKey,
       status: 'APPLIED',
     });
@@ -358,10 +358,10 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'VoiceTranscriptionCompleted',
       providerEventId: 'provider-event-f3-transcription-1001',
-      providerLegId: 'telnyx-leg-f3-1001',
+      providerLegId: 'provider-leg-f3-1001',
     });
 
     expect(duplicateAfterApplied).toMatchObject({
@@ -378,9 +378,9 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3-a',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       identifierKind: 'call_leg',
-      providerIdentifier: 'telnyx-leg-f3-shared',
+      providerIdentifier: 'provider-leg-f3-shared',
       internalReferenceId: 'canonical-call-f3-tenant-a',
     });
 
@@ -388,17 +388,17 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3-b',
       orgUnitId: 'org-connectshyft-f3-west',
       threadId: 'thread-f3-claimed-1002',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       identifierKind: 'call_leg',
-      providerIdentifier: 'telnyx-leg-f3-shared',
+      providerIdentifier: 'provider-leg-f3-shared',
       internalReferenceId: 'canonical-call-f3-tenant-b',
     });
 
     expect(otherTenantRecord.status).toBe('created');
 
     const ambiguousLookup = await resolveConnectShyftProviderCorrelationByIdentifiers({
-      providerName: 'telnyx',
-      providerLegId: 'telnyx-leg-f3-shared',
+      providerName: 'provider-a',
+      providerLegId: 'provider-leg-f3-shared',
     });
 
     expect(ambiguousLookup).toEqual({
@@ -407,8 +407,8 @@ describe('connectshyft provider correlation mappings', () => {
     });
 
     const tenantScopedLookup = await resolveConnectShyftProviderCorrelationByIdentifiers({
-      providerName: 'telnyx',
-      providerLegId: 'telnyx-leg-f3-shared',
+      providerName: 'provider-a',
+      providerLegId: 'provider-leg-f3-shared',
       tenantId: 'tenant-connectshyft-f3-a',
     });
 
@@ -427,10 +427,10 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3-a',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'MessageDelivered',
       providerEventId: 'provider-event-f3-shared-2001',
-      providerMessageId: 'telnyx-msg-f3-shared-2001',
+      providerMessageId: 'provider-message-f3-shared-2001',
     });
     expect(tenantAFirst.duplicate).toBe(false);
 
@@ -438,10 +438,10 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3-b',
       orgUnitId: 'org-connectshyft-f3-west',
       threadId: 'thread-f3-unclaimed-9001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'MessageDelivered',
       providerEventId: 'provider-event-f3-shared-2001',
-      providerMessageId: 'telnyx-msg-f3-shared-2001',
+      providerMessageId: 'provider-message-f3-shared-2001',
     });
     expect(tenantBFirst.duplicate).toBe(false);
 
@@ -449,10 +449,10 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3-a',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'MessageDelivered',
       providerEventId: 'provider-event-f3-shared-2001',
-      providerMessageId: 'telnyx-msg-f3-shared-2001',
+      providerMessageId: 'provider-message-f3-shared-2001',
     });
     expect(tenantASecond.duplicate).toBe(true);
   });
@@ -477,9 +477,9 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: '11111111-1111-4111-8111-111111111111',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: '22222222-2222-4222-8222-222222222222',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       identifierKind: 'call_leg',
-      providerIdentifier: 'telnyx-leg-f3-db-failure',
+      providerIdentifier: 'provider-leg-f3-db-failure',
       internalReferenceId: 'canonical-call-f3-db-failure',
       db: failingDb,
     });
@@ -491,10 +491,10 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: '11111111-1111-4111-8111-111111111111',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: '22222222-2222-4222-8222-222222222222',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'CallConnected',
       providerEventId: 'provider-event-f3-db-failure',
-      providerLegId: 'telnyx-leg-f3-db-failure',
+      providerLegId: 'provider-leg-f3-db-failure',
       db: failingDb,
     });
 
@@ -513,19 +513,19 @@ describe('connectshyft provider correlation mappings', () => {
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'MessageDelivered',
       providerEventId: 'provider-event-f3-retention-1',
-      providerMessageId: 'telnyx-msg-f3-retention-1',
+      providerMessageId: 'provider-message-f3-retention-1',
     });
     await recordConnectShyftWebhookReceipt({
       tenantId: 'tenant-connectshyft-f3',
       orgUnitId: 'org-connectshyft-f3-east',
       threadId: 'thread-f3-unclaimed-1001',
-      providerName: 'telnyx',
+      providerName: 'provider-a',
       canonicalEventType: 'MessageDelivered',
       providerEventId: 'provider-event-f3-retention-2',
-      providerMessageId: 'telnyx-msg-f3-retention-2',
+      providerMessageId: 'provider-message-f3-retention-2',
     });
 
     const asOfUtc = '2100-01-10T00:00:00.000Z';
