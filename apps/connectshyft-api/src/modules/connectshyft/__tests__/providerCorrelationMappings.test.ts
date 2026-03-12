@@ -373,6 +373,63 @@ describe('connectshyft provider correlation mappings', () => {
     });
   });
 
+  it('stores retry metadata for retryable receipt failures', async () => {
+    const started = await beginConnectShyftWebhookReceiptProcessing({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'provider-a',
+      canonicalEventType: 'CallConnected',
+      providerEventId: 'provider-event-f3-retry-2001',
+      providerLegId: 'provider-leg-f3-retry-2001',
+    });
+
+    const nextRetryAtUtc = '2026-03-12T12:05:00.000Z';
+    const markedRetryableFailure = await markConnectShyftWebhookReceiptProcessingResult({
+      tenantId: 'tenant-connectshyft-f3',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'provider-a',
+      dedupeKey: started.dedupeKey,
+      canonicalEventType: 'CallConnected',
+      providerEventId: 'provider-event-f3-retry-2001',
+      providerLegId: 'provider-leg-f3-retry-2001',
+      status: 'FAILED_RETRYABLE',
+      failureReason: 'temporary_provider_failure',
+      nextRetryAtUtc,
+      lastFailureClassification: {
+        category: 'temporary_provider_failure',
+        retryable: true,
+        httpStatus: 429,
+        providerCode: 'rate_limited',
+      },
+    });
+
+    expect(markedRetryableFailure.updated).toBe(true);
+
+    const retried = await beginConnectShyftWebhookReceiptProcessing({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'provider-a',
+      canonicalEventType: 'CallConnected',
+      providerEventId: 'provider-event-f3-retry-2001',
+      providerLegId: 'provider-leg-f3-retry-2001',
+    });
+
+    expect(retried).toMatchObject({
+      previousStatus: 'FAILED_RETRYABLE',
+      status: 'RECEIVED',
+      attemptCount: 2,
+      nextRetryAtUtc,
+      lastFailureClassification: {
+        category: 'temporary_provider_failure',
+        retryable: true,
+        httpStatus: 429,
+        providerCode: 'rate_limited',
+      },
+    });
+  });
+
   it('allows duplicate provider identifiers across tenants and marks tenant-unspecified lookup as ambiguous', async () => {
     await recordConnectShyftProviderIdentifierMapping({
       tenantId: 'tenant-connectshyft-f3-a',

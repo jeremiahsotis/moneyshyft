@@ -349,6 +349,42 @@ describe('connectshyft outbound dispatch routes', () => {
     }));
   });
 
+  it('rejects conflicting reuse of the same idempotency key for a materially different payload', async () => {
+    const headers = buildHeaders({
+      'Idempotency-Key': 'idem-sms-conflict-1001',
+    });
+
+    const firstResponse = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/messages',
+      headers,
+      body: {
+        providerKey: 'telnyx',
+        body: 'Need assistance',
+        targetPhone: '+12605550111',
+      },
+    });
+
+    expect(firstResponse.status).toBe(200);
+    expect((firstResponse.body as any).ok).toBe(true);
+
+    const conflictResponse = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/messages',
+      headers,
+      body: {
+        providerKey: 'telnyx',
+        body: 'Different message body',
+        targetPhone: '+12605550111',
+      },
+    });
+
+    expect(conflictResponse.status).toBe(200);
+    expect(conflictResponse.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_PAYLOAD',
+    });
+    expect(sendSmsMock).toHaveBeenCalledTimes(1);
+  });
+
   it('refuses outbound bridge calls when no operator callback number is provided', async () => {
     const response = await invokeRoute({
       url: '/threads/thread-f1-unclaimed-1001/call',

@@ -188,6 +188,7 @@ export type TelephonyDispatchReplayKeyInput = {
   providerKey: string
   action: 'call' | 'message'
   idempotencyKey?: string | null
+  actorId?: string | null
   targetPhone?: string | null
   operatorContactPointId?: string | null
   body?: string | null
@@ -225,6 +226,7 @@ export const buildTelephonyDispatchReplayKey = (
   }
 
   const fingerprint = JSON.stringify({
+    actorId: normalizeString(input.actorId),
     targetPhone: normalizeString(input.targetPhone),
     operatorContactPointId: normalizeString(input.operatorContactPointId),
     body: normalizeString(input.body),

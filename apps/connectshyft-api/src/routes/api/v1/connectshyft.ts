@@ -2,8 +2,8 @@ import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { Request, Response, Router } from 'express';
 import type { Knex } from 'knex';
 import {
-  InMemoryTelephonyDispatchLedger,
   buildTelephonyDispatchReplayKey,
+  evaluateRetryPolicy,
   isTelephonyProviderFailure,
 } from '../../../../../../domains/communication';
 import { refusal, success } from '../../../platform/envelopes/response';
@@ -120,6 +120,16 @@ import {
   loadConnectShyftBridgeAggregateByThreadId,
   startConnectShyftBridgeSession,
 } from '../../../modules/connectshyft/bridgeSessions';
+import {
+  beginConnectShyftCommunicationIdempotency,
+  completeConnectShyftCommunicationIdempotency,
+  parseConnectShyftIdempotencyResponseSnapshot,
+  resetConnectShyftCommunicationReliabilityStateForTests,
+} from '../../../modules/connectshyft/communicationReliability';
+import {
+  appendConnectShyftCommunicationAuditEntry,
+  resetConnectShyftCommunicationAuditLogForTests,
+} from '../../../modules/connectshyft/communicationAuditLog';
 import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService';
 
 const router = Router();
@@ -195,12 +205,6 @@ const CONNECTSHYFT_LEGACY_ROLE_ALIASES: Record<string, string> = {
 
 type ConnectShyftOutboundAction = 'call' | 'message';
 type ConnectShyftNeighborMergeFailureStage = 'before-commit' | 'after-dependent-repoint';
-type ConnectShyftOutboundDispatchReplayRecord = {
-  code: 'CONNECTSHYFT_THREAD_CALL_DISPATCHED' | 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED';
-  message: 'ConnectShyft outbound call dispatched' | 'ConnectShyft outbound message dispatched';
-  data: Record<string, unknown>;
-};
-
 type ConnectShyftSyntheticThreadDescriptor = {
   tenantId: string;
   orgUnitId: string;
@@ -482,8 +486,10 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
 };
 const CONNECTSHYFT_DYNAMIC_C5_THREAD_PREFIX = 'thread-c5-unclaimed-';
 const CONNECTSHYFT_DYNAMIC_C5_THREAD_TEMPLATE_ID = 'thread-c5-unclaimed-1001';
-const connectShyftOutboundDispatchReplayLedger =
-  new InMemoryTelephonyDispatchLedger<ConnectShyftOutboundDispatchReplayRecord>();
+const CONNECTSHYFT_COMMUNICATION_IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
+const CONNECTSHYFT_WEBHOOK_RETRY_MAX_ATTEMPTS = 3;
+const CONNECTSHYFT_WEBHOOK_RETRY_BASE_DELAY_MS = 60 * 1000;
+const CONNECTSHYFT_WEBHOOK_RETRY_MAX_DELAY_MS = 15 * 60 * 1000;
 
 const loadPlatformDb = (): Knex => {
   const knexModule = require('../../../config/knex') as { default: Knex };
@@ -491,7 +497,8 @@ const loadPlatformDb = (): Knex => {
 };
 
 export const resetConnectShyftOutboundDispatchReplayLedgerForTests = (): void => {
-  connectShyftOutboundDispatchReplayLedger.clear();
+  resetConnectShyftCommunicationReliabilityStateForTests();
+  resetConnectShyftCommunicationAuditLogForTests();
 };
 
 const connectShyftEscalationConfigService = new ConnectShyftEscalationConfigService(
@@ -3375,6 +3382,73 @@ const parseOutboundDispatchIdempotencyKey = (req: Request): string | null => {
   return bodyIdempotencyKey || null;
 };
 
+const resolveOutboundIdempotencyOperationName = (
+  outboundAction: ConnectShyftOutboundAction,
+): 'send_sms' | 'start_bridge_session' => (
+  outboundAction === 'call' ? 'start_bridge_session' : 'send_sms'
+);
+
+const buildConnectShyftActorScopeKey = (
+  actorUserId: string | null,
+  actorRoles: readonly string[],
+): string => JSON.stringify({
+  actorUserId: normalizeLifecycleString(actorUserId),
+  actorRoles: [...actorRoles].sort(),
+});
+
+const appendConnectShyftCommunicationAudit = async (input: {
+  tenantId: string;
+  correlationId: string;
+  actorType: 'user' | 'system' | 'provider';
+  actorId?: string | null;
+  operationName: string;
+  targetEntityType: string;
+  targetEntityId?: string | null;
+  channel: 'sms' | 'voice' | 'bridge' | 'webhook';
+  resultState: 'succeeded' | 'failed' | 'ignored_duplicate' | 'retrying' | 'exhausted';
+  resultCode?: string | null;
+  resultMessage?: string | null;
+  idempotencyKey?: string | null;
+  requestFingerprint?: string | null;
+  providerName?: string | null;
+  providerReferenceId?: string | null;
+  metadata?: Record<string, unknown> | null;
+  db?: Knex;
+}): Promise<void> => {
+  await appendConnectShyftCommunicationAuditEntry({
+    tenantId: input.tenantId,
+    correlationId: input.correlationId,
+    actorType: input.actorType,
+    actorId: input.actorId ?? null,
+    operationName: input.operationName,
+    targetEntityType: input.targetEntityType,
+    targetEntityId: input.targetEntityId ?? null,
+    channel: input.channel,
+    resultState: input.resultState,
+    resultCode: input.resultCode ?? null,
+    resultMessage: input.resultMessage ?? null,
+    idempotencyKey: input.idempotencyKey ?? null,
+    requestFingerprint: input.requestFingerprint ?? null,
+    providerName: input.providerName ?? null,
+    providerReferenceId: input.providerReferenceId ?? null,
+    metadataJson: input.metadata ? JSON.stringify(input.metadata) : null,
+    db: input.db,
+  });
+};
+
+const resolveWebhookRetryDisposition = (input: {
+  attemptCount: number;
+  retryable: boolean;
+}) => {
+  return evaluateRetryPolicy({
+    attemptNumber: input.attemptCount,
+    maxAttempts: CONNECTSHYFT_WEBHOOK_RETRY_MAX_ATTEMPTS,
+    isRetryable: input.retryable,
+    baseDelayMs: CONNECTSHYFT_WEBHOOK_RETRY_BASE_DELAY_MS,
+    maxDelayMs: CONNECTSHYFT_WEBHOOK_RETRY_MAX_DELAY_MS,
+  });
+};
+
 const enforceOutboundCallPolicyRequest = (
   req: Request,
   res: Response,
@@ -6078,10 +6152,12 @@ const performOutboundAction = async (
 
   const actorRoles = resolveConnectShyftActorRoles(req, context);
   const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const actorScopeKey = buildConnectShyftActorScopeKey(actorUserId, actorRoles);
   const outboundMessagePolicy = outboundAction === 'message'
     ? parseOutboundMessagePolicyRequest(req)
     : null;
   const outboundDispatchIdempotencyKey = parseOutboundDispatchIdempotencyKey(req);
+  const outboundIdempotencyOperation = resolveOutboundIdempotencyOperationName(outboundAction);
   const outboundCallDispatchPolicy: ConnectShyftOutboundCallDispatchPolicy | null = outboundAction === 'call'
     ? {
       transport: outboundCallPolicyRequest?.transport || CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT,
@@ -6096,6 +6172,7 @@ const performOutboundAction = async (
     providerKey: providerSelection.providerResolution.resolvedProvider,
     action: outboundAction,
     idempotencyKey: outboundDispatchIdempotencyKey,
+    actorId: actorUserId,
     targetPhone: outboundAction === 'call'
       ? outboundCallPolicyRequest?.targetPhone || null
       : outboundMessagePolicy?.targetPhone || null,
@@ -6105,21 +6182,6 @@ const performOutboundAction = async (
     body: outboundMessagePolicy?.body || null,
     callPolicy: outboundCallDispatchPolicy,
   });
-  const replayedDispatch = connectShyftOutboundDispatchReplayLedger.get(outboundDispatchReplayKey);
-  if (replayedDispatch) {
-    success(res, {
-      code: replayedDispatch.code,
-      message: replayedDispatch.message,
-      data: {
-        ...replayedDispatch.data,
-        replaySafe: {
-          duplicate: true,
-          replayKey: outboundDispatchReplayKey,
-        },
-      },
-    });
-    return;
-  }
   const lifecycleContext = await resolveLifecycleContext({
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
@@ -6496,6 +6558,140 @@ const performOutboundAction = async (
     }
   }
 
+  const communicationReliabilityDb = isConnectShyftTestOverrideEnabled()
+    ? undefined
+    : loadPlatformDb();
+  const outboundIdempotencyRecord = (
+    outboundDispatchIdempotencyKey
+    && outboundDispatchReplayKey
+  )
+    ? await beginConnectShyftCommunicationIdempotency({
+      tenantId: context.tenantId,
+      idempotencyKey: outboundDispatchIdempotencyKey,
+      operationName: outboundIdempotencyOperation,
+      actorId: actorUserId,
+      actorScopeKey,
+      requestFingerprint: outboundDispatchReplayKey,
+      requestSummary: JSON.stringify({
+        outboundAction,
+        threadId,
+        providerKey: providerSelection.providerResolution.resolvedProvider,
+        targetPhone: outboundAction === 'call'
+          ? neighborContactPointId
+          : outboundMessagePolicy?.targetPhone || null,
+        operatorContactPointId,
+      }),
+      expiresAt: new Date(Date.now() + CONNECTSHYFT_COMMUNICATION_IDEMPOTENCY_TTL_MS),
+      db: communicationReliabilityDb,
+    })
+    : null;
+  if (outboundIdempotencyRecord?.decision === 'conflict') {
+    respondConnectShyftBusinessRefusal(res, {
+      code: 'CONNECTSHYFT_IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_PAYLOAD',
+      message: 'Idempotency key cannot be reused for a materially different outbound request.',
+      data: {
+        context,
+        threadId,
+        idempotency: {
+          duplicate: false,
+          conflict: true,
+          idempotencyKey: outboundDispatchIdempotencyKey,
+        },
+      },
+    });
+    return;
+  }
+  if (outboundIdempotencyRecord?.decision === 'in_progress') {
+    respondConnectShyftBusinessRefusal(res, {
+      code: 'CONNECTSHYFT_IDEMPOTENT_OPERATION_IN_PROGRESS',
+      message: 'An identical outbound request is already in progress.',
+      data: {
+        context,
+        threadId,
+        idempotency: {
+          duplicate: false,
+          conflict: false,
+          inProgress: true,
+          idempotencyKey: outboundDispatchIdempotencyKey,
+        },
+      },
+    });
+    return;
+  }
+  if (outboundIdempotencyRecord?.decision === 'return_existing') {
+    const replaySnapshot = parseConnectShyftIdempotencyResponseSnapshot(
+      outboundIdempotencyRecord.record.responseSnapshot,
+    );
+    if (replaySnapshot) {
+      const replayBody = (
+        replaySnapshot.body
+        && typeof replaySnapshot.body === 'object'
+        && !Array.isArray(replaySnapshot.body)
+      )
+        ? replaySnapshot.body as {
+          ok?: unknown;
+          code?: unknown;
+          message?: unknown;
+          data?: Record<string, unknown>;
+        }
+        : null;
+      const replayData = replayBody?.data && typeof replayBody.data === 'object'
+        ? replayBody.data
+        : {};
+      await appendConnectShyftCommunicationAudit({
+        tenantId: context.tenantId,
+        correlationId: outboundDispatchReplayKey || randomUUID(),
+        actorType: actorUserId ? 'user' : 'system',
+        actorId: actorUserId,
+        operationName: outboundIdempotencyOperation,
+        targetEntityType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+        targetEntityId: threadId,
+        channel: outboundAction === 'call' ? 'bridge' : 'sms',
+        resultState: 'ignored_duplicate',
+        resultCode: 'CONNECTSHYFT_DUPLICATE_REQUEST_REPLAYED',
+        resultMessage: 'Duplicate outbound request replayed from durable idempotency state.',
+        idempotencyKey: outboundDispatchIdempotencyKey,
+        requestFingerprint: outboundDispatchReplayKey,
+        providerName: providerSelection.providerResolution.resolvedProvider,
+        metadata: {
+          duplicate: true,
+          threadId,
+        },
+        db: communicationReliabilityDb,
+      });
+      res.status(replaySnapshot.httpStatus).json(replayBody
+        ? {
+          ...replayBody,
+          data: {
+            ...replayData,
+            replaySafe: {
+              ...(replayData.replaySafe && typeof replayData.replaySafe === 'object'
+                ? replayData.replaySafe
+                : {}),
+              duplicate: true,
+              replayKey: outboundDispatchReplayKey,
+            },
+          },
+        }
+        : replaySnapshot.body);
+      return;
+    }
+    respondConnectShyftBusinessRefusal(res, {
+      code: 'CONNECTSHYFT_IDEMPOTENT_REPLAY_UNAVAILABLE',
+      message: 'Idempotent replay state is unavailable for this completed outbound request.',
+      data: {
+        context,
+        threadId,
+        idempotency: {
+          duplicate: true,
+          replayUnavailable: true,
+          idempotencyKey: outboundDispatchIdempotencyKey,
+        },
+      },
+    });
+    return;
+  }
+
   let providerDispatch: ConnectShyftProviderDispatchResult;
   try {
     providerDispatch = outboundAction === 'call'
@@ -6542,7 +6738,7 @@ const performOutboundAction = async (
     await rollbackPersistedSmsOverride();
 
     if (error instanceof ConnectShyftProviderDispatchPolicyError) {
-      respondConnectShyftBusinessRefusal(res, {
+      const refusalPayload = {
         code: error.code,
         message: error.message,
         data: {
@@ -6561,11 +6757,50 @@ const performOutboundAction = async (
           providerCallPolicy: error.data,
           ...buildReopenLifecycleData(),
         },
+      };
+      if (outboundIdempotencyRecord?.decision === 'proceed') {
+        await completeConnectShyftCommunicationIdempotency({
+          record: outboundIdempotencyRecord.record,
+          status: 'failed',
+          responseSnapshot: {
+            httpStatus: 200,
+            body: {
+              ok: false,
+              code: refusalPayload.code,
+              message: refusalPayload.message,
+              data: refusalPayload.data,
+            },
+          },
+          failureMessage: error.message,
+          db: communicationReliabilityDb,
+        });
+      }
+      await appendConnectShyftCommunicationAudit({
+        tenantId: context.tenantId,
+        correlationId: outboundDispatchReplayKey || randomUUID(),
+        actorType: actorUserId ? 'user' : 'system',
+        actorId: actorUserId,
+        operationName: outboundIdempotencyOperation,
+        targetEntityType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+        targetEntityId: threadId,
+        channel: outboundAction === 'call' ? 'bridge' : 'sms',
+        resultState: 'failed',
+        resultCode: error.code,
+        resultMessage: error.message,
+        idempotencyKey: outboundDispatchIdempotencyKey,
+        requestFingerprint: outboundDispatchReplayKey,
+        providerName: providerSelection.providerResolution.resolvedProvider,
+        metadata: error.data,
+        db: communicationReliabilityDb,
       });
+      respondConnectShyftBusinessRefusal(res, refusalPayload);
       return;
     }
 
-    respondConnectShyftBusinessRefusal(res, {
+    const providerFailureClassification = isTelephonyProviderFailure(error)
+      ? error.classification
+      : null;
+    const refusalPayload = {
       code: 'CONNECTSHYFT_PROVIDER_DISPATCH_FAILED',
       message: 'Provider dispatch failed before persistence.',
       data: {
@@ -6581,13 +6816,52 @@ const performOutboundAction = async (
           lifecycleMutationApplied,
           auditPersisted: Boolean(persistedSmsOverride),
         },
-        providerFailureClassification: isTelephonyProviderFailure(error)
-          ? error.classification
-          : null,
+        providerFailureClassification,
         error: error instanceof Error ? error.message : 'unknown-provider-dispatch-error',
         ...buildReopenLifecycleData(),
       },
+    };
+    if (outboundIdempotencyRecord?.decision === 'proceed') {
+      await completeConnectShyftCommunicationIdempotency({
+        record: outboundIdempotencyRecord.record,
+        status: 'failed',
+        responseSnapshot: {
+          httpStatus: 200,
+          body: {
+            ok: false,
+            code: refusalPayload.code,
+            message: refusalPayload.message,
+            data: refusalPayload.data,
+          },
+        },
+        failureSnapshot: providerFailureClassification,
+        failureMessage: error instanceof Error ? error.message : 'unknown-provider-dispatch-error',
+        db: communicationReliabilityDb,
+      });
+    }
+    await appendConnectShyftCommunicationAudit({
+      tenantId: context.tenantId,
+      correlationId: outboundDispatchReplayKey || randomUUID(),
+      actorType: actorUserId ? 'user' : 'system',
+      actorId: actorUserId,
+      operationName: outboundIdempotencyOperation,
+      targetEntityType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+      targetEntityId: threadId,
+      channel: outboundAction === 'call' ? 'bridge' : 'sms',
+      resultState: providerFailureClassification?.retryable ? 'retrying' : 'failed',
+      resultCode: refusalPayload.code,
+      resultMessage: refusalPayload.message,
+      idempotencyKey: outboundDispatchIdempotencyKey,
+      requestFingerprint: outboundDispatchReplayKey,
+      providerName: providerSelection.providerResolution.resolvedProvider,
+      providerReferenceId: providerFailureClassification?.providerCode || null,
+      metadata: {
+        providerFailureClassification,
+        error: error instanceof Error ? error.message : 'unknown-provider-dispatch-error',
+      },
+      db: communicationReliabilityDb,
     });
+    respondConnectShyftBusinessRefusal(res, refusalPayload);
     return;
   }
 
@@ -6838,11 +7112,51 @@ const performOutboundAction = async (
     ...(sideEffects || {}),
     ...(outboundDispatch ? { outboundDispatch } : {}),
   };
-
-  connectShyftOutboundDispatchReplayLedger.remember(outboundDispatchReplayKey, {
-    code: responseCode,
-    message: responseMessage,
-    data: responseData,
+  const bridgeSessionId = (
+    bridgeSessionState as ConnectShyftBridgeSessionStateContract | null
+  )?.bridgeSessionId || null;
+  if (outboundIdempotencyRecord?.decision === 'proceed') {
+    await completeConnectShyftCommunicationIdempotency({
+      record: outboundIdempotencyRecord.record,
+      status: 'succeeded',
+      responseSnapshot: {
+        httpStatus: 200,
+        body: {
+          ok: true,
+          code: responseCode,
+          message: responseMessage,
+          data: responseData,
+        },
+      },
+      resourceType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+      resourceId: outboundAction === 'call'
+        ? normalizeLifecycleString(bridgeSessionId)
+        : normalizeLifecycleString(canonicalEvent?.eventId),
+      db: communicationReliabilityDb,
+    });
+  }
+  await appendConnectShyftCommunicationAudit({
+    tenantId: context.tenantId,
+    correlationId: outboundDispatchReplayKey || randomUUID(),
+    actorType: actorUserId ? 'user' : 'system',
+    actorId: actorUserId,
+    operationName: outboundIdempotencyOperation,
+    targetEntityType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+    targetEntityId: threadId,
+    channel: outboundAction === 'call' ? 'bridge' : 'sms',
+    resultState: 'succeeded',
+    resultCode: responseCode,
+    resultMessage: responseMessage,
+    idempotencyKey: outboundDispatchIdempotencyKey,
+    requestFingerprint: outboundDispatchReplayKey,
+    providerName: providerDispatch.providerKey,
+    providerReferenceId: providerDispatch.providerLegId || providerDispatch.providerMessageId || null,
+    metadata: {
+      threadId,
+      canonicalEventId: canonicalEvent?.eventId || null,
+      bridgeSessionId,
+    },
+    db: communicationReliabilityDb,
   });
 
   success(res, {
@@ -7458,7 +7772,44 @@ const handleInboundWebhook = async (
   const markWebhookReceipt = async (
     status: 'APPLIED' | 'FAILED_RETRYABLE' | 'FAILED_TERMINAL',
     failureReason?: string,
+    failureClassification?: {
+      category: string;
+      retryable: boolean;
+      httpStatus?: number | null;
+      providerCode?: string | null;
+    } | null,
   ): Promise<void> => {
+    const normalizedFailureClassification = failureClassification || (status === 'FAILED_RETRYABLE'
+      ? {
+        category: 'temporary_processing_failure',
+        retryable: true,
+        httpStatus: null,
+        providerCode: null,
+      }
+      : status === 'FAILED_TERMINAL'
+        ? {
+          category: 'terminal_processing_failure',
+          retryable: false,
+          httpStatus: null,
+          providerCode: null,
+        }
+        : null);
+    const retryDisposition = status === 'FAILED_RETRYABLE'
+      ? resolveWebhookRetryDisposition({
+        attemptCount: webhookReceipt.attemptCount,
+        retryable: normalizedFailureClassification?.retryable === true,
+      })
+      : null;
+    const persistedStatus = status === 'FAILED_RETRYABLE'
+      ? retryDisposition?.decision === 'retry'
+        ? 'FAILED_RETRYABLE'
+        : 'FAILED_TERMINAL'
+      : status;
+    const nextRetryAtUtc = persistedStatus === 'FAILED_RETRYABLE'
+      && retryDisposition?.decision === 'retry'
+      ? retryDisposition.nextAttemptAt.toISOString()
+      : null;
+
     await markConnectShyftWebhookReceiptProcessingResult({
       tenantId,
       threadId,
@@ -7468,8 +7819,38 @@ const handleInboundWebhook = async (
       providerEventId: correlation.providerEventId,
       providerLegId: correlation.providerLegId,
       providerMessageId: correlation.providerMessageId,
-      status,
+      status: persistedStatus,
       failureReason: failureReason || null,
+      nextRetryAtUtc,
+      lastFailureClassification: normalizedFailureClassification,
+      db: webhookPersistenceDb,
+    });
+    await appendConnectShyftCommunicationAudit({
+      tenantId,
+      correlationId: webhookReceipt.dedupeKey || correlation.providerEventId || randomUUID(),
+      actorType: 'provider',
+      operationName: 'apply_provider_event',
+      targetEntityType: 'webhook_receipt',
+      targetEntityId: webhookReceipt.dedupeKey,
+      channel: 'webhook',
+      resultState: persistedStatus === 'APPLIED'
+        ? 'succeeded'
+        : persistedStatus === 'FAILED_RETRYABLE'
+          ? 'retrying'
+          : retryDisposition?.decision === 'exhausted'
+            ? 'exhausted'
+            : 'failed',
+      resultCode: persistedStatus,
+      resultMessage: failureReason || null,
+      providerName: providerSelection.providerResolution.resolvedProvider,
+      providerReferenceId: correlation.providerEventId || correlation.providerLegId || correlation.providerMessageId || null,
+      metadata: {
+        threadId,
+        eventType,
+        attemptCount: webhookReceipt.attemptCount,
+        nextRetryAtUtc,
+        failureClassification: normalizedFailureClassification,
+      },
       db: webhookPersistenceDb,
     });
   };
@@ -7479,6 +7860,26 @@ const handleInboundWebhook = async (
     || webhookReceipt.previousStatus === 'FAILED_TERMINAL';
 
   if (shouldSuppressWebhookDuplicate) {
+    await appendConnectShyftCommunicationAudit({
+      tenantId,
+      correlationId: webhookReceipt.dedupeKey || correlation.providerEventId || randomUUID(),
+      actorType: 'provider',
+      operationName: 'apply_provider_event',
+      targetEntityType: 'webhook_receipt',
+      targetEntityId: webhookReceipt.dedupeKey,
+      channel: 'webhook',
+      resultState: 'ignored_duplicate',
+      resultCode: 'CONNECTSHYFT_WEBHOOK_DUPLICATE_SUPPRESSED',
+      resultMessage: 'Duplicate webhook suppressed before domain side effects.',
+      providerName: providerSelection.providerResolution.resolvedProvider,
+      providerReferenceId: correlation.providerEventId || correlation.providerLegId || correlation.providerMessageId || null,
+      metadata: {
+        threadId,
+        eventType,
+        attemptCount: webhookReceipt.attemptCount,
+      },
+      db: webhookPersistenceDb,
+    });
     success(res, {
       code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
       message: 'Inbound webhook accepted (duplicate suppressed)',
