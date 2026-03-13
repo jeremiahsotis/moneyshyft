@@ -1,8 +1,8 @@
 services:
   admin-api:
     build:
-      context: ./apps/admin-api
-      dockerfile: Dockerfile.production
+      context: .
+      dockerfile: ./apps/admin-api/Dockerfile.production
     container_name: admin-api
     restart: unless-stopped
     env_file:

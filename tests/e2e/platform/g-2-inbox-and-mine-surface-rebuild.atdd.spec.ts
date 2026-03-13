@@ -87,7 +87,7 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (ATDD E2E RED)', () => {
       const searchInput = page.getByTestId('connectshyft-queue-search-input');
       await expect(searchInput).toBeVisible();
       await searchInput.fill(context.searchTerms.persistent);
-      await expect(page).toHaveURL(/queueSearch=voicemail/i);
+      await expect(page).toHaveURL(/queueSearch=follow-up/i);
 
       const inboxOrderBeforeReload = await page
         .getByTestId('connectshyft-thread-card-body')
@@ -95,7 +95,7 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (ATDD E2E RED)', () => {
 
       await page.getByTestId('connectshyft-bottom-nav-mine').click();
       await expect(page).toHaveURL(/\/app\/connectshyft\/mine/i);
-      await expect(page).toHaveURL(/queueSearch=voicemail/i);
+      await expect(page).toHaveURL(/queueSearch=follow-up/i);
       await expect(searchInput).toHaveValue(context.searchTerms.persistent);
 
       const mineOrderBeforeReload = await page

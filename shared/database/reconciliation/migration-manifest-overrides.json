@@ -1,0 +1,14 @@
+{
+  "20260311100000_shape_connectshyft_neighbor_phones_for_canonical_identity.js": {
+    "logicalId": "20260311100000_shape_connectshyft_neighbor_phones_for_canonical_identity",
+    "manualHotfixVerified": true,
+    "inspectionRequired": false,
+    "note": "Production schema patched manually. Verify columns/defaults/backfill before mark-applied."
+  },
+  "20260311103000_add_connectshyft_neighbor_canonical_phone_lookup_index.js": {
+    "logicalId": "20260311103000_add_connectshyft_neighbor_canonical_phone_lookup_index",
+    "manualHotfixVerified": false,
+    "inspectionRequired": true,
+    "note": "Inspection required. Verify whether the canonical lookup index already exists before marking applied or allowing execution."
+  }
+}
