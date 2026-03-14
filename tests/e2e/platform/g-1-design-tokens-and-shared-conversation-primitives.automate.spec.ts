@@ -164,6 +164,9 @@ test.describe(
         await expect(page.getByTestId('connectshyft-thread-detail')).toBeVisible();
 
         const actionButtons = page.locator('[data-testid="connectshyft-thread-action-bar"] button');
+        await expect
+          .poll(async () => actionButtons.count())
+          .toBeGreaterThan(0);
         const actionCount = await actionButtons.count();
         expect(actionCount).toBeGreaterThan(0);
         for (let index = 0; index < actionCount; index += 1) {

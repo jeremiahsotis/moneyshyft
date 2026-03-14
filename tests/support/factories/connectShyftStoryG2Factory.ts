@@ -127,7 +127,7 @@ export function createStoryG2Context(
       desktop: { width: 1280, height: 800 },
     },
     searchTerms: {
-      persistent: 'voicemail',
+      persistent: 'follow-up',
       voicemail: 'voicemail',
     },
     flags: { ...DEFAULT_FLAGS },

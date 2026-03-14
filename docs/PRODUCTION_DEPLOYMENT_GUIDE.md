@@ -171,7 +171,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-## 5) Start Containers and Run Migrations
+## 5) Reconcile Before Running Migrations
 
 ```bash
 cd /home/jeremiahotis/projects/shyftunity
@@ -179,12 +179,22 @@ cd /home/jeremiahotis/projects/shyftunity
 # Build API images
 docker compose build admin-api money-api connect-api
 
-# Run production migrations from the authority only
+# Review reconciliation output
+node scripts/reconcile-shared-migrations.js --format markdown
+
+# Machine-enforced deploy gate
+node scripts/reconcile-shared-migrations.js \
+  --format json \
+  --fail-on-states blocked,duplicate_across_apis,ready_to_promote_to_shared,recorded_but_missing_from_source
+
+# Run production migrations from the authority only after reconciliation passes
 docker compose run --rm admin-api npm run migrate:latest:prod
 
 # Start or restart APIs
 docker compose up -d admin-api money-api connect-api
 ```
+
+Stop immediately and do not continue deployment if reconciliation reports any `blocked`, `duplicate_across_apis`, `ready_to_promote_to_shared`, or `recorded_but_missing_from_source` rows. `ready_to_run` is the only acceptable unrecorded execution state. Do not execute suggested mark-applied SQL automatically, and do not write to `public.knex_migrations` directly.
 
 ## 6) Smoke Checks
 
@@ -229,13 +239,17 @@ Run this sequence as the normalized production workflow for every deployment:
    - Build `admin-web`, `moneyshyft-web`, and `connectshyft-web` on host and publish `dist/` outputs in place.
 4. API build and start
    - Build `admin-api`, `moneyshyft-api`, and `connectshyft-api` images.
-5. Migration execution from authority
+   - Confirm the admin runtime artifact contains `dist/shared/database/migrations`.
+5. Migration reconciliation from authority
+   - Review reconciliation output before any production migration step.
+   - Run the machine-enforced reconciliation gate and stop on `blocked`, `duplicate_across_apis`, `ready_to_promote_to_shared`, or `recorded_but_missing_from_source`.
+6. Migration execution from authority
    - Run production migrations once from `admin-api` only.
-6. Service start or restart
+7. Service start or restart
    - Start or recreate all three API containers.
-7. Nginx validation and reload
+8. Nginx validation and reload
    - Run `sudo nginx -t` then reload on success.
-8. Deployment verification
+9. Deployment verification
    - Verify lane frontend responses, API health endpoints, and delegated auth/platform-admin routing behavior.
 
 ```bash
@@ -259,16 +273,22 @@ cd /home/jeremiahotis/projects/shyftunity/apps/connectshyft-web && npm ci && npm
 cd /home/jeremiahotis/projects/shyftunity
 docker compose build admin-api moneyshyft-api connectshyft-api
 
-# 5) Run migrations from authority only
+# 5) Reconcile shared migration authority
+node scripts/reconcile-shared-migrations.js --format markdown
+node scripts/reconcile-shared-migrations.js \
+  --format json \
+  --fail-on-states blocked,duplicate_across_apis,ready_to_promote_to_shared,recorded_but_missing_from_source
+
+# 6) Run migrations from authority only
 docker compose run --rm admin-api npm run migrate:latest:prod
 
-# 6) Recreate API containers
+# 7) Recreate API containers
 docker compose up -d --no-deps --force-recreate admin-api moneyshyft-api connectshyft-api
 
-# 7) Validate and reload nginx
+# 8) Validate and reload nginx
 sudo nginx -t && sudo systemctl reload nginx
 
-# 8) Verify deployment
+# 9) Verify deployment
 curl -f http://127.0.0.1:3100/health
 curl -f http://127.0.0.1:3000/health
 curl -f http://127.0.0.1:3002/health

@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test';
 const resolveConnectShyftDbConnection = () => {
   const databaseUrl =
     process.env.MONEYSHYFT_TEST_DATABASE_URL
-    || (process.env.CI === 'true' ? process.env.DATABASE_URL : undefined);
+    || process.env.DATABASE_URL;
   if (databaseUrl) {
     return databaseUrl;
   }

@@ -36,7 +36,14 @@ Deployment model in scope only: host-managed Nginx, shared host-managed Postgres
 ## Backend + DB
 
 - [ ] API images built (`docker compose build admin-api moneyshyft-api connectshyft-api`)
+- [ ] `admin-api` runtime artifact or image contains `dist/shared/database/migrations`
 - [ ] Backup created before migrations
+- [ ] Reconciliation reviewed (`node scripts/reconcile-shared-migrations.js --format markdown`)
+- [ ] Machine-enforced reconciliation gate passed (`node scripts/reconcile-shared-migrations.js --format json --fail-on-states blocked,duplicate_across_apis,ready_to_promote_to_shared,recorded_but_missing_from_source`)
+- [ ] Reconciliation reported no `blocked`, `duplicate_across_apis`, `ready_to_promote_to_shared`, or `recorded_but_missing_from_source` rows
+- [ ] `ready_to_run` is the only acceptable unrecorded execution state
+- [ ] No suggested mark-applied SQL was executed automatically
+- [ ] No direct `public.knex_migrations` writes were performed
 - [ ] Migrations executed once from authority only (`docker compose run --rm admin-api npm run migrate:latest:prod`)
 - [ ] API containers started (`docker compose up -d admin-api moneyshyft-api connectshyft-api`)
 

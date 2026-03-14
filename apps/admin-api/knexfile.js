@@ -94,7 +94,7 @@ module.exports = {
     },
     migrations: {
       tableName: 'knex_migrations',
-      directory: path.join(__dirname, 'dist', 'migrations'),
+      directory: path.join(__dirname, 'dist', 'shared', 'database', 'migrations'),
       extension: 'js'
     },
     seeds: {
