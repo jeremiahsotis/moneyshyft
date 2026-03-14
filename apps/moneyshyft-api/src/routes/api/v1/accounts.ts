@@ -4,6 +4,7 @@ import { CreditCardService } from '../../../services/CreditCardService';
 import { asyncHandler } from '../../../middleware/errorHandler';
 import { authenticateToken } from '../../../middleware/auth';
 import { validateRequest } from '../../../middleware/validate';
+import { refusal, success } from '../../../platform/envelopes/response';
 import { createAccountSchema, updateAccountSchema } from '../../../validators/account.validators';
 import { readString } from '../../../utils/requestValue';
 
@@ -11,8 +12,11 @@ const router = Router();
 
 const requireTenantScopedAccountsContext = (req: Request, res: Response, next: NextFunction): void => {
   if (req.scopeMode === 'ORG_UNIT') {
-    res.status(403).json({
-      error: 'OrgUnit-scoped account access is not enabled for this module yet',
+    refusal(res, {
+      code: 'ORG_UNIT_ACCOUNTS_SCOPE_NOT_SUPPORTED',
+      message: 'OrgUnit-scoped account access is not enabled for this module yet',
+      refusalType: 'business',
+      httpStatus: 403,
     });
     return;
   }
@@ -31,14 +35,20 @@ router.get('/', asyncHandler(async (req: Request, res: Response) => {
   const householdId = req.user!.householdId;
 
   if (!householdId) {
-    return res.status(403).json({ error: 'User must belong to a household to access accounts' });
+    return refusal(res, {
+      code: 'ACCOUNTS_HOUSEHOLD_REQUIRED',
+      message: 'User must belong to a household to access accounts',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
   }
 
   const accounts = await AccountService.getAllAccounts(householdId);
 
-  res.json({
-    success: true,
-    data: accounts
+  return success(res, {
+    code: 'ACCOUNTS_LIST_RETRIEVED',
+    message: 'Accounts retrieved successfully',
+    data: accounts,
   });
 }));
 
@@ -51,14 +61,20 @@ router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   const householdId = req.user!.householdId;
 
   if (!householdId) {
-    return res.status(403).json({ error: 'User must belong to a household to access accounts' });
+    return refusal(res, {
+      code: 'ACCOUNT_HOUSEHOLD_REQUIRED',
+      message: 'User must belong to a household to access accounts',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
   }
 
   const account = await AccountService.getAccountById(id, householdId);
 
-  res.json({
-    success: true,
-    data: account
+  return success(res, {
+    code: 'ACCOUNT_RETRIEVED',
+    message: 'Account retrieved successfully',
+    data: account,
   });
 }));
 
@@ -71,14 +87,21 @@ router.post('/', validateRequest(createAccountSchema), asyncHandler(async (req: 
   const accountData = req.body;
 
   if (!householdId) {
-    return res.status(403).json({ error: 'User must belong to a household to create accounts' });
+    return refusal(res, {
+      code: 'ACCOUNT_CREATE_HOUSEHOLD_REQUIRED',
+      message: 'User must belong to a household to create accounts',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
   }
 
   const account = await AccountService.createAccount(householdId, accountData);
 
-  res.status(201).json({
-    success: true,
-    data: account
+  return success(res, {
+    code: 'ACCOUNT_CREATED',
+    message: 'Account created successfully',
+    data: account,
+    httpStatus: 201,
   });
 }));
 
@@ -92,14 +115,20 @@ router.patch('/:id', validateRequest(updateAccountSchema), asyncHandler(async (r
   const updateData = req.body;
 
   if (!householdId) {
-    return res.status(403).json({ error: 'User must belong to a household to update accounts' });
+    return refusal(res, {
+      code: 'ACCOUNT_UPDATE_HOUSEHOLD_REQUIRED',
+      message: 'User must belong to a household to update accounts',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
   }
 
   const account = await AccountService.updateAccount(id, householdId, updateData);
 
-  res.json({
-    success: true,
-    data: account
+  return success(res, {
+    code: 'ACCOUNT_UPDATED',
+    message: 'Account updated successfully',
+    data: account,
   });
 }));
 
@@ -112,14 +141,19 @@ router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
   const householdId = req.user!.householdId;
 
   if (!householdId) {
-    return res.status(403).json({ error: 'User must belong to a household to delete accounts' });
+    return refusal(res, {
+      code: 'ACCOUNT_DELETE_HOUSEHOLD_REQUIRED',
+      message: 'User must belong to a household to delete accounts',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
   }
 
   await AccountService.deleteAccount(id, householdId);
 
-  res.json({
-    success: true,
-    message: 'Account deleted successfully'
+  return success(res, {
+    code: 'ACCOUNT_DELETED',
+    message: 'Account deleted successfully',
   });
 }));
 
@@ -132,14 +166,20 @@ router.get('/:id/credit-card-status', asyncHandler(async (req: Request, res: Res
   const householdId = req.user!.householdId;
 
   if (!householdId) {
-    return res.status(403).json({ error: 'User must belong to a household to access credit card status' });
+    return refusal(res, {
+      code: 'CREDIT_CARD_STATUS_HOUSEHOLD_REQUIRED',
+      message: 'User must belong to a household to access credit card status',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
   }
 
   const status = await CreditCardService.getCreditCardStatus(id, householdId);
 
-  res.json({
-    success: true,
-    data: status
+  return success(res, {
+    code: 'CREDIT_CARD_STATUS_RETRIEVED',
+    message: 'Credit card status retrieved successfully',
+    data: status,
   });
 }));
 

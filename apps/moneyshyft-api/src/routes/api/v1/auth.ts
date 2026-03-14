@@ -394,15 +394,22 @@ router.post('/signup', validateRequest(signupSchema), async (req: Request, res: 
     // Set HTTP-only cookies
     setAuthCookies(res, accessToken, refreshToken);
 
-    res.status(201).json({
+    return success(res, {
+      code: 'AUTH_SIGNUP_COMPLETED',
       message: 'User created successfully',
-      user,
-      invitationCode, // Include invitation code if household was created
+      data: {
+        user,
+        invitationCode,
+      },
+      httpStatus: 201,
     });
   } catch (error) {
     logger.error('Signup error:', error);
-    res.status(400).json({
-      error: error instanceof Error ? error.message : 'Signup failed',
+    return refusal(res, {
+      code: 'AUTH_SIGNUP_FAILED',
+      message: error instanceof Error ? error.message : 'Signup failed',
+      refusalType: 'client',
+      httpStatus: 400,
     });
   }
 });
@@ -425,11 +432,13 @@ router.post('/login', validateRequest(loginSchema), async (req: Request, res: Re
       });
 
       setAuthCookies(res, accessToken, refreshToken, rememberMe);
-      res.json({
+      return success(res, {
+        code: 'AUTH_LOGIN_COMPLETED',
         message: 'Login successful',
-        user
+        data: {
+          user,
+        },
       });
-      return;
     }
 
     const { user, accessToken, refreshToken } = await AuthService.login({
@@ -440,14 +449,20 @@ router.post('/login', validateRequest(loginSchema), async (req: Request, res: Re
     // Set HTTP-only cookies with extended duration if rememberMe is true
     setAuthCookies(res, accessToken, refreshToken, rememberMe);
 
-    res.json({
+    return success(res, {
+      code: 'AUTH_LOGIN_COMPLETED',
       message: 'Login successful',
-      user,
+      data: {
+        user,
+      },
     });
   } catch (error) {
     logger.error('Login error:', error);
-    res.status(401).json({
-      error: error instanceof Error ? error.message : 'Login failed',
+    return refusal(res, {
+      code: 'AUTH_LOGIN_FAILED',
+      message: error instanceof Error ? error.message : 'Login failed',
+      refusalType: 'security',
+      httpStatus: 401,
     });
   }
 });
@@ -468,7 +483,10 @@ router.post('/logout', async (req: Request, res: Response) => {
   }
 
   clearAuthCookies(res);
-  res.json({ message: 'Logged out successfully' });
+  return success(res, {
+    code: 'REQUEST_SUCCESS',
+    message: 'Logged out successfully',
+  });
 });
 
 /**
@@ -479,8 +497,12 @@ router.post('/refresh', async (req: Request, res: Response) => {
   const refreshToken = req.cookies.refresh_token;
 
   if (!refreshToken) {
-    res.status(401).json({ error: 'Refresh token required' });
-    return;
+    return refusal(res, {
+      code: 'HTTP_401',
+      message: 'Refresh token required',
+      refusalType: 'client',
+      httpStatus: 401,
+    });
   }
 
   try {
@@ -501,14 +523,22 @@ router.post('/refresh', async (req: Request, res: Response) => {
 
     const storedSession = await PlatformSessionStore.findSessionByRefreshToken(refreshToken, tenantId);
     if (!storedSession || storedSession.revokedAt || storedSession.userId !== payload.userId) {
-      res.status(403).json({ error: 'Refresh token rejected' });
-      return;
+      return refusal(res, {
+        code: 'REFRESH_TOKEN_REJECTED',
+        message: 'Refresh token rejected',
+        refusalType: 'security',
+        httpStatus: 403,
+      });
     }
 
     if (storedSession.expiresAt.getTime() <= Date.now()) {
       await PlatformSessionStore.revokeSessionById(storedSession.id, 'expired', null, undefined, tenantId);
-      res.status(403).json({ error: 'Refresh token rejected' });
-      return;
+      return refusal(res, {
+        code: 'REFRESH_TOKEN_REJECTED',
+        message: 'Refresh token rejected',
+        refusalType: 'security',
+        httpStatus: 403,
+      });
     }
 
     const currentUser = await AuthService.getUserById(payload.userId);
@@ -544,7 +574,10 @@ router.post('/refresh', async (req: Request, res: Response) => {
 
     setAuthCookies(res, newAccessToken, newRefreshToken, rememberMe);
 
-    res.json({ message: 'Token refreshed successfully' });
+    return success(res, {
+      code: 'AUTH_TOKEN_REFRESHED',
+      message: 'Token refreshed successfully',
+    });
   } catch (error) {
     logger.error('Token refresh error:', error);
 
@@ -560,10 +593,19 @@ router.post('/refresh', async (req: Request, res: Response) => {
         || error.message === 'SESSION_EXPIRED'
         || error.message === 'SESSION_TENANT_MISSING')
     ) {
-      res.status(403).json({ error: 'Refresh token rejected' });
-      return;
+      return refusal(res, {
+        code: 'REFRESH_TOKEN_REJECTED',
+        message: 'Refresh token rejected',
+        refusalType: 'security',
+        httpStatus: 403,
+      });
     }
-    res.status(403).json({ error: 'Invalid refresh token' });
+    return refusal(res, {
+      code: 'INVALID_REFRESH_TOKEN',
+      message: 'Invalid refresh token',
+      refusalType: 'security',
+      httpStatus: 403,
+    });
   }
 });
 
@@ -686,21 +728,39 @@ router.post('/password/first-login-reset', authenticateToken, async (req: Reques
 router.get('/me', authenticateToken, async (req: Request, res: Response) => {
   try {
     if (!req.user) {
-      res.status(401).json({ error: 'Not authenticated' });
-      return;
+      return refusal(res, {
+        code: 'AUTHENTICATION_REQUIRED',
+        message: 'Not authenticated',
+        refusalType: 'security',
+        httpStatus: 401,
+      });
     }
 
     const user = await AuthService.getUserById(req.user.userId);
 
     if (!user) {
-      res.status(404).json({ error: 'User not found' });
-      return;
+      return refusal(res, {
+        code: 'AUTH_USER_NOT_FOUND',
+        message: 'User not found',
+        refusalType: 'client',
+        httpStatus: 404,
+      });
     }
 
-    res.json({ user });
+    return success(res, {
+      code: 'AUTH_CURRENT_USER_RETRIEVED',
+      message: 'Current user retrieved successfully',
+      data: {
+        user,
+      },
+    });
   } catch (error) {
     logger.error('Get user error:', error);
-    res.status(500).json({ error: 'Failed to get user info' });
+    return errorEnvelope(res, {
+      code: 'AUTH_CURRENT_USER_LOOKUP_FAILED',
+      message: 'Failed to get user info',
+      httpStatus: 500,
+    });
   }
 });
 

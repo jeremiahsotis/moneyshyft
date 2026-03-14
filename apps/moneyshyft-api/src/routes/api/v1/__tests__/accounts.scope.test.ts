@@ -62,7 +62,10 @@ describe('accounts route scope guard', () => {
 
     expect(response.status).toBe(403);
     expect(response.body).toMatchObject({
-      error: 'OrgUnit-scoped account access is not enabled for this module yet',
+      ok: false,
+      code: 'ORG_UNIT_ACCOUNTS_SCOPE_NOT_SUPPORTED',
+      message: 'OrgUnit-scoped account access is not enabled for this module yet',
+      refusalType: 'business',
     });
     expect(mockGetAllAccounts).not.toHaveBeenCalled();
   });
@@ -76,7 +79,9 @@ describe('accounts route scope guard', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
-      success: true,
+      ok: true,
+      code: 'ACCOUNTS_LIST_RETRIEVED',
+      message: 'Accounts retrieved successfully',
       data: [{ id: 'acct-1' }],
     });
     expect(mockGetAllAccounts).toHaveBeenCalledWith('tenant-1');

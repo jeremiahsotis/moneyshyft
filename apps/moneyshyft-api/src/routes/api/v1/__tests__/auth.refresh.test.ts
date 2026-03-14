@@ -137,9 +137,11 @@ describe('auth refresh route', () => {
       .set('Cookie', ['refresh_token=refresh-old']);
 
     expect(firstRefresh.status).toBe(200);
+    expect(firstRefresh.body.code).toBe('AUTH_TOKEN_REFRESHED');
     expect(firstRefresh.body.message).toBe('Token refreshed successfully');
     expect(replayRefresh.status).toBe(403);
-    expect(replayRefresh.body.error).toBe('Refresh token rejected');
+    expect(replayRefresh.body.code).toBe('REFRESH_TOKEN_REJECTED');
+    expect(replayRefresh.body.message).toBe('Refresh token rejected');
     expect(mockRotateSession).toHaveBeenCalledTimes(1);
     expect(mockRotateSession).toHaveBeenCalledWith('refresh-old', 'refresh-next', 'house-123');
     expect(mockSetAuthCookies).toHaveBeenCalledTimes(1);
@@ -154,7 +156,8 @@ describe('auth refresh route', () => {
       .set('Cookie', ['refresh_token=refresh-revoked']);
 
     expect(response.status).toBe(403);
-    expect(response.body.error).toBe('Refresh token rejected');
+    expect(response.body.code).toBe('REFRESH_TOKEN_REJECTED');
+    expect(response.body.message).toBe('Refresh token rejected');
     expect(mockRotateSession).not.toHaveBeenCalled();
   });
 
@@ -169,7 +172,8 @@ describe('auth refresh route', () => {
       .set('Cookie', ['refresh_token=refresh-expired']);
 
     expect(response.status).toBe(403);
-    expect(response.body.error).toBe('Invalid refresh token');
+    expect(response.body.code).toBe('INVALID_REFRESH_TOKEN');
+    expect(response.body.message).toBe('Invalid refresh token');
     expect(mockRevokeSessionByRefreshToken).toHaveBeenCalledWith(
       'refresh-expired',
       'invalid_or_expired_refresh_token'
