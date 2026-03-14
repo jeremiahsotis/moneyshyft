@@ -18,13 +18,15 @@ export type ConnectShyftNeighborPhone = {
   verificationStatus: 'verified' | 'unverified';
 };
 
+export type ConnectShyftTextingPreference = 'UNKNOWN' | 'YES' | 'NO';
+
 export type ConnectShyftNeighbor = {
   neighborId: string;
   tenantId: string;
   orgUnitId: string;
   firstName: string;
   lastName: string;
-  prefersTexting: 'UNKNOWN' | 'YES' | 'NO';
+  prefersTexting: ConnectShyftTextingPreference;
   phones: ConnectShyftNeighborPhone[];
   createdAtUtc?: string;
   updatedAtUtc?: string;
@@ -110,6 +112,7 @@ type ConnectShyftEnvelope = {
 export type ConnectShyftNeighborCreateInput = {
   firstName: string;
   lastName: string;
+  prefersTexting?: ConnectShyftTextingPreference;
   phones: ConnectShyftNeighborPhoneInput[];
 };
 
@@ -147,6 +150,7 @@ export type ConnectShyftNeighborUpdateInput = {
   orgUnitId?: string;
   firstName: string;
   lastName: string;
+  prefersTexting?: ConnectShyftTextingPreference;
   phones: ConnectShyftNeighborPhoneInput[];
 };
 
@@ -503,6 +507,7 @@ export const createConnectShyftNeighbor = async (
   const payload = {
     firstName: input.firstName,
     lastName: input.lastName,
+    prefersTexting: input.prefersTexting,
     phones: input.phones,
   };
 
@@ -625,6 +630,7 @@ export const updateConnectShyftNeighborProfile = async (
         orgUnitId: input.orgUnitId,
         firstName: input.firstName,
         lastName: input.lastName,
+        prefersTexting: input.prefersTexting,
         phones: input.phones,
       },
       {

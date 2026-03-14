@@ -152,18 +152,18 @@ export const resolveConnectShyftPreferenceChip = (
   neighbor?: Pick<ConnectShyftNeighbor, 'prefersTexting'> | null,
 ): string => {
   if (!neighbor) {
-    return 'Texting preference unknown';
+    return 'Texting Preference Unknown';
   }
 
   if (neighbor.prefersTexting === 'YES') {
-    return 'Prefers texting';
+    return 'Prefers Texting';
   }
 
   if (neighbor.prefersTexting === 'NO') {
-    return 'Prefers calls';
+    return 'Prefers Calls Only';
   }
 
-  return 'Texting preference unknown';
+  return 'Texting Preference Unknown';
 };
 
 export const formatConnectShyftTimestamp = (value: string): string => {
