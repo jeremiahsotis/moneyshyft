@@ -251,6 +251,7 @@ import {
   fetchConnectShyftNeighborScope,
   type ConnectShyftNeighborScope,
   type ConnectShyftNeighbor,
+  type ConnectShyftTextingPreference,
 } from '@/features/connectshyft/neighbors';
 import { CONNECTSHYFT_RESPONSIVE_BREAKPOINTS } from '@/features/connectshyft/uiContracts';
 
@@ -264,7 +265,7 @@ const addressLine1 = ref('');
 const addressCity = ref('');
 const addressState = ref('');
 const addressPostalCode = ref('');
-const prefersTexting = ref<'YES' | 'NO' | 'UNKNOWN'>('YES');
+const prefersTexting = ref<ConnectShyftTextingPreference>('YES');
 const additionalPhoneShared = ref(false);
 const notes = ref('');
 const isSubmitting = ref(false);
@@ -334,6 +335,7 @@ const handleCreate = async (): Promise<void> => {
   const result = await createConnectShyftNeighbor({
     firstName: firstName.value,
     lastName: lastName.value,
+    prefersTexting: prefersTexting.value,
     phones: [
       {
         label: phoneLabel.value,

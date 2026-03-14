@@ -90,6 +90,22 @@
           </label>
         </div>
 
+        <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label class="flex flex-col gap-1 text-sm text-slate-700">
+            Prefers texting
+            <select
+              data-testid="connectshyft-neighbor-prefers-texting-select"
+              v-model="prefersTexting"
+              :disabled="isSubmitting"
+              class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+            >
+              <option value="YES">Yes</option>
+              <option value="NO">No</option>
+              <option value="UNKNOWN">Unknown</option>
+            </select>
+          </label>
+        </div>
+
         <section class="mt-4 space-y-3">
           <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Phone indicators</h2>
 
@@ -301,6 +317,7 @@ import {
   type ConnectShyftNeighbor,
   type ConnectShyftNeighborPhone,
   type ConnectShyftNeighborScope,
+  type ConnectShyftTextingPreference,
   updateConnectShyftNeighborProfile,
 } from '@/features/connectshyft/neighbors';
 
@@ -317,6 +334,7 @@ const scope = ref<ConnectShyftNeighborScope | null>(null);
 const profile = ref<ConnectShyftNeighbor | null>(null);
 const firstName = ref('');
 const lastName = ref('');
+const prefersTexting = ref<ConnectShyftTextingPreference>('YES');
 const phones = ref<ConnectShyftNeighborPhone[]>([]);
 const refusalState = ref<{ code: string; message: string } | null>(null);
 const editPolicyIndicator = ref<string | null>(null);
@@ -405,6 +423,7 @@ const hydrateProfileState = (neighbor: ConnectShyftNeighbor): void => {
   profile.value = neighbor;
   firstName.value = neighbor.firstName;
   lastName.value = neighbor.lastName;
+  prefersTexting.value = neighbor.prefersTexting;
   phones.value = neighbor.phones.map((phone) => ({ ...phone }));
 };
 
@@ -480,6 +499,7 @@ const handleSave = async (): Promise<void> => {
     orgUnitId: scope.value?.orgUnitId,
     firstName: firstName.value,
     lastName: lastName.value,
+    prefersTexting: prefersTexting.value,
     phones: phones.value.map((phone) => ({
       label: phone.label,
       value: phone.value,

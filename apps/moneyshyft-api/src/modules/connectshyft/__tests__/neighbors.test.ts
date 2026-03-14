@@ -61,6 +61,106 @@ describe('connectshyft neighbor service', () => {
     expect(scopedNeighbors[0].neighborId).toBe(result.data.neighbor.neighborId);
   });
 
+  it('defaults create-time prefersTexting to YES when omitted', () => {
+    const result = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          prefersTexting: 'YES',
+        },
+      },
+    });
+  });
+
+  it('persists explicit canonical create-time prefersTexting values unchanged', () => {
+    const noPreference = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Ari',
+      lastName: 'Quinn',
+      prefersTexting: 'NO',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+        },
+      ],
+    });
+
+    const unknownPreference = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Jules',
+      lastName: 'North',
+      prefersTexting: 'UNKNOWN',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550200',
+        },
+      ],
+    });
+
+    expect(noPreference).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          prefersTexting: 'NO',
+        },
+      },
+    });
+    expect(unknownPreference).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          prefersTexting: 'UNKNOWN',
+        },
+      },
+    });
+  });
+
+  it('treats invalid create-time prefersTexting values as omitted and still defaults to YES', () => {
+    const result = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Ari',
+      lastName: 'Quinn',
+      prefersTexting: 'INVALID' as never,
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          prefersTexting: 'YES',
+        },
+      },
+    });
+  });
+
   it('refuses create requests that omit phone entries', () => {
     const result = service.createNeighbor({
       actorRoles: ['ORGUNIT_MEMBER'],
@@ -304,6 +404,7 @@ describe('connectshyft neighbor service', () => {
         neighbor: {
           firstName: 'Mina Shared',
           lastName: 'Lopez Shared',
+          prefersTexting: 'YES',
           phones: [
             expect.objectContaining({
               label: 'mobile',
@@ -314,6 +415,99 @@ describe('connectshyft neighbor service', () => {
               isShared: true,
             }),
           ],
+        },
+      },
+    });
+  });
+
+  it('persists explicit update-time prefersTexting changes and preserves the existing value on omission or invalid input', () => {
+    const created = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      prefersTexting: 'YES',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+        },
+      ],
+    });
+
+    if (!created.ok) {
+      throw new Error('Expected neighbor create to succeed');
+    }
+
+    const updatedToNo = service.updateNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+      relationshipValidated: true,
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      prefersTexting: 'NO',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+        },
+      ],
+    });
+
+    const updatedOmitted = service.updateNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+      relationshipValidated: true,
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+        },
+      ],
+    });
+
+    const updatedInvalid = service.updateNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+      relationshipValidated: true,
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      prefersTexting: 'INVALID' as never,
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+        },
+      ],
+    });
+
+    expect(updatedToNo).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          prefersTexting: 'NO',
+        },
+      },
+    });
+    expect(updatedOmitted).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          prefersTexting: 'NO',
+        },
+      },
+    });
+    expect(updatedInvalid).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          prefersTexting: 'NO',
         },
       },
     });

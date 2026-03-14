@@ -96,6 +96,7 @@ export type ConnectShyftCreateNeighborCommand = NeighborActorContext & {
   orgUnitId: string;
   firstName: string;
   lastName: string;
+  prefersTexting?: ConnectShyftCanonicalTextingPreference;
   phones: ConnectShyftNeighborPhoneInput[];
   neighborId?: string;
 };
@@ -114,6 +115,7 @@ export type ConnectShyftUpdateNeighborCommand = NeighborActorContext & {
   neighborId: string;
   firstName: string;
   lastName: string;
+  prefersTexting?: ConnectShyftCanonicalTextingPreference;
   phones: ConnectShyftNeighborPhoneInput[];
   relationshipValidated?: boolean;
 };
@@ -329,6 +331,16 @@ const normalizeTextingPreference = (
   }
 
   return 'UNKNOWN';
+};
+
+const normalizeOptionalTextingPreference = (
+  value: unknown,
+): ConnectShyftCanonicalTextingPreference | undefined => {
+  if (value === 'YES' || value === 'NO' || value === 'UNKNOWN') {
+    return value;
+  }
+
+  return undefined;
 };
 
 const buildPhoneRequiredRefusal = (): NeighborRefusalResult => ({
@@ -654,6 +666,7 @@ type NeighborStoreCreateInput = {
   orgUnitId: string;
   firstName: string;
   lastName: string;
+  prefersTexting?: ConnectShyftCanonicalTextingPreference;
   phones: NormalizedConnectShyftNeighborPhoneInput[];
   neighborId?: string;
 };
@@ -663,6 +676,7 @@ type NeighborStoreUpdateInput = {
   neighborId: string;
   firstName: string;
   lastName: string;
+  prefersTexting?: ConnectShyftCanonicalTextingPreference;
   phones: NormalizedConnectShyftNeighborPhoneInput[];
 };
 
@@ -695,7 +709,7 @@ export class InMemoryConnectShyftNeighborStore {
       orgUnitId: input.orgUnitId,
       firstName: input.firstName,
       lastName: input.lastName,
-      prefersTexting: 'UNKNOWN',
+      prefersTexting: input.prefersTexting || 'YES',
       phones: input.phones.map((phone) => ({
         phoneId: randomUUID(),
         label: phone.label,
@@ -742,7 +756,7 @@ export class InMemoryConnectShyftNeighborStore {
       ...existing,
       firstName: input.firstName,
       lastName: input.lastName,
-      prefersTexting: existing.prefersTexting || 'UNKNOWN',
+      prefersTexting: input.prefersTexting || existing.prefersTexting || 'UNKNOWN',
       updatedAtUtc: now,
       phones: input.phones.map((phone) => ({
         phoneId: randomUUID(),
@@ -967,7 +981,7 @@ export class KnexConnectShyftNeighborStore {
             org_unit_id: input.orgUnitId,
             first_name: input.firstName,
             last_name: input.lastName,
-            prefers_texting: 'UNKNOWN',
+            prefers_texting: input.prefersTexting || 'YES',
             created_at_utc: trx.fn.now(),
             updated_at_utc: trx.fn.now(),
           })
@@ -1169,6 +1183,7 @@ export class KnexConnectShyftNeighborStore {
           .update({
             first_name: input.firstName,
             last_name: input.lastName,
+            prefers_texting: input.prefersTexting,
             updated_at_utc: trx.fn.now(),
           })
           .returning<DbNeighborRow[]>([
@@ -1414,6 +1429,7 @@ export class ConnectShyftNeighborService {
       orgUnitId: input.orgUnitId,
       firstName: normalizeNonEmptyString(input.firstName),
       lastName: normalizeNonEmptyString(input.lastName),
+      prefersTexting: normalizeOptionalTextingPreference(input.prefersTexting) || 'YES',
       phones: normalizedPhones.phones,
       neighborId: input.neighborId,
     });
@@ -1485,6 +1501,7 @@ export class ConnectShyftNeighborService {
       neighborId: input.neighborId,
       firstName: normalizeNonEmptyString(input.firstName),
       lastName: normalizeNonEmptyString(input.lastName),
+      prefersTexting: normalizeOptionalTextingPreference(input.prefersTexting),
       phones: normalizedPhones.phones,
     });
 
@@ -1590,6 +1607,7 @@ export class AsyncConnectShyftNeighborService {
         orgUnitId: input.orgUnitId,
         firstName: normalizeNonEmptyString(input.firstName),
         lastName: normalizeNonEmptyString(input.lastName),
+        prefersTexting: normalizeOptionalTextingPreference(input.prefersTexting) || 'YES',
         phones: normalizedPhones.phones,
         neighborId: input.neighborId,
       });
@@ -1686,6 +1704,7 @@ export class AsyncConnectShyftNeighborService {
         neighborId: input.neighborId,
         firstName: normalizeNonEmptyString(input.firstName),
         lastName: normalizeNonEmptyString(input.lastName),
+        prefersTexting: normalizeOptionalTextingPreference(input.prefersTexting),
         phones: normalizedPhones.phones,
       });
 

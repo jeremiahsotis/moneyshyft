@@ -20,6 +20,7 @@ import {
   AsyncConnectShyftNeighborService,
   KnexConnectShyftNeighborStore,
   connectShyftNeighborServiceAsync,
+  type ConnectShyftCanonicalTextingPreference,
   type ConnectShyftIdentityMatchDecision,
   type ConnectShyftNeighborPhoneInput,
 } from '../../../modules/connectshyft/neighbors';
@@ -3567,11 +3568,28 @@ const parseNeighborPhones = (req: Request): ConnectShyftNeighborPhoneInput[] => 
   });
 };
 
+const parseNeighborTextingPreference = (
+  req: Request,
+): ConnectShyftCanonicalTextingPreference | undefined => {
+  const candidates = [req.body?.prefersTexting, req.body?.prefers_texting];
+
+  for (const candidate of candidates) {
+    if (candidate === 'YES' || candidate === 'NO' || candidate === 'UNKNOWN') {
+      return candidate;
+    }
+  }
+
+  return undefined;
+};
+
 const parseNeighborCreateBody = (req: Request) => {
+  const prefersTexting = parseNeighborTextingPreference(req);
+
   return {
     orgUnitId: parseOrgUnitIdFromBody(req),
     firstName: typeof req.body?.firstName === 'string' ? req.body.firstName : '',
     lastName: typeof req.body?.lastName === 'string' ? req.body.lastName : '',
+    prefersTexting,
     phones: parseNeighborPhones(req),
   };
 };
@@ -3580,6 +3598,7 @@ const parseNeighborUpdateBody = (req: Request) => ({
   orgUnitId: parseOrgUnitIdFromBody(req),
   firstName: typeof req.body?.firstName === 'string' ? req.body.firstName : '',
   lastName: typeof req.body?.lastName === 'string' ? req.body.lastName : '',
+  prefersTexting: parseNeighborTextingPreference(req),
   phones: parseNeighborPhones(req),
 });
 
@@ -3888,6 +3907,7 @@ const updateNeighborWithSideEffects = async (input: {
   actorUserId: string | null;
   firstName: string;
   lastName: string;
+  prefersTexting?: ConnectShyftCanonicalTextingPreference;
   phones: ConnectShyftNeighborPhoneInput[];
   policy: Extract<ConnectShyftNeighborEditPolicyDecision, { ok: true }>;
   provenance: NeighborEditProvenancePayload;
@@ -3914,6 +3934,7 @@ const updateNeighborWithSideEffects = async (input: {
     neighborId: input.neighborId,
     firstName: input.firstName,
     lastName: input.lastName,
+    prefersTexting: input.prefersTexting,
     phones: input.phones,
     relationshipValidated: input.policy.relationshipValidated,
   };
@@ -4703,6 +4724,7 @@ router.post('/neighbors', async (req: Request, res: Response) => {
     orgUnitId: context.orgUnitId,
     firstName: payload.firstName,
     lastName: payload.lastName,
+    prefersTexting: payload.prefersTexting,
     phones: payload.phones,
   });
 
@@ -4909,6 +4931,7 @@ router.put('/neighbors/:neighborId', async (req: Request, res: Response) => {
     actorUserId,
     firstName: payload.firstName,
     lastName: payload.lastName,
+    prefersTexting: payload.prefersTexting,
     phones: payload.phones,
     policy: policyDecision,
     provenance,
