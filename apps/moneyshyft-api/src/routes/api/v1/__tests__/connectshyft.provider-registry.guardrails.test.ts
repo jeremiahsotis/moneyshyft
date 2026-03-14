@@ -200,6 +200,206 @@ describe('connectshyft provider adapter registry route integration - guardrails'
     });
   });
 
+  it('dispatches outbound SMS using an explicit target when neighbor fallback is ambiguous', async () => {
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/messages')
+      .set(buildHeaders())
+      .send({
+        orgUnitId: 'org-connectshyft-f1-east',
+        providerKey: 'telnyx',
+        channel: 'sms',
+        body: 'Explicit target should win.',
+        targetPhone: '+12605550999',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED',
+      data: {
+        threadId: 'thread-f1-unclaimed-1001',
+        thread: {
+          threadId: 'thread-f1-unclaimed-1001',
+          source: 'SMS',
+        },
+        dispatch: {
+          providerKey: 'telnyx',
+          channel: 'message',
+          dispatchContext: {
+            targetPhone: '+12605550999',
+            messageBodyProvided: true,
+          },
+        },
+        smsTargetResolution: {
+          resolutionSource: 'explicit-request',
+          deterministic: true,
+          targetPhone: '+12605550999',
+        },
+        preferencePolicy: {
+          prefersTexting: 'YES',
+          dispatchPermitted: true,
+        },
+      },
+    });
+  });
+
+  it('dispatches outbound SMS using a deterministic neighbor primary target when no explicit target is set', async () => {
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/threads/thread-f1-claimed-1002/messages')
+      .set(buildHeaders())
+      .send({
+        orgUnitId: 'org-connectshyft-f1-east',
+        providerKey: 'telnyx',
+        channel: 'sms',
+        body: 'Deterministic neighbor target should dispatch.',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED',
+      data: {
+        threadId: 'thread-f1-claimed-1002',
+        thread: {
+          threadId: 'thread-f1-claimed-1002',
+          source: 'SMS',
+        },
+        dispatch: {
+          providerKey: 'telnyx',
+          channel: 'message',
+          dispatchContext: {
+            targetPhone: '+12605550121',
+            messageBodyProvided: true,
+          },
+        },
+        smsTargetResolution: {
+          resolutionSource: 'neighbor-primary',
+          deterministic: true,
+          targetPhone: '+12605550121',
+        },
+        preferencePolicy: {
+          prefersTexting: 'YES',
+          dispatchPermitted: true,
+        },
+      },
+    });
+  });
+
+  it('returns an explicit refusal when multiple valid neighbor phones exist without an explicit SMS target', async () => {
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/messages')
+      .set(buildHeaders())
+      .send({
+        orgUnitId: 'org-connectshyft-f1-east',
+        providerKey: 'telnyx',
+        channel: 'sms',
+        body: 'This send should refuse due to multiple candidates.',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_MULTIPLE_TARGET_PHONES',
+      refusalType: 'business',
+      data: {
+        threadId: 'thread-f1-unclaimed-1001',
+        preferencePolicy: {
+          prefersTexting: 'YES',
+          dispatchPermitted: false,
+        },
+        smsTargetResolution: {
+          resolutionSource: 'ambiguous',
+          deterministic: false,
+          candidatePhones: ['+12605550111', '+12605550112'],
+        },
+        sideEffects: {
+          dispatchAttempted: false,
+          lifecycleMutationApplied: false,
+          auditPersisted: false,
+        },
+      },
+    });
+  });
+
+  it('returns an explicit refusal when no deterministic target phone is available', async () => {
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/threads/thread-f1-closed-1003/messages')
+      .set(buildHeaders())
+      .send({
+        orgUnitId: 'org-connectshyft-f1-east',
+        providerKey: 'telnyx',
+        channel: 'sms',
+        body: 'This send should refuse due to no target.',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_TARGET_PHONE_NOT_AVAILABLE',
+      refusalType: 'business',
+      data: {
+        threadId: 'thread-f1-closed-1003',
+        threadSource: 'SMS',
+        smsTargetResolution: {
+          resolutionSource: 'none',
+          deterministic: false,
+          candidatePhones: [],
+        },
+        sideEffects: {
+          dispatchAttempted: false,
+          lifecycleMutationApplied: true,
+          auditPersisted: false,
+        },
+        lifecycle: {
+          priorState: 'CLOSED',
+          nextState: 'UNCLAIMED',
+          reopenedFromClosed: true,
+        },
+      },
+    });
+  });
+
+  it('returns an explicit refusal when prefers_texting does not allow outbound SMS', async () => {
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/threads/thread-f2-claimed-1002/messages')
+      .set(buildHeaders({
+        'x-test-connectshyft-tenant-id': 'tenant-connectshyft-f2',
+        'x-test-connectshyft-orgunit-id': 'org-connectshyft-f2-east',
+        'x-test-connectshyft-user-id': 'user-connectshyft-f2-operator',
+        'x-test-connectshyft-orgunit-memberships': JSON.stringify(['org-connectshyft-f2-east']),
+      }))
+      .send({
+        orgUnitId: 'org-connectshyft-f2-east',
+        providerKey: 'telnyx',
+        channel: 'sms',
+        body: 'This send should refuse due to texting preference.',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_TEXTING_NOT_PERMITTED',
+      refusalType: 'business',
+      data: {
+        threadId: 'thread-f2-claimed-1002',
+        preferencePolicy: {
+          prefersTexting: 'NO',
+          dispatchPermitted: false,
+        },
+        sideEffects: {
+          dispatchAttempted: false,
+          lifecycleMutationApplied: false,
+          auditPersisted: false,
+        },
+      },
+    });
+  });
+
   it('returns provider-neutral number mapping contract fields in route responses', async () => {
     const app = buildApp();
     const providerNumberE164 = `+1260${randomUUID().replace(/\D/g, '').slice(0, 7).padEnd(7, '0')}`;

@@ -22,6 +22,7 @@ export type ConnectShyftThreadSummaryRecord = {
   threadId: string;
   tenantId: string;
   orgUnitId: string;
+  source: string;
   state: ConnectShyftThreadState;
   claimedByUserId: string | null;
   claimed_by_user_id: string | null;
@@ -60,6 +61,7 @@ type ConnectShyftThreadSeed = {
   tenantId: string;
   orgUnitId: string;
   threadId: string;
+  source?: string;
   state: ConnectShyftThreadState;
   bucket: ConnectShyftInboxBucket;
   claimedByUserId: string | null;
@@ -78,6 +80,7 @@ type ConnectShyftThreadDbRow = {
   thread_id: string;
   tenant_id: string;
   org_unit_id: string;
+  source?: string | null;
   state: string;
   claimed_by_user_id?: string | null;
   escalation_stage?: number | string | null;
@@ -107,6 +110,7 @@ const CONNECTSHYFT_URGENCY_LABELS = {
   stage1: 'Needs attention soon',
   stage2Plus: 'Needs urgent attention',
 } as const;
+const CONNECTSHYFT_DEFAULT_THREAD_SOURCE = 'VOICE';
 
 const CONNECTSHYFT_FORBIDDEN_COPY_TOKENS = [
   'threadid',
@@ -1049,6 +1053,7 @@ const toSummaryRecord = (
     threadId: seed.threadId,
     tenantId: seed.tenantId,
     orgUnitId: seed.orgUnitId,
+    source: normalizeString(seed.source) || CONNECTSHYFT_DEFAULT_THREAD_SOURCE,
     state: seed.state,
     claimedByUserId: seed.claimedByUserId,
     claimed_by_user_id: seed.claimedByUserId,
@@ -1220,6 +1225,7 @@ const resolveDbSelectableColumns = (
   ];
 
   const optionalColumns = [
+    'source',
     'claimed_by_user_id',
     'escalation_stage',
     'is_new_unread',
@@ -1390,6 +1396,7 @@ const mapDbRowToSummary = (
     threadId,
     tenantId,
     orgUnitId,
+    source: normalizeString(row.source) || CONNECTSHYFT_DEFAULT_THREAD_SOURCE,
     state,
     claimedByUserId: normalizeOptionalString(row.claimed_by_user_id),
     claimed_by_user_id: normalizeOptionalString(row.claimed_by_user_id),

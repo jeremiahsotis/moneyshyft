@@ -1,6 +1,7 @@
 import {
   AsyncConnectShyftSmsPreferenceOverrideService,
   ConnectShyftSmsOverridePersistenceUnavailableError,
+  isConnectShyftSmsDispatchPermitted,
   validateConnectShyftSmsOverride,
 } from '../smsPreferenceOverrides';
 
@@ -46,6 +47,12 @@ describe('connectshyft sms preference overrides', () => {
         note: 'Operator documented policy exception.',
       },
     });
+  });
+
+  it('permits outbound dispatch only when prefers_texting is YES', () => {
+    expect(isConnectShyftSmsDispatchPermitted('YES')).toBe(true);
+    expect(isConnectShyftSmsDispatchPermitted('NO')).toBe(false);
+    expect(isConnectShyftSmsDispatchPermitted('UNKNOWN')).toBe(false);
   });
 
   it('resolves synthetic NO preferences without database lookups', async () => {

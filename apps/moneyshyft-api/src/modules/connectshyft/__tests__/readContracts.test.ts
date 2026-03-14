@@ -129,6 +129,8 @@ describe('connectshyft read contracts', () => {
 
     expect(claimedOwner?.bucket).toBe('mine');
     expect(differentActor?.bucket).toBe('inbox');
+    expect(claimedOwner?.source).toBe('VOICE');
+    expect(differentActor?.source).toBe('VOICE');
   });
 
   it('resolves canonical thread-detail action sets by lifecycle state', () => {

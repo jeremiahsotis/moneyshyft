@@ -11,8 +11,10 @@ Describe the SMS target-resolution fix.
 
 ## Resolution Logic
 - [ ] deterministic target-resolution order implemented
+- [ ] explicit outbound request target wins over neighbor fallback
 - [ ] texting-preference gate enforced
 - [ ] no automatic guessing when multiple phones exist
+- [ ] outbound thread response reflects the actual communication method (`SMS` for thread-message dispatch)
 
 ## Refusals
 - [ ] explicit refusal for no target phone
@@ -23,3 +25,8 @@ Describe the SMS target-resolution fix.
 ## Verification
 - [ ] tests added or updated
 - [ ] manual verification path documented
+- [ ] route ownership remains inside `apps/moneyshyft-api`
+- [ ] localhost-only port/binding expectations unchanged
+- [ ] shared PostgreSQL compatibility unchanged
+- [ ] deployment runbook remains reproducible
+- [ ] no new cross-service or provider-layer hops introduced

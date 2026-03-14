@@ -43,11 +43,7 @@ import {
   type ConnectShyftThreadState,
 } from '../../../modules/connectshyft/threads';
 import {
-  connectShyftSmsPreferenceOverrideServiceAsync,
-  ConnectShyftSmsOverridePersistenceUnavailableError,
-  type ConnectShyftPersistedSmsOverride,
-  type ConnectShyftResolvedSmsPreference,
-  type ConnectShyftValidatedSmsOverride,
+  isConnectShyftSmsDispatchPermitted,
 } from '../../../modules/connectshyft/smsPreferenceOverrides';
 import {
   ConnectShyftProviderDispatchPolicyError,
@@ -245,6 +241,31 @@ type ConnectShyftSyntheticThreadDescriptor = {
   lastInboundCsNumberId: string;
   preferredOutboundCsNumberId: string;
   summary: string;
+};
+
+type ConnectShyftNeighborSmsDispatchPhoneCandidate = {
+  value: string;
+  isPrimary: boolean;
+};
+
+type ConnectShyftNeighborSmsDispatchProfile = {
+  neighborId: string;
+  prefersTexting: ConnectShyftCanonicalTextingPreference;
+  phones: ConnectShyftNeighborSmsDispatchPhoneCandidate[];
+  source: 'synthetic' | 'neighbor-record' | 'unknown';
+};
+
+type ConnectShyftSmsTargetResolutionDecision = {
+  resolutionSource: 'explicit-request' | 'neighbor-primary' | 'neighbor-single' | 'none' | 'ambiguous';
+  deterministic: boolean;
+  targetPhone: string | null;
+  candidatePhones: string[];
+  explicitTargetProvided: boolean;
+  neighborId: string | null;
+  prefersTexting: ConnectShyftCanonicalTextingPreference;
+  profileSource: ConnectShyftNeighborSmsDispatchProfile['source'];
+  refusalCode?: string;
+  refusalMessage?: string;
 };
 
 const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSyntheticThreadDescriptor> = {
@@ -513,6 +534,48 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     summary: 'F2 closed thread for canonical timeline validation.',
   },
 };
+const CONNECTSHYFT_SYNTHETIC_NEIGHBOR_SMS_DISPATCH_PROFILES: Record<string, ConnectShyftNeighborSmsDispatchProfile> = {
+  'neighbor-connectshyft-f1-1001': {
+    neighborId: 'neighbor-connectshyft-f1-1001',
+    prefersTexting: 'YES',
+    phones: [
+      { value: '+12605550111', isPrimary: false },
+      { value: '+12605550112', isPrimary: false },
+    ],
+    source: 'synthetic',
+  },
+  'neighbor-connectshyft-f1-1002': {
+    neighborId: 'neighbor-connectshyft-f1-1002',
+    prefersTexting: 'YES',
+    phones: [
+      { value: '+12605550121', isPrimary: true },
+      { value: '+12605550122', isPrimary: false },
+    ],
+    source: 'synthetic',
+  },
+  'neighbor-connectshyft-f1-1003': {
+    neighborId: 'neighbor-connectshyft-f1-1003',
+    prefersTexting: 'YES',
+    phones: [],
+    source: 'synthetic',
+  },
+  'neighbor-connectshyft-f2-1001': {
+    neighborId: 'neighbor-connectshyft-f2-1001',
+    prefersTexting: 'YES',
+    phones: [
+      { value: '+12605550211', isPrimary: true },
+    ],
+    source: 'synthetic',
+  },
+  'neighbor-connectshyft-f2-1002': {
+    neighborId: 'neighbor-connectshyft-f2-1002',
+    prefersTexting: 'NO',
+    phones: [
+      { value: '+12605550221', isPrimary: true },
+    ],
+    source: 'synthetic',
+  },
+};
 const CONNECTSHYFT_DYNAMIC_C5_THREAD_PREFIX = 'thread-c5-unclaimed-';
 const CONNECTSHYFT_DYNAMIC_C5_THREAD_TEMPLATE_ID = 'thread-c5-unclaimed-1001';
 
@@ -524,7 +587,7 @@ const loadPlatformDb = (): Knex => {
 const connectShyftEscalationConfigService = new ConnectShyftEscalationConfigService(
   new KnexConnectShyftEscalationConfigStore(loadPlatformDb),
 );
-const connectShyftSmsPreferenceOverrideService = connectShyftSmsPreferenceOverrideServiceAsync;
+const connectShyftNeighborStore = new KnexConnectShyftNeighborStore(loadPlatformDb());
 
 const actorFromRequest = (req: Request): PlatformAdminActorContext => ({
   userId: req.user?.userId || null,
@@ -1361,6 +1424,7 @@ const buildSyntheticThread = (input: {
   tenantId: string;
   orgUnitId: string;
   threadId: string;
+  source?: string | null;
   currentState: ConnectShyftThreadState;
   nextState: ConnectShyftThreadState;
   actorUserId: string | null;
@@ -1399,7 +1463,7 @@ const buildSyntheticThread = (input: {
     tenantId: input.tenantId,
     orgUnitId: input.orgUnitId,
     neighborId: input.fallbackNeighborId || `neighbor-${input.threadId}`,
-    source: 'VOICE',
+    source: normalizeLifecycleString(input.source || null) || 'VOICE',
     state: input.nextState,
     lastInboundCsNumberId: input.fallbackLastInboundCsNumberId || '',
     preferredOutboundCsNumberId: input.fallbackPreferredOutboundCsNumberId || '',
@@ -1428,6 +1492,7 @@ const buildThreadFromDetailRecord = (
   detail: ConnectShyftThreadDetailRecord,
   input: {
     neighborId?: string | null;
+    source?: string | null;
   } = {},
 ): ConnectShyftThread => {
   const now = nowIsoUtc();
@@ -1441,7 +1506,7 @@ const buildThreadFromDetailRecord = (
     tenantId: detail.tenantId,
     orgUnitId: detail.orgUnitId,
     neighborId,
-    source: 'VOICE',
+    source: normalizeLifecycleString(input.source ?? detail.source) || 'VOICE',
     state: detail.state,
     lastInboundCsNumberId: detail.lastInboundCsNumberId,
     preferredOutboundCsNumberId: detail.preferredOutboundCsNumberId,
@@ -1457,6 +1522,10 @@ const buildThreadFromDetailRecord = (
     },
   };
 };
+
+const resolveOutboundCommunicationSource = (
+  outboundAction: ConnectShyftOutboundAction,
+): string => outboundAction === 'message' ? 'SMS' : 'VOICE';
 
 const buildSyntheticThreadDetailRecord = (input: {
   descriptor: ConnectShyftSyntheticThreadDescriptor;
@@ -1494,6 +1563,7 @@ const buildSyntheticThreadDetailRecord = (input: {
     threadId: input.threadId,
     tenantId: input.descriptor.tenantId,
     orgUnitId: input.descriptor.orgUnitId,
+    source: 'VOICE',
     state: input.descriptor.state,
     claimedByUserId: input.descriptor.claimedByUserId,
     claimed_by_user_id: input.descriptor.claimedByUserId,
@@ -3494,6 +3564,141 @@ const resolveNeighborIdForThreadCorrelation = async (input: {
     return null;
   }
 };
+
+const dedupeSmsPhoneCandidates = (
+  phones: readonly string[],
+): string[] => {
+  const deduped: string[] = [];
+  const seen = new Set<string>();
+  phones.forEach((phone) => {
+    const normalizedPhone = normalizeLifecycleString(phone);
+    if (!normalizedPhone || seen.has(normalizedPhone)) {
+      return;
+    }
+    seen.add(normalizedPhone);
+    deduped.push(normalizedPhone);
+  });
+  return deduped;
+};
+
+const loadNeighborSmsDispatchProfile = async (input: {
+  tenantId: string;
+  neighborId: string | null;
+}): Promise<ConnectShyftNeighborSmsDispatchProfile | null> => {
+  const normalizedNeighborId = normalizeConnectShyftNeighborIdentifier(input.neighborId || '');
+  if (!normalizedNeighborId) {
+    return null;
+  }
+
+  const syntheticProfile = CONNECTSHYFT_SYNTHETIC_NEIGHBOR_SMS_DISPATCH_PROFILES[normalizedNeighborId];
+  if (syntheticProfile) {
+    return syntheticProfile;
+  }
+
+  try {
+    const neighbor = await connectShyftNeighborStore.resolveNeighborById(input.tenantId, normalizedNeighborId);
+    if (!neighbor) {
+      return null;
+    }
+
+    return {
+      neighborId: neighbor.neighborId,
+      prefersTexting: neighbor.prefersTexting,
+      phones: neighbor.phones.map((phone) => ({
+        value: phone.value,
+        isPrimary: phone.isPrimary === true,
+      })),
+      source: 'neighbor-record',
+    };
+  } catch {
+    return null;
+  }
+};
+
+const resolveDeterministicSmsTargetForDispatch = async (input: {
+  tenantId: string;
+  neighborId: string | null;
+  explicitTargetPhone: string | null;
+}): Promise<ConnectShyftSmsTargetResolutionDecision> => {
+  const explicitTargetPhone = normalizeLifecycleString(input.explicitTargetPhone || null) || null;
+  const profile = await loadNeighborSmsDispatchProfile({
+    tenantId: input.tenantId,
+    neighborId: input.neighborId,
+  });
+  const candidatePhones = dedupeSmsPhoneCandidates((profile?.phones || []).map((phone) => phone.value));
+  const primaryCandidatePhones = dedupeSmsPhoneCandidates(
+    (profile?.phones || [])
+      .filter((phone) => phone.isPrimary)
+      .map((phone) => phone.value),
+  );
+  const prefersTexting = profile?.prefersTexting || 'UNKNOWN';
+  const baseDecision = {
+    candidatePhones,
+    explicitTargetProvided: explicitTargetPhone !== null,
+    neighborId: profile?.neighborId || normalizeConnectShyftNeighborIdentifier(input.neighborId || '') || null,
+    prefersTexting,
+    profileSource: profile?.source || 'unknown',
+  } as const;
+
+  if (!isConnectShyftSmsDispatchPermitted(prefersTexting)) {
+    return {
+      ...baseDecision,
+      resolutionSource: explicitTargetPhone ? 'explicit-request' : 'none',
+      deterministic: false,
+      targetPhone: null,
+      refusalCode: 'CONNECTSHYFT_SMS_TEXTING_NOT_PERMITTED',
+      refusalMessage: 'Outbound SMS requires prefers_texting=YES for the linked neighbor.',
+    };
+  }
+
+  if (explicitTargetPhone) {
+    return {
+      ...baseDecision,
+      resolutionSource: 'explicit-request',
+      deterministic: true,
+      targetPhone: explicitTargetPhone,
+    };
+  }
+
+  if (primaryCandidatePhones.length === 1) {
+    return {
+      ...baseDecision,
+      resolutionSource: 'neighbor-primary',
+      deterministic: true,
+      targetPhone: primaryCandidatePhones[0],
+    };
+  }
+
+  if (candidatePhones.length === 1) {
+    return {
+      ...baseDecision,
+      resolutionSource: 'neighbor-single',
+      deterministic: true,
+      targetPhone: candidatePhones[0],
+    };
+  }
+
+  if (candidatePhones.length === 0) {
+    return {
+      ...baseDecision,
+      resolutionSource: 'none',
+      deterministic: false,
+      targetPhone: null,
+      refusalCode: 'CONNECTSHYFT_SMS_TARGET_PHONE_NOT_AVAILABLE',
+      refusalMessage: 'Outbound SMS cannot be sent because no deterministic target phone is available for this thread.',
+    };
+  }
+
+  return {
+    ...baseDecision,
+    resolutionSource: 'ambiguous',
+    deterministic: false,
+    targetPhone: null,
+    refusalCode: 'CONNECTSHYFT_SMS_MULTIPLE_TARGET_PHONES',
+    refusalMessage: 'Outbound SMS cannot be sent because multiple valid neighbor phones are available and no explicit SMS target is set.',
+  };
+};
+
 const parseMappingBody = (req: Request) => ({
   // Preserve explicit false values from JSON/string payloads instead of truthy coercion.
   isActive: parseOptionalBoolean(req.body?.isActive) ?? true,
@@ -6188,27 +6393,28 @@ const performOutboundAction = async (
   const outboundLifecycleAction = resolveOutboundLifecycleAction(outboundAction);
   const priorState = lifecycleContext.currentState;
   const dispatchEventName = resolveOutboundDispatchEventName(outboundAction);
+  const outboundCommunicationSource = resolveOutboundCommunicationSource(outboundAction);
   const postDispatchWarnings: Array<{ stage: string; code: string; message: string }> = [];
 
-  let smsPreferenceDecision: ConnectShyftResolvedSmsPreference | null = null;
-  let validatedSmsOverride: ConnectShyftValidatedSmsOverride | null = null;
+  let smsTargetResolution: ConnectShyftSmsTargetResolutionDecision | null = null;
   let thread: ConnectShyftThread;
   let lifecycleEvent: string | null = null;
   let sideEffects: ReturnType<typeof buildLifecycleSideEffects> | null = null;
   let outboundDispatch: ReturnType<typeof buildLifecycleSideEffects> | null = null;
-  let persistedSmsOverride: ConnectShyftPersistedSmsOverride | null = null;
   let sideEffectsPersisted = false;
   let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
 
   if (lifecycleContext.detail) {
     thread = buildThreadFromDetailRecord(lifecycleContext.detail, {
       neighborId: resolvedThreadNeighborId,
+      source: outboundCommunicationSource,
     });
   } else {
     thread = buildSyntheticThread({
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
       threadId,
+      source: outboundCommunicationSource,
       currentState: lifecycleContext.currentState,
       nextState: lifecycleContext.currentState,
       actorUserId,
@@ -6277,7 +6483,10 @@ const performOutboundAction = async (
       return;
     }
 
-    thread = transitioned.thread;
+    thread = {
+      ...transitioned.thread,
+      source: outboundCommunicationSource,
+    };
     sideEffectsPersisted = transitioned.sideEffectsPersisted;
     lifecycleEvent = CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser;
     escalationReset = {
@@ -6315,132 +6524,32 @@ const performOutboundAction = async (
   };
 
   if (outboundAction === 'message' && outboundMessagePolicy) {
-    const preferenceNeighborId = lifecycleContext.syntheticThread?.neighborId
+    const smsNeighborId = lifecycleContext.syntheticThread?.neighborId
       || resolvedThreadNeighborId
       || null;
-    smsPreferenceDecision = await connectShyftSmsPreferenceOverrideService.resolvePreference({
+    smsTargetResolution = await resolveDeterministicSmsTargetForDispatch({
       tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      threadId,
-      neighborId: preferenceNeighborId,
+      neighborId: smsNeighborId,
+      explicitTargetPhone: outboundMessagePolicy.targetPhone,
     });
 
-    const overrideValidation = connectShyftSmsPreferenceOverrideService.validateOverride({
-      prefersTexting: smsPreferenceDecision.prefersTexting,
-      overrideReason: outboundMessagePolicy.overrideReason,
-      overrideNote: outboundMessagePolicy.overrideNote,
-    });
-
-    if (!overrideValidation.ok) {
-      const isOverrideRequired = overrideValidation.reason === 'required';
-      refusal(res, {
-        code: isOverrideRequired
-          ? 'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED'
-          : 'CONNECTSHYFT_SMS_OVERRIDE_REASON_INVALID',
-        message: overrideValidation.message,
-        refusalType: 'business',
-        httpStatus: 200,
+    if (!smsTargetResolution.deterministic) {
+      respondConnectShyftBusinessRefusal(res, {
+        code: smsTargetResolution.refusalCode || 'CONNECTSHYFT_SMS_TARGET_PHONE_NOT_AVAILABLE',
+        message: smsTargetResolution.refusalMessage || 'Outbound SMS cannot be sent because no deterministic target phone is available for this thread.',
         data: {
           context,
           threadId,
+          neighborId: smsTargetResolution.neighborId,
+          threadSource: thread.source,
           preferencePolicy: {
-            prefersTexting: smsPreferenceDecision.prefersTexting,
-            source: smsPreferenceDecision.source,
-            overrideRequired: smsPreferenceDecision.prefersTexting === 'NO',
-            overrideAccepted: false,
-            allowedOverrideReasons: overrideValidation.allowedReasons,
+            prefersTexting: smsTargetResolution.prefersTexting,
+            source: smsTargetResolution.profileSource,
+            dispatchPermitted: false,
           },
-          uiFeedback: {
-            severity: 'warning',
-            ariaLive: 'assertive',
-            messageKey: isOverrideRequired
-              ? 'connectshyft.override.required'
-              : 'connectshyft.override.invalid',
-            presentation: 'contextual-action-feedback',
-            requiresAction: true,
-            actionLabel: 'Add override reason',
-            accessibilityHint: 'Open override reason selector and resubmit the outbound message.',
-            message: overrideValidation.message,
-          },
-          chrome: {
-            persistentOperationsBannerVisible: false,
-            heavyOperationsDefaultLayout: false,
-          },
+          smsTargetResolution,
           sideEffects: {
-            messageDispatched: false,
-            lifecycleMutationApplied,
-            auditPersisted: false,
-          },
-          ...buildReopenLifecycleData(),
-        },
-      });
-      return;
-    }
-
-    validatedSmsOverride = overrideValidation.overrideRequired
-      ? overrideValidation.override
-      : null;
-  }
-
-  if (
-    outboundAction === 'message'
-    && smsPreferenceDecision?.prefersTexting === 'NO'
-    && validatedSmsOverride
-  ) {
-    try {
-      persistedSmsOverride = await connectShyftSmsPreferenceOverrideService.persistApprovedOverride({
-        tenantId: context.tenantId,
-        orgUnitId: context.orgUnitId,
-        threadId,
-        neighborId: smsPreferenceDecision.neighborId,
-        actorUserId,
-        preferenceValue: 'NO',
-        override: validatedSmsOverride,
-        messageBody: outboundMessagePolicy?.body || '',
-        messageEventName: 'connectshyft.thread.outbound_message_dispatched',
-      });
-    } catch (error) {
-      const persistenceMessage = error instanceof Error
-        ? error.message
-        : 'Outbound SMS override persistence is unavailable.';
-      const persistenceCode = error instanceof ConnectShyftSmsOverridePersistenceUnavailableError
-        ? error.code
-        : 'CONNECTSHYFT_SMS_OVERRIDE_AUDIT_UNAVAILABLE';
-
-      refusal(res, {
-        code: persistenceCode,
-        message: 'Outbound SMS cannot be sent because override persistence is unavailable.',
-        refusalType: 'business',
-        httpStatus: 200,
-        data: {
-          context,
-          threadId,
-          preferencePolicy: {
-            prefersTexting: smsPreferenceDecision.prefersTexting,
-            source: smsPreferenceDecision.source,
-            overrideRequired: true,
-            overrideAccepted: false,
-            override: {
-              reason: validatedSmsOverride.reason,
-              note: validatedSmsOverride.note,
-            },
-          },
-          uiFeedback: {
-            severity: 'warning',
-            ariaLive: 'assertive',
-            messageKey: 'connectshyft.override.audit_unavailable',
-            presentation: 'contextual-action-feedback',
-            requiresAction: true,
-            actionLabel: 'Retry send',
-            accessibilityHint: 'Retry sending after override persistence becomes available.',
-            message: persistenceMessage,
-          },
-          chrome: {
-            persistentOperationsBannerVisible: false,
-            heavyOperationsDefaultLayout: false,
-          },
-          sideEffects: {
-            messageDispatched: false,
+            dispatchAttempted: false,
             lifecycleMutationApplied,
             auditPersisted: false,
           },
@@ -6450,24 +6559,6 @@ const performOutboundAction = async (
       return;
     }
   }
-
-  const rollbackPersistedSmsOverride = async (): Promise<void> => {
-    if (!persistedSmsOverride) {
-      return;
-    }
-
-    try {
-      await connectShyftSmsPreferenceOverrideService.rollbackApprovedOverride({
-        tenantId: context.tenantId,
-        orgUnitId: context.orgUnitId,
-        threadId,
-        overrideId: persistedSmsOverride.overrideId,
-      });
-      persistedSmsOverride = null;
-    } catch {
-      // Best effort rollback; keep persisted state reporting truthful in refusal payloads.
-    }
-  };
 
   const outboundCallDispatchPolicy: ConnectShyftOutboundCallDispatchPolicy | null = outboundAction === 'call'
     ? {
@@ -6492,11 +6583,9 @@ const performOutboundAction = async (
         orgUnitId: context.orgUnitId,
         threadId,
         body: outboundMessagePolicy?.body || '',
-        targetPhone: outboundMessagePolicy?.targetPhone || undefined,
+        targetPhone: smsTargetResolution?.targetPhone || undefined,
       });
   } catch (error) {
-    await rollbackPersistedSmsOverride();
-
     if (error instanceof ConnectShyftProviderDispatchPolicyError) {
       respondConnectShyftBusinessRefusal(res, {
         code: error.code,
@@ -6512,7 +6601,7 @@ const performOutboundAction = async (
           sideEffects: {
             dispatchAttempted: false,
             lifecycleMutationApplied,
-            auditPersisted: Boolean(persistedSmsOverride),
+            auditPersisted: false,
           },
           providerCallPolicy: error.data,
           ...buildReopenLifecycleData(),
@@ -6535,7 +6624,7 @@ const performOutboundAction = async (
         sideEffects: {
           dispatchAttempted: true,
           lifecycleMutationApplied,
-          auditPersisted: Boolean(persistedSmsOverride),
+          auditPersisted: false,
         },
         error: error instanceof Error ? error.message : 'unknown-provider-dispatch-error',
         ...buildReopenLifecycleData(),
@@ -6668,13 +6757,7 @@ const performOutboundAction = async (
     : priorState === 'CLOSED'
       ? 'Conversation reopened and outbound dispatch completed.'
       : 'Outbound dispatch completed.';
-  const uiFeedbackMessage = hasPostDispatchWarnings
-    ? operatorFeedback
-    : outboundAction === 'message'
-      && smsPreferenceDecision?.prefersTexting === 'NO'
-      && validatedSmsOverride
-      ? 'Override applied. Outbound message dispatched.'
-      : operatorFeedback;
+  const uiFeedbackMessage = operatorFeedback;
   const uiFeedbackMessageKey = hasPostDispatchWarnings
     ? 'connectshyft.outbound.dispatch_warning'
     : priorState === 'CLOSED'
@@ -6742,33 +6825,17 @@ const performOutboundAction = async (
           }
         : {
             preferencePolicy: {
-              prefersTexting: smsPreferenceDecision?.prefersTexting || 'UNKNOWN',
-              source: smsPreferenceDecision?.source || 'unknown',
-              overrideRequired: smsPreferenceDecision?.prefersTexting === 'NO',
-              overrideAccepted: smsPreferenceDecision?.prefersTexting !== 'NO'
-                || Boolean(validatedSmsOverride),
-              ...(validatedSmsOverride
-                ? {
-                  override: {
-                    reason: validatedSmsOverride.reason,
-                    note: validatedSmsOverride.note,
-                    overrideId: persistedSmsOverride?.overrideId || null,
-                    durability: persistedSmsOverride?.durability || null,
-                    createdAtUtc: persistedSmsOverride?.createdAtUtc || null,
-                    audit: persistedSmsOverride
-                      ? {
-                        eventName: persistedSmsOverride.messageEventName,
-                        metadata: persistedSmsOverride.auditMetadata,
-                      }
-                      : null,
-                  },
-                }
-                : {}),
+              prefersTexting: smsTargetResolution?.prefersTexting || 'UNKNOWN',
+              source: smsTargetResolution?.profileSource || 'unknown',
+              dispatchPermitted: isConnectShyftSmsDispatchPermitted(
+                smsTargetResolution?.prefersTexting || 'UNKNOWN',
+              ),
             },
+            ...(smsTargetResolution ? { smsTargetResolution } : {}),
             sideEffects: {
               messageDispatched: true,
               lifecycleMutationApplied: reopenedFromClosed,
-              auditPersisted: Boolean(persistedSmsOverride),
+              auditPersisted: false,
             },
           }),
       ...(sideEffects || {}),

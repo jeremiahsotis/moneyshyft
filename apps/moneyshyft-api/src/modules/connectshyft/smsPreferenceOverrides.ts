@@ -228,6 +228,10 @@ export const validateConnectShyftSmsOverride = (
   };
 };
 
+export const isConnectShyftSmsDispatchPermitted = (
+  prefersTexting: ConnectShyftCanonicalTextingPreference,
+): boolean => prefersTexting === 'YES';
+
 class InMemoryConnectShyftSmsPreferenceOverrideStore {
   private readonly preferencesByThreadId = new Map<string, ConnectShyftCanonicalTextingPreference>(
     Object.entries(CONNECTSHYFT_SYNTHETIC_THREAD_TEXTING_PREFERENCES),
