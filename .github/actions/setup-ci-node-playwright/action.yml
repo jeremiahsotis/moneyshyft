@@ -1,0 +1,150 @@
+name: setup-ci-node-playwright
+description: Setup Node.js, install npm dependencies, and ensure Playwright browsers with prebuilt-image fallback.
+
+inputs:
+  node_version_file:
+    description: Node version file path.
+    required: false
+    default: .nvmrc
+  install_frontend:
+    description: Install frontend dependencies for lane frontends.
+    required: false
+    default: 'false'
+  install_src:
+    description: Install backend dependencies via npm ci --prefix apps/moneyshyft-api.
+    required: false
+    default: 'false'
+  install_backend_test_deps:
+    description: Install full backend test dependencies and link sibling API app node_modules.
+    required: false
+    default: 'false'
+  ensure_playwright:
+    description: Ensure Playwright browsers exist (prefer prebuilt image; fallback to cached/install).
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: ${{ inputs.node_version_file }}
+        cache: npm
+        cache-dependency-path: |
+          package-lock.json
+          apps/admin-api/package-lock.json
+          apps/moneyshyft-web/package-lock.json
+          apps/connectshyft-web/package-lock.json
+          apps/moneyshyft-api/package-lock.json
+
+    - name: Configure npm retry behavior
+      shell: bash
+      run: |
+        npm config set fetch-retries 5
+        npm config set fetch-retry-factor 2
+        npm config set fetch-retry-mintimeout 10000
+        npm config set fetch-retry-maxtimeout 120000
+
+    - name: Enable declared package manager
+      shell: bash
+      run: |
+        corepack enable
+
+        declared_package_manager="$(node -p "require('./package.json').packageManager || ''")"
+        if [[ "$declared_package_manager" == pnpm@* ]]; then
+          corepack prepare "$declared_package_manager" --activate
+          pnpm --version
+        fi
+
+    - name: Install root dependencies
+      shell: bash
+      run: |
+        if [ -f pnpm-lock.yaml ]; then
+          pnpm install --frozen-lockfile || pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
+        elif [ -f package-lock.json ]; then
+          npm ci || npm ci || npm install --no-audit --fund=false
+        else
+          npm install --no-audit --fund=false
+        fi
+
+    - name: Install frontend dependencies
+      if: inputs.install_frontend == 'true'
+      shell: bash
+      run: |
+        if [ -f apps/moneyshyft-web/package-lock.json ]; then
+          npm ci --prefix apps/moneyshyft-web || npm ci --prefix apps/moneyshyft-web || npm install --prefix apps/moneyshyft-web --no-audit --fund=false
+        else
+          npm install --prefix apps/moneyshyft-web --no-audit --fund=false
+        fi
+
+        if [ -f apps/connectshyft-web/package-lock.json ]; then
+          npm ci --prefix apps/connectshyft-web || npm ci --prefix apps/connectshyft-web || npm install --prefix apps/connectshyft-web --no-audit --fund=false
+        else
+          npm install --prefix apps/connectshyft-web --no-audit --fund=false
+        fi
+
+    - name: Install backend dependencies
+      if: inputs.install_src == 'true'
+      shell: bash
+      run: |
+        if [ -f apps/moneyshyft-api/package-lock.json ]; then
+          npm ci --prefix apps/moneyshyft-api --omit=dev || npm ci --prefix apps/moneyshyft-api --omit=dev || npm install --prefix apps/moneyshyft-api --omit=dev --no-audit --fund=false
+        else
+          npm install --prefix apps/moneyshyft-api --omit=dev --no-audit --fund=false
+        fi
+
+        if [ -d apps/moneyshyft-api/node_modules ]; then
+          rm -rf apps/connectshyft-api/node_modules
+          cp -a apps/moneyshyft-api/node_modules apps/connectshyft-api/node_modules
+        fi
+
+    - name: Install backend test dependencies
+      if: inputs.install_backend_test_deps == 'true'
+      shell: bash
+      run: |
+        if [ -f apps/admin-api/package-lock.json ]; then
+          npm ci --prefix apps/admin-api || npm ci --prefix apps/admin-api || npm install --prefix apps/admin-api --no-audit --fund=false
+        else
+          npm install --prefix apps/admin-api --no-audit --fund=false
+        fi
+
+        if [ -f apps/moneyshyft-api/package-lock.json ]; then
+          npm ci --prefix apps/moneyshyft-api || npm ci --prefix apps/moneyshyft-api || npm install --prefix apps/moneyshyft-api --no-audit --fund=false
+        else
+          npm install --prefix apps/moneyshyft-api --no-audit --fund=false
+        fi
+
+        rm -rf apps/connectshyft-api/node_modules
+        cp -a apps/moneyshyft-api/node_modules apps/connectshyft-api/node_modules
+
+    - name: Cache Playwright browsers (fallback)
+      if: inputs.ensure_playwright == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-ms-playwright-${{ hashFiles('package-lock.json') }}
+
+    - name: Ensure Playwright browsers
+      if: inputs.ensure_playwright == 'true'
+      shell: bash
+      run: |
+        if [ -d /ms-playwright ] && [ "$(find /ms-playwright -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')" -gt 0 ]; then
+          echo "Using prebuilt Playwright browsers from container image."
+        else
+          echo "Prebuilt Playwright browsers unavailable; using cached/install fallback."
+          npx playwright install chromium
+        fi
+
+        expected_chromium_path="$(node -e "const { chromium } = require('playwright'); process.stdout.write(chromium.executablePath());")"
+        if [ -x "$expected_chromium_path" ]; then
+          echo "Playwright chromium executable present at: $expected_chromium_path"
+        else
+          echo "Playwright chromium executable missing at: $expected_chromium_path"
+          echo "Installing Playwright chromium to satisfy runtime executable requirements..."
+          npx playwright install chromium
+          expected_chromium_path="$(node -e "const { chromium } = require('playwright'); process.stdout.write(chromium.executablePath());")"
+          if [ ! -x "$expected_chromium_path" ]; then
+            echo "Chromium executable still missing after install: $expected_chromium_path"
+            exit 1
+          fi
+        fi

@@ -1,0 +1,93 @@
+{
+  "startedAtUtc": "2026-03-05T22:58:43.293Z",
+  "inputPath": null,
+  "outputPath": "/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/release-evidence/route-cutover-reconcile-only-local-2026-03-05T22-58-42Z.json",
+  "normalizedOutputPath": "/Users/jeremiahotis/projects/routeshyft/_bmad-output/test-artifacts/release-evidence/route-cutover-reconcile-only-local-normalized-2026-03-05T22-58-42Z.json",
+  "mode": "reconcile-only",
+  "apiBaseUrl": "http://127.0.0.1:3000",
+  "sourceType": "wordpress_fulfillment",
+  "writeMode": "api_only",
+  "sourceRowCount": 0,
+  "normalizedCount": 0,
+  "skippedDuplicateCount": 0,
+  "validationErrors": [],
+  "dryRunPlan": null,
+  "execution": {
+    "authContext": {
+      "activeOrgUnitId": null
+    },
+    "importResults": {
+      "attempted": 0,
+      "created": 0,
+      "replayed": 0,
+      "failures": []
+    },
+    "completionResults": {
+      "attempted": 0,
+      "applied": 0,
+      "replayed": 0,
+      "transitionPrepared": 0,
+      "failures": []
+    },
+    "reconciliationResults": [
+      {
+        "orgUnitId": null,
+        "status": 200,
+        "code": "ROUTE_BRIDGE_RECONCILIATION_PASSED",
+        "driftDetected": false,
+        "singleSourceOfTruthConfirmed": true,
+        "response": {
+          "ok": true,
+          "code": "ROUTE_BRIDGE_RECONCILIATION_PASSED",
+          "message": "Bridge reconciliation confirms single-source state.",
+          "correlationId": "cutover-1772751523572",
+          "tenantId": "e0f05bd4-1a4f-4b90-8cf6-cd69819a52ce",
+          "data": {
+            "bridge": {
+              "integration": "wordpress",
+              "stateAuthority": "monolith",
+              "cutover": {
+                "stage": "bridge",
+                "dualWritePreventionActive": false,
+                "writeBlocked": false,
+                "requiresApiOnlyAssertion": false,
+                "invalidConfiguration": false,
+                "configuredStage": "bridge"
+              }
+            },
+            "generatedAtLocal": "03/05/2026, 10:58 PM",
+            "reconciliation": {
+              "sourceType": "wordpress_fulfillment",
+              "commitmentCount": 0,
+              "driftDetected": false,
+              "singleSourceOfTruthConfirmed": true,
+              "checks": [
+                {
+                  "name": "duplicate_bridge_source_ids",
+                  "ok": true,
+                  "violationCount": 0,
+                  "violations": []
+                },
+                {
+                  "name": "duplicate_bridge_lineage_refs",
+                  "ok": true,
+                  "violationCount": 0,
+                  "violations": []
+                }
+              ],
+              "actions": [
+                "Cutover stage progression is clear for this tenant/orgUnit scope."
+              ]
+            },
+            "timezone": "UTC",
+            "timezoneSource": "system"
+          }
+        }
+      }
+    ],
+    "commitmentsObserved": {},
+    "warnings": []
+  },
+  "finishedAtUtc": "2026-03-05T22:58:43.577Z",
+  "success": true
+}

@@ -1,0 +1,49 @@
+{
+  "dimension": "isolation",
+  "score": 75,
+  "max_score": 100,
+  "grade": "C",
+  "violations": [
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 15,
+      "severity": "HIGH",
+      "category": "serial-execution-coupling",
+      "description": "Suite-level serial mode limits parallel safety and can mask inter-test coupling issues.",
+      "suggestion": "Remove serial mode and isolate shared state with per-test setup/cleanup.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });"
+    },
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts",
+      "line": 60,
+      "severity": "HIGH",
+      "category": "serial-execution-coupling",
+      "description": "API automate suite is forced to serial execution, reducing confidence in isolation under parallel CI workers.",
+      "suggestion": "Run in parallel by default and retain serial only for proven hard dependencies.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts",
+      "line": 1268,
+      "severity": "MEDIUM",
+      "category": "process-global-mutation",
+      "description": "Tests mutate process-wide env flags, which can leak behavior across concurrently executed tests if scope expands.",
+      "suggestion": "Centralize env mutation in scoped helpers and ensure strict restoration per test block.",
+      "code_snippet": "process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'false';"
+    }
+  ],
+  "passed_checks": 12,
+  "failed_checks": 3,
+  "total_checks": 15,
+  "violation_summary": {
+    "HIGH": 2,
+    "MEDIUM": 1,
+    "LOW": 0
+  },
+  "recommendations": [
+    "Eliminate blanket serial mode and validate suites under parallel workers.",
+    "Minimize process-global state mutation in route integration tests.",
+    "Keep explicit setup/teardown ownership near each mutated integration surface."
+  ],
+  "summary": "Isolation has 3 violations with 2 HIGH risks centered on serial execution mode."
+}

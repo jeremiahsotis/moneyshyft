@@ -1,0 +1,35 @@
+{
+  "success": true,
+  "subprocess": "atdd-e2e-tests",
+  "tests": [
+    {
+      "file": "tests/e2e/platform/1-6-security-controls-and-redaction-verification.atdd.spec.ts",
+      "content": "import { apiRequest } from '../../support/helpers/apiClient';\nimport { test, expect } from '../../support/fixtures/securityControlsStory16.fixture';\n\ntest.describe('Story 1.6 Security Controls and Redaction Verification (ATDD E2E RED)', () => {\n  test.skip(\n    '[P1] operator verification journey surfaces tenant-scope and csrf control evidence in the security workspace @P1',\n    async ({\n      page,\n      request,\n      story16Context,\n      story16TenantHeaders,\n      story16CrossTenantReadProbe,\n      story16CsrfGuardProbe,\n    }) => {\n      await page.goto(story16Context.securityDashboardPath);\n      await page.getByRole('button', { name: 'Run Security Verification' }).click();\n\n      const tenancyResponse = await apiRequest(request, {\n        method: 'GET',\n        path: `/api/v1/platform/_kernel/tenancy/repository-check${story16CrossTenantReadProbe.query}`,\n        headers: story16TenantHeaders,\n      });\n      expect(tenancyResponse.status()).toBe(403);\n\n      const csrfResponse = await apiRequest(request, {\n        method: 'POST',\n        path: '/api/v1/platform/_kernel/security/csrf/guard',\n        headers: story16CsrfGuardProbe.headers,\n        data: story16CsrfGuardProbe.payload,\n      });\n      expect([200, 403]).toContain(csrfResponse.status());\n\n      await expect(\n        page.getByRole('heading', { name: 'Security Controls Verification' }),\n      ).toBeVisible();\n      await expect(page.getByText('Tenant scope isolation')).toBeVisible();\n      await expect(page.getByText('CSRF enforcement')).toBeVisible();\n    },\n  );\n\n  test.skip(\n    '[P1] security evidence panel displays redaction-safe telemetry without exposing plaintext secrets @P1',\n    async ({ page, request, story16Context, story16TenantHeaders, story16RedactionProbe }) => {\n      await page.goto(story16Context.securityDashboardPath);\n\n      const response = await apiRequest(request, {\n        method: 'POST',\n        path: story16Context.redactionReportPath,\n        headers: story16TenantHeaders,\n        data: story16RedactionProbe.payload,\n      });\n      expect(response.status()).toBe(200);\n\n      await expect(page.getByText('All sensitive fields are redacted')).toBeVisible();\n      await expect(page.getByText('Audit payload is policy compliant')).toBeVisible();\n\n      for (const marker of story16RedactionProbe.expected.forbiddenPlaintextMarkers) {\n        await expect(page.getByText(marker)).toHaveCount(0);\n      }\n    },\n  );\n});\n",
+      "description": "ATDD E2E RED tests for Story 1.6 security verification journey",
+      "expected_to_fail": true,
+      "acceptance_criteria_covered": [
+        "Security workspace exposes tenant-scope and CSRF verification evidence",
+        "Security evidence UI does not expose plaintext secret markers"
+      ],
+      "priority_coverage": {
+        "P0": 0,
+        "P1": 2,
+        "P2": 0,
+        "P3": 0
+      }
+    }
+  ],
+  "fixture_needs": [
+    "securityControlsStory16Fixture"
+  ],
+  "knowledge_fragments_used": [
+    "selector-resilience",
+    "timing-debugging",
+    "network-recorder",
+    "network-error-monitor",
+    "playwright-cli"
+  ],
+  "test_count": 2,
+  "tdd_phase": "RED",
+  "summary": "Generated 2 FAILING (skipped) E2E tests for Story 1.6"
+}

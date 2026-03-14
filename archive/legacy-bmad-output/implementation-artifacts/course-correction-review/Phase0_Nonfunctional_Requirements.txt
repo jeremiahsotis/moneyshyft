@@ -1,0 +1,11 @@
+Phase 0 Course Correction  Nonfunctional
+Requirements (2026-02-18)
+Nonfunctional Requirements
+NFR1: Security: strict tenant isolation; no cross-tenant reads/writes possible by omission.
+NFR2: Security: orgUnit isolation within tenant for orgUnit-scoped routes; deterministic refusal on violations
+(HTTP 403).
+NFR3: Auditing: all admin changes recorded with actor_id, tenant_id, entity ids, occurred_at_utc.
+NFR4: Performance: context resolution adds <
+10ms overhead per request under normal load.
+NFR5: Developer ergonomics: scoping helpers make the correct thing easy; unsafe APIs are hard to call.
+NFR6: Testability: negative tests deterministic; no flaky time-dependent tests (use time service).

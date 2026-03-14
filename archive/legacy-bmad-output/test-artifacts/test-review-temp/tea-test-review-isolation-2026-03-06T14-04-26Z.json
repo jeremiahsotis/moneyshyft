@@ -1,0 +1,39 @@
+{
+  "dimension": "isolation",
+  "score": 92,
+  "max_score": 100,
+  "grade": "A",
+  "violations": [
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts",
+      "line": 78,
+      "severity": "MEDIUM",
+      "category": "serial-suite",
+      "description": "Suite-level serial mode reduces isolation guarantees and can hide latent order coupling.",
+      "suggestion": "Use parallel mode by default and isolate any truly dependent scenario into a dedicated block.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts",
+      "line": 57,
+      "severity": "LOW",
+      "category": "serial-suite",
+      "description": "API automate suite is forced serial despite read-oriented scenarios.",
+      "suggestion": "Allow parallel execution to validate independence and improve CI throughput.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });"
+    }
+  ],
+  "passed_checks": 20,
+  "failed_checks": 2,
+  "total_checks": 22,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 1,
+    "LOW": 1
+  },
+  "recommendations": [
+    "Remove serial mode where tests do not share mutable state",
+    "Keep per-test context creation pattern as current baseline"
+  ],
+  "summary": "Isolation is strong with per-test setup, but serial execution settings unnecessarily reduce isolation confidence."
+}

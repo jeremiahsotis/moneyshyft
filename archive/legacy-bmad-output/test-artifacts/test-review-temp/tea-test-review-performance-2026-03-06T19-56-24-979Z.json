@@ -1,0 +1,66 @@
+{
+  "dimension": "performance",
+  "score": 70,
+  "max_score": 100,
+  "grade": "C",
+  "violations": [
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 15,
+      "severity": "HIGH",
+      "category": "not-parallelizable",
+      "description": "Serial mode in E2E suite blocks parallel execution and increases CI wall-clock time.",
+      "suggestion": "Convert suite to parallel-safe isolation and remove serial mode where possible.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });"
+    },
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts",
+      "line": 60,
+      "severity": "HIGH",
+      "category": "not-parallelizable",
+      "description": "Serial API suite reduces throughput despite mostly independent request-level scenarios.",
+      "suggestion": "Drop serial mode and rely on deterministic fixture setup per test case.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts",
+      "line": 17,
+      "severity": "MEDIUM",
+      "category": "heavy-suite-footprint",
+      "description": "Large integration suite repeatedly boots app/context and can become a runtime hotspot.",
+      "suggestion": "Extract shared app/bootstrap helpers and split suite for better shard distribution.",
+      "code_snippet": "const buildApp = () => {"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 21,
+      "severity": "MEDIUM",
+      "category": "repeated-auth-overhead",
+      "description": "Repeated full-login setup per E2E case increases runtime compared with cached storage-state patterns.",
+      "suggestion": "Adopt storage-state/session reuse where this does not reduce scenario independence.",
+      "code_snippet": "await login(page);"
+    }
+  ],
+  "passed_checks": 11,
+  "failed_checks": 4,
+  "total_checks": 15,
+  "violation_summary": {
+    "HIGH": 2,
+    "MEDIUM": 2,
+    "LOW": 0
+  },
+  "performance_metrics": {
+    "parallelizable_tests": 75,
+    "serial_tests": 25,
+    "avg_test_duration_estimate": "~2-4 seconds per API case, higher for E2E viewport loops",
+    "slow_tests": [
+      "connectshyft.provider-registry.test.ts (large integration surface)"
+    ]
+  },
+  "recommendations": [
+    "Remove serial mode where scenario independence allows.",
+    "Shard/split very large route integration suite for faster CI feedback.",
+    "Use storage-state auth optimization in E2E flow-heavy suites."
+  ],
+  "summary": "Performance has 4 violations, primarily from serial execution and heavy suite structure."
+}

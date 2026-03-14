@@ -1,0 +1,241 @@
+import { randomUUID } from 'node:crypto';
+import { connectShyftCapabilityEnvelopeData } from '../../fixtures/test-data';
+import { createTenantScopeHeaders } from './tenantRepositoryFactory';
+
+const STORY_G6_DEFAULT_SCOPE = {
+  tenantId: 'tenant-connectshyft-ux-r4',
+  orgUnitId: 'org-connectshyft-ux-r4-east',
+  volunteerUserId: 'user-connectshyft-ux-r4-operator',
+  adminUserId: 'user-connectshyft-ux-r4-admin',
+  viewerUserId: 'user-connectshyft-ux-r4-viewer',
+} as const;
+
+export type ConnectShyftFlags = {
+  connectshyft_enabled: boolean;
+  connectshyft_inbox_enabled: boolean;
+  connectshyft_escalation_enabled: boolean;
+  connectshyft_webhooks_enabled: boolean;
+};
+
+type StoryG6ContextOverrides = {
+  tenantId?: string;
+  orgUnitId?: string;
+  role?: string;
+  userId?: string;
+  correlationId?: string;
+  csrfToken?: string;
+};
+
+type StoryG6HeaderOverrides = {
+  tenantId?: string;
+  orgUnitId?: string | null;
+  role?: string;
+  userId?: string;
+  correlationId?: string;
+  csrfToken?: string;
+  flags?: ConnectShyftFlags;
+  orgUnitMemberships?: string[];
+};
+
+type StoryG6UrlActor = {
+  role: string;
+  userId: string;
+  orgUnitMemberships: string[];
+  orgUnitId?: string;
+};
+
+export type StoryG6Context = {
+  storyId: 'g-6';
+  tenantId: string;
+  orgUnitId: string;
+  role: string;
+  userId: string;
+  adminUserId: string;
+  viewerUserId: string;
+  correlationId: string;
+  csrfToken: string;
+  threadIds: {
+    unclaimed: string;
+    unclaimedPrefersNo: string;
+    claimed: string;
+    mineVoicemail: string;
+    closedOutbound: string;
+    closedInbound: string;
+  };
+  neighborIds: {
+    closedInbound: string;
+  };
+  events: {
+    inboundMissedCall: 'voice.missed_inbound_call';
+  };
+  forbiddenPrimaryCopyTokens: readonly [
+    'threadid',
+    'thread_id',
+    'priorityrank',
+    'priority_rank',
+    'routingmetadata',
+    'routing_metadata',
+    'webhookmetadata',
+    'webhook_metadata',
+    'systemmetadata',
+    'system_metadata'
+  ];
+  forbiddenDisplayFields: readonly [
+    'threadId',
+    'priorityRank',
+    'rawStateChip',
+    'routingMetadata',
+    'webhookMetadata',
+    'systemMetadata'
+  ];
+  breakpoints: {
+    mobile: { width: 390; height: 844 };
+    tablet: { width: 834; height: 1112 };
+    desktop: { width: 1440; height: 900 };
+  };
+  focusOrder: readonly [
+    'connectshyft-queue-search-input',
+    'connectshyft-queue-card-tap-target',
+    'connectshyft-thread-card-primary-action'
+  ];
+  flags: ConnectShyftFlags;
+  paths: {
+    inbox: string;
+    threads: string;
+    inboundWebhook: string;
+    inboxUi: string;
+    mineUi: string;
+    threadDetailUi: string;
+  };
+};
+
+export function createStoryG6Context(
+  overrides: StoryG6ContextOverrides = {},
+): StoryG6Context {
+  return {
+    storyId: 'g-6',
+    tenantId: overrides.tenantId ?? STORY_G6_DEFAULT_SCOPE.tenantId,
+    orgUnitId: overrides.orgUnitId ?? STORY_G6_DEFAULT_SCOPE.orgUnitId,
+    role: overrides.role ?? 'ORGUNIT_MEMBER',
+    userId: overrides.userId ?? STORY_G6_DEFAULT_SCOPE.volunteerUserId,
+    adminUserId: STORY_G6_DEFAULT_SCOPE.adminUserId,
+    viewerUserId: STORY_G6_DEFAULT_SCOPE.viewerUserId,
+    correlationId: overrides.correlationId ?? `corr-story-g6-${randomUUID().slice(0, 8)}`,
+    csrfToken: overrides.csrfToken ?? `csrf-story-g6-${randomUUID().slice(0, 8)}`,
+    threadIds: {
+      unclaimed: '1641c3dd-4d4c-4997-8b72-ae4876649b37',
+      unclaimedPrefersNo: '21f2866f-37ff-42da-80fc-0b5d2c3bc09d',
+      claimed: '69c239d2-8f02-4202-8cec-a7f0de61cbf7',
+      mineVoicemail: 'f5b54c4b-95a6-4201-8d2a-fa373d79e905',
+      closedOutbound: 'e37b00e0-228f-43c0-8c70-b3d0a5bfad40',
+      closedInbound: 'aedcda71-42b7-4857-8a0a-70013e01d4cd',
+    },
+    neighborIds: {
+      closedInbound: '64ee5ffe-d8be-4dc7-833f-7034f254d81b',
+    },
+    events: {
+      inboundMissedCall: 'voice.missed_inbound_call',
+    },
+    forbiddenPrimaryCopyTokens: [
+      'threadid',
+      'thread_id',
+      'priorityrank',
+      'priority_rank',
+      'routingmetadata',
+      'routing_metadata',
+      'webhookmetadata',
+      'webhook_metadata',
+      'systemmetadata',
+      'system_metadata',
+    ],
+    forbiddenDisplayFields: [
+      'threadId',
+      'priorityRank',
+      'rawStateChip',
+      'routingMetadata',
+      'webhookMetadata',
+      'systemMetadata',
+    ],
+    breakpoints: {
+      mobile: { width: 390, height: 844 },
+      tablet: { width: 834, height: 1112 },
+      desktop: { width: 1440, height: 900 },
+    },
+    focusOrder: [
+      'connectshyft-queue-search-input',
+      'connectshyft-queue-card-tap-target',
+      'connectshyft-thread-card-primary-action',
+    ],
+    flags: {
+      ...connectShyftCapabilityEnvelopeData.flagsAllEnabled,
+    },
+    paths: {
+      inbox: '/api/v1/connectshyft/inbox',
+      threads: '/api/v1/connectshyft/threads',
+      inboundWebhook: '/api/v1/connectshyft/webhooks/inbound',
+      inboxUi: '/app/connectshyft/inbox',
+      mineUi: '/app/connectshyft/mine',
+      threadDetailUi: '/app/connectshyft/threads',
+    },
+  };
+}
+
+export function createStoryG6Headers(
+  context: StoryG6Context,
+  overrides: StoryG6HeaderOverrides = {},
+): Record<string, string> {
+  const headers = createTenantScopeHeaders({
+    tenantId: overrides.tenantId ?? context.tenantId,
+    orgUnitId: overrides.orgUnitId === undefined ? context.orgUnitId : overrides.orgUnitId,
+    role: overrides.role ?? context.role,
+    userId: overrides.userId ?? context.userId,
+    correlationId: overrides.correlationId ?? context.correlationId,
+    csrfToken: overrides.csrfToken ?? context.csrfToken,
+  });
+
+  const resolvedHeaders: Record<string, string> = {
+    ...headers,
+    'x-test-connectshyft-flags': JSON.stringify(overrides.flags ?? context.flags),
+  };
+
+  if (overrides.orgUnitMemberships) {
+    resolvedHeaders['x-test-connectshyft-orgunit-memberships'] = JSON.stringify(
+      overrides.orgUnitMemberships,
+    );
+  }
+
+  return resolvedHeaders;
+}
+
+export const buildStoryG6UrlParams = (
+  context: StoryG6Context,
+  actor: StoryG6UrlActor,
+): string => {
+  const params = new URLSearchParams({
+    flags: 'module:on,inbox:on,escalation:on,webhooks:on',
+    tenantId: context.tenantId,
+    orgUnitId: actor.orgUnitId ?? context.orgUnitId,
+    actorUserId: actor.userId,
+    tenantRole: actor.role,
+    orgUnitMemberships: actor.orgUnitMemberships.join(','),
+  });
+
+  return params.toString();
+};
+
+export const buildStoryG6SurfaceUrl = (
+  context: StoryG6Context,
+  bucket: 'inbox' | 'mine',
+  actor: StoryG6UrlActor,
+): string => {
+  const path = bucket === 'mine' ? context.paths.mineUi : context.paths.inboxUi;
+  return `${path}?${buildStoryG6UrlParams(context, actor)}&bucket=${bucket}`;
+};
+
+export const buildStoryG6ThreadDetailUrl = (
+  context: StoryG6Context,
+  threadId: string,
+  actor: StoryG6UrlActor,
+): string => {
+  return `${context.paths.threadDetailUi}/${threadId}?${buildStoryG6UrlParams(context, actor)}`;
+};

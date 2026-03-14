@@ -1,0 +1,35 @@
+{
+  "repository_type": "monorepo",
+  "parts": [
+    {
+      "part_id": "backend",
+      "name": "MoneyShyft API",
+      "project_type": "backend",
+      "root_path": "apps/routeshyft-api",
+      "entry_points": ["apps/routeshyft-api/src/server.ts", "apps/routeshyft-api/src/app.ts"],
+      "primary_language": "TypeScript"
+    },
+    {
+      "part_id": "frontend",
+      "name": "MoneyShyft Frontend",
+      "project_type": "web",
+      "root_path": "apps/routeshyft-web",
+      "entry_points": ["apps/routeshyft-web/src/main.ts"],
+      "primary_language": "TypeScript"
+    }
+  ],
+  "integration_points": [
+    {
+      "from": "frontend",
+      "to": "backend",
+      "type": "REST API over HTTP",
+      "details": "Frontend stores call backend /api/v1 endpoints via axios client"
+    },
+    {
+      "from": "backend",
+      "to": "postgres",
+      "type": "SQL via Knex",
+      "details": "All persistent state and migrations managed through Knex + PostgreSQL"
+    }
+  ]
+}

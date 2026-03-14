@@ -1,0 +1,66 @@
+{
+  "dimension": "performance",
+  "score": 76,
+  "max_score": 100,
+  "grade": "C",
+  "violations": [
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts",
+      "line": 78,
+      "severity": "HIGH",
+      "category": "serial-execution",
+      "description": "Automate E2E suite disables parallelization using serial mode.",
+      "suggestion": "Run in parallel and isolate only order-dependent scenarios.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });"
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts",
+      "line": 57,
+      "severity": "HIGH",
+      "category": "serial-execution",
+      "description": "Automate API suite also enforces serial mode without demonstrated state coupling.",
+      "suggestion": "Remove serial mode to reduce wall-clock CI time.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });"
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 82,
+      "severity": "MEDIUM",
+      "category": "repeat-login-navigation",
+      "description": "Each scenario performs full login + multi-page navigation, increasing runtime overhead.",
+      "suggestion": "Use storageState/session fixture and focused setup utilities per test intent."
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.spec.ts",
+      "line": 148,
+      "severity": "MEDIUM",
+      "category": "viewport-loop-navigation",
+      "description": "Viewport loop replays full navigation flow three times in one test, increasing test duration.",
+      "suggestion": "Split per-breakpoint checks into parametrized tests for parallel workers."
+    }
+  ],
+  "passed_checks": 15,
+  "failed_checks": 4,
+  "total_checks": 19,
+  "violation_summary": {
+    "HIGH": 2,
+    "MEDIUM": 2,
+    "LOW": 0
+  },
+  "performance_metrics": {
+    "parallelizable_tests": 73,
+    "serial_tests": 27,
+    "avg_test_duration_estimate": "~20-45s per scenario depending on environment",
+    "slow_patterns": [
+      "serial suite mode",
+      "repeated login and multi-page navigation",
+      "multi-viewport flow in single test"
+    ]
+  },
+  "recommendations": [
+    "Remove serial mode from automate suites",
+    "Parameterize viewport checks into parallel test cases",
+    "Reduce repeated setup with authenticated session fixtures"
+  ],
+  "summary": "Performance is acceptable but constrained by serial execution and repeated setup/navigation patterns."
+}

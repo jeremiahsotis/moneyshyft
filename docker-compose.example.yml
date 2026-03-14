@@ -20,8 +20,8 @@ services:
 
   node:
     build:
-      context: ./src
-      dockerfile: Dockerfile
+      context: ./apps/moneyshyft-api
+      dockerfile: Dockerfile.example
     ports:
       - "3000:3000"
     depends_on:
@@ -30,9 +30,11 @@ services:
     environment:
       DATABASE_URL: postgresql://your_username:your_secure_password_here@postgres:5432/moneyshyft
       NODE_ENV: development
+      # Route bridge cutover stage: bridge | monolith_authoritative | read_only
+      MONEYSHYFT_WP_CUTOVER_STAGE: bridge
     restart: unless-stopped
     volumes:
-      - ./src:/app
+      - ./apps/moneyshyft-api:/app
       - /app/node_modules
 
   # NOTE: nginx is only for local development

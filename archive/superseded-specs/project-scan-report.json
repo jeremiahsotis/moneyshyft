@@ -1,0 +1,117 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2026-02-17T00:00:00Z",
+    "last_updated": "2026-02-17T00:00:00Z"
+  },
+  "mode": "initial_scan",
+  "scan_level": "quick",
+  "project_root": "/Users/jeremiahotis/moneyshyft",
+  "output_folder": "/Users/jeremiahotis/moneyshyft/docs",
+  "completed_steps": [
+    {
+      "step": "step_1",
+      "status": "completed",
+      "timestamp": "2026-02-17T00:00:00Z",
+      "summary": "Classified as monorepo with frontend and backend parts"
+    },
+    {
+      "step": "step_2",
+      "status": "completed",
+      "timestamp": "2026-02-17T00:00:00Z",
+      "summary": "Detected existing root docs, RouteShyft documentation set, ROADMAP planning constraints, and mandatory git policy source"
+    },
+    {
+      "step": "step_3",
+      "status": "completed",
+      "timestamp": "2026-02-17T00:00:00Z",
+      "summary": "Technology stacks identified for backend and frontend"
+    },
+    {
+      "step": "step_4",
+      "status": "completed",
+      "timestamp": "2026-02-17T00:00:00Z",
+      "summary": "Quick-scan API, data model, and component inventories produced"
+    },
+    {
+      "step": "step_5",
+      "status": "completed",
+      "timestamp": "2026-02-17T00:00:00Z",
+      "summary": "Source tree analysis written"
+    },
+    {
+      "step": "step_6",
+      "status": "completed",
+      "timestamp": "2026-02-17T00:00:00Z",
+      "summary": "Development and deployment guidance generated"
+    },
+    {
+      "step": "step_7",
+      "status": "completed",
+      "timestamp": "2026-02-17T00:00:00Z",
+      "summary": "Frontend-backend integration architecture summarized"
+    },
+    {
+      "step": "step_8",
+      "status": "completed",
+      "timestamp": "2026-02-17T00:00:00Z",
+      "summary": "Per-part architecture documentation generated"
+    },
+    {
+      "step": "step_9",
+      "status": "completed",
+      "timestamp": "2026-02-17T00:00:00Z",
+      "summary": "Supporting project docs generated"
+    },
+    {
+      "step": "step_10",
+      "status": "completed",
+      "timestamp": "2026-02-17T00:00:00Z",
+      "summary": "Master index generated"
+    }
+  ],
+  "current_step": "step_11",
+  "findings": {
+    "project_classification": "Monorepo with two first-party parts: Express API and Vue SPA",
+    "planning_constraints": [
+      "ROADMAP.md",
+      "docs/routeshyft/*",
+      "AGENTS.md",
+      "docs/policies/git_policy.md",
+      "RouteShyft CI target-state specification"
+    ],
+    "technology_stack": {
+      "backend": "Node 20+, Express, TypeScript, Knex, PostgreSQL, JWT cookie auth",
+      "frontend": "Vue 3, Vite, TypeScript, Pinia, Vue Router, Axios"
+    },
+    "project_types": [
+      {
+        "part_id": "backend",
+        "project_type_id": "backend",
+        "display_name": "Backend API"
+      },
+      {
+        "part_id": "frontend",
+        "project_type_id": "web",
+        "display_name": "Web SPA"
+      }
+    ]
+  },
+  "outputs_generated": [
+    "project-scan-report.json",
+    "project-overview.md",
+    "source-tree-analysis.md",
+    "architecture-backend.md",
+    "architecture-frontend.md",
+    "integration-architecture.md",
+    "component-inventory-frontend.md",
+    "development-guide.md",
+    "deployment-guide.md",
+    "contribution-guide.md",
+    "api-contracts-backend.md",
+    "data-models-backend.md",
+    "project-parts.json",
+    "index.md"
+  ],
+  "resume_instructions": "Initial quick-scan documentation baseline complete"
+}

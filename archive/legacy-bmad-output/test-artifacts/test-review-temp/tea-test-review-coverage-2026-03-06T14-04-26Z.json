@@ -1,0 +1,84 @@
+{
+  "dimension": "coverage",
+  "score": 62,
+  "max_score": 100,
+  "grade": "D",
+  "violations": [
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 80,
+      "severity": "HIGH",
+      "category": "skipped-atdd-test",
+      "description": "AC1 API ATDD contract test is still skipped.",
+      "suggestion": "Remove test.skip and make the token-contract assertion executable in CI."
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 117,
+      "severity": "HIGH",
+      "category": "skipped-atdd-test",
+      "description": "AC2 API ATDD primitive-contract test is still skipped.",
+      "suggestion": "Unskip and verify primitive metadata contract through stable API fixtures."
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 162,
+      "severity": "HIGH",
+      "category": "skipped-atdd-test",
+      "description": "AC3 API ATDD display-safe projection test is still skipped.",
+      "suggestion": "Enable execution to ensure metadata suppression remains merge-blocking."
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.api.spec.ts",
+      "line": 204,
+      "severity": "HIGH",
+      "category": "skipped-atdd-test",
+      "description": "AC4 API ATDD responsive breakpoint contract test is still skipped.",
+      "suggestion": "Unskip and enforce token-scale/touch-target API contract checks."
+    },
+    {
+      "file": "tests/e2e/platform/g-1-design-tokens-and-shared-conversation-primitives.atdd.spec.ts",
+      "line": 152,
+      "severity": "MEDIUM",
+      "category": "fallback-mask",
+      "description": "Fallback visibility assertions can mask missing primitive-specific checks.",
+      "suggestion": "Add explicit failure when expected primitive test ids are absent for covered AC paths."
+    },
+    {
+      "file": "tests/api/platform/g-1-design-tokens-and-shared-conversation-primitives.automate.api.spec.ts",
+      "line": 180,
+      "severity": "MEDIUM",
+      "category": "partial-copy-validation",
+      "description": "Display-safe assertions are bypassed for empty operator copy values.",
+      "suggestion": "Assert non-empty projection first, then run suppression checks for every item."
+    }
+  ],
+  "passed_checks": 9,
+  "failed_checks": 6,
+  "total_checks": 15,
+  "violation_summary": {
+    "HIGH": 4,
+    "MEDIUM": 2,
+    "LOW": 0
+  },
+  "coverage_gaps": {
+    "skipped_api_atdd_scenarios": [
+      "AC1 token groups and css variable mappings",
+      "AC2 reusable primitive contract metadata",
+      "AC3 display-safe projection boundary",
+      "AC4 responsive breakpoint contract"
+    ],
+    "masked_primitive_paths": [
+      "Inbox/Mine primitive presence fallbacks in E2E ATDD"
+    ],
+    "partial_projection_assertions": [
+      "Operator-primary copy suppression when projection fields are empty"
+    ]
+  },
+  "recommendations": [
+    "Unskip all 4 API ATDD tests to restore AC-level contract coverage",
+    "Tighten E2E primitive assertions to fail when required primitives are absent",
+    "Require non-empty operator copy contracts before suppression checks"
+  ],
+  "summary": "Coverage has a significant API contract gap because all four g-1 ATDD API tests remain skipped."
+}

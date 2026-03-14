@@ -7,7 +7,7 @@ test.describe('Goals', () => {
     await login(page);
   });
 
-  test('creates a goal and adds a contribution', async ({ page }) => {
+  test('creates a goal and adds a contribution @P1', async ({ page }) => {
     const goalName = `QA Goal ${Date.now()}`;
     let goalId: string | undefined;
 

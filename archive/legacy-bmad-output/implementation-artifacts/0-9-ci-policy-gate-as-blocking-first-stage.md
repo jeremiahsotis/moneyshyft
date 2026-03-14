@@ -1,0 +1,216 @@
+# Story 0.9: CI Policy Gate as Blocking First Stage
+
+Status: done
+
+<!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
+
+## Story
+
+As a maintainer,
+I want policy checks to run before downstream quality jobs,
+so that non-compliant workflow/branch operations are blocked immediately..
+
+## Acceptance Criteria
+
+1. lint/test/burn-in/gates do not proceed
+2. failure output includes actionable policy violation context
+3. non-Epic-0 story workflow is blocked until corrected kernel gate passes (`0-10-kernel-readiness-verification-suite: done` and `course_correction.cc-2026-02-18.status: approved`)
+
+## Tasks / Subtasks
+
+- [x] Implement acceptance criterion 1 (AC: 1)
+  - [x] Add automated coverage for AC 1
+- [x] Implement acceptance criterion 2 (AC: 2)
+  - [x] Add automated coverage for AC 2
+- [x] Implement acceptance criterion 3 (AC: 3)
+  - [x] Enforce corrected-kernel policy gate in local and CI guards before non-Epic-0 story workflow execution
+  - [x] Add automated coverage for AC 3
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][High] Remove story-specific hardcoding in local recovery guidance and derive story id/slug dynamically or emit generic remediation so policy diagnostics remain valid beyond Story 0.9 (`scripts/enforce-git-policy.sh:7`)
+- [x] [AI-Review][High] Prevent local policy-check bypass by resolving branch from git for local runs (do not trust `GITHUB_HEAD_REF`/`GITHUB_REF_NAME` in local mode) (`scripts/enforce-git-policy.sh:28`)
+- [x] [AI-Review][High] Enforce story-id/branch consistency by validating the commit subject story id matches `codex/story-<story-id>-*` when on story branches (`scripts/enforce-git-policy.sh:66`)
+- [x] [AI-Review][Medium] Make pull-request default-branch failure output actionable by including policy path and remediation commands similar to local diagnostics (`scripts/enforce-git-policy.sh:43`)
+- [x] [AI-Review][Medium] Harden AC1 workflow tests by parsing YAML/job graph instead of fragile text-order and exact-format regex matching (`tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts:11`)
+
+## Dev Notes
+
+- Phase-0 scope only. Do not introduce Route/Operations/Resource/POS module behavior in this story.
+- Preserve monolith kernel constraints: tenancy, first-party auth, CSRF, refusal envelope, event/outbox, and timezone guarantees.
+- Keep changes incremental and isolated for small PR sequencing in Epic 0.
+
+### Project Structure Notes
+
+- Platform kernel code paths should live under `src/platform`, shared API routing in `src/api`, and module code under `src/modules`.
+- Maintain alias usage and shared entrypoint registration patterns from architecture and roadmap constraints.
+
+### References
+
+- /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/epic-0-phase-0-kernel-story-set.md
+- /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/prd.md
+- /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/architecture.md
+- /Users/jeremiahotis/moneyshyft/_bmad-output/planning-artifacts/sprint-change-proposal-2026-02-18.md
+- /Users/jeremiahotis/moneyshyft/docs/policies/git_policy.md
+- /Users/jeremiahotis/moneyshyft/ROADMAP.md
+
+## Dev Agent Record
+
+### Agent Model Used
+
+GPT-5 Codex
+
+### Debug Log References
+
+- Activated Story 0.9 tests (removed `test.skip`) in API and E2E coverage files.
+- Ran targeted story suite:
+  - `npm run test:e2e -- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts`
+  - Final result: 18 passed, 0 failed.
+- Ran full regression suite:
+  - `npm run test:e2e`
+  - Initial result without active app services: 18 passed, 80 failed, 13 skipped (blocked by runtime connectivity).
+  - Result with backend/frontend running (`src` on `:3001`, `frontend` on `:5174`): 71 passed, 27 failed, 13 skipped.
+  - Remaining failures are outside Story 0.9 scope and block status promotion to `review` in this run.
+- Ran focused policy checks for review fixes:
+  - `GITHUB_EVENT_NAME=local GITHUB_HEAD_REF=main bash scripts/enforce-git-policy.sh` (fails with actionable default-branch remediation)
+  - `GITHUB_EVENT_NAME=pull_request GITHUB_HEAD_REF=main GITHUB_BASE_REF=production bash scripts/enforce-git-policy.sh` (fails with actionable pull-request remediation)
+- Re-ran story validation from the canonical story branch:
+  - `npm run start:story-branch -- --allow-dirty 0-9 ci-policy-gate-as-blocking-first-stage` (created `codex/story-0-9-ci-policy-gate-as-blocking-first-stage`)
+  - `npm run test:e2e -- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts` (18 passed, 0 failed)
+  - `npm run policy:check` (fails on branch commit-subject gate: latest commit subject is `Fix: complete Story 0.9 AC3 coverage slice`, expected `0-9: <summary>`)
+  - `npm run test:e2e` before app services (18 passed, 80 failed, 13 skipped; connectivity failures to API/frontend)
+  - `npm run test:e2e` with backend/frontend running on `:3001/:5174` (71 passed, 27 failed, 13 skipped; remaining failures are out of Story 0.9 scope, including readiness/mutation metadata/UI login timeout suites)
+- Re-ran completion validation on `codex/story-0-9-ci-policy-gate-as-blocking-first-stage`:
+  - `npm run policy:check` (passes)
+  - `PORT=3001 npm run dev` in `src/` and `npm run dev -- --port 5174` in `frontend/` (services ready for E2E)
+  - `npm run test:e2e` (71 passed, 27 failed, 13 skipped; failures remain outside Story 0.9 scope, including readiness verification, mutation metadata, and UI login/navigation flows)
+  - `npm run test:e2e -- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts` (18 passed, 0 failed)
+- Remediation and regression stabilization run:
+  - `npm run test:e2e -- tests/debts/payment.spec.ts tests/recurring/approve-post.spec.ts tests/transactions/create.spec.ts tests/transactions/split.spec.ts` (4 passed, 0 failed)
+  - `npm run test:e2e -- tests/debts/payment.spec.ts tests/e2e/platform/kernel-readiness-verification-suite.spec.ts tests/extra-money/reserve-goals.spec.ts tests/recurring/approve-post.spec.ts tests/transactions/create.spec.ts tests/transactions/split.spec.ts` (10 passed, 0 failed)
+  - `npm run test:e2e -- tests/api/platform/tenancy-context-and-repository-enforcement.api.spec.ts tests/e2e/platform/tenancy-context-and-repository-enforcement.spec.ts` (11 passed, 0 failed)
+  - `npm run test:e2e` (98 passed, 0 failed, 13 skipped)
+- Senior review remediation pass (2026-02-19):
+  - `npm run test:e2e -- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts` (20 passed, 0 failed)
+  - `npm run policy:check` (passes)
+
+### Completion Notes List
+
+- AC1 implemented and covered:
+  - CI dependency-chain assertions are active and validate policy-first gating for `lint`, `test`, `burn-in`, and `quality-gates`.
+  - CI pull-request trigger scope now includes `codex/dev` in addition to `production`, so policy-first graph enforcement executes on required story PR targets.
+  - AC1 graph assertions now parse job blocks/needs structurally to reduce false failures from harmless formatting changes.
+- AC2 implemented and covered:
+  - `scripts/enforce-git-policy.sh` now emits actionable local and pull-request failure context including:
+    - policy file path
+    - current branch
+    - base branch (when relevant)
+    - remediation commands (dynamic when story branch context exists, generic placeholders otherwise)
+- AC3 implemented and covered:
+  - Corrected-kernel enforcement for non-Epic-0 story progression is active in both:
+    - CI policy guard: `scripts/enforce-git-policy.sh`
+    - Local workflow guard: `scripts/branch-ensure-workflow.sh`
+  - Added deterministic AC3 coverage for both unmet and satisfied gate states:
+    - Story `0-10` status gate (`done` required)
+    - `course_correction.cc-2026-02-18.status` gate (`approved` required)
+  - Added seeded temp-repo harness support to test policy gating against synthetic sprint-status states.
+- Story-specific coverage is now executable (not skipped) and passing.
+- Review findings resolved:
+  - local branch spoof prevention now reads git branch in local mode
+  - branch/story commit-subject consistency enforced for story branches
+  - pull-request default-branch violations emit actionable remediation hints
+  - corrected-kernel gate failures now also include policy context and remediation commands
+  - Epic 0 quality gate JWT dependency resolution now supports standard module lookup with backend-local fallback instead of a single hard-coded path
+- Additional remediation and regression hardening completed:
+  - enabled test auth harness in development mode and seeded baseline harness data on first login creation
+  - hardened test auth harness provisioning to tolerate concurrent first-login races without surfacing transient duplicate-email failures
+  - normalized transaction date persistence to avoid timezone-related off-by-one drift from date objects
+  - stabilized debt and recurring E2E assertions for current UI behavior
+  - aligned synthetic tenancy test token signing with backend JWT secrets loaded from `src/.env`
+- CI quality gate parser now:
+  - supports Playwright JSON test statuses (`expected`, `skipped`, `flaky`) with result-status fallback
+  - deduplicates merged shard/spec records and counts only executed tagged tests toward `@P0`/`@P1` rates
+- Completion gate is now clear in this run:
+  - `policy:check` is green on this branch
+  - full regression is green (`98 passed, 0 failed, 13 skipped`), so story is ready for `review`
+
+### File List
+
+- _bmad-output/implementation-artifacts/0-9-ci-policy-gate-as-blocking-first-stage.md
+- .github/workflows/test.yml
+- frontend/src/views/Debts/DebtsView.vue
+- scripts/branch-ensure-workflow.sh
+- scripts/enforce-git-policy.sh
+- scripts/quality-gates.sh
+- scripts/quality-gates-epic0.sh
+- src/src/platform/sessions/PlatformSessionStore.ts
+- src/src/routes/api/v1/auth.ts
+- src/src/routes/api/v1/platform-contracts.ts
+- src/src/services/TransactionService.ts
+- src/src/utils/jwt.ts
+- tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts
+- tests/debts/payment.spec.ts
+- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts
+- tests/e2e/platform/kernel-readiness-verification-suite.spec.ts
+- tests/extra-money/reserve-goals.spec.ts
+- tests/recurring/approve-post.spec.ts
+- tests/support/factories/kernelReadinessContextFactory.ts
+- tests/support/factories/tenantRepositoryFactory.ts
+
+## Change Log
+
+- 2026-02-19: Addressed Senior Developer Review follow-up findings by enabling CI on `codex/dev` PR targets, hardening local branch guard branch resolution against env spoofing, improving corrected-kernel policy failure remediation output, removing hard-coded JWT module path assumptions in Epic 0 quality gates, and reconciling story File List with actual branch changes.
+- 2026-02-19: Fixed quality-gates parsing for Playwright shard artifacts (`expected`/`skipped`/`flaky` semantics with deduped executed-test counting) and hardened test-auth harness first-login provisioning against concurrent duplicate-email races observed in CI shard retries.
+- 2026-02-19: Completed regression remediation for Story 0.9 validation run; fixed harness auth/bootstrap seeding, date persistence drift, and tenancy token factory compatibility, then revalidated full suite to green (`98 passed, 0 failed, 13 skipped`). Story status moved to `review`.
+- 2026-02-19: Executed full completion revalidation on `codex/story-0-9-ci-policy-gate-as-blocking-first-stage`; `policy:check` now passes and Story 0.9 targeted suites remain green (18 passed), but full regression is still blocked by unrelated failures (`71 passed, 27 failed, 13 skipped`), so story remains `in-progress`.
+- 2026-02-19: Re-ran Dev Story validation from `codex/story-0-9-ci-policy-gate-as-blocking-first-stage`; story-targeted suites are green (18 passed), but completion remains blocked by commit-subject policy gate and full regression failures (`27 failed, 13 skipped` with live app services).
+- 2026-02-19: Completed Story 0.9 AC3 automation coverage for corrected-kernel gating in CI/local guards, expanded policy-script harness for seeded sprint-status scenarios, and revalidated story-specific suites (18 passed). Full regression remains non-green (27 failed, 13 skipped) due out-of-scope suites.
+- 2026-02-18: Implemented Story 0.9 AC1/AC2 updates, activated automated coverage, and verified targeted story tests pass. Full regression remains red due to unrelated existing failures.
+- 2026-02-18: Senior Developer Review (AI) completed; changes requested and follow-up action items added.
+- 2026-02-18: Resolved all five Senior Developer Review findings; hardened policy enforcement logic, added deterministic policy harness coverage, and reconciled story file metadata with git-tracked changes.
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Jeremiah (AI)
+**Date:** 2026-02-18
+**Outcome:** Resolved (post-review fixes applied)
+
+### Summary
+
+- AC1 validated in current branch state: CI dependency chain blocks downstream jobs when `policy` fails via `needs` graph.
+- AC2 is now fully satisfied with actionable diagnostics across local and pull-request policy violations.
+- Course-correction gating now blocks non-Epic-0 story progression until Story 0.10 is complete and course-correction status is approved.
+- Story remains `in-progress`; sprint tracking for `0-9-ci-policy-gate-as-blocking-first-stage` remains `in-progress`.
+
+### Findings
+
+#### High
+
+1. Local recovery output is hardcoded to Story 0.9, causing incorrect remediation guidance for any other story.
+   - Evidence: `scripts/enforce-git-policy.sh:7`
+2. Local policy evaluation trusts CI env branch variables, enabling branch spoofing and incorrect pass/fail outcomes.
+   - Evidence: `scripts/enforce-git-policy.sh:28`
+3. Commit subject validation does not ensure story id matches current story branch id, allowing cross-story commits to pass policy.
+   - Evidence: `scripts/enforce-git-policy.sh:66`
+
+#### Medium
+
+1. Pull-request default-branch rejection output is not actionable (no policy path or remediation command).
+   - Evidence: `scripts/enforce-git-policy.sh:43`
+2. AC1 coverage relies on brittle raw-text order/regex checks that can break on harmless YAML formatting changes.
+   - Evidence: `tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts:11`
+
+### Validation Notes
+
+- Reviewed story file, policy script, branch guard script, CI workflow, and story-specific tests.
+- Executed targeted verification:
+  - `npm run test:e2e -- tests/e2e/platform/ci-policy-gate-as-blocking-first-stage.spec.ts tests/api/platform/ci-policy-gate-as-blocking-first-stage.api.spec.ts`
+  - Result: 12 passed, 0 failed.
+- Executed policy checks:
+  - `npm run policy:check` (intentionally fails on this branch when latest commit subject does not match story id, enforcing the new branch/story consistency rule)
+  - `GITHUB_EVENT_NAME=pull_request GITHUB_HEAD_REF=main GITHUB_BASE_REF=production bash scripts/enforce-git-policy.sh` (fails with actionable remediation context)
+
+### Resolution Notes
+
+- All five findings are now implemented and validated in code/tests.
+- Git/story discrepancy resolved: story File List and follow-up status now match actual modified files and completed fixes in this branch.

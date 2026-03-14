@@ -1,0 +1,68 @@
+{
+  "generatedAt": "2026-03-10T16:24:09.004Z",
+  "storyScope": "epic-g",
+  "thresholdsMs": {
+    "queueAndThread": {
+      "p95": 750,
+      "p99": 1500
+    },
+    "inboundWebhook": {
+      "p95": 1000,
+      "p99": 2000
+    }
+  },
+  "sampleSize": 30,
+  "warmupCalls": 3,
+  "results": {
+    "inbox": {
+      "name": "inbox",
+      "count": 30,
+      "min": 1,
+      "max": 3,
+      "avg": 1.9666666666666666,
+      "p95": 3,
+      "p99": 3,
+      "errorRate": 0
+    },
+    "mine": {
+      "name": "mine",
+      "count": 30,
+      "min": 1,
+      "max": 4,
+      "avg": 2,
+      "p95": 3,
+      "p99": 4,
+      "errorRate": 0
+    },
+    "threadDetail": {
+      "name": "thread_detail",
+      "count": 30,
+      "min": 1,
+      "max": 4,
+      "avg": 2.1333333333333333,
+      "p95": 3,
+      "p99": 4,
+      "errorRate": 0
+    },
+    "inboundWebhook": {
+      "name": "inbound_webhook",
+      "count": 30,
+      "min": 2,
+      "max": 3,
+      "avg": 2.2666666666666666,
+      "p95": 3,
+      "p99": 3,
+      "errorRate": 0
+    }
+  },
+  "gate": {
+    "queueAndThreadWithinBudget": true,
+    "webhookWithinBudget": true,
+    "zeroErrorRate": true
+  },
+  "evidenceSources": [
+    "tests/api/platform/g-epic-nfr-performance-evidence.api.spec.ts",
+    "tests/api/platform/g-epic-volunteer-ux-regression.automate.api.spec.ts",
+    "tests/e2e/platform/g-epic-volunteer-ux-regression.automate.spec.ts"
+  ]
+}

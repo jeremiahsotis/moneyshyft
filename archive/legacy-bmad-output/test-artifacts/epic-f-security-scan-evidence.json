@@ -1,0 +1,73 @@
+{
+  "generatedAt": "2026-03-02T13:31:16.254Z",
+  "storyScope": "epic-f",
+  "controls": {
+    "dependencyAudit": {
+      "root": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "backend": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "frontend": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "artifactFiles": [
+        "_bmad-output/test-artifacts/epic-f-npm-audit-root.json",
+        "_bmad-output/test-artifacts/epic-f-npm-audit-backend.json",
+        "_bmad-output/test-artifacts/epic-f-npm-audit-frontend.json"
+      ]
+    },
+    "sast": {
+      "suiteSummary": {
+        "suitesPassed": 6,
+        "suitesTotal": 6,
+        "testsPassed": 22,
+        "testsTotal": 22
+      },
+      "artifactFile": "_bmad-output/test-artifacts/epic-f-sast-security-tests.txt",
+      "command": "cd src && npm test -- src/platform/audit/__tests__/redaction.test.ts src/routes/api/v1/__tests__/platform-contracts.redaction.test.ts src/platform/sessions/__tests__/PlatformSessionStore.test.ts src/platform/middleware/__tests__/csrfProtection.test.ts src/utils/__tests__/jwt.cookiePolicy.test.ts src/routes/api/v1/__tests__/auth.refresh.test.ts"
+    },
+    "dast": {
+      "suiteSummary": {
+        "specs": 17,
+        "tests": 17,
+        "results": 17,
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "start": "2026-03-02T13:28:26.363Z",
+        "duration": 586.688
+      },
+      "artifactFile": "_bmad-output/test-artifacts/epic-f-dast-security-suite.report.json",
+      "command": "npm run test:e2e -- tests/api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts tests/e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts --reporter=json"
+    }
+  },
+  "gate": {
+    "dependencyAuditClear": true,
+    "sastPass": true,
+    "dastPass": true,
+    "allSecurityEvidenceGreen": true
+  },
+  "evidenceSources": [
+    "scripts/quality-gates.sh",
+    "tests/api/platform/1-6-security-controls-and-redaction-verification.api.spec.ts",
+    "tests/e2e/platform/1-6-security-controls-and-redaction-verification.spec.ts",
+    "src/src/platform/audit/redaction.ts"
+  ]
+}

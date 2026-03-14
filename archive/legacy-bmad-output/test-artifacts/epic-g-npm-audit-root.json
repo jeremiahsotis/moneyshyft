@@ -1,0 +1,44 @@
+{
+  "message": "400 Bad Request - POST https://registry.npmjs.org/-/npm/v1/security/audits/quick - Bad Request",
+  "method": "POST",
+  "uri": "https://registry.npmjs.org/-/npm/v1/security/audits/quick",
+  "headers": {
+    "date": [
+      "Sat, 07 Mar 2026 21:14:57 GMT"
+    ],
+    "transfer-encoding": [
+      "chunked"
+    ],
+    "connection": [
+      "keep-alive"
+    ],
+    "server": [
+      "cloudflare"
+    ],
+    "cf-ray": [
+      "9d8c9cddeaf68637-ORD"
+    ],
+    "cf-cache-status": [
+      "DYNAMIC"
+    ],
+    "vary": [
+      "Accept-Encoding"
+    ],
+    "set-cookie": [
+      "_cfuvid=yLZPhAJAS2uc7qvZ6B25Cif.c3W3m_9g09TlDJDCTCA-1772918097668-0.0.1.1-604800000; path=/; domain=.npmjs.org; HttpOnly; Secure; SameSite=None"
+    ],
+    "x-fetch-attempts": [
+      "1"
+    ]
+  },
+  "statusCode": 400,
+  "body": {
+    "statusCode": 400,
+    "error": "Bad Request",
+    "message": "Invalid package tree, run  npm install  to rebuild your package-lock.json"
+  },
+  "error": {
+    "summary": "",
+    "detail": ""
+  }
+}

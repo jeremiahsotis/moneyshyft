@@ -1,0 +1,40 @@
+{
+  "total_tests": 8,
+  "api_tests": 4,
+  "e2e_tests": 4,
+  "fixtures_created": 0,
+  "api_test_files": 1,
+  "e2e_test_files": 1,
+  "priority_coverage": {
+    "P0": 3,
+    "P1": 5,
+    "P2": 0,
+    "P3": 0
+  },
+  "knowledge_fragments_used": [
+    "test-levels-framework",
+    "test-priorities-matrix",
+    "data-factories",
+    "selective-testing",
+    "ci-burn-in",
+    "test-quality",
+    "overview",
+    "api-request",
+    "network-recorder",
+    "auth-session",
+    "intercept-network-call",
+    "recurse",
+    "log",
+    "file-utils",
+    "burn-in",
+    "network-error-monitor",
+    "fixtures-composition",
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience",
+    "api-testing-patterns",
+    "playwright-cli"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential"
+}

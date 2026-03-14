@@ -1,0 +1,8 @@
+ tenant_id | org_unit_id | neighbor_id | active_count 
+-----------+-------------+-------------+--------------
+(0 rows)
+
+ id | tenant_id | state | next_evaluation_at_utc 
+----+-----------+-------+------------------------
+(0 rows)
+

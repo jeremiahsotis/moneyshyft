@@ -1,6 +1,8 @@
 # Environment variables - NEVER commit these
 .env
 .env.*
+.env.local
+.env.*.local
 !.env.example
 
 # Docker - local setup differs from remote
@@ -12,11 +14,17 @@ docker-build/
 # Dependencies
 node_modules/
 */node_modules/
+apps/*/node_modules/
+apps/*/node_modules
 
 # Build outputs
 dist/
 build/
+apps/*/dist/
 *.tsbuildinfo
+.nx/cache/
+.playwright/
+_bmad-output/
 
 # Logs
 *.log
@@ -24,6 +32,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+Pnpm-debug.log*
 logs/
 
 # Runtime data
@@ -35,6 +44,37 @@ pids
 # Testing
 coverage/
 .nyc_output
+tests/artifacts/
+.playwright-cli/
+
+# BMAD test artifacts: deny by default, allow only durable evidence/reports
+_bmad-output/test-artifacts/**
+!_bmad-output/test-artifacts/
+!_bmad-output/test-artifacts/.gitignore
+
+# Durable summaries/reports
+!_bmad-output/test-artifacts/automation-summary.md
+!_bmad-output/test-artifacts/automation-summary-*.md
+!_bmad-output/test-artifacts/test-design-*.md
+!_bmad-output/test-artifacts/test-design-progress*.md
+!_bmad-output/test-artifacts/test-review*.md
+!_bmad-output/test-artifacts/traceability*.md
+!_bmad-output/test-artifacts/framework-*.md
+!_bmad-output/test-artifacts/ci-pipeline-progress.md
+!_bmad-output/test-artifacts/atdd-checklist-*.md
+!_bmad-output/test-artifacts/adversarial-code-review-*.md
+!_bmad-output/test-artifacts/nfr-assessment*.md
+!_bmad-output/test-artifacts/atdd-api-tests-*-*.json
+!_bmad-output/test-artifacts/atdd-e2e-tests-*-*.json
+!_bmad-output/test-artifacts/atdd-summary-*-*.json
+_bmad-output/test-artifacts/atdd-api-tests-*-*-*.json
+_bmad-output/test-artifacts/atdd-e2e-tests-*-*-*.json
+_bmad-output/test-artifacts/atdd-summary-*-*-*.json
+
+# Policy-required/curated evidence
+!_bmad-output/test-artifacts/epic-f-*
+!_bmad-output/test-artifacts/release-evidence/
+!_bmad-output/test-artifacts/release-evidence/**
 
 # IDE
 .vscode/
@@ -43,9 +83,19 @@ coverage/
 *.swo
 *~
 .DS_Store
+.agent/
+.claude/
+.clinerules/
+.codex/
+.cursor/
+.gemini/
+.opencode/
+.qwen/
+.windsurf/
 
 # OS
 .DS_Store
+__MACOSX/
 Thumbs.db
 
 # Temporary files
@@ -60,6 +110,7 @@ temp/
 
 # Cache
 .cache/
+.nx/cache/
 .parcel-cache/
 .vite/
 

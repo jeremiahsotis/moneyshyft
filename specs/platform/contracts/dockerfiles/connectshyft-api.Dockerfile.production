@@ -1,0 +1,28 @@
+FROM node:20-alpine AS build
+
+WORKDIR /workspace/apps/connectshyft-api
+
+COPY apps/connectshyft-api ../../apps/connectshyft-api
+COPY domains ../../domains
+
+RUN npm install && npm cache clean --force
+
+RUN npm run build
+RUN npm prune --omit=dev && npm cache clean --force
+
+FROM node:20-alpine AS runtime
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=384"
+
+COPY --from=build /workspace/apps/connectshyft-api/package*.json ./
+COPY --from=build /workspace/apps/connectshyft-api/node_modules ./node_modules
+COPY --from=build /workspace/apps/connectshyft-api/dist ./dist
+COPY --from=build /workspace/apps/connectshyft-api/knexfile.js ./knexfile.js
+COPY --from=build /workspace/apps/connectshyft-api/scripts ./scripts
+
+EXPOSE 3002
+
+CMD ["node", "dist/server.js"]

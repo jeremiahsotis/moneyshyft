@@ -1,0 +1,353 @@
+{
+  "overall_score": 75,
+  "overall_grade": "C",
+  "quality_assessment": "Acceptable",
+  "dimension_scores": {
+    "determinism": 86,
+    "isolation": 75,
+    "maintainability": 55,
+    "coverage": 88,
+    "performance": 70
+  },
+  "dimension_grades": {
+    "determinism": "B",
+    "isolation": "C",
+    "maintainability": "F",
+    "coverage": "B",
+    "performance": "C"
+  },
+  "violations_summary": {
+    "total": 20,
+    "HIGH": 7,
+    "MEDIUM": 10,
+    "LOW": 3
+  },
+  "all_violations": [
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 149,
+      "severity": "MEDIUM",
+      "category": "conditional-branching",
+      "description": "Test flow branches on runtime option counts, creating multi-path behavior that can hide deterministic failures.",
+      "suggestion": "Split each branch into explicit scenarios so each test has one deterministic path.",
+      "code_snippet": "if (await messagePhoneOptions.count() > 0) {",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 180,
+      "severity": "MEDIUM",
+      "category": "conditional-branching",
+      "description": "Make-call flow branches on option availability instead of enforcing explicit fixture preconditions.",
+      "suggestion": "Use fixed fixture states or separate tests for \"with options\" and \"without options\" paths.",
+      "code_snippet": "if (await callablePhoneOptions.count() > 0) {",
+      "dimension": "determinism"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts",
+      "line": 530,
+      "severity": "LOW",
+      "category": "time-dependency",
+      "description": "Runtime timestamps are generated in signature tests; this is mostly safe but can reduce exact reproducibility in edge timing windows.",
+      "suggestion": "Prefer fixed timestamps for deterministic replay-oriented crypto/signature scenarios where feasible.",
+      "code_snippet": "const timestamp = Math.trunc(Date.now() / 1000).toString();",
+      "dimension": "determinism"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts",
+      "line": 643,
+      "severity": "LOW",
+      "category": "time-dependency",
+      "description": "Dynamic timestamp/number generation is used in integration tests, introducing slight nondeterministic variance.",
+      "suggestion": "Use deterministic seeded values in scenarios where uniqueness can be handled by fixture setup.",
+      "code_snippet": "const providerNumberE164 = `+1260${Date.now().toString().slice(-7)}`;",
+      "dimension": "determinism"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 15,
+      "severity": "HIGH",
+      "category": "serial-execution-coupling",
+      "description": "Suite-level serial mode limits parallel safety and can mask inter-test coupling issues.",
+      "suggestion": "Remove serial mode and isolate shared state with per-test setup/cleanup.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "isolation"
+    },
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts",
+      "line": 60,
+      "severity": "HIGH",
+      "category": "serial-execution-coupling",
+      "description": "API automate suite is forced to serial execution, reducing confidence in isolation under parallel CI workers.",
+      "suggestion": "Run in parallel by default and retain serial only for proven hard dependencies.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "isolation"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts",
+      "line": 1268,
+      "severity": "MEDIUM",
+      "category": "process-global-mutation",
+      "description": "Tests mutate process-wide env flags, which can leak behavior across concurrently executed tests if scope expands.",
+      "suggestion": "Centralize env mutation in scoped helpers and ensure strict restoration per test block.",
+      "code_snippet": "process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'false';",
+      "dimension": "isolation"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 14,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Test file length is 350 lines, exceeding maintainability guidance for focused suites.",
+      "suggestion": "Split by behavior domain and extract common setup/helpers.",
+      "code_snippet": "test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)', () => {",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts",
+      "line": 34,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Test file length is 715 lines, exceeding maintainability guidance for focused suites.",
+      "suggestion": "Split by behavior domain and extract common setup/helpers.",
+      "code_snippet": "describe('connectshyft provider registry', () => {",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts",
+      "line": 115,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Test file length is 1354 lines, exceeding maintainability guidance for focused suites.",
+      "suggestion": "Split by behavior domain and extract common setup/helpers.",
+      "code_snippet": "describe('connectshyft provider adapter registry route integration', () => {",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts",
+      "line": 57,
+      "severity": "MEDIUM",
+      "category": "file-growth",
+      "description": "Test file length is 215 lines; this increases maintenance cost and review complexity.",
+      "suggestion": "Refactor into smaller behavior-focused files and helper modules.",
+      "code_snippet": "test.describe(",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/modules/connectshyft/__tests__/readContracts.test.ts",
+      "line": 9,
+      "severity": "MEDIUM",
+      "category": "file-growth",
+      "description": "Test file length is 238 lines; this increases maintenance cost and review complexity.",
+      "suggestion": "Refactor into smaller behavior-focused files and helper modules.",
+      "code_snippet": "describe('connectshyft read contracts', () => {",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts",
+      "line": 115,
+      "severity": "MEDIUM",
+      "category": "high-case-density",
+      "description": "Large integration suite contains many scenarios in one file, making triage and ownership slower.",
+      "suggestion": "Segment by capability (dispatch, webhook correlation, signature validation, replay safety).",
+      "code_snippet": "describe('connectshyft provider adapter registry route integration', () => {",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 127,
+      "severity": "MEDIUM",
+      "category": "edge-case-depth",
+      "description": "Primary outbound flow is covered, but deeper failure-mode assertions (provider outages, refusal payload UX) are limited at E2E level.",
+      "suggestion": "Add explicit negative-flow E2E assertions for dispatch refusal and transient provider failure UX messaging.",
+      "code_snippet": "'[G2-AUTO-E2E-205][P1] inbox send-message and make-call actions launch neighbor workflows and submit outbound requests @P1',",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts",
+      "line": 63,
+      "severity": "MEDIUM",
+      "category": "boundary-variants",
+      "description": "Actor-context boundary is validated, but additional malformed actor/header variants are not exhaustively covered in this suite.",
+      "suggestion": "Add malformed/partial actor-context permutations to tighten boundary regression detection.",
+      "code_snippet": "'[G2-AUTO-API-301][P0] mine bucket refuses reads when actor context is missing to preserve actor-owned queue isolation @P0',",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 208,
+      "severity": "LOW",
+      "category": "nfr-observability",
+      "description": "Responsive behavior is functionally asserted, but no explicit performance thresholds are asserted for breakpoint transitions.",
+      "suggestion": "Optionally add lightweight perf/timing assertions for key layout transitions in CI-safe ranges.",
+      "code_snippet": "'[G2-AUTO-E2E-203][P0] responsive queue-to-thread behavior uses mobile full-screen thread tablet split layout and desktop three-column workflow @P0',",
+      "dimension": "coverage"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 15,
+      "severity": "HIGH",
+      "category": "not-parallelizable",
+      "description": "Serial mode in E2E suite blocks parallel execution and increases CI wall-clock time.",
+      "suggestion": "Convert suite to parallel-safe isolation and remove serial mode where possible.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "performance"
+    },
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts",
+      "line": 60,
+      "severity": "HIGH",
+      "category": "not-parallelizable",
+      "description": "Serial API suite reduces throughput despite mostly independent request-level scenarios.",
+      "suggestion": "Drop serial mode and rely on deterministic fixture setup per test case.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "performance"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts",
+      "line": 17,
+      "severity": "MEDIUM",
+      "category": "heavy-suite-footprint",
+      "description": "Large integration suite repeatedly boots app/context and can become a runtime hotspot.",
+      "suggestion": "Extract shared app/bootstrap helpers and split suite for better shard distribution.",
+      "code_snippet": "const buildApp = () => {",
+      "dimension": "performance"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 21,
+      "severity": "MEDIUM",
+      "category": "repeated-auth-overhead",
+      "description": "Repeated full-login setup per E2E case increases runtime compared with cached storage-state patterns.",
+      "suggestion": "Adopt storage-state/session reuse where this does not reduce scenario independence.",
+      "code_snippet": "await login(page);",
+      "dimension": "performance"
+    }
+  ],
+  "high_severity_violations": [
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 15,
+      "severity": "HIGH",
+      "category": "serial-execution-coupling",
+      "description": "Suite-level serial mode limits parallel safety and can mask inter-test coupling issues.",
+      "suggestion": "Remove serial mode and isolate shared state with per-test setup/cleanup.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "isolation"
+    },
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts",
+      "line": 60,
+      "severity": "HIGH",
+      "category": "serial-execution-coupling",
+      "description": "API automate suite is forced to serial execution, reducing confidence in isolation under parallel CI workers.",
+      "suggestion": "Run in parallel by default and retain serial only for proven hard dependencies.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "isolation"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 14,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Test file length is 350 lines, exceeding maintainability guidance for focused suites.",
+      "suggestion": "Split by behavior domain and extract common setup/helpers.",
+      "code_snippet": "test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)', () => {",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts",
+      "line": 34,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Test file length is 715 lines, exceeding maintainability guidance for focused suites.",
+      "suggestion": "Split by behavior domain and extract common setup/helpers.",
+      "code_snippet": "describe('connectshyft provider registry', () => {",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.ts",
+      "line": 115,
+      "severity": "HIGH",
+      "category": "test-too-long",
+      "description": "Test file length is 1354 lines, exceeding maintainability guidance for focused suites.",
+      "suggestion": "Split by behavior domain and extract common setup/helpers.",
+      "code_snippet": "describe('connectshyft provider adapter registry route integration', () => {",
+      "dimension": "maintainability"
+    },
+    {
+      "file": "tests/e2e/platform/g-2-inbox-and-mine-surface-rebuild.automate.spec.ts",
+      "line": 15,
+      "severity": "HIGH",
+      "category": "not-parallelizable",
+      "description": "Serial mode in E2E suite blocks parallel execution and increases CI wall-clock time.",
+      "suggestion": "Convert suite to parallel-safe isolation and remove serial mode where possible.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "performance"
+    },
+    {
+      "file": "tests/api/platform/g-2-inbox-and-mine-surface-rebuild.automate.api.spec.ts",
+      "line": 60,
+      "severity": "HIGH",
+      "category": "not-parallelizable",
+      "description": "Serial API suite reduces throughput despite mostly independent request-level scenarios.",
+      "suggestion": "Drop serial mode and rely on deterministic fixture setup per test case.",
+      "code_snippet": "test.describe.configure({ mode: 'serial' });",
+      "dimension": "performance"
+    }
+  ],
+  "top_10_recommendations": [
+    {
+      "dimension": "maintainability",
+      "recommendation": "Split oversized specs into narrower suites by capability.",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "maintainability",
+      "recommendation": "Extract repeated request/header setup and correlation helpers.",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "maintainability",
+      "recommendation": "Keep each file below 300 lines where practical for faster review and debugging.",
+      "impact": "HIGH"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Split conditional E2E branches into deterministic scenario-specific tests.",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Use fixture-preconditioned data instead of branching on discovered UI option counts.",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "determinism",
+      "recommendation": "Prefer fixed timestamps for replay-sensitive signature validations where practical.",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "isolation",
+      "recommendation": "Eliminate blanket serial mode and validate suites under parallel workers.",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "isolation",
+      "recommendation": "Minimize process-global state mutation in route integration tests.",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "isolation",
+      "recommendation": "Keep explicit setup/teardown ownership near each mutated integration surface.",
+      "impact": "MEDIUM"
+    },
+    {
+      "dimension": "coverage",
+      "recommendation": "Add explicit negative E2E dispatch-refusal assertions.",
+      "impact": "MEDIUM"
+    }
+  ],
+  "subprocess_execution": "PARALLEL (5 quality dimensions)",
+  "performance_gain": "~60% faster than sequential"
+}

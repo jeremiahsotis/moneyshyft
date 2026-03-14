@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-03-02T14:27:38Z",
+  "storyScope": "epic-f",
+  "drillType": "backend-crash-restart-with-persistence-probe",
+  "backend": {
+    "url": "http://127.0.0.1:3301",
+    "port": 3301
+  },
+  "probe": {
+    "table": "public.dr_drill_probe",
+    "probeId": "71dc497e-fd3c-4a0c-8a4b-05b28dae3853",
+    "insertedAt": "2026-03-02T14:27:36Z",
+    "existsAfterRecovery": 1
+  },
+  "metrics": {
+    "outageStartedAtMs": 1772461656572,
+    "restartStartedAtMs": 1772461656661,
+    "recoveredAtMs": 1772461658004,
+    "healthDownDetectionMs": 36,
+    "healthRecoveryDetectionMs": 37,
+    "rtoMs": 1343,
+    "rpoRecordsLost": 0
+  },
+  "targets": {
+    "rtoMsMax": 30000,
+    "rpoRecordsLostMax": 0
+  },
+  "gate": {
+    "rtoWithinTarget": true,
+    "rpoWithinTarget": true,
+    "drDrillPass": true
+  },
+  "evidenceSources": [
+    "scripts/epic-f-dr-drill.sh",
+    "src/src/app.ts",
+    "src/src/config/database.ts"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "tdd_phase": "RED",
+  "total_tests": 10,
+  "api_tests": 5,
+  "e2e_tests": 5,
+  "all_tests_skipped": true,
+  "expected_to_fail": true,
+  "fixtures_created": 3,
+  "fixture_needs": [
+    "connectShyftStoryG5Factory",
+    "connectShyftStoryG5Fixture",
+    "connectShyftStoryG5UiUrlBuilders"
+  ],
+  "acceptance_criteria_covered": [
+    "Volunteer More/Settings shows volunteer-facing options",
+    "Admin controls are role-gated outside volunteer IA",
+    "Role/scope refresh re-evaluates pathway access with refusal guidance",
+    "Volunteer IA options in More/Settings are volunteer-focused",
+    "Admin settings are separated and role-gated",
+    "Denied routes show refusal-style guidance",
+    "Responsive IA remains stable across breakpoints"
+  ],
+  "knowledge_fragments_used": [
+    "api-request",
+    "data-factories",
+    "api-testing-patterns",
+    "fixture-architecture",
+    "network-first",
+    "selector-resilience"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential",
+  "timestamp": "2026-03-07T12-59-43-959Z"
+}

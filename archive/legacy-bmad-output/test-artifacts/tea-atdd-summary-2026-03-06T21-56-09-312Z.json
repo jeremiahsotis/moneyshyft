@@ -1,0 +1,39 @@
+{
+  "tdd_phase": "RED",
+  "total_tests": 9,
+  "api_tests": 4,
+  "e2e_tests": 5,
+  "all_tests_skipped": true,
+  "expected_to_fail": true,
+  "fixtures_created": 2,
+  "acceptance_criteria_covered": [
+    "AC1: Context-first thread detail hierarchy",
+    "AC2: Voicemail first-class inline conversation rendering",
+    "AC3: Explicit locked action matrix by thread state",
+    "AC4: Contextual refusal/policy feedback without operations-heavy chrome",
+    "AC5: CLOSED outbound same-thread reopen lifecycle with no inbound auto-reopen side effects"
+  ],
+  "knowledge_fragments_used": [
+    "data-factories",
+    "component-tdd",
+    "test-quality",
+    "test-healing-patterns",
+    "selector-resilience",
+    "timing-debugging",
+    "overview",
+    "api-request",
+    "network-recorder",
+    "auth-session",
+    "intercept-network-call",
+    "recurse",
+    "log",
+    "file-utils",
+    "network-error-monitor",
+    "fixtures-composition",
+    "playwright-cli"
+  ],
+  "subprocess_execution": "PARALLEL (API + E2E)",
+  "performance_gain": "~50% faster than sequential",
+  "api_output_file": "/tmp/tea-atdd-api-tests-2026-03-06T21-56-09-312Z.json",
+  "e2e_output_file": "/tmp/tea-atdd-e2e-tests-2026-03-06T21-56-09-312Z.json"
+}

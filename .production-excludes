@@ -1,0 +1,14 @@
+# Excluded from production branch
+_bmad/
+_bmad-output/
+AGENTS.md
+.github/agents/
+.agent/
+.claude/
+.clinerules/
+.codex/
+.cursor/
+.gemini/
+.opencode/
+.qwen/
+.windsurf/

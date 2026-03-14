@@ -9,7 +9,7 @@ test.describe('Extra money multi-category', () => {
     await login(page);
   });
 
-  test('assigns extra money across multiple categories', async ({ page }) => {
+  test('assigns extra money across multiple categories @P1', async ({ page }) => {
     const source = `QA Extra Multi ${Date.now()}`;
     let entryId: string | undefined;
 
@@ -22,8 +22,33 @@ test.describe('Extra money multi-category', () => {
       await page.getByTestId('extra-money-date').fill(todayISO());
       await page.getByTestId('extra-money-submit').click();
 
-      const entryCard = page.locator('[data-testid^="extra-money-entry-"]', { hasText: source });
+      let createdEntry:
+        | { id: string; status: string; source: string }
+        | undefined;
+      await expect
+        .poll(
+          async () => {
+            const entriesResponse = await page.request.get('/api/v1/extra-money');
+            if (!entriesResponse.ok()) {
+              return '';
+            }
+            const entriesData = await entriesResponse.json();
+            createdEntry = entriesData.data.find((entry: { source: string }) => entry.source === source) as
+              | { id: string; status: string; source: string }
+              | undefined;
+            return createdEntry?.status ?? '';
+          },
+          { timeout: 15000 },
+        )
+        .toBe('pending');
+
+      expect(createdEntry?.id).toBeTruthy();
+      entryId = createdEntry?.id;
+
+      await page.reload();
+      const entryCard = page.getByTestId(`extra-money-entry-${entryId}`);
       await expect(entryCard).toBeVisible();
+      await expect(entryCard).toContainText(source);
 
       await entryCard.getByTestId('extra-money-assign-button').click();
       await expect(page.getByTestId('extra-money-assign-modal')).toBeVisible();

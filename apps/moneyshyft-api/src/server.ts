@@ -1,0 +1,40 @@
+import app from './app';
+import logger from './utils/logger';
+
+const CANONICAL_PORT = 3000;
+const PORT = parseInt(process.env.PORT || `${CANONICAL_PORT}`, 10);
+const DEFAULT_HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '0.0.0.0';
+const HOST = process.env.HOST || DEFAULT_HOST;
+
+if (process.env.NODE_ENV === 'production' && PORT !== CANONICAL_PORT) {
+  throw new Error(`money-api must run on canonical production port ${CANONICAL_PORT}, received ${PORT}`);
+}
+
+if (process.env.NODE_ENV === 'production' && !['0.0.0.0', '127.0.0.1', 'localhost'].includes(HOST)) {
+  throw new Error(`money-api must bind to a local interface in production, received HOST=${HOST}`);
+}
+
+const server = app.listen(PORT, HOST, () => {
+  logger.info(`🚀 MoneyShyft API server running on ${HOST}:${PORT}`);
+  logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`🔗 Database: ${process.env.DATABASE_URL?.split('@')[1] || 'not configured'}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    logger.info('HTTP server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT signal received: closing HTTP server');
+  server.close(() => {
+    logger.info('HTTP server closed');
+    process.exit(0);
+  });
+});
+
+export default server;

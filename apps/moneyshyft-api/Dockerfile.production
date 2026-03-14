@@ -1,0 +1,32 @@
+FROM node:20-alpine AS build
+
+WORKDIR /app
+
+COPY package.json ./
+COPY package-lock.json ./
+COPY knexfile.js ./
+COPY tsconfig.json ./
+
+RUN npm ci && npm cache clean --force
+
+COPY . .
+
+RUN npm run build
+RUN npm prune --omit=dev && npm cache clean --force
+
+FROM node:20-alpine AS runtime
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=384"
+
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/knexfile.js ./knexfile.js
+COPY --from=build /app/scripts ./scripts
+
+EXPOSE 3000
+
+CMD ["node", "dist/server.js"]
