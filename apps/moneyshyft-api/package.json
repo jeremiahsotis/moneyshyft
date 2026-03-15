@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node --transpile-only src/server.ts",
-    "build": "tsc",
+    "build": "node ../../scripts/build-shared-libs.mjs auth db http platform && tsc",
     "start": "node dist/server.js",
     "migrate:latest": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development migrate:latest",
     "migrate:latest:prod": "NODE_ENV=production node ./scripts/enforceProdMigrationAuthority.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production migrate:latest",

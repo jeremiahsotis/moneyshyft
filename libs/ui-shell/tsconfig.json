@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "typeRoots": [
+      "../../node_modules/@types",
+      "../../apps/moneyshyft-api/node_modules/@types",
+      "../../apps/admin-api/node_modules/@types",
+      "../../apps/moneyshyft-web/node_modules/@types",
+      "../../apps/admin-web/node_modules/@types"
+    ],
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "declaration": true,
+    "sourceMap": false
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "node_modules"]
+}

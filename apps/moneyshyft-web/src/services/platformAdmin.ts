@@ -1,62 +1,10 @@
 import api from '@/services/api';
-
-type Envelope<T> = {
-  ok?: boolean;
-  code?: string;
-  message?: string;
-  data?: T;
-  tenantId?: string | null;
-};
-
-const unwrapData = <T>(payload: unknown): T => {
-  if (payload && typeof payload === 'object') {
-    const record = payload as Record<string, unknown>;
-    if (record.data && typeof record.data === 'object') {
-      return record.data as T;
-    }
-
-    return record as T;
-  }
-
-  return {} as T;
-};
-
-const buildIdempotencyKey = (): string => {
-  if (typeof globalThis !== 'undefined' && globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
-    return globalThis.crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-};
-
-const adminWriteConfig = () => ({
-  headers: {
-    'Idempotency-Key': buildIdempotencyKey(),
-  },
-});
-
-const adminPost = async <T>(url: string, body?: unknown): Promise<T> => {
-  const response = await api.post<Envelope<T>>(url, body ?? {}, adminWriteConfig());
-  return unwrapData<T>(response.data);
-};
-
-const adminPatch = async <T>(url: string, body?: unknown): Promise<T> => {
-  const response = await api.patch<Envelope<T>>(url, body ?? {}, adminWriteConfig());
-  return unwrapData<T>(response.data);
-};
-
-const adminPut = async <T>(url: string, body?: unknown): Promise<T> => {
-  const response = await api.put<Envelope<T>>(url, body ?? {}, adminWriteConfig());
-  return unwrapData<T>(response.data);
-};
-
-const adminDelete = async <T>(url: string, body?: unknown): Promise<T> => {
-  const response = await api.delete<Envelope<T>>(url, {
-    ...adminWriteConfig(),
-    data: body ?? {},
-  });
-  return unwrapData<T>(response.data);
-};
+import {
+  createAdminClient,
+  unwrapData,
+  type AdminEnvelope as Envelope,
+} from '../../../../libs/ui-shell/dist/adminClient';
+const { adminDelete, adminPatch, adminPost, adminPut } = createAdminClient(api);
 
 export type AdminModuleKey = 'connectshyft' | 'moneyshyft';
 export type AdminNodeType = 'SUBTENANT' | 'ORGUNIT' | 'GROUP';
