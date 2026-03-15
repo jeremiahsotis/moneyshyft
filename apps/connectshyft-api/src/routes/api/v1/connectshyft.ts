@@ -202,6 +202,55 @@ const CONNECTSHYFT_LEGACY_ROLE_ALIASES: Record<string, string> = {
   admin: 'TENANT_ADMIN',
   member: 'ORGUNIT_MEMBER',
 };
+type ConnectShyftSettingsNavigationOption = {
+  key: string;
+  label: string;
+  path: string;
+};
+const CONNECTSHYFT_SETTINGS_PRIMARY_OPTIONS: readonly ConnectShyftSettingsNavigationOption[] = [
+  {
+    key: 'directory',
+    label: 'Directory',
+    path: '/app/connectshyft/directory',
+  },
+  {
+    key: 'settings',
+    label: 'Settings',
+    path: '/app/connectshyft/settings',
+  },
+  {
+    key: 'notification-preferences',
+    label: 'Notification Preferences',
+    path: '/app/connectshyft/settings',
+  },
+  {
+    key: 'display-preferences',
+    label: 'Display Preferences',
+    path: '/app/connectshyft/settings',
+  },
+  {
+    key: 'sign-out',
+    label: 'Sign Out',
+    path: '/login',
+  },
+];
+const CONNECTSHYFT_SETTINGS_ADMIN_OPTIONS: readonly ConnectShyftSettingsNavigationOption[] = [
+  {
+    key: 'availability',
+    label: 'Availability',
+    path: '/app/connectshyft/settings/availability',
+  },
+  {
+    key: 'number-mappings',
+    label: 'Number Mappings',
+    path: '/app/connectshyft/settings/numbers',
+  },
+  {
+    key: 'escalation-configuration',
+    label: 'Escalation Settings',
+    path: '/app/connectshyft/settings/escalation',
+  },
+];
 
 type ConnectShyftOutboundAction = 'call' | 'message';
 type ConnectShyftNeighborMergeFailureStage = 'before-commit' | 'after-dependent-repoint';
@@ -2368,6 +2417,69 @@ const enforceThreadViewCapability = (
     httpStatus: 200,
   });
   return false;
+};
+
+const canAccessConnectShyftAdminSettingsByCapability = (
+  req: Request,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
+): boolean => {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  return (
+    hasCapability(actorRoles, CAPABILITIES.NUMBER_MAPPING_MANAGE)
+    || hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_ESCALATION_CONFIG)
+    || hasCapability(actorRoles, CAPABILITIES.MODULE_ENTITLEMENT_MANAGE)
+    || hasCapability(actorRoles, CAPABILITIES.TENANT_ROLE_ASSIGN)
+    || hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_ADMIN_ASSIGN)
+  );
+};
+
+const canAccessConnectShyftSettingsNavigation = (
+  req: Request,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
+): boolean => {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  return (
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_VIEW)
+    || hasCapability(actorRoles, CAPABILITIES.THREAD_VIEW_ALL)
+    || hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
+    || hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)
+    || hasCapability(actorRoles, CAPABILITIES.TENANT_READ_ALL)
+  );
+};
+
+const buildConnectShyftAvailabilityPayload = (input: {
+  flags: ConnectShyftFeatureFlags;
+  entitlementDecision: Awaited<ReturnType<typeof evaluateActorTenantModuleEntitlement>> | null;
+}) => {
+  return {
+    flags: input.flags,
+    entitlement: input.entitlementDecision
+      ? {
+        moduleKey: input.entitlementDecision.moduleKey,
+        enabled: input.entitlementDecision.enabled,
+        reason: input.entitlementDecision.reason,
+      }
+      : null,
+    capabilities: {
+      module: evaluateConnectShyftCapability(input.flags, 'module').ok,
+      inbox: evaluateConnectShyftCapability(input.flags, 'inbox').ok,
+      escalation: evaluateConnectShyftCapability(input.flags, 'escalation').ok,
+      webhooks: evaluateConnectShyftCapability(input.flags, 'webhooks').ok,
+    },
+  };
+};
+
+const buildConnectShyftSettingsNavigationPathways = (adminAccess: boolean) => {
+  return [
+    ...CONNECTSHYFT_SETTINGS_PRIMARY_OPTIONS.map((option) => ({
+      path: option.path,
+      allowed: true,
+    })),
+    ...CONNECTSHYFT_SETTINGS_ADMIN_OPTIONS.map((option) => ({
+      path: option.path,
+      allowed: adminAccess,
+    })),
+  ];
 };
 
 const enforceEscalationActionMembership = (
@@ -4569,28 +4681,135 @@ const resolveEscalationRecipientDirectory = async (
   return buildDatabaseRecipientDirectory(tenantId, orgUnitId);
 };
 
+router.get('/settings/navigation', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const fallbackOrgUnitId = await resolveConnectShyftFallbackOrgUnitId(req);
+  if (fallbackOrgUnitId) {
+    req.orgUnitId = fallbackOrgUnitId;
+    req.tenantContext = {
+      tenantId: req.tenantContext?.tenantId || req.tenantId || req.user?.activeTenantId || 'public',
+      orgUnitId: fallbackOrgUnitId,
+      scopeMode: 'ORG_UNIT',
+      source: req.tenantContext?.source || 'auth',
+    };
+  }
+
+  const contextDecision = await resolveConnectShyftOrgUnitContext(req, {
+    resolveOrgUnitAccess: async ({ tenantId, orgUnitId, userId, baseRoles }) =>
+      validateOrgUnitScopedAccess(
+        createKnexOrgUnitAccessStore(loadPlatformDb()),
+        {
+          tenantId,
+          orgUnitId,
+          userId,
+          baseRoles,
+        },
+      ),
+  });
+
+  if (!contextDecision.ok) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_SETTINGS_NAVIGATION_FORBIDDEN',
+      message: 'Settings navigation requires an authorized role with active orgUnit access.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        primaryOptions: CONNECTSHYFT_SETTINGS_PRIMARY_OPTIONS,
+        adminOptions: [],
+        pathways: buildConnectShyftSettingsNavigationPathways(false),
+      },
+    });
+    return;
+  }
+
+  if (!canAccessConnectShyftSettingsNavigation(req, contextDecision.context)) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_SETTINGS_NAVIGATION_FORBIDDEN',
+      message: 'Settings navigation requires an authorized role with active orgUnit access.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        primaryOptions: CONNECTSHYFT_SETTINGS_PRIMARY_OPTIONS,
+        adminOptions: [],
+        pathways: buildConnectShyftSettingsNavigationPathways(false),
+      },
+    });
+    return;
+  }
+
+  const adminAccess = canAccessConnectShyftAdminSettingsByCapability(req, contextDecision.context);
+
+  return success(res, {
+    code: 'CONNECTSHYFT_SETTINGS_NAVIGATION_RESOLVED',
+    message: 'ConnectShyft settings navigation resolved',
+    data: {
+      primaryOptions: CONNECTSHYFT_SETTINGS_PRIMARY_OPTIONS,
+      adminOptions: adminAccess ? CONNECTSHYFT_SETTINGS_ADMIN_OPTIONS : [],
+      pathways: buildConnectShyftSettingsNavigationPathways(adminAccess),
+    },
+  });
+});
+
 router.get('/availability', async (req: Request, res: Response) => {
   const { flags, entitlementDecision } = await resolveEntitlementAwareConnectShyftFlags(req);
+  const availabilityData = buildConnectShyftAvailabilityPayload({
+    flags,
+    entitlementDecision,
+  });
+
+  const fallbackOrgUnitId = await resolveConnectShyftFallbackOrgUnitId(req);
+  if (fallbackOrgUnitId) {
+    req.orgUnitId = fallbackOrgUnitId;
+    req.tenantContext = {
+      tenantId: req.tenantContext?.tenantId || req.tenantId || req.user?.activeTenantId || 'public',
+      orgUnitId: fallbackOrgUnitId,
+      scopeMode: 'ORG_UNIT',
+      source: req.tenantContext?.source || 'auth',
+    };
+  }
+
+  const contextDecision = await resolveConnectShyftOrgUnitContext(req, {
+    resolveOrgUnitAccess: async ({ tenantId, orgUnitId, userId, baseRoles }) =>
+      validateOrgUnitScopedAccess(
+        createKnexOrgUnitAccessStore(loadPlatformDb()),
+        {
+          tenantId,
+          orgUnitId,
+          userId,
+          baseRoles,
+        },
+      ),
+  });
+
+  if (!contextDecision.ok) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_AVAILABILITY_FORBIDDEN',
+      message: 'Availability settings require an authorized admin role.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: availabilityData,
+    });
+    return;
+  }
+
+  if (!canAccessConnectShyftAdminSettingsByCapability(req, contextDecision.context)) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_AVAILABILITY_FORBIDDEN',
+      message: 'Availability settings require an authorized admin role.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: availabilityData,
+    });
+    return;
+  }
 
   return success(res, {
     code: 'CONNECTSHYFT_AVAILABILITY_RESOLVED',
     message: 'ConnectShyft availability state resolved',
-    data: {
-      flags,
-      entitlement: entitlementDecision
-        ? {
-          moduleKey: entitlementDecision.moduleKey,
-          enabled: entitlementDecision.enabled,
-          reason: entitlementDecision.reason,
-        }
-        : null,
-      capabilities: {
-        module: evaluateConnectShyftCapability(flags, 'module').ok,
-        inbox: evaluateConnectShyftCapability(flags, 'inbox').ok,
-        escalation: evaluateConnectShyftCapability(flags, 'escalation').ok,
-        webhooks: evaluateConnectShyftCapability(flags, 'webhooks').ok,
-      },
-    },
+    data: availabilityData,
   });
 });
 

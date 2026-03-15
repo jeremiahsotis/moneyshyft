@@ -69,6 +69,8 @@ Canonical Web:
 Owns:
 
 - threads
+- `/api/v1/connectshyft/*`
+- `/app/connectshyft/*`
 - SMS
 - voice/call flows
 - Telnyx integration

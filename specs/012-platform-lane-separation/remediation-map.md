@@ -6,7 +6,7 @@ Scope: `moneyshyft-api`, `moneyshyft-web`, `connectshyft-api`, `connectshyft-web
 
 ## Evidence baseline
 
-- `apps/moneyshyft-api/src/api/registerRoutes.ts` still mounts admin, auth, ConnectShyft, RouteShyft, and money routes from one app.
+- `apps/moneyshyft-api/src/api/registerRoutes.ts` still mounts MoneyShyft finance/runtime and RouteShyft routes from one app, but no longer mounts admin/auth runtime or `/api/v1/connectshyft`.
 - `apps/admin-api/src/api/registerRoutes.ts` mounts only platform/admin/auth runtime routes.
 - `apps/connectshyft-api/src/app.ts` mounts only `/api/v1/connectshyft`.
 - `apps/moneyshyft-web/src/router/index.ts` still mounts admin pages and the RouteShyft lifecycle page inside the MoneyShyft SPA.
@@ -22,7 +22,6 @@ These are the active route entrypoints that are still owned by the wrong lane to
 | Current path owner | Entrypoint(s) | Canonical owner | Why wrong now | Remediation class |
 | --- | --- | --- | --- | --- |
 | `apps/moneyshyft-api` | `/api/v1/platform`, `/api/v1/platform/admin`, `/api/v1/auth` | `apps/admin-api` | Admin/auth runtime is canonically owned by Admin, but MoneyShyft still mounts mirrored handlers. | repoint and unmount from MoneyShyft |
-| `apps/moneyshyft-api` | `/api/v1/connectshyft` | `apps/connectshyft-api` | ConnectShyft runtime is canonically owned by ConnectShyft, but MoneyShyft still mounts a divergent route tree. | repoint and converge first |
 | `apps/moneyshyft-web` | `/admin/system`, `/admin/tenant` | `apps/admin-web` | Admin UI is canonically owned by Admin, but MoneyShyft still mounts mirrored admin views. | repoint and unmount from MoneyShyft |
 
 ## Transitional RouteShyft Entrypoints To Keep For Now
@@ -43,7 +42,7 @@ These are the trees that matter for ownership convergence, not every duplicate f
 | Current tree | Current state | Canonical destination | Notes |
 | --- | --- | --- | --- |
 | `apps/moneyshyft-api/src/modules/connectshyft` | live wrong-lane runtime tree | `apps/connectshyft-api/src/modules/connectshyft` | Highest-priority backend convergence target. The trees have already diverged; this is not a straight file move. |
-| `apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts` | live wrong-lane route entrypoint | `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` | MoneyShyft should end with no ConnectShyft feature runtime, only at most a temporary compatibility shim during cutover. |
+| `apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts` | unmounted retained route entrypoint | `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` | MoneyShyft no longer mounts `/api/v1/connectshyft`. Keep the file only until full module convergence proves no unique runtime behavior remains. |
 | `apps/moneyshyft-web/src/views/Admin` | live wrong-lane UI mirror | `apps/admin-web/src/views/Admin` | Admin-web is already canonical. The MoneyShyft copy should be retired after route cutover, not preserved as a second owner. |
 
 ## Mirrored Trees That Should Not Be Treated As Move Targets
@@ -149,7 +148,7 @@ Goal:
 
 Work:
 - Shift `/api/v1/connectshyft` ingress to `connectshyft-api`.
-- If a compatibility layer is needed during rollout, keep it thin and transport-only inside `moneyshyft-api`; do not leave feature logic there.
+- If a compatibility layer is needed during rollout, keep it thin and transport-only inside `moneyshyft-api`; do not leave feature logic there. The current slice does not retain a mounted shim.
 - Keep `connectshyft-web` as the canonical UI owner for inbox/thread/directory/settings surfaces.
 
 Why before module cleanup:

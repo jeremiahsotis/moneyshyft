@@ -70,7 +70,6 @@ describe('Story 0.1 - canonical app entrypoint and kernel middleware', () => {
         '/api/v1/platform',
         '/api/v1/route',
         '/api/v1/route-bridge',
-        '/api/v1/connectshyft',
         '/api/v1/route',
         '/api/v1/accounts',
         '/api/v1/transactions',
@@ -130,6 +129,9 @@ describe('Story 0.1 - canonical app entrypoint and kernel middleware', () => {
       const platformAdminCall = (app.use as jest.Mock).mock.calls.find(
         (call) => call[0] === '/api/v1/platform/admin'
       );
+      const connectShyftCall = (app.use as jest.Mock).mock.calls.find(
+        (call) => call[0] === '/api/v1/connectshyft'
+      );
 
       expect(accountsCall).toBeDefined();
       expect(accountsCall).toHaveLength(3);
@@ -141,6 +143,7 @@ describe('Story 0.1 - canonical app entrypoint and kernel middleware', () => {
       expect(typeof platformCall![1]).toBe('function');
       expect(authCall).toBeUndefined();
       expect(platformAdminCall).toBeUndefined();
+      expect(connectShyftCall).toBeUndefined();
     });
   });
 });
