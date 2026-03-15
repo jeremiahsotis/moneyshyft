@@ -1,5 +1,3 @@
-import { NextFunction, Request, Response } from 'express';
-
 type AuthPayload = {
   userId: string;
   role: string;
@@ -16,16 +14,33 @@ type AuthDependencies = {
   logError: (...args: unknown[]) => void;
 };
 
-type RequestWithUser = Request & {
+type RequestLike = {
+  originalUrl?: string;
+  cookies?: Record<string, string | undefined>;
+};
+
+type RequestWithUser = RequestLike & {
   user?: AuthPayload | null;
 };
 
-const isPasswordResetExemptRequest = (req: Request): boolean => {
-  if (req.originalUrl.startsWith('/api/v1/auth/')) {
+type JsonResponseLike = {
+  json(payload: unknown): unknown;
+};
+
+type ResponseLike = {
+  status(code: number): JsonResponseLike;
+};
+
+type NextLike = () => unknown;
+
+const isPasswordResetExemptRequest = (req: RequestLike): boolean => {
+  const originalUrl = req.originalUrl ?? '';
+
+  if (originalUrl.startsWith('/api/v1/auth/')) {
     return true;
   }
 
-  if (req.originalUrl === '/api/v1/platform/admin/rbac/evaluate') {
+  if (originalUrl === '/api/v1/platform/admin/rbac/evaluate') {
     return true;
   }
 
@@ -38,10 +53,14 @@ export const createAuthMiddleware = ({
   isTenantScopeError,
   logError,
 }: AuthDependencies) => {
-  const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
+  const authenticateToken = (
+    req: RequestLike,
+    res: ResponseLike,
+    next: NextLike
+  ): void => {
     const request = req as RequestWithUser;
     try {
-      const token = request.cookies.access_token;
+      const token = request.cookies?.access_token;
 
       if (!token) {
         res.status(401).json({ error: 'Authentication required' });
@@ -78,10 +97,10 @@ export const createAuthMiddleware = ({
     }
   };
 
-  const optionalAuth = (req: Request, _res: Response, next: NextFunction): void => {
+  const optionalAuth = (req: RequestLike, _res: ResponseLike, next: NextLike): void => {
     const request = req as RequestWithUser;
     try {
-      const token = request.cookies.access_token;
+      const token = request.cookies?.access_token;
 
       if (token) {
         const payload = verifyAccessToken(token);
@@ -103,9 +122,9 @@ export const createAuthMiddleware = ({
   };
 
   const requireRole = (role: string) => (
-    req: Request,
-    res: Response,
-    next: NextFunction
+    req: RequestLike,
+    res: ResponseLike,
+    next: NextLike
   ): void => {
     const request = req as RequestWithUser;
     if (!request.user) {
@@ -121,7 +140,11 @@ export const createAuthMiddleware = ({
     next();
   };
 
-  const requireHouseholdAccess = (req: Request, res: Response, next: NextFunction): void => {
+  const requireHouseholdAccess = (
+    req: RequestLike,
+    res: ResponseLike,
+    next: NextLike
+  ): void => {
     const request = req as RequestWithUser;
     if (!request.user) {
       res.status(401).json({ error: 'Authentication required' });

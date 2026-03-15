@@ -1,8 +1,21 @@
-import { Request, Response, NextFunction } from 'express';
 import Joi from 'joi';
 
+type RequestLike = {
+  body: unknown;
+};
+
+type JsonResponseLike = {
+  json(payload: unknown): unknown;
+};
+
+type ResponseLike = {
+  status(code: number): JsonResponseLike;
+};
+
+type NextLike = () => unknown;
+
 export function validateRequest(schema: Joi.Schema) {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: RequestLike, res: ResponseLike, next: NextLike): void => {
     const { error, value } = schema.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
