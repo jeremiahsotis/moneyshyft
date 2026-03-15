@@ -41,7 +41,7 @@ These are the trees that matter for ownership convergence, not every duplicate f
 
 | Current tree | Current state | Canonical destination | Notes |
 | --- | --- | --- | --- |
-| `apps/moneyshyft-api/src/modules/connectshyft` | live wrong-lane runtime tree | `apps/connectshyft-api/src/modules/connectshyft` | Highest-priority backend convergence target. The trees have already diverged; this is not a straight file move. |
+| `apps/moneyshyft-api/src/modules/connectshyft` | unmounted retained mirror | `apps/connectshyft-api/src/modules/connectshyft` | Route cutover is complete. Keep this tree only until parity proof is recorded and cleanup is allowed. |
 | `apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts` | unmounted retained route entrypoint | `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` | MoneyShyft no longer mounts `/api/v1/connectshyft`. Keep the file only until full module convergence proves no unique runtime behavior remains. |
 | `apps/moneyshyft-web/src/views/Admin` | live wrong-lane UI mirror | `apps/admin-web/src/views/Admin` | Admin-web is already canonical. The MoneyShyft copy should be retired after route cutover, not preserved as a second owner. |
 
@@ -51,7 +51,7 @@ These are real duplicates, but they are not the canonical destination for conver
 
 | Tree | Classification | Why it is not the move target |
 | --- | --- | --- |
-| `apps/admin-api/src/modules/connectshyft` and `apps/admin-api/src/routes/api/v1/connectshyft.ts` | unmounted stale mirror | `admin-api` does not mount ConnectShyft runtime routes. Reconcile any unique logic into `connectshyft-api`, then delete later. |
+| `apps/admin-api/src/modules/connectshyft` and `apps/admin-api/src/routes/api/v1/connectshyft.ts` | unmounted stale mirror | `admin-api` does not mount ConnectShyft runtime routes. Reconcile any unique logic into `connectshyft-api`, keep boundary tests ownership-only, then delete later. |
 | `apps/admin-api/src/routes/api/v1/accounts.ts`, `budgets.ts`, `transactions.ts`, and the rest of the money route tree | unmounted stale mirror | `admin-api` only mounts platform/admin/auth. These finance routes are wrong-lane baggage, not admin ownership. |
 | `apps/connectshyft-api/src/services/*` money-domain service tree | unmounted stale mirror | `connectshyft-api` mounts only ConnectShyft runtime. The money service tree is not canonical ConnectShyft ownership. |
 | `apps/admin-web/src/views/Accounts`, `Budget`, `Dashboard`, `Debts`, `Goals`, `Scenarios`, `Transactions`, plus matching stores/components | unmounted stale mirror | `admin-web` router mounts only admin pages. These money views are baggage, not admin runtime authority. |
@@ -163,6 +163,7 @@ Work:
 - Merge divergent behavior from `apps/moneyshyft-api/src/modules/connectshyft` and `apps/admin-api/src/modules/connectshyft` into `apps/connectshyft-api/src/modules/connectshyft`.
 - Preserve the newer ConnectShyft-only work already present in `connectshyft-api`, including bridge-session, phone-identity, and communication-reliability additions.
 - Retire the MoneyShyft and Admin ConnectShyft mirrors only after runtime parity is verified.
+- Normalize `connectshyft-api` to stop relying on MoneyShyft-specific env/logger assumptions during local bootstrapping.
 
 Why not a big-bang move:
 - The ConnectShyft trees are already divergent, so this is a selective merge into the canonical lane, not a rename.
