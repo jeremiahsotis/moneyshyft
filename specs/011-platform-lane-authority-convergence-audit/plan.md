@@ -1,100 +1,119 @@
-# Implementation Plan: Platform Lane Authority Convergence Audit
+# Implementation Plan: [FEATURE]
 
-**Branch**: `011-platform-lane-authority-convergence-audit` | **Date**: 2026-03-14 | **Spec**: [`specs/011-platform-lane-authority-convergence-audit/spec.md`](/Users/jeremiahotis/projects/connectshyft/specs/011-platform-lane-authority-convergence-audit/spec.md)
-**Input**: Feature specification from `/Users/jeremiahotis/projects/connectshyft/specs/011-platform-lane-authority-convergence-audit/spec.md`
+**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+
+**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
 
 ## Summary
 
-Produce a decision-grade platform audit that classifies runtime authority, duplication, migration authority, RouteShyft artifacts, safe patch locations, and convergence blockers across `money-api`, `moneyshyft-web`, `connect-api`, `admin-api`, and `migration-runner`.
+[Extract from feature spec: primary requirement + technical approach from research]
 
 ## Technical Context
 
-**Language/Version**: Markdown planning artifacts for a TypeScript monorepo (Node.js >=20, Vue 3, Express)  
-**Primary Dependencies**: Repository source evidence from Express route registration, Vue router registration, Vite proxy config, Knex config, Dockerfiles, nginx contracts, and deployment runbooks  
-**Storage**: Planning artifacts stored in `specs/011-platform-lane-authority-convergence-audit`; audited production storage is shared PostgreSQL  
-**Testing**: Evidence-based repository inspection using `sed`, `rg`, `diff`, and existing architectural/runbook contracts, plus explicit validation tasks for Nginx routing, API binding/port checks, shared Postgres connectivity, and reproducible deployment runbook verification; no new executable test suite is introduced in this planning pass  
-**Target Platform**: Monorepo documentation for Linux production deployment with host-managed nginx and Dockerized Node APIs  
-**Project Type**: Internal architecture audit and planning documentation  
-**Performance Goals**: Complete covered-surface classification with explicit decisions and no unresolved authority ambiguity in the planning output  
-**Constraints**: No code modification outside planning docs, no convergence remediation, no RouteShyft deletion, no runtime authority change, and no feature-bug fixes  
-**Scale/Scope**: Five covered surfaces (`money-api`, `moneyshyft-web`, `connect-api`, `admin-api`, `migration-runner`) plus embedded RouteShyft artifacts, runtime routes, module overlap, validators, scripts, packaging/build logic, and migration execution authority
+<!--
+  ACTION REQUIRED: Replace the content in this section with the technical details
+  for the project. The structure here is presented in advisory capacity to guide
+  the iteration process.
+-->
+
+**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
+**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
+**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
+**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]  
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
+**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- Platform shell authority preserved: PASS. The audit documents `admin-web`/`admin-api` authority and does not alter shell ownership.
-- Lane isolation preserved: PASS. The audit maps cross-lane overlap without introducing new service coupling.
-- Routing delegation preserved: PASS. The planning artifacts keep `/api/v1/auth/*` and `/api/v1/platform/admin/*` delegated to `admin-api` and treat all other lane `/api` routes as lane-owned unless evidence shows conflicting live mounts.
-- Deployment topology preserved: PASS. Host nginx, Dockerized APIs, localhost bindings, and static frontends remain audit inputs, not change targets.
-- Database ownership preserved: PASS. The audit records `admin-api` as the current production migration runner and `shared/database/migrations` as shared authority.
-- Security boundaries preserved: PASS. No ingress, cookie, or port exposure changes are proposed.
-- Workflow compliance: PASS. This plan traces directly to the source spec and produces research, data model, contracts, and quickstart artifacts.
-- Acceptance criteria present: PASS. The artifacts define verifiable classification, patch-location, migration-authority, RouteShyft, and blocked-area outputs.
+- Platform shell authority preserved: Changes do not break `admin-web`/`admin-api`
+  as the active shell and auth authority.
+- Lane isolation preserved: Frontend/API/domain boundaries remain per lane; no
+  implicit cross-lane service coupling is introduced.
+- Routing delegation preserved: `/api/v1/auth/*` and `/api/v1/platform/admin/*`
+  are delegated to `admin-api`; all other lane `/api` routes resolve to lane API.
+- Deployment topology preserved: Host Nginx remains shared reverse proxy; APIs run
+  in Docker with localhost-only bindings; frontends are static builds via Nginx.
+- Database ownership preserved: Shared Postgres model remains compatible; only
+  `admin-api` owns production migrations.
+- Security boundaries preserved: No public API port exposure; ingress remains
+  Nginx-only; cross-lane cookie behavior remains valid.
+- Workflow compliance: Plan traces back to spec and generated tasks; resulting
+  GitHub Issues can be derived directly from tasks.
+- Acceptance criteria present: Plan includes verifiable checks for Admin,
+  MoneyShyft, and ConnectShyft deploy and routing/database correctness.
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/011-platform-lane-authority-convergence-audit/
-├── spec.md
-├── plan.md
-├── research.md
-├── data-model.md
-├── quickstart.md
-└── contracts/
-    ├── audit-output-contract.md
-    └── routeshyft-artifact-contract.md
+specs/[###-feature]/
+├── plan.md              # This file (/speckit.plan command output)
+├── research.md          # Phase 0 output (/speckit.plan command)
+├── data-model.md        # Phase 1 output (/speckit.plan command)
+├── quickstart.md        # Phase 1 output (/speckit.plan command)
+├── contracts/           # Phase 1 output (/speckit.plan command)
+└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
 ### Source Code (repository root)
+<!--
+  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
+  for this feature. Delete unused options and expand the chosen structure with
+  real paths (e.g., apps/admin, packages/something). The delivered plan must
+  not include Option labels.
+-->
 
 ```text
-apps/
-├── admin-api/
-├── admin-web/
-├── connectshyft-api/
-├── connectshyft-web/
-├── migration-runner/
-├── moneyshyft-api/
-└── moneyshyft-web/
+# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
+src/
+├── models/
+├── services/
+├── cli/
+└── lib/
 
-shared/
-└── database/
+tests/
+├── contract/
+├── integration/
+└── unit/
 
-docs/
-nginx/
-architecture/
-specs/
+# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
+backend/
+├── src/
+│   ├── models/
+│   ├── services/
+│   └── api/
+└── tests/
+
+frontend/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   └── services/
+└── tests/
+
+# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
+api/
+└── [same as backend above]
+
+ios/ or android/
+└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
-**Structure Decision**: `specs/011-platform-lane-authority-convergence-audit/spec.md` is the execution source of truth for this feature. If it originated from `specs/platform-lane-authority-convergence-audit/spec.md`, it must remain synchronized before further planning or implementation. Audit evidence is drawn from `apps/*`, `shared/database`, `docs`, `nginx`, and `architecture`.
-
-## Phase 0 Research
-
-- Resolve scope-name mapping between requested labels (`money-api`, `connect-api`) and repository paths (`apps/moneyshyft-api`, `apps/connectshyft-api`).
-- Resolve runtime-authority precedence rules when deployment docs, mounted routes, and legacy runtime contracts disagree.
-- Resolve how migration authority should be classified when shared authority is canonical but runner cutover is incomplete.
-- Resolve RouteShyft classification and removal-gating criteria for live embedded artifacts.
-
-## Phase 1 Design
-
-- Model the audit entities needed to classify surfaces, RouteShyft artifacts, duplication sets, validator/script/build-path ownership, migration authority, safe-delete candidates, and blocked areas.
-- Define the contract for decision-grade audit outputs so later work can consume the classifications consistently.
-- Produce a quickstart that reproduces the audit workflow and evidence collection path from the repo.
-
-## Post-Design Constitution Check
-
-- Platform shell authority preserved: PASS
-- Lane isolation preserved: PASS
-- Routing delegation preserved: PASS
-- Deployment topology preserved: PASS
-- Database ownership preserved: PASS
-- Security boundaries preserved: PASS
-- Workflow compliance: PASS
-- Acceptance criteria present: PASS
+**Structure Decision**: [Document the selected structure and reference the real
+directories captured above]
 
 ## Complexity Tracking
 
-No constitution violations are required for this planning pass.
+> **Fill ONLY if Constitution Check has violations that must be justified**
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
+| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
