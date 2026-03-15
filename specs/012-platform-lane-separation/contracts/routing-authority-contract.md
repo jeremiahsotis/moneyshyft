@@ -23,7 +23,8 @@ Define the canonical route owners after lane convergence and the temporary allow
 ## Transitional allowances
 
 - `moneyshyft-web` may temporarily retain `/app/route/requests` because RouteShyft is transitional.
-- `moneyshyft-api` may temporarily retain a thin compatibility shim for `/api/v1/connectshyft/*` only during route cutover, but it must not remain a feature owner.
+- `moneyshyft-api` may temporarily retain a transport-only compatibility shim for `/api/v1/connectshyft/*` only during route cutover, but it must not remain a feature owner.
+- The compatibility shim must not import `apps/*/src/modules/connectshyft/**`, ConnectShyft persistence/store implementations, or `PlatformAdminService.ts`.
 
 ## Prohibited end-state conditions
 
@@ -39,3 +40,4 @@ Define the canonical route owners after lane convergence and the temporary allow
   - ConnectShyft routes to `connectshyft-api`
   - Money routes to `moneyshyft-api`
 - Router definitions must not expose prohibited end-state conditions.
+- If a compatibility shim exists, import scans must prove it is transport-only.

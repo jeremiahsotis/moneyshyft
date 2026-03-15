@@ -248,6 +248,13 @@ Admin-only concerns must remain inside Admin-owned apps.
 
 Migration execution must be owned by `migration-runner`, with feature runtimes blocked from production migration execution.
 
+Implementation of migration-runner cutover is blocked until one of the following exists:
+
+1. a constitution amendment replacing `admin-api` production migration ownership with `migration-runner`, or
+2. a documented time-bound exception approved by platform owners.
+
+Until then, `admin-api` remains the active production runner as a transitional exception only.
+
 ### FR-9 RouteShyft transitional handling
 
 RouteShyft artifacts inside MoneyShyft surfaces must be explicitly classified and preserved or deferred according to audit guidance.
@@ -255,6 +262,8 @@ RouteShyft artifacts inside MoneyShyft surfaces must be explicitly classified an
 ### FR-10 Independent build integrity
 
 Each canonical app must be able to build without depending on misplaced feature logic in another app.
+
+`connectshyft-api` must not depend on widened repo-root compilation or repo-root feature reach-through after shared-domain normalization is complete.
 
 ## Required Phases
 
@@ -271,6 +280,12 @@ Each canonical app must be able to build without depending on misplaced feature 
 - move only infrastructure/shared primitives first
 - do not move feature business logic into libs just to avoid choosing ownership
 
+### Phase 2b: shared domain and infrastructure normalization
+
+- normalize `domains/communication` and `infrastructure/communications` as canonical shared dependencies
+- tighten `apps/connectshyft-api/tsconfig.json` so ConnectShyft no longer depends on widened repo-root compilation
+- remove repo-root feature reach-through before ConnectShyft route cutover
+
 ### Phase 3: migration authority separation
 
 - confirm `migration-runner` as canonical migration execution surface
@@ -281,6 +296,7 @@ Each canonical app must be able to build without depending on misplaced feature 
 
 - repoint route entrypoints so each feature runtime is served from its canonical app
 - highest priority: ConnectShyft route ownership
+- any temporary MoneyShyft compatibility shim for `/api/v1/connectshyft/*` must remain transport-only and must not retain feature ownership
 
 ### Phase 5: feature module relocation
 
@@ -344,12 +360,16 @@ Dead/stale duplicates are not removed until canonical authority is verified.
 4. ConnectShyft runtime relocation may affect currently live bugfix locations.
 5. Migration-runner cutover may expose remaining lane-local migration assumptions.
 
-## Open Decisions to Lock During Planning
+## Locked Decisions
 
-1. Which shared primitives move first into `libs/`?
-2. Is ConnectShyft route ownership the first runtime move, or does migration-runner separation happen first?
-3. Which RouteShyft artifacts are transitional keepers vs future delete candidates?
-4. What is the exact safe order for removing stale mirrored copies after canonical routes go live?
+1. Migration-runner cutover remains governance-gated until constitution amendment or approved exception exists.
+2. Shared-domain normalization is required before ConnectShyft route cutover.
+3. `PlatformAdminService` extraction is limited to lane-neutral entitlement/authz helpers.
+4. Any MoneyShyft ConnectShyft shim is transport-only and temporary.
+5. Production migration cutover requires one authoritative artifact format and one packaging owner.
+6. Stale cleanup is inventory-driven and may remove only `dead_stale` copies after proof.
+7. `libs/ui-shell` is limited to lane-neutral shell, session, bootstrap, layout, and shared API-client primitives.
+8. One build/test order applies across all planning artifacts.
 
 ## Suggested Work Breakdown
 

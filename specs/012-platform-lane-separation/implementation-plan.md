@@ -7,16 +7,18 @@ Depends on: `architecture/LANE_AUTHORITY.md`, `architecture/LANE_INVENTORY.md`, 
 ## Phase order
 
 1. shared infrastructure extraction
-2. migration execution isolation
-3. admin canonical route ownership
-4. ConnectShyft canonical route ownership
-5. ConnectShyft module convergence
-6. RouteShyft transitional isolation
-7. stale duplicate cleanup
+2. shared domain and infrastructure normalization
+3. migration execution isolation
+4. admin canonical route ownership
+5. ConnectShyft canonical route ownership
+6. ConnectShyft module convergence
+7. RouteShyft transitional isolation
+8. stale duplicate cleanup
 
 This order is intentional:
 
 - shared libs land before cross-lane route/module moves
+- shared domain normalization lands before ConnectShyft route/module moves
 - migration execution is isolated before final route authority cleanup
 - canonical route ownership changes land before duplicate deletion
 - RouteShyft stays transitional throughout
@@ -45,12 +47,14 @@ Create the shared `libs/` layer needed to stop copying API infrastructure across
 | Shared request validators | `apps/*-api/src/validators/*.ts` | Move shared contracts first; split admin-only auth validator behavior from lane-neutral validators. |
 | Auth utility helpers | `apps/*-api/src/utils/jwt.ts`, `invitationCode.ts` | Move to shared auth/platform utility lib. |
 | DB bootstrap primitives | `apps/*-api/src/config/knex.ts` and any shared connection helpers | Extract shared DB primitive helpers; leave app knexfiles app-owned. |
+| Platform admin seam | `apps/*-api/src/services/PlatformAdminService.ts` | Extract only lane-neutral entitlement/authz helpers; leave tenant governance and admin workflow behavior app-owned. |
 
 ### Patch shape
 
 - Add `libs/` packages for shared API platform concerns.
 - Replace app-local imports with shared imports.
 - Do not move feature business logic from `services/`, `modules/connectshyft`, or `modules/route` in this phase.
+- Do not move tenant governance logic or admin workflow behavior into `libs/`.
 
 ### Regression checkpoints
 
@@ -65,7 +69,41 @@ Create the shared `libs/` layer needed to stop copying API infrastructure across
 3. `apps/connectshyft-api`: `npm run build`
 4. Run targeted Jest suites for platform middleware, auth, and any changed validators in each touched API
 
-## Phase 2: Migration Execution Isolation
+## Phase 2: Shared Domain and Infrastructure Normalization
+
+### Goal
+
+Normalize shared communication/domain infrastructure and remove ConnectShyft reliance on widened repo-root compilation before route cutover.
+
+### Exact file and function boundaries
+
+| Boundary | Current file/function | Planned phase action |
+| --- | --- | --- |
+| Shared communication domain exports | `domains/communication/**` | Normalize package boundaries and exports for app consumption through canonical shared paths. |
+| Shared communication infrastructure exports | `infrastructure/communications/**` | Normalize provider/infrastructure exports for shared consumption. |
+| ConnectShyft app compile boundary | `apps/connectshyft-api/tsconfig.json`: `rootDir`, `include` | Tighten compile boundary after shared-domain normalization. |
+| ConnectShyft route imports | `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` | Remove repo-root feature reach-through and dynamic bootstrap shortcuts. |
+| ConnectShyft module imports | `apps/connectshyft-api/src/modules/connectshyft/{providerRegistry,neighbors,identityBoundary,bridgeSessions,communicationReliability,communicationAuditLog,phoneIdentityContext}.ts` | Repoint to canonical shared imports. |
+
+### Patch shape
+
+- Normalize `domains/communication` and `infrastructure/communications` as canonical shared dependencies.
+- Tighten `connectshyft-api` TypeScript boundaries after import repointing.
+- Remove dynamic bootstrap reach-through before ConnectShyft route cutover.
+
+### Regression checkpoints
+
+1. `connectshyft-api` builds without widened `rootDir/include`.
+2. No ConnectShyft runtime import reaches through repo-root feature paths.
+3. RouteShyft remains unchanged and mounted.
+
+### Build verification for this phase
+
+1. `apps/connectshyft-api`: `npm run build`
+2. Run targeted ConnectShyft import-boundary and route bootstrap tests
+3. Run RouteShyft non-regression checks in MoneyShyft
+
+## Phase 3: Migration Execution Isolation
 
 ### Goal
 
@@ -84,6 +122,7 @@ Move canonical migration execution authority to `migration-runner` without colla
 | Feature API prod knex config | `apps/connectshyft-api/knexfile.js`: `blockLaneProdMigrationExecution`, production `migrations.directory` | Same as MoneyShyft. |
 | Canonical runner script | `apps/migration-runner/package.json`: `migrate:latest` | Make this the only canonical production migration entrypoint. |
 | Canonical runner config | `apps/migration-runner/knexfile.js`: `ensureSharedMigrationDirectory`, `createProductionConfig` | Keep shared migrations as the only authoritative execution source. |
+| Artifact-format lock | `apps/admin-api/scripts/packageSharedMigrations.js`, `apps/admin-api/knexfile.js`, `apps/migration-runner/knexfile.js` | Lock one production migration artifact format before cutover. |
 
 ### Patch shape
 
@@ -91,6 +130,7 @@ Move canonical migration execution authority to `migration-runner` without colla
 - Move execution authority to `apps/migration-runner`.
 - Keep feature APIs blocked from production migrations.
 - Update deploy/runbook references only after runner wiring is complete.
+- Do not cut over while `admin-api` packages one artifact form and `migration-runner` executes another.
 
 ### Regression checkpoints
 
@@ -107,7 +147,7 @@ Move canonical migration execution authority to `migration-runner` without colla
 4. `apps/connectshyft-api`: `npm run build`
 5. Container/image verification for `migration-runner` layout before any deploy-path cutover
 
-## Phase 3: Admin Canonical Route Ownership
+## Phase 4: Admin Canonical Route Ownership
 
 ### Goal
 
@@ -124,6 +164,7 @@ Make Admin the sole owner of admin/auth runtime entrypoints and admin SPA routes
 | Admin web router | `apps/admin-web/src/router/index.ts`: admin route records | Keep as sole owner of admin web surfaces. |
 | Money dev proxy boundary | `apps/moneyshyft-web/vite.config.ts` | Keep auth/admin API proxy only if MoneyShyft still legitimately needs auth bootstrap against Admin; do not proxy admin UI ownership through MoneyShyft routes. |
 | Cross-lane evidence probe | `apps/admin-api/src/routes/api/v1/platform-contracts.ts`: `evaluateKernelReadinessGlobalEmailUniquenessContract` | Replace repo-path probes into `apps/moneyshyft-api/*` with shared or canonical admin-owned evidence sources. |
+| Wrong-lane tests | `apps/moneyshyft-api/src/__tests__/**`, `apps/moneyshyft-api/src/routes/api/v1/__tests__/auth*.test.ts`, `apps/moneyshyft-api/src/routes/api/v1/__tests__/platform-admin*.test.ts` | Repoint or retire stale tests as route ownership changes. |
 
 ### Patch shape
 
@@ -146,7 +187,7 @@ Make Admin the sole owner of admin/auth runtime entrypoints and admin SPA routes
 4. `apps/moneyshyft-web`: `npm run build`
 5. Targeted route tests for admin/auth on `admin-api`
 
-## Phase 4: ConnectShyft Canonical Route Ownership
+## Phase 5: ConnectShyft Canonical Route Ownership
 
 ### Goal
 
@@ -167,6 +208,8 @@ Correct misplaced live ConnectShyft route ownership before any duplicate cleanup
 - Route ingress moves first.
 - MoneyShyft may keep only a thin compatibility layer during rollout.
 - No stale file deletion yet.
+- The compatibility layer must be transport-only and must not import `modules/connectshyft/**` or `PlatformAdminService.ts`.
+- Repoint or retire wrong-lane ConnectShyft route tests in MoneyShyft as part of the same slice.
 
 ### Regression checkpoints
 
@@ -182,7 +225,7 @@ Correct misplaced live ConnectShyft route ownership before any duplicate cleanup
 3. `apps/moneyshyft-api`: `npm run build`
 4. Run targeted ConnectShyft route tests on the canonical API owner first
 
-## Phase 5: ConnectShyft Module Convergence
+## Phase 6: ConnectShyft Module Convergence
 
 ### Goal
 
@@ -231,7 +274,7 @@ Finish moving ConnectShyft feature implementation into the canonical backend own
 3. `apps/moneyshyft-api`: `npm run build`
 4. `apps/admin-api`: `npm run build`
 
-## Phase 6: RouteShyft Transitional Isolation
+## Phase 7: RouteShyft Transitional Isolation
 
 ### Goal
 
@@ -259,7 +302,7 @@ Keep RouteShyft explicit and stable without folding it into the canonical lane r
 2. `apps/moneyshyft-web`: `npm run build`
 3. Any RouteShyft route/module tests
 
-## Phase 7: Stale Duplicate Cleanup
+## Phase 8: Stale Duplicate Cleanup
 
 ### Goal
 
@@ -271,10 +314,10 @@ Delete source mirrors only after canonical owners are live and verified.
 | --- | --- | --- |
 | Money admin UI mirrors | `apps/moneyshyft-web/src/views/Admin/**`, `src/services/platformAdmin.ts`, any now-unused admin-only helpers | Delete after admin route cutover is verified. |
 | Admin money route mirrors | `apps/admin-api/src/routes/api/v1/accounts.ts`, `transactions.ts`, `budgets.ts`, `categories.ts`, `goals.ts`, `debts.ts`, `income.ts`, `scenarios.ts`, `tags.ts`, `extra-money.ts`, `recurring-transactions.ts`, `splits.ts`, `settings.ts`, `households.ts`, `assignments.ts` | Delete after MoneyShyft remains the sole money runtime owner. |
-| Admin money service mirrors | `apps/admin-api/src/services/AccountService.ts` and other money-domain service files | Delete after no mounted route depends on them. |
-| ConnectShyft money service mirrors | `apps/connectshyft-api/src/services/*` money-domain service files | Delete after ConnectShyft builds without them. |
-| Admin web money mirrors | `apps/admin-web/src/views/{Accounts,Budget,Dashboard,Debts,Goals,Scenarios,Transactions,Settings}/**`, matching stores/components | Delete after admin-web remains purely admin-routed. |
-| Money/administrative ConnectShyft mirrors | any remaining `apps/moneyshyft-api/src/modules/connectshyft/**` or `apps/admin-api/src/modules/connectshyft/**` mirrors | Delete only after ConnectShyft canonical route and module parity are proven. |
+| Admin money service mirrors | inventory-approved `dead_stale` money-domain service files under `apps/admin-api/src/services/**` | Delete only after route-proof, import-proof, and test-proof. |
+| ConnectShyft money service mirrors | inventory-approved `dead_stale` files under `apps/connectshyft-api/src/services/*` | Delete only after route-proof, import-proof, and test-proof. |
+| Admin web money mirrors | inventory-approved `dead_stale` files under `apps/admin-web/src/views/**`, stores, and components | Delete only after route-proof, import-proof, and test-proof. |
+| Money/administrative ConnectShyft mirrors | inventory-approved `dead_stale` files under `apps/moneyshyft-api/src/modules/connectshyft/**` and `apps/admin-api/src/modules/connectshyft/**` | Delete only after canonical route and module parity are proven. |
 
 ### Regression checkpoints
 
@@ -296,24 +339,24 @@ Delete source mirrors only after canonical owners are live and verified.
 | Checkpoint | Earliest phase | Must remain true |
 | --- | --- | --- |
 | Shared libs do not introduce app-to-app feature imports | Phase 1 | Apps may import from `libs/`, not from other app feature trees. |
-| Feature APIs cannot run production migrations | Phase 2 | `moneyshyft-api` and `connectshyft-api` stay blocked. |
-| `migration-runner` is the canonical execution surface | Phase 2 | Shared migrations only; no feature-runtime production execution. |
-| Admin runtime authority is only Admin-owned | Phase 3 | No MoneyShyft admin/auth route ownership remains. |
-| ConnectShyft runtime authority is only Connect-owned | Phase 4 | No MoneyShyft ConnectShyft route ownership remains. |
-| ConnectShyft feature logic is only maintained in ConnectShyft-owned modules | Phase 5 | Money/Admin copies are no longer treated as active owners. |
-| RouteShyft remains live but transitional | Phase 6 | No deletion or big-bang relocation. |
-| Stale cleanup only touches runtime-dead trees | Phase 7 | Canonical owners are already verified before deletion. |
+| Feature APIs cannot run production migrations | Phase 3 | `moneyshyft-api` and `connectshyft-api` stay blocked. |
+| `migration-runner` is the canonical execution surface | Phase 3 | Shared migrations only; no feature-runtime production execution. |
+| Admin runtime authority is only Admin-owned | Phase 4 | No MoneyShyft admin/auth route ownership remains. |
+| ConnectShyft runtime authority is only Connect-owned | Phase 5 | No MoneyShyft ConnectShyft route ownership remains. |
+| ConnectShyft feature logic is only maintained in ConnectShyft-owned modules | Phase 6 | Money/Admin copies are no longer treated as active owners. |
+| RouteShyft remains live but transitional | Phase 7 | No deletion or big-bang relocation. |
+| Stale cleanup only touches runtime-dead trees | Phase 8 | Canonical owners are already verified before deletion. |
 
 ## Build Verification Order
 
 Use this order after each phase to catch owner-boundary regressions early:
 
 1. build the canonical owner changed in the phase
-2. build the immediate dependents that still import shared infrastructure touched in the phase
-3. run the narrowest affected test suites
-4. build the remaining APIs
-5. build the remaining SPAs
-6. only then do repo-wide cleanup or deletion work
+2. run the narrowest affected tests
+3. build dependent APIs
+4. build affected SPAs
+5. run RouteShyft non-regression
+6. run deployment/proxy validation when routing, auth, or migration changed
 
 ### Recommended concrete order by surface
 
@@ -337,3 +380,6 @@ Reasoning:
 - Do not cut directly from duplicated state to cleanup; route ownership must move first.
 - Do not use `libs/` to hide business-logic ownership.
 - Do not merge the ConnectShyft trees with a blind copy operation; reconcile divergence intentionally.
+- Do not keep wrong-lane route tests green by preserving stale runtime ownership.
+- Do not allow a MoneyShyft ConnectShyft shim to retain feature imports after route cutover.
+- Do not delete any tree unless `architecture/LANE_INVENTORY.md` marks it `dead_stale`.

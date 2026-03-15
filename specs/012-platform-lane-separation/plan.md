@@ -1,9 +1,7 @@
 # Implementation Plan: Platform Lane Separation and Canonical Authority Remediation
 
-**Branch**: `011-platform-lane-authority-convergence-audit` | **Date**: 2026-03-15 | **Spec**: [/Users/jeremiahotis/projects/connectshyft/specs/012-platform-lane-separation/spec.md](/Users/jeremiahotis/projects/connectshyft/specs/012-platform-lane-separation/spec.md)
+**Branch**: `012-platform-lane-separation` | **Date**: 2026-03-15 | **Spec**: [/Users/jeremiahotis/projects/connectshyft/specs/012-platform-lane-separation/spec.md](/Users/jeremiahotis/projects/connectshyft/specs/012-platform-lane-separation/spec.md)
 **Input**: Feature specification from `/Users/jeremiahotis/projects/connectshyft/specs/012-platform-lane-separation/spec.md`
-
-**Note**: The planning bootstrap resolved to branch/spec prefix `011`, but this plan intentionally targets the user-requested remediation spec in `012-platform-lane-separation`.
 
 ## Summary
 
@@ -40,6 +38,7 @@ Phase platform-lane convergence so shared infrastructure moves into `libs/` firs
 - No implementation phase may cut production migration authority over to `migration-runner` until either:
   - the constitution is amended to replace `admin-api` with `migration-runner`, or
   - an explicit time-bound exception is approved and recorded.
+- Production migration cutover must also lock one authoritative artifact format and one packaging owner before the active runner changes.
 
 ## Project Structure
 
@@ -141,7 +140,7 @@ libs/                      # Target shared location created during convergence
   - shared subsets of `apps/*-api/src/validators/*.ts`
   - `apps/*-api/src/utils/{jwt,invitationCode}.ts`
   - shared DB bootstrap primitives under `apps/*-api/src/config/{knex,database}.ts`
-  - shared portions of `apps/*-api/src/services/PlatformAdminService.ts`
+  - only lane-neutral entitlement/authz helpers extracted from `apps/*-api/src/services/PlatformAdminService.ts`
 - Frontend shared admin/platform shell:
   - `apps/moneyshyft-web/src/services/platformAdmin.ts`
   - `apps/admin-web/src/services/platformAdmin.ts`
@@ -156,6 +155,8 @@ libs/                      # Target shared location created during convergence
 - `apps/*/src/modules/route/**`
 - finance/business services under MoneyShyft
 - admin-only business operations
+- tenant governance workflows from `PlatformAdminService.ts`
+- admin workflow behavior from frontend platform admin clients and stores
 
 ### Phase 2: Shared Domain and Infrastructure Normalization
 
@@ -176,6 +177,7 @@ libs/                      # Target shared location created during convergence
 
 - Removes build-time dependence on repo-root non-lib sources.
 - Makes ConnectShyft canonical app builds independent of implicit workspace reach-through.
+- Must complete before ConnectShyft route cutover begins.
 
 ### Phase 3: Migration-Runner Separation
 
@@ -204,6 +206,7 @@ libs/                      # Target shared location created during convergence
 **Precondition**
 
 - Constitution amendment or approved exception for migration authority ownership.
+- One locked production migration artifact format shared by the active and target runner.
 
 ### Phase 4: Canonical Route Ownership
 
@@ -227,12 +230,18 @@ libs/                      # Target shared location created during convergence
   - `apps/connectshyft-web/src/router/index.ts`
 - Evidence/contract path cleanup:
   - `apps/admin-api/src/routes/api/v1/platform-contracts.ts`
+- Wrong-lane route tests and kernel assertions that still encode MoneyShyft ownership:
+  - `apps/moneyshyft-api/src/__tests__/app-entrypoint-kernel.test.ts`
+  - `apps/moneyshyft-api/src/routes/api/v1/__tests__/auth.refresh.test.ts`
+  - `apps/moneyshyft-api/src/routes/api/v1/__tests__/platform-admin*.test.ts`
 
 **Priority inside this phase**
 
 1. Remove MoneyShyft-owned admin/auth route entrypoints.
 2. Correct misplaced ConnectShyft route ownership.
 3. Remove MoneyShyft-owned admin SPA routes.
+- If a compatibility shim is needed during rollout, keep it thin and transport-only inside `moneyshyft-api`; do not leave feature logic there.
+- The shim must not import `modules/connectshyft/**`, ConnectShyft stores, or `PlatformAdminService.ts`.
 
 ### Phase 5: Feature Module Relocation
 
@@ -298,24 +307,28 @@ libs/                      # Target shared location created during convergence
 - `apps/admin-web` MoneyShyft runtime mirrors
 - `apps/connectshyft-api/src/services/*` MoneyShyft service mirrors
 - stale non-canonical RouteShyft mirrors outside MoneyShyft surfaces
+- only files explicitly marked `dead_stale` in `architecture/LANE_INVENTORY.md`
 
 ## Build Verification Order
 
-1. Shared `libs/` packages and import-boundary validation
-2. `apps/migration-runner`
-3. `apps/admin-api`
-4. `apps/connectshyft-api`
-5. `apps/moneyshyft-api`
-6. `apps/admin-web`
-7. `apps/connectshyft-web`
-8. `apps/moneyshyft-web`
-9. Focused Jest suites in this order:
-   - shared/platform primitives
-   - admin auth/platform routes
-   - ConnectShyft route and module suites
-   - MoneyShyft finance suites
-   - RouteShyft transitional suites
-10. Proxy/ingress smoke checks against Admin, MoneyShyft, and ConnectShyft routing contracts
+Per-phase verification order:
+
+1. build the canonical owner changed in the phase
+2. run the narrowest affected tests
+3. build dependent APIs
+4. build affected SPAs
+5. run RouteShyft non-regression
+6. run deployment/proxy validation when routing, auth, or migration changed
+
+Concrete owner-first order for this remediation:
+
+1. `apps/connectshyft-api`
+2. `apps/admin-api`
+3. `apps/moneyshyft-api`
+4. `apps/connectshyft-web`
+5. `apps/admin-web`
+6. `apps/moneyshyft-web`
+7. `apps/migration-runner` when the phase touches migration execution
 
 ## Post-Design Constitution Re-Check
 

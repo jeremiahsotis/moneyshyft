@@ -16,6 +16,8 @@ Define what may move into `libs/` during convergence and what must remain lane-o
 - shared utility functions
 - shared frontend shell/access primitives used by more than one lane
 - normalized shared communication domain/infrastructure primitives
+- entitlement and actor-context helpers extracted from `PlatformAdminService.ts`
+- lane-neutral session/bootstrap/layout primitives for `libs/ui-shell`
 
 ## Not allowed in `libs/`
 
@@ -24,6 +26,8 @@ Define what may move into `libs/` during convergence and what must remain lane-o
 - Admin business logic
 - RouteShyft business logic moved only to avoid ownership decisions
 - mirrored feature trees copied wholesale from apps
+- tenant governance workflows extracted from `PlatformAdminService.ts`
+- admin workflow behavior, module-governance UX, or route-specific business behavior in `libs/ui-shell`
 
 ## Consumer rule
 
@@ -38,3 +42,5 @@ Define what may move into `libs/` during convergence and what must remain lane-o
 
 - Import scans must show no canonical runtime paths importing feature logic from another app.
 - Shared packages must not contain feature module trees.
+- `libs/ui-shell` must not contain admin-only workflow behavior.
+- `libs/` extracts from `PlatformAdminService.ts` must be limited to lane-neutral entitlement/authz helpers.

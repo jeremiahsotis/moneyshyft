@@ -58,7 +58,7 @@ cd /Users/jeremiahotis/projects/connectshyft/apps/connectshyft-api && npm run bu
 ```
 
 Expected result:
-- `connectshyft-api` builds without special-case app-to-app feature imports.
+- `connectshyft-api` builds without widened `rootDir/include` or repo-root feature reach-through.
 
 ### Phase 3: Migration-Runner Separation
 
@@ -132,13 +132,18 @@ Expected result:
 
 ## Final verification order
 
-1. Shared libs build and import-boundary check
-2. `migration-runner`
-3. `admin-api`
-4. `connectshyft-api`
-5. `moneyshyft-api`
-6. `admin-web`
-7. `connectshyft-web`
-8. `moneyshyft-web`
-9. Focused route/module tests
-10. Proxy/ingress smoke verification against host-managed subdomain routing contracts
+1. build the canonical owner changed in the phase
+2. run the narrowest affected tests
+3. build dependent APIs
+4. build affected SPAs
+5. run RouteShyft non-regression
+6. run deployment/proxy validation when routing, auth, or migration changed
+
+Concrete order:
+1. `apps/connectshyft-api`
+2. `apps/admin-api`
+3. `apps/moneyshyft-api`
+4. `apps/connectshyft-web`
+5. `apps/admin-web`
+6. `apps/moneyshyft-web`
+7. `apps/migration-runner` when the phase touches migration execution
