@@ -45,6 +45,8 @@ These RouteShyft copies remain in the repo, but they are not alternate owners an
 | `apps/admin-api` | `src/routes/api/v1/route-bridge.ts` | `admin-api` no longer mounts RouteShyft bridge routes. | `safe_delete_after_convergence` |
 | `apps/admin-api` | `src/modules/route/**` | Stale module mirror retained only until cleanup proof. | `safe_delete_after_convergence` |
 
+Slice 7 cleanup removed the stale Admin RouteShyft mirrors above after canonical-owner verification.
+
 ## Module Trees That Must Converge To Canonical Ownership
 
 These are the trees that matter for ownership convergence, not every duplicate folder in the repo.
@@ -66,6 +68,8 @@ These are real duplicates, but they are not the canonical destination for conver
 | `apps/connectshyft-api/src/services/*` money-domain service tree | unmounted stale mirror | `connectshyft-api` mounts only ConnectShyft runtime. The money service tree is not canonical ConnectShyft ownership. |
 | `apps/admin-web/src/views/Accounts`, `Budget`, `Dashboard`, `Debts`, `Goals`, `Scenarios`, `Transactions`, plus matching stores/components | unmounted stale mirror | `admin-web` router mounts only admin pages. These money views are baggage, not admin runtime authority. |
 | `apps/admin-api/src/modules/route` and `apps/admin-api/src/routes/api/v1/route*.ts` | unmounted stale RouteShyft mirror | RouteShyft remains transitional in MoneyShyft surfaces, not Admin. |
+
+Slice 7 cleanup removed `apps/admin-api/src/routes/api/v1/connectshyft.ts` and the stale Admin RouteShyft mirror tree after the canonical owners were already live and verified.
 
 ## Shared-Lib Extraction Blockers
 

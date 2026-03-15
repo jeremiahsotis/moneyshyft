@@ -126,9 +126,15 @@ Expected result:
 ### Phase 7: Stale Duplicate Cleanup
 
 ```bash
-diff -rq /Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-api/src/modules/connectshyft /Users/jeremiahotis/projects/connectshyft/apps/connectshyft-api/src/modules/connectshyft
-diff -rq /Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/views/Admin /Users/jeremiahotis/projects/connectshyft/apps/admin-web/src/views/Admin
+test ! -e /Users/jeremiahotis/projects/connectshyft/apps/admin-api/src/routes/api/v1/connectshyft.ts
+test ! -e /Users/jeremiahotis/projects/connectshyft/apps/admin-api/src/routes/api/v1/route.ts
+test ! -e /Users/jeremiahotis/projects/connectshyft/apps/admin-api/src/routes/api/v1/route-bridge.ts
+test ! -d /Users/jeremiahotis/projects/connectshyft/apps/admin-api/src/modules/route
+test ! -d /Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/views/Admin
 ```
+
+Expected result:
+- only confirmed dead stale mirrors are gone, while RouteShyft keepers still remain mounted in MoneyShyft.
 
 Expected result:
 - Cleanup decisions happen only after canonical owners are live and verified.

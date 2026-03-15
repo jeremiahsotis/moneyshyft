@@ -192,9 +192,17 @@ Current transitional keepers:
 
 Current stale mirrors that are not alternate owners:
 
+- `apps/admin-api/src/routes/api/v1/route.ts` removed in Slice 7 after canonical-owner verification
+- `apps/admin-api/src/routes/api/v1/route-bridge.ts` removed in Slice 7 after canonical-owner verification
+- `apps/admin-api/src/modules/route/**` removed in Slice 7 after canonical-owner verification
+
+Removed dead mirrors after canonical-owner verification:
+
+- `apps/admin-api/src/routes/api/v1/connectshyft.ts`
 - `apps/admin-api/src/routes/api/v1/route.ts`
 - `apps/admin-api/src/routes/api/v1/route-bridge.ts`
 - `apps/admin-api/src/modules/route/**`
+- `apps/moneyshyft-web/src/views/Admin/**`
 
 ---
 
