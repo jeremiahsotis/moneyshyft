@@ -8,5 +8,8 @@ if node -e "const p=require('./package.json'); process.exit((p.scripts && p.scri
 fi
 
 echo "No lint script found; running Playwright discovery fallback"
+# Build shared libs first so app-local wrappers that target libs/dist resolve during
+# Playwright test discovery in CI.
+node scripts/build-shared-libs.mjs auth db http platform ui-shell
 # Use direct Playwright discovery so lint CI does not require backend/frontend preflight.
 npx playwright test --list
