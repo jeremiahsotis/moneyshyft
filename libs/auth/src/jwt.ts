@@ -1,6 +1,5 @@
 import crypto from 'crypto';
 import jwt, { SignOptions, JwtPayload } from 'jsonwebtoken';
-import { CookieOptions, Response } from 'express';
 
 export interface JWTPayload {
   userId: string;
@@ -58,8 +57,22 @@ const EXTENDED_SESSION_ACCESS = '7d';
 const EXTENDED_SESSION_REFRESH = '30d';
 
 type CookiePolicy = {
-  authCookie: CookieOptions;
-  csrfCookie: CookieOptions;
+  authCookie: AuthCookieOptions;
+  csrfCookie: AuthCookieOptions;
+};
+
+type AuthCookieOptions = {
+  path?: string;
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: 'strict' | 'lax' | 'none' | boolean;
+  maxAge?: number;
+  domain?: string;
+};
+
+type AuthCookieResponse = {
+  cookie(name: string, value: string, options: AuthCookieOptions): unknown;
+  clearCookie(name: string, options?: AuthCookieOptions): unknown;
 };
 
 const resolveCookieDomain = (): string | undefined => {
@@ -75,14 +88,14 @@ const getCookiePolicy = (): CookiePolicy => {
   const isProduction = process.env.NODE_ENV === 'production';
   const domain = isProduction ? resolveCookieDomain() : undefined;
 
-  const authCookie: CookieOptions = {
+  const authCookie: AuthCookieOptions = {
     path: '/',
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? 'strict' : 'lax',
   };
 
-  const csrfCookie: CookieOptions = {
+  const csrfCookie: AuthCookieOptions = {
     path: '/',
     httpOnly: false,
     secure: isProduction,
@@ -131,7 +144,7 @@ export function verifyRefreshToken(token: string): JWTPayload {
 }
 
 export function setAuthCookies(
-  res: Response,
+  res: AuthCookieResponse,
   accessToken: string,
   refreshToken: string,
   rememberMe = false
@@ -163,7 +176,7 @@ export function setAuthCookies(
   });
 }
 
-export function clearAuthCookies(res: Response): void {
+export function clearAuthCookies(res: AuthCookieResponse): void {
   const { authCookie, csrfCookie } = getCookiePolicy();
 
   res.clearCookie('access_token', { ...authCookie });
