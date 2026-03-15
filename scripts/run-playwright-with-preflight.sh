@@ -185,6 +185,12 @@ ensure_runtime_node_modules_link() {
   ln -s "$target_path" "$link_path"
 }
 
+build_shared_libs_for_runtime() {
+  local libs=(auth db http platform ui-shell)
+  echo "Managed runtime policy: building shared libs (${libs[*]})"
+  node scripts/build-shared-libs.mjs "${libs[@]}" >>"$BACKEND_LOG_FILE" 2>&1
+}
+
 redact_connection_url() {
   local raw_url="$1"
   node -e "
@@ -238,10 +244,43 @@ process.stdout.write(\`postgresql://\${encodedUser}:\${encodedPassword}@127.0.0.
 " "$db_user" "$db_password" "$db_name" "$db_port"
 }
 
+resolve_local_postgres_url() {
+  if ! command -v psql >/dev/null 2>&1; then
+    return 1
+  fi
+
+  if ! psql -h 127.0.0.1 -d postgres -Atqc "SELECT 1" >/dev/null 2>&1; then
+    return 1
+  fi
+
+  local database_name
+  database_name="$(psql -h 127.0.0.1 -d postgres -Atqc "SELECT datname FROM pg_database WHERE datname = 'moneyshyft_ci' LIMIT 1" 2>/dev/null || true)"
+  if [[ "$database_name" != "moneyshyft_ci" ]]; then
+    return 1
+  fi
+
+  local database_user
+  database_user="$(psql -h 127.0.0.1 -d postgres -Atqc "SELECT current_user" 2>/dev/null || true)"
+  if [[ -z "$database_user" ]]; then
+    return 1
+  fi
+
+  node -e "
+const [user, database] = process.argv.slice(1);
+const encodedUser = encodeURIComponent(user);
+const encodedDatabase = encodeURIComponent(database);
+process.stdout.write(\`postgresql://\${encodedUser}@127.0.0.1:5432/\${encodedDatabase}\`);
+" "$database_user" "$database_name"
+}
+
 run_backend_migrations() {
-  local initial_database_url="${DATABASE_URL:-$PLAYWRIGHT_DATABASE_URL}"
+  local initial_database_url="${DATABASE_URL:-${PLAYWRIGHT_DATABASE_URL:-${MONEYSHYFT_TEST_DATABASE_URL:-}}}"
+  if [[ -z "$initial_database_url" ]]; then
+    initial_database_url="$(resolve_local_postgres_url || true)"
+  fi
   if [[ -n "$initial_database_url" ]]; then
     export DATABASE_URL="$initial_database_url"
+    export MONEYSHYFT_TEST_DATABASE_URL="$initial_database_url"
   fi
 
   if ! (cd "$ROOT_DIR" && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" node scripts/repair-platform-events-outbox.cjs) >>"$BACKEND_LOG_FILE" 2>&1; then
@@ -263,6 +302,7 @@ run_backend_migrations() {
   echo "Managed runtime policy: migration retry using docker postgres credentials ($redacted_fallback)" >>"$BACKEND_LOG_FILE"
 
   export DATABASE_URL="$fallback_database_url"
+  export MONEYSHYFT_TEST_DATABASE_URL="$fallback_database_url"
   (cd "$BACKEND_APP_DIR" && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1
 }
 
@@ -564,6 +604,11 @@ fi
 
 if [[ ! -x "$FRONTEND_APP_DIR/node_modules/.bin/vite" ]]; then
   echo "Playwright preflight failed: frontend dependencies are missing. Run 'npm install --prefix $FRONTEND_APP_DIR' and retry."
+  exit 1
+fi
+
+if ! build_shared_libs_for_runtime; then
+  echo "Playwright preflight failed: shared lib build failed (see $BACKEND_LOG_FILE)."
   exit 1
 fi
 
