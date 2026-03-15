@@ -1,10 +1,10 @@
-import { NextFunction, Request, Response } from 'express';
 import { refusal } from '../envelopes/response';
+import { NextLike, RequestLike, ResponseLike } from '../httpTypes';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-export const csrfProtection = (req: Request, res: Response, next: NextFunction): void => {
-  if (SAFE_METHODS.has(req.method.toUpperCase())) {
+export const csrfProtection = (req: RequestLike, res: ResponseLike, next: NextLike): void => {
+  if (SAFE_METHODS.has((req.method ?? 'GET').toUpperCase())) {
     next();
     return;
   }

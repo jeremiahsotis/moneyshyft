@@ -1,4 +1,3 @@
-import { NextFunction, Request, Response } from 'express';
 import {
   buildRefusalEnvelope,
   buildSuccessEnvelope,
@@ -6,8 +5,9 @@ import {
   EnvelopeContext,
   isEnvelopePayload,
 } from '../envelopes/response';
+import { NextLike, RequestLike, ResponseLike } from '../httpTypes';
 
-type RequestWithEnvelopeContext = Request & {
+type RequestWithEnvelopeContext = RequestLike & {
   correlationId?: string | null;
   tenantId?: string | null;
 };
@@ -17,7 +17,7 @@ type ResponseLocalsWithChain = {
   responseEnvelope?: EnvelopeContext;
 };
 
-const recordChainStep = (res: Response, step: string): string[] => {
+const recordChainStep = (res: ResponseLike, step: string): string[] => {
   const locals = res.locals as ResponseLocalsWithChain;
   const chain = locals.platformMiddlewareChain || [];
   chain.push(step);
@@ -25,7 +25,7 @@ const recordChainStep = (res: Response, step: string): string[] => {
   return chain;
 };
 
-export const responseEnvelope = (req: Request, res: Response, next: NextFunction): void => {
+export const responseEnvelope = (req: RequestLike, res: ResponseLike, next: NextLike): void => {
   const request = req as RequestWithEnvelopeContext;
   const chain = recordChainStep(res, 'response-envelope');
 
@@ -38,17 +38,17 @@ export const responseEnvelope = (req: Request, res: Response, next: NextFunction
     tenantId: request.tenantId || null,
   };
 
-  if (request.path.startsWith('/api/')) {
+  if (request.path?.startsWith('/api/')) {
     const originalJson = res.json.bind(res);
     const originalStatus = res.status.bind(res);
 
-    res.json = ((body: unknown): Response => {
+    res.json = ((body: unknown): ResponseLike => {
       if (isEnvelopePayload(body)) {
         return originalJson(body);
       }
 
       const statusCode = res.statusCode || 200;
-      const context = res.locals.responseEnvelope || {
+      const context = (res.locals.responseEnvelope as EnvelopeContext | undefined) || {
         correlationId: null,
         tenantId: null,
       };
@@ -84,13 +84,13 @@ export const responseEnvelope = (req: Request, res: Response, next: NextFunction
       });
       originalStatus(statusCode);
       return originalJson(payload);
-    }) as Response['json'];
+    }) as ResponseLike['json'];
   }
 
   next();
 };
 
-export const pushPlatformChainStep = (res: Response, step: string): void => {
+export const pushPlatformChainStep = (res: ResponseLike, step: string): void => {
   recordChainStep(res, step);
 };
 

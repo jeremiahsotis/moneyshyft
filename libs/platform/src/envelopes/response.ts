@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { ResponseLike } from '../httpTypes';
 
 export type EnvelopeContext = {
   correlationId: string | null;
@@ -65,7 +65,7 @@ export type ApiEnvelopePayload =
   | RefusalEnvelopePayload
   | ErrorEnvelopePayload;
 
-const resolveContext = (res: Response): EnvelopeContext => {
+const resolveContext = (res: ResponseLike): EnvelopeContext => {
   const locals = res.locals as ResponseLocalsEnvelope;
   const envelope = locals.responseEnvelope;
   const normalizedTenant = typeof envelope?.tenantId === 'string'
@@ -151,27 +151,27 @@ export const isEnvelopePayload = (value: unknown): value is ApiEnvelopePayload =
 };
 
 export const success = (
-  res: Response,
+  res: ResponseLike,
   { httpStatus = 200, ...params }: SuccessEnvelopeParams
-): Response => {
+): ResponseLike => {
   const context = resolveContext(res);
   const payload = buildSuccessEnvelope(context, params);
   return res.status(httpStatus).json(payload);
 };
 
 export const refusal = (
-  res: Response,
+  res: ResponseLike,
   { httpStatus = 200, ...params }: RefusalEnvelopeParams
-): Response => {
+): ResponseLike => {
   const context = resolveContext(res);
   const payload = buildRefusalEnvelope(context, params);
   return res.status(httpStatus).json(payload);
 };
 
 export const error = (
-  res: Response,
+  res: ResponseLike,
   { httpStatus = 500, ...params }: ErrorEnvelopeParams
-): Response => {
+): ResponseLike => {
   const context = resolveContext(res);
   const payload = buildErrorEnvelope(context, params);
   return res.status(httpStatus).json(payload);
@@ -180,7 +180,7 @@ export const error = (
 export const systemError = error;
 
 export const replayEnvelope = (
-  res: Response,
+  res: ResponseLike,
   payload: unknown,
   httpStatus = 200
-): Response => res.status(httpStatus).send(payload);
+): ResponseLike => res.status(httpStatus).send(payload);

@@ -1,12 +1,12 @@
-import { NextFunction, Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import { pushPlatformChainStep } from './responseEnvelope';
+import { NextLike, RequestLike, ResponseLike } from '../httpTypes';
 
-type RequestWithCorrelation = Request & {
+type RequestWithCorrelation = RequestLike & {
   correlationId?: string;
 };
 
-export const requestCorrelation = (req: Request, res: Response, next: NextFunction): void => {
+export const requestCorrelation = (req: RequestLike, res: ResponseLike, next: NextLike): void => {
   const request = req as RequestWithCorrelation;
   const correlationHeader = req.header('x-correlation-id');
   const correlationId = correlationHeader && correlationHeader.trim() !== ''

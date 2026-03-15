@@ -1,4 +1,4 @@
-import { Request } from 'express';
+import { RequestLike } from '../httpTypes';
 
 export type ScopeMode = 'TENANT' | 'ORG_UNIT';
 
@@ -18,7 +18,7 @@ const normalizeValue = (value: string | null | undefined): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-type RequestWithTenantUser = Request & {
+type RequestWithTenantUser = RequestLike & {
   user?: {
     activeTenantId?: string | null;
     householdId?: string | null;
@@ -26,7 +26,7 @@ type RequestWithTenantUser = Request & {
   } | null;
 };
 
-export const resolveTenantRequestContext = (req: Request): TenantRequestContext => {
+export const resolveTenantRequestContext = (req: RequestLike): TenantRequestContext => {
   const request = req as RequestWithTenantUser;
   const userTenant = normalizeValue(request.user?.activeTenantId || request.user?.householdId || null);
   const userOrgUnit = normalizeValue(request.user?.activeOrgUnitId || null);

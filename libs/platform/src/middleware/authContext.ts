@@ -1,7 +1,7 @@
-import { NextFunction, Request, Response } from 'express';
 import { pushPlatformChainStep } from './responseEnvelope';
+import { NextLike, RequestLike, ResponseLike } from '../httpTypes';
 
-type RequestWithPlatformContext = Request & {
+type RequestWithPlatformContext = RequestLike & {
   user?: {
     userId: string;
     role: string;
@@ -15,7 +15,7 @@ type RequestWithPlatformContext = Request & {
   authContext?: unknown;
 };
 
-export const authContext = (req: Request, res: Response, next: NextFunction): void => {
+export const authContext = (req: RequestLike, res: ResponseLike, next: NextLike): void => {
   const request = req as RequestWithPlatformContext;
   request.authContext = request.user
     ? {

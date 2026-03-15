@@ -1,6 +1,6 @@
-import { NextFunction, Request, Response } from 'express';
 import { pushPlatformChainStep } from './responseEnvelope';
 import { resolveTenantRequestContext } from '../tenancy/requestContext';
+import { NextLike, RequestLike, ResponseLike } from '../httpTypes';
 
 type RequestUser = {
   activeTenantId?: string | null;
@@ -12,7 +12,7 @@ type TenancyContextDependencies = {
   verifyAccessToken: (token: string) => RequestUser;
 };
 
-type RequestWithTenancyContext = Request & {
+type RequestWithTenancyContext = RequestLike & {
   user?: RequestUser;
   tenantId?: string;
   orgUnitId?: string | null;
@@ -22,7 +22,7 @@ type RequestWithTenancyContext = Request & {
 
 export const createTenancyContextMiddleware = ({
   verifyAccessToken,
-}: TenancyContextDependencies) => (req: Request, res: Response, next: NextFunction): void => {
+}: TenancyContextDependencies) => (req: RequestLike, res: ResponseLike, next: NextLike): void => {
   const request = req as RequestWithTenancyContext;
   const accessToken = request.cookies?.access_token;
 
