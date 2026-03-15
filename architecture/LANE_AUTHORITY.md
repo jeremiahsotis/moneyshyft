@@ -101,6 +101,9 @@ Owns:
 - tenant management
 - org unit management
 - platform administration
+- `/api/v1/auth/*`
+- `/api/v1/platform/admin/*`
+- `/admin/*`
 - operational settings
 - feature/module enablement
 - migration operations governance
