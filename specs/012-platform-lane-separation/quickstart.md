@@ -117,10 +117,11 @@ Expected result:
 
 ```bash
 rg "/api/v1/route|/api/v1/route-bridge|RouteRequestLifecycleView" /Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-api /Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web
+rg "ROUTESHYFT|route\\.ts|route-bridge\\.ts|RouteRequestLifecycleView" /Users/jeremiahotis/projects/connectshyft/architecture/LANE_INVENTORY.md
 ```
 
 Expected result:
-- RouteShyft remains mounted and explicitly transitional.
+- RouteShyft remains mounted in MoneyShyft, explicitly transitional in inventory, and unmounted Admin mirrors are classified as later safe-delete candidates.
 
 ### Phase 7: Stale Duplicate Cleanup
 

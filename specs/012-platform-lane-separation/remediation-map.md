@@ -9,7 +9,7 @@ Scope: `moneyshyft-api`, `moneyshyft-web`, `connectshyft-api`, `connectshyft-web
 - `apps/moneyshyft-api/src/api/registerRoutes.ts` still mounts MoneyShyft finance/runtime and RouteShyft routes from one app, but no longer mounts admin/auth runtime or `/api/v1/connectshyft`.
 - `apps/admin-api/src/api/registerRoutes.ts` mounts only platform/admin/auth runtime routes.
 - `apps/connectshyft-api/src/app.ts` mounts only `/api/v1/connectshyft`.
-- `apps/moneyshyft-web/src/router/index.ts` still mounts admin pages and the RouteShyft lifecycle page inside the MoneyShyft SPA.
+- `apps/moneyshyft-web/src/router/index.ts` no longer mounts admin pages, but still mounts the RouteShyft lifecycle page inside the MoneyShyft SPA as an explicit transitional keeper.
 - `apps/admin-web/src/router/index.ts` mounts only admin pages.
 - `apps/connectshyft-web/src/router/index.ts` mounts only ConnectShyft pages.
 - `apps/admin-api/knexfile.js` plus `apps/admin-api/package.json` still define the current production migration execution path.
@@ -34,6 +34,16 @@ These are not canonical long-term MoneyShyft ownership, but they are still live 
 | `apps/moneyshyft-api` | `src/modules/route` | Backing module tree for the mounted RouteShyft runtime. | `transitional_keep_for_now` |
 | `apps/moneyshyft-web` | `/app/route/requests` via `RouteRequestLifecycleView.vue` | Still mounted in the live MoneyShyft SPA. | `transitional_keep_for_now` |
 | Shared schema authority | RouteShyft schema traces already promoted into shared migration authority and mirrored in lane-local sources | Schema still underpins live RouteShyft behavior. | `transitional_keep_for_now` |
+
+## Non-Money RouteShyft Mirrors To Leave Unmounted
+
+These RouteShyft copies remain in the repo, but they are not alternate owners and must not block lane convergence.
+
+| Surface | Path or tree | Why it is not an alternate owner | Classification |
+| --- | --- | --- | --- |
+| `apps/admin-api` | `src/routes/api/v1/route.ts` | `admin-api` no longer mounts RouteShyft runtime routes. | `safe_delete_after_convergence` |
+| `apps/admin-api` | `src/routes/api/v1/route-bridge.ts` | `admin-api` no longer mounts RouteShyft bridge routes. | `safe_delete_after_convergence` |
+| `apps/admin-api` | `src/modules/route/**` | Stale module mirror retained only until cleanup proof. | `safe_delete_after_convergence` |
 
 ## Module Trees That Must Converge To Canonical Ownership
 

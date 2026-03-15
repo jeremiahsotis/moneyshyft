@@ -183,6 +183,19 @@ Rules:
 3. RouteShyft code must not be silently treated as MoneyShyft ownership just because it currently lives there.
 4. RouteShyft extraction/removal is a later step unless the audit proves it blocks current convergence.
 
+Current transitional keepers:
+
+- `apps/moneyshyft-api/src/routes/api/v1/route.ts`
+- `apps/moneyshyft-api/src/routes/api/v1/route-bridge.ts`
+- `apps/moneyshyft-api/src/modules/route/**`
+- `apps/moneyshyft-web/src/views/MoneyShyft/RouteRequestLifecycleView.vue`
+
+Current stale mirrors that are not alternate owners:
+
+- `apps/admin-api/src/routes/api/v1/route.ts`
+- `apps/admin-api/src/routes/api/v1/route-bridge.ts`
+- `apps/admin-api/src/modules/route/**`
+
 ---
 
 ## Current convergence priorities

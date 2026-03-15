@@ -16,6 +16,8 @@ import {
   resolveRouteTimezoneContext,
 } from '../../../modules/route/api/timezoneAdapter';
 
+// Stale RouteShyft mirror: admin-api does not mount this route and must not be
+// treated as an alternate RouteShyft runtime owner during lane convergence.
 const TEST_TENANT_HEADER = 'x-test-route-tenant-id';
 const TEST_ACTOR_HEADER = 'x-test-route-actor-id';
 const TEST_ROLE_HEADER = 'x-test-route-role';
