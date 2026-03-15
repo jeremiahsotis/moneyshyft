@@ -8,8 +8,8 @@ Define the canonical route owners after lane convergence and the temporary allow
 
 - `admin-api` owns:
   - `/api/v1/auth/*`
-  - `/api/v1/platform/*`
   - `/api/v1/platform/admin/*`
+- Any broader `/api/v1/platform/*` ownership requires an explicit constitution amendment before implementation.
 - `moneyshyft-api` owns MoneyShyft finance/runtime routes only.
 - `connectshyft-api` owns `/api/v1/connectshyft/*`.
 - `migration-runner` owns no HTTP routes.

@@ -228,6 +228,10 @@ Relevant modules, routes, web surfaces, build paths, and execution paths must be
 
 True shared infrastructure used across lanes must be moved into `libs/`.
 
+`domains/communication/**` and `infrastructure/communications/**` are approved shared repository roots for this remediation.
+They are not app-owned feature trees and do not need to move into `libs/` during this work.
+`libs/` remains the destination for extracted platform primitives, not for all shared code unconditionally.
+
 ### FR-4 No app-to-app feature imports
 
 App feature logic must no longer depend on feature code imported directly from another app.
@@ -255,6 +259,13 @@ Implementation of migration-runner cutover is blocked until one of the following
 
 Until then, `admin-api` remains the active production runner as a transitional exception only.
 
+Phase 3 implementation is blocked until:
+
+1. Constitution V is amended to assign canonical production migration execution to `migration-runner`, or
+2. a signed exception record is added under `specs/012-platform-lane-separation/`.
+
+Until then, `admin-api` remains the active production migration runner and Phase 3 work is limited to non-cutover preparation.
+
 ### FR-9 RouteShyft transitional handling
 
 RouteShyft artifacts inside MoneyShyft surfaces must be explicitly classified and preserved or deferred according to audit guidance.
@@ -266,6 +277,12 @@ Each canonical app must be able to build without depending on misplaced feature 
 `connectshyft-api` must not depend on widened repo-root compilation or repo-root feature reach-through after shared-domain normalization is complete.
 
 ## Required Phases
+
+Numbering normalization:
+
+- Spec Phase 1 governance/inventory is implemented as Preconditions plus Phase 1 in `tasks.md`.
+- Spec Phase 2b maps to Phase 2 in `tasks.md`.
+- Task numbering is execution-oriented; ownership intent is unchanged.
 
 ### Phase 1: governance and inventory
 
@@ -297,6 +314,7 @@ Each canonical app must be able to build without depending on misplaced feature 
 - repoint route entrypoints so each feature runtime is served from its canonical app
 - highest priority: ConnectShyft route ownership
 - any temporary MoneyShyft compatibility shim for `/api/v1/connectshyft/*` must remain transport-only and must not retain feature ownership
+- admin-owned platform route authority in this remediation is limited to `/api/v1/platform/admin/*` unless the constitution is amended to widen it
 
 ### Phase 5: feature module relocation
 

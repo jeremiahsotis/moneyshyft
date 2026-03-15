@@ -39,6 +39,10 @@ Phase platform-lane convergence so shared infrastructure moves into `libs/` firs
   - the constitution is amended to replace `admin-api` with `migration-runner`, or
   - an explicit time-bound exception is approved and recorded.
 - Production migration cutover must also lock one authoritative artifact format and one packaging owner before the active runner changes.
+- Phase 3 implementation is blocked until:
+  - Constitution V is amended to assign canonical production migration execution to `migration-runner`, or
+  - a signed exception record is added under `specs/012-platform-lane-separation/`.
+- Until then, `admin-api` remains the active production migration runner and Phase 3 work is limited to non-cutover preparation.
 
 ## Project Structure
 
@@ -57,7 +61,7 @@ specs/012-platform-lane-separation/
 │   └── transitional-routeshyft-contract.md
 ├── implementation-plan.md
 ├── remediation-map.md
-└── tasks.md                # Not created by this planning step
+└── tasks.md                # Active implementation task graph for this remediation
 ```
 
 ### Source Code (repository root)
@@ -88,7 +92,13 @@ shared/
 libs/                      # Target shared location created during convergence
 ```
 
-**Structure Decision**: This is a phased monorepo convergence effort across existing lane apps. Shared infrastructure is extracted into `libs/`; canonical feature logic remains in the owning app; shared database authority remains under `shared/database/migrations`; RouteShyft stays transitional inside MoneyShyft surfaces.
+**Structure Decision**: This is a phased monorepo convergence effort across existing lane apps. Shared infrastructure is extracted into `libs/`; canonical feature logic remains in the owning app; shared database authority remains under `shared/database/migrations`; `domains/communication/**` and `infrastructure/communications/**` remain approved shared repository roots for this remediation; RouteShyft stays transitional inside MoneyShyft surfaces.
+
+Numbering normalization:
+
+- Spec Phase 1 governance/inventory is implemented as Preconditions plus Phase 1 in `tasks.md`.
+- Spec Phase 2b maps to Phase 2 in `tasks.md`.
+- Task numbering is execution-oriented; ownership intent is unchanged.
 
 ## Phase Plan
 

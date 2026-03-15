@@ -19,6 +19,11 @@ Define what may move into `libs/` during convergence and what must remain lane-o
 - entitlement and actor-context helpers extracted from `PlatformAdminService.ts`
 - lane-neutral session/bootstrap/layout primitives for `libs/ui-shell`
 
+Approved shared repository roots outside `libs/` for this remediation:
+
+- `domains/communication/**`
+- `infrastructure/communications/**`
+
 ## Not allowed in `libs/`
 
 - MoneyShyft business logic
@@ -28,6 +33,8 @@ Define what may move into `libs/` during convergence and what must remain lane-o
 - mirrored feature trees copied wholesale from apps
 - tenant governance workflows extracted from `PlatformAdminService.ts`
 - admin workflow behavior, module-governance UX, or route-specific business behavior in `libs/ui-shell`
+- lane-specific route guards in `libs/ui-shell`
+- workflow state for MoneyShyft or ConnectShyft features in `libs/ui-shell`
 
 ## Consumer rule
 
@@ -44,3 +51,4 @@ Define what may move into `libs/` during convergence and what must remain lane-o
 - Shared packages must not contain feature module trees.
 - `libs/ui-shell` must not contain admin-only workflow behavior.
 - `libs/` extracts from `PlatformAdminService.ts` must be limited to lane-neutral entitlement/authz helpers.
+- `domains/communication/**` and `infrastructure/communications/**` remain approved shared roots and are not treated as app-owned feature imports.
