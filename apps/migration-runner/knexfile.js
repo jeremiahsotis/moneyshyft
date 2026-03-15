@@ -17,12 +17,20 @@ const resolveDatabaseUrl = () => {
 
 const ensureSharedMigrationDirectory = () => {
   if (fs.existsSync(migrationDirectory)) {
-    return;
+    const packagedMigrations = fs
+      .readdirSync(migrationDirectory)
+      .filter((fileName) => fileName.endsWith('.js'));
+
+    if (packagedMigrations.length > 0) {
+      return;
+    }
   }
 
   throw new Error(
     [
       `Shared migration authority not found at ${migrationDirectory}.`,
+      'migration-runner requires packaged JS migrations at /app/shared/database/migrations.',
+      'Run npm run migrations:package locally or ensure the container image packages shared migrations before execution.',
       'migration-runner requires a flattened /app image layout with:',
       '- knexfile.js at /app/knexfile.js',
       '- shared authority at /app/shared/database/migrations'
@@ -43,7 +51,7 @@ const createProductionConfig = () => {
     migrations: {
       tableName: 'knex_migrations',
       directory: migrationDirectory,
-      extension: 'ts'
+      extension: 'js'
     }
   };
 };

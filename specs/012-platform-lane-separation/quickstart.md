@@ -64,6 +64,7 @@ Expected result:
 
 Governance gate:
 - Constitution amendment or approved exception recorded before cutover.
+- Until that gate is cleared, `admin-api` remains the transitional active runner even though `migration-runner` is the canonical target surface.
 
 Build and image checks:
 
@@ -75,7 +76,8 @@ cd /Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-api && npm run buil
 ```
 
 Expected result:
-- `migration-runner` is the only production execution surface.
+- `migration-runner` is the canonical production execution surface once governance clears the cutover.
+- Until then, `admin-api` may remain the explicit transitional active runner.
 - Feature runtimes remain blocked from production migration execution.
 
 ### Phase 4: Canonical Route Ownership

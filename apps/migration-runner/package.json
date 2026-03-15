@@ -4,7 +4,11 @@
   "private": true,
   "description": "Dedicated one-shot shared-authority migration runner",
   "scripts": {
-    "migrate:latest": "NODE_ENV=production node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production migrate:latest"
+    "migrations:package": "node ./scripts/packageSharedMigrations.js",
+    "migrate:latest": "NODE_ENV=production node ./scripts/packageSharedMigrations.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production migrate:latest",
+    "migrate:latest:prod": "npm run migrate:latest",
+    "migrate:rollback:prod": "NODE_ENV=production node ./scripts/packageSharedMigrations.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production migrate:rollback",
+    "seed:run:prod": "NODE_ENV=production node ./scripts/packageSharedMigrations.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production seed:run"
   },
   "dependencies": {
     "dotenv": "^16.3.1",

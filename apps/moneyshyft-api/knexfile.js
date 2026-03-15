@@ -1,6 +1,8 @@
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 
+const localProductionMigrationDirectory = path.join(__dirname, 'dist', 'migrations');
+
 const readEnv = (primary, fallback) => {
   const value = process.env[primary] ?? process.env[fallback];
   if (typeof value !== 'string') {
@@ -106,7 +108,7 @@ module.exports = {
     },
     migrations: {
       tableName: 'knex_migrations',
-      directory: path.join(__dirname, 'dist', 'migrations'),
+      directory: localProductionMigrationDirectory,
       extension: 'js'
     },
     seeds: {
