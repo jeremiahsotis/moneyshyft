@@ -18,10 +18,13 @@ if (invalid.length > 0) {
 }
 
 const tscCandidates = [
-  path.join(repoRoot, 'node_modules', '.bin', 'tsc'),
   path.join(repoRoot, 'apps', 'moneyshyft-api', 'node_modules', '.bin', 'tsc'),
   path.join(repoRoot, 'apps', 'admin-api', 'node_modules', '.bin', 'tsc'),
   path.join(repoRoot, 'apps', 'moneyshyft-web', 'node_modules', '.bin', 'tsc'),
+  path.join(repoRoot, 'apps', 'admin-web', 'node_modules', '.bin', 'tsc'),
+  path.join(repoRoot, 'apps', 'connectshyft-api', 'node_modules', '.bin', 'tsc'),
+  path.join(repoRoot, 'apps', 'connectshyft-web', 'node_modules', '.bin', 'tsc'),
+  path.join(repoRoot, 'node_modules', '.bin', 'tsc'),
 ];
 
 const tscPath = tscCandidates.find((candidate) => existsSync(candidate));
