@@ -84,6 +84,8 @@ Docker:
 - N/A for new behavior; existing shared PostgreSQL-backed bridge, correlation, and webhook models remain unchanged because CS-004b is test-only cleanup (004-bridge-test-fixture-normalization)
 - TypeScript (ES2022) on Node.js >=20 + Express, Knex, `pg`, Jest, ts-jest, shared communication domain modules under `domains/communication`, ConnectShyft route/module services under `apps/connectshyft-api`, and repository boundary enforcement via `node scripts/enforce-workspace-boundaries.js` (005-reliability-idempotency-audit)
 - Shared PostgreSQL using existing ConnectShyft bridge-session, message, provider-correlation, and webhook-receipt tables plus new durable `communication_idempotency_record` and `communication_audit_log`-equivalent persistence and minimal retry metadata on reliability-owned records where required (005-reliability-idempotency-audit)
+- Markdown planning artifacts for a TypeScript monorepo (Node.js >=20, Vue 3, Express) + Repository source evidence from Express route registration, Vue router registration, Vite proxy config, Knex config, Dockerfiles, nginx contracts, and deployment runbooks (011-platform-lane-authority-convergence-audit)
+- Planning artifacts stored in `specs/011-platform-lane-authority-convergence-audit`; audited production storage is shared PostgreSQL (011-platform-lane-authority-convergence-audit)
 
 ## Recent Changes
 - 001-tighten-deployment-contracts: Added TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose
