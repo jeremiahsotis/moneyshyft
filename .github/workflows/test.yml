@@ -119,11 +119,11 @@ jobs:
       ENABLE_TEST_AUTH_HARNESS: 'true'
       TEST_EMAIL: test@example.com
       TEST_PASSWORD: test1234
-      BASE_URL: http://localhost:5174
-      API_URL: http://localhost:3000
-      API_BASE_URL: http://localhost:3000
-      FRONTEND_URL: http://localhost:5174
-      VITE_API_PROXY_TARGET: http://localhost:3000
+      BASE_URL: http://127.0.0.1:5174
+      API_URL: http://127.0.0.1:3000
+      API_BASE_URL: http://127.0.0.1:3000
+      FRONTEND_URL: http://127.0.0.1:5174
+      VITE_API_PROXY_TARGET: http://127.0.0.1:3000
       PLAYWRIGHT_FRONTEND_APP_DIR: apps/connectshyft-web
     strategy:
       fail-fast: false
@@ -198,11 +198,11 @@ jobs:
       ENABLE_TEST_CONNECTSHYFT_FLAGS: 'true'
       TEST_EMAIL: test@example.com
       TEST_PASSWORD: test1234
-      BASE_URL: http://localhost:5174
-      API_URL: http://localhost:3000
-      API_BASE_URL: http://localhost:3000
-      FRONTEND_URL: http://localhost:5174
-      VITE_API_PROXY_TARGET: http://localhost:3000
+      BASE_URL: http://127.0.0.1:5174
+      API_URL: http://127.0.0.1:3000
+      API_BASE_URL: http://127.0.0.1:3000
+      FRONTEND_URL: http://127.0.0.1:5174
+      VITE_API_PROXY_TARGET: http://127.0.0.1:3000
       PLAYWRIGHT_FRONTEND_APP_DIR: apps/connectshyft-web
       JWT_SECRET: test-jwt-secret
       JWT_REFRESH_SECRET: test-jwt-refresh-secret
@@ -244,11 +244,11 @@ jobs:
       ENABLE_TEST_AUTH_HARNESS: 'true'
       TEST_EMAIL: test@example.com
       TEST_PASSWORD: test1234
-      BASE_URL: http://localhost:5174
-      API_URL: http://localhost:3000
-      API_BASE_URL: http://localhost:3000
-      FRONTEND_URL: http://localhost:5174
-      VITE_API_PROXY_TARGET: http://localhost:3000
+      BASE_URL: http://127.0.0.1:5174
+      API_URL: http://127.0.0.1:3000
+      API_BASE_URL: http://127.0.0.1:3000
+      FRONTEND_URL: http://127.0.0.1:5174
+      VITE_API_PROXY_TARGET: http://127.0.0.1:3000
       PLAYWRIGHT_FRONTEND_APP_DIR: apps/connectshyft-web
       BURN_IN_REQUIRE_TESTS: 'true'
       BURN_IN_FALLBACK_SPECS: >-

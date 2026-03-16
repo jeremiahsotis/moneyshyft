@@ -94,6 +94,17 @@ const applyResponseHeaders = (res, upstreamResponse, targetOrigin) => {
   res.writeHead(upstreamResponse.status, responseHeaders);
 };
 
+const logProxyError = (req, upstreamUrl, error) => {
+  const message = error instanceof Error ? error.message : 'Unknown proxy error';
+  const stack = error instanceof Error ? error.stack : '';
+  process.stderr.write(
+    `[playwright-api-proxy] ${new Date().toISOString()} ${req.method || 'GET'} ${req.url || '/'} -> ${upstreamUrl} failed: ${message}\n`,
+  );
+  if (stack && stack !== message) {
+    process.stderr.write(`${stack}\n`);
+  }
+};
+
 const resolveTargetOrigin = (pathname) => {
   if (pathname === '/health') {
     return null;
@@ -166,6 +177,7 @@ const proxyRequest = async (req, res) => {
     const responseBody = Buffer.from(await upstreamResponse.arrayBuffer());
     res.end(responseBody);
   } catch (error) {
+    logProxyError(req, upstreamUrl, error);
     const message = error instanceof Error ? error.message : 'Unknown proxy error';
     res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
     res.end(`Playwright API proxy request failed for ${upstreamUrl}: ${message}\n`);
