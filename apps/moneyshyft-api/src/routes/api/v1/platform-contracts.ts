@@ -797,7 +797,7 @@ const evaluateKernelReadinessGlobalEmailUniquenessContract = async (): Promise<K
   const repoRoot = resolveRepoRoot();
   const migrationPath = path.join(repoRoot, 'apps/moneyshyft-api/src/migrations/001_initial_schema.ts');
   const authServicePath = path.join(repoRoot, 'apps/moneyshyft-api/src/services/AuthService.ts');
-  const authRoutePath = path.join(repoRoot, 'apps/moneyshyft-api/src/routes/api/v1/auth.ts');
+  const authRoutePath = path.join(repoRoot, 'apps/admin-api/src/routes/api/v1/auth.ts');
   const checks = [
     {
       filePath: migrationPath,

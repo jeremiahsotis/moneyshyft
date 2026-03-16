@@ -47,6 +47,16 @@ const sortCanonically = (
     : a.eventId.localeCompare(b.eventId);
 });
 
+const expectMonotonicCanonicalRead = (
+  earlier: CanonicalEventRecord[],
+  later: CanonicalEventRecord[],
+): void => {
+  expect(later.length).toBeGreaterThanOrEqual(earlier.length);
+  earlier.forEach((event, index) => {
+    expect(later[index]).toEqual(event);
+  });
+};
+
 test.describe(
   'Story f.2 Canonical Comms Event Model and Event Store (ATDD API RED)',
   () => {
@@ -178,8 +188,19 @@ test.describe(
         request,
         storyF2Context,
         storyF2OperatorHeaders,
+        storyF2AdminHeaders,
+        storyF2InboundWebhookPayload,
         storyF2EventsByAggregateAndTypeQuery,
       }) => {
+        const webhookResponse = await apiRequest(request, {
+          method: 'POST',
+          path: storyF2Context.paths.inboundWebhook,
+          headers: storyF2AdminHeaders,
+          data: storyF2InboundWebhookPayload,
+        });
+
+        expect(webhookResponse.status()).toBe(200);
+
         const firstResponse = await apiRequest(request, {
           method: 'GET',
           path: `${storyF2Context.paths.events}${storyF2EventsByAggregateAndTypeQuery}`,
@@ -217,9 +238,10 @@ test.describe(
         const firstEvents: CanonicalEventRecord[] = firstBody.data.events;
         const secondEvents: CanonicalEventRecord[] = secondBody.data.events;
 
+        expect(firstEvents.length).toBeGreaterThan(0);
         expect(firstEvents).toEqual(sortCanonically(firstEvents));
         expect(secondEvents).toEqual(sortCanonically(secondEvents));
-        expect(firstEvents).toEqual(secondEvents);
+        expectMonotonicCanonicalRead(firstEvents, secondEvents);
       },
     );
 
