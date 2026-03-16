@@ -1178,11 +1178,11 @@ const resolveInboundWebhookCorrelation = async (input: {
   const orgUnitId = normalizeLifecycleString(payload?.orgUnitId);
   const threadId = normalizeLifecycleString(payload?.threadId);
   const providerIdentifiers = {
-    providerLegId: normalizeLifecycleString(input.providerCorrelation.providerLegId),
-    providerMessageId: normalizeLifecycleString(input.providerCorrelation.providerMessageId),
-    providerEventId: normalizeLifecycleString(input.providerCorrelation.providerEventId),
+    providerLegId: normalizeLifecycleString(input.providerCorrelation.providerLegId) || null,
+    providerMessageId: normalizeLifecycleString(input.providerCorrelation.providerMessageId) || null,
+    providerEventId: normalizeLifecycleString(input.providerCorrelation.providerEventId) || null,
   };
-  const providerNumberE164 = normalizeLifecycleString(input.providerCorrelation.providerNumber);
+  const providerNumberE164 = normalizeLifecycleString(input.providerCorrelation.providerNumber) || null;
   const tenantScopeHint = normalizeLifecycleString(input.tenantIdHint || null);
   const numberMappingTenantScope = tenantId
     || (tenantScopeHint.toLowerCase() !== 'public' ? tenantScopeHint : '')
@@ -2709,7 +2709,7 @@ const buildDeterministicTestPhone = (seed: string): string => {
 };
 
 const resolveTestOverridePhoneFallback = (input: {
-  providerKey?: string | null;
+  allowTestFallback?: boolean;
   primarySeed?: string | null;
   secondarySeed?: string | null;
 }): string | null => {
@@ -2717,7 +2717,7 @@ const resolveTestOverridePhoneFallback = (input: {
     return null;
   }
 
-  if (input.providerKey !== 'mock-sandbox') {
+  if (!input.allowTestFallback) {
     return null;
   }
 
@@ -6371,9 +6371,22 @@ const performOutboundAction = async (
   }
 
   const requestedProvider = resolveConnectShyftRequestedProviderKey(req);
-  const hasExplicitEnabledProviderPolicy =
-    normalizeLifecycleString(req.header('x-test-connectshyft-enabled-providers')).length > 0;
-  let providerSelection = resolveConnectShyftProviderAdapter({
+  const enabledProvidersHeader = normalizeLifecycleString(
+    req.header('x-test-connectshyft-enabled-providers'),
+  );
+  const hasExplicitEnabledProviderPolicy = enabledProvidersHeader.length > 0;
+  const explicitEnabledProvidersIncludeMockSandbox =
+    enabledProvidersHeader.toLowerCase().includes('mock-sandbox');
+  const allowImplicitTestPhoneFallback =
+    !requestedProvider && !hasExplicitEnabledProviderPolicy;
+  const allowPhoneFallback =
+    isConnectShyftTestOverrideEnabled()
+    && (
+      requestedProvider === 'mock-sandbox'
+      || allowImplicitTestPhoneFallback
+      || explicitEnabledProvidersIncludeMockSandbox
+    );
+  const providerSelection = resolveConnectShyftProviderAdapter({
     req,
     operation: outboundAction,
     requestedProvider,
@@ -6431,32 +6444,6 @@ const performOutboundAction = async (
     threadId,
     actorUserId,
   });
-
-  if (
-    isConnectShyftTestOverrideEnabled()
-    && !requestedProvider
-    && !hasExplicitEnabledProviderPolicy
-  ) {
-    providerSelection = resolveConnectShyftProviderAdapter({
-      req,
-      operation: outboundAction,
-      requestedProvider: 'mock-sandbox',
-    });
-    if (!providerSelection.ok) {
-      refusal(res, {
-        code: providerSelection.refusal.code,
-        message: providerSelection.refusal.message,
-        refusalType: providerSelection.refusal.refusalType,
-        httpStatus: providerSelection.refusal.httpStatus,
-        data: {
-          ...providerSelection.refusal.data,
-          context,
-          threadId,
-        },
-      });
-      return;
-    }
-  }
 
   if (!lifecycleContext.currentState) {
     respondConnectShyftBusinessRefusal(res, {
@@ -6767,7 +6754,7 @@ const performOutboundAction = async (
     operatorContactPointId = outboundCallPolicyRequest?.operatorContactPointId || null;
     if (!operatorContactPointId) {
       operatorContactPointId = resolveTestOverridePhoneFallback({
-        providerKey: providerSelection.providerResolution.resolvedProvider,
+        allowTestFallback: allowPhoneFallback,
         primarySeed: actorUserId,
         secondarySeed: threadId,
       });
@@ -6811,7 +6798,7 @@ const performOutboundAction = async (
     }
     if (!neighborContactPointId) {
       neighborContactPointId = resolveTestOverridePhoneFallback({
-        providerKey: providerSelection.providerResolution.resolvedProvider,
+        allowTestFallback: allowPhoneFallback,
         primarySeed: thread.neighborId,
         secondarySeed: threadId,
       });
@@ -6862,7 +6849,7 @@ const performOutboundAction = async (
   }
   if (outboundAction === 'message' && !outboundMessageTargetPhone) {
     outboundMessageTargetPhone = resolveTestOverridePhoneFallback({
-      providerKey: providerSelection.providerResolution.resolvedProvider,
+      allowTestFallback: allowPhoneFallback,
       primarySeed: thread.neighborId,
       secondarySeed: threadId,
     });
@@ -7301,6 +7288,14 @@ const performOutboundAction = async (
 
   const hasPostDispatchWarnings = postDispatchWarnings.length > 0;
   const reopenedFromClosed = lifecycleEvent === CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser;
+  const dispatchContext = {
+    targetPhone: outboundAction === 'call'
+      ? (outboundCallPolicyRequest?.targetPhone || neighborContactPointId || null)
+      : outboundMessageTargetPhone || null,
+    messageBodyProvided: outboundAction === 'message'
+      ? Boolean(outboundMessagePolicy?.body)
+      : false,
+  };
   const operatorFeedback = hasPostDispatchWarnings
     ? 'Outbound dispatch completed with persistence warnings. Review traceability details before retrying.'
     : priorState === 'CLOSED'
@@ -7373,7 +7368,10 @@ const performOutboundAction = async (
       providerBranchingInDomain: false,
     },
     canonicalEvent,
-    dispatch: providerDispatch,
+    dispatch: {
+      ...providerDispatch,
+      dispatchContext,
+    },
     correlationMapping,
     replaySafe: {
       duplicate: false,
@@ -8246,7 +8244,7 @@ const handleInboundWebhook = async (
       || null,
     callPolicy: CONNECTSHYFT_OUTBOUND_CALL_POLICY,
   });
-  if (bridgeWebhookProgression.handled) {
+  if (bridgeWebhookProgression.handled && !isConnectedCallEvent) {
     await markWebhookReceipt('APPLIED');
     success(res, {
       code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
@@ -8951,6 +8949,15 @@ const handleInboundWebhook = async (
         providerBranchingInDomain: false,
       },
       canonicalEvent,
+      ...(bridgeWebhookProgression.handled
+        ? {
+            bridgeSession: bridgeWebhookProgression.aggregate
+              ? buildProviderNeutralBridgeSessionState(bridgeWebhookProgression.aggregate)
+              : null,
+            bridgeEvent: bridgeWebhookProgression.domainEvent,
+            correlationMapping: bridgeWebhookProgression.correlationMapping,
+          }
+        : {}),
       threadId: resolvedVoiceThreadId,
       threadState,
       thread: responseThread,

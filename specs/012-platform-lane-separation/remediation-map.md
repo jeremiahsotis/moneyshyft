@@ -55,6 +55,7 @@ These are the trees that matter for ownership convergence, not every duplicate f
 | --- | --- | --- | --- |
 | `apps/moneyshyft-api/src/modules/connectshyft` | unmounted retained mirror | `apps/connectshyft-api/src/modules/connectshyft` | Route cutover is complete. Keep this tree only until parity proof is recorded and cleanup is allowed. |
 | `apps/moneyshyft-api/src/routes/api/v1/connectshyft.ts` | unmounted retained route entrypoint | `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` | MoneyShyft no longer mounts `/api/v1/connectshyft`. Keep the file only until full module convergence proves no unique runtime behavior remains. |
+| `apps/moneyshyft-api/src/modules/connectshyft/__tests__` and `apps/moneyshyft-api/src/routes/api/v1/__tests__/connectshyft*.test.ts` except `connectshyft.route-ownership.test.ts` | non-runtime stale mirror tests | `connectshyft-api` canonical tests and MoneyShyft ownership-only assertions | These tests exercise an unmounted MoneyShyft ConnectShyft mirror. They should not gate MoneyShyft CI once route ownership has moved. |
 | `apps/moneyshyft-web/src/views/Admin` | live wrong-lane UI mirror | `apps/admin-web/src/views/Admin` | Admin-web is already canonical. The MoneyShyft copy should be retired after route cutover, not preserved as a second owner. |
 
 ## Mirrored Trees That Should Not Be Treated As Move Targets

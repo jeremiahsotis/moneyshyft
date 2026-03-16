@@ -382,9 +382,7 @@ const resolveProviderRegistryConfig = (
     const enabledProviders = parseProviderList(req.header(TEST_ENABLED_PROVIDERS_HEADER));
     const disabledProviders = parseProviderList(req.header(TEST_DISABLED_PROVIDERS_HEADER));
     return {
-      enabledProviders: enabledProviders.length > 0
-        ? enabledProviders
-        : [...DEFAULT_ENABLED_PROVIDERS, 'mock-sandbox'],
+      enabledProviders: enabledProviders.length > 0 ? enabledProviders : [...DEFAULT_ENABLED_PROVIDERS],
       disabledProviders,
       rolloutAllowlist: rolloutAllowlist.allowlist,
       rolloutAllowlistConfigured: rolloutAllowlist.configured,
