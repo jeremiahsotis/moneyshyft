@@ -3,10 +3,16 @@ FROM node:20-alpine AS build
 WORKDIR /workspace/apps/connectshyft-api
 
 COPY apps/connectshyft-api ../../apps/connectshyft-api
+COPY libs ../../libs
+COPY scripts ../../scripts
+COPY tsconfig.base.json ../../tsconfig.base.json
 COPY domains ../../domains
 COPY infrastructure ../../infrastructure
 
 RUN npm install && npm cache clean --force
+RUN mkdir -p /workspace/apps/moneyshyft-api /workspace/apps/admin-api \
+  && ln -s /workspace/apps/connectshyft-api/node_modules /workspace/apps/moneyshyft-api/node_modules \
+  && ln -s /workspace/apps/connectshyft-api/node_modules /workspace/apps/admin-api/node_modules
 
 RUN npm run build
 RUN npm prune --omit=dev && npm cache clean --force
