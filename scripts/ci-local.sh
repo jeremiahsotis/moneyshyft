@@ -16,10 +16,10 @@ echo "== backend jest/workspace test surface =="
 bash scripts/ci-run-playwright-stack.sh bash scripts/backend-jest-ci.sh
 
 echo "== test changed =="
-bash scripts/test-changed.sh "$base_ref"
+bash scripts/ci-run-playwright-stack.sh bash scripts/test-changed.sh "$base_ref"
 
 echo "== burn-in (10 iterations) =="
-bash scripts/burn-in.sh 10 "$base_ref"
+bash scripts/ci-run-playwright-stack.sh bash scripts/burn-in.sh 10 "$base_ref"
 
 echo "== quality gates =="
 bash scripts/quality-gates.sh

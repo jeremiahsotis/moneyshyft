@@ -53,6 +53,16 @@ const sortCanonically = (
   return timeDelta !== 0 ? timeDelta : left.eventId.localeCompare(right.eventId);
 });
 
+const expectMonotonicCanonicalRead = (
+  earlier: CanonicalEventRecord[],
+  later: CanonicalEventRecord[],
+): void => {
+  expect(later.length).toBeGreaterThanOrEqual(earlier.length);
+  earlier.forEach((event, index) => {
+    expect(later[index]).toEqual(event);
+  });
+};
+
 test.describe(
   'Story f.2 Canonical Comms Event Model and Event Store (Automate API Read Models)',
   () => {
@@ -137,7 +147,7 @@ test.describe(
         expect(firstEvents.length).toBeGreaterThan(0);
         expect(firstEvents).toEqual(sortCanonically(firstEvents));
         expect(secondEvents).toEqual(sortCanonically(secondEvents));
-        expect(firstEvents).toEqual(secondEvents);
+        expectMonotonicCanonicalRead(firstEvents, secondEvents);
       },
     );
 

@@ -37,13 +37,9 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
     expect(isSymlink('apps', 'moneyshyft-web', 'src', 'features', 'connectshyft')).toBe(false);
   });
 
-  test('[P0] transitional host bridges preserve runtime module identity and route registration @P0', () => {
+  test('[P0] final host boundaries remove stale connectshyft host bridges and keep canonical route ownership @P0', () => {
     const registerRoutes = fs.readFileSync(
       resolvePath('apps', 'moneyshyft-api', 'src', 'api', 'registerRoutes.ts'),
-      'utf8',
-    );
-    const moneyRouteModule = fs.readFileSync(
-      resolvePath('apps', 'moneyshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
       'utf8',
     );
     const connectRouteModule = fs.readFileSync(
@@ -52,9 +48,7 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
     );
     expect(registerRoutes.includes("{ path: '/api/v1/connectshyft', modulePath: '../routes/api/v1/connectshyft' }")).toBe(false);
 
-    expect(
-      isSymlink('apps', 'moneyshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
-    ).toBe(false);
+    expect(pathExists('apps', 'moneyshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts')).toBe(false);
     for (const routeSignature of [
       "router.get('/threads/:threadId'",
       "router.post('/threads/:threadId/claim'",
@@ -63,7 +57,6 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
       "router.post('/threads/:threadId/call'",
       "router.post('/threads/:threadId/messages'",
     ]) {
-      expect(moneyRouteModule.includes(routeSignature)).toBe(true);
       expect(connectRouteModule.includes(routeSignature)).toBe(true);
     }
 
