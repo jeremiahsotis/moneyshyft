@@ -98,6 +98,8 @@ Docker:
 - Shared PostgreSQL; no schema or migration changes in this slice (016-detach-moneyshyft-mirrors)
 - Markdown planning artifacts for a TypeScript/Vue/Express monorepo on Node.js >=20 + `rg`, `diff`, repository boundary script `node scripts/enforce-workspace-boundaries.js`, route ownership script `bash scripts/verify-connectshyft-route-ownership.sh`, app-local `npm run build` commands (017-lane-closure-audit)
 - N/A for new persisted data; audit uses repository files and inventory records as evidence (017-lane-closure-audit)
+- TypeScript (ES2022) on Node.js >=20 plus Markdown planning artifacts + Express, Jest, ts-jest, Knex, pg, repo search via `rg`, workspace boundary enforcement, lane inventory governance (018-remove-connectshyft-mirrors)
+- Shared PostgreSQL remains unchanged; no schema or migration work in this slice (018-remove-connectshyft-mirrors)
 
 ## Recent Changes
 - 001-tighten-deployment-contracts: Added TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose
