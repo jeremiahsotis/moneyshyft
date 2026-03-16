@@ -7,7 +7,7 @@ import { refusal } from '../platform/envelopes/response';
 import {
   evaluateActorTenantModuleEntitlement,
   type PlatformAdminActorContext,
-} from '../services/PlatformAdminService';
+} from '../platform/tenantModuleEntitlements';
 import type { Knex } from 'knex';
 
 type RouteRegistration = {

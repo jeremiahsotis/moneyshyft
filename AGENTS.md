@@ -90,6 +90,8 @@ Docker:
 - Shared PostgreSQL plus shared migration authority under `shared/database/migrations` (012-platform-lane-separation)
 - TypeScript (ES2022) for Vue 3 and Express monorepo surfaces + Vue 3, Vue Router, Pinia, Express, Jest, ripgrep-based reference verification (013-admin-leftovers-cleanup)
 - N/A for new persisted data; existing inventory and planning docs only (013-admin-leftovers-cleanup)
+- TypeScript (ES2022) on Node.js >=20 + Express, Knex, pg, Jest/ts-jest, existing `libs/platform`, existing `libs/auth`, existing shared communication domain modules under `domains/communication` (014-break-dependency-anchors)
+- Shared PostgreSQL (`platform` schema plus existing lane data tables) (014-break-dependency-anchors)
 
 ## Recent Changes
 - 001-tighten-deployment-contracts: Added TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose

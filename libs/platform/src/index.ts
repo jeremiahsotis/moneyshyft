@@ -11,4 +11,5 @@ export * from './sessions/PlatformSessionStore';
 export * from './tenancy/orgUnitAccess';
 export * from './tenancy/requestContext';
 export * from './tenancy/tenantScope';
+export * from './tenantModuleEntitlements';
 export * from './time/timezoneService';

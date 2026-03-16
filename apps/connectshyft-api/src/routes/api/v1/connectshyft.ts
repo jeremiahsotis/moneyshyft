@@ -70,7 +70,7 @@ import {
 import {
   evaluateActorTenantModuleEntitlement,
   type PlatformAdminActorContext,
-} from '../../../services/PlatformAdminService';
+} from '../../../platform/tenantModuleEntitlements';
 import {
   parseConnectShyftInboxBucket,
   resolveConnectShyftThreadActions,
