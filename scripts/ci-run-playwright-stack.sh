@@ -15,6 +15,7 @@ api_proxy_log="$runtime_dir/api-proxy.log"
 frontend_log="$runtime_dir/frontend.log"
 money_frontend_log="$runtime_dir/money-frontend.log"
 connect_frontend_log="$runtime_dir/connect-frontend.log"
+admin_frontend_log="$runtime_dir/admin-frontend.log"
 frontend_proxy_log="$runtime_dir/frontend-proxy.log"
 
 : > "$money_backend_log"
@@ -24,6 +25,7 @@ frontend_proxy_log="$runtime_dir/frontend-proxy.log"
 : > "$frontend_log"
 : > "$money_frontend_log"
 : > "$connect_frontend_log"
+: > "$admin_frontend_log"
 : > "$frontend_proxy_log"
 
 export TEST_ENV="${TEST_ENV:-local}"
@@ -60,13 +62,15 @@ frontend_port="$(node -e "const u = new URL(process.argv[1]); process.stdout.wri
 internal_frontend_host="${PLAYWRIGHT_INTERNAL_FRONTEND_HOST:-127.0.0.1}"
 money_frontend_dir="apps/moneyshyft-web"
 connect_frontend_dir="apps/connectshyft-web"
+admin_frontend_dir="apps/admin-web"
 frontend_app_dir="$PLAYWRIGHT_FRONTEND_APP_DIR"
 use_multi_frontend_proxy=false
 export NODE_PATH="$(pwd)/apps/moneyshyft-api/node_modules:$(pwd)/apps/connectshyft-api/node_modules:$(pwd)/apps/admin-api/node_modules${NODE_PATH:+:$NODE_PATH}"
 
 if [[ "$PLAYWRIGHT_MULTI_FRONTEND_PROXY" != "false" \
   && -f "$money_frontend_dir/package.json" \
-  && -f "$connect_frontend_dir/package.json" ]]; then
+  && -f "$connect_frontend_dir/package.json" \
+  && -f "$admin_frontend_dir/package.json" ]]; then
   use_multi_frontend_proxy=true
 fi
 
@@ -97,6 +101,10 @@ print_runtime_logs() {
   if [[ -f "$connect_frontend_log" ]]; then
     echo "==== ConnectShyft frontend log tail ===="
     tail -n 200 "$connect_frontend_log" || true
+  fi
+  if [[ -f "$admin_frontend_log" ]]; then
+    echo "==== Admin frontend log tail ===="
+    tail -n 200 "$admin_frontend_log" || true
   fi
   if [[ -f "$frontend_proxy_log" ]]; then
     echo "==== Frontend proxy log tail ===="
@@ -155,6 +163,7 @@ cleanup() {
   cleanup_pid "${API_PROXY_PID:-}"
   cleanup_pid "${MONEY_FRONTEND_PID:-}"
   cleanup_pid "${CONNECT_FRONTEND_PID:-}"
+  cleanup_pid "${ADMIN_FRONTEND_PID:-}"
   cleanup_pid "${FRONTEND_PID:-}"
   cleanup_pid "${ADMIN_BACKEND_PID:-}"
   cleanup_pid "${CONNECT_BACKEND_PID:-}"
@@ -346,8 +355,10 @@ wait_for_http "${API_URL%/}/health" "unified API proxy health endpoint" "$API_PR
 if [[ "$use_multi_frontend_proxy" == "true" ]]; then
   money_frontend_port=$((frontend_port + 1))
   connect_frontend_port=$((frontend_port + 2))
+  admin_frontend_port=$((frontend_port + 3))
   money_frontend_url="http://${internal_frontend_host}:${money_frontend_port}"
   connect_frontend_url="http://${internal_frontend_host}:${connect_frontend_port}"
+  admin_frontend_url="http://${internal_frontend_host}:${admin_frontend_port}"
 
   echo "Starting MoneyShyft frontend dev server on ${money_frontend_url}"
   (cd "$money_frontend_dir" && \
@@ -365,12 +376,24 @@ if [[ "$use_multi_frontend_proxy" == "true" ]]; then
     > "$connect_frontend_log" 2>&1 &
   CONNECT_FRONTEND_PID=$!
 
+  echo "Starting Admin frontend dev server on ${admin_frontend_url}"
+  (cd "$admin_frontend_dir" && \
+    VITE_API_PROXY_TARGET="$API_URL" \
+    VITE_ADMIN_API_PROXY_TARGET="$API_URL" \
+    npm run dev -- --host "$internal_frontend_host" --port "$admin_frontend_port" --strictPort) \
+    > "$admin_frontend_log" 2>&1 &
+  ADMIN_FRONTEND_PID=$!
+
   wait_for_http "${money_frontend_url}/login" "MoneyShyft frontend login page" "$MONEY_FRONTEND_PID" 30 || {
     echo "MoneyShyft frontend failed to start on ${money_frontend_url}."
     exit 1
   }
   wait_for_http "${connect_frontend_url}/login" "ConnectShyft frontend login page" "$CONNECT_FRONTEND_PID" 30 || {
     echo "ConnectShyft frontend failed to start on ${connect_frontend_url}."
+    exit 1
+  }
+  wait_for_http "${admin_frontend_url}/login" "Admin frontend login page" "$ADMIN_FRONTEND_PID" 30 || {
+    echo "Admin frontend failed to start on ${admin_frontend_url}."
     exit 1
   }
 
@@ -382,6 +405,7 @@ if [[ "$use_multi_frontend_proxy" == "true" ]]; then
     PLAYWRIGHT_API_PROXY_TARGET="$API_URL" \
     PLAYWRIGHT_MONEY_FRONTEND_URL="$money_frontend_url" \
     PLAYWRIGHT_CONNECT_FRONTEND_URL="$connect_frontend_url" \
+    PLAYWRIGHT_ADMIN_FRONTEND_URL="$admin_frontend_url" \
     node scripts/playwright-frontend-proxy.mjs) > "$frontend_proxy_log" 2>&1 &
   FRONTEND_PROXY_PID=$!
 

@@ -75,7 +75,7 @@ test.describe(
           ok: false,
           code: 'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH',
           refusalType: 'business',
-          tenantId: null,
+          tenantId: storyB1Context.tenantId,
         });
         expect(body).not.toHaveProperty('data.neighbor');
       },

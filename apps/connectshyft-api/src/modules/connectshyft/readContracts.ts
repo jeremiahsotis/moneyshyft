@@ -443,7 +443,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R3_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R3_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r3-unclaimed-voicemail-1001',
+    threadId: 'c5d1de83-5a0e-45e0-8f25-eba1bd21a985',
     state: 'UNCLAIMED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -459,7 +459,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R3_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R3_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r3-claimed-voicemail-1002',
+    threadId: 'b58069cc-1ab6-4ada-8a95-c468780a45a3',
     state: 'CLAIMED',
     bucket: 'mine',
     claimedByUserId: 'user-connectshyft-ux-r3-operator',
@@ -475,7 +475,7 @@ const CONNECTSHYFT_THREAD_SEED_DATA: readonly ConnectShyftThreadSeed[] = [
   {
     tenantId: CONNECTSHYFT_UX_R3_SCOPE.tenantId,
     orgUnitId: CONNECTSHYFT_UX_R3_SCOPE.orgUnitId,
-    threadId: 'thread-ux-r3-closed-voice-1003',
+    threadId: 'cba65a18-a1bc-45c3-838d-72f80135d6af',
     state: 'CLOSED',
     bucket: 'inbox',
     claimedByUserId: null,
@@ -834,11 +834,15 @@ const buildThreadDisplayRecord = (input: {
   summary: string;
   urgencyLabel: string;
   lastInboundCsNumberId: string;
+  preferredOutboundCsNumberId?: string;
   preferredOutboundLabel: string;
   voicemailLabel: string | null;
 }): ConnectShyftThreadDisplayRecord => {
   const normalizedSummary = normalizeString(input.summary) || 'Conversation in progress.';
-  const outboundContext = normalizeString(input.preferredOutboundLabel) || 'Provider-neutral dispatch line';
+  const outboundContext = normalizeString(input.preferredOutboundLabel)
+    || (normalizeString(input.preferredOutboundCsNumberId)
+      ? 'cs-number outbound line configured'
+      : 'Provider-neutral dispatch line');
   const inboundContext = normalizeString(input.lastInboundCsNumberId)
     ? 'cs-number inbound line configured'
     : 'Inbound line unavailable';
@@ -919,6 +923,7 @@ const toSummaryRecord = (
       summary: seed.summary,
       urgencyLabel,
       lastInboundCsNumberId: seed.lastInboundCsNumberId,
+      preferredOutboundCsNumberId: seed.preferredOutboundCsNumberId,
       preferredOutboundLabel: seed.preferredOutboundLabel,
       voicemailLabel,
     }),
@@ -1238,6 +1243,7 @@ const mapDbRowToSummary = (
       summary: normalizeString(row.summary ?? row.preview ?? row.last_message_preview),
       urgencyLabel: resolveConnectShyftUrgencyLabel(escalationStage),
       lastInboundCsNumberId: normalizeString(row.last_inbound_cs_number_id),
+      preferredOutboundCsNumberId,
       preferredOutboundLabel,
       voicemailLabel,
     }),

@@ -95,8 +95,8 @@ describe('connectshyft read contracts', () => {
       actorUserId: 'user-connectshyft-ux-r3-operator',
     });
 
-    const mineVoicemail = mine.find((item) => item.threadId === 'thread-ux-r3-claimed-voicemail-1002');
-    const inboxVoicemail = inbox.find((item) => item.threadId === 'thread-ux-r3-unclaimed-voicemail-1001');
+    const mineVoicemail = mine.find((item) => item.threadId === 'b58069cc-1ab6-4ada-8a95-c468780a45a3');
+    const inboxVoicemail = inbox.find((item) => item.threadId === 'c5d1de83-5a0e-45e0-8f25-eba1bd21a985');
 
     expect(mineVoicemail).toMatchObject({
       state: 'CLAIMED',
@@ -110,7 +110,7 @@ describe('connectshyft read contracts', () => {
       voicemailIndicator: true,
       voicemailLabel: 'Voicemail received',
     });
-    expect(inbox.some((item) => item.threadId === 'thread-ux-r3-claimed-voicemail-1002')).toBe(false);
+    expect(inbox.some((item) => item.threadId === 'b58069cc-1ab6-4ada-8a95-c468780a45a3')).toBe(false);
   });
 
   it('returns thread-detail bucket from actor perspective for claimed threads', () => {

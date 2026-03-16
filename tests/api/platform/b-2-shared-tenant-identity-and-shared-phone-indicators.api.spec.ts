@@ -274,8 +274,8 @@ test.describe(
           ok: false,
           code: 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND',
           refusalType: 'business',
-          correlationId: null,
-          tenantId: null,
+          correlationId: expect.any(String),
+          tenantId: storyB2Context.crossTenantId,
         });
         expect(body).not.toHaveProperty('data.neighbor');
         expect(body).not.toHaveProperty('data.neighbors');
@@ -311,8 +311,8 @@ test.describe(
           code: 'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH',
           refusalType: 'business',
           message: expect.any(String),
-          correlationId: null,
-          tenantId: null,
+          correlationId: expect.any(String),
+          tenantId: storyB2Context.crossTenantId,
         });
         expect(body).not.toHaveProperty('data.neighbor');
         expect(body).not.toHaveProperty('data.phones');
