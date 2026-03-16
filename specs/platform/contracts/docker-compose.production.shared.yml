@@ -26,8 +26,8 @@ services:
 
   money-api:
     build:
-      context: ./apps/moneyshyft-api
-      dockerfile: Dockerfile.production
+      context: .
+      dockerfile: ./apps/moneyshyft-api/Dockerfile.production
     container_name: money-api
     restart: unless-stopped
     env_file:

@@ -61,7 +61,7 @@ git clone https://github.com/jeremiahotis/moneyshyft.git shyftunity
 cd shyftunity
 
 # Use the normalized three-API production compose contract
-cp architecture/contracts/docker-compose.production.shared.yml docker-compose.yml
+cp specs/platform/contracts/docker-compose.production.shared.yml docker-compose.yml
 ```
 
 Create a local compose variable file (gitignored):
