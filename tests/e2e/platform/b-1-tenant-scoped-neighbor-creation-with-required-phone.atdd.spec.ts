@@ -90,10 +90,9 @@ test.describe(
           code: 'CONNECTSHYFT_ORGUNIT_TENANT_MISMATCH',
           refusalType: 'business',
           correlationId: expect.any(String),
-          tenantId: context.tenantId,
+          tenantId: null,
         });
       },
     );
   },
 );
-

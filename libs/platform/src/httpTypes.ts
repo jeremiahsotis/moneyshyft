@@ -6,7 +6,6 @@ export type RequestLike = {
   originalUrl?: string;
   cookies?: Record<string, string | undefined>;
   header(name: string): string | undefined;
-  [key: string]: unknown;
 };
 
 export type ResponseLike = {

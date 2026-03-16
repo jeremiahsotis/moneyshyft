@@ -5,7 +5,7 @@ import AuthService from '../../../services/AuthService';
 import PasswordResetService from '../../../services/PasswordResetService';
 import { setAuthCookies, clearAuthCookies, verifyRefreshToken, generateAccessToken, generateRefreshToken } from '../../../utils/jwt';
 import { validateRequest } from '../../../middleware/validate';
-import { forgotPasswordSchema, loginSchema, resetPasswordSchema } from '../../../validators/auth.validators';
+import { forgotPasswordSchema, loginSchema, resetPasswordSchema, signupSchema } from '../../../validators/auth.validators';
 import { authenticateToken } from '../../../middleware/auth';
 import { refusal, success, error as errorEnvelope } from '../../../platform/envelopes/response';
 import logger from '../../../utils/logger';
@@ -386,15 +386,35 @@ const ensureHarnessUser = async (email: string, password: string): Promise<void>
 
 /**
  * POST /api/v1/auth/signup
- * Signup is disabled. Users must be provisioned through admin workflows.
+ * Signup is disabled outside the test auth harness. Users must be provisioned through admin workflows.
  */
-router.post('/signup', async (_req: Request, res: Response) => {
-  refusal(res, {
-    code: 'SIGNUP_DISABLED',
-    message: 'Signup is disabled. Contact an administrator for account access.',
-    refusalType: 'client',
-    httpStatus: 410,
-  });
+router.post('/signup', validateRequest(signupSchema), async (req: Request, res: Response) => {
+  if (!isTestAuthHarnessEnabled) {
+    refusal(res, {
+      code: 'SIGNUP_DISABLED',
+      message: 'Signup is disabled. Contact an administrator for account access.',
+      refusalType: 'client',
+      httpStatus: 410,
+    });
+    return;
+  }
+
+  try {
+    const { user, accessToken, refreshToken, invitationCode } = await AuthService.signup(req.body);
+
+    setAuthCookies(res, accessToken, refreshToken);
+
+    res.status(201).json({
+      message: 'User created successfully',
+      user,
+      invitationCode,
+    });
+  } catch (error) {
+    logger.error('Signup error:', error);
+    res.status(400).json({
+      error: error instanceof Error ? error.message : 'Signup failed',
+    });
+  }
 });
 
 /**

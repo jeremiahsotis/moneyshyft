@@ -50,7 +50,7 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
       resolvePath('apps', 'connectshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
       'utf8',
     );
-    expect(registerRoutes.includes("{ path: '/api/v1/connectshyft', modulePath: '../routes/api/v1/connectshyft' }")).toBe(true);
+    expect(registerRoutes.includes("{ path: '/api/v1/connectshyft', modulePath: '../routes/api/v1/connectshyft' }")).toBe(false);
 
     expect(
       isSymlink('apps', 'moneyshyft-api', 'src', 'routes', 'api', 'v1', 'connectshyft.ts'),
@@ -66,6 +66,12 @@ test.describe('Story 8.4 atdd - lane extraction transition strategy', () => {
       expect(moneyRouteModule.includes(routeSignature)).toBe(true);
       expect(connectRouteModule.includes(routeSignature)).toBe(true);
     }
+
+    expect(
+      fs.readFileSync(resolvePath('apps', 'connectshyft-api', 'src', 'app.ts'), 'utf8').includes(
+        "app.use('/api/v1/connectshyft', connectShyftRouter);",
+      ),
+    ).toBe(true);
 
     expect(
       isSymlink('apps', 'moneyshyft-web', 'src', 'features', 'connectshyft'),

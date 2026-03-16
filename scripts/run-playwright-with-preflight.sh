@@ -287,7 +287,8 @@ run_backend_migrations() {
     return 1
   fi
 
-  if (cd "$BACKEND_APP_DIR" && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1; then
+  if (cd "$BACKEND_APP_DIR" && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1 \
+    && (cd "$ROOT_DIR/apps/connectshyft-api" && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1; then
     return 0
   fi
 
@@ -304,6 +305,7 @@ run_backend_migrations() {
   export DATABASE_URL="$fallback_database_url"
   export MONEYSHYFT_TEST_DATABASE_URL="$fallback_database_url"
   (cd "$BACKEND_APP_DIR" && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1
+  (cd "$ROOT_DIR/apps/connectshyft-api" && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest) >>"$BACKEND_LOG_FILE" 2>&1
 }
 
 build_tenant_probe_token() {

@@ -257,6 +257,7 @@ node scripts/build-shared-libs.mjs auth db http platform ui-shell
 
 echo "Running backend migrations"
 NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix apps/moneyshyft-api
+NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix apps/connectshyft-api
 
 echo "Ensuring platform events/outbox tables are present"
 NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" node scripts/repair-platform-events-outbox.cjs
