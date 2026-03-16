@@ -54,7 +54,7 @@ describe('connectshyft sms preference overrides', () => {
     const resolved = await service.resolvePreference({
       tenantId: 'tenant-connectshyft-c4',
       orgUnitId: 'org-connectshyft-c4-east',
-      threadId: 'thread-c4-unclaimed-pref-no-1004',
+      threadId: 'cc9bb30e-4b36-4419-8563-819432f4ba14',
     });
 
     expect(resolved).toEqual({
@@ -70,7 +70,7 @@ describe('connectshyft sms preference overrides', () => {
     const resolved = await service.resolvePreference({
       tenantId: 'tenant-connectshyft-d4',
       orgUnitId: 'org-connectshyft-d4-east',
-      threadId: 'thread-d4-unclaimed-prefers-no-1004',
+      threadId: '59b44eb4-c8e7-4cd1-8a22-bbeceb871dd7',
     });
 
     expect(resolved).toEqual({
@@ -86,7 +86,7 @@ describe('connectshyft sms preference overrides', () => {
     const resolved = await service.resolvePreference({
       tenantId: 'tenant-connectshyft-d4',
       orgUnitId: 'org-connectshyft-d4-east',
-      threadId: 'thread-d4-closed-prefers-no-1005',
+      threadId: '06a77807-6575-4c63-8824-38a89f9dae12',
     });
 
     expect(resolved).toEqual({
@@ -102,12 +102,12 @@ describe('connectshyft sms preference overrides', () => {
     const unclaimed = await service.resolvePreference({
       tenantId: 'tenant-connectshyft-ux-r4',
       orgUnitId: 'org-connectshyft-ux-r4-east',
-      threadId: 'thread-ux-r4-unclaimed-prefers-no-1004',
+      threadId: '21f2866f-37ff-42da-80fc-0b5d2c3bc09d',
     });
     const closed = await service.resolvePreference({
       tenantId: 'tenant-connectshyft-ux-r4',
       orgUnitId: 'org-connectshyft-ux-r4-east',
-      threadId: 'thread-ux-r4-closed-prefers-no-1005',
+      threadId: 'e37b00e0-228f-43c0-8c70-b3d0a5bfad40',
     });
 
     expect(unclaimed).toEqual({
@@ -143,7 +143,7 @@ describe('connectshyft sms preference overrides', () => {
       service.persistApprovedOverride({
         tenantId: 'tenant-connectshyft-c4',
         orgUnitId: 'org-connectshyft-c4-east',
-        threadId: 'thread-c4-unclaimed-pref-no-1004',
+        threadId: 'cc9bb30e-4b36-4419-8563-819432f4ba14',
         neighborId: null,
         actorUserId: '00000000-0000-4000-8000-000000000001',
         preferenceValue: 'NO',
@@ -169,7 +169,7 @@ describe('connectshyft sms preference overrides', () => {
         overrideId: '83fba1aa-2118-4259-a6bc-f8c4086e44ec',
         tenantId: 'tenant-connectshyft-c4',
         orgUnitId: 'org-connectshyft-c4-east',
-        threadId: 'thread-c4-unclaimed-pref-no-1004',
+        threadId: 'cc9bb30e-4b36-4419-8563-819432f4ba14',
         neighborId: null,
         actorUserId: '00000000-0000-4000-8000-000000000001',
         preferenceValue: 'NO' as const,
@@ -188,14 +188,14 @@ describe('connectshyft sms preference overrides', () => {
     await service.rollbackApprovedOverride({
       tenantId: 'tenant-connectshyft-c4',
       orgUnitId: 'org-connectshyft-c4-east',
-      threadId: 'thread-c4-unclaimed-pref-no-1004',
+      threadId: 'cc9bb30e-4b36-4419-8563-819432f4ba14',
       overrideId: '83fba1aa-2118-4259-a6bc-f8c4086e44ec',
     });
 
     expect(deleteOverride).toHaveBeenCalledWith({
       tenantId: 'tenant-connectshyft-c4',
       orgUnitId: 'org-connectshyft-c4-east',
-      threadId: 'thread-c4-unclaimed-pref-no-1004',
+      threadId: 'cc9bb30e-4b36-4419-8563-819432f4ba14',
       overrideId: '83fba1aa-2118-4259-a6bc-f8c4086e44ec',
     });
   });

@@ -488,6 +488,7 @@ import {
   DEFAULT_CONNECTSHYFT_AVAILABILITY,
   fetchConnectShyftAvailability,
   buildConnectShyftTestOverrideHeaders,
+  resolveConnectShyftDeterministicTestPhone,
 } from '@/features/connectshyft/flags';
 import {
   createConnectShyftNeighbor,
@@ -614,6 +615,32 @@ const threadId = computed(() => {
   const rawValue = route.params.threadId;
   return typeof rawValue === 'string' ? rawValue.trim() : '';
 });
+
+const resolveQueryString = (...keys: string[]): string | null => {
+  for (const key of keys) {
+    const rawValue = route.query[key];
+    if (typeof rawValue !== 'string') {
+      continue;
+    }
+
+    const normalized = rawValue.trim();
+    if (normalized.length > 0) {
+      return normalized;
+    }
+  }
+
+  return null;
+};
+
+const testHarnessOperatorContactPointId = computed(() =>
+  resolveQueryString('operatorContactPointId', 'callbackPhone', 'operatorPhone')
+  || resolveConnectShyftDeterministicTestPhone(actorUserId.value, threadId.value)
+);
+
+const testHarnessNeighborTargetPhone = computed(() =>
+  resolveQueryString('targetPhone', 'neighborPhone')
+  || resolveConnectShyftDeterministicTestPhone(threadId.value, actorUserId.value)
+);
 
 const moduleAvailable = computed(() => availability.value.capabilities.module);
 const inboxAvailable = computed(() => availability.value.capabilities.inbox);
@@ -1176,6 +1203,11 @@ const executeThreadAction = async (
     };
   } else if (action === 'Call') {
     path = `${basePath}/call`;
+    payload = {
+      ...payload,
+      operatorContactPointId: testHarnessOperatorContactPointId.value || undefined,
+      targetPhone: testHarnessNeighborTargetPhone.value || undefined,
+    };
   } else if (action === 'Send Message' || action === 'Text') {
     path = `${basePath}/messages`;
     payload = {

@@ -8,14 +8,16 @@ const baseUrl = process.env.BASE_URL || `http://${listenHost}:${listenPort}`;
 const proxyOrigin = new URL(baseUrl);
 const moneyOrigin = new URL(process.env.PLAYWRIGHT_MONEY_FRONTEND_URL || 'http://127.0.0.1:5175');
 const connectOrigin = new URL(process.env.PLAYWRIGHT_CONNECT_FRONTEND_URL || 'http://127.0.0.1:5176');
+const adminOrigin = new URL(process.env.PLAYWRIGHT_ADMIN_FRONTEND_URL || 'http://127.0.0.1:5177');
 const apiOrigin = new URL(process.env.PLAYWRIGHT_API_PROXY_TARGET || process.env.API_URL || 'http://127.0.0.1:3000');
 
 const APP_COOKIE_NAME = 'playwright_frontend_app';
 const MONEY_APP = 'moneyshyft';
 const CONNECT_APP = 'connectshyft';
+const ADMIN_APP = 'admin';
 const CONNECT_ROUTE_PREFIX = '/app/connectshyft';
+const ADMIN_ROUTE_PREFIX = '/admin';
 const MONEY_ROUTE_PREFIXES = [
-  '/admin',
   '/app/route',
   '/accounts',
   '/transactions',
@@ -94,6 +96,9 @@ const resolveAppFromLocation = (pathname) => {
   if (pathname === CONNECT_ROUTE_PREFIX || pathname.startsWith(`${CONNECT_ROUTE_PREFIX}/`)) {
     return CONNECT_APP;
   }
+  if (pathname === ADMIN_ROUTE_PREFIX || pathname.startsWith(`${ADMIN_ROUTE_PREFIX}/`)) {
+    return ADMIN_APP;
+  }
   if (isMoneyRoute(pathname)) {
     return MONEY_APP;
   }
@@ -122,7 +127,7 @@ const resolveFrontendApp = (pathname, headers) => {
 
   const cookies = parseCookies(headers.cookie);
   const cookieApp = cookies.get(APP_COOKIE_NAME);
-  if (cookieApp === MONEY_APP || cookieApp === CONNECT_APP) {
+  if (cookieApp === MONEY_APP || cookieApp === CONNECT_APP || cookieApp === ADMIN_APP) {
     return cookieApp;
   }
 
@@ -203,7 +208,7 @@ const applyResponseHeaders = (res, upstreamResponse, targetOrigin, selectedApp) 
   if (typeof upstreamResponse.headers.getSetCookie === 'function') {
     setCookieHeaders.push(...upstreamResponse.headers.getSetCookie());
   }
-  if (selectedApp === MONEY_APP || selectedApp === CONNECT_APP) {
+  if (selectedApp === MONEY_APP || selectedApp === CONNECT_APP || selectedApp === ADMIN_APP) {
     setCookieHeaders.push(`${APP_COOKIE_NAME}=${selectedApp}; Path=/; SameSite=Lax`);
   }
   if (setCookieHeaders.length > 0) {
@@ -211,6 +216,17 @@ const applyResponseHeaders = (res, upstreamResponse, targetOrigin, selectedApp) 
   }
 
   res.writeHead(upstreamResponse.status, responseHeaders);
+};
+
+const logProxyError = (req, upstreamUrl, error) => {
+  const message = error instanceof Error ? error.message : 'Unknown proxy error';
+  const stack = error instanceof Error ? error.stack : '';
+  process.stderr.write(
+    `[playwright-frontend-proxy] ${new Date().toISOString()} ${req.method || 'GET'} ${req.url || '/'} -> ${upstreamUrl} failed: ${message}\n`,
+  );
+  if (stack && stack !== message) {
+    process.stderr.write(`${stack}\n`);
+  }
 };
 
 const proxyRequest = async (req, res) => {
@@ -224,10 +240,18 @@ const proxyRequest = async (req, res) => {
     targetOrigin = apiOrigin;
   } else if (isFrontendAssetRequest(pathname)) {
     selectedApp = resolveFrontendApp(pathname, req.headers);
-    targetOrigin = selectedApp === CONNECT_APP ? connectOrigin : moneyOrigin;
+    targetOrigin = selectedApp === CONNECT_APP
+      ? connectOrigin
+      : selectedApp === ADMIN_APP
+        ? adminOrigin
+        : moneyOrigin;
   } else {
     selectedApp = resolveFrontendApp(pathname, req.headers);
-    targetOrigin = selectedApp === CONNECT_APP ? connectOrigin : moneyOrigin;
+    targetOrigin = selectedApp === CONNECT_APP
+      ? connectOrigin
+      : selectedApp === ADMIN_APP
+        ? adminOrigin
+        : moneyOrigin;
   }
 
   const upstreamUrl = new URL(`${requestUrl.pathname}${requestUrl.search}`, targetOrigin);
@@ -249,6 +273,7 @@ const proxyRequest = async (req, res) => {
     const responseBody = Buffer.from(await upstreamResponse.arrayBuffer());
     res.end(responseBody);
   } catch (error) {
+    logProxyError(req, upstreamUrl, error);
     const message = error instanceof Error ? error.message : 'Unknown proxy error';
     res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
     res.end(`Playwright frontend proxy request failed for ${upstreamUrl}: ${message}\n`);
@@ -267,6 +292,6 @@ server.on('upgrade', (req, socket) => {
 server.listen(listenPort, listenHost, () => {
   console.log(
     `Playwright frontend proxy listening on ${proxyOrigin.origin} `
-      + `(money: ${moneyOrigin.origin}, connect: ${connectOrigin.origin}, api: ${apiOrigin.origin})`,
+      + `(money: ${moneyOrigin.origin}, connect: ${connectOrigin.origin}, admin: ${adminOrigin.origin}, api: ${apiOrigin.origin})`,
   );
 });

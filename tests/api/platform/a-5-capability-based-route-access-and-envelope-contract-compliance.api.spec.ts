@@ -48,6 +48,7 @@ test.describe(
         expect(body).toMatchObject({
           ok: true,
           code: 'CONNECTSHYFT_INBOX_READY',
+          correlationId: expect.any(String),
           tenantId: storyA5Context.tenantId,
           data: {
             context: {

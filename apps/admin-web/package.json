@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build",
+    "build": "node ../../scripts/build-shared-libs.mjs ui-shell && vue-tsc && vite build",
     "build:prod": "vite build",
     "preview": "vite preview"
   },

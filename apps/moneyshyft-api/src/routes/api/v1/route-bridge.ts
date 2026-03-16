@@ -10,6 +10,8 @@ import {
   resolveRouteTimezoneContext,
 } from '../../../modules/route/api/timezoneAdapter';
 
+// Transitional RouteShyft keeper: this bridge route remains mounted in MoneyShyft
+// until a separate approved follow-up defines RouteShyft extraction or removal.
 const TEST_TENANT_HEADER = 'x-test-route-tenant-id';
 const TEST_ACTOR_HEADER = 'x-test-route-actor-id';
 const TEST_CUTOVER_STAGE_HEADER = 'x-test-route-cutover-stage';

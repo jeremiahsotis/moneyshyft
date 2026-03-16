@@ -1,17 +1,16 @@
 FROM node:20-alpine AS build
 
-WORKDIR /app
+WORKDIR /workspace/apps/admin-api
 
-COPY apps/admin-api/package.json ./
-COPY apps/admin-api/package-lock.json ./
-COPY apps/admin-api/knexfile.js ./
-COPY apps/admin-api/tsconfig.json ./
-COPY apps/admin-api/tsconfig.build.json ./
+COPY apps/admin-api ../../apps/admin-api
+COPY libs ../../libs
+COPY scripts ../../scripts
+COPY tsconfig.base.json ../../tsconfig.base.json
 
 RUN npm ci && npm cache clean --force
+RUN mkdir -p /workspace/apps/moneyshyft-api && ln -s /workspace/apps/admin-api/node_modules /workspace/apps/moneyshyft-api/node_modules
 
-COPY apps/admin-api/. .
-COPY shared/database /shared/database
+COPY shared/database ../../shared/database
 
 RUN npm run build
 RUN npm prune --omit=dev && npm cache clean --force
@@ -23,11 +22,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=384"
 
-COPY --from=build /app/package*.json ./
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/knexfile.js ./knexfile.js
-COPY --from=build /app/scripts ./scripts
+COPY --from=build /workspace/apps/admin-api/package*.json ./
+COPY --from=build /workspace/apps/admin-api/node_modules ./node_modules
+COPY --from=build /workspace/apps/admin-api/dist ./dist
+COPY --from=build /workspace/apps/admin-api/knexfile.js ./knexfile.js
+COPY --from=build /workspace/apps/admin-api/scripts ./scripts
 
 EXPOSE 3100
 

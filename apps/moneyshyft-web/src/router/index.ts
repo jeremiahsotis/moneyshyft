@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useAccessStore } from '@/stores/access';
+import { redirectToAdminApp } from '@/utils/adminAppUrl';
 import pinia from '@/pinia';
 import type { RouteRecordRaw } from 'vue-router';
 
@@ -44,18 +45,6 @@ const routes: RouteRecordRaw[] = [
     name: 'dashboard',
     component: () => import('@/views/DashboardView.vue'),
     meta: { requiresAuth: true, moduleGate: 'moneyshyft' }
-  },
-  {
-    path: '/admin/tenant',
-    name: 'admin-tenant',
-    component: () => import('@/views/Admin/TenantAdminView.vue'),
-    meta: { requiresAuth: true, requiresTenantAdmin: true, allowIncompleteSetup: true }
-  },
-  {
-    path: '/admin/system',
-    name: 'admin-system',
-    component: () => import('@/views/Admin/SystemAdminView.vue'),
-    meta: { requiresAuth: true, requiresSystemAdmin: true, allowIncompleteSetup: true }
   },
   {
     path: '/app/route/requests',
@@ -152,6 +141,12 @@ const hasAuthCookie = (): boolean => {
 
 // Navigation guards
 router.beforeEach(async (to, _from, next) => {
+  if (to.path.startsWith('/admin')) {
+    redirectToAdminApp(to.fullPath || to.path);
+    next(false);
+    return;
+  }
+
   const authStore = useAuthStore(pinia);
   const accessStore = useAccessStore(pinia);
 
@@ -181,34 +176,6 @@ router.beforeEach(async (to, _from, next) => {
 
   if (authStore.isAuthenticated && (to.meta.requiresAuth || moduleGate)) {
     await accessStore.refresh({ tenantId: authStore.user?.householdId || undefined });
-  }
-
-  const requiresSystemAdmin = to.meta.requiresSystemAdmin === true;
-  const requiresTenantAdmin = to.meta.requiresTenantAdmin === true;
-
-  if (authStore.isAuthenticated && (requiresSystemAdmin || requiresTenantAdmin)) {
-    if (!accessStore.hasAnyAdminAccess) {
-      next(accessStore.defaultAuthorizedPath);
-      return;
-    }
-
-    if (requiresSystemAdmin && !accessStore.canAccessSystemAdmin) {
-      if (accessStore.canAccessTenantAdmin) {
-        next('/admin/tenant');
-        return;
-      }
-      next(accessStore.defaultAuthorizedPath);
-      return;
-    }
-
-    if (requiresTenantAdmin && !accessStore.canAccessTenantAdmin) {
-      if (accessStore.canAccessSystemAdmin) {
-        next('/admin/system');
-        return;
-      }
-      next(accessStore.defaultAuthorizedPath);
-      return;
-    }
   }
 
   if (authStore.isAuthenticated && authStore.user?.mustResetPassword === true && to.name !== 'first-login-reset') {

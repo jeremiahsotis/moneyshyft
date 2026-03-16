@@ -1,9 +1,7 @@
-import knex, { Knex } from 'knex';
+import { Knex } from 'knex';
 import knexConfig from '../knexfile';
+import { createKnexClient } from '../../../../libs/db/dist/createKnexClient';
 
-const environment = process.env.NODE_ENV || 'development';
-const config = knexConfig[environment];
-
-const db: Knex = knex(config);
+const db: Knex = createKnexClient(knexConfig, process.env.NODE_ENV || 'development');
 
 export default db;

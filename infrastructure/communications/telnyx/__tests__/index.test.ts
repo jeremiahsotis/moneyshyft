@@ -557,4 +557,36 @@ describe('Telnyx adapter', () => {
       providerBranchingInDomain: false,
     })
   })
+
+  it('extracts correlation identifiers from providerPayload aliases used by webhook tests', () => {
+    const adapter = createTelnyxAdapter({
+      apiKey: 'telnyx-test-key',
+    })
+
+    expect(
+      adapter.translateProviderEvent({
+        rawEventType: 'sms.delivered',
+        payload: {
+          providerEventId: 'evt-provider-payload-1001',
+          providerLegId: 'telnyx-leg-provider-payload-1001',
+          providerPayload: {
+            message_uuid: 'telnyx-message-provider-payload-1001',
+            to: '+12605550123',
+          },
+        },
+      }),
+    ).toEqual({
+      eventType: 'MessageDelivered',
+      payload: {},
+      correlation: {
+        providerLegId: 'telnyx-leg-provider-payload-1001',
+        providerMessageId: 'telnyx-message-provider-payload-1001',
+        providerEventId: 'evt-provider-payload-1001',
+        providerNumber: '+12605550123',
+      },
+      providerNeutral: true,
+      providerSpecificFieldsStripped: true,
+      providerBranchingInDomain: false,
+    })
+  })
 })

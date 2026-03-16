@@ -204,11 +204,11 @@ jobs:
       ENABLE_TEST_AUTH_HARNESS: 'true'
       TEST_EMAIL: test@example.com
       TEST_PASSWORD: test1234
-      BASE_URL: http://localhost:5174
-      API_URL: http://localhost:3000
-      API_BASE_URL: http://localhost:3000
-      FRONTEND_URL: http://localhost:5174
-      VITE_API_PROXY_TARGET: http://localhost:3000
+      BASE_URL: http://127.0.0.1:5174
+      API_URL: http://127.0.0.1:3000
+      API_BASE_URL: http://127.0.0.1:3000
+      FRONTEND_URL: http://127.0.0.1:5174
+      VITE_API_PROXY_TARGET: http://127.0.0.1:3000
       BURN_IN_ADVISORY: ${{ needs.prepare.outputs.advisory }}
       BURN_IN_ITERATIONS: ${{ needs.prepare.outputs.iterations }}
       BURN_IN_BASE_REF: ${{ needs.prepare.outputs.base_ref }}

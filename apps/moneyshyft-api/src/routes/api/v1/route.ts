@@ -16,6 +16,8 @@ import {
   resolveRouteTimezoneContext,
 } from '../../../modules/route/api/timezoneAdapter';
 
+// Transitional RouteShyft keeper: this runtime stays mounted in MoneyShyft for now.
+// It is explicit transitional baggage, not canonical MoneyShyft lane ownership.
 const TEST_TENANT_HEADER = 'x-test-route-tenant-id';
 const TEST_ACTOR_HEADER = 'x-test-route-actor-id';
 const TEST_ROLE_HEADER = 'x-test-route-role';

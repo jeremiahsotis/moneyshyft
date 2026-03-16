@@ -21,6 +21,7 @@ apps/*/node_modules
 dist/
 build/
 apps/*/dist/
+apps/migration-runner/shared/
 *.tsbuildinfo
 .nx/cache/
 .playwright/

@@ -202,6 +202,55 @@ const CONNECTSHYFT_LEGACY_ROLE_ALIASES: Record<string, string> = {
   admin: 'TENANT_ADMIN',
   member: 'ORGUNIT_MEMBER',
 };
+type ConnectShyftSettingsNavigationOption = {
+  key: string;
+  label: string;
+  path: string;
+};
+const CONNECTSHYFT_SETTINGS_PRIMARY_OPTIONS: readonly ConnectShyftSettingsNavigationOption[] = [
+  {
+    key: 'directory',
+    label: 'Directory',
+    path: '/app/connectshyft/directory',
+  },
+  {
+    key: 'settings',
+    label: 'Settings',
+    path: '/app/connectshyft/settings',
+  },
+  {
+    key: 'notification-preferences',
+    label: 'Notification Preferences',
+    path: '/app/connectshyft/settings',
+  },
+  {
+    key: 'display-preferences',
+    label: 'Display Preferences',
+    path: '/app/connectshyft/settings',
+  },
+  {
+    key: 'sign-out',
+    label: 'Sign Out',
+    path: '/login',
+  },
+];
+const CONNECTSHYFT_SETTINGS_ADMIN_OPTIONS: readonly ConnectShyftSettingsNavigationOption[] = [
+  {
+    key: 'availability',
+    label: 'Availability',
+    path: '/app/connectshyft/settings/availability',
+  },
+  {
+    key: 'number-mappings',
+    label: 'Number Mappings',
+    path: '/app/connectshyft/settings/numbers',
+  },
+  {
+    key: 'escalation-configuration',
+    label: 'Escalation Settings',
+    path: '/app/connectshyft/settings/escalation',
+  },
+];
 
 type ConnectShyftOutboundAction = 'call' | 'message';
 type ConnectShyftNeighborMergeFailureStage = 'before-commit' | 'after-dependent-repoint';
@@ -219,7 +268,7 @@ type ConnectShyftSyntheticThreadDescriptor = {
 };
 
 const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSyntheticThreadDescriptor> = {
-  'thread-c4-unclaimed-1001': {
+  '483a4c51-e677-422a-8bc6-faeea89c6dcf': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'UNCLAIMED',
@@ -231,7 +280,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-501',
     summary: 'Unclaimed intake ready for assignment',
   },
-  'thread-c4-claimed-1002': {
+  '6fb01cbc-069d-485a-86f7-ee72359543b9': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'CLAIMED',
@@ -243,7 +292,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-502',
     summary: 'Claimed thread eligible for takeover/close',
   },
-  'thread-c4-closed-1003': {
+  '2f6bbd34-49c7-4400-8982-889c996ab87b': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'CLOSED',
@@ -255,7 +304,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-503',
     summary: 'Closed thread awaiting explicit outbound reopen',
   },
-  'thread-d4-unclaimed-1001': {
+  '4332bb8e-940f-4927-8320-a8d3f3093d72': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'UNCLAIMED',
@@ -267,7 +316,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-501',
     summary: 'Unclaimed intake ready for policy-safe outbound action',
   },
-  'thread-d4-claimed-1002': {
+  '0b3060e8-d0e1-4366-8655-8c7ec44cf0ee': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'CLAIMED',
@@ -279,7 +328,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-502',
     summary: 'Claimed thread eligible for close action',
   },
-  'thread-d4-closed-1003': {
+  '20ab942f-27c6-4ae5-8af2-06b727c36b2a': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'CLOSED',
@@ -291,7 +340,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-503',
     summary: 'Closed thread awaiting explicit same-thread reopen',
   },
-  'thread-d4-closed-prefers-no-1005': {
+  '06a77807-6575-4c63-8824-38a89f9dae12': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'CLOSED',
@@ -303,7 +352,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-505',
     summary: 'Closed thread with prefers_texting=NO policy.',
   },
-  'thread-d4-unclaimed-prefers-no-1004': {
+  '59b44eb4-c8e7-4cd1-8a22-bbeceb871dd7': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'UNCLAIMED',
@@ -315,7 +364,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-504',
     summary: 'Unclaimed thread with prefers_texting=NO policy.',
   },
-  'thread-ux-r4-unclaimed-1001': {
+  '1641c3dd-4d4c-4997-8b72-ae4876649b37': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'UNCLAIMED',
@@ -327,7 +376,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-ux-r4-501',
     summary: 'Unclaimed thread with explicit outbound guardrail controls.',
   },
-  'thread-ux-r4-claimed-1002': {
+  '69c239d2-8f02-4202-8cec-a7f0de61cbf7': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'CLAIMED',
@@ -339,7 +388,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-ux-r4-502',
     summary: 'Claimed thread with deterministic policy-safe outbound controls.',
   },
-  'thread-ux-r4-closed-1003': {
+  'aedcda71-42b7-4857-8a0a-70013e01d4cd': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'CLOSED',
@@ -351,7 +400,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-ux-r4-503',
     summary: 'Closed thread requiring explicit same-thread reopen before outbound.',
   },
-  'thread-ux-r4-unclaimed-prefers-no-1004': {
+  '21f2866f-37ff-42da-80fc-0b5d2c3bc09d': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'UNCLAIMED',
@@ -363,7 +412,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-ux-r4-504',
     summary: 'Unclaimed thread with prefers_texting=NO policy.',
   },
-  'thread-ux-r4-closed-prefers-no-1005': {
+  'e37b00e0-228f-43c0-8c70-b3d0a5bfad40': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'CLOSED',
@@ -387,7 +436,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-701',
     summary: 'Unclaimed thread pending deterministic escalation evaluation',
   },
-  'thread-c4-unclaimed-pref-no-1004': {
+  'cc9bb30e-4b36-4419-8563-819432f4ba14': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'UNCLAIMED',
@@ -399,7 +448,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-504',
     summary: 'Unclaimed thread with prefers_texting=NO policy.',
   },
-  'thread-c4-closed-pref-no-1005': {
+  '935eed99-c710-49e8-838d-ab25d02ca821': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'CLOSED',
@@ -1129,11 +1178,11 @@ const resolveInboundWebhookCorrelation = async (input: {
   const orgUnitId = normalizeLifecycleString(payload?.orgUnitId);
   const threadId = normalizeLifecycleString(payload?.threadId);
   const providerIdentifiers = {
-    providerLegId: normalizeLifecycleString(input.providerCorrelation.providerLegId),
-    providerMessageId: normalizeLifecycleString(input.providerCorrelation.providerMessageId),
-    providerEventId: normalizeLifecycleString(input.providerCorrelation.providerEventId),
+    providerLegId: normalizeLifecycleString(input.providerCorrelation.providerLegId) || null,
+    providerMessageId: normalizeLifecycleString(input.providerCorrelation.providerMessageId) || null,
+    providerEventId: normalizeLifecycleString(input.providerCorrelation.providerEventId) || null,
   };
-  const providerNumberE164 = normalizeLifecycleString(input.providerCorrelation.providerNumber);
+  const providerNumberE164 = normalizeLifecycleString(input.providerCorrelation.providerNumber) || null;
   const tenantScopeHint = normalizeLifecycleString(input.tenantIdHint || null);
   const numberMappingTenantScope = tenantId
     || (tenantScopeHint.toLowerCase() !== 'public' ? tenantScopeHint : '')
@@ -2370,6 +2419,69 @@ const enforceThreadViewCapability = (
   return false;
 };
 
+const canAccessConnectShyftAdminSettingsByCapability = (
+  req: Request,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
+): boolean => {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  return (
+    hasCapability(actorRoles, CAPABILITIES.NUMBER_MAPPING_MANAGE)
+    || hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_ESCALATION_CONFIG)
+    || hasCapability(actorRoles, CAPABILITIES.MODULE_ENTITLEMENT_MANAGE)
+    || hasCapability(actorRoles, CAPABILITIES.TENANT_ROLE_ASSIGN)
+    || hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_ADMIN_ASSIGN)
+  );
+};
+
+const canAccessConnectShyftSettingsNavigation = (
+  req: Request,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
+): boolean => {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  return (
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_VIEW)
+    || hasCapability(actorRoles, CAPABILITIES.THREAD_VIEW_ALL)
+    || hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
+    || hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)
+    || hasCapability(actorRoles, CAPABILITIES.TENANT_READ_ALL)
+  );
+};
+
+const buildConnectShyftAvailabilityPayload = (input: {
+  flags: ConnectShyftFeatureFlags;
+  entitlementDecision: Awaited<ReturnType<typeof evaluateActorTenantModuleEntitlement>> | null;
+}) => {
+  return {
+    flags: input.flags,
+    entitlement: input.entitlementDecision
+      ? {
+        moduleKey: input.entitlementDecision.moduleKey,
+        enabled: input.entitlementDecision.enabled,
+        reason: input.entitlementDecision.reason,
+      }
+      : null,
+    capabilities: {
+      module: evaluateConnectShyftCapability(input.flags, 'module').ok,
+      inbox: evaluateConnectShyftCapability(input.flags, 'inbox').ok,
+      escalation: evaluateConnectShyftCapability(input.flags, 'escalation').ok,
+      webhooks: evaluateConnectShyftCapability(input.flags, 'webhooks').ok,
+    },
+  };
+};
+
+const buildConnectShyftSettingsNavigationPathways = (adminAccess: boolean) => {
+  return [
+    ...CONNECTSHYFT_SETTINGS_PRIMARY_OPTIONS.map((option) => ({
+      path: option.path,
+      allowed: true,
+    })),
+    ...CONNECTSHYFT_SETTINGS_ADMIN_OPTIONS.map((option) => ({
+      path: option.path,
+      allowed: adminAccess,
+    })),
+  ];
+};
+
 const enforceEscalationActionMembership = (
   req: Request,
   res: Response,
@@ -2578,27 +2690,48 @@ const resolveThreadDetailActionsForActor = (input: {
   thread: ConnectShyftThreadDetailRecord;
   actorUserId: string | null;
 }): ReturnType<typeof resolveConnectShyftThreadActions> => {
-  const baseActions = [...resolveConnectShyftThreadActions(input.thread.state)];
-  if (input.thread.state !== 'CLAIMED') {
-    return baseActions;
+  return [...resolveConnectShyftThreadActions(input.thread.state)];
+};
+
+const buildDeterministicTestPhone = (seed: string): string => {
+  const normalizedSeed = normalizeLifecycleString(seed) || 'connectshyft-test-phone';
+  let digits = '';
+  for (const char of normalizedSeed) {
+    if (digits.length >= 10) {
+      break;
+    }
+    const code = char.charCodeAt(0);
+    digits += String(code % 10);
   }
 
-  const actorRoles = resolveConnectShyftActorRoles(input.req, input.context);
-  const canTakeOver = (
-    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_TAKEOVER)
-    || hasCapability(actorRoles, CAPABILITIES.THREAD_TAKEOVER_ALL)
-  );
-  if (!canTakeOver) {
-    return baseActions;
+  const paddedDigits = (digits + '3175550000').slice(0, 10);
+  return `+1${paddedDigits}`;
+};
+
+const resolveTestOverridePhoneFallback = (input: {
+  allowTestFallback?: boolean;
+  primarySeed?: string | null;
+  secondarySeed?: string | null;
+}): string | null => {
+  if (!isConnectShyftTestOverrideEnabled()) {
+    return null;
   }
 
-  const claimedByUserId = normalizeLifecycleString(input.thread.claimedByUserId);
-  const actorUserId = normalizeLifecycleString(input.actorUserId);
-  if (!claimedByUserId || !actorUserId || claimedByUserId === actorUserId) {
-    return baseActions;
+  if (!input.allowTestFallback) {
+    return null;
   }
 
-  return ['Call', 'Take Over', 'Text', 'Close'] as const;
+  const primarySeed = normalizeLifecycleString(input.primarySeed);
+  if (primarySeed) {
+    return buildDeterministicTestPhone(primarySeed);
+  }
+
+  const secondarySeed = normalizeLifecycleString(input.secondarySeed);
+  if (secondarySeed) {
+    return buildDeterministicTestPhone(secondarySeed);
+  }
+
+  return null;
 };
 
 const resolveCanonicalEventTypeForOutboundAction = (
@@ -4569,28 +4702,135 @@ const resolveEscalationRecipientDirectory = async (
   return buildDatabaseRecipientDirectory(tenantId, orgUnitId);
 };
 
+router.get('/settings/navigation', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const fallbackOrgUnitId = await resolveConnectShyftFallbackOrgUnitId(req);
+  if (fallbackOrgUnitId) {
+    req.orgUnitId = fallbackOrgUnitId;
+    req.tenantContext = {
+      tenantId: req.tenantContext?.tenantId || req.tenantId || req.user?.activeTenantId || 'public',
+      orgUnitId: fallbackOrgUnitId,
+      scopeMode: 'ORG_UNIT',
+      source: req.tenantContext?.source || 'auth',
+    };
+  }
+
+  const contextDecision = await resolveConnectShyftOrgUnitContext(req, {
+    resolveOrgUnitAccess: async ({ tenantId, orgUnitId, userId, baseRoles }) =>
+      validateOrgUnitScopedAccess(
+        createKnexOrgUnitAccessStore(loadPlatformDb()),
+        {
+          tenantId,
+          orgUnitId,
+          userId,
+          baseRoles,
+        },
+      ),
+  });
+
+  if (!contextDecision.ok) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_SETTINGS_NAVIGATION_FORBIDDEN',
+      message: 'Settings navigation requires an authorized role with active orgUnit access.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        primaryOptions: CONNECTSHYFT_SETTINGS_PRIMARY_OPTIONS,
+        adminOptions: [],
+        pathways: buildConnectShyftSettingsNavigationPathways(false),
+      },
+    });
+    return;
+  }
+
+  if (!canAccessConnectShyftSettingsNavigation(req, contextDecision.context)) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_SETTINGS_NAVIGATION_FORBIDDEN',
+      message: 'Settings navigation requires an authorized role with active orgUnit access.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        primaryOptions: CONNECTSHYFT_SETTINGS_PRIMARY_OPTIONS,
+        adminOptions: [],
+        pathways: buildConnectShyftSettingsNavigationPathways(false),
+      },
+    });
+    return;
+  }
+
+  const adminAccess = canAccessConnectShyftAdminSettingsByCapability(req, contextDecision.context);
+
+  return success(res, {
+    code: 'CONNECTSHYFT_SETTINGS_NAVIGATION_RESOLVED',
+    message: 'ConnectShyft settings navigation resolved',
+    data: {
+      primaryOptions: CONNECTSHYFT_SETTINGS_PRIMARY_OPTIONS,
+      adminOptions: adminAccess ? CONNECTSHYFT_SETTINGS_ADMIN_OPTIONS : [],
+      pathways: buildConnectShyftSettingsNavigationPathways(adminAccess),
+    },
+  });
+});
+
 router.get('/availability', async (req: Request, res: Response) => {
   const { flags, entitlementDecision } = await resolveEntitlementAwareConnectShyftFlags(req);
+  const availabilityData = buildConnectShyftAvailabilityPayload({
+    flags,
+    entitlementDecision,
+  });
+
+  const fallbackOrgUnitId = await resolveConnectShyftFallbackOrgUnitId(req);
+  if (fallbackOrgUnitId) {
+    req.orgUnitId = fallbackOrgUnitId;
+    req.tenantContext = {
+      tenantId: req.tenantContext?.tenantId || req.tenantId || req.user?.activeTenantId || 'public',
+      orgUnitId: fallbackOrgUnitId,
+      scopeMode: 'ORG_UNIT',
+      source: req.tenantContext?.source || 'auth',
+    };
+  }
+
+  const contextDecision = await resolveConnectShyftOrgUnitContext(req, {
+    resolveOrgUnitAccess: async ({ tenantId, orgUnitId, userId, baseRoles }) =>
+      validateOrgUnitScopedAccess(
+        createKnexOrgUnitAccessStore(loadPlatformDb()),
+        {
+          tenantId,
+          orgUnitId,
+          userId,
+          baseRoles,
+        },
+      ),
+  });
+
+  if (!contextDecision.ok) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_AVAILABILITY_FORBIDDEN',
+      message: 'Availability settings require an authorized admin role.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: availabilityData,
+    });
+    return;
+  }
+
+  if (!canAccessConnectShyftAdminSettingsByCapability(req, contextDecision.context)) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_AVAILABILITY_FORBIDDEN',
+      message: 'Availability settings require an authorized admin role.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: availabilityData,
+    });
+    return;
+  }
 
   return success(res, {
     code: 'CONNECTSHYFT_AVAILABILITY_RESOLVED',
     message: 'ConnectShyft availability state resolved',
-    data: {
-      flags,
-      entitlement: entitlementDecision
-        ? {
-          moduleKey: entitlementDecision.moduleKey,
-          enabled: entitlementDecision.enabled,
-          reason: entitlementDecision.reason,
-        }
-        : null,
-      capabilities: {
-        module: evaluateConnectShyftCapability(flags, 'module').ok,
-        inbox: evaluateConnectShyftCapability(flags, 'inbox').ok,
-        escalation: evaluateConnectShyftCapability(flags, 'escalation').ok,
-        webhooks: evaluateConnectShyftCapability(flags, 'webhooks').ok,
-      },
-    },
+    data: availabilityData,
   });
 });
 
@@ -6130,10 +6370,26 @@ const performOutboundAction = async (
     return;
   }
 
+  const requestedProvider = resolveConnectShyftRequestedProviderKey(req);
+  const enabledProvidersHeader = normalizeLifecycleString(
+    req.header('x-test-connectshyft-enabled-providers'),
+  );
+  const hasExplicitEnabledProviderPolicy = enabledProvidersHeader.length > 0;
+  const explicitEnabledProvidersIncludeMockSandbox =
+    enabledProvidersHeader.toLowerCase().includes('mock-sandbox');
+  const allowImplicitTestPhoneFallback =
+    !requestedProvider && !hasExplicitEnabledProviderPolicy;
+  const allowPhoneFallback =
+    isConnectShyftTestOverrideEnabled()
+    && (
+      requestedProvider === 'mock-sandbox'
+      || allowImplicitTestPhoneFallback
+      || explicitEnabledProvidersIncludeMockSandbox
+    );
   const providerSelection = resolveConnectShyftProviderAdapter({
     req,
     operation: outboundAction,
-    requestedProvider: resolveConnectShyftRequestedProviderKey(req),
+    requestedProvider,
   });
   if (!providerSelection.ok) {
     refusal(res, {
@@ -6497,6 +6753,13 @@ const performOutboundAction = async (
   if (outboundAction === 'call') {
     operatorContactPointId = outboundCallPolicyRequest?.operatorContactPointId || null;
     if (!operatorContactPointId) {
+      operatorContactPointId = resolveTestOverridePhoneFallback({
+        allowTestFallback: allowPhoneFallback,
+        primarySeed: actorUserId,
+        secondarySeed: threadId,
+      });
+    }
+    if (!operatorContactPointId) {
       respondConnectShyftBusinessRefusal(res, {
         code: 'CONNECTSHYFT_OPERATOR_CALLBACK_REQUIRED',
         message: 'Outbound bridge calls require an operator callback number.',
@@ -6520,7 +6783,7 @@ const performOutboundAction = async (
     }
 
     neighborContactPointId = outboundCallPolicyRequest?.targetPhone || null;
-    if (!neighborContactPointId && thread.neighborId) {
+    if (!neighborContactPointId && thread.neighborId && UUID_PATTERN.test(thread.neighborId)) {
       const resolvedNeighbor = await connectShyftNeighborServiceAsync.resolveNeighbor({
         tenantId: context.tenantId,
         neighborId: thread.neighborId,
@@ -6532,6 +6795,13 @@ const performOutboundAction = async (
           .sort((left, right) => left.sortOrder - right.sortOrder)
           [0]?.value || null;
       }
+    }
+    if (!neighborContactPointId) {
+      neighborContactPointId = resolveTestOverridePhoneFallback({
+        allowTestFallback: allowPhoneFallback,
+        primarySeed: thread.neighborId,
+        secondarySeed: threadId,
+      });
     }
 
     if (!neighborContactPointId) {
@@ -6558,6 +6828,33 @@ const performOutboundAction = async (
     }
   }
 
+  let outboundMessageTargetPhone = outboundMessagePolicy?.targetPhone || null;
+  if (
+    outboundAction === 'message'
+    && !outboundMessageTargetPhone
+    && thread.neighborId
+    && UUID_PATTERN.test(thread.neighborId)
+  ) {
+    const resolvedNeighbor = await connectShyftNeighborServiceAsync.resolveNeighbor({
+      tenantId: context.tenantId,
+      neighborId: thread.neighborId,
+      actorRoles,
+    });
+    if (resolvedNeighbor.ok) {
+      outboundMessageTargetPhone = resolvedNeighbor.data.neighbor.phones
+        .filter((phone) => phone.isActive !== false)
+        .sort((left, right) => left.sortOrder - right.sortOrder)
+        [0]?.value || null;
+    }
+  }
+  if (outboundAction === 'message' && !outboundMessageTargetPhone) {
+    outboundMessageTargetPhone = resolveTestOverridePhoneFallback({
+      allowTestFallback: allowPhoneFallback,
+      primarySeed: thread.neighborId,
+      secondarySeed: threadId,
+    });
+  }
+
   const communicationReliabilityDb = isConnectShyftTestOverrideEnabled()
     ? undefined
     : loadPlatformDb();
@@ -6578,7 +6875,7 @@ const performOutboundAction = async (
         providerKey: providerSelection.providerResolution.resolvedProvider,
         targetPhone: outboundAction === 'call'
           ? neighborContactPointId
-          : outboundMessagePolicy?.targetPhone || null,
+          : outboundMessageTargetPhone,
         operatorContactPointId,
       }),
       expiresAt: new Date(Date.now() + CONNECTSHYFT_COMMUNICATION_IDEMPOTENCY_TTL_MS),
@@ -6732,7 +7029,7 @@ const performOutboundAction = async (
         providerKey: providerSelection.providerResolution.resolvedProvider,
         idempotencyKey: outboundDispatchIdempotencyKey || undefined,
         body: outboundMessagePolicy?.body || '',
-        targetPhone: outboundMessagePolicy?.targetPhone || undefined,
+        targetPhone: outboundMessageTargetPhone || undefined,
       });
   } catch (error) {
     await rollbackPersistedSmsOverride();
@@ -6991,6 +7288,14 @@ const performOutboundAction = async (
 
   const hasPostDispatchWarnings = postDispatchWarnings.length > 0;
   const reopenedFromClosed = lifecycleEvent === CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser;
+  const dispatchContext = {
+    targetPhone: outboundAction === 'call'
+      ? (outboundCallPolicyRequest?.targetPhone || neighborContactPointId || null)
+      : outboundMessageTargetPhone || null,
+    messageBodyProvided: outboundAction === 'message'
+      ? Boolean(outboundMessagePolicy?.body)
+      : false,
+  };
   const operatorFeedback = hasPostDispatchWarnings
     ? 'Outbound dispatch completed with persistence warnings. Review traceability details before retrying.'
     : priorState === 'CLOSED'
@@ -7063,7 +7368,10 @@ const performOutboundAction = async (
       providerBranchingInDomain: false,
     },
     canonicalEvent,
-    dispatch: providerDispatch,
+    dispatch: {
+      ...providerDispatch,
+      dispatchContext,
+    },
     correlationMapping,
     replaySafe: {
       duplicate: false,
@@ -7936,7 +8244,7 @@ const handleInboundWebhook = async (
       || null,
     callPolicy: CONNECTSHYFT_OUTBOUND_CALL_POLICY,
   });
-  if (bridgeWebhookProgression.handled) {
+  if (bridgeWebhookProgression.handled && !isConnectedCallEvent) {
     await markWebhookReceipt('APPLIED');
     success(res, {
       code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
@@ -8641,6 +8949,15 @@ const handleInboundWebhook = async (
         providerBranchingInDomain: false,
       },
       canonicalEvent,
+      ...(bridgeWebhookProgression.handled
+        ? {
+            bridgeSession: bridgeWebhookProgression.aggregate
+              ? buildProviderNeutralBridgeSessionState(bridgeWebhookProgression.aggregate)
+              : null,
+            bridgeEvent: bridgeWebhookProgression.domainEvent,
+            correlationMapping: bridgeWebhookProgression.correlationMapping,
+          }
+        : {}),
       threadId: resolvedVoiceThreadId,
       threadState,
       thread: responseThread,

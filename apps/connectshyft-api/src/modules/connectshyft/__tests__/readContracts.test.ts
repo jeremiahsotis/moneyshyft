@@ -37,14 +37,14 @@ describe('connectshyft read contracts', () => {
       bucket: 'inbox',
     });
 
-    expect(items[0]?.threadId).toBe('thread-c3-claimed-1002');
+    expect(items[0]?.threadId).toBe('2686f12a-b7dc-4ab2-8de2-70b05684198b');
 
     const stageTwoThreadIds = items
       .filter((item) => item.priorityRank === 2)
       .map((item) => item.threadId);
     expect(stageTwoThreadIds).toEqual([
-      'thread-c3-unclaimed-1001',
-      'thread-c3-unclaimed-1006',
+      '90ca1c73-be82-48c6-8ba0-504e872ad211',
+      '05a64891-ba69-4385-8bb9-140f01e0d243',
     ]);
   });
 
@@ -74,11 +74,11 @@ describe('connectshyft read contracts', () => {
       actorUserId: 'user-connectshyft-c3-other-operator',
     });
 
-    expect(operatorInbox.some((item) => item.threadId === 'thread-c3-claimed-voicemail-1004')).toBe(false);
-    expect(operatorMine.map((item) => item.threadId)).toEqual(['thread-c3-claimed-voicemail-1004']);
+    expect(operatorInbox.some((item) => item.threadId === '7ce62a91-60dd-4869-8816-d782f26b85d1')).toBe(false);
+    expect(operatorMine.map((item) => item.threadId)).toEqual(['7ce62a91-60dd-4869-8816-d782f26b85d1']);
 
-    expect(otherOperatorInbox.some((item) => item.threadId === 'thread-c3-claimed-voicemail-1004')).toBe(true);
-    expect(otherOperatorMine.map((item) => item.threadId)).toEqual(['thread-c3-claimed-1002']);
+    expect(otherOperatorInbox.some((item) => item.threadId === '7ce62a91-60dd-4869-8816-d782f26b85d1')).toBe(true);
+    expect(otherOperatorMine.map((item) => item.threadId)).toEqual(['2686f12a-b7dc-4ab2-8de2-70b05684198b']);
   });
 
   it('keeps ux-r3 voicemail threads in deterministic mine/inbox buckets with explicit labels', () => {
@@ -95,8 +95,8 @@ describe('connectshyft read contracts', () => {
       actorUserId: 'user-connectshyft-ux-r3-operator',
     });
 
-    const mineVoicemail = mine.find((item) => item.threadId === 'thread-ux-r3-claimed-voicemail-1002');
-    const inboxVoicemail = inbox.find((item) => item.threadId === 'thread-ux-r3-unclaimed-voicemail-1001');
+    const mineVoicemail = mine.find((item) => item.threadId === 'b58069cc-1ab6-4ada-8a95-c468780a45a3');
+    const inboxVoicemail = inbox.find((item) => item.threadId === 'c5d1de83-5a0e-45e0-8f25-eba1bd21a985');
 
     expect(mineVoicemail).toMatchObject({
       state: 'CLAIMED',
@@ -110,20 +110,20 @@ describe('connectshyft read contracts', () => {
       voicemailIndicator: true,
       voicemailLabel: 'Voicemail received',
     });
-    expect(inbox.some((item) => item.threadId === 'thread-ux-r3-claimed-voicemail-1002')).toBe(false);
+    expect(inbox.some((item) => item.threadId === 'b58069cc-1ab6-4ada-8a95-c468780a45a3')).toBe(false);
   });
 
   it('returns thread-detail bucket from actor perspective for claimed threads', () => {
     const claimedOwner = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-c3',
       orgUnitId: 'org-connectshyft-c3-east',
-      threadId: 'thread-c3-claimed-voicemail-1004',
+      threadId: '7ce62a91-60dd-4869-8816-d782f26b85d1',
       actorUserId: 'user-connectshyft-c3-operator',
     });
     const differentActor = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-c3',
       orgUnitId: 'org-connectshyft-c3-east',
-      threadId: 'thread-c3-claimed-voicemail-1004',
+      threadId: '7ce62a91-60dd-4869-8816-d782f26b85d1',
       actorUserId: 'user-connectshyft-c3-other-operator',
     });
 
@@ -135,17 +135,17 @@ describe('connectshyft read contracts', () => {
     const unclaimed = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-c3',
       orgUnitId: 'org-connectshyft-c3-east',
-      threadId: 'thread-c3-unclaimed-1001',
+      threadId: '90ca1c73-be82-48c6-8ba0-504e872ad211',
     });
     const claimed = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-c3',
       orgUnitId: 'org-connectshyft-c3-east',
-      threadId: 'thread-c3-claimed-1002',
+      threadId: '2686f12a-b7dc-4ab2-8de2-70b05684198b',
     });
     const closed = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-c3',
       orgUnitId: 'org-connectshyft-c3-east',
-      threadId: 'thread-c3-closed-1003',
+      threadId: '47e2e20d-f3bc-4c0d-87a6-d3f0b0cbe69e',
     });
 
     expect(unclaimed?.actions).toEqual(['Call', 'Text', 'Claim']);
@@ -157,25 +157,25 @@ describe('connectshyft read contracts', () => {
     const unclaimed = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-d4',
       orgUnitId: 'org-connectshyft-d4-east',
-      threadId: 'thread-d4-unclaimed-1001',
+      threadId: '4332bb8e-940f-4927-8320-a8d3f3093d72',
       requestedRole: 'ORGUNIT_MEMBER',
     });
     const claimed = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-d4',
       orgUnitId: 'org-connectshyft-d4-east',
-      threadId: 'thread-d4-claimed-1002',
+      threadId: '0b3060e8-d0e1-4366-8655-8c7ec44cf0ee',
       requestedRole: 'ORGUNIT_MEMBER',
     });
     const closed = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-d4',
       orgUnitId: 'org-connectshyft-d4-east',
-      threadId: 'thread-d4-closed-1003',
+      threadId: '20ab942f-27c6-4ae5-8af2-06b727c36b2a',
       requestedRole: 'ORGUNIT_MEMBER',
     });
     const closedPrefersNo = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-d4',
       orgUnitId: 'org-connectshyft-d4-east',
-      threadId: 'thread-d4-closed-prefers-no-1005',
+      threadId: '06a77807-6575-4c63-8824-38a89f9dae12',
       requestedRole: 'ORGUNIT_MEMBER',
     });
 
@@ -189,25 +189,25 @@ describe('connectshyft read contracts', () => {
     const unclaimed = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-ux-r4',
       orgUnitId: 'org-connectshyft-ux-r4-east',
-      threadId: 'thread-ux-r4-unclaimed-1001',
+      threadId: '1641c3dd-4d4c-4997-8b72-ae4876649b37',
       requestedRole: 'ORGUNIT_MEMBER',
     });
     const claimed = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-ux-r4',
       orgUnitId: 'org-connectshyft-ux-r4-east',
-      threadId: 'thread-ux-r4-claimed-1002',
+      threadId: '69c239d2-8f02-4202-8cec-a7f0de61cbf7',
       requestedRole: 'ORGUNIT_MEMBER',
     });
     const closed = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-ux-r4',
       orgUnitId: 'org-connectshyft-ux-r4-east',
-      threadId: 'thread-ux-r4-closed-1003',
+      threadId: 'aedcda71-42b7-4857-8a0a-70013e01d4cd',
       requestedRole: 'ORGUNIT_MEMBER',
     });
     const closedPrefersNo = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-ux-r4',
       orgUnitId: 'org-connectshyft-ux-r4-east',
-      threadId: 'thread-ux-r4-closed-prefers-no-1005',
+      threadId: 'e37b00e0-228f-43c0-8c70-b3d0a5bfad40',
       requestedRole: 'ORGUNIT_MEMBER',
     });
 
@@ -221,13 +221,13 @@ describe('connectshyft read contracts', () => {
     const claimedAdmin = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-c4',
       orgUnitId: 'org-connectshyft-c4-east',
-      threadId: 'thread-c4-claimed-1002',
+      threadId: '6fb01cbc-069d-485a-86f7-ee72359543b9',
       requestedRole: 'ORGUNIT_ADMIN',
     });
     const claimedMember = resolveConnectShyftThreadDetailContract({
       tenantId: 'tenant-connectshyft-c4',
       orgUnitId: 'org-connectshyft-c4-east',
-      threadId: 'thread-c4-claimed-1002',
+      threadId: '6fb01cbc-069d-485a-86f7-ee72359543b9',
       requestedRole: 'ORGUNIT_MEMBER',
     });
 

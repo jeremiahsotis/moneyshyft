@@ -1,3 +1,5 @@
+<!-- Transitional RouteShyft keeper: remain mounted in MoneyShyft until a separate
+approved follow-up defines extraction or removal. -->
 <template>
   <main class="mx-auto max-w-5xl px-4 py-8">
     <header class="mb-6">

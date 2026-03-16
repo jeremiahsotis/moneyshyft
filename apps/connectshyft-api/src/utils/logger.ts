@@ -26,7 +26,7 @@ const logger = winston.createLogger({
     winston.format.errors({ stack: true }),
     winston.format.json()
   ),
-  defaultMeta: { service: 'moneyshyft-api' },
+  defaultMeta: { service: 'connectshyft-api' },
   transports: [
     new winston.transports.Console(consoleTransportOptions)
   ]

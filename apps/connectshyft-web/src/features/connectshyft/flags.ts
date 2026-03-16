@@ -80,6 +80,28 @@ export const DEFAULT_CONNECTSHYFT_AVAILABILITY: ConnectShyftAvailabilityState = 
 const isConnectShyftTestHarnessEnabled = (): boolean =>
   import.meta.env.DEV && import.meta.env.VITE_ENABLE_TEST_CONNECTSHYFT_FLAGS === 'true';
 
+const normalizeDeterministicPhoneSeed = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const buildDeterministicTestPhone = (seed: string): string => {
+  let digits = '';
+  for (const char of seed) {
+    if (digits.length >= 10) {
+      break;
+    }
+    digits += String(char.charCodeAt(0) % 10);
+  }
+
+  const paddedDigits = (digits + '3175550000').slice(0, 10);
+  return `+1${paddedDigits}`;
+};
+
 const normalizeQueryValue = (value: string | null): string | null => {
   if (typeof value !== 'string') {
     return null;
@@ -244,6 +266,27 @@ export const buildConnectShyftTestOverrideHeaders = (): Record<string, string> =
   }
 
   return headers;
+};
+
+export const resolveConnectShyftDeterministicTestPhone = (
+  primarySeed?: string | null,
+  secondarySeed?: string | null,
+): string | null => {
+  if (!isConnectShyftTestHarnessEnabled()) {
+    return null;
+  }
+
+  const primary = normalizeDeterministicPhoneSeed(primarySeed);
+  if (primary) {
+    return buildDeterministicTestPhone(primary);
+  }
+
+  const secondary = normalizeDeterministicPhoneSeed(secondarySeed);
+  if (secondary) {
+    return buildDeterministicTestPhone(secondary);
+  }
+
+  return null;
 };
 
 const toBooleanFlag = (value: unknown): boolean => value === true;

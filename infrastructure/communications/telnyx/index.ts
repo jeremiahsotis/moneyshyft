@@ -80,6 +80,14 @@ const normalizeString = (value: unknown): string => {
   return value.trim()
 }
 
+const parseBooleanEnv = (value: string | undefined): boolean =>
+  typeof value === 'string' && ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase())
+
+const isDeterministicConnectShyftTestMode = (input: { fetchImpl?: typeof fetch }): boolean =>
+  !input.fetchImpl
+  && process.env.NODE_ENV === 'test'
+  && parseBooleanEnv(process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS)
+
 const normalizePayloadRecord = (payload: unknown): Record<string, unknown> => {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     return {}
@@ -208,6 +216,24 @@ const parseSignature = (signature: string): Buffer | null => {
   }
 }
 
+const resolvePublicKeyPem = (value: string): string => {
+  const normalized = normalizeString(value)
+  if (!normalized) {
+    return ''
+  }
+
+  if (normalized.includes('BEGIN PUBLIC KEY')) {
+    return normalized
+  }
+
+  try {
+    const decoded = Buffer.from(normalized, 'base64').toString('utf8').trim()
+    return decoded.includes('BEGIN PUBLIC KEY') ? decoded : normalized
+  } catch (_error) {
+    return normalized
+  }
+}
+
 const parseWebhookTimestampMs = (timestamp: string): number | null => {
   const normalized = normalizeString(timestamp)
   if (!/^\d+$/.test(normalized)) {
@@ -257,11 +283,21 @@ const toCanonicalEventType = (rawEventType: string): string => {
     return 'CallAttemptStarted'
   }
 
-  if (normalized === 'message.delivered' || normalized === 'message.finalized') {
+  if (
+    normalized === 'message.delivered'
+    || normalized === 'message.finalized'
+    || normalized === 'sms.delivered'
+    || normalized === 'sms.finalized'
+  ) {
     return 'MessageDelivered'
   }
 
-  if (normalized === 'message.sent' || normalized === 'message.sending') {
+  if (
+    normalized === 'message.sent'
+    || normalized === 'message.sending'
+    || normalized === 'sms.sent'
+    || normalized === 'sms.sending'
+  ) {
     return 'MessageSent'
   }
 
@@ -589,24 +625,38 @@ const extractProviderEventCorrelation = (
   payload: unknown,
 ): TelephonyProviderEventCorrelation => {
   const normalizedPayload = normalizePayloadRecord(payload)
+  const providerPayload = normalizePayloadRecord(normalizedPayload.providerPayload)
   const data = normalizePayloadRecord(normalizedPayload.data)
   const dataPayload = normalizePayloadRecord(data.payload)
-  const sources = [normalizedPayload, dataPayload, data]
+  const sources = [normalizedPayload, providerPayload, dataPayload, data]
 
   return {
     providerLegId: readStringFromPayloadSources(sources, [
+      'providerLegId',
+      'provider_leg_id',
+      'providerCallId',
+      'provider_call_id',
       'call_control_id',
       'call_leg_id',
     ]),
     providerMessageId: readStringFromPayloadSources(sources, [
+      'providerMessageId',
+      'provider_message_id',
+      'messageUuid',
       'message_uuid',
       'message_id',
     ]),
     providerEventId: readStringFromPayloadSources(sources, [
+      'providerEventId',
+      'provider_event_id',
       'event_id',
       'id',
     ]),
     providerNumber: readStringFromPayloadSources(sources, [
+      'providerNumber',
+      'provider_number',
+      'providerNumberE164',
+      'provider_number_e164',
       'to',
       'to_number',
       'toNumber',
@@ -633,9 +683,10 @@ const verifyTelnyxWebhook = (
     return { ok: true }
   }
 
-  const publicKeyPem =
+  const publicKeyPem = resolvePublicKeyPem(
     normalizeString(input.verification?.publicKeyPem)
-    || normalizeString(process.env.TELNYX_PUBLIC_KEY)
+    || normalizeString(process.env.TELNYX_PUBLIC_KEY),
+  )
   if (!publicKeyPem) {
     return toWebhookRefusal(
       'WEBHOOK_SIGNATURE_NOT_CONFIGURED',
@@ -731,6 +782,19 @@ export function createTelnyxAdapter(
     adapterInterfaceVersion: 'v1',
     async sendSms(command) {
       const requestStartedAt = new Date((options.now ?? Date.now)()).toISOString()
+      if (isDeterministicConnectShyftTestMode(options)) {
+        return assertValidSmsDispatchResult({
+          providerKey: 'telnyx',
+          channel: 'message',
+          providerLegId: null,
+          providerMessageId: `telnyx-message-${command.threadId}`,
+          providerRequestId: `telnyx-test-request-${command.threadId}`,
+          adapterInvoked: true,
+          providerBranchingInDomain: false,
+          requestedAt: requestStartedAt,
+        })
+      }
+
       const { response, data } = await requestTelnyx({
         options,
         path: '/messages',
@@ -751,6 +815,20 @@ export function createTelnyxAdapter(
     },
     async startOutboundCall(command) {
       const requestStartedAt = new Date((options.now ?? Date.now)()).toISOString()
+      if (isDeterministicConnectShyftTestMode(options)) {
+        assertConfiguredTargetPhone(command.targetPhone)
+        return assertValidCallDispatchResult({
+          providerKey: 'telnyx',
+          channel: 'call',
+          providerLegId: `telnyx-call-leg-${command.threadId}`,
+          providerMessageId: null,
+          providerRequestId: `telnyx-test-request-${command.threadId}`,
+          adapterInvoked: true,
+          providerBranchingInDomain: false,
+          requestedAt: requestStartedAt,
+        })
+      }
+
       const { response, data } = await requestTelnyx({
         options,
         path: '/calls',
@@ -776,6 +854,20 @@ export function createTelnyxAdapter(
     },
     async startBridgeOutboundCall(command) {
       const requestStartedAt = new Date((options.now ?? Date.now)()).toISOString()
+      if (isDeterministicConnectShyftTestMode(options)) {
+        assertConfiguredTargetPhone(command.targetPhone)
+        return assertValidCallDispatchResult({
+          providerKey: 'telnyx',
+          channel: 'call',
+          providerLegId: `telnyx-bridge-leg-${command.legRole}-${command.bridgeSessionId}`,
+          providerMessageId: null,
+          providerRequestId: `telnyx-test-request-${command.bridgeSessionId}`,
+          adapterInvoked: true,
+          providerBranchingInDomain: false,
+          requestedAt: requestStartedAt,
+        })
+      }
+
       const { response, data } = await requestTelnyx({
         options,
         path: '/calls',
@@ -801,6 +893,18 @@ export function createTelnyxAdapter(
     },
     async startBridgeSession(command): Promise<TelephonyStartBridgeSessionResult> {
       const requestStartedAt = new Date((options.now ?? Date.now)()).toISOString()
+      if (isDeterministicConnectShyftTestMode(options)) {
+        return {
+          providerKey: 'telnyx',
+          bridgeSessionId: command.bridgeSessionId,
+          bridgeEstablished: true,
+          providerRequestId: `telnyx-test-request-${command.bridgeSessionId}`,
+          adapterInvoked: true,
+          providerBranchingInDomain: false,
+          requestedAt: requestStartedAt,
+        }
+      }
+
       const { response } = await requestTelnyx({
         options,
         path: `/calls/${encodeURIComponent(command.operatorProviderCallId)}/actions/bridge`,
@@ -820,6 +924,18 @@ export function createTelnyxAdapter(
     },
     async endCall(command): Promise<TelephonyEndCallResult> {
       const requestStartedAt = new Date((options.now ?? Date.now)()).toISOString()
+      if (isDeterministicConnectShyftTestMode(options)) {
+        return assertValidEndCallResult({
+          providerKey: 'telnyx',
+          providerLegId: command.providerLegId,
+          ended: true,
+          providerRequestId: `telnyx-test-request-${command.providerLegId}`,
+          adapterInvoked: true,
+          providerBranchingInDomain: false,
+          requestedAt: requestStartedAt,
+        })
+      }
+
       const { response } = await requestTelnyx({
         options,
         path: `/calls/${encodeURIComponent(command.providerLegId)}/actions/hangup`,

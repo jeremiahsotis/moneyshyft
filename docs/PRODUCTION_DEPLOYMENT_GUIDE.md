@@ -188,6 +188,8 @@ node scripts/reconcile-shared-migrations.js \
   --fail-on-states blocked,duplicate_across_apis,ready_to_promote_to_shared,recorded_but_missing_from_source
 
 # Run production migrations from the authority only after reconciliation passes
+# Target-state authority is migration-runner once governance is approved.
+# Until then, admin-api remains the transitional active runner.
 docker compose run --rm admin-api npm run migrate:latest:prod
 
 # Start or restart APIs
@@ -195,6 +197,12 @@ docker compose up -d admin-api money-api connect-api
 ```
 
 Stop immediately and do not continue deployment if reconciliation reports any `blocked`, `duplicate_across_apis`, `ready_to_promote_to_shared`, or `recorded_but_missing_from_source` rows. `ready_to_run` is the only acceptable unrecorded execution state. Do not execute suggested mark-applied SQL automatically, and do not write to `public.knex_migrations` directly.
+
+When the constitution or approved exception authorizes the cutover, switch the authority command to:
+
+```bash
+docker compose run --rm migration-runner npm run migrate:latest:prod
+```
 
 ## 6) Smoke Checks
 
@@ -280,6 +288,8 @@ node scripts/reconcile-shared-migrations.js \
   --fail-on-states blocked,duplicate_across_apis,ready_to_promote_to_shared,recorded_but_missing_from_source
 
 # 6) Run migrations from authority only
+# Use migration-runner after governance clears the cutover.
+# Until then, admin-api remains the explicit transitional runner.
 docker compose run --rm admin-api npm run migrate:latest:prod
 
 # 7) Recreate API containers

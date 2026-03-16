@@ -5,7 +5,8 @@
     "sharedGlobals": [
       "{workspaceRoot}/pnpm-lock.yaml",
       "{workspaceRoot}/nx.json",
-      "{workspaceRoot}/tsconfig.base.json"
+      "{workspaceRoot}/tsconfig.base.json",
+      "{workspaceRoot}/libs/**/*"
     ]
   },
   "targetDefaults": {

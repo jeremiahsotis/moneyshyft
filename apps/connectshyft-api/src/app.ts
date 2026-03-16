@@ -3,6 +3,10 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import logger from './utils/logger';
 import { optionalAuth } from './middleware/auth';
+import { requestCorrelation } from './platform/middleware/requestCorrelation';
+import { tenancyContext } from './platform/middleware/tenancyContext';
+import { authContext } from './platform/middleware/authContext';
+import { responseEnvelope } from './platform/middleware/responseEnvelope';
 import { csrfProtection } from './platform/middleware/csrfProtection';
 import connectShyftRouter from './routes/api/v1/connectshyft';
 
@@ -16,6 +20,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(optionalAuth);
+app.use(requestCorrelation);
+app.use(tenancyContext);
+app.use(authContext);
+app.use(responseEnvelope);
 
 app.use((req: Request, _res: Response, next: NextFunction) => {
   logger.info(`${req.method} ${req.path}`);

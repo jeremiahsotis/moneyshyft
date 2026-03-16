@@ -87,10 +87,10 @@ export function createStoryUxR1Context(
     csrfToken:
       overrides.csrfToken ?? `csrf-story-ux-r1-${randomUUID().slice(0, 8)}`,
     threadIds: {
-      unclaimed: 'f6b1825d-1465-4c4f-826e-dc7e77dfc4dd',
-      claimed: '40ab0a06-27a0-45ff-8ea4-6d82e6f41222',
-      closed: '7ebd0097-67e4-4511-8533-68006906beb8',
-      voicemailClaimed: '85719c17-ad5d-4ba6-8cde-5c9418122032',
+      unclaimed: 'thread-ux-r1-unclaimed-1001',
+      claimed: 'thread-ux-r1-claimed-1002',
+      closed: 'thread-ux-r1-closed-1003',
+      voicemailClaimed: 'thread-ux-r1-claimed-voicemail-1004',
     },
     navModel: {
       primaryTabs: ['Inbox', 'Mine', 'More'],

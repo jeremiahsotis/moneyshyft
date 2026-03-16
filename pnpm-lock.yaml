@@ -263,6 +263,24 @@ importers:
         specifier: ^2.1.10
         version: 2.2.12(typescript@5.9.3)
 
+  apps/migration-runner:
+    dependencies:
+      dotenv:
+        specifier: ^16.3.1
+        version: 16.6.1
+      knex:
+        specifier: ^3.0.1
+        version: 3.1.0(pg@8.20.0)
+      pg:
+        specifier: ^8.11.3
+        version: 8.20.0
+      ts-node:
+        specifier: ^10.9.2
+        version: 10.9.2(@types/node@20.19.37)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
   apps/moneyshyft-api:
     dependencies:
       bcryptjs:
@@ -378,6 +396,16 @@ importers:
       vue-tsc:
         specifier: ^2.1.10
         version: 2.2.12(typescript@5.9.3)
+
+  libs/auth: {}
+
+  libs/db: {}
+
+  libs/http: {}
+
+  libs/platform: {}
+
+  libs/ui-shell: {}
 
 packages:
 
@@ -6397,7 +6425,7 @@ snapshots:
 
   dotenv-expand@11.0.7:
     dependencies:
-      dotenv: 16.4.7
+      dotenv: 16.6.1
 
   dotenv@16.4.7: {}
 
