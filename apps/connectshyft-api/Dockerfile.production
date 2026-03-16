@@ -32,6 +32,8 @@ COPY --from=build /workspace/libs ./dist/libs
 COPY --from=build /workspace/apps/connectshyft-api/knexfile.js ./knexfile.js
 COPY --from=build /workspace/apps/connectshyft-api/scripts ./scripts
 
+RUN ln -s /app/node_modules /node_modules
+
 EXPOSE 3002
 
 CMD ["node", "dist/server.js"]
