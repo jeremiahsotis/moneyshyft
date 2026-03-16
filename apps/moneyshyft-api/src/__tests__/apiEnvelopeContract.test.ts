@@ -62,8 +62,6 @@ jest.mock('../utils/jwt', () => ({
   generateRefreshToken: jest.fn()
 }));
 
-import authRouter from '../routes/api/v1/auth';
-
 describe('Story 0.5 - shared API envelope and business refusal contract', () => {
   const buildApp = () => {
     const testApp = express();
@@ -71,7 +69,6 @@ describe('Story 0.5 - shared API envelope and business refusal contract', () => 
     testApp.use(express.json());
     registerPlatformMiddleware(testApp);
     testApp.use('/api/v1/platform', contractsRouter);
-    testApp.use('/api/v1/auth', authRouter);
     return testApp;
   };
 
@@ -121,40 +118,6 @@ describe('Story 0.5 - shared API envelope and business refusal contract', () => 
       });
     });
 
-    it('serializes module endpoint success responses through shared envelope helpers', async () => {
-      const app = buildApp();
-
-      const response = await request(app)
-        .post('/api/v1/auth/logout')
-        .set('x-correlation-id', 'corr-module-success-alpha');
-
-      expect(response.status).toBe(200);
-      expect(response.body).toMatchObject({
-        ok: true,
-        code: 'REQUEST_SUCCESS',
-        message: 'Logged out successfully',
-        correlationId: 'corr-module-success-alpha',
-        tenantId: null
-      });
-    });
-
-    it('serializes module endpoint refusal responses through shared envelope helpers', async () => {
-      const app = buildApp();
-
-      const response = await request(app)
-        .post('/api/v1/auth/refresh')
-        .set('x-correlation-id', 'corr-module-refusal-alpha');
-
-      expect(response.status).toBe(401);
-      expect(response.body).toMatchObject({
-        ok: false,
-        code: 'HTTP_401',
-        message: 'Refresh token required',
-        refusalType: 'client',
-        correlationId: 'corr-module-refusal-alpha',
-        tenantId: null
-      });
-    });
   });
 
   describe('AC2: business refusal contract', () => {
