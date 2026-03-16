@@ -25,6 +25,8 @@ ENV NODE_OPTIONS="--max-old-space-size=384"
 COPY --from=build /workspace/apps/admin-api/package*.json ./
 COPY --from=build /workspace/apps/admin-api/node_modules ./node_modules
 COPY --from=build /workspace/apps/admin-api/dist ./dist
+COPY --from=build /workspace/libs /libs
+COPY --from=build /workspace/libs ./dist/libs
 COPY --from=build /workspace/apps/admin-api/knexfile.js ./knexfile.js
 COPY --from=build /workspace/apps/admin-api/scripts ./scripts
 
