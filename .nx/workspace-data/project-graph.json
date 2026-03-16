@@ -1,0 +1,1245 @@
+{
+  "nodes": {
+    "communication-domain": {
+      "name": "communication-domain",
+      "type": "lib",
+      "data": {
+        "root": "domains/communication",
+        "name": "communication-domain",
+        "$schema": "../../node_modules/nx/schemas/project-schema.json",
+        "projectType": "library",
+        "sourceRoot": "domains/communication",
+        "tags": [
+          "scope:shared",
+          "type:domain"
+        ],
+        "implicitDependencies": [],
+        "targets": {}
+      }
+    },
+    "connectshyft-api": {
+      "name": "connectshyft-api",
+      "type": "app",
+      "data": {
+        "root": "apps/connectshyft-api",
+        "name": "connectshyft-api",
+        "tags": [
+          "npm:public",
+          "lane:connectshyft",
+          "type:app",
+          "runtime:node"
+        ],
+        "metadata": {
+          "targetGroups": {
+            "NPM Scripts": [
+              "migrate:latest",
+              "migrate:latest:prod",
+              "migrate:rollback",
+              "migrate:rollback:prod",
+              "migrate:make",
+              "seed:run",
+              "seed:run:prod",
+              "test:connectshyft",
+              "test:watch"
+            ]
+          },
+          "description": "ConnectShyft API application",
+          "js": {
+            "packageName": "connectshyft-api",
+            "packageMain": "dist/server.js",
+            "isInPackageManagerWorkspaces": true
+          }
+        },
+        "targets": {
+          "migrate:latest": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:latest"
+            },
+            "metadata": {
+              "scriptContent": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development migrate:latest",
+              "runCommand": "pnpm run migrate:latest"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:latest:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:latest:prod"
+            },
+            "metadata": {
+              "scriptContent": "NODE_ENV=production node ./scripts/enforceProdMigrationAuthority.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production migrate:latest",
+              "runCommand": "pnpm run migrate:latest:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:rollback": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:rollback"
+            },
+            "metadata": {
+              "scriptContent": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development migrate:rollback",
+              "runCommand": "pnpm run migrate:rollback"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:rollback:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:rollback:prod"
+            },
+            "metadata": {
+              "scriptContent": "NODE_ENV=production node ./scripts/enforceProdMigrationAuthority.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production migrate:rollback",
+              "runCommand": "pnpm run migrate:rollback:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:make": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:make"
+            },
+            "metadata": {
+              "scriptContent": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development migrate:make",
+              "runCommand": "pnpm run migrate:make"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "seed:run": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "seed:run"
+            },
+            "metadata": {
+              "scriptContent": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development seed:run",
+              "runCommand": "pnpm run seed:run"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "seed:run:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "seed:run:prod"
+            },
+            "metadata": {
+              "scriptContent": "NODE_ENV=production node ./scripts/enforceProdMigrationAuthority.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production seed:run",
+              "runCommand": "pnpm run seed:run:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "test:connectshyft": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "test:connectshyft"
+            },
+            "metadata": {
+              "scriptContent": "NODE_ENV=test jest --runInBand --testPathPattern=connectshyft",
+              "runCommand": "pnpm run test:connectshyft"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "test:watch": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "test:watch"
+            },
+            "metadata": {
+              "scriptContent": "jest --watch",
+              "runCommand": "pnpm run test:watch"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "nx-release-publish": {
+            "executor": "@nx/js:release-publish",
+            "dependsOn": [
+              "^nx-release-publish"
+            ],
+            "options": {},
+            "configurations": {},
+            "parallelism": true
+          },
+          "dev": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/connectshyft-api",
+              "command": "npm run dev"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "build": {
+            "executor": "nx:run-commands",
+            "inputs": [
+              "default",
+              "{workspaceRoot}/domains/communication/**/*"
+            ],
+            "options": {
+              "cwd": "apps/connectshyft-api",
+              "command": "npm run build"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true
+          },
+          "start": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/connectshyft-api",
+              "command": "npm run start"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "test": {
+            "executor": "nx:run-commands",
+            "inputs": [
+              "default",
+              "{workspaceRoot}/domains/communication/**/*"
+            ],
+            "options": {
+              "cwd": "apps/connectshyft-api",
+              "command": "npm run test:connectshyft"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true
+          },
+          "lint": {
+            "executor": "nx:run-commands",
+            "options": {
+              "command": "node scripts/enforce-workspace-boundaries.js"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          }
+        },
+        "$schema": "../../node_modules/nx/schemas/project-schema.json",
+        "projectType": "application",
+        "sourceRoot": "apps/connectshyft-api/src",
+        "implicitDependencies": []
+      }
+    },
+    "connectshyft-web": {
+      "name": "connectshyft-web",
+      "type": "app",
+      "data": {
+        "root": "apps/connectshyft-web",
+        "name": "connectshyft-web",
+        "tags": [
+          "npm:public",
+          "lane:connectshyft",
+          "type:app",
+          "runtime:web"
+        ],
+        "metadata": {
+          "targetGroups": {
+            "NPM Scripts": [
+              "build:prod"
+            ]
+          },
+          "js": {
+            "packageName": "connectshyft-web",
+            "isInPackageManagerWorkspaces": true
+          }
+        },
+        "targets": {
+          "build:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "build:prod"
+            },
+            "metadata": {
+              "scriptContent": "vite build",
+              "runCommand": "pnpm run build:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "nx-release-publish": {
+            "executor": "@nx/js:release-publish",
+            "dependsOn": [
+              "^nx-release-publish"
+            ],
+            "options": {},
+            "configurations": {},
+            "parallelism": true
+          },
+          "dev": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/connectshyft-web",
+              "command": "npm run dev"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "build": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/connectshyft-web",
+              "command": "npm run build"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          },
+          "verify-connectshyft-ui": {
+            "executor": "nx:run-commands",
+            "options": {
+              "command": "nx run connectshyft-web:build && bash scripts/verify-connectshyft-route-ownership.sh"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "preview": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/connectshyft-web",
+              "command": "npm run preview"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "test": {
+            "executor": "nx:run-commands",
+            "options": {
+              "command": "npx playwright test tests/api/platform/8-4-lane-extraction-transition-strategy.api.spec.ts"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          },
+          "lint": {
+            "executor": "nx:run-commands",
+            "options": {
+              "command": "node scripts/enforce-workspace-boundaries.js"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          }
+        },
+        "$schema": "../../node_modules/nx/schemas/project-schema.json",
+        "projectType": "application",
+        "sourceRoot": "apps/connectshyft-web/src",
+        "implicitDependencies": []
+      }
+    },
+    "migration-runner": {
+      "name": "migration-runner",
+      "type": "lib",
+      "data": {
+        "root": "apps/migration-runner",
+        "name": "migration-runner",
+        "tags": [
+          "npm:private"
+        ],
+        "metadata": {
+          "targetGroups": {
+            "NPM Scripts": [
+              "migrations:package",
+              "migrate:latest",
+              "migrate:latest:prod",
+              "migrate:rollback:prod",
+              "seed:run:prod"
+            ]
+          },
+          "description": "Dedicated one-shot shared-authority migration runner",
+          "js": {
+            "packageName": "migration-runner",
+            "isInPackageManagerWorkspaces": true
+          }
+        },
+        "targets": {
+          "migrations:package": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrations:package"
+            },
+            "metadata": {
+              "scriptContent": "node ./scripts/packageSharedMigrations.js",
+              "runCommand": "pnpm run migrations:package"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:latest": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:latest"
+            },
+            "metadata": {
+              "scriptContent": "NODE_ENV=production node ./scripts/packageSharedMigrations.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production migrate:latest",
+              "runCommand": "pnpm run migrate:latest"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:latest:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:latest:prod"
+            },
+            "metadata": {
+              "scriptContent": "npm run migrate:latest",
+              "runCommand": "pnpm run migrate:latest:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:rollback:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:rollback:prod"
+            },
+            "metadata": {
+              "scriptContent": "NODE_ENV=production node ./scripts/packageSharedMigrations.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production migrate:rollback",
+              "runCommand": "pnpm run migrate:rollback:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "seed:run:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "seed:run:prod"
+            },
+            "metadata": {
+              "scriptContent": "NODE_ENV=production node ./scripts/packageSharedMigrations.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production seed:run",
+              "runCommand": "pnpm run seed:run:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          }
+        },
+        "implicitDependencies": []
+      }
+    },
+    "moneyshyft-api": {
+      "name": "moneyshyft-api",
+      "type": "app",
+      "data": {
+        "root": "apps/moneyshyft-api",
+        "name": "moneyshyft-api",
+        "tags": [
+          "npm:public",
+          "lane:moneyshyft",
+          "type:app",
+          "runtime:node"
+        ],
+        "metadata": {
+          "targetGroups": {
+            "NPM Scripts": [
+              "migrate:latest",
+              "migrate:latest:prod",
+              "migrate:rollback",
+              "migrate:rollback:prod",
+              "migrate:make",
+              "seed:run",
+              "seed:run:prod",
+              "test:connectshyft",
+              "test:watch"
+            ]
+          },
+          "description": "Family-focused budgeting application",
+          "js": {
+            "packageName": "moneyshyft",
+            "packageMain": "dist/server.js",
+            "isInPackageManagerWorkspaces": true
+          }
+        },
+        "targets": {
+          "migrate:latest": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:latest"
+            },
+            "metadata": {
+              "scriptContent": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development migrate:latest",
+              "runCommand": "pnpm run migrate:latest"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:latest:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:latest:prod"
+            },
+            "metadata": {
+              "scriptContent": "NODE_ENV=production node ./scripts/enforceProdMigrationAuthority.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production migrate:latest",
+              "runCommand": "pnpm run migrate:latest:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:rollback": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:rollback"
+            },
+            "metadata": {
+              "scriptContent": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development migrate:rollback",
+              "runCommand": "pnpm run migrate:rollback"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:rollback:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:rollback:prod"
+            },
+            "metadata": {
+              "scriptContent": "NODE_ENV=production node ./scripts/enforceProdMigrationAuthority.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production migrate:rollback",
+              "runCommand": "pnpm run migrate:rollback:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:make": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:make"
+            },
+            "metadata": {
+              "scriptContent": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development migrate:make",
+              "runCommand": "pnpm run migrate:make"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "seed:run": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "seed:run"
+            },
+            "metadata": {
+              "scriptContent": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development seed:run",
+              "runCommand": "pnpm run seed:run"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "seed:run:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "seed:run:prod"
+            },
+            "metadata": {
+              "scriptContent": "NODE_ENV=production node ./scripts/enforceProdMigrationAuthority.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production seed:run",
+              "runCommand": "pnpm run seed:run:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "test:connectshyft": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "test:connectshyft"
+            },
+            "metadata": {
+              "scriptContent": "jest --runInBand --runTestsByPath src/routes/api/v1/__tests__/connectshyft.route-ownership.test.ts",
+              "runCommand": "pnpm run test:connectshyft"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "test:watch": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "test:watch"
+            },
+            "metadata": {
+              "scriptContent": "jest --watch",
+              "runCommand": "pnpm run test:watch"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "nx-release-publish": {
+            "executor": "@nx/js:release-publish",
+            "dependsOn": [
+              "^nx-release-publish"
+            ],
+            "options": {},
+            "configurations": {},
+            "parallelism": true
+          },
+          "dev": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/moneyshyft-api",
+              "command": "npm run dev"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "build": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/moneyshyft-api",
+              "command": "npm run build"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          },
+          "start": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/moneyshyft-api",
+              "command": "npm run start"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "test": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/moneyshyft-api",
+              "command": "npm test"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          },
+          "lint": {
+            "executor": "nx:run-commands",
+            "options": {
+              "command": "node scripts/enforce-workspace-boundaries.js"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          }
+        },
+        "$schema": "../../node_modules/nx/schemas/project-schema.json",
+        "projectType": "application",
+        "sourceRoot": "apps/moneyshyft-api/src",
+        "implicitDependencies": []
+      }
+    },
+    "moneyshyft-web": {
+      "name": "moneyshyft-web",
+      "type": "app",
+      "data": {
+        "root": "apps/moneyshyft-web",
+        "name": "moneyshyft-web",
+        "tags": [
+          "npm:public",
+          "lane:moneyshyft",
+          "type:app",
+          "runtime:web"
+        ],
+        "metadata": {
+          "targetGroups": {
+            "NPM Scripts": [
+              "build:prod"
+            ]
+          },
+          "js": {
+            "packageName": "moneyshyft-frontend",
+            "isInPackageManagerWorkspaces": true
+          }
+        },
+        "targets": {
+          "build:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "build:prod"
+            },
+            "metadata": {
+              "scriptContent": "vite build",
+              "runCommand": "pnpm run build:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "nx-release-publish": {
+            "executor": "@nx/js:release-publish",
+            "dependsOn": [
+              "^nx-release-publish"
+            ],
+            "options": {},
+            "configurations": {},
+            "parallelism": true
+          },
+          "dev": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/moneyshyft-web",
+              "command": "npm run dev"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "build": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/moneyshyft-web",
+              "command": "npm run build"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          },
+          "verify-moneyshyft-ui": {
+            "executor": "nx:run-commands",
+            "options": {
+              "command": "nx run moneyshyft-web:build"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "preview": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/moneyshyft-web",
+              "command": "npm run preview"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "lint": {
+            "executor": "nx:run-commands",
+            "options": {
+              "command": "node scripts/enforce-workspace-boundaries.js"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          }
+        },
+        "$schema": "../../node_modules/nx/schemas/project-schema.json",
+        "projectType": "application",
+        "sourceRoot": "apps/moneyshyft-web/src",
+        "implicitDependencies": []
+      }
+    },
+    "admin-api": {
+      "name": "admin-api",
+      "type": "app",
+      "data": {
+        "root": "apps/admin-api",
+        "name": "admin-api",
+        "tags": [
+          "npm:public",
+          "lane:connectshyft",
+          "type:app",
+          "runtime:node"
+        ],
+        "metadata": {
+          "targetGroups": {
+            "NPM Scripts": [
+              "migrate:latest",
+              "migrate:latest:prod",
+              "migrate:rollback",
+              "migrate:rollback:prod",
+              "migrate:make",
+              "seed:run",
+              "seed:run:prod",
+              "test:connectshyft",
+              "test:watch"
+            ]
+          },
+          "description": "Centralized auth and administration API for Shyft modules",
+          "js": {
+            "packageName": "admin-api",
+            "packageMain": "dist/server.js",
+            "isInPackageManagerWorkspaces": true
+          }
+        },
+        "targets": {
+          "migrate:latest": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:latest"
+            },
+            "metadata": {
+              "scriptContent": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development migrate:latest",
+              "runCommand": "pnpm run migrate:latest"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:latest:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:latest:prod"
+            },
+            "metadata": {
+              "scriptContent": "NODE_ENV=production node ./scripts/enforceProdMigrationAuthority.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production migrate:latest",
+              "runCommand": "pnpm run migrate:latest:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:rollback": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:rollback"
+            },
+            "metadata": {
+              "scriptContent": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development migrate:rollback",
+              "runCommand": "pnpm run migrate:rollback"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:rollback:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:rollback:prod"
+            },
+            "metadata": {
+              "scriptContent": "NODE_ENV=production node ./scripts/enforceProdMigrationAuthority.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production migrate:rollback",
+              "runCommand": "pnpm run migrate:rollback:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "migrate:make": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "migrate:make"
+            },
+            "metadata": {
+              "scriptContent": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development migrate:make",
+              "runCommand": "pnpm run migrate:make"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "seed:run": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "seed:run"
+            },
+            "metadata": {
+              "scriptContent": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env development seed:run",
+              "runCommand": "pnpm run seed:run"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "seed:run:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "seed:run:prod"
+            },
+            "metadata": {
+              "scriptContent": "NODE_ENV=production node ./scripts/enforceProdMigrationAuthority.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production seed:run",
+              "runCommand": "pnpm run seed:run:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "test:connectshyft": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "test:connectshyft"
+            },
+            "metadata": {
+              "scriptContent": "jest --runInBand --testPathPattern=connectshyft",
+              "runCommand": "pnpm run test:connectshyft"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "test:watch": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "test:watch"
+            },
+            "metadata": {
+              "scriptContent": "jest --watch",
+              "runCommand": "pnpm run test:watch"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "nx-release-publish": {
+            "executor": "@nx/js:release-publish",
+            "dependsOn": [
+              "^nx-release-publish"
+            ],
+            "options": {},
+            "configurations": {},
+            "parallelism": true
+          },
+          "dev": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/admin-api",
+              "command": "npm run dev"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "build": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/admin-api",
+              "command": "npm run build"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          },
+          "start": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/admin-api",
+              "command": "npm run start"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "test": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/admin-api",
+              "command": "npm test"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          },
+          "lint": {
+            "executor": "nx:run-commands",
+            "options": {
+              "command": "node scripts/enforce-workspace-boundaries.js"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          }
+        },
+        "$schema": "../../node_modules/nx/schemas/project-schema.json",
+        "projectType": "application",
+        "sourceRoot": "apps/admin-api/src",
+        "implicitDependencies": []
+      }
+    },
+    "admin-web": {
+      "name": "admin-web",
+      "type": "app",
+      "data": {
+        "root": "apps/admin-web",
+        "name": "admin-web",
+        "tags": [
+          "npm:public",
+          "lane:connectshyft",
+          "type:app",
+          "runtime:web"
+        ],
+        "metadata": {
+          "targetGroups": {
+            "NPM Scripts": [
+              "build:prod"
+            ]
+          },
+          "js": {
+            "packageName": "admin-web",
+            "isInPackageManagerWorkspaces": true
+          }
+        },
+        "targets": {
+          "build:prod": {
+            "executor": "nx:run-script",
+            "options": {
+              "script": "build:prod"
+            },
+            "metadata": {
+              "scriptContent": "vite build",
+              "runCommand": "pnpm run build:prod"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "nx-release-publish": {
+            "executor": "@nx/js:release-publish",
+            "dependsOn": [
+              "^nx-release-publish"
+            ],
+            "options": {},
+            "configurations": {},
+            "parallelism": true
+          },
+          "dev": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/admin-web",
+              "command": "npm run dev"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "build": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/admin-web",
+              "command": "npm run build"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          },
+          "preview": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/admin-web",
+              "command": "npm run preview"
+            },
+            "configurations": {},
+            "parallelism": true
+          },
+          "lint": {
+            "executor": "nx:run-commands",
+            "options": {
+              "command": "node scripts/enforce-workspace-boundaries.js"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          }
+        },
+        "$schema": "../../node_modules/nx/schemas/project-schema.json",
+        "projectType": "application",
+        "sourceRoot": "apps/admin-web/src",
+        "implicitDependencies": []
+      }
+    },
+    "@shyft/platform": {
+      "name": "@shyft/platform",
+      "type": "lib",
+      "data": {
+        "root": "libs/platform",
+        "name": "@shyft/platform",
+        "tags": [
+          "npm:private"
+        ],
+        "metadata": {
+          "targetGroups": {},
+          "js": {
+            "packageName": "@shyft/platform",
+            "packageMain": "dist/index.js",
+            "isInPackageManagerWorkspaces": true
+          }
+        },
+        "targets": {},
+        "implicitDependencies": []
+      }
+    },
+    "@shyft/ui-shell": {
+      "name": "@shyft/ui-shell",
+      "type": "lib",
+      "data": {
+        "root": "libs/ui-shell",
+        "name": "@shyft/ui-shell",
+        "tags": [
+          "npm:private"
+        ],
+        "metadata": {
+          "targetGroups": {},
+          "js": {
+            "packageName": "@shyft/ui-shell",
+            "packageMain": "dist/index.js",
+            "isInPackageManagerWorkspaces": true
+          }
+        },
+        "targets": {},
+        "implicitDependencies": []
+      }
+    },
+    "@shyft/auth": {
+      "name": "@shyft/auth",
+      "type": "lib",
+      "data": {
+        "root": "libs/auth",
+        "name": "@shyft/auth",
+        "tags": [
+          "npm:private"
+        ],
+        "metadata": {
+          "targetGroups": {},
+          "js": {
+            "packageName": "@shyft/auth",
+            "packageMain": "dist/index.js",
+            "isInPackageManagerWorkspaces": true
+          }
+        },
+        "targets": {},
+        "implicitDependencies": []
+      }
+    },
+    "@shyft/http": {
+      "name": "@shyft/http",
+      "type": "lib",
+      "data": {
+        "root": "libs/http",
+        "name": "@shyft/http",
+        "tags": [
+          "npm:private"
+        ],
+        "metadata": {
+          "targetGroups": {},
+          "js": {
+            "packageName": "@shyft/http",
+            "packageMain": "dist/index.js",
+            "isInPackageManagerWorkspaces": true
+          }
+        },
+        "targets": {},
+        "implicitDependencies": []
+      }
+    },
+    "e2e": {
+      "name": "e2e",
+      "type": "e2e",
+      "data": {
+        "root": "tools/e2e",
+        "name": "e2e",
+        "$schema": "../../node_modules/nx/schemas/project-schema.json",
+        "projectType": "application",
+        "sourceRoot": "tools/e2e",
+        "tags": [
+          "lane:moneyshyft",
+          "type:tool",
+          "scope:test"
+        ],
+        "targets": {
+          "test": {
+            "executor": "nx:run-commands",
+            "options": {
+              "command": "npm run test:e2e"
+            },
+            "configurations": {},
+            "parallelism": true,
+            "cache": true,
+            "inputs": [
+              "default"
+            ]
+          }
+        },
+        "implicitDependencies": []
+      }
+    },
+    "@shyft/db": {
+      "name": "@shyft/db",
+      "type": "lib",
+      "data": {
+        "root": "libs/db",
+        "name": "@shyft/db",
+        "tags": [
+          "npm:private"
+        ],
+        "metadata": {
+          "targetGroups": {},
+          "js": {
+            "packageName": "@shyft/db",
+            "packageMain": "dist/index.js",
+            "isInPackageManagerWorkspaces": true
+          }
+        },
+        "targets": {},
+        "implicitDependencies": []
+      }
+    }
+  },
+  "externalNodes": {},
+  "dependencies": {
+    "communication-domain": [],
+    "connectshyft-api": [],
+    "connectshyft-web": [],
+    "migration-runner": [],
+    "moneyshyft-api": [],
+    "moneyshyft-web": [],
+    "admin-api": [],
+    "admin-web": [],
+    "@shyft/platform": [],
+    "@shyft/ui-shell": [],
+    "@shyft/auth": [],
+    "@shyft/http": [],
+    "e2e": [],
+    "@shyft/db": []
+  },
+  "version": "6.0",
+  "errors": [
+    {
+      "stack": " - pnpm-lock.yaml: Error: Could not find \".modules.yaml\" at \"/Users/jeremiahotis/projects/connectshyft/node_modules/.modules.yaml\"\n    at loadPnpmHoistedDepsDefinition (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/plugins/js/lock-file/utils/pnpm-normalizer.js:40:15)\n    at getNodes (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/plugins/js/lock-file/pnpm-parser.js:213:77)\n    at getPnpmLockfileNodes (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/plugins/js/lock-file/pnpm-parser.js:32:12)\n    at getLockFileNodes (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/plugins/js/lock-file/lock-file.js:53:59)\n    at exports.createNodes (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/plugins/js/index.js:47:64)\n    at /Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/project-graph/plugins/utils.js:10:33\n    at Array.map (<anonymous>)\n    at createNodesFromFiles (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/project-graph/plugins/utils.js:8:35)\n    at LoadedNxPlugin.createNodes (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/project-graph/plugins/loaded-nx-plugin.js:19:76)\n    at LoadedNxPlugin.createNodes.<computed> (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/project-graph/plugins/loaded-nx-plugin.js:36:34)",
+      "message": "An error occurred while processing files for the nx/js/dependencies-and-lockfile plugin\n.\n  - pnpm-lock.yaml: Could not find \".modules.yaml\" at \"/Users/jeremiahotis/projects/connectshyft/node_modules/.modules.yaml\"",
+      "errors": [
+        [
+          "pnpm-lock.yaml",
+          {
+            "stack": "Error: Could not find \".modules.yaml\" at \"/Users/jeremiahotis/projects/connectshyft/node_modules/.modules.yaml\"\n    at loadPnpmHoistedDepsDefinition (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/plugins/js/lock-file/utils/pnpm-normalizer.js:40:15)\n    at getNodes (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/plugins/js/lock-file/pnpm-parser.js:213:77)\n    at getPnpmLockfileNodes (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/plugins/js/lock-file/pnpm-parser.js:32:12)\n    at getLockFileNodes (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/plugins/js/lock-file/lock-file.js:53:59)\n    at exports.createNodes (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/plugins/js/index.js:47:64)\n    at /Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/project-graph/plugins/utils.js:10:33\n    at Array.map (<anonymous>)\n    at createNodesFromFiles (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/project-graph/plugins/utils.js:8:35)\n    at LoadedNxPlugin.createNodes (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/project-graph/plugins/loaded-nx-plugin.js:19:76)\n    at LoadedNxPlugin.createNodes.<computed> (/Users/jeremiahotis/projects/connectshyft/node_modules/.pnpm/nx@20.8.4/node_modules/nx/src/project-graph/plugins/loaded-nx-plugin.js:36:34)",
+            "message": "Could not find \".modules.yaml\" at \"/Users/jeremiahotis/projects/connectshyft/node_modules/.modules.yaml\""
+          }
+        ]
+      ],
+      "partialResults": [
+        [
+          "package-lock.json",
+          {}
+        ]
+      ],
+      "name": "AggregateCreateNodesError"
+    }
+  ],
+  "computedAt": 1773670545483
+}
