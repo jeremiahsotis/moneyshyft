@@ -1,6 +1,17 @@
 import { Knex } from 'knex';
+import path from 'path';
 import os from 'os';
 import './config/loadEnv';
+
+const sharedDevelopmentMigrationDirectory = path.resolve(
+  __dirname,
+  '..',
+  '..',
+  '..',
+  'shared',
+  'database',
+  'migrations'
+);
 
 const readEnv = (primary: string, fallback: string): string | undefined => {
   const value = process.env[primary] ?? process.env[fallback];
@@ -113,7 +124,7 @@ const config: { [key: string]: Knex.Config } = {
     },
     migrations: {
       tableName: 'knex_migrations',
-      directory: './migrations',
+      directory: sharedDevelopmentMigrationDirectory,
       extension: 'ts'
     },
     seeds: {
@@ -131,7 +142,7 @@ const config: { [key: string]: Knex.Config } = {
     },
     migrations: {
       tableName: 'knex_migrations',
-      directory: './migrations',
+      directory: sharedDevelopmentMigrationDirectory,
       extension: 'ts'
     },
     seeds: {
