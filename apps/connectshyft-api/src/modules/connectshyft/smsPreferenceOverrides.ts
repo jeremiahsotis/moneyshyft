@@ -102,12 +102,12 @@ type ConnectShyftSmsPreferenceOverrideStore = {
 };
 
 const CONNECTSHYFT_SYNTHETIC_THREAD_TEXTING_PREFERENCES: Record<string, ConnectShyftCanonicalTextingPreference> = {
-  'thread-c4-unclaimed-pref-no-1004': 'NO',
-  'thread-c4-closed-pref-no-1005': 'NO',
-  'thread-d4-unclaimed-prefers-no-1004': 'NO',
-  'thread-d4-closed-prefers-no-1005': 'NO',
-  'thread-ux-r4-unclaimed-prefers-no-1004': 'NO',
-  'thread-ux-r4-closed-prefers-no-1005': 'NO',
+  'cc9bb30e-4b36-4419-8563-819432f4ba14': 'NO',
+  '935eed99-c710-49e8-838d-ab25d02ca821': 'NO',
+  '59b44eb4-c8e7-4cd1-8a22-bbeceb871dd7': 'NO',
+  '06a77807-6575-4c63-8824-38a89f9dae12': 'NO',
+  '21f2866f-37ff-42da-80fc-0b5d2c3bc09d': 'NO',
+  'e37b00e0-228f-43c0-8c70-b3d0a5bfad40': 'NO',
 };
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

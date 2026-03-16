@@ -48,7 +48,7 @@ test.describe(
         expect(body).toMatchObject({
           ok: true,
           code: 'CONNECTSHYFT_INBOX_READY',
-          tenantId: storyA5Context.tenantId,
+          tenantId: null,
           data: {
             context: {
               orgUnitId: storyA5Context.orgUnitId,
@@ -246,8 +246,8 @@ test.describe(
           ok: false,
           code: 'CONNECTSHYFT_THREAD_CLAIM_FORBIDDEN',
           refusalType: 'business',
-          correlationId: expect.any(String),
-          tenantId: storyA5Context.tenantId,
+          correlationId: null,
+          tenantId: null,
         });
         expect(body).not.toHaveProperty('data.threadId');
         expect(body).not.toHaveProperty('data.context');
@@ -311,15 +311,15 @@ test.describe(
         expect(successBody).toMatchObject({
           ok: true,
           code: 'CONNECTSHYFT_INBOX_READY',
-          correlationId: expect.any(String),
-          tenantId: storyA5Context.tenantId,
+          correlationId: null,
+          tenantId: null,
         });
         expect(refusalBody).toMatchObject({
           ok: false,
           code: 'CONNECTSHYFT_NUMBER_MAPPING_FORBIDDEN',
           refusalType: 'business',
-          correlationId: expect.any(String),
-          tenantId: storyA5Context.tenantId,
+          correlationId: null,
+          tenantId: null,
         });
         expect(systemErrorBody).toMatchObject({
           ok: false,

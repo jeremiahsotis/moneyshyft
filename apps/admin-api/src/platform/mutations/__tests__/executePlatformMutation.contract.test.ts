@@ -41,6 +41,52 @@ describeIfDb('executePlatformMutation (postgres contract)', () => {
       });
     }
 
+    if (!(await db.schema.hasColumn('users', 'email'))) {
+      await db.schema.alterTable('users', (table) => {
+        table.string('email', 255).nullable();
+      });
+    }
+    if (!(await db.schema.hasColumn('users', 'password_hash'))) {
+      await db.schema.alterTable('users', (table) => {
+        table.string('password_hash', 255).nullable();
+      });
+    }
+    if (!(await db.schema.hasColumn('users', 'first_name'))) {
+      await db.schema.alterTable('users', (table) => {
+        table.string('first_name', 100).nullable();
+      });
+    }
+    if (!(await db.schema.hasColumn('users', 'last_name'))) {
+      await db.schema.alterTable('users', (table) => {
+        table.string('last_name', 100).nullable();
+      });
+    }
+    if (!(await db.schema.hasColumn('users', 'household_id'))) {
+      await db.schema.alterTable('users', (table) => {
+        table.uuid('household_id').nullable();
+      });
+    }
+    if (!(await db.schema.hasColumn('users', 'role'))) {
+      await db.schema.alterTable('users', (table) => {
+        table.string('role', 50).nullable().defaultTo('member');
+      });
+    }
+    if (!(await db.schema.hasColumn('users', 'created_at'))) {
+      await db.schema.alterTable('users', (table) => {
+        table.timestamp('created_at').nullable().defaultTo(db.fn.now());
+      });
+    }
+    if (!(await db.schema.hasColumn('users', 'updated_at'))) {
+      await db.schema.alterTable('users', (table) => {
+        table.timestamp('updated_at').nullable().defaultTo(db.fn.now());
+      });
+    }
+    if (!(await db.schema.hasColumn('users', 'last_login_at'))) {
+      await db.schema.alterTable('users', (table) => {
+        table.timestamp('last_login_at').nullable();
+      });
+    }
+
     if (!(await db.schema.withSchema('platform').hasTable('tenants'))) {
       await db.schema.withSchema('platform').createTable('tenants', (table) => {
         table.uuid('id').primary();

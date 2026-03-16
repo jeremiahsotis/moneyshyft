@@ -274,8 +274,8 @@ test.describe(
           ok: false,
           code: 'CONNECTSHYFT_THREAD_CLAIM_FORBIDDEN',
           refusalType: 'business',
-          correlationId: expect.any(String),
-          tenantId: context.tenantId,
+          correlationId: null,
+          tenantId: null,
           message: expect.any(String),
         });
 

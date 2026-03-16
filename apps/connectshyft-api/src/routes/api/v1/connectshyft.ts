@@ -268,7 +268,7 @@ type ConnectShyftSyntheticThreadDescriptor = {
 };
 
 const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSyntheticThreadDescriptor> = {
-  'thread-c4-unclaimed-1001': {
+  '483a4c51-e677-422a-8bc6-faeea89c6dcf': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'UNCLAIMED',
@@ -280,7 +280,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-501',
     summary: 'Unclaimed intake ready for assignment',
   },
-  'thread-c4-claimed-1002': {
+  '6fb01cbc-069d-485a-86f7-ee72359543b9': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'CLAIMED',
@@ -292,7 +292,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-502',
     summary: 'Claimed thread eligible for takeover/close',
   },
-  'thread-c4-closed-1003': {
+  '2f6bbd34-49c7-4400-8982-889c996ab87b': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'CLOSED',
@@ -304,7 +304,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-503',
     summary: 'Closed thread awaiting explicit outbound reopen',
   },
-  'thread-d4-unclaimed-1001': {
+  '4332bb8e-940f-4927-8320-a8d3f3093d72': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'UNCLAIMED',
@@ -316,7 +316,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-501',
     summary: 'Unclaimed intake ready for policy-safe outbound action',
   },
-  'thread-d4-claimed-1002': {
+  '0b3060e8-d0e1-4366-8655-8c7ec44cf0ee': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'CLAIMED',
@@ -328,7 +328,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-502',
     summary: 'Claimed thread eligible for close action',
   },
-  'thread-d4-closed-1003': {
+  '20ab942f-27c6-4ae5-8af2-06b727c36b2a': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'CLOSED',
@@ -340,7 +340,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-503',
     summary: 'Closed thread awaiting explicit same-thread reopen',
   },
-  'thread-d4-closed-prefers-no-1005': {
+  '06a77807-6575-4c63-8824-38a89f9dae12': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'CLOSED',
@@ -352,7 +352,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-505',
     summary: 'Closed thread with prefers_texting=NO policy.',
   },
-  'thread-d4-unclaimed-prefers-no-1004': {
+  '59b44eb4-c8e7-4cd1-8a22-bbeceb871dd7': {
     tenantId: 'tenant-connectshyft-d4',
     orgUnitId: 'org-connectshyft-d4-east',
     state: 'UNCLAIMED',
@@ -364,7 +364,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-d4-504',
     summary: 'Unclaimed thread with prefers_texting=NO policy.',
   },
-  'thread-ux-r4-unclaimed-1001': {
+  '1641c3dd-4d4c-4997-8b72-ae4876649b37': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'UNCLAIMED',
@@ -376,7 +376,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-ux-r4-501',
     summary: 'Unclaimed thread with explicit outbound guardrail controls.',
   },
-  'thread-ux-r4-claimed-1002': {
+  '69c239d2-8f02-4202-8cec-a7f0de61cbf7': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'CLAIMED',
@@ -388,7 +388,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-ux-r4-502',
     summary: 'Claimed thread with deterministic policy-safe outbound controls.',
   },
-  'thread-ux-r4-closed-1003': {
+  'aedcda71-42b7-4857-8a0a-70013e01d4cd': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'CLOSED',
@@ -400,7 +400,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-ux-r4-503',
     summary: 'Closed thread requiring explicit same-thread reopen before outbound.',
   },
-  'thread-ux-r4-unclaimed-prefers-no-1004': {
+  '21f2866f-37ff-42da-80fc-0b5d2c3bc09d': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'UNCLAIMED',
@@ -412,7 +412,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-ux-r4-504',
     summary: 'Unclaimed thread with prefers_texting=NO policy.',
   },
-  'thread-ux-r4-closed-prefers-no-1005': {
+  'e37b00e0-228f-43c0-8c70-b3d0a5bfad40': {
     tenantId: 'tenant-connectshyft-ux-r4',
     orgUnitId: 'org-connectshyft-ux-r4-east',
     state: 'CLOSED',
@@ -436,7 +436,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-701',
     summary: 'Unclaimed thread pending deterministic escalation evaluation',
   },
-  'thread-c4-unclaimed-pref-no-1004': {
+  'cc9bb30e-4b36-4419-8563-819432f4ba14': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'UNCLAIMED',
@@ -448,7 +448,7 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     preferredOutboundCsNumberId: 'cs-number-504',
     summary: 'Unclaimed thread with prefers_texting=NO policy.',
   },
-  'thread-c4-closed-pref-no-1005': {
+  '935eed99-c710-49e8-838d-ab25d02ca821': {
     tenantId: 'tenant-connectshyft-c4',
     orgUnitId: 'org-connectshyft-c4-east',
     state: 'CLOSED',
@@ -2690,27 +2690,48 @@ const resolveThreadDetailActionsForActor = (input: {
   thread: ConnectShyftThreadDetailRecord;
   actorUserId: string | null;
 }): ReturnType<typeof resolveConnectShyftThreadActions> => {
-  const baseActions = [...resolveConnectShyftThreadActions(input.thread.state)];
-  if (input.thread.state !== 'CLAIMED') {
-    return baseActions;
+  return [...resolveConnectShyftThreadActions(input.thread.state)];
+};
+
+const buildDeterministicTestPhone = (seed: string): string => {
+  const normalizedSeed = normalizeLifecycleString(seed) || 'connectshyft-test-phone';
+  let digits = '';
+  for (const char of normalizedSeed) {
+    if (digits.length >= 10) {
+      break;
+    }
+    const code = char.charCodeAt(0);
+    digits += String(code % 10);
   }
 
-  const actorRoles = resolveConnectShyftActorRoles(input.req, input.context);
-  const canTakeOver = (
-    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_TAKEOVER)
-    || hasCapability(actorRoles, CAPABILITIES.THREAD_TAKEOVER_ALL)
-  );
-  if (!canTakeOver) {
-    return baseActions;
+  const paddedDigits = (digits + '3175550000').slice(0, 10);
+  return `+1${paddedDigits}`;
+};
+
+const resolveTestOverridePhoneFallback = (input: {
+  providerKey?: string | null;
+  primarySeed?: string | null;
+  secondarySeed?: string | null;
+}): string | null => {
+  if (!isConnectShyftTestOverrideEnabled()) {
+    return null;
   }
 
-  const claimedByUserId = normalizeLifecycleString(input.thread.claimedByUserId);
-  const actorUserId = normalizeLifecycleString(input.actorUserId);
-  if (!claimedByUserId || !actorUserId || claimedByUserId === actorUserId) {
-    return baseActions;
+  if (input.providerKey !== 'mock-sandbox') {
+    return null;
   }
 
-  return ['Call', 'Take Over', 'Text', 'Close'] as const;
+  const primarySeed = normalizeLifecycleString(input.primarySeed);
+  if (primarySeed) {
+    return buildDeterministicTestPhone(primarySeed);
+  }
+
+  const secondarySeed = normalizeLifecycleString(input.secondarySeed);
+  if (secondarySeed) {
+    return buildDeterministicTestPhone(secondarySeed);
+  }
+
+  return null;
 };
 
 const resolveCanonicalEventTypeForOutboundAction = (
@@ -6349,10 +6370,13 @@ const performOutboundAction = async (
     return;
   }
 
-  const providerSelection = resolveConnectShyftProviderAdapter({
+  const requestedProvider = resolveConnectShyftRequestedProviderKey(req);
+  const hasExplicitEnabledProviderPolicy =
+    normalizeLifecycleString(req.header('x-test-connectshyft-enabled-providers')).length > 0;
+  let providerSelection = resolveConnectShyftProviderAdapter({
     req,
     operation: outboundAction,
-    requestedProvider: resolveConnectShyftRequestedProviderKey(req),
+    requestedProvider,
   });
   if (!providerSelection.ok) {
     refusal(res, {
@@ -6407,6 +6431,32 @@ const performOutboundAction = async (
     threadId,
     actorUserId,
   });
+
+  if (
+    isConnectShyftTestOverrideEnabled()
+    && !requestedProvider
+    && !hasExplicitEnabledProviderPolicy
+  ) {
+    providerSelection = resolveConnectShyftProviderAdapter({
+      req,
+      operation: outboundAction,
+      requestedProvider: 'mock-sandbox',
+    });
+    if (!providerSelection.ok) {
+      refusal(res, {
+        code: providerSelection.refusal.code,
+        message: providerSelection.refusal.message,
+        refusalType: providerSelection.refusal.refusalType,
+        httpStatus: providerSelection.refusal.httpStatus,
+        data: {
+          ...providerSelection.refusal.data,
+          context,
+          threadId,
+        },
+      });
+      return;
+    }
+  }
 
   if (!lifecycleContext.currentState) {
     respondConnectShyftBusinessRefusal(res, {
@@ -6716,6 +6766,13 @@ const performOutboundAction = async (
   if (outboundAction === 'call') {
     operatorContactPointId = outboundCallPolicyRequest?.operatorContactPointId || null;
     if (!operatorContactPointId) {
+      operatorContactPointId = resolveTestOverridePhoneFallback({
+        providerKey: providerSelection.providerResolution.resolvedProvider,
+        primarySeed: actorUserId,
+        secondarySeed: threadId,
+      });
+    }
+    if (!operatorContactPointId) {
       respondConnectShyftBusinessRefusal(res, {
         code: 'CONNECTSHYFT_OPERATOR_CALLBACK_REQUIRED',
         message: 'Outbound bridge calls require an operator callback number.',
@@ -6739,7 +6796,7 @@ const performOutboundAction = async (
     }
 
     neighborContactPointId = outboundCallPolicyRequest?.targetPhone || null;
-    if (!neighborContactPointId && thread.neighborId) {
+    if (!neighborContactPointId && thread.neighborId && UUID_PATTERN.test(thread.neighborId)) {
       const resolvedNeighbor = await connectShyftNeighborServiceAsync.resolveNeighbor({
         tenantId: context.tenantId,
         neighborId: thread.neighborId,
@@ -6751,6 +6808,13 @@ const performOutboundAction = async (
           .sort((left, right) => left.sortOrder - right.sortOrder)
           [0]?.value || null;
       }
+    }
+    if (!neighborContactPointId) {
+      neighborContactPointId = resolveTestOverridePhoneFallback({
+        providerKey: providerSelection.providerResolution.resolvedProvider,
+        primarySeed: thread.neighborId,
+        secondarySeed: threadId,
+      });
     }
 
     if (!neighborContactPointId) {
@@ -6777,6 +6841,33 @@ const performOutboundAction = async (
     }
   }
 
+  let outboundMessageTargetPhone = outboundMessagePolicy?.targetPhone || null;
+  if (
+    outboundAction === 'message'
+    && !outboundMessageTargetPhone
+    && thread.neighborId
+    && UUID_PATTERN.test(thread.neighborId)
+  ) {
+    const resolvedNeighbor = await connectShyftNeighborServiceAsync.resolveNeighbor({
+      tenantId: context.tenantId,
+      neighborId: thread.neighborId,
+      actorRoles,
+    });
+    if (resolvedNeighbor.ok) {
+      outboundMessageTargetPhone = resolvedNeighbor.data.neighbor.phones
+        .filter((phone) => phone.isActive !== false)
+        .sort((left, right) => left.sortOrder - right.sortOrder)
+        [0]?.value || null;
+    }
+  }
+  if (outboundAction === 'message' && !outboundMessageTargetPhone) {
+    outboundMessageTargetPhone = resolveTestOverridePhoneFallback({
+      providerKey: providerSelection.providerResolution.resolvedProvider,
+      primarySeed: thread.neighborId,
+      secondarySeed: threadId,
+    });
+  }
+
   const communicationReliabilityDb = isConnectShyftTestOverrideEnabled()
     ? undefined
     : loadPlatformDb();
@@ -6797,7 +6888,7 @@ const performOutboundAction = async (
         providerKey: providerSelection.providerResolution.resolvedProvider,
         targetPhone: outboundAction === 'call'
           ? neighborContactPointId
-          : outboundMessagePolicy?.targetPhone || null,
+          : outboundMessageTargetPhone,
         operatorContactPointId,
       }),
       expiresAt: new Date(Date.now() + CONNECTSHYFT_COMMUNICATION_IDEMPOTENCY_TTL_MS),
@@ -6951,7 +7042,7 @@ const performOutboundAction = async (
         providerKey: providerSelection.providerResolution.resolvedProvider,
         idempotencyKey: outboundDispatchIdempotencyKey || undefined,
         body: outboundMessagePolicy?.body || '',
-        targetPhone: outboundMessagePolicy?.targetPhone || undefined,
+        targetPhone: outboundMessageTargetPhone || undefined,
       });
   } catch (error) {
     await rollbackPersistedSmsOverride();
