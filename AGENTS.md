@@ -88,6 +88,8 @@ Docker:
 - Planning artifacts stored in `specs/011-platform-lane-authority-convergence-audit`; audited production storage is shared PostgreSQL (011-platform-lane-authority-convergence-audit)
 - TypeScript (ES2022) on Node.js >=20, Vue 3 SFCs + Express, Knex, pg, Jest/ts-jest, Vue 3, Vite, Pinia (012-platform-lane-separation)
 - Shared PostgreSQL plus shared migration authority under `shared/database/migrations` (012-platform-lane-separation)
+- TypeScript (ES2022) for Vue 3 and Express monorepo surfaces + Vue 3, Vue Router, Pinia, Express, Jest, ripgrep-based reference verification (013-admin-leftovers-cleanup)
+- N/A for new persisted data; existing inventory and planning docs only (013-admin-leftovers-cleanup)
 
 ## Recent Changes
 - 001-tighten-deployment-contracts: Added TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose

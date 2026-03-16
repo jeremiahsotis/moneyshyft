@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2026-03-16  
-**Feature**: [spec.md](/Users/jeremiahotis/projects/connectshyft/specs/001-admin-leftovers-cleanup/spec.md)
+**Feature**: [spec.md](/Users/jeremiahotis/projects/connectshyft/specs/013-admin-leftovers-cleanup/spec.md)
 
 ## Content Quality
 
