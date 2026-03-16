@@ -28,20 +28,8 @@ const route = useRoute();
 const authStore = useAuthStore();
 const accessStore = useAccessStore();
 
-const moneyNavItems = [
-  { name: 'dashboard', label: 'Dashboard', icon: '📊', path: '/' },
-  { name: 'accounts', label: 'Accounts', icon: '💰', path: '/accounts' },
-  { name: 'budget', label: 'Budget', icon: '📈', path: '/budget' },
-  { name: 'extra-money', label: 'Extra', icon: '💸', path: '/extra-money' },
-  { name: 'transactions', label: 'Activity', icon: '📝', path: '/transactions' },
-];
-
 const navItems = computed(() => {
   const items: Array<{ name: string; label: string; icon: string; path: string }> = [];
-
-  if (authStore.isAuthenticated && accessStore.canAccessMoneyShyft) {
-    items.push(...moneyNavItems);
-  }
 
   if (authStore.isAuthenticated && accessStore.hasAnyAdminAccess) {
     const adminPath = accessStore.canAccessSystemAdmin ? '/admin/system' : '/admin/tenant';

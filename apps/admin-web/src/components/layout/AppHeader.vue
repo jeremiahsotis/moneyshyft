@@ -177,26 +177,12 @@ const showUserMenu = ref(false);
 const isPrivacyMode = ref(false);
 const PRIVACY_KEY = 'moneyshyft_privacy_mode';
 
-const moneyNavItems = [
-  { name: 'dashboard', label: 'Dashboard', icon: '📊', path: '/' },
-  { name: 'accounts', label: 'Accounts', icon: '💰', path: '/accounts' },
-  { name: 'transactions', label: 'Transactions', icon: '📝', path: '/transactions' },
-  { name: 'budget', label: 'Budget', icon: '📈', path: '/budget' },
-  { name: 'extra-money', label: 'Extra Money', icon: '💸', path: '/extra-money' },
-  { name: 'debts', label: 'Debts', icon: '💳', path: '/debts' },
-  { name: 'goals', label: 'Goals', icon: '🎯', path: '/goals' },
-];
-
 const adminNavPath = computed(() => (
   accessStore.canAccessSystemAdmin ? '/admin/system' : '/admin/tenant'
 ));
 
 const navItems = computed(() => {
   const items: Array<{ name: string; label: string; icon: string; path: string }> = [];
-
-  if (authStore.isAuthenticated && accessStore.canAccessMoneyShyft) {
-    items.push(...moneyNavItems);
-  }
 
   if (authStore.isAuthenticated && accessStore.hasAnyAdminAccess) {
     items.push({ name: 'admin', label: 'Admin', icon: '🛡️', path: adminNavPath.value });

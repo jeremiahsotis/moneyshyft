@@ -12,7 +12,7 @@ This slice removes only stale, unmounted admin-lane leftovers that remain after 
 In scope:
 
 - removal of clearly dead, unmounted admin-web leftover surfaces associated with Accounts, Budget, Dashboard, Debts, Goals, Scenarios, and Transactions
-- proof-based verification of likely stale admin leftovers currently represented by `auth.ts` and `platform-admin.ts`
+- proof-based verification of likely stale admin leftovers currently represented by `apps/moneyshyft-api/src/routes/api/v1/auth.ts` and `apps/moneyshyft-api/src/routes/api/v1/platform-admin.ts`
 - inventory and authority documentation updates that reflect final classifications after the verification
 - build and route verification needed to prove the cleanup is safe
 
@@ -24,6 +24,13 @@ In scope:
 - deleting API mirrors beyond the specifically verified admin leftovers in this slice
 - performing broad repo cleanup just because files appear old, duplicated, or low traffic
 - redesigning admin user flows, permissions, or navigation
+
+## Routing Ownership and Lane Boundaries
+
+- `admin-web` remains the active platform shell for `/admin`, `/admin/system`, `/admin/tenant`, and `/admin/forbidden`.
+- `admin-api` remains the owner of `/api/v1/auth/*` and `/api/v1/platform/admin/*`.
+- MoneyShyft and ConnectShyft retain their current lane-local API ownership; this slice does not change lane delegation, host Nginx behavior, or shared PostgreSQL compatibility.
+- Acceptance for this slice requires confirming that delegated auth/admin ownership and shared-database compatibility remain unchanged after cleanup.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -38,7 +45,7 @@ As a maintainer, I need clearly dead admin-web MoneyShyft leftovers removed so t
 **Acceptance Scenarios**:
 
 1. **Given** a candidate admin-web leftover has no live router mount, import chain, dynamic reference, or test dependency, **When** the slice is implemented, **Then** that leftover is removed and documented as a confirmed stale deletion.
-2. **Given** the stale admin-web leftovers are removed, **When** admin-web is built and its live routes are exercised, **Then** the admin lane still serves its expected routes without missing-view regressions.
+2. **Given** the stale admin-web leftovers are removed, **When** admin-web is built and `/admin`, `/admin/system`, `/admin/tenant`, and `/admin/forbidden` are exercised, **Then** the admin lane still serves those routes without missing-view regressions.
 
 ---
 
@@ -48,12 +55,12 @@ As a maintainer, I need the likely stale admin leftovers checked with evidence b
 
 **Why this priority**: These targets are suspected to be stale, but they are not yet as clearly safe as the admin-web view groups. Verification must come before deletion.
 
-**Independent Test**: Can be fully tested by producing evidence that each likely stale leftover is or is not router-mounted, imported, dynamically referenced, or still needed by tests, and then either deleting it or explicitly retaining it with updated classification.
+**Independent Test**: Can be fully tested by producing evidence that `apps/moneyshyft-api/src/routes/api/v1/auth.ts` and `apps/moneyshyft-api/src/routes/api/v1/platform-admin.ts` are or are not router-mounted, imported, dynamically referenced, or still needed by tests, and then either deleting them or explicitly retaining them with updated classification.
 
 **Acceptance Scenarios**:
 
-1. **Given** a likely stale leftover is still referenced by routing, imports, dynamic loading, or tests, **When** the verification pass is completed, **Then** that leftover remains in place and is documented as still needed.
-2. **Given** a likely stale leftover has no remaining references or test dependency, **When** the verification pass is completed, **Then** that leftover may be deleted and reclassified as a confirmed stale artifact.
+1. **Given** `apps/moneyshyft-api/src/routes/api/v1/auth.ts` or `apps/moneyshyft-api/src/routes/api/v1/platform-admin.ts` is still referenced by routing, imports, dynamic loading, or tests, **When** the verification pass is completed, **Then** that leftover remains in place and is documented as still needed.
+2. **Given** `apps/moneyshyft-api/src/routes/api/v1/auth.ts` or `apps/moneyshyft-api/src/routes/api/v1/platform-admin.ts` has no remaining references or test dependency, **When** the verification pass is completed, **Then** that leftover may be deleted and reclassified as a confirmed stale artifact.
 
 ---
 
@@ -85,14 +92,14 @@ As a reviewer, I need this cleanup slice to stop at the agreed boundary so it do
 
 - **FR-001**: The system MUST remove only stale, unmounted admin-web MoneyShyft leftovers that are verified to have no live route mount, import chain, dynamic reference, or test dependency.
 - **FR-002**: The system MUST verify each likely stale admin leftover before deletion and MUST retain any target that still has a proven dependency.
-- **FR-003**: The system MUST produce explicit evidence for each deleted or retained target so its final classification is unambiguous.
+- **FR-003**: The system MUST record proof for each reviewed target covering route mounts, imports, dynamic references, and test dependencies.
 - **FR-004**: The system MUST update lane inventory or classification documents to reflect the post-slice status of every reviewed target.
-- **FR-005**: The system MUST preserve current admin route behavior after cleanup.
+- **FR-005**: The system MUST preserve successful rendering and navigation for `/admin`, `/admin/system`, `/admin/tenant`, and `/admin/forbidden` after cleanup.
 - **FR-006**: The system MUST leave ConnectShyft runtime ownership unchanged.
 - **FR-007**: The system MUST leave migration execution behavior, cutover sequencing, and authority unchanged.
 - **FR-008**: The system MUST preserve RouteShyft transitional keepers and MUST NOT reclassify them as safe cleanup under this slice.
 - **FR-009**: The system MUST avoid deleting unrelated admin API mirrors, stale feature copies, or other leftovers not explicitly reviewed in this slice.
-- **FR-010**: The system MUST end with each targeted stale admin-web or likely stale admin leftover in exactly one state: removed as confirmed stale, or retained with documented proof that it is still needed.
+- **FR-010**: The system MUST assign each reviewed target exactly one final classification: removed as confirmed stale, or retained as still needed.
 
 ## Verification Requirements
 
@@ -101,7 +108,9 @@ As a reviewer, I need this cleanup slice to stop at the agreed boundary so it do
 - Verify each target has no dynamic reference pattern that still makes it reachable at runtime.
 - Verify each target is not still required by automated tests or smoke checks.
 - Verify admin-web builds successfully after cleanup.
-- Verify admin routes still render and route correctly after cleanup.
+- Verify `/admin`, `/admin/system`, `/admin/tenant`, and `/admin/forbidden` still render and route correctly after cleanup.
+- Verify delegated auth/admin route ownership remains with `admin-api`.
+- Verify shared-database compatibility remains unchanged for this slice.
 - Verify no ConnectShyft runtime ownership changes are introduced.
 - Verify no migration execution changes are introduced.
 - Verify no RouteShyft transitional keeper is deleted or reclassified.
@@ -109,15 +118,16 @@ As a reviewer, I need this cleanup slice to stop at the agreed boundary so it do
 ## Acceptance Criteria
 
 - The identified stale admin-web MoneyShyft leftovers are either removed with proof of non-use or retained with explicit proof of continued need.
-- The likely stale `auth.ts` and `platform-admin.ts` leftovers are each either deleted with proof or explicitly documented as still needed.
+- The likely stale `apps/moneyshyft-api/src/routes/api/v1/auth.ts` and `apps/moneyshyft-api/src/routes/api/v1/platform-admin.ts` leftovers are each either deleted with proof or explicitly documented as still needed.
 - Admin-web builds successfully after the cleanup.
-- Live admin routes continue to work after the cleanup.
+- `/admin`, `/admin/system`, `/admin/tenant`, and `/admin/forbidden` continue to work after the cleanup.
+- Delegated auth/admin ownership and shared-database compatibility remain unchanged and explicitly verified.
 - Inventory and classification documents reflect the final reviewed status of each target.
 - No ConnectShyft runtime, migration authority, RouteShyft keeper, or unrelated API mirror changes are included.
 
 ## Explicit Stop Boundary
 
-This slice stops immediately once all targeted stale admin-web leftovers and likely stale admin leftovers have been either removed or explicitly proven still needed, admin-web builds successfully, and live admin routes still work.
+This slice stops immediately once all targeted stale admin-web leftovers and likely stale admin leftovers have been either removed or explicitly proven still needed, admin-web builds successfully, `/admin`, `/admin/system`, `/admin/tenant`, and `/admin/forbidden` still work, and delegated auth/admin ownership remains unchanged.
 
 This slice does not continue into:
 
@@ -139,7 +149,7 @@ This slice does not continue into:
 
 - The current live admin lane is already canonically owned by admin-api and admin-web, and this slice does not need to re-establish that ownership.
 - The identified admin-web view groups are cleanup candidates because the fresh inventory-backed review found them unmounted and stale, but deletion still requires direct verification.
-- The likely stale `auth.ts` and `platform-admin.ts` leftovers are narrower review targets than the admin-web view groups and therefore require explicit proof before deletion.
+- The likely stale `apps/moneyshyft-api/src/routes/api/v1/auth.ts` and `apps/moneyshyft-api/src/routes/api/v1/platform-admin.ts` leftovers are narrower review targets than the admin-web view groups and therefore require explicit proof before deletion.
 
 ## Success Criteria *(mandatory)*
 
@@ -149,4 +159,4 @@ This slice does not continue into:
 - **SC-002**: 100% of likely stale admin leftovers reviewed in this slice end in a documented final classification of either confirmed stale or still needed.
 - **SC-003**: Admin-web completes its standard build successfully after the slice with no cleanup-related build failure.
 - **SC-004**: Reviewers can inspect the final slice diff and confirm that all deletions belong only to the verified target set.
-- **SC-005**: Post-slice verification shows no regression in the availability of current admin routes.
+- **SC-005**: Post-slice verification confirms `/admin`, `/admin/system`, `/admin/tenant`, and `/admin/forbidden` remain reachable and render without cleanup-related regressions.

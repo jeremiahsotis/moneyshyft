@@ -12,10 +12,10 @@ Remove only the clearly stale, unmounted MoneyShyft-era view groups still retain
 **Language/Version**: TypeScript (ES2022) for Vue 3 and Express monorepo surfaces  
 **Primary Dependencies**: Vue 3, Vue Router, Pinia, Express, Jest, ripgrep-based reference verification  
 **Storage**: N/A for new persisted data; existing inventory and planning docs only  
-**Testing**: `npm run build` for `apps/admin-web`, targeted Jest boundary tests for `apps/admin-api` and `apps/moneyshyft-api`, static import/reference scans  
+**Testing**: `npm run build` for `apps/admin-web`, explicit admin route smoke verification for `/admin`, `/admin/system`, `/admin/tenant`, and `/admin/forbidden`, targeted Jest boundary tests for `apps/admin-api` and `apps/moneyshyft-api`, static import/reference scans, and deployment-topology checks covering Nginx delegation, localhost API bindings, shared PostgreSQL invariants, and runbook reproducibility  
 **Target Platform**: Linux-hosted Dockerized APIs and static frontends behind host Nginx  
 **Project Type**: Monorepo web application with separate frontend and API lanes  
-**Performance Goals**: No regression to current admin route availability; no added runtime hops or new route ownership  
+**Performance Goals**: No regression to current admin route availability for `/admin`, `/admin/system`, `/admin/tenant`, and `/admin/forbidden`; no added runtime hops or new route ownership  
 **Constraints**: Cleanup must be proof-based, limited to stale admin-web leftovers and verified likely-stale admin leftovers, and must not alter ConnectShyft ownership, migration authority, or RouteShyft transitional keepers  
 **Scale/Scope**: Seven stale admin-web view groups, two likely stale MoneyShyft admin route mirrors, and inventory/classification documentation updates
 
