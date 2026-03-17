@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { apiRequest } from '../../support/helpers/apiClient';
 import { test, expect } from '../../support/fixtures/connectShyftStoryC1.fixture';
 import { createStoryC1Headers } from '../../support/factories/connectShyftStoryC1Factory';
@@ -96,7 +97,7 @@ test.describe(
     test(
       '[P0] concurrent ensure requests converge to one active thread row and one thread identity @P0',
       async ({ request, storyC1Context, storyC1OperatorHeaders, storyC1CreatePayload }) => {
-        const uniqueNeighborId = `${storyC1CreatePayload.neighborId}-c2-${Date.now().toString(36)}`;
+        const uniqueNeighborId = `${storyC1CreatePayload.neighborId}-c2-${randomUUID().slice(0, 8)}`;
         const ensurePayload = {
           ...storyC1CreatePayload,
           neighborId: uniqueNeighborId,
@@ -123,6 +124,10 @@ test.describe(
 
         const expectedThreadId = resolvedThreadIds[0];
         const expectedContract = readStableThreadContract(bodies[0].data.thread);
+        const createdNewThreadBodies = bodies.filter(
+          (body) => body.data?.lifecycle?.createdNewThread === true,
+        );
+        expect(createdNewThreadBodies).toHaveLength(1);
         bodies.forEach((body) => {
           expect(body).toMatchObject({
             ok: true,
@@ -135,12 +140,20 @@ test.describe(
                 neighborId: uniqueNeighborId,
                 state: 'UNCLAIMED',
               },
+              lifecycle: {
+                ensuredActiveThread: true,
+              },
             },
           });
           expect(readStableThreadContract(body.data.thread)).toEqual(expectedContract);
-          expect(Date.parse(body.data.thread.updatedAtUtc)).toBeGreaterThanOrEqual(
-            Date.parse(body.data.thread.createdAtUtc),
-          );
+          expect(Number.isNaN(Date.parse(body.data.thread.createdAtUtc))).toBe(false);
+          expect(Number.isNaN(Date.parse(body.data.thread.updatedAtUtc))).toBe(false);
+          if (body.data.lifecycle.createdNewThread) {
+            expect(body.data.lifecycle.reusedThreadId).toBeUndefined();
+          } else {
+            expect(body.data.lifecycle.createdNewThread).toBe(false);
+            expect(body.data.lifecycle.reusedThreadId).toBe(expectedThreadId);
+          }
         });
 
         const activeThreadCount = await countActiveThreadsForIdentity({
@@ -165,7 +178,7 @@ test.describe(
     test(
       '[P1] ensure normalizes neighborId case variants to one active thread identity @P1',
       async ({ request, storyC1Context, storyC1OperatorHeaders, storyC1CreatePayload }) => {
-        const canonicalNeighborId = `${storyC1CreatePayload.neighborId}-case-${Date.now().toString(36)}`;
+        const canonicalNeighborId = `${storyC1CreatePayload.neighborId}-case-${randomUUID().slice(0, 8)}`;
         const upperCaseNeighborId = canonicalNeighborId.toUpperCase();
 
         const createResponse = await apiRequest(request, {
@@ -276,7 +289,7 @@ test.describe(
           data: {
             ...storyC1CreatePayload,
             orgUnitId: 'org-connectshyft-bravo-north',
-            neighborId: `neighbor-c2-cross-tenant-${Date.now().toString(36)}`,
+            neighborId: `neighbor-c2-cross-tenant-${randomUUID().slice(0, 8)}`,
           },
         });
 

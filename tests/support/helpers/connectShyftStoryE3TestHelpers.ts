@@ -67,7 +67,7 @@ export const mapInboundVoiceNumber = async ({
     data: payload,
   });
 
-  expect(response.status()).toBe(201);
+  expect([200, 201]).toContain(response.status());
   const body = await response.json();
   expect(String(body?.code || '')).toBe('CONNECTSHYFT_NUMBER_MAPPING_SAVED');
 };

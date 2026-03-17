@@ -113,26 +113,38 @@ test.describe('Extra money savings reserve to goals', () => {
 
       const applyGoalsButton = allocationModal.getByTestId('extra-money-apply-goals');
       await expect(applyGoalsButton).toBeEnabled();
-      await Promise.all([
-        page.waitForResponse((response) => {
-          return (
-            response.request().method() === 'POST' &&
-            response.url().includes('/api/v1/extra-money/') &&
-            response.url().includes('/assign-goals')
-          );
-        }),
-        applyGoalsButton.click(),
-      ]);
+      await applyGoalsButton.click();
 
-      const updatedGoalResponse = await page.request.get(`/api/v1/goals/${goalId}`);
-      const updatedGoalData = await updatedGoalResponse.json();
-      expect(Number(updatedGoalData.data.current_amount)).toBe(10);
+      await expect
+        .poll(
+          async () => {
+            const updatedGoalResponse = await page.request.get(`/api/v1/goals/${goalId}`);
+            if (!updatedGoalResponse.ok()) {
+              return -1;
+            }
+            const updatedGoalData = await updatedGoalResponse.json();
+            return Number(updatedGoalData.data.current_amount);
+          },
+          { timeout: 15000 },
+        )
+        .toBe(10);
 
-      const refreshedEntriesResponse = await page.request.get('/api/v1/extra-money?status=assigned');
-      const refreshedEntriesData = await refreshedEntriesResponse.json();
-      const refreshedEntry = refreshedEntriesData.data.find((entry: { source: string }) => entry.source === source);
-      expect(refreshedEntry).toBeTruthy();
-      expect(Number(refreshedEntry.savings_reserve)).toBe(0);
+      await expect
+        .poll(
+          async () => {
+            const refreshedEntriesResponse = await page.request.get('/api/v1/extra-money?status=assigned');
+            if (!refreshedEntriesResponse.ok()) {
+              return Number.NaN;
+            }
+            const refreshedEntriesData = await refreshedEntriesResponse.json();
+            const refreshedEntry = refreshedEntriesData.data.find(
+              (entry: { source: string }) => entry.source === source,
+            );
+            return refreshedEntry ? Number(refreshedEntry.savings_reserve) : Number.NaN;
+          },
+          { timeout: 15000 },
+        )
+        .toBe(0);
     } finally {
       await deleteById(page.request, '/api/v1/extra-money', entryId);
       await deleteById(page.request, '/api/v1/goals', goalId);

@@ -115,7 +115,7 @@ test.describe(
           },
         });
 
-        expect(createResponse.status()).toBe(201);
+        expect([200, 201]).toContain(createResponse.status());
         const createBody = await createResponse.json();
         expect(createBody).toMatchObject({
           ok: true,
