@@ -420,8 +420,21 @@ const executeConnectShyftThreadAction = async (
       thread: parseThread(envelope.data?.thread),
     };
   } catch (error: unknown) {
+    const errorPayload = (error as { response?: { data?: unknown } })?.response?.data;
+    if (
+      errorPayload
+      && typeof errorPayload === 'object'
+      && (errorPayload as { ok?: unknown }).ok === false
+    ) {
+      return createConnectShyftThreadActionRefusal(
+        errorPayload,
+        fallbackCode,
+        fallbackMessage,
+      );
+    }
+
     return createConnectShyftThreadActionTransportFailure(
-      (error as { response?: { data?: unknown } })?.response?.data,
+      errorPayload,
       fallbackCode,
       fallbackMessage,
     );

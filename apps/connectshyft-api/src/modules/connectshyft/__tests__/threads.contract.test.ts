@@ -251,6 +251,7 @@ describeIfDb('connectshyft threads (postgres contract)', () => {
     ]);
 
     await db.raw('SET enable_seqscan = off');
+    await db.raw('SET enable_sort = off');
     try {
       const explained = await db.raw(
         `EXPLAIN SELECT id
@@ -270,6 +271,7 @@ describeIfDb('connectshyft threads (postgres contract)', () => {
 
       expect(planText).toContain('cs_threads_due_eval_idx');
     } finally {
+      await db.raw('RESET enable_sort');
       await db.raw('RESET enable_seqscan');
     }
   });

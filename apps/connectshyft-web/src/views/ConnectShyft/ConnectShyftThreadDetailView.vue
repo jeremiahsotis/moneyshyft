@@ -1159,6 +1159,115 @@ const openPreferenceOverrideModal = (input: {
   preferenceOverrideAllowedReasons.value = input.allowedReasons;
 };
 
+type ConnectShyftThreadActionEnvelopePayload = {
+  ok?: boolean;
+  code?: unknown;
+  message?: string;
+  errorType?: unknown;
+  refusalType?: unknown;
+  data?: {
+    thread?: unknown;
+    lifecycleEvent?: unknown;
+    operatorFeedback?: unknown;
+    operatorFeedbackMeta?: unknown;
+    preferencePolicy?: {
+      override?: {
+        reason?: unknown;
+      };
+    };
+    uiFeedback?: {
+      severity?: unknown;
+      message?: unknown;
+      heading?: unknown;
+      hiddenTransition?: unknown;
+    };
+  };
+};
+
+const handleThreadActionRefusalEnvelope = (
+  action: string,
+  envelope: ConnectShyftThreadActionEnvelopePayload,
+): false => {
+  const refusalMessage = sanitizeConnectShyftOperatorCopy(
+    envelope.message,
+    'Unable to complete that thread action.',
+  );
+  const refusalErrorType = typeof envelope.errorType === 'string'
+    ? envelope.errorType.trim().toLowerCase()
+    : '';
+
+  applyThreadUpdate(envelope.data?.thread);
+
+  const refusalLifecycleEvent = typeof envelope.data?.lifecycleEvent === 'string'
+    ? envelope.data.lifecycleEvent
+    : '';
+
+  const refusalOperatorFeedbackMeta = envelope.data?.operatorFeedbackMeta
+    && typeof envelope.data.operatorFeedbackMeta === 'object'
+    ? envelope.data.operatorFeedbackMeta as {
+      heading?: unknown;
+      hiddenTransition?: unknown;
+    }
+    : envelope.data?.uiFeedback
+      && typeof envelope.data.uiFeedback === 'object'
+      ? envelope.data.uiFeedback as {
+        heading?: unknown;
+        hiddenTransition?: unknown;
+      }
+      : null;
+
+  const refusalHiddenTransitionDetected = refusalOperatorFeedbackMeta?.hiddenTransition === true;
+  hiddenTransitionWarning.value = refusalHiddenTransitionDetected;
+
+  if (refusalLifecycleEvent.includes('thread_reopened_by_user')) {
+    const reopenHeading = sanitizeConnectShyftOperatorCopy(
+      refusalOperatorFeedbackMeta?.heading,
+      'Conversation reopened. Escalation and inactivity timers were reset.',
+    );
+    lifecycleToast.value = reopenHeading;
+    inactivityReset.value = true;
+    if (threadDetail.value) {
+      threadDetail.value.escalationStage = 0;
+    }
+  } else {
+    lifecycleToast.value = '';
+    inactivityReset.value = false;
+  }
+
+  const requiresOverride = isPreferenceOverrideRefusal({
+    code: envelope.code,
+    data: envelope.data,
+  });
+
+  if (requiresOverride && (action === 'Send Message' || action === 'Text')) {
+    const nextStepMessage = `${refusalMessage} Add override reason and submit again.`;
+    actionError.value = '';
+    policyRefusalBanner.value = nextStepMessage;
+    setFeedbackBanner('refusal', refusalMessage, 'Override reason required before sending SMS.');
+    openPreferenceOverrideModal({
+      action,
+      message: refusalMessage,
+      allowedReasons: resolveOverrideAllowedReasons(envelope.data),
+    });
+    return false;
+  }
+
+  actionError.value = refusalMessage;
+  if (action === 'Send Message' || action === 'Text' || action === 'Call') {
+    if (refusalErrorType === 'system') {
+      policyErrorBanner.value = refusalMessage;
+    } else {
+      policyRefusalBanner.value = refusalMessage;
+    }
+  }
+  setFeedbackBanner(
+    'refusal',
+    refusalMessage,
+    'Unable to complete that thread action.',
+  );
+  return false;
+};
+
 const executeThreadAction = async (
   action: string,
   options: {
@@ -1231,103 +1340,10 @@ const executeThreadAction = async (
       headers: buildConnectShyftTestOverrideHeaders(),
     });
 
-    const envelope = (response.data || {}) as {
-      ok?: boolean;
-      code?: unknown;
-      message?: string;
-      errorType?: unknown;
-      refusalType?: unknown;
-      data?: {
-        thread?: unknown;
-        lifecycleEvent?: unknown;
-        operatorFeedback?: unknown;
-        operatorFeedbackMeta?: unknown;
-        preferencePolicy?: {
-          override?: {
-            reason?: unknown;
-          };
-        };
-        uiFeedback?: {
-          severity?: unknown;
-          message?: unknown;
-          heading?: unknown;
-          hiddenTransition?: unknown;
-        };
-      };
-    };
+    const envelope = (response.data || {}) as ConnectShyftThreadActionEnvelopePayload;
 
     if (envelope.ok !== true) {
-      const refusalMessage = sanitizeConnectShyftOperatorCopy(
-        envelope.message,
-        'Unable to complete that thread action.',
-      );
-
-      applyThreadUpdate(envelope.data?.thread);
-
-      const refusalLifecycleEvent = typeof envelope.data?.lifecycleEvent === 'string'
-        ? envelope.data.lifecycleEvent
-        : '';
-
-      const refusalOperatorFeedbackMeta = envelope.data?.operatorFeedbackMeta
-        && typeof envelope.data.operatorFeedbackMeta === 'object'
-        ? envelope.data.operatorFeedbackMeta as {
-          heading?: unknown;
-          hiddenTransition?: unknown;
-        }
-        : envelope.data?.uiFeedback
-          && typeof envelope.data.uiFeedback === 'object'
-          ? envelope.data.uiFeedback as {
-            heading?: unknown;
-            hiddenTransition?: unknown;
-          }
-          : null;
-
-      const refusalHiddenTransitionDetected = refusalOperatorFeedbackMeta?.hiddenTransition === true;
-      hiddenTransitionWarning.value = refusalHiddenTransitionDetected;
-
-      if (refusalLifecycleEvent.includes('thread_reopened_by_user')) {
-        const reopenHeading = sanitizeConnectShyftOperatorCopy(
-          refusalOperatorFeedbackMeta?.heading,
-          'Conversation reopened. Escalation and inactivity timers were reset.',
-        );
-        lifecycleToast.value = reopenHeading;
-        inactivityReset.value = true;
-        if (threadDetail.value) {
-          threadDetail.value.escalationStage = 0;
-        }
-      } else {
-        lifecycleToast.value = '';
-        inactivityReset.value = false;
-      }
-
-      const requiresOverride = isPreferenceOverrideRefusal({
-        code: envelope.code,
-        data: envelope.data,
-      });
-
-      if (requiresOverride && (action === 'Send Message' || action === 'Text')) {
-        const nextStepMessage = `${refusalMessage} Add override reason and submit again.`;
-        actionError.value = '';
-        policyRefusalBanner.value = nextStepMessage;
-        setFeedbackBanner('refusal', refusalMessage, 'Override reason required before sending SMS.');
-        openPreferenceOverrideModal({
-          action,
-          message: refusalMessage,
-          allowedReasons: resolveOverrideAllowedReasons(envelope.data),
-        });
-        return false;
-      }
-
-      actionError.value = refusalMessage;
-      if (action === 'Send Message' || action === 'Text' || action === 'Call') {
-        policyRefusalBanner.value = refusalMessage;
-      }
-      setFeedbackBanner(
-        'refusal',
-        refusalMessage,
-        'Unable to complete that thread action.',
-      );
-      return false;
+      return handleThreadActionRefusalEnvelope(action, envelope);
     }
 
     actionError.value = '';
@@ -1405,17 +1421,14 @@ const executeThreadAction = async (
     const payload = (
       error as {
         response?: {
-          data?: {
-            message?: unknown;
-            data?: {
-              uiFeedback?: {
-                message?: unknown;
-              };
-            };
-          };
+          data?: ConnectShyftThreadActionEnvelopePayload;
         };
       }
     )?.response?.data;
+    if (payload?.ok === false) {
+      return handleThreadActionRefusalEnvelope(action, payload);
+    }
+
     actionError.value = sanitizeConnectShyftOperatorCopy(
       payload?.data?.uiFeedback?.message ?? payload?.message,
       'Unable to complete that thread action.',
