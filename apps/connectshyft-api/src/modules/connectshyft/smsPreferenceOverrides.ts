@@ -479,19 +479,18 @@ export class AsyncConnectShyftSmsPreferenceOverrideService {
     threadId: string;
     neighborId?: string | null;
   }): Promise<ConnectShyftResolvedSmsPreference> {
-    const fallback = this.fallbackStore.resolvePreference(input);
-    if (fallback.prefersTexting !== 'UNKNOWN') {
-      return fallback;
-    }
-
     try {
-      return await this.store.resolvePreference(input);
+      const resolved = await this.store.resolvePreference(input);
+      if (resolved.prefersTexting !== 'UNKNOWN') {
+        return resolved;
+      }
     } catch (error) {
       if (!isMissingPersistenceError(error)) {
         throw error;
       }
-      return fallback;
     }
+
+    return this.fallbackStore.resolvePreference(input);
   }
 
   validateOverride(

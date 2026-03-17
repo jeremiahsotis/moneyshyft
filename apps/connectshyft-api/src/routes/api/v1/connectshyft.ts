@@ -27,6 +27,7 @@ import {
   connectShyftNeighborServiceAsync,
   type ConnectShyftIdentityMatchDecision,
   type ConnectShyftNeighborPhoneInput,
+  type ConnectShyftTextingPreference,
 } from '../../../modules/connectshyft/neighbors';
 import {
   ConnectShyftEscalationConfigService,
@@ -3817,20 +3818,36 @@ const parseNeighborPhones = (req: Request): ConnectShyftNeighborPhoneInput[] => 
 };
 
 const parseNeighborCreateBody = (req: Request) => {
+  const rawPreference = req.body?.prefersTexting;
+  const prefersTexting: ConnectShyftTextingPreference | undefined = rawPreference === 'YES'
+    || rawPreference === 'NO'
+    || rawPreference === 'UNKNOWN'
+    ? rawPreference
+    : undefined;
   return {
     orgUnitId: parseOrgUnitIdFromBody(req),
     firstName: typeof req.body?.firstName === 'string' ? req.body.firstName : '',
     lastName: typeof req.body?.lastName === 'string' ? req.body.lastName : '',
+    prefersTexting,
     phones: parseNeighborPhones(req),
   };
 };
 
-const parseNeighborUpdateBody = (req: Request) => ({
-  orgUnitId: parseOrgUnitIdFromBody(req),
-  firstName: typeof req.body?.firstName === 'string' ? req.body.firstName : '',
-  lastName: typeof req.body?.lastName === 'string' ? req.body.lastName : '',
-  phones: parseNeighborPhones(req),
-});
+const parseNeighborUpdateBody = (req: Request) => {
+  const rawPreference = req.body?.prefersTexting;
+  const prefersTexting: ConnectShyftTextingPreference | undefined = rawPreference === 'YES'
+    || rawPreference === 'NO'
+    || rawPreference === 'UNKNOWN'
+    ? rawPreference
+    : undefined;
+  return {
+    orgUnitId: parseOrgUnitIdFromBody(req),
+    firstName: typeof req.body?.firstName === 'string' ? req.body.firstName : '',
+    lastName: typeof req.body?.lastName === 'string' ? req.body.lastName : '',
+    prefersTexting,
+    phones: parseNeighborPhones(req),
+  };
+};
 
 const parseNeighborIdentityMatchBody = (req: Request) => {
   const rawContactPoint = req.body?.contactPoint;
@@ -4137,6 +4154,7 @@ const updateNeighborWithSideEffects = async (input: {
   actorUserId: string | null;
   firstName: string;
   lastName: string;
+  prefersTexting?: ConnectShyftTextingPreference;
   phones: ConnectShyftNeighborPhoneInput[];
   policy: Extract<ConnectShyftNeighborEditPolicyDecision, { ok: true }>;
   provenance: NeighborEditProvenancePayload;
@@ -4163,6 +4181,7 @@ const updateNeighborWithSideEffects = async (input: {
     neighborId: input.neighborId,
     firstName: input.firstName,
     lastName: input.lastName,
+    prefersTexting: input.prefersTexting,
     phones: input.phones,
     relationshipValidated: input.policy.relationshipValidated,
   };
@@ -4952,6 +4971,7 @@ router.post('/neighbors', async (req: Request, res: Response) => {
     orgUnitId: context.orgUnitId,
     firstName: payload.firstName,
     lastName: payload.lastName,
+    prefersTexting: payload.prefersTexting,
     phones: payload.phones,
   });
 
@@ -5158,6 +5178,7 @@ router.put('/neighbors/:neighborId', async (req: Request, res: Response) => {
     actorUserId,
     firstName: payload.firstName,
     lastName: payload.lastName,
+    prefersTexting: payload.prefersTexting,
     phones: payload.phones,
     policy: policyDecision,
     provenance,

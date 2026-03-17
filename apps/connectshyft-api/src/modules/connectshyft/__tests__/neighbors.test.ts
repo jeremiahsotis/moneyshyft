@@ -43,6 +43,7 @@ describe('connectshyft neighbor service', () => {
           orgUnitId: 'org-connectshyft-alpha-east',
           firstName: 'Mina',
           lastName: 'Lopez',
+          prefersTexting: 'YES',
           phones: [
             expect.objectContaining({
               label: 'mobile',
@@ -68,6 +69,7 @@ describe('connectshyft neighbor service', () => {
     );
     expect(scopedNeighbors).toHaveLength(1);
     expect(scopedNeighbors[0].neighborId).toBe(result.data.neighbor.neighborId);
+    expect(scopedNeighbors[0].prefersTexting).toBe('YES');
   });
 
   it('creates tenant-scoped neighbors from seven-digit local input when a default area code is configured', () => {
@@ -100,6 +102,54 @@ describe('connectshyft neighbor service', () => {
               nationalNumber: '2605550199',
             }),
           ],
+        },
+      },
+    });
+  });
+
+  it('creates neighbors with explicit canonical texting preference values', () => {
+    const optedOut = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Nora',
+      lastName: 'OptOut',
+      prefersTexting: 'NO',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550188',
+        },
+      ],
+    });
+    const unknown = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Uma',
+      lastName: 'Unknown',
+      prefersTexting: 'UNKNOWN',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550177',
+        },
+      ],
+    });
+
+    expect(optedOut).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          prefersTexting: 'NO',
+        },
+      },
+    });
+    expect(unknown).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          prefersTexting: 'UNKNOWN',
         },
       },
     });
@@ -295,7 +345,7 @@ describe('connectshyft neighbor service', () => {
     });
   });
 
-  it('updates neighbor identity and shared-phone toggles for same-tenant read-through', () => {
+  it('updates neighbor identity, shared-phone toggles, and texting preference across YES, NO, and UNKNOWN', () => {
     const created = service.createNeighbor({
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-alpha',
@@ -327,6 +377,7 @@ describe('connectshyft neighbor service', () => {
       relationshipValidated: true,
       firstName: 'Mina Shared',
       lastName: 'Lopez Shared',
+      prefersTexting: 'NO',
       phones: [
         {
           label: 'mobile',
@@ -348,6 +399,7 @@ describe('connectshyft neighbor service', () => {
         neighbor: {
           firstName: 'Mina Shared',
           lastName: 'Lopez Shared',
+          prefersTexting: 'NO',
           phones: [
             expect.objectContaining({
               label: 'mobile',
@@ -358,6 +410,80 @@ describe('connectshyft neighbor service', () => {
               isShared: true,
             }),
           ],
+        },
+      },
+    });
+
+    const updatedToUnknown = service.updateNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+      relationshipValidated: true,
+      firstName: 'Mina Shared',
+      lastName: 'Lopez Shared',
+      prefersTexting: 'UNKNOWN',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+          isShared: false,
+        },
+        {
+          label: 'home',
+          value: '+12605550200',
+          isShared: true,
+        },
+      ],
+    });
+    expect(updatedToUnknown).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          prefersTexting: 'UNKNOWN',
+        },
+      },
+    });
+
+    const updatedBackToYes = service.updateNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+      relationshipValidated: true,
+      firstName: 'Mina Shared',
+      lastName: 'Lopez Shared',
+      prefersTexting: 'YES',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+          isShared: false,
+        },
+        {
+          label: 'home',
+          value: '+12605550200',
+          isShared: true,
+        },
+      ],
+    });
+    expect(updatedBackToYes).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          prefersTexting: 'YES',
+        },
+      },
+    });
+
+    const resolved = service.resolveNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+    });
+    expect(resolved).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          prefersTexting: 'YES',
         },
       },
     });
