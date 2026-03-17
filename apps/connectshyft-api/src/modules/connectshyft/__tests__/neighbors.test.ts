@@ -806,6 +806,52 @@ describe('connectshyft neighbor service', () => {
       },
     });
   });
+
+  it('fails fast when sync service is wired to an async-only boundary adapter', () => {
+    const asyncOnlyBoundary = {
+      evaluateMatch: async () => ({
+        ok: true as const,
+        code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH' as const,
+        httpStatus: 200 as const,
+        data: {
+          identityMatch: {
+            decision: 'NO_AUTO_MERGE' as const,
+            reason: 'NO_EXACT_CONTACT_POINT_MATCH' as const,
+            autoMergeAllowed: false,
+            contactPoint: {
+              value: '+12605550000',
+              isShared: false,
+              verificationStatus: 'verified' as const,
+            },
+            matchedNeighborId: null,
+            candidateCount: 0,
+            candidateNeighborIds: [],
+            exactMatches: [],
+          },
+          idempotency: {
+            key: 'identity-replay-key-async',
+            semantics: 'REPLAY_SAFE' as const,
+          },
+        },
+      }),
+    };
+
+    const syncService = new ConnectShyftNeighborService(
+      new InMemoryConnectShyftNeighborStore(),
+      asyncOnlyBoundary as any,
+    );
+
+    expect(() => syncService.evaluateIdentityMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '+12605550000',
+        isShared: false,
+        verificationStatus: 'verified',
+      },
+    })).toThrow('synchronous identity boundary adapter');
+  });
 });
 
 describe('connectshyft async neighbor service', () => {

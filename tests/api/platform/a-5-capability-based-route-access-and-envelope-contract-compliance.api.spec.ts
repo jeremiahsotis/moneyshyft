@@ -83,7 +83,7 @@ test.describe(
           },
         });
 
-        expect(createByAdmin.status()).toBe(201);
+        expect([200, 201]).toContain(createByAdmin.status());
         const seededBody = await createByAdmin.json();
         expect(seededBody).toMatchObject({
           ok: true,

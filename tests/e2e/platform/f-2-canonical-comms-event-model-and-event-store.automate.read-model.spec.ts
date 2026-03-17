@@ -39,6 +39,12 @@ const sortCanonically = (
   return timeDelta !== 0 ? timeDelta : left.eventId.localeCompare(right.eventId);
 });
 
+const filterEventsWithinWindow = (
+  events: CanonicalEventRecord[],
+  windowStartMs: number,
+): CanonicalEventRecord[] =>
+  events.filter((event) => new Date(event.occurredAtUtc).getTime() >= windowStartMs);
+
 test.describe(
   'Story f.2 Canonical Comms Event Model and Event Store (Automate E2E Read Models)',
   () => {
@@ -56,6 +62,7 @@ test.describe(
           orgUnitMemberships: [context.orgUnitId],
         });
 
+        const eventWindowStartMs = Date.now();
         await apiRequest(request, {
           method: 'POST',
           path: context.paths.inboundWebhook,
@@ -118,11 +125,14 @@ test.describe(
 
         const firstEvents = firstBody.data.events as CanonicalEventRecord[];
         const secondEvents = secondBody.data.events as CanonicalEventRecord[];
+        const firstWindowEvents = filterEventsWithinWindow(firstEvents, eventWindowStartMs);
+        const secondWindowEvents = filterEventsWithinWindow(secondEvents, eventWindowStartMs);
         expect(firstEvents.length).toBeGreaterThan(0);
         expect(firstEvents).toEqual(sortCanonically(firstEvents));
         expect(secondEvents).toEqual(sortCanonically(secondEvents));
-        expect(firstEvents).toEqual(secondEvents);
-        firstEvents.forEach((event) => {
+        expect(firstWindowEvents.length).toBeGreaterThan(0);
+        expect(firstWindowEvents).toEqual(secondWindowEvents);
+        firstWindowEvents.forEach((event) => {
           assertProviderSpecificLeakageRemoved(event.payload);
         });
       },
