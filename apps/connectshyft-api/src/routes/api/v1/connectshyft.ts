@@ -3562,6 +3562,13 @@ type ConnectShyftResolvedSmsTarget =
     };
   };
 
+type ConnectShyftDispatchReadySmsTarget =
+  | {
+    ok: true;
+    targetPhone: string;
+  }
+  | Extract<ConnectShyftResolvedSmsTarget, { ok: false }>;
+
 const isValidConnectShyftSmsTargetPhone = (value: string): boolean => {
   return value.length > 0 && validatePhoneForChannel(value, 'sms').ok;
 };
@@ -3630,6 +3637,39 @@ const buildConnectShyftSmsTargetRefusal = (input: {
     },
   },
 });
+
+const ensureConnectShyftDispatchReadySmsTarget = (input: {
+  resolvedTargetPhone: string | null | undefined;
+  requestedTargetPhone: string | null | undefined;
+  threadNeighborId: string | null | undefined;
+}): ConnectShyftDispatchReadySmsTarget => {
+  const targetPhone = normalizeLifecycleString(input.resolvedTargetPhone);
+  if (isValidConnectShyftSmsTargetPhone(targetPhone)) {
+    return {
+      ok: true,
+      targetPhone,
+    };
+  }
+
+  const requestedTargetPhone = normalizeLifecycleString(input.requestedTargetPhone);
+  const normalizedNeighborId = normalizeConnectShyftNeighborIdentifier(input.threadNeighborId || '');
+  const neighborId = normalizedNeighborId && isValidConnectShyftNeighborIdentifier(normalizedNeighborId)
+    ? normalizedNeighborId
+    : null;
+
+  return buildConnectShyftSmsTargetRefusal({
+    code: 'CONNECTSHYFT_SMS_TARGET_REQUIRED',
+    message: 'Add or select a valid phone number before sending SMS.',
+    messageKey: 'connectshyft.sms_target.missing',
+    reason: 'missing_target',
+    source: requestedTargetPhone ? 'explicit_request' : 'neighbor_record',
+    neighborId,
+    requestedTargetPhone: requestedTargetPhone || null,
+    accessibilityHint: requestedTargetPhone
+      ? 'Choose a valid phone number and resubmit the outbound message.'
+      : 'Update the neighbor profile or choose a valid phone number before sending the outbound message.',
+  });
+};
 
 const resolveConnectShyftSmsTarget = async (input: {
   tenantId: string;
@@ -3765,6 +3805,8 @@ const resolveConnectShyftSmsTarget = async (input: {
   });
 };
 
+export const ensureConnectShyftDispatchReadySmsTargetForTests =
+  ensureConnectShyftDispatchReadySmsTarget;
 export const resolveConnectShyftSmsTargetForTests = resolveConnectShyftSmsTarget;
 
 const resolveOutboundIdempotencyOperationName = (
@@ -7067,6 +7109,52 @@ const performOutboundAction = async (
     }
 
     outboundMessageTargetPhone = smsTargetResolution.targetPhone;
+    const dispatchReadySmsTarget = ensureConnectShyftDispatchReadySmsTarget({
+      resolvedTargetPhone: outboundMessageTargetPhone,
+      requestedTargetPhone: outboundMessagePolicy?.targetPhone || null,
+      threadNeighborId: thread.neighborId,
+    });
+    if (!dispatchReadySmsTarget.ok) {
+      refusal(res, {
+        code: dispatchReadySmsTarget.code,
+        message: dispatchReadySmsTarget.message,
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          context,
+          threadId,
+          preferencePolicy: {
+            prefersTexting: smsPreferenceDecision?.prefersTexting || 'UNKNOWN',
+            source: smsPreferenceDecision?.source || 'unknown',
+            overrideRequired: smsPreferenceDecision?.prefersTexting === 'NO',
+            overrideAccepted: smsPreferenceDecision?.prefersTexting !== 'NO'
+              || Boolean(validatedSmsOverride),
+            ...(validatedSmsOverride
+              ? {
+                override: {
+                  reason: validatedSmsOverride.reason,
+                  note: validatedSmsOverride.note,
+                },
+              }
+              : {}),
+          },
+          ...dispatchReadySmsTarget.data,
+          chrome: {
+            persistentOperationsBannerVisible: false,
+            heavyOperationsDefaultLayout: false,
+          },
+          sideEffects: {
+            messageDispatched: false,
+            lifecycleMutationApplied,
+            auditPersisted: false,
+          },
+          ...buildReopenLifecycleData(),
+        },
+      });
+      return;
+    }
+
+    outboundMessageTargetPhone = dispatchReadySmsTarget.targetPhone;
   }
 
   outboundDispatchReplayKey = buildTelephonyDispatchReplayKey({
