@@ -5,11 +5,6 @@ import {
   openStoryG2Surface,
 } from './g-2-inbox-and-mine-surface-rebuild.automate.shared';
 
-const isClosedRouteFetchError = (error: unknown): boolean => {
-  const message = error instanceof Error ? error.message : String(error);
-  return message.includes('route.fetch: Target page, context or browser has been closed');
-};
-
 test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion) - Dispatch & Ownership', () => {
   test(
     '[G2-AUTO-E2E-204][P1] claimed voicemail thread stays in mine with visible indicator across navigation refresh and queue-thread transitions @P1',
@@ -56,108 +51,108 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
       const relatedPhone = '+12605550110';
       const unrelatedPhone = '+12605550199';
       await page.route('**/api/v1/connectshyft/inbox*', async (route) => {
-        try {
-          const response = await route.fetch();
-          const payload = await response.json() as {
-            data?: {
-              items?: Array<Record<string, unknown>>;
-            };
-          };
-
-          const existingItems = Array.isArray(payload?.data?.items)
-            ? payload.data.items
-            : [];
-
-          await route.fulfill({
-            response,
-            json: {
-              ...payload,
-              data: {
-                ...(payload?.data ?? {}),
-                items: existingItems.map((item, index) => (
-                  index === 0
-                    ? {
-                      ...item,
-                      neighborId: relatedNeighborId,
-                    }
-                    : item
-                )),
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: true,
+            code: 'CONNECTSHYFT_INBOX_LISTED',
+            message: 'ConnectShyft threads loaded',
+            data: {
+              context: {
+                tenantId: context.tenantId,
+                orgUnitId: context.orgUnitId,
+                bypassedOrgUnitMembership: false,
               },
+              actions: {
+                claim: false,
+                takeover: false,
+              },
+              items: [
+                {
+                  threadId: context.threadIds.claimed,
+                  neighborId: relatedNeighborId,
+                  orgUnitId: context.orgUnitId,
+                  state: 'CLAIMED',
+                  bucket: 'inbox',
+                  escalationStage: 1,
+                  priorityRank: 1,
+                  urgencyLabel: 'Needs follow-up',
+                  lastActivityAtUtc: '2026-03-17T12:00:00.000Z',
+                  lastInboundCsNumberId: 'cs-inbound-g2-205',
+                  preferredOutboundCsNumberId: 'cs-outbound-g2-205',
+                  preferredOutboundContext: {
+                    csNumberId: 'cs-outbound-g2-205',
+                    label: 'Main outreach line',
+                  },
+                  summary: 'Related Neighbor',
+                  preview: 'Recent contact recorded.',
+                  display: {
+                    title: 'Related Neighbor',
+                    preview: 'Recent contact recorded.',
+                    stateLabel: 'Claimed',
+                    outboundContext: 'Main outreach line',
+                    conferenceContext: 'Conference context: Main outreach line',
+                    claimContext: 'Claim context: Claimed',
+                  },
+                },
+              ],
             },
-          });
-        } catch (error: unknown) {
-          if (isClosedRouteFetchError(error)) {
-            return;
-          }
-
-          throw error;
-        }
+          }),
+        });
       });
       await page.route('**/api/v1/connectshyft/neighbors*', async (route) => {
-        try {
-          const response = await route.fetch();
-          const payload = await response.json() as {
-            data?: {
-              neighbors?: Array<Record<string, unknown>>;
-            };
-          };
-
-          await route.fulfill({
-            response,
-            json: {
-              ...payload,
-              data: {
-                ...(payload?.data ?? {}),
-                neighbors: [
-                  {
-                    neighborId: relatedNeighborId,
-                    tenantId: context.tenantId,
-                    orgUnitId: context.orgUnitId,
-                    firstName: 'Related',
-                    lastName: 'Neighbor',
-                    prefersTexting: 'YES',
-                    phones: [
-                      {
-                        phoneId: 'related-phone-1',
-                        label: 'mobile',
-                        value: relatedPhone,
-                        sortOrder: 0,
-                        isPrimary: true,
-                        isShared: false,
-                        verificationStatus: 'verified',
-                      },
-                    ],
-                  },
-                  {
-                    neighborId: 'neighbor-g2-unrelated-1002',
-                    tenantId: context.tenantId,
-                    orgUnitId: context.orgUnitId,
-                    firstName: 'Unrelated',
-                    lastName: 'Neighbor',
-                    prefersTexting: 'YES',
-                    phones: [
-                      {
-                        phoneId: 'unrelated-phone-1',
-                        label: 'mobile',
-                        value: unrelatedPhone,
-                        sortOrder: 0,
-                        isPrimary: true,
-                        isShared: false,
-                        verificationStatus: 'verified',
-                      },
-                    ],
-                  },
-                ],
-              },
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: true,
+            code: 'CONNECTSHYFT_NEIGHBORS_RESOLVED',
+            message: 'ConnectShyft neighbors resolved',
+            data: {
+              neighbors: [
+                {
+                  neighborId: relatedNeighborId,
+                  tenantId: context.tenantId,
+                  orgUnitId: context.orgUnitId,
+                  firstName: 'Related',
+                  lastName: 'Neighbor',
+                  prefersTexting: 'YES',
+                  phones: [
+                    {
+                      phoneId: 'related-phone-1',
+                      label: 'mobile',
+                      value: relatedPhone,
+                      sortOrder: 0,
+                      isPrimary: true,
+                      isShared: false,
+                      verificationStatus: 'verified',
+                    },
+                  ],
+                },
+                {
+                  neighborId: 'neighbor-g2-unrelated-1002',
+                  tenantId: context.tenantId,
+                  orgUnitId: context.orgUnitId,
+                  firstName: 'Unrelated',
+                  lastName: 'Neighbor',
+                  prefersTexting: 'YES',
+                  phones: [
+                    {
+                      phoneId: 'unrelated-phone-1',
+                      label: 'mobile',
+                      value: unrelatedPhone,
+                      sortOrder: 0,
+                      isPrimary: true,
+                      isShared: false,
+                      verificationStatus: 'verified',
+                    },
+                  ],
+                },
+              ],
             },
-          });
-        } catch (error: unknown) {
-          if (isClosedRouteFetchError(error)) {
-            return;
-          }
-
-          throw error;
-        }
+          }),
+        });
       });
       await openStoryG2Surface({
         page,
