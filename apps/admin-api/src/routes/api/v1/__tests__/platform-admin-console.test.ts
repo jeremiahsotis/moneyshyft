@@ -88,7 +88,7 @@ jest.mock('../../../../services/PlatformAdminService', () => ({
   ensureScopedAdminUser: (...args: unknown[]) => mockEnsureScopedAdminUser(...args),
 }));
 
-jest.mock('../../../../modules/connectshyft/numberMappings', () => ({
+jest.mock('../../../../platform/connectshyftNumberMappings', () => ({
   connectShyftNumberMappingServiceAsync: {
     createMapping: (...args: unknown[]) => mockCreateMapping(...args),
     updateMapping: (...args: unknown[]) => mockUpdateMapping(...args),

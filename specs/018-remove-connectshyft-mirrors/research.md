@@ -82,3 +82,25 @@
   - If the inventory is not updated in the same slice, the repo will still advertise unresolved mirror-tree convergence work after the cleanup.
 - **Alternatives considered**:
   - Leave inventory updates for a later cleanup pass: rejected because the user explicitly required the inventory to reflect final deletion status.
+
+## Execution Results
+
+- **Importer scan result**:
+  - post-delete scans across `/Users/jeremiahotis/projects/connectshyft/apps/admin-api/src` and `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-api/src` returned no matches for `modules/connectshyft/neighbors`, `modules/connectshyft/identityBoundary`, `modules/connectshyft/numberMappings`, `apps/admin-api/src/modules/connectshyft`, or `apps/moneyshyft-api/src/modules/connectshyft`
+- **Canonical coverage disposition**:
+  - the four deleted top-level identity tests were stale-owner duplicates of canonical ConnectShyft behavior
+  - the only migrated assertion was the sync-service failure when wired to an async-only boundary adapter, now covered in `/Users/jeremiahotis/projects/connectshyft/apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts`
+  - `/Users/jeremiahotis/projects/connectshyft/apps/connectshyft-api/src/modules/connectshyft/__tests__/identityBoundary.test.ts` already covered adapter parity, so no additional parity test was required
+- **Admin dependency resolution**:
+  - `/Users/jeremiahotis/projects/connectshyft/apps/admin-api/src/routes/api/v1/platform-admin-console.ts` now imports `/Users/jeremiahotis/projects/connectshyft/apps/admin-api/src/platform/connectshyftNumberMappings.ts`
+  - that wrapper resolves the shared non-mirror boundary at `/Users/jeremiahotis/projects/connectshyft/libs/platform/src/connectshyftNumberMappings.ts`
+- **Tree deletion result**:
+  - `/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-api/src/modules/connectshyft` deleted
+  - `/Users/jeremiahotis/projects/connectshyft/apps/admin-api/src/modules/connectshyft` deleted
+- **Verification result**:
+  - `apps/connectshyft-api`: `npm run build` passed
+  - `apps/admin-api`: `npm run build` passed
+  - `apps/moneyshyft-api`: `npm run build` passed
+  - canonical ConnectShyft identity suites, Admin platform-admin-console route suite, and MoneyShyft route-ownership suite all passed
+  - `bash /Users/jeremiahotis/projects/connectshyft/scripts/verify-connectshyft-route-ownership.sh` passed
+  - `node /Users/jeremiahotis/projects/connectshyft/scripts/enforce-workspace-boundaries.js` passed

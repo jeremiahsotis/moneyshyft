@@ -57,6 +57,13 @@ Validation rules:
 - `canonicalDestination` is required when `migrationNeed` is `partial` or `full`.
 - `finalDisposition = migrated_then_deleted` requires explicit proof that the behavior exists under canonical ConnectShyft ownership.
 
+Observed Slice 10c result:
+
+- `apps/moneyshyft-api/src/__tests__/connectshyft.identity-dedupe.test.ts`: `migrationNeed = partial`, `canonicalDestination = apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts`, `finalDisposition = migrated_then_deleted`
+- `apps/moneyshyft-api/src/__tests__/connectshyft.identity-boundary.test.ts`: `migrationNeed = none`, `canonicalDestination = apps/connectshyft-api/src/modules/connectshyft/__tests__/identityBoundary.test.ts`, `finalDisposition = deleted_as_mirror_only`
+- `apps/admin-api/src/__tests__/connectshyft.identity-dedupe.test.ts`: `migrationNeed = none`, `canonicalDestination = apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts`, `finalDisposition = deleted_as_mirror_only`
+- `apps/admin-api/src/__tests__/connectshyft.identity-boundary.test.ts`: `migrationNeed = none`, `canonicalDestination = apps/connectshyft-api/src/modules/connectshyft/__tests__/identityBoundary.test.ts`, `finalDisposition = deleted_as_mirror_only`
+
 ## Inventory Mutation
 
 - `path`: exact inventory row path
