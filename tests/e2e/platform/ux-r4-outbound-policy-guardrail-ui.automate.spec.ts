@@ -143,4 +143,103 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
       await expect(page.getByTestId('connectshyft-policy-error-banner')).toHaveCount(0);
     },
   );
+
+  test(
+    '[UXR4-AUTOMATE-E2E-204][P1] thread detail renders HTTP 200 ok=false outbound results as refusals instead of transport errors @P1',
+    async ({ page }) => {
+      const context = createStoryUxR4Context();
+      await login(page);
+
+      await page.route('**/api/v1/connectshyft/threads/**/messages', async (route) => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: false,
+            code: 'CONNECTSHYFT_SMS_TARGET_AMBIGUOUS',
+            refusalType: 'business',
+            message: 'Select a specific phone number before sending SMS.',
+            data: {
+              uiFeedback: {
+                message: 'Select a specific phone number before sending SMS.',
+                severity: 'warning',
+              },
+              targetResolution: {
+                reason: 'ambiguous_target',
+                source: 'neighbor_record',
+                candidateCount: 2,
+                candidatePhones: ['+12605550110', '+12605550111'],
+              },
+              preferencePolicy: {
+                prefersTexting: 'YES',
+                source: 'neighbor-record',
+                overrideRequired: false,
+                overrideAccepted: true,
+              },
+            },
+          }),
+        });
+      });
+
+      await page.goto(
+        buildThreadUrl(context, {
+          threadId: context.threadIds.claimed,
+          actorUserId: context.userId,
+          tenantRole: 'ORGUNIT_MEMBER',
+          orgUnitMemberships: [context.orgUnitId],
+        }),
+      );
+
+      await page.getByTestId('connectshyft-send-text-thread-action').click();
+
+      await expect(page.getByTestId('connectshyft-feedback-banner')).toHaveAttribute(
+        'data-feedback-taxonomy',
+        'refusal',
+      );
+      await expect(page.getByTestId('connectshyft-policy-refusal-banner')).toContainText(
+        /select a specific phone number/i,
+      );
+      await expect(page.getByTestId('connectshyft-policy-error-banner')).toHaveCount(0);
+    },
+  );
+
+  test(
+    '[UXR4-AUTOMATE-E2E-205][P1] thread detail keeps transport failures visually distinct from business refusals for outbound actions @P1',
+    async ({ page }) => {
+      const context = createStoryUxR4Context();
+      await login(page);
+
+      await page.route('**/api/v1/connectshyft/threads/**/messages', async (route) => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+
+        await route.abort('failed');
+      });
+
+      await page.goto(
+        buildThreadUrl(context, {
+          threadId: context.threadIds.claimed,
+          actorUserId: context.userId,
+          tenantRole: 'ORGUNIT_MEMBER',
+          orgUnitMemberships: [context.orgUnitId],
+        }),
+      );
+
+      await page.getByTestId('connectshyft-send-text-thread-action').click();
+
+      await expect(page.getByTestId('connectshyft-feedback-banner')).toHaveAttribute(
+        'data-feedback-taxonomy',
+        'error',
+      );
+      await expect(page.getByTestId('connectshyft-policy-error-banner')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-policy-refusal-banner')).toHaveCount(0);
+    },
+  );
 });

@@ -47,63 +47,111 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
     '[G2-AUTO-E2E-205][P1] inbox send-message and make-call actions launch neighbor workflows and submit outbound requests with deterministic phone selection @P1',
     async ({ page }) => {
       const context = createStoryG2Context();
-      await page.route('**/api/v1/connectshyft/neighbors*', async (route) => {
-        const response = await route.fetch();
-        const payload = await response.json() as {
-          data?: {
-            neighbors?: Array<Record<string, unknown>>;
-          };
-        };
-
-        const existingNeighbors = Array.isArray(payload?.data?.neighbors)
-          ? payload.data.neighbors
-          : [];
-        const neighbors = existingNeighbors.length > 0
-          ? existingNeighbors
-          : [
-            {
-              neighborId: 'neighbor-g2-route-fixture-1',
-              tenantId: context.tenantId,
-              orgUnitId: context.orgUnitId,
-              firstName: 'Route',
-              lastName: 'Fixture',
-              phones: [],
-            },
-          ];
-        const textingEligibleNeighbors = neighbors.map((neighbor, index) => {
-          const existingPhones = Array.isArray(neighbor.phones)
-            ? (neighbor.phones as Array<Record<string, unknown>>)
-            : [];
-          const phones = existingPhones.length > 0
-            ? existingPhones
-            : [
-              {
-                phoneId: `route-fixture-phone-${index + 1}`,
-                label: 'mobile',
-                value: `+12605550${String(110 + index).padStart(3, '0')}`,
-                sortOrder: 0,
-                isPrimary: true,
-                isShared: false,
-                verificationStatus: 'verified',
-              },
-            ];
-
-          return {
-            ...neighbor,
-            prefersTexting: 'YES',
-            phones,
-          };
-        });
-
+      const relatedNeighborId = 'neighbor-g2-related-1001';
+      const relatedPhone = '+12605550110';
+      const unrelatedPhone = '+12605550199';
+      await page.route('**/api/v1/connectshyft/inbox*', async (route) => {
         await route.fulfill({
-          response,
-          json: {
-            ...payload,
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: true,
+            code: 'CONNECTSHYFT_INBOX_LISTED',
+            message: 'ConnectShyft threads loaded',
             data: {
-              ...(payload?.data ?? {}),
-              neighbors: textingEligibleNeighbors,
+              context: {
+                tenantId: context.tenantId,
+                orgUnitId: context.orgUnitId,
+                bypassedOrgUnitMembership: false,
+              },
+              actions: {
+                claim: false,
+                takeover: false,
+              },
+              items: [
+                {
+                  threadId: context.threadIds.claimed,
+                  neighborId: relatedNeighborId,
+                  orgUnitId: context.orgUnitId,
+                  state: 'CLAIMED',
+                  bucket: 'inbox',
+                  escalationStage: 1,
+                  priorityRank: 1,
+                  urgencyLabel: 'Needs follow-up',
+                  lastActivityAtUtc: '2026-03-17T12:00:00.000Z',
+                  lastInboundCsNumberId: 'cs-inbound-g2-205',
+                  preferredOutboundCsNumberId: 'cs-outbound-g2-205',
+                  preferredOutboundContext: {
+                    csNumberId: 'cs-outbound-g2-205',
+                    label: 'Main outreach line',
+                  },
+                  summary: 'Related Neighbor',
+                  preview: 'Recent contact recorded.',
+                  display: {
+                    title: 'Related Neighbor',
+                    preview: 'Recent contact recorded.',
+                    stateLabel: 'Claimed',
+                    outboundContext: 'Main outreach line',
+                    conferenceContext: 'Conference context: Main outreach line',
+                    claimContext: 'Claim context: Claimed',
+                  },
+                },
+              ],
             },
-          },
+          }),
+        });
+      });
+      await page.route('**/api/v1/connectshyft/neighbors*', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: true,
+            code: 'CONNECTSHYFT_NEIGHBORS_RESOLVED',
+            message: 'ConnectShyft neighbors resolved',
+            data: {
+              neighbors: [
+                {
+                  neighborId: relatedNeighborId,
+                  tenantId: context.tenantId,
+                  orgUnitId: context.orgUnitId,
+                  firstName: 'Related',
+                  lastName: 'Neighbor',
+                  prefersTexting: 'YES',
+                  phones: [
+                    {
+                      phoneId: 'related-phone-1',
+                      label: 'mobile',
+                      value: relatedPhone,
+                      sortOrder: 0,
+                      isPrimary: true,
+                      isShared: false,
+                      verificationStatus: 'verified',
+                    },
+                  ],
+                },
+                {
+                  neighborId: 'neighbor-g2-unrelated-1002',
+                  tenantId: context.tenantId,
+                  orgUnitId: context.orgUnitId,
+                  firstName: 'Unrelated',
+                  lastName: 'Neighbor',
+                  prefersTexting: 'YES',
+                  phones: [
+                    {
+                      phoneId: 'unrelated-phone-1',
+                      label: 'mobile',
+                      value: unrelatedPhone,
+                      sortOrder: 0,
+                      isPrimary: true,
+                      isShared: false,
+                      verificationStatus: 'verified',
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
         });
       });
       await openStoryG2Surface({
@@ -121,7 +169,8 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
       await expect(page.getByTestId('connectshyft-send-message-modal')).toBeVisible();
 
       const messagePhoneOptions = page.getByTestId('connectshyft-send-message-phone-option');
-      await expect(messagePhoneOptions.first()).toBeVisible();
+      await expect(messagePhoneOptions).toHaveCount(1);
+      await expect(messagePhoneOptions.first()).toHaveValue(relatedPhone);
       await messagePhoneOptions.first().check();
       await page.getByTestId('connectshyft-send-message-body-input').fill(
         'Automated g.2 outbound message smoke test.',
@@ -141,14 +190,14 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
         targetPhone?: unknown;
       };
       expect(messagePayload.body).toBe('Automated g.2 outbound message smoke test.');
-      expect(typeof messagePayload.targetPhone).toBe('string');
-      expect((messagePayload.targetPhone as string).trim().length).toBeGreaterThan(0);
+      expect(messagePayload.targetPhone).toBe(relatedPhone);
 
       await page.getByTestId('connectshyft-make-call-action').click();
       await expect(page.getByTestId('connectshyft-make-call-modal')).toBeVisible();
 
       const callablePhoneOptions = page.getByTestId('connectshyft-make-call-phone-option');
-      await expect(callablePhoneOptions.first()).toBeVisible();
+      await expect(callablePhoneOptions).toHaveCount(1);
+      await expect(callablePhoneOptions.first()).toHaveValue(relatedPhone);
       await callablePhoneOptions.first().check();
       const callDispatchResponse = page.waitForResponse(
         (response) =>
@@ -163,8 +212,7 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
       const callPayload = callDispatch.request().postDataJSON() as {
         targetPhone?: unknown;
       };
-      expect(typeof callPayload.targetPhone).toBe('string');
-      expect((callPayload.targetPhone as string).trim().length).toBeGreaterThan(0);
+      expect(callPayload.targetPhone).toBe(relatedPhone);
     },
   );
 
@@ -210,6 +258,120 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
         ok: true,
         code: 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED',
       });
+    },
+  );
+
+  test(
+    '[G2-AUTO-E2E-207][P1] inbox surfaces HTTP 200 ok=false dispatch outcomes as refusals while preserving refusal metadata for UI follow-up @P1',
+    async ({ page }) => {
+      const context = createStoryG2Context();
+      await openStoryG2Surface({
+        page,
+        context,
+        bucket: 'inbox',
+      });
+
+      await page.route('**/api/v1/connectshyft/threads/**/messages', async (route) => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: false,
+            code: 'CONNECTSHYFT_SMS_TARGET_AMBIGUOUS',
+            refusalType: 'business',
+            message: 'Select a specific phone number before sending SMS.',
+            data: {
+              uiFeedback: {
+                message: 'Select a specific phone number before sending SMS.',
+                severity: 'warning',
+              },
+              targetResolution: {
+                reason: 'ambiguous_target',
+                source: 'neighbor_record',
+                candidateCount: 2,
+                candidatePhones: ['+12605550110', '+12605550111'],
+              },
+              preferencePolicy: {
+                prefersTexting: 'YES',
+                source: 'neighbor-record',
+                overrideRequired: false,
+                overrideAccepted: true,
+              },
+            },
+          }),
+        });
+      });
+
+      await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();
+      await page.getByTestId('connectshyft-composer-input').fill(
+        'Automated inbox refusal rendering verification.',
+      );
+      await page.getByTestId('connectshyft-composer-submit').click();
+
+      await expect(page.getByTestId('connectshyft-inbox-action-feedback')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-inbox-action-feedback')).toHaveAttribute(
+        'data-feedback-taxonomy',
+        'refusal',
+      );
+      await expect(page.getByTestId('connectshyft-inbox-action-feedback')).toContainText(
+        /select a specific phone number/i,
+      );
+      await expect(page.getByTestId('connectshyft-inbox-action-failure-code')).toHaveText(
+        'CONNECTSHYFT_SMS_TARGET_AMBIGUOUS',
+      );
+      await expect(page.getByTestId('connectshyft-inbox-action-failure-kind')).toHaveText(
+        'refusal',
+      );
+      await expect(
+        page.getByTestId('connectshyft-inbox-action-failure-ui-feedback'),
+      ).toContainText(/select a specific phone number/i);
+      await expect(
+        page.getByTestId('connectshyft-inbox-action-failure-preference-policy'),
+      ).toHaveText('present');
+    },
+  );
+
+  test(
+    '[G2-AUTO-E2E-208][P1] inbox keeps transport failures distinct from refusal outcomes for outbound message attempts @P1',
+    async ({ page }) => {
+      const context = createStoryG2Context();
+      await openStoryG2Surface({
+        page,
+        context,
+        bucket: 'inbox',
+      });
+
+      await page.route('**/api/v1/connectshyft/threads/**/messages', async (route) => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+
+        await route.abort('failed');
+      });
+
+      await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();
+      await page.getByTestId('connectshyft-composer-input').fill(
+        'Automated inbox transport-failure verification.',
+      );
+      await page.getByTestId('connectshyft-composer-submit').click();
+
+      await expect(page.getByTestId('connectshyft-inbox-action-feedback')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-inbox-action-feedback')).toHaveAttribute(
+        'data-feedback-taxonomy',
+        'error',
+      );
+      await expect(page.getByTestId('connectshyft-inbox-action-failure-kind')).toHaveText(
+        'error',
+      );
+      await expect(page.getByTestId('connectshyft-inbox-action-failure-code')).toHaveText(
+        'CONNECTSHYFT_THREAD_MESSAGE_DISPATCH_REFUSED_REQUEST_FAILED',
+      );
     },
   );
 });

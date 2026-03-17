@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { test, expect } from '@playwright/test';
 import { apiRequest } from '../../support/helpers/apiClient';
 import {
@@ -99,9 +100,8 @@ test.describe(
           orgUnitMemberships: [context.orgUnitId],
         });
 
-        const uniqueSuffix = Date.now().toString().slice(-4);
-        const createdNumber = `+1260555${uniqueSuffix}`;
-        const updatedNumber = `+1260666${uniqueSuffix}`;
+        const createdNumber = `+1260${randomUUID().replace(/\D/g, '').padEnd(7, '0').slice(0, 7)}`;
+        const updatedNumber = `+1260${randomUUID().replace(/\D/g, '').padEnd(7, '1').slice(0, 7)}`;
 
         const createResponse = await apiRequest(request, {
           method: 'POST',

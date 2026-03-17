@@ -107,11 +107,29 @@
                 </p>
 
                 <p
-                  v-if="threadActionError"
-                  class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
+                  v-if="threadActionFeedback || threadActionError"
+                  data-testid="connectshyft-inbox-action-feedback"
+                  :data-feedback-taxonomy="threadActionFeedback?.taxonomy || 'refusal'"
+                  class="rounded-2xl border px-4 py-3 text-base"
+                  :class="threadActionFeedbackClass"
                 >
-                  {{ threadActionError }}
+                  {{ threadActionFeedback ? threadActionFeedback.message : threadActionError }}
                 </p>
+
+                <div v-if="threadActionFailure" class="sr-only">
+                  <span data-testid="connectshyft-inbox-action-failure-code">
+                    {{ threadActionFailure.code }}
+                  </span>
+                  <span data-testid="connectshyft-inbox-action-failure-kind">
+                    {{ threadActionFailure.failureKind }}
+                  </span>
+                  <span data-testid="connectshyft-inbox-action-failure-ui-feedback">
+                    {{ threadActionUiFeedbackMessage }}
+                  </span>
+                  <span data-testid="connectshyft-inbox-action-failure-preference-policy">
+                    {{ threadActionPreferencePolicyState }}
+                  </span>
+                </div>
 
                 <p
                   v-if="neighborLoadError"
@@ -524,13 +542,16 @@ import {
   dispatchConnectShyftThreadCall,
   dispatchConnectShyftThreadMessage,
   ensureConnectShyftThread,
+  type ConnectShyftThreadActionFailure,
 } from '@/features/connectshyft/threads';
 import {
   CONNECTSHYFT_ACCESSIBILITY_LOCKS,
   CONNECTSHYFT_FOCUS_RING_CLASS,
   CONNECTSHYFT_INBOX_ACTION_COPY,
+  createConnectShyftFeedback,
   resolveCanonicalStateActions,
   sanitizeConnectShyftOperatorCopy,
+  type ConnectShyftFeedback,
 } from '@/features/connectshyft/uiContracts';
 
 const DEFAULT_THREAD_NEIGHBOR_ID = 'neighbor-connectshyft-c1-1001';
@@ -545,6 +566,8 @@ const threadItems = ref<ConnectShyftThreadSummary[]>([]);
 const neighborLoadError = ref('');
 const threadLoadError = ref('');
 const threadActionError = ref('');
+const threadActionFailure = ref<ConnectShyftThreadActionFailure | null>(null);
+const threadActionFeedback = ref<ConnectShyftFeedback | null>(null);
 const openingConversation = ref(false);
 const resolvedInboxOrgUnitId = ref<string | null>(null);
 const selectedThreadId = ref<string | null>(null);
@@ -595,6 +618,34 @@ const formatInboxActionPhoneLabel = (
 ): string => {
   const neighborName = `${neighbor.firstName || 'Neighbor'} ${neighbor.lastName || ''}`.trim();
   return `${neighborName} · ${phone.label || 'phone'} · ${phone.value}`;
+};
+
+const clearThreadActionOutcome = (): void => {
+  threadActionError.value = '';
+  threadActionFailure.value = null;
+  threadActionFeedback.value = null;
+};
+
+const applyThreadActionFailure = (
+  failure: ConnectShyftThreadActionFailure,
+  fallbackMessage: string,
+): void => {
+  const safeMessage = sanitizeConnectShyftOperatorCopy(
+    failure.message,
+    fallbackMessage,
+  );
+  const normalizedFailure = {
+    ...failure,
+    message: safeMessage,
+  };
+
+  threadActionError.value = safeMessage;
+  threadActionFailure.value = normalizedFailure;
+  threadActionFeedback.value = createConnectShyftFeedback(
+    normalizedFailure.failureKind === 'error' ? 'error' : 'refusal',
+    safeMessage,
+    fallbackMessage,
+  );
 };
 
 const loadThreadContracts = async () => {
@@ -694,13 +745,13 @@ const openConversation = async (overrides: Partial<ResolvedInboxContext> = {}): 
     ...resolveInboxContext(),
     ...overrides,
   };
+  clearThreadActionOutcome();
   if (!context.orgUnitId) {
     threadActionError.value = 'Select an orgUnit before opening a ConnectShyft conversation.';
     return;
   }
 
   openingConversation.value = true;
-  threadActionError.value = '';
 
   try {
     const ensureResult = await ensureConnectShyftThread({
@@ -953,30 +1004,27 @@ const selectedThreadPreviewActions = computed(() => {
   return [...resolveCanonicalStateActions(selectedThreadSummary.value.state)];
 });
 const inboxActionPhoneOptions = computed(() => {
-  const prioritizedNeighbors = selectedNeighbor.value
-    ? [selectedNeighbor.value]
-    : [];
-  const additionalNeighbors = neighbors.value.filter((neighbor) =>
-    !selectedNeighbor.value || neighbor.neighborId !== selectedNeighbor.value.neighborId,
-  );
   const seenValues = new Set<string>();
+  const neighbor = selectedNeighbor.value;
+  if (!neighbor) {
+    return [];
+  }
 
-  return [...prioritizedNeighbors, ...additionalNeighbors].flatMap((neighbor) =>
-    neighbor.phones
-      .filter((phone) => phone.value.trim().length > 0)
-      .filter((phone) => {
-        if (seenValues.has(phone.value)) {
-          return false;
-        }
+  return neighbor.phones
+    .filter((phone) => phone.value.trim().length > 0)
+    .filter((phone) => {
+      if (seenValues.has(phone.value)) {
+        return false;
+      }
 
-        seenValues.add(phone.value);
-        return true;
-      })
-      .map((phone) => ({
-        id: `${neighbor.neighborId}:${phone.phoneId}`,
-        value: phone.value,
-        label: formatInboxActionPhoneLabel(neighbor, phone),
-      })));
+      seenValues.add(phone.value);
+      return true;
+    })
+    .map((phone) => ({
+      id: `${neighbor.neighborId}:${phone.phoneId}`,
+      value: phone.value,
+      label: formatInboxActionPhoneLabel(neighbor, phone),
+    }));
 });
 const canUseOutboundInboxActions = computed(() =>
   !isViewerRole.value
@@ -1044,6 +1092,9 @@ const maintenanceBanner = computed(() => {
 });
 
 const liveRegionStatus = computed(() => {
+  if (threadActionFeedback.value) {
+    return threadActionFeedback.value.announcement;
+  }
   if (threadActionError.value) {
     return `Refusal feedback. ${threadActionError.value}`;
   }
@@ -1051,6 +1102,24 @@ const liveRegionStatus = computed(() => {
     return `Error feedback. ${threadLoadError.value}`;
   }
   return '';
+});
+
+const threadActionFeedbackClass = computed(() => {
+  if (threadActionFeedback.value?.taxonomy === 'error') {
+    return 'border-rose-200 bg-rose-50 text-rose-900';
+  }
+
+  return 'border-amber-200 bg-amber-50 text-amber-900';
+});
+
+const threadActionUiFeedbackMessage = computed(() => {
+  const message = threadActionFailure.value?.data?.uiFeedback?.message;
+  return typeof message === 'string' ? message : '';
+});
+
+const threadActionPreferencePolicyState = computed(() => {
+  const policy = threadActionFailure.value?.data?.preferencePolicy;
+  return policy && typeof policy === 'object' ? 'present' : 'absent';
 });
 
 const buildThreadDetailPath = (threadId: string): string => {
@@ -1105,7 +1174,7 @@ const openSendMessageModal = (): void => {
     return;
   }
 
-  threadActionError.value = '';
+  clearThreadActionOutcome();
   makeCallModalOpen.value = false;
   sendMessageModalOpen.value = true;
   applyDefaultDispatchPhone();
@@ -1116,7 +1185,7 @@ const openMakeCallModal = (): void => {
     return;
   }
 
-  threadActionError.value = '';
+  clearThreadActionOutcome();
   sendMessageModalOpen.value = false;
   makeCallModalOpen.value = true;
   applyDefaultDispatchPhone();
@@ -1146,7 +1215,7 @@ const submitPreviewComposer = async (): Promise<void> => {
   }
 
   inboxActionPending.value = true;
-  threadActionError.value = '';
+  clearThreadActionOutcome();
 
   try {
     const result = await dispatchConnectShyftThreadMessage({
@@ -1156,13 +1225,11 @@ const submitPreviewComposer = async (): Promise<void> => {
     });
 
     if (!result.ok) {
-      threadActionError.value = sanitizeConnectShyftOperatorCopy(
-        result.message,
-        'Unable to send the message right now.',
-      );
+      applyThreadActionFailure(result, 'Unable to send the message right now.');
       return;
     }
 
+    clearThreadActionOutcome();
     previewComposerBody.value = '';
     await loadThreadContracts();
   } finally {
@@ -1176,7 +1243,7 @@ const submitSendMessage = async (): Promise<void> => {
   }
 
   inboxActionPending.value = true;
-  threadActionError.value = '';
+  clearThreadActionOutcome();
 
   try {
     const result = await dispatchConnectShyftThreadMessage({
@@ -1187,13 +1254,11 @@ const submitSendMessage = async (): Promise<void> => {
     });
 
     if (!result.ok) {
-      threadActionError.value = sanitizeConnectShyftOperatorCopy(
-        result.message,
-        'Unable to send the message right now.',
-      );
+      applyThreadActionFailure(result, 'Unable to send the message right now.');
       return;
     }
 
+    clearThreadActionOutcome();
     closeInboxActionModals();
     await loadThreadContracts();
   } finally {
@@ -1207,7 +1272,7 @@ const submitMakeCall = async (): Promise<void> => {
   }
 
   inboxActionPending.value = true;
-  threadActionError.value = '';
+  clearThreadActionOutcome();
 
   try {
     const result = await dispatchConnectShyftThreadCall({
@@ -1217,13 +1282,11 @@ const submitMakeCall = async (): Promise<void> => {
     });
 
     if (!result.ok) {
-      threadActionError.value = sanitizeConnectShyftOperatorCopy(
-        result.message,
-        'Unable to place the call right now.',
-      );
+      applyThreadActionFailure(result, 'Unable to place the call right now.');
       return;
     }
 
+    clearThreadActionOutcome();
     closeInboxActionModals();
     await loadThreadContracts();
   } finally {

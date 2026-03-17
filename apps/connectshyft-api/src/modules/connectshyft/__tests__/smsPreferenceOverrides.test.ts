@@ -122,6 +122,107 @@ describe('connectshyft sms preference overrides', () => {
     });
   });
 
+  it('prefers durable neighbor-record preference over thread-map fallback when available', async () => {
+    const store = {
+      resolvePreference: jest.fn(async () => ({
+        prefersTexting: 'YES' as const,
+        neighborId: 'neighbor-record-1',
+        source: 'neighbor-record' as const,
+      })),
+    };
+    const fallbackStore = {
+      resolvePreference: jest.fn(() => ({
+        prefersTexting: 'NO' as const,
+        neighborId: null,
+        source: 'thread-map' as const,
+      })),
+    };
+    const service = new AsyncConnectShyftSmsPreferenceOverrideService(store as any, fallbackStore as any);
+
+    const resolved = await service.resolvePreference({
+      tenantId: 'tenant-connectshyft-c4',
+      orgUnitId: 'org-connectshyft-c4-east',
+      threadId: 'cc9bb30e-4b36-4419-8563-819432f4ba14',
+      neighborId: 'neighbor-record-1',
+    });
+
+    expect(resolved).toEqual({
+      prefersTexting: 'YES',
+      neighborId: 'neighbor-record-1',
+      source: 'neighbor-record',
+    });
+    expect(store.resolvePreference).toHaveBeenCalled();
+    expect(fallbackStore.resolvePreference).not.toHaveBeenCalled();
+  });
+
+  it('uses thread-map fallback when durable neighbor preference is unavailable', async () => {
+    const store = {
+      resolvePreference: jest.fn(async () => ({
+        prefersTexting: 'UNKNOWN' as const,
+        neighborId: 'neighbor-record-1',
+        source: 'unknown' as const,
+      })),
+    };
+    const fallbackStore = {
+      resolvePreference: jest.fn(() => ({
+        prefersTexting: 'NO' as const,
+        neighborId: null,
+        source: 'thread-map' as const,
+      })),
+    };
+    const service = new AsyncConnectShyftSmsPreferenceOverrideService(store as any, fallbackStore as any);
+
+    const resolved = await service.resolvePreference({
+      tenantId: 'tenant-connectshyft-c4',
+      orgUnitId: 'org-connectshyft-c4-east',
+      threadId: 'cc9bb30e-4b36-4419-8563-819432f4ba14',
+      neighborId: 'neighbor-record-1',
+    });
+
+    expect(resolved).toEqual({
+      prefersTexting: 'NO',
+      neighborId: null,
+      source: 'thread-map',
+    });
+    expect(store.resolvePreference).toHaveBeenCalled();
+    expect(fallbackStore.resolvePreference).toHaveBeenCalled();
+  });
+
+  it('uses thread-map fallback when durable preference lookup is unavailable', async () => {
+    const missingTableError = Object.assign(
+      new Error('relation "connectshyft.cs_neighbors" does not exist'),
+      { code: '42P01' },
+    );
+    const store = {
+      resolvePreference: jest.fn(async () => {
+        throw missingTableError;
+      }),
+    };
+    const fallbackStore = {
+      resolvePreference: jest.fn(() => ({
+        prefersTexting: 'NO' as const,
+        neighborId: null,
+        source: 'thread-map' as const,
+      })),
+    };
+    const service = new AsyncConnectShyftSmsPreferenceOverrideService(store as any, fallbackStore as any);
+
+    const resolved = await service.resolvePreference({
+      tenantId: 'tenant-connectshyft-c4',
+      orgUnitId: 'org-connectshyft-c4-east',
+      threadId: 'cc9bb30e-4b36-4419-8563-819432f4ba14',
+      neighborId: 'neighbor-record-1',
+    });
+
+    expect(resolved).toEqual({
+      prefersTexting: 'NO',
+      neighborId: null,
+      source: 'thread-map',
+    });
+    expect(store.resolvePreference).toHaveBeenCalled();
+    expect(fallbackStore.resolvePreference).toHaveBeenCalled();
+  });
+
   it('fails closed when override persistence is unavailable', async () => {
     const missingTableError = Object.assign(
       new Error('relation "connectshyft.cs_sms_preference_overrides" does not exist'),

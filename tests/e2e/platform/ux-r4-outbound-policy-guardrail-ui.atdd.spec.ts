@@ -147,7 +147,7 @@ test.describe('Story ux-r4 Outbound Policy Guardrail UI (ATDD E2E)', () => {
 
       await page.route('**/api/v1/connectshyft/threads/*/messages', async (route) => {
         await route.fulfill({
-          status: 200,
+          status: 500,
           contentType: 'application/json',
           body: JSON.stringify({
             ok: false,

@@ -1,5 +1,12 @@
 import api from '@/services/api';
 import { buildConnectShyftTestOverrideHeaders } from '@/features/connectshyft/flags';
+import {
+  createConnectShyftThreadActionRefusal,
+  createConnectShyftThreadActionTransportFailure,
+  type ConnectShyftThreadActionData,
+  type ConnectShyftThreadActionEnvelope as BaseConnectShyftThreadActionEnvelope,
+  type ConnectShyftThreadActionFailure,
+} from './threadActionResults';
 
 export type ConnectShyftThreadState = 'UNCLAIMED' | 'CLAIMED' | 'CLOSED';
 
@@ -24,11 +31,8 @@ export type ConnectShyftThread = {
   updatedAtUtc: string;
 };
 
-type ConnectShyftEnvelope = {
-  ok?: boolean;
-  code?: string;
-  message?: string;
-  data?: {
+type ConnectShyftEnvelope = BaseConnectShyftThreadActionEnvelope & {
+  data?: ConnectShyftThreadActionData & {
     thread?: Partial<ConnectShyftThread>;
     threads?: Partial<ConnectShyftThread>[];
     lifecycle?: {
@@ -105,11 +109,9 @@ export type ConnectShyftThreadActionResult =
     message: string;
     thread: ConnectShyftThread | null;
   }
-  | {
-    ok: false;
-    code: string;
-    message: string;
-  };
+  | ConnectShyftThreadActionFailure;
+
+export type { ConnectShyftThreadActionFailure };
 
 const CANONICAL_THREAD_STATES = new Set<ConnectShyftThreadState>([
   'UNCLAIMED',
@@ -212,6 +214,21 @@ const parseActionSuccessMessage = (payload: unknown, fallbackMessage: string): s
   }
 
   return parseRefusalMessage(payload, fallbackMessage);
+};
+
+const createInlineThreadActionRefusal = (
+  code: string,
+  message: string,
+): ConnectShyftThreadActionFailure => {
+  return {
+    ok: false,
+    failureKind: 'refusal',
+    code,
+    message,
+    refusalType: 'client',
+    errorType: null,
+    data: null,
+  };
 };
 
 const resolveScopeFromQuery = (): { tenantId: string | null; orgUnitId: string | null } => {
@@ -389,11 +406,11 @@ const executeConnectShyftThreadAction = async (
     });
     const envelope = response.data as ConnectShyftEnvelope;
     if (envelope?.ok !== true) {
-      return {
-        ok: false,
-        code: normalizeString(envelope?.code) || fallbackCode,
-        message: parseRefusalMessage(response.data, fallbackMessage),
-      };
+      return createConnectShyftThreadActionRefusal(
+        response.data,
+        fallbackCode,
+        fallbackMessage,
+      );
     }
 
     return {
@@ -403,14 +420,24 @@ const executeConnectShyftThreadAction = async (
       thread: parseThread(envelope.data?.thread),
     };
   } catch (error: unknown) {
-    return {
-      ok: false,
-      code: `${fallbackCode}_REQUEST_FAILED`,
-      message: parseRefusalMessage(
-        (error as { response?: { data?: unknown } })?.response?.data,
+    const errorPayload = (error as { response?: { data?: unknown } })?.response?.data;
+    if (
+      errorPayload
+      && typeof errorPayload === 'object'
+      && (errorPayload as { ok?: unknown }).ok === false
+    ) {
+      return createConnectShyftThreadActionRefusal(
+        errorPayload,
+        fallbackCode,
         fallbackMessage,
-      ),
-    };
+      );
+    }
+
+    return createConnectShyftThreadActionTransportFailure(
+      errorPayload,
+      fallbackCode,
+      fallbackMessage,
+    );
   }
 };
 
@@ -419,20 +446,18 @@ export const performConnectShyftThreadLifecycleAction = async (
 ): Promise<ConnectShyftThreadActionResult> => {
   const threadId = normalizeString(input.threadId);
   if (!threadId) {
-    return {
-      ok: false,
-      code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
-      message: 'Thread id is required.',
-    };
+    return createInlineThreadActionRefusal(
+      'CONNECTSHYFT_THREAD_ID_REQUIRED',
+      'Thread id is required.',
+    );
   }
 
   const orgUnitId = normalizeString(input.orgUnitId);
   if (!orgUnitId) {
-    return {
-      ok: false,
-      code: 'CONNECTSHYFT_ORGUNIT_REQUIRED',
-      message: 'orgUnitId is required.',
-    };
+    return createInlineThreadActionRefusal(
+      'CONNECTSHYFT_ORGUNIT_REQUIRED',
+      'orgUnitId is required.',
+    );
   }
 
   const actionPath = `/connectshyft/threads/${encodeURIComponent(threadId)}/${input.action}`;
@@ -463,18 +488,16 @@ export const dispatchConnectShyftThreadCall = async (
   const orgUnitId = normalizeString(input.orgUnitId);
   const targetPhone = normalizeString(input.targetPhone);
   if (!threadId) {
-    return {
-      ok: false,
-      code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
-      message: 'Thread id is required.',
-    };
+    return createInlineThreadActionRefusal(
+      'CONNECTSHYFT_THREAD_ID_REQUIRED',
+      'Thread id is required.',
+    );
   }
   if (!orgUnitId) {
-    return {
-      ok: false,
-      code: 'CONNECTSHYFT_ORGUNIT_REQUIRED',
-      message: 'orgUnitId is required.',
-    };
+    return createInlineThreadActionRefusal(
+      'CONNECTSHYFT_ORGUNIT_REQUIRED',
+      'orgUnitId is required.',
+    );
   }
 
   return executeConnectShyftThreadAction(
@@ -496,25 +519,22 @@ export const dispatchConnectShyftThreadMessage = async (
   const body = normalizeString(input.body);
   const targetPhone = normalizeString(input.targetPhone);
   if (!threadId) {
-    return {
-      ok: false,
-      code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
-      message: 'Thread id is required.',
-    };
+    return createInlineThreadActionRefusal(
+      'CONNECTSHYFT_THREAD_ID_REQUIRED',
+      'Thread id is required.',
+    );
   }
   if (!orgUnitId) {
-    return {
-      ok: false,
-      code: 'CONNECTSHYFT_ORGUNIT_REQUIRED',
-      message: 'orgUnitId is required.',
-    };
+    return createInlineThreadActionRefusal(
+      'CONNECTSHYFT_ORGUNIT_REQUIRED',
+      'orgUnitId is required.',
+    );
   }
   if (!body) {
-    return {
-      ok: false,
-      code: 'CONNECTSHYFT_MESSAGE_BODY_REQUIRED',
-      message: 'Enter a message before sending.',
-    };
+    return createInlineThreadActionRefusal(
+      'CONNECTSHYFT_MESSAGE_BODY_REQUIRED',
+      'Enter a message before sending.',
+    );
   }
 
   return executeConnectShyftThreadAction(
