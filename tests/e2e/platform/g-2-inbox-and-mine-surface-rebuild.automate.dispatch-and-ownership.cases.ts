@@ -47,6 +47,39 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
     '[G2-AUTO-E2E-205][P1] inbox send-message and make-call actions launch neighbor workflows and submit outbound requests with deterministic phone selection @P1',
     async ({ page }) => {
       const context = createStoryG2Context();
+      const relatedNeighborId = 'neighbor-g2-related-1001';
+      const relatedPhone = '+12605550110';
+      const unrelatedPhone = '+12605550199';
+      await page.route('**/api/v1/connectshyft/inbox*', async (route) => {
+        const response = await route.fetch();
+        const payload = await response.json() as {
+          data?: {
+            items?: Array<Record<string, unknown>>;
+          };
+        };
+
+        const existingItems = Array.isArray(payload?.data?.items)
+          ? payload.data.items
+          : [];
+
+        await route.fulfill({
+          response,
+          json: {
+            ...payload,
+            data: {
+              ...(payload?.data ?? {}),
+              items: existingItems.map((item, index) => (
+                index === 0
+                  ? {
+                    ...item,
+                    neighborId: relatedNeighborId,
+                  }
+                  : item
+              )),
+            },
+          },
+        });
+      });
       await page.route('**/api/v1/connectshyft/neighbors*', async (route) => {
         const response = await route.fetch();
         const payload = await response.json() as {
@@ -55,53 +88,52 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
           };
         };
 
-        const existingNeighbors = Array.isArray(payload?.data?.neighbors)
-          ? payload.data.neighbors
-          : [];
-        const neighbors = existingNeighbors.length > 0
-          ? existingNeighbors
-          : [
-            {
-              neighborId: 'neighbor-g2-route-fixture-1',
-              tenantId: context.tenantId,
-              orgUnitId: context.orgUnitId,
-              firstName: 'Route',
-              lastName: 'Fixture',
-              phones: [],
-            },
-          ];
-        const textingEligibleNeighbors = neighbors.map((neighbor, index) => {
-          const existingPhones = Array.isArray(neighbor.phones)
-            ? (neighbor.phones as Array<Record<string, unknown>>)
-            : [];
-          const phones = existingPhones.length > 0
-            ? existingPhones
-            : [
-              {
-                phoneId: `route-fixture-phone-${index + 1}`,
-                label: 'mobile',
-                value: `+12605550${String(110 + index).padStart(3, '0')}`,
-                sortOrder: 0,
-                isPrimary: true,
-                isShared: false,
-                verificationStatus: 'verified',
-              },
-            ];
-
-          return {
-            ...neighbor,
-            prefersTexting: 'YES',
-            phones,
-          };
-        });
-
         await route.fulfill({
           response,
           json: {
             ...payload,
             data: {
               ...(payload?.data ?? {}),
-              neighbors: textingEligibleNeighbors,
+              neighbors: [
+                {
+                  neighborId: relatedNeighborId,
+                  tenantId: context.tenantId,
+                  orgUnitId: context.orgUnitId,
+                  firstName: 'Related',
+                  lastName: 'Neighbor',
+                  prefersTexting: 'YES',
+                  phones: [
+                    {
+                      phoneId: 'related-phone-1',
+                      label: 'mobile',
+                      value: relatedPhone,
+                      sortOrder: 0,
+                      isPrimary: true,
+                      isShared: false,
+                      verificationStatus: 'verified',
+                    },
+                  ],
+                },
+                {
+                  neighborId: 'neighbor-g2-unrelated-1002',
+                  tenantId: context.tenantId,
+                  orgUnitId: context.orgUnitId,
+                  firstName: 'Unrelated',
+                  lastName: 'Neighbor',
+                  prefersTexting: 'YES',
+                  phones: [
+                    {
+                      phoneId: 'unrelated-phone-1',
+                      label: 'mobile',
+                      value: unrelatedPhone,
+                      sortOrder: 0,
+                      isPrimary: true,
+                      isShared: false,
+                      verificationStatus: 'verified',
+                    },
+                  ],
+                },
+              ],
             },
           },
         });
@@ -121,7 +153,8 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
       await expect(page.getByTestId('connectshyft-send-message-modal')).toBeVisible();
 
       const messagePhoneOptions = page.getByTestId('connectshyft-send-message-phone-option');
-      await expect(messagePhoneOptions.first()).toBeVisible();
+      await expect(messagePhoneOptions).toHaveCount(1);
+      await expect(messagePhoneOptions.first()).toHaveValue(relatedPhone);
       await messagePhoneOptions.first().check();
       await page.getByTestId('connectshyft-send-message-body-input').fill(
         'Automated g.2 outbound message smoke test.',
@@ -141,14 +174,14 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
         targetPhone?: unknown;
       };
       expect(messagePayload.body).toBe('Automated g.2 outbound message smoke test.');
-      expect(typeof messagePayload.targetPhone).toBe('string');
-      expect((messagePayload.targetPhone as string).trim().length).toBeGreaterThan(0);
+      expect(messagePayload.targetPhone).toBe(relatedPhone);
 
       await page.getByTestId('connectshyft-make-call-action').click();
       await expect(page.getByTestId('connectshyft-make-call-modal')).toBeVisible();
 
       const callablePhoneOptions = page.getByTestId('connectshyft-make-call-phone-option');
-      await expect(callablePhoneOptions.first()).toBeVisible();
+      await expect(callablePhoneOptions).toHaveCount(1);
+      await expect(callablePhoneOptions.first()).toHaveValue(relatedPhone);
       await callablePhoneOptions.first().check();
       const callDispatchResponse = page.waitForResponse(
         (response) =>
@@ -163,8 +196,7 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
       const callPayload = callDispatch.request().postDataJSON() as {
         targetPhone?: unknown;
       };
-      expect(typeof callPayload.targetPhone).toBe('string');
-      expect((callPayload.targetPhone as string).trim().length).toBeGreaterThan(0);
+      expect(callPayload.targetPhone).toBe(relatedPhone);
     },
   );
 
@@ -234,17 +266,25 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
           contentType: 'application/json',
           body: JSON.stringify({
             ok: false,
-            code: 'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED',
+            code: 'CONNECTSHYFT_SMS_TARGET_AMBIGUOUS',
             refusalType: 'business',
-            message: 'Override reason is required before sending SMS.',
+            message: 'Select a specific phone number before sending SMS.',
             data: {
               uiFeedback: {
-                message: 'Override reason is required before sending SMS.',
+                message: 'Select a specific phone number before sending SMS.',
                 severity: 'warning',
               },
+              targetResolution: {
+                reason: 'ambiguous_target',
+                source: 'neighbor_record',
+                candidateCount: 2,
+                candidatePhones: ['+12605550110', '+12605550111'],
+              },
               preferencePolicy: {
-                overrideRequired: true,
-                allowedOverrideReasons: ['safety-follow-up'],
+                prefersTexting: 'YES',
+                source: 'neighbor-record',
+                overrideRequired: false,
+                overrideAccepted: true,
               },
             },
           }),
@@ -263,17 +303,17 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
         'refusal',
       );
       await expect(page.getByTestId('connectshyft-inbox-action-feedback')).toContainText(
-        /override reason is required/i,
+        /select a specific phone number/i,
       );
       await expect(page.getByTestId('connectshyft-inbox-action-failure-code')).toHaveText(
-        'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED',
+        'CONNECTSHYFT_SMS_TARGET_AMBIGUOUS',
       );
       await expect(page.getByTestId('connectshyft-inbox-action-failure-kind')).toHaveText(
         'refusal',
       );
       await expect(
         page.getByTestId('connectshyft-inbox-action-failure-ui-feedback'),
-      ).toContainText(/override reason is required/i);
+      ).toContainText(/select a specific phone number/i);
       await expect(
         page.getByTestId('connectshyft-inbox-action-failure-preference-policy'),
       ).toHaveText('present');

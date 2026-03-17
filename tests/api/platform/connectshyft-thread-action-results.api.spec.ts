@@ -11,17 +11,25 @@ test.describe('ConnectShyft thread action result normalization', () => {
       const result = createConnectShyftThreadActionRefusal(
         {
           ok: false,
-          code: 'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED',
+          code: 'CONNECTSHYFT_SMS_TARGET_AMBIGUOUS',
           refusalType: 'business',
-          message: 'Override reason is required before sending SMS.',
+          message: 'Select a specific phone number before sending SMS.',
           data: {
             uiFeedback: {
-              message: 'Override reason is required before sending SMS.',
+              message: 'Select a specific phone number before sending SMS.',
               severity: 'warning',
             },
+            targetResolution: {
+              reason: 'ambiguous_target',
+              source: 'neighbor_record',
+              candidateCount: 2,
+              candidatePhones: ['+12605550110', '+12605550111'],
+            },
             preferencePolicy: {
-              overrideRequired: true,
-              allowedOverrideReasons: ['safety-follow-up'],
+              prefersTexting: 'YES',
+              source: 'neighbor-record',
+              overrideRequired: false,
+              overrideAccepted: true,
             },
           },
         },
@@ -32,17 +40,25 @@ test.describe('ConnectShyft thread action result normalization', () => {
       expect(result).toMatchObject({
         ok: false,
         failureKind: 'refusal',
-        code: 'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED',
-        message: 'Override reason is required before sending SMS.',
+        code: 'CONNECTSHYFT_SMS_TARGET_AMBIGUOUS',
+        message: 'Select a specific phone number before sending SMS.',
         refusalType: 'business',
         data: {
           uiFeedback: {
-            message: 'Override reason is required before sending SMS.',
+            message: 'Select a specific phone number before sending SMS.',
             severity: 'warning',
           },
+          targetResolution: {
+            reason: 'ambiguous_target',
+            source: 'neighbor_record',
+            candidateCount: 2,
+            candidatePhones: ['+12605550110', '+12605550111'],
+          },
           preferencePolicy: {
-            overrideRequired: true,
-            allowedOverrideReasons: ['safety-follow-up'],
+            prefersTexting: 'YES',
+            source: 'neighbor-record',
+            overrideRequired: false,
+            overrideAccepted: true,
           },
         },
       });

@@ -5,6 +5,7 @@ import {
   buildTelephonyDispatchReplayKey,
   evaluateRetryPolicy,
   isTelephonyProviderFailure,
+  validatePhoneForChannel,
 } from '../../../../../../domains/communication';
 import { refusal, success } from '../../../platform/envelopes/response';
 import { CAPABILITIES, hasCapability } from '../../../platform/rbac/capabilities';
@@ -26,6 +27,7 @@ import {
   KnexConnectShyftNeighborStore,
   connectShyftNeighborServiceAsync,
   type ConnectShyftIdentityMatchDecision,
+  type ConnectShyftNeighborPhone,
   type ConnectShyftNeighborPhoneInput,
   type ConnectShyftTextingPreference,
 } from '../../../modules/connectshyft/neighbors';
@@ -3516,6 +3518,255 @@ const parseOutboundDispatchIdempotencyKey = (req: Request): string | null => {
   return bodyIdempotencyKey || null;
 };
 
+type ConnectShyftResolvedSmsTarget =
+  | {
+    ok: true;
+    targetPhone: string;
+    source:
+      | 'explicit_request'
+      | 'primary_active_valid_phone'
+      | 'only_active_valid_phone'
+      | 'test_override_fallback';
+  }
+  | {
+    ok: false;
+    code: string;
+    message: string;
+    data: {
+      targetResolution: {
+        reason:
+          | 'invalid_explicit_request_target'
+          | 'missing_target'
+          | 'ambiguous_target'
+          | 'neighbor_resolution_unavailable';
+        source: 'explicit_request' | 'neighbor_record';
+        neighborId: string | null;
+        requestedTargetPhone: string | null;
+        candidateCount: number;
+        candidatePhones: string[];
+      };
+      uiFeedback: {
+        severity: 'warning';
+        ariaLive: 'assertive';
+        messageKey:
+          | 'connectshyft.sms_target.invalid'
+          | 'connectshyft.sms_target.missing'
+          | 'connectshyft.sms_target.ambiguous'
+          | 'connectshyft.sms_target.unavailable';
+        presentation: 'contextual-action-feedback';
+        requiresAction: true;
+        actionLabel: 'Select phone';
+        accessibilityHint: string;
+        message: string;
+      };
+    };
+  };
+
+const isValidConnectShyftSmsTargetPhone = (value: string): boolean => {
+  return value.length > 0 && validatePhoneForChannel(value, 'sms').ok;
+};
+
+const sortConnectShyftNeighborPhones = (
+  left: Pick<ConnectShyftNeighborPhone, 'sortOrder' | 'phoneId'>,
+  right: Pick<ConnectShyftNeighborPhone, 'sortOrder' | 'phoneId'>,
+): number => {
+  if (left.sortOrder !== right.sortOrder) {
+    return left.sortOrder - right.sortOrder;
+  }
+
+  return left.phoneId.localeCompare(right.phoneId);
+};
+
+const collectDeterministicSmsTargetCandidates = (
+  phones: ConnectShyftNeighborPhone[],
+): ConnectShyftNeighborPhone[] => {
+  return phones
+    .filter((phone) => phone.isActive !== false)
+    .filter((phone) => phone.validationStatus === 'valid')
+    .filter((phone) => isValidConnectShyftSmsTargetPhone(phone.value))
+    .sort(sortConnectShyftNeighborPhones);
+};
+
+const buildConnectShyftSmsTargetRefusal = (input: {
+  code: string;
+  message: string;
+  messageKey:
+    | 'connectshyft.sms_target.invalid'
+    | 'connectshyft.sms_target.missing'
+    | 'connectshyft.sms_target.ambiguous'
+    | 'connectshyft.sms_target.unavailable';
+  reason:
+    | 'invalid_explicit_request_target'
+    | 'missing_target'
+    | 'ambiguous_target'
+    | 'neighbor_resolution_unavailable';
+  source: 'explicit_request' | 'neighbor_record';
+  neighborId: string | null;
+  requestedTargetPhone: string | null;
+  candidatePhones?: string[];
+  accessibilityHint: string;
+}): Extract<ConnectShyftResolvedSmsTarget, { ok: false }> => ({
+  ok: false,
+  code: input.code,
+  message: input.message,
+  data: {
+    targetResolution: {
+      reason: input.reason,
+      source: input.source,
+      neighborId: input.neighborId,
+      requestedTargetPhone: input.requestedTargetPhone,
+      candidateCount: input.candidatePhones?.length || 0,
+      candidatePhones: input.candidatePhones || [],
+    },
+    uiFeedback: {
+      severity: 'warning',
+      ariaLive: 'assertive',
+      messageKey: input.messageKey,
+      presentation: 'contextual-action-feedback',
+      requiresAction: true,
+      actionLabel: 'Select phone',
+      accessibilityHint: input.accessibilityHint,
+      message: input.message,
+    },
+  },
+});
+
+const resolveConnectShyftSmsTarget = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  thread: ConnectShyftThread;
+  actorRoles: Array<string | null | undefined>;
+  requestedTargetPhone: string | null;
+  allowTestFallback: boolean;
+}): Promise<ConnectShyftResolvedSmsTarget> => {
+  const explicitTargetPhone = normalizeLifecycleString(input.requestedTargetPhone || null) || null;
+  const normalizedNeighborId = normalizeConnectShyftNeighborIdentifier(input.thread.neighborId || '');
+  const neighborId = normalizedNeighborId && isValidConnectShyftNeighborIdentifier(normalizedNeighborId)
+    ? normalizedNeighborId
+    : null;
+  const durableNeighborId = neighborId && UUID_PATTERN.test(neighborId)
+    ? neighborId
+    : null;
+
+  if (explicitTargetPhone) {
+    if (!isValidConnectShyftSmsTargetPhone(explicitTargetPhone)) {
+      return buildConnectShyftSmsTargetRefusal({
+        code: 'CONNECTSHYFT_SMS_TARGET_INVALID',
+        message: 'Select a valid phone number before sending SMS.',
+        messageKey: 'connectshyft.sms_target.invalid',
+        reason: 'invalid_explicit_request_target',
+        source: 'explicit_request',
+        neighborId,
+        requestedTargetPhone: explicitTargetPhone,
+        accessibilityHint: 'Choose a valid phone number and resubmit the outbound message.',
+      });
+    }
+
+    return {
+      ok: true,
+      targetPhone: explicitTargetPhone,
+      source: 'explicit_request',
+    };
+  }
+
+  if (durableNeighborId) {
+    const resolvedNeighbor = await connectShyftNeighborServiceAsync.resolveNeighbor({
+      tenantId: input.tenantId,
+      neighborId: durableNeighborId,
+      actorRoles: input.actorRoles,
+    });
+
+    if (resolvedNeighbor.ok) {
+      const candidatePhones = collectDeterministicSmsTargetCandidates(
+        resolvedNeighbor.data.neighbor.phones,
+      );
+      const primaryCandidate = candidatePhones.find((phone) => phone.isPrimary === true) || null;
+      if (primaryCandidate) {
+        return {
+          ok: true,
+          targetPhone: primaryCandidate.value,
+          source: 'primary_active_valid_phone',
+        };
+      }
+
+      if (candidatePhones.length === 1) {
+        return {
+          ok: true,
+          targetPhone: candidatePhones[0].value,
+          source: 'only_active_valid_phone',
+        };
+      }
+
+      if (candidatePhones.length > 1) {
+        return buildConnectShyftSmsTargetRefusal({
+          code: 'CONNECTSHYFT_SMS_TARGET_AMBIGUOUS',
+          message: 'Select a specific phone number before sending SMS.',
+          messageKey: 'connectshyft.sms_target.ambiguous',
+          reason: 'ambiguous_target',
+          source: 'neighbor_record',
+          neighborId: durableNeighborId,
+          requestedTargetPhone: null,
+          candidatePhones: candidatePhones.map((phone) => phone.value),
+          accessibilityHint: 'Choose one phone number for this neighbor before sending the outbound message.',
+        });
+      }
+
+      return buildConnectShyftSmsTargetRefusal({
+        code: 'CONNECTSHYFT_SMS_TARGET_REQUIRED',
+        message: 'Add or select a valid phone number before sending SMS.',
+        messageKey: 'connectshyft.sms_target.missing',
+        reason: 'missing_target',
+        source: 'neighbor_record',
+        neighborId: durableNeighborId,
+        requestedTargetPhone: null,
+        accessibilityHint: 'Update the neighbor profile or choose a valid phone number before sending the outbound message.',
+      });
+    }
+
+    if (resolvedNeighbor.code !== 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND') {
+      return buildConnectShyftSmsTargetRefusal({
+        code: resolvedNeighbor.code,
+        message: resolvedNeighbor.message,
+        messageKey: 'connectshyft.sms_target.unavailable',
+        reason: 'neighbor_resolution_unavailable',
+        source: 'neighbor_record',
+        neighborId: durableNeighborId,
+        requestedTargetPhone: null,
+        accessibilityHint: 'Retry after neighbor data becomes available.',
+      });
+    }
+  }
+
+  if (input.allowTestFallback) {
+    const fallbackPhone = resolveTestOverridePhoneFallback({
+      allowTestFallback: true,
+      primarySeed: input.thread.neighborId,
+      secondarySeed: input.threadId,
+    });
+    if (fallbackPhone) {
+      return {
+        ok: true,
+        targetPhone: fallbackPhone,
+        source: 'test_override_fallback',
+      };
+    }
+  }
+
+  return buildConnectShyftSmsTargetRefusal({
+    code: 'CONNECTSHYFT_SMS_TARGET_REQUIRED',
+    message: 'Add or select a valid phone number before sending SMS.',
+    messageKey: 'connectshyft.sms_target.missing',
+    reason: 'missing_target',
+    source: 'neighbor_record',
+    neighborId: durableNeighborId || neighborId,
+    requestedTargetPhone: null,
+    accessibilityHint: 'Update the neighbor profile or choose a valid phone number before sending the outbound message.',
+  });
+};
+
+export const resolveConnectShyftSmsTargetForTests = resolveConnectShyftSmsTarget;
+
 const resolveOutboundIdempotencyOperationName = (
   outboundAction: ConnectShyftOutboundAction,
 ): 'send_sms' | 'start_bridge_session' => (
@@ -6442,23 +6693,7 @@ const performOutboundAction = async (
       redialPolicy: outboundCallPolicyRequest?.redialPolicy || CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_REDIAL_POLICY,
     }
     : null;
-  const outboundDispatchReplayKey = buildTelephonyDispatchReplayKey({
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    threadId,
-    providerKey: providerSelection.providerResolution.resolvedProvider,
-    action: outboundAction,
-    idempotencyKey: outboundDispatchIdempotencyKey,
-    actorId: actorUserId,
-    targetPhone: outboundAction === 'call'
-      ? outboundCallPolicyRequest?.targetPhone || null
-      : outboundMessagePolicy?.targetPhone || null,
-    operatorContactPointId: outboundAction === 'call'
-      ? outboundCallPolicyRequest?.operatorContactPointId || null
-      : null,
-    body: outboundMessagePolicy?.body || null,
-    callPolicy: outboundCallDispatchPolicy,
-  });
+  let outboundDispatchReplayKey: string | null = null;
   const lifecycleContext = await resolveLifecycleContext({
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
@@ -6494,6 +6729,7 @@ const performOutboundAction = async (
   let lifecycleEvent: string | null = null;
   let sideEffects: ReturnType<typeof buildLifecycleSideEffects> | null = null;
   let outboundDispatch: ReturnType<typeof buildLifecycleSideEffects> | null = null;
+  let outboundMessageTargetPhone: string | null = null;
   let persistedSmsOverride: ConnectShyftPersistedSmsOverride | null = null;
   let sideEffectsPersisted = false;
   let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
@@ -6682,75 +6918,6 @@ const performOutboundAction = async (
       : null;
   }
 
-  if (
-    outboundAction === 'message'
-    && smsPreferenceDecision?.prefersTexting === 'NO'
-    && validatedSmsOverride
-  ) {
-    try {
-      persistedSmsOverride = await connectShyftSmsPreferenceOverrideService.persistApprovedOverride({
-        tenantId: context.tenantId,
-        orgUnitId: context.orgUnitId,
-        threadId,
-        neighborId: smsPreferenceDecision.neighborId,
-        actorUserId,
-        preferenceValue: 'NO',
-        override: validatedSmsOverride,
-        messageBody: outboundMessagePolicy?.body || '',
-        messageEventName: 'connectshyft.thread.outbound_message_dispatched',
-      });
-    } catch (error) {
-      const persistenceMessage = error instanceof Error
-        ? error.message
-        : 'Outbound SMS override persistence is unavailable.';
-      const persistenceCode = error instanceof ConnectShyftSmsOverridePersistenceUnavailableError
-        ? error.code
-        : 'CONNECTSHYFT_SMS_OVERRIDE_AUDIT_UNAVAILABLE';
-
-      refusal(res, {
-        code: persistenceCode,
-        message: 'Outbound SMS cannot be sent because override persistence is unavailable.',
-        refusalType: 'business',
-        httpStatus: 200,
-        data: {
-          context,
-          threadId,
-          preferencePolicy: {
-            prefersTexting: smsPreferenceDecision.prefersTexting,
-            source: smsPreferenceDecision.source,
-            overrideRequired: true,
-            overrideAccepted: false,
-            override: {
-              reason: validatedSmsOverride.reason,
-              note: validatedSmsOverride.note,
-            },
-          },
-          uiFeedback: {
-            severity: 'warning',
-            ariaLive: 'assertive',
-            messageKey: 'connectshyft.override.audit_unavailable',
-            presentation: 'contextual-action-feedback',
-            requiresAction: true,
-            actionLabel: 'Retry send',
-            accessibilityHint: 'Retry sending after override persistence becomes available.',
-            message: persistenceMessage,
-          },
-          chrome: {
-            persistentOperationsBannerVisible: false,
-            heavyOperationsDefaultLayout: false,
-          },
-          sideEffects: {
-            messageDispatched: false,
-            lifecycleMutationApplied,
-            auditPersisted: false,
-          },
-          ...buildReopenLifecycleData(),
-        },
-      });
-      return;
-    }
-  }
-
   const rollbackPersistedSmsOverride = async (): Promise<void> => {
     if (!persistedSmsOverride) {
       return;
@@ -6849,32 +7016,76 @@ const performOutboundAction = async (
     }
   }
 
-  let outboundMessageTargetPhone = outboundMessagePolicy?.targetPhone || null;
-  if (
-    outboundAction === 'message'
-    && !outboundMessageTargetPhone
-    && thread.neighborId
-    && UUID_PATTERN.test(thread.neighborId)
-  ) {
-    const resolvedNeighbor = await connectShyftNeighborServiceAsync.resolveNeighbor({
+  if (outboundAction === 'message') {
+    const smsTargetResolution = await resolveConnectShyftSmsTarget({
       tenantId: context.tenantId,
-      neighborId: thread.neighborId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+      thread,
       actorRoles,
-    });
-    if (resolvedNeighbor.ok) {
-      outboundMessageTargetPhone = resolvedNeighbor.data.neighbor.phones
-        .filter((phone) => phone.isActive !== false)
-        .sort((left, right) => left.sortOrder - right.sortOrder)
-        [0]?.value || null;
-    }
-  }
-  if (outboundAction === 'message' && !outboundMessageTargetPhone) {
-    outboundMessageTargetPhone = resolveTestOverridePhoneFallback({
+      requestedTargetPhone: outboundMessagePolicy?.targetPhone || null,
       allowTestFallback: allowPhoneFallback,
-      primarySeed: thread.neighborId,
-      secondarySeed: threadId,
     });
+    if (!smsTargetResolution.ok) {
+      refusal(res, {
+        code: smsTargetResolution.code,
+        message: smsTargetResolution.message,
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          context,
+          threadId,
+          preferencePolicy: {
+            prefersTexting: smsPreferenceDecision?.prefersTexting || 'UNKNOWN',
+            source: smsPreferenceDecision?.source || 'unknown',
+            overrideRequired: smsPreferenceDecision?.prefersTexting === 'NO',
+            overrideAccepted: smsPreferenceDecision?.prefersTexting !== 'NO'
+              || Boolean(validatedSmsOverride),
+            ...(validatedSmsOverride
+              ? {
+                override: {
+                  reason: validatedSmsOverride.reason,
+                  note: validatedSmsOverride.note,
+                },
+              }
+              : {}),
+          },
+          ...smsTargetResolution.data,
+          chrome: {
+            persistentOperationsBannerVisible: false,
+            heavyOperationsDefaultLayout: false,
+          },
+          sideEffects: {
+            messageDispatched: false,
+            lifecycleMutationApplied,
+            auditPersisted: false,
+          },
+          ...buildReopenLifecycleData(),
+        },
+      });
+      return;
+    }
+
+    outboundMessageTargetPhone = smsTargetResolution.targetPhone;
   }
+
+  outboundDispatchReplayKey = buildTelephonyDispatchReplayKey({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId,
+    providerKey: providerSelection.providerResolution.resolvedProvider,
+    action: outboundAction,
+    idempotencyKey: outboundDispatchIdempotencyKey,
+    actorId: actorUserId,
+    targetPhone: outboundAction === 'call'
+      ? neighborContactPointId
+      : outboundMessageTargetPhone,
+    operatorContactPointId: outboundAction === 'call'
+      ? operatorContactPointId
+      : null,
+    body: outboundMessagePolicy?.body || null,
+    callPolicy: outboundCallDispatchPolicy,
+  });
 
   const communicationReliabilityDb = isConnectShyftTestOverrideEnabled()
     ? undefined
@@ -7008,6 +7219,74 @@ const performOutboundAction = async (
       },
     });
     return;
+  }
+  if (
+    outboundAction === 'message'
+    && smsPreferenceDecision?.prefersTexting === 'NO'
+    && validatedSmsOverride
+  ) {
+    try {
+      persistedSmsOverride = await connectShyftSmsPreferenceOverrideService.persistApprovedOverride({
+        tenantId: context.tenantId,
+        orgUnitId: context.orgUnitId,
+        threadId,
+        neighborId: smsPreferenceDecision.neighborId,
+        actorUserId,
+        preferenceValue: 'NO',
+        override: validatedSmsOverride,
+        messageBody: outboundMessagePolicy?.body || '',
+        messageEventName: 'connectshyft.thread.outbound_message_dispatched',
+      });
+    } catch (error) {
+      const persistenceMessage = error instanceof Error
+        ? error.message
+        : 'Outbound SMS override persistence is unavailable.';
+      const persistenceCode = error instanceof ConnectShyftSmsOverridePersistenceUnavailableError
+        ? error.code
+        : 'CONNECTSHYFT_SMS_OVERRIDE_AUDIT_UNAVAILABLE';
+
+      refusal(res, {
+        code: persistenceCode,
+        message: 'Outbound SMS cannot be sent because override persistence is unavailable.',
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          context,
+          threadId,
+          preferencePolicy: {
+            prefersTexting: smsPreferenceDecision.prefersTexting,
+            source: smsPreferenceDecision.source,
+            overrideRequired: true,
+            overrideAccepted: false,
+            override: {
+              reason: validatedSmsOverride.reason,
+              note: validatedSmsOverride.note,
+            },
+          },
+          uiFeedback: {
+            severity: 'warning',
+            ariaLive: 'assertive',
+            messageKey: 'connectshyft.override.audit_unavailable',
+            presentation: 'contextual-action-feedback',
+            requiresAction: true,
+            actionLabel: 'Retry send',
+            accessibilityHint: 'Retry sending after override persistence becomes available.',
+            message: persistenceMessage,
+          },
+          chrome: {
+            persistentOperationsBannerVisible: false,
+            heavyOperationsDefaultLayout: false,
+          },
+          sideEffects: {
+            messageDispatched: false,
+            lifecycleMutationApplied,
+            auditPersisted: false,
+          },
+          ...buildReopenLifecycleData(),
+        },
+      });
+      return;
+    }
   }
 
   let providerDispatch: ConnectShyftProviderDispatchResult;

@@ -161,13 +161,25 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
           contentType: 'application/json',
           body: JSON.stringify({
             ok: false,
-            code: 'CONNECTSHYFT_TEST_POLICY_REFUSAL',
+            code: 'CONNECTSHYFT_SMS_TARGET_AMBIGUOUS',
             refusalType: 'business',
-            message: 'Operator confirmation is still required before sending.',
+            message: 'Select a specific phone number before sending SMS.',
             data: {
               uiFeedback: {
-                message: 'Operator confirmation is still required before sending.',
+                message: 'Select a specific phone number before sending SMS.',
                 severity: 'warning',
+              },
+              targetResolution: {
+                reason: 'ambiguous_target',
+                source: 'neighbor_record',
+                candidateCount: 2,
+                candidatePhones: ['+12605550110', '+12605550111'],
+              },
+              preferencePolicy: {
+                prefersTexting: 'YES',
+                source: 'neighbor-record',
+                overrideRequired: false,
+                overrideAccepted: true,
               },
             },
           }),
@@ -190,7 +202,7 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
         'refusal',
       );
       await expect(page.getByTestId('connectshyft-policy-refusal-banner')).toContainText(
-        /operator confirmation is still required/i,
+        /select a specific phone number/i,
       );
       await expect(page.getByTestId('connectshyft-policy-error-banner')).toHaveCount(0);
     },

@@ -1004,30 +1004,27 @@ const selectedThreadPreviewActions = computed(() => {
   return [...resolveCanonicalStateActions(selectedThreadSummary.value.state)];
 });
 const inboxActionPhoneOptions = computed(() => {
-  const prioritizedNeighbors = selectedNeighbor.value
-    ? [selectedNeighbor.value]
-    : [];
-  const additionalNeighbors = neighbors.value.filter((neighbor) =>
-    !selectedNeighbor.value || neighbor.neighborId !== selectedNeighbor.value.neighborId,
-  );
   const seenValues = new Set<string>();
+  const neighbor = selectedNeighbor.value;
+  if (!neighbor) {
+    return [];
+  }
 
-  return [...prioritizedNeighbors, ...additionalNeighbors].flatMap((neighbor) =>
-    neighbor.phones
-      .filter((phone) => phone.value.trim().length > 0)
-      .filter((phone) => {
-        if (seenValues.has(phone.value)) {
-          return false;
-        }
+  return neighbor.phones
+    .filter((phone) => phone.value.trim().length > 0)
+    .filter((phone) => {
+      if (seenValues.has(phone.value)) {
+        return false;
+      }
 
-        seenValues.add(phone.value);
-        return true;
-      })
-      .map((phone) => ({
-        id: `${neighbor.neighborId}:${phone.phoneId}`,
-        value: phone.value,
-        label: formatInboxActionPhoneLabel(neighbor, phone),
-      })));
+      seenValues.add(phone.value);
+      return true;
+    })
+    .map((phone) => ({
+      id: `${neighbor.neighborId}:${phone.phoneId}`,
+      value: phone.value,
+      label: formatInboxActionPhoneLabel(neighbor, phone),
+    }));
 });
 const canUseOutboundInboxActions = computed(() =>
   !isViewerRole.value
