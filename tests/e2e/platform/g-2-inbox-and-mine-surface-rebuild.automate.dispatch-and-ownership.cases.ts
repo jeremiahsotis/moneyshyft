@@ -212,4 +212,110 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
       });
     },
   );
+
+  test(
+    '[G2-AUTO-E2E-207][P1] inbox surfaces HTTP 200 ok=false dispatch outcomes as refusals while preserving refusal metadata for UI follow-up @P1',
+    async ({ page }) => {
+      const context = createStoryG2Context();
+      await openStoryG2Surface({
+        page,
+        context,
+        bucket: 'inbox',
+      });
+
+      await page.route('**/api/v1/connectshyft/threads/**/messages', async (route) => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: false,
+            code: 'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED',
+            refusalType: 'business',
+            message: 'Override reason is required before sending SMS.',
+            data: {
+              uiFeedback: {
+                message: 'Override reason is required before sending SMS.',
+                severity: 'warning',
+              },
+              preferencePolicy: {
+                overrideRequired: true,
+                allowedOverrideReasons: ['safety-follow-up'],
+              },
+            },
+          }),
+        });
+      });
+
+      await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();
+      await page.getByTestId('connectshyft-composer-input').fill(
+        'Automated inbox refusal rendering verification.',
+      );
+      await page.getByTestId('connectshyft-composer-submit').click();
+
+      await expect(page.getByTestId('connectshyft-inbox-action-feedback')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-inbox-action-feedback')).toHaveAttribute(
+        'data-feedback-taxonomy',
+        'refusal',
+      );
+      await expect(page.getByTestId('connectshyft-inbox-action-feedback')).toContainText(
+        /override reason is required/i,
+      );
+      await expect(page.getByTestId('connectshyft-inbox-action-failure-code')).toHaveText(
+        'CONNECTSHYFT_SMS_OVERRIDE_REASON_REQUIRED',
+      );
+      await expect(page.getByTestId('connectshyft-inbox-action-failure-kind')).toHaveText(
+        'refusal',
+      );
+      await expect(
+        page.getByTestId('connectshyft-inbox-action-failure-ui-feedback'),
+      ).toContainText(/override reason is required/i);
+      await expect(
+        page.getByTestId('connectshyft-inbox-action-failure-preference-policy'),
+      ).toHaveText('present');
+    },
+  );
+
+  test(
+    '[G2-AUTO-E2E-208][P1] inbox keeps transport failures distinct from refusal outcomes for outbound message attempts @P1',
+    async ({ page }) => {
+      const context = createStoryG2Context();
+      await openStoryG2Surface({
+        page,
+        context,
+        bucket: 'inbox',
+      });
+
+      await page.route('**/api/v1/connectshyft/threads/**/messages', async (route) => {
+        if (route.request().method() !== 'POST') {
+          await route.continue();
+          return;
+        }
+
+        await route.abort('failed');
+      });
+
+      await expect(page.getByTestId('connectshyft-thread-surface')).toBeVisible();
+      await page.getByTestId('connectshyft-composer-input').fill(
+        'Automated inbox transport-failure verification.',
+      );
+      await page.getByTestId('connectshyft-composer-submit').click();
+
+      await expect(page.getByTestId('connectshyft-inbox-action-feedback')).toBeVisible();
+      await expect(page.getByTestId('connectshyft-inbox-action-feedback')).toHaveAttribute(
+        'data-feedback-taxonomy',
+        'error',
+      );
+      await expect(page.getByTestId('connectshyft-inbox-action-failure-kind')).toHaveText(
+        'error',
+      );
+      await expect(page.getByTestId('connectshyft-inbox-action-failure-code')).toHaveText(
+        'CONNECTSHYFT_THREAD_MESSAGE_DISPATCH_REFUSED_REQUEST_FAILED',
+      );
+    },
+  );
 });

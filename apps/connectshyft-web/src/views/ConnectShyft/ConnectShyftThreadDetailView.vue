@@ -1261,14 +1261,6 @@ const executeThreadAction = async (
         envelope.message,
         'Unable to complete that thread action.',
       );
-      const refusalUiSeverity = typeof envelope.data?.uiFeedback?.severity === 'string'
-        ? envelope.data.uiFeedback.severity.trim().toLowerCase()
-        : '';
-      const envelopeErrorType = typeof envelope.errorType === 'string'
-        ? envelope.errorType.trim().toLowerCase()
-        : '';
-      const refusalMapsToError = refusalUiSeverity === 'error'
-        || envelopeErrorType === 'system';
 
       applyThreadUpdate(envelope.data?.thread);
 
@@ -1328,14 +1320,10 @@ const executeThreadAction = async (
 
       actionError.value = refusalMessage;
       if (action === 'Send Message' || action === 'Text' || action === 'Call') {
-        if (refusalMapsToError) {
-          policyErrorBanner.value = refusalMessage;
-        } else if (action === 'Send Message' || action === 'Text') {
-          policyRefusalBanner.value = refusalMessage;
-        }
+        policyRefusalBanner.value = refusalMessage;
       }
       setFeedbackBanner(
-        refusalMapsToError ? 'error' : 'refusal',
+        'refusal',
         refusalMessage,
         'Unable to complete that thread action.',
       );
