@@ -5,6 +5,11 @@ import {
   openStoryG2Surface,
 } from './g-2-inbox-and-mine-surface-rebuild.automate.shared';
 
+const isClosedRouteFetchError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('route.fetch: Target page, context or browser has been closed');
+};
+
 test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion) - Dispatch & Ownership', () => {
   test(
     '[G2-AUTO-E2E-204][P1] claimed voicemail thread stays in mine with visible indicator across navigation refresh and queue-thread transitions @P1',
@@ -51,92 +56,108 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
       const relatedPhone = '+12605550110';
       const unrelatedPhone = '+12605550199';
       await page.route('**/api/v1/connectshyft/inbox*', async (route) => {
-        const response = await route.fetch();
-        const payload = await response.json() as {
-          data?: {
-            items?: Array<Record<string, unknown>>;
+        try {
+          const response = await route.fetch();
+          const payload = await response.json() as {
+            data?: {
+              items?: Array<Record<string, unknown>>;
+            };
           };
-        };
 
-        const existingItems = Array.isArray(payload?.data?.items)
-          ? payload.data.items
-          : [];
+          const existingItems = Array.isArray(payload?.data?.items)
+            ? payload.data.items
+            : [];
 
-        await route.fulfill({
-          response,
-          json: {
-            ...payload,
-            data: {
-              ...(payload?.data ?? {}),
-              items: existingItems.map((item, index) => (
-                index === 0
-                  ? {
-                    ...item,
-                    neighborId: relatedNeighborId,
-                  }
-                  : item
-              )),
+          await route.fulfill({
+            response,
+            json: {
+              ...payload,
+              data: {
+                ...(payload?.data ?? {}),
+                items: existingItems.map((item, index) => (
+                  index === 0
+                    ? {
+                      ...item,
+                      neighborId: relatedNeighborId,
+                    }
+                    : item
+                )),
+              },
             },
-          },
-        });
+          });
+        } catch (error: unknown) {
+          if (isClosedRouteFetchError(error)) {
+            return;
+          }
+
+          throw error;
+        }
       });
       await page.route('**/api/v1/connectshyft/neighbors*', async (route) => {
-        const response = await route.fetch();
-        const payload = await response.json() as {
-          data?: {
-            neighbors?: Array<Record<string, unknown>>;
+        try {
+          const response = await route.fetch();
+          const payload = await response.json() as {
+            data?: {
+              neighbors?: Array<Record<string, unknown>>;
+            };
           };
-        };
 
-        await route.fulfill({
-          response,
-          json: {
-            ...payload,
-            data: {
-              ...(payload?.data ?? {}),
-              neighbors: [
-                {
-                  neighborId: relatedNeighborId,
-                  tenantId: context.tenantId,
-                  orgUnitId: context.orgUnitId,
-                  firstName: 'Related',
-                  lastName: 'Neighbor',
-                  prefersTexting: 'YES',
-                  phones: [
-                    {
-                      phoneId: 'related-phone-1',
-                      label: 'mobile',
-                      value: relatedPhone,
-                      sortOrder: 0,
-                      isPrimary: true,
-                      isShared: false,
-                      verificationStatus: 'verified',
-                    },
-                  ],
-                },
-                {
-                  neighborId: 'neighbor-g2-unrelated-1002',
-                  tenantId: context.tenantId,
-                  orgUnitId: context.orgUnitId,
-                  firstName: 'Unrelated',
-                  lastName: 'Neighbor',
-                  prefersTexting: 'YES',
-                  phones: [
-                    {
-                      phoneId: 'unrelated-phone-1',
-                      label: 'mobile',
-                      value: unrelatedPhone,
-                      sortOrder: 0,
-                      isPrimary: true,
-                      isShared: false,
-                      verificationStatus: 'verified',
-                    },
-                  ],
-                },
-              ],
+          await route.fulfill({
+            response,
+            json: {
+              ...payload,
+              data: {
+                ...(payload?.data ?? {}),
+                neighbors: [
+                  {
+                    neighborId: relatedNeighborId,
+                    tenantId: context.tenantId,
+                    orgUnitId: context.orgUnitId,
+                    firstName: 'Related',
+                    lastName: 'Neighbor',
+                    prefersTexting: 'YES',
+                    phones: [
+                      {
+                        phoneId: 'related-phone-1',
+                        label: 'mobile',
+                        value: relatedPhone,
+                        sortOrder: 0,
+                        isPrimary: true,
+                        isShared: false,
+                        verificationStatus: 'verified',
+                      },
+                    ],
+                  },
+                  {
+                    neighborId: 'neighbor-g2-unrelated-1002',
+                    tenantId: context.tenantId,
+                    orgUnitId: context.orgUnitId,
+                    firstName: 'Unrelated',
+                    lastName: 'Neighbor',
+                    prefersTexting: 'YES',
+                    phones: [
+                      {
+                        phoneId: 'unrelated-phone-1',
+                        label: 'mobile',
+                        value: unrelatedPhone,
+                        sortOrder: 0,
+                        isPrimary: true,
+                        isShared: false,
+                        verificationStatus: 'verified',
+                      },
+                    ],
+                  },
+                ],
+              },
             },
-          },
-        });
+          });
+        } catch (error: unknown) {
+          if (isClosedRouteFetchError(error)) {
+            return;
+          }
+
+          throw error;
+        }
       });
       await openStoryG2Surface({
         page,
