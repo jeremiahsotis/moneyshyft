@@ -163,6 +163,7 @@ test.describe(
         storyDOverrideMessagePayload,
       }) => {
         const neighborId = randomUUID();
+        const targetPhone = `+1${neighborId.replace(/\D/g, '').padEnd(10, '0').slice(0, 10)}`;
         let threadId = '';
 
         await connectShyftDb
@@ -181,6 +182,30 @@ test.describe(
             tenant_id: storyDContext.tenantId,
             org_unit_id: storyDContext.orgUnitId,
             prefers_texting: 'NO',
+          });
+
+        await connectShyftDb
+          .withSchema('connectshyft')
+          .table('cs_neighbor_phones')
+          .insert({
+            id: randomUUID(),
+            neighbor_id: neighborId,
+            tenant_id: storyDContext.tenantId,
+            label: 'Mobile',
+            value_e164: targetPhone,
+            raw_input: targetPhone,
+            normalized_e164: targetPhone,
+            display_national: '(000) 000-0000',
+            country_code: '1',
+            national_number: targetPhone.slice(2),
+            sort_order: 0,
+            is_primary: true,
+            is_active: true,
+            validation_status: 'valid',
+            usage_type: 'mobile',
+            source: 'user_entered',
+            is_shared: false,
+            verification_status: 'verified',
           });
 
         try {
@@ -287,6 +312,12 @@ test.describe(
               .where({ id: threadId })
               .delete();
           }
+
+          await connectShyftDb
+            .withSchema('connectshyft')
+            .table('cs_neighbor_phones')
+            .where({ neighbor_id: neighborId })
+            .delete();
 
           await connectShyftDb
             .withSchema('connectshyft')
