@@ -25,6 +25,7 @@ export type TelephonyOutboundCallPolicy = {
 
 export type TelephonySendSmsCommand = TelephonyDispatchCommandBase & {
   body: string
+  senderPhone?: string
 }
 
 export type TelephonyStartOutboundCallCommand = TelephonyDispatchCommandBase & {
@@ -190,6 +191,7 @@ export type TelephonyDispatchReplayKeyInput = {
   idempotencyKey?: string | null
   actorId?: string | null
   targetPhone?: string | null
+  senderPhone?: string | null
   operatorContactPointId?: string | null
   body?: string | null
   callPolicy?: TelephonyOutboundCallPolicy | null
@@ -228,6 +230,7 @@ export const buildTelephonyDispatchReplayKey = (
   const fingerprint = JSON.stringify({
     actorId: normalizeString(input.actorId),
     targetPhone: normalizeString(input.targetPhone),
+    senderPhone: normalizeString(input.senderPhone),
     operatorContactPointId: normalizeString(input.operatorContactPointId),
     body: normalizeString(input.body),
     callPolicy: sanitizeReplayCallPolicy(input.callPolicy),

@@ -94,6 +94,14 @@ The platform needs stable future-facing contracts now so upcoming modules can be
 - actual CapacityShyft
 - actual DonorShyft domain behavior and UI
 
+## Testing and quality requirements
+- define the fixture/helper families this package must add to the shared testing platform
+- define the required contract tests for this package
+- define the required backend integration coverage for this package
+- define any selective smoke coverage needed for live or high-risk workflows
+- identify which CI workflows should cover this package
+- preserve compatibility with the centralized testing + CI architecture package
+
 Produce:
 1. a clear implementation spec
 2. concrete backend tasks

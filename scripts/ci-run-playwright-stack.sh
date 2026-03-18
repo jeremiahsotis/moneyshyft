@@ -36,6 +36,8 @@ export ENABLE_TEST_CONNECTSHYFT_FLAGS="${ENABLE_TEST_CONNECTSHYFT_FLAGS:-true}"
 export JWT_SECRET="${JWT_SECRET:-test-jwt-secret}"
 export JWT_REFRESH_SECRET="${JWT_REFRESH_SECRET:-test-jwt-refresh-secret}"
 export PLAYWRIGHT_BACKEND_NODE_ENV="${PLAYWRIGHT_BACKEND_NODE_ENV:-test}"
+export PLAYWRIGHT_DATABASE_URL="${PLAYWRIGHT_DATABASE_URL:-}"
+export PLAYWRIGHT_POSTGRES_CONTAINER="${PLAYWRIGHT_POSTGRES_CONTAINER:-moneyshyft-postgres-1}"
 export BASE_URL="${BASE_URL:-http://127.0.0.1:5174}"
 export API_URL="${API_URL:-http://127.0.0.1:3000}"
 export API_BASE_URL="${API_BASE_URL:-$API_URL}"
@@ -196,6 +198,59 @@ wait_for_http() {
   return 1
 }
 
+redact_connection_url() {
+  local raw_url="$1"
+  node -e "
+const value = process.argv[1];
+try {
+  const parsed = new URL(value);
+  if (parsed.username) {
+    parsed.username = '***';
+  }
+  if (parsed.password) {
+    parsed.password = '***';
+  }
+  process.stdout.write(parsed.toString());
+} catch (_error) {
+  process.stdout.write('<invalid-connection-url>');
+}
+" "$raw_url"
+}
+
+resolve_docker_postgres_url() {
+  if ! command -v docker >/dev/null 2>&1; then
+    return 1
+  fi
+
+  if ! docker ps --format '{{.Names}}' | grep -Fxq "$PLAYWRIGHT_POSTGRES_CONTAINER"; then
+    return 1
+  fi
+
+  local container_env
+  container_env="$(docker inspect "$PLAYWRIGHT_POSTGRES_CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null || true)"
+  if [[ -z "$container_env" ]]; then
+    return 1
+  fi
+
+  local db_user db_password db_name db_port
+  db_user="$(printf '%s\n' "$container_env" | sed -n 's/^POSTGRES_USER=//p' | head -n1)"
+  db_password="$(printf '%s\n' "$container_env" | sed -n 's/^POSTGRES_PASSWORD=//p' | head -n1)"
+  db_name="$(printf '%s\n' "$container_env" | sed -n 's/^POSTGRES_DB=//p' | head -n1)"
+  db_port="$(docker inspect "$PLAYWRIGHT_POSTGRES_CONTAINER" --format '{{(index (index .NetworkSettings.Ports "5432/tcp") 0).HostPort}}' 2>/dev/null || true)"
+
+  if [[ -z "$db_user" || -z "$db_password" || -z "$db_name" || -z "$db_port" ]]; then
+    return 1
+  fi
+
+  node -e "
+const [user, password, database, port] = process.argv.slice(1);
+const encodedUser = encodeURIComponent(user);
+const encodedPassword = encodeURIComponent(password);
+const encodedDatabase = encodeURIComponent(database);
+process.stdout.write(\`postgresql://\${encodedUser}:\${encodedPassword}@127.0.0.1:\${port}/\${encodedDatabase}\`);
+" "$db_user" "$db_password" "$db_name" "$db_port"
+}
+
 resolve_local_postgres_url() {
   if ! command -v psql >/dev/null 2>&1; then
     return 1
@@ -225,14 +280,36 @@ process.stdout.write(\`postgresql://\${encodedUser}@127.0.0.1:5432/\${encodedDat
 " "$database_user" "$database_name"
 }
 
-if [[ -z "${DATABASE_URL:-}" ]]; then
-  DATABASE_URL="$(resolve_local_postgres_url || true)"
-  if [[ -n "$DATABASE_URL" ]]; then
-    export DATABASE_URL
+run_backend_migrations() {
+  local initial_database_url="${DATABASE_URL:-${PLAYWRIGHT_DATABASE_URL:-${MONEYSHYFT_TEST_DATABASE_URL:-}}}"
+  if [[ -z "$initial_database_url" ]]; then
+    initial_database_url="$(resolve_local_postgres_url || true)"
   fi
-fi
+  if [[ -n "$initial_database_url" ]]; then
+    export DATABASE_URL="$initial_database_url"
+    export MONEYSHYFT_TEST_DATABASE_URL="$initial_database_url"
+  fi
 
-export MONEYSHYFT_TEST_DATABASE_URL="${MONEYSHYFT_TEST_DATABASE_URL:-${DATABASE_URL:-}}"
+  if NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix apps/moneyshyft-api \
+    && NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix apps/connectshyft-api; then
+    return 0
+  fi
+
+  local fallback_database_url
+  fallback_database_url="$(resolve_docker_postgres_url || true)"
+  if [[ -z "$fallback_database_url" || "${DATABASE_URL:-}" == "$fallback_database_url" ]]; then
+    return 1
+  fi
+
+  local redacted_fallback
+  redacted_fallback="$(redact_connection_url "$fallback_database_url")"
+  echo "Managed runtime policy: migration retry using docker postgres credentials ($redacted_fallback)"
+
+  export DATABASE_URL="$fallback_database_url"
+  export MONEYSHYFT_TEST_DATABASE_URL="$fallback_database_url"
+  NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix apps/moneyshyft-api
+  NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix apps/connectshyft-api
+}
 
 echo "Ensuring pgcrypto extension is enabled"
 node <<'NODE'
@@ -265,8 +342,7 @@ echo "Building shared libs for runtime wrappers"
 node scripts/build-shared-libs.mjs auth db http platform ui-shell
 
 echo "Running backend migrations"
-NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix apps/moneyshyft-api
-NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" npm run migrate:latest --prefix apps/connectshyft-api
+run_backend_migrations
 
 echo "Ensuring platform events/outbox tables are present"
 NODE_ENV="$PLAYWRIGHT_BACKEND_NODE_ENV" node scripts/repair-platform-events-outbox.cjs

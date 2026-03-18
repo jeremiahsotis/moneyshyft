@@ -77,8 +77,89 @@ describe('connectshyft provider adapter registry route integration - dispatch an
       'x-test-connectshyft-user-id': 'user-connectshyft-f2-operator',
       'x-test-connectshyft-orgunit-memberships': JSON.stringify(['org-connectshyft-f2-east']),
     });
+    const adminHeaders = buildHeaders({
+      'x-test-connectshyft-tenant-id': 'tenant-connectshyft-f2',
+      'x-test-connectshyft-orgunit-id': 'org-connectshyft-f2-east',
+      'x-test-connectshyft-role': 'ORGUNIT_ADMIN',
+      'x-test-connectshyft-user-id': 'user-connectshyft-f2-admin',
+      'x-test-connectshyft-orgunit-memberships': JSON.stringify(['org-connectshyft-f2-east']),
+    });
 
     const threadId = 'thread-f2-unclaimed-1001';
+
+    const listMappingsResponse = await request(app)
+      .get('/api/v1/connectshyft/numbers')
+      .query({
+        orgUnitId: 'org-connectshyft-f2-east',
+      })
+      .set(adminHeaders);
+    expect(listMappingsResponse.status).toBe(200);
+    expect(listMappingsResponse.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NUMBER_MAPPINGS_RESOLVED',
+    });
+
+    let mappings = listMappingsResponse.body.data.mappings ?? [];
+    if (mappings.length === 0) {
+      const numberMappingResponse = await request(app)
+        .post('/api/v1/connectshyft/numbers')
+        .set(adminHeaders)
+        .send({
+          orgUnitId: 'org-connectshyft-f2-east',
+          providerNumberE164: '+12605550192',
+          label: 'F2 East Primary',
+          isActive: true,
+        });
+      expect(numberMappingResponse.status).toBe(201);
+      expect(numberMappingResponse.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_NUMBER_MAPPING_SAVED',
+        data: {
+          orgUnitId: 'org-connectshyft-f2-east',
+          isActive: true,
+        },
+      });
+      mappings = numberMappingResponse.body.data.mappings ?? [];
+    }
+
+    const selectedMappingId = (
+      mappings.find((mapping) => mapping.twilioNumberE164 === '+12605550192')
+      || mappings[0]
+    ).mappingId;
+
+    for (const mapping of mappings) {
+      const shouldBeActive = mapping.mappingId === selectedMappingId;
+      if (mapping.isActive === shouldBeActive) {
+        continue;
+      }
+
+      const updateMappingResponse = await request(app)
+        .put(`/api/v1/connectshyft/numbers/${mapping.mappingId}`)
+        .set(adminHeaders)
+        .send({
+          orgUnitId: 'org-connectshyft-f2-east',
+          providerNumberE164: mapping.twilioNumberE164,
+          label: mapping.label,
+          isActive: shouldBeActive,
+        });
+      expect(updateMappingResponse.status).toBe(200);
+      expect(updateMappingResponse.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_NUMBER_MAPPING_UPDATED',
+      });
+    }
+
+    const normalizedMappingsResponse = await request(app)
+      .get('/api/v1/connectshyft/numbers')
+      .query({
+        orgUnitId: 'org-connectshyft-f2-east',
+      })
+      .set(adminHeaders);
+    expect(normalizedMappingsResponse.status).toBe(200);
+
+    const activeMappings = (normalizedMappingsResponse.body.data.mappings ?? [])
+      .filter((mapping) => mapping.isActive === true);
+    expect(activeMappings).toHaveLength(1);
 
     const callResponse = await request(app)
       .post(`/api/v1/connectshyft/threads/${threadId}/call`)
@@ -99,6 +180,10 @@ describe('connectshyft provider adapter registry route integration - dispatch an
         body: 'Story f2 canonical store test message.',
       });
     expect(messageResponse.status).toBe(200);
+    expect(messageResponse.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED',
+    });
 
     const webhookResponse = await request(app)
       .post('/api/v1/connectshyft/webhooks/inbound')

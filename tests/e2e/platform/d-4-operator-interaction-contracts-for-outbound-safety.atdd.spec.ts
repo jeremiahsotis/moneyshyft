@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../support/fixtures/connectShyftStoryD4.fixture';
 import { login } from '../../helpers/auth';
 import {
   createStoryD4Context,
@@ -27,6 +27,10 @@ const buildThreadUrl = (
 };
 
 test.describe('Story d.4 Operator Interaction Contracts for Outbound Safety (ATDD E2E)', () => {
+  test.beforeEach(async ({ storyD4AdminHeaders: _storyD4AdminHeaders }) => {
+    void _storyD4AdminHeaders;
+  });
+
   test(
     '[P0] desktop tablet and mobile views preserve explicit state-action matrix contracts with accessible labels @P0',
     async ({ page }) => {

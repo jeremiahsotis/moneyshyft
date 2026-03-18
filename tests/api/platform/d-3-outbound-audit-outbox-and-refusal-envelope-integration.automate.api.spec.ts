@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { apiRequest } from '../../support/helpers/apiClient';
+import { ensureSingleActiveConnectShyftSmsSenderMapping } from '../../support/helpers/connectShyftNumberMappingTestHelpers';
 import {
   createStoryC4Context,
   createStoryC4Headers,
@@ -73,6 +74,22 @@ const ensureDbTenant = async (tenantId: string): Promise<void> => {
     })
     .onConflict('id')
     .ignore();
+
+  await connectShyftDb
+    .withSchema('platform')
+    .table('tenant_module_entitlements')
+    .insert({
+      tenant_id: tenantId,
+      module_key: 'connectshyft',
+      enabled: true,
+      reason: 'story-d3-test-seed',
+    })
+    .onConflict(['tenant_id', 'module_key'])
+    .merge({
+      enabled: true,
+      reason: 'story-d3-test-seed',
+      updated_at_utc: connectShyftDb.fn.now(),
+    });
 };
 
 const ensureDbActorUser = async (userId: string, tenantId: string): Promise<void> => {
@@ -194,6 +211,26 @@ const ensureDbThread = async (
   return threadId;
 };
 
+const ensureDbBackedSmsSenderReady = async (
+  request: Parameters<typeof apiRequest>[0],
+  context: StoryC4Context,
+  actorUserId: string,
+) => {
+  const preferredNumber = `+1${actorUserId.replace(/\D/g, '').padEnd(10, '0').slice(0, 10)}`;
+  const adminHeaders = createStoryC4Headers(context, {
+    role: 'ORGUNIT_ADMIN',
+    userId: context.adminUserId,
+    orgUnitMemberships: [context.orgUnitId],
+  });
+  await ensureSingleActiveConnectShyftSmsSenderMapping({
+    request,
+    headers: adminHeaders,
+    orgUnitId: context.orgUnitId,
+    preferredNumber,
+    preferredLabel: 'Story D3 DB-backed SMS sender',
+  });
+};
+
 test.describe('Story d.3 outbound audit outbox and refusal envelope integration (Automate API Expansion)', () => {
   test.describe.configure({ mode: 'serial' });
 
@@ -207,6 +244,7 @@ test.describe('Story d.3 outbound audit outbox and refusal envelope integration 
       const { context, headers, actorUserId } = buildDbBackedContext();
       await ensureDbTenant(context.tenantId);
       await ensureDbActorUser(actorUserId, context.tenantId);
+      await ensureDbBackedSmsSenderReady(request, context, actorUserId);
 
       const threadId = await ensureDbThread(request, context, headers);
       const beforeCounts = await countThreadSideEffects(context.tenantId, threadId);

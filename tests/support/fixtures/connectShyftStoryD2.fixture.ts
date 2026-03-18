@@ -4,8 +4,10 @@ import {
   createStoryD2Headers,
   type StoryD2Context,
 } from '../factories/connectShyftStoryD2Factory';
+import { ensureSingleActiveConnectShyftSmsSenderMapping } from '../helpers/connectShyftNumberMappingTestHelpers';
 
 type StoryD2Fixtures = {
+  storyD2SmsSenderReady: void;
   storyD2Context: StoryD2Context;
   storyD2OperatorHeaders: Record<string, string>;
   storyD2AdminHeaders: Record<string, string>;
@@ -39,7 +41,21 @@ export const test = base.extend<StoryD2Fixtures>({
   storyD2Context: async ({}, use) => {
     await use(createStoryD2Context());
   },
-  storyD2OperatorHeaders: async ({ storyD2Context }, use) => {
+  storyD2SmsSenderReady: async ({ request, storyD2Context }, use) => {
+    await ensureSingleActiveConnectShyftSmsSenderMapping({
+      request,
+      headers: createStoryD2Headers(storyD2Context, {
+        role: 'ORGUNIT_ADMIN',
+        userId: storyD2Context.adminUserId,
+        orgUnitMemberships: [storyD2Context.orgUnitId],
+      }),
+      orgUnitId: storyD2Context.orgUnitId,
+      preferredNumber: '+12605550196',
+      preferredLabel: 'Story D2 SMS sender',
+    });
+    await use();
+  },
+  storyD2OperatorHeaders: async ({ storyD2SmsSenderReady, storyD2Context }, use) => {
     await use(
       createStoryD2Headers(storyD2Context, {
         role: 'ORGUNIT_MEMBER',
@@ -47,7 +63,7 @@ export const test = base.extend<StoryD2Fixtures>({
       }),
     );
   },
-  storyD2AdminHeaders: async ({ storyD2Context }, use) => {
+  storyD2AdminHeaders: async ({ storyD2SmsSenderReady, storyD2Context }, use) => {
     await use(
       createStoryD2Headers(storyD2Context, {
         role: 'ORGUNIT_ADMIN',
@@ -56,7 +72,7 @@ export const test = base.extend<StoryD2Fixtures>({
       }),
     );
   },
-  storyD2ViewerHeaders: async ({ storyD2Context }, use) => {
+  storyD2ViewerHeaders: async ({ storyD2SmsSenderReady, storyD2Context }, use) => {
     await use(
       createStoryD2Headers(storyD2Context, {
         role: 'TENANT_VIEWER',

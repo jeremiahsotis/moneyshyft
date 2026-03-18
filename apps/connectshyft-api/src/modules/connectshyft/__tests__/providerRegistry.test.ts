@@ -439,7 +439,7 @@ describe('connectshyft provider registry', () => {
     });
   });
 
-  it('preserves targetPhone unchanged across providerRegistry.sendSms', async () => {
+  it('preserves targetPhone and senderPhone unchanged across providerRegistry.sendSms', async () => {
     const baseSendSms = jest.fn(async () => ({
       providerKey: 'telnyx',
       channel: 'message' as const,
@@ -497,11 +497,13 @@ describe('connectshyft provider registry', () => {
       providerKey: 'telnyx',
       body: 'Need assistance',
       targetPhone: '+12605550111',
+      senderPhone: '+12605550191',
     });
 
     expect(resolveAdapterSpy).toHaveBeenCalledWith('telnyx');
     expect(baseSendSms).toHaveBeenCalledWith(expect.objectContaining({
       targetPhone: '+12605550111',
+      senderPhone: '+12605550191',
       body: 'Need assistance',
       threadId: 'thread-f1-unclaimed-1001',
     }));

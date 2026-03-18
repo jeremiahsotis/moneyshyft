@@ -415,6 +415,12 @@ const buildSmsPayload = (
     text,
   }
 
+  const explicitSender = normalizeString(command.senderPhone)
+  if (explicitSender) {
+    payload.from = explicitSender
+    return payload
+  }
+
   if (config.fromNumber) {
     payload.from = config.fromNumber
     return payload
