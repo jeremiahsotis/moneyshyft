@@ -781,6 +781,7 @@ export function createTelnyxAdapter(
     providerKey: 'telnyx',
     adapterInterfaceVersion: 'v1',
     async sendSms(command) {
+      console.log('TELNYX_SENDSMS_COMMAND', command)
       const requestStartedAt = new Date((options.now ?? Date.now)()).toISOString()
       if (isDeterministicConnectShyftTestMode(options)) {
         return assertValidSmsDispatchResult({
@@ -795,23 +796,46 @@ export function createTelnyxAdapter(
         })
       }
 
-      const { response, data } = await requestTelnyx({
-        options,
-        path: '/messages',
-        body: buildSmsPayload(resolveConfig(options), command),
-        idempotencyKey: command.idempotencyKey,
-      })
+      try {
+        const payload = buildSmsPayload(resolveConfig(options), command)
+        console.log('TELNYX_SENDSMS_REQUEST_PAYLOAD', {
+          threadId: command.threadId,
+          providerKey: command.providerKey,
+          body: command.body,
+          targetPhone: command.targetPhone,
+          payload,
+        })
 
-      return assertValidSmsDispatchResult({
-        providerKey: 'telnyx',
-        channel: 'message',
-        providerLegId: null,
-        providerMessageId: normalizeString(data.data?.id),
-        providerRequestId: normalizeString(response.headers.get('x-request-id')),
-        adapterInvoked: true,
-        providerBranchingInDomain: false,
-        requestedAt: requestStartedAt,
-      })
+        const { response, data } = await requestTelnyx({
+          options,
+          path: '/messages',
+          body: payload,
+          idempotencyKey: command.idempotencyKey,
+        })
+
+        return assertValidSmsDispatchResult({
+          providerKey: 'telnyx',
+          channel: 'message',
+          providerLegId: null,
+          providerMessageId: normalizeString(data.data?.id),
+          providerRequestId: normalizeString(response.headers.get('x-request-id')),
+          adapterInvoked: true,
+          providerBranchingInDomain: false,
+          requestedAt: requestStartedAt,
+        })
+      } catch (error) {
+        console.error('TELNYX_SENDSMS_ERROR', {
+          threadId: command.threadId,
+          providerKey: command.providerKey,
+          body: command.body,
+          targetPhone: command.targetPhone,
+          message: error instanceof Error ? error.message : error,
+          responseStatus: (error as any)?.response?.status,
+          responseData: (error as any)?.response?.data,
+          error,
+        })
+        throw error
+      }
     },
     async startOutboundCall(command) {
       const requestStartedAt = new Date((options.now ?? Date.now)()).toISOString()
