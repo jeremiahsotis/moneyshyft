@@ -13,7 +13,11 @@ const CONNECTSHYFT_PROVIDER_REGISTRY_TEST_TENANT_IDS = [
 
 export const buildApp = () => {
   const app = express();
-  app.use(express.json());
+  app.use(express.json({
+    verify: (req, _res, buf) => {
+      (req as express.Request & { rawBody?: Buffer }).rawBody = Buffer.from(buf);
+    },
+  }));
   app.use(responseEnvelope);
 
   app.use((req, _res, next) => {

@@ -1,3 +1,6 @@
+import { normalizePhone } from '../../../../../domains/communication';
+import { resolveConnectShyftPhoneNormalizationContext } from './phoneIdentityContext';
+
 const CONNECTSHYFT_INBOUND_SMS_MESSAGE_BODY_KEYS = [
   'body',
   'message',
@@ -25,10 +28,21 @@ const CONNECTSHYFT_INBOUND_SMS_TO_KEYS = [
 
 const CONNECTSHYFT_INBOUND_SMS_NEIGHBOR_KEYS = [
   'neighborId',
-  'neighbor_id',
 ] as const;
 
 export const CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME = 'connectshyft.inbound.sms_appended' as const;
+
+export type ConnectShyftInboundSmsSenderPhoneResult =
+  | {
+    ok: true;
+    rawPhone: string;
+    normalizedPhone: string;
+  }
+  | {
+    ok: false;
+    code: 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED' | 'CONNECTSHYFT_NEIGHBOR_PHONE_INVALID_FORMAT';
+    message: string;
+  };
 
 const normalizeString = (value: unknown): string => {
   if (typeof value !== 'string') {
@@ -103,6 +117,41 @@ export const extractConnectShyftInboundSmsNeighborId = (
     readWebhookSources(webhookBody),
     CONNECTSHYFT_INBOUND_SMS_NEIGHBOR_KEYS,
   );
+};
+
+export const resolveConnectShyftInboundSmsSenderPhone = (
+  webhookBody: unknown,
+): ConnectShyftInboundSmsSenderPhoneResult => {
+  const rawPhone = readFromSources(
+    readWebhookSources(webhookBody),
+    CONNECTSHYFT_INBOUND_SMS_FROM_KEYS,
+  );
+
+  if (!rawPhone) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED',
+      message: 'Inbound SMS processing requires a sender phone number.',
+    };
+  }
+
+  const normalizedPhone = normalizePhone(
+    rawPhone,
+    resolveConnectShyftPhoneNormalizationContext('system_generated'),
+  );
+  if (!normalizedPhone.ok) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_PHONE_INVALID_FORMAT',
+      message: 'Inbound SMS processing requires a valid sender phone number.',
+    };
+  }
+
+  return {
+    ok: true,
+    rawPhone,
+    normalizedPhone: normalizedPhone.phone.normalizedE164,
+  };
 };
 
 export const mapConnectShyftInboundSmsWebhookToDomainEvent = (input: {

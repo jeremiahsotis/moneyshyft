@@ -12,7 +12,7 @@ type HeaderMap = Record<string, string>;
 const buildRequest = (input?: {
   headers?: HeaderMap;
   body?: Record<string, unknown>;
-  rawBody?: string;
+  rawBody?: string | Buffer;
   tenantId?: string;
   orgUnitId?: string;
 }) => {
@@ -664,6 +664,27 @@ describe('connectshyft provider registry', () => {
     );
 
     expect(signatureDecision).toEqual({ ok: true });
+  });
+
+  it('preserves rawBody buffers when building webhook verification input', () => {
+    const rawBody = Buffer.from(JSON.stringify({
+      eventType: 'sms.inbound',
+      from: '+12605550111',
+    }));
+
+    const verificationInput = buildConnectShyftWebhookVerificationInput({
+      providerKey: 'telnyx',
+      req: buildRequest({
+        body: {
+          eventType: 'sms.inbound',
+          from: '+12605550111',
+        },
+        rawBody,
+      }),
+    });
+
+    expect(Buffer.isBuffer(verificationInput.rawBody)).toBe(true);
+    expect(verificationInput.rawBody).toBe(rawBody);
   });
 
   it('rejects webhook signatures when Telnyx signature headers are missing outside override mode', () => {

@@ -19,6 +19,7 @@ import {
   type ConnectShyftIdentityBoundaryResult as ConnectShyftIdentityMatchResult,
 } from './identityBoundary';
 import { resolveConnectShyftPhoneNormalizationContext } from './phoneIdentityContext';
+import { appendConnectShyftCommunicationAuditEntry } from './communicationAuditLog';
 
 type QueryBuilderLike = {
   withSchema(schema: string): QueryBuilderLike;
@@ -48,6 +49,7 @@ type KnexLike = QueryBuilderLike & {
 };
 
 export const CONNECTSHYFT_NEIGHBOR_MERGE_CONFIRMATION_PHRASE = 'IRREVERSIBLE MERGE';
+const CONNECTSHYFT_INBOUND_NEIGHBOR_AUDIT_OPERATION_NAME = 'connectshyft.inbound.neighbor_created';
 
 export type ConnectShyftNeighborPhoneInput = {
   label: string;
@@ -162,6 +164,17 @@ export type ConnectShyftIdentityMatchCommand = NeighborActorContext & {
   contactPoint: ConnectShyftIdentityBoundaryContactPoint;
   excludeNeighborId?: string;
   idempotencyKey?: string;
+};
+
+export type ConnectShyftCreateInboundNeighborCommand = {
+  tenantId: string;
+  orgUnitId: string;
+  phone: string;
+};
+
+export type ConnectShyftApplyInboundSmsTextingPreferenceCommand = {
+  tenantId: string;
+  neighborId: string;
 };
 
 export type {
@@ -502,6 +515,9 @@ type DbNeighborRow = {
   first_name: string;
   last_name: string;
   prefers_texting?: string | null;
+  is_deleted?: boolean | null;
+  deleted_at_utc?: string | Date | null;
+  deleted_by_user_id?: string | null;
   created_at_utc: string | Date;
   updated_at_utc: string | Date;
 };
@@ -738,6 +754,11 @@ type NeighborStoreMergeInput = {
   tenantId: string;
   sourceNeighborId: string;
   survivorNeighborId: string;
+};
+
+type NeighborTextingPreferencePromotionResult = {
+  status: 'updated' | 'unchanged' | 'not_found';
+  neighbor: ConnectShyftNeighbor | null;
 };
 
 export class InMemoryConnectShyftNeighborStore {
@@ -981,6 +1002,10 @@ export class InMemoryConnectShyftNeighborStore {
     return cloneNeighbor(neighbor);
   }
 
+  resolveActiveNeighborById(tenantId: string, neighborId: string): ConnectShyftNeighbor | null {
+    return this.resolveNeighborById(tenantId, neighborId);
+  }
+
   listByTenant(tenantId: string): ConnectShyftNeighbor[] {
     const tenantIds = this.neighborIdsByTenant.get(tenantId);
     if (!tenantIds || tenantIds.size === 0) {
@@ -993,6 +1018,43 @@ export class InMemoryConnectShyftNeighborStore {
       .map(cloneNeighbor);
 
     return sortNeighbors(neighbors);
+  }
+
+  listActiveIdentityBoundaryNeighborsByTenant(
+    tenantId: string,
+  ): ConnectShyftIdentityBoundaryNeighbor[] {
+    const tenantIds = this.neighborIdsByTenant.get(tenantId);
+    if (!tenantIds || tenantIds.size === 0) {
+      return [];
+    }
+
+    const boundaryNeighbors: ConnectShyftIdentityBoundaryNeighbor[] = [];
+    tenantIds.forEach((neighborId) => {
+      const neighbor = this.neighborsById.get(neighborId);
+      if (!neighbor || neighbor.tenantId !== tenantId) {
+        return;
+      }
+
+      const phones = neighbor.phones
+        .filter((phone) => phone.isActive !== false)
+        .map((phone) => ({
+          phoneId: phone.phoneId,
+          value: phone.value,
+          isShared: phone.isShared === true,
+          verificationStatus: normalizeVerificationStatus(phone.verificationStatus),
+        }));
+
+      if (phones.length === 0) {
+        return;
+      }
+
+      boundaryNeighbors.push({
+        neighborId: neighbor.neighborId,
+        phones,
+      });
+    });
+
+    return boundaryNeighbors.sort((left, right) => left.neighborId.localeCompare(right.neighborId));
   }
 
   listIdentityBoundaryNeighborsByPhoneValue(
@@ -1033,6 +1095,81 @@ export class InMemoryConnectShyftNeighborStore {
     return boundaryNeighbors.sort((left, right) => left.neighborId.localeCompare(right.neighborId));
   }
 
+  listActiveIdentityBoundaryNeighborsByPhoneValue(
+    tenantId: string,
+    phoneValue: string,
+  ): ConnectShyftIdentityBoundaryNeighbor[] {
+    const tenantIds = this.neighborIdsByTenant.get(tenantId);
+    if (!tenantIds || tenantIds.size === 0) {
+      return [];
+    }
+
+    const boundaryNeighbors: ConnectShyftIdentityBoundaryNeighbor[] = [];
+    tenantIds.forEach((neighborId) => {
+      const neighbor = this.neighborsById.get(neighborId);
+      if (!neighbor || neighbor.tenantId !== tenantId) {
+        return;
+      }
+
+      const phones = neighbor.phones
+        .filter((phone) => phone.value === phoneValue && phone.isActive !== false)
+        .map((phone) => ({
+          phoneId: phone.phoneId,
+          value: phone.value,
+          isShared: phone.isShared === true,
+          verificationStatus: normalizeVerificationStatus(phone.verificationStatus),
+        }));
+
+      if (phones.length === 0) {
+        return;
+      }
+
+      boundaryNeighbors.push({
+        neighborId: neighbor.neighborId,
+        phones,
+      });
+    });
+
+    return boundaryNeighbors.sort((left, right) => left.neighborId.localeCompare(right.neighborId));
+  }
+
+  promoteUnknownTextingPreference(
+    tenantId: string,
+    neighborId: string,
+  ): NeighborTextingPreferencePromotionResult {
+    const existing = this.neighborsById.get(neighborId);
+    if (!existing || existing.tenantId !== tenantId) {
+      return {
+        status: 'not_found',
+        neighbor: null,
+      };
+    }
+
+    if (existing.prefersTexting !== 'UNKNOWN') {
+      return {
+        status: 'unchanged',
+        neighbor: cloneNeighbor(existing),
+      };
+    }
+
+    const now = nowIsoUtc();
+    const updated: ConnectShyftNeighbor = {
+      ...existing,
+      prefersTexting: 'YES',
+      updatedAtUtc: now,
+      phones: existing.phones.map((phone) => ({
+        ...phone,
+      })),
+    };
+
+    this.neighborsById.set(neighborId, updated);
+
+    return {
+      status: 'updated',
+      neighbor: cloneNeighbor(updated),
+    };
+  }
+
   listByOrgUnit(tenantId: string, orgUnitId: string): ConnectShyftNeighbor[] {
     const scopeKey = buildTenantOrgUnitKey(tenantId, orgUnitId);
     const scopedIds = this.neighborIdsByScope.get(scopeKey);
@@ -1051,6 +1188,22 @@ export class InMemoryConnectShyftNeighborStore {
 
 export class KnexConnectShyftNeighborStore {
   constructor(private readonly knexClient: KnexLike = db as unknown as KnexLike) {}
+
+  private neighborColumns(): string[] {
+    return [
+      'id',
+      'tenant_id',
+      'org_unit_id',
+      'first_name',
+      'last_name',
+      'prefers_texting',
+      'is_deleted',
+      'deleted_at_utc',
+      'deleted_by_user_id',
+      'created_at_utc',
+      'updated_at_utc',
+    ];
+  }
 
   private neighborPhoneColumns(): string[] {
     return [
@@ -1096,16 +1249,7 @@ export class KnexConnectShyftNeighborStore {
             created_at_utc: trx.fn.now(),
             updated_at_utc: trx.fn.now(),
           })
-          .returning<DbNeighborRow[]>([
-            'id',
-            'tenant_id',
-            'org_unit_id',
-            'first_name',
-            'last_name',
-            'prefers_texting',
-            'created_at_utc',
-            'updated_at_utc',
-          ]);
+          .returning<DbNeighborRow[]>(this.neighborColumns());
 
         if (!neighborRow) {
           return {
@@ -1172,16 +1316,7 @@ export class KnexConnectShyftNeighborStore {
         tenant_id: tenantId,
         id: neighborId,
       })
-      .first<DbNeighborRow>([
-        'id',
-        'tenant_id',
-        'org_unit_id',
-        'first_name',
-        'last_name',
-        'prefers_texting',
-        'created_at_utc',
-        'updated_at_utc',
-      ]);
+      .first<DbNeighborRow>(this.neighborColumns());
 
     if (!neighborRow) {
       return null;
@@ -1209,16 +1344,7 @@ export class KnexConnectShyftNeighborStore {
       .orderBy('last_name', 'asc')
       .orderBy('first_name', 'asc')
       .orderBy('id', 'asc')
-      .select<DbNeighborRow[]>([
-        'id',
-        'tenant_id',
-        'org_unit_id',
-        'first_name',
-        'last_name',
-        'prefers_texting',
-        'created_at_utc',
-        'updated_at_utc',
-      ]);
+      .select<DbNeighborRow[]>(this.neighborColumns());
 
     if (neighborRows.length === 0) {
       return [];
@@ -1243,6 +1369,89 @@ export class KnexConnectShyftNeighborStore {
 
     return neighborRows.map((neighborRow) =>
       mapRowsToNeighbor(neighborRow, phonesByNeighborId.get(neighborRow.id) || []));
+  }
+
+  async resolveActiveNeighborById(
+    tenantId: string,
+    neighborId: string,
+  ): Promise<ConnectShyftNeighbor | null> {
+    const neighborRow = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_neighbors')
+      .where({
+        tenant_id: tenantId,
+        id: neighborId,
+        is_deleted: false,
+      })
+      .first<DbNeighborRow>(this.neighborColumns());
+
+    if (!neighborRow) {
+      return null;
+    }
+
+    const phoneRows = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_neighbor_phones')
+      .where({
+        tenant_id: tenantId,
+        neighbor_id: neighborId,
+      })
+      .select<DbNeighborPhoneRow[]>(this.neighborPhoneColumns());
+
+    return mapRowsToNeighbor(neighborRow, phoneRows);
+  }
+
+  async listActiveIdentityBoundaryNeighborsByTenant(
+    tenantId: string,
+  ): Promise<ConnectShyftIdentityBoundaryNeighbor[]> {
+    const activeNeighbors = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_neighbors')
+      .where({
+        tenant_id: tenantId,
+        is_deleted: false,
+      })
+      .orderBy('id', 'asc')
+      .select<DbNeighborRow[]>(['id']);
+
+    if (activeNeighbors.length === 0) {
+      return [];
+    }
+
+    const neighborIds = activeNeighbors.map((row) => row.id);
+    const phoneRows = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_neighbor_phones')
+      .where({
+        tenant_id: tenantId,
+      })
+      .whereIn('neighbor_id', neighborIds)
+      .orderBy('neighbor_id', 'asc')
+      .orderBy('sort_order', 'asc')
+      .orderBy('id', 'asc')
+      .select<DbNeighborPhoneRow[]>(this.neighborPhoneColumns());
+
+    const phonesByNeighborId = new Map<string, ConnectShyftIdentityBoundaryNeighbor['phones']>();
+    phoneRows.forEach((row) => {
+      if (row.is_active === false) {
+        return;
+      }
+      const current = phonesByNeighborId.get(row.neighbor_id) || [];
+      current.push({
+        phoneId: row.id,
+        value: resolveStoredPhoneValue(row),
+        isShared: row.is_shared === true,
+        verificationStatus: normalizeVerificationStatus(row.verification_status),
+      });
+      phonesByNeighborId.set(row.neighbor_id, current);
+    });
+
+    return neighborIds
+      .map((resolvedNeighborId) => ({
+        neighborId: resolvedNeighborId,
+        phones: phonesByNeighborId.get(resolvedNeighborId) || [],
+      }))
+      .filter((neighbor) => neighbor.phones.length > 0);
   }
 
   async listIdentityBoundaryNeighborsByPhoneValue(
@@ -1289,6 +1498,125 @@ export class KnexConnectShyftNeighborStore {
         neighborId,
         phones,
       }));
+  }
+
+  async listActiveIdentityBoundaryNeighborsByPhoneValue(
+    tenantId: string,
+    phoneValue: string,
+  ): Promise<ConnectShyftIdentityBoundaryNeighbor[]> {
+    const phoneRows = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_neighbor_phones')
+      .where({
+        tenant_id: tenantId,
+        normalized_e164: phoneValue,
+        is_active: true,
+      })
+      .orderBy('neighbor_id', 'asc')
+      .orderBy('sort_order', 'asc')
+      .orderBy('id', 'asc')
+      .select<DbNeighborPhoneRow[]>(this.neighborPhoneColumns());
+
+    if (phoneRows.length === 0) {
+      return [];
+    }
+
+    const neighborIds = Array.from(new Set(phoneRows.map((row) => row.neighbor_id)));
+    const activeNeighbors = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_neighbors')
+      .where({
+        tenant_id: tenantId,
+        is_deleted: false,
+      })
+      .whereIn('id', neighborIds)
+      .select<DbNeighborRow[]>(['id']);
+    const activeNeighborIds = new Set(activeNeighbors.map((row) => row.id));
+
+    const phonesByNeighborId = new Map<string, Array<{
+      phoneId: string;
+      value: string;
+      isShared: boolean;
+      verificationStatus: 'verified' | 'unverified';
+    }>>();
+
+    phoneRows.forEach((row) => {
+      if (!activeNeighborIds.has(row.neighbor_id)) {
+        return;
+      }
+
+      const current = phonesByNeighborId.get(row.neighbor_id) || [];
+      current.push({
+        phoneId: row.id,
+        value: resolveStoredPhoneValue(row),
+        isShared: row.is_shared === true,
+        verificationStatus: normalizeVerificationStatus(row.verification_status),
+      });
+      phonesByNeighborId.set(row.neighbor_id, current);
+    });
+
+    return Array.from(phonesByNeighborId.entries())
+      .sort(([leftNeighborId], [rightNeighborId]) => leftNeighborId.localeCompare(rightNeighborId))
+      .map(([neighborId, phones]) => ({
+        neighborId,
+        phones,
+      }));
+  }
+
+  async promoteUnknownTextingPreference(
+    tenantId: string,
+    neighborId: string,
+  ): Promise<NeighborTextingPreferencePromotionResult> {
+    const existing = await this.resolveActiveNeighborById(tenantId, neighborId);
+    if (!existing) {
+      return {
+        status: 'not_found',
+        neighbor: null,
+      };
+    }
+
+    if (existing.prefersTexting !== 'UNKNOWN') {
+      return {
+        status: 'unchanged',
+        neighbor: existing,
+      };
+    }
+
+    const [neighborRow] = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_neighbors')
+      .where({
+        tenant_id: tenantId,
+        id: neighborId,
+        is_deleted: false,
+        prefers_texting: 'UNKNOWN',
+      })
+      .update({
+        prefers_texting: 'YES',
+        updated_at_utc: this.knexClient.fn.now(),
+      })
+      .returning<DbNeighborRow[]>(this.neighborColumns());
+
+    if (!neighborRow) {
+      return {
+        status: 'unchanged',
+        neighbor: await this.resolveActiveNeighborById(tenantId, neighborId),
+      };
+    }
+
+    const phoneRows = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_neighbor_phones')
+      .where({
+        tenant_id: tenantId,
+        neighbor_id: neighborId,
+      })
+      .select<DbNeighborPhoneRow[]>(this.neighborPhoneColumns());
+
+    return {
+      status: 'updated',
+      neighbor: mapRowsToNeighbor(neighborRow, phoneRows),
+    };
   }
 
   async updateNeighbor(input: NeighborStoreUpdateInput): Promise<NeighborPersistenceResult> {
@@ -1546,14 +1874,40 @@ export class ConnectShyftNeighborService {
     private readonly store: InMemoryConnectShyftNeighborStore = defaultNeighborStore,
     identityBoundary?: ConnectShyftIdentityBoundaryAdapter,
   ) {
+    const activeStore = this.store as InMemoryConnectShyftNeighborStore & {
+      listActiveIdentityBoundaryNeighborsByTenant?: (
+        tenantId: string,
+      ) => ConnectShyftIdentityBoundaryNeighbor[];
+      listActiveIdentityBoundaryNeighborsByPhoneValue?: (
+        tenantId: string,
+        normalizedContactPointValue: string,
+      ) => ConnectShyftIdentityBoundaryNeighbor[];
+    };
     this.identityBoundary = identityBoundary
       || new InProcessConnectShyftIdentityBoundaryAdapter(
-        (tenantId) => this.store.listByTenant(tenantId),
+        (tenantId) => activeStore.listActiveIdentityBoundaryNeighborsByTenant
+          ? activeStore.listActiveIdentityBoundaryNeighborsByTenant(tenantId)
+          : this.store.listByTenant(tenantId).map((neighbor) => ({
+            neighborId: neighbor.neighborId,
+            phones: neighbor.phones
+              .filter((phone) => phone.isActive !== false)
+              .map((phone) => ({
+                phoneId: phone.phoneId,
+                value: phone.value,
+                isShared: phone.isShared === true,
+                verificationStatus: normalizeVerificationStatus(phone.verificationStatus),
+              })),
+          })),
         (tenantId, normalizedContactPointValue) =>
-          this.store.listIdentityBoundaryNeighborsByPhoneValue(
-            tenantId,
-            normalizedContactPointValue,
-          ),
+          activeStore.listActiveIdentityBoundaryNeighborsByPhoneValue
+            ? activeStore.listActiveIdentityBoundaryNeighborsByPhoneValue(
+              tenantId,
+              normalizedContactPointValue,
+            )
+            : this.store.listIdentityBoundaryNeighborsByPhoneValue(
+              tenantId,
+              normalizedContactPointValue,
+            ),
       );
   }
 
@@ -1608,6 +1962,68 @@ export class ConnectShyftNeighborService {
       data: {
         neighbor,
       },
+    };
+  }
+
+  resolveActiveNeighbor(input: {
+    tenantId: string;
+    neighborId: string;
+  }): ConnectShyftNeighbor | null {
+    return this.store.resolveActiveNeighborById(input.tenantId, input.neighborId);
+  }
+
+  createNeighborFromInbound(
+    input: ConnectShyftCreateInboundNeighborCommand,
+  ): ConnectShyftCreateNeighborResult {
+    const normalizedPhones = normalizePhones([
+      {
+        label: 'mobile',
+        value: input.phone,
+      },
+    ]);
+    if (!normalizedPhones.ok) {
+      return normalizedPhones;
+    }
+
+    const persisted = this.store.createNeighbor({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      firstName: '',
+      lastName: '',
+      prefersTexting: 'UNKNOWN',
+      phones: normalizedPhones.phones,
+    });
+
+    if (!persisted.ok) {
+      return buildNeighborIdConflictRefusal();
+    }
+
+    return {
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
+      httpStatus: 201,
+      data: {
+        neighbor: persisted.neighbor,
+      },
+    };
+  }
+
+  applyInboundSmsTextingPreference(
+    input: ConnectShyftApplyInboundSmsTextingPreferenceCommand,
+  ): {
+    ok: true;
+    updated: boolean;
+    neighbor: ConnectShyftNeighbor;
+  } | NeighborRefusalResult {
+    const promoted = this.store.promoteUnknownTextingPreference(input.tenantId, input.neighborId);
+    if (!promoted.neighbor) {
+      return buildNeighborNotFoundRefusal();
+    }
+
+    return {
+      ok: true,
+      updated: promoted.status === 'updated',
+      neighbor: promoted.neighbor,
     };
   }
 
@@ -1723,14 +2139,40 @@ export class AsyncConnectShyftNeighborService {
     private readonly store: KnexConnectShyftNeighborStore = defaultKnexNeighborStore,
     identityBoundary?: ConnectShyftIdentityBoundaryAdapter,
   ) {
+    const activeStore = this.store as KnexConnectShyftNeighborStore & {
+      listActiveIdentityBoundaryNeighborsByTenant?: (
+        tenantId: string,
+      ) => Promise<ConnectShyftIdentityBoundaryNeighbor[]>;
+      listActiveIdentityBoundaryNeighborsByPhoneValue?: (
+        tenantId: string,
+        normalizedContactPointValue: string,
+      ) => Promise<ConnectShyftIdentityBoundaryNeighbor[]>;
+    };
     this.identityBoundary = identityBoundary
       || new AsyncInProcessConnectShyftIdentityBoundaryAdapter(
-        async (tenantId) => this.store.listByTenant(tenantId),
+        async (tenantId) => activeStore.listActiveIdentityBoundaryNeighborsByTenant
+          ? activeStore.listActiveIdentityBoundaryNeighborsByTenant(tenantId)
+          : (await this.store.listByTenant(tenantId)).map((neighbor) => ({
+            neighborId: neighbor.neighborId,
+            phones: neighbor.phones
+              .filter((phone) => phone.isActive !== false)
+              .map((phone) => ({
+                phoneId: phone.phoneId,
+                value: phone.value,
+                isShared: phone.isShared === true,
+                verificationStatus: normalizeVerificationStatus(phone.verificationStatus),
+              })),
+          })),
         async (tenantId, normalizedContactPointValue) =>
-          this.store.listIdentityBoundaryNeighborsByPhoneValue(
-            tenantId,
-            normalizedContactPointValue,
-          ),
+          activeStore.listActiveIdentityBoundaryNeighborsByPhoneValue
+            ? activeStore.listActiveIdentityBoundaryNeighborsByPhoneValue(
+              tenantId,
+              normalizedContactPointValue,
+            )
+            : this.store.listIdentityBoundaryNeighborsByPhoneValue(
+              tenantId,
+              normalizedContactPointValue,
+            ),
       );
   }
 
@@ -1794,6 +2236,84 @@ export class AsyncConnectShyftNeighborService {
         data: {
           neighbor,
         },
+      };
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return buildPersistenceUnavailableRefusal();
+    }
+  }
+
+  async resolveActiveNeighbor(input: {
+    tenantId: string;
+    neighborId: string;
+  }): Promise<ConnectShyftNeighbor | null> {
+    return this.store.resolveActiveNeighborById(input.tenantId, input.neighborId);
+  }
+
+  async createNeighborFromInbound(
+    input: ConnectShyftCreateInboundNeighborCommand,
+  ): Promise<ConnectShyftCreateNeighborResult> {
+    const normalizedPhones = normalizePhones([
+      {
+        label: 'mobile',
+        value: input.phone,
+      },
+    ]);
+    if (!normalizedPhones.ok) {
+      return normalizedPhones;
+    }
+
+    try {
+      const persisted = await this.store.createNeighbor({
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        firstName: '',
+        lastName: '',
+        prefersTexting: 'UNKNOWN',
+        phones: normalizedPhones.phones,
+      });
+
+      if (!persisted.ok) {
+        return buildNeighborIdConflictRefusal();
+      }
+
+      return {
+        ok: true,
+        code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
+        httpStatus: 201,
+        data: {
+          neighbor: persisted.neighbor,
+        },
+      };
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return buildCreatePersistenceUnavailableRefusal();
+    }
+  }
+
+  async applyInboundSmsTextingPreference(
+    input: ConnectShyftApplyInboundSmsTextingPreferenceCommand,
+  ): Promise<{
+    ok: true;
+    updated: boolean;
+    neighbor: ConnectShyftNeighbor;
+  } | NeighborRefusalResult> {
+    try {
+      const promoted = await this.store.promoteUnknownTextingPreference(input.tenantId, input.neighborId);
+      if (!promoted.neighbor) {
+        return buildNeighborNotFoundRefusal();
+      }
+
+      return {
+        ok: true,
+        updated: promoted.status === 'updated',
+        neighbor: promoted.neighbor,
       };
     } catch (error) {
       if (!isMissingPersistenceError(error)) {
@@ -1933,3 +2453,53 @@ export class AsyncConnectShyftNeighborService {
 }
 
 export const connectShyftNeighborServiceAsync = new AsyncConnectShyftNeighborService();
+
+export const resolveActiveNeighborForInbound = (
+  input: ConnectShyftApplyInboundSmsTextingPreferenceCommand,
+): Promise<ConnectShyftNeighbor | null> =>
+  connectShyftNeighborServiceAsync.resolveActiveNeighbor(input);
+
+export const createNeighborFromInbound = async (input: ConnectShyftCreateInboundNeighborCommand & {
+  correlationId: string;
+  providerName?: string | null;
+  providerReferenceId?: string | null;
+  requestFingerprint?: string | null;
+}): Promise<ConnectShyftCreateNeighborResult> => {
+  const created = await connectShyftNeighborServiceAsync.createNeighborFromInbound(input);
+  if (!created.ok) {
+    return created;
+  }
+
+  await appendConnectShyftCommunicationAuditEntry({
+    tenantId: input.tenantId,
+    correlationId: input.correlationId,
+    actorType: 'system',
+    actorId: null,
+    operationName: CONNECTSHYFT_INBOUND_NEIGHBOR_AUDIT_OPERATION_NAME,
+    targetEntityType: 'neighbor',
+    targetEntityId: created.data.neighbor.neighborId,
+    channel: 'sms',
+    resultState: 'succeeded',
+    resultCode: created.code,
+    resultMessage: 'Created inbound SMS neighbor from unmatched sender phone.',
+    requestFingerprint: input.requestFingerprint ?? null,
+    providerName: input.providerName ?? null,
+    providerReferenceId: input.providerReferenceId ?? null,
+    metadataJson: JSON.stringify({
+      orgUnitId: input.orgUnitId,
+      phone: created.data.neighbor.phones[0]?.value || input.phone,
+      prefersTexting: created.data.neighbor.prefersTexting,
+    }),
+  });
+
+  return created;
+};
+
+export const applyInboundSmsTextingPreference = (
+  input: ConnectShyftApplyInboundSmsTextingPreferenceCommand,
+): Promise<{
+  ok: true;
+  updated: boolean;
+  neighbor: ConnectShyftNeighbor;
+} | NeighborRefusalResult> =>
+  connectShyftNeighborServiceAsync.applyInboundSmsTextingPreference(input);
