@@ -355,6 +355,7 @@ describe('Telnyx adapter', () => {
 
   it('verifies Telnyx webhook signatures with Ed25519 public keys', () => {
     const { publicKey, privateKey } = generateKeyPairSync('ed25519')
+    const nowIso = '2026-03-11T12:10:00.000Z'
     const publicKeyPem = publicKey.export({
       type: 'spki',
       format: 'pem',
@@ -364,7 +365,7 @@ describe('Telnyx adapter', () => {
         event_type: 'call.initiated',
       },
     })
-    const timestamp = Math.trunc(Date.now() / 1000).toString()
+    const timestamp = Math.trunc(Date.parse(nowIso) / 1000).toString()
     const signature = signPayload(
       null,
       Buffer.from(`${timestamp}|${payload}`, 'utf8'),
@@ -373,7 +374,7 @@ describe('Telnyx adapter', () => {
 
     const adapter = createTelnyxAdapter({
       apiKey: 'telnyx-test-key',
-      now: () => Date.parse('2026-03-11T12:10:00.000Z'),
+      now: () => Date.parse(nowIso),
     })
 
     const decision = adapter.verifyWebhook({
