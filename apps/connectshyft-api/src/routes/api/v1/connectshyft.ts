@@ -21,7 +21,10 @@ import {
   resolveConnectShyftOrgUnitContext,
   type ResolvedConnectShyftContext,
 } from '../../../modules/connectshyft/contextAccess';
-import { connectShyftNumberMappingServiceAsync } from '../../../modules/connectshyft/numberMappings';
+import {
+  connectShyftNumberMappingServiceAsync,
+  type ConnectShyftNumberMapping,
+} from '../../../modules/connectshyft/numberMappings';
 import {
   AsyncConnectShyftNeighborService,
   KnexConnectShyftNeighborStore,
@@ -3569,8 +3572,99 @@ type ConnectShyftDispatchReadySmsTarget =
   }
   | Extract<ConnectShyftResolvedSmsTarget, { ok: false }>;
 
+type ConnectShyftResolvedSmsSender =
+  | {
+    ok: true;
+    senderPhone: string;
+    source: 'single_active_org_unit_mapping';
+    metadata: {
+      orgUnitId: string;
+      activeMappingCount: 1;
+      selectedMappingId: string;
+      selectedMappingLabel: string | null;
+      threadHints: {
+        lastInboundCsNumberId: string | null;
+        preferredOutboundCsNumberId: string | null;
+        preferredOutboundLabel: string | null;
+      };
+    };
+  }
+  | {
+    ok: false;
+    code: string;
+    message: string;
+    data: {
+      senderResolution: {
+        reason:
+          | 'missing_sender'
+          | 'ambiguous_sender'
+          | 'invalid_active_mapping_sender';
+        source: 'org_unit_number_mapping';
+        orgUnitId: string;
+        activeMappingCount: number;
+        candidateMappings: Array<{
+          mappingId: string;
+          senderPhone: string;
+          label: string | null;
+          isActive: boolean;
+        }>;
+        threadHints: {
+          lastInboundCsNumberId: string | null;
+          preferredOutboundCsNumberId: string | null;
+          preferredOutboundLabel: string | null;
+        };
+      };
+      uiFeedback: {
+        severity: 'warning';
+        ariaLive: 'assertive';
+        messageKey:
+          | 'connectshyft.sms_sender.required'
+          | 'connectshyft.sms_sender.ambiguous';
+        presentation: 'contextual-action-feedback';
+        requiresAction: true;
+        actionLabel: 'Review numbers';
+        accessibilityHint: string;
+        message: string;
+      };
+    };
+  };
+
 const isValidConnectShyftSmsTargetPhone = (value: string): boolean => {
   return value.length > 0 && validatePhoneForChannel(value, 'sms').ok;
+};
+
+const isValidConnectShyftSmsSenderPhone = (value: string): boolean => {
+  return value.length > 0 && validatePhoneForChannel(value, 'sms').ok;
+};
+
+const buildConnectShyftSmsSenderThreadHints = (input: {
+  thread: ConnectShyftThread;
+  preferredOutboundLabel?: string | null;
+}): {
+  lastInboundCsNumberId: string | null;
+  preferredOutboundCsNumberId: string | null;
+  preferredOutboundLabel: string | null;
+} => ({
+  lastInboundCsNumberId: normalizeLifecycleString(input.thread.lastInboundCsNumberId) || null,
+  preferredOutboundCsNumberId:
+    normalizeLifecycleString(input.thread.preferredOutboundCsNumberId) || null,
+  preferredOutboundLabel: normalizeLifecycleString(input.preferredOutboundLabel || null) || null,
+});
+
+const mapConnectShyftSmsSenderCandidates = (
+  mappings: ConnectShyftNumberMapping[],
+): Array<{
+  mappingId: string;
+  senderPhone: string;
+  label: string | null;
+  isActive: boolean;
+}> => {
+  return mappings.map((mapping) => ({
+    mappingId: mapping.mappingId,
+    senderPhone: normalizeLifecycleString(mapping.twilioNumberE164),
+    label: normalizeLifecycleString(mapping.label) || null,
+    isActive: mapping.isActive === true,
+  }));
 };
 
 const sortConnectShyftNeighborPhones = (
@@ -3632,6 +3726,50 @@ const buildConnectShyftSmsTargetRefusal = (input: {
       presentation: 'contextual-action-feedback',
       requiresAction: true,
       actionLabel: 'Select phone',
+      accessibilityHint: input.accessibilityHint,
+      message: input.message,
+    },
+  },
+});
+
+const buildConnectShyftSmsSenderRefusal = (input: {
+  code: string;
+  message: string;
+  messageKey:
+    | 'connectshyft.sms_sender.required'
+    | 'connectshyft.sms_sender.ambiguous';
+  reason:
+    | 'missing_sender'
+    | 'ambiguous_sender'
+    | 'invalid_active_mapping_sender';
+  orgUnitId: string;
+  thread: ConnectShyftThread;
+  preferredOutboundLabel?: string | null;
+  candidateMappings?: ConnectShyftNumberMapping[];
+  accessibilityHint: string;
+}): Extract<ConnectShyftResolvedSmsSender, { ok: false }> => ({
+  ok: false,
+  code: input.code,
+  message: input.message,
+  data: {
+    senderResolution: {
+      reason: input.reason,
+      source: 'org_unit_number_mapping',
+      orgUnitId: input.orgUnitId,
+      activeMappingCount: input.candidateMappings?.length || 0,
+      candidateMappings: mapConnectShyftSmsSenderCandidates(input.candidateMappings || []),
+      threadHints: buildConnectShyftSmsSenderThreadHints({
+        thread: input.thread,
+        preferredOutboundLabel: input.preferredOutboundLabel,
+      }),
+    },
+    uiFeedback: {
+      severity: 'warning',
+      ariaLive: 'assertive',
+      messageKey: input.messageKey,
+      presentation: 'contextual-action-feedback',
+      requiresAction: true,
+      actionLabel: 'Review numbers',
       accessibilityHint: input.accessibilityHint,
       message: input.message,
     },
@@ -3808,6 +3946,82 @@ const resolveConnectShyftSmsTarget = async (input: {
 export const ensureConnectShyftDispatchReadySmsTargetForTests =
   ensureConnectShyftDispatchReadySmsTarget;
 export const resolveConnectShyftSmsTargetForTests = resolveConnectShyftSmsTarget;
+
+const resolveConnectShyftSmsSender = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  thread: ConnectShyftThread;
+  preferredOutboundLabel?: string | null;
+}): Promise<ConnectShyftResolvedSmsSender> => {
+  const activeMappings = (
+    await connectShyftNumberMappingServiceAsync.listMappings(input.tenantId, input.orgUnitId)
+  ).filter((mapping) => mapping.isActive);
+
+  if (activeMappings.length === 0) {
+    return buildConnectShyftSmsSenderRefusal({
+      code: 'CONNECTSHYFT_SMS_SENDER_REQUIRED',
+      message: 'Configure one active ConnectShyft outbound number before sending SMS.',
+      messageKey: 'connectshyft.sms_sender.required',
+      reason: 'missing_sender',
+      orgUnitId: input.orgUnitId,
+      thread: input.thread,
+      preferredOutboundLabel: input.preferredOutboundLabel,
+      accessibilityHint:
+        'Review ConnectShyft number mappings and configure one active outbound number before retrying.',
+    });
+  }
+
+  if (activeMappings.length > 1) {
+    return buildConnectShyftSmsSenderRefusal({
+      code: 'CONNECTSHYFT_SMS_SENDER_AMBIGUOUS',
+      message:
+        'Leave exactly one active ConnectShyft outbound number in this orgUnit before sending SMS.',
+      messageKey: 'connectshyft.sms_sender.ambiguous',
+      reason: 'ambiguous_sender',
+      orgUnitId: input.orgUnitId,
+      thread: input.thread,
+      preferredOutboundLabel: input.preferredOutboundLabel,
+      candidateMappings: activeMappings,
+      accessibilityHint:
+        'Review ConnectShyft number mappings and leave exactly one active outbound number before retrying.',
+    });
+  }
+
+  const selectedMapping = activeMappings[0];
+  const senderPhone = normalizeLifecycleString(selectedMapping.twilioNumberE164);
+  if (!isValidConnectShyftSmsSenderPhone(senderPhone)) {
+    return buildConnectShyftSmsSenderRefusal({
+      code: 'CONNECTSHYFT_SMS_SENDER_REQUIRED',
+      message: 'Configure one active valid ConnectShyft outbound number before sending SMS.',
+      messageKey: 'connectshyft.sms_sender.required',
+      reason: 'invalid_active_mapping_sender',
+      orgUnitId: input.orgUnitId,
+      thread: input.thread,
+      preferredOutboundLabel: input.preferredOutboundLabel,
+      candidateMappings: activeMappings,
+      accessibilityHint:
+        'Review ConnectShyft number mappings and configure one valid active outbound number before retrying.',
+    });
+  }
+
+  return {
+    ok: true,
+    senderPhone,
+    source: 'single_active_org_unit_mapping',
+    metadata: {
+      orgUnitId: input.orgUnitId,
+      activeMappingCount: 1,
+      selectedMappingId: selectedMapping.mappingId,
+      selectedMappingLabel: normalizeLifecycleString(selectedMapping.label) || null,
+      threadHints: buildConnectShyftSmsSenderThreadHints({
+        thread: input.thread,
+        preferredOutboundLabel: input.preferredOutboundLabel,
+      }),
+    },
+  };
+};
+
+export const resolveConnectShyftSmsSenderForTests = resolveConnectShyftSmsSender;
 
 const resolveOutboundIdempotencyOperationName = (
   outboundAction: ConnectShyftOutboundAction,
@@ -6772,6 +6986,7 @@ const performOutboundAction = async (
   let sideEffects: ReturnType<typeof buildLifecycleSideEffects> | null = null;
   let outboundDispatch: ReturnType<typeof buildLifecycleSideEffects> | null = null;
   let outboundMessageTargetPhone: string | null = null;
+  let outboundMessageSenderPhone: string | null = null;
   let persistedSmsOverride: ConnectShyftPersistedSmsOverride | null = null;
   let sideEffectsPersisted = false;
   let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
@@ -7155,6 +7370,54 @@ const performOutboundAction = async (
     }
 
     outboundMessageTargetPhone = dispatchReadySmsTarget.targetPhone;
+
+    const smsSenderResolution = await resolveConnectShyftSmsSender({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      thread,
+      preferredOutboundLabel: lifecycleContext.detail?.preferredOutboundContext.label || null,
+    });
+    if (!smsSenderResolution.ok) {
+      refusal(res, {
+        code: smsSenderResolution.code,
+        message: smsSenderResolution.message,
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          context,
+          threadId,
+          preferencePolicy: {
+            prefersTexting: smsPreferenceDecision?.prefersTexting || 'UNKNOWN',
+            source: smsPreferenceDecision?.source || 'unknown',
+            overrideRequired: smsPreferenceDecision?.prefersTexting === 'NO',
+            overrideAccepted: smsPreferenceDecision?.prefersTexting !== 'NO'
+              || Boolean(validatedSmsOverride),
+            ...(validatedSmsOverride
+              ? {
+                override: {
+                  reason: validatedSmsOverride.reason,
+                  note: validatedSmsOverride.note,
+                },
+              }
+              : {}),
+          },
+          ...smsSenderResolution.data,
+          chrome: {
+            persistentOperationsBannerVisible: false,
+            heavyOperationsDefaultLayout: false,
+          },
+          sideEffects: {
+            messageDispatched: false,
+            lifecycleMutationApplied,
+            auditPersisted: false,
+          },
+          ...buildReopenLifecycleData(),
+        },
+      });
+      return;
+    }
+
+    outboundMessageSenderPhone = smsSenderResolution.senderPhone;
   }
 
   outboundDispatchReplayKey = buildTelephonyDispatchReplayKey({
@@ -7168,6 +7431,7 @@ const performOutboundAction = async (
     targetPhone: outboundAction === 'call'
       ? neighborContactPointId
       : outboundMessageTargetPhone,
+    senderPhone: outboundAction === 'message' ? outboundMessageSenderPhone : null,
     operatorContactPointId: outboundAction === 'call'
       ? operatorContactPointId
       : null,
@@ -7196,6 +7460,7 @@ const performOutboundAction = async (
         targetPhone: outboundAction === 'call'
           ? neighborContactPointId
           : outboundMessageTargetPhone,
+        senderPhone: outboundAction === 'message' ? outboundMessageSenderPhone : null,
         operatorContactPointId,
       }),
       expiresAt: new Date(Date.now() + CONNECTSHYFT_COMMUNICATION_IDEMPOTENCY_TTL_MS),
@@ -7419,6 +7684,7 @@ const performOutboundAction = async (
           idempotencyKey: outboundDispatchIdempotencyKey || undefined,
           body: outboundMessagePolicy?.body || '',
           targetPhone: outboundMessageTargetPhone || undefined,
+          senderPhone: outboundMessageSenderPhone || undefined,
         });
       })();
   } catch (error) {

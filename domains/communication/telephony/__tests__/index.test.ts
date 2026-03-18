@@ -18,6 +18,7 @@ describe('communication telephony domain', () => {
       actorId: 'user-connectshyft-f1-primary-operator',
       body: 'Need assistance',
       targetPhone: '+12605550111',
+      senderPhone: '+12605550191',
     })
 
     const duplicate = buildTelephonyDispatchReplayKey({
@@ -30,6 +31,7 @@ describe('communication telephony domain', () => {
       actorId: 'user-connectshyft-f1-primary-operator',
       body: 'Need assistance',
       targetPhone: '+12605550111',
+      senderPhone: '+12605550191',
     })
 
     const changedPayload = buildTelephonyDispatchReplayKey({
@@ -42,6 +44,7 @@ describe('communication telephony domain', () => {
       actorId: 'user-connectshyft-f1-primary-operator',
       body: 'Changed copy',
       targetPhone: '+12605550111',
+      senderPhone: '+12605550191',
     })
 
     const changedActor = buildTelephonyDispatchReplayKey({
@@ -54,12 +57,27 @@ describe('communication telephony domain', () => {
       actorId: 'user-connectshyft-f1-secondary-operator',
       body: 'Need assistance',
       targetPhone: '+12605550111',
+      senderPhone: '+12605550191',
+    })
+
+    const changedSender = buildTelephonyDispatchReplayKey({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: 'thread-f1-unclaimed-1001',
+      providerKey: 'telnyx',
+      action: 'message',
+      idempotencyKey: 'idem-001',
+      actorId: 'user-connectshyft-f1-primary-operator',
+      body: 'Need assistance',
+      targetPhone: '+12605550111',
+      senderPhone: '+12605550192',
     })
 
     expect(first).toBeTruthy()
     expect(first).toBe(duplicate)
     expect(changedPayload).not.toBe(first)
     expect(changedActor).not.toBe(first)
+    expect(changedSender).not.toBe(first)
   })
 
   it('stores and replays dispatch snapshots in the in-memory ledger', () => {

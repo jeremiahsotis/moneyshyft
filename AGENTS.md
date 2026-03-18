@@ -104,6 +104,8 @@ Docker:
 - Shared PostgreSQL plus in-memory ConnectShyft stores and test fixtures (019-connectshyft-master-debugging)
 - TypeScript (ES2022) on Node.js >=20 + Express, Jest/ts-jest, shared `domains/communication` telephony contracts, ConnectShyft provider registry, Telnyx adapter (020-connectshyft-sms-handoff)
 - Shared PostgreSQL plus in-memory ConnectShyft test fixtures and ledgers (020-connectshyft-sms-handoff)
+- TypeScript (ES2022) on Node.js >=20 + Express, Jest/ts-jest, shared `domains/communication` telephony contracts, ConnectShyft route/module services, Telnyx adapter (021-connectshyft-sms-sender-architecture)
+- Shared PostgreSQL plus in-memory ConnectShyft thread and number-mapping fixtures in tests (021-connectshyft-sms-sender-architecture)
 
 ## Recent Changes
 - 001-tighten-deployment-contracts: Added TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose

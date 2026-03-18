@@ -1,6 +1,7 @@
 import connectShyftRouter, {
   ensureConnectShyftDispatchReadySmsTargetForTests,
   resetConnectShyftOutboundDispatchReplayLedgerForTests,
+  resolveConnectShyftSmsSenderForTests,
   resolveConnectShyftSmsTargetForTests,
 } from '../connectshyft';
 import { TelephonyProviderFailure } from '../../../../../../../domains/communication';
@@ -11,6 +12,10 @@ import {
   type ConnectShyftNeighborPhone,
   type ConnectShyftResolveNeighborResult,
 } from '../../../../modules/connectshyft/neighbors';
+import {
+  connectShyftNumberMappingServiceAsync,
+  type ConnectShyftNumberMapping,
+} from '../../../../modules/connectshyft/numberMappings';
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings';
 import {
   connectShyftSmsPreferenceOverrideServiceAsync,
@@ -40,7 +45,12 @@ const toProviderCorrelation = (payload: unknown) => {
   };
 };
 
-const sendSmsMock = jest.fn(async (command: { threadId: string; targetPhone?: string; body?: string }) => ({
+const sendSmsMock = jest.fn(async (command: {
+  threadId: string;
+  targetPhone?: string;
+  senderPhone?: string;
+  body?: string;
+}) => ({
   providerKey: 'telnyx',
   channel: 'message' as const,
   providerLegId: null,
@@ -264,6 +274,40 @@ const buildResolvedSmsPreference = (
   ...overrides,
 });
 
+const buildNumberMapping = (
+  overrides: Partial<ConnectShyftNumberMapping> & Pick<ConnectShyftNumberMapping, 'mappingId' | 'tenantId' | 'orgUnitId' | 'twilioNumberE164' | 'label'>,
+): ConnectShyftNumberMapping => ({
+  mappingId: overrides.mappingId,
+  tenantId: overrides.tenantId,
+  orgUnitId: overrides.orgUnitId,
+  twilioNumberE164: overrides.twilioNumberE164,
+  label: overrides.label,
+  isActive: overrides.isActive ?? true,
+  createdAtUtc: overrides.createdAtUtc ?? '2026-03-11T12:00:00.000Z',
+  updatedAtUtc: overrides.updatedAtUtc ?? '2026-03-11T12:00:00.000Z',
+});
+
+const DEFAULT_SMS_SENDER_MAPPINGS: Record<string, ConnectShyftNumberMapping[]> = {
+  'tenant-connectshyft-f1::org-connectshyft-f1-east': [
+    buildNumberMapping({
+      mappingId: 'mapping-f1-001',
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      twilioNumberE164: '+12605550191',
+      label: 'Front Desk',
+    }),
+  ],
+  'tenant-connectshyft-f2::org-connectshyft-f2-east': [
+    buildNumberMapping({
+      mappingId: 'mapping-f2-001',
+      tenantId: 'tenant-connectshyft-f2',
+      orgUnitId: 'org-connectshyft-f2-east',
+      twilioNumberE164: '+12605550192',
+      label: 'Overflow',
+    }),
+  ],
+};
+
 const buildSmsTargetThread = (overrides: Partial<ConnectShyftThread> = {}): ConnectShyftThread => ({
   threadId: overrides.threadId ?? '11111111-1111-4111-8111-111111111111',
   tenantId: overrides.tenantId ?? 'tenant-connectshyft-f1',
@@ -306,6 +350,9 @@ describe('connectshyft outbound dispatch routes', () => {
     resetConnectShyftBridgeSessionStateForTests();
     resetConnectShyftProviderCorrelationStateForTests();
     resetConnectShyftOutboundDispatchReplayLedgerForTests();
+    jest.spyOn(connectShyftNumberMappingServiceAsync, 'listMappings').mockImplementation(
+      async (tenantId: string, orgUnitId: string) => DEFAULT_SMS_SENDER_MAPPINGS[`${tenantId}::${orgUnitId}`] || [],
+    );
   });
 
   afterAll(() => {
@@ -377,6 +424,7 @@ describe('connectshyft outbound dispatch routes', () => {
       idempotencyKey: 'idem-sms-1001',
       body: 'Need assistance',
       targetPhone: '+12605550111',
+      senderPhone: '+12605550191',
     }));
   });
 
@@ -404,6 +452,7 @@ describe('connectshyft outbound dispatch routes', () => {
     expect(resolveNeighborSpy).not.toHaveBeenCalled();
     expect(sendSmsMock).toHaveBeenCalledWith(expect.objectContaining({
       targetPhone: '+12605550999',
+      senderPhone: '+12605550191',
     }));
   });
 
@@ -426,14 +475,56 @@ describe('connectshyft outbound dispatch routes', () => {
     expect(sendSmsMock).toHaveBeenCalledTimes(1);
     const command = sendSmsMock.mock.calls[0]?.[0] as {
       targetPhone?: string;
+      senderPhone?: string;
       body?: string;
       providerKey?: string;
     } | undefined;
     expect(command).toEqual(expect.objectContaining({
       providerKey: 'telnyx',
       body: 'Need assistance',
+      senderPhone: '+12605550191',
     }));
     expect(command?.targetPhone).toMatch(/^\+\d{11,15}$/);
+  });
+
+  it('dispatches outbound SMS from different orgUnit-specific sender numbers', async () => {
+    const f1Response = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/messages',
+      headers: buildHeaders(),
+      body: {
+        providerKey: 'telnyx',
+        body: 'Need assistance',
+        targetPhone: '+12605550111',
+      },
+    });
+
+    const f2Response = await invokeRoute({
+      url: '/threads/thread-f2-unclaimed-1001/messages',
+      headers: buildHeaders({
+        'x-test-connectshyft-tenant-id': 'tenant-connectshyft-f2',
+        'x-test-connectshyft-orgunit-id': 'org-connectshyft-f2-east',
+        'x-test-connectshyft-orgunit-memberships': JSON.stringify(['org-connectshyft-f2-east']),
+        'x-test-connectshyft-user-id': 'user-connectshyft-f2-primary-operator',
+      }),
+      body: {
+        providerKey: 'telnyx',
+        body: 'Need assistance',
+        targetPhone: '+12605550112',
+      },
+    });
+
+    expect(f1Response.status).toBe(200);
+    expect(f2Response.status).toBe(200);
+    expect(sendSmsMock).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      threadId: 'thread-f1-unclaimed-1001',
+      targetPhone: '+12605550111',
+      senderPhone: '+12605550191',
+    }));
+    expect(sendSmsMock).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      threadId: 'thread-f2-unclaimed-1001',
+      targetPhone: '+12605550112',
+      senderPhone: '+12605550192',
+    }));
   });
 
   it('selects the primary active valid neighbor phone when no explicit SMS target is provided', async () => {
@@ -598,6 +689,90 @@ describe('connectshyft outbound dispatch routes', () => {
     });
   });
 
+  it('resolves outbound SMS sender from the single active orgUnit mapping', async () => {
+    const response = await resolveConnectShyftSmsSenderForTests({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      thread: buildSmsTargetThread(),
+      preferredOutboundLabel: 'Front Desk',
+    });
+
+    expect(response).toMatchObject({
+      ok: true,
+      senderPhone: '+12605550191',
+      source: 'single_active_org_unit_mapping',
+    });
+  });
+
+  it('refuses outbound SMS sender resolution when no active orgUnit mapping exists', async () => {
+    const listMappingsMock = connectShyftNumberMappingServiceAsync.listMappings as jest.MockedFunction<
+      typeof connectShyftNumberMappingServiceAsync.listMappings
+    >;
+    listMappingsMock.mockResolvedValueOnce([]);
+
+    const response = await resolveConnectShyftSmsSenderForTests({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      thread: buildSmsTargetThread(),
+      preferredOutboundLabel: 'Front Desk',
+    });
+
+    expect(response).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_SENDER_REQUIRED',
+      data: {
+        senderResolution: {
+          reason: 'missing_sender',
+          source: 'org_unit_number_mapping',
+          orgUnitId: 'org-connectshyft-f1-east',
+          activeMappingCount: 0,
+        },
+      },
+    });
+  });
+
+  it('refuses outbound SMS sender resolution when multiple active orgUnit mappings exist', async () => {
+    const listMappingsMock = connectShyftNumberMappingServiceAsync.listMappings as jest.MockedFunction<
+      typeof connectShyftNumberMappingServiceAsync.listMappings
+    >;
+    listMappingsMock.mockResolvedValueOnce([
+      buildNumberMapping({
+        mappingId: 'mapping-f1-a',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        twilioNumberE164: '+12605550191',
+        label: 'Front Desk',
+      }),
+      buildNumberMapping({
+        mappingId: 'mapping-f1-b',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        twilioNumberE164: '+12605550193',
+        label: 'Overflow',
+      }),
+    ]);
+
+    const response = await resolveConnectShyftSmsSenderForTests({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      thread: buildSmsTargetThread(),
+      preferredOutboundLabel: 'Front Desk',
+    });
+
+    expect(response).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_SENDER_AMBIGUOUS',
+      data: {
+        senderResolution: {
+          reason: 'ambiguous_sender',
+          source: 'org_unit_number_mapping',
+          orgUnitId: 'org-connectshyft-f1-east',
+          activeMappingCount: 2,
+        },
+      },
+    });
+  });
+
   it('refuses non-dispatchable SMS targets at the exported dispatch-ready helper boundary', () => {
     expect(ensureConnectShyftDispatchReadySmsTargetForTests({
       resolvedTargetPhone: '   ',
@@ -632,6 +807,83 @@ describe('connectshyft outbound dispatch routes', () => {
       data: {
         targetResolution: {
           reason: 'missing_target',
+        },
+      },
+    });
+    expect(sendSmsMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses outbound SMS before provider dispatch when no active sender mapping exists', async () => {
+    const listMappingsMock = connectShyftNumberMappingServiceAsync.listMappings as jest.MockedFunction<
+      typeof connectShyftNumberMappingServiceAsync.listMappings
+    >;
+    listMappingsMock.mockResolvedValueOnce([]);
+
+    const response = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/messages',
+      headers: buildHeaders(),
+      body: {
+        providerKey: 'telnyx',
+        body: 'Need assistance',
+        targetPhone: '+12605550111',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_SENDER_REQUIRED',
+      data: {
+        senderResolution: {
+          reason: 'missing_sender',
+          source: 'org_unit_number_mapping',
+          activeMappingCount: 0,
+        },
+      },
+    });
+    expect(sendSmsMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses outbound SMS before provider dispatch when sender mappings are ambiguous', async () => {
+    const listMappingsMock = connectShyftNumberMappingServiceAsync.listMappings as jest.MockedFunction<
+      typeof connectShyftNumberMappingServiceAsync.listMappings
+    >;
+    listMappingsMock.mockResolvedValueOnce([
+      buildNumberMapping({
+        mappingId: 'mapping-f1-a',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        twilioNumberE164: '+12605550191',
+        label: 'Front Desk',
+      }),
+      buildNumberMapping({
+        mappingId: 'mapping-f1-b',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        twilioNumberE164: '+12605550193',
+        label: 'Overflow',
+      }),
+    ]);
+
+    const response = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/messages',
+      headers: buildHeaders(),
+      body: {
+        providerKey: 'telnyx',
+        body: 'Need assistance',
+        targetPhone: '+12605550111',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_SENDER_AMBIGUOUS',
+      data: {
+        senderResolution: {
+          reason: 'ambiguous_sender',
+          source: 'org_unit_number_mapping',
+          activeMappingCount: 2,
         },
       },
     });
@@ -822,6 +1074,7 @@ describe('connectshyft outbound dispatch routes', () => {
     expect(sendSmsMock).toHaveBeenCalledWith(expect.objectContaining({
       body: 'Need assistance',
       targetPhone: expect.stringMatching(/^\+\d{11,15}$/),
+      senderPhone: '+12605550191',
     }));
   });
 });

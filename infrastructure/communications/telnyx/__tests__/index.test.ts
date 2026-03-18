@@ -11,7 +11,7 @@ const buildResponse = (body: unknown, init?: { status?: number; headers?: Record
   })
 
 describe('Telnyx adapter', () => {
-  it('sends SMS with bearer auth, idempotency key, and provider-neutral results', async () => {
+  it('sends SMS with configured from-number fallback when no explicit sender is provided', async () => {
     const fetchMock: jest.MockedFunction<typeof fetch> = jest.fn();
     fetchMock.mockResolvedValue(
       buildResponse(
@@ -70,6 +70,58 @@ describe('Telnyx adapter', () => {
       adapterInvoked: true,
       providerBranchingInDomain: false,
       requestedAt: '2026-03-11T12:00:00.000Z',
+    })
+  })
+
+  it('prefers explicit senderPhone over configured from-number fallback for SMS payloads', async () => {
+    const fetchMock: jest.MockedFunction<typeof fetch> = jest.fn()
+    fetchMock.mockResolvedValue(
+      buildResponse(
+        {
+          data: {
+            id: 'telnyx-message-1002',
+          },
+        },
+        {
+          headers: {
+            'x-request-id': 'req-1002',
+          },
+        },
+      ),
+    )
+
+    const adapter = createTelnyxAdapter({
+      apiKey: 'telnyx-test-key',
+      fromNumber: '+12605550199',
+      fetchImpl: fetchMock,
+      now: () => Date.parse('2026-03-11T12:01:00.000Z'),
+    })
+
+    const result = await adapter.sendSms({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: 'thread-f1-unclaimed-1001',
+      providerKey: 'telnyx',
+      body: 'Need assistance',
+      targetPhone: '+12605550111',
+      senderPhone: '+12605550191',
+      idempotencyKey: 'idem-sms-002',
+    })
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      from: '+12605550191',
+      to: '+12605550111',
+      text: 'Need assistance',
+    })
+    expect(result).toMatchObject({
+      providerKey: 'telnyx',
+      channel: 'message',
+      providerMessageId: 'telnyx-message-1002',
+      providerLegId: null,
+      providerRequestId: 'req-1002',
+      adapterInvoked: true,
+      providerBranchingInDomain: false,
+      requestedAt: '2026-03-11T12:01:00.000Z',
     })
   })
 

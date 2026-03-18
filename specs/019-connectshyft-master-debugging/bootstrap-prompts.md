@@ -1,4 +1,4 @@
-# Two-Step Bootstrap Prompts - ConnectShyft Master Debugging
+# Two-Step Bootstrap Prompts - Master Debugging
 
 ## Bootstrap Prompt A - discovery map
 
@@ -6,7 +6,7 @@
 Build a cross-issue dependency map for the current ConnectShyft debugging sequence.
 
 Read first:
-- specs/019-connectshyft-master-debugging/spec.md
+- specs/connectshyft-master-debugging/spec.md
 - architecture/connectshyft/runtime-host-reality-contract.md
 - architecture/connectshyft/neighbor-texting-preference-contract.md
 - architecture/connectshyft/refusal-rendering-contract.md
@@ -16,9 +16,9 @@ Read first:
 - architecture/connectshyft/issue-sequencing-note.md
 
 Identify:
-1. runtime and UI paths for texting preference persistence and display
-2. runtime and UI paths for refusal rendering
-3. runtime and API paths for SMS target resolution
+1. runtime/UI paths for texting preference persistence/display
+2. runtime/UI paths for refusal rendering
+3. runtime/API paths for SMS target resolution
 4. shared helpers or serializers touched by more than one issue
 5. risk points where one issue could regress another
 
@@ -26,7 +26,6 @@ Constraints:
 - do not modify code yet
 - do not perform lane-convergence refactors
 - do not combine all three issues into one patch
-- treat the dedicated ConnectShyft router and `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` as the live runtime boundary
 
 Output:
 - cross-issue dependency map
@@ -40,7 +39,7 @@ Output:
 Design the phased implementation plan for the ConnectShyft debugging sequence.
 
 Read first:
-- specs/019-connectshyft-master-debugging/spec.md
+- specs/connectshyft-master-debugging/spec.md
 - architecture/connectshyft/runtime-host-reality-contract.md
 - architecture/connectshyft/neighbor-texting-preference-contract.md
 - architecture/connectshyft/refusal-rendering-contract.md
@@ -55,11 +54,10 @@ Requirements:
   2. refusal rendering
   3. SMS target resolution
 - define cross-issue regression checks
-- define exact file and function boundaries for each phase
+- define exact file/function boundaries for each phase
 - do not redesign providers
 - do not redesign the API envelope
 - do not perform lane-convergence refactors
-- keep implementation inside the ConnectShyft runtime boundary unless a narrow existing shared helper is required by a locked bridge
 
 Output:
 - phased patch plan
