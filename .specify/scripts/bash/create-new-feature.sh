@@ -289,6 +289,7 @@ if [ "$HAS_GIT" = true ]; then
             exit 1
         fi
     fi
+    git config "branch.$BRANCH_NAME.gh-merge-base" "codex/dev"
 else
     >&2 echo "[specify] Warning: Git repository not detected; skipped branch creation for $BRANCH_NAME"
 fi

@@ -40,6 +40,7 @@ Docker:
 
 ## Commit & Pull Request Guidelines
 - Recent commits use a short type prefix like `Fix:`, `Docs:`, or `chore:` followed by a concise summary.
+- Default PR base branch is `codex/dev` unless the user explicitly requests a different target.
 - Prefer PRs that include a clear description, test notes, and UI screenshots or GIFs when frontend changes are involved.
 
 ## Configuration Tips
