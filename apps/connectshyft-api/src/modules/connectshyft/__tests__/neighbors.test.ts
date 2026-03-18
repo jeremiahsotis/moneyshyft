@@ -155,6 +155,89 @@ describe('connectshyft neighbor service', () => {
     });
   });
 
+  it('creates minimal inbound neighbors with UNKNOWN texting preference and an active primary phone', () => {
+    const result = service.createNeighborFromInbound({
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      phone: '+1 (260) 555-0181',
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
+      data: {
+        neighbor: {
+          firstName: '',
+          lastName: '',
+          prefersTexting: 'UNKNOWN',
+          phones: [
+            expect.objectContaining({
+              value: '+12605550181',
+              validationStatus: 'valid',
+              isPrimary: true,
+              isActive: true,
+            }),
+          ],
+        },
+      },
+    });
+  });
+
+  it('promotes UNKNOWN texting preference to YES on inbound SMS only', () => {
+    const unknownNeighbor = service.createNeighborFromInbound({
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      phone: '+12605550182',
+    });
+    if (!unknownNeighbor.ok) {
+      throw new Error('Expected inbound neighbor create to succeed');
+    }
+
+    const optedOutNeighbor = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Nora',
+      lastName: 'OptOut',
+      prefersTexting: 'NO',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550183',
+        },
+      ],
+    });
+    if (!optedOutNeighbor.ok) {
+      throw new Error('Expected opted-out neighbor create to succeed');
+    }
+
+    const promoted = service.applyInboundSmsTextingPreference({
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: unknownNeighbor.data.neighbor.neighborId,
+    });
+    const preserved = service.applyInboundSmsTextingPreference({
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: optedOutNeighbor.data.neighbor.neighborId,
+    });
+
+    expect(promoted).toMatchObject({
+      ok: true,
+      updated: true,
+      neighbor: {
+        neighborId: unknownNeighbor.data.neighbor.neighborId,
+        prefersTexting: 'YES',
+      },
+    });
+    expect(preserved).toMatchObject({
+      ok: true,
+      updated: false,
+      neighbor: {
+        neighborId: optedOutNeighbor.data.neighbor.neighborId,
+        prefersTexting: 'NO',
+      },
+    });
+  });
+
   it('refuses create requests that omit phone entries', () => {
     const result = service.createNeighbor({
       actorRoles: ['ORGUNIT_MEMBER'],

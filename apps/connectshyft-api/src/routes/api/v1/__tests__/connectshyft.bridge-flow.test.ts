@@ -113,6 +113,7 @@ const invokeRoute = async (input: {
   method?: 'GET' | 'POST'
   url: string
   body?: Record<string, unknown>
+  rawBody?: string | Buffer
   headers?: Record<string, string>
 }): Promise<{ status: number; body: unknown }> => {
   const normalizedHeaders = Object.fromEntries(
@@ -128,6 +129,7 @@ const invokeRoute = async (input: {
       path: input.url,
       protocol: 'https',
       body: input.body || {},
+      rawBody: input.rawBody,
       headers: normalizedHeaders,
       params: {},
       query: {},
@@ -307,6 +309,29 @@ describe('connectshyft bridge webhook flow', () => {
     expect(translateProviderEventMock).not.toHaveBeenCalled()
     expect(startOutboundCallMock).not.toHaveBeenCalled()
     expect(startBridgeSessionMock).not.toHaveBeenCalled()
+  })
+
+  it('passes the exact rawBody through webhook signature verification', async () => {
+    const payload = {
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: 'thread-f1-unclaimed-1001',
+      eventType: 'call.answered',
+      providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
+    }
+    const rawBody = JSON.stringify(payload)
+
+    const response = await invokeRoute({
+      url: '/webhooks/inbound',
+      headers: buildHeaders(),
+      body: payload,
+      rawBody,
+    })
+
+    expect(response.status).toBe(200)
+    expect(verifyWebhookMock).toHaveBeenCalledWith(expect.objectContaining({
+      rawBody,
+    }))
   })
 
   it('advances operator answered to neighbor dialing and bridges on neighbor answered', async () => {

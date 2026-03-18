@@ -15,6 +15,7 @@ declare global {
     interface Request {
       user?: JWTPayload;
       correlationId?: string;
+      rawBody?: Buffer;
       tenantId?: string;
       orgUnitId?: string | null;
       scopeMode?: ScopeMode;

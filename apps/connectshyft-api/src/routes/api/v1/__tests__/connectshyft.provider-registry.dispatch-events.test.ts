@@ -1,5 +1,11 @@
 // @ts-nocheck
 import request from 'supertest';
+import db from '../../../../config/knex';
+import * as canonicalEventsModule from '../../../../modules/connectshyft/canonicalEvents';
+import * as identityResolverModule from '../../../../modules/connectshyft/identityResolver';
+import * as neighborsModule from '../../../../modules/connectshyft/neighbors';
+import { AsyncConnectShyftNeighborService } from '../../../../modules/connectshyft/neighbors';
+import { AsyncConnectShyftThreadService } from '../../../../modules/connectshyft/threads';
 import {
   buildApp,
   buildHeaders,
@@ -8,6 +14,95 @@ import {
   registerProviderRegistryRouteIntegrationHooks,
   sortCanonical,
 } from './connectshyft.provider-registry.test.shared';
+
+const mockInboundSmsPersistence = (input?: {
+  ensuredNeighborId?: string;
+  ensuredThreadId?: string;
+  failOnTextingPreferenceCall?: boolean;
+}) => {
+  const originalTransaction = db.transaction;
+  const mockedTransaction = jest.fn(async (handler: any) =>
+    handler({
+      fn: {
+        now: () => new Date('2026-03-18T12:00:00.000Z'),
+      },
+    }));
+  Object.defineProperty(db, 'transaction', {
+    value: mockedTransaction,
+  });
+  const ensureThreadSpy = jest.spyOn(
+    AsyncConnectShyftThreadService.prototype,
+    'ensureThread',
+  ).mockResolvedValue({
+    ok: true,
+    code: 'CONNECTSHYFT_THREAD_ENSURED',
+    httpStatus: 200,
+    data: {
+      thread: {
+        threadId: input?.ensuredThreadId || '00000000-0000-4000-8000-000000000111',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        neighborId: input?.ensuredNeighborId || 'neighbor-inbound',
+        state: 'UNCLAIMED',
+        summary: '',
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        lastInboundCsNumberId: 'fixture-last-inbound',
+        preferredOutboundCsNumberId: 'fixture-preferred-outbound',
+        claimedByUserId: null,
+        createdAtUtc: '2026-03-18T12:00:00.000Z',
+        updatedAtUtc: '2026-03-18T12:00:00.000Z',
+      },
+    },
+  } as any);
+  const canonicalEventSpy = jest.spyOn(
+    canonicalEventsModule,
+    'recordConnectShyftCanonicalEvent',
+  ).mockResolvedValue({
+    eventId: 'canonical-event-inbound-1',
+    aggregateId: input?.ensuredThreadId || '00000000-0000-4000-8000-000000000111',
+    aggregateType: 'Thread',
+    eventType: 'connectshyft.inbound.sms_appended',
+    payload: {},
+    occurredAtUtc: '2026-03-18T12:00:00.000Z',
+  } as any);
+  const textingPreferenceSpy = jest.spyOn(
+    AsyncConnectShyftNeighborService.prototype,
+    'applyInboundSmsTextingPreference',
+  ).mockImplementation(async () => {
+    if (input?.failOnTextingPreferenceCall) {
+      throw new Error('synthetic neighbor IDs must not trigger texting-preference promotion');
+    }
+
+    return {
+      ok: true,
+      updated: true,
+      neighbor: {
+        neighborId: input?.ensuredNeighborId || 'neighbor-inbound',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        firstName: '',
+        lastName: '',
+        prefersTexting: 'YES',
+        phones: [],
+        createdAtUtc: '2026-03-18T12:00:00.000Z',
+        updatedAtUtc: '2026-03-18T12:00:00.000Z',
+      },
+    } as any;
+  });
+
+  return {
+    textingPreferenceSpy,
+    restore: () => {
+      textingPreferenceSpy.mockRestore();
+      canonicalEventSpy.mockRestore();
+      ensureThreadSpy.mockRestore();
+      Object.defineProperty(db, 'transaction', {
+        value: originalTransaction,
+      });
+    },
+  };
+};
 describe('connectshyft provider adapter registry route integration - dispatch and canonical events', () => {
   registerProviderRegistryRouteIntegrationHooks();
 
@@ -67,6 +162,375 @@ describe('connectshyft provider adapter registry route integration - dispatch an
         bucket: 'mine',
       },
     });
+  });
+
+  it('prefers canonical neighborId metadata over thread correlation for inbound SMS', async () => {
+    const app = buildApp();
+    const { restore } = mockInboundSmsPersistence({
+      ensuredNeighborId: '00000000-0000-4000-8000-000000000101',
+    });
+    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+      .mockResolvedValueOnce({
+        neighborId: '00000000-0000-4000-8000-000000000101',
+      } as any);
+    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint');
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildHeaders())
+        .send({
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+          threadId: 'thread-f1-unclaimed-1001',
+          eventType: 'sms.inbound',
+          neighborId: '00000000-0000-4000-8000-000000000101',
+          from: '+12605559991',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          correlation: {
+            neighborId: '00000000-0000-4000-8000-000000000101',
+          },
+        },
+      });
+      expect(resolveActiveSpy).toHaveBeenCalledTimes(1);
+      expect(resolveSubjectSpy).not.toHaveBeenCalled();
+    } finally {
+      resolveSubjectSpy.mockRestore();
+      resolveActiveSpy.mockRestore();
+      restore();
+    }
+  });
+
+  it('uses thread correlation before phone matching for inbound SMS', async () => {
+    const app = buildApp();
+    const { restore } = mockInboundSmsPersistence({
+      ensuredNeighborId: 'neighbor-connectshyft-f1-1001',
+    });
+    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound');
+    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint');
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildHeaders())
+        .send({
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+          threadId: 'thread-f1-unclaimed-1001',
+          eventType: 'sms.inbound',
+          from: '+12605551004',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          correlation: {
+            neighborId: 'neighbor-connectshyft-f1-1001',
+          },
+        },
+      });
+      expect(resolveActiveSpy).not.toHaveBeenCalled();
+      expect(resolveSubjectSpy).not.toHaveBeenCalled();
+    } finally {
+      resolveSubjectSpy.mockRestore();
+      resolveActiveSpy.mockRestore();
+      restore();
+    }
+  });
+
+  it('reuses a unique phone match and avoids creating duplicate neighbors', async () => {
+    const app = buildApp();
+    const { restore } = mockInboundSmsPersistence({
+      ensuredNeighborId: 'neighbor-phone-match-1005',
+    });
+    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+      .mockResolvedValue(null);
+    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
+      .mockResolvedValue({
+        type: 'single_match',
+        neighborId: 'neighbor-phone-match-1005',
+        normalizedContactPoint: '+12605551005',
+      });
+    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound');
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildHeaders())
+        .send({
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+          threadId: 'sms-phone-match-thread-1005',
+          eventType: 'sms.inbound',
+          from: '(260) 555-1005',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          correlation: {
+            neighborId: 'neighbor-phone-match-1005',
+          },
+        },
+      });
+      expect(createNeighborSpy).not.toHaveBeenCalled();
+      expect(resolveSubjectSpy).toHaveBeenCalledWith({
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        contactPoint: '+12605551005',
+      });
+    } finally {
+      createNeighborSpy.mockRestore();
+      resolveSubjectSpy.mockRestore();
+      resolveActiveSpy.mockRestore();
+      restore();
+    }
+  });
+
+  it('creates a new neighbor when phone resolution finds no active match and promotes UNKNOWN to YES', async () => {
+    const app = buildApp();
+    const { restore } = mockInboundSmsPersistence({
+      ensuredNeighborId: 'neighbor-created-1006',
+    });
+    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+      .mockResolvedValue(null);
+    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
+      .mockResolvedValue({
+        type: 'no_match',
+        normalizedContactPoint: '+12605551006',
+      });
+    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound')
+      .mockResolvedValue({
+        ok: true,
+        code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
+        httpStatus: 201,
+        data: {
+          neighbor: {
+            neighborId: 'neighbor-created-1006',
+            tenantId: 'tenant-connectshyft-f1',
+            orgUnitId: 'org-connectshyft-f1-east',
+            firstName: '',
+            lastName: '',
+            prefersTexting: 'UNKNOWN',
+            phones: [
+              {
+                phoneId: 'phone-created-1006',
+                label: 'mobile',
+                value: '+12605551006',
+                rawInput: '+12605551006',
+                displayNational: '(260) 555-1006',
+                countryCode: '1',
+                nationalNumber: '2605551006',
+                extension: null,
+                validationStatus: 'valid',
+                usageType: 'unknown',
+                source: 'system_generated',
+                sortOrder: 0,
+                isPrimary: true,
+                isShared: false,
+                verificationStatus: 'verified',
+                isActive: true,
+                createdAtUtc: '2026-03-18T12:00:00.000Z',
+                updatedAtUtc: '2026-03-18T12:00:00.000Z',
+              },
+            ],
+            createdAtUtc: '2026-03-18T12:00:00.000Z',
+            updatedAtUtc: '2026-03-18T12:00:00.000Z',
+          },
+        },
+      } as any);
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildHeaders())
+        .send({
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+          threadId: 'sms-no-match-thread-1006',
+          eventType: 'sms.inbound',
+          from: '+12605551006',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          correlation: {
+            neighborId: 'neighbor-created-1006',
+          },
+        },
+      });
+      expect(createNeighborSpy).toHaveBeenCalledWith(expect.objectContaining({
+        phone: '+12605551006',
+      }));
+    } finally {
+      createNeighborSpy.mockRestore();
+      resolveSubjectSpy.mockRestore();
+      resolveActiveSpy.mockRestore();
+      restore();
+    }
+  });
+
+  it('creates a new neighbor when explicit metadata points to a soft-deleted neighbor', async () => {
+    const app = buildApp();
+    const { restore } = mockInboundSmsPersistence({
+      ensuredNeighborId: 'neighbor-created-1007',
+    });
+    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
+      .mockResolvedValue({
+        type: 'no_match',
+        normalizedContactPoint: '+12605551007',
+      });
+    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound')
+      .mockResolvedValue({
+        ok: true,
+        code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
+        httpStatus: 201,
+        data: {
+          neighbor: {
+            neighborId: 'neighbor-created-1007',
+            tenantId: 'tenant-connectshyft-f1',
+            orgUnitId: 'org-connectshyft-f1-east',
+            firstName: '',
+            lastName: '',
+            prefersTexting: 'UNKNOWN',
+            phones: [],
+            createdAtUtc: '2026-03-18T12:00:00.000Z',
+            updatedAtUtc: '2026-03-18T12:00:00.000Z',
+          },
+        },
+      } as any);
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildHeaders())
+        .send({
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+          threadId: 'sms-deleted-metadata-thread-1007',
+          eventType: 'sms.inbound',
+          neighborId: '00000000-0000-4000-8000-000000000107',
+          from: '+12605551007',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          correlation: {
+            neighborId: 'neighbor-created-1007',
+          },
+        },
+      });
+      expect(createNeighborSpy).toHaveBeenCalled();
+    } finally {
+      createNeighborSpy.mockRestore();
+      resolveSubjectSpy.mockRestore();
+      resolveActiveSpy.mockRestore();
+      restore();
+    }
+  });
+
+  it('accepts synthetic metadata neighborIds without DB-backed revalidation or texting-preference promotion', async () => {
+    const app = buildApp();
+    const { restore, textingPreferenceSpy } = mockInboundSmsPersistence({
+      ensuredNeighborId: 'neighbor-connectshyft-e5-atdd-e2e-001-1e781b89',
+      failOnTextingPreferenceCall: true,
+    });
+    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+      .mockRejectedValue(new Error('synthetic neighbor IDs must bypass active-neighbor persistence'));
+    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint');
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildHeaders())
+        .send({
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+          threadId: 'thread-f1-unclaimed-1001',
+          eventType: 'sms.inbound',
+          neighborId: 'neighbor-connectshyft-e5-atdd-e2e-001-1e781b89',
+          from: '+12605551008',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          correlation: {
+            neighborId: 'neighbor-connectshyft-e5-atdd-e2e-001-1e781b89',
+          },
+        },
+      });
+      expect(resolveActiveSpy).not.toHaveBeenCalled();
+      expect(textingPreferenceSpy).not.toHaveBeenCalled();
+      expect(resolveSubjectSpy).not.toHaveBeenCalled();
+    } finally {
+      resolveSubjectSpy.mockRestore();
+      resolveActiveSpy.mockRestore();
+      restore();
+    }
+  });
+
+  it('accepts synthetic thread-correlated neighborIds without DB-backed revalidation or texting-preference promotion', async () => {
+    const app = buildApp();
+    const { restore, textingPreferenceSpy } = mockInboundSmsPersistence({
+      ensuredNeighborId: 'neighbor-connectshyft-f1-1001',
+      failOnTextingPreferenceCall: true,
+    });
+    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+      .mockRejectedValue(new Error('synthetic thread-correlated neighbors must bypass active-neighbor persistence'));
+    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint');
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildHeaders())
+        .send({
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+          threadId: 'thread-f1-unclaimed-1001',
+          eventType: 'sms.inbound',
+          from: '+12605551009',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          correlation: {
+            neighborId: 'neighbor-connectshyft-f1-1001',
+          },
+        },
+      });
+      expect(resolveActiveSpy).not.toHaveBeenCalled();
+      expect(textingPreferenceSpy).not.toHaveBeenCalled();
+      expect(resolveSubjectSpy).not.toHaveBeenCalled();
+    } finally {
+      resolveSubjectSpy.mockRestore();
+      resolveActiveSpy.mockRestore();
+      restore();
+    }
   });
 
   it('records canonical outbound and inbound events and lists deterministic provider-neutral records', async () => {

@@ -1,12 +1,94 @@
 // @ts-nocheck
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
+import db from '../../../../config/knex';
+import * as canonicalEventsModule from '../../../../modules/connectshyft/canonicalEvents';
+import * as identityResolverModule from '../../../../modules/connectshyft/identityResolver';
+import * as neighborsModule from '../../../../modules/connectshyft/neighbors';
+import { AsyncConnectShyftNeighborService } from '../../../../modules/connectshyft/neighbors';
+import { AsyncConnectShyftThreadService } from '../../../../modules/connectshyft/threads';
 import * as ProviderRegistry from '../../../../modules/connectshyft/providerRegistry';
 import {
   buildApp,
   buildHeaders,
   registerProviderRegistryRouteIntegrationHooks,
 } from './connectshyft.provider-registry.test.shared';
+
+const mockInboundSmsPersistence = (neighborId: string) => {
+  const originalTransaction = db.transaction;
+  const mockedTransaction = jest.fn(async (handler: any) =>
+    handler({
+      fn: {
+        now: () => new Date('2026-03-18T12:00:00.000Z'),
+      },
+    }));
+  Object.defineProperty(db, 'transaction', {
+    value: mockedTransaction,
+  });
+  const ensureThreadSpy = jest.spyOn(
+    AsyncConnectShyftThreadService.prototype,
+    'ensureThread',
+  ).mockResolvedValue({
+    ok: true,
+    code: 'CONNECTSHYFT_THREAD_ENSURED',
+    httpStatus: 200,
+    data: {
+      thread: {
+        threadId: '00000000-0000-4000-8000-000000000222',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        neighborId,
+        state: 'UNCLAIMED',
+        summary: '',
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        lastInboundCsNumberId: 'fixture-last-inbound',
+        preferredOutboundCsNumberId: 'fixture-preferred-outbound',
+        claimedByUserId: null,
+        createdAtUtc: '2026-03-18T12:00:00.000Z',
+        updatedAtUtc: '2026-03-18T12:00:00.000Z',
+      },
+    },
+  } as any);
+  const canonicalEventSpy = jest.spyOn(
+    canonicalEventsModule,
+    'recordConnectShyftCanonicalEvent',
+  ).mockResolvedValue({
+    eventId: 'canonical-event-inbound-2',
+    aggregateId: '00000000-0000-4000-8000-000000000222',
+    aggregateType: 'Thread',
+    eventType: 'connectshyft.inbound.sms_appended',
+    payload: {},
+    occurredAtUtc: '2026-03-18T12:00:00.000Z',
+  } as any);
+  const textingPreferenceSpy = jest.spyOn(
+    AsyncConnectShyftNeighborService.prototype,
+    'applyInboundSmsTextingPreference',
+  ).mockResolvedValue({
+    ok: true,
+    updated: false,
+    neighbor: {
+      neighborId,
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      firstName: '',
+      lastName: '',
+      prefersTexting: 'YES',
+      phones: [],
+      createdAtUtc: '2026-03-18T12:00:00.000Z',
+      updatedAtUtc: '2026-03-18T12:00:00.000Z',
+    },
+  } as any);
+
+  return () => {
+    textingPreferenceSpy.mockRestore();
+    canonicalEventSpy.mockRestore();
+    ensureThreadSpy.mockRestore();
+    Object.defineProperty(db, 'transaction', {
+      value: originalTransaction,
+    });
+  };
+};
 
 describe('connectshyft provider adapter registry route integration - guardrails', () => {
   registerProviderRegistryRouteIntegrationHooks();
@@ -139,6 +221,105 @@ describe('connectshyft provider adapter registry route integration - guardrails'
           threadId: 'thread-f2-unclaimed-1001',
           providerLegId,
         },
+      },
+    });
+  });
+
+  it('ignores metadata alias keys and continues to thread correlation', async () => {
+    const app = buildApp();
+    const restore = mockInboundSmsPersistence('neighbor-connectshyft-f1-1001');
+    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound');
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildHeaders())
+        .send({
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+          threadId: 'thread-f1-unclaimed-1001',
+          eventType: 'sms.inbound',
+          neighbor_id: 'neighbor-alias-ignored-2001',
+          from: '+12605552099',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          correlation: {
+            neighborId: 'neighbor-connectshyft-f1-1001',
+          },
+        },
+      });
+      expect(resolveActiveSpy).not.toHaveBeenCalled();
+    } finally {
+      resolveActiveSpy.mockRestore();
+      restore();
+    }
+  });
+
+  it('refuses inbound SMS when multiple active neighbors share the same sender phone', async () => {
+    const app = buildApp();
+    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+      .mockResolvedValue(null);
+    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
+      .mockResolvedValue({
+        type: 'multiple_matches',
+        candidateNeighborIds: ['neighbor-a-2003', 'neighbor-b-2003'],
+        normalizedContactPoint: '+12605552003',
+      });
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildHeaders())
+        .send({
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+          threadId: 'sms-ambiguous-thread-2003',
+          eventType: 'sms.inbound',
+          from: '+12605552003',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: false,
+        code: 'IDENTITY_MATCH_AMBIGUOUS',
+        refusalType: 'business',
+        data: {
+          reason: 'neighbor_ambiguous',
+          candidateNeighborIds: ['neighbor-a-2003', 'neighbor-b-2003'],
+        },
+      });
+    } finally {
+      resolveSubjectSpy.mockRestore();
+      resolveActiveSpy.mockRestore();
+    }
+  });
+
+  it('refuses inbound SMS when the sender phone is malformed', async () => {
+    const app = buildApp();
+
+    const response = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildHeaders())
+      .send({
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        threadId: 'sms-invalid-phone-thread-2004',
+        eventType: 'sms.inbound',
+        from: 'not-a-phone-number',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_PHONE_INVALID_FORMAT',
+      refusalType: 'business',
+      data: {
+        reason: 'sender_phone_invalid',
       },
     });
   });

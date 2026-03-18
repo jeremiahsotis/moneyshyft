@@ -28,7 +28,10 @@ import {
 import {
   AsyncConnectShyftNeighborService,
   KnexConnectShyftNeighborStore,
+  applyInboundSmsTextingPreference,
   connectShyftNeighborServiceAsync,
+  createNeighborFromInbound,
+  resolveActiveNeighborForInbound,
   type ConnectShyftIdentityMatchDecision,
   type ConnectShyftNeighborPhone,
   type ConnectShyftNeighborPhoneInput,
@@ -91,7 +94,9 @@ import {
   buildConnectShyftInboundSmsCanonicalPayload,
   extractConnectShyftInboundSmsNeighborId,
   mapConnectShyftInboundSmsWebhookToDomainEvent,
+  resolveConnectShyftInboundSmsSenderPhone,
 } from '../../../modules/connectshyft/inboundSms';
+import { resolveSubjectByContactPoint } from '../../../modules/connectshyft/identityResolver';
 import {
   CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
   CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
@@ -2850,6 +2855,9 @@ const persistInboundSmsEnsureAndCanonicalEvent = async (input: {
     const txThreadService = new AsyncConnectShyftThreadService(
       new KnexConnectShyftThreadStore(trx as unknown as Knex),
     );
+    const txNeighborService = new AsyncConnectShyftNeighborService(
+      new KnexConnectShyftNeighborStore(trx as unknown as Knex),
+    );
 
     let ensured: Awaited<ReturnType<typeof txThreadService.ensureThread>>;
     try {
@@ -2885,6 +2893,16 @@ const persistInboundSmsEnsureAndCanonicalEvent = async (input: {
         actorUserId: input.actorUserId,
         db: trx as unknown as Knex,
       });
+
+      if (UUID_PATTERN.test(input.neighborId)) {
+        const textingPreference = await txNeighborService.applyInboundSmsTextingPreference({
+          tenantId: input.tenantId,
+          neighborId: input.neighborId,
+        });
+        if (!textingPreference.ok) {
+          throw new InboundSmsCanonicalPersistenceError(textingPreference.message);
+        }
+      }
 
       return {
         thread: ensuredThread,
@@ -4199,6 +4217,27 @@ const parseThreadEnsureBody = (req: Request) => ({
 
 const isValidConnectShyftNeighborIdentifier = (neighborId: string): boolean => {
   return UUID_PATTERN.test(neighborId) || CONNECTSHYFT_NEIGHBOR_SLUG_PATTERN.test(neighborId);
+};
+
+const resolveInboundReusableNeighborId = async (input: {
+  tenantId: string;
+  neighborId: string;
+}): Promise<string | null> => {
+  const normalizedNeighborId = normalizeConnectShyftNeighborIdentifier(input.neighborId);
+  if (!isValidConnectShyftNeighborIdentifier(normalizedNeighborId)) {
+    return null;
+  }
+
+  if (!UUID_PATTERN.test(normalizedNeighborId)) {
+    return normalizedNeighborId;
+  }
+
+  const resolvedNeighbor = await resolveActiveNeighborForInbound({
+    tenantId: input.tenantId,
+    neighborId: normalizedNeighborId,
+  });
+
+  return resolvedNeighbor?.neighborId || null;
 };
 
 const resolveNeighborIdForThreadCorrelation = async (input: {
@@ -8947,18 +8986,289 @@ const handleInboundWebhook = async (
     const extractedNeighborId = normalizeConnectShyftNeighborIdentifier(
       extractConnectShyftInboundSmsNeighborId(req.body) || '',
     );
-    const normalizedExtractedNeighborId = extractedNeighborId
+    const explicitNeighborId = extractedNeighborId
       && isValidConnectShyftNeighborIdentifier(extractedNeighborId)
       ? extractedNeighborId
       : null;
-    const correlatedNeighborId = normalizedExtractedNeighborId
-      ? null
-      : await resolveNeighborIdForThreadCorrelation({
-        tenantId,
-        orgUnitId,
-        threadId,
+    let neighborId: string | null = null;
+    let normalizedSenderPhone: string | null = null;
+
+    try {
+      if (explicitNeighborId) {
+        const resolvedExplicitNeighborId = await resolveInboundReusableNeighborId({
+          tenantId,
+          neighborId: explicitNeighborId,
+        });
+        neighborId = resolvedExplicitNeighborId;
+      }
+
+      if (!neighborId) {
+        const correlatedNeighborId = await resolveNeighborIdForThreadCorrelation({
+          tenantId,
+          orgUnitId,
+          threadId,
+        });
+        if (correlatedNeighborId) {
+          const resolvedCorrelatedNeighborId = await resolveInboundReusableNeighborId({
+            tenantId,
+            neighborId: correlatedNeighborId,
+          });
+          neighborId = resolvedCorrelatedNeighborId;
+        }
+      }
+    } catch (error) {
+      await markWebhookReceipt('FAILED_RETRYABLE', 'neighbor_resolution_unavailable');
+      refusal(res, {
+        code: 'CONNECTSHYFT_NEIGHBOR_PERSISTENCE_UNAVAILABLE',
+        message: error instanceof Error ? error.message : 'Neighbor resolution is temporarily unavailable.',
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          providerResolution: {
+            ...providerSelection.providerResolution,
+            adapterInvoked: true,
+          },
+          correlation: {
+            source: correlation.source,
+            deterministic: true,
+            threadId,
+            tenantId,
+            orgUnitId,
+            providerLegId: correlation.providerLegId,
+            providerMessageId: correlation.providerMessageId,
+            providerEventId: correlation.providerEventId,
+            providerNumberE164: correlation.providerNumberE164,
+          },
+          replaySafe: {
+            duplicate: false,
+            suppressedDomainWrites: false,
+            dedupeKey: webhookReceipt.dedupeKey,
+          },
+          sideEffects: {
+            lifecycleMutationApplied: false,
+            canonicalEventPersisted: false,
+            outboxPersisted: false,
+          },
+          reason: 'neighbor_resolution_unavailable',
+        },
       });
-    const neighborId = normalizedExtractedNeighborId || correlatedNeighborId;
+      return;
+    }
+
+    if (!neighborId) {
+      const senderPhone = resolveConnectShyftInboundSmsSenderPhone(req.body);
+      if (!senderPhone.ok) {
+        await markWebhookReceipt('FAILED_TERMINAL', senderPhone.code === 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED'
+          ? 'sender_phone_required'
+          : 'sender_phone_invalid');
+        refusal(res, {
+          code: senderPhone.code,
+          message: senderPhone.message,
+          refusalType: 'business',
+          httpStatus: 200,
+          data: {
+            providerResolution: {
+              ...providerSelection.providerResolution,
+              adapterInvoked: true,
+            },
+            correlation: {
+              source: correlation.source,
+              deterministic: true,
+              threadId,
+              tenantId,
+              orgUnitId,
+              providerLegId: correlation.providerLegId,
+              providerMessageId: correlation.providerMessageId,
+              providerEventId: correlation.providerEventId,
+              providerNumberE164: correlation.providerNumberE164,
+            },
+            replaySafe: {
+              duplicate: false,
+              suppressedDomainWrites: false,
+              dedupeKey: webhookReceipt.dedupeKey,
+            },
+            sideEffects: {
+              lifecycleMutationApplied: false,
+              canonicalEventPersisted: false,
+              outboxPersisted: false,
+            },
+            timelineOutcome: {
+              eventName: null,
+              routingDecision: 'refused',
+            },
+            reason: senderPhone.code === 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED'
+              ? 'sender_phone_required'
+              : 'sender_phone_invalid',
+          },
+        });
+        return;
+      }
+
+      normalizedSenderPhone = senderPhone.normalizedPhone;
+
+      try {
+        const subjectResolution = await resolveSubjectByContactPoint({
+          tenantId,
+          orgUnitId,
+          contactPoint: senderPhone.normalizedPhone,
+        });
+        normalizedSenderPhone = subjectResolution.normalizedContactPoint;
+
+        if (subjectResolution.type === 'single_match') {
+          neighborId = subjectResolution.neighborId;
+        } else if (subjectResolution.type === 'no_match') {
+          const createdNeighbor = await createNeighborFromInbound({
+            tenantId,
+            orgUnitId,
+            phone: subjectResolution.normalizedContactPoint,
+            correlationId: webhookReceipt.dedupeKey
+              || correlation.providerMessageId
+              || correlation.providerEventId
+              || correlation.providerLegId
+              || randomUUID(),
+            providerName: providerSelection.providerResolution.resolvedProvider,
+            providerReferenceId: correlation.providerMessageId
+              || correlation.providerEventId
+              || correlation.providerLegId,
+            requestFingerprint: createHash('sha256')
+              .update(subjectResolution.normalizedContactPoint)
+              .digest('hex'),
+          });
+          if (!createdNeighbor.ok) {
+            const lifecycleReason = createdNeighbor.code.includes('PERSISTENCE_UNAVAILABLE')
+              ? 'neighbor_resolution_unavailable'
+              : 'neighbor_create_refused';
+            await markWebhookReceipt(
+              createdNeighbor.code.includes('PERSISTENCE_UNAVAILABLE') ? 'FAILED_RETRYABLE' : 'FAILED_TERMINAL',
+              lifecycleReason,
+            );
+            refusal(res, {
+              code: createdNeighbor.code,
+              message: createdNeighbor.message,
+              refusalType: 'business',
+              httpStatus: 200,
+              data: {
+                providerResolution: {
+                  ...providerSelection.providerResolution,
+                  adapterInvoked: true,
+                },
+                correlation: {
+                  source: correlation.source,
+                  deterministic: true,
+                  threadId,
+                  tenantId,
+                  orgUnitId,
+                  providerLegId: correlation.providerLegId,
+                  providerMessageId: correlation.providerMessageId,
+                  providerEventId: correlation.providerEventId,
+                  providerNumberE164: correlation.providerNumberE164,
+                },
+                replaySafe: {
+                  duplicate: false,
+                  suppressedDomainWrites: false,
+                  dedupeKey: webhookReceipt.dedupeKey,
+                },
+                sideEffects: {
+                  lifecycleMutationApplied: false,
+                  canonicalEventPersisted: false,
+                  outboxPersisted: false,
+                },
+                timelineOutcome: {
+                  eventName: null,
+                  routingDecision: 'refused',
+                },
+                senderPhone: subjectResolution.normalizedContactPoint,
+                reason: lifecycleReason,
+              },
+            });
+            return;
+          }
+          neighborId = createdNeighbor.data.neighbor.neighborId;
+        } else {
+          await markWebhookReceipt('FAILED_TERMINAL', 'neighbor_ambiguous');
+          refusal(res, {
+            code: IDENTITY_MATCH_AMBIGUOUS_CODE,
+            message: 'Inbound SMS sender phone matches multiple neighbors. Resolve manually before retrying.',
+            refusalType: 'business',
+            httpStatus: 200,
+            data: {
+              providerResolution: {
+                ...providerSelection.providerResolution,
+                adapterInvoked: true,
+              },
+              correlation: {
+                source: correlation.source,
+                deterministic: true,
+                threadId,
+                tenantId,
+                orgUnitId,
+                providerLegId: correlation.providerLegId,
+                providerMessageId: correlation.providerMessageId,
+                providerEventId: correlation.providerEventId,
+                providerNumberE164: correlation.providerNumberE164,
+              },
+              replaySafe: {
+                duplicate: false,
+                suppressedDomainWrites: false,
+                dedupeKey: webhookReceipt.dedupeKey,
+              },
+              sideEffects: {
+                lifecycleMutationApplied: false,
+                canonicalEventPersisted: false,
+                outboxPersisted: false,
+              },
+              timelineOutcome: {
+                eventName: null,
+                routingDecision: 'refused',
+              },
+              senderPhone: subjectResolution.normalizedContactPoint,
+              candidateNeighborIds: subjectResolution.candidateNeighborIds,
+              reason: 'neighbor_ambiguous',
+            },
+          });
+          return;
+        }
+      } catch (error) {
+        await markWebhookReceipt('FAILED_RETRYABLE', 'neighbor_resolution_unavailable');
+        refusal(res, {
+          code: 'CONNECTSHYFT_NEIGHBOR_PERSISTENCE_UNAVAILABLE',
+          message: error instanceof Error ? error.message : 'Neighbor resolution is temporarily unavailable.',
+          refusalType: 'business',
+          httpStatus: 200,
+          data: {
+            providerResolution: {
+              ...providerSelection.providerResolution,
+              adapterInvoked: true,
+            },
+            correlation: {
+              source: correlation.source,
+              deterministic: true,
+              threadId,
+              tenantId,
+              orgUnitId,
+              providerLegId: correlation.providerLegId,
+              providerMessageId: correlation.providerMessageId,
+              providerEventId: correlation.providerEventId,
+              providerNumberE164: correlation.providerNumberE164,
+            },
+            replaySafe: {
+              duplicate: false,
+              suppressedDomainWrites: false,
+              dedupeKey: webhookReceipt.dedupeKey,
+            },
+            sideEffects: {
+              lifecycleMutationApplied: false,
+              canonicalEventPersisted: false,
+              outboxPersisted: false,
+            },
+            senderPhone: normalizedSenderPhone,
+            reason: 'neighbor_resolution_unavailable',
+          },
+        });
+        return;
+      }
+    }
+
     if (!neighborId) {
       await markWebhookReceipt('FAILED_TERMINAL', 'neighbor_unresolved');
       refusal(res, {
@@ -8996,6 +9306,7 @@ const handleInboundWebhook = async (
             eventName: null,
             routingDecision: 'refused',
           },
+          senderPhone: normalizedSenderPhone,
           reason: 'neighbor_unresolved',
         },
       });
