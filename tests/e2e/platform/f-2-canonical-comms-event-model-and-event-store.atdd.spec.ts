@@ -1,10 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../support/fixtures/connectShyftStoryF2.fixture';
 import { login } from '../../helpers/auth';
 import { apiRequest } from '../../support/helpers/apiClient';
 import {
-  createStoryF2Context,
-  createStoryF2Headers,
   type StoryF2Context,
 } from '../../support/factories/connectShyftStoryF2Factory';
 
@@ -70,17 +68,10 @@ test.describe(
   () => {
     test(
       '[P0] thread detail timeline renders canonical event rows with provider-neutral labels and deterministic chronological ordering @P0',
-      async ({ page, request }) => {
-        const context = createStoryF2Context();
-        const operatorHeaders = createStoryF2Headers(context, {
-          role: 'ORGUNIT_MEMBER',
-          orgUnitMemberships: [context.orgUnitId],
-        });
-        const adminHeaders = createStoryF2Headers(context, {
-          role: 'ORGUNIT_ADMIN',
-          userId: context.adminUserId,
-          orgUnitMemberships: [context.orgUnitId],
-        });
+      async ({ page, request, storyF2Context, storyF2OperatorHeaders, storyF2AdminHeaders }) => {
+        const context = storyF2Context;
+        const operatorHeaders = storyF2OperatorHeaders;
+        const adminHeaders = storyF2AdminHeaders;
         await login(page);
 
         await page.goto(

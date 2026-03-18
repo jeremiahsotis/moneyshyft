@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test } from '../../support/fixtures/connectShyftStoryG2.fixture';
 import {
   expect,
   createStoryG2Context,
@@ -45,8 +45,9 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
 
   test(
     '[G2-AUTO-E2E-205][P1] inbox send-message and make-call actions launch neighbor workflows and submit outbound requests with deterministic phone selection @P1',
-    async ({ page }) => {
-      const context = createStoryG2Context();
+    async ({ page, storyG2Context, storyG2SmsSenderReady }) => {
+      void storyG2SmsSenderReady;
+      const context = storyG2Context;
       const relatedNeighborId = 'neighbor-g2-related-1001';
       const relatedPhone = '+12605550110';
       const unrelatedPhone = '+12605550199';
@@ -218,8 +219,9 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
 
   test(
     '[G2-AUTO-E2E-206][P1] thread-surface composer dispatches outbound message through the selected thread endpoint with deterministic payload body @P1',
-    async ({ page }) => {
-      const context = createStoryG2Context();
+    async ({ page, storyG2Context, storyG2SmsSenderReady }) => {
+      void storyG2SmsSenderReady;
+      const context = storyG2Context;
       await openStoryG2Surface({
         page,
         context,

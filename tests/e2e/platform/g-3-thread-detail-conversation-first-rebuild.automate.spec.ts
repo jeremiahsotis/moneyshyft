@@ -1,7 +1,6 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../support/fixtures/connectShyftStoryG3.fixture';
 import { login } from '../../helpers/auth';
 import {
-  createStoryG3Context,
   type StoryG3Context,
 } from '../../support/factories/connectShyftStoryG3Factory';
 
@@ -50,8 +49,9 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (Automate E2E 
 
   test(
     '[G3-AUTO-E2E-201][P0] closed outbound send-message reopens same thread and requires override reason before dispatch @P0',
-    async ({ page }) => {
-      const context = createStoryG3Context();
+    async ({ page, storyG3Context, storyG3SmsSenderReady }) => {
+      void storyG3SmsSenderReady;
+      const context = storyG3Context;
       await login(page);
 
       await page.goto(
@@ -73,8 +73,9 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (Automate E2E 
 
   test(
     '[G3-AUTO-E2E-202][P1] override submission clears refusal state and surfaces contextual success plus audit metadata @P1',
-    async ({ page }) => {
-      const context = createStoryG3Context();
+    async ({ page, storyG3Context, storyG3SmsSenderReady }) => {
+      void storyG3SmsSenderReady;
+      const context = storyG3Context;
       await login(page);
 
       await page.goto(
@@ -109,8 +110,9 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (Automate E2E 
 
   test(
     '[G3-AUTO-E2E-203][P1] viewer role sees no lifecycle actions and receives deterministic access-level refusal guidance @P1',
-    async ({ page }) => {
-      const context = createStoryG3Context();
+    async ({ page, storyG3Context, storyG3SmsSenderReady }) => {
+      void storyG3SmsSenderReady;
+      const context = storyG3Context;
       await login(page);
 
       await page.goto(
@@ -137,8 +139,9 @@ test.describe('Story g.3 Thread Detail Conversation-First Rebuild (Automate E2E 
 
   test(
     '[G3-AUTO-E2E-204][P1] non-voicemail claimed timelines keep conversation events without synthesizing voicemail entries @P1',
-    async ({ page }) => {
-      const context = createStoryG3Context();
+    async ({ page, storyG3Context, storyG3SmsSenderReady }) => {
+      void storyG3SmsSenderReady;
+      const context = storyG3Context;
       await login(page);
 
       await page.goto(

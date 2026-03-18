@@ -1,13 +1,9 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../support/fixtures/connectShyftStoryF2.fixture';
 import { apiRequest } from '../../support/helpers/apiClient';
 import {
   createStoryF1Context,
   createStoryF1Headers,
 } from '../../support/factories/connectShyftStoryF1Factory';
-import {
-  createStoryF2Context,
-  createStoryF2Headers,
-} from '../../support/factories/connectShyftStoryF2Factory';
 import { createCiPolicyContext } from '../../support/factories/ciPolicyContextFactory';
 import { runPolicyScriptInTempRepo } from '../../support/utils/policyScriptTestHarness';
 import { deterministicProviderEventId } from '../../support/utils/deterministicTestIds';
@@ -120,17 +116,10 @@ test.describe(
 
     test(
       '[P0] inbound webhook journey preserves deterministic correlation, canonical translation, and replay-safe duplicate suppression for telnyx cutover flows @P0',
-      async ({ request }, testInfo) => {
-        const context = createStoryF2Context();
-        const operatorHeaders = createStoryF2Headers(context, {
-          role: 'ORGUNIT_MEMBER',
-          orgUnitMemberships: [context.orgUnitId],
-        });
-        const adminHeaders = createStoryF2Headers(context, {
-          role: 'ORGUNIT_ADMIN',
-          userId: context.adminUserId,
-          orgUnitMemberships: [context.orgUnitId],
-        });
+      async ({ request, storyF2Context, storyF2OperatorHeaders, storyF2AdminHeaders }, testInfo) => {
+        const context = storyF2Context;
+        const operatorHeaders = storyF2OperatorHeaders;
+        const adminHeaders = storyF2AdminHeaders;
 
         const outboundResponse = await apiRequest(request, {
           method: 'POST',

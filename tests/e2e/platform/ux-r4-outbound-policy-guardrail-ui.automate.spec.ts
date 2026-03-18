@@ -1,7 +1,6 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from '../../support/fixtures/connectShyftStoryUxR4.fixture';
 import { login } from '../../helpers/auth';
 import {
-  createStoryUxR4Context,
   type StoryUxR4Context,
 } from '../../support/factories/connectShyftStoryUxR4Factory';
 
@@ -41,8 +40,9 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
 
   test(
     '[UXR4-AUTOMATE-E2E-201][P0] closed prefers_texting NO send action reopens same thread and opens override modal before dispatch @P0',
-    async ({ page }) => {
-      const context = createStoryUxR4Context();
+    async ({ page, storyUxR4Context, storyUxR4SmsSenderReady }) => {
+      void storyUxR4SmsSenderReady;
+      const context = storyUxR4Context;
       await login(page);
 
       // Given a CLOSED prefers_texting=NO thread detail.
@@ -74,8 +74,9 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
 
   test(
     '[UXR4-AUTOMATE-E2E-202][P1] tenant-admin claimed-thread action surface remains canonical with deterministic ordering @P1',
-    async ({ page }) => {
-      const context = createStoryUxR4Context();
+    async ({ page, storyUxR4Context, storyUxR4SmsSenderReady }) => {
+      void storyUxR4SmsSenderReady;
+      const context = storyUxR4Context;
       await login(page);
 
       // Given tenant-admin context on a CLAIMED thread owned by another operator.
@@ -102,8 +103,9 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
 
   test(
     '[UXR4-AUTOMATE-E2E-203][P1] submitting a valid override from the modal dispatches and surfaces policy audit reason in accessible success feedback @P1',
-    async ({ page }) => {
-      const context = createStoryUxR4Context();
+    async ({ page, storyUxR4Context, storyUxR4SmsSenderReady }) => {
+      void storyUxR4SmsSenderReady;
+      const context = storyUxR4Context;
       await login(page);
 
       // Given an UNCLAIMED prefers_texting=NO thread where override is required.
@@ -146,8 +148,9 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
 
   test(
     '[UXR4-AUTOMATE-E2E-204][P1] thread detail renders HTTP 200 ok=false outbound results as refusals instead of transport errors @P1',
-    async ({ page }) => {
-      const context = createStoryUxR4Context();
+    async ({ page, storyUxR4Context, storyUxR4SmsSenderReady }) => {
+      void storyUxR4SmsSenderReady;
+      const context = storyUxR4Context;
       await login(page);
 
       await page.route('**/api/v1/connectshyft/threads/**/messages', async (route) => {
@@ -210,8 +213,9 @@ test.describe('Story ux-r4 automate - outbound policy guardrail UI journeys', ()
 
   test(
     '[UXR4-AUTOMATE-E2E-205][P1] thread detail keeps transport failures visually distinct from business refusals for outbound actions @P1',
-    async ({ page }) => {
-      const context = createStoryUxR4Context();
+    async ({ page, storyUxR4Context, storyUxR4SmsSenderReady }) => {
+      void storyUxR4SmsSenderReady;
+      const context = storyUxR4Context;
       await login(page);
 
       await page.route('**/api/v1/connectshyft/threads/**/messages', async (route) => {

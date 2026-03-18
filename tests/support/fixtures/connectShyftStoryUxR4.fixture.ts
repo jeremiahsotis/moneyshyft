@@ -4,6 +4,7 @@ import {
   createStoryUxR4Headers,
   type StoryUxR4Context,
 } from '../factories/connectShyftStoryUxR4Factory';
+import { ensureSingleActiveConnectShyftSmsSenderMapping } from '../helpers/connectShyftNumberMappingTestHelpers';
 
 const sanitizeScopeToken = (value: string): string => value
   .toLowerCase()
@@ -14,6 +15,7 @@ const sanitizeScopeToken = (value: string): string => value
 
 type StoryUxR4Fixtures = {
   storyUxR4Context: StoryUxR4Context;
+  storyUxR4SmsSenderReady: void;
   storyUxR4OperatorHeaders: Record<string, string>;
   storyUxR4TenantAdminHeaders: Record<string, string>;
   storyUxR4ViewerHeaders: Record<string, string>;
@@ -47,7 +49,22 @@ export const test = base.extend<StoryUxR4Fixtures>({
     const scopeId = `w${testInfo.workerIndex}-r${testInfo.retry}-${titleScope || 'ux-r4'}`;
     await use(createStoryUxR4Context({ scopeId }));
   },
-  storyUxR4OperatorHeaders: async ({ storyUxR4Context }, use) => {
+  storyUxR4SmsSenderReady: async ({ request, storyUxR4Context }, use) => {
+    await ensureSingleActiveConnectShyftSmsSenderMapping({
+      request,
+      headers: createStoryUxR4Headers(storyUxR4Context, {
+        role: 'ORGUNIT_ADMIN',
+        userId: storyUxR4Context.adminUserId,
+        orgUnitMemberships: [storyUxR4Context.orgUnitId],
+      }),
+      orgUnitId: storyUxR4Context.orgUnitId,
+      preferredNumber: '+12605550196',
+      preferredLabel: 'Story UXR4 SMS sender',
+    });
+    await use();
+  },
+  storyUxR4OperatorHeaders: async ({ storyUxR4SmsSenderReady, storyUxR4Context }, use) => {
+    void storyUxR4SmsSenderReady;
     await use(
       createStoryUxR4Headers(storyUxR4Context, {
         role: 'ORGUNIT_MEMBER',
@@ -55,7 +72,8 @@ export const test = base.extend<StoryUxR4Fixtures>({
       }),
     );
   },
-  storyUxR4TenantAdminHeaders: async ({ storyUxR4Context }, use) => {
+  storyUxR4TenantAdminHeaders: async ({ storyUxR4SmsSenderReady, storyUxR4Context }, use) => {
+    void storyUxR4SmsSenderReady;
     await use(
       createStoryUxR4Headers(storyUxR4Context, {
         role: 'TENANT_ADMIN',
@@ -64,7 +82,8 @@ export const test = base.extend<StoryUxR4Fixtures>({
       }),
     );
   },
-  storyUxR4ViewerHeaders: async ({ storyUxR4Context }, use) => {
+  storyUxR4ViewerHeaders: async ({ storyUxR4SmsSenderReady, storyUxR4Context }, use) => {
+    void storyUxR4SmsSenderReady;
     await use(
       createStoryUxR4Headers(storyUxR4Context, {
         role: 'TENANT_VIEWER',
