@@ -1,4 +1,5 @@
 import { generateKeyPairSync, sign as signPayload } from 'node:crypto';
+import * as telephonyInfrastructure from '../../../../../../infrastructure/communications';
 import {
   buildConnectShyftWebhookVerificationInput,
   ConnectShyftProviderDispatchPolicyError,
@@ -40,6 +41,7 @@ describe('connectshyft provider registry', () => {
   let previousProviderRolloutAllowlist: string | undefined;
 
   beforeEach(() => {
+    jest.restoreAllMocks();
     previousNodeEnv = process.env.NODE_ENV;
     previousEnableFlags = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
     previousTelnyxPublicKey = process.env.TELNYX_PUBLIC_KEY;
@@ -435,6 +437,74 @@ describe('connectshyft provider registry', () => {
       adapterInvoked: true,
       providerBranchingInDomain: false,
     });
+  });
+
+  it('preserves targetPhone unchanged across providerRegistry.sendSms', async () => {
+    const baseSendSms = jest.fn(async () => ({
+      providerKey: 'telnyx',
+      channel: 'message' as const,
+      providerLegId: null,
+      providerMessageId: 'provider-message-2002',
+      providerRequestId: 'req-sms-2002',
+      adapterInvoked: true as const,
+      providerBranchingInDomain: false as const,
+      requestedAt: '2026-03-11T12:08:00.000Z',
+    }));
+    const resolveAdapterSpy = jest.spyOn(telephonyInfrastructure, 'resolveTelephonyProviderAdapter')
+      .mockReturnValue({
+        providerKey: 'telnyx',
+        adapterInterfaceVersion: 'v1',
+        sendSms: baseSendSms,
+        startOutboundCall: jest.fn(),
+        verifyWebhook: jest.fn(() => ({ ok: true as const })),
+        translateProviderEvent: jest.fn(() => ({
+          eventType: 'CallConnected',
+          payload: {},
+          correlation: {
+            providerLegId: null,
+            providerMessageId: null,
+            providerEventId: null,
+            providerNumber: null,
+          },
+          providerNeutral: true as const,
+          providerSpecificFieldsStripped: true as const,
+          providerBranchingInDomain: false as const,
+        })),
+        endCall: jest.fn(),
+      } as any);
+
+    const result = resolveConnectShyftProviderAdapter({
+      req: buildRequest({
+        headers: {
+          'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+        },
+        body: {
+          providerKey: 'telnyx',
+        },
+      }),
+      operation: 'message',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error('Expected telnyx adapter resolution to succeed');
+    }
+
+    await result.adapter.sendSms({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: 'thread-f1-unclaimed-1001',
+      providerKey: 'telnyx',
+      body: 'Need assistance',
+      targetPhone: '+12605550111',
+    });
+
+    expect(resolveAdapterSpy).toHaveBeenCalledWith('telnyx');
+    expect(baseSendSms).toHaveBeenCalledWith(expect.objectContaining({
+      targetPhone: '+12605550111',
+      body: 'Need assistance',
+      threadId: 'thread-f1-unclaimed-1001',
+    }));
   });
 
   it('enforces bridge-only/manual retry policy at the adapter dispatch boundary', async () => {

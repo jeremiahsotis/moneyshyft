@@ -795,23 +795,29 @@ export function createTelnyxAdapter(
         })
       }
 
-      const { response, data } = await requestTelnyx({
-        options,
-        path: '/messages',
-        body: buildSmsPayload(resolveConfig(options), command),
-        idempotencyKey: command.idempotencyKey,
-      })
+      try {
+        const payload = buildSmsPayload(resolveConfig(options), command)
 
-      return assertValidSmsDispatchResult({
-        providerKey: 'telnyx',
-        channel: 'message',
-        providerLegId: null,
-        providerMessageId: normalizeString(data.data?.id),
-        providerRequestId: normalizeString(response.headers.get('x-request-id')),
-        adapterInvoked: true,
-        providerBranchingInDomain: false,
-        requestedAt: requestStartedAt,
-      })
+        const { response, data } = await requestTelnyx({
+          options,
+          path: '/messages',
+          body: payload,
+          idempotencyKey: command.idempotencyKey,
+        })
+
+        return assertValidSmsDispatchResult({
+          providerKey: 'telnyx',
+          channel: 'message',
+          providerLegId: null,
+          providerMessageId: normalizeString(data.data?.id),
+          providerRequestId: normalizeString(response.headers.get('x-request-id')),
+          adapterInvoked: true,
+          providerBranchingInDomain: false,
+          requestedAt: requestStartedAt,
+        })
+      } catch (error) {
+        throw error
+      }
     },
     async startOutboundCall(command) {
       const requestStartedAt = new Date((options.now ?? Date.now)()).toISOString()

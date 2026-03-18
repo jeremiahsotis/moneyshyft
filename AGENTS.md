@@ -102,6 +102,8 @@ Docker:
 - Shared PostgreSQL remains unchanged; no schema or migration work in this slice (018-remove-connectshyft-mirrors)
 - TypeScript (ES2022) on Node.js >=20, Vue 3 SFCs + Express, Knex, pg, Jest/ts-jest, Vue Router, Axios, shared `libs/platform` envelope helpers, shared `domains/communication` telephony contracts (019-connectshyft-master-debugging)
 - Shared PostgreSQL plus in-memory ConnectShyft stores and test fixtures (019-connectshyft-master-debugging)
+- TypeScript (ES2022) on Node.js >=20 + Express, Jest/ts-jest, shared `domains/communication` telephony contracts, ConnectShyft provider registry, Telnyx adapter (020-connectshyft-sms-handoff)
+- Shared PostgreSQL plus in-memory ConnectShyft test fixtures and ledgers (020-connectshyft-sms-handoff)
 
 ## Recent Changes
 - 001-tighten-deployment-contracts: Added TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose
