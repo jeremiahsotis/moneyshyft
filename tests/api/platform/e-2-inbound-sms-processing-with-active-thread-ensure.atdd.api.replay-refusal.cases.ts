@@ -145,11 +145,12 @@ test.describe(
     );
 
     test(
-      '[E2-ATDD-API-006][P1] inbound sms without resolvable neighbor context is refused and does not mutate timeline @P1',
+      '[E2-ATDD-API-006][P1] inbound sms without prior neighbor context creates a new neighbor and appends inbound timeline artifacts @P1',
       async ({
         request,
         storyE2Context,
         storyE2AdminHeaders,
+        storyE2OperatorHeaders,
       }, testInfo) => {
         const webhookPayload = buildSmsWebhookPayload({
           providerKey: storyE2Context.providers.enabledPrimary,
@@ -176,21 +177,52 @@ test.describe(
         const webhookBody = await webhookResponse.json();
         expect(hasRequiredEnvelopeKeys(webhookBody)).toBe(true);
         expect(webhookBody).toMatchObject({
-          ok: false,
-          code: 'CONNECTSHYFT_WEBHOOK_NEIGHBOR_UNRESOLVED',
+          ok: true,
+          code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
           data: {
+            correlation: {
+              tenantId: storyE2Context.tenantId,
+              orgUnitId: storyE2Context.orgUnitId,
+              neighborId: expect.any(String),
+            },
+            lifecycle: {
+              ensuredActiveThread: true,
+            },
+            thread: {
+              tenantId: storyE2Context.tenantId,
+              orgUnitId: storyE2Context.orgUnitId,
+              neighborId: expect.any(String),
+              state: 'UNCLAIMED',
+            },
             sideEffects: {
-              lifecycleMutationApplied: false,
-              canonicalEventPersisted: false,
+              lifecycleMutationApplied: true,
+              canonicalEventPersisted: true,
               outboxPersisted: false,
             },
-            timelineOutcome: {
-              eventName: null,
-              routingDecision: 'refused',
+            timeline: {
+              eventName: storyE2Context.eventNames.inboundSmsAppended,
+              routingDecision: 'accepted',
             },
-            reason: 'neighbor_unresolved',
           },
         });
+
+        const threadId = resolveThreadIdFromEnvelope(webhookBody);
+        expect(threadId.length).toBeGreaterThan(0);
+        expect(webhookBody.data.thread.neighborId).toBe(webhookBody.data.correlation.neighborId);
+
+        const timeline = await fetchThreadTimeline({
+          request,
+          context: storyE2Context,
+          operatorHeaders: storyE2OperatorHeaders,
+          threadId,
+        });
+        expect(timeline).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              eventName: storyE2Context.eventNames.inboundSmsAppended,
+            }),
+          ]),
+        );
       },
     );
   },
