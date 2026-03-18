@@ -725,13 +725,6 @@ const createGuardrailedAdapter = (
   providerKey: baseAdapter.providerKey,
   adapterInterfaceVersion: baseAdapter.adapterInterfaceVersion,
   async sendSms(command) {
-    console.log('CONNECTSHYFT_PROVIDER_WRAPPER_SENDSMS', {
-      providerKey: baseAdapter.providerKey,
-      threadId: command.threadId,
-      body: command.body,
-      targetPhone: command.targetPhone,
-      idempotencyKey: command.idempotencyKey,
-    });
     return baseAdapter.sendSms(command);
   },
   async startOutboundCall(command) {

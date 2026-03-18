@@ -271,6 +271,36 @@ describe('Telnyx adapter', () => {
     })
   })
 
+  it('treats missing targetPhone as a defensive invalid-request guard', async () => {
+    const fetchMock: jest.MockedFunction<typeof fetch> = jest.fn()
+
+    const adapter = createTelnyxAdapter({
+      apiKey: 'telnyx-test-key',
+      fromNumber: '+12605550199',
+      fetchImpl: fetchMock,
+    })
+
+    await expect(
+      adapter.sendSms({
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        threadId: 'thread-f1-unclaimed-1001',
+        providerKey: 'telnyx',
+        body: 'Need assistance',
+      }),
+    ).rejects.toMatchObject({
+      message: 'Telnyx dispatch requires targetPhone for provider-backed delivery.',
+      classification: {
+        providerKey: 'telnyx',
+        category: 'invalid_request',
+        retryable: false,
+        httpStatus: null,
+        providerCode: null,
+      },
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('verifies Telnyx webhook signatures with Ed25519 public keys', () => {
     const { publicKey, privateKey } = generateKeyPairSync('ed25519')
     const publicKeyPem = publicKey.export({

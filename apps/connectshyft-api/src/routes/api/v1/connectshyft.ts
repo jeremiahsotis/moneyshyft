@@ -7109,14 +7109,6 @@ const performOutboundAction = async (
     }
 
     outboundMessageTargetPhone = smsTargetResolution.targetPhone;
-    console.log('SMS_TARGET_AFTER_RESOLUTION', {
-      threadId,
-      resolvedThreadNeighborId,
-      threadNeighborId: thread.neighborId,
-      smsTargetResolution,
-      outboundMessageTargetPhone,
-      body: outboundMessagePolicy?.body || '',
-    });
     const dispatchReadySmsTarget = ensureConnectShyftDispatchReadySmsTarget({
       resolvedTargetPhone: outboundMessageTargetPhone,
       requestedTargetPhone: outboundMessagePolicy?.targetPhone || null,
@@ -7419,16 +7411,6 @@ const performOutboundAction = async (
         };
       })()
       : await (async () => {
-        console.log('SMS_DISPATCH_COMMAND', {
-          tenantId: context.tenantId,
-          orgUnitId: context.orgUnitId,
-          threadId,
-          providerKey: providerSelection.providerResolution.resolvedProvider,
-          idempotencyKey: outboundDispatchIdempotencyKey || undefined,
-          body: outboundMessagePolicy?.body || '',
-          targetPhone: outboundMessageTargetPhone || undefined,
-        });
-
         return providerSelection.adapter.sendSms({
           tenantId: context.tenantId,
           orgUnitId: context.orgUnitId,

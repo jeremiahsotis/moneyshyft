@@ -1,4 +1,5 @@
 import connectShyftRouter, {
+  ensureConnectShyftDispatchReadySmsTargetForTests,
   resetConnectShyftOutboundDispatchReplayLedgerForTests,
   resolveConnectShyftSmsTargetForTests,
 } from '../connectshyft';
@@ -39,7 +40,7 @@ const toProviderCorrelation = (payload: unknown) => {
   };
 };
 
-const sendSmsMock = jest.fn(async (command: { threadId: string }) => ({
+const sendSmsMock = jest.fn(async (command: { threadId: string; targetPhone?: string; body?: string }) => ({
   providerKey: 'telnyx',
   channel: 'message' as const,
   providerLegId: null,
@@ -406,6 +407,35 @@ describe('connectshyft outbound dispatch routes', () => {
     }));
   });
 
+  it('dispatches composer-origin SMS without request targetPhone by resolving the target server-side', async () => {
+    const response = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/messages',
+      headers: buildHeaders({
+        'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx', 'mock-sandbox']),
+      }),
+      body: {
+        body: 'Need assistance',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED',
+    });
+    expect(sendSmsMock).toHaveBeenCalledTimes(1);
+    const command = sendSmsMock.mock.calls[0]?.[0] as {
+      targetPhone?: string;
+      body?: string;
+      providerKey?: string;
+    } | undefined;
+    expect(command).toEqual(expect.objectContaining({
+      providerKey: 'telnyx',
+      body: 'Need assistance',
+    }));
+    expect(command?.targetPhone).toMatch(/^\+\d{11,15}$/);
+  });
+
   it('selects the primary active valid neighbor phone when no explicit SMS target is provided', async () => {
     jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue(
       buildResolvedNeighborResult([
@@ -568,6 +598,46 @@ describe('connectshyft outbound dispatch routes', () => {
     });
   });
 
+  it('refuses non-dispatchable SMS targets at the exported dispatch-ready helper boundary', () => {
+    expect(ensureConnectShyftDispatchReadySmsTargetForTests({
+      resolvedTargetPhone: '   ',
+      requestedTargetPhone: null,
+      threadNeighborId: '22222222-2222-4222-8222-222222222222',
+    })).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_TARGET_REQUIRED',
+      data: {
+        targetResolution: {
+          reason: 'missing_target',
+          source: 'neighbor_record',
+          neighborId: '22222222-2222-4222-8222-222222222222',
+        },
+      },
+    });
+  });
+
+  it('refuses outbound SMS before provider dispatch when the route does not hold a dispatch-ready target', async () => {
+    const response = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/messages',
+      headers: buildHeaders(),
+      body: {
+        body: 'Need assistance',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_TARGET_REQUIRED',
+      data: {
+        targetResolution: {
+          reason: 'missing_target',
+        },
+      },
+    });
+    expect(sendSmsMock).not.toHaveBeenCalled();
+  });
+
   it('keeps canonical texting preference gating ahead of SMS target dispatch behavior', async () => {
     jest.spyOn(connectShyftSmsPreferenceOverrideServiceAsync, 'resolvePreference').mockResolvedValue(
       buildResolvedSmsPreference({
@@ -712,7 +782,7 @@ describe('connectshyft outbound dispatch routes', () => {
     expect(startOutboundCallMock).not.toHaveBeenCalled();
   });
 
-  it('surfaces normalized provider failure classification without changing the top-level refusal code', async () => {
+  it('surfaces normalized provider failure classification only after a valid resolved target reaches provider dispatch', async () => {
     sendSmsMock.mockRejectedValueOnce(new TelephonyProviderFailure({
       message: 'Rate limited by provider',
       classification: {
@@ -726,11 +796,11 @@ describe('connectshyft outbound dispatch routes', () => {
 
     const response = await invokeRoute({
       url: '/threads/thread-f1-unclaimed-1001/messages',
-      headers: buildHeaders(),
+      headers: buildHeaders({
+        'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx', 'mock-sandbox']),
+      }),
       body: {
-        providerKey: 'telnyx',
         body: 'Need assistance',
-        targetPhone: '+12605550111',
       },
     });
 
@@ -748,5 +818,10 @@ describe('connectshyft outbound dispatch routes', () => {
         },
       },
     });
+    expect(sendSmsMock).toHaveBeenCalledTimes(1);
+    expect(sendSmsMock).toHaveBeenCalledWith(expect.objectContaining({
+      body: 'Need assistance',
+      targetPhone: expect.stringMatching(/^\+\d{11,15}$/),
+    }));
   });
 });
