@@ -39,7 +39,7 @@ describe('connectshyft inbound sms domain mapping', () => {
     });
   });
 
-  it('resolves neighbor id from webhook envelope aliases', () => {
+  it('resolves neighbor id only from the canonical webhook field', () => {
     expect(extractConnectShyftInboundSmsNeighborId({
       neighborId: 'neighbor-connectshyft-e2-inbound-1002',
     })).toBe('neighbor-connectshyft-e2-inbound-1002');
@@ -48,7 +48,7 @@ describe('connectshyft inbound sms domain mapping', () => {
       providerPayload: {
         neighbor_id: 'neighbor-connectshyft-e2-duplicate-1003',
       },
-    })).toBe('neighbor-connectshyft-e2-duplicate-1003');
+    })).toBeNull();
   });
 
   it('builds canonical payload with explicit sms append event naming for deterministic timeline reads', () => {
