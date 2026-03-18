@@ -2894,12 +2894,14 @@ const persistInboundSmsEnsureAndCanonicalEvent = async (input: {
         db: trx as unknown as Knex,
       });
 
-      const textingPreference = await txNeighborService.applyInboundSmsTextingPreference({
-        tenantId: input.tenantId,
-        neighborId: input.neighborId,
-      });
-      if (!textingPreference.ok) {
-        throw new InboundSmsCanonicalPersistenceError(textingPreference.message);
+      if (UUID_PATTERN.test(input.neighborId)) {
+        const textingPreference = await txNeighborService.applyInboundSmsTextingPreference({
+          tenantId: input.tenantId,
+          neighborId: input.neighborId,
+        });
+        if (!textingPreference.ok) {
+          throw new InboundSmsCanonicalPersistenceError(textingPreference.message);
+        }
       }
 
       return {
@@ -4215,6 +4217,27 @@ const parseThreadEnsureBody = (req: Request) => ({
 
 const isValidConnectShyftNeighborIdentifier = (neighborId: string): boolean => {
   return UUID_PATTERN.test(neighborId) || CONNECTSHYFT_NEIGHBOR_SLUG_PATTERN.test(neighborId);
+};
+
+const resolveInboundReusableNeighborId = async (input: {
+  tenantId: string;
+  neighborId: string;
+}): Promise<string | null> => {
+  const normalizedNeighborId = normalizeConnectShyftNeighborIdentifier(input.neighborId);
+  if (!isValidConnectShyftNeighborIdentifier(normalizedNeighborId)) {
+    return null;
+  }
+
+  if (!UUID_PATTERN.test(normalizedNeighborId)) {
+    return normalizedNeighborId;
+  }
+
+  const resolvedNeighbor = await resolveActiveNeighborForInbound({
+    tenantId: input.tenantId,
+    neighborId: normalizedNeighborId,
+  });
+
+  return resolvedNeighbor?.neighborId || null;
 };
 
 const resolveNeighborIdForThreadCorrelation = async (input: {
@@ -8972,11 +8995,11 @@ const handleInboundWebhook = async (
 
     try {
       if (explicitNeighborId) {
-        const resolvedExplicitNeighbor = await resolveActiveNeighborForInbound({
+        const resolvedExplicitNeighborId = await resolveInboundReusableNeighborId({
           tenantId,
           neighborId: explicitNeighborId,
         });
-        neighborId = resolvedExplicitNeighbor?.neighborId || null;
+        neighborId = resolvedExplicitNeighborId;
       }
 
       if (!neighborId) {
@@ -8986,11 +9009,11 @@ const handleInboundWebhook = async (
           threadId,
         });
         if (correlatedNeighborId) {
-          const resolvedCorrelatedNeighbor = await resolveActiveNeighborForInbound({
+          const resolvedCorrelatedNeighborId = await resolveInboundReusableNeighborId({
             tenantId,
             neighborId: correlatedNeighborId,
           });
-          neighborId = resolvedCorrelatedNeighbor?.neighborId || null;
+          neighborId = resolvedCorrelatedNeighborId;
         }
       }
     } catch (error) {

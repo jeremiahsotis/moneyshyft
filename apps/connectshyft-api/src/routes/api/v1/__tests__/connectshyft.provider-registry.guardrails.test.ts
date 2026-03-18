@@ -227,11 +227,8 @@ describe('connectshyft provider adapter registry route integration - guardrails'
 
   it('ignores metadata alias keys and continues to thread correlation', async () => {
     const app = buildApp();
-    const restore = mockInboundSmsPersistence('neighbor-threaded-2001');
-    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
-      .mockResolvedValueOnce({
-        neighborId: 'neighbor-threaded-2001',
-      } as any);
+    const restore = mockInboundSmsPersistence('neighbor-connectshyft-f1-1001');
+    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound');
 
     try {
       const response = await request(app)
@@ -252,15 +249,11 @@ describe('connectshyft provider adapter registry route integration - guardrails'
         code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
         data: {
           correlation: {
-            neighborId: 'neighbor-threaded-2001',
+            neighborId: 'neighbor-connectshyft-f1-1001',
           },
         },
       });
-      expect(resolveActiveSpy).toHaveBeenCalledTimes(1);
-      expect(resolveActiveSpy).toHaveBeenCalledWith({
-        tenantId: 'tenant-connectshyft-f1',
-        neighborId: 'neighbor-connectshyft-f1-1001',
-      });
+      expect(resolveActiveSpy).not.toHaveBeenCalled();
     } finally {
       resolveActiveSpy.mockRestore();
       restore();
