@@ -8,6 +8,7 @@ import {
   createStoryF2Context,
   createStoryF2Headers,
 } from '../../support/factories/connectShyftStoryF2Factory';
+import { ensureSingleActiveConnectShyftSmsSenderMapping } from '../../support/helpers/connectShyftNumberMappingTestHelpers';
 import { deterministicProviderEventId } from '../../support/utils/deterministicTestIds';
 
 const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
@@ -87,6 +88,13 @@ test.describe(
           role: 'ORGUNIT_ADMIN',
           userId: context.adminUserId,
           orgUnitMemberships: [context.orgUnitId],
+        });
+        await ensureSingleActiveConnectShyftSmsSenderMapping({
+          request,
+          headers: adminHeaders,
+          orgUnitId: context.orgUnitId,
+          preferredNumber: '+12605550191',
+          preferredLabel: 'Story F4 SMS sender',
         });
 
         const outboundResponse = await apiRequest(request, {

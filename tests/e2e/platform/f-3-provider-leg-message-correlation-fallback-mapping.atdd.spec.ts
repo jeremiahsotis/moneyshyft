@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../support/fixtures/connectShyftStoryF3.fixture';
 import { apiRequest } from '../../support/helpers/apiClient';
 import {
   createStoryF3Context,
@@ -18,6 +18,10 @@ const randomToken = (): string => randomUUID().slice(0, 8);
 test.describe(
   'Story f.3 Provider Leg/Message Correlation Fallback Mapping (ATDD E2E)',
   () => {
+    test.beforeEach(async ({ storyF3AdminHeaders: _storyF3AdminHeaders }) => {
+      void _storyF3AdminHeaders;
+    });
+
     test(
       '[P0] end-to-end webhook ingestion resolves both provider leg and provider message fallback correlations deterministically @P0',
       async ({ request }) => {

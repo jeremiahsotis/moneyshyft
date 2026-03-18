@@ -4,8 +4,10 @@ import {
   createStoryF3Headers,
   type StoryF3Context,
 } from '../factories/connectShyftStoryF3Factory';
+import { ensureSingleActiveConnectShyftSmsSenderMapping } from '../helpers/connectShyftNumberMappingTestHelpers';
 
 type StoryF3Fixtures = {
+  storyF3SmsSenderReady: void;
   storyF3Context: StoryF3Context;
   storyF3OperatorHeaders: Record<string, string>;
   storyF3AdminHeaders: Record<string, string>;
@@ -25,7 +27,21 @@ export const test = base.extend<StoryF3Fixtures>({
   storyF3Context: async ({}, use) => {
     await use(createStoryF3Context());
   },
-  storyF3OperatorHeaders: async ({ storyF3Context }, use) => {
+  storyF3SmsSenderReady: async ({ request, storyF3Context }, use) => {
+    await ensureSingleActiveConnectShyftSmsSenderMapping({
+      request,
+      headers: createStoryF3Headers(storyF3Context, {
+        role: 'ORGUNIT_ADMIN',
+        userId: storyF3Context.adminUserId,
+        orgUnitMemberships: [storyF3Context.orgUnitId],
+      }),
+      orgUnitId: storyF3Context.orgUnitId,
+      preferredNumber: '+12605550193',
+      preferredLabel: 'Story F3 SMS sender',
+    });
+    await use();
+  },
+  storyF3OperatorHeaders: async ({ storyF3SmsSenderReady, storyF3Context }, use) => {
     await use(
       createStoryF3Headers(storyF3Context, {
         role: 'ORGUNIT_MEMBER',
@@ -33,7 +49,7 @@ export const test = base.extend<StoryF3Fixtures>({
       }),
     );
   },
-  storyF3AdminHeaders: async ({ storyF3Context }, use) => {
+  storyF3AdminHeaders: async ({ storyF3SmsSenderReady, storyF3Context }, use) => {
     await use(
       createStoryF3Headers(storyF3Context, {
         role: 'ORGUNIT_ADMIN',

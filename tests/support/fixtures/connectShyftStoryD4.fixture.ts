@@ -4,8 +4,10 @@ import {
   createStoryD4Headers,
   type StoryD4Context,
 } from '../factories/connectShyftStoryD4Factory';
+import { ensureSingleActiveConnectShyftSmsSenderMapping } from '../helpers/connectShyftNumberMappingTestHelpers';
 
 type StoryD4Fixtures = {
+  storyD4SmsSenderReady: void;
   storyD4Context: StoryD4Context;
   storyD4OperatorHeaders: Record<string, string>;
   storyD4AdminHeaders: Record<string, string>;
@@ -30,7 +32,21 @@ export const test = base.extend<StoryD4Fixtures>({
   storyD4Context: async ({}, use) => {
     await use(createStoryD4Context());
   },
-  storyD4OperatorHeaders: async ({ storyD4Context }, use) => {
+  storyD4SmsSenderReady: async ({ request, storyD4Context }, use) => {
+    await ensureSingleActiveConnectShyftSmsSenderMapping({
+      request,
+      headers: createStoryD4Headers(storyD4Context, {
+        role: 'ORGUNIT_ADMIN',
+        userId: storyD4Context.adminUserId,
+        orgUnitMemberships: [storyD4Context.orgUnitId],
+      }),
+      orgUnitId: storyD4Context.orgUnitId,
+      preferredNumber: '+12605550192',
+      preferredLabel: 'Story D4 SMS sender',
+    });
+    await use();
+  },
+  storyD4OperatorHeaders: async ({ storyD4SmsSenderReady, storyD4Context }, use) => {
     await use(
       createStoryD4Headers(storyD4Context, {
         role: 'ORGUNIT_MEMBER',
@@ -38,7 +54,7 @@ export const test = base.extend<StoryD4Fixtures>({
       }),
     );
   },
-  storyD4AdminHeaders: async ({ storyD4Context }, use) => {
+  storyD4AdminHeaders: async ({ storyD4SmsSenderReady, storyD4Context }, use) => {
     await use(
       createStoryD4Headers(storyD4Context, {
         role: 'ORGUNIT_ADMIN',
@@ -47,7 +63,7 @@ export const test = base.extend<StoryD4Fixtures>({
       }),
     );
   },
-  storyD4TenantAdminHeaders: async ({ storyD4Context }, use) => {
+  storyD4TenantAdminHeaders: async ({ storyD4SmsSenderReady, storyD4Context }, use) => {
     await use(
       createStoryD4Headers(storyD4Context, {
         role: 'TENANT_ADMIN',
@@ -56,7 +72,7 @@ export const test = base.extend<StoryD4Fixtures>({
       }),
     );
   },
-  storyD4ViewerHeaders: async ({ storyD4Context }, use) => {
+  storyD4ViewerHeaders: async ({ storyD4SmsSenderReady, storyD4Context }, use) => {
     await use(
       createStoryD4Headers(storyD4Context, {
         role: 'TENANT_VIEWER',

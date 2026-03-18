@@ -237,7 +237,7 @@ test.describe(
             orgUnitId: storyF1Context.orgUnitId,
             twilioNumberE164: legacyTwilioNumberE164,
             label: 'F1 legacy number mapping compatibility check',
-            isActive: true,
+            isActive: false,
           },
         });
 
