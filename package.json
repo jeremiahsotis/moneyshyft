@@ -24,7 +24,7 @@
     "promote:production": "bash scripts/promote-to-production.sh",
     "cutover:rehearse:moneyshyft": "node scripts/moneyshyft/wp-cutover/rehearse-route-cutover.mjs",
     "cutover:shutdown:wp-writes": "node scripts/moneyshyft/wp-cutover/shutdown-wp-direct-writes.mjs",
-    "nx": "nx",
+    "nx": "node scripts/nx-shim.mjs",
     "dev:admin-api": "nx run admin-api:dev",
     "dev:admin-web": "nx run admin-web:dev",
     "dev:moneyshyft-api": "nx run moneyshyft-api:dev",

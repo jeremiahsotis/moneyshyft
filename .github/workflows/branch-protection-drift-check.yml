@@ -17,12 +17,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify merge_group trigger is enabled in core CI
+      - name: Verify modular CI workflow files exist
         run: |
-          if ! grep -Eq "^  merge_group:" .github/workflows/test.yml; then
-            echo "merge_group trigger missing from .github/workflows/test.yml"
-            exit 1
-          fi
+          test -f .github/workflows/repo-guard.yml
+          test -f .github/workflows/contracts.yml
+          test -f .github/workflows/backend-integration.yml
+          test -f .github/workflows/frontend-smoke.yml
 
       - name: Verify production branch protection required checks
         run: |
@@ -32,15 +32,10 @@ jobs:
           contexts_json="$(gh api "repos/${repo}/branches/production/protection" --jq '.required_status_checks.contexts')"
 
           expected_checks=(
-            "policy"
-            "lint"
-            "test (shard 1)"
-            "test (shard 2)"
-            "test (shard 3)"
-            "test (shard 4)"
-            "backend-jest"
-            "quality-gates"
-            "burn-in"
+            "Repo Guard"
+            "Contracts"
+            "Backend Integration"
+            "Frontend Smoke"
           )
 
           mapfile -t actual_checks < <(jq -r '.[]' <<<"$contexts_json")
