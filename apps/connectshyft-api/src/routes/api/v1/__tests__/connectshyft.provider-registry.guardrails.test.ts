@@ -262,6 +262,7 @@ describe('connectshyft provider adapter registry route integration - guardrails'
 
   it('refuses inbound SMS when multiple active neighbors share the same sender phone', async () => {
     const app = buildApp();
+    const createInboundSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound');
     const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
       .mockResolvedValue(null);
     const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
@@ -293,7 +294,9 @@ describe('connectshyft provider adapter registry route integration - guardrails'
           candidateNeighborIds: ['neighbor-a-2003', 'neighbor-b-2003'],
         },
       });
+      expect(createInboundSpy).not.toHaveBeenCalled();
     } finally {
+      createInboundSpy.mockRestore();
       resolveSubjectSpy.mockRestore();
       resolveActiveSpy.mockRestore();
     }

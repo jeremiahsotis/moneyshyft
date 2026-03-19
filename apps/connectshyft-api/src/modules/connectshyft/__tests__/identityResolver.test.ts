@@ -21,11 +21,13 @@ const buildNeighbor = (
 
 const buildResolver = (
   neighborsByTenant: Record<string, ConnectShyftIdentityBoundaryNeighbor[]>,
+  lookupByTenantAndPhone: Record<string, Record<string, ConnectShyftIdentityBoundaryNeighbor[]>> = {},
 ): ConnectShyftSubjectResolver => {
   const adapter = new AsyncInProcessConnectShyftIdentityBoundaryAdapter(
     async (tenantId) => neighborsByTenant[tenantId] || [],
     async (tenantId, normalizedContactPointValue) =>
-      (neighborsByTenant[tenantId] || []).filter((neighbor) =>
+      lookupByTenantAndPhone[tenantId]?.[normalizedContactPointValue]
+      || (neighborsByTenant[tenantId] || []).filter((neighbor) =>
         neighbor.phones.some((phone) => phone.value === normalizedContactPointValue)),
   );
 
@@ -44,6 +46,24 @@ describe('connectshyft identity resolver', () => {
       tenantId: 'tenant-a',
       orgUnitId: 'org-a',
       contactPoint: '+12605551212',
+    })).resolves.toEqual({
+      type: 'single_match',
+      neighborId: 'neighbor-1',
+      normalizedContactPoint: '+12605551212',
+    });
+  });
+
+  it('normalizes canonical formatting variants before resolving a unique phone match', async () => {
+    const resolver = buildResolver({
+      'tenant-a': [
+        buildNeighbor('neighbor-1', '+12605551212'),
+      ],
+    });
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '(260) 555-1212',
     })).resolves.toEqual({
       type: 'single_match',
       neighborId: 'neighbor-1',
@@ -84,6 +104,58 @@ describe('connectshyft identity resolver', () => {
       type: 'multiple_matches',
       candidateNeighborIds: ['neighbor-1', 'neighbor-2'],
       normalizedContactPoint: '+12605551212',
+    });
+  });
+
+  it('returns no_match when deleted-only phone rows are excluded from active lookup', async () => {
+    const resolver = buildResolver(
+      {
+        'tenant-a': [
+          buildNeighbor('neighbor-deleted-shadow', '+12605551213'),
+        ],
+      },
+      {
+        'tenant-a': {
+          '+12605551213': [],
+        },
+      },
+    );
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '+1 (260) 555-1213',
+    })).resolves.toEqual({
+      type: 'no_match',
+      normalizedContactPoint: '+12605551213',
+    });
+  });
+
+  it('returns single_match when active lookup excludes deleted duplicates and keeps the current owner', async () => {
+    const currentOwner = buildNeighbor('neighbor-current', '+12605551214');
+    const deletedShadow = buildNeighbor('neighbor-deleted-shadow', '+12605551214');
+    const resolver = buildResolver(
+      {
+        'tenant-a': [
+          currentOwner,
+          deletedShadow,
+        ],
+      },
+      {
+        'tenant-a': {
+          '+12605551214': [currentOwner],
+        },
+      },
+    );
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '260.555.1214',
+    })).resolves.toEqual({
+      type: 'single_match',
+      neighborId: 'neighbor-current',
+      normalizedContactPoint: '+12605551214',
     });
   });
 

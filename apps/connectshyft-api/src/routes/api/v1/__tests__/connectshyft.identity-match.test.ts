@@ -200,6 +200,89 @@ describe('connectshyft identity-match route', () => {
     });
   });
 
+  it('returns ambiguity without selecting a winner when multiple current neighbors share the phone', async () => {
+    jest.spyOn(connectShyftNeighborServiceAsync, 'evaluateIdentityMatch').mockResolvedValue({
+      ok: false,
+      code: 'IDENTITY_MATCH_AMBIGUOUS',
+      message: 'Identity match is ambiguous and requires manual resolution.',
+      data: {
+        identityMatch: {
+          decision: 'AMBIGUOUS',
+          reason: 'MULTIPLE_EXACT_CONTACT_POINT_MATCHES',
+          autoMergeAllowed: false,
+          contactPoint: {
+            value: '+12605550998',
+            isShared: false,
+            verificationStatus: 'verified',
+          },
+          matchedNeighborId: null,
+          candidateCount: 2,
+          candidateNeighborIds: ['neighbor-a', 'neighbor-b'],
+          exactMatches: [
+            {
+              neighborId: 'neighbor-a',
+              phoneId: 'phone-a',
+              isShared: false,
+              verificationStatus: 'verified',
+            },
+            {
+              neighborId: 'neighbor-b',
+              phoneId: 'phone-b',
+              isShared: false,
+              verificationStatus: 'verified',
+            },
+          ],
+        },
+        manualResolution: {
+          required: true,
+          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+          nextAction: 'manual-merge',
+          mergeEndpoint: '/api/v1/connectshyft/neighbors/merge',
+          candidateNeighborIds: ['neighbor-a', 'neighbor-b'],
+          guidance: 'Multiple identities share this contact point. Resolve manually before any merge.',
+        },
+        idempotency: {
+          key: 'identity-replay-key-ambiguous-no-winner',
+          semantics: 'REPLAY_SAFE',
+        },
+      },
+    });
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/neighbors/identity-match')
+      .set(buildHeaders())
+      .send({
+        orgUnitId: TEST_ORG_UNIT_ID,
+        contactPoint: {
+          label: 'mobile',
+          value: '(260) 555-0998',
+          isShared: false,
+          verificationStatus: 'verified',
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'IDENTITY_MATCH_AMBIGUOUS',
+      data: {
+        identityMatch: {
+          matchedNeighborId: null,
+          candidateCount: 2,
+          candidateNeighborIds: ['neighbor-a', 'neighbor-b'],
+          contactPoint: {
+            value: '+12605550998',
+          },
+        },
+        manualResolution: {
+          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+          candidateNeighborIds: ['neighbor-a', 'neighbor-b'],
+        },
+      },
+    });
+  });
+
   it('records identity-match audit hash as keyed hmac output', async () => {
     jest.spyOn(connectShyftNeighborServiceAsync, 'evaluateIdentityMatch').mockResolvedValue({
       ok: true,

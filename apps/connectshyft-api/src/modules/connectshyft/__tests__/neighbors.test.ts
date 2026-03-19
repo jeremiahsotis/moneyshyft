@@ -3,6 +3,7 @@ import {
   ConnectShyftNeighborService,
   InMemoryConnectShyftNeighborStore,
 } from '../neighbors';
+import { InProcessConnectShyftIdentityBoundaryAdapter } from '../identityBoundary';
 
 describe('connectshyft neighbor service', () => {
   const originalEnv = process.env;
@@ -178,6 +179,417 @@ describe('connectshyft neighbor service', () => {
               isActive: true,
             }),
           ],
+        },
+      },
+    });
+  });
+
+  it('refuses inbound-create requests when another current neighbor already owns the canonical phone', () => {
+    const existing = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550181',
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!existing.ok) {
+      throw new Error('Expected seed neighbor create to succeed');
+    }
+
+    const inboundDuplicate = service.createNeighborFromInbound({
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      phone: '(260) 555-0181',
+    });
+
+    expect(inboundDuplicate).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_PHONE_DUPLICATE',
+      data: {
+        reason: 'duplicate_phone',
+        fieldErrors: [
+          expect.objectContaining({
+            field: 'phones',
+            reason: 'duplicate_phone',
+          }),
+        ],
+      },
+    });
+  });
+
+  it('refuses duplicate create requests when another current neighbor already owns the canonical phone', () => {
+    const existing = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+1 (260) 555-0199',
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!existing.ok) {
+      throw new Error('Expected seed neighbor create to succeed');
+    }
+
+    const duplicate = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Jules',
+      lastName: 'North',
+      phones: [
+        {
+          label: 'mobile',
+          value: '2605550199',
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    expect(duplicate).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_PHONE_DUPLICATE',
+      data: {
+        reason: 'duplicate_phone',
+        fieldErrors: [
+          expect.objectContaining({
+            field: 'phones',
+            reason: 'duplicate_phone',
+          }),
+        ],
+      },
+    });
+
+    const listed = service.listNeighbors({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+    });
+
+    expect(listed).toMatchObject({
+      ok: true,
+      data: {
+        neighbors: [
+          expect.objectContaining({
+            neighborId: existing.data.neighbor.neighborId,
+            phones: [
+              expect.objectContaining({
+                value: '+12605550199',
+              }),
+            ],
+          }),
+        ],
+      },
+    });
+    if (!listed.ok) {
+      throw new Error('Expected neighbor list to succeed');
+    }
+    expect(listed.data.neighbors).toHaveLength(1);
+  });
+
+  it('refuses duplicate update and replacement requests without changing the current owner', () => {
+    const currentOwner = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Owner',
+      lastName: 'Current',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550155',
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+    const candidate = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Candidate',
+      lastName: 'Replacement',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550156',
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!currentOwner.ok || !candidate.ok) {
+      throw new Error('Expected seed neighbors to be created');
+    }
+
+    const duplicateUpdate = service.updateNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: candidate.data.neighbor.neighborId,
+      relationshipValidated: true,
+      firstName: 'Candidate',
+      lastName: 'Replacement',
+      phones: [
+        {
+          label: 'mobile',
+          value: '(260) 555-0155',
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    expect(duplicateUpdate).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_PHONE_DUPLICATE',
+      data: {
+        reason: 'duplicate_phone',
+        fieldErrors: [
+          expect.objectContaining({
+            field: 'phones',
+            reason: 'duplicate_phone',
+          }),
+        ],
+      },
+    });
+
+    const ownerAfter = service.resolveNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: currentOwner.data.neighbor.neighborId,
+    });
+    const candidateAfter = service.resolveNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: candidate.data.neighbor.neighborId,
+    });
+
+    expect(ownerAfter).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          phones: [
+            expect.objectContaining({
+              value: '+12605550155',
+            }),
+          ],
+        },
+      },
+    });
+    expect(candidateAfter).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          phones: [
+            expect.objectContaining({
+              value: '+12605550156',
+            }),
+          ],
+        },
+      },
+    });
+  });
+
+  it('allows self-retaining updates when the same canonical phone stays on the same neighbor', () => {
+    const created = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550177',
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!created.ok) {
+      throw new Error('Expected seed neighbor to be created');
+    }
+
+    const updated = service.updateNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+      relationshipValidated: true,
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '260-555-0177',
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    expect(updated).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_UPDATED',
+      data: {
+        neighbor: {
+          neighborId: created.data.neighbor.neighborId,
+          phones: [
+            expect.objectContaining({
+              value: '+12605550177',
+            }),
+          ],
+        },
+      },
+    });
+  });
+
+  it('allows phone reuse when the only prior owner is soft-deleted and keeps the new current owner resolvable', () => {
+    const deletedOriginal = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Legacy',
+      lastName: 'Deleted',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550166',
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!deletedOriginal.ok) {
+      throw new Error('Expected deleted-owner seed neighbor to be created');
+    }
+
+    store.setNeighborDeletedStateForTests({
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: deletedOriginal.data.neighbor.neighborId,
+      isDeleted: true,
+    });
+
+    const reused = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Current',
+      lastName: 'Owner',
+      phones: [
+        {
+          label: 'mobile',
+          value: '(260) 555-0166',
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    expect(reused).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
+      data: {
+        neighbor: {
+          phones: [
+            expect.objectContaining({
+              value: '+12605550166',
+            }),
+          ],
+        },
+      },
+    });
+
+    if (!reused.ok) {
+      throw new Error('Expected soft-deleted phone reuse to succeed');
+    }
+
+    const evaluated = service.evaluateIdentityMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '260-555-0166',
+        isShared: false,
+        verificationStatus: 'verified',
+      },
+    });
+
+    expect(evaluated).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_AUTO_MERGE_ALLOWED',
+      data: {
+        identityMatch: {
+          decision: 'AUTO_MERGE_ALLOWED',
+          matchedNeighborId: reused.data.neighbor.neighborId,
+          candidateCount: 1,
+          candidateNeighborIds: [reused.data.neighbor.neighborId],
+          contactPoint: {
+            value: '+12605550166',
+          },
+        },
+      },
+    });
+  });
+
+  it('returns no_match when a phone is owned only by a soft-deleted neighbor', () => {
+    const deletedOnly = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Deleted',
+      lastName: 'Only',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550167',
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!deletedOnly.ok) {
+      throw new Error('Expected deleted-only seed neighbor to be created');
+    }
+
+    store.setNeighborDeletedStateForTests({
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: deletedOnly.data.neighbor.neighborId,
+      isDeleted: true,
+    });
+
+    const evaluated = service.evaluateIdentityMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '+1 (260) 555-0167',
+        isShared: false,
+        verificationStatus: 'verified',
+      },
+    });
+
+    expect(evaluated).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH',
+      data: {
+        identityMatch: {
+          decision: 'NO_AUTO_MERGE',
+          reason: 'NO_EXACT_CONTACT_POINT_MATCH',
+          matchedNeighborId: null,
+          candidateCount: 0,
+          candidateNeighborIds: [],
+          contactPoint: {
+            value: '+12605550167',
+          },
         },
       },
     });
@@ -949,43 +1361,38 @@ describe('connectshyft neighbor service', () => {
   });
 
   it('returns deterministic ambiguous refusal with manual-resolution context for multi-match contacts', () => {
-    const first = service.createNeighbor({
-      actorRoles: ['ORGUNIT_MEMBER'],
-      tenantId: 'tenant-connectshyft-alpha',
-      orgUnitId: 'org-connectshyft-alpha-east',
-      firstName: 'First',
-      lastName: 'Match',
-      phones: [
-        {
-          label: 'mobile',
-          value: '+12605550303',
-          isShared: false,
-          verificationStatus: 'verified',
-        },
-      ],
-    });
+    const ambiguousService = new ConnectShyftNeighborService(
+      new InMemoryConnectShyftNeighborStore(),
+      new InProcessConnectShyftIdentityBoundaryAdapter(
+        () => [],
+        (_tenantId, normalizedContactPointValue) => [
+          {
+            neighborId: 'neighbor-first-ambiguous',
+            phones: [
+              {
+                phoneId: 'phone-first-ambiguous',
+                value: normalizedContactPointValue,
+                isShared: false,
+                verificationStatus: 'verified',
+              },
+            ],
+          },
+          {
+            neighborId: 'neighbor-second-ambiguous',
+            phones: [
+              {
+                phoneId: 'phone-second-ambiguous',
+                value: normalizedContactPointValue,
+                isShared: false,
+                verificationStatus: 'verified',
+              },
+            ],
+          },
+        ],
+      ),
+    );
 
-    const second = service.createNeighbor({
-      actorRoles: ['ORGUNIT_MEMBER'],
-      tenantId: 'tenant-connectshyft-alpha',
-      orgUnitId: 'org-connectshyft-alpha-east',
-      firstName: 'Second',
-      lastName: 'Match',
-      phones: [
-        {
-          label: 'mobile',
-          value: '+12605550303',
-          isShared: false,
-          verificationStatus: 'verified',
-        },
-      ],
-    });
-
-    if (!first.ok || !second.ok) {
-      throw new Error('Expected duplicate contact neighbors to be created for ambiguity test');
-    }
-
-    const evaluated = service.evaluateIdentityMatch({
+    const evaluated = ambiguousService.evaluateIdentityMatch({
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-alpha',
       contactPoint: {
@@ -1223,6 +1630,70 @@ describe('connectshyft async neighbor service', () => {
     expect(identityMatch).toMatchObject({
       ok: false,
       code: 'CONNECTSHYFT_NEIGHBOR_PERSISTENCE_UNAVAILABLE',
+    });
+  });
+
+  it('maps DB unique-index races to duplicate-phone refusals for create and update', async () => {
+    const duplicateError = new Error('duplicate key value violates unique constraint') as Error & {
+      code: string;
+      constraint: string;
+    };
+    duplicateError.code = '23505';
+    duplicateError.constraint = 'connectshyft_cs_neighbor_phones_current_unique_e164_uq';
+
+    const duplicateStore = {
+      findCurrentPhoneConflicts: jest.fn(async () => []),
+      createNeighbor: jest.fn(async () => {
+        throw duplicateError;
+      }),
+      updateNeighbor: jest.fn(async () => {
+        throw duplicateError;
+      }),
+    };
+
+    const service = new AsyncConnectShyftNeighborService(duplicateStore as any);
+
+    const created = await service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+        },
+      ],
+    });
+    expect(created).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_PHONE_DUPLICATE',
+      data: {
+        reason: 'duplicate_phone',
+      },
+    });
+
+    const updated = await service.updateNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: 'neighbor-race-duplicate',
+      relationshipValidated: true,
+      firstName: 'Mina',
+      lastName: 'Lopez',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550199',
+        },
+      ],
+    });
+    expect(updated).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_PHONE_DUPLICATE',
+      data: {
+        reason: 'duplicate_phone',
+      },
     });
   });
 });
