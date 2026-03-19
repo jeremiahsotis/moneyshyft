@@ -1,0 +1,13 @@
+{
+  "name": "contracts",
+  "sourceRoot": "libs/contracts/src",
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/connectshyft-api",
+        "command": "./node_modules/.bin/jest --config ../../libs/contracts/jest.config.js --runInBand"
+      }
+    }
+  }
+}
