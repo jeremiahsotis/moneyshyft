@@ -32,7 +32,7 @@
       "inputs": ["default", "{workspaceRoot}/domains/communication/**/*"],
       "options": {
         "cwd": "apps/connectshyft-api",
-        "command": "npm run test:connectshyft"
+        "command": "npm run test:integration"
       }
     },
     "lint": {

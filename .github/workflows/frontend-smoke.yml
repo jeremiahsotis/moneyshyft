@@ -17,5 +17,6 @@ jobs:
           corepack enable
           corepack prepare "$(node -p "require('./package.json').packageManager")" --activate
       - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm nx run connectshyft-web:build
       - run: pnpm nx run connectshyft-web:smoke

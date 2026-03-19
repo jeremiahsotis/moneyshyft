@@ -16,6 +16,7 @@
     "seed:run:prod": "NODE_ENV=production node ./scripts/enforceProdMigrationAuthority.js && NODE_ENV=production node ./node_modules/knex/bin/cli.js --knexfile knexfile.js --env production seed:run",
     "test": "NODE_ENV=test jest --runInBand --testPathPattern=connectshyft",
     "test:connectshyft": "NODE_ENV=test jest --runInBand --testPathPattern=connectshyft",
+    "test:integration": "NODE_ENV=test jest --runInBand --config jest.config.js --runTestsByPath ../../tests/integration/connectshyft-api/health.test.ts ../../tests/integration/connectshyft-api/work-intents.test.ts",
     "test:watch": "jest --watch"
   },
   "dependencies": {

@@ -3,7 +3,7 @@ import app from '../../../apps/connectshyft-api/src/app';
 
 describe('connectshyft-api work intents', () => {
   it('creates a work intent stub', async () => {
-    const res = await (request(app).post('/work-intents') as any).send({
+    const res = await (request as any)(app).post('/work-intents').send({
       intentType: 'needs_follow_up',
     });
 
