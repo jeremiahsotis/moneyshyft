@@ -9,16 +9,11 @@ jobs:
     name: enforce-story-pr-base
     runs-on: ubuntu-latest
     steps:
-      - name: Validate story PR base branch
-        env:
-          HEAD_REF: ${{ github.head_ref }}
-          BASE_REF: ${{ github.base_ref }}
+      - name: Validate codex PR base branch
         run: |
-          if [[ "$HEAD_REF" =~ ^codex/story- ]] && [[ "$BASE_REF" != "codex/dev" ]]; then
-            echo "Story branches must target codex/dev."
-            echo "Head: $HEAD_REF"
-            echo "Base: $BASE_REF"
-            exit 1
+          if [[ "${{ github.head_ref }}" == codex/* ]]; then
+            if [[ "${{ github.base_ref }}" != "codex/dev" ]]; then
+              echo "❌ codex/* branches must target codex/dev"
+              exit 1
+            fi
           fi
-
-          echo "PR base guard passed."
