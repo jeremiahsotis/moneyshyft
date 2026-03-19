@@ -2,15 +2,29 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import logger from './utils/logger';
-import { optionalAuth } from './middleware/auth';
-import { requestCorrelation } from './platform/middleware/requestCorrelation';
-import { tenancyContext } from './platform/middleware/tenancyContext';
-import { authContext } from './platform/middleware/authContext';
-import { responseEnvelope } from './platform/middleware/responseEnvelope';
-import { csrfProtection } from './platform/middleware/csrfProtection';
-import connectShyftRouter from './routes/api/v1/connectshyft';
 
 const app = express();
+const useMinimalAppShell = process.env.CONNECTSHYFT_MINIMAL_APP === '1';
+const noopMiddleware = (_req: any, _res: any, next: any) => next();
+const optionalAuth = useMinimalAppShell ? noopMiddleware : require('./middleware/auth').optionalAuth;
+const requestCorrelation = useMinimalAppShell
+  ? noopMiddleware
+  : require('./platform/middleware/requestCorrelation').requestCorrelation;
+const tenancyContext = useMinimalAppShell
+  ? noopMiddleware
+  : require('./platform/middleware/tenancyContext').tenancyContext;
+const authContext = useMinimalAppShell
+  ? noopMiddleware
+  : require('./platform/middleware/authContext').authContext;
+const responseEnvelope = useMinimalAppShell
+  ? noopMiddleware
+  : require('./platform/middleware/responseEnvelope').responseEnvelope;
+const csrfProtection = useMinimalAppShell
+  ? noopMiddleware
+  : require('./platform/middleware/csrfProtection').csrfProtection;
+const connectShyftRouter = useMinimalAppShell
+  ? express.Router()
+  : require('./routes/api/v1/connectshyft').default;
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
