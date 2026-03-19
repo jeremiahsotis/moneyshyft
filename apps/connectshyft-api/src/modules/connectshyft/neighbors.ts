@@ -24,7 +24,9 @@ import { appendConnectShyftCommunicationAuditEntry } from './communicationAuditL
 type QueryBuilderLike = {
   withSchema(schema: string): QueryBuilderLike;
   table(tableName: string): QueryBuilderLike;
+  join(tableName: string, leftColumn: string, operator: string, rightColumn: string): QueryBuilderLike;
   where(condition: Record<string, unknown>): QueryBuilderLike;
+  whereNot(column: string, value: unknown): QueryBuilderLike;
   whereIn(column: string, values: string[]): QueryBuilderLike;
   orderBy(column: string, direction: 'asc' | 'desc'): QueryBuilderLike;
   insert(value: Record<string, unknown> | Array<Record<string, unknown>>): QueryBuilderLike;
@@ -50,6 +52,8 @@ type KnexLike = QueryBuilderLike & {
 
 export const CONNECTSHYFT_NEIGHBOR_MERGE_CONFIRMATION_PHRASE = 'IRREVERSIBLE MERGE';
 const CONNECTSHYFT_INBOUND_NEIGHBOR_AUDIT_OPERATION_NAME = 'connectshyft.inbound.neighbor_created';
+const CONNECTSHYFT_PHONE_DUPLICATE_INDEX = 'connectshyft_cs_neighbor_phones_current_unique_e164_uq';
+const CONNECTSHYFT_PHONE_DUPLICATE_MESSAGE = 'That phone number is already assigned to another current neighbor.';
 
 export type ConnectShyftNeighborPhoneInput = {
   label: string;
@@ -185,11 +189,12 @@ export type {
 
 type NeighborFieldError = {
   field: 'phones';
-  reason: 'REQUIRED' | 'INVALID_FORMAT';
+  reason: 'REQUIRED' | 'INVALID_FORMAT' | 'duplicate_phone';
   message: string;
 };
 
 type NeighborRefusalData = {
+  reason?: 'duplicate_phone';
   fieldErrors?: NeighborFieldError[];
   identityMatch?: ConnectShyftIdentityMatchDecision;
   manualResolution?: ConnectShyftIdentityManualResolutionContext;
@@ -203,7 +208,7 @@ type NeighborPersistenceResult =
   }
   | {
     ok: false;
-    reason: 'NEIGHBOR_ID_CONFLICT' | 'NEIGHBOR_NOT_FOUND';
+    reason: 'DUPLICATE_PHONE' | 'NEIGHBOR_ID_CONFLICT' | 'NEIGHBOR_NOT_FOUND';
   };
 
 type NeighborMergePersistenceResult =
@@ -230,6 +235,7 @@ type NeighborRefusalResult = {
     | 'CONNECTSHYFT_NEIGHBOR_EDIT_RELATIONSHIP_REQUIRED'
     | 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED'
     | 'CONNECTSHYFT_NEIGHBOR_PHONE_INVALID_FORMAT'
+    | 'CONNECTSHYFT_PHONE_DUPLICATE'
     | 'CONNECTSHYFT_NEIGHBOR_CREATE_CONFLICT'
     | 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND'
     | 'CONNECTSHYFT_NEIGHBOR_MERGE_FORBIDDEN'
@@ -366,6 +372,22 @@ const buildPhoneInvalidFormatRefusal = (): NeighborRefusalResult => ({
   },
 });
 
+const buildDuplicatePhoneRefusal = (): NeighborRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_PHONE_DUPLICATE',
+  message: CONNECTSHYFT_PHONE_DUPLICATE_MESSAGE,
+  data: {
+    reason: 'duplicate_phone',
+    fieldErrors: [
+      {
+        field: 'phones',
+        reason: 'duplicate_phone',
+        message: CONNECTSHYFT_PHONE_DUPLICATE_MESSAGE,
+      },
+    ],
+  },
+});
+
 const buildCreateCapabilityRefusal = (): NeighborRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_NEIGHBOR_CREATE_FORBIDDEN',
@@ -480,6 +502,37 @@ const normalizePhones = (
   };
 };
 
+const listDistinctCandidateNormalizedPhones = (
+  phones: NormalizedConnectShyftNeighborPhoneInput[],
+): string[] => Array.from(new Set(phones.map((phone) => phone.normalizedE164)));
+
+const hasDuplicateCandidateNormalizedPhones = (
+  phones: NormalizedConnectShyftNeighborPhoneInput[],
+): boolean => listDistinctCandidateNormalizedPhones(phones).length !== phones.length;
+
+type NeighborPhoneConflictLookupInput = {
+  tenantId: string;
+  normalizedE164Values: string[];
+  excludeNeighborId?: string | null;
+};
+
+type NeighborPhoneConflict = {
+  normalizedE164: string;
+  neighborIds: string[];
+};
+
+const hasPhoneConflicts = (conflicts: NeighborPhoneConflict[]): boolean =>
+  conflicts.some((conflict) => conflict.neighborIds.length > 0);
+
+const isDuplicatePhoneConstraintViolation = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const candidate = error as { code?: string; constraint?: string };
+  return candidate.code === '23505' && candidate.constraint === CONNECTSHYFT_PHONE_DUPLICATE_INDEX;
+};
+
 const hasNeighborManageCapability = (actorRoles: Array<string | null | undefined>): boolean => {
   return hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_NEIGHBOR_EDIT_RELATED)
     || hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)
@@ -542,6 +595,7 @@ type DbNeighborPhoneRow = {
   is_shared?: boolean | null;
   verification_status?: string | null;
   is_active?: boolean | null;
+  uniqueness_enforcement_state?: string | null;
   created_at_utc: string | Date;
   updated_at_utc: string | Date;
 };
@@ -620,7 +674,7 @@ const mergePhoneRows = (
       return;
     }
 
-    const dedupeKey = `${label.toLowerCase()}::${value}`;
+    const dedupeKey = value;
     if (seen.has(dedupeKey)) {
       return;
     }
@@ -767,6 +821,33 @@ export class InMemoryConnectShyftNeighborStore {
   private neighborIdsByScope = new Map<string, Set<string>>();
 
   private neighborIdsByTenant = new Map<string, Set<string>>();
+
+  private deletedNeighborIdsByTenant = new Map<string, Set<string>>();
+
+  private isNeighborDeleted(tenantId: string, neighborId: string): boolean {
+    return this.deletedNeighborIdsByTenant.get(tenantId)?.has(neighborId) === true;
+  }
+
+  setNeighborDeletedStateForTests(input: {
+    tenantId: string;
+    neighborId: string;
+    isDeleted: boolean;
+  }): void {
+    const deletedNeighborIds = this.deletedNeighborIdsByTenant.get(input.tenantId) || new Set<string>();
+    if (input.isDeleted) {
+      deletedNeighborIds.add(input.neighborId);
+      this.deletedNeighborIdsByTenant.set(input.tenantId, deletedNeighborIds);
+      return;
+    }
+
+    deletedNeighborIds.delete(input.neighborId);
+    if (deletedNeighborIds.size === 0) {
+      this.deletedNeighborIdsByTenant.delete(input.tenantId);
+      return;
+    }
+
+    this.deletedNeighborIdsByTenant.set(input.tenantId, deletedNeighborIds);
+  }
 
   createNeighbor(input: NeighborStoreCreateInput): NeighborPersistenceResult {
     const neighborId = input.neighborId || randomUUID();
@@ -1003,7 +1084,54 @@ export class InMemoryConnectShyftNeighborStore {
   }
 
   resolveActiveNeighborById(tenantId: string, neighborId: string): ConnectShyftNeighbor | null {
+    if (this.isNeighborDeleted(tenantId, neighborId)) {
+      return null;
+    }
+
     return this.resolveNeighborById(tenantId, neighborId);
+  }
+
+  findCurrentPhoneConflicts(
+    input: NeighborPhoneConflictLookupInput,
+  ): NeighborPhoneConflict[] {
+    if (input.normalizedE164Values.length === 0) {
+      return [];
+    }
+
+    const candidateValues = new Set(input.normalizedE164Values);
+    const conflictsByPhone = new Map<string, Set<string>>();
+    const tenantIds = this.neighborIdsByTenant.get(input.tenantId);
+    if (!tenantIds || tenantIds.size === 0) {
+      return [];
+    }
+
+    tenantIds.forEach((neighborId) => {
+      if (input.excludeNeighborId && neighborId === input.excludeNeighborId) {
+        return;
+      }
+
+      const neighbor = this.neighborsById.get(neighborId);
+      if (!neighbor || neighbor.tenantId !== input.tenantId || this.isNeighborDeleted(input.tenantId, neighborId)) {
+        return;
+      }
+
+      neighbor.phones.forEach((phone) => {
+        if (phone.isActive === false || !candidateValues.has(phone.value)) {
+          return;
+        }
+
+        const current = conflictsByPhone.get(phone.value) || new Set<string>();
+        current.add(neighborId);
+        conflictsByPhone.set(phone.value, current);
+      });
+    });
+
+    return Array.from(conflictsByPhone.entries())
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([normalizedE164, neighborIds]) => ({
+        normalizedE164,
+        neighborIds: Array.from(neighborIds).sort(),
+      }));
   }
 
   listByTenant(tenantId: string): ConnectShyftNeighbor[] {
@@ -1031,7 +1159,7 @@ export class InMemoryConnectShyftNeighborStore {
     const boundaryNeighbors: ConnectShyftIdentityBoundaryNeighbor[] = [];
     tenantIds.forEach((neighborId) => {
       const neighbor = this.neighborsById.get(neighborId);
-      if (!neighbor || neighbor.tenantId !== tenantId) {
+      if (!neighbor || neighbor.tenantId !== tenantId || this.isNeighborDeleted(tenantId, neighborId)) {
         return;
       }
 
@@ -1069,7 +1197,7 @@ export class InMemoryConnectShyftNeighborStore {
     const boundaryNeighbors: ConnectShyftIdentityBoundaryNeighbor[] = [];
     tenantIds.forEach((neighborId) => {
       const neighbor = this.neighborsById.get(neighborId);
-      if (!neighbor || neighbor.tenantId !== tenantId) {
+      if (!neighbor || neighbor.tenantId !== tenantId || this.isNeighborDeleted(tenantId, neighborId)) {
         return;
       }
 
@@ -1107,7 +1235,7 @@ export class InMemoryConnectShyftNeighborStore {
     const boundaryNeighbors: ConnectShyftIdentityBoundaryNeighbor[] = [];
     tenantIds.forEach((neighborId) => {
       const neighbor = this.neighborsById.get(neighborId);
-      if (!neighbor || neighbor.tenantId !== tenantId) {
+      if (!neighbor || neighbor.tenantId !== tenantId || this.isNeighborDeleted(tenantId, neighborId)) {
         return;
       }
 
@@ -1226,9 +1354,52 @@ export class KnexConnectShyftNeighborStore {
       'is_shared',
       'verification_status',
       'is_active',
+      'uniqueness_enforcement_state',
       'created_at_utc',
       'updated_at_utc',
     ];
+  }
+
+  async findCurrentPhoneConflicts(
+    input: NeighborPhoneConflictLookupInput,
+  ): Promise<NeighborPhoneConflict[]> {
+    if (input.normalizedE164Values.length === 0) {
+      return [];
+    }
+
+    const rows = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_neighbor_phones')
+      .join('cs_neighbors', 'cs_neighbors.id', '=', 'cs_neighbor_phones.neighbor_id')
+      .where({
+        'cs_neighbor_phones.tenant_id': input.tenantId,
+        'cs_neighbors.tenant_id': input.tenantId,
+        'cs_neighbor_phones.is_active': true,
+        'cs_neighbors.is_deleted': false,
+      })
+      .whereIn('cs_neighbor_phones.normalized_e164', input.normalizedE164Values)
+      .orderBy('cs_neighbor_phones.normalized_e164', 'asc')
+      .orderBy('cs_neighbor_phones.neighbor_id', 'asc')
+      .select<Array<{ normalized_e164: string; neighbor_id: string }>>([
+        'cs_neighbor_phones.normalized_e164',
+        'cs_neighbor_phones.neighbor_id',
+      ]);
+
+    const conflictsByPhone = new Map<string, Set<string>>();
+    rows.forEach((row) => {
+      if (input.excludeNeighborId && row.neighbor_id === input.excludeNeighborId) {
+        return;
+      }
+
+      const current = conflictsByPhone.get(row.normalized_e164) || new Set<string>();
+      current.add(row.neighbor_id);
+      conflictsByPhone.set(row.normalized_e164, current);
+    });
+
+    return Array.from(conflictsByPhone.entries()).map(([normalizedE164, neighborIds]) => ({
+      normalizedE164,
+      neighborIds: Array.from(neighborIds).sort(),
+    }));
   }
 
   async createNeighbor(input: NeighborStoreCreateInput): Promise<NeighborPersistenceResult> {
@@ -1278,6 +1449,7 @@ export class KnexConnectShyftNeighborStore {
           is_shared: phone.isShared,
           verification_status: phone.verificationStatus,
           is_active: phone.isActive,
+          uniqueness_enforcement_state: 'ENFORCED',
           created_at_utc: trx.fn.now(),
           updated_at_utc: trx.fn.now(),
         }));
@@ -1294,6 +1466,13 @@ export class KnexConnectShyftNeighborStore {
         } as NeighborPersistenceResult;
       });
     } catch (error) {
+      if (isDuplicatePhoneConstraintViolation(error)) {
+        return {
+          ok: false,
+          reason: 'DUPLICATE_PHONE',
+        };
+      }
+
       if (error && typeof error === 'object') {
         const pg = error as { code?: string };
         if (pg.code === '23505') {
@@ -1686,6 +1865,7 @@ export class KnexConnectShyftNeighborStore {
           is_shared: phone.isShared,
           verification_status: phone.verificationStatus,
           is_active: phone.isActive,
+          uniqueness_enforcement_state: 'ENFORCED',
           created_at_utc: trx.fn.now(),
           updated_at_utc: trx.fn.now(),
         }));
@@ -1702,6 +1882,13 @@ export class KnexConnectShyftNeighborStore {
         } as NeighborPersistenceResult;
       });
     } catch (error) {
+      if (isDuplicatePhoneConstraintViolation(error)) {
+        return {
+          ok: false,
+          reason: 'DUPLICATE_PHONE',
+        };
+      }
+
       throw error;
     }
   }
@@ -1777,6 +1964,15 @@ export class KnexConnectShyftNeighborStore {
         })
         .delete();
 
+      await trx
+        .withSchema('connectshyft')
+        .table('cs_neighbor_phones')
+        .where({
+          tenant_id: input.tenantId,
+          neighbor_id: input.sourceNeighborId,
+        })
+        .delete();
+
       const insertedPhones = mergedPhones.length > 0
         ? await trx
           .withSchema('connectshyft')
@@ -1808,15 +2004,6 @@ export class KnexConnectShyftNeighborStore {
           )
           .returning<DbNeighborPhoneRow[]>(this.neighborPhoneColumns())
         : [];
-
-      await trx
-        .withSchema('connectshyft')
-        .table('cs_neighbor_phones')
-        .where({
-          tenant_id: input.tenantId,
-          neighbor_id: input.sourceNeighborId,
-        })
-        .delete();
 
       await trx
         .withSchema('connectshyft')
@@ -1874,10 +2061,10 @@ export class ConnectShyftNeighborService {
     private readonly store: InMemoryConnectShyftNeighborStore = defaultNeighborStore,
     identityBoundary?: ConnectShyftIdentityBoundaryAdapter,
   ) {
-    const activeStore = this.store as InMemoryConnectShyftNeighborStore & {
-      listActiveIdentityBoundaryNeighborsByTenant?: (
-        tenantId: string,
-      ) => ConnectShyftIdentityBoundaryNeighbor[];
+      const activeStore = this.store as InMemoryConnectShyftNeighborStore & {
+        listActiveIdentityBoundaryNeighborsByTenant?: (
+          tenantId: string,
+        ) => ConnectShyftIdentityBoundaryNeighbor[];
       listActiveIdentityBoundaryNeighborsByPhoneValue?: (
         tenantId: string,
         normalizedContactPointValue: string,
@@ -1911,6 +2098,24 @@ export class ConnectShyftNeighborService {
       );
   }
 
+  private validateDuplicatePhones(
+    tenantId: string,
+    phones: NormalizedConnectShyftNeighborPhoneInput[],
+    excludeNeighborId?: string,
+  ): NeighborRefusalResult | null {
+    if (hasDuplicateCandidateNormalizedPhones(phones)) {
+      return buildDuplicatePhoneRefusal();
+    }
+
+    const conflicts = this.store.findCurrentPhoneConflicts({
+      tenantId,
+      normalizedE164Values: listDistinctCandidateNormalizedPhones(phones),
+      excludeNeighborId,
+    });
+
+    return hasPhoneConflicts(conflicts) ? buildDuplicatePhoneRefusal() : null;
+  }
+
   createNeighbor(input: ConnectShyftCreateNeighborCommand): ConnectShyftCreateNeighborResult {
     if (!hasNeighborManageCapability(input.actorRoles)) {
       return buildCreateCapabilityRefusal();
@@ -1919,6 +2124,11 @@ export class ConnectShyftNeighborService {
     const normalizedPhones = normalizePhones(input.phones);
     if (!normalizedPhones.ok) {
       return normalizedPhones;
+    }
+
+    const duplicateRefusal = this.validateDuplicatePhones(input.tenantId, normalizedPhones.phones);
+    if (duplicateRefusal) {
+      return duplicateRefusal;
     }
 
     const persisted = this.store.createNeighbor({
@@ -1932,6 +2142,10 @@ export class ConnectShyftNeighborService {
     });
 
     if (!persisted.ok) {
+      if (persisted.reason === 'DUPLICATE_PHONE') {
+        return buildDuplicatePhoneRefusal();
+      }
+
       return buildNeighborIdConflictRefusal();
     }
 
@@ -1985,6 +2199,11 @@ export class ConnectShyftNeighborService {
       return normalizedPhones;
     }
 
+    const duplicateRefusal = this.validateDuplicatePhones(input.tenantId, normalizedPhones.phones);
+    if (duplicateRefusal) {
+      return duplicateRefusal;
+    }
+
     const persisted = this.store.createNeighbor({
       tenantId: input.tenantId,
       orgUnitId: input.orgUnitId,
@@ -1995,6 +2214,10 @@ export class ConnectShyftNeighborService {
     });
 
     if (!persisted.ok) {
+      if (persisted.reason === 'DUPLICATE_PHONE') {
+        return buildDuplicatePhoneRefusal();
+      }
+
       return buildNeighborIdConflictRefusal();
     }
 
@@ -2055,6 +2278,15 @@ export class ConnectShyftNeighborService {
       return normalizedPhones;
     }
 
+    const duplicateRefusal = this.validateDuplicatePhones(
+      input.tenantId,
+      normalizedPhones.phones,
+      input.neighborId,
+    );
+    if (duplicateRefusal) {
+      return duplicateRefusal;
+    }
+
     const updated = this.store.updateNeighbor({
       tenantId: input.tenantId,
       neighborId: input.neighborId,
@@ -2065,6 +2297,10 @@ export class ConnectShyftNeighborService {
     });
 
     if (!updated.ok) {
+      if (updated.reason === 'DUPLICATE_PHONE') {
+        return buildDuplicatePhoneRefusal();
+      }
+
       return buildNeighborNotFoundRefusal();
     }
 
@@ -2176,6 +2412,34 @@ export class AsyncConnectShyftNeighborService {
       );
   }
 
+  private async validateDuplicatePhones(
+    tenantId: string,
+    phones: NormalizedConnectShyftNeighborPhoneInput[],
+    excludeNeighborId?: string,
+  ): Promise<NeighborRefusalResult | null> {
+    if (hasDuplicateCandidateNormalizedPhones(phones)) {
+      return buildDuplicatePhoneRefusal();
+    }
+
+    const duplicateLookupStore = this.store as KnexConnectShyftNeighborStore & {
+      findCurrentPhoneConflicts?: (
+        input: NeighborPhoneConflictLookupInput,
+      ) => Promise<NeighborPhoneConflict[]>;
+    };
+
+    if (!duplicateLookupStore.findCurrentPhoneConflicts) {
+      return null;
+    }
+
+    const conflicts = await duplicateLookupStore.findCurrentPhoneConflicts({
+      tenantId,
+      normalizedE164Values: listDistinctCandidateNormalizedPhones(phones),
+      excludeNeighborId,
+    });
+
+    return hasPhoneConflicts(conflicts) ? buildDuplicatePhoneRefusal() : null;
+  }
+
   async createNeighbor(input: ConnectShyftCreateNeighborCommand): Promise<ConnectShyftCreateNeighborResult> {
     if (!hasNeighborManageCapability(input.actorRoles)) {
       return buildCreateCapabilityRefusal();
@@ -2184,6 +2448,11 @@ export class AsyncConnectShyftNeighborService {
     const normalizedPhones = normalizePhones(input.phones);
     if (!normalizedPhones.ok) {
       return normalizedPhones;
+    }
+
+    const duplicateRefusal = await this.validateDuplicatePhones(input.tenantId, normalizedPhones.phones);
+    if (duplicateRefusal) {
+      return duplicateRefusal;
     }
 
     try {
@@ -2198,6 +2467,10 @@ export class AsyncConnectShyftNeighborService {
       });
 
       if (!persisted.ok) {
+        if (persisted.reason === 'DUPLICATE_PHONE') {
+          return buildDuplicatePhoneRefusal();
+        }
+
         return buildNeighborIdConflictRefusal();
       }
 
@@ -2210,6 +2483,10 @@ export class AsyncConnectShyftNeighborService {
         },
       };
     } catch (error) {
+      if (isDuplicatePhoneConstraintViolation(error)) {
+        return buildDuplicatePhoneRefusal();
+      }
+
       if (!isMissingPersistenceError(error)) {
         throw error;
       }
@@ -2238,6 +2515,10 @@ export class AsyncConnectShyftNeighborService {
         },
       };
     } catch (error) {
+      if (isDuplicatePhoneConstraintViolation(error)) {
+        return buildDuplicatePhoneRefusal();
+      }
+
       if (!isMissingPersistenceError(error)) {
         throw error;
       }
@@ -2266,6 +2547,11 @@ export class AsyncConnectShyftNeighborService {
       return normalizedPhones;
     }
 
+    const duplicateRefusal = await this.validateDuplicatePhones(input.tenantId, normalizedPhones.phones);
+    if (duplicateRefusal) {
+      return duplicateRefusal;
+    }
+
     try {
       const persisted = await this.store.createNeighbor({
         tenantId: input.tenantId,
@@ -2277,6 +2563,10 @@ export class AsyncConnectShyftNeighborService {
       });
 
       if (!persisted.ok) {
+        if (persisted.reason === 'DUPLICATE_PHONE') {
+          return buildDuplicatePhoneRefusal();
+        }
+
         return buildNeighborIdConflictRefusal();
       }
 
@@ -2289,6 +2579,10 @@ export class AsyncConnectShyftNeighborService {
         },
       };
     } catch (error) {
+      if (isDuplicatePhoneConstraintViolation(error)) {
+        return buildDuplicatePhoneRefusal();
+      }
+
       if (!isMissingPersistenceError(error)) {
         throw error;
       }
@@ -2316,6 +2610,10 @@ export class AsyncConnectShyftNeighborService {
         neighbor: promoted.neighbor,
       };
     } catch (error) {
+      if (isDuplicatePhoneConstraintViolation(error)) {
+        return buildDuplicatePhoneRefusal();
+      }
+
       if (!isMissingPersistenceError(error)) {
         throw error;
       }
@@ -2340,6 +2638,10 @@ export class AsyncConnectShyftNeighborService {
         },
       };
     } catch (error) {
+      if (isDuplicatePhoneConstraintViolation(error)) {
+        return buildDuplicatePhoneRefusal();
+      }
+
       if (!isMissingPersistenceError(error)) {
         throw error;
       }
@@ -2361,6 +2663,15 @@ export class AsyncConnectShyftNeighborService {
       return normalizedPhones;
     }
 
+    const duplicateRefusal = await this.validateDuplicatePhones(
+      input.tenantId,
+      normalizedPhones.phones,
+      input.neighborId,
+    );
+    if (duplicateRefusal) {
+      return duplicateRefusal;
+    }
+
     try {
       const updated = await this.store.updateNeighbor({
         tenantId: input.tenantId,
@@ -2372,6 +2683,10 @@ export class AsyncConnectShyftNeighborService {
       });
 
       if (!updated.ok) {
+        if (updated.reason === 'DUPLICATE_PHONE') {
+          return buildDuplicatePhoneRefusal();
+        }
+
         return buildNeighborNotFoundRefusal();
       }
 
@@ -2384,6 +2699,10 @@ export class AsyncConnectShyftNeighborService {
         },
       };
     } catch (error) {
+      if (isDuplicatePhoneConstraintViolation(error)) {
+        return buildDuplicatePhoneRefusal();
+      }
+
       if (!isMissingPersistenceError(error)) {
         throw error;
       }

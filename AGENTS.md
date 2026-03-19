@@ -109,6 +109,8 @@ Docker:
 - Shared PostgreSQL plus in-memory ConnectShyft thread and number-mapping fixtures in tests (021-connectshyft-sms-sender-architecture)
 - TypeScript (ES2022) on Node.js >=20 + Express, Jest/ts-jest, Supertest, shared `domains/communication` phone normalization and telephony contracts, ConnectShyft provider registry, ConnectShyft identity boundary, existing communication audit log (022-inbound-sms-identity-resolution-and-raw-body-capture)
 - Shared PostgreSQL `connectshyft` schema, existing communication audit log persistence, in-memory ConnectShyft fixtures in tests, and shared migration authority if a narrow neighbor lifecycle marker is required for deleted-record exclusion (022-inbound-sms-identity-resolution-and-raw-body-capture)
+- TypeScript (ES2022) on Node.js >=20 + Express, Knex, `pg`, Jest/ts-jest, shared `domains/communication` phone normalization, ConnectShyft neighbor service/store modules, existing `identityBoundary.ts` and `identityResolver.ts` (023-duplicate-handling-and-phone-uniqueness-enforcement)
+- Shared PostgreSQL `connectshyft` schema with canonical phone columns in `cs_neighbor_phones`, canonical production migration authority under `shared/database/migrations`, and lane-local migration mirrors for local build/test compatibility (023-duplicate-handling-and-phone-uniqueness-enforcement)
 
 ## Recent Changes
 - 001-tighten-deployment-contracts: Added TypeScript (Node.js APIs), Vue 3 TypeScript frontends + Express APIs, host Nginx reverse proxy, Docker Compose

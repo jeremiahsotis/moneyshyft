@@ -7,6 +7,7 @@ import {
   createStoryB4Headers,
   type StoryB4Context,
 } from '../../support/factories/connectShyftStoryB4Factory';
+import { createUniqueConnectShyftTestPhone } from '../../support/factories/connectShyftTestPhoneFactory';
 
 const DB_CONNECTION_RETRY_LIMIT = 8;
 
@@ -67,6 +68,7 @@ const seedNeighbor = async (
   firstName: string,
   lastName: string,
 ): Promise<string> => {
+  const phone = createUniqueConnectShyftTestPhone('9');
   const response = await apiRequest(request, {
     method: 'POST',
     path,
@@ -77,7 +79,7 @@ const seedNeighbor = async (
       phones: [
         {
           label: 'mobile',
-          value: '+12605550199',
+          value: phone.raw,
           isShared: true,
           verificationStatus: 'verified',
         },

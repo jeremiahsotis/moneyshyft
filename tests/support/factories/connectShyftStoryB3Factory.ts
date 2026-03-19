@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { connectShyftContextEnforcementData } from '../../fixtures/test-data';
+import { createUniqueConnectShyftTestPhone } from './connectShyftTestPhoneFactory';
 import { createTenantScopeHeaders } from './tenantRepositoryFactory';
 
 export type ConnectShyftFlags = {
@@ -89,6 +90,8 @@ export function createStoryB3Context(
   const relatedActorUserId = `user-connectshyft-b3-related-${randomUUID().slice(0, 8)}`;
   const unrelatedActorUserId = `user-connectshyft-b3-unrelated-${randomUUID().slice(0, 8)}`;
   const tenantPrivilegedUserId = `user-connectshyft-b3-tenant-staff-${randomUUID().slice(0, 8)}`;
+  const sharedPhone = createUniqueConnectShyftTestPhone('4');
+  const nonSharedPhone = createUniqueConnectShyftTestPhone('5');
 
   return {
     storyId: 'b-3',
@@ -120,10 +123,10 @@ export function createStoryB3Context(
     relatedUpdateLastName: 'Lopez Governed',
     tenantPrivilegedUpdateFirstName: 'Mina Privileged',
     tenantPrivilegedUpdateLastName: 'Lopez Privileged',
-    sharedPhoneRaw: '+1 (260) 555-0311',
-    sharedPhoneNormalized: '+12605550311',
-    nonSharedPhoneRaw: '+1 (260) 555-0312',
-    nonSharedPhoneNormalized: '+12605550312',
+    sharedPhoneRaw: sharedPhone.raw,
+    sharedPhoneNormalized: sharedPhone.normalized,
+    nonSharedPhoneRaw: nonSharedPhone.raw,
+    nonSharedPhoneNormalized: nonSharedPhone.normalized,
     refusalCodes: {
       relationshipRequired: 'CONNECTSHYFT_NEIGHBOR_EDIT_RELATIONSHIP_REQUIRED',
     },

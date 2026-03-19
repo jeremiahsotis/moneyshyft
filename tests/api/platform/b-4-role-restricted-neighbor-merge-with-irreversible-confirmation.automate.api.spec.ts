@@ -1,5 +1,6 @@
 import { apiRequest } from '../../support/helpers/apiClient';
 import { createStoryB4Headers } from '../../support/factories/connectShyftStoryB4Factory';
+import { createUniqueConnectShyftTestPhone } from '../../support/factories/connectShyftTestPhoneFactory';
 import { ensureConnectShyftDbHousehold } from '../../support/helpers/connectShyftDbActor';
 import { test, expect } from '../../support/fixtures/connectShyftStoryB4.fixture';
 
@@ -22,6 +23,8 @@ const seedNeighbor = async (
   firstName: string,
   lastName: string,
 ): Promise<string> => {
+  const phone = createUniqueConnectShyftTestPhone('9');
+
   const response = await apiRequest(request, {
     method: 'POST',
     path,
@@ -32,7 +35,7 @@ const seedNeighbor = async (
       phones: [
         {
           label: 'mobile',
-          value: '+12605550199',
+          value: phone.raw,
           isShared: true,
           verificationStatus: 'verified',
         },

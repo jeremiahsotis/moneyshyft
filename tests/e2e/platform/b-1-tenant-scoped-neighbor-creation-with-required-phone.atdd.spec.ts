@@ -9,6 +9,7 @@ test.describe(
     test(
       '[P0] operator can submit neighbor create form with one valid phone and see normalized result state @P0',
       async ({ page }) => {
+        const context = createStoryB1Context();
         await login(page);
         await page.goto(
           '/app/connectshyft/neighbors/new?flags=module:on,inbox:on,escalation:on,webhooks:on&tenantId=tenant-connectshyft-alpha&orgUnitId=org-connectshyft-alpha-east&tenantRole=ORGUNIT_MEMBER&orgUnitMemberships=org-connectshyft-alpha-east',
@@ -18,7 +19,7 @@ test.describe(
 
         await page.getByTestId('connectshyft-neighbor-first-name-input').fill('Mina');
         await page.getByTestId('connectshyft-neighbor-last-name-input').fill('Lopez');
-        await page.getByTestId('connectshyft-neighbor-phone-input').fill('+1 (260) 555-0199');
+        await page.getByTestId('connectshyft-neighbor-phone-input').fill(context.validPhoneRaw);
         await page.getByTestId('connectshyft-neighbor-phone-label-select').selectOption('mobile');
 
         const createResponse = page.waitForResponse(
@@ -34,7 +35,7 @@ test.describe(
           'Neighbor created',
         );
         await expect(page.getByTestId('connectshyft-neighbor-phone-value')).toContainText(
-          '+12605550199',
+          context.validPhoneNormalized,
         );
       },
     );

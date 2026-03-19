@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { connectShyftContextEnforcementData } from '../../fixtures/test-data';
+import { createUniqueConnectShyftTestPhone } from './connectShyftTestPhoneFactory';
 import { createTenantScopeHeaders } from './tenantRepositoryFactory';
 
 export type ConnectShyftFlags = {
@@ -63,6 +64,8 @@ export type StoryB1Context = {
 export function createStoryB1Context(
   overrides: StoryB1ContextOverrides = {},
 ): StoryB1Context {
+  const validPhone = createUniqueConnectShyftTestPhone('6');
+
   return {
     storyId: 'b-1',
     tenantId: overrides.tenantId ?? connectShyftContextEnforcementData.tenantAlphaId,
@@ -80,8 +83,8 @@ export function createStoryB1Context(
       ?? `csrf-story-b1-${randomUUID().slice(0, 8)}`,
     crossTenantOrgUnitId: connectShyftContextEnforcementData.orgUnitBravoNorthId,
     flags: { ...connectShyftContextEnforcementData.flagsAllEnabled },
-    validPhoneRaw: '+1 (260) 555-0199',
-    validPhoneNormalized: '+12605550199',
+    validPhoneRaw: validPhone.raw,
+    validPhoneNormalized: validPhone.normalized,
     invalidPhoneRaw: '260-ABC-0199',
     paths: {
       neighborsCollection: '/api/v1/connectshyft/neighbors',
@@ -116,4 +119,3 @@ export function createStoryB1Headers(
 
   return resolvedHeaders;
 }
-
