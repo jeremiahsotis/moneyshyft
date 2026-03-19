@@ -111,7 +111,9 @@ temp/
 
 # Cache
 .cache/
+.nx/
 .nx/cache/
+.pnpm-store/
 .parcel-cache/
 .vite/
 
