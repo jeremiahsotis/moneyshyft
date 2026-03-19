@@ -2,7 +2,10 @@
 import express from 'express';
 import request from 'supertest';
 import * as TenantModuleEntitlements from '../../../../platform/tenantModuleEntitlements';
+import * as BridgeSessionsModule from '../../../../modules/connectshyft/bridgeSessions';
+import * as CanonicalEventsModule from '../../../../modules/connectshyft/canonicalEvents';
 import { connectShyftNeighborServiceAsync } from '../../../../modules/connectshyft/neighbors';
+import * as ReadContractsModule from '../../../../modules/connectshyft/readContracts';
 import { responseEnvelope } from '../../../../platform/middleware/responseEnvelope';
 import connectShyftRouter from '../connectshyft';
 
@@ -299,5 +302,418 @@ describe('connectshyft neighbors routes', () => {
         },
       },
     });
+  });
+
+  it('soft-deletes a neighbor only for tenant admins when irreversible confirmation is supplied', async () => {
+    const softDeleteSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'softDeleteNeighbor').mockResolvedValue({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_SOFT_DELETED',
+      httpStatus: 200,
+      data: {
+        alreadyDeleted: false,
+        neighbor: {
+          neighborId: 'neighbor-soft-delete-1001',
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+          firstName: 'Deleted',
+          lastName: 'Neighbor',
+          prefersTexting: 'YES',
+          isDeleted: true,
+          deletedAtUtc: '2026-03-18T12:00:00.000Z',
+          deletedByUserId: '33333333-3333-4333-8333-333333333333',
+          phones: [
+            {
+              phoneId: 'phone-soft-delete-1001',
+              label: 'mobile',
+              value: '+12605550197',
+              rawInput: '+12605550197',
+              displayNational: '(260) 555-0197',
+              countryCode: '1',
+              nationalNumber: '2605550197',
+              extension: null,
+              validationStatus: 'valid',
+              usageType: 'mobile',
+              source: 'user_entered',
+              sortOrder: 0,
+              isPrimary: true,
+              isShared: false,
+              verificationStatus: 'verified',
+              isActive: false,
+              createdAtUtc: '2026-03-18T12:00:00.000Z',
+              updatedAtUtc: '2026-03-18T12:00:00.000Z',
+            },
+          ],
+          createdAtUtc: '2026-03-18T11:30:00.000Z',
+          updatedAtUtc: '2026-03-18T12:00:00.000Z',
+        },
+      },
+    } as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .delete('/api/v1/connectshyft/neighbors/neighbor-soft-delete-1001')
+      .set(buildHeaders({
+        'x-test-connectshyft-role': 'TENANT_ADMIN',
+        'x-test-connectshyft-user-id': '33333333-3333-4333-8333-333333333333',
+      }))
+      .send({
+        orgUnitId: TEST_ORG_UNIT_ID,
+        irreversibleConfirmation: true,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_SOFT_DELETED',
+      data: {
+        neighborId: 'neighbor-soft-delete-1001',
+        alreadyDeleted: false,
+        neighbor: {
+          isDeleted: true,
+          deletedByUserId: '33333333-3333-4333-8333-333333333333',
+          phones: [
+            expect.objectContaining({
+              value: '+12605550197',
+              isActive: false,
+            }),
+          ],
+        },
+        sideEffectsPersisted: false,
+        audit: {
+          eventName: 'connectshyft.neighbor.soft_deleted',
+        },
+        outbox: {
+          eventName: 'connectshyft.neighbor.soft_deleted',
+        },
+        scope: {
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+        },
+      },
+    });
+    expect(softDeleteSpy).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TEST_TENANT_ID,
+      neighborId: 'neighbor-soft-delete-1001',
+      actorUserId: '33333333-3333-4333-8333-333333333333',
+      irreversibleConfirmation: true,
+    }));
+  });
+
+  it('refuses neighbor soft delete when irreversible confirmation is missing', async () => {
+    jest.spyOn(connectShyftNeighborServiceAsync, 'softDeleteNeighbor').mockResolvedValue({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_DELETE_CONFIRMATION_REQUIRED',
+      message: 'Neighbor soft delete requires explicit irreversible confirmation.',
+    } as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .delete('/api/v1/connectshyft/neighbors/neighbor-soft-delete-1002')
+      .set(buildHeaders({
+        'x-test-connectshyft-role': 'TENANT_ADMIN',
+        'x-test-connectshyft-user-id': '33333333-3333-4333-8333-333333333333',
+      }))
+      .send({
+        orgUnitId: TEST_ORG_UNIT_ID,
+        irreversibleConfirmation: false,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_DELETE_CONFIRMATION_REQUIRED',
+      refusalType: 'business',
+      data: {
+        scope: {
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+        },
+      },
+    });
+  });
+
+  it('refuses neighbor soft delete when the caller is not tenant-privileged', async () => {
+    const softDeleteSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'softDeleteNeighbor');
+
+    const app = buildApp();
+    const response = await request(app)
+      .delete('/api/v1/connectshyft/neighbors/neighbor-soft-delete-1003')
+      .set(buildHeaders({
+        'x-test-connectshyft-role': 'ORGUNIT_MEMBER',
+        'x-test-connectshyft-user-id': '33333333-3333-4333-8333-333333333333',
+      }))
+      .send({
+        orgUnitId: TEST_ORG_UNIT_ID,
+        irreversibleConfirmation: true,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_DELETE_FORBIDDEN',
+      refusalType: 'business',
+    });
+    expect(softDeleteSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns neighbor not found when soft delete targets an unknown neighbor', async () => {
+    const softDeleteSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'softDeleteNeighbor').mockResolvedValue({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND',
+      message: 'Neighbor was not found for this tenant.',
+    } as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .delete('/api/v1/connectshyft/neighbors/neighbor-soft-delete-missing-1004')
+      .set(buildHeaders({
+        'x-test-connectshyft-role': 'TENANT_ADMIN',
+        'x-test-connectshyft-user-id': '33333333-3333-4333-8333-333333333333',
+      }))
+      .send({
+        orgUnitId: TEST_ORG_UNIT_ID,
+        irreversibleConfirmation: true,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND',
+      refusalType: 'business',
+      data: {
+        scope: {
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+        },
+      },
+    });
+    expect(softDeleteSpy).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TEST_TENANT_ID,
+      neighborId: 'neighbor-soft-delete-missing-1004',
+      irreversibleConfirmation: true,
+    }));
+  });
+
+  it('lists only active neighbors on the standard neighbors route', async () => {
+    const listSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'listNeighbors').mockResolvedValue({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBORS_RESOLVED',
+      httpStatus: 200,
+      data: {
+        neighbors: [
+          {
+            neighborId: 'neighbor-active-list-1005',
+            tenantId: TEST_TENANT_ID,
+            orgUnitId: TEST_ORG_UNIT_ID,
+            firstName: 'Active',
+            lastName: 'Neighbor',
+            prefersTexting: 'YES',
+            isDeleted: false,
+            deletedAtUtc: null,
+            deletedByUserId: null,
+            phones: [],
+            createdAtUtc: '2026-03-18T12:00:00.000Z',
+            updatedAtUtc: '2026-03-18T12:00:00.000Z',
+          },
+        ],
+      },
+    } as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/neighbors')
+      .set(buildHeaders({
+        'x-test-connectshyft-role': 'TENANT_ADMIN',
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBORS_RESOLVED',
+      data: {
+        neighbors: [
+          expect.objectContaining({
+            neighborId: 'neighbor-active-list-1005',
+            isDeleted: false,
+          }),
+        ],
+      },
+    });
+    expect(listSpy).toHaveBeenCalledWith(expect.objectContaining({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: TEST_TENANT_ID,
+    }));
+  });
+
+  it('allows tenant admins to request deleted neighbor detail through includeDeleted=true', async () => {
+    const resolveSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_RESOLVED',
+      httpStatus: 200,
+      data: {
+        neighbor: {
+          neighborId: 'neighbor-soft-delete-detail-1004',
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+          firstName: 'Deleted',
+          lastName: 'Detail',
+          prefersTexting: 'YES',
+          isDeleted: true,
+          deletedAtUtc: '2026-03-18T12:05:00.000Z',
+          deletedByUserId: '33333333-3333-4333-8333-333333333333',
+          phones: [],
+          createdAtUtc: '2026-03-18T11:00:00.000Z',
+          updatedAtUtc: '2026-03-18T12:05:00.000Z',
+        },
+      },
+    } as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/neighbors/neighbor-soft-delete-detail-1004')
+      .query({
+        includeDeleted: 'true',
+      })
+      .set(buildHeaders({
+        'x-test-connectshyft-role': 'TENANT_ADMIN',
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_RESOLVED',
+      data: {
+        neighbor: {
+          isDeleted: true,
+          deletedAtUtc: '2026-03-18T12:05:00.000Z',
+          deletedByUserId: '33333333-3333-4333-8333-333333333333',
+        },
+      },
+    });
+    expect(resolveSpy).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TEST_TENANT_ID,
+      neighborId: 'neighbor-soft-delete-detail-1004',
+      includeDeleted: true,
+    }));
+  });
+
+  it('keeps deleted neighbor detail hidden on the standard route without includeDeleted=true', async () => {
+    const resolveSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND',
+      message: 'Neighbor detail is unavailable for the requested orgUnit context.',
+    } as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/neighbors/neighbor-soft-delete-hidden-1006')
+      .set(buildHeaders({
+        'x-test-connectshyft-role': 'TENANT_ADMIN',
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND',
+      refusalType: 'business',
+    });
+    expect(resolveSpy).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TEST_TENANT_ID,
+      neighborId: 'neighbor-soft-delete-hidden-1006',
+      includeDeleted: false,
+    }));
+  });
+
+  it('returns deleted-neighbor thread detail only through includeDeleted=true and clears operational actions', async () => {
+    jest.spyOn(ReadContractsModule, 'resolveConnectShyftThreadDetailContractAsync').mockResolvedValue({
+      threadId: 'thread-soft-delete-detail-1005',
+      neighborId: 'neighbor-soft-delete-detail-1005',
+      neighborDeleted: true,
+      neighbor_deleted: true,
+      neighborDeletedAtUtc: '2026-03-18T12:10:00.000Z',
+      neighbor_deleted_at_utc: '2026-03-18T12:10:00.000Z',
+      tenantId: TEST_TENANT_ID,
+      orgUnitId: TEST_ORG_UNIT_ID,
+      state: 'CLAIMED',
+      claimedByUserId: 'user-connectshyft-neighbors',
+      claimed_by_user_id: 'user-connectshyft-neighbors',
+      bucket: 'mine',
+      escalationStage: 1,
+      isNewUnread: false,
+      priorityRank: 3,
+      urgencyLabel: 'Needs attention soon',
+      lastActivityAtUtc: '2026-03-18T12:12:00.000Z',
+      lastInboundCsNumberId: 'cs-number-1005',
+      last_inbound_cs_number_id: 'cs-number-1005',
+      preferredOutboundCsNumberId: 'cs-number-2005',
+      preferred_outbound_cs_number_id: 'cs-number-2005',
+      preferredOutboundContext: {
+        csNumberId: 'cs-number-2005',
+        label: 'Deleted Neighbor Queue',
+      },
+      preferred_outbound_context: {
+        cs_number_id: 'cs-number-2005',
+        label: 'Deleted Neighbor Queue',
+      },
+      voicemailIndicator: false,
+      voicemailLabel: null,
+      summary: 'Deleted neighbor thread detail',
+      actions: ['Call', 'Text', 'Close'],
+      lifecycle: {
+        reopenedByInbound: false,
+      },
+    } as any);
+    jest.spyOn(CanonicalEventsModule, 'listConnectShyftCanonicalEvents').mockResolvedValue([]);
+    jest.spyOn(BridgeSessionsModule, 'loadConnectShyftBridgeAggregateByThreadId').mockResolvedValue(null as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/threads/thread-soft-delete-detail-1005')
+      .query({
+        includeDeleted: 'true',
+      })
+      .set(buildHeaders({
+        'x-test-connectshyft-role': 'TENANT_ADMIN',
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+      data: {
+        thread: {
+          threadId: 'thread-soft-delete-detail-1005',
+          neighbor_deleted: true,
+          neighbor_deleted_at_utc: '2026-03-18T12:10:00.000Z',
+          actions: [],
+        },
+      },
+    });
+  });
+
+  it('keeps deleted-neighbor thread detail hidden without includeDeleted=true', async () => {
+    const resolveSpy = jest
+      .spyOn(ReadContractsModule, 'resolveConnectShyftThreadDetailContractAsync')
+      .mockResolvedValue(null);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/threads/thread-soft-delete-hidden-1007')
+      .set(buildHeaders({
+        'x-test-connectshyft-role': 'TENANT_ADMIN',
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_NOT_FOUND',
+      refusalType: 'business',
+    });
+    expect(resolveSpy).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TEST_TENANT_ID,
+      orgUnitId: TEST_ORG_UNIT_ID,
+      threadId: 'thread-soft-delete-hidden-1007',
+      includeDeleted: false,
+    }));
   });
 });

@@ -1626,6 +1626,10 @@ const buildSyntheticThreadDetailRecord = (input: {
   return {
     threadId: input.threadId,
     neighborId: input.descriptor.neighborId || null,
+    neighborDeleted: false,
+    neighbor_deleted: false,
+    neighborDeletedAtUtc: null,
+    neighbor_deleted_at_utc: null,
     tenantId: input.descriptor.tenantId,
     orgUnitId: input.descriptor.orgUnitId,
     state: input.descriptor.state,
@@ -2364,6 +2368,32 @@ const enforceNeighborUpdateCapability = (
   refusal(res, {
     code: 'CONNECTSHYFT_NEIGHBOR_UPDATE_FORBIDDEN',
     message: 'Neighbor profile updates require an authorized ConnectShyft role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return false;
+};
+
+const enforceTenantPrivilegedNeighborAdminCapability = (
+  req: Request,
+  res: Response,
+  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
+  options: {
+    code: string;
+    message: string;
+  } = {
+    code: 'CONNECTSHYFT_NEIGHBOR_DELETE_FORBIDDEN',
+    message: 'Neighbor soft delete requires a tenant-privileged ConnectShyft admin role.',
+  },
+): boolean => {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  if (hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)) {
+    return true;
+  }
+
+  refusal(res, {
+    code: options.code,
+    message: options.message,
     refusalType: 'business',
     httpStatus: 200,
   });
@@ -4395,6 +4425,11 @@ const parseNeighborUpdateBody = (req: Request) => {
   };
 };
 
+const parseNeighborDeleteBody = (req: Request) => ({
+  orgUnitId: parseOrgUnitIdFromBody(req),
+  irreversibleConfirmation: parseOptionalBoolean(req.body?.irreversibleConfirmation) === true,
+});
+
 const parseNeighborIdentityMatchBody = (req: Request) => {
   const rawContactPoint = req.body?.contactPoint;
   const contactPointCandidate = rawContactPoint && typeof rawContactPoint === 'object'
@@ -4480,6 +4515,9 @@ const parseNeighborIdParam = (req: Request): string => {
   return req.params.neighborId.trim();
 };
 
+const parseIncludeDeletedQuery = (req: Request): boolean =>
+  parseOptionalBoolean(req.query?.includeDeleted) === true;
+
 const buildNeighborScopePayload = (context: { tenantId: string; orgUnitId: string }) => ({
   scope: {
     tenantId: context.tenantId,
@@ -4547,7 +4585,35 @@ const buildNeighborEditProvenancePayload = (
 };
 
 type NeighborEditProvenancePayload = ReturnType<typeof buildNeighborEditProvenancePayload>;
+type NeighborSoftDeleteProvenancePayload = ReturnType<typeof buildNeighborSoftDeleteProvenancePayload>;
 type NeighborMergeProvenancePayload = ReturnType<typeof buildNeighborMergeProvenancePayload>;
+
+const buildNeighborSoftDeleteProvenancePayload = (
+  context: { tenantId: string; orgUnitId: string },
+  neighborId: string,
+  actorUserId: string,
+  deletedAtUtc: string | null,
+) => {
+  const resolvedDeletedAtUtc = deletedAtUtc || nowIsoUtc();
+  const metadata = {
+    tenant_id: context.tenantId,
+    org_unit_id: context.orgUnitId,
+    actor_user_id: actorUserId,
+    neighbor_id: neighborId,
+    deleted_at_utc: resolvedDeletedAtUtc,
+  };
+
+  return {
+    audit: {
+      eventName: 'connectshyft.neighbor.soft_deleted',
+      metadata,
+    },
+    outbox: {
+      eventName: 'connectshyft.neighbor.soft_deleted',
+      metadata,
+    },
+  };
+};
 
 const maskIdentityContactPointValue = (value: string): string => {
   const normalized = value.trim();
@@ -4679,6 +4745,16 @@ const canPersistNeighborEditSideEffects = (input: {
   return UUID_PATTERN.test(input.tenantId) && UUID_PATTERN.test(input.neighborId);
 };
 
+const canPersistNeighborSoftDeleteSideEffects = (input: {
+  tenantId: string;
+  neighborId: string;
+  actorUserId: string;
+}): boolean => {
+  return UUID_PATTERN.test(input.tenantId)
+    && UUID_PATTERN.test(input.neighborId)
+    && UUID_PATTERN.test(input.actorUserId);
+};
+
 class NeighborUpdateRefusalError extends Error {
   constructor(
     readonly code: string,
@@ -4691,6 +4767,176 @@ class NeighborUpdateRefusalError extends Error {
     this.name = 'NeighborUpdateRefusalError';
   }
 }
+
+class NeighborSoftDeleteRefusalError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'NeighborSoftDeleteRefusalError';
+  }
+}
+
+class NeighborAlreadyDeletedError extends Error {
+  constructor(
+    readonly neighbor: unknown,
+  ) {
+    super('Neighbor already soft-deleted');
+    this.name = 'NeighborAlreadyDeletedError';
+  }
+}
+
+const softDeleteNeighborWithSideEffects = async (input: {
+  actorRoles: string[];
+  tenantId: string;
+  orgUnitId: string;
+  neighborId: string;
+  actorUserId: string;
+  irreversibleConfirmation: boolean;
+}): Promise<
+  | {
+    ok: true;
+    code: 'CONNECTSHYFT_NEIGHBOR_SOFT_DELETED';
+    httpStatus: 200;
+    neighbor: unknown;
+    alreadyDeleted: boolean;
+    sideEffectsPersisted: boolean;
+    provenance: NeighborSoftDeleteProvenancePayload | null;
+  }
+  | {
+    ok: false;
+    code: string;
+    message: string;
+  }
+> => {
+  const command = {
+    actorRoles: input.actorRoles,
+    tenantId: input.tenantId,
+    neighborId: input.neighborId,
+    actorUserId: input.actorUserId,
+    irreversibleConfirmation: input.irreversibleConfirmation,
+  };
+
+  if (!canPersistNeighborSoftDeleteSideEffects({
+    tenantId: input.tenantId,
+    neighborId: input.neighborId,
+    actorUserId: input.actorUserId,
+  })) {
+    const deleted = await connectShyftNeighborServiceAsync.softDeleteNeighbor(command);
+    if (!deleted.ok) {
+      return {
+        ok: false,
+        code: deleted.code,
+        message: deleted.message,
+      };
+    }
+
+    return {
+      ok: true,
+      code: deleted.code,
+      httpStatus: deleted.httpStatus,
+      neighbor: deleted.data.neighbor,
+      alreadyDeleted: deleted.data.alreadyDeleted,
+      sideEffectsPersisted: false,
+      provenance: deleted.data.alreadyDeleted
+        ? null
+        : buildNeighborSoftDeleteProvenancePayload(
+          {
+            tenantId: input.tenantId,
+            orgUnitId: input.orgUnitId,
+          },
+          input.neighborId,
+          input.actorUserId,
+          deleted.data.neighbor.deletedAtUtc,
+        ),
+    };
+  }
+
+  try {
+    const deleted = await executePlatformMutation({
+      mutation: async (trx) => {
+        const txNeighborService = new AsyncConnectShyftNeighborService(
+          new KnexConnectShyftNeighborStore(trx as unknown as Knex),
+        );
+        const deletedResult = await txNeighborService.softDeleteNeighbor(command);
+        if (!deletedResult.ok) {
+          throw new NeighborSoftDeleteRefusalError(deletedResult.code, deletedResult.message);
+        }
+        if (deletedResult.data.alreadyDeleted) {
+          throw new NeighborAlreadyDeletedError(deletedResult.data.neighbor);
+        }
+
+        return deletedResult.data;
+      },
+      event: (result) => {
+        const provenance = buildNeighborSoftDeleteProvenancePayload(
+          {
+            tenantId: input.tenantId,
+            orgUnitId: input.orgUnitId,
+          },
+          input.neighborId,
+          input.actorUserId,
+          result.neighbor.deletedAtUtc,
+        );
+
+        return {
+          tenantId: input.tenantId,
+          actorId: resolveMutationActorUserId(input.actorUserId),
+          eventName: provenance.audit.eventName,
+          entityType: 'connectshyft.neighbor',
+          entityId: input.neighborId,
+          payload: provenance.audit.metadata,
+        };
+      },
+    }, loadPlatformDb());
+
+    const provenance = buildNeighborSoftDeleteProvenancePayload(
+      {
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+      },
+      input.neighborId,
+      input.actorUserId,
+      deleted.neighbor.deletedAtUtc,
+    );
+
+    return {
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_SOFT_DELETED',
+      httpStatus: 200,
+      neighbor: deleted.neighbor,
+      alreadyDeleted: false,
+      sideEffectsPersisted: true,
+      provenance,
+    };
+  } catch (error) {
+    if (error instanceof NeighborAlreadyDeletedError) {
+      return {
+        ok: true,
+        code: 'CONNECTSHYFT_NEIGHBOR_SOFT_DELETED',
+        httpStatus: 200,
+        neighbor: error.neighbor,
+        alreadyDeleted: true,
+        sideEffectsPersisted: false,
+        provenance: null,
+      };
+    }
+    if (error instanceof NeighborSoftDeleteRefusalError) {
+      return {
+        ok: false,
+        code: error.code,
+        message: error.message,
+      };
+    }
+
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_DELETE_SIDE_EFFECTS_UNAVAILABLE',
+      message: 'Neighbor soft delete side effects are temporarily unavailable. Please retry.',
+    };
+  }
+};
 
 const updateNeighborWithSideEffects = async (input: {
   actorRoles: string[];
@@ -5611,6 +5857,17 @@ router.get('/neighbors/:neighborId', async (req: Request, res: Response) => {
     return;
   }
 
+  const includeDeleted = parseIncludeDeletedQuery(req);
+  if (
+    includeDeleted
+    && !enforceTenantPrivilegedNeighborAdminCapability(req, res, context, {
+      code: 'CONNECTSHYFT_NEIGHBOR_READ_FORBIDDEN',
+      message: 'Deleted neighbor detail requires a tenant-privileged ConnectShyft admin role.',
+    })
+  ) {
+    return;
+  }
+
   const actorRoles = resolveConnectShyftActorRoles(req, context);
   const actorUserId = resolveConnectShyftRequestedActorUserId(req);
   const policyDecision = await evaluateNeighborEditPolicy({
@@ -5637,6 +5894,7 @@ router.get('/neighbors/:neighborId', async (req: Request, res: Response) => {
     actorRoles,
     tenantId: context.tenantId,
     neighborId,
+    includeDeleted,
   });
 
   if (!resolved.ok) {
@@ -5658,6 +5916,81 @@ router.get('/neighbors/:neighborId', async (req: Request, res: Response) => {
       neighbor: resolved.data.neighbor,
       ...buildNeighborScopePayload(context),
       ...buildNeighborEditPolicyPayload(policyDecision),
+    },
+  });
+});
+
+router.delete('/neighbors/:neighborId', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const neighborId = parseNeighborIdParam(req);
+  if (!neighborId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_NEIGHBOR_ID_REQUIRED',
+      message: 'neighborId is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+    return;
+  }
+
+  const payload = parseNeighborDeleteBody(req);
+  const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
+  if (!context) {
+    return;
+  }
+
+  if (!enforceTenantPrivilegedNeighborAdminCapability(req, res, context)) {
+    return;
+  }
+
+  const actorUserId = resolveMutationActorUserId(resolveConnectShyftRequestedActorUserId(req));
+  if (!actorUserId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_ACTOR_CONTEXT_REQUIRED',
+      message: 'Neighbor soft delete requires an authenticated actor context.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: buildNeighborScopePayload(context),
+    });
+    return;
+  }
+
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  const deleted = await softDeleteNeighborWithSideEffects({
+    actorRoles,
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    neighborId,
+    actorUserId,
+    irreversibleConfirmation: payload.irreversibleConfirmation,
+  });
+
+  if (!deleted.ok) {
+    refusal(res, {
+      code: deleted.code,
+      message: deleted.message,
+      refusalType: 'business',
+      httpStatus: 200,
+      data: buildNeighborScopePayload(context),
+    });
+    return;
+  }
+
+  return success(res, {
+    code: deleted.code,
+    message: deleted.alreadyDeleted ? 'Neighbor already soft-deleted' : 'Neighbor soft-deleted',
+    httpStatus: deleted.httpStatus,
+    data: {
+      neighborId,
+      neighbor: deleted.neighbor,
+      alreadyDeleted: deleted.alreadyDeleted,
+      ...buildNeighborScopePayload(context),
+      audit: deleted.provenance?.audit || null,
+      outbox: deleted.provenance?.outbox || null,
+      sideEffectsPersisted: deleted.sideEffectsPersisted,
     },
   });
 });
@@ -6466,12 +6799,20 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!enforceThreadViewCapability(req, res)) {
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
     return;
   }
 
-  const context = await enforceOrgUnitContext(req, res);
-  if (!context) {
+  const includeDeleted = parseIncludeDeletedQuery(req);
+  if (includeDeleted) {
+    if (!enforceTenantPrivilegedNeighborAdminCapability(req, res, context, {
+      code: 'CONNECTSHYFT_NEIGHBOR_READ_FORBIDDEN',
+      message: 'Deleted neighbor thread detail requires a tenant-privileged ConnectShyft admin role.',
+    })) {
+      return;
+    }
+  } else if (!enforceThreadViewCapability(req, res, context)) {
     return;
   }
 
@@ -6497,6 +6838,7 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
     threadId,
     actorUserId,
     requestedRole,
+    includeDeleted,
     db: loadPlatformDb(),
   });
 
@@ -6535,12 +6877,14 @@ router.get('/threads/:threadId', async (req: Request, res: Response) => {
 
   thread = {
     ...thread,
-    actions: resolveThreadDetailActionsForActor({
-      req,
-      context,
-      thread,
-      actorUserId,
-    }),
+    actions: thread.neighborDeleted
+      ? []
+      : resolveThreadDetailActionsForActor({
+        req,
+        context,
+        thread,
+        actorUserId,
+      }),
   };
 
   const timeline = await listCanonicalThreadEvents({

@@ -63,9 +63,12 @@ describe('20260318130000_add_connectshyft_neighbor_lifecycle_state migration', (
 
     const rawSql = knex.raw.mock.calls.map((call: [string]) => call[0]).join('\n');
     expect(rawSql).toContain('ADD COLUMN IF NOT EXISTS is_deleted');
+    expect(rawSql).toContain('BOOLEAN NOT NULL DEFAULT FALSE');
     expect(rawSql).toContain('ADD COLUMN IF NOT EXISTS deleted_at_utc');
     expect(rawSql).toContain('ADD COLUMN IF NOT EXISTS deleted_by_user_id');
+    expect(rawSql).toContain('UUID NULL REFERENCES users(id) ON DELETE SET NULL');
     expect(rawSql).toContain('connectshyft_cs_neighbors_active_scope_idx');
+    expect(rawSql).toContain('(tenant_id, org_unit_id, is_deleted, id)');
   });
 
   it('drops deterministic deleted-neighbor lifecycle columns and index on down migration', async () => {

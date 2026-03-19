@@ -111,6 +111,9 @@ export type ConnectShyftNeighbor = {
   firstName: string;
   lastName: string;
   prefersTexting: ConnectShyftTextingPreference;
+  isDeleted: boolean;
+  deletedAtUtc: string | null;
+  deletedByUserId: string | null;
   phones: ConnectShyftNeighborPhone[];
   createdAtUtc: string;
   updatedAtUtc: string;
@@ -133,6 +136,7 @@ export type ConnectShyftCreateNeighborCommand = NeighborActorContext & {
 export type ConnectShyftResolveNeighborCommand = NeighborActorContext & {
   tenantId: string;
   neighborId: string;
+  includeDeleted?: boolean;
 };
 
 export type ConnectShyftListNeighborsCommand = NeighborActorContext & {
@@ -147,6 +151,13 @@ export type ConnectShyftUpdateNeighborCommand = NeighborActorContext & {
   prefersTexting?: ConnectShyftTextingPreference;
   phones: ConnectShyftNeighborPhoneInput[];
   relationshipValidated?: boolean;
+};
+
+export type ConnectShyftSoftDeleteNeighborCommand = NeighborActorContext & {
+  tenantId: string;
+  neighborId: string;
+  actorUserId: string;
+  irreversibleConfirmation: boolean;
 };
 
 export type ConnectShyftNeighborMergeConfirmation = {
@@ -226,12 +237,25 @@ type NeighborMergePersistenceResult =
     reason: 'NEIGHBOR_NOT_FOUND' | 'MERGE_INVALID';
   };
 
+type NeighborSoftDeletePersistenceResult =
+  | {
+    ok: true;
+    neighbor: ConnectShyftNeighbor;
+    alreadyDeleted: boolean;
+  }
+  | {
+    ok: false;
+    reason: 'NEIGHBOR_NOT_FOUND';
+  };
+
 type NeighborRefusalResult = {
   ok: false;
   code:
     | 'CONNECTSHYFT_NEIGHBOR_CREATE_FORBIDDEN'
     | 'CONNECTSHYFT_NEIGHBOR_READ_FORBIDDEN'
     | 'CONNECTSHYFT_NEIGHBOR_UPDATE_FORBIDDEN'
+    | 'CONNECTSHYFT_NEIGHBOR_DELETE_FORBIDDEN'
+    | 'CONNECTSHYFT_NEIGHBOR_DELETE_CONFIRMATION_REQUIRED'
     | 'CONNECTSHYFT_NEIGHBOR_EDIT_RELATIONSHIP_REQUIRED'
     | 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED'
     | 'CONNECTSHYFT_NEIGHBOR_PHONE_INVALID_FORMAT'
@@ -290,6 +314,18 @@ export type ConnectShyftUpdateNeighborResult =
     httpStatus: 200;
     data: {
       neighbor: ConnectShyftNeighbor;
+    };
+  }
+  | NeighborRefusalResult;
+
+export type ConnectShyftSoftDeleteNeighborResult =
+  | {
+    ok: true;
+    code: 'CONNECTSHYFT_NEIGHBOR_SOFT_DELETED';
+    httpStatus: 200;
+    data: {
+      neighbor: ConnectShyftNeighbor;
+      alreadyDeleted: boolean;
     };
   }
   | NeighborRefusalResult;
@@ -404,6 +440,18 @@ const buildUpdateCapabilityRefusal = (): NeighborRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_NEIGHBOR_UPDATE_FORBIDDEN',
   message: 'Neighbor profile updates require an authorized ConnectShyft role.',
+});
+
+const buildDeleteCapabilityRefusal = (): NeighborRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_NEIGHBOR_DELETE_FORBIDDEN',
+  message: 'Neighbor soft delete requires a tenant-privileged ConnectShyft admin role.',
+});
+
+const buildDeleteConfirmationRequiredRefusal = (): NeighborRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_NEIGHBOR_DELETE_CONFIRMATION_REQUIRED',
+  message: 'Neighbor soft delete requires explicit irreversible confirmation.',
 });
 
 const buildMergeCapabilityRefusal = (): NeighborRefusalResult => ({
@@ -742,6 +790,9 @@ const mapRowsToNeighbor = (
   firstName: neighborRow.first_name,
   lastName: neighborRow.last_name,
   prefersTexting: normalizeTextingPreference(neighborRow.prefers_texting),
+  isDeleted: neighborRow.is_deleted === true,
+  deletedAtUtc: neighborRow.deleted_at_utc ? toIsoUtc(neighborRow.deleted_at_utc) : null,
+  deletedByUserId: normalizeNonEmptyString(neighborRow.deleted_by_user_id) || null,
   phones: sortPhones(phoneRows).map((phoneRow) => ({
     phoneId: phoneRow.id,
     label: phoneRow.label,
@@ -825,28 +876,57 @@ export class InMemoryConnectShyftNeighborStore {
   private deletedNeighborIdsByTenant = new Map<string, Set<string>>();
 
   private isNeighborDeleted(tenantId: string, neighborId: string): boolean {
-    return this.deletedNeighborIdsByTenant.get(tenantId)?.has(neighborId) === true;
+    const neighbor = this.neighborsById.get(neighborId);
+    return (
+      this.deletedNeighborIdsByTenant.get(tenantId)?.has(neighborId) === true
+      || (neighbor?.tenantId === tenantId && neighbor.isDeleted === true)
+    );
   }
 
   setNeighborDeletedStateForTests(input: {
     tenantId: string;
     neighborId: string;
     isDeleted: boolean;
+    deletedAtUtc?: string | null;
+    deletedByUserId?: string | null;
   }): void {
     const deletedNeighborIds = this.deletedNeighborIdsByTenant.get(input.tenantId) || new Set<string>();
+    const existing = this.neighborsById.get(input.neighborId);
     if (input.isDeleted) {
       deletedNeighborIds.add(input.neighborId);
       this.deletedNeighborIdsByTenant.set(input.tenantId, deletedNeighborIds);
+      if (existing && existing.tenantId === input.tenantId) {
+        const deletedAtUtc = input.deletedAtUtc || existing.deletedAtUtc || nowIsoUtc();
+        this.neighborsById.set(input.neighborId, {
+          ...existing,
+          isDeleted: true,
+          deletedAtUtc,
+          deletedByUserId: input.deletedByUserId || existing.deletedByUserId,
+          updatedAtUtc: deletedAtUtc,
+          phones: existing.phones.map((phone) => ({
+            ...phone,
+            isActive: false,
+            updatedAtUtc: deletedAtUtc,
+          })),
+        });
+      }
       return;
     }
 
     deletedNeighborIds.delete(input.neighborId);
     if (deletedNeighborIds.size === 0) {
       this.deletedNeighborIdsByTenant.delete(input.tenantId);
-      return;
+    } else {
+      this.deletedNeighborIdsByTenant.set(input.tenantId, deletedNeighborIds);
     }
-
-    this.deletedNeighborIdsByTenant.set(input.tenantId, deletedNeighborIds);
+    if (existing && existing.tenantId === input.tenantId) {
+      this.neighborsById.set(input.neighborId, {
+        ...existing,
+        isDeleted: false,
+        deletedAtUtc: null,
+        deletedByUserId: null,
+      });
+    }
   }
 
   createNeighbor(input: NeighborStoreCreateInput): NeighborPersistenceResult {
@@ -866,6 +946,9 @@ export class InMemoryConnectShyftNeighborStore {
       firstName: input.firstName,
       lastName: input.lastName,
       prefersTexting: input.prefersTexting ?? 'YES',
+      isDeleted: false,
+      deletedAtUtc: null,
+      deletedByUserId: null,
       phones: input.phones.map((phone) => ({
         phoneId: randomUUID(),
         label: phone.label,
@@ -950,6 +1033,54 @@ export class InMemoryConnectShyftNeighborStore {
     return {
       ok: true,
       neighbor: cloneNeighbor(updated),
+    };
+  }
+
+  softDeleteNeighbor(input: {
+    tenantId: string;
+    neighborId: string;
+    actorUserId: string;
+  }): NeighborSoftDeletePersistenceResult {
+    const existing = this.neighborsById.get(input.neighborId);
+    if (!existing || existing.tenantId !== input.tenantId) {
+      return {
+        ok: false,
+        reason: 'NEIGHBOR_NOT_FOUND',
+      };
+    }
+
+    if (this.isNeighborDeleted(input.tenantId, input.neighborId)) {
+      return {
+        ok: true,
+        neighbor: cloneNeighbor(existing),
+        alreadyDeleted: true,
+      };
+    }
+
+    const deletedAtUtc = nowIsoUtc();
+    const deletedNeighborIds = this.deletedNeighborIdsByTenant.get(input.tenantId) || new Set<string>();
+    deletedNeighborIds.add(input.neighborId);
+    this.deletedNeighborIdsByTenant.set(input.tenantId, deletedNeighborIds);
+
+    const deleted: ConnectShyftNeighbor = {
+      ...existing,
+      isDeleted: true,
+      deletedAtUtc,
+      deletedByUserId: input.actorUserId,
+      updatedAtUtc: deletedAtUtc,
+      phones: existing.phones.map((phone) => ({
+        ...phone,
+        isActive: false,
+        updatedAtUtc: deletedAtUtc,
+      })),
+    };
+
+    this.neighborsById.set(input.neighborId, deleted);
+
+    return {
+      ok: true,
+      neighbor: cloneNeighbor(deleted),
+      alreadyDeleted: false,
     };
   }
 
@@ -1142,7 +1273,9 @@ export class InMemoryConnectShyftNeighborStore {
 
     const neighbors = Array.from(tenantIds)
       .map((neighborId) => this.neighborsById.get(neighborId))
-      .filter((neighbor): neighbor is ConnectShyftNeighbor => !!neighbor)
+      .filter((neighbor): neighbor is ConnectShyftNeighbor => (
+        !!neighbor && !this.isNeighborDeleted(tenantId, neighbor.neighborId)
+      ))
       .map(cloneNeighbor);
 
     return sortNeighbors(neighbors);
@@ -1307,7 +1440,9 @@ export class InMemoryConnectShyftNeighborStore {
 
     const neighbors = Array.from(scopedIds)
       .map((neighborId) => this.neighborsById.get(neighborId))
-      .filter((neighbor): neighbor is ConnectShyftNeighbor => !!neighbor)
+      .filter((neighbor): neighbor is ConnectShyftNeighbor => (
+        !!neighbor && !this.isNeighborDeleted(tenantId, neighbor.neighborId)
+      ))
       .map(cloneNeighbor);
 
     return sortNeighbors(neighbors);
@@ -1513,12 +1648,125 @@ export class KnexConnectShyftNeighborStore {
     return mapRowsToNeighbor(neighborRow, phoneRows);
   }
 
+  async softDeleteNeighbor(input: {
+    tenantId: string;
+    neighborId: string;
+    actorUserId: string;
+  }): Promise<NeighborSoftDeletePersistenceResult> {
+    return this.knexClient.transaction(async (trx) => {
+      const existingNeighbor = await trx
+        .withSchema('connectshyft')
+        .table('cs_neighbors')
+        .where({
+          tenant_id: input.tenantId,
+          id: input.neighborId,
+        })
+        .first<DbNeighborRow>(this.neighborColumns());
+
+      if (!existingNeighbor) {
+        return {
+          ok: false,
+          reason: 'NEIGHBOR_NOT_FOUND',
+        } as NeighborSoftDeletePersistenceResult;
+      }
+
+      const existingPhoneRows = await trx
+        .withSchema('connectshyft')
+        .table('cs_neighbor_phones')
+        .where({
+          tenant_id: input.tenantId,
+          neighbor_id: input.neighborId,
+        })
+        .select<DbNeighborPhoneRow[]>(this.neighborPhoneColumns());
+
+      if (existingNeighbor.is_deleted === true) {
+        return {
+          ok: true,
+          neighbor: mapRowsToNeighbor(existingNeighbor, existingPhoneRows),
+          alreadyDeleted: true,
+        } as NeighborSoftDeletePersistenceResult;
+      }
+
+      const [deletedNeighbor] = await trx
+        .withSchema('connectshyft')
+        .table('cs_neighbors')
+        .where({
+          tenant_id: input.tenantId,
+          id: input.neighborId,
+          is_deleted: false,
+        })
+        .update({
+          is_deleted: true,
+          deleted_at_utc: trx.fn.now(),
+          deleted_by_user_id: input.actorUserId,
+          updated_at_utc: trx.fn.now(),
+        })
+        .returning<DbNeighborRow[]>(this.neighborColumns());
+
+      if (!deletedNeighbor) {
+        const currentNeighbor = await trx
+          .withSchema('connectshyft')
+          .table('cs_neighbors')
+          .where({
+            tenant_id: input.tenantId,
+            id: input.neighborId,
+          })
+          .first<DbNeighborRow>(this.neighborColumns());
+
+        if (!currentNeighbor) {
+          return {
+            ok: false,
+            reason: 'NEIGHBOR_NOT_FOUND',
+          } as NeighborSoftDeletePersistenceResult;
+        }
+
+        const currentPhoneRows = await trx
+          .withSchema('connectshyft')
+          .table('cs_neighbor_phones')
+          .where({
+            tenant_id: input.tenantId,
+            neighbor_id: input.neighborId,
+          })
+          .select<DbNeighborPhoneRow[]>(this.neighborPhoneColumns());
+
+        return {
+          ok: true,
+          neighbor: mapRowsToNeighbor(currentNeighbor, currentPhoneRows),
+          alreadyDeleted: currentNeighbor.is_deleted === true,
+        } as NeighborSoftDeletePersistenceResult;
+      }
+
+      const updatedPhoneRows = await trx
+        .withSchema('connectshyft')
+        .table('cs_neighbor_phones')
+        .where({
+          tenant_id: input.tenantId,
+          neighbor_id: input.neighborId,
+        })
+        .update({
+          is_active: false,
+          updated_at_utc: trx.fn.now(),
+        })
+        .returning<DbNeighborPhoneRow[]>(this.neighborPhoneColumns());
+
+      return {
+        ok: true,
+        neighbor: mapRowsToNeighbor(
+          deletedNeighbor,
+          updatedPhoneRows.length > 0 ? updatedPhoneRows : existingPhoneRows,
+        ),
+        alreadyDeleted: false,
+      } as NeighborSoftDeletePersistenceResult;
+    });
+  }
+
   async listByTenant(tenantId: string): Promise<ConnectShyftNeighbor[]> {
     const neighborRows = await this.knexClient
       .withSchema('connectshyft')
       .table('cs_neighbors')
       .where({
         tenant_id: tenantId,
+        is_deleted: false,
       })
       .orderBy('last_name', 'asc')
       .orderBy('first_name', 'asc')
@@ -2024,15 +2272,7 @@ export class KnexConnectShyftNeighborStore {
         .update({
           updated_at_utc: trx.fn.now(),
         })
-        .returning<DbNeighborRow[]>([
-          'id',
-          'tenant_id',
-          'org_unit_id',
-          'first_name',
-          'last_name',
-          'created_at_utc',
-          'updated_at_utc',
-        ]);
+        .returning<DbNeighborRow[]>(this.neighborColumns());
 
       if (!updatedSurvivor) {
         return {
@@ -2164,7 +2404,17 @@ export class ConnectShyftNeighborService {
       return buildReadCapabilityRefusal();
     }
 
-    const neighbor = this.store.resolveNeighborById(input.tenantId, input.neighborId);
+    const activeResolveStore = this.store as InMemoryConnectShyftNeighborStore & {
+      resolveActiveNeighborById?: (
+        tenantId: string,
+        neighborId: string,
+      ) => ConnectShyftNeighbor | null;
+    };
+    const neighbor = input.includeDeleted === true
+      ? this.store.resolveNeighborById(input.tenantId, input.neighborId)
+      : activeResolveStore.resolveActiveNeighborById
+        ? activeResolveStore.resolveActiveNeighborById(input.tenantId, input.neighborId)
+        : this.store.resolveNeighborById(input.tenantId, input.neighborId);
     if (!neighbor) {
       return buildNeighborNotFoundRefusal();
     }
@@ -2261,6 +2511,37 @@ export class ConnectShyftNeighborService {
       httpStatus: 200,
       data: {
         neighbors: this.store.listByTenant(input.tenantId),
+      },
+    };
+  }
+
+  softDeleteNeighbor(
+    input: ConnectShyftSoftDeleteNeighborCommand,
+  ): ConnectShyftSoftDeleteNeighborResult {
+    if (!hasTenantPrivilegedNeighborCapability(input.actorRoles)) {
+      return buildDeleteCapabilityRefusal();
+    }
+    if (input.irreversibleConfirmation !== true) {
+      return buildDeleteConfirmationRequiredRefusal();
+    }
+
+    const deleted = this.store.softDeleteNeighbor({
+      tenantId: input.tenantId,
+      neighborId: input.neighborId,
+      actorUserId: input.actorUserId,
+    });
+
+    if (!deleted.ok) {
+      return buildNeighborNotFoundRefusal();
+    }
+
+    return {
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_SOFT_DELETED',
+      httpStatus: 200,
+      data: {
+        neighbor: deleted.neighbor,
+        alreadyDeleted: deleted.alreadyDeleted,
       },
     };
   }
@@ -2501,7 +2782,17 @@ export class AsyncConnectShyftNeighborService {
     }
 
     try {
-      const neighbor = await this.store.resolveNeighborById(input.tenantId, input.neighborId);
+      const activeResolveStore = this.store as KnexConnectShyftNeighborStore & {
+        resolveActiveNeighborById?: (
+          tenantId: string,
+          neighborId: string,
+        ) => Promise<ConnectShyftNeighbor | null>;
+      };
+      const neighbor = input.includeDeleted === true
+        ? await this.store.resolveNeighborById(input.tenantId, input.neighborId)
+        : activeResolveStore.resolveActiveNeighborById
+          ? await activeResolveStore.resolveActiveNeighborById(input.tenantId, input.neighborId)
+          : await this.store.resolveNeighborById(input.tenantId, input.neighborId);
       if (!neighbor) {
         return buildNeighborNotFoundRefusal();
       }
@@ -2642,6 +2933,45 @@ export class AsyncConnectShyftNeighborService {
         return buildDuplicatePhoneRefusal();
       }
 
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return buildPersistenceUnavailableRefusal();
+    }
+  }
+
+  async softDeleteNeighbor(
+    input: ConnectShyftSoftDeleteNeighborCommand,
+  ): Promise<ConnectShyftSoftDeleteNeighborResult> {
+    if (!hasTenantPrivilegedNeighborCapability(input.actorRoles)) {
+      return buildDeleteCapabilityRefusal();
+    }
+    if (input.irreversibleConfirmation !== true) {
+      return buildDeleteConfirmationRequiredRefusal();
+    }
+
+    try {
+      const deleted = await this.store.softDeleteNeighbor({
+        tenantId: input.tenantId,
+        neighborId: input.neighborId,
+        actorUserId: input.actorUserId,
+      });
+
+      if (!deleted.ok) {
+        return buildNeighborNotFoundRefusal();
+      }
+
+      return {
+        ok: true,
+        code: 'CONNECTSHYFT_NEIGHBOR_SOFT_DELETED',
+        httpStatus: 200,
+        data: {
+          neighbor: deleted.neighbor,
+          alreadyDeleted: deleted.alreadyDeleted,
+        },
+      };
+    } catch (error) {
       if (!isMissingPersistenceError(error)) {
         throw error;
       }
