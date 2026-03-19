@@ -38,6 +38,14 @@ app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.post('/work-intents', (_req: Request, res: Response) => {
+  res.json({
+    id: 'wi_1',
+    status: 'open',
+    intentType: 'needs_follow_up',
+  });
+});
+
 app.use(csrfProtection);
 app.use('/api/v1/connectshyft', connectShyftRouter);
 

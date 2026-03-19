@@ -4,11 +4,13 @@ module.exports = {
     '<rootDir>/src',
     '<rootDir>/../../domains/communication',
     '<rootDir>/../../infrastructure/communications',
+    '<rootDir>/../../tests/integration/connectshyft-api',
   ],
   testMatch: [
     '<rootDir>/src/**/__tests__/**/*.test.ts',
     '<rootDir>/../../domains/communication/**/__tests__/**/*.test.ts',
     '<rootDir>/../../infrastructure/communications/**/__tests__/**/*.test.ts',
+    '<rootDir>/../../tests/integration/connectshyft-api/**/*.test.ts',
   ],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   moduleFileExtensions: ['ts', 'js', 'json'],
