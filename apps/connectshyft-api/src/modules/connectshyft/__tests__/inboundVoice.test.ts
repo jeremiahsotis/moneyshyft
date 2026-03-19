@@ -49,6 +49,8 @@ describe('connectshyft inbound voice domain mapping', () => {
         durationSeconds: 47,
       },
     });
+    expect(domainEvent.inboundVoiceArtifact.to).toBe('+12605550171');
+    expect(domainEvent.inboundVoiceArtifact.to).not.toContain('cs-number');
   });
 
   it('[E3-UNIT-002][P0] resolves voice routing matrix across no-thread, unclaimed, claimed, and closed states @P0', () => {

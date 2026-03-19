@@ -186,6 +186,7 @@ const ensureDbThread = async (
   request: Parameters<typeof apiRequest>[0],
   context: StoryC4Context,
   headers: Record<string, string>,
+  preferredNumber: string,
 ) => {
   const ensureResponse = await apiRequest(request, {
     method: 'POST',
@@ -195,8 +196,8 @@ const ensureDbThread = async (
       orgUnitId: context.orgUnitId,
       neighborId: `neighbor-d3-${randomUUID().slice(0, 8)}`,
       source: 'VOICE',
-      lastInboundCsNumberId: 'cs-number-d3-inbound',
-      preferredOutboundCsNumberId: 'cs-number-d3-outbound',
+      lastInboundCsNumberId: preferredNumber,
+      preferredOutboundCsNumberId: preferredNumber,
     },
   });
 
@@ -215,7 +216,7 @@ const ensureDbBackedSmsSenderReady = async (
   request: Parameters<typeof apiRequest>[0],
   context: StoryC4Context,
   actorUserId: string,
-) => {
+): Promise<string> => {
   const preferredNumber = `+1${actorUserId.replace(/\D/g, '').padEnd(10, '0').slice(0, 10)}`;
   const adminHeaders = createStoryC4Headers(context, {
     role: 'ORGUNIT_ADMIN',
@@ -229,6 +230,7 @@ const ensureDbBackedSmsSenderReady = async (
     preferredNumber,
     preferredLabel: 'Story D3 DB-backed SMS sender',
   });
+  return preferredNumber;
 };
 
 test.describe('Story d.3 outbound audit outbox and refusal envelope integration (Automate API Expansion)', () => {
@@ -244,9 +246,9 @@ test.describe('Story d.3 outbound audit outbox and refusal envelope integration 
       const { context, headers, actorUserId } = buildDbBackedContext();
       await ensureDbTenant(context.tenantId);
       await ensureDbActorUser(actorUserId, context.tenantId);
-      await ensureDbBackedSmsSenderReady(request, context, actorUserId);
+      const preferredNumber = await ensureDbBackedSmsSenderReady(request, context, actorUserId);
 
-      const threadId = await ensureDbThread(request, context, headers);
+      const threadId = await ensureDbThread(request, context, headers, preferredNumber);
       const beforeCounts = await countThreadSideEffects(context.tenantId, threadId);
 
       const outboundResponse = await apiRequest(request, {
@@ -306,8 +308,9 @@ test.describe('Story d.3 outbound audit outbox and refusal envelope integration 
       const { context, headers, actorUserId } = buildDbBackedContext();
       await ensureDbTenant(context.tenantId);
       await ensureDbActorUser(actorUserId, context.tenantId);
+      const preferredNumber = await ensureDbBackedSmsSenderReady(request, context, actorUserId);
 
-      const threadId = await ensureDbThread(request, context, headers);
+      const threadId = await ensureDbThread(request, context, headers, preferredNumber);
 
       const claimResponse = await apiRequest(request, {
         method: 'POST',
@@ -460,8 +463,9 @@ test.describe('Story d.3 outbound audit outbox and refusal envelope integration 
       const { context, headers, actorUserId } = buildDbBackedContext();
       await ensureDbTenant(context.tenantId);
       await ensureDbActorUser(actorUserId, context.tenantId);
+      const preferredNumber = await ensureDbBackedSmsSenderReady(request, context, actorUserId);
 
-      const threadId = await ensureDbThread(request, context, headers);
+      const threadId = await ensureDbThread(request, context, headers, preferredNumber);
       const beforeCounts = await countThreadSideEffects(context.tenantId, threadId);
 
       const response = await apiRequest(request, {

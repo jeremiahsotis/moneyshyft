@@ -5,6 +5,7 @@ import {
   destroyConnectShyftDbActorClient,
 } from '../../support/helpers/connectShyftDbActor';
 import {
+  buildStoryG4DeterministicPhone,
   buildStoryG4AddNeighborUrl,
   buildStoryG4DirectoryUrl,
   createStoryG4NeighborSeed,
@@ -13,6 +14,11 @@ import {
 import { createStoryG4Context } from '../../support/factories/connectShyftStoryG4Factory';
 
 const context = createStoryG4Context();
+
+const formatDirectoryPhoneQuery = (rawPhone: string): string => {
+  const digits = rawPhone.replace(/\D/g, '').replace(/^1/, '');
+  return digits.replace(/^(\d{3})(\d{3})(\d{4})$/, '($1) $2-$3');
+};
 
 test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD E2E)', () => {
   let createdNeighborIds: string[] = [];
@@ -74,25 +80,28 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD E2E)', () => {
 
   test(
     '[G4-ATDD-E2E-003][P0] directory search supports name and phone modes and keeps conference-scoped results for volunteer workflows @P0',
-    async ({ page, request }) => {
+    async ({ page, request }, testInfo) => {
+      const byNamePhone = buildStoryG4DeterministicPhone(testInfo, 'g4-atdd-e2e-003-name-phone');
+      const byPhonePhone = buildStoryG4DeterministicPhone(testInfo, 'g4-atdd-e2e-003-phone-phone');
+      const crossScopePhone = buildStoryG4DeterministicPhone(testInfo, 'g4-atdd-e2e-003-cross-scope-phone');
       const byNameSeed = await createStoryG4NeighborSeed(request, context, {
         firstName: context.searchTerms.byName,
         lastName: 'DirectoryNameScoped',
-        primaryPhone: '+12605550199',
+        primaryPhone: byNamePhone,
       });
       createdNeighborIds.push(byNameSeed.neighborId);
 
       const byPhoneSeed = await createStoryG4NeighborSeed(request, context, {
         firstName: context.searchTerms.byName,
         lastName: 'DirectoryPhoneScoped',
-        primaryPhone: '+12605550120',
+        primaryPhone: byPhonePhone,
       });
       createdNeighborIds.push(byPhoneSeed.neighborId);
 
       const crossScopeSeed = await createStoryG4NeighborSeed(request, context, {
         firstName: context.searchTerms.byName,
         lastName: 'DirectoryCrossScope',
-        primaryPhone: '+12605550999',
+        primaryPhone: crossScopePhone,
         orgUnitId: context.crossScopeOrgUnitId,
         orgUnitMemberships: [context.crossScopeOrgUnitId],
       });
@@ -118,7 +127,9 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD E2E)', () => {
 
       // When searching by phone
       await page.getByTestId('connectshyft-directory-search-mode-phone').click();
-      await page.getByTestId('connectshyft-directory-search-input').fill(context.searchTerms.byPhone);
+      await page.getByTestId('connectshyft-directory-search-input').fill(
+        formatDirectoryPhoneQuery(byPhonePhone),
+      );
       await expect(page.getByTestId('connectshyft-directory-result-card').first()).toBeVisible();
 
       // Then phone-mode results remain conference scoped too
@@ -134,11 +145,12 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD E2E)', () => {
 
   test(
     '[G4-ATDD-E2E-004][P0] selecting a directory entry with an active thread opens that thread via deterministic ensure behavior and shows contextual reuse notice @P0',
-    async ({ page, request }) => {
+    async ({ page, request }, testInfo) => {
+      const existingPhone = buildStoryG4DeterministicPhone(testInfo, 'g4-atdd-e2e-004-existing-phone');
       const existingNeighbor = await createStoryG4NeighborSeed(request, context, {
         firstName: context.searchTerms.byName,
         lastName: 'DirectoryExistingThread',
-        primaryPhone: '+12605550199',
+        primaryPhone: existingPhone,
       });
       createdNeighborIds.push(existingNeighbor.neighborId);
 
@@ -173,11 +185,12 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (ATDD E2E)', () => {
 
   test(
     '[G4-ATDD-E2E-005][P1] selecting a directory entry without an active thread starts a new conversation and surfaces deterministic creation feedback @P1',
-    async ({ page, request }) => {
+    async ({ page, request }, testInfo) => {
+      const newCandidatePhone = buildStoryG4DeterministicPhone(testInfo, 'g4-atdd-e2e-005-new-phone');
       const newCandidate = await createStoryG4NeighborSeed(request, context, {
         firstName: context.searchTerms.byName,
         lastName: 'DirectoryNoThread',
-        primaryPhone: '+12605550133',
+        primaryPhone: newCandidatePhone,
       });
       createdNeighborIds.push(newCandidate.neighborId);
 

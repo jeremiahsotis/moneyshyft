@@ -28,6 +28,7 @@ if (fs.existsSync(envPath)) {
 
 export default defineConfig({
   testDir: './tests',
+  testIgnore: ['integration/**'],
   timeout: 45_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,

@@ -4,6 +4,7 @@ import {
   createStoryD4Headers,
   type StoryD4Context,
 } from '../factories/connectShyftStoryD4Factory';
+import { cleanupConnectShyftThreadAndNeighborState } from '../helpers/connectShyftDbActor';
 import { ensureSingleActiveConnectShyftSmsSenderMapping } from '../helpers/connectShyftNumberMappingTestHelpers';
 
 type StoryD4Fixtures = {
@@ -33,6 +34,10 @@ export const test = base.extend<StoryD4Fixtures>({
     await use(createStoryD4Context());
   },
   storyD4SmsSenderReady: async ({ request, storyD4Context }, use) => {
+    await cleanupConnectShyftThreadAndNeighborState({
+      tenantId: storyD4Context.tenantId,
+      threadIds: Object.values(storyD4Context.threadIds),
+    });
     await ensureSingleActiveConnectShyftSmsSenderMapping({
       request,
       headers: createStoryD4Headers(storyD4Context, {

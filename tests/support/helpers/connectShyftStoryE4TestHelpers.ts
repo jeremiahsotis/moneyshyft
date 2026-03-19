@@ -302,14 +302,20 @@ export const seedStoryE4VoicemailWithCallbackCorrelation = async ({
     request,
     numberMappingLabel,
   });
+  const resolvedInboundNumberId = inboundNumberId.startsWith('cs-')
+    ? context.numbers.mappedInbound
+    : inboundNumberId;
+  const resolvedOutboundNumberId = outboundNumberId.startsWith('cs-')
+    ? context.numbers.mappedInbound
+    : outboundNumberId;
 
   const threadId = await ensureStoryE4Thread({
     request,
     context,
     adminHeaders,
     neighborId,
-    inboundNumberId,
-    outboundNumberId,
+    inboundNumberId: resolvedInboundNumberId,
+    outboundNumberId: resolvedOutboundNumberId,
   });
 
   const seedPayload = buildStoryE4VoicemailSeedPayload({

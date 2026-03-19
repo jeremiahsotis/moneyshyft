@@ -4,6 +4,7 @@ import {
   createStoryUxR2Context,
   type StoryUxR2Context,
 } from '../../support/factories/connectShyftStoryUxR2Factory';
+import { deterministicE164 } from '../../support/utils/deterministicTestIds';
 
 const buildSurfaceUrl = (
   context: StoryUxR2Context,
@@ -68,6 +69,11 @@ const hasForbiddenToken = (
   const lowered = value.toLowerCase();
   return forbiddenTokens.some((token) => lowered.includes(token.toLowerCase()));
 };
+
+const buildUxR2AddNeighborPhone = (
+  testInfo: Parameters<typeof deterministicE164>[0],
+  label: string,
+): string => deterministicE164(testInfo, label, '+1317');
 
 const submitAddNeighbor = async (page: Page, phone: string): Promise<void> => {
   const toggle = page.getByTestId('connectshyft-add-neighbor-action');
@@ -251,7 +257,7 @@ test.describe('Story ux-r2 automate - accessibility and language hardening opera
 
   test(
     '[P1] outcome feedback keeps success-refusal-error taxonomy with deterministic plain-language announcements @P1',
-    async ({ page }) => {
+    async ({ page }, testInfo) => {
       const context = createStoryUxR2Context();
       await login(page);
 
@@ -263,7 +269,7 @@ test.describe('Story ux-r2 automate - accessibility and language hardening opera
         }),
       );
 
-      await submitAddNeighbor(page, '+1 (555) 010-2048');
+      await submitAddNeighbor(page, buildUxR2AddNeighborPhone(testInfo, 'ux-r2-success-phone'));
       const feedbackBanner = page.getByTestId('connectshyft-feedback-banner');
       await expect(feedbackBanner).toHaveAttribute(
         'data-feedback-taxonomy',

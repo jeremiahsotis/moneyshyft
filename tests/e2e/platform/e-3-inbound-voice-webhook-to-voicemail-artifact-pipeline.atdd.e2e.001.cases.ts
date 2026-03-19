@@ -31,8 +31,8 @@ test.describe(
             orgUnitId: context.orgUnitId,
             neighborId: context.neighborIds.voicemailUnclaimed,
             source: 'VOICE',
-            lastInboundCsNumberId: 'cs-inbound-e3-e2e-001',
-            preferredOutboundCsNumberId: 'cs-outbound-e3-e2e-001',
+            lastInboundCsNumberId: context.numbers.mappedInbound,
+            preferredOutboundCsNumberId: context.numbers.mappedInbound,
           },
         });
 

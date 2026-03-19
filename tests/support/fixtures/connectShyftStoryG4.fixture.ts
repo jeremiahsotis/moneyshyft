@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { test as base } from '@playwright/test';
 import {
   createStoryG4Context,
@@ -18,6 +19,12 @@ type StoryG4Fixtures = {
   storyG4NeighborCreateWithoutPrimaryPhonePayload: StoryG4NeighborCreatePayload;
   storyG4EnsureExistingThreadPayload: StoryG4ThreadEnsurePayload;
   storyG4EnsureNewThreadPayload: StoryG4ThreadEnsurePayload;
+};
+
+const buildRandomStoryG4Phone = (): string => {
+  const token = randomUUID().replace(/-/g, '').slice(-8);
+  const suffix = String(parseInt(token, 16) % 10_000).padStart(4, '0');
+  return `+1317556${suffix}`;
 };
 
 export const test = base.extend<StoryG4Fixtures>({
@@ -52,7 +59,22 @@ export const test = base.extend<StoryG4Fixtures>({
     await use(`?${params.toString()}`);
   },
   storyG4NeighborCreatePayload: async ({ storyG4Context }, use) => {
-    await use(createStoryG4NeighborCreatePayload(storyG4Context));
+    const primaryPhone = buildRandomStoryG4Phone();
+    const secondaryPhone = buildRandomStoryG4Phone();
+    await use(createStoryG4NeighborCreatePayload(storyG4Context, {
+      phones: [
+        {
+          label: 'mobile',
+          value: primaryPhone,
+          isShared: false,
+        },
+        {
+          label: 'home',
+          value: secondaryPhone,
+          isShared: true,
+        },
+      ],
+    }));
   },
   storyG4NeighborCreateWithoutPrimaryPhonePayload: async ({ storyG4Context }, use) => {
     await use(

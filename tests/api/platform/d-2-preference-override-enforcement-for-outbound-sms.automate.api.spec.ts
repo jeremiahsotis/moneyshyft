@@ -217,8 +217,8 @@ test.describe(
               orgUnitId: storyDContext.orgUnitId,
               neighborId,
               source: 'VOICE',
-              lastInboundCsNumberId: 'cs-number-d2-db-1',
-              preferredOutboundCsNumberId: 'cs-number-d2-db-2',
+              lastInboundCsNumberId: '+12605550198',
+              preferredOutboundCsNumberId: '+12605550198',
             },
           });
 

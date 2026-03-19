@@ -75,7 +75,7 @@ const baseInput = {
   neighborParticipantId: 'neighbor-f1-1001',
   operatorContactPointId: '+12605550155',
   neighborContactPointId: '+12605550111',
-  selectedOutboundContactPointId: 'cs-number-501',
+  selectedOutboundContactPointId: '+12605550191',
   providerKey: 'provider-a',
   providerAdapter,
 } as const
@@ -110,6 +110,7 @@ describe('connectshyft bridgeSessions', () => {
     const result = await startConnectShyftBridgeSession(baseInput)
 
     expect(result.aggregate.session.status).toBe('operator_dialing')
+    expect(result.aggregate.session.selectedOutboundContactPointId).toBe('+12605550191')
     expect(result.aggregate.operatorLeg.status).toBe('ringing')
     expect(result.aggregate.neighborLeg.status).toBe('created')
     expect(result.correlationMapping).toEqual({

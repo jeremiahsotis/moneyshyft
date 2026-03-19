@@ -12,4 +12,4 @@ echo "No lint script found; running Playwright discovery fallback"
 # Playwright test discovery in CI.
 node scripts/build-shared-libs.mjs auth db http platform ui-shell
 # Use direct Playwright discovery so lint CI does not require backend/frontend preflight.
-npx playwright test --list
+NODE_ENV=test npx playwright test --list

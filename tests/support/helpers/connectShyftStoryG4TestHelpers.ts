@@ -81,8 +81,8 @@ export const buildStoryG4DeterministicPhone = (
   label: string,
 ): string => {
   const token = deterministicToken(testInfo, label, 8);
-  const suffix = String(parseInt(token, 16) % 10_000).padStart(4, '0');
-  return `+1260555${suffix}`;
+  const localNumber = 2_000_000 + (parseInt(token, 16) % 7_000_000);
+  return `+1317${String(localNumber)}`;
 };
 
 export const createStoryG4NeighborSeed = async (

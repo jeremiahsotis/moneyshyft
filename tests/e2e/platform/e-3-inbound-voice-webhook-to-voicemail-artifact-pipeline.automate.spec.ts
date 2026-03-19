@@ -54,8 +54,8 @@ test.describe(
             orgUnitId: context.orgUnitId,
             neighborId,
             source: 'VOICE',
-            lastInboundCsNumberId: 'cs-inbound-e3-automate-e2e-201',
-            preferredOutboundCsNumberId: 'cs-outbound-e3-automate-e2e-201',
+            lastInboundCsNumberId: context.numbers.mappedInbound,
+            preferredOutboundCsNumberId: context.numbers.mappedInbound,
           },
         });
 
@@ -177,8 +177,8 @@ test.describe(
             orgUnitId: context.orgUnitId,
             neighborId,
             source: 'VOICE',
-            lastInboundCsNumberId: 'cs-inbound-e3-automate-e2e-202',
-            preferredOutboundCsNumberId: 'cs-outbound-e3-automate-e2e-202',
+            lastInboundCsNumberId: context.numbers.mappedInbound,
+            preferredOutboundCsNumberId: context.numbers.mappedInbound,
           },
         });
 

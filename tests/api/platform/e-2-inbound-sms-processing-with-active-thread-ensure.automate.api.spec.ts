@@ -39,8 +39,8 @@ test.describe(
             orgUnitId: storyE2Context.orgUnitId,
             neighborId,
             source: 'VOICE',
-            lastInboundCsNumberId: 'cs-inbound-e2-automate-101',
-            preferredOutboundCsNumberId: 'cs-outbound-e2-automate-101',
+            lastInboundCsNumberId: storyE2Context.numbers.mappedInbound,
+            preferredOutboundCsNumberId: storyE2Context.numbers.mappedInbound,
           },
         });
         expect(ensureResponse.status()).toBe(201);
@@ -159,8 +159,8 @@ test.describe(
             orgUnitId: storyE2Context.orgUnitId,
             neighborId,
             source: 'VOICE',
-            lastInboundCsNumberId: 'cs-inbound-e2-automate-102',
-            preferredOutboundCsNumberId: 'cs-outbound-e2-automate-102',
+            lastInboundCsNumberId: storyE2Context.numbers.mappedInbound,
+            preferredOutboundCsNumberId: storyE2Context.numbers.mappedInbound,
           },
         });
         expect(ensureResponse.status()).toBe(201);

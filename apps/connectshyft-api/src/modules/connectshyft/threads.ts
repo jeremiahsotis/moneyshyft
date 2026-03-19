@@ -91,6 +91,11 @@ type ThreadStoreTransitionInput = {
   actorUserId?: string | null;
 };
 
+type ThreadStoreFindByIdInput = {
+  tenantId: string;
+  threadId: string;
+};
+
 export type ConnectShyftEscalationTransition = {
   threadId: string;
   previousStage: number;
@@ -261,6 +266,8 @@ const normalizeString = (value: unknown): string => {
 
   return value.trim();
 };
+
+const normalizeThreadSenderAlignmentValue = (value: unknown): string => normalizeString(value);
 
 const nowIsoUtc = (): string => new Date().toISOString();
 
@@ -518,8 +525,8 @@ const mapDbRowToThread = (row: DbThreadRow): ConnectShyftThread => ({
   neighborId: row.neighbor_id,
   source: row.source,
   state: row.state,
-  lastInboundCsNumberId: row.last_inbound_cs_number_id,
-  preferredOutboundCsNumberId: row.preferred_outbound_cs_number_id,
+  lastInboundCsNumberId: normalizeThreadSenderAlignmentValue(row.last_inbound_cs_number_id),
+  preferredOutboundCsNumberId: normalizeThreadSenderAlignmentValue(row.preferred_outbound_cs_number_id),
   claimedByUserId: row.claimed_by_user_id,
   claimedAtUtc: toNullableIsoUtc(row.claimed_at_utc),
   closedByUserId: row.closed_by_user_id,
@@ -706,6 +713,10 @@ export class InMemoryConnectShyftThreadStore {
   private activeThreadIdByScope = new Map<string, string>();
 
   ensureActiveThread(input: ThreadStoreEnsureInput): ThreadPersistenceEnsureResult {
+    const lastInboundCsNumberId = normalizeThreadSenderAlignmentValue(input.lastInboundCsNumberId);
+    const preferredOutboundCsNumberId = normalizeThreadSenderAlignmentValue(
+      input.preferredOutboundCsNumberId,
+    );
     const scopeKey = buildScopeKey(input.tenantId, input.orgUnitId, input.neighborId);
     const activeThreadId = this.activeThreadIdByScope.get(scopeKey);
     const now = nowIsoUtc();
@@ -716,8 +727,8 @@ export class InMemoryConnectShyftThreadStore {
         const updated: ConnectShyftThread = {
           ...existing,
           source: input.source,
-          lastInboundCsNumberId: input.lastInboundCsNumberId,
-          preferredOutboundCsNumberId: input.preferredOutboundCsNumberId,
+          lastInboundCsNumberId,
+          preferredOutboundCsNumberId,
           updatedAtUtc: now,
           escalation: {
             ...existing.escalation,
@@ -753,8 +764,8 @@ export class InMemoryConnectShyftThreadStore {
       neighborId: input.neighborId,
       source: input.source,
       state: input.state,
-      lastInboundCsNumberId: input.lastInboundCsNumberId,
-      preferredOutboundCsNumberId: input.preferredOutboundCsNumberId,
+      lastInboundCsNumberId,
+      preferredOutboundCsNumberId,
       claimedByUserId: lifecycle.claimedByUserId,
       claimedAtUtc: lifecycle.claimedAtUtc,
       closedByUserId: lifecycle.closedByUserId,
@@ -894,6 +905,15 @@ export class InMemoryConnectShyftThreadStore {
 
     return transitions;
   }
+
+  findThreadById(input: ThreadStoreFindByIdInput): ConnectShyftThread | null {
+    const thread = this.threadsById.get(input.threadId);
+    if (!thread || thread.tenantId !== input.tenantId) {
+      return null;
+    }
+
+    return cloneThread(thread);
+  }
 }
 
 export class KnexConnectShyftThreadStore {
@@ -922,6 +942,10 @@ export class KnexConnectShyftThreadStore {
 
   async ensureActiveThread(input: ThreadStoreEnsureInput): Promise<ThreadPersistenceEnsureResult> {
     const normalizedActorUserId = normalizeUuid(input.actorUserId);
+    const lastInboundCsNumberId = normalizeThreadSenderAlignmentValue(input.lastInboundCsNumberId);
+    const preferredOutboundCsNumberId = normalizeThreadSenderAlignmentValue(
+      input.preferredOutboundCsNumberId,
+    );
     try {
       return await this.knexClient.transaction(async (trx) => {
         const existing = await trx
@@ -938,8 +962,8 @@ export class KnexConnectShyftThreadStore {
         if (existing) {
           const updatePayload: Record<string, unknown> = {
             source: input.source,
-            last_inbound_cs_number_id: input.lastInboundCsNumberId,
-            preferred_outbound_cs_number_id: input.preferredOutboundCsNumberId,
+            last_inbound_cs_number_id: lastInboundCsNumberId,
+            preferred_outbound_cs_number_id: preferredOutboundCsNumberId,
             updated_by_user_id: normalizedActorUserId,
             updated_at_utc: trx.fn.now(),
           };
@@ -981,8 +1005,8 @@ export class KnexConnectShyftThreadStore {
           state: input.state,
           escalation_stage: 0,
           next_evaluation_at_utc: input.nextEvaluationAtUtc ?? trx.fn.now(),
-          last_inbound_cs_number_id: input.lastInboundCsNumberId,
-          preferred_outbound_cs_number_id: input.preferredOutboundCsNumberId,
+          last_inbound_cs_number_id: lastInboundCsNumberId,
+          preferred_outbound_cs_number_id: preferredOutboundCsNumberId,
           created_by_user_id: normalizedActorUserId || null,
           updated_by_user_id: normalizedActorUserId || null,
           created_at_utc: trx.fn.now(),
@@ -1033,8 +1057,8 @@ export class KnexConnectShyftThreadStore {
           if (existing) {
             const updatePayload: Record<string, unknown> = {
               source: input.source,
-              last_inbound_cs_number_id: input.lastInboundCsNumberId,
-              preferred_outbound_cs_number_id: input.preferredOutboundCsNumberId,
+              last_inbound_cs_number_id: lastInboundCsNumberId,
+              preferred_outbound_cs_number_id: preferredOutboundCsNumberId,
               updated_by_user_id: normalizedActorUserId,
               updated_at_utc: this.knexClient.fn.now(),
             };
@@ -1218,6 +1242,19 @@ export class KnexConnectShyftThreadStore {
       return transitions;
     });
   }
+
+  async findThreadById(input: ThreadStoreFindByIdInput): Promise<ConnectShyftThread | null> {
+    const row = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_threads')
+      .where({
+        tenant_id: input.tenantId,
+        id: input.threadId,
+      })
+      .first<DbThreadRow>(this.threadColumns());
+
+    return row ? mapDbRowToThread(row) : null;
+  }
 }
 
 export class ConnectShyftThreadService {
@@ -1374,6 +1411,10 @@ export class ConnectShyftThreadService {
         thread: persisted.thread,
       },
     };
+  }
+
+  findThreadById(input: { tenantId: string; threadId: string }): ConnectShyftThread | null {
+    return this.store.findThreadById(input);
   }
 }
 
@@ -1569,6 +1610,21 @@ export class AsyncConnectShyftThreadService {
       }
 
       return buildPersistenceUnavailableRefusal();
+    }
+  }
+
+  async findThreadById(input: {
+    tenantId: string;
+    threadId: string;
+  }): Promise<ConnectShyftThread | null> {
+    try {
+      return await this.store.findThreadById(input);
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return null;
     }
   }
 }

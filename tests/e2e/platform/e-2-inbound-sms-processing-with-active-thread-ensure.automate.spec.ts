@@ -50,8 +50,8 @@ test.describe(
             orgUnitId: context.orgUnitId,
             neighborId,
             source: 'VOICE',
-            lastInboundCsNumberId: 'cs-inbound-e2-automate-e2e-201',
-            preferredOutboundCsNumberId: 'cs-outbound-e2-automate-e2e-201',
+            lastInboundCsNumberId: context.numbers.mappedInbound,
+            preferredOutboundCsNumberId: context.numbers.mappedInbound,
           },
         });
         expect(ensureResponse.status()).toBe(201);

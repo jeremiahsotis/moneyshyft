@@ -44,7 +44,7 @@ export const test = base.extend<StoryG3Fixtures>({
         orgUnitMemberships: [storyG3Context.orgUnitId],
       }),
       orgUnitId: storyG3Context.orgUnitId,
-      preferredNumber: '+12605550195',
+      preferredNumber: '+12605550196',
       preferredLabel: 'Story G3 SMS sender',
     });
     await use();

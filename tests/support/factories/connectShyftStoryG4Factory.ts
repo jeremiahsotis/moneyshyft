@@ -241,8 +241,8 @@ export function createStoryG4ThreadEnsurePayload(
     orgUnitId: context.orgUnitId,
     neighborId: context.neighborIds.existing,
     source: 'DIRECTORY',
-    lastInboundCsNumberId: 'cs-number-g4-inbound-1001',
-    preferredOutboundCsNumberId: 'cs-number-g4-outbound-1001',
+    lastInboundCsNumberId: '+12605550111',
+    preferredOutboundCsNumberId: '+12605550111',
     ...overrides,
   };
 }

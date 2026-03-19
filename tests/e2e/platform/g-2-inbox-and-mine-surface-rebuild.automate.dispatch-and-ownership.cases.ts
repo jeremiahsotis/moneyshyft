@@ -80,10 +80,10 @@ test.describe('Story g.2 Inbox and Mine Surface Rebuild (Automate E2E Expansion)
                   priorityRank: 1,
                   urgencyLabel: 'Needs follow-up',
                   lastActivityAtUtc: '2026-03-17T12:00:00.000Z',
-                  lastInboundCsNumberId: 'cs-inbound-g2-205',
-                  preferredOutboundCsNumberId: 'cs-outbound-g2-205',
+                  lastInboundCsNumberId: '+12605550194',
+                  preferredOutboundCsNumberId: '+12605550194',
                   preferredOutboundContext: {
-                    csNumberId: 'cs-outbound-g2-205',
+                    csNumberId: '+12605550194',
                     label: 'Main outreach line',
                   },
                   summary: 'Related Neighbor',

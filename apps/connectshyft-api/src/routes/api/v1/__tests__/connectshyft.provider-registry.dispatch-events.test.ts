@@ -51,8 +51,8 @@ const mockInboundSmsPersistence = (input?: {
         summary: '',
         escalationStage: 0,
         nextEvaluationAtUtc: null,
-        lastInboundCsNumberId: 'fixture-last-inbound',
-        preferredOutboundCsNumberId: 'fixture-preferred-outbound',
+        lastInboundCsNumberId: '+12605550191',
+        preferredOutboundCsNumberId: '+12605550191',
         claimedByUserId: null,
         createdAtUtc: '2026-03-18T12:00:00.000Z',
         updatedAtUtc: '2026-03-18T12:00:00.000Z',
@@ -138,6 +138,38 @@ const cloneMappings = (
     return left.mappingId.localeCompare(right.mappingId);
   });
 
+const resolveRoutingMappingByNumberFromState = (
+  mappingsByScope: Map<string, ConnectShyftNumberMapping[]>,
+  input: {
+    tenantId: string | null;
+    twilioNumberE164: string;
+  },
+) => {
+  const tenantId = typeof input.tenantId === 'string' ? input.tenantId : null;
+  const matches = Array.from(mappingsByScope.values())
+    .flat()
+    .filter((mapping) => mapping.isActive && mapping.twilioNumberE164 === input.twilioNumberE164)
+    .filter((mapping) => tenantId ? mapping.tenantId === tenantId : true);
+
+  if (matches.length === 1) {
+    return {
+      status: 'found' as const,
+      mapping: { ...matches[0] },
+    };
+  }
+
+  if (matches.length > 1) {
+    return {
+      status: 'ambiguous' as const,
+      mappings: matches.map((mapping) => ({ ...mapping })),
+    };
+  }
+
+  return {
+    status: 'not-found' as const,
+  };
+};
+
 const buildDefaultNumberMappingState = (): Map<string, ConnectShyftNumberMapping[]> => new Map([
   [
     buildTenantOrgUnitKey('tenant-connectshyft-f1', 'org-connectshyft-f1-east'),
@@ -168,6 +200,7 @@ describe('connectshyft provider adapter registry route integration - dispatch an
   registerProviderRegistryRouteIntegrationHooks();
   let numberMappingsByScope: Map<string, ConnectShyftNumberMapping[]>;
   let listMappingsSpy: jest.SpyInstance;
+  let resolveRoutingMappingByNumberSpy: jest.SpyInstance;
   let createMappingSpy: jest.SpyInstance;
   let updateMappingSpy: jest.SpyInstance;
 
@@ -178,6 +211,10 @@ describe('connectshyft provider adapter registry route integration - dispatch an
       async (tenantId: string, orgUnitId: string) =>
         cloneMappings(numberMappingsByScope.get(buildTenantOrgUnitKey(tenantId, orgUnitId)) || []),
     );
+    resolveRoutingMappingByNumberSpy = jest.spyOn(
+      connectShyftNumberMappingServiceAsync,
+      'resolveRoutingMappingByNumber',
+    ).mockImplementation(async (input) => resolveRoutingMappingByNumberFromState(numberMappingsByScope, input));
 
     createMappingSpy = jest.spyOn(connectShyftNumberMappingServiceAsync, 'createMapping').mockImplementation(
       async (input) => {
@@ -259,6 +296,7 @@ describe('connectshyft provider adapter registry route integration - dispatch an
   afterEach(() => {
     updateMappingSpy.mockRestore();
     createMappingSpy.mockRestore();
+    resolveRoutingMappingByNumberSpy.mockRestore();
     listMappingsSpy.mockRestore();
   });
 
@@ -342,6 +380,7 @@ describe('connectshyft provider adapter registry route integration - dispatch an
           eventType: 'sms.inbound',
           neighborId: '00000000-0000-4000-8000-000000000101',
           from: '+12605559991',
+          to: '+12605550191',
         });
 
       expect(response.status).toBe(200);
@@ -381,6 +420,7 @@ describe('connectshyft provider adapter registry route integration - dispatch an
           threadId: 'thread-f1-unclaimed-1001',
           eventType: 'sms.inbound',
           from: '+12605551004',
+          to: '+12605550191',
         });
 
       expect(response.status).toBe(200);
@@ -485,6 +525,7 @@ describe('connectshyft provider adapter registry route integration - dispatch an
           threadId: 'sms-phone-match-thread-1005',
           eventType: 'sms.inbound',
           from: '(260) 555-1005',
+          to: '+12605550191',
         });
 
       expect(response.status).toBe(200);
@@ -574,6 +615,7 @@ describe('connectshyft provider adapter registry route integration - dispatch an
           threadId: 'sms-no-match-thread-1006',
           eventType: 'sms.inbound',
           from: '+12605551006',
+          to: '+12605550191',
         });
 
       expect(response.status).toBe(200);
@@ -641,6 +683,7 @@ describe('connectshyft provider adapter registry route integration - dispatch an
           eventType: 'sms.inbound',
           neighborId: '00000000-0000-4000-8000-000000000107',
           from: '+12605551007',
+          to: '+12605550191',
         });
 
       expect(response.status).toBe(200);
@@ -733,6 +776,7 @@ describe('connectshyft provider adapter registry route integration - dispatch an
           threadId: 'thread-f1-unclaimed-1001',
           eventType: 'sms.inbound',
           from: '+12605551009',
+          to: '+12605550191',
         });
 
       expect(response.status).toBe(200);

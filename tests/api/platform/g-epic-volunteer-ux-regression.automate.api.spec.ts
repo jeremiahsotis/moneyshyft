@@ -105,8 +105,8 @@ test.describe('Epic G Volunteer UX Regression (Automate API Expansion)', () => {
           neighborId: storyG6Context.neighborIds.closedInbound,
           source: 'VOICE',
           threadId: 'd3edfbca-d2bc-4f28-8a6f-b9e08578b93f',
-          lastInboundCsNumberId: 'cs-number-g-epic-403',
-          preferredOutboundCsNumberId: 'cs-number-g-epic-503',
+          lastInboundCsNumberId: '+12605550196',
+          preferredOutboundCsNumberId: '+12605550196',
         },
       });
 

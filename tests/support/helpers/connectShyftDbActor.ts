@@ -29,6 +29,7 @@ const createConnectShyftDbClient = () => {
 
 const connectShyftDb = createConnectShyftDbClient();
 let connectShyftDbDestroyed = false;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const buildInvitationCode = (tenantId: string): string =>
   tenantId.replace(/-/g, '').slice(0, 10).toUpperCase();
@@ -112,8 +113,10 @@ export const cleanupConnectShyftThreadAndNeighborState = async (input: {
   threadIds?: string[];
   neighborIds?: string[];
 }): Promise<void> => {
-  const threadIds = normalizeIds(input.threadIds);
-  const neighborIds = normalizeIds(input.neighborIds);
+  const threadIds = normalizeIds(input.threadIds)
+    .filter((value) => UUID_PATTERN.test(value));
+  const neighborIds = normalizeIds(input.neighborIds)
+    .filter((value) => UUID_PATTERN.test(value));
 
   if (threadIds.length === 0 && neighborIds.length === 0) {
     return;

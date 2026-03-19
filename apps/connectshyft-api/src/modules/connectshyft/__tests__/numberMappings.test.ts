@@ -135,6 +135,39 @@ describe('connectshyft number mapping service', () => {
     expect(resolved.status).toBe('ambiguous');
   });
 
+  it('keeps tenant-scoped routing deterministic even when the same provider number exists in another tenant', () => {
+    service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      twilioNumberE164: '+12605550145',
+      label: 'Alpha routing',
+      isActive: true,
+    });
+    service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
+      tenantId: 'tenant-connectshyft-beta',
+      orgUnitId: 'org-connectshyft-beta-east',
+      twilioNumberE164: '+12605550145',
+      label: 'Beta routing',
+      isActive: true,
+    });
+
+    const resolved = service.resolveRoutingMappingByNumber({
+      tenantId: 'tenant-connectshyft-alpha',
+      twilioNumberE164: '+12605550145',
+    });
+
+    expect(resolved).toMatchObject({
+      status: 'found',
+      mapping: {
+        tenantId: 'tenant-connectshyft-alpha',
+        orgUnitId: 'org-connectshyft-alpha-east',
+        twilioNumberE164: '+12605550145',
+      },
+    });
+  });
+
   it('rejects non-E.164 number values before persistence', () => {
     const result = service.createMapping({
       actorRoles: ['ORGUNIT_ADMIN'],
@@ -237,6 +270,48 @@ describe('connectshyft number mapping service', () => {
       '+12605550112',
       '+12605550119',
     ]);
+  });
+
+  it('treats a reassigned thread-alignment number as non-routable under the old provider number', () => {
+    const created = service.createMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      twilioNumberE164: '+12605550146',
+      label: 'Primary Dispatch',
+      isActive: true,
+    });
+    if (!created.ok) {
+      throw new Error('Expected create to succeed');
+    }
+
+    const updated = service.updateMapping({
+      actorRoles: ['ORGUNIT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      mappingId: created.data.mappingId,
+      twilioNumberE164: '+12605550147',
+      label: 'Primary Dispatch Reassigned',
+      isActive: true,
+    });
+    expect(updated.ok).toBe(true);
+
+    expect(service.resolveRoutingMappingByNumber({
+      tenantId: 'tenant-connectshyft-alpha',
+      twilioNumberE164: '+12605550146',
+    })).toEqual({
+      status: 'not-found',
+    });
+    expect(service.resolveRoutingMappingByNumber({
+      tenantId: 'tenant-connectshyft-alpha',
+      twilioNumberE164: '+12605550147',
+    })).toMatchObject({
+      status: 'found',
+      mapping: {
+        mappingId: created.data.mappingId,
+        twilioNumberE164: '+12605550147',
+      },
+    });
   });
 
   it('refuses update when mapping id does not exist in tenant scope', () => {

@@ -94,6 +94,71 @@ describe('connectshyft read contracts', () => {
     expect(resolveConnectShyftUrgencyLabel(3)).toBe('Needs urgent attention');
   });
 
+  it('normalizes seeded sender-alignment tokens into provider-number outputs', () => {
+    const detail = resolveConnectShyftThreadDetailContract({
+      tenantId: 'tenant-connectshyft-c3',
+      orgUnitId: 'org-connectshyft-c3-east',
+      threadId: '2686f12a-b7dc-4ab2-8de2-70b05684198b',
+    });
+
+    expect(detail).toMatchObject({
+      lastInboundCsNumberId: '+12605550181',
+      preferredOutboundCsNumberId: '+12605550181',
+      preferredOutboundContext: {
+        csNumberId: '+12605550181',
+      },
+    });
+    expect(detail?.display).toMatchObject({
+      inboundContext: 'Mapped inbound number configured',
+      outboundContext: 'Primary East Dispatch',
+    });
+  });
+
+  it('relabels db-backed synthetic sender tokens into mapped inbound and outbound number context', async () => {
+    const db = buildReadContractsDbMock({
+      threadRows: [
+        {
+          thread_id: 'thread-read-contracts-1001',
+          neighbor_id: 'neighbor-read-contracts-1001',
+          tenant_id: 'tenant-read-contracts',
+          org_unit_id: 'org-read-contracts-east',
+          state: 'UNCLAIMED',
+          escalation_stage: 0,
+          is_new_unread: false,
+          last_activity_at_utc: '2026-03-18T12:12:00.000Z',
+          last_inbound_cs_number_id: 'cs-number-1005',
+          preferred_outbound_cs_number_id: 'cs-number-2005',
+          preferred_outbound_label: '',
+          summary: 'Synthetic seed replacement',
+        },
+      ],
+      neighborRows: [
+        {
+          id: 'neighbor-read-contracts-1001',
+          tenant_id: 'tenant-read-contracts',
+          is_deleted: false,
+          deleted_at_utc: null,
+        },
+      ],
+    });
+
+    const detail = await resolveConnectShyftThreadDetailContractAsync({
+      tenantId: 'tenant-read-contracts',
+      orgUnitId: 'org-read-contracts-east',
+      threadId: 'thread-read-contracts-1001',
+      db,
+    });
+
+    expect(detail).toMatchObject({
+      lastInboundCsNumberId: '+12605551005',
+      preferredOutboundCsNumberId: '+12605552005',
+      display: {
+        inboundContext: 'Mapped inbound number configured',
+        outboundContext: 'Mapped outbound number configured',
+      },
+    });
+  });
+
   it('sorts inbox by priority rank, last activity desc, then thread id asc', () => {
     const items = resolveConnectShyftInboxContract({
       tenantId: 'tenant-connectshyft-c3',
