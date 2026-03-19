@@ -29,16 +29,16 @@ app.use(tenancyContext);
 app.use(authContext);
 app.use(responseEnvelope);
 
-app.use((req, _res, next) => {
+app.use((req: any, _res: any, next: any) => {
   logger.info(`${req.method} ${req.path}`);
   next();
 });
 
-app.get('/health', (_req, res) => {
+app.get('/health', (_req: any, res: any) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.post('/work-intents', (_req, res) => {
+app.post('/work-intents', (_req: any, res: any) => {
   res.json({
     id: 'wi_1',
     status: 'open',
@@ -49,7 +49,7 @@ app.post('/work-intents', (_req, res) => {
 app.use(csrfProtection);
 app.use('/api/v1/connectshyft', connectShyftRouter);
 
-app.use((req, res) => {
+app.use((req: any, res: any) => {
   res.status(404).json({ error: 'Route not found', path: req.path });
 });
 
