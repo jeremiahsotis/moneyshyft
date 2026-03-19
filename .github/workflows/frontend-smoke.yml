@@ -1,0 +1,22 @@
+name: Frontend Smoke
+
+on:
+  pull_request:
+
+jobs:
+  smoke:
+    name: Frontend Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare "$(node -p "require('./package.json').packageManager")" --activate
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm nx run connectshyft-web:build
+      - run: pnpm nx run connectshyft-web:smoke

@@ -35,7 +35,15 @@
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "npx playwright test tests/api/platform/8-4-lane-extraction-transition-strategy.api.spec.ts"
+        "cwd": "apps/connectshyft-web",
+        "command": "vitest run"
+      }
+    },
+    "smoke": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/connectshyft-web",
+        "command": "pnpm exec start-server-and-test dev http://127.0.0.1:5173 \"BASE_URL=http://127.0.0.1:5173 pnpm --dir ../.. exec playwright test tests/navigation/connectshyft-shell.smoke.spec.ts --config playwright.config.ts\""
       }
     },
     "lint": {

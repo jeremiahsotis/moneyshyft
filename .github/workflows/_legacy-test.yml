@@ -1,0 +1,16 @@
+name: Legacy ConnectShyft CI (Deprecated)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  legacy-reference:
+    name: legacy-reference
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain deprecation
+        run: |
+          {
+            echo "This workflow is deprecated."
+            echo "Use repo-guard.yml, contracts.yml, backend-integration.yml, frontend-smoke.yml, and burn-in.yml instead."
+          } >> "$GITHUB_STEP_SUMMARY"

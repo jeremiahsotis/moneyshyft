@@ -13,7 +13,8 @@ export default defineConfig(({ mode }) => {
     plugins: [vue()],
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url))
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+        '@shyft/contracts': fileURLToPath(new URL('../../libs/contracts/src/index.ts', import.meta.url)),
       }
     },
     server: {
