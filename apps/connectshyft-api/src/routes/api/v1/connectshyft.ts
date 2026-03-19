@@ -1332,7 +1332,7 @@ const resolveInboundWebhookCorrelation = async (input: {
     tenantId: tenantId || null,
     db: loadPlatformDb(),
   });
-  if (!fallback.ok && input.channelHint === 'sms' && providerNumberE164) {
+  if (!fallback.ok && providerNumberE164) {
     try {
       const numberMapping = await connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber({
         tenantId: numberMappingTenantScope,
@@ -2095,6 +2095,85 @@ const resolveMutationActorUserId = (actorUserId: string | null): string | null =
   }
 
   return UUID_PATTERN.test(normalized) ? normalized : null;
+};
+
+const persistResolvedSenderAlignmentForThread = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  actorUserId: string | null;
+  thread: ConnectShyftThread;
+  providerNumberE164: string;
+}): Promise<
+  | {
+    ok: true;
+    thread: ConnectShyftThread;
+    persisted: boolean;
+  }
+  | {
+    ok: false;
+    code: 'CONNECTSHYFT_THREAD_PERSISTENCE_UNAVAILABLE';
+    message: string;
+  }
+> => {
+  const providerNumberE164 = normalizeLifecycleString(input.providerNumberE164);
+  if (!providerNumberE164) {
+    return {
+      ok: true,
+      thread: input.thread,
+      persisted: false,
+    };
+  }
+
+  const alignedThread: ConnectShyftThread = {
+    ...input.thread,
+    lastInboundCsNumberId: providerNumberE164,
+    preferredOutboundCsNumberId: providerNumberE164,
+  };
+  const persistedThreadId = UUID_PATTERN.test(input.thread.threadId)
+    ? input.thread.threadId
+    : await resolveExistingActiveThreadIdForScope({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      neighborId: input.thread.neighborId,
+    });
+
+  if (!persistedThreadId) {
+    return {
+      ok: true,
+      thread: alignedThread,
+      persisted: false,
+    };
+  }
+
+  try {
+    const persistedActorUserId = resolveMutationActorUserId(input.actorUserId);
+    const [persistedRow] = await loadPlatformDb()
+      .withSchema('connectshyft')
+      .table('cs_threads')
+      .where({
+        tenant_id: input.tenantId,
+        id: persistedThreadId,
+      })
+      .update({
+        last_inbound_cs_number_id: providerNumberE164,
+        preferred_outbound_cs_number_id: providerNumberE164,
+        updated_by_user_id: persistedActorUserId,
+        updated_at_utc: loadPlatformDb().fn.now(),
+      })
+      .returning<{ id: string }[]>(['id']);
+
+    return {
+      ok: true,
+      thread: alignedThread,
+      persisted: Boolean(persistedRow?.id),
+    };
+  } catch (_error) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_PERSISTENCE_UNAVAILABLE',
+      message: 'Thread sender alignment persistence is temporarily unavailable.',
+    };
+  }
 };
 
 const canPersistLifecycleSideEffects = (input: {
@@ -8460,6 +8539,28 @@ const performOutboundAction = async (
     });
     respondConnectShyftBusinessRefusal(res, refusalPayload);
     return;
+  }
+
+  const resolvedSenderPhoneForThreadAlignment = outboundAction === 'call'
+    ? outboundCallSenderPhone
+    : outboundMessageSenderPhone;
+  if (resolvedSenderPhoneForThreadAlignment) {
+    const senderAlignmentPersistence = await persistResolvedSenderAlignmentForThread({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      actorUserId,
+      thread,
+      providerNumberE164: resolvedSenderPhoneForThreadAlignment,
+    });
+    if (!senderAlignmentPersistence.ok) {
+      postDispatchWarnings.push({
+        stage: 'thread-sender-alignment',
+        code: senderAlignmentPersistence.code,
+        message: senderAlignmentPersistence.message,
+      });
+    } else {
+      thread = senderAlignmentPersistence.thread;
+    }
   }
 
   const reopenedLifecycleLineage = lifecycleMutationApplied
