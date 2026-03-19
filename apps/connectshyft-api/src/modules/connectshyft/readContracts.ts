@@ -20,6 +20,10 @@ export type ConnectShyftThreadDisplayRecord = {
 export type ConnectShyftThreadSummaryRecord = {
   threadId: string;
   neighborId: string | null;
+  neighborDeleted: boolean;
+  neighbor_deleted: boolean;
+  neighborDeletedAtUtc: string | null;
+  neighbor_deleted_at_utc: string | null;
   tenantId: string;
   orgUnitId: string;
   state: ConnectShyftThreadState;
@@ -96,6 +100,12 @@ type ConnectShyftThreadDbRow = {
   summary?: string | null;
   preview?: string | null;
   last_message_preview?: string | null;
+};
+
+type ConnectShyftNeighborLifecycleDbRow = {
+  id: string;
+  is_deleted?: boolean | number | string | null;
+  deleted_at_utc?: string | Date | null;
 };
 
 type ConnectShyftDbSelectableColumns = {
@@ -892,6 +902,10 @@ const toSummaryRecord = (
   return {
     threadId: seed.threadId,
     neighborId: normalizeString(seed.neighborId) || null,
+    neighborDeleted: false,
+    neighbor_deleted: false,
+    neighborDeletedAtUtc: null,
+    neighbor_deleted_at_utc: null,
     tenantId: seed.tenantId,
     orgUnitId: seed.orgUnitId,
     state: seed.state,
@@ -1168,9 +1182,48 @@ const resolveDbThreadRows = async (
   }
 };
 
+const resolveNeighborLifecycleById = async (
+  db: Knex,
+  scope: {
+    tenantId: string;
+    neighborIds: string[];
+  },
+): Promise<Map<string, { isDeleted: boolean; deletedAtUtc: string | null }> | null> => {
+  if (scope.neighborIds.length === 0) {
+    return new Map();
+  }
+
+  try {
+    const rows = await db
+      .withSchema(CONNECTSHYFT_SCHEMA)
+      .table('cs_neighbors')
+      .where('tenant_id', scope.tenantId)
+      .whereIn('id', scope.neighborIds)
+      .select<ConnectShyftNeighborLifecycleDbRow[]>([
+        'id',
+        'is_deleted',
+        'deleted_at_utc',
+      ]);
+
+    return rows.reduce((lookup, row) => {
+      lookup.set(normalizeString(row.id), {
+        isDeleted: normalizeBoolean(row.is_deleted),
+        deletedAtUtc: row.deleted_at_utc ? normalizeUtcTimestamp(row.deleted_at_utc) : null,
+      });
+      return lookup;
+    }, new Map<string, { isDeleted: boolean; deletedAtUtc: string | null }>());
+  } catch (_error) {
+    return null;
+  }
+};
+
 const mapDbRowToSummary = (
   row: ConnectShyftThreadDbRow,
   bucket: ConnectShyftInboxBucket,
+  neighborLifecycle?: {
+    isDeleted: boolean;
+    deletedAtUtc: string | null;
+  } | null,
 ): ConnectShyftThreadSummaryRecord | null => {
   const state = normalizeThreadState(row.state);
   if (!state) {
@@ -1212,6 +1265,10 @@ const mapDbRowToSummary = (
   return {
     threadId,
     neighborId: normalizeOptionalString(row.neighbor_id),
+    neighborDeleted: neighborLifecycle?.isDeleted === true,
+    neighbor_deleted: neighborLifecycle?.isDeleted === true,
+    neighborDeletedAtUtc: neighborLifecycle?.deletedAtUtc || null,
+    neighbor_deleted_at_utc: neighborLifecycle?.deletedAtUtc || null,
     tenantId,
     orgUnitId,
     state,
@@ -1320,11 +1377,22 @@ export const resolveConnectShyftInboxContractAsync = async (scope: {
     actorUserId: scope.actorUserId,
   });
 
+  const neighborLifecycle = await resolveNeighborLifecycleById(scope.db, {
+    tenantId: scope.tenantId,
+    neighborIds: Array.from(new Set(filteredRows
+      .map((row) => normalizeOptionalString(row.neighbor_id))
+      .filter((neighborId): neighborId is string => Boolean(neighborId)))),
+  });
+
   const mapped = filteredRows
-    .map((row) => mapDbRowToSummary(row, scope.bucket))
+    .map((row) => mapDbRowToSummary(
+      row,
+      scope.bucket,
+      neighborLifecycle?.get(normalizeOptionalString(row.neighbor_id) || '') || null,
+    ))
     .filter((row): row is ConnectShyftThreadSummaryRecord => row !== null);
 
-  return sortConnectShyftThreadSummaries(mapped);
+  return sortConnectShyftThreadSummaries(mapped.filter((row) => row.neighborDeleted !== true));
 };
 
 const resolveBucketFromDbRow = (
@@ -1348,6 +1416,7 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
   threadId: string;
   actorUserId?: string | null;
   requestedRole?: string | null;
+  includeDeleted?: boolean;
   db: Knex;
 }): Promise<ConnectShyftThreadDetailRecord | null> => {
   const normalizedThreadId = input.threadId.trim();
@@ -1388,11 +1457,21 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
     return null;
   }
 
+  const neighborLifecycle = await resolveNeighborLifecycleById(input.db, {
+    tenantId: input.tenantId,
+    neighborIds: Array.from(new Set(
+      [normalizeOptionalString(row.neighbor_id)].filter((neighborId): neighborId is string => Boolean(neighborId)),
+    )),
+  });
   const summary = mapDbRowToSummary(
     row,
     resolveBucketFromDbRow(row, input.actorUserId),
+    neighborLifecycle?.get(normalizeOptionalString(row.neighbor_id) || '') || null,
   );
   if (!summary) {
+    return null;
+  }
+  if (summary.neighborDeleted && input.includeDeleted !== true) {
     return null;
   }
 

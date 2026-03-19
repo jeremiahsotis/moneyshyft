@@ -1,10 +1,73 @@
 import {
   parseConnectShyftInboxBucket,
   resolveConnectShyftInboxContract,
+  resolveConnectShyftInboxContractAsync,
   resolveConnectShyftPriorityRank,
   resolveConnectShyftThreadDetailContract,
+  resolveConnectShyftThreadDetailContractAsync,
   resolveConnectShyftUrgencyLabel,
 } from '../readContracts';
+
+const buildReadContractsDbMock = (input: {
+  threadRows: Array<Record<string, unknown>>;
+  neighborRows: Array<Record<string, unknown>>;
+}) => {
+  const datasets: Record<string, Array<Record<string, unknown>>> = {
+    cs_threads: input.threadRows,
+    cs_neighbors: input.neighborRows,
+  };
+  const threadColumnInfo = {
+    thread_id: {},
+    tenant_id: {},
+    org_unit_id: {},
+    state: {},
+    last_activity_at_utc: {},
+    neighbor_id: {},
+    claimed_by_user_id: {},
+    escalation_stage: {},
+    is_new_unread: {},
+    last_inbound_cs_number_id: {},
+    preferred_outbound_cs_number_id: {},
+    preferred_outbound_label: {},
+    summary: {},
+  };
+
+  const createBuilder = (tableName: string) => {
+    const filters: Array<(row: Record<string, unknown>) => boolean> = [];
+
+    const builder: any = {
+      withSchema: () => builder,
+      table: (nextTableName: string) => createBuilder(nextTableName),
+      columnInfo: async () => (tableName === 'cs_threads' ? threadColumnInfo : {}),
+      where: (columnOrConditions: string | Record<string, unknown>, value?: unknown) => {
+        if (typeof columnOrConditions === 'string') {
+          filters.push((row) => row[columnOrConditions] === value);
+          return builder;
+        }
+
+        Object.entries(columnOrConditions).forEach(([key, expected]) => {
+          filters.push((row) => row[key] === expected);
+        });
+        return builder;
+      },
+      andWhere: (columnOrConditions: string | Record<string, unknown>, value?: unknown) =>
+        builder.where(columnOrConditions, value),
+      whereIn: (column: string, values: readonly string[]) => {
+        filters.push((row) => values.includes(String(row[column] ?? '')));
+        return builder;
+      },
+      select: async () => (datasets[tableName] || []).filter((row) => filters.every((filter) => filter(row))),
+    };
+
+    return builder;
+  };
+
+  return {
+    withSchema: (_schema: string) => ({
+      table: (tableName: string) => createBuilder(tableName),
+    }),
+  } as any;
+};
 
 describe('connectshyft read contracts', () => {
   it('parses inbox and mine bucket values deterministically', () => {
@@ -233,5 +296,129 @@ describe('connectshyft read contracts', () => {
 
     expect(claimedAdmin?.actions).toEqual(['Call', 'Text', 'Close']);
     expect(claimedMember?.actions).toEqual(['Call', 'Text', 'Close']);
+  });
+
+  it('excludes deleted-neighbor threads from standard inbox contract reads', async () => {
+    const db = buildReadContractsDbMock({
+      threadRows: [
+        {
+          thread_id: 'thread-active-1001',
+          neighbor_id: 'neighbor-active-1001',
+          tenant_id: 'tenant-connectshyft-soft-delete',
+          org_unit_id: 'org-connectshyft-soft-delete',
+          state: 'UNCLAIMED',
+          escalation_stage: 0,
+          is_new_unread: false,
+          last_activity_at_utc: '2026-03-18T12:00:00.000Z',
+          last_inbound_cs_number_id: 'cs-number-1001',
+          preferred_outbound_cs_number_id: 'cs-number-2001',
+          preferred_outbound_label: 'Primary Queue',
+          summary: 'Active neighbor thread',
+        },
+        {
+          thread_id: 'thread-deleted-1002',
+          neighbor_id: 'neighbor-deleted-1002',
+          tenant_id: 'tenant-connectshyft-soft-delete',
+          org_unit_id: 'org-connectshyft-soft-delete',
+          state: 'UNCLAIMED',
+          escalation_stage: 1,
+          is_new_unread: false,
+          last_activity_at_utc: '2026-03-18T11:00:00.000Z',
+          last_inbound_cs_number_id: 'cs-number-1002',
+          preferred_outbound_cs_number_id: 'cs-number-2002',
+          preferred_outbound_label: 'Secondary Queue',
+          summary: 'Deleted neighbor thread',
+        },
+      ],
+      neighborRows: [
+        {
+          id: 'neighbor-active-1001',
+          tenant_id: 'tenant-connectshyft-soft-delete',
+          is_deleted: false,
+          deleted_at_utc: null,
+        },
+        {
+          id: 'neighbor-deleted-1002',
+          tenant_id: 'tenant-connectshyft-soft-delete',
+          is_deleted: true,
+          deleted_at_utc: '2026-03-18T10:30:00.000Z',
+        },
+      ],
+    });
+
+    const inbox = await resolveConnectShyftInboxContractAsync({
+      tenantId: 'tenant-connectshyft-soft-delete',
+      orgUnitId: 'org-connectshyft-soft-delete',
+      bucket: 'inbox',
+      db,
+    });
+
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]).toMatchObject({
+      threadId: 'thread-active-1001',
+      neighborDeleted: false,
+      neighbor_deleted: false,
+      neighborDeletedAtUtc: null,
+      neighbor_deleted_at_utc: null,
+    });
+  });
+
+  it('hides deleted-neighbor thread detail from standard reads and exposes deletion flags for includeDeleted=true', async () => {
+    const db = buildReadContractsDbMock({
+      threadRows: [
+        {
+          thread_id: 'thread-deleted-2001',
+          neighbor_id: 'neighbor-deleted-2001',
+          tenant_id: 'tenant-connectshyft-soft-delete',
+          org_unit_id: 'org-connectshyft-soft-delete',
+          state: 'CLAIMED',
+          claimed_by_user_id: 'user-connectshyft-soft-delete',
+          escalation_stage: 1,
+          is_new_unread: false,
+          last_activity_at_utc: '2026-03-18T12:05:00.000Z',
+          last_inbound_cs_number_id: 'cs-number-3001',
+          preferred_outbound_cs_number_id: 'cs-number-4001',
+          preferred_outbound_label: 'Deleted Detail Queue',
+          summary: 'Deleted neighbor detail thread',
+        },
+      ],
+      neighborRows: [
+        {
+          id: 'neighbor-deleted-2001',
+          tenant_id: 'tenant-connectshyft-soft-delete',
+          is_deleted: true,
+          deleted_at_utc: '2026-03-18T11:45:00.000Z',
+        },
+      ],
+    });
+
+    const hidden = await resolveConnectShyftThreadDetailContractAsync({
+      tenantId: 'tenant-connectshyft-soft-delete',
+      orgUnitId: 'org-connectshyft-soft-delete',
+      threadId: 'thread-deleted-2001',
+      actorUserId: 'user-connectshyft-soft-delete',
+      requestedRole: 'TENANT_ADMIN',
+      db,
+    });
+    expect(hidden).toBeNull();
+
+    const included = await resolveConnectShyftThreadDetailContractAsync({
+      tenantId: 'tenant-connectshyft-soft-delete',
+      orgUnitId: 'org-connectshyft-soft-delete',
+      threadId: 'thread-deleted-2001',
+      actorUserId: 'user-connectshyft-soft-delete',
+      requestedRole: 'TENANT_ADMIN',
+      includeDeleted: true,
+      db,
+    });
+
+    expect(included).toMatchObject({
+      threadId: 'thread-deleted-2001',
+      neighborDeleted: true,
+      neighbor_deleted: true,
+      neighborDeletedAtUtc: '2026-03-18T11:45:00.000Z',
+      neighbor_deleted_at_utc: '2026-03-18T11:45:00.000Z',
+      actions: ['Call', 'Text', 'Close'],
+    });
   });
 });

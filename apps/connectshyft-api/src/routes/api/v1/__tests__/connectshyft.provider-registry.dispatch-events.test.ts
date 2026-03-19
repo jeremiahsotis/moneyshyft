@@ -439,7 +439,15 @@ describe('connectshyft provider adapter registry route integration - dispatch an
           },
         },
       });
-      expect(createNeighborSpy).toHaveBeenCalled();
+      expect(resolveActiveSpy).toHaveBeenCalledTimes(1);
+      expect(createNeighborSpy).toHaveBeenCalledWith(expect.objectContaining({
+        phone: '+12605551007',
+      }));
+      expect(resolveSubjectSpy).toHaveBeenCalledWith({
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        contactPoint: '+12605551007',
+      });
     } finally {
       createNeighborSpy.mockRestore();
       resolveSubjectSpy.mockRestore();

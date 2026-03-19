@@ -595,6 +595,247 @@ describe('connectshyft neighbor service', () => {
     });
   });
 
+  it('soft-deletes a neighbor only for tenant admins, deactivates phones, hides standard reads, and preserves deleted metadata on repeat requests', () => {
+    const created = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Delete',
+      lastName: 'Me',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550168',
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!created.ok) {
+      throw new Error('Expected delete seed neighbor to be created');
+    }
+
+    const forbidden = service.softDeleteNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+      actorUserId: 'user-connectshyft-alpha-admin',
+      irreversibleConfirmation: true,
+    });
+    expect(forbidden).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_DELETE_FORBIDDEN',
+    });
+
+    const confirmationRequired = service.softDeleteNeighbor({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+      actorUserId: 'user-connectshyft-alpha-admin',
+      irreversibleConfirmation: false,
+    });
+    expect(confirmationRequired).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_DELETE_CONFIRMATION_REQUIRED',
+    });
+
+    const deleted = service.softDeleteNeighbor({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+      actorUserId: 'user-connectshyft-alpha-admin',
+      irreversibleConfirmation: true,
+    });
+
+    expect(deleted).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_SOFT_DELETED',
+      data: {
+        alreadyDeleted: false,
+        neighbor: {
+          neighborId: created.data.neighbor.neighborId,
+          isDeleted: true,
+          deletedByUserId: 'user-connectshyft-alpha-admin',
+          phones: [
+            expect.objectContaining({
+              value: '+12605550168',
+              isActive: false,
+            }),
+          ],
+        },
+      },
+    });
+
+    if (!deleted.ok) {
+      throw new Error('Expected soft delete to succeed');
+    }
+
+    expect(deleted.data.neighbor.deletedAtUtc).toMatch(/Z$/);
+
+    const listed = service.listNeighbors({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+    });
+    expect(listed).toMatchObject({
+      ok: true,
+      data: {
+        neighbors: [],
+      },
+    });
+
+    const standardResolved = service.resolveNeighbor({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+    });
+    expect(standardResolved).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND',
+    });
+
+    const deletedResolved = service.resolveNeighbor({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+      includeDeleted: true,
+    });
+    expect(deletedResolved).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          neighborId: created.data.neighbor.neighborId,
+          isDeleted: true,
+          deletedAtUtc: deleted.data.neighbor.deletedAtUtc,
+          deletedByUserId: 'user-connectshyft-alpha-admin',
+        },
+      },
+    });
+
+    const repeated = service.softDeleteNeighbor({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: created.data.neighbor.neighborId,
+      actorUserId: 'user-connectshyft-alpha-admin-2',
+      irreversibleConfirmation: true,
+    });
+    expect(repeated).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_SOFT_DELETED',
+      data: {
+        alreadyDeleted: true,
+        neighbor: {
+          neighborId: created.data.neighbor.neighborId,
+          deletedAtUtc: deleted.data.neighbor.deletedAtUtc,
+          deletedByUserId: 'user-connectshyft-alpha-admin',
+        },
+      },
+    });
+  });
+
+  it('creates a new inbound neighbor after soft delete without resurrecting the deleted phone owner', () => {
+    const original = service.createNeighbor({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      firstName: 'Legacy',
+      lastName: 'Owner',
+      phones: [
+        {
+          label: 'mobile',
+          value: '+12605550169',
+          verificationStatus: 'verified',
+        },
+      ],
+    });
+
+    if (!original.ok) {
+      throw new Error('Expected original neighbor to be created');
+    }
+
+    const deleted = service.softDeleteNeighbor({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: original.data.neighbor.neighborId,
+      actorUserId: 'user-connectshyft-alpha-admin',
+      irreversibleConfirmation: true,
+    });
+    if (!deleted.ok) {
+      throw new Error('Expected original neighbor to be soft-deleted');
+    }
+
+    const inboundCreated = service.createNeighborFromInbound({
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      phone: '(260) 555-0169',
+    });
+
+    expect(inboundCreated).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
+      data: {
+        neighbor: {
+          neighborId: expect.any(String),
+          prefersTexting: 'UNKNOWN',
+          phones: [
+            expect.objectContaining({
+              value: '+12605550169',
+              isActive: true,
+            }),
+          ],
+        },
+      },
+    });
+
+    if (!inboundCreated.ok) {
+      throw new Error('Expected inbound neighbor creation to succeed after soft delete');
+    }
+
+    expect(inboundCreated.data.neighbor.neighborId).not.toBe(original.data.neighbor.neighborId);
+
+    const deletedResolved = service.resolveNeighbor({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: original.data.neighbor.neighborId,
+      includeDeleted: true,
+    });
+    expect(deletedResolved).toMatchObject({
+      ok: true,
+      data: {
+        neighbor: {
+          neighborId: original.data.neighbor.neighborId,
+          isDeleted: true,
+          phones: [
+            expect.objectContaining({
+              value: '+12605550169',
+              isActive: false,
+            }),
+          ],
+        },
+      },
+    });
+
+    const evaluated = service.evaluateIdentityMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '+12605550169',
+        isShared: false,
+        verificationStatus: 'verified',
+      },
+    });
+    expect(evaluated).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE',
+      data: {
+        identityMatch: {
+          matchedNeighborId: inboundCreated.data.neighbor.neighborId,
+          candidateNeighborIds: [inboundCreated.data.neighbor.neighborId],
+        },
+      },
+    });
+  });
+
   it('promotes UNKNOWN texting preference to YES on inbound SMS only', () => {
     const unknownNeighbor = service.createNeighborFromInbound({
       tenantId: 'tenant-connectshyft-alpha',
@@ -1557,6 +1798,11 @@ describe('connectshyft async neighbor service', () => {
         error.code = '42703';
         throw error;
       }),
+      softDeleteNeighbor: jest.fn(async () => {
+        const error = new Error('column does not exist') as Error & { code: string };
+        error.code = '42703';
+        throw error;
+      }),
     };
 
     const service = new AsyncConnectShyftNeighborService(schemaMismatchStore as any);
@@ -1613,6 +1859,18 @@ describe('connectshyft async neighbor service', () => {
       ],
     });
     expect(updated).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_PERSISTENCE_UNAVAILABLE',
+    });
+
+    const deleted = await service.softDeleteNeighbor({
+      actorRoles: ['TENANT_ADMIN'],
+      tenantId: 'tenant-connectshyft-alpha',
+      neighborId: 'neighbor-b2-missing-column',
+      actorUserId: '11111111-1111-4111-8111-111111111111',
+      irreversibleConfirmation: true,
+    });
+    expect(deleted).toMatchObject({
       ok: false,
       code: 'CONNECTSHYFT_NEIGHBOR_PERSISTENCE_UNAVAILABLE',
     });
