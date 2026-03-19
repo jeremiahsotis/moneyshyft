@@ -13,6 +13,9 @@ import ConnectShyftDirectoryView from '../views/ConnectShyft/ConnectShyftDirecto
 import ConnectShyftAvailabilityView from '../views/ConnectShyft/ConnectShyftAvailabilityView.vue';
 import ConnectShyftNumberMappingsView from '../views/ConnectShyft/ConnectShyftNumberMappingsView.vue';
 import ConnectShyftEscalationSettingsView from '../views/ConnectShyft/ConnectShyftEscalationSettingsView.vue';
+import ConnectView from '../views/Shell/ConnectView.vue';
+import PeopleView from '../views/Shell/PeopleView.vue';
+import WorkView from '../views/Shell/WorkView.vue';
 import { resolveConnectShyftAdminAccessFromQuery } from '@/features/connectshyft/settingsAccess';
 
 const CONNECTSHYFT_APP_PREFIX = '/app/connectshyft';
@@ -85,6 +88,21 @@ const router = createRouter({
     {
       path: '/',
       redirect: '/app/connectshyft/inbox',
+    },
+    {
+      path: '/app/connect',
+      name: 'shell-connect',
+      component: ConnectView,
+    },
+    {
+      path: '/app/people',
+      name: 'shell-people',
+      component: PeopleView,
+    },
+    {
+      path: '/app/work',
+      name: 'shell-work',
+      component: WorkView,
     },
     {
       path: '/app/connectshyft/inbox',
