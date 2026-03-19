@@ -60,6 +60,12 @@ export type ConnectShyftThreadDetailRecord = ConnectShyftThreadSummaryRecord & {
   };
 };
 
+export type ConnectShyftThreadTimelineMetadata = {
+  threadId: string;
+  neighborDeleted: boolean;
+  neighborDeletedAtUtc: string | null;
+};
+
 type ConnectShyftThreadSeed = {
   tenantId: string;
   orgUnitId: string;
@@ -1409,6 +1415,17 @@ const resolveBucketFromDbRow = (
 
   return 'inbox';
 };
+
+export const resolveConnectShyftThreadTimelineMetadata = (
+  thread: Pick<
+    ConnectShyftThreadSummaryRecord | ConnectShyftThreadDetailRecord,
+    'threadId' | 'neighborDeleted' | 'neighborDeletedAtUtc'
+  >,
+): ConnectShyftThreadTimelineMetadata => ({
+  threadId: normalizeString(thread.threadId),
+  neighborDeleted: thread.neighborDeleted === true,
+  neighborDeletedAtUtc: normalizeOptionalString(thread.neighborDeletedAtUtc),
+});
 
 export const resolveConnectShyftThreadDetailContractAsync = async (input: {
   tenantId: string;

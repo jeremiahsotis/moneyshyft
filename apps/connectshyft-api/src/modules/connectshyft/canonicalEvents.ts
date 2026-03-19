@@ -43,6 +43,7 @@ export type ConnectShyftCanonicalEventListFilters = {
   aggregateType?: string | null;
   eventType?: string | null;
   limit?: number;
+  window?: 'oldest' | 'most_recent';
 };
 
 const CONNECTSHYFT_PROVIDER_SPECIFIC_KEYS = new Set([
@@ -85,6 +86,10 @@ const normalizeLimit = (value: unknown): number => {
   }
 
   return Math.min(normalized, MAX_LIST_LIMIT);
+};
+
+const normalizeWindow = (value: unknown): 'oldest' | 'most_recent' => {
+  return value === 'most_recent' ? 'most_recent' : 'oldest';
 };
 
 const sortCanonicalEvents = (
@@ -175,6 +180,7 @@ const listInMemory = (
   const eventType = normalizeString(filters.eventType);
   const orgUnitId = normalizeString(filters.orgUnitId);
   const limit = normalizeLimit(filters.limit);
+  const window = normalizeWindow(filters.window);
 
   const filtered = inMemoryCanonicalEvents.filter((entry) => {
     if (entry.tenantId !== filters.tenantId) {
@@ -200,7 +206,10 @@ const listInMemory = (
     return true;
   });
 
-  return sortCanonicalEvents(filtered.map((entry) => entry.record)).slice(0, limit);
+  const sorted = sortCanonicalEvents(filtered.map((entry) => entry.record));
+  return window === 'most_recent'
+    ? sorted.slice(-limit)
+    : sorted.slice(0, limit);
 };
 
 const listFromDb = async (
@@ -208,6 +217,8 @@ const listFromDb = async (
   filters: ConnectShyftCanonicalEventListFilters,
 ): Promise<ConnectShyftCanonicalEventRecord[]> => {
   const limit = normalizeLimit(filters.limit);
+  const window = normalizeWindow(filters.window);
+  const orderDirection = window === 'most_recent' ? 'desc' : 'asc';
   const query = db
     .withSchema('platform')
     .table('events')
@@ -215,8 +226,8 @@ const listFromDb = async (
       tenant_id: filters.tenantId,
       event_name: CONNECTSHYFT_CANONICAL_EVENT_NAME,
     })
-    .orderBy('occurred_at_utc', 'asc')
-    .orderBy('id', 'asc')
+    .orderBy('occurred_at_utc', orderDirection)
+    .orderBy('id', orderDirection)
     .limit(limit)
     .select([
       'id',
@@ -278,7 +289,10 @@ const listFromDb = async (
     })
     .filter((row): row is ConnectShyftCanonicalEventRecord => row !== null);
 
-  return sortCanonicalEvents(mapped).slice(0, limit);
+  const sorted = sortCanonicalEvents(mapped);
+  return window === 'most_recent'
+    ? sorted.slice(-limit)
+    : sorted.slice(0, limit);
 };
 
 export const recordConnectShyftCanonicalEvent = async (

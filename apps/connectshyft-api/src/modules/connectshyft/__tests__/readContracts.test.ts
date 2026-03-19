@@ -5,6 +5,7 @@ import {
   resolveConnectShyftPriorityRank,
   resolveConnectShyftThreadDetailContract,
   resolveConnectShyftThreadDetailContractAsync,
+  resolveConnectShyftThreadTimelineMetadata,
   resolveConnectShyftUrgencyLabel,
 } from '../readContracts';
 
@@ -214,6 +215,58 @@ describe('connectshyft read contracts', () => {
     expect(unclaimed?.actions).toEqual(['Call', 'Text', 'Claim']);
     expect(claimed?.actions).toEqual(['Call', 'Text', 'Close']);
     expect(closed?.actions).toEqual(['Call', 'Send Message']);
+  });
+
+  it('exposes deleted-neighbor metadata for timeline reads and hides deleted threads by default', async () => {
+    const db = buildReadContractsDbMock({
+      threadRows: [
+        {
+          thread_id: 'thread-soft-delete-timeline-1001',
+          neighbor_id: 'neighbor-soft-delete-timeline-1001',
+          tenant_id: 'tenant-connectshyft-soft-delete',
+          org_unit_id: 'org-connectshyft-soft-delete-east',
+          state: 'CLAIMED',
+          claimed_by_user_id: 'user-connectshyft-soft-delete',
+          escalation_stage: 1,
+          is_new_unread: false,
+          last_activity_at_utc: '2026-03-18T12:12:00.000Z',
+          last_inbound_cs_number_id: 'cs-number-1005',
+          preferred_outbound_cs_number_id: 'cs-number-2005',
+          preferred_outbound_label: 'Deleted Neighbor Queue',
+          summary: 'Deleted neighbor thread detail',
+        },
+      ],
+      neighborRows: [
+        {
+          id: 'neighbor-soft-delete-timeline-1001',
+          tenant_id: 'tenant-connectshyft-soft-delete',
+          is_deleted: true,
+          deleted_at_utc: '2026-03-18T12:10:00.000Z',
+        },
+      ],
+    });
+
+    const hidden = await resolveConnectShyftThreadDetailContractAsync({
+      tenantId: 'tenant-connectshyft-soft-delete',
+      orgUnitId: 'org-connectshyft-soft-delete-east',
+      threadId: 'thread-soft-delete-timeline-1001',
+      includeDeleted: false,
+      db,
+    });
+    const visible = await resolveConnectShyftThreadDetailContractAsync({
+      tenantId: 'tenant-connectshyft-soft-delete',
+      orgUnitId: 'org-connectshyft-soft-delete-east',
+      threadId: 'thread-soft-delete-timeline-1001',
+      includeDeleted: true,
+      db,
+    });
+
+    expect(hidden).toBeNull();
+    expect(resolveConnectShyftThreadTimelineMetadata(visible!)).toEqual({
+      threadId: 'thread-soft-delete-timeline-1001',
+      neighborDeleted: true,
+      neighborDeletedAtUtc: '2026-03-18T12:10:00.000Z',
+    });
   });
 
   it('resolves d-4 seeded thread-detail action matrix without hidden fallback actions', () => {

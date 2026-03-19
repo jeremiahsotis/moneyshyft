@@ -5,6 +5,10 @@ import * as canonicalEventsModule from '../../../../modules/connectshyft/canonic
 import * as identityResolverModule from '../../../../modules/connectshyft/identityResolver';
 import * as neighborsModule from '../../../../modules/connectshyft/neighbors';
 import { AsyncConnectShyftNeighborService } from '../../../../modules/connectshyft/neighbors';
+import {
+  connectShyftNumberMappingServiceAsync,
+  type ConnectShyftNumberMapping,
+} from '../../../../modules/connectshyft/numberMappings';
 import { AsyncConnectShyftThreadService } from '../../../../modules/connectshyft/threads';
 import {
   buildApp,
@@ -103,8 +107,160 @@ const mockInboundSmsPersistence = (input?: {
     },
   };
 };
+
+const buildNumberMapping = (
+  overrides: Partial<ConnectShyftNumberMapping> & Pick<
+    ConnectShyftNumberMapping,
+    'mappingId' | 'tenantId' | 'orgUnitId' | 'twilioNumberE164' | 'label'
+  >,
+): ConnectShyftNumberMapping => ({
+  mappingId: overrides.mappingId,
+  tenantId: overrides.tenantId,
+  orgUnitId: overrides.orgUnitId,
+  twilioNumberE164: overrides.twilioNumberE164,
+  label: overrides.label,
+  isActive: overrides.isActive ?? true,
+  createdAtUtc: overrides.createdAtUtc ?? '2026-03-18T12:00:00.000Z',
+  updatedAtUtc: overrides.updatedAtUtc ?? '2026-03-18T12:00:00.000Z',
+});
+
+const buildTenantOrgUnitKey = (tenantId: string, orgUnitId: string): string =>
+  `${tenantId}::${orgUnitId}`;
+
+const cloneMappings = (
+  mappings: readonly ConnectShyftNumberMapping[],
+): ConnectShyftNumberMapping[] => [...mappings]
+  .map((mapping) => ({ ...mapping }))
+  .sort((left, right) => {
+    if (left.twilioNumberE164 !== right.twilioNumberE164) {
+      return left.twilioNumberE164.localeCompare(right.twilioNumberE164);
+    }
+    return left.mappingId.localeCompare(right.mappingId);
+  });
+
+const buildDefaultNumberMappingState = (): Map<string, ConnectShyftNumberMapping[]> => new Map([
+  [
+    buildTenantOrgUnitKey('tenant-connectshyft-f1', 'org-connectshyft-f1-east'),
+    cloneMappings([
+      buildNumberMapping({
+        mappingId: 'mapping-f1-001',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        twilioNumberE164: '+12605550191',
+        label: 'Front Desk',
+      }),
+    ]),
+  ],
+  [
+    buildTenantOrgUnitKey('tenant-connectshyft-f2', 'org-connectshyft-f2-east'),
+    cloneMappings([
+      buildNumberMapping({
+        mappingId: 'mapping-f2-001',
+        tenantId: 'tenant-connectshyft-f2',
+        orgUnitId: 'org-connectshyft-f2-east',
+        twilioNumberE164: '+12605550192',
+        label: 'F2 East Primary',
+      }),
+    ]),
+  ],
+]);
 describe('connectshyft provider adapter registry route integration - dispatch and canonical events', () => {
   registerProviderRegistryRouteIntegrationHooks();
+  let numberMappingsByScope: Map<string, ConnectShyftNumberMapping[]>;
+  let listMappingsSpy: jest.SpyInstance;
+  let createMappingSpy: jest.SpyInstance;
+  let updateMappingSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    numberMappingsByScope = buildDefaultNumberMappingState();
+
+    listMappingsSpy = jest.spyOn(connectShyftNumberMappingServiceAsync, 'listMappings').mockImplementation(
+      async (tenantId: string, orgUnitId: string) =>
+        cloneMappings(numberMappingsByScope.get(buildTenantOrgUnitKey(tenantId, orgUnitId)) || []),
+    );
+
+    createMappingSpy = jest.spyOn(connectShyftNumberMappingServiceAsync, 'createMapping').mockImplementation(
+      async (input) => {
+        const scopeKey = buildTenantOrgUnitKey(input.tenantId, input.orgUnitId);
+        const nextMapping = buildNumberMapping({
+          mappingId: input.mappingId || `mapping-${input.tenantId}-${input.orgUnitId}-${input.twilioNumberE164}`,
+          tenantId: input.tenantId,
+          orgUnitId: input.orgUnitId,
+          twilioNumberE164: input.twilioNumberE164,
+          label: input.label,
+          isActive: input.isActive,
+        });
+        const nextMappings = cloneMappings([
+          ...(numberMappingsByScope.get(scopeKey) || []),
+          nextMapping,
+        ]);
+        numberMappingsByScope.set(scopeKey, nextMappings);
+
+        return {
+          ok: true as const,
+          code: 'CONNECTSHYFT_NUMBER_MAPPING_SAVED' as const,
+          httpStatus: 201 as const,
+          data: {
+            mappingId: nextMapping.mappingId,
+            orgUnitId: nextMapping.orgUnitId,
+            twilioNumberE164: nextMapping.twilioNumberE164,
+            label: nextMapping.label,
+            isActive: nextMapping.isActive,
+            mappings: cloneMappings(nextMappings),
+          },
+        };
+      },
+    );
+
+    updateMappingSpy = jest.spyOn(connectShyftNumberMappingServiceAsync, 'updateMapping').mockImplementation(
+      async (input) => {
+        const scopeKey = buildTenantOrgUnitKey(input.tenantId, input.orgUnitId);
+        const currentMappings = numberMappingsByScope.get(scopeKey) || [];
+        const existing = currentMappings.find((mapping) => mapping.mappingId === input.mappingId);
+        if (!existing) {
+          return {
+            ok: false as const,
+            code: 'CONNECTSHYFT_NUMBER_MAPPING_NOT_FOUND' as const,
+            message: 'Number mapping not found for this tenant and orgUnit.',
+          };
+        }
+
+        const nextMappings = cloneMappings(currentMappings.map((mapping) => (
+          mapping.mappingId === input.mappingId
+            ? {
+              ...mapping,
+              twilioNumberE164: input.twilioNumberE164,
+              label: input.label,
+              isActive: input.isActive,
+              updatedAtUtc: '2026-03-18T12:00:00.000Z',
+            }
+            : mapping
+        )));
+        const updated = nextMappings.find((mapping) => mapping.mappingId === input.mappingId)!;
+        numberMappingsByScope.set(scopeKey, nextMappings);
+
+        return {
+          ok: true as const,
+          code: 'CONNECTSHYFT_NUMBER_MAPPING_UPDATED' as const,
+          httpStatus: 200 as const,
+          data: {
+            mappingId: updated.mappingId,
+            orgUnitId: updated.orgUnitId,
+            twilioNumberE164: updated.twilioNumberE164,
+            label: updated.label,
+            isActive: updated.isActive,
+            mappings: cloneMappings(nextMappings),
+          },
+        };
+      },
+    );
+  });
+
+  afterEach(() => {
+    updateMappingSpy.mockRestore();
+    createMappingSpy.mockRestore();
+    listMappingsSpy.mockRestore();
+  });
 
   it('dispatches outbound call through deterministic provider adapter resolution metadata', async () => {
     const app = buildApp();
@@ -243,6 +399,64 @@ describe('connectshyft provider adapter registry route integration - dispatch an
       resolveSubjectSpy.mockRestore();
       resolveActiveSpy.mockRestore();
       restore();
+    }
+  });
+
+  it('records projection-ready outbound sms canonical payloads for timeline reads', async () => {
+    const app = buildApp();
+    const canonicalEventSpy = jest.spyOn(
+      canonicalEventsModule,
+      'recordConnectShyftCanonicalEvent',
+    ).mockResolvedValue({
+      eventId: 'canonical-event-outbound-1',
+      aggregateId: 'thread-f1-unclaimed-1001',
+      aggregateType: 'Thread',
+      eventType: 'MessageQueued',
+      payload: {},
+      occurredAtUtc: '2026-03-18T12:00:00.000Z',
+    } as any);
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/messages')
+        .set(buildHeaders())
+        .send({
+          orgUnitId: 'org-connectshyft-f1-east',
+          providerKey: 'telnyx',
+          channel: 'sms',
+          body: 'Projection-ready outbound message',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED',
+      });
+      expect(canonicalEventSpy).toHaveBeenCalledWith(expect.objectContaining({
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        aggregateId: 'thread-f1-unclaimed-1001',
+        eventType: 'MessageQueued',
+        payload: expect.objectContaining({
+          direction: 'outbound',
+          channel: 'sms',
+          actor: 'user',
+          eventName: 'connectshyft.outbound.sms_appended',
+          lifecycleEvent: 'connectshyft.thread.outbound_message_dispatched',
+          outboundMessageArtifact: expect.objectContaining({
+            direction: 'outbound',
+            channel: 'sms',
+            body: 'Projection-ready outbound message',
+          }),
+        }),
+      }));
+
+      const recordedPayload = canonicalEventSpy.mock.calls[0]?.[0]?.payload as Record<string, unknown>;
+      const outboundArtifact = recordedPayload?.outboundMessageArtifact as Record<string, unknown>;
+      expect(Object.prototype.hasOwnProperty.call(outboundArtifact, 'from')).toBe(true);
+      expect(Object.prototype.hasOwnProperty.call(outboundArtifact, 'to')).toBe(true);
+    } finally {
+      canonicalEventSpy.mockRestore();
     }
   });
 
@@ -726,6 +940,23 @@ describe('connectshyft provider adapter registry route integration - dispatch an
       expect(event.aggregateId).toBe(threadId);
       expect(event.aggregateType).toBe('Thread');
       expectProviderSpecificLeakageRemoved(event.payload);
+    });
+
+    const outboundSmsEvent = events.find((event) =>
+      event.eventType === 'MessageQueued'
+      && event.payload?.eventName === 'connectshyft.outbound.sms_appended',
+    );
+    expect(outboundSmsEvent).toMatchObject({
+      payload: {
+        direction: 'outbound',
+        channel: 'sms',
+        actor: 'user',
+        eventName: 'connectshyft.outbound.sms_appended',
+        lifecycleEvent: 'connectshyft.thread.outbound_message_dispatched',
+        outboundMessageArtifact: {
+          body: 'Story f2 canonical store test message.',
+        },
+      },
     });
   });
 
