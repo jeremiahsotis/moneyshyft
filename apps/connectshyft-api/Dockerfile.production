@@ -8,6 +8,7 @@ COPY scripts ../../scripts
 COPY tsconfig.base.json ../../tsconfig.base.json
 COPY domains ../../domains
 COPY infrastructure ../../infrastructure
+COPY shared/database ../../shared/database
 
 RUN npm install && npm cache clean --force
 RUN mkdir -p /workspace/apps/moneyshyft-api /workspace/apps/admin-api \
