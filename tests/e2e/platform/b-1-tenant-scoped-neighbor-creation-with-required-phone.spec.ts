@@ -14,6 +14,7 @@ test.describe(
     test(
       '[P0] operator submits valid neighbor create form and sees normalized phone result state @P0',
       async ({ page }) => {
+        const context = createStoryB1Context();
         await login(page);
         await page.goto(
           buildNeighborCreateUrl(
@@ -25,7 +26,7 @@ test.describe(
 
         await page.getByTestId('connectshyft-neighbor-first-name-input').fill('Mina');
         await page.getByTestId('connectshyft-neighbor-last-name-input').fill('Lopez');
-        await page.getByTestId('connectshyft-neighbor-phone-input').fill('+1 (260) 555-0199');
+        await page.getByTestId('connectshyft-neighbor-phone-input').fill(context.validPhoneRaw);
         await page.getByTestId('connectshyft-neighbor-phone-label-select').selectOption('mobile');
 
         const createResponse = page.waitForResponse(
@@ -41,7 +42,7 @@ test.describe(
           'Neighbor created',
         );
         await expect(page.getByTestId('connectshyft-neighbor-phone-value')).toContainText(
-          '+12605550199',
+          context.validPhoneNormalized,
         );
       },
     );
@@ -70,6 +71,7 @@ test.describe(
     test(
       '[P1] tenant-viewer role is blocked with deterministic refusal messaging and no success state @P1',
       async ({ page }) => {
+        const context = createStoryB1Context();
         await login(page);
         await page.goto(
           buildNeighborCreateUrl(
@@ -79,7 +81,7 @@ test.describe(
 
         await page.getByTestId('connectshyft-neighbor-first-name-input').fill('Ari');
         await page.getByTestId('connectshyft-neighbor-last-name-input').fill('Quinn');
-        await page.getByTestId('connectshyft-neighbor-phone-input').fill('+1 (260) 555-0199');
+        await page.getByTestId('connectshyft-neighbor-phone-input').fill(context.validPhoneRaw);
         await page.getByTestId('connectshyft-neighbor-phone-label-select').selectOption('mobile');
 
         const refusalResponse = page.waitForResponse(

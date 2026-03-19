@@ -674,7 +674,7 @@ const mergePhoneRows = (
       return;
     }
 
-    const dedupeKey = `${label.toLowerCase()}::${value}`;
+    const dedupeKey = value;
     if (seen.has(dedupeKey)) {
       return;
     }
@@ -1964,6 +1964,15 @@ export class KnexConnectShyftNeighborStore {
         })
         .delete();
 
+      await trx
+        .withSchema('connectshyft')
+        .table('cs_neighbor_phones')
+        .where({
+          tenant_id: input.tenantId,
+          neighbor_id: input.sourceNeighborId,
+        })
+        .delete();
+
       const insertedPhones = mergedPhones.length > 0
         ? await trx
           .withSchema('connectshyft')
@@ -1995,15 +2004,6 @@ export class KnexConnectShyftNeighborStore {
           )
           .returning<DbNeighborPhoneRow[]>(this.neighborPhoneColumns())
         : [];
-
-      await trx
-        .withSchema('connectshyft')
-        .table('cs_neighbor_phones')
-        .where({
-          tenant_id: input.tenantId,
-          neighbor_id: input.sourceNeighborId,
-        })
-        .delete();
 
       await trx
         .withSchema('connectshyft')

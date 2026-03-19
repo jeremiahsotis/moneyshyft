@@ -1,4 +1,5 @@
 import { apiRequest } from '../../support/helpers/apiClient';
+import { createUniqueConnectShyftTestPhone } from '../../support/factories/connectShyftTestPhoneFactory';
 import { test, expect } from '../../support/fixtures/connectShyftStoryB2.fixture';
 
 const REQUIRED_ENVELOPE_KEYS = ['ok', 'code', 'message', 'correlationId', 'tenantId'];
@@ -28,6 +29,9 @@ const seedNeighbor = async (
   },
   headers: Record<string, string>,
 ): Promise<SeedNeighborResult> => {
+  const sharedPhone = createUniqueConnectShyftTestPhone('7');
+  const nonSharedPhone = createUniqueConnectShyftTestPhone('8');
+
   const createResponse = await apiRequest(request, {
     method: 'POST',
     path: context.paths.neighborsCollection,
@@ -39,13 +43,13 @@ const seedNeighbor = async (
       phones: [
         {
           label: 'mobile',
-          value: context.sharedPhoneRaw,
+          value: sharedPhone.raw,
           isShared: true,
           verificationStatus: 'verified',
         },
         {
           label: 'home',
-          value: context.nonSharedPhoneRaw,
+          value: nonSharedPhone.raw,
           isShared: false,
           verificationStatus: 'unverified',
         },

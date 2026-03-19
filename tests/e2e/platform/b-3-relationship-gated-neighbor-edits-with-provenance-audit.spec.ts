@@ -6,6 +6,7 @@ import {
   createStoryB3Headers,
   type StoryB3Context,
 } from '../../support/factories/connectShyftStoryB3Factory';
+import { createUniqueConnectShyftTestPhone } from '../../support/factories/connectShyftTestPhoneFactory';
 
 const buildNeighborProfileUrl = (
   context: StoryB3Context,
@@ -36,6 +37,8 @@ const seedNeighbor = async (
   request: APIRequestContext,
   context: StoryB3Context,
 ): Promise<{ neighborId: string }> => {
+  const sharedPhone = createUniqueConnectShyftTestPhone('4');
+  const nonSharedPhone = createUniqueConnectShyftTestPhone('5');
   const seedHeaders = createStoryB3Headers(context, {
     role: 'ORGUNIT_MEMBER',
     userId: `user-connectshyft-b3-seed-ui-${Date.now()}`,
@@ -57,13 +60,13 @@ const seedNeighbor = async (
           phones: [
             {
               label: 'mobile',
-              value: context.sharedPhoneRaw,
+              value: sharedPhone.raw,
               isShared: true,
               verificationStatus: 'verified',
             },
             {
               label: 'home',
-              value: context.nonSharedPhoneRaw,
+              value: nonSharedPhone.raw,
               isShared: false,
               verificationStatus: 'unverified',
             },
