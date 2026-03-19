@@ -214,6 +214,10 @@ jobs:
           install_backend_test_deps: 'true'
           install_frontend: 'true'
           ensure_playwright: 'true'
+      - name: Run contracts test
+        run: NX_DAEMON=false pnpm nx run contracts:test
+      - name: Build connectshyft-web sanity
+        run: NX_DAEMON=false pnpm nx run connectshyft-web:build
       - name: Run workspace/backend Jest surface
         run: bash scripts/ci-run-playwright-stack.sh bash scripts/backend-jest-ci.sh
 
