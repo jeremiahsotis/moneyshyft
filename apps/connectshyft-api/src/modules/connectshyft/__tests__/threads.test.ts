@@ -4,6 +4,7 @@ import {
   InMemoryConnectShyftThreadStore,
   evaluateConnectShyftLifecyclePolicy,
 } from '../threads';
+import { resolveSenderNumber } from '../senderNumberResolver';
 
 describe('connectshyft thread service', () => {
   let store: InMemoryConnectShyftThreadStore;
@@ -232,6 +233,35 @@ describe('connectshyft thread service', () => {
       'thread-c1-a',
       'thread-c1-b',
     ]);
+  });
+
+  it('stores and reloads provider-number sender alignment values for an ensured thread', () => {
+    const ensured = service.ensureThread({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c1',
+      orgUnitId: 'org-connectshyft-c1-east',
+      neighborId: 'neighbor-connectshyft-c1-provider-1001',
+      source: 'SMS',
+      threadId: 'thread-c1-provider-1001',
+      lastInboundCsNumberId: '  +12605550191  ',
+      preferredOutboundCsNumberId: '  +12605550191  ',
+    });
+
+    expect(ensured.ok).toBe(true);
+    if (!ensured.ok) {
+      throw new Error('Expected ensureThread to succeed');
+    }
+
+    const reloaded = service.findThreadById({
+      tenantId: 'tenant-connectshyft-c1',
+      threadId: ensured.data.thread.threadId,
+    });
+
+    expect(reloaded).toMatchObject({
+      threadId: 'thread-c1-provider-1001',
+      lastInboundCsNumberId: '+12605550191',
+      preferredOutboundCsNumberId: '+12605550191',
+    });
   });
 
   it('aligns lifecycle nullable fields with canonical state transitions', () => {
@@ -678,5 +708,104 @@ describe('connectshyft deterministic escalation scheduler', () => {
     }
     expect(claimed.data.thread.escalation.stage).toBe(0);
     expect(claimed.data.thread.escalation.nextEvaluationAtUtc).toBeNull();
+  });
+
+  it('reuses persisted provider-number alignment for sender resolution on the same thread', async () => {
+    const ensured = service.ensureThread({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c5',
+      orgUnitId: 'org-connectshyft-c5-east',
+      neighborId: 'neighbor-connectshyft-c5-sender-1001',
+      source: 'SMS',
+      threadId: 'thread-c5-sender-1001',
+      lastInboundCsNumberId: '+12605550192',
+      preferredOutboundCsNumberId: '+12605550192',
+    });
+    if (!ensured.ok) {
+      throw new Error('Expected ensureThread to succeed');
+    }
+
+    const resolved = await resolveSenderNumber(
+      {
+        tenantId: 'tenant-connectshyft-c5',
+        orgUnitId: 'org-connectshyft-c5-east',
+        threadId: ensured.data.thread.threadId,
+        channel: 'sms',
+      },
+      {
+        loadThread: async (request) => service.findThreadById({
+          tenantId: request.tenantId,
+          threadId: request.threadId,
+        }),
+        numberMappingService: {
+          resolveRoutingMappingByNumber: async () => ({
+            status: 'found',
+            mapping: {
+              mappingId: 'mapping-c5-001',
+              tenantId: 'tenant-connectshyft-c5',
+              orgUnitId: 'org-connectshyft-c5-east',
+              twilioNumberE164: '+12605550192',
+              label: 'C5 Primary',
+              isActive: true,
+              createdAtUtc: '2026-03-19T12:00:00.000Z',
+              updatedAtUtc: '2026-03-19T12:00:00.000Z',
+            },
+          }),
+        },
+      },
+    );
+
+    expect(resolved).toMatchObject({
+      ok: true,
+      providerNumberE164: '+12605550192',
+      mappingId: 'mapping-c5-001',
+      routingMetadata: {
+        source: 'thread_alignment',
+        alignedFrom: 'preferred_outbound',
+      },
+    });
+  });
+
+  it('rejects legacy synthetic sender tokens when resolving from persisted thread alignment', async () => {
+    const ensured = service.ensureThread({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c5',
+      orgUnitId: 'org-connectshyft-c5-east',
+      neighborId: 'neighbor-connectshyft-c5-sender-1002',
+      source: 'SMS',
+      threadId: 'thread-c5-sender-1002',
+      lastInboundCsNumberId: 'cs-number-c5-402',
+      preferredOutboundCsNumberId: 'cs-number-c5-402',
+    });
+    if (!ensured.ok) {
+      throw new Error('Expected ensureThread to succeed');
+    }
+
+    const resolved = await resolveSenderNumber(
+      {
+        tenantId: 'tenant-connectshyft-c5',
+        orgUnitId: 'org-connectshyft-c5-east',
+        threadId: ensured.data.thread.threadId,
+        channel: 'sms',
+      },
+      {
+        loadThread: async (request) => service.findThreadById({
+          tenantId: request.tenantId,
+          threadId: request.threadId,
+        }),
+        numberMappingService: {
+          resolveRoutingMappingByNumber: async () => ({ status: 'not-found' }),
+        },
+      },
+    );
+
+    expect(resolved).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_SENDER_ALIGNMENT_INVALID',
+      reason: 'sender_alignment_invalid',
+      routingMetadata: {
+        candidateProviderNumberE164: 'cs-number-c5-402',
+      },
+    });
   });
 });

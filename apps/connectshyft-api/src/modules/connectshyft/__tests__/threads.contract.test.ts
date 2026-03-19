@@ -1,6 +1,7 @@
 import knex, { Knex } from 'knex';
 import { up as migrateThreadsUp } from '../../../migrations/20260224170000_create_connectshyft_threads';
 import { KnexConnectShyftThreadStore } from '../threads';
+import { resolveSenderNumber } from '../senderNumberResolver';
 
 const DATABASE_URL = process.env.MONEYSHYFT_TEST_DATABASE_URL;
 const shouldRun = Boolean(DATABASE_URL);
@@ -213,6 +214,140 @@ describeIfDb('connectshyft threads (postgres contract)', () => {
       .first<{ id: string }>('id');
 
     expect(persisted?.id).toBe(result.thread.threadId);
+  });
+
+  it('persists provider-number sender alignment without synthetic rewriting', async () => {
+    const store = new KnexConnectShyftThreadStore(db);
+    const tenantId = `${CONTRACT_TENANT_PREFIX}provider-alignment`;
+    const orgUnitId = 'org-contract-c1-provider-alignment';
+    const neighborId = 'neighbor-contract-c1-provider-alignment';
+    const threadId = '55555555-5555-4555-8555-555555555555';
+
+    const result = await store.ensureActiveThread({
+      tenantId,
+      orgUnitId,
+      neighborId,
+      source: 'SMS',
+      state: 'UNCLAIMED',
+      threadId,
+      lastInboundCsNumberId: '  +12605550191  ',
+      preferredOutboundCsNumberId: '  +12605550191  ',
+      nextEvaluationAtUtc: '2026-02-24T16:00:00.000Z',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error('Expected ensureActiveThread with provider-number alignment to succeed');
+    }
+
+    expect(result.thread.lastInboundCsNumberId).toBe('+12605550191');
+    expect(result.thread.preferredOutboundCsNumberId).toBe('+12605550191');
+
+    const reloaded = await store.findThreadById({
+      tenantId,
+      threadId,
+    });
+    expect(reloaded).toMatchObject({
+      threadId,
+      lastInboundCsNumberId: '+12605550191',
+      preferredOutboundCsNumberId: '+12605550191',
+    });
+  });
+
+  it('lets resolver reuse stored provider-number alignment and refuse legacy synthetic tokens', async () => {
+    const store = new KnexConnectShyftThreadStore(db);
+    const tenantId = `${CONTRACT_TENANT_PREFIX}resolver-alignment`;
+    const orgUnitId = 'org-contract-c1-resolver-alignment';
+
+    const aligned = await store.ensureActiveThread({
+      tenantId,
+      orgUnitId,
+      neighborId: 'neighbor-contract-c1-resolver-alignment',
+      source: 'SMS',
+      state: 'UNCLAIMED',
+      threadId: '66666666-6666-4666-8666-666666666666',
+      lastInboundCsNumberId: '+12605550192',
+      preferredOutboundCsNumberId: '+12605550192',
+      nextEvaluationAtUtc: '2026-02-24T16:30:00.000Z',
+    });
+    expect(aligned.ok).toBe(true);
+    if (!aligned.ok) {
+      throw new Error('Expected aligned ensureActiveThread call to succeed');
+    }
+
+    const resolved = await resolveSenderNumber(
+      {
+        tenantId,
+        orgUnitId,
+        threadId: aligned.thread.threadId,
+        channel: 'sms',
+      },
+      {
+        loadThread: async (request) => store.findThreadById({
+          tenantId: request.tenantId,
+          threadId: request.threadId,
+        }),
+        numberMappingService: {
+          resolveRoutingMappingByNumber: async () => ({
+            status: 'found',
+            mapping: {
+              mappingId: 'mapping-contract-c1-001',
+              tenantId,
+              orgUnitId,
+              twilioNumberE164: '+12605550192',
+              label: 'Contract Primary',
+              isActive: true,
+              createdAtUtc: '2026-03-19T12:00:00.000Z',
+              updatedAtUtc: '2026-03-19T12:00:00.000Z',
+            },
+          }),
+        },
+      },
+    );
+    expect(resolved).toMatchObject({
+      ok: true,
+      providerNumberE164: '+12605550192',
+      mappingId: 'mapping-contract-c1-001',
+    });
+
+    const legacy = await store.ensureActiveThread({
+      tenantId: `${CONTRACT_TENANT_PREFIX}resolver-legacy`,
+      orgUnitId,
+      neighborId: 'neighbor-contract-c1-resolver-legacy',
+      source: 'SMS',
+      state: 'UNCLAIMED',
+      threadId: '77777777-7777-4777-8777-777777777777',
+      lastInboundCsNumberId: 'cs-number-contract-legacy-501',
+      preferredOutboundCsNumberId: 'cs-number-contract-legacy-501',
+      nextEvaluationAtUtc: '2026-02-24T17:00:00.000Z',
+    });
+    expect(legacy.ok).toBe(true);
+    if (!legacy.ok) {
+      throw new Error('Expected legacy ensureActiveThread call to succeed');
+    }
+
+    const refused = await resolveSenderNumber(
+      {
+        tenantId: `${CONTRACT_TENANT_PREFIX}resolver-legacy`,
+        orgUnitId,
+        threadId: legacy.thread.threadId,
+        channel: 'sms',
+      },
+      {
+        loadThread: async (request) => store.findThreadById({
+          tenantId: request.tenantId,
+          threadId: request.threadId,
+        }),
+        numberMappingService: {
+          resolveRoutingMappingByNumber: async () => ({ status: 'not-found' }),
+        },
+      },
+    );
+    expect(refused).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_SENDER_ALIGNMENT_INVALID',
+      reason: 'sender_alignment_invalid',
+    });
   });
 
   it('maintains an index-backed due-thread scan contract', async () => {

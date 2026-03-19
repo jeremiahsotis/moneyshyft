@@ -1,6 +1,7 @@
 import connectShyftRouter from '../connectshyft'
 import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions'
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents'
+import { connectShyftNumberMappingServiceAsync } from '../../../../modules/connectshyft/numberMappings'
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings'
 
 const toCanonicalEventType = (rawEventType: string): string => rawEventType
@@ -221,6 +222,33 @@ describe('connectshyft bridge webhook flow', () => {
     resetConnectShyftCanonicalEventsForTests()
     resetConnectShyftBridgeSessionStateForTests()
     resetConnectShyftProviderCorrelationStateForTests()
+    jest.spyOn(connectShyftNumberMappingServiceAsync, 'resolveRoutingMappingByNumber').mockImplementation(
+      async (input) => {
+        if (input.tenantId === 'tenant-connectshyft-f1' && input.twilioNumberE164 === '+12605550191') {
+          return {
+            status: 'found' as const,
+            mapping: {
+              mappingId: 'mapping-f1-001',
+              tenantId: 'tenant-connectshyft-f1',
+              orgUnitId: 'org-connectshyft-f1-east',
+              twilioNumberE164: '+12605550191',
+              label: 'Front Desk',
+              isActive: true,
+              createdAtUtc: '2026-03-11T12:00:00.000Z',
+              updatedAtUtc: '2026-03-11T12:00:00.000Z',
+            },
+          }
+        }
+
+        return {
+          status: 'not-found' as const,
+        }
+      },
+    )
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
 
   afterAll(() => {
@@ -273,6 +301,39 @@ describe('connectshyft bridge webhook flow', () => {
     expect(startOutboundCallMock).toHaveBeenCalledWith(expect.objectContaining({
       targetPhone: '+12605550155',
     }))
+  })
+
+  it('refuses outbound call start when sender alignment cannot resolve to an active mapped number', async () => {
+    const routingSpy = connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber as jest.MockedFunction<
+      typeof connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber
+    >
+    routingSpy.mockResolvedValueOnce({ status: 'not-found' })
+
+    const response = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/call',
+      headers: buildHeaders(),
+      body: {
+        providerKey: 'telnyx',
+        operatorPhoneId: '+12605550155',
+        targetPhone: '+12605550111',
+      },
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_CALL_SENDER_REQUIRED',
+      data: {
+        senderResolution: {
+          source: 'thread_alignment',
+          channel: 'voice',
+          reason: 'sender_mapping_missing',
+          candidateProviderNumberE164: '+12605550191',
+        },
+      },
+    })
+    expect(startOutboundCallMock).not.toHaveBeenCalled()
+    expect(startBridgeSessionMock).not.toHaveBeenCalled()
   })
 
   it('rejects unverified webhooks before receipt processing or bridge side effects', async () => {

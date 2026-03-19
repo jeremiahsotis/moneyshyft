@@ -6,6 +6,7 @@ import * as canonicalEventsModule from '../../../../modules/connectshyft/canonic
 import * as identityResolverModule from '../../../../modules/connectshyft/identityResolver';
 import * as neighborsModule from '../../../../modules/connectshyft/neighbors';
 import { AsyncConnectShyftNeighborService } from '../../../../modules/connectshyft/neighbors';
+import { connectShyftNumberMappingServiceAsync } from '../../../../modules/connectshyft/numberMappings';
 import { AsyncConnectShyftThreadService } from '../../../../modules/connectshyft/threads';
 import * as ProviderRegistry from '../../../../modules/connectshyft/providerRegistry';
 import {
@@ -42,8 +43,8 @@ const mockInboundSmsPersistence = (neighborId: string) => {
         summary: '',
         escalationStage: 0,
         nextEvaluationAtUtc: null,
-        lastInboundCsNumberId: 'fixture-last-inbound',
-        preferredOutboundCsNumberId: 'fixture-preferred-outbound',
+        lastInboundCsNumberId: '+12605550191',
+        preferredOutboundCsNumberId: '+12605550191',
         claimedByUserId: null,
         createdAtUtc: '2026-03-18T12:00:00.000Z',
         updatedAtUtc: '2026-03-18T12:00:00.000Z',
@@ -80,18 +81,71 @@ const mockInboundSmsPersistence = (neighborId: string) => {
     },
   } as any);
 
-  return () => {
-    textingPreferenceSpy.mockRestore();
-    canonicalEventSpy.mockRestore();
-    ensureThreadSpy.mockRestore();
-    Object.defineProperty(db, 'transaction', {
-      value: originalTransaction,
-    });
+  return {
+    ensureThreadSpy,
+    restore: () => {
+      textingPreferenceSpy.mockRestore();
+      canonicalEventSpy.mockRestore();
+      ensureThreadSpy.mockRestore();
+      Object.defineProperty(db, 'transaction', {
+        value: originalTransaction,
+      });
+    },
+  };
+};
+
+const resolveRoutingMappingByNumberForTests = async (input: {
+  tenantId: string | null;
+  twilioNumberE164: string;
+}) => {
+  if (input.tenantId === 'tenant-connectshyft-f1' && input.twilioNumberE164 === '+12605550191') {
+    return {
+      status: 'found' as const,
+      mapping: {
+        mappingId: 'mapping-f1-001',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        twilioNumberE164: '+12605550191',
+        label: 'Front Desk',
+        isActive: true,
+        createdAtUtc: '2026-03-18T12:00:00.000Z',
+        updatedAtUtc: '2026-03-18T12:00:00.000Z',
+      },
+    };
+  }
+
+  if (input.tenantId === 'tenant-connectshyft-f2' && input.twilioNumberE164 === '+12605550192') {
+    return {
+      status: 'found' as const,
+      mapping: {
+        mappingId: 'mapping-f2-001',
+        tenantId: 'tenant-connectshyft-f2',
+        orgUnitId: 'org-connectshyft-f2-east',
+        twilioNumberE164: '+12605550192',
+        label: 'F2 East Primary',
+        isActive: true,
+        createdAtUtc: '2026-03-18T12:00:00.000Z',
+        updatedAtUtc: '2026-03-18T12:00:00.000Z',
+      },
+    };
+  }
+
+  return {
+    status: 'not-found' as const,
   };
 };
 
 describe('connectshyft provider adapter registry route integration - guardrails', () => {
   registerProviderRegistryRouteIntegrationHooks();
+
+  beforeEach(() => {
+    jest.spyOn(connectShyftNumberMappingServiceAsync, 'resolveRoutingMappingByNumber')
+      .mockImplementation(resolveRoutingMappingByNumberForTests);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
   it('fails closed when requested provider is disabled and confirms no partial-write side effects', async () => {
     const app = buildApp();
@@ -241,6 +295,7 @@ describe('connectshyft provider adapter registry route integration - guardrails'
           eventType: 'sms.inbound',
           neighbor_id: 'neighbor-alias-ignored-2001',
           from: '+12605552099',
+          to: '+12605550191',
         });
 
       expect(response.status).toBe(200);
@@ -253,11 +308,78 @@ describe('connectshyft provider adapter registry route integration - guardrails'
           },
         },
       });
+      expect(connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber).toHaveBeenCalledWith({
+        tenantId: 'tenant-connectshyft-f1',
+        twilioNumberE164: '+12605550191',
+      });
+      expect(restore.ensureThreadSpy).toHaveBeenCalledWith(expect.objectContaining({
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        lastInboundCsNumberId: '+12605550191',
+        preferredOutboundCsNumberId: '+12605550191',
+      }));
       expect(resolveActiveSpy).not.toHaveBeenCalled();
     } finally {
       resolveActiveSpy.mockRestore();
-      restore();
+      restore.restore();
     }
+  });
+
+  it('refuses inbound SMS when the mapped sender number is ambiguous in scoped routing', async () => {
+    const app = buildApp();
+    const routingSpy = connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber as jest.MockedFunction<
+      typeof connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber
+    >;
+    routingSpy.mockResolvedValueOnce({
+      status: 'ambiguous',
+      mappings: [
+        {
+          mappingId: 'mapping-f1-a',
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+          twilioNumberE164: '+12605550191',
+          label: 'Front Desk',
+          isActive: true,
+          createdAtUtc: '2026-03-18T12:00:00.000Z',
+          updatedAtUtc: '2026-03-18T12:00:00.000Z',
+        },
+        {
+          mappingId: 'mapping-f1-b',
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+          twilioNumberE164: '+12605550191',
+          label: 'Overflow',
+          isActive: true,
+          createdAtUtc: '2026-03-18T12:00:00.000Z',
+          updatedAtUtc: '2026-03-18T12:00:00.000Z',
+        },
+      ],
+    });
+
+    const response = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildHeaders())
+      .send({
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        threadId: 'thread-f1-unclaimed-1001',
+        eventType: 'sms.inbound',
+        from: '+12605552098',
+        to: '+12605550191',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_SENDER_AMBIGUOUS',
+      refusalType: 'business',
+      data: {
+        reason: 'sender_mapping_ambiguous',
+        correlation: {
+          providerNumberE164: '+12605550191',
+        },
+      },
+    });
   });
 
   it('refuses inbound SMS when multiple active neighbors share the same sender phone', async () => {
@@ -282,6 +404,7 @@ describe('connectshyft provider adapter registry route integration - guardrails'
           threadId: 'sms-ambiguous-thread-2003',
           eventType: 'sms.inbound',
           from: '+12605552003',
+          to: '+12605550191',
         });
 
       expect(response.status).toBe(200);
@@ -314,6 +437,7 @@ describe('connectshyft provider adapter registry route integration - guardrails'
         threadId: 'sms-invalid-phone-thread-2004',
         eventType: 'sms.inbound',
         from: 'not-a-phone-number',
+        to: '+12605550191',
       });
 
     expect(response.status).toBe(200);

@@ -56,6 +56,10 @@ import {
   type ConnectShyftThreadState,
 } from '../../../modules/connectshyft/threads';
 import {
+  resolveSenderNumber,
+  type ResolveSenderNumberRefusal,
+} from '../../../modules/connectshyft/senderNumberResolver';
+import {
   connectShyftSmsPreferenceOverrideServiceAsync,
   ConnectShyftSmsOverridePersistenceUnavailableError,
   type ConnectShyftPersistedSmsOverride,
@@ -486,8 +490,8 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     escalationStage: 0,
     nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
     neighborId: 'neighbor-connectshyft-f1-1001',
-    lastInboundCsNumberId: 'cs-number-f1-401',
-    preferredOutboundCsNumberId: 'cs-number-f1-501',
+    lastInboundCsNumberId: '+12605550191',
+    preferredOutboundCsNumberId: '+12605550191',
     summary: 'F1 unclaimed thread for provider adapter registry contracts.',
   },
   'thread-f1-claimed-1002': {
@@ -498,8 +502,8 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     escalationStage: 0,
     nextEvaluationAtUtc: null,
     neighborId: 'neighbor-connectshyft-f1-1002',
-    lastInboundCsNumberId: 'cs-number-f1-402',
-    preferredOutboundCsNumberId: 'cs-number-f1-502',
+    lastInboundCsNumberId: '+12605550191',
+    preferredOutboundCsNumberId: '+12605550191',
     summary: 'F1 claimed thread for provider disabled refusal validation.',
   },
   'thread-f1-closed-1003': {
@@ -510,8 +514,8 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     escalationStage: 0,
     nextEvaluationAtUtc: null,
     neighborId: 'neighbor-connectshyft-f1-1003',
-    lastInboundCsNumberId: 'cs-number-f1-403',
-    preferredOutboundCsNumberId: 'cs-number-f1-503',
+    lastInboundCsNumberId: '+12605550191',
+    preferredOutboundCsNumberId: '+12605550191',
     summary: 'F1 closed thread for same-thread reopen provider dispatch validation.',
   },
   'thread-f2-unclaimed-1001': {
@@ -522,8 +526,8 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     escalationStage: 1,
     nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
     neighborId: 'neighbor-connectshyft-f2-1001',
-    lastInboundCsNumberId: 'cs-number-f2-401',
-    preferredOutboundCsNumberId: 'cs-number-f2-501',
+    lastInboundCsNumberId: '+12605550192',
+    preferredOutboundCsNumberId: '+12605550192',
     summary: 'F2 unclaimed thread for canonical event model contracts.',
   },
   'thread-f2-claimed-1002': {
@@ -534,8 +538,8 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     escalationStage: 0,
     nextEvaluationAtUtc: null,
     neighborId: 'neighbor-connectshyft-f2-1002',
-    lastInboundCsNumberId: 'cs-number-f2-402',
-    preferredOutboundCsNumberId: 'cs-number-f2-502',
+    lastInboundCsNumberId: '+12605550192',
+    preferredOutboundCsNumberId: '+12605550192',
     summary: 'F2 claimed thread for canonical timeline validation.',
   },
   'thread-f2-closed-1003': {
@@ -546,8 +550,8 @@ const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS: Record<string, ConnectShyftSynth
     escalationStage: 0,
     nextEvaluationAtUtc: null,
     neighborId: 'neighbor-connectshyft-f2-1003',
-    lastInboundCsNumberId: 'cs-number-f2-403',
-    preferredOutboundCsNumberId: 'cs-number-f2-503',
+    lastInboundCsNumberId: '+12605550192',
+    preferredOutboundCsNumberId: '+12605550192',
     summary: 'F2 closed thread for canonical timeline validation.',
   },
 };
@@ -1085,38 +1089,6 @@ const normalizeRoutingSlug = (value: string): string => {
   return normalized || 'unknown';
 };
 
-const buildDeterministicUuidFromSeed = (seed: string): string => {
-  const digest = createHash('sha1').update(seed).digest('hex').slice(0, 32).split('');
-  digest[12] = '5';
-  const variantNibble = Number.parseInt(digest[16], 16);
-  digest[16] = ((variantNibble & 0x3) | 0x8).toString(16);
-  const hex = digest.join('');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
-};
-
-const resolveDeterministicThreadIdForNumberMapping = (input: {
-  tenantId: string;
-  orgUnitId: string;
-  providerNumberE164: string;
-}): string => {
-  const existingSynthetic = Object.entries(CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS).find(([, descriptor]) =>
-    descriptor.tenantId === input.tenantId
-    && descriptor.orgUnitId === input.orgUnitId
-    && descriptor.state === 'UNCLAIMED');
-
-  if (existingSynthetic) {
-    return existingSynthetic[0];
-  }
-
-  return buildDeterministicUuidFromSeed([
-    'connectshyft',
-    'number-mapping-thread',
-    input.tenantId,
-    input.orgUnitId,
-    input.providerNumberE164,
-  ].join('|'));
-};
-
 const resolveExistingActiveThreadIdForScope = async (input: {
   tenantId: string;
   orgUnitId: string;
@@ -1144,6 +1116,109 @@ const resolveExistingActiveThreadIdForScope = async (input: {
   } catch (_error) {
     return null;
   }
+};
+
+const resolveInboundAlignedProviderNumber = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string | null;
+  providerNumberE164: string | null;
+  loadThread?: () => Promise<ConnectShyftThread | null>;
+}): Promise<
+  | {
+    ok: true;
+    providerNumberE164: string;
+  }
+  | {
+    ok: false;
+    code: 'CONNECTSHYFT_SMS_SENDER_REQUIRED' | 'CONNECTSHYFT_SMS_SENDER_AMBIGUOUS';
+    message: string;
+    reason:
+      | 'sender_alignment_missing'
+      | 'sender_mapping_missing'
+      | 'sender_mapping_ambiguous'
+      | 'sender_scope_mismatch';
+  }
+> => {
+  const candidateProviderNumberE164 = normalizeLifecycleString(input.providerNumberE164 || null) || null;
+
+  if (candidateProviderNumberE164) {
+    const mapping = await connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber({
+      tenantId: input.tenantId,
+      twilioNumberE164: candidateProviderNumberE164,
+    });
+
+    if (mapping.status === 'found' && mapping.mapping.orgUnitId === input.orgUnitId) {
+      return {
+        ok: true,
+        providerNumberE164: mapping.mapping.twilioNumberE164,
+      };
+    }
+
+    if (mapping.status === 'ambiguous') {
+      return {
+        ok: false,
+        code: 'CONNECTSHYFT_SMS_SENDER_AMBIGUOUS',
+        message: 'Inbound SMS sender number is ambiguous across scoped provider mappings.',
+        reason: 'sender_mapping_ambiguous',
+      };
+    }
+
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_SENDER_REQUIRED',
+      message: mapping.status === 'found'
+        ? 'Inbound SMS sender number resolved outside the active orgUnit scope.'
+        : 'Inbound SMS sender number does not map to an active scoped provider number.',
+      reason: mapping.status === 'found'
+        ? 'sender_scope_mismatch'
+        : 'sender_mapping_missing',
+    };
+  }
+
+  const threadId = normalizeLifecycleString(input.threadId || null);
+  if (!threadId) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_SENDER_REQUIRED',
+      message: 'Inbound SMS alignment requires a mapped provider number.',
+      reason: 'sender_alignment_missing',
+    };
+  }
+
+  const resolution = await resolveSenderNumber({
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    threadId,
+    channel: 'sms',
+  }, input.loadThread
+    ? {
+      loadThread: async () => input.loadThread ? input.loadThread() : null,
+    }
+    : undefined);
+
+  if (!resolution.ok) {
+    return {
+      ok: false,
+      code: resolution.reason === 'sender_mapping_ambiguous'
+        ? 'CONNECTSHYFT_SMS_SENDER_AMBIGUOUS'
+        : 'CONNECTSHYFT_SMS_SENDER_REQUIRED',
+      message: resolution.message,
+      reason:
+        resolution.reason === 'sender_mapping_ambiguous'
+          ? 'sender_mapping_ambiguous'
+          : resolution.reason === 'sender_scope_mismatch'
+            ? 'sender_scope_mismatch'
+            : resolution.reason === 'sender_mapping_missing'
+              ? 'sender_mapping_missing'
+              : 'sender_alignment_missing',
+    };
+  }
+
+  return {
+    ok: true,
+    providerNumberE164: resolution.providerNumberE164,
+  };
 };
 
 const resolveWebhookCorrelationFailure = (
@@ -1182,6 +1257,7 @@ const resolveWebhookCorrelationFailure = (
 
 const resolveInboundWebhookCorrelation = async (input: {
   body: unknown;
+  channelHint: 'sms' | 'voice';
   providerName: string;
   providerCorrelation: {
     providerLegId: string | null;
@@ -1256,7 +1332,7 @@ const resolveInboundWebhookCorrelation = async (input: {
     tenantId: tenantId || null,
     db: loadPlatformDb(),
   });
-  if (!fallback.ok && providerNumberE164) {
+  if (!fallback.ok && input.channelHint === 'sms' && providerNumberE164) {
     try {
       const numberMapping = await connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber({
         tenantId: numberMappingTenantScope,
@@ -1268,15 +1344,11 @@ const resolveInboundWebhookCorrelation = async (input: {
           source: 'number_mapping',
           tenantId: numberMapping.mapping.tenantId,
           orgUnitId: numberMapping.mapping.orgUnitId,
-          threadId: resolveDeterministicThreadIdForNumberMapping({
-            tenantId: numberMapping.mapping.tenantId,
-            orgUnitId: numberMapping.mapping.orgUnitId,
-            providerNumberE164,
-          }),
+          threadId: '',
           providerLegId: providerIdentifiers.providerLegId,
           providerMessageId: providerIdentifiers.providerMessageId,
           providerEventId: providerIdentifiers.providerEventId,
-          providerNumberE164,
+          providerNumberE164: numberMapping.mapping.twilioNumberE164,
         };
       }
 
@@ -3660,12 +3732,12 @@ type ConnectShyftResolvedSmsSender =
   | {
     ok: true;
     senderPhone: string;
-    source: 'single_active_org_unit_mapping';
+    source: 'thread_alignment';
     metadata: {
       orgUnitId: string;
-      activeMappingCount: 1;
       selectedMappingId: string;
       selectedMappingLabel: string | null;
+      alignedFrom: 'preferred_outbound' | 'last_inbound';
       threadHints: {
         lastInboundCsNumberId: string | null;
         preferredOutboundCsNumberId: string | null;
@@ -3682,8 +3754,8 @@ type ConnectShyftResolvedSmsSender =
         reason:
           | 'missing_sender'
           | 'ambiguous_sender'
-          | 'invalid_active_mapping_sender';
-        source: 'org_unit_number_mapping';
+          | 'invalid_sender_alignment';
+        source: 'thread_alignment';
         orgUnitId: string;
         activeMappingCount: number;
         candidateMappings: Array<{
@@ -3717,10 +3789,6 @@ const isValidConnectShyftSmsTargetPhone = (value: string): boolean => {
   return value.length > 0 && validatePhoneForChannel(value, 'sms').ok;
 };
 
-const isValidConnectShyftSmsSenderPhone = (value: string): boolean => {
-  return value.length > 0 && validatePhoneForChannel(value, 'sms').ok;
-};
-
 const buildConnectShyftSmsSenderThreadHints = (input: {
   thread: ConnectShyftThread;
   preferredOutboundLabel?: string | null;
@@ -3734,22 +3802,6 @@ const buildConnectShyftSmsSenderThreadHints = (input: {
     normalizeLifecycleString(input.thread.preferredOutboundCsNumberId) || null,
   preferredOutboundLabel: normalizeLifecycleString(input.preferredOutboundLabel || null) || null,
 });
-
-const mapConnectShyftSmsSenderCandidates = (
-  mappings: ConnectShyftNumberMapping[],
-): Array<{
-  mappingId: string;
-  senderPhone: string;
-  label: string | null;
-  isActive: boolean;
-}> => {
-  return mappings.map((mapping) => ({
-    mappingId: mapping.mappingId,
-    senderPhone: normalizeLifecycleString(mapping.twilioNumberE164),
-    label: normalizeLifecycleString(mapping.label) || null,
-    isActive: mapping.isActive === true,
-  }));
-};
 
 const sortConnectShyftNeighborPhones = (
   left: Pick<ConnectShyftNeighborPhone, 'sortOrder' | 'phoneId'>,
@@ -3825,11 +3877,17 @@ const buildConnectShyftSmsSenderRefusal = (input: {
   reason:
     | 'missing_sender'
     | 'ambiguous_sender'
-    | 'invalid_active_mapping_sender';
+    | 'invalid_sender_alignment';
   orgUnitId: string;
   thread: ConnectShyftThread;
   preferredOutboundLabel?: string | null;
-  candidateMappings?: ConnectShyftNumberMapping[];
+  candidateMappings?: Array<{
+    mappingId: string;
+    senderPhone: string;
+    label: string | null;
+    isActive: boolean;
+  }>;
+  activeMappingCount?: number;
   accessibilityHint: string;
 }): Extract<ConnectShyftResolvedSmsSender, { ok: false }> => ({
   ok: false,
@@ -3838,10 +3896,10 @@ const buildConnectShyftSmsSenderRefusal = (input: {
   data: {
     senderResolution: {
       reason: input.reason,
-      source: 'org_unit_number_mapping',
+      source: 'thread_alignment',
       orgUnitId: input.orgUnitId,
-      activeMappingCount: input.candidateMappings?.length || 0,
-      candidateMappings: mapConnectShyftSmsSenderCandidates(input.candidateMappings || []),
+      activeMappingCount: input.activeMappingCount ?? input.candidateMappings?.length ?? 0,
+      candidateMappings: input.candidateMappings || [],
       threadHints: buildConnectShyftSmsSenderThreadHints({
         thread: input.thread,
         preferredOutboundLabel: input.preferredOutboundLabel,
@@ -3859,6 +3917,40 @@ const buildConnectShyftSmsSenderRefusal = (input: {
     },
   },
 });
+
+const mapSenderResolverRefusalToSmsSenderRefusal = (input: {
+  refusal: ResolveSenderNumberRefusal;
+  thread: ConnectShyftThread;
+  preferredOutboundLabel?: string | null;
+}): Extract<ConnectShyftResolvedSmsSender, { ok: false }> => {
+  const isAmbiguous = input.refusal.reason === 'sender_mapping_ambiguous';
+
+  return buildConnectShyftSmsSenderRefusal({
+    code: isAmbiguous
+      ? 'CONNECTSHYFT_SMS_SENDER_AMBIGUOUS'
+      : 'CONNECTSHYFT_SMS_SENDER_REQUIRED',
+    message: isAmbiguous
+      ? 'Resolve the mapped ConnectShyft sender number so exactly one active scoped mapping remains before sending SMS.'
+      : 'Persist one valid mapped ConnectShyft sender number on the thread before sending SMS.',
+    messageKey: isAmbiguous
+      ? 'connectshyft.sms_sender.ambiguous'
+      : 'connectshyft.sms_sender.required',
+    reason: isAmbiguous ? 'ambiguous_sender' : 'invalid_sender_alignment',
+    orgUnitId: input.refusal.routingMetadata.orgUnitId,
+    thread: input.thread,
+    preferredOutboundLabel: input.preferredOutboundLabel,
+    activeMappingCount: input.refusal.routingMetadata.candidateMappings?.length ?? 0,
+    candidateMappings: (input.refusal.routingMetadata.candidateMappings || []).map((mapping) => ({
+      mappingId: mapping.mappingId,
+      senderPhone: normalizeLifecycleString(mapping.providerNumberE164),
+      label: mapping.label,
+      isActive: mapping.isActive,
+    })),
+    accessibilityHint: isAmbiguous
+      ? 'Review the thread sender alignment and scoped number mappings before retrying.'
+      : 'Persist a valid mapped provider number on the thread before retrying.',
+  });
+};
 
 const ensureConnectShyftDispatchReadySmsTarget = (input: {
   resolvedTargetPhone: string | null | undefined;
@@ -4037,66 +4129,35 @@ const resolveConnectShyftSmsSender = async (input: {
   thread: ConnectShyftThread;
   preferredOutboundLabel?: string | null;
 }): Promise<ConnectShyftResolvedSmsSender> => {
-  const activeMappings = (
-    await connectShyftNumberMappingServiceAsync.listMappings(input.tenantId, input.orgUnitId)
-  ).filter((mapping) => mapping.isActive);
-
-  if (activeMappings.length === 0) {
-    return buildConnectShyftSmsSenderRefusal({
-      code: 'CONNECTSHYFT_SMS_SENDER_REQUIRED',
-      message: 'Configure one active ConnectShyft outbound number before sending SMS.',
-      messageKey: 'connectshyft.sms_sender.required',
-      reason: 'missing_sender',
+  const resolution = await resolveSenderNumber(
+    {
+      tenantId: input.tenantId,
       orgUnitId: input.orgUnitId,
+      threadId: input.thread.threadId,
+      channel: 'sms',
+    },
+    {
+      loadThread: async () => input.thread,
+    },
+  );
+
+  if (!resolution.ok) {
+    return mapSenderResolverRefusalToSmsSenderRefusal({
+      refusal: resolution,
       thread: input.thread,
       preferredOutboundLabel: input.preferredOutboundLabel,
-      accessibilityHint:
-        'Review ConnectShyft number mappings and configure one active outbound number before retrying.',
-    });
-  }
-
-  if (activeMappings.length > 1) {
-    return buildConnectShyftSmsSenderRefusal({
-      code: 'CONNECTSHYFT_SMS_SENDER_AMBIGUOUS',
-      message:
-        'Leave exactly one active ConnectShyft outbound number in this orgUnit before sending SMS.',
-      messageKey: 'connectshyft.sms_sender.ambiguous',
-      reason: 'ambiguous_sender',
-      orgUnitId: input.orgUnitId,
-      thread: input.thread,
-      preferredOutboundLabel: input.preferredOutboundLabel,
-      candidateMappings: activeMappings,
-      accessibilityHint:
-        'Review ConnectShyft number mappings and leave exactly one active outbound number before retrying.',
-    });
-  }
-
-  const selectedMapping = activeMappings[0];
-  const senderPhone = normalizeLifecycleString(selectedMapping.twilioNumberE164);
-  if (!isValidConnectShyftSmsSenderPhone(senderPhone)) {
-    return buildConnectShyftSmsSenderRefusal({
-      code: 'CONNECTSHYFT_SMS_SENDER_REQUIRED',
-      message: 'Configure one active valid ConnectShyft outbound number before sending SMS.',
-      messageKey: 'connectshyft.sms_sender.required',
-      reason: 'invalid_active_mapping_sender',
-      orgUnitId: input.orgUnitId,
-      thread: input.thread,
-      preferredOutboundLabel: input.preferredOutboundLabel,
-      candidateMappings: activeMappings,
-      accessibilityHint:
-        'Review ConnectShyft number mappings and configure one valid active outbound number before retrying.',
     });
   }
 
   return {
     ok: true,
-    senderPhone,
-    source: 'single_active_org_unit_mapping',
+    senderPhone: resolution.providerNumberE164,
+    source: 'thread_alignment',
     metadata: {
       orgUnitId: input.orgUnitId,
-      activeMappingCount: 1,
-      selectedMappingId: selectedMapping.mappingId,
-      selectedMappingLabel: normalizeLifecycleString(selectedMapping.label) || null,
+      selectedMappingId: resolution.mappingId,
+      selectedMappingLabel: resolution.routingMetadata.mappingLabel,
+      alignedFrom: resolution.routingMetadata.alignedFrom || 'preferred_outbound',
       threadHints: buildConnectShyftSmsSenderThreadHints({
         thread: input.thread,
         preferredOutboundLabel: input.preferredOutboundLabel,
@@ -7488,6 +7549,8 @@ const performOutboundAction = async (
   let outboundDispatch: ReturnType<typeof buildLifecycleSideEffects> | null = null;
   let outboundMessageTargetPhone: string | null = null;
   let outboundMessageSenderPhone: string | null = null;
+  let outboundCallSenderPhone: string | null = null;
+  let outboundSenderResolutionMetadata: Record<string, unknown> | null = null;
   let persistedSmsOverride: ConnectShyftPersistedSmsOverride | null = null;
   let sideEffectsPersisted = false;
   let escalationReset: { stage: number; inactivityWindow: 'reset' } | null = null;
@@ -7919,6 +7982,76 @@ const performOutboundAction = async (
     }
 
     outboundMessageSenderPhone = smsSenderResolution.senderPhone;
+    outboundSenderResolutionMetadata = {
+      source: smsSenderResolution.source,
+      channel: 'sms',
+      senderPhone: smsSenderResolution.senderPhone,
+      orgUnitId: smsSenderResolution.metadata.orgUnitId,
+      selectedMappingId: smsSenderResolution.metadata.selectedMappingId,
+      selectedMappingLabel: smsSenderResolution.metadata.selectedMappingLabel,
+      alignedFrom: smsSenderResolution.metadata.alignedFrom,
+      threadHints: smsSenderResolution.metadata.threadHints,
+    };
+  }
+
+  if (outboundAction === 'call') {
+    const voiceSenderResolution = await resolveSenderNumber(
+      {
+        tenantId: context.tenantId,
+        orgUnitId: context.orgUnitId,
+        threadId,
+        channel: 'voice',
+      },
+      {
+        loadThread: async () => thread,
+      },
+    );
+    if (!voiceSenderResolution.ok) {
+      const voiceSenderCode = voiceSenderResolution.reason === 'sender_mapping_ambiguous'
+        ? 'CONNECTSHYFT_CALL_SENDER_AMBIGUOUS'
+        : 'CONNECTSHYFT_CALL_SENDER_REQUIRED';
+      refusal(res, {
+        code: voiceSenderCode,
+        message: voiceSenderResolution.reason === 'sender_mapping_ambiguous'
+          ? 'Resolve the mapped ConnectShyft outbound line so exactly one active scoped mapping remains before starting a call.'
+          : 'Persist one valid mapped ConnectShyft outbound line on the thread before starting a call.',
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          context,
+          threadId,
+          senderResolution: {
+            reason: voiceSenderResolution.reason,
+            source: 'thread_alignment',
+            channel: 'voice',
+            orgUnitId: voiceSenderResolution.routingMetadata.orgUnitId,
+            candidateProviderNumberE164: voiceSenderResolution.routingMetadata.candidateProviderNumberE164,
+          },
+          chrome: {
+            persistentOperationsBannerVisible: false,
+            heavyOperationsDefaultLayout: false,
+          },
+          sideEffects: {
+            messageDispatched: false,
+            lifecycleMutationApplied,
+            auditPersisted: false,
+          },
+          ...buildReopenLifecycleData(),
+        },
+      });
+      return;
+    }
+
+    outboundCallSenderPhone = voiceSenderResolution.providerNumberE164;
+    outboundSenderResolutionMetadata = {
+      source: voiceSenderResolution.routingMetadata.source,
+      channel: 'voice',
+      senderPhone: voiceSenderResolution.providerNumberE164,
+      orgUnitId: voiceSenderResolution.routingMetadata.orgUnitId,
+      selectedMappingId: voiceSenderResolution.mappingId,
+      selectedMappingLabel: voiceSenderResolution.routingMetadata.mappingLabel,
+      alignedFrom: voiceSenderResolution.routingMetadata.alignedFrom,
+    };
   }
 
   outboundDispatchReplayKey = buildTelephonyDispatchReplayKey({
@@ -7932,7 +8065,9 @@ const performOutboundAction = async (
     targetPhone: outboundAction === 'call'
       ? neighborContactPointId
       : outboundMessageTargetPhone,
-    senderPhone: outboundAction === 'message' ? outboundMessageSenderPhone : null,
+    senderPhone: outboundAction === 'message'
+      ? outboundMessageSenderPhone
+      : outboundCallSenderPhone,
     operatorContactPointId: outboundAction === 'call'
       ? operatorContactPointId
       : null,
@@ -7961,8 +8096,11 @@ const performOutboundAction = async (
         targetPhone: outboundAction === 'call'
           ? neighborContactPointId
           : outboundMessageTargetPhone,
-        senderPhone: outboundAction === 'message' ? outboundMessageSenderPhone : null,
+        senderPhone: outboundAction === 'message'
+          ? outboundMessageSenderPhone
+          : outboundCallSenderPhone,
         operatorContactPointId,
+        senderResolution: outboundSenderResolutionMetadata,
       }),
       expiresAt: new Date(Date.now() + CONNECTSHYFT_COMMUNICATION_IDEMPOTENCY_TTL_MS),
       db: communicationReliabilityDb,
@@ -8039,6 +8177,7 @@ const performOutboundAction = async (
         metadata: {
           duplicate: true,
           threadId,
+          senderResolution: outboundSenderResolutionMetadata,
         },
         db: communicationReliabilityDb,
       });
@@ -8155,7 +8294,7 @@ const performOutboundAction = async (
           neighborParticipantId: thread.neighborId,
           operatorContactPointId: operatorContactPointId || '',
           neighborContactPointId: neighborContactPointId || '',
-          selectedOutboundContactPointId: thread.preferredOutboundCsNumberId || null,
+          selectedOutboundContactPointId: outboundCallSenderPhone,
           providerKey: providerSelection.providerResolution.resolvedProvider,
           providerAdapter: providerSelection.adapter,
           idempotencyKey: outboundDispatchIdempotencyKey || undefined,
@@ -8241,12 +8380,15 @@ const performOutboundAction = async (
         resultState: 'failed',
         resultCode: error.code,
         resultMessage: error.message,
-        idempotencyKey: outboundDispatchIdempotencyKey,
-        requestFingerprint: outboundDispatchReplayKey,
-        providerName: providerSelection.providerResolution.resolvedProvider,
-        metadata: error.data,
-        db: communicationReliabilityDb,
-      });
+      idempotencyKey: outboundDispatchIdempotencyKey,
+      requestFingerprint: outboundDispatchReplayKey,
+      providerName: providerSelection.providerResolution.resolvedProvider,
+      metadata: {
+        ...(error.data || {}),
+        senderResolution: outboundSenderResolutionMetadata,
+      },
+      db: communicationReliabilityDb,
+    });
       respondConnectShyftBusinessRefusal(res, refusalPayload);
       return;
     }
@@ -8312,6 +8454,7 @@ const performOutboundAction = async (
       metadata: {
         providerFailureClassification,
         error: error instanceof Error ? error.message : 'unknown-provider-dispatch-error',
+        senderResolution: outboundSenderResolutionMetadata,
       },
       db: communicationReliabilityDb,
     });
@@ -8387,8 +8530,12 @@ const performOutboundAction = async (
         reopenedFromClosed: lifecycleEvent === CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
         actor: actorUserId ? 'user' : 'system',
         messageBody: outboundMessagePolicy?.body || null,
-        senderPhone: outboundMessageSenderPhone,
-        targetPhone: outboundMessageTargetPhone,
+        senderPhone: outboundAction === 'call'
+          ? outboundCallSenderPhone
+          : outboundMessageSenderPhone,
+        targetPhone: outboundAction === 'call'
+          ? (outboundCallPolicyRequest?.targetPhone || neighborContactPointId || null)
+          : outboundMessageTargetPhone,
       }),
       actorUserId,
     });
@@ -8529,6 +8676,11 @@ const performOutboundAction = async (
       providerBranchingInDomain: false,
     },
     canonicalEvent,
+    ...(outboundSenderResolutionMetadata
+      ? {
+        senderResolution: outboundSenderResolutionMetadata,
+      }
+      : {}),
     dispatch: {
       ...providerDispatch,
       dispatchContext,
@@ -8624,6 +8776,7 @@ const performOutboundAction = async (
       threadId,
       canonicalEventId: canonicalEvent?.eventId || null,
       bridgeSessionId,
+      senderResolution: outboundSenderResolutionMetadata,
     },
     db: communicationReliabilityDb,
   });
@@ -8719,6 +8872,10 @@ const handleInboundWebhook = async (
   const isConnectedCallEvent = CONNECTSHYFT_CONNECTED_CALL_EVENT_TYPES.has(normalizedEventType);
   const correlation = await resolveInboundWebhookCorrelation({
     body: req.body,
+    channelHint:
+      normalizedEventType.includes('sms') || normalizedEventType.includes('message')
+        ? 'sms'
+        : 'voice',
     providerName: providerSelection.providerResolution.resolvedProvider,
     providerCorrelation: canonicalTranslation.correlation,
     tenantIdHint: req.tenantId || null,
@@ -9785,6 +9942,97 @@ const handleInboundWebhook = async (
       neighborId,
     });
     const actorUserId = resolveWebhookActorUserId(req);
+    const inboundAlignedProviderNumber = await resolveInboundAlignedProviderNumber({
+      tenantId,
+      orgUnitId,
+      threadId: existingActiveThreadId || threadId || null,
+      providerNumberE164: correlation.providerNumberE164,
+      loadThread: async () => {
+        const alignedThreadId = normalizeLifecycleString(existingActiveThreadId || threadId || null);
+        if (!alignedThreadId) {
+          return null;
+        }
+
+        const lifecycleContext = await resolveLifecycleContext({
+          tenantId,
+          orgUnitId,
+          threadId: alignedThreadId,
+          actorUserId,
+        });
+        if (lifecycleContext.detail) {
+          return buildThreadFromDetailRecord(lifecycleContext.detail, {
+            neighborId,
+          });
+        }
+
+        if (!lifecycleContext.currentState) {
+          return null;
+        }
+
+        return buildSyntheticThread({
+          tenantId,
+          orgUnitId,
+          threadId: alignedThreadId,
+          currentState: lifecycleContext.currentState,
+          nextState: lifecycleContext.currentState,
+          actorUserId,
+          fallbackSummary: lifecycleContext.syntheticThread?.summary,
+          fallbackNeighborId: neighborId || lifecycleContext.syntheticThread?.neighborId,
+          fallbackLastInboundCsNumberId: lifecycleContext.syntheticThread?.lastInboundCsNumberId,
+          fallbackPreferredOutboundCsNumberId: lifecycleContext.syntheticThread?.preferredOutboundCsNumberId,
+          fallbackEscalationStage: lifecycleContext.syntheticThread?.escalationStage,
+          fallbackNextEvaluationAtUtc: lifecycleContext.syntheticThread?.nextEvaluationAtUtc,
+        });
+      },
+    });
+    if (!inboundAlignedProviderNumber.ok) {
+      await markWebhookReceipt(
+        inboundAlignedProviderNumber.code === 'CONNECTSHYFT_SMS_SENDER_AMBIGUOUS'
+          ? 'FAILED_TERMINAL'
+          : 'FAILED_TERMINAL',
+        inboundAlignedProviderNumber.reason,
+      );
+      refusal(res, {
+        code: inboundAlignedProviderNumber.code,
+        message: inboundAlignedProviderNumber.message,
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          providerResolution: {
+            ...providerSelection.providerResolution,
+            adapterInvoked: true,
+          },
+          correlation: {
+            source: correlation.source,
+            deterministic: true,
+            threadId,
+            tenantId,
+            orgUnitId,
+            neighborId,
+            providerLegId: correlation.providerLegId,
+            providerMessageId: correlation.providerMessageId,
+            providerEventId: correlation.providerEventId,
+            providerNumberE164: correlation.providerNumberE164,
+          },
+          replaySafe: {
+            duplicate: false,
+            suppressedDomainWrites: false,
+            dedupeKey: webhookReceipt.dedupeKey,
+          },
+          sideEffects: {
+            lifecycleMutationApplied: false,
+            canonicalEventPersisted: false,
+            outboxPersisted: false,
+          },
+          timelineOutcome: {
+            eventName: null,
+            routingDecision: 'refused',
+          },
+          reason: inboundAlignedProviderNumber.reason,
+        },
+      });
+      return;
+    }
     const domainEvent = mapConnectShyftInboundSmsWebhookToDomainEvent({
       webhookBody: req.body,
       canonicalEventType: eventType,
@@ -9802,12 +10050,8 @@ const handleInboundWebhook = async (
         orgUnitId,
         neighborId,
         actorUserId,
-        lastInboundCsNumberId: `sms-inbound:${normalizeRoutingSlug(
-          correlation.providerNumberE164 || canonicalTranslation.correlation.providerNumber || neighborId,
-        )}`,
-        preferredOutboundCsNumberId: `sms-outbound:${normalizeRoutingSlug(
-          canonicalTranslation.correlation.providerNumber || neighborId,
-        )}`,
+        lastInboundCsNumberId: inboundAlignedProviderNumber.providerNumberE164,
+        preferredOutboundCsNumberId: inboundAlignedProviderNumber.providerNumberE164,
         eventType: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundSmsAppended,
         buildCanonicalPayload: (threadState) => buildConnectShyftInboundSmsCanonicalPayload({
           domainEvent,

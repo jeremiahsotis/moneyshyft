@@ -16,7 +16,8 @@
       "@shyft/db": ["libs/db/src/index.ts"],
       "@shyft/http": ["libs/http/src/index.ts"],
       "@shyft/platform": ["libs/platform/src/index.ts"],
-      "@shyft/ui-shell": ["libs/ui-shell/src/index.ts"]
+      "@shyft/ui-shell": ["libs/ui-shell/src/index.ts"],
+      "@shyft/contracts": ["libs/contracts/src/index.ts"]
     },
     "strict": true,
     "skipLibCheck": true,

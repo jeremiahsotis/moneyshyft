@@ -133,6 +133,7 @@ const CONNECTSHYFT_THREAD_ACTIONS: Record<
   CLAIMED: ['Call', 'Text', 'Close'],
   CLOSED: ['Call', 'Send Message'],
 };
+const LEGACY_CS_NUMBER_PATTERN = /^cs-number(?:-[a-z0-9]+)*-(\d+)$/i;
 
 const CONNECTSHYFT_SCHEMA = 'connectshyft';
 const CONNECTSHYFT_THREADS_TABLE = 'cs_threads';
@@ -845,6 +846,25 @@ const resolveThreadStateLabel = (state: ConnectShyftThreadState): string => {
   return 'Closed';
 };
 
+const normalizeThreadSenderAlignmentForReadContracts = (value: unknown): string => {
+  const normalized = normalizeString(value);
+  if (!normalized) {
+    return '';
+  }
+
+  if (normalized.startsWith('+')) {
+    return normalized;
+  }
+
+  const legacyMatch = LEGACY_CS_NUMBER_PATTERN.exec(normalized);
+  if (!legacyMatch) {
+    return normalized;
+  }
+
+  const suffix = legacyMatch[1].slice(-4).padStart(4, '0');
+  return `+1260555${suffix}`;
+};
+
 const buildThreadDisplayRecord = (input: {
   state: ConnectShyftThreadState;
   summary: string;
@@ -855,13 +875,19 @@ const buildThreadDisplayRecord = (input: {
   voicemailLabel: string | null;
 }): ConnectShyftThreadDisplayRecord => {
   const normalizedSummary = normalizeString(input.summary) || 'Conversation in progress.';
+  const lastInboundProviderNumber = normalizeThreadSenderAlignmentForReadContracts(
+    input.lastInboundCsNumberId,
+  );
+  const preferredOutboundProviderNumber = normalizeThreadSenderAlignmentForReadContracts(
+    input.preferredOutboundCsNumberId,
+  );
   const outboundContext = normalizeString(input.preferredOutboundLabel)
-    || (normalizeString(input.preferredOutboundCsNumberId)
-      ? 'cs-number outbound line configured'
-      : 'Provider-neutral dispatch line');
-  const inboundContext = normalizeString(input.lastInboundCsNumberId)
-    ? 'cs-number inbound line configured'
-    : 'Inbound line unavailable';
+    || (preferredOutboundProviderNumber
+      ? 'Mapped outbound number configured'
+      : 'Outbound number unavailable');
+  const inboundContext = lastInboundProviderNumber
+    ? 'Mapped inbound number configured'
+    : 'Inbound number unavailable';
 
   return {
     title: normalizedSummary,
@@ -905,6 +931,12 @@ const toSummaryRecord = (
     voicemailIndicator: seed.voicemailIndicator,
     state: seed.state,
   });
+  const lastInboundCsNumberId = normalizeThreadSenderAlignmentForReadContracts(
+    seed.lastInboundCsNumberId,
+  );
+  const preferredOutboundCsNumberId = normalizeThreadSenderAlignmentForReadContracts(
+    seed.preferredOutboundCsNumberId,
+  );
   return {
     threadId: seed.threadId,
     neighborId: normalizeString(seed.neighborId) || null,
@@ -923,16 +955,16 @@ const toSummaryRecord = (
     priorityRank,
     urgencyLabel,
     lastActivityAtUtc: seed.lastActivityAtUtc,
-    lastInboundCsNumberId: seed.lastInboundCsNumberId,
-    last_inbound_cs_number_id: seed.lastInboundCsNumberId,
-    preferredOutboundCsNumberId: seed.preferredOutboundCsNumberId,
-    preferred_outbound_cs_number_id: seed.preferredOutboundCsNumberId,
+    lastInboundCsNumberId,
+    last_inbound_cs_number_id: lastInboundCsNumberId,
+    preferredOutboundCsNumberId,
+    preferred_outbound_cs_number_id: preferredOutboundCsNumberId,
     preferredOutboundContext: {
-      csNumberId: seed.preferredOutboundCsNumberId,
+      csNumberId: preferredOutboundCsNumberId,
       label: seed.preferredOutboundLabel,
     },
     preferred_outbound_context: {
-      cs_number_id: seed.preferredOutboundCsNumberId,
+      cs_number_id: preferredOutboundCsNumberId,
       label: seed.preferredOutboundLabel,
     },
     voicemailIndicator: seed.voicemailIndicator,
@@ -942,8 +974,8 @@ const toSummaryRecord = (
       state: seed.state,
       summary: seed.summary,
       urgencyLabel,
-      lastInboundCsNumberId: seed.lastInboundCsNumberId,
-      preferredOutboundCsNumberId: seed.preferredOutboundCsNumberId,
+      lastInboundCsNumberId,
+      preferredOutboundCsNumberId,
       preferredOutboundLabel: seed.preferredOutboundLabel,
       voicemailLabel,
     }),
@@ -1253,6 +1285,12 @@ const mapDbRowToSummary = (
   const preferredOutboundCsNumberId = normalizeString(
     row.preferred_outbound_cs_number_id,
   );
+  const normalizedPreferredOutboundCsNumberId = normalizeThreadSenderAlignmentForReadContracts(
+    preferredOutboundCsNumberId,
+  );
+  const normalizedLastInboundCsNumberId = normalizeThreadSenderAlignmentForReadContracts(
+    row.last_inbound_cs_number_id,
+  );
   const preferredOutboundLabel = normalizeString(
     row.preferred_outbound_label ?? row.outbound_label,
   );
@@ -1286,16 +1324,16 @@ const mapDbRowToSummary = (
     priorityRank,
     urgencyLabel: resolveConnectShyftUrgencyLabel(escalationStage),
     lastActivityAtUtc: normalizeUtcTimestamp(row.last_activity_at_utc),
-    lastInboundCsNumberId: normalizeString(row.last_inbound_cs_number_id),
-    last_inbound_cs_number_id: normalizeString(row.last_inbound_cs_number_id),
-    preferredOutboundCsNumberId,
-    preferred_outbound_cs_number_id: preferredOutboundCsNumberId,
+    lastInboundCsNumberId: normalizedLastInboundCsNumberId,
+    last_inbound_cs_number_id: normalizedLastInboundCsNumberId,
+    preferredOutboundCsNumberId: normalizedPreferredOutboundCsNumberId,
+    preferred_outbound_cs_number_id: normalizedPreferredOutboundCsNumberId,
     preferredOutboundContext: {
-      csNumberId: preferredOutboundCsNumberId,
+      csNumberId: normalizedPreferredOutboundCsNumberId,
       label: preferredOutboundLabel,
     },
     preferred_outbound_context: {
-      cs_number_id: preferredOutboundCsNumberId,
+      cs_number_id: normalizedPreferredOutboundCsNumberId,
       label: preferredOutboundLabel,
     },
     voicemailIndicator,
@@ -1305,8 +1343,8 @@ const mapDbRowToSummary = (
       state,
       summary: normalizeString(row.summary ?? row.preview ?? row.last_message_preview),
       urgencyLabel: resolveConnectShyftUrgencyLabel(escalationStage),
-      lastInboundCsNumberId: normalizeString(row.last_inbound_cs_number_id),
-      preferredOutboundCsNumberId,
+      lastInboundCsNumberId: normalizedLastInboundCsNumberId,
+      preferredOutboundCsNumberId: normalizedPreferredOutboundCsNumberId,
       preferredOutboundLabel,
       voicemailLabel,
     }),
