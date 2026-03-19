@@ -86,6 +86,7 @@ import {
   resolveConnectShyftInboxContractAsync,
   resolveConnectShyftThreadDetailContract,
   resolveConnectShyftThreadDetailContractAsync,
+  resolveConnectShyftThreadTimelineMetadata,
   type ConnectShyftInboxBucket,
   type ConnectShyftThreadDetailRecord,
 } from '../../../modules/connectshyft/readContracts';
@@ -117,6 +118,12 @@ import {
   recordConnectShyftCanonicalEvent,
   type ConnectShyftCanonicalEventRecord,
 } from '../../../modules/connectshyft/canonicalEvents';
+import {
+  CONNECTSHYFT_OUTBOUND_SMS_APPENDED_EVENT_NAME,
+  getThreadTimeline,
+  normalizeConnectShyftThreadTimelineLimit,
+} from '../../../modules/connectshyft/threadTimeline';
+import { serializeConnectShyftThreadTimelineResponse } from '../../../modules/connectshyft/threadTimelineDto';
 import {
   beginConnectShyftWebhookReceiptProcessing,
   cleanupConnectShyftWebhookReceipts,
@@ -2701,6 +2708,14 @@ const parseCanonicalEventsLimit = (req: Request): number => {
   return Math.min(Math.trunc(rawLimit), CONNECTSHYFT_CANONICAL_EVENTS_MAX_LIMIT);
 };
 
+const parseThreadTimelineLimit = (req: Request): number => {
+  const rawLimit = typeof req.query?.limit === 'string'
+    ? Number.parseInt(req.query.limit, 10)
+    : Number.NaN;
+
+  return normalizeConnectShyftThreadTimelineLimit(rawLimit);
+};
+
 const parseCanonicalEventFilters = (req: Request): {
   aggregateId: string | null;
   aggregateType: string | null;
@@ -2788,13 +2803,34 @@ const buildCanonicalPayloadForOutboundAction = (input: {
   threadState: ConnectShyftThreadState;
   lifecycleEvent: string;
   reopenedFromClosed: boolean;
-}): Record<string, unknown> => ({
-  direction: 'outbound',
-  channel: input.outboundAction === 'call' ? 'voice' : 'sms',
-  lifecycleEvent: input.lifecycleEvent,
-  threadState: input.threadState,
-  reopenedFromClosed: input.reopenedFromClosed,
-});
+  actor: 'system' | 'user';
+  messageBody?: string | null;
+  senderPhone?: string | null;
+  targetPhone?: string | null;
+}): Record<string, unknown> => {
+  const isSms = input.outboundAction === 'message';
+
+  return {
+    direction: 'outbound',
+    channel: isSms ? 'sms' : 'voice',
+    actor: input.actor,
+    eventName: isSms
+      ? CONNECTSHYFT_OUTBOUND_SMS_APPENDED_EVENT_NAME
+      : input.lifecycleEvent,
+    lifecycleEvent: input.lifecycleEvent,
+    threadState: input.threadState,
+    reopenedFromClosed: input.reopenedFromClosed,
+    outboundMessageArtifact: isSms
+      ? {
+        channel: 'sms',
+        direction: 'outbound',
+        body: normalizeLifecycleString(input.messageBody) || '',
+        from: normalizeLifecycleString(input.senderPhone) || null,
+        to: normalizeLifecycleString(input.targetPhone) || null,
+      }
+      : null,
+  };
+};
 
 const buildCanonicalPayloadForInboundWebhook = (input: {
   eventType: string;
@@ -6794,6 +6830,88 @@ router.get('/events', async (req: Request, res: Response) => {
   });
 });
 
+router.get('/threads/:threadId/timeline', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'inbox')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  const includeDeleted = parseIncludeDeletedQuery(req);
+  if (includeDeleted) {
+    if (!enforceTenantPrivilegedNeighborAdminCapability(req, res, context, {
+      code: 'CONNECTSHYFT_NEIGHBOR_READ_FORBIDDEN',
+      message: 'Deleted neighbor timeline requires a tenant-privileged ConnectShyft admin role.',
+    })) {
+      return;
+    }
+  } else if (!enforceThreadViewCapability(req, res, context)) {
+    return;
+  }
+
+  const threadId = parseThreadIdParam(req);
+  if (!threadId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
+      message: 'threadId is required',
+      refusalType: 'client',
+      httpStatus: 400,
+    });
+    return;
+  }
+
+  const requestedRole = resolveConnectShyftRequestedRole(req);
+  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const thread = await resolveConnectShyftThreadDetailContractAsync({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId,
+    actorUserId,
+    requestedRole,
+    includeDeleted,
+    db: loadPlatformDb(),
+  });
+
+  if (!thread) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_THREAD_NOT_FOUND',
+      message: 'Thread detail is unavailable for the requested orgUnit context.',
+      refusalType: 'business',
+      httpStatus: 200,
+      data: {
+        context: {
+          tenantId: context.tenantId,
+          orgUnitId: context.orgUnitId,
+          bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
+        },
+      },
+    });
+    return;
+  }
+
+  const timeline = await getThreadTimeline({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId,
+    limit: parseThreadTimelineLimit(req),
+    db: loadPlatformDb(),
+  });
+  const metadata = resolveConnectShyftThreadTimelineMetadata(thread);
+
+  return success(res, {
+    code: 'CONNECTSHYFT_THREAD_TIMELINE_LOADED',
+    message: 'ConnectShyft thread timeline loaded',
+    data: serializeConnectShyftThreadTimelineResponse({
+      timeline,
+      neighborDeleted: metadata.neighborDeleted,
+      neighborDeletedAtUtc: metadata.neighborDeletedAtUtc,
+    }),
+  });
+});
+
 router.get('/threads/:threadId', async (req: Request, res: Response) => {
   if (!await enforceCapability(req, res, 'inbox')) {
     return;
@@ -8267,6 +8385,10 @@ const performOutboundAction = async (
         threadState: thread.state,
         lifecycleEvent: dispatchEventName,
         reopenedFromClosed: lifecycleEvent === CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.reopenedByUser,
+        actor: actorUserId ? 'user' : 'system',
+        messageBody: outboundMessagePolicy?.body || null,
+        senderPhone: outboundMessageSenderPhone,
+        targetPhone: outboundMessageTargetPhone,
       }),
       actorUserId,
     });

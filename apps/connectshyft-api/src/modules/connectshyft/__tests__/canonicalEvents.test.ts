@@ -40,6 +40,36 @@ describe('connectshyft canonical event store', () => {
     });
   });
 
+  it('preserves projection-ready outbound sms artifact fields while stripping provider-specific keys', () => {
+    const payload = sanitizeConnectShyftCanonicalPayload({
+      direction: 'outbound',
+      channel: 'sms',
+      actor: 'user',
+      eventName: 'connectshyft.outbound.sms_appended',
+      outboundMessageArtifact: {
+        body: 'Projection-ready outbound message',
+        from: '+13175550101',
+        to: '+13175550102',
+        providerMessageId: 'provider-message-hidden',
+      },
+      providerMetadata: {
+        providerEventId: 'provider-event-hidden',
+      },
+    });
+
+    expect(payload).toEqual({
+      direction: 'outbound',
+      channel: 'sms',
+      actor: 'user',
+      eventName: 'connectshyft.outbound.sms_appended',
+      outboundMessageArtifact: {
+        body: 'Projection-ready outbound message',
+        from: '+13175550101',
+        to: '+13175550102',
+      },
+    });
+  });
+
   it('records and lists canonical events with deterministic ordering and filtering', async () => {
     await recordConnectShyftCanonicalEvent({
       tenantId: 'tenant-connectshyft-f2',
@@ -91,6 +121,51 @@ describe('connectshyft canonical event store', () => {
 
     expect(filtered).toHaveLength(1);
     expect(filtered[0].eventType).toBe('CallConnected');
+  });
+
+  it('returns the most recent canonical event window while preserving ascending order', async () => {
+    await recordConnectShyftCanonicalEvent({
+      tenantId: 'tenant-connectshyft-f2',
+      orgUnitId: 'org-connectshyft-f2-east',
+      aggregateId: 'thread-f2-window-1001',
+      aggregateType: 'Thread',
+      eventType: 'MessageQueued',
+      payload: { sequence: 1 },
+      occurredAtUtc: '2026-02-28T09:00:01.000Z',
+    });
+    await recordConnectShyftCanonicalEvent({
+      tenantId: 'tenant-connectshyft-f2',
+      orgUnitId: 'org-connectshyft-f2-east',
+      aggregateId: 'thread-f2-window-1001',
+      aggregateType: 'Thread',
+      eventType: 'MessageQueued',
+      payload: { sequence: 2 },
+      occurredAtUtc: '2026-02-28T09:00:02.000Z',
+    });
+    await recordConnectShyftCanonicalEvent({
+      tenantId: 'tenant-connectshyft-f2',
+      orgUnitId: 'org-connectshyft-f2-east',
+      aggregateId: 'thread-f2-window-1001',
+      aggregateType: 'Thread',
+      eventType: 'MessageQueued',
+      payload: { sequence: 3 },
+      occurredAtUtc: '2026-02-28T09:00:03.000Z',
+    });
+
+    const mostRecent = await listConnectShyftCanonicalEvents({
+      tenantId: 'tenant-connectshyft-f2',
+      orgUnitId: 'org-connectshyft-f2-east',
+      aggregateId: 'thread-f2-window-1001',
+      aggregateType: 'Thread',
+      limit: 2,
+      window: 'most_recent',
+    });
+
+    expect(mostRecent).toHaveLength(2);
+    expect(mostRecent.map((event) => event.payload)).toEqual([
+      { sequence: 2 },
+      { sequence: 3 },
+    ]);
   });
 
   it('does not swallow canonical DB persistence failures', async () => {

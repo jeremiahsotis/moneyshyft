@@ -26,6 +26,7 @@ describe('connectshyft inbound sms domain mapping', () => {
       routingDecision: 'accepted',
       deterministicOrdering: true,
       canonicalEventType: 'MessageDelivered',
+      actor: 'neighbor',
       inboundMessageArtifact: {
         channel: 'sms',
         direction: 'inbound',
@@ -78,6 +79,7 @@ describe('connectshyft inbound sms domain mapping', () => {
       channel: 'sms',
       eventType: 'MessageDelivered',
       eventName: CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME,
+      actor: 'neighbor',
       routingDecision: 'accepted',
       deterministicOrdering: true,
       threadState: 'UNCLAIMED',

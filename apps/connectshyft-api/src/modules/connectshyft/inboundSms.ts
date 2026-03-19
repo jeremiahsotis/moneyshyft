@@ -107,6 +107,7 @@ export type ConnectShyftInboundSmsDomainEvent = {
   routingDecision: 'accepted';
   deterministicOrdering: true;
   canonicalEventType: string;
+  actor: 'neighbor';
   inboundMessageArtifact: ConnectShyftInboundSmsArtifact;
 };
 
@@ -171,6 +172,7 @@ export const mapConnectShyftInboundSmsWebhookToDomainEvent = (input: {
     routingDecision: 'accepted',
     deterministicOrdering: true,
     canonicalEventType: normalizeString(input.canonicalEventType) || 'MessageDelivered',
+    actor: 'neighbor',
     inboundMessageArtifact: {
       channel: 'sms',
       direction: 'inbound',
@@ -192,6 +194,7 @@ export const buildConnectShyftInboundSmsCanonicalPayload = (input: {
   channel: 'sms',
   eventType: input.domainEvent.canonicalEventType,
   eventName: input.domainEvent.eventName,
+  actor: input.domainEvent.actor,
   routingDecision: input.domainEvent.routingDecision,
   deterministicOrdering: input.domainEvent.deterministicOrdering,
   threadState: input.threadState,
