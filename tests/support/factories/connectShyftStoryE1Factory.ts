@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createTenantScopeHeaders } from './tenantRepositoryFactory';
 
 export type ConnectShyftFlags = {
@@ -14,6 +15,7 @@ type StoryE1ContextOverrides = {
   userId?: string;
   correlationId?: string;
   csrfToken?: string;
+  isolationToken?: string;
 };
 
 type StoryE1HeaderOverrides = {
@@ -79,16 +81,30 @@ const DEFAULT_FLAGS: ConnectShyftFlags = {
   connectshyft_webhooks_enabled: true,
 };
 
-let storyE1ContextCounter = 0;
+const buildStoryE1IsolationToken = (): string =>
+  randomUUID().replace(/-/g, '').slice(0, 8);
 
-const nextStoryE1Token = (): string => {
-  storyE1ContextCounter += 1;
-  return storyE1ContextCounter.toString(16).padStart(8, '0');
+const buildStoryE1Numbers = (token: string): StoryE1Context['numbers'] => {
+  const seed = Number.parseInt(token, 16);
+  const normalizeLocal = (offset: number): string => {
+    const localNumber = 2000000 + ((seed + offset) % 7000000);
+    return String(localNumber).padStart(7, '0');
+  };
+
+  return {
+    // Keep the seeded inbound routing number stable for shared f.1/e.1 thread fixtures.
+    mappedInbound: '+12605550191',
+    // Vary the external sender-side numbers per test context to avoid duplicate-phone races.
+    mappedOutbound: `+1317${normalizeLocal(1)}`,
+    unmappedInbound: '+12605550991',
+  };
 };
 
 export function createStoryE1Context(
   overrides: StoryE1ContextOverrides = {},
 ): StoryE1Context {
+  const isolationToken = overrides.isolationToken ?? buildStoryE1IsolationToken();
+
   return {
     storyId: 'e-1',
     tenantId: overrides.tenantId ?? 'tenant-connectshyft-f1',
@@ -97,9 +113,9 @@ export function createStoryE1Context(
     userId: overrides.userId ?? 'user-connectshyft-e1-operator',
     adminUserId: 'user-connectshyft-e1-admin',
     correlationId:
-      overrides.correlationId ?? `corr-story-e1-${nextStoryE1Token()}`,
+      overrides.correlationId ?? `corr-story-e1-${randomUUID().slice(0, 8)}`,
     csrfToken:
-      overrides.csrfToken ?? `csrf-story-e1-${nextStoryE1Token()}`,
+      overrides.csrfToken ?? `csrf-story-e1-${randomUUID().slice(0, 8)}`,
     threadIds: {
       // Story e.1 ingress tests piggyback on known synthetic thread ids used by provider stories.
       unclaimed: 'thread-f1-unclaimed-1001',
@@ -111,11 +127,7 @@ export function createStoryE1Context(
       enabledSecondary: 'mock-sandbox',
       disabled: 'twilio',
     },
-    numbers: {
-      mappedInbound: '+12605550191',
-      mappedOutbound: '+12605550142',
-      unmappedInbound: '+12605550991',
-    },
+    numbers: buildStoryE1Numbers(isolationToken),
     refusalCodes: {
       signatureMissing: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING',
       signatureInvalid: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID',

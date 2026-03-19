@@ -20,7 +20,9 @@ test.describe(
     test(
       '[E1-AUTOMATE-E2E-201][P0] signed mapped ingress journey resolves deterministic tenant and orgUnit routing and preserves thread detail contracts @P0',
       async ({ request }, testInfo) => {
-        const context = createStoryE1Context();
+        const context = createStoryE1Context({
+          orgUnitId: 'org-connectshyft-f1-west',
+        });
         const operatorHeaders = createStoryE1Headers(context, {
           role: 'ORGUNIT_MEMBER',
           orgUnitMemberships: [context.orgUnitId],
@@ -119,7 +121,9 @@ test.describe(
     test(
       '[E1-AUTOMATE-E2E-202][P0] replay-safe ingress journey normalizes provider event identity for duplicate suppression across case variants @P0',
       async ({ request }, testInfo) => {
-        const context = createStoryE1Context();
+        const context = createStoryE1Context({
+          orgUnitId: 'org-connectshyft-f1-west',
+        });
         const systemAdminHeaders = createStoryE1Headers(context, {
           role: 'SYSTEM_ADMIN',
           userId: context.adminUserId,
@@ -127,7 +131,7 @@ test.describe(
         });
 
         const mappedInboundNumber = deterministicE164(testInfo, 'e1-automate-e2e-replay-mapped-number');
-        await apiRequest(request, {
+        const mappingResponse = await apiRequest(request, {
           method: 'POST',
           path: context.paths.numbersCollection,
           headers: systemAdminHeaders,
@@ -138,6 +142,7 @@ test.describe(
             isActive: true,
           },
         });
+        expect([200, 201]).toContain(mappingResponse.status());
 
         const providerEventId = `PROVIDER-EVENT-E1-${deterministicToken(testInfo, 'replay-event').toUpperCase()}`;
         const providerMessageId = `msg-e1-automate-e2e-${deterministicToken(testInfo, 'replay-message')}`;
