@@ -217,8 +217,7 @@ const shouldUseDbForWebhookReceipt = (
 ): boolean => {
   return Boolean(
     db
-    && input.tenantId.length > 0
-    && input.threadId.length > 0,
+    && input.tenantId.length > 0,
   );
 };
 
@@ -977,7 +976,6 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
     || !dedupeKey
     || !tenantId
     || !orgUnitId
-    || !threadId
     || !canonicalEventType
     || !receiptIdentity
   ) {
@@ -1005,7 +1003,7 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
       inMemoryWebhookReceiptStates.set(inMemoryStateKey, {
         tenantId,
         orgUnitId,
-        threadId,
+        threadId: threadId || '',
         providerName,
         sid: receiptIdentity.sid,
         eventType: receiptIdentity.eventType,
@@ -1040,7 +1038,7 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
     inMemoryWebhookReceiptStates.set(inMemoryStateKey, {
       ...existing,
       orgUnitId,
-      threadId,
+      threadId: threadId || existing.threadId,
       dedupeKey,
       status: nextStatus,
       lastSeenAtUtc: now,
@@ -1077,7 +1075,7 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
       .insert({
         tenant_id: tenantId,
         org_unit_id: orgUnitId,
-        thread_id: threadId,
+        thread_id: threadId || '',
         provider_name: providerName,
         sid: receiptIdentity.sid,
         event_type: receiptIdentity.eventType,
@@ -1122,7 +1120,9 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
       .first([
         'processing_status',
         'attempt_count',
+        'thread_id',
       ]);
+    const existingThreadId = normalizeString(existing?.thread_id);
     const existingStatus = normalizeWebhookReceiptProcessingStatus(existing?.processing_status);
     const alreadyApplied = existingStatus === 'APPLIED';
     const nextStatus: ConnectShyftWebhookReceiptProcessingStatus = existingStatus === 'FAILED_TERMINAL'
@@ -1138,7 +1138,7 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
       .where(scope)
       .update({
         org_unit_id: orgUnitId,
-        thread_id: threadId,
+        thread_id: threadId || existingThreadId,
         sid: receiptIdentity.sid,
         event_type: receiptIdentity.eventType,
         provider_event_id: providerEventId || null,

@@ -65,8 +65,8 @@ export const test = base.extend<StoryE3Fixtures>({
       orgUnitId: storyE3Context.orgUnitId,
       neighborId: storyE3Context.neighborIds.voicemailUnclaimed,
       source: 'VOICE',
-      lastInboundCsNumberId: 'cs-inbound-e3-001',
-      preferredOutboundCsNumberId: 'cs-outbound-e3-001',
+      lastInboundCsNumberId: storyE3Context.numbers.mappedInbound,
+      preferredOutboundCsNumberId: storyE3Context.numbers.mappedInbound,
     });
   },
   storyE3EnsurePayloadClaimed: async ({ storyE3Context }, use) => {
@@ -74,8 +74,8 @@ export const test = base.extend<StoryE3Fixtures>({
       orgUnitId: storyE3Context.orgUnitId,
       neighborId: storyE3Context.neighborIds.voicemailClaimed,
       source: 'VOICE',
-      lastInboundCsNumberId: 'cs-inbound-e3-002',
-      preferredOutboundCsNumberId: 'cs-outbound-e3-002',
+      lastInboundCsNumberId: storyE3Context.numbers.mappedInbound,
+      preferredOutboundCsNumberId: storyE3Context.numbers.mappedInbound,
     });
   },
 });

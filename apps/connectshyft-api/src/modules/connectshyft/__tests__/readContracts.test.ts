@@ -102,10 +102,10 @@ describe('connectshyft read contracts', () => {
     });
 
     expect(detail).toMatchObject({
-      lastInboundCsNumberId: '+12605550101',
-      preferredOutboundCsNumberId: '+12605550201',
+      lastInboundCsNumberId: '+12605550181',
+      preferredOutboundCsNumberId: '+12605550181',
       preferredOutboundContext: {
-        csNumberId: '+12605550201',
+        csNumberId: '+12605550181',
       },
     });
     expect(detail?.display).toMatchObject({

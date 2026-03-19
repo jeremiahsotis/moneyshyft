@@ -58,7 +58,7 @@ export const ensureSingleActiveConnectShyftSmsSenderMapping = async (input: {
   });
 
   let mappings = toMappings(initialListBody);
-  if (mappings.length === 0) {
+  if (!mappings.some((mapping) => resolveMappingNumber(mapping) === input.preferredNumber)) {
     const createResponse = await apiRequest(input.request, {
       method: 'POST',
       path: '/api/v1/connectshyft/numbers',
@@ -98,6 +98,7 @@ export const ensureSingleActiveConnectShyftSmsSenderMapping = async (input: {
         ok: true,
         code: 'CONNECTSHYFT_NUMBER_MAPPING_SAVED',
       });
+      mappings = toMappings(createBody);
     }
   }
 

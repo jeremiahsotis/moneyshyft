@@ -101,8 +101,8 @@ test.describe(
           orgUnitId: context.orgUnitId,
           neighborId: context.neighborId,
           source: 'VOICE',
-          lastInboundCsNumberId: `cs-inbound-c2-${suffix}`,
-          preferredOutboundCsNumberId: `cs-outbound-c2-${suffix}`,
+          lastInboundCsNumberId: context.inboundCsNumberId,
+          preferredOutboundCsNumberId: context.preferredOutboundCsNumberId,
         };
 
         try {

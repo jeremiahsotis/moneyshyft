@@ -72,8 +72,8 @@ export function createStoryC1Context(
       overrides.correlationId ?? `corr-story-c1-${randomUUID().slice(0, 8)}`,
     csrfToken:
       overrides.csrfToken ?? `csrf-story-c1-${randomUUID().slice(0, 8)}`,
-    inboundCsNumberId: 'cs-inbound-c1-001',
-    preferredOutboundCsNumberId: 'cs-outbound-c1-001',
+    inboundCsNumberId: '+12605550190',
+    preferredOutboundCsNumberId: '+12605550190',
     flags: { ...DEFAULT_FLAGS },
     canonicalStates: CANONICAL_STATES,
     paths: {

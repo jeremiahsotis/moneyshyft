@@ -127,8 +127,8 @@ test.describe('Story g.4 Add Neighbor and Directory Rebuild (Automate API Expans
         orgUnitId: storyG4Context.orgUnitId,
         neighborId,
         source: 'DIRECTORY',
-        lastInboundCsNumberId: 'cs-number-g4-auto-inbound',
-        preferredOutboundCsNumberId: 'cs-number-g4-auto-outbound',
+        lastInboundCsNumberId: '+12605550111',
+        preferredOutboundCsNumberId: '+12605550111',
       };
 
       const firstEnsure = await apiRequest(request, {

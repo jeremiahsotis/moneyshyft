@@ -29,8 +29,8 @@ test.describe(
             orgUnitId: context.orgUnitId,
             neighborId: context.neighborIds.voicemailUnclaimed,
             source: 'VOICE',
-            lastInboundCsNumberId: 'cs-inbound-e3-e2e-002-unclaimed',
-            preferredOutboundCsNumberId: 'cs-outbound-e3-e2e-002-unclaimed',
+            lastInboundCsNumberId: context.numbers.mappedInbound,
+            preferredOutboundCsNumberId: context.numbers.mappedInbound,
           },
         });
 
@@ -42,8 +42,8 @@ test.describe(
             orgUnitId: context.orgUnitId,
             neighborId: context.neighborIds.voicemailClaimed,
             source: 'VOICE',
-            lastInboundCsNumberId: 'cs-inbound-e3-e2e-002-claimed',
-            preferredOutboundCsNumberId: 'cs-outbound-e3-e2e-002-claimed',
+            lastInboundCsNumberId: context.numbers.mappedInbound,
+            preferredOutboundCsNumberId: context.numbers.mappedInbound,
           },
         });
 

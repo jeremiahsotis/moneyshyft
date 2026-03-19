@@ -253,8 +253,8 @@ test.describe(
             orgUnitId: storyC4Context.orgUnitId,
             neighborId,
             source: 'VOICE',
-            lastInboundCsNumberId: 'cs-number-db-1',
-            preferredOutboundCsNumberId: 'cs-number-db-2',
+            lastInboundCsNumberId: '+12605550198',
+            preferredOutboundCsNumberId: '+12605550198',
           },
         });
         expect(ensureResponse.status()).toBe(201);

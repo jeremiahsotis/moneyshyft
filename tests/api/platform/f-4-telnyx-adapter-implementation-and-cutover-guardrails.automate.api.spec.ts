@@ -34,6 +34,18 @@ test.describe(
           ],
           disabledProviders: [context.providers.disabled],
         });
+        const adminHeaders = createStoryF1Headers(context, {
+          role: 'ORGUNIT_ADMIN',
+          userId: context.adminUserId,
+          orgUnitMemberships: [context.orgUnitId],
+        });
+        await ensureSingleActiveConnectShyftSmsSenderMapping({
+          request,
+          headers: adminHeaders,
+          orgUnitId: context.orgUnitId,
+          preferredNumber: '+12605550191',
+          preferredLabel: 'Story F4 call sender',
+        });
 
         const response = await apiRequest(request, {
           method: 'POST',

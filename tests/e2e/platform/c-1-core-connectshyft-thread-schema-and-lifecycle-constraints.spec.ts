@@ -99,10 +99,9 @@ test.describe(
       '[P0] inbox renders canonical UNCLAIMED thread state with required number metadata after ensure flow @P0',
       async ({ page, request }) => {
         const context = createIsolatedStoryC1Context();
-        const suffix = randomUUID().slice(0, 8);
         const threadContext = await ensureThread(request, context, {
-          lastInboundCsNumberId: `cs-inbound-c1-${suffix}`,
-          preferredOutboundCsNumberId: `cs-outbound-c1-${suffix}`,
+          lastInboundCsNumberId: context.inboundCsNumberId,
+          preferredOutboundCsNumberId: context.preferredOutboundCsNumberId,
         });
 
         await login(page);
@@ -114,10 +113,10 @@ test.describe(
         await expect(targetCard).toContainText('Unclaimed');
         await expect(
           targetCard.getByTestId('connectshyft-thread-last-inbound-number'),
-        ).toContainText('cs-number inbound line configured');
+        ).toContainText('Mapped inbound number configured');
         await expect(
           targetCard.getByTestId('connectshyft-thread-preferred-outbound-number'),
-        ).toContainText('cs-number outbound line configured');
+        ).toContainText('Mapped outbound number configured');
       },
     );
 
@@ -125,10 +124,9 @@ test.describe(
       '[P0] duplicate open interactions keep a single active thread card for the same neighbor tuple @P0',
       async ({ page, request }) => {
         const context = createIsolatedStoryC1Context();
-        const suffix = randomUUID().slice(0, 8);
         const threadContext = await ensureThread(request, context, {
-          lastInboundCsNumberId: `cs-inbound-c1-${suffix}`,
-          preferredOutboundCsNumberId: `cs-outbound-c1-${suffix}`,
+          lastInboundCsNumberId: context.inboundCsNumberId,
+          preferredOutboundCsNumberId: context.preferredOutboundCsNumberId,
         });
         await login(page);
 
@@ -166,11 +164,10 @@ test.describe(
       '[P1] journey-level contracts keep canonical envelope keys across ensure refusal and due-thread scheduler paths @P1',
       async ({ request }) => {
         const context = createIsolatedStoryC1Context();
-        const suffix = randomUUID().slice(0, 8);
         const threadContext = {
           neighborId: context.neighborId,
-          lastInboundCsNumberId: `cs-inbound-c1-${suffix}`,
-          preferredOutboundCsNumberId: `cs-outbound-c1-${suffix}`,
+          lastInboundCsNumberId: context.inboundCsNumberId,
+          preferredOutboundCsNumberId: context.preferredOutboundCsNumberId,
         };
 
         const operatorHeaders = createStoryC1Headers(context, {

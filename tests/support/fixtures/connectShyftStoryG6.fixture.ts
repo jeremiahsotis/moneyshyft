@@ -8,9 +8,12 @@ import {
   createStoryG6Headers,
   type StoryG6Context,
 } from '../factories/connectShyftStoryG6Factory';
+import { cleanupConnectShyftThreadAndNeighborState } from '../helpers/connectShyftDbActor';
+import { ensureSingleActiveConnectShyftSmsSenderMapping } from '../helpers/connectShyftNumberMappingTestHelpers';
 
 type StoryG6Fixtures = {
   storyG6Context: StoryG6Context;
+  storyG6SmsSenderReady: void;
   storyG6VolunteerHeaders: Record<string, string>;
   storyG6AdminHeaders: Record<string, string>;
   storyG6ViewerHeaders: Record<string, string>;
@@ -31,7 +34,27 @@ export const test = base.extend<StoryG6Fixtures>({
       }),
     );
   },
-  storyG6VolunteerHeaders: async ({ storyG6Context }, use) => {
+  storyG6SmsSenderReady: async ({ request, storyG6Context }, use) => {
+    await cleanupConnectShyftThreadAndNeighborState({
+      tenantId: storyG6Context.tenantId,
+      threadIds: Object.values(storyG6Context.threadIds),
+      neighborIds: [storyG6Context.neighborIds.closedInbound],
+    });
+    await ensureSingleActiveConnectShyftSmsSenderMapping({
+      request,
+      headers: createStoryG6Headers(storyG6Context, {
+        role: 'ORGUNIT_ADMIN',
+        userId: storyG6Context.adminUserId,
+        orgUnitMemberships: [storyG6Context.orgUnitId],
+      }),
+      orgUnitId: storyG6Context.orgUnitId,
+      preferredNumber: '+12605550196',
+      preferredLabel: 'Story G6 SMS sender',
+    });
+    await use();
+  },
+  storyG6VolunteerHeaders: async ({ storyG6SmsSenderReady, storyG6Context }, use) => {
+    void storyG6SmsSenderReady;
     await use(
       createStoryG6Headers(storyG6Context, {
         role: 'ORGUNIT_MEMBER',
@@ -40,7 +63,8 @@ export const test = base.extend<StoryG6Fixtures>({
       }),
     );
   },
-  storyG6AdminHeaders: async ({ storyG6Context }, use) => {
+  storyG6AdminHeaders: async ({ storyG6SmsSenderReady, storyG6Context }, use) => {
+    void storyG6SmsSenderReady;
     await use(
       createStoryG6Headers(storyG6Context, {
         role: 'ORGUNIT_ADMIN',
@@ -49,7 +73,8 @@ export const test = base.extend<StoryG6Fixtures>({
       }),
     );
   },
-  storyG6ViewerHeaders: async ({ storyG6Context }, use) => {
+  storyG6ViewerHeaders: async ({ storyG6SmsSenderReady, storyG6Context }, use) => {
+    void storyG6SmsSenderReady;
     await use(
       createStoryG6Headers(storyG6Context, {
         role: 'TENANT_VIEWER',

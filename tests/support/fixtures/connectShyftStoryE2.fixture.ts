@@ -58,8 +58,8 @@ export const test = base.extend<StoryE2Fixtures>({
       orgUnitId: storyE2Context.orgUnitId,
       neighborId: storyE2Context.neighborIds.existingActive,
       source: 'VOICE',
-      lastInboundCsNumberId: 'cs-inbound-e2-001',
-      preferredOutboundCsNumberId: 'cs-outbound-e2-001',
+      lastInboundCsNumberId: storyE2Context.numbers.mappedInbound,
+      preferredOutboundCsNumberId: storyE2Context.numbers.mappedInbound,
     });
   },
 });

@@ -240,6 +240,39 @@ describe('connectshyft provider correlation mappings', () => {
     });
   });
 
+  it('suppresses duplicate webhook receipts even before inbound processing has established a thread id', async () => {
+    const first = await recordConnectShyftWebhookReceipt({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: '',
+      providerName: 'provider-a',
+      canonicalEventType: 'MessageDelivered',
+      providerEventId: 'provider-event-f3-no-thread-yet',
+      providerMessageId: 'provider-message-f3-no-thread-yet',
+    });
+
+    const duplicate = await recordConnectShyftWebhookReceipt({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: '',
+      providerName: 'provider-a',
+      canonicalEventType: 'MessageDelivered',
+      providerEventId: 'provider-event-f3-no-thread-yet',
+      providerMessageId: 'provider-message-f3-no-thread-yet',
+    });
+
+    expect(first).toEqual({
+      deterministic: true,
+      duplicate: false,
+      dedupeKey: 'provider-event:provider-event-f3-no-thread-yet',
+    });
+    expect(duplicate).toEqual({
+      deterministic: true,
+      duplicate: true,
+      dedupeKey: 'provider-event:provider-event-f3-no-thread-yet',
+    });
+  });
+
   it('scopes webhook replay identity by canonical event type for the same provider sid', async () => {
     const firstMessage = await recordConnectShyftWebhookReceipt({
       tenantId: 'tenant-connectshyft-f3',

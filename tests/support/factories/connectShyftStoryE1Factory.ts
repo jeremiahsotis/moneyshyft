@@ -112,7 +112,7 @@ export function createStoryE1Context(
       disabled: 'twilio',
     },
     numbers: {
-      mappedInbound: '+12605550141',
+      mappedInbound: '+12605550191',
       mappedOutbound: '+12605550142',
       unmappedInbound: '+12605550991',
     },

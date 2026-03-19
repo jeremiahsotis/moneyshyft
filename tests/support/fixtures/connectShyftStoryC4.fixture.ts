@@ -4,8 +4,11 @@ import {
   createStoryC4Headers,
   type StoryC4Context,
 } from '../factories/connectShyftStoryC4Factory';
+import { cleanupConnectShyftThreadAndNeighborState } from '../helpers/connectShyftDbActor';
+import { ensureSingleActiveConnectShyftSmsSenderMapping } from '../helpers/connectShyftNumberMappingTestHelpers';
 
 type StoryC4Fixtures = {
+  storyC4SmsSenderReady: void;
   storyC4Context: StoryC4Context;
   storyC4MemberHeaders: Record<string, string>;
   storyC4AdminHeaders: Record<string, string>;
@@ -37,7 +40,26 @@ export const test = base.extend<StoryC4Fixtures>({
   storyC4Context: async ({}, use) => {
     await use(createStoryC4Context());
   },
-  storyC4MemberHeaders: async ({ storyC4Context }, use) => {
+  storyC4SmsSenderReady: async ({ request, storyC4Context }, use) => {
+    await cleanupConnectShyftThreadAndNeighborState({
+      tenantId: storyC4Context.tenantId,
+      threadIds: Object.values(storyC4Context.threadIds),
+    });
+    await ensureSingleActiveConnectShyftSmsSenderMapping({
+      request,
+      headers: createStoryC4Headers(storyC4Context, {
+        role: 'ORGUNIT_ADMIN',
+        userId: storyC4Context.adminUserId,
+        orgUnitMemberships: [storyC4Context.orgUnitId],
+      }),
+      orgUnitId: storyC4Context.orgUnitId,
+      preferredNumber: '+12605550198',
+      preferredLabel: 'Story C4 SMS sender',
+    });
+    await use();
+  },
+  storyC4MemberHeaders: async ({ storyC4SmsSenderReady, storyC4Context }, use) => {
+    void storyC4SmsSenderReady;
     await use(
       createStoryC4Headers(storyC4Context, {
         role: 'ORGUNIT_MEMBER',
@@ -45,7 +67,8 @@ export const test = base.extend<StoryC4Fixtures>({
       }),
     );
   },
-  storyC4AdminHeaders: async ({ storyC4Context }, use) => {
+  storyC4AdminHeaders: async ({ storyC4SmsSenderReady, storyC4Context }, use) => {
+    void storyC4SmsSenderReady;
     await use(
       createStoryC4Headers(storyC4Context, {
         role: 'ORGUNIT_ADMIN',
@@ -54,7 +77,8 @@ export const test = base.extend<StoryC4Fixtures>({
       }),
     );
   },
-  storyC4ViewerHeaders: async ({ storyC4Context }, use) => {
+  storyC4ViewerHeaders: async ({ storyC4SmsSenderReady, storyC4Context }, use) => {
+    void storyC4SmsSenderReady;
     await use(
       createStoryC4Headers(storyC4Context, {
         role: 'TENANT_VIEWER',
