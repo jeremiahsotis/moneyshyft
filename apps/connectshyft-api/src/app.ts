@@ -1,4 +1,4 @@
-import express, { Application, Request, Response, NextFunction } from 'express';
+import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import logger from './utils/logger';
@@ -10,15 +10,15 @@ import { responseEnvelope } from './platform/middleware/responseEnvelope';
 import { csrfProtection } from './platform/middleware/csrfProtection';
 import connectShyftRouter from './routes/api/v1/connectshyft';
 
-const app: Application = express();
+const app = express();
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
 }));
 app.use(express.json({
-  verify: (req, _res, buf) => {
-    (req as Request & { rawBody?: Buffer }).rawBody = Buffer.from(buf);
+  verify: (req: any, _res: any, buf: Buffer) => {
+    req.rawBody = Buffer.from(buf);
   },
 }));
 app.use(express.urlencoded({ extended: true }));
@@ -29,16 +29,16 @@ app.use(tenancyContext);
 app.use(authContext);
 app.use(responseEnvelope);
 
-app.use((req: Request, _res: Response, next: NextFunction) => {
+app.use((req, _res, next) => {
   logger.info(`${req.method} ${req.path}`);
   next();
 });
 
-app.get('/health', (_req: Request, res: Response) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.post('/work-intents', (_req: Request, res: Response) => {
+app.post('/work-intents', (_req, res) => {
   res.json({
     id: 'wi_1',
     status: 'open',
@@ -49,11 +49,11 @@ app.post('/work-intents', (_req: Request, res: Response) => {
 app.use(csrfProtection);
 app.use('/api/v1/connectshyft', connectShyftRouter);
 
-app.use((req: Request, res: Response) => {
+app.use((req, res) => {
   res.status(404).json({ error: 'Route not found', path: req.path });
 });
 
-app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+app.use((error: unknown, _req: any, res: any, _next: any) => {
   logger.error('Unhandled connectshyft api error', error);
   res.status(500).json({
     ok: false,
