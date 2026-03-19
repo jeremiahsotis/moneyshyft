@@ -59,11 +59,11 @@ export async function up(knex: Knex): Promise<void> {
       GROUP BY phones.tenant_id, phones.normalized_e164
       HAVING COUNT(DISTINCT phones.neighbor_id) > 1
     ) AS duplicate_current_claims
-    JOIN ${CONNECTSHYFT_SCHEMA}.${NEIGHBORS_TABLE} AS neighbors
-      ON neighbors.tenant_id = phones.tenant_id
-     AND neighbors.id = phones.neighbor_id
+    , ${CONNECTSHYFT_SCHEMA}.${NEIGHBORS_TABLE} AS neighbors
     WHERE phones.tenant_id = duplicate_current_claims.tenant_id
       AND phones.normalized_e164 = duplicate_current_claims.normalized_e164
+      AND neighbors.tenant_id = phones.tenant_id
+      AND neighbors.id = phones.neighbor_id
       AND phones.is_active = TRUE
       AND neighbors.is_deleted = FALSE
   `);
