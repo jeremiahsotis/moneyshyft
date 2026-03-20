@@ -24,6 +24,9 @@ import {
   getConnectSettingsNavigation,
   getConnectThreadDetail,
   getConnectThreadTimeline,
+  postConnectThreadClaim,
+  postConnectThreadClose,
+  postConnectThreadTakeover,
 } from '../../../modules/connectshyft/handlers';
 import {
   resolveConnectShyftOrgUnitContext,
@@ -57,7 +60,6 @@ import {
   AsyncConnectShyftThreadService,
   KnexConnectShyftThreadStore,
   connectShyftThreadServiceAsync,
-  evaluateConnectShyftLifecyclePolicy,
   type ConnectShyftEscalationTransition,
   type ConnectShyftThread,
   type ConnectShyftLifecycleAction,
@@ -6738,176 +6740,6 @@ router.post('/threads', async (req: Request, res: Response) => {
   });
 });
 
-const performLifecycleTransition = async (
-  req: Request,
-  res: Response,
-  action: ConnectShyftLifecycleAction,
-): Promise<void> => {
-  if (!await enforceCapability(req, res, 'escalation')) {
-    return;
-  }
-
-  const context = await enforceOrgUnitContext(req, res);
-  if (!context) {
-    return;
-  }
-
-  if (action === 'claim' && !enforceThreadClaimCapability(req, res, context)) {
-    return;
-  }
-  if (action === 'takeover' && !enforceThreadTakeoverCapability(req, res, context)) {
-    return;
-  }
-  if (action === 'close' && !enforceThreadCloseCapability(req, res, context)) {
-    return;
-  }
-
-  if (!enforceEscalationActionMembership(req, res, context)) {
-    return;
-  }
-
-  const threadId = parseThreadIdParam(req);
-  if (!threadId) {
-    respondConnectShyftClientRefusal(res, {
-      code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
-      message: 'threadId is required',
-    });
-    return;
-  }
-
-  const actorRoles = resolveConnectShyftActorRoles(req, context);
-  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
-  const reason = parseLifecycleReason(req);
-  const resolution = parseLifecycleResolution(req);
-  const lifecycleContext = await resolveLifecycleContext({
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    threadId,
-    actorUserId,
-  });
-
-  if (!lifecycleContext.currentState) {
-    respondConnectShyftBusinessRefusal(res, {
-      code: 'CONNECTSHYFT_THREAD_NOT_FOUND',
-      message: 'Thread not found for this tenant/orgUnit context.',
-      data: {
-        context,
-        threadId,
-      },
-    });
-    return;
-  }
-
-  const policyDecision = evaluateConnectShyftLifecyclePolicy({
-    action,
-    currentState: lifecycleContext.currentState,
-    claimedByUserId: lifecycleContext.claimedByUserId,
-    actorUserId,
-    actorRoles,
-  });
-  if (!policyDecision.ok) {
-    respondConnectShyftBusinessRefusal(res, {
-      code: policyDecision.code,
-      message: policyDecision.message,
-      data: {
-        context,
-        threadId,
-        priorState: lifecycleContext.currentState,
-      },
-    });
-    return;
-  }
-
-  const nextState = policyDecision.nextState;
-  const eventName = resolveLifecycleEventName(action);
-  const metadata = buildLifecycleMetadata({
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    actorUserId,
-    threadId,
-    priorState: lifecycleContext.currentState,
-    newState: nextState,
-    action,
-    reason,
-    resolution,
-  });
-  const transitioned = await transitionThreadWithSideEffects({
-    actorRoles,
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    threadId,
-    actorUserId,
-    currentState: lifecycleContext.currentState,
-    nextState,
-    syntheticThread: lifecycleContext.syntheticThread,
-    detail: lifecycleContext.detail,
-    sideEffects: {
-      eventName,
-      metadata,
-    },
-  });
-
-  if (!transitioned.ok) {
-    respondConnectShyftBusinessRefusal(res, {
-      code: transitioned.code,
-      message: transitioned.message,
-      data: {
-        context,
-        threadId,
-      },
-    });
-    return;
-  }
-
-  const sideEffects = buildLifecycleSideEffects({
-    eventName,
-    metadata,
-  });
-
-  const notificationsCanceled = action === 'claim'
-    ? await cancelPendingEscalationNotifications({
-      tenantId: context.tenantId,
-      threadId,
-    })
-    : 0;
-
-  const claimEscalation = action === 'claim'
-    ? {
-      resetReason: 'claimed' as const,
-      notificationsCanceled,
-    }
-    : null;
-
-  const responseCode = action === 'claim'
-    ? 'CONNECTSHYFT_THREAD_CLAIMED'
-    : action === 'takeover'
-      ? 'CONNECTSHYFT_THREAD_TAKEOVER_READY'
-      : 'CONNECTSHYFT_THREAD_CLOSED';
-
-  const responseMessage = action === 'claim'
-    ? 'ConnectShyft claim action accepted'
-    : action === 'takeover'
-      ? 'ConnectShyft takeover action accepted'
-      : 'ConnectShyft thread closed';
-
-  success(res, {
-    code: responseCode,
-    message: responseMessage,
-    data: {
-      threadId,
-      context,
-      reason,
-      resolution,
-      thread: buildLifecycleThreadResponse(transitioned.thread),
-      lifecycleEvent: eventName,
-      sideEffectsPersisted: transitioned.sideEffectsPersisted,
-      escalation: claimEscalation,
-      ...sideEffects,
-    },
-  });
-  return;
-};
-
 const performOutboundAction = async (
   req: Request,
   res: Response,
@@ -10248,17 +10080,11 @@ const handleInboundWebhook = async (
   return;
 };
 
-router.post('/threads/:threadId/claim', async (req: Request, res: Response) => {
-  await performLifecycleTransition(req, res, 'claim');
-});
+router.post('/threads/:threadId/claim', postConnectThreadClaim);
 
-router.post('/threads/:threadId/takeover', async (req: Request, res: Response) => {
-  await performLifecycleTransition(req, res, 'takeover');
-});
+router.post('/threads/:threadId/takeover', postConnectThreadTakeover);
 
-router.post('/threads/:threadId/close', async (req: Request, res: Response) => {
-  await performLifecycleTransition(req, res, 'close');
-});
+router.post('/threads/:threadId/close', postConnectThreadClose);
 
 router.post('/threads/:threadId/call', async (req: Request, res: Response) => {
   await performOutboundAction(req, res, 'call');
