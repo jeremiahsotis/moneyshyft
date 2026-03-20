@@ -8,6 +8,7 @@ import { isConnectShyftTestOverrideEnabled } from '../featureFlags';
 import {
   resolveConnectShyftThreadDetailContract,
   resolveConnectShyftThreadDetailContractAsync,
+  type ConnectShyftThreadDetailRecord,
 } from '../readContracts';
 import {
   AsyncConnectShyftThreadService,
@@ -324,10 +325,13 @@ const CONNECTSHYFT_DYNAMIC_C5_THREAD_PREFIX = 'thread-c5-unclaimed-';
 const CONNECTSHYFT_DYNAMIC_C5_THREAD_TEMPLATE_ID = 'thread-c5-unclaimed-1001';
 
 type ResolvedLifecycleContext = {
+  detail: ConnectShyftThreadDetailRecord | null;
   syntheticThread: ConnectShyftSyntheticThreadDescriptor | null;
   currentState: ConnectShyftThreadState | null;
   claimedByUserId: string | null;
 };
+
+export type ConnectShyftResolvedThreadLifecycleContext = ResolvedLifecycleContext;
 
 type LifecycleTransitionSideEffects = {
   eventName: string;
@@ -626,6 +630,7 @@ const resolveLifecycleContext = async (input: {
   });
   if (syntheticThread) {
     return {
+      detail: null,
       syntheticThread,
       currentState: syntheticThread.state,
       claimedByUserId: syntheticThread.claimedByUserId,
@@ -642,6 +647,7 @@ const resolveLifecycleContext = async (input: {
 
   if (detail) {
     return {
+      detail,
       syntheticThread: null,
       currentState: detail.state,
       claimedByUserId: detail.claimedByUserId || null,
@@ -649,11 +655,19 @@ const resolveLifecycleContext = async (input: {
   }
 
   return {
+    detail: null,
     syntheticThread: null,
     currentState: null,
     claimedByUserId: null,
   };
 };
+
+export const resolveConnectShyftThreadLifecycleStateContext = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  actorUserId: string | null;
+}): Promise<ConnectShyftResolvedThreadLifecycleContext> => resolveLifecycleContext(input);
 
 const transitionThreadWithSideEffects = async (input: {
   actorRoles: Array<string | null | undefined>;

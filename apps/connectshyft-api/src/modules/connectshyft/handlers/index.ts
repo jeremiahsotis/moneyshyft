@@ -11,6 +11,8 @@ export { postConnectNeighborCreate } from './postConnectNeighborCreate';
 export { postConnectNeighborIdentityMatch } from './postConnectNeighborIdentityMatch';
 export { postConnectNeighborMerge } from './postConnectNeighborMerge';
 export { postConnectThreadClaim } from './postConnectThreadClaim';
+export { postConnectThreadCall } from './postConnectThreadCall';
 export { postConnectThreadClose } from './postConnectThreadClose';
+export { postConnectThreadMessage } from './postConnectThreadMessage';
 export { postConnectThreadTakeover } from './postConnectThreadTakeover';
 export { putConnectNeighbor } from './putConnectNeighbor';
