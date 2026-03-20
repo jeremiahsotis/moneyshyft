@@ -18,42 +18,52 @@
   - `/threads/:threadId/takeover`
   - `/threads/:threadId/close`
 
+- Slice 7 extracted the neighbor / identity bridge route family:
+  - `POST /neighbors`
+  - `GET /neighbors`
+  - `GET /neighbors/:neighborId`
+  - `PUT /neighbors/:neighborId`
+  - `DELETE /neighbors/:neighborId`
+  - `POST /neighbors/identity-match`
+  - `POST /neighbors/merge`
+
 ### Next extraction target
-- Slice 7 extracts the neighbor / identity bridge route family:
-  - neighbor CRUD
-  - identity match
-  - merge
+- outbound actions
 
-## Why neighbor / identity is next
+### Intentionally deferred
+- inbound/webhooks remain deferred because they still carry the heaviest telephony and provider-coupled behavior.
+- PeopleCore convergence remains future seam work; Slice 7 only extracted the ConnectShyft-local neighbor / identity bridge boundary.
 
-This is the next correct cut because it is the seam between:
-- ConnectShyft-local neighbor operations
-- identity matching and merge behavior
-- future PeopleCore convergence
+## Why outbound is next
 
-It is safer to clarify this seam before extracting outbound actions, which still rely on current neighbor and identity behavior.
+The next correct cut is outbound actions because the neighbor / identity seam is now explicit and pinned by characterization tests.
 
-## Preservation rules for Slice 7
+That keeps the extraction order low-risk:
+- neighbor CRUD and identity bridge behavior stay stable behind thin handlers
+- outbound routes can now depend on a clearer local boundary
+- inbound/webhooks can remain deferred until the telephony-coupled surfaces are addressed directly
 
-Slice 7 preserves:
+## What Slice 7 preserved
+
+Slice 7 preserved:
 - exact current response shapes
 - exact current merge behavior
 
-It only adds:
+It only added:
 - thinner router boundaries
 - explicit handler ownership
 - light documentation/seam prep for future PeopleCore convergence
 
-This is deliberate. The goal is route extraction and seam cleanup, not model migration.
+This was deliberate. The goal was route extraction and seam cleanup, not model migration.
 
 ## Updated extraction order
 
 1. settings/context/inbox/availability
 2. thread read surface
 3. lifecycle actions
-4. neighbor / identity bridge
-5. outbound actions
-6. inbound/webhooks/telephony
+4. neighbor / identity bridge (completed in Slice 7)
+5. outbound actions (next)
+6. inbound/webhooks/telephony (intentionally deferred)
 
 ## Practical rule
 
