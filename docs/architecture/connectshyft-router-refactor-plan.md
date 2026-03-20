@@ -103,26 +103,36 @@ Guardrails preserved:
 - helper boundary stays limited to route-family context enforcement, thread id parsing, shared prerequisite loading, and shared outbound execution delegation
 - provider adapter, bridge session, reliability, audit, SMS override, and inbound/webhook internals remain outside the helper boundary
 
-## Next slice
-
 ### Slice 9
-Inbound/webhooks/telephony extraction:
-- webhook entry routes
-- inbound SMS
-- inbound voice
-- voicemail handling
-- transcription callback
-- webhook correlation and receipt orchestration
+Extracted inbound webhook route-family seams:
+- `POST /webhooks/inbound`
+- `POST /webhooks/sms`
+- route-entry prerequisite handling for provider selection, signature verification, canonical translation, correlation resolution, and execution delegation
 
-This is intentionally deferred until after outbound extraction because it is the most operationally tangled route family.
+Added:
+- inbound webhook handlers
+- `http/inboundWebhookContext.ts`
+- inbound webhook characterization locks
+- inbound webhook helper-boundary tests
+
+Preserved:
+- exact current inbound webhook response shapes
+- exact current inbound SMS, inbound voice, voicemail, and transcription callback behavior
+
+Deferred intentionally:
+- provider / correlation / canonical / bridge internals remain intentionally deferred from the route-family extraction sequence
+- the operational inbound webhook core remains in `connectshyft.ts` pending the next consolidation step
 
 ## Extraction sequence
-1. Settings/context/inbox
-2. Thread read
-3. Lifecycle
-4. Neighbor/identity bridge
-5. Outbound actions
-6. Inbound/webhooks/telephony
+1. Settings/context/inbox complete
+2. Thread read complete
+3. Lifecycle complete
+4. Neighbor/identity bridge complete
+5. Outbound actions complete
+6. Inbound/webhooks/telephony complete
+
+## Next step
+Architecture consolidation for PeopleCore / Identity Resolution / ConnectShyft model lock-in.
 
 ## Operating rule for future updates
 This file is canonical.
