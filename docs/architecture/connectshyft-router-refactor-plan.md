@@ -1,4 +1,4 @@
-# ConnectShyft Router Refactor Plan — Add-on Update for Slice 6
+# ConnectShyft Router Refactor Plan — Add-on Update for Slice 7
 
 ## Current status
 
@@ -18,50 +18,58 @@
   - `/threads/:threadId/takeover`
   - `/threads/:threadId/close`
 
+- Slice 7 extracted the neighbor / identity bridge route family:
+  - `POST /neighbors`
+  - `GET /neighbors`
+  - `GET /neighbors/:neighborId`
+  - `PUT /neighbors/:neighborId`
+  - `DELETE /neighbors/:neighborId`
+  - `POST /neighbors/identity-match`
+  - `POST /neighbors/merge`
+
 ### Next extraction target
-- neighbors / identity bridge
+- outbound actions
 
-### Intentionally deferred after Slice 6
-- outbound actions remain deferred on purpose
-- inbound, webhooks, and telephony remain deferred on purpose
+### Intentionally deferred
+- inbound/webhooks remain deferred because they still carry the heaviest telephony and provider-coupled behavior.
+- PeopleCore convergence remains future seam work; Slice 7 only extracted the ConnectShyft-local neighbor / identity bridge boundary.
 
-## Why lifecycle was the right next cut
+## Why outbound is next
 
-Lifecycle is the next correct cut because it is directly tied to:
-- Inbox behavior
-- My Conversations behavior
-- ownership transitions
-- operator workflow
-- thread state transitions
+The next correct cut is outbound actions because the neighbor / identity seam is now explicit and pinned by characterization tests.
 
-It is a safer and more coherent next move than outbound or webhook extraction.
+That keeps the extraction order low-risk:
+- neighbor CRUD and identity bridge behavior stay stable behind thin handlers
+- outbound routes can now depend on a clearer local boundary
+- inbound/webhooks can remain deferred until the telephony-coupled surfaces are addressed directly
 
-## Lifecycle preservation rules for Slice 6
+## What Slice 7 preserved
 
-Slice 6 preserves:
-- exact current lifecycle response shapes
-- current claim/takeover/close behavior
-- claim visibility semantics:
-  - moves into My Conversations
-  - may still appear in Inbox
-  - remains visibly recognized as claimed
+Slice 7 preserved:
+- exact current response shapes
+- exact current merge behavior
 
-This is deliberate. The goal is route extraction and boundary cleanup, not behavior redesign.
+It only added:
+- thinner router boundaries
+- explicit handler ownership
+- light documentation/seam prep for future PeopleCore convergence
+
+This was deliberate. The goal was route extraction and seam cleanup, not model migration.
 
 ## Updated extraction order
 
-1. settings/context/inbox/availability (Slice 4 complete)
-2. thread read surface (Slice 5 complete)
-3. lifecycle actions (Slice 6 complete)
-4. neighbors / identity bridge (next)
-5. outbound actions (deferred)
-6. inbound/webhooks/telephony (deferred)
+1. settings/context/inbox/availability
+2. thread read surface
+3. lifecycle actions
+4. neighbor / identity bridge (completed in Slice 7)
+5. outbound actions (next)
+6. inbound/webhooks/telephony (intentionally deferred)
 
 ## Practical rule
 
-Every lifecycle extraction must answer:
+Every neighbor / identity extraction must answer:
 
-1. what success/refusal behavior is pinned by characterization tests
+1. what CRUD and identity behavior is pinned by characterization tests
 2. what handler boundary is introduced
-3. what response shape is preserved exactly
-4. what remains explicitly deferred
+3. what response and merge behavior is preserved exactly
+4. what remains ConnectShyft-local vs future PeopleCore seam work

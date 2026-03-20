@@ -1,0 +1,375 @@
+// @ts-nocheck
+import express from 'express';
+import request from 'supertest';
+import * as TenantModuleEntitlements from '../../../../platform/tenantModuleEntitlements';
+import { connectShyftNeighborServiceAsync } from '../../../../modules/connectshyft/neighbors';
+import { responseEnvelope } from '../../../../platform/middleware/responseEnvelope';
+import connectShyftRouter from '../connectshyft';
+
+const TEST_TENANT_ID = '11111111-1111-4111-8111-111111111111';
+const TEST_ORG_UNIT_ID = '22222222-2222-4222-8222-222222222222';
+const TEST_USER_ID = '33333333-3333-4333-8333-333333333333';
+const CONNECTSHYFT_TEST_FLAGS = JSON.stringify({
+  connectshyft_enabled: true,
+  connectshyft_inbox_enabled: true,
+  connectshyft_escalation_enabled: true,
+  connectshyft_webhooks_enabled: true,
+});
+
+type HarnessOptions = {
+  defaultTenantId?: string;
+  defaultOrgUnitId?: string | null;
+  defaultRole?: string;
+  defaultUserId?: string;
+};
+
+type HeaderOptions = {
+  tenantId?: string;
+  orgUnitId?: string | undefined;
+  role?: string;
+  userId?: string;
+  memberships?: string[] | undefined;
+  correlationId?: string;
+  flags?: string;
+};
+
+const buildApp = (options: HarnessOptions = {}) => {
+  const {
+    defaultTenantId = TEST_TENANT_ID,
+    defaultOrgUnitId = TEST_ORG_UNIT_ID,
+    defaultRole = 'ORGUNIT_MEMBER',
+    defaultUserId = TEST_USER_ID,
+  } = options;
+
+  const app = express();
+  app.use(express.json());
+  app.use(responseEnvelope);
+
+  app.use((req, _res, next) => {
+    const tenantId = req.header('x-test-connectshyft-tenant-id') || defaultTenantId;
+    const orgUnitId = req.header('x-test-connectshyft-orgunit-id') || defaultOrgUnitId;
+    const role = req.header('x-test-connectshyft-role') || defaultRole;
+    const userId = req.header('x-test-connectshyft-user-id') || defaultUserId;
+
+    req.user = {
+      userId,
+      email: `${String(userId).trim() || 'anonymous'}@connectshyft.test`,
+      householdId: tenantId,
+      activeTenantId: tenantId,
+      activeOrgUnitId: orgUnitId ?? undefined,
+      role,
+    };
+    req.tenantId = tenantId;
+    req.orgUnitId = orgUnitId ?? undefined;
+    req.tenantContext = tenantId
+      ? {
+        tenantId,
+        orgUnitId: orgUnitId ?? undefined,
+        scopeMode: orgUnitId ? 'ORG_UNIT' : 'TENANT',
+        source: 'auth',
+      }
+      : undefined;
+
+    next();
+  });
+
+  app.use('/api/v1/connectshyft', connectShyftRouter);
+  return app;
+};
+
+const buildHeaders = (
+  options: HeaderOptions = {},
+): Record<string, string> => {
+  const tenantId = Object.prototype.hasOwnProperty.call(options, 'tenantId')
+    ? options.tenantId
+    : TEST_TENANT_ID;
+  const orgUnitId = Object.prototype.hasOwnProperty.call(options, 'orgUnitId')
+    ? options.orgUnitId
+    : TEST_ORG_UNIT_ID;
+  const role = Object.prototype.hasOwnProperty.call(options, 'role')
+    ? options.role
+    : 'ORGUNIT_MEMBER';
+  const userId = Object.prototype.hasOwnProperty.call(options, 'userId')
+    ? options.userId
+    : TEST_USER_ID;
+  const memberships = Object.prototype.hasOwnProperty.call(options, 'memberships')
+    ? options.memberships
+    : (orgUnitId ? [orgUnitId] : undefined);
+  const correlationId = Object.prototype.hasOwnProperty.call(options, 'correlationId')
+    ? options.correlationId
+    : 'corr-connectshyft-neighbor-list-detail-characterization';
+  const flags = Object.prototype.hasOwnProperty.call(options, 'flags')
+    ? options.flags
+    : CONNECTSHYFT_TEST_FLAGS;
+
+  const headers: Record<string, string> = {
+    'x-correlation-id': correlationId,
+    'x-test-connectshyft-flags': flags,
+    'x-test-connectshyft-tenant-id': tenantId,
+    'x-test-connectshyft-role': role,
+    'x-test-connectshyft-user-id': userId,
+  };
+
+  if (orgUnitId) {
+    headers['x-test-connectshyft-orgunit-id'] = orgUnitId;
+  }
+
+  if (memberships) {
+    headers['x-test-connectshyft-orgunit-memberships'] = JSON.stringify(memberships);
+  }
+
+  return headers;
+};
+
+const buildNeighbor = (overrides: Record<string, unknown> = {}) => ({
+  neighborId: '44444444-4444-4444-8444-444444444444',
+  tenantId: TEST_TENANT_ID,
+  orgUnitId: TEST_ORG_UNIT_ID,
+  firstName: 'Mina',
+  lastName: 'Lopez',
+  prefersTexting: 'YES',
+  isDeleted: false,
+  deletedAtUtc: null,
+  deletedByUserId: null,
+  phones: [
+    {
+      phoneId: '55555555-5555-4555-8555-555555555555',
+      label: 'mobile',
+      value: '+12605550199',
+      rawInput: '+1 (260) 555-0199',
+      displayNational: '(260) 555-0199',
+      countryCode: '1',
+      nationalNumber: '2605550199',
+      extension: null,
+      validationStatus: 'valid',
+      usageType: 'personal',
+      source: 'user_entered',
+      sortOrder: 0,
+      isPrimary: true,
+      isShared: false,
+      verificationStatus: 'verified',
+      isActive: true,
+      createdAtUtc: '2026-03-18T12:00:00.000Z',
+      updatedAtUtc: '2026-03-18T12:00:00.000Z',
+    },
+  ],
+  createdAtUtc: '2026-03-18T12:00:00.000Z',
+  updatedAtUtc: '2026-03-18T12:00:00.000Z',
+  ...overrides,
+});
+
+describe('connectshyft neighbor list and detail route characterization', () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousOverrideFlag = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
+  const previousConnectShyftEnabled = process.env.CONNECTSHYFT_ENABLED;
+  const previousConnectShyftInboxEnabled = process.env.CONNECTSHYFT_INBOX_ENABLED;
+  const previousConnectShyftEscalationEnabled = process.env.CONNECTSHYFT_ESCALATION_ENABLED;
+  const previousConnectShyftWebhooksEnabled = process.env.CONNECTSHYFT_WEBHOOKS_ENABLED;
+  let entitlementSpy: jest.SpyInstance;
+
+  beforeAll(() => {
+    process.env.NODE_ENV = 'test';
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = 'true';
+    process.env.CONNECTSHYFT_ENABLED = 'true';
+    process.env.CONNECTSHYFT_INBOX_ENABLED = 'true';
+    process.env.CONNECTSHYFT_ESCALATION_ENABLED = 'true';
+    process.env.CONNECTSHYFT_WEBHOOKS_ENABLED = 'true';
+    entitlementSpy = jest.spyOn(TenantModuleEntitlements, 'evaluateActorTenantModuleEntitlement').mockResolvedValue({
+      tenantId: TEST_TENANT_ID,
+      moduleKey: 'connectshyft',
+      enabled: true,
+      reason: 'enabled',
+      refusalCode: 'CONNECTSHYFT_ENTITLEMENT_ENABLED',
+      message: 'ConnectShyft entitlement enabled for tests.',
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    entitlementSpy = jest.spyOn(TenantModuleEntitlements, 'evaluateActorTenantModuleEntitlement').mockResolvedValue({
+      tenantId: TEST_TENANT_ID,
+      moduleKey: 'connectshyft',
+      enabled: true,
+      reason: 'enabled',
+      refusalCode: 'CONNECTSHYFT_ENTITLEMENT_ENABLED',
+      message: 'ConnectShyft entitlement enabled for tests.',
+    });
+  });
+
+  afterAll(() => {
+    entitlementSpy.mockRestore();
+    process.env.NODE_ENV = previousNodeEnv;
+    process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = previousOverrideFlag;
+    process.env.CONNECTSHYFT_ENABLED = previousConnectShyftEnabled;
+    process.env.CONNECTSHYFT_INBOX_ENABLED = previousConnectShyftInboxEnabled;
+    process.env.CONNECTSHYFT_ESCALATION_ENABLED = previousConnectShyftEscalationEnabled;
+    process.env.CONNECTSHYFT_WEBHOOKS_ENABLED = previousConnectShyftWebhooksEnabled;
+  });
+
+  it('returns the current list success envelope and scope payload', async () => {
+    const listSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'listNeighbors').mockResolvedValue({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBORS_RESOLVED',
+      httpStatus: 200,
+      data: {
+        neighbors: [
+          buildNeighbor(),
+          buildNeighbor({
+            neighborId: '66666666-6666-4666-8666-666666666666',
+            firstName: 'Rosa',
+            lastName: 'Diaz',
+          }),
+        ],
+      },
+    } as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/neighbors')
+      .set(buildHeaders());
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBORS_RESOLVED',
+      message: 'Neighbors resolved',
+      data: {
+        neighbors: [
+          expect.objectContaining({
+            neighborId: '44444444-4444-4444-8444-444444444444',
+            isDeleted: false,
+          }),
+          expect.objectContaining({
+            neighborId: '66666666-6666-4666-8666-666666666666',
+            firstName: 'Rosa',
+          }),
+        ],
+        scope: {
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+        },
+      },
+    });
+    expect(Object.keys(response.body.data).sort()).toEqual([
+      'neighbors',
+      'scope',
+    ].sort());
+    expect(listSpy).toHaveBeenCalledWith(expect.objectContaining({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: TEST_TENANT_ID,
+    }));
+  });
+
+  it('returns the current detail success envelope for deleted neighbors when includeDeleted is tenant-privileged', async () => {
+    const resolveSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_RESOLVED',
+      httpStatus: 200,
+      data: {
+        neighbor: buildNeighbor({
+          neighborId: '77777777-7777-4777-8777-777777777777',
+          isDeleted: true,
+          deletedAtUtc: '2026-03-18T12:05:00.000Z',
+          deletedByUserId: TEST_USER_ID,
+        }),
+      },
+    } as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/neighbors/77777777-7777-4777-8777-777777777777')
+      .query({
+        includeDeleted: 'true',
+      })
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_NEIGHBOR_RESOLVED',
+      message: 'Neighbor resolved',
+      data: {
+        neighbor: {
+          neighborId: '77777777-7777-4777-8777-777777777777',
+          isDeleted: true,
+          deletedAtUtc: '2026-03-18T12:05:00.000Z',
+          deletedByUserId: TEST_USER_ID,
+        },
+        scope: {
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+        },
+        editPolicy: {
+          path: 'tenant-privileged',
+          indicator: null,
+        },
+        contextOverrideNotice: 'Tenant-privileged override applied',
+      },
+    });
+    expect(Object.keys(response.body.data).sort()).toEqual([
+      'contextOverrideNotice',
+      'editPolicy',
+      'neighbor',
+      'scope',
+    ].sort());
+    expect(resolveSpy).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TEST_TENANT_ID,
+      neighborId: '77777777-7777-4777-8777-777777777777',
+      includeDeleted: true,
+    }));
+  });
+
+  it('returns the current not-found refusal envelope for standard detail requests', async () => {
+    jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND',
+      message: 'Neighbor profile not found for this tenant.',
+    } as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/neighbors/88888888-8888-4888-8888-888888888888')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_NOT_FOUND',
+      message: 'Neighbor profile not found for this tenant.',
+      refusalType: 'business',
+      data: {
+        scope: {
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+        },
+      },
+    });
+  });
+
+  it('returns the current deleted-detail access refusal for non-tenant-privileged callers', async () => {
+    const resolveSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor');
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/neighbors/99999999-9999-4999-8999-999999999999')
+      .query({
+        includeDeleted: 'true',
+      })
+      .set(buildHeaders({
+        role: 'ORGUNIT_MEMBER',
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_NEIGHBOR_READ_FORBIDDEN',
+      message: 'Deleted neighbor detail requires a tenant-privileged ConnectShyft admin role.',
+      refusalType: 'business',
+    });
+    expect(resolveSpy).not.toHaveBeenCalled();
+  });
+});

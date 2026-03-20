@@ -1,9 +1,16 @@
 export { getConnectAvailability } from './getConnectAvailability';
+export { getConnectNeighborDetail } from './getConnectNeighborDetail';
+export { getConnectNeighbors } from './getConnectNeighbors';
 export { getConnectContext } from './getConnectContext';
 export { getConnectInbox } from './getConnectInbox';
 export { getConnectSettingsNavigation } from './getConnectSettingsNavigation';
 export { getConnectThreadDetail } from './getConnectThreadDetail';
 export { getConnectThreadTimeline } from './getConnectThreadTimeline';
+export { deleteConnectNeighbor } from './deleteConnectNeighbor';
+export { postConnectNeighborCreate } from './postConnectNeighborCreate';
+export { postConnectNeighborIdentityMatch } from './postConnectNeighborIdentityMatch';
+export { postConnectNeighborMerge } from './postConnectNeighborMerge';
 export { postConnectThreadClaim } from './postConnectThreadClaim';
 export { postConnectThreadClose } from './postConnectThreadClose';
 export { postConnectThreadTakeover } from './postConnectThreadTakeover';
+export { putConnectNeighbor } from './putConnectNeighbor';
