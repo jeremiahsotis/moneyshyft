@@ -46,6 +46,12 @@ import {
   type ConnectShyftThreadOutboundCoreExecutionInput,
 } from '../../../modules/connectshyft/http/threadOutboundContext';
 import {
+  executeConnectShyftInboundWebhookRoute,
+  registerConnectShyftInboundWebhookCoreExecutor,
+  type ConnectShyftInboundWebhookCoreExecutionInput,
+  type ConnectShyftResolvedWebhookCorrelation,
+} from '../../../modules/connectshyft/http/inboundWebhookContext';
+import {
   connectShyftNumberMappingServiceAsync,
   type ConnectShyftNumberMapping,
 } from '../../../modules/connectshyft/numberMappings';
@@ -87,9 +93,7 @@ import {
   type ConnectShyftValidatedSmsOverride,
 } from '../../../modules/connectshyft/smsPreferenceOverrides';
 import {
-  buildConnectShyftWebhookVerificationInput,
   ConnectShyftProviderDispatchPolicyError,
-  mapConnectShyftWebhookVerificationResult,
   resolveConnectShyftProviderAdapter,
   resolveConnectShyftRequestedProviderKey,
   type ConnectShyftOutboundCallDispatchPolicy,
@@ -914,36 +918,6 @@ const buildProviderNeutralBridgeSessionState = (aggregate: {
   },
 });
 
-type ConnectShyftWebhookCorrelationSource = 'metadata' | 'provider_fallback' | 'number_mapping';
-
-type ConnectShyftResolvedWebhookCorrelation =
-  | {
-    ok: true;
-    source: ConnectShyftWebhookCorrelationSource;
-    tenantId: string;
-    orgUnitId: string;
-    threadId: string;
-    providerLegId: string | null;
-    providerMessageId: string | null;
-    providerEventId: string | null;
-    providerNumberE164: string | null;
-  }
-  | {
-    ok: false;
-    code:
-      | 'CONNECTSHYFT_WEBHOOK_CORRELATION_IDENTIFIERS_REQUIRED'
-      | 'CONNECTSHYFT_WEBHOOK_CORRELATION_NOT_FOUND'
-      | 'CONNECTSHYFT_WEBHOOK_CORRELATION_AMBIGUOUS'
-      | 'CONNECTSHYFT_WEBHOOK_CORRELATION_LOOKUP_UNAVAILABLE'
-      | 'CONNECTSHYFT_WEBHOOK_CORRELATION_CONFLICT';
-    message: string;
-    reason: 'missing-identifiers' | 'not-found' | 'ambiguous' | 'unavailable' | 'conflict';
-    providerLegId: string | null;
-    providerMessageId: string | null;
-    providerEventId: string | null;
-    providerNumberE164: string | null;
-  };
-
 type ConnectShyftBridgeCorrelationMapping = {
   deterministic: true;
   operatorLegMapping: 'created' | 'duplicate' | 'ignored' | 'error';
@@ -1117,220 +1091,6 @@ const resolveInboundAlignedProviderNumber = async (input: {
   return {
     ok: true,
     providerNumberE164: resolution.providerNumberE164,
-  };
-};
-
-const resolveWebhookCorrelationFailure = (
-  reason: 'missing-identifiers' | 'not-found' | 'ambiguous' | 'unavailable',
-): {
-  code:
-    | 'CONNECTSHYFT_WEBHOOK_CORRELATION_IDENTIFIERS_REQUIRED'
-    | 'CONNECTSHYFT_WEBHOOK_CORRELATION_NOT_FOUND'
-    | 'CONNECTSHYFT_WEBHOOK_CORRELATION_AMBIGUOUS'
-    | 'CONNECTSHYFT_WEBHOOK_CORRELATION_LOOKUP_UNAVAILABLE';
-  message: string;
-} => {
-  if (reason === 'missing-identifiers') {
-    return {
-      code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_IDENTIFIERS_REQUIRED',
-      message: 'Inbound webhook requires correlation metadata or provider identifiers.',
-    };
-  }
-  if (reason === 'ambiguous') {
-    return {
-      code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_AMBIGUOUS',
-      message: 'Inbound webhook correlation is ambiguous across provider identifiers.',
-    };
-  }
-  if (reason === 'unavailable') {
-    return {
-      code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_LOOKUP_UNAVAILABLE',
-      message: 'Inbound webhook correlation lookup is temporarily unavailable.',
-    };
-  }
-  return {
-    code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_NOT_FOUND',
-    message: 'Inbound webhook correlation mapping not found for provider identifiers.',
-  };
-};
-
-const resolveInboundWebhookCorrelation = async (input: {
-  body: unknown;
-  channelHint: 'sms' | 'voice';
-  providerName: string;
-  providerCorrelation: {
-    providerLegId: string | null;
-    providerMessageId: string | null;
-    providerEventId: string | null;
-    providerNumber: string | null;
-  };
-  tenantIdHint?: string | null;
-}): Promise<ConnectShyftResolvedWebhookCorrelation> => {
-  const payload = asRecord(input.body);
-  const tenantId = normalizeLifecycleString(payload?.tenantId);
-  const orgUnitId = normalizeLifecycleString(payload?.orgUnitId);
-  const threadId = normalizeLifecycleString(payload?.threadId);
-  const providerIdentifiers = {
-    providerLegId: normalizeLifecycleString(input.providerCorrelation.providerLegId) || null,
-    providerMessageId: normalizeLifecycleString(input.providerCorrelation.providerMessageId) || null,
-    providerEventId: normalizeLifecycleString(input.providerCorrelation.providerEventId) || null,
-  };
-  const providerNumberE164 = normalizeLifecycleString(input.providerCorrelation.providerNumber) || null;
-  const tenantScopeHint = normalizeLifecycleString(input.tenantIdHint || null);
-  const numberMappingTenantScope = tenantId
-    || (tenantScopeHint.toLowerCase() !== 'public' ? tenantScopeHint : '')
-    || null;
-  const hasCompleteMetadata = Boolean(tenantId && orgUnitId && threadId);
-
-  if (hasCompleteMetadata) {
-    const fallbackProbe = await resolveConnectShyftProviderCorrelationByIdentifiers({
-      providerName: input.providerName,
-      providerLegId: providerIdentifiers.providerLegId,
-      providerMessageId: providerIdentifiers.providerMessageId,
-      tenantId,
-      db: loadPlatformDb(),
-    });
-
-    if (
-      fallbackProbe.ok
-      && (
-        fallbackProbe.correlation.tenantId !== tenantId
-        || fallbackProbe.correlation.orgUnitId !== orgUnitId
-        || fallbackProbe.correlation.threadId !== threadId
-      )
-    ) {
-      return {
-        ok: false,
-        code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_CONFLICT',
-        message: 'Inbound webhook correlation metadata conflicts with provider identifier mapping.',
-        reason: 'conflict',
-        providerLegId: providerIdentifiers.providerLegId,
-        providerMessageId: providerIdentifiers.providerMessageId,
-        providerEventId: providerIdentifiers.providerEventId,
-        providerNumberE164,
-      };
-    }
-
-    return {
-      ok: true,
-      source: 'metadata',
-      tenantId,
-      orgUnitId,
-      threadId,
-      providerLegId: providerIdentifiers.providerLegId,
-      providerMessageId: providerIdentifiers.providerMessageId,
-      providerEventId: providerIdentifiers.providerEventId,
-      providerNumberE164,
-    };
-  }
-
-  const fallback = await resolveConnectShyftProviderCorrelationByIdentifiers({
-    providerName: input.providerName,
-    providerLegId: providerIdentifiers.providerLegId,
-    providerMessageId: providerIdentifiers.providerMessageId,
-    tenantId: tenantId || null,
-    db: loadPlatformDb(),
-  });
-  if (!fallback.ok && providerNumberE164) {
-    try {
-      const numberMapping = await connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber({
-        tenantId: numberMappingTenantScope,
-        twilioNumberE164: providerNumberE164,
-      });
-      if (numberMapping.status === 'found') {
-        return {
-          ok: true,
-          source: 'number_mapping',
-          tenantId: numberMapping.mapping.tenantId,
-          orgUnitId: numberMapping.mapping.orgUnitId,
-          threadId: '',
-          providerLegId: providerIdentifiers.providerLegId,
-          providerMessageId: providerIdentifiers.providerMessageId,
-          providerEventId: providerIdentifiers.providerEventId,
-          providerNumberE164: numberMapping.mapping.twilioNumberE164,
-        };
-      }
-
-      if (numberMapping.status === 'ambiguous') {
-        return {
-          ok: false,
-          code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_AMBIGUOUS',
-          message: 'Inbound webhook correlation is ambiguous across provider number mappings.',
-          reason: 'ambiguous',
-          providerLegId: providerIdentifiers.providerLegId,
-          providerMessageId: providerIdentifiers.providerMessageId,
-          providerEventId: providerIdentifiers.providerEventId,
-          providerNumberE164,
-        };
-      }
-    } catch (_error) {
-      return {
-        ok: false,
-        code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_LOOKUP_UNAVAILABLE',
-        message: 'Inbound webhook correlation lookup is temporarily unavailable.',
-        reason: 'unavailable',
-        providerLegId: providerIdentifiers.providerLegId,
-        providerMessageId: providerIdentifiers.providerMessageId,
-        providerEventId: providerIdentifiers.providerEventId,
-        providerNumberE164,
-      };
-    }
-
-    if (fallback.reason === 'missing-identifiers') {
-      return {
-        ok: false,
-        code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_NOT_FOUND',
-        message: 'Inbound webhook correlation mapping not found for provider identifiers.',
-        reason: 'not-found',
-        providerLegId: providerIdentifiers.providerLegId,
-        providerMessageId: providerIdentifiers.providerMessageId,
-        providerEventId: providerIdentifiers.providerEventId,
-        providerNumberE164,
-      };
-    }
-  }
-
-  if (!fallback.ok) {
-    const failure = resolveWebhookCorrelationFailure(fallback.reason);
-    return {
-      ok: false,
-      code: failure.code,
-      message: failure.message,
-      reason: fallback.reason,
-      providerLegId: providerIdentifiers.providerLegId,
-      providerMessageId: providerIdentifiers.providerMessageId,
-      providerEventId: providerIdentifiers.providerEventId,
-      providerNumberE164,
-    };
-  }
-
-  if (
-    (tenantId && tenantId !== fallback.correlation.tenantId)
-    || (orgUnitId && orgUnitId !== fallback.correlation.orgUnitId)
-    || (threadId && threadId !== fallback.correlation.threadId)
-  ) {
-    return {
-      ok: false,
-      code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_CONFLICT',
-      message: 'Inbound webhook partial metadata conflicts with provider identifier mapping.',
-      reason: 'conflict',
-      providerLegId: providerIdentifiers.providerLegId,
-      providerMessageId: providerIdentifiers.providerMessageId,
-      providerEventId: providerIdentifiers.providerEventId,
-      providerNumberE164,
-    };
-  }
-
-  return {
-    ok: true,
-    source: 'provider_fallback',
-    tenantId: fallback.correlation.tenantId,
-    orgUnitId: fallback.correlation.orgUnitId,
-    threadId: fallback.correlation.threadId,
-    providerLegId: providerIdentifiers.providerLegId,
-    providerMessageId: providerIdentifiers.providerMessageId,
-    providerEventId: providerIdentifiers.providerEventId,
-    providerNumberE164,
   };
 };
 
@@ -6533,183 +6293,23 @@ const performOutboundAction = async ({
 
 registerConnectShyftThreadOutboundCoreExecutor(performOutboundAction);
 
-const handleInboundWebhook = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
-  if (!await enforceCapability(req, res, 'webhooks')) {
-    return;
-  }
-
-  const providerSelection = resolveConnectShyftProviderAdapter({
-    req,
-    operation: 'webhook',
-    requestedProvider: resolveConnectShyftRequestedProviderKey(req),
-  });
-  if (!providerSelection.ok) {
-    refusal(res, {
-      code: providerSelection.refusal.code,
-      message: providerSelection.refusal.message,
-      refusalType: providerSelection.refusal.refusalType,
-      httpStatus: providerSelection.refusal.httpStatus,
-      data: providerSelection.refusal.data,
-    });
-    return;
-  }
-
-  const signatureDecision = mapConnectShyftWebhookVerificationResult(
-    providerSelection.adapter.verifyWebhook(
-      buildConnectShyftWebhookVerificationInput({
-        req,
-        providerKey: providerSelection.providerResolution.resolvedProvider,
-      }),
-    ),
-  );
-  if (!signatureDecision.ok) {
-    const signatureMessageKey = signatureDecision.refusal.code === 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING'
-      ? 'connectshyft.webhook.signature.missing'
-      : signatureDecision.refusal.code === 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED'
-        ? 'connectshyft.webhook.signature.not_configured'
-        : 'connectshyft.webhook.signature.invalid';
-    refusal(res, {
-      code: signatureDecision.refusal.code,
-      message: signatureDecision.refusal.message,
-      refusalType: signatureDecision.refusal.refusalType,
-      httpStatus: signatureDecision.refusal.httpStatus,
-      data: {
-        providerResolution: {
-          ...providerSelection.providerResolution,
-          adapterInvoked: true,
-        },
-        signatureValidation: {
-          deterministic: true,
-          verified: false,
-          provider: providerSelection.providerResolution.resolvedProvider,
-        },
-        operatorFeedbackMeta: {
-          actionable: true,
-          hiddenTransition: false,
-          messageKey: signatureMessageKey,
-          remediation: 'Ensure provider webhook signing is configured and include a valid signature.',
-        },
-        sideEffects: {
-          lifecycleMutationApplied: false,
-          canonicalEventPersisted: false,
-          outboxPersisted: false,
-        },
-        timelineOutcome: {
-          eventName: null,
-          routingDecision: 'refused',
-        },
-      },
-    });
-    return;
-  }
-
-  const canonicalTranslation = providerSelection.adapter.translateProviderEvent({
-    rawEventType: normalizeLifecycleString(req.body?.eventType) || 'sms.inbound',
-    payload: req.body,
-  });
-  const eventType = canonicalTranslation.eventType;
-  const normalizedEventType = eventType.toLowerCase();
+const performInboundWebhook = async ({
+  req,
+  res,
+  providerSelection,
+  canonicalTranslation,
+  eventType,
+  normalizedEventType,
+  correlation,
+  tenantId,
+  orgUnitId,
+  threadId,
+}: ConnectShyftInboundWebhookCoreExecutionInput): Promise<void> => {
   const isTranscriptionCallbackEvent = isConnectShyftVoicemailTranscriptionCallbackEventType(eventType);
   const isConnectedCallEvent = CONNECTSHYFT_CONNECTED_CALL_EVENT_TYPES.has(normalizedEventType);
-  const correlation = await resolveInboundWebhookCorrelation({
-    body: req.body,
-    channelHint:
-      normalizedEventType.includes('sms') || normalizedEventType.includes('message')
-        ? 'sms'
-        : 'voice',
-    providerName: providerSelection.providerResolution.resolvedProvider,
-    providerCorrelation: canonicalTranslation.correlation,
-    tenantIdHint: req.tenantId || null,
-  });
-  if (!correlation.ok) {
-    refusal(res, {
-      code: correlation.code,
-      message: correlation.message,
-      refusalType: 'business',
-      httpStatus: 200,
-      data: {
-        providerResolution: {
-          ...providerSelection.providerResolution,
-          adapterInvoked: true,
-        },
-        correlation: {
-          deterministic: true,
-          metadataFirstAttempted: true,
-          fallbackLookupAttempted: true,
-          reason: correlation.reason,
-          providerLegId: correlation.providerLegId,
-          providerMessageId: correlation.providerMessageId,
-          providerEventId: correlation.providerEventId,
-          providerNumberE164: correlation.providerNumberE164,
-        },
-        operatorFeedbackMeta: {
-          actionable: true,
-          hiddenTransition: false,
-          messageKey: 'connectshyft.webhook.correlation.unresolved',
-          remediation: 'Retry with thread metadata or provider identifiers that map to a prior outbound dispatch.',
-        },
-        sideEffects: {
-          lifecycleMutationApplied: false,
-          canonicalEventPersisted: false,
-          outboxPersisted: false,
-        },
-        timelineOutcome: {
-          eventName: null,
-          routingDecision: 'refused',
-        },
-      },
-    });
-    return;
-  }
-
-  const tenantId = correlation.tenantId;
-  const orgUnitId = correlation.orgUnitId;
-  const threadId = correlation.threadId;
   const webhookPersistenceDb = isConnectShyftTestOverrideEnabled()
     ? undefined
     : loadPlatformDb();
-  const requestWithRawBody = req as Request & { rawBody?: Buffer | string };
-
-  const rolloutContextValidation = resolveConnectShyftProviderAdapter({
-    req: {
-      header: (name: string) => req.header(name),
-      body: req.body,
-      rawBody: requestWithRawBody.rawBody,
-      originalUrl: req.originalUrl,
-      protocol: req.protocol,
-      url: req.url,
-      tenantId,
-      orgUnitId,
-    },
-    operation: 'webhook',
-    requestedProvider: providerSelection.providerResolution.resolvedProvider,
-  });
-  if (!rolloutContextValidation.ok) {
-    refusal(res, {
-      code: rolloutContextValidation.refusal.code,
-      message: rolloutContextValidation.refusal.message,
-      refusalType: rolloutContextValidation.refusal.refusalType,
-      httpStatus: rolloutContextValidation.refusal.httpStatus,
-      data: {
-        ...(rolloutContextValidation.refusal.data || {}),
-        correlation: {
-          source: correlation.source,
-          deterministic: true,
-          threadId,
-          tenantId,
-          orgUnitId,
-          providerLegId: correlation.providerLegId,
-          providerMessageId: correlation.providerMessageId,
-          providerEventId: correlation.providerEventId,
-          providerNumberE164: correlation.providerNumberE164,
-        },
-      },
-    });
-    return;
-  }
 
   if (isTranscriptionCallbackEvent) {
     const callbackPayload = extractConnectShyftVoicemailTranscriptionCallbackPayload(req.body);
@@ -8472,6 +8072,13 @@ const handleInboundWebhook = async (
   });
   return;
 };
+
+registerConnectShyftInboundWebhookCoreExecutor(performInboundWebhook);
+
+const handleInboundWebhook = async (
+  req: Request,
+  res: Response,
+): Promise<void> => executeConnectShyftInboundWebhookRoute(req, res);
 
 router.post('/threads/:threadId/claim', postConnectThreadClaim);
 
