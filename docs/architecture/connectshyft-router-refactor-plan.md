@@ -84,54 +84,26 @@ Light seam prep only:
 - cleaner extraction boundary for future PeopleCore convergence
 - no convergence rewrite yet
 
-## Slice 8 target
-
-### Goal
-Extract outbound action routes into thin-router handlers with one shared outbound helper boundary, while preserving exact current outbound response shapes and exact current reopen behavior.
-
-### In scope
+### Slice 8
+Extracted outbound action surface:
 - `POST /threads/:threadId/call`
 - `POST /threads/:threadId/messages`
-- outbound route characterization tests
-- outbound helper boundary
+
+Added:
 - outbound handlers
-- router delegation
-- helper-boundary tests
-- outbound handler guardrail notes
-
-### Out of scope
-- inbound webhook extraction
-- provider architecture rewrite
-- bridge architecture rewrite
-- idempotency redesign
-- sender-number redesign
-- payload cleanup
-- reopen semantics changes
-
-### Planned artifacts
-- `handlers/postConnectThreadCall.ts`
-- `handlers/postConnectThreadMessage.ts`
 - `http/threadOutboundContext.ts`
-- `__tests__/handlers.threadOutboundContext.test.ts`
-- `handlers/THREAD_OUTBOUND_NOTES.md`
+- outbound characterization tests
+- outbound helper-boundary tests
 
-### Guardrails for Slice 8
-The outbound helper boundary may centralize:
-- route-family context enforcement
-- thread id parsing
-- shared prerequisite loading
-- shared outbound route execution wrapper
-- preserved refusal/response shaping inputs
+Preserved:
+- exact current outbound response shapes
+- exact current reopen behavior
 
-The outbound helper boundary may not absorb:
-- provider adapter internals
-- bridge session internals
-- communication reliability internals
-- communication audit internals
-- SMS override internals
-- inbound/webhook logic
+Guardrails preserved:
+- helper boundary stays limited to route-family context enforcement, thread id parsing, shared prerequisite loading, and shared outbound execution delegation
+- provider adapter, bridge session, reliability, audit, SMS override, and inbound/webhook internals remain outside the helper boundary
 
-## Next slice after Slice 8
+## Next slice
 
 ### Slice 9
 Inbound/webhooks/telephony extraction:
