@@ -31,7 +31,9 @@ import {
   postConnectNeighborIdentityMatch,
   postConnectNeighborMerge,
   postConnectThreadClaim,
+  postConnectThreadCall,
   postConnectThreadClose,
+  postConnectThreadMessage,
   postConnectThreadTakeover,
   putConnectNeighbor,
 } from '../../../modules/connectshyft/handlers';
@@ -39,6 +41,10 @@ import {
   resolveConnectShyftOrgUnitContext,
   type ResolvedConnectShyftContext,
 } from '../../../modules/connectshyft/contextAccess';
+import {
+  registerConnectShyftThreadOutboundCoreExecutor,
+  type ConnectShyftThreadOutboundCoreExecutionInput,
+} from '../../../modules/connectshyft/http/threadOutboundContext';
 import {
   connectShyftNumberMappingServiceAsync,
   type ConnectShyftNumberMapping,
@@ -5168,44 +5174,21 @@ router.post('/threads', async (req: Request, res: Response) => {
   });
 });
 
-const performOutboundAction = async (
-  req: Request,
-  res: Response,
-  outboundAction: ConnectShyftOutboundAction,
-): Promise<void> => {
-  if (!await enforceCapability(req, res, 'inbox')) {
+const performOutboundAction = async ({
+  req,
+  res,
+  outboundAction,
+  context,
+  threadId,
+  actorUserId,
+  actorRoles,
+  lifecycleContext,
+}: ConnectShyftThreadOutboundCoreExecutionInput): Promise<void> => {
+  if (!lifecycleContext.currentState) {
     return;
   }
 
-  const context = await enforceOrgUnitContext(req, res);
-  if (!context) {
-    return;
-  }
-
-  if (!enforceThreadViewCapability(req, res, context)) {
-    return;
-  }
-
-  if (outboundAction === 'call' && !enforceThreadCallCapability(req, res, context)) {
-    return;
-  }
-  if (outboundAction === 'message' && !enforceThreadMessageCapability(req, res, context)) {
-    return;
-  }
-
-  if (!enforceEscalationActionMembership(req, res, context)) {
-    return;
-  }
-
-  const threadId = parseThreadIdParam(req);
-  if (!threadId) {
-    respondConnectShyftClientRefusal(res, {
-      code: 'CONNECTSHYFT_THREAD_ID_REQUIRED',
-      message: 'threadId is required',
-    });
-    return;
-  }
-
+  const currentState = lifecycleContext.currentState;
   const outboundCallPolicyRequest = outboundAction === 'call'
     ? parseOutboundCallRequestPolicy(req)
     : null;
@@ -5253,8 +5236,6 @@ const performOutboundAction = async (
     return;
   }
 
-  const actorRoles = resolveConnectShyftActorRoles(req, context);
-  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
   const actorScopeKey = buildConnectShyftActorScopeKey(actorUserId, actorRoles);
   const outboundMessagePolicy = outboundAction === 'message'
     ? parseOutboundMessagePolicyRequest(req)
@@ -5269,24 +5250,6 @@ const performOutboundAction = async (
     }
     : null;
   let outboundDispatchReplayKey: string | null = null;
-  const lifecycleContext = await resolveLifecycleContext({
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    threadId,
-    actorUserId,
-  });
-
-  if (!lifecycleContext.currentState) {
-    respondConnectShyftBusinessRefusal(res, {
-      code: 'CONNECTSHYFT_THREAD_NOT_FOUND',
-      message: 'Thread not found for this tenant/orgUnit context.',
-      data: {
-        context,
-        threadId,
-      },
-    });
-    return;
-  }
   const resolvedThreadNeighborId = await resolveNeighborIdForThreadCorrelation({
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
@@ -5294,7 +5257,7 @@ const performOutboundAction = async (
   });
 
   const outboundLifecycleAction = resolveOutboundLifecycleAction(outboundAction);
-  const priorState = lifecycleContext.currentState;
+  const priorState = currentState;
   const dispatchEventName = resolveOutboundDispatchEventName(outboundAction);
   const postDispatchWarnings: Array<{ stage: string; code: string; message: string }> = [];
 
@@ -5323,8 +5286,8 @@ const performOutboundAction = async (
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
       threadId,
-      currentState: lifecycleContext.currentState,
-      nextState: lifecycleContext.currentState,
+      currentState,
+      nextState: currentState,
       actorUserId,
       fallbackSummary: lifecycleContext.syntheticThread?.summary,
       fallbackNeighborId: resolvedThreadNeighborId || lifecycleContext.syntheticThread?.neighborId,
@@ -6567,6 +6530,8 @@ const performOutboundAction = async (
   });
   return;
 };
+
+registerConnectShyftThreadOutboundCoreExecutor(performOutboundAction);
 
 const handleInboundWebhook = async (
   req: Request,
@@ -8514,13 +8479,9 @@ router.post('/threads/:threadId/takeover', postConnectThreadTakeover);
 
 router.post('/threads/:threadId/close', postConnectThreadClose);
 
-router.post('/threads/:threadId/call', async (req: Request, res: Response) => {
-  await performOutboundAction(req, res, 'call');
-});
+router.post('/threads/:threadId/call', postConnectThreadCall);
 
-router.post('/threads/:threadId/messages', async (req: Request, res: Response) => {
-  await performOutboundAction(req, res, 'message');
-});
+router.post('/threads/:threadId/messages', postConnectThreadMessage);
 
 router.post('/webhooks/inbound', async (req: Request, res: Response) => {
   await handleInboundWebhook(req, res);
