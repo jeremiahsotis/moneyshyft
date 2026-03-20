@@ -13,13 +13,19 @@
   - `/threads/:threadId`
   - `/threads/:threadId/timeline`
 
-### Next extraction target
-- Slice 6 extracts lifecycle actions:
+- Slice 6 extracted lifecycle actions:
   - `/threads/:threadId/claim`
   - `/threads/:threadId/takeover`
   - `/threads/:threadId/close`
 
-## Why lifecycle is next
+### Next extraction target
+- neighbors / identity bridge
+
+### Intentionally deferred after Slice 6
+- outbound actions remain deferred on purpose
+- inbound, webhooks, and telephony remain deferred on purpose
+
+## Why lifecycle was the right next cut
 
 Lifecycle is the next correct cut because it is directly tied to:
 - Inbox behavior
@@ -44,12 +50,12 @@ This is deliberate. The goal is route extraction and boundary cleanup, not behav
 
 ## Updated extraction order
 
-1. settings/context/inbox/availability
-2. thread read surface
-3. lifecycle actions
-4. neighbors / identity bridge
-5. outbound actions
-6. inbound/webhooks/telephony
+1. settings/context/inbox/availability (Slice 4 complete)
+2. thread read surface (Slice 5 complete)
+3. lifecycle actions (Slice 6 complete)
+4. neighbors / identity bridge (next)
+5. outbound actions (deferred)
+6. inbound/webhooks/telephony (deferred)
 
 ## Practical rule
 
