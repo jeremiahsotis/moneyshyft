@@ -4,3 +4,6 @@ export { getConnectInbox } from './getConnectInbox';
 export { getConnectSettingsNavigation } from './getConnectSettingsNavigation';
 export { getConnectThreadDetail } from './getConnectThreadDetail';
 export { getConnectThreadTimeline } from './getConnectThreadTimeline';
+export { postConnectThreadClaim } from './postConnectThreadClaim';
+export { postConnectThreadClose } from './postConnectThreadClose';
+export { postConnectThreadTakeover } from './postConnectThreadTakeover';
