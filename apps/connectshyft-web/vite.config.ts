@@ -36,6 +36,10 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: moduleApiProxyTarget,
           changeOrigin: true,
+        },
+        '/people': {
+          target: moduleApiProxyTarget,
+          changeOrigin: true,
         }
       }
     }

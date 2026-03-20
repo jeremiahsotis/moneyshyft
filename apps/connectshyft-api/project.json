@@ -14,7 +14,12 @@
     },
     "build": {
       "executor": "nx:run-commands",
-      "inputs": ["default", "{workspaceRoot}/domains/communication/**/*"],
+      "inputs": [
+        "default",
+        "{workspaceRoot}/domains/communication/**/*",
+        "{workspaceRoot}/domains/people/**/*",
+        "{workspaceRoot}/libs/contracts/**/*"
+      ],
       "options": {
         "cwd": "apps/connectshyft-api",
         "command": "npm run build"
@@ -29,7 +34,14 @@
     },
     "test": {
       "executor": "nx:run-commands",
-      "inputs": ["default", "{workspaceRoot}/domains/communication/**/*"],
+      "inputs": [
+        "default",
+        "{workspaceRoot}/domains/communication/**/*",
+        "{workspaceRoot}/domains/people/**/*",
+        "{workspaceRoot}/libs/contracts/**/*",
+        "{workspaceRoot}/tests/integration/connectshyft-api/**/*",
+        "{workspaceRoot}/tests/integration/peoplecore/**/*"
+      ],
       "options": {
         "cwd": "apps/connectshyft-api",
         "command": "npm run test:integration"

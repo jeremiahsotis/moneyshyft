@@ -13,7 +13,8 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
-      "*": ["./node_modules/@types/*", "./node_modules/*"]
+      "*": ["./node_modules/@types/*", "./node_modules/*"],
+      "@shyft/contracts": ["../../libs/contracts/src/index.ts"]
     },
     "preserveSymlinks": true,
     "declaration": false,
@@ -24,6 +25,11 @@
     "noImplicitReturns": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*", "../../domains/communication/**/*", "../../infrastructure/communications/**/*"],
+  "include": [
+    "src/**/*",
+    "../../domains/communication/**/*",
+    "../../domains/people/**/*",
+    "../../infrastructure/communications/**/*"
+  ],
   "exclude": ["node_modules", "dist"]
 }
