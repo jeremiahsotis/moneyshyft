@@ -57,6 +57,21 @@ Own:
 
 Over time, platform concerns should stop leaking sideways into domain modules where not necessary.
 
+## Slice 4 foundation now in place
+
+Slice 4 establishes the first extracted family and the handler-facing access boundary without attempting a full router split.
+
+- `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` now delegates the first low-risk route family to handlers
+- `apps/connectshyft-api/src/modules/connectshyft/http/accessContext.ts` owns the shared access/context helper used by that family
+- `apps/connectshyft-api/src/modules/connectshyft/handlers/` owns the route-family handlers for:
+  - `/settings/navigation`
+  - `/availability`
+  - `/context`
+  - `/inbox`
+- characterization tests pin current route behavior before broader extraction continues
+
+This slice is intentionally narrow. It creates the first stable boundary but does not move the rest of the router surface yet.
+
 ## Route-family extraction order
 
 This is the intended order.
@@ -151,6 +166,20 @@ This plan does not assume:
 - WebRTC/SIP implementation now
 
 Thin router is the goal because it creates the safest product boundary, not because it is fashionable.
+
+## Intentionally deferred after Slice 4
+
+The following surfaces remain in the legacy router and are deferred on purpose:
+
+- `/threads/*`
+- `/neighbors/*`
+- `/numbers/*`
+- `/escalation/*`
+- `/webhooks/*`
+- outbound call and message dispatch
+- bridge sessions
+- canonical event orchestration
+- inbound voice and SMS transport workflows
 
 ## Practical rule for future slices
 
