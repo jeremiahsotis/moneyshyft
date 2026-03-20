@@ -1,0 +1,7 @@
+{
+  "name": "people-domain",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "domains/people",
+  "tags": ["scope:shared", "type:domain"]
+}

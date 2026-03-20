@@ -1,5 +1,5 @@
-import type { IdentityConfidenceBand } from '../../../libs/contracts/src/people'
 import { scoreToConfidenceBand } from './confidenceBands'
+import type { IdentityConfidenceBand } from './confidenceBands'
 
 export type IdentityCandidateInput = {
   personId: string

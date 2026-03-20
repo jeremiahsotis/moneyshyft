@@ -1,4 +1,4 @@
-import type { IdentityConfidenceBand } from '../../../libs/contracts/src/people'
+export type IdentityConfidenceBand = 'very_low' | 'low' | 'medium' | 'high' | 'very_high'
 
 export const IDENTITY_CONFIDENCE_BANDS = [
   'very_low',

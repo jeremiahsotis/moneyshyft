@@ -1,4 +1,4 @@
-import type { ContactPointStatus } from '../../../libs/contracts/src/people'
+import type { ContactPointStatus } from './contactPointMemoryStore'
 
 const SHARED_CONTACT_STATUSES = new Set<ContactPointStatus>([
   'active_shared_possible',
