@@ -35,6 +35,8 @@ import {
   postConnectThreadClose,
   postConnectThreadMessage,
   postConnectThreadTakeover,
+  postConnectWebhookInbound,
+  postConnectWebhookSms,
   putConnectNeighbor,
 } from '../../../modules/connectshyft/handlers';
 import {
@@ -46,7 +48,6 @@ import {
   type ConnectShyftThreadOutboundCoreExecutionInput,
 } from '../../../modules/connectshyft/http/threadOutboundContext';
 import {
-  executeConnectShyftInboundWebhookRoute,
   registerConnectShyftInboundWebhookCoreExecutor,
   type ConnectShyftInboundWebhookCoreExecutionInput,
   type ConnectShyftResolvedWebhookCorrelation,
@@ -8075,11 +8076,6 @@ const performInboundWebhook = async ({
 
 registerConnectShyftInboundWebhookCoreExecutor(performInboundWebhook);
 
-const handleInboundWebhook = async (
-  req: Request,
-  res: Response,
-): Promise<void> => executeConnectShyftInboundWebhookRoute(req, res);
-
 router.post('/threads/:threadId/claim', postConnectThreadClaim);
 
 router.post('/threads/:threadId/takeover', postConnectThreadTakeover);
@@ -8090,12 +8086,8 @@ router.post('/threads/:threadId/call', postConnectThreadCall);
 
 router.post('/threads/:threadId/messages', postConnectThreadMessage);
 
-router.post('/webhooks/inbound', async (req: Request, res: Response) => {
-  await handleInboundWebhook(req, res);
-});
+router.post('/webhooks/inbound', postConnectWebhookInbound);
 
-router.post('/webhooks/sms', async (req: Request, res: Response) => {
-  await handleInboundWebhook(req, res);
-});
+router.post('/webhooks/sms', postConnectWebhookSms);
 
 export default router;
