@@ -2,198 +2,82 @@
 
 ## Purpose
 
-This document describes the planned reduction of `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` from a multi-responsibility orchestration file into a thin router with route-family handlers.
+This plan tracks the controlled reduction of `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` into a thin router with route-family handlers.
 
-This is not a rewrite for style. It is a controlled reduction of architectural risk.
+The goal is not stylistic churn. The goal is to lower architectural risk while preserving current ConnectShyft behavior.
 
-## Current problem
+## Current status
 
-`connectshyft.ts` currently owns too many concerns at once:
+### Completed
 
-- route registration
-- request parsing and validation
-- route-specific authorization checks
-- orgUnit/tenant context resolution
-- orchestration across multiple ConnectShyft modules
-- response shaping
-- synthetic/test-oriented helper logic
-- lifecycle coordination
-- outbound/webhook/telephony coordination
-
-This creates:
-- high cognitive load
-- drift risk between route and module logic
-- difficulty isolating bugs
-- difficulty safely integrating PeopleCore
-- difficulty evolving ConnectShyft toward a simpler operator experience
-
-## Refactor target
-
-### Desired layering
-
-#### 1. Router
-Owns only:
-- route registration
-- wiring request to handler
-
-The router should not contain substantive business logic.
-
-#### 2. Application handlers
-Own:
-- request DTO normalization
-- access/context resolution through explicit helper(s)
-- orchestration across domain modules
-- response mapping
-
-#### 3. Domain and service modules
-Own:
-- thread behavior
-- neighbor behavior
-- identity behavior
-- provider/webhook logic
-- timeline assembly
-- sender resolution
-- escalation behavior
-
-Over time, platform concerns should stop leaking sideways into domain modules where not necessary.
-
-## Slice 4 foundation now in place
-
-Slice 4 establishes the first extracted family and the handler-facing access boundary without attempting a full router split.
-
-- `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` now delegates the first low-risk route family to handlers
-- `apps/connectshyft-api/src/modules/connectshyft/http/accessContext.ts` owns the shared access/context helper used by that family
-- `apps/connectshyft-api/src/modules/connectshyft/handlers/` owns the route-family handlers for:
-  - `/settings/navigation`
-  - `/availability`
-  - `/context`
-  - `/inbox`
-- characterization tests pin current route behavior before broader extraction continues
-
-This slice is intentionally narrow. It creates the first stable boundary but does not move the rest of the router surface yet.
-
-## Route-family extraction order
-
-This is the intended order.
-
-### Slice 4
-First low-risk route family:
+#### Slice 4 completed
 - `/settings/navigation`
 - `/availability`
 - `/context`
 - `/inbox`
 
-Reason:
-- lower transport risk
-- strong product relevance
-- good place to establish handler and access-context patterns
+Outcome:
+- the first low-risk route family moved behind handler boundaries
+- shared access and orgUnit context resolution now live behind the handler-facing HTTP helper boundary
+- characterization coverage pinned the extracted behavior before moving routes
 
-### Later extraction order
-
-#### 1. Thread read surface
+#### Slice 5 thread read surface extracted
 - `/threads/:threadId`
 - `/threads/:threadId/timeline`
 
-Reason:
-- timeline is product-critical
-- read surfaces are easier to pin before action surfaces
+Outcome:
+- the thread read surface now delegates through thin-router handlers
+- thread read access and prerequisite loading are centralized behind the thread read helper boundary
+- current thread detail and timeline response shapes were preserved on purpose
+- characterization coverage pins the current read-surface behavior
 
-#### 2. Thread lifecycle actions
+## Why the current response shape was preserved
+
+Slice 5 deliberately preserves the current thread detail and timeline payloads even though they are not the long-term ideal.
+
+This slice is about:
+- thinner router ownership
+- explicit handler boundaries
+- safer regression detection
+
+It is not about redesigning the thread DTOs yet.
+
+## Next extraction target
+
+The next planned extraction target is lifecycle actions:
+
 - claim
 - takeover
 - close
 
-Reason:
-- directly tied to Inbox / My Conversations behavior
+Lifecycle actions are next because they stay close to inbox and thread read behavior while avoiding the higher orchestration complexity of outbound and webhook flows.
 
-#### 3. Neighbor / identity bridge
-- `/neighbors/*`
-- identity match
-- merge
+## Intentionally deferred
 
-Reason:
-- should converge carefully with PeopleCore rather than being rewritten prematurely
+The following areas remain intentionally deferred after Slice 5:
 
-#### 4. Outbound actions
-- `/threads/:threadId/call`
-- `/threads/:threadId/messages`
+- outbound call and message actions
+- inbound SMS and inbound voice flows
+- webhook/provider-correlation handling
+- telephony and bridge orchestration refactors
+- broader payload redesign toward a single canonical thread detail contract
 
-Reason:
-- high orchestration complexity
-- bridge call and sender logic
-- idempotency, reliability, override rules
+Outbound and webhooks remain deferred on purpose. They should not be pulled ahead of lifecycle extraction.
 
-#### 5. Inbound/webhooks/telephony
-- inbound SMS
-- inbound voice
-- voicemail/transcription
-- provider correlation and webhook flows
+## Updated extraction order
 
-Reason:
-- highest complexity and coupling
-- should be last, after router shape is already under control
-
-## Product-critical behavior that must not be destabilized
-
-These are the key behaviors to preserve while refactoring:
-
-- one inbox per orgUnit, or tenant/user when orgUnit is absent
-- My Conversations / claimed thread behavior
-- claim thread behavior
-- chronological thread timeline with real SMS/MMS/call/voicemail content and metadata
-- outbound bridge-call behavior now, with room for future direct calling
-- inbound routing by orgUnit rule
-- 7-day inactive-thread forwarding policy
-- PeopleCore-aware neighbor creation/editing
-- minimal-clutter operator UX target
-
-## Current architecture decisions this plan must respect
-
-- conversation is anchored to ContactPoint + orgUnit, not Person
-- identity signals are not identity truth
-- ConnectShyft is the communications substrate
-- CaseShyft should become the primary long-term workspace
-- WorkIntent is lightweight and transitional
-- PeopleCore should remain the source of truth for person-related identity structures
-
-## What this plan does not do
-
-This plan does not assume:
-- a full rewrite
-- microservice extraction
-- a new framework
-- a telephony redesign
-- WebRTC/SIP implementation now
-
-Thin router is the goal because it creates the safest product boundary, not because it is fashionable.
-
-## Intentionally deferred after Slice 4
-
-The following surfaces remain in the legacy router and are deferred on purpose:
-
-- `/threads/*`
-- `/neighbors/*`
-- `/numbers/*`
-- `/escalation/*`
-- `/webhooks/*`
-- outbound call and message dispatch
-- bridge sessions
-- canonical event orchestration
-- inbound voice and SMS transport workflows
+1. Slice 4: settings, availability, context, inbox
+2. Slice 5: thread read surface
+3. Next: lifecycle actions
+4. After lifecycle: neighbors / identity bridge
+5. Later: outbound actions
+6. Last: inbound, webhooks, and telephony-heavy flows
 
 ## Practical rule for future slices
 
-Every ConnectShyft router slice should answer:
+Every router extraction slice should answer:
 
-1. which route family is moving
-2. what tests pin current behavior
-3. what new handler boundary is introduced
-4. what is explicitly deferred
-
-If a slice cannot answer those four clearly, it is too broad.
-
-## Suggested repo location
-
-Place this file at:
-
-`docs/architecture/connectshyft-router-refactor-plan.md`
+1. what route family moved
+2. what behavior was pinned before moving it
+3. what handler/helper boundary now owns it
+4. what remains explicitly deferred
