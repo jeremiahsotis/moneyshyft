@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const shellRoutes = [
   ['/app/connect', 'Connect shell view coming soon'],
-  ['/app/people', 'People shell view coming soon'],
+  ['/app/people', 'Load contact points'],
   ['/app/work', 'Work shell view coming soon'],
 ] as const;
 
