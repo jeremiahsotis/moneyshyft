@@ -1,15 +1,15 @@
 import { Request, Response } from 'express';
 import type { Knex } from 'knex';
-import { refusal } from '../../platform/envelopes/response';
-import { CAPABILITIES, hasCapability, type Capability } from '../../platform/rbac/capabilities';
+import { refusal } from '../../../platform/envelopes/response';
+import { CAPABILITIES, hasCapability, type Capability } from '../../../platform/rbac/capabilities';
 import {
   createKnexOrgUnitAccessStore,
   validateOrgUnitScopedAccess,
-} from '../../platform/tenancy/orgUnitAccess';
+} from '../../../platform/tenancy/orgUnitAccess';
 import {
   evaluateActorTenantModuleEntitlement,
   type PlatformAdminActorContext,
-} from '../../platform/tenantModuleEntitlements';
+} from '../../../platform/tenantModuleEntitlements';
 import {
   resolveConnectShyftOrgUnitContext,
   type ConnectShyftContextDecision,

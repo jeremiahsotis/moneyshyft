@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { success } from '../../platform/envelopes/response';
-import { CAPABILITIES } from '../../platform/rbac/capabilities';
+import { success } from '../../../platform/envelopes/response';
+import { CAPABILITIES } from '../../../platform/rbac/capabilities';
 import {
   parseConnectShyftInboxBucket,
   resolveConnectShyftInboxContractAsync,

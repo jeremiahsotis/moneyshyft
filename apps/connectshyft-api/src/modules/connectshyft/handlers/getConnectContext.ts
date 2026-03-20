@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { success } from '../../platform/envelopes/response';
+import { success } from '../../../platform/envelopes/response';
 import {
   enforceConnectShyftCapability,
   resolveConnectShyftRouteContextDecision,
