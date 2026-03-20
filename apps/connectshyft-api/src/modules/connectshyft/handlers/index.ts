@@ -15,4 +15,6 @@ export { postConnectThreadCall } from './postConnectThreadCall';
 export { postConnectThreadClose } from './postConnectThreadClose';
 export { postConnectThreadMessage } from './postConnectThreadMessage';
 export { postConnectThreadTakeover } from './postConnectThreadTakeover';
+export { postConnectWebhookInbound } from './postConnectWebhookInbound';
+export { postConnectWebhookSms } from './postConnectWebhookSms';
 export { putConnectNeighbor } from './putConnectNeighbor';
