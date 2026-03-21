@@ -1,0 +1,74 @@
+
+> moneyshyft-monorepo@0.3.6 nx /Users/jeremiahotis/projects/connectshyft
+> node scripts/nx-shim.mjs "run" "connectshyft-api:test"
+
+
+> connectshyft-api@0.3.6 test:integration
+> NODE_ENV=test CONNECTSHYFT_MINIMAL_APP=1 jest --runInBand --config jest.config.js --runTestsByPath ../../tests/integration/connectshyft-api/health.test.ts ../../tests/integration/connectshyft-api/work-intents.test.ts ../../tests/integration/peoplecore/contact-points.test.ts ../../tests/integration/peoplecore/identity-decision.test.ts ../../tests/integration/peoplecore/resolver-reviews.test.ts
+
+PASS ../../tests/integration/peoplecore/contact-points.test.ts
+  ● Console
+
+    console.log
+      [32minfo[39m: POST /people/contact-points {"service":"connectshyft-api","timestamp":"2026-03-21T21:23:03.521Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      [32minfo[39m: GET /people/contact-points {"service":"connectshyft-api","timestamp":"2026-03-21T21:23:03.534Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      [32minfo[39m: POST /people/contact-point-links {"service":"connectshyft-api","timestamp":"2026-03-21T21:23:03.539Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+PASS ../../tests/integration/peoplecore/resolver-reviews.test.ts
+  ● Console
+
+    console.log
+      [32minfo[39m: POST /people/resolver-reviews {"service":"connectshyft-api","timestamp":"2026-03-21T21:23:03.627Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      [32minfo[39m: GET /people/resolver-reviews {"service":"connectshyft-api","timestamp":"2026-03-21T21:23:03.630Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+PASS ../../tests/integration/connectshyft-api/health.test.ts
+  ● Console
+
+    console.log
+      [32minfo[39m: GET /health {"service":"connectshyft-api","timestamp":"2026-03-21T21:23:03.699Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+PASS ../../tests/integration/peoplecore/identity-decision.test.ts
+  ● Console
+
+    console.log
+      [32minfo[39m: POST /people/identity/decision {"service":"connectshyft-api","timestamp":"2026-03-21T21:23:03.766Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      [32minfo[39m: POST /people/identity/decision {"service":"connectshyft-api","timestamp":"2026-03-21T21:23:03.771Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+PASS ../../tests/integration/connectshyft-api/work-intents.test.ts
+  ● Console
+
+    console.log
+      [32minfo[39m: POST /work-intents {"service":"connectshyft-api","timestamp":"2026-03-21T21:23:03.835Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+
+Test Suites: 5 passed, 5 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        1.673 s, estimated 2 s
+Ran all test suites within paths "../../tests/integration/connectshyft-api/health.test.ts", "../../tests/integration/connectshyft-api/work-intents.test.ts", "../../tests/integration/peoplecore/contact-points.test.ts", "../../tests/integration/peoplecore/identity-decision.test.ts", "../../tests/integration/peoplecore/resolver-reviews.test.ts".

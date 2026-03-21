@@ -1,0 +1,19 @@
+FAIL src/modules/connectshyft/__tests__/communicationReliability.test.ts
+  ● Test suite failed to run
+
+    ENOENT: no such file or directory, open '/Users/jeremiahotis/projects/connectshyft/apps/connectshyft-api/src/modules/connectshyft/__tests__/communicationReliability.test.ts'
+
+      at runTestInternal (../../node_modules/.pnpm/jest-runner@29.7.0/node_modules/jest-runner/build/runTest.js:170:27)
+
+PASS src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts
+PASS src/modules/connectshyft/__tests__/identityResolver.test.ts
+PASS src/modules/connectshyft/__tests__/ambiguityEvents.test.ts
+PASS src/modules/connectshyft/__tests__/bridgeSessions.test.ts
+PASS src/modules/connectshyft/__tests__/senderNumberResolver.test.ts
+PASS src/modules/connectshyft/__tests__/providerRegistry.test.ts
+
+Test Suites: 1 failed, 1 skipped, 6 passed, 7 of 8 total
+Tests:       7 skipped, 53 passed, 60 total
+Snapshots:   0 total
+Time:        2.821 s, estimated 3 s
+Ran all test suites within paths "src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts", "src/modules/connectshyft/__tests__/identityResolver.test.ts", "src/modules/connectshyft/__tests__/providerRegistry.test.ts", "src/modules/connectshyft/__tests__/senderNumberResolver.test.ts", "src/modules/connectshyft/__tests__/threads.contract.test.ts", "src/modules/connectshyft/__tests__/bridgeSessions.test.ts", "src/modules/connectshyft/__tests__/communicationReliability.test.ts", "src/modules/connectshyft/__tests__/ambiguityEvents.test.ts".

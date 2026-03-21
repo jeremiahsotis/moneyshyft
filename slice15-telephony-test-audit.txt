@@ -1,0 +1,12 @@
+PASS src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts
+PASS src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts
+PASS src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts
+PASS src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts
+PASS src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts
+PASS src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts
+
+Test Suites: 6 passed, 6 total
+Tests:       71 passed, 71 total
+Snapshots:   0 total
+Time:        4.649 s, estimated 5 s
+Ran all test suites within paths "src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts", "src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts", "src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts", "src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts", "src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts", "src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts".

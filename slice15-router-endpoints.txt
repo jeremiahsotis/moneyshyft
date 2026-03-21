@@ -1,0 +1,34 @@
+3960:router.get('/settings/navigation', getConnectSettingsNavigation);
+3962:router.get('/availability', getConnectAvailability);
+3964:router.get('/context', getConnectContext);
+3966:router.get('/inbox', getConnectInbox);
+3968:router.post('/neighbors', postConnectNeighborCreate);
+3970:router.get('/neighbors', getConnectNeighbors);
+3972:router.get('/neighbors/:neighborId', getConnectNeighborDetail);
+3974:router.delete('/neighbors/:neighborId', deleteConnectNeighbor);
+3976:router.put('/neighbors/:neighborId', putConnectNeighbor);
+3978:router.post('/neighbors/identity-match', postConnectNeighborIdentityMatch);
+3980:router.post('/neighbors/merge', postConnectNeighborMerge);
+3982:router.get('/numbers', getConnectNumberMappings);
+3984:router.post('/numbers', postConnectNumberMapping);
+3986:router.put('/numbers/:mappingId', putConnectNumberMapping);
+3988:router.get('/admin/webhook-receipts/metrics', getConnectWebhookReceiptMetrics);
+3990:router.post('/admin/webhook-receipts/cleanup', postConnectWebhookReceiptCleanup);
+3992:router.get('/escalation/recipients', getConnectEscalationRecipients);
+3994:router.get('/escalation/config', getConnectEscalationConfig);
+3996:router.put('/escalation/config', putConnectEscalationConfig);
+3998:router.post('/internal/escalation/evaluate', async (req: Request, res: Response) => {
+4099:router.get('/internal/threads/due', async (req: Request, res: Response) => {
+4144:router.get('/events', async (req: Request, res: Response) => {
+4185:router.get('/identity-ambiguities', async (req: Request, res: Response) => {
+4227:router.patch('/identity-ambiguities/:ambiguityEventId', async (req: Request, res: Response) => {
+4292:router.get('/threads/:threadId/timeline', getConnectThreadTimeline);
+4294:router.get('/threads/:threadId', getConnectThreadDetail);
+4296:router.post('/threads', async (req: Request, res: Response) => {
+7534:router.post('/threads/:threadId/claim', postConnectThreadClaim);
+7536:router.post('/threads/:threadId/takeover', postConnectThreadTakeover);
+7538:router.post('/threads/:threadId/close', postConnectThreadClose);
+7540:router.post('/threads/:threadId/call', postConnectThreadCall);
+7542:router.post('/threads/:threadId/messages', postConnectThreadMessage);
+7544:router.post('/webhooks/inbound', postConnectWebhookInbound);
+7546:router.post('/webhooks/sms', postConnectWebhookSms);
