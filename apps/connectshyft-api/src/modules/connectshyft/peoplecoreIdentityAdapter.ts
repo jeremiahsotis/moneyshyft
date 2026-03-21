@@ -1,8 +1,13 @@
 import { normalizePhone } from '../../../../../domains/communication';
+import logger from '../../utils/logger';
 import {
   AsyncPeopleCoreService,
   peopleCoreServiceAsync,
 } from '../peoplecore/service';
+import {
+  createIdentityAmbiguityEvent,
+  type ConnectShyftIdentityAmbiguityReasonCode,
+} from './ambiguityEvents';
 import {
   evaluateConnectShyftIdentityBoundary,
   type ConnectShyftIdentityBoundaryDecision,
@@ -138,6 +143,22 @@ const hasLegacySameSubjectProof = (
     && tenantExactMatchNeighborIds[0] === legacyCandidateNeighborIds[0];
 };
 
+const resolveAmbiguityReasonCode = (
+  lookup: ConnectShyftPeopleCoreIdentityCandidateLookup | null,
+  legacyResult: ConnectShyftIdentityBoundaryResult,
+): ConnectShyftIdentityAmbiguityReasonCode => {
+  if (!legacyResult.ok && legacyResult.code === 'IDENTITY_MATCH_AMBIGUOUS') {
+    return 'IDENTITY_MATCH_AMBIGUOUS';
+  }
+
+  const currentPersonIds = lookup ? collectDistinctCurrentPersonIds(lookup) : [];
+  if (currentPersonIds.length > 1) {
+    return 'PEOPLECORE_MULTI_CURRENT_LINKS';
+  }
+
+  return 'PEOPLECORE_LEGACY_DISAGREEMENT';
+};
+
 export class AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter
 {
   private readonly hooks: ConnectShyftPeopleCoreIdentityHooks;
@@ -257,6 +278,24 @@ export class AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter
     );
     const result = this.applyPeopleCoreAuthorityPolicy(lookup, legacyResult);
 
+    try {
+      await this.persistAmbiguityEventIfNeeded(input, lookup, legacyResult, result);
+    } catch (error) {
+      const ambiguityReasonCode = resolveAmbiguityReasonCode(lookup, legacyResult);
+      const sourceContext = input.hookContext?.triggerSourceType || 'connectshyft_identity_seam';
+      const idempotencyKey = result.data?.idempotency.key || input.idempotencyKey || null;
+      logger.warn('ConnectShyft identity ambiguity event persistence failed', {
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId || null,
+        normalizedContactPoint: result.data?.identityMatch?.contactPoint.value || normalizedContactPointValue,
+        ambiguityReasonCode,
+        sourceContext,
+        correlationId: null,
+        idempotencyKey,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
     if (lookup) {
       try {
         await this.hooks.applyIdentityHooks(input, result, lookup);
@@ -266,6 +305,33 @@ export class AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter
     }
 
     return result;
+  }
+
+  private async persistAmbiguityEventIfNeeded(
+    input: ConnectShyftIdentityBoundaryRequest,
+    lookup: ConnectShyftPeopleCoreIdentityCandidateLookup | null,
+    legacyResult: ConnectShyftIdentityBoundaryResult,
+    result: ConnectShyftIdentityBoundaryResult,
+  ): Promise<void> {
+    if (result.ok || result.code !== 'IDENTITY_MATCH_AMBIGUOUS' || !result.data?.identityMatch) {
+      return;
+    }
+
+    const identityMatch = result.data.identityMatch;
+    await createIdentityAmbiguityEvent({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId || null,
+      sourceContext: input.hookContext?.triggerSourceType || 'connectshyft_identity_seam',
+      sourceContextId: input.hookContext?.triggerSourceId || result.data.idempotency.key,
+      normalizedContactPoint: identityMatch.contactPoint.value,
+      contactPointType: 'phone',
+      candidateNeighborIds: [...identityMatch.candidateNeighborIds],
+      candidateCount: identityMatch.candidateCount,
+      ambiguityReasonCode: resolveAmbiguityReasonCode(lookup, legacyResult),
+      requestedByUserId: input.hookContext?.requestedByUserId || null,
+      correlationId: null,
+      idempotencyKey: result.data.idempotency.key,
+    });
   }
 
   private applyPeopleCoreAuthorityPolicy(
