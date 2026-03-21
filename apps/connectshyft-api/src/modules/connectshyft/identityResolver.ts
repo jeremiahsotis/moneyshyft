@@ -1,8 +1,8 @@
 import {
-  AsyncInProcessConnectShyftIdentityBoundaryAdapter,
   type ConnectShyftIdentityBoundaryAdapter,
 } from './identityBoundary';
 import { KnexConnectShyftNeighborStore } from './neighbors';
+import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from './peoplecoreIdentityAdapter';
 
 const SYSTEM_RESOLVER_ACTOR_ROLES = ['SYSTEM_ADMIN'];
 
@@ -93,7 +93,7 @@ export class ConnectShyftSubjectResolver implements ConnectShyftSubjectResolverB
 
 const defaultNeighborStore = new KnexConnectShyftNeighborStore();
 
-const defaultIdentityBoundary = new AsyncInProcessConnectShyftIdentityBoundaryAdapter(
+const defaultIdentityBoundary = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
   async (tenantId) => defaultNeighborStore.listActiveIdentityBoundaryNeighborsByTenant(tenantId),
   async (tenantId, normalizedContactPointValue) =>
     defaultNeighborStore.listActiveIdentityBoundaryNeighborsByPhoneValue(
