@@ -2,11 +2,32 @@
 
 ## Status
 
-Authoritative – system of record for all people and identity-related data.
+Authoritative for PeopleCore-owned identity concepts and the Slice 12 persistence-backed foundation.
 
 ---
 
-## 1. Core Entities
+## 1. Slice 12 Foundation Status
+
+Persistence-backed in Slice 12:
+
+- Person
+- Household
+- HouseholdMembership
+- ContactPoint
+- ContactPointLink
+- ContactPointEvent
+- ResolverReview
+
+Conceptual but still deferred from persistence in Slice 12:
+
+- Address
+- Relationship
+
+ConnectShyft still owns the current neighbor model and communication objects while it consults PeopleCore through the identity seam.
+
+---
+
+## 2. Core Entities
 
 ### Person
 
@@ -25,6 +46,7 @@ Rules:
 - may begin as provisional
 - may be merged into another Person
 - never hard-deleted in normal operation
+- persisted in `people.persons`
 
 ---
 
@@ -42,6 +64,7 @@ Rules:
 
 - NOT inferred from address
 - must be explicitly defined
+- persisted in `people.households`
 
 ---
 
@@ -53,6 +76,7 @@ Properties:
 
 - role (optional)
 - start/end validity
+- persisted in `people.household_memberships`
 
 ---
 
@@ -65,6 +89,7 @@ Rules:
 - NOT identity-defining
 - may be shared across multiple households
 - may change frequently
+- still deferred from persistence in Slice 12
 
 ---
 
@@ -77,6 +102,10 @@ Examples:
 - parent/child
 - partner
 - roommate
+
+Status:
+
+- still deferred from persistence in Slice 12
 
 ---
 
@@ -92,6 +121,7 @@ Rules:
 - NOT owned by Person
 - may be shared
 - may be reassigned
+- persisted in `people.contact_points`
 
 ---
 
@@ -112,6 +142,7 @@ Rules:
 
 - must support multiple links over time
 - must support reassignment
+- persisted in `people.contact_point_links`
 
 ---
 
@@ -125,10 +156,23 @@ Examples:
 - state change
 - reassignment suspicion
 - manual confirmation
+- persisted in `people.contact_point_events`
 
 ---
 
-## 2. ContactPoint States
+### ResolverReview
+
+Represents an identity ambiguity, duplicate, reassignment, or review task for resolver action.
+
+Rules:
+
+- persisted in `people.resolver_reviews`
+- may reference provisional people and contact points
+- is first-class persistence now, even though the resolver UI is still deferred
+
+---
+
+## 3. ContactPoint States
 
 - active_personal
 - active_shared_possible
@@ -141,7 +185,7 @@ These states influence identity confidence.
 
 ---
 
-## 3. Identity Operations
+## 4. Identity Operations
 
 ### Merge
 
@@ -174,7 +218,7 @@ Used for:
 
 ---
 
-## 4. Subject Lifecycle
+## 5. Subject Lifecycle
 
 No casual deletion.
 
@@ -194,7 +238,7 @@ Rules:
 
 ---
 
-## 5. Historical Integrity
+## 6. Historical Integrity
 
 Rules:
 
@@ -205,7 +249,7 @@ Rules:
 
 ---
 
-## 6. Key Constraints
+## 7. Key Constraints
 
 - ContactPoint != Person
 - identity is reversible
@@ -214,7 +258,7 @@ Rules:
 
 ---
 
-## 7. Non-Ownership
+## 8. Non-Ownership
 
 PeopleCore does NOT own:
 
@@ -225,3 +269,18 @@ PeopleCore does NOT own:
 - provider integrations
 
 These belong to ConnectShyft.
+
+---
+
+## 9. Slice 12 Boundary Note
+
+Slice 12 introduces a ConnectShyft-to-PeopleCore identity seam so ConnectShyft can consult PeopleCore-owned contact-point and resolver-review persistence without changing current ConnectShyft route envelopes.
+
+PeopleCore is now the persistence source of truth for person/contact-point/household/resolver-review concepts.
+
+ConnectShyft still owns:
+
+- neighbor APIs
+- conversation continuity
+- message and call orchestration
+- current external communication-facing contracts

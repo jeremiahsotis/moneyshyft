@@ -5,12 +5,13 @@
 - Slices 4 through 11 complete.
 - ConnectShyft route-family extraction sequence complete.
 - Frontend build/test surface separation completed in Slice 11.
+- Slice 12 PeopleCore persistence foundation and identity seam complete.
 
 ## Purpose
 
 This document records the completed extraction of `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` into a thin route-registration shell with module-owned handlers and helper boundaries.
 
-It also captures the post-Slice 11 stop point so future work does not treat the extraction sequence as still in progress.
+It also captures the post-Slice 12 stop point so future work does not treat the extraction sequence as still in progress.
 
 ## Non-negotiable rules
 
@@ -20,6 +21,7 @@ It also captures the post-Slice 11 stop point so future work does not treat the 
 4. Keep HTTP prerequisite parsing and refusal mapping in helper boundaries, not in the router or deep domain modules.
 5. Keep provider, bridge, canonical-event, and correlation internals in their existing domain/infrastructure modules unless a later intentional slice changes ownership.
 6. Treat Slice 11 as stabilization and architecture lock, not behavior redesign.
+7. Treat Slice 12 seam work as identity foundation behind the extracted handlers, not as a reason to re-thicken `connectshyft.ts`.
 
 ## Completed sequence
 
@@ -192,6 +194,28 @@ Completed:
 - thin-router delegation for all in-scope ConnectShyft route families
 - production frontend build independence from test-only TypeScript surface
 
+### Slice 12
+
+Introduced the PeopleCore identity foundation beneath the already-extracted ConnectShyft route family:
+
+- PeopleCore persistence-backed identity tables and contracts
+- app-facing PeopleCore stores and services
+- ConnectShyft-to-PeopleCore identity seam adapter
+- best-effort provisional identity and resolver-review hooks behind the seam
+- architecture documentation locking current ownership and deferred work
+
+Preserved:
+
+- exact current ConnectShyft route envelopes
+- current identity-match semantics
+- current inbound subject-resolution semantics
+- current router/handler/helper ownership boundaries
+
+Completed:
+
+- identity convergence foundation without undoing the thin-router extraction
+- a future-safe seam for later identity authority migration
+
 ## Route-family extraction result
 
 The ConnectShyft route-family extraction sequence is complete:
@@ -216,13 +240,16 @@ The extraction sequence intentionally preserved:
 
 Slice 11 was stabilization and architecture lock, not a behavior redesign slice.
 
+Slice 12 adds the identity convergence foundation behind that extracted surface, not a router redesign.
+
 ## Next intentional work
 
-Next work after Slice 11 should be:
+Next work after Slice 12 should be:
 
-- architecture lock and documentation consolidation where not already completed elsewhere
-- PeopleCore / Identity Resolution implementation planning
-- ConnectShyft refinement and model-alignment work as later intentional slices
+- ConnectShyft identity refinement behind the PeopleCore seam
+- controlled migration of more identity authority away from ConnectShyft-local neighbor lookup
+- continued model-alignment work without changing current route envelopes lightly
+- not Application Shell by default
 
 ## Operating rule for future updates
 

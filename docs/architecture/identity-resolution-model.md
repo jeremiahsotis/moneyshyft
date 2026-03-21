@@ -2,7 +2,7 @@
 
 ## Status
 
-Authoritative
+Authoritative for the Slice 12 identity-resolution architecture and seam behavior.
 
 ---
 
@@ -14,6 +14,12 @@ Identity resolution is:
 - explainable
 - tunable
 - non-ML (v1)
+
+Current Slice 12 behavior also requires:
+
+- preserving existing ConnectShyft route and module outcomes
+- introducing a seam before replacing ConnectShyft-local ownership
+- allowing work to continue when identity is unresolved
 
 ---
 
@@ -59,7 +65,21 @@ Identity resolution is:
 
 ---
 
-## 5. Confidence Reasons
+## 5. Current ConnectShyft Seam Outcomes
+
+The Slice 12 seam preserves these ConnectShyft outcomes for exact contact-point resolution:
+
+- verified non-shared exact match -> auto-merge allowed
+- no exact match -> no match
+- multiple exact matches -> ambiguous with manual-resolution context
+- shared or unverified conditions -> no-auto-merge
+- deleted-only lookup exclusion where characterized
+
+The seam does not redesign these outputs. It routes identity consultation through PeopleCore-backed lookup and hook foundations while keeping the current ConnectShyft outward behavior stable.
+
+---
+
+## 6. Confidence Reasons
 
 System MUST expose:
 
@@ -71,7 +91,7 @@ No opaque scoring allowed.
 
 ---
 
-## 6. Friction Model
+## 7. Friction Model
 
 ### very_low
 
@@ -99,7 +119,7 @@ No opaque scoring allowed.
 
 ---
 
-## 7. Resolver Workflow
+## 8. Resolver Workflow
 
 Resolvers handle:
 
@@ -111,7 +131,7 @@ Resolvers handle:
 
 ---
 
-## 8. Resolver Review Object
+## 9. Resolver Review Object
 
 Must include:
 
@@ -126,17 +146,21 @@ Must include:
 - resolution_reason
 - impact_summary
 
+Slice 12 now persists `ResolverReview` records in PeopleCore and can create them through non-breaking seam hooks on ambiguous ConnectShyft paths.
+
 ---
 
-## 9. Provisional Identity
+## 10. Provisional Identity
 
 - created under uncertainty
 - fully usable
 - subject to later resolution
 
+Slice 12 now includes best-effort provisional-person creation hooks behind the seam for safe inbound `no_match` flows. These hooks do not replace ConnectShyft neighbor creation at the API boundary.
+
 ---
 
-## 10. Create-New Requirements
+## 11. Create-New Requirements
 
 Required:
 
@@ -154,7 +178,7 @@ Plus at least one:
 
 ---
 
-## 11. Operational Conditions
+## 12. Operational Conditions
 
 ContactPoint states influence confidence:
 
@@ -165,8 +189,26 @@ ContactPoint states influence confidence:
 
 ---
 
-## 12. Non-Goals
+## 13. Deferred Work
+
+Still deferred beyond Slice 12:
+
+- broad PeopleCore-driven candidate scoring inside ConnectShyft flows
+- resolver UI
+- full rebinding mechanics
+- replacement of ConnectShyft neighbor APIs with PeopleCore person APIs
+- Application Shell work
+
+---
+
+## 14. Non-Goals
 
 - full automation
 - silent identity decisions
 - blocking work until resolved
+
+---
+
+## 15. Slice 13 Target
+
+Slice 13 should focus on ConnectShyft identity refinement and a controlled migration of more identity authority behind the seam while preserving current route contracts.
