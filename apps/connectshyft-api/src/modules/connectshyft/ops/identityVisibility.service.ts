@@ -1,16 +1,18 @@
 import { normalizePhone } from '../../../../../../domains/communication';
-import {
-  AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter,
-  type ConnectShyftPeopleCoreIdentityCandidateLookup,
-} from '../peoplecoreIdentityAdapter';
+import { AsyncPeopleCoreService } from '../../peoplecore/service';
 import {
   evaluateConnectShyftIdentityBoundary,
-  type ConnectShyftIdentityBoundaryResult,
+  type ConnectShyftIdentityBoundaryNeighbor,
 } from '../identityBoundary';
 import { KnexConnectShyftNeighborStore } from '../neighbors';
-import { resolveConnectShyftPhoneNormalizationContext } from '../phoneIdentityContext';
 
+const DEFAULT_PHONE_COUNTRY = 'US';
 const INTERNAL_ACTOR_ROLES = ['SYSTEM_ADMIN'] as const;
+
+type ConnectShyftPeopleCoreLookup = {
+  peopleCoreAvailable: boolean;
+  currentPersonIds: string[];
+};
 
 export type ConnectShyftIdentityVisibility = {
   phone: string;
@@ -40,6 +42,11 @@ export type ConnectShyftIdentityVisibilityReadResult =
     };
   };
 
+const normalizeOptionalEnvValue = (value: string | undefined): string | undefined => {
+  const normalized = value?.trim();
+  return normalized && normalized.length > 0 ? normalized : undefined;
+};
+
 const uniqueSortedStrings = (values: string[]): string[] =>
   Array.from(
     new Set(
@@ -49,44 +56,6 @@ const uniqueSortedStrings = (values: string[]): string[] =>
         .filter((value) => value.length > 0),
     ),
   ).sort((left, right) => left.localeCompare(right));
-
-const collectDistinctCurrentPersonIds = (
-  lookup: ConnectShyftPeopleCoreIdentityCandidateLookup,
-): string[] =>
-  uniqueSortedStrings(
-    lookup.peopleCoreCurrentLinks
-      .filter((link) => link.subjectType === 'person' && link.isCurrent !== false)
-      .map((link) => link.subjectId),
-  );
-
-const collectExactMatchNeighborIds = (
-  lookup: ConnectShyftPeopleCoreIdentityCandidateLookup,
-): string[] => {
-  if (!lookup.normalizedContactPointValue) {
-    return [];
-  }
-
-  return uniqueSortedStrings(
-    lookup.tenantNeighbors
-      .filter((neighbor) =>
-        neighbor.phones.some((phone) => phone.value === lookup.normalizedContactPointValue))
-      .map((neighbor) => neighbor.neighborId),
-  );
-};
-
-const hasLegacySameSubjectProof = (
-  lookup: ConnectShyftPeopleCoreIdentityCandidateLookup,
-  legacyResult: Extract<ConnectShyftIdentityBoundaryResult, { ok: true }>,
-): boolean => {
-  const legacyCandidateNeighborIds = uniqueSortedStrings(
-    legacyResult.data.identityMatch.candidateNeighborIds,
-  );
-  const tenantExactMatchNeighborIds = collectExactMatchNeighborIds(lookup);
-
-  return legacyCandidateNeighborIds.length === 1
-    && tenantExactMatchNeighborIds.length === 1
-    && tenantExactMatchNeighborIds[0] === legacyCandidateNeighborIds[0];
-};
 
 const buildCandidateConfidenceList = (
   candidateIds: string[],
@@ -103,57 +72,86 @@ const buildCandidateConfidenceList = (
   }));
 };
 
-const buildForcedPeopleCoreAmbiguousVisibility = (
-  phone: string,
-  legacyResult: ConnectShyftIdentityBoundaryResult,
-): ConnectShyftIdentityVisibility => {
-  const legacyCandidates = legacyResult.ok
-    ? legacyResult.data.identityMatch.candidateNeighborIds
-    : (legacyResult.data?.identityMatch?.candidateNeighborIds || []);
+const buildPhoneNormalizationContext = () => ({
+  defaultCountry:
+    normalizeOptionalEnvValue(process.env.CONNECTSHYFT_PHONE_DEFAULT_COUNTRY)
+    || DEFAULT_PHONE_COUNTRY,
+  defaultAreaCode: normalizeOptionalEnvValue(process.env.CONNECTSHYFT_PHONE_DEFAULT_AREA_CODE),
+  source: 'user_entered' as const,
+});
 
-  return {
-    phone,
-    resolution: 'ambiguous',
-    source: 'peoplecore',
-    candidates: buildCandidateConfidenceList(legacyCandidates),
-  };
+const collectExactMatchNeighborIds = (
+  neighbors: ConnectShyftIdentityBoundaryNeighbor[],
+  normalizedPhone: string,
+): string[] =>
+  uniqueSortedStrings(
+    neighbors
+      .filter((neighbor) => neighbor.phones.some((phone) => phone.value === normalizedPhone))
+      .map((neighbor) => neighbor.neighborId),
+  );
+
+const loadPeopleCoreLookup = async (input: {
+  tenantId: string;
+  normalizedPhone: string;
+}): Promise<ConnectShyftPeopleCoreLookup> => {
+  const peopleCoreService = new AsyncPeopleCoreService();
+
+  try {
+    const contactPoints = await peopleCoreService.listContactPointsByNormalizedValue({
+      tenantId: input.tenantId,
+      type: 'phone',
+      normalizedValue: input.normalizedPhone,
+    });
+
+    const currentLinks = (
+      await Promise.all(
+        contactPoints.map((contactPoint) =>
+          peopleCoreService.listCurrentContactPointLinks({
+            tenantId: input.tenantId,
+            contactPointId: contactPoint.id,
+            subjectType: 'person',
+          })),
+      )
+    ).flat();
+
+    return {
+      peopleCoreAvailable: true,
+      currentPersonIds: uniqueSortedStrings(
+        currentLinks
+          .filter((link) => link.isCurrent !== false && link.subjectType === 'person')
+          .map((link) => link.subjectId),
+      ),
+    };
+  } catch (_error) {
+    return {
+      peopleCoreAvailable: false,
+      currentPersonIds: [],
+    };
+  }
 };
 
-const mapLegacyResultToVisibility = (
-  phone: string,
-  legacyResult: ConnectShyftIdentityBoundaryResult,
-): ConnectShyftIdentityVisibility => {
-  if (!legacyResult.ok) {
+const mapLegacyResultToVisibility = (input: {
+  phone: string;
+  legacyResult: ReturnType<typeof evaluateConnectShyftIdentityBoundary>;
+}): ConnectShyftIdentityVisibility => {
+  if (!input.legacyResult.ok) {
     return {
-      phone,
+      phone: input.phone,
       resolution: 'ambiguous',
       source: 'legacy',
       candidates: buildCandidateConfidenceList(
-        legacyResult.data?.identityMatch?.candidateNeighborIds || [],
+        input.legacyResult.data?.identityMatch?.candidateNeighborIds || [],
       ),
     };
   }
 
-  const selectedId = legacyResult.data.identityMatch.matchedNeighborId || undefined;
+  const selectedId = input.legacyResult.data.identityMatch.matchedNeighborId || undefined;
   return {
-    phone,
+    phone: input.phone,
     resolution: selectedId ? 'single_match' : 'no_match',
     source: 'legacy',
     ...(selectedId ? { selectedId } : {}),
   };
-};
-
-const createIdentityLookupAdapter = () => {
-  const neighborStore = new KnexConnectShyftNeighborStore();
-
-  return new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
-    async (tenantId) => neighborStore.listActiveIdentityBoundaryNeighborsByTenant(tenantId),
-    async (tenantId, normalizedContactPointValue) =>
-      neighborStore.listActiveIdentityBoundaryNeighborsByPhoneValue(
-        tenantId,
-        normalizedContactPointValue,
-      ),
-  );
 };
 
 export const readConnectShyftIdentityVisibility = async (input: {
@@ -163,7 +161,7 @@ export const readConnectShyftIdentityVisibility = async (input: {
 }): Promise<ConnectShyftIdentityVisibilityReadResult> => {
   const normalizedPhone = normalizePhone(
     input.phone.trim(),
-    resolveConnectShyftPhoneNormalizationContext('user_entered'),
+    buildPhoneNormalizationContext(),
   );
 
   if (!normalizedPhone.ok) {
@@ -185,11 +183,19 @@ export const readConnectShyftIdentityVisibility = async (input: {
     };
   }
 
-  const lookupAdapter = createIdentityLookupAdapter();
-  const lookup = await lookupAdapter.evaluateIdentityCandidatesForContactPoint({
-    tenantId: input.tenantId,
-    contactPointValue: normalizedPhone.phone.normalizedE164,
-  });
+  const neighborStore = new KnexConnectShyftNeighborStore();
+  const normalizedValue = normalizedPhone.phone.normalizedE164;
+  const [peopleCoreLookup, candidateNeighbors, tenantNeighbors] = await Promise.all([
+    loadPeopleCoreLookup({
+      tenantId: input.tenantId,
+      normalizedPhone: normalizedValue,
+    }),
+    neighborStore.listActiveIdentityBoundaryNeighborsByPhoneValue(
+      input.tenantId,
+      normalizedValue,
+    ),
+    neighborStore.listActiveIdentityBoundaryNeighborsByTenant(input.tenantId),
+  ]);
 
   const legacyResult = evaluateConnectShyftIdentityBoundary({
     actorRoles: [...INTERNAL_ACTOR_ROLES],
@@ -197,30 +203,48 @@ export const readConnectShyftIdentityVisibility = async (input: {
     orgUnitId: input.orgUnitId,
     contactPoint: {
       label: 'mobile',
-      value: normalizedPhone.phone.normalizedE164,
+      value: normalizedValue,
       isShared: false,
       verificationStatus: 'verified',
     },
-  }, lookup.candidateNeighbors);
+  }, candidateNeighbors);
 
-  const currentPersonIds = lookup.peopleCoreAvailable
-    ? collectDistinctCurrentPersonIds(lookup)
-    : [];
-  const peopleCoreForcesAmbiguous = currentPersonIds.length > 1
-    || (
-      currentPersonIds.length === 1
-      && legacyResult.ok
-      && legacyResult.code === 'CONNECTSHYFT_IDENTITY_MATCH_AUTO_MERGE_ALLOWED'
-      && !hasLegacySameSubjectProof(lookup, legacyResult)
+  const legacyCandidateIds = legacyResult.ok
+    ? uniqueSortedStrings(legacyResult.data.identityMatch.candidateNeighborIds)
+    : uniqueSortedStrings(legacyResult.data?.identityMatch?.candidateNeighborIds || []);
+  const tenantExactMatchNeighborIds = collectExactMatchNeighborIds(tenantNeighbors, normalizedValue);
+  const peopleCoreForcesAmbiguous = peopleCoreLookup.peopleCoreAvailable
+    && (
+      peopleCoreLookup.currentPersonIds.length > 1
+      || (
+        peopleCoreLookup.currentPersonIds.length === 1
+        && legacyResult.ok
+        && legacyResult.code === 'CONNECTSHYFT_IDENTITY_MATCH_AUTO_MERGE_ALLOWED'
+        && !(
+          legacyCandidateIds.length === 1
+          && tenantExactMatchNeighborIds.length === 1
+          && tenantExactMatchNeighborIds[0] === legacyCandidateIds[0]
+        )
+      )
     );
+
+  if (peopleCoreForcesAmbiguous) {
+    return {
+      ok: true,
+      data: {
+        phone: normalizedValue,
+        resolution: 'ambiguous',
+        source: 'peoplecore',
+        candidates: buildCandidateConfidenceList(legacyCandidateIds),
+      },
+    };
+  }
 
   return {
     ok: true,
-    data: peopleCoreForcesAmbiguous
-      ? buildForcedPeopleCoreAmbiguousVisibility(
-        normalizedPhone.phone.normalizedE164,
-        legacyResult,
-      )
-      : mapLegacyResultToVisibility(normalizedPhone.phone.normalizedE164, legacyResult),
+    data: mapLegacyResultToVisibility({
+      phone: normalizedValue,
+      legacyResult,
+    }),
   };
 };

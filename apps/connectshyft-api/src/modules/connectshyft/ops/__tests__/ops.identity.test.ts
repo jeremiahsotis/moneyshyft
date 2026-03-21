@@ -1,6 +1,7 @@
 // @ts-nocheck
 import request from 'supertest';
-import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from '../../peoplecoreIdentityAdapter';
+import { AsyncPeopleCoreService } from '../../../peoplecore/service';
+import { KnexConnectShyftNeighborStore } from '../../neighbors';
 import {
   buildApp,
   buildHeaders,
@@ -16,12 +17,9 @@ describe('connectshyft ops identity visibility route', () => {
 
   it('surfaces identity ambiguity when PeopleCore current links disagree with the legacy winner', async () => {
     jest.spyOn(
-      AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter.prototype,
-      'evaluateIdentityCandidatesForContactPoint',
-    ).mockResolvedValue({
-      normalizedContactPointValue: '+12605551219',
-      peopleCoreAvailable: true,
-      peopleCoreContactPoints: [
+      AsyncPeopleCoreService.prototype,
+      'listContactPointsByNormalizedValue',
+    ).mockResolvedValue([
         {
           id: 'contact-point-19',
           tenantId: 'tenant-connectshyft-f1',
@@ -35,40 +33,58 @@ describe('connectshyft ops identity visibility route', () => {
           createdAt: '2026-03-21T12:00:00.000Z',
           updatedAt: '2026-03-21T12:00:00.000Z',
         },
-      ],
-      peopleCoreCurrentLinks: [
+      ]);
+    jest.spyOn(
+      AsyncPeopleCoreService.prototype,
+      'listCurrentContactPointLinks',
+    ).mockResolvedValue([
         {
           id: 'link-19-a',
-          tenantId: 'tenant-connectshyft-f1',
           contactPointId: 'contact-point-19',
           subjectType: 'person',
           subjectId: 'person-19-a',
-          relationshipType: 'self',
+          linkType: 'self',
+          confidenceBand: 'high',
           isCurrent: true,
-          sourceSystem: 'peoplecore',
-          sourceRecordId: null,
-          effectiveFrom: '2026-03-21T12:00:00.000Z',
-          effectiveTo: null,
+          isPrimary: true,
+          manuallyConfirmed: false,
+          confirmationSource: undefined,
+          firstLinkedAt: '2026-03-21T12:00:00.000Z',
+          lastConfirmedAt: undefined,
+          lastUsedAt: undefined,
+          linkedBy: 'system',
+          linkedByUserId: undefined,
+          unlinkReason: undefined,
+          unlinkedAt: undefined,
           createdAt: '2026-03-21T12:00:00.000Z',
           updatedAt: '2026-03-21T12:00:00.000Z',
         },
         {
           id: 'link-19-b',
-          tenantId: 'tenant-connectshyft-f1',
           contactPointId: 'contact-point-19',
           subjectType: 'person',
           subjectId: 'person-19-b',
-          relationshipType: 'self',
+          linkType: 'self',
+          confidenceBand: 'high',
           isCurrent: true,
-          sourceSystem: 'peoplecore',
-          sourceRecordId: null,
-          effectiveFrom: '2026-03-21T12:00:00.000Z',
-          effectiveTo: null,
+          isPrimary: false,
+          manuallyConfirmed: false,
+          confirmationSource: undefined,
+          firstLinkedAt: '2026-03-21T12:00:00.000Z',
+          lastConfirmedAt: undefined,
+          lastUsedAt: undefined,
+          linkedBy: 'system',
+          linkedByUserId: undefined,
+          unlinkReason: undefined,
+          unlinkedAt: undefined,
           createdAt: '2026-03-21T12:00:00.000Z',
           updatedAt: '2026-03-21T12:00:00.000Z',
         },
-      ],
-      tenantNeighbors: [
+      ]);
+    jest.spyOn(
+      KnexConnectShyftNeighborStore.prototype,
+      'listActiveIdentityBoundaryNeighborsByTenant',
+    ).mockResolvedValue([
         {
           neighborId: 'neighbor-legacy-19',
           phones: [
@@ -80,8 +96,11 @@ describe('connectshyft ops identity visibility route', () => {
             },
           ],
         },
-      ],
-      candidateNeighbors: [
+      ]);
+    jest.spyOn(
+      KnexConnectShyftNeighborStore.prototype,
+      'listActiveIdentityBoundaryNeighborsByPhoneValue',
+    ).mockResolvedValue([
         {
           neighborId: 'neighbor-legacy-19',
           phones: [
@@ -93,8 +112,7 @@ describe('connectshyft ops identity visibility route', () => {
             },
           ],
         },
-      ],
-    } as any);
+      ]);
 
     const response = await request(buildApp())
       .get('/api/v1/connectshyft/ops/identity/%2B12605551219')
@@ -122,16 +140,17 @@ describe('connectshyft ops identity visibility route', () => {
 
   it('surfaces the no-match path without creating any write-side identity behavior', async () => {
     jest.spyOn(
-      AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter.prototype,
-      'evaluateIdentityCandidatesForContactPoint',
-    ).mockResolvedValue({
-      normalizedContactPointValue: '+12605559999',
-      peopleCoreAvailable: false,
-      peopleCoreContactPoints: [],
-      peopleCoreCurrentLinks: [],
-      tenantNeighbors: [],
-      candidateNeighbors: [],
-    } as any);
+      AsyncPeopleCoreService.prototype,
+      'listContactPointsByNormalizedValue',
+    ).mockResolvedValue([]);
+    jest.spyOn(
+      KnexConnectShyftNeighborStore.prototype,
+      'listActiveIdentityBoundaryNeighborsByTenant',
+    ).mockResolvedValue([]);
+    jest.spyOn(
+      KnexConnectShyftNeighborStore.prototype,
+      'listActiveIdentityBoundaryNeighborsByPhoneValue',
+    ).mockResolvedValue([]);
 
     const response = await request(buildApp())
       .get('/api/v1/connectshyft/ops/identity/%2B12605559999')
