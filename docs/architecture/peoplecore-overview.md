@@ -1,5 +1,13 @@
 # PeopleCore Overview
 
+NOTE:
+This document is a high-level overview.
+
+The authoritative PeopleCore domain model is defined in:
+docs/architecture/peoplecore-domain-model.md
+
+In case of conflict, the domain model document is authoritative.
+
 ## Purpose
 
 PeopleCore is the source of truth for person-related data across ShyftUnity.
@@ -26,20 +34,25 @@ It does not own:
 ## Core principles
 
 ### 1. Identity is messy
+
 Phone numbers, emails, and addresses are identity signals, not identity truth.
 
 ### 2. Contact points are first-class
+
 A phone number or email exists independently from any one person and may be shared, stale, or reassigned.
 
 ### 3. Identity can be provisional
+
 A person may exist in a provisional state until a resolver confirms or corrects the identity.
 
 ### 4. Correction must preserve history
+
 Identity correction must reconcile and rebind, not silently rewrite history.
 
 ## Current object model
 
 ### Person
+
 Represents a person record in one of these states:
 
 - `active_confirmed`
@@ -49,18 +62,23 @@ Represents a person record in one of these states:
 - `merged`
 
 ### Household
+
 Represents a real group container. It is not inferred automatically from shared address alone.
 
 ### HouseholdMembership
+
 Tracks who belongs to a household, in what role, and whether that membership is current.
 
 ### ContactPoint
+
 Represents the normalized communication/identity signal itself.
 
 ### ContactPointLink
+
 Represents the relationship between a ContactPoint and either a Person or Household.
 
 ### ResolverReview
+
 Represents an identity ambiguity, duplicate, reassignment, or review task that should be handled by a designated resolver.
 
 ## ContactPoint states

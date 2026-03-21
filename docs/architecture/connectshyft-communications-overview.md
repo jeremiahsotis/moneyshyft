@@ -1,5 +1,13 @@
 # ConnectShyft Communications Overview
 
+NOTE:
+This document provides a ConnectShyft subsystem overview.
+
+The canonical cross-system architecture for PeopleCore, Identity Resolution, and ConnectShyft is defined in:
+docs/architecture/peoplecore-identity-connectshyft-architecture.md
+
+In case of conflict, the architecture memo is authoritative.
+
 ## Purpose
 
 ConnectShyft is the communications substrate for ShyftUnity.
@@ -29,9 +37,11 @@ It does not own:
 ConnectShyft should work in two modes:
 
 ### 1. Standalone now
+
 Before CaseShyft is fully ready, ConnectShyft can act as the operational front door for volunteers and staff.
 
 ### 2. Embedded later
+
 Long-term, CaseShyft should become the main operational workspace, with ConnectShyft surfaces embedded inside it.
 
 That means ConnectShyft should be built as a communication domain, not as a second case-management system.
@@ -46,6 +56,7 @@ A conversation is anchored to:
 A conversation is not permanently anchored to a Person.
 
 Why:
+
 - identity can change later
 - contact points can be shared or reassigned
 - communication history must survive identity correction
