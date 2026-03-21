@@ -3,10 +3,12 @@ import {
   type ConnectShyftIdentityBoundaryNeighbor,
 } from '../identityBoundary';
 import { ConnectShyftSubjectResolver } from '../identityResolver';
+import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from '../peoplecoreIdentityAdapter';
 
 const buildNeighbor = (
   neighborId: string,
   value: string,
+  overrides: Partial<ConnectShyftIdentityBoundaryNeighbor['phones'][number]> = {},
 ): ConnectShyftIdentityBoundaryNeighbor => ({
   neighborId,
   phones: [
@@ -15,6 +17,7 @@ const buildNeighbor = (
       value,
       isShared: false,
       verificationStatus: 'verified',
+      ...overrides,
     },
   ],
 });
@@ -35,6 +38,117 @@ const buildResolver = (
 };
 
 describe('connectshyft identity resolver', () => {
+  it('returns single_match through the PeopleCore seam while preserving current resolver behavior', async () => {
+    const peopleCoreService = {
+      listContactPointsByNormalizedValue: jest.fn(async () => [
+        {
+          id: 'contact-point-1',
+          tenantId: 'tenant-a',
+          type: 'phone',
+          normalizedValue: '+12605551216',
+          status: 'active_personal',
+          firstSeenAt: '2026-03-21T12:00:00.000Z',
+          lastSeenAt: '2026-03-21T12:00:00.000Z',
+          suspectedShared: false,
+          confirmedShared: false,
+          reassignmentSuspected: false,
+          createdAt: '2026-03-21T12:00:00.000Z',
+          updatedAt: '2026-03-21T12:00:00.000Z',
+        },
+      ]),
+      listCurrentContactPointLinks: jest.fn(async () => [
+        {
+          id: 'link-1',
+          contactPointId: 'contact-point-1',
+          subjectType: 'person',
+          subjectId: 'person-1',
+          linkType: 'primary',
+          confidenceBand: 'high',
+          isCurrent: true,
+          isPrimary: true,
+          manuallyConfirmed: false,
+          firstLinkedAt: '2026-03-21T12:00:00.000Z',
+          linkedBy: 'system',
+          createdAt: '2026-03-21T12:00:00.000Z',
+          updatedAt: '2026-03-21T12:00:00.000Z',
+        },
+      ]),
+    };
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [buildNeighbor('neighbor-1', '+12605551216')],
+      async () => [buildNeighbor('neighbor-1', '+12605551216')],
+      peopleCoreService as any,
+    );
+    const resolver = new ConnectShyftSubjectResolver(adapter);
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '(260) 555-1216',
+    })).resolves.toEqual({
+      type: 'single_match',
+      neighborId: 'neighbor-1',
+      normalizedContactPoint: '+12605551216',
+    });
+
+    expect(peopleCoreService.listContactPointsByNormalizedValue).toHaveBeenCalledWith({
+      tenantId: 'tenant-a',
+      type: 'phone',
+      normalizedValue: '+12605551216',
+    });
+  });
+
+  it('passes hook context into the seam for inbound no-match handling', async () => {
+    const evaluateMatch = jest.fn(async () => ({
+      ok: true as const,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH' as const,
+      httpStatus: 200 as const,
+      data: {
+        identityMatch: {
+          decision: 'NO_AUTO_MERGE' as const,
+          reason: 'NO_EXACT_CONTACT_POINT_MATCH' as const,
+          autoMergeAllowed: false,
+          contactPoint: {
+            value: '+12605551217',
+            isShared: false,
+            verificationStatus: 'verified' as const,
+          },
+          matchedNeighborId: null,
+          candidateCount: 0,
+          candidateNeighborIds: [],
+          exactMatches: [],
+        },
+        idempotency: {
+          key: 'inbound-subject:tenant-a:org-a:(260)555-1217',
+          semantics: 'REPLAY_SAFE' as const,
+        },
+      },
+    }));
+    const resolver = new ConnectShyftSubjectResolver({
+      evaluateMatch,
+    });
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '(260) 555-1217',
+    })).resolves.toEqual({
+      type: 'no_match',
+      normalizedContactPoint: '+12605551217',
+    });
+
+    expect(evaluateMatch).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      hookContext: {
+        createProvisionalOnNoMatch: true,
+        createResolverReviewOnAmbiguous: true,
+        triggerSourceType: 'connectshyft_inbound_subject_resolution',
+        requestedByUserId: 'system-connectshyft-identity-seam',
+      },
+    }));
+  });
+
   it('returns single_match for a unique tenant-scoped phone match', async () => {
     const resolver = buildResolver({
       'tenant-a': [
@@ -128,6 +242,26 @@ describe('connectshyft identity resolver', () => {
     })).resolves.toEqual({
       type: 'no_match',
       normalizedContactPoint: '+12605551213',
+    });
+  });
+
+  it('returns single_match for a unique shared contact even when auto-merge remains blocked', async () => {
+    const resolver = buildResolver({
+      'tenant-a': [
+        buildNeighbor('neighbor-1', '+12605551215', {
+          isShared: true,
+        }),
+      ],
+    });
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '(260) 555-1215',
+    })).resolves.toEqual({
+      type: 'single_match',
+      neighborId: 'neighbor-1',
+      normalizedContactPoint: '+12605551215',
     });
   });
 

@@ -350,6 +350,68 @@ describe('connectshyft neighbor update and delete route characterization', () =>
     expect(updateSpy).not.toHaveBeenCalled();
   });
 
+  it('returns the current duplicate-phone refusal envelope for update requests', async () => {
+    jest.spyOn(AsyncConnectShyftNeighborService.prototype, 'updateNeighbor').mockResolvedValue({
+      ok: false,
+      code: 'CONNECTSHYFT_PHONE_DUPLICATE',
+      message: 'That phone number is already assigned to another current neighbor.',
+      data: {
+        reason: 'duplicate_phone',
+        fieldErrors: [
+          {
+            field: 'phones',
+            reason: 'duplicate_phone',
+            message: 'That phone number is already assigned to another current neighbor.',
+          },
+        ],
+      },
+    } as any);
+    jest.spyOn(executePlatformMutationModule, 'executePlatformMutation').mockImplementation(
+      async (input: { mutation: (trx: unknown) => Promise<unknown> }) => input.mutation({}),
+    );
+
+    const app = buildApp();
+    const response = await request(app)
+      .put(`/api/v1/connectshyft/neighbors/${UPDATE_NEIGHBOR_ID}`)
+      .set(buildHeaders({
+        activeThreadNeighborIds: [UPDATE_NEIGHBOR_ID],
+      }))
+      .send({
+        orgUnitId: TEST_ORG_UNIT_ID,
+        firstName: 'Mina',
+        lastName: 'Lopez',
+        prefersTexting: 'YES',
+        phones: [
+          {
+            label: 'mobile',
+            value: '+1 (260) 555-0199',
+            verificationStatus: 'verified',
+          },
+        ],
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_PHONE_DUPLICATE',
+      message: 'That phone number is already assigned to another current neighbor.',
+      refusalType: 'business',
+      data: {
+        reason: 'duplicate_phone',
+        fieldErrors: [
+          {
+            field: 'phones',
+            reason: 'duplicate_phone',
+          },
+        ],
+        scope: {
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+        },
+      },
+    });
+  });
+
   it('returns the current delete success envelope and persisted side-effect markers', async () => {
     const deletedNeighbor = buildNeighbor({
       neighborId: DELETE_NEIGHBOR_ID,

@@ -14,10 +14,12 @@ import {
   type ConnectShyftIdentityBoundaryContactPoint,
   type ConnectShyftIdentityBoundaryDecision as ConnectShyftIdentityMatchDecision,
   type ConnectShyftIdentityBoundaryNeighbor,
+  type ConnectShyftPeopleCoreIdentityHookContext,
   type ConnectShyftIdentityBoundaryManualResolutionContext as ConnectShyftIdentityManualResolutionContext,
   type ConnectShyftIdentityBoundaryReplay,
   type ConnectShyftIdentityBoundaryResult as ConnectShyftIdentityMatchResult,
 } from './identityBoundary';
+import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from './peoplecoreIdentityAdapter';
 import { resolveConnectShyftPhoneNormalizationContext } from './phoneIdentityContext';
 import { appendConnectShyftCommunicationAuditEntry } from './communicationAuditLog';
 
@@ -176,9 +178,11 @@ export type ConnectShyftMergeNeighborCommand = NeighborActorContext & {
 
 export type ConnectShyftIdentityMatchCommand = NeighborActorContext & {
   tenantId: string;
+  orgUnitId?: string;
   contactPoint: ConnectShyftIdentityBoundaryContactPoint;
   excludeNeighborId?: string;
   idempotencyKey?: string;
+  hookContext?: ConnectShyftPeopleCoreIdentityHookContext;
 };
 
 export type ConnectShyftCreateInboundNeighborCommand = {
@@ -2646,6 +2650,14 @@ export class ConnectShyftNeighborService {
 
 const defaultNeighborStore = new InMemoryConnectShyftNeighborStore();
 const defaultKnexNeighborStore = new KnexConnectShyftNeighborStore();
+const defaultAsyncIdentityBoundary = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+  async (tenantId) => defaultKnexNeighborStore.listActiveIdentityBoundaryNeighborsByTenant(tenantId),
+  async (tenantId, normalizedContactPointValue) =>
+    defaultKnexNeighborStore.listActiveIdentityBoundaryNeighborsByPhoneValue(
+      tenantId,
+      normalizedContactPointValue,
+    ),
+);
 
 export const connectShyftNeighborService = new ConnectShyftNeighborService(defaultNeighborStore);
 
@@ -3101,7 +3113,10 @@ export class AsyncConnectShyftNeighborService {
   }
 }
 
-export const connectShyftNeighborServiceAsync = new AsyncConnectShyftNeighborService();
+export const connectShyftNeighborServiceAsync = new AsyncConnectShyftNeighborService(
+  defaultKnexNeighborStore,
+  defaultAsyncIdentityBoundary,
+);
 
 export const resolveActiveNeighborForInbound = (
   input: ConnectShyftApplyInboundSmsTextingPreferenceCommand,

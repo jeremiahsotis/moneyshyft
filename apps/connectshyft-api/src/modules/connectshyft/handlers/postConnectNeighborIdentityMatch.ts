@@ -19,9 +19,15 @@ export const postConnectNeighborIdentityMatch = async (req: Request, res: Respon
   const matched = await connectShyftNeighborServiceAsync.evaluateIdentityMatch({
     actorRoles: accessContext.actorRoles,
     tenantId: accessContext.context.tenantId,
+    orgUnitId: accessContext.context.orgUnitId,
     contactPoint: accessContext.payload.contactPoint,
     excludeNeighborId: accessContext.payload.excludeNeighborId || undefined,
     idempotencyKey: accessContext.payload.idempotencyKey || undefined,
+    hookContext: {
+      createResolverReviewOnAmbiguous: true,
+      triggerSourceType: 'connectshyft_identity_match',
+      requestedByUserId: accessContext.actorUserId || undefined,
+    },
   });
 
   const identityDecision = matched.ok
