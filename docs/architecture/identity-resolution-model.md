@@ -2,7 +2,7 @@
 
 ## Status
 
-Authoritative for the Slice 12 identity-resolution architecture and seam behavior.
+Authoritative for the Slice 13 identity-resolution architecture and seam behavior.
 
 ---
 
@@ -20,6 +20,12 @@ Current Slice 12 behavior also requires:
 - preserving existing ConnectShyft route and module outcomes
 - introducing a seam before replacing ConnectShyft-local ownership
 - allowing work to continue when identity is unresolved
+
+Slice 13 adds the governing precedence rule:
+
+- PeopleCore can block certainty
+- PeopleCore cannot assert person-to-neighbor identity equivalence in this slice
+- disagreement becomes explicit ambiguity
 
 ---
 
@@ -67,15 +73,40 @@ Current Slice 12 behavior also requires:
 
 ## 5. Current ConnectShyft Seam Outcomes
 
-The Slice 12 seam preserves these ConnectShyft outcomes for exact contact-point resolution:
+The Slice 13 seam preserves these ConnectShyft outcomes for exact contact-point resolution:
 
-- verified non-shared exact match -> auto-merge allowed
-- no exact match -> no match
+- verified non-shared exact match -> auto-merge allowed only when the legacy winner stays aligned with the PeopleCore-backed read path
+- no exact match -> no match when PeopleCore is unavailable, has no current person link, or has one current person link and legacy resolution still has no winner
 - multiple exact matches -> ambiguous with manual-resolution context
+- PeopleCore multi-person current-link result -> ambiguous with manual-resolution context
+- cross-system disagreement between a single current PeopleCore person and a different legacy concrete winner -> ambiguous with manual-resolution context
 - shared or unverified conditions -> no-auto-merge
 - deleted-only lookup exclusion where characterized
 
 The seam does not redesign these outputs. It routes identity consultation through PeopleCore-backed lookup and hook foundations while keeping the current ConnectShyft outward behavior stable.
+
+### 5.1 Ambiguity categories
+
+Slice 13 documents three distinct ambiguity categories:
+
+- legacy multi-neighbor ambiguity
+- PeopleCore multi-person ambiguity
+- cross-system disagreement ambiguity
+
+### 5.2 Decision flow
+
+```text
+PeopleCore available?
+  NO -> preserve legacy behavior
+  YES -> current person links?
+    0 -> preserve legacy behavior
+    >1 -> ambiguous
+    1 -> legacy outcome?
+      multiple -> ambiguous
+      single aligned -> preserve current exact-match behavior
+      single disagreement -> ambiguous
+      none -> no-match (unchanged in Slice 13)
+```
 
 ---
 
@@ -156,7 +187,7 @@ Slice 12 now persists `ResolverReview` records in PeopleCore and can create them
 - fully usable
 - subject to later resolution
 
-Slice 12 now includes best-effort provisional-person creation hooks behind the seam for safe inbound `no_match` flows. These hooks do not replace ConnectShyft neighbor creation at the API boundary.
+Slice 12 now includes best-effort provisional-person creation hooks behind the seam for safe inbound `no_match` flows. These hooks do not replace ConnectShyft neighbor creation at the API boundary and do not auto-link a PeopleCore person to a ConnectShyft neighbor.
 
 ---
 
@@ -191,13 +222,15 @@ ContactPoint states influence confidence:
 
 ## 13. Deferred Work
 
-Still deferred beyond Slice 12:
+Still deferred beyond Slice 13:
 
 - broad PeopleCore-driven candidate scoring inside ConnectShyft flows
 - resolver UI
 - full rebinding mechanics
 - replacement of ConnectShyft neighbor APIs with PeopleCore person APIs
 - Application Shell work
+- reconciliation or crosswalk infrastructure between PeopleCore persons and ConnectShyft neighbors
+- automated merge or scoring engines for cross-system identity decisions
 
 ---
 
@@ -206,9 +239,16 @@ Still deferred beyond Slice 12:
 - full automation
 - silent identity decisions
 - blocking work until resolved
+- reconciliation
+- crosswalk
+- automatic PeopleCore-to-neighbor linking
+- merge engine
+- scoring engine
 
 ---
 
-## 15. Slice 13 Target
+## 15. Slice 14 Handoff
 
-Slice 13 should focus on ConnectShyft identity refinement and a controlled migration of more identity authority behind the seam while preserving current route contracts.
+The next logical slice after Slice 13 is operationalization of ambiguity and resolver handling while preserving current route contracts.
+
+It is not reconciliation, cross-system equivalence solving, or automatic PeopleCore-to-neighbor linking.
