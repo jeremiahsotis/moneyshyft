@@ -98,6 +98,57 @@ describe('connectshyft identity resolver', () => {
     });
   });
 
+  it('passes hook context into the seam for inbound no-match handling', async () => {
+    const evaluateMatch = jest.fn(async () => ({
+      ok: true as const,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH' as const,
+      httpStatus: 200 as const,
+      data: {
+        identityMatch: {
+          decision: 'NO_AUTO_MERGE' as const,
+          reason: 'NO_EXACT_CONTACT_POINT_MATCH' as const,
+          autoMergeAllowed: false,
+          contactPoint: {
+            value: '+12605551217',
+            isShared: false,
+            verificationStatus: 'verified' as const,
+          },
+          matchedNeighborId: null,
+          candidateCount: 0,
+          candidateNeighborIds: [],
+          exactMatches: [],
+        },
+        idempotency: {
+          key: 'inbound-subject:tenant-a:org-a:(260)555-1217',
+          semantics: 'REPLAY_SAFE' as const,
+        },
+      },
+    }));
+    const resolver = new ConnectShyftSubjectResolver({
+      evaluateMatch,
+    });
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '(260) 555-1217',
+    })).resolves.toEqual({
+      type: 'no_match',
+      normalizedContactPoint: '+12605551217',
+    });
+
+    expect(evaluateMatch).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      hookContext: {
+        createProvisionalOnNoMatch: true,
+        createResolverReviewOnAmbiguous: true,
+        triggerSourceType: 'connectshyft_inbound_subject_resolution',
+        requestedByUserId: 'system-connectshyft-identity-seam',
+      },
+    }));
+  });
+
   it('returns single_match for a unique tenant-scoped phone match', async () => {
     const resolver = buildResolver({
       'tenant-a': [

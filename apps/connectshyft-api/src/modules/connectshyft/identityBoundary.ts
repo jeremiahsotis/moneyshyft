@@ -48,12 +48,23 @@ export type ConnectShyftIdentityBoundaryNeighbor = {
   phones: ConnectShyftIdentityBoundaryPhone[];
 };
 
+export type ConnectShyftPeopleCoreIdentityHookContext = {
+  createProvisionalOnNoMatch?: boolean;
+  createResolverReviewOnAmbiguous?: boolean;
+  triggerSourceType?: string;
+  triggerSourceId?: string;
+  requestedByUserId?: string;
+  conversationId?: string;
+};
+
 export type ConnectShyftIdentityBoundaryRequest = {
   actorRoles: Array<string | null | undefined>;
   tenantId: string;
+  orgUnitId?: string;
   contactPoint: ConnectShyftIdentityBoundaryContactPoint;
   excludeNeighborId?: string;
   idempotencyKey?: string;
+  hookContext?: ConnectShyftPeopleCoreIdentityHookContext;
 };
 
 export type ConnectShyftIdentityBoundaryReplay = {

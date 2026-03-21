@@ -421,7 +421,12 @@ describe('connectshyft identity-match route', () => {
       },
     });
     expect(evaluateSpy).toHaveBeenCalledWith(expect.objectContaining({
+      orgUnitId: TEST_ORG_UNIT_ID,
       idempotencyKey: 'identity-replay-key-header',
+      hookContext: expect.objectContaining({
+        createResolverReviewOnAmbiguous: true,
+        triggerSourceType: 'connectshyft_identity_match',
+      }),
     }));
   });
 

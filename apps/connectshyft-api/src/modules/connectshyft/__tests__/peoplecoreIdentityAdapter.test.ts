@@ -53,6 +53,79 @@ const buildContactPointLink = (contactPointId: string, subjectId: string) => ({
 });
 
 describe('connectshyft peoplecore identity adapter', () => {
+  it('creates provisional PeopleCore foundation on no-match without changing the ConnectShyft result', async () => {
+    const peopleCoreService = {
+      listContactPointsByNormalizedValue: jest.fn(async () => []),
+      listCurrentContactPointLinks: jest.fn(async () => []),
+      createContactPoint: jest.fn(async () => buildContactPoint('contact-point-3', '+12605551220')),
+      createPerson: jest.fn(async () => ({
+        id: 'person-3',
+        tenantId: 'tenant-a',
+        orgUnitId: 'org-a',
+        firstName: 'Unknown',
+        lastName: 'Contact',
+        status: 'active_provisional',
+        createdAt: TIMESTAMP,
+        updatedAt: TIMESTAMP,
+      })),
+      createContactPointLink: jest.fn(async () => ({
+        id: 'link-3',
+        contactPointId: 'contact-point-3',
+        subjectType: 'person',
+        subjectId: 'person-3',
+        linkType: 'unknown',
+        confidenceBand: 'low',
+        isCurrent: true,
+        isPrimary: true,
+        manuallyConfirmed: false,
+        firstLinkedAt: TIMESTAMP,
+        linkedBy: 'system',
+        createdAt: TIMESTAMP,
+        updatedAt: TIMESTAMP,
+      })),
+      listResolverReviews: jest.fn(async () => []),
+      createResolverReview: jest.fn(),
+    };
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [],
+      async () => [],
+      peopleCoreService as any,
+    );
+
+    await expect(adapter.evaluateMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: {
+        label: 'mobile',
+        value: '2605551220',
+        verificationStatus: 'verified',
+      },
+      hookContext: {
+        createProvisionalOnNoMatch: true,
+        triggerSourceType: 'connectshyft_inbound_subject_resolution',
+      },
+    })).resolves.toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH',
+      data: {
+        identityMatch: {
+          matchedNeighborId: null,
+          contactPoint: {
+            value: '+12605551220',
+          },
+        },
+      },
+    });
+
+    expect(peopleCoreService.createPerson).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      status: 'active_provisional',
+    }));
+    expect(peopleCoreService.createContactPointLink).toHaveBeenCalled();
+  });
+
   it('evaluates normalized contact-point candidates through the PeopleCore lookup path before preserving current ConnectShyft candidates', async () => {
     const peopleCoreService = {
       listContactPointsByNormalizedValue: jest.fn(async () => [
@@ -141,6 +214,23 @@ describe('connectshyft peoplecore identity adapter', () => {
   });
 
   it('preserves current ambiguous/manual-resolution behavior when fallback candidates remain ambiguous', async () => {
+    const createResolverReview = jest.fn(async () => ({
+      id: 'resolver-review-ambiguous',
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      reviewType: 'shared_contact_ambiguity',
+      reviewStatus: 'pending',
+      priority: 'high',
+      triggerSourceType: 'connectshyft_identity_match',
+      triggerSourceId: 'identity-match:ambiguous',
+      candidatePersonIds: ['person-1', 'person-2'],
+      contactPointId: 'contact-point-2',
+      confidenceBand: 'high',
+      confidenceReasons: ['Multiple exact contact-point matches require resolver review.'],
+      riskFlags: ['shared_contact_possible'],
+      requestedByUserId: 'user-1',
+      requestedAt: TIMESTAMP,
+    }));
     const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
       async () => [
         buildNeighbor('neighbor-1', '+12605551213'),
@@ -158,16 +248,28 @@ describe('connectshyft peoplecore identity adapter', () => {
           buildContactPointLink('contact-point-2', 'person-1'),
           buildContactPointLink('contact-point-2', 'person-2'),
         ],
+        listResolverReviews: async () => [],
+        createResolverReview,
+        createContactPoint: jest.fn(),
+        createPerson: jest.fn(),
+        createContactPointLink: jest.fn(),
       } as any,
     );
 
     await expect(adapter.evaluateMatch({
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
       contactPoint: {
         label: 'mobile',
         value: '+1 (260) 555-1213',
         verificationStatus: 'verified',
+      },
+      hookContext: {
+        createResolverReviewOnAmbiguous: true,
+        triggerSourceType: 'connectshyft_identity_match',
+        triggerSourceId: 'identity-match:ambiguous',
+        requestedByUserId: 'user-1',
       },
     })).resolves.toMatchObject({
       ok: false,
@@ -183,6 +285,14 @@ describe('connectshyft peoplecore identity adapter', () => {
         },
       },
     });
+
+    expect(createResolverReview).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      triggerSourceType: 'connectshyft_identity_match',
+      triggerSourceId: 'identity-match:ambiguous',
+      requestedByUserId: 'user-1',
+    }));
   });
 
   it('falls back cleanly when PeopleCore persistence is unavailable', async () => {

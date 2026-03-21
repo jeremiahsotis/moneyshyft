@@ -14,6 +14,7 @@ import {
   type ConnectShyftIdentityBoundaryContactPoint,
   type ConnectShyftIdentityBoundaryDecision as ConnectShyftIdentityMatchDecision,
   type ConnectShyftIdentityBoundaryNeighbor,
+  type ConnectShyftPeopleCoreIdentityHookContext,
   type ConnectShyftIdentityBoundaryManualResolutionContext as ConnectShyftIdentityManualResolutionContext,
   type ConnectShyftIdentityBoundaryReplay,
   type ConnectShyftIdentityBoundaryResult as ConnectShyftIdentityMatchResult,
@@ -177,9 +178,11 @@ export type ConnectShyftMergeNeighborCommand = NeighborActorContext & {
 
 export type ConnectShyftIdentityMatchCommand = NeighborActorContext & {
   tenantId: string;
+  orgUnitId?: string;
   contactPoint: ConnectShyftIdentityBoundaryContactPoint;
   excludeNeighborId?: string;
   idempotencyKey?: string;
+  hookContext?: ConnectShyftPeopleCoreIdentityHookContext;
 };
 
 export type ConnectShyftCreateInboundNeighborCommand = {

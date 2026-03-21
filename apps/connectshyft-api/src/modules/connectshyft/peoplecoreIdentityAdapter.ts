@@ -1,5 +1,4 @@
 import { normalizePhone } from '../../../../../domains/communication';
-import type { ContactPoint, ContactPointLink } from '@shyft/contracts';
 import {
   AsyncPeopleCoreService,
   peopleCoreServiceAsync,
@@ -11,20 +10,25 @@ import {
   type ConnectShyftIdentityBoundaryRequest,
   type ConnectShyftIdentityBoundaryResult,
 } from './identityBoundary';
+import {
+  ConnectShyftPeopleCoreIdentityHooks,
+  type ConnectShyftPeopleCoreIdentityLookupSnapshot,
+} from './peoplecoreIdentityHooks';
 import { resolveConnectShyftPhoneNormalizationContext } from './phoneIdentityContext';
 
 type PeopleCoreIdentityLookupService = Pick<
   AsyncPeopleCoreService,
-  'listContactPointsByNormalizedValue' | 'listCurrentContactPointLinks'
+  | 'createContactPoint'
+  | 'createContactPointLink'
+  | 'createPerson'
+  | 'createResolverReview'
+  | 'listContactPointsByNormalizedValue'
+  | 'listCurrentContactPointLinks'
+  | 'listResolverReviews'
 >;
 
-export type ConnectShyftPeopleCoreIdentityCandidateLookup = {
-  normalizedContactPointValue: string | null;
-  peopleCoreAvailable: boolean;
-  peopleCoreContactPoints: ContactPoint[];
-  peopleCoreCurrentLinks: ContactPointLink[];
-  candidateNeighbors: ConnectShyftIdentityBoundaryNeighbor[];
-};
+export type ConnectShyftPeopleCoreIdentityCandidateLookup =
+  ConnectShyftPeopleCoreIdentityLookupSnapshot;
 
 const normalizeContactPointValue = (contactPointValue: string): string | null => {
   const resolved = normalizePhone(
@@ -37,13 +41,14 @@ const normalizeContactPointValue = (contactPointValue: string): string | null =>
 
 const emptyPeopleCoreLookup = () => ({
   peopleCoreAvailable: false,
-  peopleCoreContactPoints: [] as ContactPoint[],
-  peopleCoreCurrentLinks: [] as ContactPointLink[],
+  peopleCoreContactPoints: [] as ConnectShyftPeopleCoreIdentityCandidateLookup['peopleCoreContactPoints'],
+  peopleCoreCurrentLinks: [] as ConnectShyftPeopleCoreIdentityCandidateLookup['peopleCoreCurrentLinks'],
 });
 
 export class AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter
   implements ConnectShyftIdentityBoundaryAdapter {
   private readonly boundaryAdapter: ConnectShyftIdentityBoundaryAdapter;
+  private readonly hooks: ConnectShyftPeopleCoreIdentityHooks;
 
   constructor(
     private readonly loadNeighborsByTenant: (
@@ -55,6 +60,7 @@ export class AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter
     ) => Promise<ConnectShyftIdentityBoundaryNeighbor[]>,
     private readonly peopleCoreService: PeopleCoreIdentityLookupService = peopleCoreServiceAsync,
   ) {
+    this.hooks = new ConnectShyftPeopleCoreIdentityHooks(this.peopleCoreService);
     this.boundaryAdapter = new AsyncInProcessConnectShyftIdentityBoundaryAdapter(
       async (tenantId) => this.loadNeighborsByTenant(tenantId),
       async (tenantId, normalizedContactPointValue) =>
@@ -81,11 +87,7 @@ export class AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter
   private async loadPeopleCoreLookup(input: {
     tenantId: string;
     normalizedContactPointValue: string;
-  }): Promise<{
-    peopleCoreAvailable: boolean;
-    peopleCoreContactPoints: ContactPoint[];
-    peopleCoreCurrentLinks: ContactPointLink[];
-  }> {
+  }): Promise<Omit<ConnectShyftPeopleCoreIdentityCandidateLookup, 'normalizedContactPointValue' | 'candidateNeighbors'>> {
     try {
       const peopleCoreContactPoints = await this.peopleCoreService.listContactPointsByNormalizedValue({
         tenantId: input.tenantId,
@@ -154,9 +156,26 @@ export class AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter
     };
   }
 
-  evaluateMatch(
+  async evaluateMatch(
     input: ConnectShyftIdentityBoundaryRequest,
   ): Promise<ConnectShyftIdentityBoundaryResult> {
-    return Promise.resolve(this.boundaryAdapter.evaluateMatch(input));
+    const normalizedContactPointValue = normalizeContactPointValue(input.contactPoint.value);
+    const lookup = normalizedContactPointValue
+      ? await this.evaluateIdentityCandidatesByNormalizedContactPoint({
+        tenantId: input.tenantId,
+        normalizedContactPointValue,
+      })
+      : null;
+    const result = await Promise.resolve(this.boundaryAdapter.evaluateMatch(input));
+
+    if (lookup) {
+      try {
+        await this.hooks.applyIdentityHooks(input, result, lookup);
+      } catch (_error) {
+        // Hook writes are intentionally best-effort so current ConnectShyft behavior remains stable.
+      }
+    }
+
+    return result;
   }
 }
