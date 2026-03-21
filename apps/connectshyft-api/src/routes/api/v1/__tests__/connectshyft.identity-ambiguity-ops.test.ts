@@ -444,4 +444,173 @@ describe('connectshyft identity ambiguity ops route', () => {
       message: 'Identity ambiguity access requires an authorized ConnectShyft role.',
     });
   });
+
+  it('marks pending ambiguity events reviewed for tenant-privileged roles', async () => {
+    await createEvent({
+      id: 'ambiguity-event-review-pending',
+      status: 'pending',
+      createdAtUtc: '2026-03-21T13:00:00.000Z',
+      updatedAtUtc: '2026-03-21T13:00:00.000Z',
+    });
+
+    const app = buildApp();
+    const response = await request(app)
+      .patch('/api/v1/connectshyft/identity-ambiguities/ambiguity-event-review-pending')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }))
+      .send({
+        status: 'reviewed',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_REVIEWED',
+      data: {
+        event: expect.objectContaining({
+          id: 'ambiguity-event-review-pending',
+          tenantId: TEST_TENANT_ID,
+          status: 'reviewed',
+        }),
+      },
+    });
+    expect(response.body.data.event.updatedAtUtc).not.toBe('2026-03-21T13:00:00.000Z');
+  });
+
+  it('treats repeated reviewed updates as idempotent success', async () => {
+    await createEvent({
+      id: 'ambiguity-event-review-idempotent',
+      status: 'reviewed',
+      createdAtUtc: '2026-03-21T13:10:00.000Z',
+      updatedAtUtc: '2026-03-21T13:15:00.000Z',
+    });
+
+    const app = buildApp();
+    const response = await request(app)
+      .patch('/api/v1/connectshyft/identity-ambiguities/ambiguity-event-review-idempotent')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }))
+      .send({
+        status: 'reviewed',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_REVIEWED',
+      data: {
+        event: expect.objectContaining({
+          id: 'ambiguity-event-review-idempotent',
+          status: 'reviewed',
+          updatedAtUtc: '2026-03-21T13:15:00.000Z',
+        }),
+      },
+    });
+  });
+
+  it('keeps review updates tenant-scoped and returns not found outside the active tenant', async () => {
+    await createIdentityAmbiguityEvent({
+      id: 'ambiguity-event-other-tenant-review',
+      tenantId: OTHER_TENANT_ID,
+      orgUnitId: OTHER_ORG_UNIT_ID,
+      sourceContext: 'connectshyft_identity_match',
+      sourceContextId: 'identity-match:ops-other-tenant-review',
+      normalizedContactPoint: '+12605550201',
+      candidateNeighborIds: ['neighbor-z'],
+      ambiguityReasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+      status: 'pending',
+      requestedByUserId: TEST_USER_ID,
+      correlationId: 'corr-connectshyft-identity-ambiguity-ops',
+      idempotencyKey: 'identity-match:ops-other-tenant-review',
+      createdAtUtc: '2026-03-21T13:20:00.000Z',
+      updatedAtUtc: '2026-03-21T13:20:00.000Z',
+    });
+
+    const app = buildApp();
+    const response = await request(app)
+      .patch('/api/v1/connectshyft/identity-ambiguities/ambiguity-event-other-tenant-review')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }))
+      .send({
+        status: 'reviewed',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_NOT_FOUND',
+      message: 'Identity ambiguity event is unavailable for the active tenant context.',
+    });
+  });
+
+  it('rejects non-reviewed status payloads', async () => {
+    await createEvent({
+      id: 'ambiguity-event-invalid-status',
+      status: 'pending',
+      createdAtUtc: '2026-03-21T13:30:00.000Z',
+      updatedAtUtc: '2026-03-21T13:30:00.000Z',
+    });
+
+    const app = buildApp();
+    const response = await request(app)
+      .patch('/api/v1/connectshyft/identity-ambiguities/ambiguity-event-invalid-status')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }))
+      .send({
+        status: 'pending',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_STATUS_INVALID',
+      message: 'status must be reviewed.',
+      data: {
+        fieldErrors: [
+          {
+            field: 'status',
+            reason: 'INVALID',
+            message: 'status must be reviewed.',
+          },
+        ],
+      },
+    });
+  });
+
+  it('refuses review updates for roles without tenant-privileged access', async () => {
+    await createEvent({
+      id: 'ambiguity-event-review-forbidden',
+      status: 'pending',
+      createdAtUtc: '2026-03-21T13:40:00.000Z',
+      updatedAtUtc: '2026-03-21T13:40:00.000Z',
+    });
+
+    const app = buildApp({
+      defaultRole: 'ORGUNIT_IDENTITY_LEAD',
+    });
+    const response = await request(app)
+      .patch('/api/v1/connectshyft/identity-ambiguities/ambiguity-event-review-forbidden')
+      .set(buildHeaders({
+        role: 'ORGUNIT_IDENTITY_LEAD',
+        memberships: [TEST_ORG_UNIT_ID],
+      }))
+      .send({
+        status: 'reviewed',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_UPDATE_FORBIDDEN',
+      message: 'Identity ambiguity review requires a tenant-privileged ConnectShyft admin role.',
+    });
+  });
 });

@@ -176,6 +176,7 @@ import {
 } from '../../../modules/connectshyft/communicationAuditLog';
 import {
   listIdentityAmbiguityEvents,
+  markIdentityAmbiguityEventReviewed,
 } from '../../../modules/connectshyft/ambiguityEvents';
 import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService';
 
@@ -2228,6 +2229,29 @@ const resolveIdentityAmbiguityReadScope = (
   };
 };
 
+const resolveIdentityAmbiguityTenantPrivilegedScope = (
+  req: Request,
+  res: Response,
+  context: Pick<ResolvedConnectShyftContext, 'effectiveRoles'>,
+): {
+  actorRoles: string[];
+} | null => {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  if (hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)) {
+    return {
+      actorRoles,
+    };
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_UPDATE_FORBIDDEN',
+    message: 'Identity ambiguity review requires a tenant-privileged ConnectShyft admin role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return null;
+};
+
 const parseOrgUnitIdFromBody = (req: Request): string | null => {
   if (typeof req.body?.orgUnitId !== 'string') {
     return null;
@@ -2302,6 +2326,25 @@ const parseIdentityAmbiguityFilters = (req: Request): {
   limit: parseIdentityAmbiguityLimit(req),
   cursor: parseIdentityAmbiguityOptionalFilter(req.query?.cursor),
 });
+
+const parseIdentityAmbiguityEventIdParam = (req: Request): string => {
+  if (typeof req.params.ambiguityEventId !== 'string') {
+    return '';
+  }
+
+  return req.params.ambiguityEventId.trim();
+};
+
+const parseIdentityAmbiguityStatusUpdate = (
+  req: Request,
+): 'reviewed' | null => {
+  if (typeof req.body?.status !== 'string') {
+    return null;
+  }
+
+  const normalized = req.body.status.trim().toLowerCase();
+  return normalized === 'reviewed' ? 'reviewed' : null;
+};
 
 const parseThreadDueLimit = (req: Request): number => {
   const rawLimit = typeof req.query?.limit === 'string'
@@ -4177,6 +4220,71 @@ router.get('/identity-ambiguities', async (req: Request, res: Response) => {
     data: {
       events: listed.events,
       nextCursor: listed.nextCursor,
+    },
+  });
+});
+
+router.patch('/identity-ambiguities/:ambiguityEventId', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  if (!resolveIdentityAmbiguityTenantPrivilegedScope(req, res, context)) {
+    return;
+  }
+
+  const ambiguityEventId = parseIdentityAmbiguityEventIdParam(req);
+  if (!ambiguityEventId) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_ID_REQUIRED',
+      message: 'ambiguityEventId is required',
+    });
+    return;
+  }
+
+  if (!parseIdentityAmbiguityStatusUpdate(req)) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_STATUS_INVALID',
+      message: 'status must be reviewed.',
+      data: {
+        fieldErrors: [
+          {
+            field: 'status',
+            reason: 'INVALID',
+            message: 'status must be reviewed.',
+          },
+        ],
+      },
+    });
+    return;
+  }
+
+  const event = await markIdentityAmbiguityEventReviewed({
+    tenantId: context.tenantId,
+    ambiguityEventId,
+  });
+
+  if (!event) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_NOT_FOUND',
+      message: 'Identity ambiguity event is unavailable for the active tenant context.',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return;
+  }
+
+  return success(res, {
+    code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_REVIEWED',
+    message: 'ConnectShyft identity ambiguity reviewed',
+    httpStatus: 200,
+    data: {
+      event,
     },
   });
 });
