@@ -2,6 +2,30 @@ import { PeopleCorePersistenceUnavailableError } from '../../peoplecore/service'
 import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from '../peoplecoreIdentityAdapter';
 import type { ConnectShyftIdentityBoundaryNeighbor } from '../identityBoundary';
 
+jest.mock('../../../utils/logger', () => ({
+  __esModule: true,
+  default: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
+}));
+
+jest.mock('../ambiguityEvents', () => ({
+  createIdentityAmbiguityEvent: jest.fn(),
+}), { virtual: true });
+
+const ambiguityEventsModule = jest.requireMock('../ambiguityEvents') as {
+  createIdentityAmbiguityEvent: jest.Mock;
+};
+const loggerModule = jest.requireMock('../../../utils/logger') as {
+  default: {
+    info: jest.Mock;
+    warn: jest.Mock;
+    error: jest.Mock;
+  };
+};
+
 const TIMESTAMP = '2026-03-21T12:00:00.000Z';
 
 const buildNeighbor = (
@@ -53,6 +77,11 @@ const buildContactPointLink = (contactPointId: string, subjectId: string) => ({
 });
 
 describe('connectshyft peoplecore identity adapter', () => {
+  beforeEach(() => {
+    ambiguityEventsModule.createIdentityAmbiguityEvent.mockReset();
+    loggerModule.default.warn.mockReset();
+  });
+
   it('creates provisional PeopleCore foundation on no-match without changing the ConnectShyft result', async () => {
     const peopleCoreService = {
       listContactPointsByNormalizedValue: jest.fn(async () => []),
@@ -124,6 +153,7 @@ describe('connectshyft peoplecore identity adapter', () => {
       status: 'active_provisional',
     }));
     expect(peopleCoreService.createContactPointLink).toHaveBeenCalled();
+    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).not.toHaveBeenCalled();
   });
 
   it('evaluates normalized contact-point candidates through the PeopleCore lookup path before preserving current ConnectShyft candidates', async () => {
@@ -194,6 +224,7 @@ describe('connectshyft peoplecore identity adapter', () => {
     await expect(adapter.evaluateMatch({
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-a',
+      idempotencyKey: 'identity-match:auto-merge-allowed',
       contactPoint: {
         label: 'mobile',
         value: '260-555-1212',
@@ -211,6 +242,7 @@ describe('connectshyft peoplecore identity adapter', () => {
         },
       },
     });
+    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).not.toHaveBeenCalled();
   });
 
   it('preserves current ambiguous/manual-resolution behavior when fallback candidates remain ambiguous', async () => {
@@ -293,6 +325,20 @@ describe('connectshyft peoplecore identity adapter', () => {
       triggerSourceId: 'identity-match:ambiguous',
       requestedByUserId: 'user-1',
     }));
+    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).toHaveBeenCalledTimes(1);
+    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      sourceContext: 'connectshyft_identity_match',
+      sourceContextId: 'identity-match:ambiguous',
+      normalizedContactPoint: '+12605551213',
+      contactPointType: 'phone',
+      candidateNeighborIds: ['neighbor-1', 'neighbor-2'],
+      candidateCount: 2,
+      ambiguityReasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+      requestedByUserId: 'user-1',
+      idempotencyKey: expect.stringMatching(/^identity-match:/),
+    }));
   });
 
   it('characterizes a PeopleCore single-current-link disagreement with a different legacy neighbor as ambiguous', async () => {
@@ -318,6 +364,7 @@ describe('connectshyft peoplecore identity adapter', () => {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-a',
       orgUnitId: 'org-a',
+      idempotencyKey: 'identity-match:peoplecore-disagreement',
       contactPoint: {
         label: 'mobile',
         value: '(260) 555-1218',
@@ -343,6 +390,20 @@ describe('connectshyft peoplecore identity adapter', () => {
         },
       },
     });
+    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).toHaveBeenCalledTimes(1);
+    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      sourceContext: 'connectshyft_identity_match',
+      sourceContextId: 'identity-match:peoplecore-disagreement',
+      normalizedContactPoint: '+12605551218',
+      contactPointType: 'phone',
+      candidateNeighborIds: ['neighbor-legacy-b'],
+      candidateCount: 1,
+      ambiguityReasonCode: 'PEOPLECORE_LEGACY_DISAGREEMENT',
+      requestedByUserId: 'user-1',
+      idempotencyKey: 'identity-match:peoplecore-disagreement',
+    }));
   });
 
   it('characterizes multiple PeopleCore current links as ambiguous even when legacy has a single candidate', async () => {
@@ -364,10 +425,16 @@ describe('connectshyft peoplecore identity adapter', () => {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-a',
       orgUnitId: 'org-a',
+      idempotencyKey: 'identity-match:peoplecore-multi-current-links',
       contactPoint: {
         label: 'mobile',
         value: '2605551219',
         verificationStatus: 'verified',
+      },
+      hookContext: {
+        triggerSourceType: 'connectshyft_identity_match',
+        triggerSourceId: 'identity-match:peoplecore-multi-current-links',
+        requestedByUserId: 'user-1',
       },
     })).resolves.toMatchObject({
       ok: false,
@@ -383,6 +450,85 @@ describe('connectshyft peoplecore identity adapter', () => {
         },
       },
     });
+    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).toHaveBeenCalledTimes(1);
+    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      sourceContext: 'connectshyft_identity_match',
+      sourceContextId: 'identity-match:peoplecore-multi-current-links',
+      normalizedContactPoint: '+12605551219',
+      contactPointType: 'phone',
+      candidateNeighborIds: ['neighbor-legacy-19'],
+      candidateCount: 1,
+      ambiguityReasonCode: 'PEOPLECORE_MULTI_CURRENT_LINKS',
+      requestedByUserId: 'user-1',
+      idempotencyKey: 'identity-match:peoplecore-multi-current-links',
+    }));
+  });
+
+  it('logs and continues when ambiguity-event persistence fails', async () => {
+    ambiguityEventsModule.createIdentityAmbiguityEvent.mockRejectedValueOnce(
+      new Error('ambiguity event persistence unavailable'),
+    );
+
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [buildNeighbor('neighbor-legacy-a', '+12605551228')],
+      async () => [buildNeighbor('neighbor-legacy-b', '+12605551228')],
+      {
+        listContactPointsByNormalizedValue: async () => [
+          buildContactPoint('contact-point-28', '+12605551228'),
+        ],
+        listCurrentContactPointLinks: async () => [
+          buildContactPointLink('contact-point-28', 'person-28'),
+        ],
+        listResolverReviews: async () => [],
+        createResolverReview: jest.fn(),
+        createContactPoint: jest.fn(),
+        createPerson: jest.fn(),
+        createContactPointLink: jest.fn(),
+      } as any,
+    );
+
+    await expect(adapter.evaluateMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      idempotencyKey: 'identity-match:ambiguity-write-failure',
+      contactPoint: {
+        label: 'mobile',
+        value: '(260) 555-1228',
+        verificationStatus: 'verified',
+      },
+      hookContext: {
+        triggerSourceType: 'connectshyft_identity_match',
+        triggerSourceId: 'identity-match:ambiguity-write-failure',
+        requestedByUserId: 'user-1',
+      },
+    })).resolves.toMatchObject({
+      ok: false,
+      code: 'IDENTITY_MATCH_AMBIGUOUS',
+      data: {
+        identityMatch: {
+          decision: 'AMBIGUOUS',
+          matchedNeighborId: null,
+          candidateNeighborIds: ['neighbor-legacy-b'],
+        },
+      },
+    });
+
+    expect(loggerModule.default.warn).toHaveBeenCalledWith(
+      'ConnectShyft identity ambiguity event persistence failed',
+      expect.objectContaining({
+        tenantId: 'tenant-a',
+        orgUnitId: 'org-a',
+        normalizedContactPoint: '+12605551228',
+        ambiguityReasonCode: 'PEOPLECORE_LEGACY_DISAGREEMENT',
+        sourceContext: 'connectshyft_identity_match',
+        correlationId: null,
+        idempotencyKey: 'identity-match:ambiguity-write-failure',
+        error: 'ambiguity event persistence unavailable',
+      }),
+    );
   });
 
   it('preserves legacy single-match fallback when PeopleCore has no current person links', async () => {
@@ -501,6 +647,7 @@ describe('connectshyft peoplecore identity adapter', () => {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-a',
       orgUnitId: 'org-a',
+      idempotencyKey: 'identity-match:no-auto-merge-shared',
       contactPoint: {
         label: 'mobile',
         value: '2605551222',
@@ -522,5 +669,6 @@ describe('connectshyft peoplecore identity adapter', () => {
         },
       },
     });
+    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).not.toHaveBeenCalled();
   });
 });

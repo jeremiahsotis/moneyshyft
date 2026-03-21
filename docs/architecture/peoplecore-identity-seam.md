@@ -2,7 +2,7 @@
 
 ## Status
 
-Authoritative for the Slice 13 ConnectShyft-to-PeopleCore identity seam.
+Authoritative for the Slice 14 ConnectShyft-to-PeopleCore identity seam.
 
 ## Purpose
 
@@ -34,6 +34,7 @@ The seam currently supports:
   - deleted-only exclusion where already characterized
 - exposing the normalized contact-point value back to ConnectShyft callers
 - running best-effort internal hook writes for provisional identity and resolver review creation where enabled
+- recording best-effort operational ambiguity events when the final PeopleCore-aware identity result is ambiguous
 
 Slice 13 explicitly recognizes these ambiguity categories:
 
@@ -91,15 +92,25 @@ The seam does not:
 
 ## Deferred Work
 
-Still deferred beyond Slice 13:
+Still deferred beyond Slice 14:
 
-- explicit operational handling for ambiguity and resolver workflows
+- broader operational handling for ambiguity and resolver workflows
 - explicit neighbor-to-person convergence strategy
 - conversation rebinding mechanics
 - resolver UI and broader PeopleCore operational workflows
 
-## Slice 14 Handoff
+## Slice 14 Lock
 
-The next logical slice after Slice 13 is operationalization of ambiguity and resolver handling behind this seam.
+Slice 14 adds an operational ambiguity layer behind this seam:
+
+- ambiguity-event persistence is observational only
+- write failure does not change request-path ambiguity outcomes
+- reviewed status is operational only
+- reviewed status does not reconcile PeopleCore and ConnectShyft identity state
+- no reconciliation or winner-selection behavior exists yet
+
+## Next Slice
+
+Slice 15 or later is where true resolver operations may begin.
 
 It should not default to reconciliation, crosswalk implementation, or Application Shell work.

@@ -2,7 +2,7 @@
 
 ## Status
 
-Authoritative for the Slice 13 identity-resolution architecture and seam behavior.
+Authoritative for the Slice 14 identity-resolution architecture and seam behavior.
 
 ---
 
@@ -107,6 +107,15 @@ PeopleCore available?
       single disagreement -> ambiguous
       none -> no-match (unchanged in Slice 13)
 ```
+
+### 5.3 Slice 14 operational ambiguity layer
+
+Slice 14 adds a narrow operational layer on top of ambiguous outcomes:
+
+- ambiguity events are persisted for ops visibility only
+- ambiguity-event persistence is observational only and does not alter the returned identity decision
+- reviewed status is operational only and does not change PeopleCore or ConnectShyft identity records
+- no reconciliation or automatic winner selection exists in this slice
 
 ---
 
@@ -247,8 +256,8 @@ Still deferred beyond Slice 13:
 
 ---
 
-## 15. Slice 14 Handoff
+## 15. Next Slice
 
-The next logical slice after Slice 13 is operationalization of ambiguity and resolver handling while preserving current route contracts.
+Slice 15 or later is where true resolver operations may begin while preserving current route contracts.
 
 It is not reconciliation, cross-system equivalence solving, or automatic PeopleCore-to-neighbor linking.

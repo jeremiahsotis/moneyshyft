@@ -174,6 +174,10 @@ import {
   appendConnectShyftCommunicationAuditEntry,
   resetConnectShyftCommunicationAuditLogForTests,
 } from '../../../modules/connectshyft/communicationAuditLog';
+import {
+  listIdentityAmbiguityEvents,
+  markIdentityAmbiguityEventReviewed,
+} from '../../../modules/connectshyft/ambiguityEvents';
 import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService';
 
 const router = Router();
@@ -214,6 +218,8 @@ const CONNECTSHYFT_CANONICAL_EVENT_TYPES = {
 } as const;
 const CONNECTSHYFT_CANONICAL_EVENTS_DEFAULT_LIMIT = 50;
 const CONNECTSHYFT_CANONICAL_EVENTS_MAX_LIMIT = 200;
+const CONNECTSHYFT_IDENTITY_AMBIGUITIES_DEFAULT_LIMIT = 50;
+const CONNECTSHYFT_IDENTITY_AMBIGUITIES_MAX_LIMIT = 200;
 const CONNECTSHYFT_OUTBOUND_CALL_POLICY = {
   transport: 'bridge',
   autoRetry: false,
@@ -2182,6 +2188,70 @@ const enforceThreadMessageCapability = (
   return false;
 };
 
+const resolveIdentityAmbiguityReadScope = (
+  req: Request,
+  res: Response,
+  context: Pick<ResolvedConnectShyftContext, 'orgUnitId' | 'effectiveRoles'>,
+  requestedOrgUnitId: string | null,
+): {
+  actorRoles: string[];
+  orgUnitId: string | null;
+} | null => {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  const tenantPrivileged =
+    hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL);
+  const identityResolutionCapable =
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_IDENTITY_RESOLVE);
+
+  if (!tenantPrivileged && !identityResolutionCapable) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_READ_FORBIDDEN',
+      message: 'Identity ambiguity access requires an authorized ConnectShyft role.',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return null;
+  }
+
+  if (requestedOrgUnitId && !tenantPrivileged && requestedOrgUnitId !== context.orgUnitId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_ORGUNIT_SCOPE_VIOLATION',
+      message: 'Cross-orgUnit context overrides are not allowed for this route',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return null;
+  }
+
+  return {
+    actorRoles,
+    orgUnitId: requestedOrgUnitId ?? (tenantPrivileged ? null : context.orgUnitId),
+  };
+};
+
+const resolveIdentityAmbiguityTenantPrivilegedScope = (
+  req: Request,
+  res: Response,
+  context: Pick<ResolvedConnectShyftContext, 'effectiveRoles'>,
+): {
+  actorRoles: string[];
+} | null => {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  if (hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)) {
+    return {
+      actorRoles,
+    };
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_UPDATE_FORBIDDEN',
+    message: 'Identity ambiguity review requires a tenant-privileged ConnectShyft admin role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return null;
+};
+
 const parseOrgUnitIdFromBody = (req: Request): string | null => {
   if (typeof req.body?.orgUnitId !== 'string') {
     return null;
@@ -2197,6 +2267,83 @@ const parseOrgUnitIdFromQuery = (req: Request): string | null => {
 
   const normalized = req.query.orgUnitId.trim();
   return normalized.length > 0 ? normalized : null;
+};
+
+const parseIdentityAmbiguityStatusFromQuery = (
+  req: Request,
+): 'pending' | 'reviewed' | null => {
+  if (typeof req.query?.status !== 'string') {
+    return null;
+  }
+
+  const normalized = req.query.status.trim().toLowerCase();
+  if (normalized === 'pending' || normalized === 'reviewed') {
+    return normalized;
+  }
+
+  return null;
+};
+
+const parseIdentityAmbiguityOptionalFilter = (
+  value: unknown,
+): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const parseIdentityAmbiguityLimit = (req: Request): number => {
+  const rawLimit = typeof req.query?.limit === 'string'
+    ? Number.parseInt(req.query.limit, 10)
+    : Number.NaN;
+  if (!Number.isFinite(rawLimit) || rawLimit <= 0) {
+    return CONNECTSHYFT_IDENTITY_AMBIGUITIES_DEFAULT_LIMIT;
+  }
+
+  return Math.min(
+    Math.trunc(rawLimit),
+    CONNECTSHYFT_IDENTITY_AMBIGUITIES_MAX_LIMIT,
+  );
+};
+
+const parseIdentityAmbiguityFilters = (req: Request): {
+  orgUnitId: string | null;
+  status: 'pending' | 'reviewed' | null;
+  normalizedContactPoint: string | null;
+  sourceContext: string | null;
+  limit: number;
+  cursor: string | null;
+} => ({
+  orgUnitId: parseOrgUnitIdFromQuery(req),
+  status: parseIdentityAmbiguityStatusFromQuery(req),
+  normalizedContactPoint: parseIdentityAmbiguityOptionalFilter(
+    req.query?.normalizedContactPoint,
+  ),
+  sourceContext: parseIdentityAmbiguityOptionalFilter(req.query?.sourceContext),
+  limit: parseIdentityAmbiguityLimit(req),
+  cursor: parseIdentityAmbiguityOptionalFilter(req.query?.cursor),
+});
+
+const parseIdentityAmbiguityEventIdParam = (req: Request): string => {
+  if (typeof req.params.ambiguityEventId !== 'string') {
+    return '';
+  }
+
+  return req.params.ambiguityEventId.trim();
+};
+
+const parseIdentityAmbiguityStatusUpdate = (
+  req: Request,
+): 'reviewed' | null => {
+  if (typeof req.body?.status !== 'string') {
+    return null;
+  }
+
+  const normalized = req.body.status.trim().toLowerCase();
+  return normalized === 'reviewed' ? 'reviewed' : null;
 };
 
 const parseThreadDueLimit = (req: Request): number => {
@@ -4031,6 +4178,113 @@ router.get('/events', async (req: Request, res: Response) => {
       deterministic: true,
       providerNeutral: true,
       events,
+    },
+  });
+});
+
+router.get('/identity-ambiguities', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const filters = parseIdentityAmbiguityFilters(req);
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  const readScope = resolveIdentityAmbiguityReadScope(
+    req,
+    res,
+    context,
+    filters.orgUnitId,
+  );
+  if (!readScope) {
+    return;
+  }
+
+  const listed = await listIdentityAmbiguityEvents({
+    tenantId: context.tenantId,
+    orgUnitId: readScope.orgUnitId,
+    status: filters.status,
+    normalizedContactPoint: filters.normalizedContactPoint,
+    sourceContext: filters.sourceContext,
+    limit: filters.limit,
+    cursor: filters.cursor,
+  });
+
+  return success(res, {
+    code: 'CONNECTSHYFT_IDENTITY_AMBIGUITIES_RESOLVED',
+    message: 'ConnectShyft identity ambiguities resolved',
+    httpStatus: 200,
+    data: {
+      events: listed.events,
+      nextCursor: listed.nextCursor,
+    },
+  });
+});
+
+router.patch('/identity-ambiguities/:ambiguityEventId', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  if (!resolveIdentityAmbiguityTenantPrivilegedScope(req, res, context)) {
+    return;
+  }
+
+  const ambiguityEventId = parseIdentityAmbiguityEventIdParam(req);
+  if (!ambiguityEventId) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_ID_REQUIRED',
+      message: 'ambiguityEventId is required',
+    });
+    return;
+  }
+
+  if (!parseIdentityAmbiguityStatusUpdate(req)) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_STATUS_INVALID',
+      message: 'status must be reviewed.',
+      data: {
+        fieldErrors: [
+          {
+            field: 'status',
+            reason: 'INVALID',
+            message: 'status must be reviewed.',
+          },
+        ],
+      },
+    });
+    return;
+  }
+
+  const event = await markIdentityAmbiguityEventReviewed({
+    tenantId: context.tenantId,
+    ambiguityEventId,
+  });
+
+  if (!event) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_NOT_FOUND',
+      message: 'Identity ambiguity event is unavailable for the active tenant context.',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return;
+  }
+
+  return success(res, {
+    code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_REVIEWED',
+    message: 'ConnectShyft identity ambiguity reviewed',
+    httpStatus: 200,
+    data: {
+      event,
     },
   });
 });

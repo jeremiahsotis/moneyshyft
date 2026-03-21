@@ -521,4 +521,16 @@ describe('connectshyft identity-match route', () => {
     }));
   });
 
+  it('does not expose the identity ambiguity reviewed-status route before the checkpoint 5 implementation lands', async () => {
+    const app = buildApp();
+    const response = await request(app)
+      .patch('/api/v1/connectshyft/identity-ambiguities/ambiguity-event-1')
+      .set(buildHeaders())
+      .send({
+        status: 'reviewed',
+      });
+
+    expect(response.status).toBe(404);
+  });
+
 });
