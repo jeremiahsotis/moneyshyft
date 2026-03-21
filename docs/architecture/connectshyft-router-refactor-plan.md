@@ -7,6 +7,7 @@
 - Frontend build/test surface separation completed in Slice 11.
 - Slice 12 PeopleCore persistence foundation and identity seam complete.
 - Slice 13 PeopleCore ambiguity precedence documentation and handler-preservation rules complete.
+- Slice 14 operational ambiguity visibility and review-status documentation complete.
 
 ## Purpose
 
@@ -244,6 +245,22 @@ Did not add:
 - merge engine behavior
 - scoring engine behavior
 
+### Slice 14
+
+Locked the narrow operational ambiguity layer without broadening router or identity scope:
+
+- `GET /api/v1/connectshyft/identity-ambiguities` for ops visibility
+- `PATCH /api/v1/connectshyft/identity-ambiguities/:ambiguityEventId` for reviewed-status updates
+- ambiguity persistence remains observational only
+- reviewed status remains operational only
+
+Did not add:
+
+- reconciliation
+- crosswalk infrastructure
+- PeopleCore record mutation from ops review status
+- ConnectShyft neighbor mutation from ops review status
+
 ## Route-family extraction result
 
 The ConnectShyft route-family extraction sequence is complete:
@@ -272,11 +289,13 @@ Slice 12 adds the identity convergence foundation behind that extracted surface,
 
 Slice 13 adds ambiguity precedence behind that extracted surface, not a router redesign.
 
+Slice 14 adds a narrow operational ambiguity surface, not reconciliation or a router redesign.
+
 ## Next intentional work
 
-Next work after Slice 13 should be:
+Next work after Slice 14 should be:
 
-- operationalization of ambiguity and resolver handling behind the PeopleCore seam
+- true resolver operations no earlier than Slice 15
 - continued model-alignment work without changing current route envelopes lightly
 - not reconciliation or crosswalk implementation by default
 - not Application Shell by default
