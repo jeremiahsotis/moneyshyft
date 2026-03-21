@@ -67,6 +67,7 @@ export type ContactPointEventType =
 
 export type ContactPointEvent = {
   id: string;
+  tenantId: string;
   contactPointId: string;
   eventType: ContactPointEventType;
   eventSource: string;
