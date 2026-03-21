@@ -1,6 +1,6 @@
 // @ts-nocheck
 import request from 'supertest';
-import { AsyncConnectShyftThreadService } from '../../threads';
+import { KnexConnectShyftThreadStore } from '../../threads';
 import {
   buildApp,
   buildHeaders,
@@ -16,7 +16,7 @@ describe('connectshyft ops thread visibility route', () => {
 
   it('surfaces a found thread through the read-only thread store seam', async () => {
     jest.spyOn(
-      AsyncConnectShyftThreadService.prototype,
+      KnexConnectShyftThreadStore.prototype,
       'findThreadById',
     ).mockResolvedValue({
       threadId: 'thread-ops-1001',
@@ -61,7 +61,7 @@ describe('connectshyft ops thread visibility route', () => {
 
   it('surfaces not-found without introducing any thread mutation path', async () => {
     jest.spyOn(
-      AsyncConnectShyftThreadService.prototype,
+      KnexConnectShyftThreadStore.prototype,
       'findThreadById',
     ).mockResolvedValue(null);
 

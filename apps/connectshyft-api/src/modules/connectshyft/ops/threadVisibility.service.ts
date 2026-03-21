@@ -1,4 +1,4 @@
-import { AsyncConnectShyftThreadService, type ConnectShyftThread } from '../threads';
+import { KnexConnectShyftThreadStore, type ConnectShyftThread } from '../threads';
 
 export type ConnectShyftThreadVisibility = {
   threadId: string;
@@ -6,7 +6,7 @@ export type ConnectShyftThreadVisibility = {
   thread: ConnectShyftThread;
 };
 
-const defaultThreadService = new AsyncConnectShyftThreadService();
+const defaultThreadStore = new KnexConnectShyftThreadStore();
 
 export const readConnectShyftThreadVisibility = async (input: {
   tenantId: string;
@@ -14,7 +14,7 @@ export const readConnectShyftThreadVisibility = async (input: {
   threadId: string;
   allowCrossOrgUnit?: boolean;
 }): Promise<ConnectShyftThreadVisibility | null> => {
-  const thread = await defaultThreadService.findThreadById({
+  const thread = await defaultThreadStore.findThreadById({
     tenantId: input.tenantId,
     threadId: input.threadId,
   });
