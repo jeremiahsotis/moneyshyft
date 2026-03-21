@@ -1,250 +1,211 @@
 # Slice 13 Codex-Ready Implementation Brief
-
 ## Title
-
-PeopleCore identity read authority and ConnectShyft compatibility shell
+PeopleCore identity read authority with ambiguity precedence and ConnectShyft compatibility shell
 
 ## Branch
-
-`codex/slice-13-peoplecore-read-authority-and-compat-shell`
+`codex/slice-13-peoplecore-read-authority-and-ambiguity-precedence`
 
 ## Objective
-
-Make PeopleCore the first authoritative source for phone identity resolution while preserving existing ConnectShyft route contracts and keeping `neighbors.ts` as the operational compatibility shell for current CRUD and inbound workflows.
+Shift ConnectShyft phone identity lookup to a PeopleCore-first read model where PeopleCore can invalidate certainty but cannot assert identity equivalence across systems. Preserve current ConnectShyft route contracts, keep `neighbors.ts` as the compatibility shell for current CRUD and inbound workflows, and prevent incorrect identity attachment or create-new behavior under disagreement.
 
 ## Locked Policy
+For Slice 13, the precedence rule is:
 
-When PeopleCore and legacy ConnectShyft neighbor resolution disagree, Slice 13 MUST return ambiguity/manual resolution and MUST NOT silently prefer either side.
+**PeopleCore can invalidate certainty, but cannot assert identity equivalence.**
+
+That means:
+- If PeopleCore has **no current person link**, preserve legacy ConnectShyft behavior.
+- If PeopleCore has **multiple current person links**, final outcome is ambiguity.
+- If PeopleCore has **one current person link** and legacy ConnectShyft yields a different concrete winner, final outcome is ambiguity.
+- If PeopleCore has **one current person link** and legacy ConnectShyft yields no current winner, final outcome remains no-match for this slice.
+- If PeopleCore has **one current person link** and legacy ConnectShyft aligns cleanly on the same practical ownership path, current single-match behavior may continue.
+- PeopleCore must **not** silently replace the legacy neighbor identifier returned by existing ConnectShyft flows in this slice.
+
+This is a safety slice, not a reconciliation slice.
 
 ---
 
 ## Why this slice exists
-
 Slice 12 established:
-
 - PeopleCore persistence foundation
 - a PeopleCore identity seam
 - best-effort provisional identity hooks
 - best-effort resolver review hooks
 - preserved ConnectShyft outward behavior
 
-But Slice 12 still leaves candidate authority with ConnectShyft neighbor lookup in practical terms. Slice 13 is the controlled authority shift:
+But Slice 12 still leaves practical winner selection with the legacy ConnectShyft neighbor candidate layer. That is exactly why the new Checkpoint 1 tests fail: the current adapter still lets legacy single-winner logic collapse cases that should now be treated as disagreement ambiguity.
 
-- PeopleCore becomes first read authority for phone identity
-- ConnectShyft neighbor lookup remains fallback only when PeopleCore has no current person link
-- disagreement becomes an explicit ambiguity outcome, never a hidden winner
-- neighbor CRUD remains intact for now as a compatibility shell
+Slice 13 is the controlled authority refinement:
+- PeopleCore becomes the first source consulted for phone identity read authority
+- legacy neighbor lookup remains fallback only when PeopleCore has no current linked person authority
+- disagreement becomes explicit ambiguity
+- create-new remains blocked under ambiguity
+- existing route envelopes remain stable
+- neighbor CRUD remains intact as a compatibility shell
 
-This is not the bulk-migration slice, not the resolver-UI slice, and not the application-shell slice.
+This is **not**:
+- a neighbor-to-person migration slice
+- a resolver UI slice
+- a merge engine slice
+- a crosswalk or reconciliation slice
+- an application-shell slice
 
 ---
 
 ## Non-negotiable constraints
-
 1. Preserve existing route paths, route order, refusal envelope shape, and HTTP status behavior unless this brief explicitly says otherwise.
 2. Do not redesign ConnectShyft neighbor CRUD contracts in this slice.
-3. Do not remove `neighbors.ts` or the existing async service exports in this slice.
-4. Do not bulk-backfill all ConnectShyft neighbors into PeopleCore in this slice.
-5. Do not add broad new resolver workflows beyond the narrow cases defined here.
-6. Do not silently choose a winner when PeopleCore and legacy neighbor lookup disagree.
-7. All new PeopleCore-first authority logic must remain tenant-scoped and org-unit-safe.
-8. All new behavior must be characterized before refactor or authority shift.
-9. Preserve current inbound SMS operational continuity.
-10. Keep the current seam best-effort posture for write hooks. Request-path failures in PeopleCore hook writes must not break current ConnectShyft route outcomes.
+3. Do not remove `neighbors.ts` or existing async service exports in this slice.
+4. Do not add a cross-system identity mapping table, join table, or equivalence cache in this slice.
+5. Do not bulk-backfill ConnectShyft neighbors into PeopleCore in this slice.
+6. Do not silently choose a winner when PeopleCore and legacy ConnectShyft disagree.
+7. Do not let ambiguity collapse into `single_match` or `no_match` except where explicitly allowed by the locked rules.
+8. Do not let ambiguity trigger neighbor creation.
+9. Keep write hooks best-effort. Hook failure must not break existing ConnectShyft request-path outcomes.
+10. All new logic must remain tenant-scoped and org-unit-safe.
+11. Characterize before refactor.
+12. Keep current shared-contact and verification guardrails intact.
 
 ---
 
-## Authority rules to implement
+## Hard deferrals for Slice 13
+The attached Checkpoints 3 to 6 block is skeletal because it states policy but not repo-executable implementation detail. It correctly names the deferrals, but not the actual work package. The corrected version below makes those deferrals explicit and enforceable.
 
-For normalized phone identity lookup:
+Deferred beyond Slice 13:
+- neighbor ↔ person reconciliation
+- identity crosswalk table
+- inferred equivalence logic
+- similarity scoring
+- household-assisted ranking
+- merge automation
+- PeopleCore-first person CRUD replacement for ConnectShyft routes
+- resolver UI / inbox / queue
+- broad event-driven rebinding
+- timeline ownership migration
 
-### Rule A: PeopleCore exact single current person link wins
-
-If PeopleCore returns exactly one current person link for the normalized phone value:
-
-- resolution outcome is single match
-- use that PeopleCore person identity as the authoritative identity answer
-- if a legacy ConnectShyft neighbor candidate exists and aligns cleanly, continue normally
-- if legacy data disagrees, return ambiguity/manual resolution instead of selecting either side
-
-### Rule B: PeopleCore multiple current person links is ambiguous
-
-If PeopleCore returns more than one current person link for the normalized phone value:
-
-- return ambiguity/manual resolution
-- do not fall through to legacy neighbor winner selection
-- create or reuse narrow resolver-review hooks as already allowed by the seam
-
-### Rule C: PeopleCore no current person links falls back
-
-If PeopleCore returns no current person links:
-
-- preserve current legacy ConnectShyft neighbor lookup behavior
-- preserve current single_match / no_match / multiple_matches outcomes from the legacy path
-- preserve current inbound no-match create flow
-
-### Rule D: Disagreement is explicit ambiguity
-
-If PeopleCore yields a single current person link but the legacy ConnectShyft candidate layer disagrees in identity ownership:
-
-- return ambiguity/manual resolution
-- do not auto-merge
-- do not choose PeopleCore silently
-- do not choose legacy silently
-- optionally create a resolver review using a narrow mismatch trigger defined in this slice
-
-### Rule E: Shared-contact and unverified guardrails still apply
-
-If the current exact-match safety rules would block auto-merge because of shared or unverified conditions:
-
-- preserve the current blocked/no-auto-merge behavior
-- do not let PeopleCore-first authority erase those safety rules
+Allowed in Slice 13:
+- comments marking future reconciliation
+- notes explicitly labeled `Deferred beyond Slice 13`
+- narrow ambiguity telemetry and resolver-review creation where already permitted
 
 ---
 
-## In scope
-
-- PeopleCore-first read authority for phone identity
-- disagreement detection between PeopleCore authority and legacy neighbor candidates
-- preserved fallback when PeopleCore has no current person link
-- narrow resolver-review creation for disagreement if specified below
-- telemetry / audit / shadow comparison for lookup outcomes
-- characterization coverage
-- architecture note updates
-
-## Out of scope
-
-- bulk backfill
-- replacing neighbor CRUD routes with PeopleCore person CRUD
-- application shell
-- resolver UI / queue UI
-- full rebinding engine
-- PeopleCore-first timeline ownership
-- household-based identity scoring expansion
-- ML scoring
-- hard performance budget enforcement beyond the current repo conventions
-
----
-
-## Source-of-truth files to work in
-
-Primary likely files:
-
+## Source-of-truth files
+Primary code files:
 - `apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityAdapter.ts`
 - `apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts`
 - `apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts`
 - `apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts`
 - `apps/connectshyft-api/src/modules/connectshyft/neighbors.ts`
+- `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts`
 - `apps/connectshyft-api/src/modules/peoplecore/store.ts`
 - `apps/connectshyft-api/src/modules/peoplecore/service.ts`
-- `apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts`
-- `apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts`
+
+Primary test files:
 - `apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts`
 - `apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts`
 - `apps/connectshyft-api/src/modules/connectshyft/__tests__/identityBoundary.test.ts`
+- `apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts`
+- `apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts`
+
+Documentation files:
 - `docs/architecture/identity-resolution-model.md`
 - `docs/architecture/peoplecore-identity-seam.md`
 - `docs/architecture/connectshyft-router-refactor-plan.md`
-
-Potential supporting file if needed:
-
-- `apps/connectshyft-api/src/modules/connectshyft/communicationAuditLog.ts`
+- `docs/architecture/peoplecore-connectshyft-boundary-matrix.md`
 
 ---
 
-## Required telemetry / comparison model
+## Required behavior model
 
-Add a narrow internal comparison record for identity lookup execution. This does not need a database migration in this slice unless truly necessary. Start with audit/event emission if possible.
+### Rule A — PeopleCore unavailable
+If PeopleCore read persistence is unavailable:
+- keep current fallback behavior
+- preserve legacy outcome from current neighbor lookup
+- do not produce new ambiguity solely because PeopleCore is unavailable
 
-For each PeopleCore-aware lookup attempt, capture:
+### Rule B — PeopleCore no current person links
+If PeopleCore returns zero current person links for the normalized phone:
+- preserve legacy ConnectShyft behavior unchanged
+- legacy single current neighbor stays single_match
+- legacy multiple current neighbors stays ambiguity
+- legacy no current neighbors stays no_match
+- inbound no-match create-new path remains available
 
-- tenantId
-- orgUnitId if present
-- normalizedContactPointValue
-- peopleCoreOutcome: `single_match | no_match | multiple_matches | unavailable`
-- peopleCoreSubjectIds
-- legacyOutcome: `single_match | no_match | multiple_matches | unavailable`
-- legacyNeighborIds
-- finalOutcome: `single_match | no_match | multiple_matches | no_auto_merge | ambiguous`
-- fallbackUsed: boolean
-- disagreementDetected: boolean
-- hookWriteAttempted: boolean
-- hookWriteSucceeded: boolean
+### Rule C — PeopleCore multiple current person links
+If PeopleCore returns more than one current person link:
+- final result is ambiguity
+- no legacy override allowed
+- no create-new allowed
+- current route envelope must remain deterministic
 
-This is for safe migration visibility, not user-facing UI.
+### Rule D — PeopleCore single current person link plus legacy disagreement
+If PeopleCore returns exactly one current person link and the legacy ConnectShyft candidate layer yields a different concrete current owner path:
+- final result is ambiguity
+- no silent winner
+- no attach to legacy winner
+- no attach to hypothetical PeopleCore winner
+- no create-new
 
----
+For this slice, “disagreement” includes at minimum:
+- PeopleCore single current person link and legacy `single_match` with a different winner path than the seam’s PeopleCore-backed authority posture
+- PeopleCore single current person link and route-facing result would otherwise arbitrarily pick a legacy winner
 
-## Narrow resolver-review expansion allowed in this slice
+### Rule E — PeopleCore single current person link plus legacy none
+If PeopleCore returns exactly one current person link and legacy ConnectShyft yields no current neighbor candidate:
+- final result remains no_match in Slice 13
+- PeopleCore cannot assert equivalence and force attach
+- inbound create-new shell may still proceed only if the overall result remains no_match and there is no ambiguity
 
-Allowed:
-
-- existing ambiguous shared-contact review creation
-- a new narrow review trigger for **PeopleCore / legacy identity disagreement** if implemented minimally and deterministically
-
-If added, use:
-
-- `reviewType`: `identity_conflict`
-- confidence band: `high`
-- risk flag must include: `conflicting_name_dob` only if actually true, otherwise use `duplicate_creation_attempt` only if that is what happened, otherwise introduce no fake flag
-- trigger source should be deterministic and idempotent
-
-Default recommendation:
-
-- reuse `identity_conflict`
-- do not expand contract enums unless existing values are insufficient
-
----
-
-## Data / contract expectations
-
-Do not break existing contracts in `libs/contracts` unless a narrowly justified addition is required.
-
-Default assumption:
-
-- Slice 13 should avoid new contract enums
-- Slice 13 should work with current `ResolverReview`, `ContactPoint`, and current identity outputs
-- only update docs if code can remain within current contract surface
+### Rule F — Shared/unverified guardrails remain stronger than authority
+If a current exact-match path is blocked by shared-contact or verification rules:
+- preserve the current blocked / no-auto-merge behavior
+- PeopleCore cannot erase that safety condition
 
 ---
 
-## Implementation plan
+## Internal implementation recommendation
+Best practice recommendation: **keep `identityBoundary.ts` as the outward decision engine and refactor `peoplecoreIdentityAdapter.ts` into a comparison layer that can force ambiguity before the legacy winner reaches outward callers.**
 
-### Checkpoint 1: Characterize current and new authority cases before changing logic
+Why:
+- route and service contracts already depend on `ConnectShyftIdentityBoundaryResult`
+- tests already characterize existing outward behavior there
+- the current failure is not a route problem, it is a seam-precedence problem
+- this avoids unnecessary route churn
 
-Add or extend characterization tests that lock:
+Recommended internal types in `peoplecoreIdentityAdapter.ts`:
+- `PeopleCoreAuthorityOutcome`
+- `LegacyAuthorityOutcome`
+- `IdentityAuthorityComparison`
+- `ForcedAmbiguityReason`
 
-1. PeopleCore single current link + legacy same neighbor result
-   - final result stays single_match / current allowed outcome
+Recommended internal outcome enums:
+- PeopleCore outcome: `unavailable | no_current_links | single_current_link | multiple_current_links`
+- Legacy outcome: `no_match | single_match | multiple_matches`
+- Comparison outcome: `fallback_to_legacy | preserve_legacy | force_ambiguity`
 
-2. PeopleCore single current link + legacy different neighbor result
-   - final result becomes ambiguity/manual resolution
-   - no silent winner
+Do **not** export these unless tests truly need them. Keep them local if possible.
 
-3. PeopleCore multiple current links + legacy single candidate
-   - final result is ambiguity/manual resolution
-   - no legacy override
+---
 
-4. PeopleCore no current links + legacy single candidate
-   - legacy single_match preserved
+## Checkpoint 1 — Characterization lock
+Status intent: characterize first, no production behavior changes.
 
-5. PeopleCore unavailable + legacy single candidate
-   - current fallback preserved
+### Required test coverage
+Add or finish characterization coverage for:
+1. PeopleCore single current link + legacy aligned single candidate → preserved current single-match behavior.
+2. PeopleCore single current link + legacy disagreement → ambiguity.
+3. PeopleCore multiple current links + legacy single candidate → ambiguity.
+4. PeopleCore no current links + legacy single candidate → preserved legacy single_match.
+5. PeopleCore unavailable + legacy single candidate → preserved legacy single_match.
+6. Shared-contact case under PeopleCore-first lookup still blocks auto-merge.
+7. Identity-match route keeps current ambiguity envelope and deterministic manualResolution shape.
+8. Inbound SMS preserves:
+   - no create-new on ambiguity
+   - current create-new shell only on no_match
+   - no arbitrary attach on disagreement
 
-6. Inbound SMS path:
-   - PeopleCore single current link + legacy aligned -> do not create new neighbor
-   - PeopleCore no current link + legacy no_match -> current create-new flow preserved
-   - PeopleCore / legacy disagreement -> ambiguity path preserved, no arbitrary attach, no create-new
-
-7. Identity-match route:
-   - disagreement returns `IDENTITY_MATCH_AMBIGUOUS`
-   - current manualResolution payload remains deterministic
-
-8. Shared-contact case:
-   - PeopleCore single current link with shared conditions still blocks auto-merge if current rules block it
-
-Validation commands:
-
+### Validation
 ```bash
 pnpm --dir apps/connectshyft-api exec jest --runInBand --config jest.config.js --runTestsByPath \
   src/modules/connectshyft/__tests__/identityBoundary.test.ts \
@@ -255,471 +216,354 @@ pnpm --dir apps/connectshyft-api exec jest --runInBand --config jest.config.js -
 pnpm nx run connectshyft-api:test
 ```
 
-Commit:
-
+### Commit
 ```bash
 git add .
-git commit -m "test(slice-13): lock peoplecore authority and disagreement characterization"
+git commit -m "test(slice-13): lock peoplecore ambiguity precedence characterization"
 ```
 
 Stop after Checkpoint 1.
 
 ---
 
-## Checkpoint 2 — Implement PeopleCore-vs-legacy precedence and ambiguity policy
+## Checkpoint 2 — Refactor seam precedence logic
+Status intent: fix the three known blockers by moving disagreement and multi-link authority handling into the seam.
 
-### Objective
+### Required production changes
+Refactor `peoplecoreIdentityAdapter.ts` so it does **not** simply collect PeopleCore lookup data and then hand legacy candidates through unchanged.
 
-Refactor the PeopleCore seam so it no longer treats PeopleCore lookup as observational-only when PeopleCore has current-link evidence. Preserve all locked route/result shapes, but change the seam decision policy so current PeopleCore evidence can force ambiguity instead of silently deferring to a legacy single winner.
+Instead:
+1. Normalize contact point value.
+2. Load PeopleCore contact points and current links.
+3. Derive PeopleCore authority outcome.
+4. Load legacy active neighbor candidates.
+5. Derive legacy outcome.
+6. Compare the two.
+7. If comparison requires ambiguity, return an ambiguity-shaped `ConnectShyftIdentityBoundaryResult` before legacy winner selection leaks outward.
+8. If comparison permits fallback or preservation, continue existing boundary evaluation.
+9. Run best-effort hooks after final result determination.
 
-### Scope
+### Required logic
+- `multiple_current_links` => force ambiguity
+- `single_current_link + legacy_single_match_disagreement` => force ambiguity
+- `single_current_link + legacy_no_match` => preserve no_match for Slice 13
+- `no_current_links` => preserve legacy outcome
+- `unavailable` => preserve legacy outcome
 
-Edit only the minimum code necessary in:
+### Allowed implementation technique
+Either of these is acceptable:
+- build a forced ambiguity result directly inside the adapter using existing `ConnectShyftIdentityBoundaryResult` shape
+- or refactor a small shared helper in `identityBoundary.ts` for building ambiguity results, then call it from the adapter
 
-- `apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityAdapter.ts`
-- `apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts` only if required by type fallout or dead-simple normalization of adapter outputs
-- related unit tests only as required to satisfy the locked Checkpoint 1 characterization expectations
+Default recommendation: build a small non-exported helper in the adapter if it keeps churn lower.
 
-Do not edit route handlers, HTTP envelopes, contracts, migrations, or PeopleCore store/service APIs in this checkpoint.
+### Prohibitions
+- Do not add DB tables.
+- Do not add person↔neighbor mapping persistence.
+- Do not alter route response schema.
+- Do not inject PeopleCore-only fields into route payloads.
 
-### Locked policy to implement
-
-Treat these as hard rules:
-
-1. **Legacy-only remains legacy-owned**
-   - If PeopleCore is unavailable, has no contact point for the normalized value, or has no current person links for that contact point, preserve existing ConnectShyft legacy candidate behavior unchanged.
-   - This means:
-     - legacy single eligible neighbor stays single-match / current legacy result
-     - legacy no-match stays no-match
-     - legacy ambiguous stays ambiguous
-
-2. **PeopleCore current-link evidence is authoritative enough to block a silent winner**
-   - If PeopleCore returns one or more current person links for the normalized contact point, the seam must no longer silently trust a conflicting legacy single winner.
-
-3. **Single PeopleCore current person + single legacy neighbor disagreement => ambiguous**
-   - If PeopleCore has exactly one distinct current linked person for the normalized contact point, and legacy fallback resolves exactly one candidate neighbor, but the seam cannot prove they are the same underlying subject, return ambiguity.
-   - Do not return single_match in this situation.
-   - Do not invent a mapping.
-   - Do not auto-merge.
-   - Do not create a provisional identity.
-   - This ambiguity must preserve the existing `IDENTITY_MATCH_AMBIGUOUS` result shape and manual-resolution context.
-
-4. **Multiple PeopleCore current linked people => ambiguous**
-   - If PeopleCore has more than one distinct current linked person for the normalized contact point, return ambiguity even if legacy fallback has exactly one candidate neighbor.
-   - This is a hard stop.
-
-5. **Shared/unverified legacy guardrails still apply**
-   - If legacy candidate behavior already yields no-auto-merge due to shared or unverified conditions, preserve that.
-   - Do not weaken existing shared-contact safety rules.
-
-6. **No new neighbor<->person mapping layer in this checkpoint**
-   - Do not add a person-to-neighbor crosswalk table.
-   - Do not infer equivalence from names or other heuristics.
-   - Do not join PeopleCore persons to ConnectShyft neighbors.
-   - This checkpoint is precedence and refusal policy only.
-
-7. **Hook side effects remain best-effort**
-   - Existing best-effort hook behavior stays best-effort.
-   - Resolver-review creation on ambiguous flows may continue.
-   - No-match provisional creation must not fire when the seam now returns ambiguity.
-
-### Implementation guidance
-
-Refactor `peoplecoreIdentityAdapter.ts` to introduce an explicit intermediate decision layer before returning the final boundary result.
-
-Recommended shape:
-
-- Add small internal helpers for:
-  - collecting distinct current linked PeopleCore person IDs from `peopleCoreCurrentLinks`
-  - determining whether PeopleCore has authoritative current-link evidence
-  - determining whether fallback legacy candidates are:
-    - none
-    - single
-    - multiple
-  - deciding whether the seam must override legacy single-winner behavior to ambiguity
-
-- Keep the existing normalized lookup loading path.
-- Keep existing fallback candidate loading path.
-- Keep existing call into the legacy boundary logic where appropriate.
-- Add a seam-level override step after lookup and before final return:
-  - if PeopleCore has no authoritative current-link evidence, return the legacy boundary result unchanged
-  - if PeopleCore has multiple distinct current person IDs, force ambiguous result
-  - if PeopleCore has one distinct current person ID and legacy result is a single-match winner, force ambiguous result unless a same-subject proof exists
-  - since there is currently no same-subject proof mechanism, this case is ambiguous by policy
-
-### Important constraint on result construction
-
-Do **not** create a new route/result shape.
-
-Use the same result family already used by `identityBoundary.ts`:
-
-- ambiguous must still be `ok: false`
-- code must still be `IDENTITY_MATCH_AMBIGUOUS`
-- manualResolution payload must still exist
-- `candidateNeighborIds` must remain deterministic and sorted from the legacy candidate side when present
-
-For the resolver seam:
-
-- the resolver should continue translating ambiguous boundary results into:
-  - `type: 'multiple_matches'`
-  - sorted `candidateNeighborIds`
-  - normalized contact point
-
-### Candidate-neighbor rules for forced ambiguity
-
-When ambiguity is forced due to PeopleCore evidence:
-
-- If legacy fallback produced one or more candidate neighbors, use those neighbor IDs as the `candidateNeighborIds`
-- If legacy fallback produced multiple candidate neighbors, preserve that full set
-- If legacy fallback produced exactly one candidate neighbor, return that one candidate in the ambiguity payload
-- If legacy fallback produced zero candidate neighbors but PeopleCore has multiple current people, still return ambiguity, with an empty `candidateNeighborIds` array if necessary rather than inventing fake neighbor IDs
-
-### Non-goals
-
-Do not do any of the following in this checkpoint:
-
-- no PeopleCore-to-neighbor reconciliation model
-- no resolver UI work
-- no contract changes
-- no route handler changes
-- no webhook orchestration rewrites
-- no inbound create-new flow redesign
-- no scoring/ranking engine
-
-### Required validation
-
-Run exactly these commands after implementation:
-
+### Validation
 ```bash
 pnpm --dir apps/connectshyft-api exec jest --runInBand --config jest.config.js --runTestsByPath \
   src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts \
   src/modules/connectshyft/__tests__/identityResolver.test.ts \
-  src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts \
-  src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts
-
+  src/modules/connectshyft/__tests__/identityBoundary.test.ts
 pnpm nx run connectshyft-api:test
 ```
 
-### Completion criteria
-
-Checkpoint 2 is complete only when all of the following are true:
-
-- the three current blocker tests now pass
-- no Checkpoint 1 characterization expectations were weakened
-- route response shapes remain unchanged
-- ambiguous/manual-resolution payloads remain deterministic
-- no production code outside the seam was changed except truly minimal fallout
-
-### Commit rule
-
-If validation passes and there are no blockers, commit all uncommitted changes for this checkpoint as:
-
+### Commit
 ```bash
-refactor(slice-13): enforce peoplecore identity precedence ambiguity policy
+git add .
+git commit -m "refactor(slice-13): enforce peoplecore ambiguity precedence in seam"
 ```
 
-If blockers remain, do not commit. Report:
-
-- what failed
-- why
-- the smallest next change required
+Stop after Checkpoint 2.
 
 ---
 
-### Checkpoint 3: Enforce PeopleCore-first authority rules in final identity decisions
+## Checkpoint 3 — Resolver and route integrity
+The attached uploaded file reduces this to policy bullets, but the repo needs executable guidance. fileciteturn14file0
 
-Wire the new comparison rules into final outcome determination.
+### System rule
+If ambiguity is produced at the seam, it is terminal for Slice 13.
 
-Required outcomes:
+### Required code behavior
+In `identityResolver.ts`:
+- preserve existing resolver contract
+- if seam returns `IDENTITY_MATCH_AMBIGUOUS`, resolver must return:
+  - `type: 'multiple_matches'`
+  - `candidateNeighborIds` from the seam/manualResolution payload
+  - same normalized contact point returned by current logic
+- do not transform seam ambiguity into single_match
+- do not transform seam ambiguity into no_match
 
-- PeopleCore single + legacy same => current single-match outcome
-- PeopleCore single + legacy none => single-match outcome still allowed
-- PeopleCore single + legacy different => ambiguity/manual resolution
-- PeopleCore multi => ambiguity/manual resolution
-- PeopleCore none => legacy path preserved
-- PeopleCore unavailable => legacy path preserved
+In route-facing identity-match flows:
+- existing ambiguity envelope must remain unchanged
+- `manualResolution` block remains deterministic
+- success / refusal status behavior remains unchanged
+- no PeopleCore-specific fields in outward response
 
-Important:
+### Files in scope
+- `apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts`
+- `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts`
+- `apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNeighborIdentityMatch.ts`
+- tests already covering route envelopes
 
-- preserve current `IDENTITY_MATCH_AMBIGUOUS` route code where that is the current external behavior
-- preserve current manualResolution structure
-- preserve current no-auto-merge behavior when shared/unverified safety conditions apply
+### Required tests
+- Resolver disagreement case returns `multiple_matches`
+- Resolver PeopleCore multi-link case returns `multiple_matches`
+- Identity-match route disagreement case returns existing ambiguity refusal shape
+- Manual resolution payload stays deterministic
+- No legacy fallback path overrides seam ambiguity
 
-This checkpoint may require narrow changes in:
-
-- `identityBoundary.ts`
-- `identityResolver.ts`
-- `neighbors.ts`
-
-But do not broaden beyond authority logic.
-
-Validation commands:
-
+### Validation
 ```bash
 pnpm --dir apps/connectshyft-api exec jest --runInBand --config jest.config.js --runTestsByPath \
-  src/modules/connectshyft/__tests__/identityBoundary.test.ts \
   src/modules/connectshyft/__tests__/identityResolver.test.ts \
-  src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts \
-  src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts
+  src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts
 pnpm nx run connectshyft-api:test
-pnpm nx run contracts:test
 ```
 
-Commit:
-
+### Commit
 ```bash
 git add .
-git commit -m "feat(slice-13): enforce peoplecore-first identity authority with explicit disagreement ambiguity"
+git commit -m "refactor(slice-13): preserve seam ambiguity through resolver and routes"
 ```
 
 Stop after Checkpoint 3.
 
 ---
 
-### Checkpoint 4: Add narrow disagreement telemetry / audit
+## Checkpoint 4 — Hard deferral of reconciliation
+This checkpoint is mainly negative scope enforcement, but it still needs concrete repo verification.
 
-Add internal telemetry or audit emission for authority comparison outcomes.
+### System rule
+There is no identity reconciliation in Slice 13.
 
-Requirements:
+### Absolute prohibitions
+Do not add:
+- mapping tables
+- identity crosswalk persistence
+- person↔neighbor join service
+- merge logic between person and neighbor records
+- heuristic matching
+- similarity scoring
+- inferred equivalence
+- background reconciliation job
 
-- no user-facing contract change required
-- keep implementation minimal
-- prefer existing audit/event infrastructure over new schema
-- no migration unless absolutely necessary
+### Allowed
+- internal comments noting `Deferred beyond Slice 13`
+- documentation clarifying why ambiguity increases in this slice
 
-Telemetry must capture:
+### Required code review checks
+Search and verify there are no new:
+- migrations for identity mapping
+- new peoplecore services for reconciliation
+- new contract enums solely for mapping infrastructure
 
-- normalized phone
-- peopleCore outcome
-- legacy outcome
-- final outcome
-- fallbackUsed
-- disagreementDetected
-
-Add focused tests proving:
-
-- disagreement records are emitted
-- fallback path records fallbackUsed=true
-- PeopleCore unavailable records peopleCoreOutcome=unavailable
-- no duplicate noisy emissions for one evaluation path
-
-Validation commands:
-
+### Validation
+Run these search checks after implementation:
 ```bash
-pnpm --dir apps/connectshyft-api exec jest --runInBand --config jest.config.js --runTestsByPath \
-  src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts \
-  src/modules/connectshyft/__tests__/identityResolver.test.ts
+rg -n "crosswalk|reconcil|equivalen|heuristic|similarity|score|link.*neighbor|neighbor.*person.*map|mapping table" apps/connectshyft-api/src libs/contracts shared/database/migrations docs
+rg -n "createTable\(|ALTER TABLE|ADD COLUMN" shared/database/migrations apps/connectshyft-api/src/migrations | rg -i "person|neighbor|identity|mapping|crosswalk"
 pnpm nx run connectshyft-api:test
+pnpm nx run contracts:test
 ```
 
-Commit:
-
+### Commit
 ```bash
-git add .
-git commit -m "feat(slice-13): add authority comparison telemetry for peoplecore identity seam"
+git add docs apps/connectshyft-api/src/modules/connectshyft apps/connectshyft-api/src/modules/peoplecore libs/contracts
+# only if there are actual changes from this checkpoint
 ```
+
+Use no-op commit only if needed by your branch discipline. Otherwise skip commit if there are truly no file changes.
 
 Stop after Checkpoint 4.
 
 ---
 
-### Checkpoint 5: Add narrow resolver-review creation for disagreement only if needed
+## Checkpoint 5 — Creation guard and inbound SMS flow control
+The uploaded block states the policy correctly, but it needs repo-specific implementation instructions. fileciteturn14file0
 
-Only do this if the checkpoint 1-4 implementation leaves unresolved disagreement without durable review signal.
+### System rule
+Ambiguity blocks creation.
 
-If implemented:
+### Required behavior
+If the final seam/resolver outcome is ambiguity:
+- inbound SMS must not create a new neighbor
+- webhook path must preserve current ambiguity refusal behavior
+- no attach to an arbitrary existing neighbor
+- no retry-based create on same ambiguous event
 
-- trigger only on PeopleCore single-vs-legacy conflicting identity ownership
-- use deterministic triggerSourceType and triggerSourceId
-- keep best-effort behavior
-- avoid duplicate review creation for the same trigger
+If the final outcome is no_match:
+- preserve current create-new shell behavior
+- preserve idempotency behavior already in place
 
-Recommended trigger source:
+### Files in scope
+- `apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts`
+- `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts`
+- `apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts`
+- provider-registry inbound dispatch tests if touched indirectly
 
-- `connectshyft_identity_authority_disagreement`
+### Required tests
+- disagreement path through inbound SMS does not call `createNeighborFromInbound`
+- PeopleCore multi-link ambiguity does not call `createNeighborFromInbound`
+- PeopleCore no-current-link + legacy no_match still does call `createNeighborFromInbound`
+- PeopleCore unavailable still preserves current fallback create path when legacy no_match applies
 
-Recommended review type:
+### Idempotency requirement
+Do not add new idempotency semantics. Preserve current dedupe and create behavior. The key rule is only:
+- ambiguity must never create
 
-- `identity_conflict`
-
-Do not add this if telemetry plus ambiguity is already sufficient and tests/documents show it is deferred. Choose the minimal safe path.
-
-Validation commands:
-
+### Validation
 ```bash
 pnpm --dir apps/connectshyft-api exec jest --runInBand --config jest.config.js --runTestsByPath \
-  src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts \
-  src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts \
-  src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts
+  src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts
 pnpm nx run connectshyft-api:test
-pnpm nx run contracts:test
 ```
 
-Commit:
-
+### Commit
 ```bash
 git add .
-git commit -m "feat(slice-13): add narrow resolver review hook for identity authority disagreement"
+git commit -m "fix(slice-13): block create-new under peoplecore ambiguity"
 ```
 
 Stop after Checkpoint 5.
 
 ---
 
-### Checkpoint 6: Lock docs and roadmap
+## Checkpoint 6 — Documentation alignment
+The uploaded block names the right doc themes, but not the repo-facing edits. fileciteturn14file0
 
-Update architecture docs to reflect the new reality:
+### Must document
 
-Required doc updates:
+#### 1. Precedence rule
+Add explicit wording:
+- PeopleCore can block certainty
+- PeopleCore cannot assert identity equivalence in Slice 13
+- disagreement becomes ambiguity
 
-- `docs/architecture/identity-resolution-model.md`
-- `docs/architecture/peoplecore-identity-seam.md`
-- `docs/architecture/peoplecore-connectshyft-boundary-matrix.md`
-- `docs/architecture/connectshyft-router-refactor-plan.md`
+#### 2. Ambiguity categories
+Document these explicitly:
+- legacy multi-neighbor ambiguity
+- PeopleCore multi-person ambiguity
+- cross-system disagreement ambiguity
 
-Required content:
+#### 3. Decision flow
+Document this exact logic in prose or diagram form:
 
-- PeopleCore is now first read authority for phone identity when current links exist
-- ConnectShyft neighbor remains compatibility shell for CRUD and fallback
-- disagreement policy is explicit ambiguity, never silent preference
-- bulk migration remains deferred
-- Slice 14 should likely target compatibility-shell reduction or application-shell groundwork, depending repo state at that point
-
-Also add one narrow note file if needed:
-
-- `apps/connectshyft-api/src/modules/connectshyft/PEOPLECORE_AUTHORITY_NOTES.md`
-
-Validation commands:
-
-```bash
-pnpm nx run connectshyft-api:test
-pnpm nx run contracts:test
-cd apps/connectshyft-web && npm run build
-cd apps/connectshyft-web && npm run test
+```text
+PeopleCore available?
+  NO -> preserve legacy behavior
+  YES -> current person links?
+    0 -> preserve legacy behavior
+    >1 -> ambiguous
+    1 -> legacy outcome?
+      multiple -> ambiguous
+      single aligned -> preserve current exact-match behavior
+      single disagreement -> ambiguous
+      none -> no-match (unchanged in Slice 13)
 ```
 
-Commit:
+#### 4. Non-goals
+Explicitly state:
+- no reconciliation
+- no crosswalk
+- no auto-linking
+- no merge engine
+- no scoring engine
 
+#### 5. Slice 14 handoff note
+Document that the next logical slice is operationalization of ambiguity and resolver handling, not reconciliation.
+
+### Files to update
+- `docs/architecture/identity-resolution-model.md`
+- `docs/architecture/peoplecore-identity-seam.md`
+- `docs/architecture/connectshyft-router-refactor-plan.md`
+- `docs/architecture/peoplecore-connectshyft-boundary-matrix.md`
+
+### Prohibited documentation language
+Do not imply Slice 13 already does:
+- future merge logic in present tense
+- automatic PeopleCore/neighbor linking
+- eventual consistency already established
+- person↔neighbor equivalence as a solved problem
+
+### Validation
 ```bash
-git add .
-git commit -m "docs(slice-13): lock peoplecore read authority and connectshyft compatibility shell"
+rg -n "auto-link|crosswalk|equivalence|reconciliation|merge engine|scoring" docs/architecture
+pnpm nx run connectshyft-api:test
+pnpm nx run contracts:test
+```
+
+### Commit
+```bash
+git add docs/architecture
+git commit -m "docs(slice-13): align architecture to peoplecore ambiguity precedence"
 ```
 
 Stop after Checkpoint 6.
 
 ---
 
-## Testing obligations
-
-You must preserve or extend characterization coverage for:
-
-- identity ambiguity
-- inbound SMS no-match create flow
-- inbound SMS single-match no-create flow
-- PeopleCore unavailable fallback
-- shared-contact no-auto-merge behavior
-- deleted-only legacy exclusions where already characterized
-- disagreement ambiguity behavior
-
-You must not remove existing characterization tests to make the slice pass.
-
----
-
-## Required acceptance criteria
-
-1. PeopleCore exact single current person link is first authority for phone identity resolution.
-2. PeopleCore multiple current person links always produce ambiguity/manual resolution.
-3. PeopleCore absence preserves current legacy fallback behavior.
-4. PeopleCore and legacy disagreement never results in silent winner selection.
-5. Existing ConnectShyft route contracts remain intact.
-6. Inbound SMS still functions for aligned single-match and no-match create paths.
-7. Telemetry or audit captures comparison outcomes.
-8. Neighbor CRUD remains operational and unchanged at route-contract level.
-9. All tests pass.
-10. PR CI is green.
-
----
-
-## Commands for final validation
-
-Run all of the following before opening PR:
-
+## Final validation sweep
+Run at the end of the slice:
 ```bash
 pnpm --dir apps/connectshyft-api exec jest --runInBand --config jest.config.js --runTestsByPath \
   src/modules/connectshyft/__tests__/identityBoundary.test.ts \
   src/modules/connectshyft/__tests__/identityResolver.test.ts \
   src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts \
-  src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts \
   src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts \
-  src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts
-
+  src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts
 pnpm nx run connectshyft-api:test
 pnpm nx run contracts:test
-cd apps/connectshyft-web && npm run build
-cd apps/connectshyft-web && npm run test
 ```
 
-If any workspace lock or dependency metadata changed:
-
+Optional broader safety pass if already normal for your branch:
 ```bash
-pnpm install --frozen-lockfile
+pnpm nx run admin-api:test
+pnpm nx run moneyshyft-api:test
 ```
 
-If that fails because lockfiles need sync, update the workspace lock properly before opening PR.
+---
+
+## Expected commit sequence
+1. `test(slice-13): lock peoplecore ambiguity precedence characterization`
+2. `refactor(slice-13): enforce peoplecore ambiguity precedence in seam`
+3. `refactor(slice-13): preserve seam ambiguity through resolver and routes`
+4. optional no-op or skip if Checkpoint 4 has no file diffs
+5. `fix(slice-13): block create-new under peoplecore ambiguity`
+6. `docs(slice-13): align architecture to peoplecore ambiguity precedence`
+
+If you prefer a single squashed codex branch before PR, use the checkpoint commits locally anyway, then squash at PR time only if your repo policy allows it.
 
 ---
 
-## PR instructions
+## PR target
+- Base: `codex/dev`
+- Branch: `codex/slice-13-peoplecore-read-authority-and-ambiguity-precedence`
 
-Branch name:
+## PR title
+`Slice 13: enforce PeopleCore ambiguity precedence and preserve ConnectShyft compatibility shell`
 
-```bash
-git checkout -b codex/slice-13-peoplecore-read-authority-and-compat-shell
-```
-
-PR title:
-
-```text
-feat(slice-13): make peoplecore first read authority for connectshyft identity
-```
-
-PR summary must state:
-
-- PeopleCore-first identity read authority is now enforced where current links exist
-- disagreement is explicit ambiguity
-- legacy neighbor lookup remains fallback and compatibility shell
-- no bulk migration was attempted
-- route contracts were preserved
+## PR summary bullets
+- makes PeopleCore first read authority for identity invalidation
+- forces ambiguity on cross-system disagreement and multi-link PeopleCore cases
+- preserves legacy fallback when PeopleCore has no current links or is unavailable
+- blocks create-new under ambiguity in inbound SMS flows
+- keeps current route envelopes stable
+- documents Slice 13 as a safety slice, not a reconciliation slice
 
 ---
 
-## Done definition
+## Codex execution note
+Do not improvise beyond this slice.
 
-Slice 13 is done only when:
-
-- authority precedence is implemented
-- disagreement is explicit ambiguity
-- current route contracts remain stable
-- telemetry exists
-- docs are updated
-- CI is green
-
----
-
-## Explicitly deferred to later slice
-
-- full PeopleCore-backed candidate scoring across additional signals
-- rebinding engine
-- person-first CRUD cutover
-- deprecating `neighbors.ts`
-- resolver UI / queue experience
-- application shell
-- bulk backfill / migration tooling
-
----
-
-## Counterpoint
-
-The tempting move is to make PeopleCore authoritative and simultaneously collapse `neighbors.ts` into a much smaller shell. Do not do that in this slice. The repo still shows broad direct neighbor dependencies across routes, handlers, inbound flows, and tests. Combining read-authority shift with major shell reduction would be unnecessary blast radius.
-
-The right move here is authority shift first, shell reduction later.
+The correct behavior for Slice 13 is to increase ambiguity in unsafe disagreement cases. That is intentional. A noisier but safer ambiguity result is better than a cleaner but wrong identity winner.

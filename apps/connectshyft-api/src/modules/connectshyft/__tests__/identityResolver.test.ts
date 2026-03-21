@@ -151,6 +151,122 @@ describe('connectshyft identity resolver', () => {
     });
   });
 
+  it('returns multiple_matches when PeopleCore has multiple current linked people even with one legacy candidate', async () => {
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [buildNeighbor('neighbor-legacy-19', '+12605551219')],
+      async () => [buildNeighbor('neighbor-legacy-19', '+12605551219')],
+      {
+        listContactPointsByNormalizedValue: async () => [
+          {
+            id: 'contact-point-19',
+            tenantId: 'tenant-a',
+            type: 'phone',
+            normalizedValue: '+12605551219',
+            status: 'active_personal',
+            firstSeenAt: '2026-03-21T12:00:00.000Z',
+            lastSeenAt: '2026-03-21T12:00:00.000Z',
+            suspectedShared: false,
+            confirmedShared: false,
+            reassignmentSuspected: false,
+            createdAt: '2026-03-21T12:00:00.000Z',
+            updatedAt: '2026-03-21T12:00:00.000Z',
+          },
+        ],
+        listCurrentContactPointLinks: async () => [
+          {
+            id: 'link-19-a',
+            contactPointId: 'contact-point-19',
+            subjectType: 'person',
+            subjectId: 'person-19-a',
+            linkType: 'primary',
+            confidenceBand: 'high',
+            isCurrent: true,
+            isPrimary: true,
+            manuallyConfirmed: false,
+            firstLinkedAt: '2026-03-21T12:00:00.000Z',
+            linkedBy: 'system',
+            createdAt: '2026-03-21T12:00:00.000Z',
+            updatedAt: '2026-03-21T12:00:00.000Z',
+          },
+          {
+            id: 'link-19-b',
+            contactPointId: 'contact-point-19',
+            subjectType: 'person',
+            subjectId: 'person-19-b',
+            linkType: 'primary',
+            confidenceBand: 'high',
+            isCurrent: true,
+            isPrimary: true,
+            manuallyConfirmed: false,
+            firstLinkedAt: '2026-03-21T12:00:00.000Z',
+            linkedBy: 'system',
+            createdAt: '2026-03-21T12:00:00.000Z',
+            updatedAt: '2026-03-21T12:00:00.000Z',
+          },
+        ],
+      } as any,
+    );
+    const resolver = new ConnectShyftSubjectResolver(adapter);
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '2605551219',
+    })).resolves.toEqual({
+      type: 'multiple_matches',
+      candidateNeighborIds: ['neighbor-legacy-19'],
+      normalizedContactPoint: '+12605551219',
+    });
+  });
+
+  it('preserves seam manual-resolution candidates when ambiguity has no legacy exact-match ids', async () => {
+    const resolver = new ConnectShyftSubjectResolver({
+      evaluateMatch: jest.fn(async () => ({
+        ok: false as const,
+        code: 'IDENTITY_MATCH_AMBIGUOUS' as const,
+        message: 'Identity match is ambiguous and requires manual resolution.',
+        data: {
+          identityMatch: {
+            decision: 'AMBIGUOUS' as const,
+            reason: 'MULTIPLE_EXACT_CONTACT_POINT_MATCHES' as const,
+            autoMergeAllowed: false,
+            contactPoint: {
+              value: '+12605551230',
+              isShared: false,
+              verificationStatus: 'verified' as const,
+            },
+            matchedNeighborId: null,
+            candidateCount: 0,
+            candidateNeighborIds: [],
+            exactMatches: [],
+          },
+          manualResolution: {
+            required: true as const,
+            reasonCode: 'IDENTITY_MATCH_AMBIGUOUS' as const,
+            nextAction: 'manual-merge' as const,
+            mergeEndpoint: '/api/v1/connectshyft/neighbors/merge' as const,
+            candidateNeighborIds: ['neighbor-b', 'neighbor-a'],
+            guidance: 'Multiple identities share this contact point. Resolve manually before any merge.',
+          },
+          idempotency: {
+            key: 'resolver-ambiguity-manual-resolution',
+            semantics: 'REPLAY_SAFE' as const,
+          },
+        },
+      })),
+    });
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '(260) 555-1230',
+    })).resolves.toEqual({
+      type: 'multiple_matches',
+      candidateNeighborIds: ['neighbor-a', 'neighbor-b'],
+      normalizedContactPoint: '+12605551230',
+    });
+  });
+
   it('passes hook context into the seam for inbound no-match handling', async () => {
     const evaluateMatch = jest.fn(async () => ({
       ok: true as const,
