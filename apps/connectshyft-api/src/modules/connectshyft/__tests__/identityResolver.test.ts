@@ -98,6 +98,59 @@ describe('connectshyft identity resolver', () => {
     });
   });
 
+  it('characterizes PeopleCore and legacy disagreement as multiple_matches through the resolver seam', async () => {
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [buildNeighbor('neighbor-legacy-a', '+12605551218')],
+      async () => [buildNeighbor('neighbor-legacy-b', '+12605551218')],
+      {
+        listContactPointsByNormalizedValue: async () => [
+          {
+            id: 'contact-point-18',
+            tenantId: 'tenant-a',
+            type: 'phone',
+            normalizedValue: '+12605551218',
+            status: 'active_personal',
+            firstSeenAt: '2026-03-21T12:00:00.000Z',
+            lastSeenAt: '2026-03-21T12:00:00.000Z',
+            suspectedShared: false,
+            confirmedShared: false,
+            reassignmentSuspected: false,
+            createdAt: '2026-03-21T12:00:00.000Z',
+            updatedAt: '2026-03-21T12:00:00.000Z',
+          },
+        ],
+        listCurrentContactPointLinks: async () => [
+          {
+            id: 'link-18',
+            contactPointId: 'contact-point-18',
+            subjectType: 'person',
+            subjectId: 'person-18',
+            linkType: 'primary',
+            confidenceBand: 'high',
+            isCurrent: true,
+            isPrimary: true,
+            manuallyConfirmed: false,
+            firstLinkedAt: '2026-03-21T12:00:00.000Z',
+            linkedBy: 'system',
+            createdAt: '2026-03-21T12:00:00.000Z',
+            updatedAt: '2026-03-21T12:00:00.000Z',
+          },
+        ],
+      } as any,
+    );
+    const resolver = new ConnectShyftSubjectResolver(adapter);
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '(260) 555-1218',
+    })).resolves.toEqual({
+      type: 'multiple_matches',
+      candidateNeighborIds: ['neighbor-legacy-b'],
+      normalizedContactPoint: '+12605551218',
+    });
+  });
+
   it('passes hook context into the seam for inbound no-match handling', async () => {
     const evaluateMatch = jest.fn(async () => ({
       ok: true as const,

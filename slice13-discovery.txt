@@ -1,0 +1,2433 @@
+=== PEOPLECORE / SEAM / HOOKS ===
+domains/people/resolver/resolverReviewMemoryStore.ts:78:export function createResolverReview(input: CreateResolverReviewInput): ResolverReview {
+domains/people/contact-points/contactPointMemoryStore.ts:72:export function createContactPoint(input: CreateContactPointInput): ContactPoint {
+domains/people/contact-points/contactPointMemoryStore.ts:90:export function createContactPointLink(input: CreateContactPointLinkInput): ContactPointLink {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts:390:    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:370:    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:411:    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:510:    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:562:    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:650:    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:724:    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:767:    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint');
+apps/connectshyft-api/src/app.ts:14:  createContactPoint,
+apps/connectshyft-api/src/app.ts:15:  createContactPointLink,
+apps/connectshyft-api/src/app.ts:16:  createResolverReview,
+apps/connectshyft-api/src/app.ts:130:  const contactPoint = createContactPoint({
+apps/connectshyft-api/src/app.ts:149:  const contactPointLink = createContactPointLink({
+apps/connectshyft-api/src/app.ts:177:  const resolverReview = createResolverReview({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:427:        createResolverReviewOnAmbiguous: true,
+apps/connectshyft-api/src/modules/peoplecore/store.ts:179:  createContactPoint(input: CreateContactPointInput): Promise<ContactPoint>;
+apps/connectshyft-api/src/modules/peoplecore/store.ts:184:  createContactPointLink(input: CreateContactPointLinkInput): Promise<ContactPointLink>;
+apps/connectshyft-api/src/modules/peoplecore/store.ts:190:  createResolverReview(input: CreateResolverReviewInput): Promise<ResolverReview>;
+apps/connectshyft-api/src/modules/peoplecore/store.ts:782:  async createContactPoint(input: CreateContactPointInput): Promise<ContactPoint> {
+apps/connectshyft-api/src/modules/peoplecore/store.ts:839:  async createContactPointLink(input: CreateContactPointLinkInput): Promise<ContactPointLink> {
+apps/connectshyft-api/src/modules/peoplecore/store.ts:949:  async createResolverReview(input: CreateResolverReviewInput): Promise<ResolverReview> {
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:129:import { resolveSubjectByContactPoint } from '../../../modules/connectshyft/identityResolver';
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:6279:        const subjectResolution = await resolveSubjectByContactPoint({
+apps/connectshyft-api/src/modules/peoplecore/service.ts:91:  createContactPoint(input: CreateContactPointInput) {
+apps/connectshyft-api/src/modules/peoplecore/service.ts:92:    return this.execute(() => this.store.createContactPoint(input));
+apps/connectshyft-api/src/modules/peoplecore/service.ts:103:  createContactPointLink(input: CreateContactPointLinkInput) {
+apps/connectshyft-api/src/modules/peoplecore/service.ts:104:    return this.execute(() => this.store.createContactPointLink(input));
+apps/connectshyft-api/src/modules/peoplecore/service.ts:119:  createResolverReview(input: CreateResolverReviewInput) {
+apps/connectshyft-api/src/modules/peoplecore/service.ts:120:    return this.execute(() => this.store.createResolverReview(input));
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts:552:    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts:618:    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts:703:    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts:783:    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
+apps/connectshyft-api/src/modules/peoplecore/__tests__/store.test.ts:301:    const contactPoint = await store.createContactPoint({
+apps/connectshyft-api/src/modules/peoplecore/__tests__/store.test.ts:322:    const link = await store.createContactPointLink({
+apps/connectshyft-api/src/modules/peoplecore/__tests__/store.test.ts:406:    const created = await store.createResolverReview({
+apps/connectshyft-api/src/modules/peoplecore/__tests__/store.test.ts:454:      store.createContactPointLink({
+apps/connectshyft-api/src/modules/peoplecore/__tests__/service.test.ts:56:      createContactPoint: jest.fn(async () => ({ id: 'contact-point-1' })),
+apps/connectshyft-api/src/modules/peoplecore/__tests__/service.test.ts:68:    await expect(service.createContactPoint(CONTACT_POINT_INPUT))
+apps/connectshyft-api/src/modules/peoplecore/__tests__/service.test.ts:96:    ['createContactPoint', (service: AsyncPeopleCoreService) => service.createContactPoint(CONTACT_POINT_INPUT), 'createContactPoint'],
+apps/connectshyft-api/src/modules/peoplecore/__tests__/service.test.ts:103:    ['createContactPointLink', (service: AsyncPeopleCoreService) => service.createContactPointLink({
+apps/connectshyft-api/src/modules/peoplecore/__tests__/service.test.ts:115:    }), 'createContactPointLink'],
+apps/connectshyft-api/src/modules/peoplecore/__tests__/service.test.ts:124:    ['createResolverReview', (service: AsyncPeopleCoreService) => service.createResolverReview(RESOLVER_REVIEW_INPUT), 'createResolverReview'],
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:15:  | 'createContactPoint'
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:16:  | 'createContactPointLink'
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:18:  | 'createResolverReview'
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:133:  async createProvisionalPersonHook(
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:157:        contactPoint = await this.peopleCoreService.createContactPoint({
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:208:    const link = await this.peopleCoreService.createContactPointLink({
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:230:  async createResolverReviewHook(
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:274:    const review = await this.peopleCoreService.createResolverReview({
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:313:      && input.hookContext?.createProvisionalOnNoMatch
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:315:      await this.createProvisionalPersonHook({
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:332:      && input.hookContext?.createResolverReviewOnAmbiguous
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:334:      await this.createResolverReviewHook({
+apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts:52:  createProvisionalOnNoMatch?: boolean;
+apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts:53:  createResolverReviewOnAmbiguous?: boolean;
+apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts:5:import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from './peoplecoreIdentityAdapter';
+apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts:32:  resolveSubjectByContactPoint(
+apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts:42:  async resolveSubjectByContactPoint(
+apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts:57:        createProvisionalOnNoMatch: true,
+apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts:58:        createResolverReviewOnAmbiguous: true,
+apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts:114:export const resolveSubjectByContactPoint = (
+apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts:117:  defaultSubjectResolver.resolveSubjectByContactPoint(input);
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityAdapter.ts:16:} from './peoplecoreIdentityHooks';
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityAdapter.ts:21:  | 'createContactPoint'
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityAdapter.ts:22:  | 'createContactPointLink'
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityAdapter.ts:24:  | 'createResolverReview'
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:22:import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from './peoplecoreIdentityAdapter';
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:1:import { ConnectShyftPeopleCoreIdentityHooks } from '../peoplecoreIdentityHooks';
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:41:      createContactPoint: jest.fn(async () => buildContactPoint('contact-point-1', '+12605551230')),
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:52:      createContactPointLink: jest.fn(async () => ({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:68:      createResolverReview: jest.fn(),
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:72:    const result = await hooks.createProvisionalPersonHook({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:90:    expect(service.createContactPoint).toHaveBeenCalledWith(expect.objectContaining({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:107:      createResolverReview: jest.fn(async () => ({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:124:      createContactPoint: jest.fn(),
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:126:      createContactPointLink: jest.fn(),
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:130:    const result = await hooks.createResolverReviewHook({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:150:    expect(service.createResolverReview).toHaveBeenCalledWith(expect.objectContaining({
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNeighborIdentityMatch.ts:27:      createResolverReviewOnAmbiguous: true,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:6:import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from '../peoplecoreIdentityAdapter';
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:84:    await expect(resolver.resolveSubjectByContactPoint({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:131:    await expect(resolver.resolveSubjectByContactPoint({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:144:        createProvisionalOnNoMatch: true,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:145:        createResolverReviewOnAmbiguous: true,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:159:    await expect(resolver.resolveSubjectByContactPoint({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:177:    await expect(resolver.resolveSubjectByContactPoint({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:195:    await expect(resolver.resolveSubjectByContactPoint({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:213:    await expect(resolver.resolveSubjectByContactPoint({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:238:    await expect(resolver.resolveSubjectByContactPoint({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:257:    await expect(resolver.resolveSubjectByContactPoint({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:285:    await expect(resolver.resolveSubjectByContactPoint({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:304:    await expect(resolver.resolveSubjectByContactPoint({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:2:import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from '../peoplecoreIdentityAdapter';
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:60:      createContactPoint: jest.fn(async () => buildContactPoint('contact-point-3', '+12605551220')),
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:71:      createContactPointLink: jest.fn(async () => ({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:87:      createResolverReview: jest.fn(),
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:105:        createProvisionalOnNoMatch: true,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:126:    expect(peopleCoreService.createContactPointLink).toHaveBeenCalled();
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:217:    const createResolverReview = jest.fn(async () => ({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:252:        createResolverReview,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:253:        createContactPoint: jest.fn(),
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:255:        createContactPointLink: jest.fn(),
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:269:        createResolverReviewOnAmbiguous: true,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:289:    expect(createResolverReview).toHaveBeenCalledWith(expect.objectContaining({
+
+=== NEIGHBOR DEPENDENCIES ===
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:70:  connectShyftNeighborServiceAsync,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:71:  createNeighborFromInbound,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:72:  resolveActiveNeighborForInbound,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:3422:    const resolvedNeighbor = await connectShyftNeighborServiceAsync.resolveNeighbor({
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:3756:  const resolvedNeighbor = await resolveActiveNeighborForInbound({
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4478:      const resolvedNeighbor = await connectShyftNeighborServiceAsync.resolveNeighbor({
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:6289:          const createdNeighbor = await createNeighborFromInbound({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts:8:  connectShyftNeighborServiceAsync,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts:224:    jest.spyOn(connectShyftNeighborServiceAsync, 'evaluateIdentityMatch').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts:309:    jest.spyOn(connectShyftNeighborServiceAsync, 'evaluateIdentityMatch').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts:376:    jest.spyOn(connectShyftNeighborServiceAsync, 'evaluateIdentityMatch').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts:471:    jest.spyOn(AsyncConnectShyftNeighborService.prototype, 'mergeNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts:555:    jest.spyOn(AsyncConnectShyftNeighborService.prototype, 'mergeNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts:597:    const mergeSpy = jest.spyOn(AsyncConnectShyftNeighborService.prototype, 'mergeNeighbor');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts:285:    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts:387:    const createInboundSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts:388:    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNeighborCreate.ts:9:import { connectShyftNeighborServiceAsync } from '../neighbors';
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNeighborCreate.ts:17:  const created = await connectShyftNeighborServiceAsync.createNeighbor({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts:7:import { connectShyftNeighborServiceAsync } from '../../../../modules/connectshyft/neighbors';
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts:115:    jest.spyOn(connectShyftNeighborServiceAsync, 'createNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts:171:    jest.spyOn(connectShyftNeighborServiceAsync, 'updateNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts:229:    jest.spyOn(connectShyftNeighborServiceAsync, 'createNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts:308:    const softDeleteSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'softDeleteNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts:403:    jest.spyOn(connectShyftNeighborServiceAsync, 'softDeleteNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts:436:    const softDeleteSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'softDeleteNeighbor');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts:460:    const softDeleteSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'softDeleteNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts:498:    const listSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'listNeighbors').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts:549:    const resolveSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts:601:    const resolveSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:6:import { connectShyftNeighborServiceAsync } from '../../../../modules/connectshyft/neighbors';
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:123:    jest.spyOn(connectShyftNeighborServiceAsync, 'evaluateIdentityMatch').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:204:    jest.spyOn(connectShyftNeighborServiceAsync, 'evaluateIdentityMatch').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:287:    jest.spyOn(connectShyftNeighborServiceAsync, 'evaluateIdentityMatch').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:370:    const evaluateSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'evaluateIdentityMatch').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.ts:8:  connectShyftNeighborServiceAsync,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.ts:224:    const updateSpy = jest.spyOn(AsyncConnectShyftNeighborService.prototype, 'updateNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.ts:319:    const updateSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'updateNeighbor');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.ts:354:    jest.spyOn(AsyncConnectShyftNeighborService.prototype, 'updateNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.ts:444:    const softDeleteSpy = jest.spyOn(AsyncConnectShyftNeighborService.prototype, 'softDeleteNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.ts:523:    const softDeleteSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'softDeleteNeighbor');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.ts:547:    jest.spyOn(AsyncConnectShyftNeighborService.prototype, 'softDeleteNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNeighborIdentityMatch.ts:11:import { connectShyftNeighborServiceAsync } from '../neighbors';
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNeighborIdentityMatch.ts:19:  const matched = await connectShyftNeighborServiceAsync.evaluateIdentityMatch({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts:616:    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts:624:    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts:709:    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts:788:    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-create.characterization.test.ts:5:import { connectShyftNeighborServiceAsync } from '../../../../modules/connectshyft/neighbors';
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-create.characterization.test.ts:220:    const createSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'createNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-create.characterization.test.ts:286:    jest.spyOn(connectShyftNeighborServiceAsync, 'createNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-create.characterization.test.ts:340:    jest.spyOn(connectShyftNeighborServiceAsync, 'createNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-create.characterization.test.ts:397:    const createSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'createNeighbor');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-create.characterization.test.ts:428:    const createSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'createNeighbor');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:366:    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:410:    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:508:    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:516:    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:560:    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:567:    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:647:    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:655:    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:722:    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts:765:    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.ts:5:import { connectShyftNeighborServiceAsync } from '../../../../modules/connectshyft/neighbors';
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.ts:210:    const listSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'listNeighbors').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.ts:264:    const resolveSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.ts:325:    jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.ts:354:    const resolveSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:15:  connectShyftNeighborServiceAsync,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:471:    const resolveNeighborSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:570:    jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue(
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:605:    jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue(
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:643:    jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue(
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:687:    jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue(
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:997:  updateNeighbor(input: NeighborStoreUpdateInput): NeighborPersistenceResult {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1043:  softDeleteNeighbor(input: {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1091:  mergeNeighbors(input: NeighborStoreMergeInput): NeighborMergePersistenceResult {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1288:  listActiveIdentityBoundaryNeighborsByTenant(
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1363:  listActiveIdentityBoundaryNeighborsByPhoneValue(
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1655:  async softDeleteNeighbor(input: {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1835:  async listActiveIdentityBoundaryNeighborsByTenant(
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1934:  async listActiveIdentityBoundaryNeighborsByPhoneValue(
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2053:  async updateNeighbor(input: NeighborStoreUpdateInput): Promise<NeighborPersistenceResult> {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2148:  async mergeNeighbors(input: NeighborStoreMergeInput): Promise<NeighborMergePersistenceResult> {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2309:        listActiveIdentityBoundaryNeighborsByTenant?: (
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2312:      listActiveIdentityBoundaryNeighborsByPhoneValue?: (
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2319:        (tenantId) => activeStore.listActiveIdentityBoundaryNeighborsByTenant
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2320:          ? activeStore.listActiveIdentityBoundaryNeighborsByTenant(tenantId)
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2333:          activeStore.listActiveIdentityBoundaryNeighborsByPhoneValue
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2334:            ? activeStore.listActiveIdentityBoundaryNeighborsByPhoneValue(
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2443:  createNeighborFromInbound(
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2522:  softDeleteNeighbor(
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2532:    const deleted = this.store.softDeleteNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2553:  updateNeighbor(input: ConnectShyftUpdateNeighborCommand): ConnectShyftUpdateNeighborResult {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2575:    const updated = this.store.updateNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2611:  mergeNeighbor(input: ConnectShyftMergeNeighborCommand): ConnectShyftMergeNeighborResult {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2626:    const merged = this.store.mergeNeighbors({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2654:  async (tenantId) => defaultKnexNeighborStore.listActiveIdentityBoundaryNeighborsByTenant(tenantId),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2656:    defaultKnexNeighborStore.listActiveIdentityBoundaryNeighborsByPhoneValue(
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2672:      listActiveIdentityBoundaryNeighborsByTenant?: (
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2675:      listActiveIdentityBoundaryNeighborsByPhoneValue?: (
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2682:        async (tenantId) => activeStore.listActiveIdentityBoundaryNeighborsByTenant
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2683:          ? activeStore.listActiveIdentityBoundaryNeighborsByTenant(tenantId)
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2696:          activeStore.listActiveIdentityBoundaryNeighborsByPhoneValue
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2697:            ? activeStore.listActiveIdentityBoundaryNeighborsByPhoneValue(
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2840:  async createNeighborFromInbound(
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2956:  async softDeleteNeighbor(
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2967:      const deleted = await this.store.softDeleteNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:2995:  async updateNeighbor(input: ConnectShyftUpdateNeighborCommand): Promise<ConnectShyftUpdateNeighborResult> {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:3018:      const updated = await this.store.updateNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:3068:  async mergeNeighbor(input: ConnectShyftMergeNeighborCommand): Promise<ConnectShyftMergeNeighborResult> {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:3084:      const merged = await this.store.mergeNeighbors({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:3116:export const connectShyftNeighborServiceAsync = new AsyncConnectShyftNeighborService(
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:3121:export const resolveActiveNeighborForInbound = (
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:3124:  connectShyftNeighborServiceAsync.resolveActiveNeighbor(input);
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:3126:export const createNeighborFromInbound = async (input: ConnectShyftCreateInboundNeighborCommand & {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:3132:  const created = await connectShyftNeighborServiceAsync.createNeighborFromInbound(input);
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:3169:  connectShyftNeighborServiceAsync.applyInboundSmsTextingPreference(input);
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectNeighborDetail.ts:10:import { connectShyftNeighborServiceAsync } from '../neighbors';
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectNeighborDetail.ts:18:  const resolved = await connectShyftNeighborServiceAsync.resolveNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectNeighbors.ts:9:import { connectShyftNeighborServiceAsync } from '../neighbors';
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectNeighbors.ts:17:  const resolved = await connectShyftNeighborServiceAsync.listNeighbors({
+apps/connectshyft-api/src/modules/connectshyft/http/neighborIdentityContext.ts:12:  connectShyftNeighborServiceAsync,
+apps/connectshyft-api/src/modules/connectshyft/http/neighborIdentityContext.ts:800:    const updated = await connectShyftNeighborServiceAsync.updateNeighbor(command);
+apps/connectshyft-api/src/modules/connectshyft/http/neighborIdentityContext.ts:825:        const updated = await txNeighborService.updateNeighbor(command);
+apps/connectshyft-api/src/modules/connectshyft/http/neighborIdentityContext.ts:907:    const deleted = await connectShyftNeighborServiceAsync.softDeleteNeighbor(command);
+apps/connectshyft-api/src/modules/connectshyft/http/neighborIdentityContext.ts:943:        const deletedResult = await txNeighborService.softDeleteNeighbor(command);
+apps/connectshyft-api/src/modules/connectshyft/http/neighborIdentityContext.ts:1091:        const mergedResult = await txNeighborService.mergeNeighbor(command);
+apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts:4:import { KnexConnectShyftNeighborStore } from './neighbors';
+apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts:104:  async (tenantId) => defaultNeighborStore.listActiveIdentityBoundaryNeighborsByTenant(tenantId),
+apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts:106:    defaultNeighborStore.listActiveIdentityBoundaryNeighborsByPhoneValue(
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:160:    const result = service.createNeighborFromInbound({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:207:    const inboundDuplicate = service.createNeighborFromInbound({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:337:    const duplicateUpdate = service.updateNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:424:    const updated = service.updateNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:618:    const forbidden = service.softDeleteNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:630:    const confirmationRequired = service.softDeleteNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:642:    const deleted = service.softDeleteNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:714:    const repeated = service.softDeleteNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:755:    const deleted = service.softDeleteNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:766:    const inboundCreated = service.createNeighborFromInbound({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:840:    const unknownNeighbor = service.createNeighborFromInbound({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1109:    const updated = service.updateNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1153:    const updatedToUnknown = service.updateNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1183:    const updatedBackToYes = service.updateNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1248:    const updated = service.updateNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1299:    const crossTenantUpdated = service.updateNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1354:    const merged = service.mergeNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1409:    const merged = service.mergeNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1429:    const merged = service.mergeNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1449:    const merged = service.mergeNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1796:      updateNeighbor: jest.fn(async () => {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1801:      softDeleteNeighbor: jest.fn(async () => {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1847:    const updated = await service.updateNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1866:    const deleted = await service.softDeleteNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1907:      updateNeighbor: jest.fn(async () => {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1935:    const updated = await service.updateNeighbor({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.neighborIdentityContext.test.ts:11:import { connectShyftNeighborServiceAsync } from '../neighbors';
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.neighborIdentityContext.test.ts:286:      connectShyftNeighborServiceAsync,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.neighborIdentityContext.test.ts:289:    const mergeNeighborSpy = jest.spyOn(
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.neighborIdentityContext.test.ts:290:      connectShyftNeighborServiceAsync,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.neighborIdentityContext.test.ts:291:      'mergeNeighbor',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.neighborIdentityContext.test.ts:292:    ).mockRejectedValue(new Error('mergeNeighbor should not run during access-context resolution'));
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.neighborIdentityContext.test.ts:325:    expect(mergeNeighborSpy).not.toHaveBeenCalled();
+
+=== RESOLVER TRIGGERS ===
+domains/people/resolver/resolverReviewMemoryStore.ts:5:  | 'shared_contact_ambiguity'
+domains/people/resolver/resolverReviewMemoryStore.ts:6:  | 'contact_point_reassignment'
+domains/people/resolver/resolverReviewMemoryStore.ts:8:  | 'subject_reassignment_review'
+domains/people/resolver/resolverReviewMemoryStore.ts:9:  | 'identity_conflict'
+domains/people/resolver/resolverReviewMemoryStore.ts:18:  | 'resolved_shared_contact'
+domains/people/resolver/resolverReviewMemoryStore.ts:26:  | 'mark_shared_contact'
+domains/people/resolver/resolverReviewMemoryStore.ts:33:  | 'shared_contact_possible'
+domains/people/resolver/resolverReviewMemoryStore.ts:34:  | 'shared_contact_confirmed'
+domains/people/resolver/resolverReviewMemoryStore.ts:70:const resolverReviews: ResolverReview[] = []
+domains/people/resolver/resolverReviewMemoryStore.ts:72:let resolverReviewSequence = 0
+domains/people/resolver/resolverReviewMemoryStore.ts:75:  return resolverReviews.map((resolverReview) => ({ ...resolverReview }))
+domains/people/resolver/resolverReviewMemoryStore.ts:78:export function createResolverReview(input: CreateResolverReviewInput): ResolverReview {
+domains/people/resolver/resolverReviewMemoryStore.ts:79:  const resolverReview: ResolverReview = {
+domains/people/resolver/resolverReviewMemoryStore.ts:81:    id: `rr_${++resolverReviewSequence}`,
+domains/people/resolver/resolverReviewMemoryStore.ts:84:  resolverReviews.push(resolverReview)
+domains/people/resolver/resolverReviewMemoryStore.ts:86:  return { ...resolverReview }
+domains/people/contact-points/contactPointMemoryStore.ts:10:  | 'reassignment_suspected'
+domains/people/contact-points/contactPointMemoryStore.ts:26:  reassignmentSuspected: boolean
+domains/people/contact-points/contactPointState.ts:12:  'reassignment_suspected',
+domains/people/contact-points/contactPointState.ts:23:export function requiresResolverReview(status: ContactPointStatus): boolean {
+domains/people/index.ts:5:export * from './resolver/resolverReviewMemoryStore'
+libs/contracts/src/people/events.ts:24:  resolverReviewId?: string;
+libs/contracts/src/people/events.ts:33:  'id' | 'normalizedValue' | 'status' | 'reassignmentSuspected'
+libs/contracts/src/people/events.ts:42:    type: 'contact_point.reassignment_suspected';
+libs/contracts/src/people/contact-point.ts:8:  | 'reassignment_suspected'
+libs/contracts/src/people/contact-point.ts:24:  reassignmentSuspected: boolean;
+libs/contracts/src/people/contact-point.ts:64:  | 'reassignment_suspected'
+libs/contracts/src/people/resolver-review.ts:5:  | 'shared_contact_ambiguity'
+libs/contracts/src/people/resolver-review.ts:6:  | 'contact_point_reassignment'
+libs/contracts/src/people/resolver-review.ts:8:  | 'subject_reassignment_review'
+libs/contracts/src/people/resolver-review.ts:9:  | 'identity_conflict';
+libs/contracts/src/people/resolver-review.ts:18:  | 'resolved_shared_contact'
+libs/contracts/src/people/resolver-review.ts:26:  | 'mark_shared_contact'
+libs/contracts/src/people/resolver-review.ts:33:  | 'shared_contact_possible'
+libs/contracts/src/people/resolver-review.ts:34:  | 'shared_contact_confirmed'
+tests/integration/peoplecore/resolver-reviews.test.ts:6:    const createResolverReviewResponse = await (request as any)(app).post('/people/resolver-reviews').send({
+tests/integration/peoplecore/resolver-reviews.test.ts:7:      reviewType: 'identity_conflict',
+tests/integration/peoplecore/resolver-reviews.test.ts:17:    expect(createResolverReviewResponse.status).toBe(200);
+tests/integration/peoplecore/resolver-reviews.test.ts:18:    expect(createResolverReviewResponse.body.reviewType).toBe('identity_conflict');
+tests/integration/peoplecore/resolver-reviews.test.ts:19:    expect(createResolverReviewResponse.body.reviewStatus).toBe('pending');
+tests/integration/peoplecore/resolver-reviews.test.ts:20:    expect(createResolverReviewResponse.body.priority).toBe('normal');
+tests/integration/peoplecore/resolver-reviews.test.ts:21:    expect(createResolverReviewResponse.body.candidatePersonIds).toEqual(['person_1', 'person_2']);
+tests/integration/peoplecore/resolver-reviews.test.ts:29:          id: createResolverReviewResponse.body.id,
+tests/integration/peoplecore/resolver-reviews.test.ts:30:          reviewType: 'identity_conflict',
+libs/contracts/tests/people/contact-point.test.ts:15:      reassignmentSuspected: false,
+tests/integration/peoplecore/contact-points.test.ts:18:    expect(createContactPointResponse.body.reassignmentSuspected).toBe(false);
+libs/contracts/tests/people/events.test.ts:49:    const reassignmentSuspected: ContactPointReassignmentSuspectedEvent = {
+libs/contracts/tests/people/events.test.ts:51:      type: 'contact_point.reassignment_suspected',
+libs/contracts/tests/people/events.test.ts:60:        status: 'reassignment_suspected',
+libs/contracts/tests/people/events.test.ts:61:        reassignmentSuspected: true,
+libs/contracts/tests/people/events.test.ts:66:    const resolverReviewCreated: ResolverReviewCreatedEvent = {
+libs/contracts/tests/people/events.test.ts:78:        reviewType: 'identity_conflict',
+libs/contracts/tests/people/events.test.ts:93:    expect(reassignmentSuspected.payload.reassignmentSuspected).toBe(true);
+libs/contracts/tests/people/events.test.ts:94:    expect(resolverReviewCreated.type).toBe('resolver_review.created');
+libs/contracts/tests/people/resolver-review.test.ts:9:      reviewType: 'identity_conflict',
+libs/contracts/tests/people/resolver-review.test.ts:22:    expect(review.reviewType).toBe('identity_conflict');
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts:378:      code: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts:408:        manualResolution: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts:410:          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts:443:      code: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts:452:        manualResolution: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts:453:          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts:413:        code: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:113:  it('preserves IDENTITY_MATCH_AMBIGUOUS even when audit side-effects cannot persist', async () => {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:114:    const manualResolution = {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:116:      reasonCode: 'IDENTITY_MATCH_AMBIGUOUS' as const,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:125:      code: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:154:          manualResolution,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:156:        manualResolution,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:185:      code: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:190:        manualResolution: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:191:          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:206:      code: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:236:        manualResolution: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:238:          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:268:      code: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:278:        manualResolution: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:279:          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:427:        createResolverReviewOnAmbiguous: true,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts:640:        code: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/app.ts:16:  createResolverReview,
+apps/connectshyft-api/src/app.ts:140:    reassignmentSuspected: false,
+apps/connectshyft-api/src/app.ts:177:  const resolverReview = createResolverReview({
+apps/connectshyft-api/src/app.ts:202:  res.json(resolverReview);
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:184:const IDENTITY_MATCH_AMBIGUOUS_CODE = 'IDENTITY_MATCH_AMBIGUOUS';
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:6359:            code: IDENTITY_MATCH_AMBIGUOUS_CODE,
+apps/connectshyft-api/src/modules/peoplecore/store.ts:190:  createResolverReview(input: CreateResolverReviewInput): Promise<ResolverReview>;
+apps/connectshyft-api/src/modules/peoplecore/store.ts:243:  reassignment_suspected: boolean;
+apps/connectshyft-api/src/modules/peoplecore/store.ts:374:    reassignmentSuspected: row.reassignment_suspected,
+apps/connectshyft-api/src/modules/peoplecore/store.ts:513:      'reassignment_suspected',
+apps/connectshyft-api/src/modules/peoplecore/store.ts:556:  private resolverReviewColumns(): string[] {
+apps/connectshyft-api/src/modules/peoplecore/store.ts:799:        reassignment_suspected: input.reassignmentSuspected,
+apps/connectshyft-api/src/modules/peoplecore/store.ts:949:  async createResolverReview(input: CreateResolverReviewInput): Promise<ResolverReview> {
+apps/connectshyft-api/src/modules/peoplecore/store.ts:978:      .returning<DbResolverReviewRow[]>(this.resolverReviewColumns());
+apps/connectshyft-api/src/modules/peoplecore/store.ts:991:      .first<DbResolverReviewRow>(this.resolverReviewColumns());
+apps/connectshyft-api/src/modules/peoplecore/store.ts:1013:      .select<DbResolverReviewRow[]>(this.resolverReviewColumns());
+apps/connectshyft-api/src/modules/peoplecore/service.ts:119:  createResolverReview(input: CreateResolverReviewInput) {
+apps/connectshyft-api/src/modules/peoplecore/service.ts:120:    return this.execute(() => this.store.createResolverReview(input));
+apps/connectshyft-api/src/modules/peoplecore/__tests__/service.test.ts:31:  reassignmentSuspected: false,
+apps/connectshyft-api/src/modules/peoplecore/__tests__/service.test.ts:37:  reviewType: 'identity_conflict' as const,
+apps/connectshyft-api/src/modules/peoplecore/__tests__/service.test.ts:124:    ['createResolverReview', (service: AsyncPeopleCoreService) => service.createResolverReview(RESOLVER_REVIEW_INPUT), 'createResolverReview'],
+apps/connectshyft-api/src/modules/peoplecore/__tests__/store.test.ts:249:      reassignment_suspected: false,
+apps/connectshyft-api/src/modules/peoplecore/__tests__/store.test.ts:311:      reassignmentSuspected: false,
+apps/connectshyft-api/src/modules/peoplecore/__tests__/store.test.ts:376:      review_type: 'identity_conflict',
+apps/connectshyft-api/src/modules/peoplecore/__tests__/store.test.ts:406:    const created = await store.createResolverReview({
+apps/connectshyft-api/src/modules/peoplecore/__tests__/store.test.ts:409:      reviewType: 'identity_conflict',
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:18:  | 'createResolverReview'
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:167:          reassignmentSuspected: false,
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:230:  async createResolverReviewHook(
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:274:    const review = await this.peopleCoreService.createResolverReview({
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:277:      reviewType: 'shared_contact_ambiguity',
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:289:      riskFlags: ['shared_contact_possible'],
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:331:      && result.code === 'IDENTITY_MATCH_AMBIGUOUS'
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:332:      && input.hookContext?.createResolverReviewOnAmbiguous
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.ts:334:      await this.createResolverReviewHook({
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityAdapter.ts:24:  | 'createResolverReview'
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNeighborIdentityMatch.ts:27:      createResolverReviewOnAmbiguous: true,
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNeighborIdentityMatch.ts:35:    : matched.code === 'IDENTITY_MATCH_AMBIGUOUS' && matched.data?.identityMatch
+apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts:58:        createResolverReviewOnAmbiguous: true,
+apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts:70:      if (result.code === 'IDENTITY_MATCH_AMBIGUOUS') {
+apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts:75:              || result.data?.manualResolution?.candidateNeighborIds
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:215:  manualResolution?: ConnectShyftIdentityManualResolutionContext;
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:273:    | 'IDENTITY_MATCH_AMBIGUOUS'
+apps/connectshyft-api/src/modules/connectshyft/http/neighborIdentityContext.ts:38:const IDENTITY_MATCH_AMBIGUOUS_CODE = 'IDENTITY_MATCH_AMBIGUOUS';
+apps/connectshyft-api/src/modules/connectshyft/http/neighborIdentityContext.ts:102:    manualResolution?: unknown;
+apps/connectshyft-api/src/modules/connectshyft/http/neighborIdentityContext.ts:644:  manual_resolution_required: input.decision.manualResolution?.required === true,
+apps/connectshyft-api/src/modules/connectshyft/http/neighborIdentityContext.ts:645:  manual_resolution_reason_code: input.decision.manualResolution?.reasonCode || null,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:15:  reassignmentSuspected: false,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:68:      createResolverReview: jest.fn(),
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:107:      createResolverReview: jest.fn(async () => ({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:111:        reviewType: 'shared_contact_ambiguity',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:120:        riskFlags: ['shared_contact_possible'],
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:130:    const result = await hooks.createResolverReviewHook({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.ts:150:    expect(service.createResolverReview).toHaveBeenCalledWith(expect.objectContaining({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1649:      code: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1657:        manualResolution: {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts:1659:          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:54:          reassignmentSuspected: false,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.ts:145:        createResolverReviewOnAmbiguous: true,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityBoundary.test.ts:95:      code: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityBoundary.test.ts:102:        manualResolution: {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/identityBoundary.test.ts:104:          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:34:  reassignmentSuspected: false,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:87:      createResolverReview: jest.fn(),
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:217:    const createResolverReview = jest.fn(async () => ({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:221:      reviewType: 'shared_contact_ambiguity',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:230:      riskFlags: ['shared_contact_possible'],
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:252:        createResolverReview,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:269:        createResolverReviewOnAmbiguous: true,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:276:      code: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:282:        manualResolution: {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:284:          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:289:    expect(createResolverReview).toHaveBeenCalledWith(expect.objectContaining({
+apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts:53:  createResolverReviewOnAmbiguous?: boolean;
+apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts:99:  reasonCode: 'IDENTITY_MATCH_AMBIGUOUS';
+apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts:119:  manualResolution?: ConnectShyftIdentityBoundaryManualResolutionContext;
+apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts:140:      | 'IDENTITY_MATCH_AMBIGUOUS'
+apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts:146:      manualResolution?: ConnectShyftIdentityBoundaryManualResolutionContext;
+apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts:186:  reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts:234:      manualResolution: buildManualResolutionContext(candidateNeighborIds),
+apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts:385:  code: 'IDENTITY_MATCH_AMBIGUOUS',
+apps/connectshyft-api/src/modules/connectshyft/identityBoundary.ts:389:    manualResolution: decision.manualResolution,
+apps/connectshyft-api/src/modules/connectshyft/PEOPLECORE_IDENTITY_HOOKS_NOTES.md:7:- inbound subject resolution enables resolver-review creation on seam-level `IDENTITY_MATCH_AMBIGUOUS`
+apps/connectshyft-api/src/modules/connectshyft/PEOPLECORE_IDENTITY_HOOKS_NOTES.md:8:- the neighbor identity-match handler enables resolver-review creation on seam-level `IDENTITY_MATCH_AMBIGUOUS`
+
+=== PERFORMANCE / LATENCY ===
+apps/connectshyft-api/src/services/CategoryService.ts:306:    const allocationCount = await knex('budget_allocations')
+apps/connectshyft-api/src/services/CategoryService.ts:312:      throw new BadRequestError('Cannot delete category with existing budget allocations.');
+apps/connectshyft-api/src/services/TransactionService.ts:96:      const budgetMonth = await BudgetService.getOrCreateBudgetMonth(householdId, monthDate, trx);
+apps/connectshyft-api/src/services/TransactionService.ts:98:      const allocation = await trx('budget_allocations')
+apps/connectshyft-api/src/services/TransactionService.ts:100:          budget_month_id: budgetMonth.id,
+apps/connectshyft-api/src/services/TransactionService.ts:110:          await trx('budget_allocations')
+apps/connectshyft-api/src/services/TransactionService.ts:316:        if (!sourceAccount.is_on_budget) {
+apps/connectshyft-api/src/services/TransactionService.ts:317:          throw new BadRequestError('Goal-linked transactions must use an on-budget source account');
+apps/connectshyft-api/src/services/TransactionService.ts:531:        if (!fromAccount.is_on_budget) {
+apps/connectshyft-api/src/services/TransactionService.ts:532:          throw new BadRequestError('Goal-linked transfers must use an on-budget source account');
+docs/architecture/connectshyft-router-refactor-plan.md:250:- controlled migration of more identity authority away from ConnectShyft-local neighbor lookup
+apps/connectshyft-api/src/services/ExtraMoneyService.ts:91:  'performance bonus'
+apps/connectshyft-api/src/services/ExtraMoneyService.ts:561:      // 5. Update budget allocations for current month (category assignments only)
+apps/connectshyft-api/src/services/ExtraMoneyService.ts:563:      const budgetMonth = await BudgetService.getOrCreateBudgetMonth(householdId, month, trx);
+apps/connectshyft-api/src/services/ExtraMoneyService.ts:567:        await trx('budget_allocations')
+apps/connectshyft-api/src/services/ExtraMoneyService.ts:569:            budget_month_id: budgetMonth.id,
+specs/026-sender-number-architecture/plan.md:18:**Performance Goals**: No separate performance acceptance target is introduced in this slice.  
+apps/connectshyft-api/src/services/AssignmentService.ts:63:  // Gross budget inflows that can fund RTA:
+apps/connectshyft-api/src/services/AssignmentService.ts:64:  // - direct positive transactions in on-budget accounts
+apps/connectshyft-api/src/services/AssignmentService.ts:65:  // - transfer inflows from off-budget -> on-budget
+apps/connectshyft-api/src/services/AssignmentService.ts:83:                WHEN a.is_on_budget = false THEN 0
+apps/connectshyft-api/src/services/AssignmentService.ts:95:                WHEN a.is_on_budget = true AND COALESCE(ta.is_on_budget, false) = false
+apps/connectshyft-api/src/services/AssignmentService.ts:107:  // Outflows from on-budget -> off-budget should immediately reduce RTA.
+apps/connectshyft-api/src/services/AssignmentService.ts:122:            WHEN a.is_on_budget = true AND COALESCE(ta.is_on_budget, false) = false AND t.amount < 0
+apps/connectshyft-api/src/services/AssignmentService.ts:168:        knex.raw('a.is_on_budget as account_is_on_budget'),
+apps/connectshyft-api/src/services/AssignmentService.ts:169:        knex.raw('ta.is_on_budget as counterpart_is_on_budget'),
+apps/connectshyft-api/src/services/AssignmentService.ts:180:      Boolean(transaction.account_is_on_budget) &&
+apps/connectshyft-api/src/services/AssignmentService.ts:188:        !Boolean(transaction.counterpart_is_on_budget)
+apps/connectshyft-api/src/services/AssignmentService.ts:294:    const budgetMonth = await BudgetService.getOrCreateBudgetMonth(householdId, monthDate, trx);
+apps/connectshyft-api/src/services/AssignmentService.ts:296:    const whereClause: any = { budget_month_id: budgetMonth.id };
+apps/connectshyft-api/src/services/AssignmentService.ts:304:    let allocation = await trx('budget_allocations')
+apps/connectshyft-api/src/services/AssignmentService.ts:310:      await trx('budget_allocations')
+apps/connectshyft-api/src/services/AssignmentService.ts:312:          budget_month_id: budgetMonth.id,
+apps/connectshyft-api/src/services/AssignmentService.ts:325:    await trx('budget_allocations')
+apps/connectshyft-api/src/services/AssignmentService.ts:335:   * Prioritizes categories with budgets that have low assigned amounts
+apps/connectshyft-api/src/services/AssignmentService.ts:368:    // Get budget allocations that need funding (allocated > assigned)
+apps/connectshyft-api/src/services/AssignmentService.ts:371:    const budgetMonth = await BudgetService.getOrCreateBudgetMonth(householdId, monthDate);
+apps/connectshyft-api/src/services/AssignmentService.ts:373:    const allocations = await knex('budget_allocations')
+apps/connectshyft-api/src/services/AssignmentService.ts:374:      .where({ budget_month_id: budgetMonth.id })
+apps/connectshyft-api/src/services/AssignmentService.ts:377:        { column: 'allocated_amount', order: 'desc' }, // Prioritize larger budgets
+apps/connectshyft-api/src/services/AssignmentService.ts:509:    // Get budget month
+apps/connectshyft-api/src/services/AssignmentService.ts:512:    const budgetMonth = await BudgetService.getOrCreateBudgetMonth(householdId, monthDate);
+apps/connectshyft-api/src/services/AssignmentService.ts:515:    const sourceWhere: any = { budget_month_id: budgetMonth.id };
+apps/connectshyft-api/src/services/AssignmentService.ts:525:    const sourceAllocation = await knex('budget_allocations')
+apps/connectshyft-api/src/services/AssignmentService.ts:540:    const destWhere: any = { budget_month_id: budgetMonth.id };
+apps/connectshyft-api/src/services/AssignmentService.ts:550:    let destAllocation = await knex('budget_allocations')
+apps/connectshyft-api/src/services/AssignmentService.ts:556:      const [newAllocation] = await knex('budget_allocations')
+apps/connectshyft-api/src/services/AssignmentService.ts:558:          budget_month_id: budgetMonth.id,
+apps/connectshyft-api/src/services/AssignmentService.ts:572:      await trx('budget_allocations')
+apps/connectshyft-api/src/services/AssignmentService.ts:580:      await trx('budget_allocations')
+apps/connectshyft-api/src/services/AssignmentService.ts:616:    // - direct inflows to on-budget accounts
+apps/connectshyft-api/src/services/AssignmentService.ts:617:    // - transfer inflows from off-budget -> on-budget
+apps/connectshyft-api/src/services/AssignmentService.ts:627:        a.is_on_budget = true
+apps/connectshyft-api/src/services/AssignmentService.ts:630:          OR COALESCE(ta.is_on_budget, false) = false
+apps/connectshyft-api/src/services/AssignmentService.ts:817:   * Used by inline "Assigned" editing in the budget grid.
+apps/connectshyft-api/src/services/AssignmentService.ts:837:      const budgetMonth = await BudgetService.getOrCreateBudgetMonth(householdId, monthDate, trx);
+apps/connectshyft-api/src/services/AssignmentService.ts:839:      const whereClause: any = { budget_month_id: budgetMonth.id };
+apps/connectshyft-api/src/services/AssignmentService.ts:847:      let allocation = await trx('budget_allocations')
+apps/connectshyft-api/src/services/AssignmentService.ts:852:        [allocation] = await trx('budget_allocations')
+apps/connectshyft-api/src/services/AssignmentService.ts:854:            budget_month_id: budgetMonth.id,
+apps/connectshyft-api/src/services/AssignmentService.ts:881:      await trx('budget_allocations')
+apps/connectshyft-api/src/services/AssignmentService.ts:899:    // 1. Get budget summary
+docs/architecture/identity-resolution-model.md:78:The seam does not redesign these outputs. It routes identity consultation through PeopleCore-backed lookup and hook foundations while keeping the current ConnectShyft outward behavior stable.
+apps/connectshyft-api/src/services/__tests__/TransactionLinking.test.ts:51:    const budgetAllocation = {
+apps/connectshyft-api/src/services/__tests__/TransactionLinking.test.ts:60:      if (tableName === 'budget_allocations') {
+apps/connectshyft-api/src/services/__tests__/TransactionLinking.test.ts:68:            if (wherePayload?.budget_month_id === 'bm-1' && wherePayload?.category_id === 'cat-goal') {
+apps/connectshyft-api/src/services/__tests__/TransactionLinking.test.ts:69:              return budgetAllocation;
+apps/connectshyft-api/src/services/__tests__/TransactionLinking.test.ts:110:  it('rejects goal-linked transfer when source account is off-budget', async () => {
+apps/connectshyft-api/src/services/__tests__/TransactionLinking.test.ts:115:      .mockResolvedValueOnce({ id: 'acct-from', is_on_budget: false } as any)
+apps/connectshyft-api/src/services/__tests__/TransactionLinking.test.ts:116:      .mockResolvedValueOnce({ id: 'acct-to', is_on_budget: true } as any);
+apps/connectshyft-api/src/services/__tests__/TransactionLinking.test.ts:126:    ).rejects.toThrow('Goal-linked transfers must use an on-budget source account');
+apps/connectshyft-api/src/services/__tests__/TransactionLinking.test.ts:134:      .mockResolvedValue({ id: 'acct-1', is_on_budget: true } as any);
+apps/connectshyft-api/src/services/__tests__/BudgetFundingRules.test.ts:159:  it('rejects manual assignment from on-budget to on-budget transfer inflow', async () => {
+apps/connectshyft-api/src/services/__tests__/BudgetFundingRules.test.ts:167:      account_is_on_budget: true,
+apps/connectshyft-api/src/services/__tests__/BudgetFundingRules.test.ts:168:      counterpart_is_on_budget: true,
+apps/connectshyft-api/src/services/__tests__/BudgetFundingRules.test.ts:189:      account_is_on_budget: true,
+apps/connectshyft-api/src/services/__tests__/BudgetFundingRules.test.ts:190:      counterpart_is_on_budget: null,
+apps/connectshyft-api/src/services/__tests__/BudgetFundingRules.test.ts:212:      is_on_budget: true,
+apps/connectshyft-api/src/services/__tests__/BudgetFundingRules.test.ts:217:    expect(accountInsertPayload?.is_on_budget).toBe(true);
+docs/architecture/adr-007-provisional-identity.md:15:- slow down volunteers
+apps/connectshyft-api/src/services/__tests__/BudgetCarryover.test.ts:1:const budgetMonths = [
+apps/connectshyft-api/src/services/__tests__/BudgetCarryover.test.ts:13:    budget_month_id: 'bm-prev',
+apps/connectshyft-api/src/services/__tests__/BudgetCarryover.test.ts:26:  if (tableName === 'budget_months') {
+apps/connectshyft-api/src/services/__tests__/BudgetCarryover.test.ts:34:        return budgetMonths.find((m) =>
+apps/connectshyft-api/src/services/__tests__/BudgetCarryover.test.ts:45:        budgetMonths.push(newMonth);
+apps/connectshyft-api/src/services/__tests__/BudgetCarryover.test.ts:53:  if (tableName === 'budget_allocations') {
+apps/connectshyft-api/src/services/__tests__/BudgetCarryover.test.ts:66:        const rows = previousAllocations.filter((r) => r.budget_month_id === whereCriteria.budget_month_id);
+apps/connectshyft-api/src/services/__tests__/BudgetCarryover.test.ts:125:    const budgetMonth = await BudgetService.getOrCreateBudgetMonth('house-1', month, fakeKnex);
+apps/connectshyft-api/src/services/__tests__/BudgetCarryover.test.ts:127:    expect(budgetMonth.id).toBe('bm-new');
+docs/architecture/peoplecore-identity-seam.md:74:- controlled migration of more identity authority away from ConnectShyft neighbor lookup
+apps/connectshyft-api/src/services/__tests__/AccountService.tenancy.test.ts:23:            is_on_budget: true,
+specs/007-migration-runner/plan.md:27:**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+apps/connectshyft-api/src/services/AnalyticsService.ts:7:  | 'budget_month_created'
+apps/connectshyft-api/src/services/AccountService.ts:14:  is_on_budget: boolean;
+apps/connectshyft-api/src/services/AccountService.ts:26:  is_on_budget?: boolean;
+apps/connectshyft-api/src/services/AccountService.ts:32:  is_on_budget?: boolean;
+apps/connectshyft-api/src/services/AccountService.ts:78:    const { name, type, starting_balance = 0, is_on_budget = true, is_active = true } = data;
+apps/connectshyft-api/src/services/AccountService.ts:95:          is_on_budget,
+apps/connectshyft-api/src/services/DebtService.ts:80:  monthly_payment_budget: number;
+apps/connectshyft-api/src/services/DebtService.ts:433:        `Monthly payment budget ($${monthlyPaymentBudget}) is less than total minimum payments ($${totalMinimumPayments})`
+apps/connectshyft-api/src/services/DebtService.ts:456:      monthly_payment_budget: monthlyPaymentBudget,
+apps/connectshyft-api/src/services/DebtService.ts:588:   * This creates a payment plan and schedule that updates the budget
+apps/connectshyft-api/src/services/DebtService.ts:632:      // 4. Update budget allocation for debt section
+apps/connectshyft-api/src/services/DebtService.ts:633:      // Get or create the current month's budget
+apps/connectshyft-api/src/services/DebtService.ts:635:      const budgetMonth = await BudgetService.getOrCreateBudgetMonth(householdId, currentMonth);
+apps/connectshyft-api/src/services/DebtService.ts:646:        const existingAllocation = await trx('budget_allocations')
+apps/connectshyft-api/src/services/DebtService.ts:648:            budget_month_id: budgetMonth.id,
+apps/connectshyft-api/src/services/DebtService.ts:655:          await trx('budget_allocations')
+apps/connectshyft-api/src/services/DebtService.ts:664:          await trx('budget_allocations').insert({
+apps/connectshyft-api/src/services/DebtService.ts:665:            budget_month_id: budgetMonth.id,
+specs/022-inbound-sms-identity-resolution-and-raw-body-capture/data-model.md:64:Represents the replaceable phone-based identity lookup boundary for inbound SMS.
+apps/connectshyft-api/src/services/BudgetService.ts:21:  budget_month_id: string;
+apps/connectshyft-api/src/services/BudgetService.ts:47:  remaining: number;      // allocated - spent (budget tracking)
+apps/connectshyft-api/src/services/BudgetService.ts:61:  remaining: number;      // allocated - spent (budget tracking)
+apps/connectshyft-api/src/services/BudgetService.ts:109:                WHEN a.is_on_budget = false THEN 0
+apps/connectshyft-api/src/services/BudgetService.ts:121:                WHEN a.is_on_budget = true AND COALESCE(ta.is_on_budget, false) = false
+apps/connectshyft-api/src/services/BudgetService.ts:147:            WHEN a.is_on_budget = true AND COALESCE(ta.is_on_budget, false) = false AND t.amount < 0
+apps/connectshyft-api/src/services/BudgetService.ts:159:   * Get or create budget month
+apps/connectshyft-api/src/services/BudgetService.ts:170:    let budgetMonth = await trx('budget_months')
+apps/connectshyft-api/src/services/BudgetService.ts:177:    if (!budgetMonth) {
+apps/connectshyft-api/src/services/BudgetService.ts:182:      // Check if previous month's budget exists
+apps/connectshyft-api/src/services/BudgetService.ts:183:      const previousBudget = await trx('budget_months')
+apps/connectshyft-api/src/services/BudgetService.ts:190:      // Create new budget month
+apps/connectshyft-api/src/services/BudgetService.ts:191:      [budgetMonth] = await trx('budget_months')
+apps/connectshyft-api/src/services/BudgetService.ts:199:        'budget_month_created',
+apps/connectshyft-api/src/services/BudgetService.ts:211:        const previousAllocations = await trx('budget_allocations')
+apps/connectshyft-api/src/services/BudgetService.ts:212:          .where({ budget_month_id: previousBudget.id });
+apps/connectshyft-api/src/services/BudgetService.ts:266:            budget_month_id: budgetMonth.id,
+apps/connectshyft-api/src/services/BudgetService.ts:276:          await trx('budget_allocations').insert(newAllocations);
+apps/connectshyft-api/src/services/BudgetService.ts:287:    return budgetMonth;
+apps/connectshyft-api/src/services/BudgetService.ts:291:   * Update budget month notes
+apps/connectshyft-api/src/services/BudgetService.ts:298:    const budgetMonth = await this.getOrCreateBudgetMonth(householdId, month);
+apps/connectshyft-api/src/services/BudgetService.ts:300:    const [updated] = await knex('budget_months')
+apps/connectshyft-api/src/services/BudgetService.ts:301:      .where({ id: budgetMonth.id })
+apps/connectshyft-api/src/services/BudgetService.ts:312:   * Set a single budget allocation (category or section level)
+apps/connectshyft-api/src/services/BudgetService.ts:319:    const budgetMonth = await this.getOrCreateBudgetMonth(householdId, month);
+apps/connectshyft-api/src/services/BudgetService.ts:372:    const existingAllocation = await knex('budget_allocations')
+apps/connectshyft-api/src/services/BudgetService.ts:374:        budget_month_id: budgetMonth.id,
+apps/connectshyft-api/src/services/BudgetService.ts:382:      const [updated] = await knex('budget_allocations')
+apps/connectshyft-api/src/services/BudgetService.ts:394:      const [allocation] = await knex('budget_allocations')
+apps/connectshyft-api/src/services/BudgetService.ts:396:          budget_month_id: budgetMonth.id,
+apps/connectshyft-api/src/services/BudgetService.ts:410:   * Bulk set allocations (useful for setting entire budget at once)
+apps/connectshyft-api/src/services/BudgetService.ts:427:   * Get budget summary with spending for a month
+apps/connectshyft-api/src/services/BudgetService.ts:433:    const budgetMonth = await this.getOrCreateBudgetMonth(householdId, month);
+apps/connectshyft-api/src/services/BudgetService.ts:436:    const allocations = await knex('budget_allocations')
+apps/connectshyft-api/src/services/BudgetService.ts:437:      .where({ budget_month_id: budgetMonth.id });
+apps/connectshyft-api/src/services/BudgetService.ts:496:    // Build section summaries (exclude Income section from budget)
+apps/connectshyft-api/src/services/BudgetService.ts:611:    // Gross inflow into the on-budget world.
+apps/connectshyft-api/src/services/BudgetService.ts:712:      month: budgetMonth.month,
+apps/connectshyft-api/src/services/BudgetService.ts:713:      month_notes: budgetMonth.notes,
+apps/connectshyft-api/src/services/BudgetService.ts:750:    const allocation = await knex('budget_allocations')
+apps/connectshyft-api/src/services/BudgetService.ts:759:    const budgetMonth = await knex('budget_months')
+apps/connectshyft-api/src/services/BudgetService.ts:760:      .where({ id: allocation.budget_month_id })
+apps/connectshyft-api/src/services/BudgetService.ts:763:    if (!budgetMonth || budgetMonth.household_id !== householdId) {
+apps/connectshyft-api/src/services/BudgetService.ts:767:    await knex('budget_allocations')
+apps/connectshyft-api/src/services/BudgetService.ts:779:    const budgetMonth = await this.getOrCreateBudgetMonth(householdId, month);
+apps/connectshyft-api/src/services/BudgetService.ts:781:    const allocations = await knex('budget_allocations')
+apps/connectshyft-api/src/services/BudgetService.ts:782:      .where({ budget_month_id: budgetMonth.id });
+apps/connectshyft-api/src/services/BudgetService.ts:804:    const budgetMonth = await this.getOrCreateBudgetMonth(householdId, monthDate);
+apps/connectshyft-api/src/services/BudgetService.ts:805:    const monthString = data.month || new Date(budgetMonth.month).toISOString().slice(0, 7);
+apps/connectshyft-api/src/services/BudgetService.ts:833:    // 2. Find or create budget allocation for this category
+apps/connectshyft-api/src/services/BudgetService.ts:834:    const whereClause: any = { budget_month_id: budgetMonth.id };
+apps/connectshyft-api/src/services/BudgetService.ts:842:    let allocation = await knex('budget_allocations')
+apps/connectshyft-api/src/services/BudgetService.ts:848:      [allocation] = await knex('budget_allocations')
+apps/connectshyft-api/src/services/BudgetService.ts:850:          budget_month_id: budgetMonth.id,
+apps/connectshyft-api/src/services/BudgetService.ts:863:      [allocation] = await knex('budget_allocations')
+apps/connectshyft-api/src/services/CreditCardService.ts:13:  new_charges_covered_by_budget: number;
+apps/connectshyft-api/src/services/CreditCardService.ts:59:    // New charges are "covered" by the budget because spending on credit
+apps/connectshyft-api/src/services/CreditCardService.ts:60:    // reduces category budgets immediately
+apps/connectshyft-api/src/services/CreditCardService.ts:82:      new_charges_covered_by_budget: newChargesCoveredByBudget,
+apps/connectshyft-api/src/services/CreditCardService.ts:141:      successMessage = `✅ You're current on this card! You have $${newChargesThisMonth.toFixed(2)} in new charges from this month's budget.`;
+apps/connectshyft-api/src/services/CreditCardService.ts:170:          warningMessage = `Your payment of $${paymentsThisMonth.toFixed(2)} was applied to your previous balance. You still have $${newChargesThisMonth.toFixed(2)} in new charges from this month's budget.`;
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.ts:349:      latencyBudgetsMs: {
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.ts:350:        p95: CONNECTSHYFT_INBOX_P95_BUDGET_MS,
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.ts:351:        p99: CONNECTSHYFT_INBOX_P99_BUDGET_MS,
+apps/connectshyft-api/src/services/ScenarioService.ts:161:     * Applies scenario items to the current month's budget to create a 'Shadow Budget'
+apps/connectshyft-api/src/services/ScenarioService.ts:171:        // We get the full budget summary which includes income, allocations, spending, etc.
+apps/connectshyft-api/src/migrations/20260209090000_add_account_budget_scope_and_initial_funding.ts:4:  const hasIsOnBudget = await knex.schema.hasColumn('accounts', 'is_on_budget');
+apps/connectshyft-api/src/migrations/20260209090000_add_account_budget_scope_and_initial_funding.ts:8:      table.boolean('is_on_budget').notNullable().defaultTo(true);
+apps/connectshyft-api/src/migrations/20260209090000_add_account_budget_scope_and_initial_funding.ts:9:      table.index(['household_id', 'is_on_budget']);
+apps/connectshyft-api/src/migrations/20260209090000_add_account_budget_scope_and_initial_funding.ts:85:  const hasIsOnBudget = await knex.schema.hasColumn('accounts', 'is_on_budget');
+apps/connectshyft-api/src/migrations/20260209090000_add_account_budget_scope_and_initial_funding.ts:88:      table.dropIndex(['household_id', 'is_on_budget']);
+apps/connectshyft-api/src/migrations/20260209090000_add_account_budget_scope_and_initial_funding.ts:89:      table.dropColumn('is_on_budget');
+apps/connectshyft-api/src/migrations/20260131170000_add_month_to_account_balance_assignments.ts:28:  // Recalculate assigned_amount for all budget allocations based on month-specific assignments
+apps/connectshyft-api/src/migrations/20260131170000_add_month_to_account_balance_assignments.ts:30:    UPDATE budget_allocations AS ba
+apps/connectshyft-api/src/migrations/20260131170000_add_month_to_account_balance_assignments.ts:35:        JOIN budget_months bm ON bm.id = ba.budget_month_id
+apps/connectshyft-api/src/migrations/20260131170000_add_month_to_account_balance_assignments.ts:43:        JOIN budget_months bm ON bm.id = ba.budget_month_id
+apps/connectshyft-api/src/migrations/20260131170000_add_month_to_account_balance_assignments.ts:53:    UPDATE budget_allocations AS ba
+apps/connectshyft-api/src/migrations/20260131170000_add_month_to_account_balance_assignments.ts:58:        JOIN budget_months bm ON bm.id = ba.budget_month_id
+apps/connectshyft-api/src/migrations/20260131170000_add_month_to_account_balance_assignments.ts:66:        JOIN budget_months bm ON bm.id = ba.budget_month_id
+apps/connectshyft-api/src/validators/budget.validators.ts:4: * Validator for creating a budget month
+apps/connectshyft-api/src/validators/budget.validators.ts:19: * Validator for updating a budget month
+apps/connectshyft-api/src/validators/budget.validators.ts:29: * Validator for creating/updating budget allocations
+apps/connectshyft-api/src/migrations/001_initial_schema.ts:135:  await knex.schema.createTable('budget_months', (table) => {
+apps/connectshyft-api/src/migrations/001_initial_schema.ts:146:  await knex.schema.createTable('budget_allocations', (table) => {
+apps/connectshyft-api/src/migrations/001_initial_schema.ts:148:    table.uuid('budget_month_id').notNullable().references('id').inTable('budget_months').onDelete('CASCADE');
+apps/connectshyft-api/src/migrations/001_initial_schema.ts:157:    table.index('budget_month_id');
+apps/connectshyft-api/src/migrations/001_initial_schema.ts:202:  await knex.schema.dropTableIfExists('budget_allocations');
+apps/connectshyft-api/src/migrations/001_initial_schema.ts:203:  await knex.schema.dropTableIfExists('budget_months');
+apps/connectshyft-api/src/validators/account.validators.ts:24:  is_on_budget: Joi.boolean().default(true),
+apps/connectshyft-api/src/validators/account.validators.ts:36:  is_on_budget: Joi.boolean(),
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectInbox.ts:98:      latencyBudgetsMs: {
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectInbox.ts:99:        p95: CONNECTSHYFT_INBOX_P95_BUDGET_MS,
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectInbox.ts:100:        p99: CONNECTSHYFT_INBOX_P99_BUDGET_MS,
+apps/connectshyft-api/src/validators/debt.validators.ts:122:  monthly_payment_budget: Joi.number().positive().required()
+apps/connectshyft-api/src/validators/debt.validators.ts:124:      'number.base': 'Monthly payment budget must be a number',
+apps/connectshyft-api/src/validators/debt.validators.ts:125:      'number.positive': 'Monthly payment budget must be positive',
+apps/connectshyft-api/src/validators/debt.validators.ts:126:      'any.required': 'Monthly payment budget is required',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.ts:285:        latencyBudgetsMs: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.ts:286:          p95: 750,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.ts:287:          p99: 1500,
+apps/connectshyft-api/src/migrations/20260210120000_repair_assigned_with_carryover_plus_month_activity.ts:11:  budget_month_id: string;
+apps/connectshyft-api/src/migrations/20260210120000_repair_assigned_with_carryover_plus_month_activity.ts:40:    const months = await trx('budget_months')
+apps/connectshyft-api/src/migrations/20260210120000_repair_assigned_with_carryover_plus_month_activity.ts:67:        const prevAllocations = await trx('budget_allocations')
+apps/connectshyft-api/src/migrations/20260210120000_repair_assigned_with_carryover_plus_month_activity.ts:68:          .where({ budget_month_id: prevMonth.id }) as AllocationRow[];
+apps/connectshyft-api/src/migrations/20260210120000_repair_assigned_with_carryover_plus_month_activity.ts:71:        const currentAllocations = await trx('budget_allocations')
+apps/connectshyft-api/src/migrations/20260210120000_repair_assigned_with_carryover_plus_month_activity.ts:72:          .where({ budget_month_id: currentMonth.id }) as AllocationRow[];
+apps/connectshyft-api/src/migrations/20260210120000_repair_assigned_with_carryover_plus_month_activity.ts:182:          await trx('budget_allocations')
+apps/connectshyft-api/src/migrations/004_add_debt_tracking.ts:21:    table.uuid('category_id').references('id').inTable('categories').onDelete('SET NULL'); // Link to budget category
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.ts:143:        latencyBudgetsMs: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.ts:144:          p95: expect.any(Number),
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.ts:145:          p99: expect.any(Number),
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.ts:185:      'latencyBudgetsMs',
+specs/002-phone-identity/plan.md:18:**Performance Goals**: Synchronous parse/normalize/format operations with no network calls, negligible request-path overhead for neighbor create/update/identity-match flows, and indexed lookup on canonical E.164 values  
+specs/013-admin-leftovers-cleanup/research.md:14:- **Rationale**: The current admin-web layout still contains MoneyShyft navigation items such as `/accounts`, `/budget`, and `/transactions`, even though the admin router no longer mounts those routes. Removing stale views without cleaning those references would preserve a broken navigation experience and undermine the slice’s safety goal.
+specs/013-admin-leftovers-cleanup/research.md:64:- No router mounts exist for `/accounts`, `/transactions`, `/budget`, `/extra-money`, `/debts`, `/goals`, or the named stale view groups.
+specs/013-admin-leftovers-cleanup/research.md:72:  - `/budget`
+specs/013-admin-leftovers-cleanup/research.md:79:  - `/budget`
+specs/002-phone-identity/tasks.md:59:**Goal**: Identity-boundary matching resolves by canonical phone identity instead of ConnectShyft-local regex normalization, using the same shared-domain contract and canonical lookup path introduced in US1.
+specs/002-phone-identity/tasks.md:61:**Independent Test**: Evaluate identity matching with differently formatted equivalents of the same number and confirm exact-match, no-match, ambiguous, and shared-phone decisions are computed from canonical identity data and canonical lookup columns.
+specs/002-phone-identity/tasks.md:173:3. After US1 passes, identity-boundary logic and lookup-index work for US2 can be split across engineers.
+specs/003-telnyx-outbound-adapter/plan.md:18:**Performance Goals**: Constant-time provider resolution, no additional route/deployment hops, truthful outbound dispatch within existing ConnectShyft request latency envelopes, and no duplicate provider side effects for idempotent retries  
+specs/023-duplicate-handling-and-phone-uniqueness-enforcement/spec.md:67:3. **Given** an upstream workflow depends on phone-based identity resolution and the lookup is ambiguous, **When** the workflow completes, **Then** it returns the ambiguity refusal without creating a new identity, merging records, or attaching the action to any neighbor.
+specs/023-duplicate-handling-and-phone-uniqueness-enforcement/spec.md:141:- **SC-003**: In regression validation, 100% of formatting variants for the same phone value are treated as the same canonical identity for both duplicate enforcement and lookup behavior.
+specs/023-duplicate-handling-and-phone-uniqueness-enforcement/spec.md:142:- **SC-004**: In regression validation, 100% of phone-based identity lookups with exactly one current eligible match return that match, and 100% of lookups with multiple current eligible matches return ambiguity refusal with zero arbitrary selections.
+specs/slice-12-codex-ready-implementation-brief.md:607:The seam-first approach is slower by one slice and safer by an order of magnitude.
+specs/023-duplicate-handling-and-phone-uniqueness-enforcement/plan.md:18:**Performance Goals**: Keep duplicate refusal within the same request that performs the write, preserve indexed canonical phone lookups, add no network calls, and keep identity resolution deterministic in one lookup pass  
+specs/008-connectshyft-texting-preference/plan.md:20:**Performance Goals**: Preserve existing neighbor CRUD latency and query shape; no additional cross-service hops  
+specs/023-duplicate-handling-and-phone-uniqueness-enforcement/data-model.md:40:Represents one persisted canonical phone value attached to a neighbor and evaluated for current ownership, duplicate prevention, and identity lookup.
+specs/023-duplicate-handling-and-phone-uniqueness-enforcement/data-model.md:58:- `normalizedE164` is the only value allowed for duplicate comparison and identity lookup.
+specs/006-migration-authority-convergence/plan.md:28:**Performance Goals**: Deterministic inventory and classification across the current 60 unique migrations with negligible added deploy latency outside a single manifest comparison pass  
+specs/006-migration-authority-convergence/research.md:29:- Decision: Keep `20260311100000_shape_connectshyft_neighbor_phones_for_canonical_identity` as the only verified manual-hotfix override initially, and treat `20260311103000_add_connectshyft_neighbor_canonical_phone_lookup_index` as a required inspection target that is not auto-verified.
+apps/connectshyft-api/src/migrations/013_add_account_balance_assignments.ts:7: * assigned to budget categories. This is separate from regular income-based assignments
+apps/connectshyft-api/src/migrations/013_add_account_balance_assignments.ts:8: * and represents "initial capital" or "found money" being allocated to the budget.
+apps/connectshyft-api/src/migrations/013_add_account_balance_assignments.ts:12: * - Adding new account later: User assigns spouse's account balance to budget
+specs/006-migration-authority-convergence/tasks.md:36:**Independent Test**: Run `node scripts/reconcile-shared-migrations.js --format table` and `node scripts/reconcile-shared-migrations.js --format json` from the repo root and verify that the full 60-migration shared authority is inventoried, `.ts` and `.js` names resolve to the same logical IDs, `20260311100000_shape_connectshyft_neighbor_phones_for_canonical_identity` is surfaced as a verified manual-hotfix candidate when unrecorded, and `20260311103000_add_connectshyft_neighbor_canonical_phone_lookup_index` remains `blocked` as inspection-required until operator review resolves it.
+specs/006-migration-authority-convergence/tasks.md:44:- [X] T009 [P] [US1] Update `/Users/jeremiahotis/projects/connectshyft/shared/database/reconciliation/migration-manifest-overrides.json` so `20260311100000_shape_connectshyft_neighbor_phones_for_canonical_identity.js` remains verified and `20260311103000_add_connectshyft_neighbor_canonical_phone_lookup_index.js` is represented as inspection-required under canonical production naming
+specs/006-migration-authority-convergence/tasks.md:147:Task: "T009 Update /Users/jeremiahotis/projects/connectshyft/shared/database/reconciliation/migration-manifest-overrides.json so 20260311100000_shape_connectshyft_neighbor_phones_for_canonical_identity.js remains verified and 20260311103000_add_connectshyft_neighbor_canonical_phone_lookup_index.js is inspection-required under canonical production naming"
+specs/024-neighbor-soft-delete-admin-controls/tasks.md:99:- [X] T023 [US3] Ensure deleted-neighbor and inactive-phone exclusion remains enforced in active identity lookups and inbound helper paths in `/Users/jeremiahotis/projects/connectshyft/apps/connectshyft-api/src/modules/connectshyft/neighbors.ts` and `/Users/jeremiahotis/projects/connectshyft/apps/connectshyft-api/src/modules/connectshyft/identityResolver.ts`
+specs/006-migration-authority-convergence/quickstart.md:187:    - `004_add_envelope_budgeting.js`
+specs/012-platform-lane-separation/spec.md:77:- budgeting
+specs/012-platform-lane-separation/spec.md:119:- budgeting/finance logic
+specs/025-message-timeline-persistence-and-projection/02-plan.md:64:- performance on large threads
+apps/connectshyft-api/src/migrations/009_add_envelope_budgeting.ts:4:  // 1. Add assigned_amount to budget_allocations
+apps/connectshyft-api/src/migrations/009_add_envelope_budgeting.ts:6:  const hasAssignedAmount = await knex.schema.hasColumn('budget_allocations', 'assigned_amount');
+apps/connectshyft-api/src/migrations/009_add_envelope_budgeting.ts:8:    await knex.schema.table('budget_allocations', (table) => {
+apps/connectshyft-api/src/migrations/009_add_envelope_budgeting.ts:25:      // Either category OR section (same pattern as budget_allocations)
+apps/connectshyft-api/src/migrations/009_add_envelope_budgeting.ts:96:  const hasAssignedAmount = await knex.schema.hasColumn('budget_allocations', 'assigned_amount');
+apps/connectshyft-api/src/migrations/009_add_envelope_budgeting.ts:98:    await knex.schema.table('budget_allocations', (table) => {
+apps/connectshyft-api/src/migrations/20260131121500_move_variable_expenses.ts:75:        await trx('budget_allocations')
+specs/012-platform-lane-separation/remediation-map.md:68:| `apps/admin-api/src/routes/api/v1/accounts.ts`, `budgets.ts`, `transactions.ts`, and the rest of the money route tree | unmounted stale mirror | `admin-api` only mounts platform/admin/auth. These finance routes are wrong-lane baggage, not admin ownership. |
+apps/connectshyft-api/src/migrations/20260210113000_backfill_overwritten_assigned_amounts.ts:11:  budget_month_id: string;
+apps/connectshyft-api/src/migrations/20260210113000_backfill_overwritten_assigned_amounts.ts:40:    const months = await trx('budget_months')
+apps/connectshyft-api/src/migrations/20260210113000_backfill_overwritten_assigned_amounts.ts:69:        const prevAllocations = await trx('budget_allocations')
+apps/connectshyft-api/src/migrations/20260210113000_backfill_overwritten_assigned_amounts.ts:70:          .where({ budget_month_id: prevMonth.id }) as AllocationRow[];
+apps/connectshyft-api/src/migrations/20260210113000_backfill_overwritten_assigned_amounts.ts:74:        const currentAllocations = await trx('budget_allocations')
+apps/connectshyft-api/src/migrations/20260210113000_backfill_overwritten_assigned_amounts.ts:75:          .where({ budget_month_id: currentMonth.id }) as AllocationRow[];
+apps/connectshyft-api/src/migrations/20260210113000_backfill_overwritten_assigned_amounts.ts:171:          await trx('budget_allocations')
+specs/025-message-timeline-persistence-and-projection/research.md:68:  - Remove any read cap and load unbounded event history: rejected because large threads would raise unnecessary performance risk.
+specs/012-platform-lane-separation/research.md:74:- Build every app after every patch in arbitrary order: rejected because it slows convergence and hides causal dependency failures.
+specs/012-platform-lane-separation/implementation-plan.md:316:| Admin money route mirrors | `apps/admin-api/src/routes/api/v1/accounts.ts`, `transactions.ts`, `budgets.ts`, `categories.ts`, `goals.ts`, `debts.ts`, `income.ts`, `scenarios.ts`, `tags.ts`, `extra-money.ts`, `recurring-transactions.ts`, `splits.ts`, `settings.ts`, `households.ts`, `assignments.ts` | Delete after MoneyShyft remains the sole money runtime owner. |
+apps/connectshyft-api/src/migrations/20260210100000_backfill_missing_assigned_carryover.ts:11:  budget_month_id: string;
+apps/connectshyft-api/src/migrations/20260210100000_backfill_missing_assigned_carryover.ts:40:    const months = await trx('budget_months')
+apps/connectshyft-api/src/migrations/20260210100000_backfill_missing_assigned_carryover.ts:84:        const prevAllocations = await trx('budget_allocations')
+apps/connectshyft-api/src/migrations/20260210100000_backfill_missing_assigned_carryover.ts:85:          .where({ budget_month_id: prev.id }) as AllocationRow[];
+apps/connectshyft-api/src/migrations/20260210100000_backfill_missing_assigned_carryover.ts:89:        const currentAllocations = await trx('budget_allocations')
+apps/connectshyft-api/src/migrations/20260210100000_backfill_missing_assigned_carryover.ts:90:          .where({ budget_month_id: current.id }) as AllocationRow[];
+apps/connectshyft-api/src/migrations/20260210100000_backfill_missing_assigned_carryover.ts:141:          await trx('budget_allocations')
+apps/connectshyft-api/src/migrations/004_add_envelope_budgeting.ts:4:// The actual schema changes now live in 009_add_envelope_budgeting.ts.
+specs/012-platform-lane-separation/tasks.md:160:- [X] T061 [P] [US8] Delete only inventory-approved `dead_stale` backend non-canonical mirrors listed in `/Users/jeremiahotis/projects/connectshyft/architecture/LANE_INVENTORY.md` from `/Users/jeremiahotis/projects/connectshyft/apps/admin-api/src/routes/api/v1/accounts.ts`, `/Users/jeremiahotis/projects/connectshyft/apps/admin-api/src/routes/api/v1/budgets.ts`, `/Users/jeremiahotis/projects/connectshyft/apps/admin-api/src/routes/api/v1/transactions.ts`, `/Users/jeremiahotis/projects/connectshyft/apps/admin-api/src/modules/route/**`, and `/Users/jeremiahotis/projects/connectshyft/apps/connectshyft-api/src/services/**`
+specs/011-platform-lane-authority-convergence-audit/plan.md:27:**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+specs/011-platform-lane-authority-convergence-audit/duplication-divergence-map.md:21:- `budget.validators.ts`
+specs/011-platform-lane-authority-convergence-audit/file-surface-inventory.md:10:| Money-domain routes | `apps/moneyshyft-api/src/routes/api/v1/accounts.ts`, `transactions.ts`, `splits.ts`, `categories.ts`, `goals.ts`, `budgets.ts`, `income.ts`, `debts.ts`, `assignments.ts`, `households.ts`, `recurring-transactions.ts`, `extra-money.ts`, `settings.ts`, `scenarios.ts`, `tags.ts` |
+specs/011-platform-lane-authority-convergence-audit/file-surface-inventory.md:20:| Money views | `apps/moneyshyft-web/src/views/DashboardView.vue` and lane-specific feature views mounted under `/`, `/accounts`, `/transactions`, `/budget`, `/goals`, `/debts`, `/extra-money`, `/settings`, `/scenarios` |
+specs/011-platform-lane-authority-convergence-audit/file-surface-inventory.md:56:- `budget.validators.ts`
+specs/spec-input/01-moneyshyft-pwa/07-specify-context.md:35:Individuals managing personal budgets.
+specs/spec-input/01-moneyshyft-pwa/01-feature-summary.md:25:- individuals managing their personal budget
+specs/spec-input/01-moneyshyft-pwa/01-feature-summary.md:28:- household partners sharing budgeting visibility
+specs/spec-input/01-moneyshyft-pwa/01-feature-summary.md:38:5. use the budgeting interface without broken refresh or login issues
+specs/spec-input/RUN_ORDER.md:14:| 01 | MoneyShyft PWA | Installable budgeting app and PWA foundation | planned | | | PWA/mobile helpers, smoke path, state persistence tests | affected-quality, frontend-smoke, release-validation | Live-user retention priority |
+specs/spec-input/00-testing-ci-architecture/01-feature-summary.md:29:- CI will become noisy, slow, and uneven
+specs/spec-input/_shared/shyftunity_speckit_packaging_guide_v1.md:63:- performance/security constraints
+specs/001-tighten-deployment-contracts/ADR-00X_Communication_Infrastructure_Contract.md:302:- too slow for the current remediation need
+specs/spec-input/00-testing-ci-architecture/07-specify-context.md:108:- performance budgets
+specs/spec-input/_shared/deferred-quality-roadmap.md:61:Prevents gradual performance degradation in user-critical flows.
+specs/spec-input/_shared/deferred-quality-roadmap.md:64:Yes. Define metrics early, but do not enforce hard repo-wide budgets immediately.
+specs/spec-input/_shared/deferred-quality-roadmap.md:95:- release validation is slowed by repeated reruns
+specs/001-tighten-deployment-contracts/issues/cs-001-lane-convergence/artifacts/pre-migration-inventory.txt:35:/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/components/budget/AddCategoryModal.vue
+specs/001-tighten-deployment-contracts/issues/cs-001-lane-convergence/artifacts/pre-migration-inventory.txt:36:/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/components/budget/AddSectionModal.vue
+specs/001-tighten-deployment-contracts/issues/cs-001-lane-convergence/artifacts/pre-migration-inventory.txt:37:/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/components/budget/AssignmentModal.vue
+specs/001-tighten-deployment-contracts/issues/cs-001-lane-convergence/artifacts/pre-migration-inventory.txt:38:/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/components/budget/BudgetMonthSelector.vue
+specs/001-tighten-deployment-contracts/issues/cs-001-lane-convergence/artifacts/pre-migration-inventory.txt:39:/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/components/budget/BudgetSection.vue
+specs/001-tighten-deployment-contracts/issues/cs-001-lane-convergence/artifacts/pre-migration-inventory.txt:40:/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/components/budget/EditCategoryModal.vue
+specs/001-tighten-deployment-contracts/issues/cs-001-lane-convergence/artifacts/pre-migration-inventory.txt:41:/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/components/budget/EditSectionModal.vue
+specs/001-tighten-deployment-contracts/issues/cs-001-lane-convergence/artifacts/pre-migration-inventory.txt:42:/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/components/budget/ManageIncomeModal.vue
+specs/001-tighten-deployment-contracts/issues/cs-001-lane-convergence/artifacts/pre-migration-inventory.txt:43:/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/components/budget/TransferModal.vue
+specs/001-tighten-deployment-contracts/issues/cs-001-lane-convergence/artifacts/pre-migration-inventory.txt:107:/Users/jeremiahotis/projects/connectshyft/apps/moneyshyft-web/src/stores/budgets.ts
+
+=== peoplecoreIdentityAdapter.ts ===
+import { normalizePhone } from '../../../../../domains/communication';
+import {
+  AsyncPeopleCoreService,
+  peopleCoreServiceAsync,
+} from '../peoplecore/service';
+import {
+  AsyncInProcessConnectShyftIdentityBoundaryAdapter,
+  type ConnectShyftIdentityBoundaryAdapter,
+  type ConnectShyftIdentityBoundaryNeighbor,
+  type ConnectShyftIdentityBoundaryRequest,
+  type ConnectShyftIdentityBoundaryResult,
+} from './identityBoundary';
+import {
+  ConnectShyftPeopleCoreIdentityHooks,
+  type ConnectShyftPeopleCoreIdentityLookupSnapshot,
+} from './peoplecoreIdentityHooks';
+import { resolveConnectShyftPhoneNormalizationContext } from './phoneIdentityContext';
+
+type PeopleCoreIdentityLookupService = Pick<
+  AsyncPeopleCoreService,
+  | 'createContactPoint'
+  | 'createContactPointLink'
+  | 'createPerson'
+  | 'createResolverReview'
+  | 'listContactPointsByNormalizedValue'
+  | 'listCurrentContactPointLinks'
+  | 'listResolverReviews'
+>;
+
+export type ConnectShyftPeopleCoreIdentityCandidateLookup =
+  ConnectShyftPeopleCoreIdentityLookupSnapshot;
+
+const normalizeContactPointValue = (contactPointValue: string): string | null => {
+  const resolved = normalizePhone(
+    contactPointValue.trim(),
+    resolveConnectShyftPhoneNormalizationContext('user_entered'),
+  );
+
+  return resolved.ok ? resolved.phone.normalizedE164 : null;
+};
+
+const emptyPeopleCoreLookup = () => ({
+  peopleCoreAvailable: false,
+  peopleCoreContactPoints: [] as ConnectShyftPeopleCoreIdentityCandidateLookup['peopleCoreContactPoints'],
+  peopleCoreCurrentLinks: [] as ConnectShyftPeopleCoreIdentityCandidateLookup['peopleCoreCurrentLinks'],
+});
+
+export class AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter
+  implements ConnectShyftIdentityBoundaryAdapter {
+  private readonly boundaryAdapter: ConnectShyftIdentityBoundaryAdapter;
+  private readonly hooks: ConnectShyftPeopleCoreIdentityHooks;
+
+  constructor(
+    private readonly loadNeighborsByTenant: (
+      tenantId: string,
+    ) => Promise<ConnectShyftIdentityBoundaryNeighbor[]>,
+    private readonly loadNeighborsByNormalizedContactPoint?: (
+      tenantId: string,
+      normalizedContactPointValue: string,
+    ) => Promise<ConnectShyftIdentityBoundaryNeighbor[]>,
+    private readonly peopleCoreService: PeopleCoreIdentityLookupService = peopleCoreServiceAsync,
+  ) {
+    this.hooks = new ConnectShyftPeopleCoreIdentityHooks(this.peopleCoreService);
+    this.boundaryAdapter = new AsyncInProcessConnectShyftIdentityBoundaryAdapter(
+      async (tenantId) => this.loadNeighborsByTenant(tenantId),
+      async (tenantId, normalizedContactPointValue) =>
+        (
+          await this.evaluateIdentityCandidatesByNormalizedContactPoint({
+            tenantId,
+            normalizedContactPointValue,
+          })
+        ).candidateNeighbors,
+    );
+  }
+
+  private async loadFallbackCandidates(
+    tenantId: string,
+    normalizedContactPointValue: string,
+  ): Promise<ConnectShyftIdentityBoundaryNeighbor[]> {
+    if (this.loadNeighborsByNormalizedContactPoint) {
+      return this.loadNeighborsByNormalizedContactPoint(tenantId, normalizedContactPointValue);
+    }
+
+    return this.loadNeighborsByTenant(tenantId);
+  }
+
+  private async loadPeopleCoreLookup(input: {
+    tenantId: string;
+    normalizedContactPointValue: string;
+  }): Promise<Omit<ConnectShyftPeopleCoreIdentityCandidateLookup, 'normalizedContactPointValue' | 'candidateNeighbors'>> {
+    try {
+      const peopleCoreContactPoints = await this.peopleCoreService.listContactPointsByNormalizedValue({
+        tenantId: input.tenantId,
+        type: 'phone',
+        normalizedValue: input.normalizedContactPointValue,
+      });
+
+      const peopleCoreCurrentLinks = (
+        await Promise.all(
+          peopleCoreContactPoints.map((contactPoint) =>
+            this.peopleCoreService.listCurrentContactPointLinks({
+              tenantId: input.tenantId,
+              contactPointId: contactPoint.id,
+            })),
+        )
+      ).flat();
+
+      return {
+        peopleCoreAvailable: true,
+        peopleCoreContactPoints,
+        peopleCoreCurrentLinks,
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        return emptyPeopleCoreLookup();
+      }
+
+      throw error;
+    }
+  }
+
+  async evaluateIdentityCandidatesForContactPoint(input: {
+    tenantId: string;
+    contactPointValue: string;
+  }): Promise<ConnectShyftPeopleCoreIdentityCandidateLookup> {
+    const normalizedContactPointValue = normalizeContactPointValue(input.contactPointValue);
+
+    if (!normalizedContactPointValue) {
+      return {
+        normalizedContactPointValue: null,
+        ...emptyPeopleCoreLookup(),
+        candidateNeighbors: [],
+      };
+    }
+
+    return this.evaluateIdentityCandidatesByNormalizedContactPoint({
+      tenantId: input.tenantId,
+      normalizedContactPointValue,
+    });
+  }
+
+  async evaluateIdentityCandidatesByNormalizedContactPoint(input: {
+    tenantId: string;
+    normalizedContactPointValue: string;
+  }): Promise<ConnectShyftPeopleCoreIdentityCandidateLookup> {
+    const peopleCoreLookup = await this.loadPeopleCoreLookup(input);
+    const candidateNeighbors = await this.loadFallbackCandidates(
+      input.tenantId,
+      input.normalizedContactPointValue,
+    );
+
+    return {
+      normalizedContactPointValue: input.normalizedContactPointValue,
+      ...peopleCoreLookup,
+      candidateNeighbors,
+    };
+  }
+
+  async evaluateMatch(
+    input: ConnectShyftIdentityBoundaryRequest,
+  ): Promise<ConnectShyftIdentityBoundaryResult> {
+    const normalizedContactPointValue = normalizeContactPointValue(input.contactPoint.value);
+    const lookup = normalizedContactPointValue
+      ? await this.evaluateIdentityCandidatesByNormalizedContactPoint({
+        tenantId: input.tenantId,
+        normalizedContactPointValue,
+      })
+      : null;
+    const result = await Promise.resolve(this.boundaryAdapter.evaluateMatch(input));
+
+    if (lookup) {
+      try {
+        await this.hooks.applyIdentityHooks(input, result, lookup);
+      } catch (_error) {
+        // Hook writes are intentionally best-effort so current ConnectShyft behavior remains stable.
+      }
+    }
+
+    return result;
+  }
+}
+
+=== peoplecoreIdentityHooks.ts ===
+import type { ContactPoint, ContactPointLink } from '@shyft/contracts';
+import {
+  AsyncPeopleCoreService,
+  peopleCoreServiceAsync,
+} from '../peoplecore/service';
+import type {
+  ConnectShyftIdentityBoundaryNeighbor,
+  ConnectShyftIdentityBoundaryRequest,
+  ConnectShyftIdentityBoundaryResult,
+  ConnectShyftPeopleCoreIdentityHookContext,
+} from './identityBoundary';
+
+type PeopleCoreIdentityHookService = Pick<
+  AsyncPeopleCoreService,
+  | 'createContactPoint'
+  | 'createContactPointLink'
+  | 'createPerson'
+  | 'createResolverReview'
+  | 'listContactPointsByNormalizedValue'
+  | 'listCurrentContactPointLinks'
+  | 'listResolverReviews'
+>;
+
+export type ConnectShyftPeopleCoreIdentityLookupSnapshot = {
+  normalizedContactPointValue: string | null;
+  peopleCoreAvailable: boolean;
+  peopleCoreContactPoints: ContactPoint[];
+  peopleCoreCurrentLinks: ContactPointLink[];
+  candidateNeighbors: ConnectShyftIdentityBoundaryNeighbor[];
+};
+
+export type ConnectShyftProvisionalIdentityHookInput = {
+  tenantId: string;
+  orgUnitId: string;
+  normalizedContactPointValue: string;
+  rawContactPointValue?: string;
+  hookContext?: ConnectShyftPeopleCoreIdentityHookContext;
+  lookup?: ConnectShyftPeopleCoreIdentityLookupSnapshot;
+};
+
+export type ConnectShyftResolverReviewHookInput = {
+  tenantId: string;
+  orgUnitId: string;
+  normalizedContactPointValue: string;
+  hookContext?: ConnectShyftPeopleCoreIdentityHookContext;
+  lookup?: ConnectShyftPeopleCoreIdentityLookupSnapshot;
+};
+
+export type ConnectShyftProvisionalIdentityHookResult =
+  | {
+    created: true;
+    personId: string;
+    contactPointId: string;
+    linkId: string;
+  }
+  | {
+    created: false;
+    reason:
+      | 'peoplecore_unavailable'
+      | 'contact_point_already_linked'
+      | 'missing_org_unit';
+    contactPointId?: string;
+  };
+
+export type ConnectShyftResolverReviewHookResult =
+  | {
+    created: true;
+    reviewId: string;
+    contactPointId?: string;
+  }
+  | {
+    created: false;
+    reason:
+      | 'peoplecore_unavailable'
+      | 'duplicate_trigger'
+      | 'missing_org_unit';
+    contactPointId?: string;
+  };
+
+const DEFAULT_HOOK_REQUESTED_BY = 'system-connectshyft-identity-seam';
+const DEFAULT_PROVISIONAL_FIRST_NAME = 'Unknown';
+const DEFAULT_PROVISIONAL_LAST_NAME = 'Contact';
+const UNIQUE_VIOLATION_CODE = '23505';
+
+const buildHookTimestamp = (): string => new Date().toISOString();
+
+const uniqueSortedStrings = (values: string[]): string[] =>
+  Array.from(new Set(values.filter((value) => value.trim().length > 0))).sort((left, right) =>
+    left.localeCompare(right));
+
+const isUniqueViolation = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  return (error as { code?: string }).code === UNIQUE_VIOLATION_CODE;
+};
+
+export class ConnectShyftPeopleCoreIdentityHooks {
+  constructor(
+    private readonly peopleCoreService: PeopleCoreIdentityHookService = peopleCoreServiceAsync,
+  ) {}
+
+  private async loadLookup(
+    tenantId: string,
+    normalizedContactPointValue: string,
+  ): Promise<ConnectShyftPeopleCoreIdentityLookupSnapshot> {
+    const peopleCoreContactPoints = await this.peopleCoreService.listContactPointsByNormalizedValue({
+      tenantId,
+      type: 'phone',
+      normalizedValue: normalizedContactPointValue,
+    });
+
+    const peopleCoreCurrentLinks = (
+      await Promise.all(
+        peopleCoreContactPoints.map((contactPoint) =>
+          this.peopleCoreService.listCurrentContactPointLinks({
+            tenantId,
+            contactPointId: contactPoint.id,
+          })),
+      )
+    ).flat();
+
+    return {
+      normalizedContactPointValue,
+      peopleCoreAvailable: true,
+      peopleCoreContactPoints,
+      peopleCoreCurrentLinks,
+      candidateNeighbors: [],
+    };
+  }
+
+  async createProvisionalPersonHook(
+    input: ConnectShyftProvisionalIdentityHookInput,
+  ): Promise<ConnectShyftProvisionalIdentityHookResult> {
+    if (!input.orgUnitId.trim()) {
+      return {
+        created: false,
+        reason: 'missing_org_unit',
+      };
+    }
+
+    const lookup = input.lookup
+      || await this.loadLookup(input.tenantId, input.normalizedContactPointValue);
+
+    if (!lookup.peopleCoreAvailable) {
+      return {
+        created: false,
+        reason: 'peoplecore_unavailable',
+      };
+    }
+
+    let contactPoint = lookup.peopleCoreContactPoints[0];
+    if (!contactPoint) {
+      try {
+        const now = buildHookTimestamp();
+        contactPoint = await this.peopleCoreService.createContactPoint({
+          tenantId: input.tenantId,
+          type: 'phone',
+          normalizedValue: input.normalizedContactPointValue,
+          rawValue: input.rawContactPointValue,
+          status: 'active_personal',
+          firstSeenAt: now,
+          lastSeenAt: now,
+          suspectedShared: false,
+          confirmedShared: false,
+          reassignmentSuspected: false,
+        });
+      } catch (error) {
+        if (!isUniqueViolation(error)) {
+          throw error;
+        }
+
+        const reloaded = await this.loadLookup(input.tenantId, input.normalizedContactPointValue);
+        contactPoint = reloaded.peopleCoreContactPoints[0];
+      }
+    }
+
+    if (!contactPoint) {
+      return {
+        created: false,
+        reason: 'peoplecore_unavailable',
+      };
+    }
+
+    const currentLinks = await this.peopleCoreService.listCurrentContactPointLinks({
+      tenantId: input.tenantId,
+      contactPointId: contactPoint.id,
+    });
+
+    if (currentLinks.some((link) => link.subjectType === 'person')) {
+      return {
+        created: false,
+        reason: 'contact_point_already_linked',
+        contactPointId: contactPoint.id,
+      };
+    }
+
+    const person = await this.peopleCoreService.createPerson({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      firstName: DEFAULT_PROVISIONAL_FIRST_NAME,
+      lastName: DEFAULT_PROVISIONAL_LAST_NAME,
+      status: 'active_provisional',
+    });
+
+    const firstLinkedAt = buildHookTimestamp();
+    const link = await this.peopleCoreService.createContactPointLink({
+      tenantId: input.tenantId,
+      contactPointId: contactPoint.id,
+      subjectType: 'person',
+      subjectId: person.id,
+      linkType: 'unknown',
+      confidenceBand: 'low',
+      isCurrent: true,
+      isPrimary: true,
+      manuallyConfirmed: false,
+      firstLinkedAt,
+      linkedBy: 'system',
+    });
+
+    return {
+      created: true,
+      personId: person.id,
+      contactPointId: contactPoint.id,
+      linkId: link.id,
+    };
+  }
+
+  async createResolverReviewHook(
+    input: ConnectShyftResolverReviewHookInput,
+  ): Promise<ConnectShyftResolverReviewHookResult> {
+    if (!input.orgUnitId.trim()) {
+      return {
+        created: false,
+        reason: 'missing_org_unit',
+      };
+    }
+
+    const lookup = input.lookup
+      || await this.loadLookup(input.tenantId, input.normalizedContactPointValue);
+
+    if (!lookup.peopleCoreAvailable) {
+      return {
+        created: false,
+        reason: 'peoplecore_unavailable',
+      };
+    }
+
+    const triggerSourceType = input.hookContext?.triggerSourceType || 'connectshyft_identity_seam';
+    const triggerSourceId = input.hookContext?.triggerSourceId
+      || `${triggerSourceType}:${input.tenantId}:${input.orgUnitId}:${input.normalizedContactPointValue}`;
+    const existingReviews = await this.peopleCoreService.listResolverReviews({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+    });
+
+    if (existingReviews.some((review) =>
+      review.triggerSourceType === triggerSourceType
+      && review.triggerSourceId === triggerSourceId)) {
+      return {
+        created: false,
+        reason: 'duplicate_trigger',
+        contactPointId: lookup.peopleCoreContactPoints[0]?.id,
+      };
+    }
+
+    const candidatePersonIds = uniqueSortedStrings(
+      lookup.peopleCoreCurrentLinks
+        .filter((link) => link.subjectType === 'person')
+        .map((link) => link.subjectId),
+    );
+
+    const review = await this.peopleCoreService.createResolverReview({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      reviewType: 'shared_contact_ambiguity',
+      reviewStatus: 'pending',
+      priority: 'high',
+      triggerSourceType,
+      triggerSourceId,
+      conversationId: input.hookContext?.conversationId,
+      candidatePersonIds,
+      contactPointId: lookup.peopleCoreContactPoints[0]?.id,
+      confidenceBand: 'high',
+      confidenceReasons: [
+        'Multiple exact contact-point matches require resolver review.',
+      ],
+      riskFlags: ['shared_contact_possible'],
+      requestedByUserId: input.hookContext?.requestedByUserId || DEFAULT_HOOK_REQUESTED_BY,
+      requestedAt: buildHookTimestamp(),
+    });
+
+    return {
+      created: true,
+      reviewId: review.id,
+      contactPointId: review.contactPointId,
+    };
+  }
+
+  async applyIdentityHooks(
+    input: ConnectShyftIdentityBoundaryRequest,
+    result: ConnectShyftIdentityBoundaryResult,
+    lookup: ConnectShyftPeopleCoreIdentityLookupSnapshot | null,
+  ): Promise<void> {
+    if (!input.orgUnitId?.trim() || !lookup?.normalizedContactPointValue) {
+      return;
+    }
+
+    if (
+      result.ok
+      && result.code === 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH'
+      && input.hookContext?.createProvisionalOnNoMatch
+    ) {
+      await this.createProvisionalPersonHook({
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        normalizedContactPointValue: lookup.normalizedContactPointValue,
+        rawContactPointValue: input.contactPoint.value,
+        hookContext: {
+
+=== identityResolver.ts ===
+import {
+  type ConnectShyftIdentityBoundaryAdapter,
+} from './identityBoundary';
+import { KnexConnectShyftNeighborStore } from './neighbors';
+import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from './peoplecoreIdentityAdapter';
+
+const SYSTEM_RESOLVER_ACTOR_ROLES = ['SYSTEM_ADMIN'];
+
+export type ResolveSubjectByContactPointInput = {
+  tenantId: string;
+  orgUnitId: string;
+  contactPoint: string;
+};
+
+export type ResolveSubjectByContactPointResult =
+  | {
+    type: 'single_match';
+    neighborId: string;
+    normalizedContactPoint: string;
+  }
+  | {
+    type: 'no_match';
+    normalizedContactPoint: string;
+  }
+  | {
+    type: 'multiple_matches';
+    candidateNeighborIds: string[];
+    normalizedContactPoint: string;
+  };
+
+export interface ConnectShyftSubjectResolverBoundary {
+  resolveSubjectByContactPoint(
+    input: ResolveSubjectByContactPointInput,
+  ): Promise<ResolveSubjectByContactPointResult>;
+}
+
+export class ConnectShyftSubjectResolver implements ConnectShyftSubjectResolverBoundary {
+  constructor(
+    private readonly identityBoundary: ConnectShyftIdentityBoundaryAdapter,
+  ) {}
+
+  async resolveSubjectByContactPoint(
+    input: ResolveSubjectByContactPointInput,
+  ): Promise<ResolveSubjectByContactPointResult> {
+    const result = await this.identityBoundary.evaluateMatch({
+      actorRoles: SYSTEM_RESOLVER_ACTOR_ROLES,
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      idempotencyKey: `inbound-subject:${input.tenantId}:${input.orgUnitId}:${input.contactPoint}`,
+      contactPoint: {
+        label: 'mobile',
+        value: input.contactPoint,
+        isShared: false,
+        verificationStatus: 'verified',
+      },
+      hookContext: {
+        createProvisionalOnNoMatch: true,
+        createResolverReviewOnAmbiguous: true,
+        triggerSourceType: 'connectshyft_inbound_subject_resolution',
+        requestedByUserId: 'system-connectshyft-identity-seam',
+      },
+    });
+
+    const normalizedContactPoint = result.ok
+      ? result.data.identityMatch.contactPoint.value
+      : result.data?.identityMatch?.contactPoint.value
+        || input.contactPoint;
+
+    if (!result.ok) {
+      if (result.code === 'IDENTITY_MATCH_AMBIGUOUS') {
+        return {
+          type: 'multiple_matches',
+          candidateNeighborIds: [
+            ...(result.data?.identityMatch?.candidateNeighborIds
+              || result.data?.manualResolution?.candidateNeighborIds
+              || []),
+          ].sort(),
+          normalizedContactPoint,
+        };
+      }
+
+      throw new Error(`Identity resolver failed with ${result.code}`);
+    }
+
+    const matchedNeighborId = result.data.identityMatch.matchedNeighborId;
+    if (matchedNeighborId) {
+      return {
+        type: 'single_match',
+        neighborId: matchedNeighborId,
+        normalizedContactPoint,
+      };
+    }
+
+    return {
+      type: 'no_match',
+      normalizedContactPoint,
+    };
+  }
+}
+
+const defaultNeighborStore = new KnexConnectShyftNeighborStore();
+
+const defaultIdentityBoundary = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+  async (tenantId) => defaultNeighborStore.listActiveIdentityBoundaryNeighborsByTenant(tenantId),
+  async (tenantId, normalizedContactPointValue) =>
+    defaultNeighborStore.listActiveIdentityBoundaryNeighborsByPhoneValue(
+      tenantId,
+      normalizedContactPointValue,
+    ),
+);
+
+const defaultSubjectResolver = new ConnectShyftSubjectResolver(defaultIdentityBoundary);
+
+export const resolveSubjectByContactPoint = (
+  input: ResolveSubjectByContactPointInput,
+): Promise<ResolveSubjectByContactPointResult> =>
+  defaultSubjectResolver.resolveSubjectByContactPoint(input);
+
+=== peoplecore/store.ts ===
+import type {
+  ContactPoint,
+  ContactPointEvent,
+  ContactPointLink,
+  ContactPointLinkSubjectType,
+  ContactPointType,
+  Household,
+  HouseholdMembership,
+  Person,
+  ResolverReview,
+} from '@shyft/contracts';
+import type { Knex } from 'knex';
+import db from '../../config/knex';
+
+const PEOPLE_SCHEMA = 'people';
+const DEFAULT_CONTACT_POINT_EVENT_LIMIT = 50;
+const MAX_CONTACT_POINT_EVENT_LIMIT = 200;
+
+const toIsoUtc = (value: unknown, fallbackIsoUtc: string): string => {
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.valueOf())) {
+      return parsed.toISOString();
+    }
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.valueOf())) {
+    return value.toISOString();
+  }
+
+  return fallbackIsoUtc;
+};
+
+const normalizeOptionalString = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+};
+
+const normalizeStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry) => normalizeOptionalString(entry))
+    .filter((entry): entry is string => Boolean(entry));
+};
+
+const normalizeEventLimit = (value: unknown): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return DEFAULT_CONTACT_POINT_EVENT_LIMIT;
+  }
+
+  const normalized = Math.trunc(value);
+  if (normalized <= 0) {
+    return DEFAULT_CONTACT_POINT_EVENT_LIMIT;
+  }
+
+  return Math.min(normalized, MAX_CONTACT_POINT_EVENT_LIMIT);
+};
+
+export class PeopleCoreScopeViolationError extends Error {
+  readonly code = 'PEOPLECORE_SCOPE_VIOLATION';
+
+  constructor(message: string, cause?: unknown) {
+    super(message);
+    this.name = 'PeopleCoreScopeViolationError';
+    if (cause !== undefined) {
+      (this as Error & { cause?: unknown }).cause = cause;
+    }
+  }
+}
+
+export type CreatePersonInput = Omit<Person, 'id' | 'createdAt' | 'updatedAt'> & {
+  personId?: string;
+};
+
+export type GetPersonInput = {
+  tenantId: string;
+  personId: string;
+};
+
+export type ListPersonsInput = {
+  tenantId: string;
+  orgUnitId?: string;
+};
+
+export type CreateHouseholdInput = Omit<Household, 'id' | 'createdAt' | 'updatedAt'> & {
+  householdId?: string;
+};
+
+export type GetHouseholdInput = {
+  tenantId: string;
+  householdId: string;
+};
+
+export type CreateHouseholdMembershipInput = Omit<
+  HouseholdMembership,
+  'id' | 'createdAt' | 'updatedAt'
+> & {
+  membershipId?: string;
+  tenantId: string;
+};
+
+export type ListHouseholdMembershipsInput = {
+  tenantId: string;
+  householdId?: string;
+  personId?: string;
+  isCurrent?: boolean;
+};
+
+export type CreateContactPointInput = Omit<ContactPoint, 'id' | 'createdAt' | 'updatedAt'> & {
+  contactPointId?: string;
+};
+
+export type GetContactPointInput = {
+  tenantId: string;
+  contactPointId: string;
+};
+
+export type ListContactPointsByNormalizedValueInput = {
+  tenantId: string;
+  type: ContactPointType;
+  normalizedValue: string;
+};
+
+export type CreateContactPointLinkInput = Omit<
+  ContactPointLink,
+  'id' | 'createdAt' | 'updatedAt'
+> & {
+  linkId?: string;
+  tenantId: string;
+};
+
+export type ListCurrentContactPointLinksInput = {
+  tenantId: string;
+  contactPointId?: string;
+  subjectType?: ContactPointLinkSubjectType;
+  subjectId?: string;
+};
+
+export type AppendContactPointEventInput = Omit<ContactPointEvent, 'id' | 'createdAt'> & {
+  eventId?: string;
+  createdAt?: string;
+};
+
+export type ListContactPointEventsInput = {
+  tenantId: string;
+  contactPointId: string;
+  limit?: number;
+};
+
+export type CreateResolverReviewInput = Omit<ResolverReview, 'id'> & {
+  reviewId?: string;
+};
+
+export type GetResolverReviewInput = {
+  tenantId: string;
+  reviewId: string;
+};
+
+export type ListResolverReviewsInput = {
+  tenantId: string;
+  orgUnitId?: string;
+};
+
+export interface PeopleCoreStore {
+  createPerson(input: CreatePersonInput): Promise<Person>;
+  getPerson(input: GetPersonInput): Promise<Person | null>;
+  listPersons(input: ListPersonsInput): Promise<Person[]>;
+  createHousehold(input: CreateHouseholdInput): Promise<Household>;
+  getHousehold(input: GetHouseholdInput): Promise<Household | null>;
+  createHouseholdMembership(input: CreateHouseholdMembershipInput): Promise<HouseholdMembership>;
+  listHouseholdMemberships(input: ListHouseholdMembershipsInput): Promise<HouseholdMembership[]>;
+  createContactPoint(input: CreateContactPointInput): Promise<ContactPoint>;
+  getContactPoint(input: GetContactPointInput): Promise<ContactPoint | null>;
+  listContactPointsByNormalizedValue(
+    input: ListContactPointsByNormalizedValueInput,
+  ): Promise<ContactPoint[]>;
+  createContactPointLink(input: CreateContactPointLinkInput): Promise<ContactPointLink>;
+  listCurrentContactPointLinks(
+    input: ListCurrentContactPointLinksInput,
+  ): Promise<ContactPointLink[]>;
+  appendContactPointEvent(input: AppendContactPointEventInput): Promise<ContactPointEvent>;
+  listContactPointEvents(input: ListContactPointEventsInput): Promise<ContactPointEvent[]>;
+  createResolverReview(input: CreateResolverReviewInput): Promise<ResolverReview>;
+  getResolverReview(input: GetResolverReviewInput): Promise<ResolverReview | null>;
+  listResolverReviews(input: ListResolverReviewsInput): Promise<ResolverReview[]>;
+}
+
+type DbPersonRow = {
+  id: string;
+  tenant_id: string;
+  org_unit_id: string;
+  first_name: string;
+  last_name: string;
+  preferred_name: string | null;
+  status: Person['status'];
+  merged_into_person_id: string | null;
+  created_at_utc: string | Date;
+  updated_at_utc: string | Date;
+};
+
+type DbHouseholdRow = {
+  id: string;
+  tenant_id: string;
+  org_unit_id: string;
+  name: string | null;
+  status: Household['status'];
+  created_at_utc: string | Date;
+  updated_at_utc: string | Date;
+};
+
+type DbHouseholdMembershipRow = {
+  id: string;
+  household_id: string;
+  person_id: string;
+  role: HouseholdMembership['role'];
+  is_current: boolean;
+  start_at_utc: string | Date | null;
+  end_at_utc: string | Date | null;
+  created_at_utc: string | Date;
+  updated_at_utc: string | Date;
+};
+
+type DbContactPointRow = {
+  id: string;
+  tenant_id: string;
+  type: ContactPoint['type'];
+  normalized_value: string;
+  raw_value: string | null;
+  status: ContactPoint['status'];
+  first_seen_at_utc: string | Date;
+  last_seen_at_utc: string | Date;
+  last_inbound_at_utc: string | Date | null;
+  last_outbound_at_utc: string | Date | null;
+  suspected_shared: boolean;
+  confirmed_shared: boolean;
+  reassignment_suspected: boolean;
+  created_at_utc: string | Date;
+  updated_at_utc: string | Date;
+};
+
+type DbContactPointLinkRow = {
+  id: string;
+  contact_point_id: string;
+  subject_type: ContactPointLink['subjectType'];
+  subject_id: string;
+  link_type: ContactPointLink['linkType'];
+  confidence_band: ContactPointLink['confidenceBand'];
+  is_current: boolean;
+  is_primary: boolean;
+  manually_confirmed: boolean;
+  confirmation_source: ContactPointLink['confirmationSource'] | null;
+  first_linked_at_utc: string | Date;
+  last_confirmed_at_utc: string | Date | null;
+  last_used_at_utc: string | Date | null;
+  linked_by: ContactPointLink['linkedBy'];
+  linked_by_user_id: string | null;
+  unlink_reason: string | null;
+  unlinked_at_utc: string | Date | null;
+  created_at_utc: string | Date;
+  updated_at_utc: string | Date;
+};
+
+type DbContactPointEventRow = {
+  id: string;
+  tenant_id: string;
+  contact_point_id: string;
+  event_type: ContactPointEvent['eventType'];
+  event_source: string;
+  related_object_type: string | null;
+  related_object_id: string | null;
+  created_at_utc: string | Date;
+};
+
+type DbResolverReviewRow = {
+  id: string;
+  tenant_id: string;
+  org_unit_id: string;
+  review_type: ResolverReview['reviewType'];
+  review_status: ResolverReview['reviewStatus'];
+  priority: ResolverReview['priority'];
+  trigger_source_type: string;
+  trigger_source_id: string;
+  conversation_id: string | null;
+  provisional_person_id: string | null;
+  candidate_person_ids: unknown;
+  contact_point_id: string | null;
+  confidence_band: ResolverReview['confidenceBand'];
+  confidence_reasons: unknown;
+  risk_flags: unknown;
+  requested_by_user_id: string;
+  assigned_resolver_user_id: string | null;
+  requested_at_utc: string | Date;
+  started_at_utc: string | Date | null;
+  resolved_at_utc: string | Date | null;
+  resolution_type: ResolverReview['resolutionType'] | null;
+  resolution_reason: string | null;
+  resolution_notes: string | null;
+};
+
+const mapPersonRow = (row: DbPersonRow): Person => {
+  const fallbackIsoUtc = new Date().toISOString();
+
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    orgUnitId: row.org_unit_id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    preferredName: normalizeOptionalString(row.preferred_name),
+    status: row.status,
+    mergedIntoPersonId: normalizeOptionalString(row.merged_into_person_id),
+    createdAt: toIsoUtc(row.created_at_utc, fallbackIsoUtc),
+    updatedAt: toIsoUtc(row.updated_at_utc, fallbackIsoUtc),
+  };
+};
+
+const mapHouseholdRow = (row: DbHouseholdRow): Household => {
+  const fallbackIsoUtc = new Date().toISOString();
+
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    orgUnitId: row.org_unit_id,
+    name: normalizeOptionalString(row.name),
+    status: row.status,
+    createdAt: toIsoUtc(row.created_at_utc, fallbackIsoUtc),
+    updatedAt: toIsoUtc(row.updated_at_utc, fallbackIsoUtc),
+  };
+};
+
+const mapHouseholdMembershipRow = (row: DbHouseholdMembershipRow): HouseholdMembership => {
+  const fallbackIsoUtc = new Date().toISOString();
+
+  return {
+    id: row.id,
+    householdId: row.household_id,
+    personId: row.person_id,
+    role: row.role,
+    isCurrent: row.is_current,
+    startAt: row.start_at_utc ? toIsoUtc(row.start_at_utc, fallbackIsoUtc) : undefined,
+    endAt: row.end_at_utc ? toIsoUtc(row.end_at_utc, fallbackIsoUtc) : undefined,
+    createdAt: toIsoUtc(row.created_at_utc, fallbackIsoUtc),
+    updatedAt: toIsoUtc(row.updated_at_utc, fallbackIsoUtc),
+  };
+};
+
+const mapContactPointRow = (row: DbContactPointRow): ContactPoint => {
+  const fallbackIsoUtc = new Date().toISOString();
+
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    type: row.type,
+    normalizedValue: row.normalized_value,
+    rawValue: normalizeOptionalString(row.raw_value),
+    status: row.status,
+    firstSeenAt: toIsoUtc(row.first_seen_at_utc, fallbackIsoUtc),
+    lastSeenAt: toIsoUtc(row.last_seen_at_utc, fallbackIsoUtc),
+    lastInboundAt: row.last_inbound_at_utc
+      ? toIsoUtc(row.last_inbound_at_utc, fallbackIsoUtc)
+      : undefined,
+    lastOutboundAt: row.last_outbound_at_utc
+      ? toIsoUtc(row.last_outbound_at_utc, fallbackIsoUtc)
+      : undefined,
+    suspectedShared: row.suspected_shared,
+    confirmedShared: row.confirmed_shared,
+    reassignmentSuspected: row.reassignment_suspected,
+    createdAt: toIsoUtc(row.created_at_utc, fallbackIsoUtc),
+    updatedAt: toIsoUtc(row.updated_at_utc, fallbackIsoUtc),
+  };
+};
+
+const mapContactPointLinkRow = (row: DbContactPointLinkRow): ContactPointLink => {
+  const fallbackIsoUtc = new Date().toISOString();
+
+  return {
+    id: row.id,
+    contactPointId: row.contact_point_id,
+    subjectType: row.subject_type,
+    subjectId: row.subject_id,
+    linkType: row.link_type,
+    confidenceBand: row.confidence_band,
+    isCurrent: row.is_current,
+    isPrimary: row.is_primary,
+    manuallyConfirmed: row.manually_confirmed,
+    confirmationSource: row.confirmation_source || undefined,
+    firstLinkedAt: toIsoUtc(row.first_linked_at_utc, fallbackIsoUtc),
+    lastConfirmedAt: row.last_confirmed_at_utc
+      ? toIsoUtc(row.last_confirmed_at_utc, fallbackIsoUtc)
+      : undefined,
+    lastUsedAt: row.last_used_at_utc
+      ? toIsoUtc(row.last_used_at_utc, fallbackIsoUtc)
+      : undefined,
+    linkedBy: row.linked_by,
+    linkedByUserId: normalizeOptionalString(row.linked_by_user_id),
+    unlinkReason: normalizeOptionalString(row.unlink_reason),
+    unlinkedAt: row.unlinked_at_utc ? toIsoUtc(row.unlinked_at_utc, fallbackIsoUtc) : undefined,
+    createdAt: toIsoUtc(row.created_at_utc, fallbackIsoUtc),
+    updatedAt: toIsoUtc(row.updated_at_utc, fallbackIsoUtc),
+  };
+};
+
+const mapContactPointEventRow = (row: DbContactPointEventRow): ContactPointEvent => {
+  const fallbackIsoUtc = new Date().toISOString();
+
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    contactPointId: row.contact_point_id,
+    eventType: row.event_type,
+    eventSource: row.event_source,
+    relatedObjectType: normalizeOptionalString(row.related_object_type),
+    relatedObjectId: normalizeOptionalString(row.related_object_id),
+
+=== identity seam tests ===
+import { PeopleCorePersistenceUnavailableError } from '../../peoplecore/service';
+import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from '../peoplecoreIdentityAdapter';
+import type { ConnectShyftIdentityBoundaryNeighbor } from '../identityBoundary';
+
+const TIMESTAMP = '2026-03-21T12:00:00.000Z';
+
+const buildNeighbor = (
+  neighborId: string,
+  value: string,
+  overrides: Partial<ConnectShyftIdentityBoundaryNeighbor['phones'][number]> = {},
+): ConnectShyftIdentityBoundaryNeighbor => ({
+  neighborId,
+  phones: [
+    {
+      phoneId: `${neighborId}-phone-1`,
+      value,
+      isShared: false,
+      verificationStatus: 'verified',
+      ...overrides,
+    },
+  ],
+});
+
+const buildContactPoint = (contactPointId: string, normalizedValue: string) => ({
+  id: contactPointId,
+  tenantId: 'tenant-a',
+  type: 'phone' as const,
+  normalizedValue,
+  status: 'active_personal' as const,
+  firstSeenAt: TIMESTAMP,
+  lastSeenAt: TIMESTAMP,
+  suspectedShared: false,
+  confirmedShared: false,
+  reassignmentSuspected: false,
+  createdAt: TIMESTAMP,
+  updatedAt: TIMESTAMP,
+});
+
+const buildContactPointLink = (contactPointId: string, subjectId: string) => ({
+  id: `${contactPointId}-link-1`,
+  contactPointId,
+  subjectType: 'person' as const,
+  subjectId,
+  linkType: 'primary' as const,
+  confidenceBand: 'high' as const,
+  isCurrent: true,
+  isPrimary: true,
+  manuallyConfirmed: false,
+  firstLinkedAt: TIMESTAMP,
+  linkedBy: 'system' as const,
+  createdAt: TIMESTAMP,
+  updatedAt: TIMESTAMP,
+});
+
+describe('connectshyft peoplecore identity adapter', () => {
+  it('creates provisional PeopleCore foundation on no-match without changing the ConnectShyft result', async () => {
+    const peopleCoreService = {
+      listContactPointsByNormalizedValue: jest.fn(async () => []),
+      listCurrentContactPointLinks: jest.fn(async () => []),
+      createContactPoint: jest.fn(async () => buildContactPoint('contact-point-3', '+12605551220')),
+      createPerson: jest.fn(async () => ({
+        id: 'person-3',
+        tenantId: 'tenant-a',
+        orgUnitId: 'org-a',
+        firstName: 'Unknown',
+        lastName: 'Contact',
+        status: 'active_provisional',
+        createdAt: TIMESTAMP,
+        updatedAt: TIMESTAMP,
+      })),
+      createContactPointLink: jest.fn(async () => ({
+        id: 'link-3',
+        contactPointId: 'contact-point-3',
+        subjectType: 'person',
+        subjectId: 'person-3',
+        linkType: 'unknown',
+        confidenceBand: 'low',
+        isCurrent: true,
+        isPrimary: true,
+        manuallyConfirmed: false,
+        firstLinkedAt: TIMESTAMP,
+        linkedBy: 'system',
+        createdAt: TIMESTAMP,
+        updatedAt: TIMESTAMP,
+      })),
+      listResolverReviews: jest.fn(async () => []),
+      createResolverReview: jest.fn(),
+    };
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [],
+      async () => [],
+      peopleCoreService as any,
+    );
+
+    await expect(adapter.evaluateMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: {
+        label: 'mobile',
+        value: '2605551220',
+        verificationStatus: 'verified',
+      },
+      hookContext: {
+        createProvisionalOnNoMatch: true,
+        triggerSourceType: 'connectshyft_inbound_subject_resolution',
+      },
+    })).resolves.toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH',
+      data: {
+        identityMatch: {
+          matchedNeighborId: null,
+          contactPoint: {
+            value: '+12605551220',
+          },
+        },
+      },
+    });
+
+    expect(peopleCoreService.createPerson).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      status: 'active_provisional',
+    }));
+    expect(peopleCoreService.createContactPointLink).toHaveBeenCalled();
+  });
+
+  it('evaluates normalized contact-point candidates through the PeopleCore lookup path before preserving current ConnectShyft candidates', async () => {
+    const peopleCoreService = {
+      listContactPointsByNormalizedValue: jest.fn(async () => [
+        buildContactPoint('contact-point-1', '+12605551212'),
+      ]),
+      listCurrentContactPointLinks: jest.fn(async () => [
+        buildContactPointLink('contact-point-1', 'person-1'),
+      ]),
+    };
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [buildNeighbor('neighbor-1', '+12605551212')],
+      async () => [buildNeighbor('neighbor-1', '+12605551212')],
+      peopleCoreService as any,
+    );
+
+    const lookup = await adapter.evaluateIdentityCandidatesForContactPoint({
+      tenantId: 'tenant-a',
+      contactPointValue: '(260) 555-1212',
+    });
+
+    expect(peopleCoreService.listContactPointsByNormalizedValue).toHaveBeenCalledWith({
+      tenantId: 'tenant-a',
+      type: 'phone',
+      normalizedValue: '+12605551212',
+    });
+    expect(peopleCoreService.listCurrentContactPointLinks).toHaveBeenCalledWith({
+      tenantId: 'tenant-a',
+      contactPointId: 'contact-point-1',
+    });
+    expect(lookup).toMatchObject({
+      normalizedContactPointValue: '+12605551212',
+      peopleCoreAvailable: true,
+      peopleCoreContactPoints: [
+        {
+          id: 'contact-point-1',
+        },
+      ],
+      peopleCoreCurrentLinks: [
+        {
+          id: 'contact-point-1-link-1',
+          subjectId: 'person-1',
+        },
+      ],
+      candidateNeighbors: [
+        {
+          neighborId: 'neighbor-1',
+        },
+      ],
+    });
+  });
+
+  it('preserves current auto-merge behavior while consulting the PeopleCore seam', async () => {
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [buildNeighbor('neighbor-1', '+12605551212')],
+      async () => [buildNeighbor('neighbor-1', '+12605551212')],
+      {
+        listContactPointsByNormalizedValue: async () => [
+          buildContactPoint('contact-point-1', '+12605551212'),
+        ],
+        listCurrentContactPointLinks: async () => [
+          buildContactPointLink('contact-point-1', 'person-1'),
+        ],
+      } as any,
+    );
+
+    await expect(adapter.evaluateMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-a',
+      contactPoint: {
+        label: 'mobile',
+        value: '260-555-1212',
+        verificationStatus: 'verified',
+      },
+    })).resolves.toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_AUTO_MERGE_ALLOWED',
+      data: {
+        identityMatch: {
+          matchedNeighborId: 'neighbor-1',
+          contactPoint: {
+            value: '+12605551212',
+          },
+        },
+      },
+    });
+  });
+
+  it('preserves current ambiguous/manual-resolution behavior when fallback candidates remain ambiguous', async () => {
+    const createResolverReview = jest.fn(async () => ({
+      id: 'resolver-review-ambiguous',
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      reviewType: 'shared_contact_ambiguity',
+      reviewStatus: 'pending',
+      priority: 'high',
+      triggerSourceType: 'connectshyft_identity_match',
+      triggerSourceId: 'identity-match:ambiguous',
+      candidatePersonIds: ['person-1', 'person-2'],
+      contactPointId: 'contact-point-2',
+      confidenceBand: 'high',
+      confidenceReasons: ['Multiple exact contact-point matches require resolver review.'],
+      riskFlags: ['shared_contact_possible'],
+      requestedByUserId: 'user-1',
+      requestedAt: TIMESTAMP,
+    }));
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [
+        buildNeighbor('neighbor-1', '+12605551213'),
+        buildNeighbor('neighbor-2', '+12605551213'),
+      ],
+      async () => [
+        buildNeighbor('neighbor-1', '+12605551213'),
+        buildNeighbor('neighbor-2', '+12605551213'),
+      ],
+      {
+        listContactPointsByNormalizedValue: async () => [
+          buildContactPoint('contact-point-2', '+12605551213'),
+        ],
+        listCurrentContactPointLinks: async () => [
+          buildContactPointLink('contact-point-2', 'person-1'),
+          buildContactPointLink('contact-point-2', 'person-2'),
+        ],
+        listResolverReviews: async () => [],
+        createResolverReview,
+        createContactPoint: jest.fn(),
+        createPerson: jest.fn(),
+        createContactPointLink: jest.fn(),
+      } as any,
+    );
+
+    await expect(adapter.evaluateMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: {
+        label: 'mobile',
+        value: '+1 (260) 555-1213',
+        verificationStatus: 'verified',
+      },
+      hookContext: {
+        createResolverReviewOnAmbiguous: true,
+        triggerSourceType: 'connectshyft_identity_match',
+        triggerSourceId: 'identity-match:ambiguous',
+        requestedByUserId: 'user-1',
+      },
+    })).resolves.toMatchObject({
+      ok: false,
+      code: 'IDENTITY_MATCH_AMBIGUOUS',
+      data: {
+        identityMatch: {
+          decision: 'AMBIGUOUS',
+          candidateNeighborIds: ['neighbor-1', 'neighbor-2'],
+        },
+        manualResolution: {
+          required: true,
+          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+        },
+      },
+    });
+
+    expect(createResolverReview).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      triggerSourceType: 'connectshyft_identity_match',
+      triggerSourceId: 'identity-match:ambiguous',
+      requestedByUserId: 'user-1',
+    }));
+  });
+
+  it('falls back cleanly when PeopleCore persistence is unavailable', async () => {
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [buildNeighbor('neighbor-1', '+12605551214')],
+      async () => [buildNeighbor('neighbor-1', '+12605551214')],
+      {
+        listContactPointsByNormalizedValue: async () => {
+          throw new PeopleCorePersistenceUnavailableError(new Error('people schema missing'));
+        },
+        listCurrentContactPointLinks: jest.fn(),
+      } as any,
+    );
+
+    await expect(adapter.evaluateIdentityCandidatesForContactPoint({
+      tenantId: 'tenant-a',
+      contactPointValue: '2605551214',
+    })).resolves.toMatchObject({
+      normalizedContactPointValue: '+12605551214',
+      peopleCoreAvailable: false,
+      peopleCoreContactPoints: [],
+      peopleCoreCurrentLinks: [],
+      candidateNeighbors: [
+        {
+          neighborId: 'neighbor-1',
+import {
+  AsyncInProcessConnectShyftIdentityBoundaryAdapter,
+  type ConnectShyftIdentityBoundaryNeighbor,
+} from '../identityBoundary';
+import { ConnectShyftSubjectResolver } from '../identityResolver';
+import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from '../peoplecoreIdentityAdapter';
+
+const buildNeighbor = (
+  neighborId: string,
+  value: string,
+  overrides: Partial<ConnectShyftIdentityBoundaryNeighbor['phones'][number]> = {},
+): ConnectShyftIdentityBoundaryNeighbor => ({
+  neighborId,
+  phones: [
+    {
+      phoneId: `${neighborId}-phone-1`,
+      value,
+      isShared: false,
+      verificationStatus: 'verified',
+      ...overrides,
+    },
+  ],
+});
+
+const buildResolver = (
+  neighborsByTenant: Record<string, ConnectShyftIdentityBoundaryNeighbor[]>,
+  lookupByTenantAndPhone: Record<string, Record<string, ConnectShyftIdentityBoundaryNeighbor[]>> = {},
+): ConnectShyftSubjectResolver => {
+  const adapter = new AsyncInProcessConnectShyftIdentityBoundaryAdapter(
+    async (tenantId) => neighborsByTenant[tenantId] || [],
+    async (tenantId, normalizedContactPointValue) =>
+      lookupByTenantAndPhone[tenantId]?.[normalizedContactPointValue]
+      || (neighborsByTenant[tenantId] || []).filter((neighbor) =>
+        neighbor.phones.some((phone) => phone.value === normalizedContactPointValue)),
+  );
+
+  return new ConnectShyftSubjectResolver(adapter);
+};
+
+describe('connectshyft identity resolver', () => {
+  it('returns single_match through the PeopleCore seam while preserving current resolver behavior', async () => {
+    const peopleCoreService = {
+      listContactPointsByNormalizedValue: jest.fn(async () => [
+        {
+          id: 'contact-point-1',
+          tenantId: 'tenant-a',
+          type: 'phone',
+          normalizedValue: '+12605551216',
+          status: 'active_personal',
+          firstSeenAt: '2026-03-21T12:00:00.000Z',
+          lastSeenAt: '2026-03-21T12:00:00.000Z',
+          suspectedShared: false,
+          confirmedShared: false,
+          reassignmentSuspected: false,
+          createdAt: '2026-03-21T12:00:00.000Z',
+          updatedAt: '2026-03-21T12:00:00.000Z',
+        },
+      ]),
+      listCurrentContactPointLinks: jest.fn(async () => [
+        {
+          id: 'link-1',
+          contactPointId: 'contact-point-1',
+          subjectType: 'person',
+          subjectId: 'person-1',
+          linkType: 'primary',
+          confidenceBand: 'high',
+          isCurrent: true,
+          isPrimary: true,
+          manuallyConfirmed: false,
+          firstLinkedAt: '2026-03-21T12:00:00.000Z',
+          linkedBy: 'system',
+          createdAt: '2026-03-21T12:00:00.000Z',
+          updatedAt: '2026-03-21T12:00:00.000Z',
+        },
+      ]),
+    };
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [buildNeighbor('neighbor-1', '+12605551216')],
+      async () => [buildNeighbor('neighbor-1', '+12605551216')],
+      peopleCoreService as any,
+    );
+    const resolver = new ConnectShyftSubjectResolver(adapter);
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '(260) 555-1216',
+    })).resolves.toEqual({
+      type: 'single_match',
+      neighborId: 'neighbor-1',
+      normalizedContactPoint: '+12605551216',
+    });
+
+    expect(peopleCoreService.listContactPointsByNormalizedValue).toHaveBeenCalledWith({
+      tenantId: 'tenant-a',
+      type: 'phone',
+      normalizedValue: '+12605551216',
+    });
+  });
+
+  it('passes hook context into the seam for inbound no-match handling', async () => {
+    const evaluateMatch = jest.fn(async () => ({
+      ok: true as const,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_MATCH' as const,
+      httpStatus: 200 as const,
+      data: {
+        identityMatch: {
+          decision: 'NO_AUTO_MERGE' as const,
+          reason: 'NO_EXACT_CONTACT_POINT_MATCH' as const,
+          autoMergeAllowed: false,
+          contactPoint: {
+            value: '+12605551217',
+            isShared: false,
+            verificationStatus: 'verified' as const,
+          },
+          matchedNeighborId: null,
+          candidateCount: 0,
+          candidateNeighborIds: [],
+          exactMatches: [],
+        },
+        idempotency: {
+          key: 'inbound-subject:tenant-a:org-a:(260)555-1217',
+          semantics: 'REPLAY_SAFE' as const,
+        },
+      },
+    }));
+    const resolver = new ConnectShyftSubjectResolver({
+      evaluateMatch,
+    });
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '(260) 555-1217',
+    })).resolves.toEqual({
+      type: 'no_match',
+      normalizedContactPoint: '+12605551217',
+    });
+
+    expect(evaluateMatch).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      hookContext: {
+        createProvisionalOnNoMatch: true,
+        createResolverReviewOnAmbiguous: true,
+        triggerSourceType: 'connectshyft_inbound_subject_resolution',
+        requestedByUserId: 'system-connectshyft-identity-seam',
+      },
+    }));
+  });
+
+  it('returns single_match for a unique tenant-scoped phone match', async () => {
+    const resolver = buildResolver({
+      'tenant-a': [
+        buildNeighbor('neighbor-1', '+12605551212'),
+      ],
+    });
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '+12605551212',
+    })).resolves.toEqual({
+      type: 'single_match',
+      neighborId: 'neighbor-1',
+      normalizedContactPoint: '+12605551212',
+    });
+  });
+
+  it('normalizes canonical formatting variants before resolving a unique phone match', async () => {
+    const resolver = buildResolver({
+      'tenant-a': [
+        buildNeighbor('neighbor-1', '+12605551212'),
+      ],
+    });
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '(260) 555-1212',
+    })).resolves.toEqual({
+      type: 'single_match',
+      neighborId: 'neighbor-1',
+      normalizedContactPoint: '+12605551212',
+    });
+  });
+
+  it('returns no_match when the current tenant has no exact phone match', async () => {
+    const resolver = buildResolver({
+      'tenant-a': [
+        buildNeighbor('neighbor-1', '+12605550000'),
+      ],
+    });
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '+12605551212',
+    })).resolves.toEqual({
+      type: 'no_match',
+      normalizedContactPoint: '+12605551212',
+    });
+  });
+
+  it('returns multiple_matches when multiple neighbors share the same phone', async () => {
+    const resolver = buildResolver({
+      'tenant-a': [
+        buildNeighbor('neighbor-1', '+12605551212'),
+        buildNeighbor('neighbor-2', '+12605551212'),
+      ],
+    });
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '+12605551212',
+    })).resolves.toEqual({
+      type: 'multiple_matches',
+      candidateNeighborIds: ['neighbor-1', 'neighbor-2'],
+      normalizedContactPoint: '+12605551212',
+    });
+  });
+
+  it('returns no_match when deleted-only phone rows are excluded from active lookup', async () => {
+    const resolver = buildResolver(
+      {
+        'tenant-a': [
+          buildNeighbor('neighbor-deleted-shadow', '+12605551213'),
+        ],
+      },
+      {
+        'tenant-a': {
+          '+12605551213': [],
+        },
+      },
+    );
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '+1 (260) 555-1213',
+    })).resolves.toEqual({
+      type: 'no_match',
+      normalizedContactPoint: '+12605551213',
+    });
+  });
+
+  it('returns single_match for a unique shared contact even when auto-merge remains blocked', async () => {
+    const resolver = buildResolver({
+      'tenant-a': [
+        buildNeighbor('neighbor-1', '+12605551215', {
+          isShared: true,
+        }),
+      ],
+    });
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '(260) 555-1215',
+    })).resolves.toEqual({
+      type: 'single_match',
+      neighborId: 'neighbor-1',
+      normalizedContactPoint: '+12605551215',
+    });
+  });
+
+  it('returns single_match when active lookup excludes deleted duplicates and keeps the current owner', async () => {
+    const currentOwner = buildNeighbor('neighbor-current', '+12605551214');
+    const deletedShadow = buildNeighbor('neighbor-deleted-shadow', '+12605551214');
+    const resolver = buildResolver(
+      {
+        'tenant-a': [
+          currentOwner,
+          deletedShadow,
+        ],
+      },
+      {
+        'tenant-a': {
+          '+12605551214': [currentOwner],
+        },
+      },
+    );
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '260.555.1214',
+    })).resolves.toEqual({
+      type: 'single_match',
+      neighborId: 'neighbor-current',
+      normalizedContactPoint: '+12605551214',
+    });
+  });
+
+  it('treats other-tenant-only matches as no_match for the current tenant', async () => {
+    const resolver = buildResolver({
+      'tenant-a': [],
+      'tenant-b': [
+        buildNeighbor('neighbor-foreign', '+12605551212'),
+      ],
+    });
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '+12605551212',
+    })).resolves.toEqual({
+      type: 'no_match',
+      normalizedContactPoint: '+12605551212',
+    });
+  });
+});

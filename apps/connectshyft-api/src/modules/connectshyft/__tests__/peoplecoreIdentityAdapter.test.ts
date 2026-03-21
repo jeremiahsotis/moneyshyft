@@ -295,6 +295,131 @@ describe('connectshyft peoplecore identity adapter', () => {
     }));
   });
 
+  it('characterizes a PeopleCore single-current-link disagreement with a different legacy neighbor as ambiguous', async () => {
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [buildNeighbor('neighbor-legacy-a', '+12605551218')],
+      async () => [buildNeighbor('neighbor-legacy-b', '+12605551218')],
+      {
+        listContactPointsByNormalizedValue: async () => [
+          buildContactPoint('contact-point-18', '+12605551218'),
+        ],
+        listCurrentContactPointLinks: async () => [
+          buildContactPointLink('contact-point-18', 'person-18'),
+        ],
+        listResolverReviews: async () => [],
+        createResolverReview: jest.fn(),
+        createContactPoint: jest.fn(),
+        createPerson: jest.fn(),
+        createContactPointLink: jest.fn(),
+      } as any,
+    );
+
+    await expect(adapter.evaluateMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: {
+        label: 'mobile',
+        value: '(260) 555-1218',
+        verificationStatus: 'verified',
+      },
+      hookContext: {
+        createResolverReviewOnAmbiguous: true,
+        triggerSourceType: 'connectshyft_identity_match',
+        triggerSourceId: 'identity-match:peoplecore-disagreement',
+        requestedByUserId: 'user-1',
+      },
+    })).resolves.toMatchObject({
+      ok: false,
+      code: 'IDENTITY_MATCH_AMBIGUOUS',
+      data: {
+        identityMatch: {
+          decision: 'AMBIGUOUS',
+          matchedNeighborId: null,
+        },
+        manualResolution: {
+          required: true,
+          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+        },
+      },
+    });
+  });
+
+  it('characterizes multiple PeopleCore current links as ambiguous even when legacy has a single candidate', async () => {
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [buildNeighbor('neighbor-legacy-19', '+12605551219')],
+      async () => [buildNeighbor('neighbor-legacy-19', '+12605551219')],
+      {
+        listContactPointsByNormalizedValue: async () => [
+          buildContactPoint('contact-point-19', '+12605551219'),
+        ],
+        listCurrentContactPointLinks: async () => [
+          buildContactPointLink('contact-point-19', 'person-19-a'),
+          buildContactPointLink('contact-point-19', 'person-19-b'),
+        ],
+      } as any,
+    );
+
+    await expect(adapter.evaluateMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: {
+        label: 'mobile',
+        value: '2605551219',
+        verificationStatus: 'verified',
+      },
+    })).resolves.toMatchObject({
+      ok: false,
+      code: 'IDENTITY_MATCH_AMBIGUOUS',
+      data: {
+        identityMatch: {
+          decision: 'AMBIGUOUS',
+          matchedNeighborId: null,
+        },
+        manualResolution: {
+          required: true,
+          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+        },
+      },
+    });
+  });
+
+  it('preserves legacy single-match fallback when PeopleCore has no current person links', async () => {
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [buildNeighbor('neighbor-legacy-20', '+12605551220')],
+      async () => [buildNeighbor('neighbor-legacy-20', '+12605551220')],
+      {
+        listContactPointsByNormalizedValue: async () => [
+          buildContactPoint('contact-point-20', '+12605551220'),
+        ],
+        listCurrentContactPointLinks: async () => [],
+      } as any,
+    );
+
+    await expect(adapter.evaluateMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: {
+        label: 'mobile',
+        value: '2605551220',
+        verificationStatus: 'verified',
+      },
+    })).resolves.toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_AUTO_MERGE_ALLOWED',
+      data: {
+        identityMatch: {
+          matchedNeighborId: 'neighbor-legacy-20',
+          contactPoint: {
+            value: '+12605551220',
+          },
+        },
+      },
+    });
+  });
+
   it('falls back cleanly when PeopleCore persistence is unavailable', async () => {
     const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
       async () => [buildNeighbor('neighbor-1', '+12605551214')],
@@ -320,6 +445,82 @@ describe('connectshyft peoplecore identity adapter', () => {
           neighborId: 'neighbor-1',
         },
       ],
+    });
+  });
+
+  it('preserves legacy single-match evaluation when PeopleCore persistence is unavailable', async () => {
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [buildNeighbor('neighbor-legacy-21', '+12605551221')],
+      async () => [buildNeighbor('neighbor-legacy-21', '+12605551221')],
+      {
+        listContactPointsByNormalizedValue: async () => {
+          throw new PeopleCorePersistenceUnavailableError(new Error('people schema missing'));
+        },
+        listCurrentContactPointLinks: jest.fn(),
+      } as any,
+    );
+
+    await expect(adapter.evaluateMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: {
+        label: 'mobile',
+        value: '2605551221',
+        verificationStatus: 'verified',
+      },
+    })).resolves.toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_AUTO_MERGE_ALLOWED',
+      data: {
+        identityMatch: {
+          matchedNeighborId: 'neighbor-legacy-21',
+          contactPoint: {
+            value: '+12605551221',
+          },
+        },
+      },
+    });
+  });
+
+  it('preserves shared-contact no-auto-merge guardrails when PeopleCore has a single current link', async () => {
+    const adapter = new AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter(
+      async () => [buildNeighbor('neighbor-legacy-22', '+12605551222')],
+      async () => [buildNeighbor('neighbor-legacy-22', '+12605551222')],
+      {
+        listContactPointsByNormalizedValue: async () => [
+          buildContactPoint('contact-point-22', '+12605551222'),
+        ],
+        listCurrentContactPointLinks: async () => [
+          buildContactPointLink('contact-point-22', 'person-22'),
+        ],
+      } as any,
+    );
+
+    await expect(adapter.evaluateMatch({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: {
+        label: 'mobile',
+        value: '2605551222',
+        isShared: true,
+        verificationStatus: 'verified',
+      },
+    })).resolves.toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE',
+      data: {
+        identityMatch: {
+          matchedNeighborId: 'neighbor-legacy-22',
+          decision: 'NO_AUTO_MERGE',
+          autoMergeAllowed: false,
+          contactPoint: {
+            value: '+12605551222',
+            isShared: true,
+          },
+        },
+      },
     });
   });
 });

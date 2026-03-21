@@ -283,6 +283,97 @@ describe('connectshyft identity-match route', () => {
     });
   });
 
+  it('returns IDENTITY_MATCH_AMBIGUOUS with deterministic manual resolution for PeopleCore disagreement', async () => {
+    jest.spyOn(connectShyftNeighborServiceAsync, 'evaluateIdentityMatch').mockResolvedValue({
+      ok: false,
+      code: 'IDENTITY_MATCH_AMBIGUOUS',
+      message: 'Identity match is ambiguous and requires manual resolution.',
+      data: {
+        identityMatch: {
+          decision: 'AMBIGUOUS',
+          reason: 'MULTIPLE_EXACT_CONTACT_POINT_MATCHES',
+          autoMergeAllowed: false,
+          contactPoint: {
+            value: '+12605550997',
+            isShared: false,
+            verificationStatus: 'verified',
+          },
+          matchedNeighborId: null,
+          candidateCount: 1,
+          candidateNeighborIds: ['neighbor-legacy-conflict'],
+          exactMatches: [
+            {
+              neighborId: 'neighbor-legacy-conflict',
+              phoneId: 'phone-legacy-conflict',
+              isShared: false,
+              verificationStatus: 'verified',
+            },
+          ],
+          manualResolution: {
+            required: true,
+            reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+            nextAction: 'manual-merge',
+            mergeEndpoint: '/api/v1/connectshyft/neighbors/merge',
+            candidateNeighborIds: ['neighbor-legacy-conflict'],
+            guidance: 'Multiple identities share this contact point. Resolve manually before any merge.',
+          },
+        },
+        manualResolution: {
+          required: true,
+          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+          nextAction: 'manual-merge',
+          mergeEndpoint: '/api/v1/connectshyft/neighbors/merge',
+          candidateNeighborIds: ['neighbor-legacy-conflict'],
+          guidance: 'Multiple identities share this contact point. Resolve manually before any merge.',
+        },
+        idempotency: {
+          key: 'identity-replay-key-peoplecore-disagreement',
+          semantics: 'REPLAY_SAFE',
+        },
+      },
+    });
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/neighbors/identity-match')
+      .set(buildHeaders())
+      .send({
+        orgUnitId: TEST_ORG_UNIT_ID,
+        contactPoint: {
+          label: 'mobile',
+          value: '(260) 555-0997',
+          isShared: false,
+          verificationStatus: 'verified',
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'IDENTITY_MATCH_AMBIGUOUS',
+      data: {
+        identityMatch: {
+          decision: 'AMBIGUOUS',
+          matchedNeighborId: null,
+          candidateCount: 1,
+          candidateNeighborIds: ['neighbor-legacy-conflict'],
+          contactPoint: {
+            value: '+12605550997',
+          },
+        },
+        manualResolution: {
+          required: true,
+          reasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+          candidateNeighborIds: ['neighbor-legacy-conflict'],
+        },
+        idempotency: {
+          key: 'identity-replay-key-peoplecore-disagreement',
+          semantics: 'REPLAY_SAFE',
+        },
+      },
+    });
+  });
+
   it('records identity-match audit hash as keyed hmac output', async () => {
     jest.spyOn(connectShyftNeighborServiceAsync, 'evaluateIdentityMatch').mockResolvedValue({
       ok: true,
