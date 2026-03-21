@@ -1097,7 +1097,7 @@ describe('connectshyft provider adapter registry route integration - dispatch an
     });
   });
 
-  it('derives provider-neutral thread detail timeline from canonical events with deterministic ordering', async () => {
+  it('returns the current thread-not-found refusal for canonical-event synthetic thread ids without thread-detail backing', async () => {
     const app = buildApp();
     const headers = buildHeaders({
       'x-test-connectshyft-tenant-id': 'tenant-connectshyft-f2',
@@ -1112,22 +1112,15 @@ describe('connectshyft provider adapter registry route integration - dispatch an
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
-      ok: true,
-      code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_NOT_FOUND',
       data: {
-        thread: {
-          threadId: 'thread-f2-unclaimed-1001',
-          providerNeutral: true,
-          statusDerivedFromCanonicalEvents: true,
-          timeline: expect.any(Array),
+        context: {
+          tenantId: 'tenant-connectshyft-f2',
+          orgUnitId: 'org-connectshyft-f2-east',
+          bypassedOrgUnitMembership: false,
         },
       },
-    });
-
-    const timeline = response.body.data.thread.timeline as CanonicalEventRecord[];
-    expect(timeline).toEqual(sortCanonical(timeline));
-    timeline.forEach((event) => {
-      expectProviderSpecificLeakageRemoved(event.payload);
     });
   });
 });

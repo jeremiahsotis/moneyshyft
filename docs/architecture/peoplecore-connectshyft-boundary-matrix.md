@@ -2,9 +2,11 @@
 
 ## Status
 
-Authoritative for the Slice 12 ownership boundary.
+Authoritative for the Slice 13 ownership boundary.
 
-| Object | Current Owner | Slice 12 Persistence Owner | Rebind Class | Current Note |
+`Rebind Class` is a future planning label. In Slice 13, it does not mean automatic PeopleCore-to-ConnectShyft linking, solved cross-system equivalence, or active reconciliation behavior.
+
+| Object | Current Owner | Slice 13 Persistence Owner | Rebind Class | Current Note |
 | --- | --- | --- | --- | --- |
 | Person | PeopleCore | PeopleCore | auto_rebind | Persisted in `people.persons` |
 | Household | PeopleCore | PeopleCore | review_rebind | Persisted in `people.households` |
@@ -26,10 +28,33 @@ Authoritative for the Slice 12 ownership boundary.
 | TimelineEvent | ConnectShyft | ConnectShyft | derived_projection | Timeline remains a ConnectShyft projection |
 | WorkIntent | ConnectShyft | ConnectShyft | review_rebind | Temporary bridge object remains ConnectShyft-owned |
 
-## Slice 12 Boundary Rule
+## Slice 13 Boundary Rule
 
 PeopleCore now owns persistence truth for person/contact-point/household/resolver-review concepts.
 
 ConnectShyft still owns communication objects and current neighbor-facing APIs.
 
-The seam is the integration point between them. Slice 12 does not bypass that seam by replacing ConnectShyft ownership everywhere at once.
+The seam is the integration point between them. Slice 13 does not bypass that seam by replacing ConnectShyft ownership everywhere at once.
+
+Slice 13 read-authority rule:
+
+- PeopleCore can block certainty
+- PeopleCore cannot assert person-to-neighbor equivalence
+- no current PeopleCore link or unavailable PeopleCore preserves legacy ConnectShyft behavior
+- multiple current PeopleCore links produce ambiguity
+- single current PeopleCore link plus a different legacy concrete winner produces ambiguity
+- single current PeopleCore link plus legacy no-match remains no-match in this slice
+
+Explicit non-goals for this boundary in Slice 13:
+
+- no reconciliation
+- no crosswalk
+- no auto-linking
+- no merge engine
+- no scoring engine
+
+## Slice 14 Handoff
+
+The next logical slice is operationalization of ambiguity and resolver handling at this boundary.
+
+It is not a reconciliation or automatic convergence slice.

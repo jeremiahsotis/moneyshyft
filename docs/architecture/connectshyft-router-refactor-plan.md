@@ -6,12 +6,13 @@
 - ConnectShyft route-family extraction sequence complete.
 - Frontend build/test surface separation completed in Slice 11.
 - Slice 12 PeopleCore persistence foundation and identity seam complete.
+- Slice 13 PeopleCore ambiguity precedence documentation and handler-preservation rules complete.
 
 ## Purpose
 
 This document records the completed extraction of `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` into a thin route-registration shell with module-owned handlers and helper boundaries.
 
-It also captures the post-Slice 12 stop point so future work does not treat the extraction sequence as still in progress.
+It also captures the post-Slice 13 stop point so future work does not treat the extraction sequence as still in progress.
 
 ## Non-negotiable rules
 
@@ -22,6 +23,7 @@ It also captures the post-Slice 12 stop point so future work does not treat the 
 5. Keep provider, bridge, canonical-event, and correlation internals in their existing domain/infrastructure modules unless a later intentional slice changes ownership.
 6. Treat Slice 11 as stabilization and architecture lock, not behavior redesign.
 7. Treat Slice 12 seam work as identity foundation behind the extracted handlers, not as a reason to re-thicken `connectshyft.ts`.
+8. Treat Slice 13 as authority refinement behind the seam, not as reconciliation or router redesign.
 
 ## Completed sequence
 
@@ -216,6 +218,32 @@ Completed:
 - identity convergence foundation without undoing the thin-router extraction
 - a future-safe seam for later identity authority migration
 
+### Slice 13
+
+Documented and locked the PeopleCore ambiguity-precedence rule behind the extracted handlers:
+
+- PeopleCore is consulted first for identity read authority
+- PeopleCore can invalidate certainty, but cannot assert person-to-neighbor equivalence
+- no current PeopleCore link or unavailable PeopleCore -> preserve legacy behavior
+- multiple current PeopleCore links -> ambiguous
+- single PeopleCore link plus legacy disagreement -> ambiguous
+- single aligned winner -> preserve current exact-match behavior
+- inbound SMS create-new remains blocked under ambiguity and unchanged for true `no_match`
+
+Preserved:
+
+- exact current route envelopes
+- current thin-router and handler ownership boundaries
+- current provider, bridge, canonical-event, and correlation ownership
+
+Did not add:
+
+- reconciliation
+- crosswalk infrastructure
+- auto-linking
+- merge engine behavior
+- scoring engine behavior
+
 ## Route-family extraction result
 
 The ConnectShyft route-family extraction sequence is complete:
@@ -242,13 +270,15 @@ Slice 11 was stabilization and architecture lock, not a behavior redesign slice.
 
 Slice 12 adds the identity convergence foundation behind that extracted surface, not a router redesign.
 
+Slice 13 adds ambiguity precedence behind that extracted surface, not a router redesign.
+
 ## Next intentional work
 
-Next work after Slice 12 should be:
+Next work after Slice 13 should be:
 
-- ConnectShyft identity refinement behind the PeopleCore seam
-- controlled migration of more identity authority away from ConnectShyft-local neighbor lookup
+- operationalization of ambiguity and resolver handling behind the PeopleCore seam
 - continued model-alignment work without changing current route envelopes lightly
+- not reconciliation or crosswalk implementation by default
 - not Application Shell by default
 
 ## Operating rule for future updates

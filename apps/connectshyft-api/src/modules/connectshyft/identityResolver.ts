@@ -6,6 +6,10 @@ import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from './peoplecore
 
 const SYSTEM_RESOLVER_ACTOR_ROLES = ['SYSTEM_ADMIN'];
 
+const uniqueSortedStrings = (values: string[]): string[] =>
+  Array.from(new Set(values.filter((value) => value.trim().length > 0))).sort((left, right) =>
+    left.localeCompare(right));
+
 export type ResolveSubjectByContactPointInput = {
   tenantId: string;
   orgUnitId: string;
@@ -70,11 +74,10 @@ export class ConnectShyftSubjectResolver implements ConnectShyftSubjectResolverB
       if (result.code === 'IDENTITY_MATCH_AMBIGUOUS') {
         return {
           type: 'multiple_matches',
-          candidateNeighborIds: [
-            ...(result.data?.identityMatch?.candidateNeighborIds
-              || result.data?.manualResolution?.candidateNeighborIds
-              || []),
-          ].sort(),
+          candidateNeighborIds: uniqueSortedStrings([
+            ...(result.data?.identityMatch?.candidateNeighborIds || []),
+            ...(result.data?.manualResolution?.candidateNeighborIds || []),
+          ]),
           normalizedContactPoint,
         };
       }
