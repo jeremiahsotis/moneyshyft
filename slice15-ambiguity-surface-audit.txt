@@ -1,0 +1,86 @@
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts:527:      .patch('/api/v1/connectshyft/identity-ambiguities/ambiguity-event-1')
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityAdapter.ts:8:  createIdentityAmbiguityEvent,
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityAdapter.ts:10:} from './ambiguityEvents';
+apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityAdapter.ts:321:    await createIdentityAmbiguityEvent({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:5:  createIdentityAmbiguityEvent,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:7:} from '../../../../modules/connectshyft/ambiguityEvents';
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:128:const createEvent = async (overrides: Record<string, unknown> = {}) => createIdentityAmbiguityEvent({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:207:      .get('/api/v1/connectshyft/identity-ambiguities')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:256:      .get('/api/v1/connectshyft/identity-ambiguities')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:292:      .get('/api/v1/connectshyft/identity-ambiguities')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:306:      .get('/api/v1/connectshyft/identity-ambiguities')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:353:      .get('/api/v1/connectshyft/identity-ambiguities')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:388:      .get('/api/v1/connectshyft/identity-ambiguities')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:410:      .get('/api/v1/connectshyft/identity-ambiguities')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:434:      .get('/api/v1/connectshyft/identity-ambiguities')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:458:      .patch('/api/v1/connectshyft/identity-ambiguities/ambiguity-event-review-pending')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:492:      .patch('/api/v1/connectshyft/identity-ambiguities/ambiguity-event-review-idempotent')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:516:    await createIdentityAmbiguityEvent({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:535:      .patch('/api/v1/connectshyft/identity-ambiguities/ambiguity-event-other-tenant-review')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:562:      .patch('/api/v1/connectshyft/identity-ambiguities/ambiguity-event-invalid-status')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts:600:      .patch('/api/v1/connectshyft/identity-ambiguities/ambiguity-event-review-forbidden')
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:178:  listIdentityAmbiguityEvents,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:179:  markIdentityAmbiguityEventReviewed,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:180:} from '../../../modules/connectshyft/ambiguityEvents';
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:2331:  if (typeof req.params.ambiguityEventId !== 'string') {
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:2335:  return req.params.ambiguityEventId.trim();
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4185:router.get('/identity-ambiguities', async (req: Request, res: Response) => {
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4206:  const listed = await listIdentityAmbiguityEvents({
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4227:router.patch('/identity-ambiguities/:ambiguityEventId', async (req: Request, res: Response) => {
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4241:  const ambiguityEventId = parseIdentityAmbiguityEventIdParam(req);
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4242:  if (!ambiguityEventId) {
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4245:      message: 'ambiguityEventId is required',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4267:  const event = await markIdentityAmbiguityEventReviewed({
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4269:    ambiguityEventId,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:3:  createIdentityAmbiguityEvent,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:5:  listIdentityAmbiguityEvents,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:6:  markIdentityAmbiguityEventReviewed,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:8:} from '../ambiguityEvents';
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:21:    const created = await service.createIdentityAmbiguityEvent({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:55:    await service.createIdentityAmbiguityEvent({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:65:    await service.createIdentityAmbiguityEvent({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:75:    await service.createIdentityAmbiguityEvent({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:86:    const firstPage = await service.listIdentityAmbiguityEvents({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:100:    const secondPage = await service.listIdentityAmbiguityEvents({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:117:    const created = await service.createIdentityAmbiguityEvent({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:127:    const reviewed = await service.markIdentityAmbiguityEventReviewed({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:129:      ambiguityEventId: created.id,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:139:    const reviewedAgain = await service.markIdentityAmbiguityEventReviewed({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:141:      ambiguityEventId: created.id,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:153:    const created = await createIdentityAmbiguityEvent({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:163:    const listed = await listIdentityAmbiguityEvents({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:175:    const reviewed = await markIdentityAmbiguityEventReviewed({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.ts:177:      ambiguityEventId: created.id,
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:73:  ambiguityEventId: string;
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:234:  ambiguityEventId?: string | null;
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:237:  const ambiguityEventId = normalizeOptionalString(input.ambiguityEventId);
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:241:    || Boolean(ambiguityEventId && !isUuid(ambiguityEventId));
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:364:    const existing = this.eventsById.get(input.ambiguityEventId);
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:492:        id: input.ambiguityEventId,
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:507:        id: input.ambiguityEventId,
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:529:    ambiguityEventId?: string | null;
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:538:  async createIdentityAmbiguityEvent(
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:547:  async listIdentityAmbiguityEvents(
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:556:  async markIdentityAmbiguityEventReviewed(
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:561:      ambiguityEventId: input.ambiguityEventId,
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:576:export const createIdentityAmbiguityEvent = (
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:579:  defaultConnectShyftIdentityAmbiguityEventService.createIdentityAmbiguityEvent(input);
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:581:export const listIdentityAmbiguityEvents = (
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:584:  defaultConnectShyftIdentityAmbiguityEventService.listIdentityAmbiguityEvents(input);
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:586:export const markIdentityAmbiguityEventReviewed = (
+apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.ts:589:  defaultConnectShyftIdentityAmbiguityEventService.markIdentityAmbiguityEventReviewed(input);
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:14:jest.mock('../ambiguityEvents', () => ({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:15:  createIdentityAmbiguityEvent: jest.fn(),
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:18:const ambiguityEventsModule = jest.requireMock('../ambiguityEvents') as {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:19:  createIdentityAmbiguityEvent: jest.Mock;
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:81:    ambiguityEventsModule.createIdentityAmbiguityEvent.mockReset();
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:156:    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).not.toHaveBeenCalled();
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:245:    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).not.toHaveBeenCalled();
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:328:    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).toHaveBeenCalledTimes(1);
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:329:    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).toHaveBeenCalledWith(expect.objectContaining({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:393:    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).toHaveBeenCalledTimes(1);
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:394:    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).toHaveBeenCalledWith(expect.objectContaining({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:453:    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).toHaveBeenCalledTimes(1);
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:454:    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).toHaveBeenCalledWith(expect.objectContaining({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:470:    ambiguityEventsModule.createIdentityAmbiguityEvent.mockRejectedValueOnce(
+apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.ts:672:    expect(ambiguityEventsModule.createIdentityAmbiguityEvent).not.toHaveBeenCalled();

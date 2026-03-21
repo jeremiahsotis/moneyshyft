@@ -1,0 +1,335 @@
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:4:import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:44:const startBridgeSessionMock = jest.fn(async (command: { bridgeSessionId: string }) => ({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:46:  bridgeSessionId: command.bridgeSessionId,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:47:  bridgeEstablished: true as const,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:48:  providerRequestId: 'req-bridge-3001',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:162:  let resolveSenderNumberSpy: jest.SpyInstance;
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:177:    resolveSenderNumberSpy = jest.spyOn(SenderNumberResolverModule, 'resolveSenderNumber')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:182:    resolveSenderNumberSpy.mockRestore();
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:185:  it('returns the current outbound call success envelope and bridge-session response shape', async () => {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:315:          transport: 'bridge',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:325:        bridgeSession: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:326:          bridgeSessionId: expect.any(String),
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:380:      'bridgeSession',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:493:          transport: 'bridge',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:503:        bridgeSession: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:504:          bridgeSessionId: expect.any(String),
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:560:      'bridgeSession',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:586:  it('returns the current operator-callback-required refusal shape for outbound bridge calls', async () => {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:600:      message: 'Outbound bridge calls require an operator callback number.',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:626:  it('returns the current neighbor-phone-required refusal shape for outbound bridge calls', async () => {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:640:      message: 'Outbound bridge calls require a dialable neighbor phone.',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts:667:    resolveSenderNumberSpy.mockResolvedValueOnce(
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts:4:import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts:435:      'resolveConnectShyftProviderCorrelationByIdentifiers',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts:462:          transport: 'bridge',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts:531:            transport: 'bridge',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts:550:              call_transport: 'bridge',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.ts:3:import * as BridgeSessionsModule from '../../../../modules/connectshyft/bridgeSessions';
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.ts:133:        bridgeSession: null,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.ts:183:      'bridgeSession',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.ts:259:        bridgeSession: null,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts:4:import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts:47:const startBridgeSessionMock = jest.fn(async (command: { bridgeSessionId: string }) => ({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts:49:  bridgeSessionId: command.bridgeSessionId,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts:50:  bridgeEstablished: true as const,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts:51:  providerRequestId: 'req-bridge-3001',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts:168:  let resolveSenderNumberSpy: jest.SpyInstance;
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts:187:    resolveSenderNumberSpy = jest.spyOn(SenderNumberResolverModule, 'resolveSenderNumber')
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts:193:    resolveSenderNumberSpy.mockRestore();
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts:655:    resolveSenderNumberSpy.mockResolvedValueOnce(
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:12:import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:81:const startBridgeSessionMock = jest.fn(async (command: { bridgeSessionId: string }) => ({
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:83:  bridgeSessionId: command.bridgeSessionId,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:84:  bridgeEstablished: true as const,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:85:  providerRequestId: 'req-bridge-3001',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:1123:  it('starts a persisted bridge session for outbound calls and returns bridge-session state', async () => {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:1145:          transport: 'bridge',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:1149:        bridgeSession: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:1168:    expect((response.body as any).data.bridgeSession.bridgeSessionId).toBeTruthy();
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:1174:        transport: 'bridge',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts:1217:  it('refuses outbound bridge calls when no operator callback number is provided', async () => {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts:513:    const dispatchFailureSpy = jest.spyOn(ProviderRegistry, 'resolveConnectShyftProviderAdapter').mockReturnValue({
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:39:  postConnectThreadCall,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:41:  postConnectThreadMessage,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:44:  postConnectWebhookInbound,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:45:  postConnectWebhookSms,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:89:  resolveSenderNumber,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:101:  resolveConnectShyftProviderAdapter,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:160:  resolveConnectShyftProviderCorrelationByIdentifiers,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:166:} from '../../../modules/connectshyft/bridgeSessions';
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:224:  transport: 'bridge',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:915:  bridgeSessionId: aggregate.session.id,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:947:  bridgeSessionId: string;
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:1077:  const resolution = await resolveSenderNumber({
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:1121:  const lookup = await resolveConnectShyftProviderCorrelationByIdentifiers({
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:3673:  const resolution = await resolveSenderNumber(
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:3714:): 'send_sms' | 'start_bridge_session' => (
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:3715:  outboundAction === 'call' ? 'start_bridge_session' : 'send_sms'
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:3734:  channel: 'sms' | 'voice' | 'bridge' | 'webhook';
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:3792:      message: 'Outbound calls require bridge transport only.',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4435:  const providerSelection = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4493:  let bridgeSessionState: ConnectShyftBridgeSessionStateContract | null = null;
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4494:  let bridgeCorrelationMapping: ConnectShyftBridgeCorrelationMapping | null = null;
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4710:        message: 'Outbound bridge calls require an operator callback number.',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4755:        message: 'Outbound bridge calls require a dialable neighbor phone.',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:4934:    const voiceSenderResolution = await resolveSenderNumber(
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5104:        targetEntityType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5106:        channel: outboundAction === 'call' ? 'bridge' : 'sms',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5225:        const bridgeStart = await startConnectShyftBridgeSession({
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5241:        bridgeSessionState = buildProviderNeutralBridgeSessionState(bridgeStart.aggregate);
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5242:        bridgeCorrelationMapping = bridgeStart.correlationMapping;
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5247:          providerLegId: bridgeStart.aggregate.operatorLeg.providerCallId || null,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5251:          requestedAt: bridgeStart.aggregate.operatorLeg.updatedAt.toISOString(),
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5313:        targetEntityType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5315:        channel: outboundAction === 'call' ? 'bridge' : 'sms',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5380:      targetEntityType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5382:      channel: outboundAction === 'call' ? 'bridge' : 'sms',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5518:    bridgeCorrelationMapping as ConnectShyftBridgeCorrelationMapping | null;
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5658:          bridgeSession: bridgeSessionState,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5694:  const bridgeSessionId = (
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5695:    bridgeSessionState as ConnectShyftBridgeSessionStateContract | null
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5696:  )?.bridgeSessionId || null;
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5710:      resourceType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5712:        ? normalizeLifecycleString(bridgeSessionId)
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5723:    targetEntityType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5725:    channel: outboundAction === 'call' ? 'bridge' : 'sms',
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:5736:      bridgeSessionId,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:6347:  const bridgeWebhookProgression = await handleConnectShyftBridgeWebhookEvent({
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:6365:  if (bridgeWebhookProgression.handled && !isConnectedCallEvent) {
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:6392:        bridgeSession: bridgeWebhookProgression.aggregate
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:6393:          ? buildProviderNeutralBridgeSessionState(bridgeWebhookProgression.aggregate)
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:6395:        bridgeEvent: bridgeWebhookProgression.domainEvent,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:6396:        correlationMapping: bridgeWebhookProgression.correlationMapping,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:7429:      ...(bridgeWebhookProgression.handled
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:7431:            bridgeSession: bridgeWebhookProgression.aggregate
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:7432:              ? buildProviderNeutralBridgeSessionState(bridgeWebhookProgression.aggregate)
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:7434:            bridgeEvent: bridgeWebhookProgression.domainEvent,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:7435:            correlationMapping: bridgeWebhookProgression.correlationMapping,
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:7540:router.post('/threads/:threadId/call', postConnectThreadCall);
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:7542:router.post('/threads/:threadId/messages', postConnectThreadMessage);
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:7544:router.post('/webhooks/inbound', postConnectWebhookInbound);
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts:7546:router.post('/webhooks/sms', postConnectWebhookSms);
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts:5:import * as BridgeSessionsModule from '../../../../modules/connectshyft/bridgeSessions';
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:22:const BRIDGE_SESSIONS_TABLE = 'cs_bridge_sessions'
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:23:const BRIDGE_LEGS_TABLE = 'cs_bridge_legs'
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:35:  bridge_status: string
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:50:  bridge_session_id: string
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:156:  status: row.bridge_status as BridgeSessionRecord['status'],
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:171:  bridgeSessionId: row.bridge_session_id,
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:195:  bridge_status: session.status,
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:210:  bridge_session_id: leg.bridgeSessionId,
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:235:    const current = this.legsBySessionId.get(leg.bridgeSessionId) || new Map()
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:237:    this.legsBySessionId.set(leg.bridgeSessionId, current)
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:239:      this.sessionIdByProviderCallId.set(leg.providerCallId, leg.bridgeSessionId)
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:364:      .where({ bridge_session_id: sessionId })
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:369:        'bridge_session_id',
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:403:      .join(`${BRIDGE_SESSIONS_TABLE} as bs`, 'bs.id', 'bl.bridge_session_id')
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:412:      .first<{ bridgeSessionId?: string }>('bl.bridge_session_id as bridgeSessionId')
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:414:    const sessionId = normalizeString(legRow?.bridgeSessionId)
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:452:  transport: normalizeString(callPolicy?.transport) || 'bridge',
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:474:        bridgeSessionId: command.bridgeSessionId,
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:502:      throw new Error(`Provider ${input.providerKey} does not support bridge control.`)
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:507:      bridgeSessionId: command.bridgeSessionId,
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:532:    bridgeLegId: input.leg.id,
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:598:        bridgeSessionId: input.aggregate.session.id,
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:607:        bridgeSessionId: input.aggregate.session.id,
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:615:    normalizedEventType === 'callbridged'
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:619:      type: 'bridge_connected',
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:620:      bridgeSessionId: input.aggregate.session.id,
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:630:    if (input.aggregate.session.status === 'bridged' || input.aggregate.session.status === 'completed') {
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:633:        bridgeSessionId: input.aggregate.session.id,
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:642:        bridgeSessionId: input.aggregate.session.id,
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:652:        bridgeSessionId: input.aggregate.session.id,
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:668:        bridgeSessionId: input.aggregate.session.id,
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts:678:        bridgeSessionId: input.aggregate.session.id,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:2:import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions'
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:43:  bridgeSessionId: string
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:48:  bridgeSessionId: command.bridgeSessionId,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:49:  bridgeEstablished: true as const,
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:50:  providerRequestId: 'req-bridge-3001',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:206:describe('connectshyft bridge webhook flow', () => {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:259:  it('creates a persisted bridge session on call start with operator-first dialing', async () => {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:279:        bridgeSession: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:280:          bridgeSessionId: expect.any(String),
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:339:  it('rejects unverified webhooks before receipt processing or bridge side effects', async () => {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:398:  it('advances operator answered to neighbor dialing and bridges on neighbor answered', async () => {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:429:        bridgeSession: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:443:        bridgeEvent: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:470:        bridgeSession: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:471:          status: 'bridged',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:472:          sessionState: 'bridged',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:484:        bridgeEvent: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:496:  it('suppresses duplicate webhook receipts before bridge side effects are re-applied', async () => {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:541:        bridgeSession: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:634:        bridgeSession: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:648:        bridgeEvent: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:667:  it('persists terminal bridge failure when the neighbor leg fails before bridge completion', async () => {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:708:        bridgeSession: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:721:        bridgeEvent: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:729:  it('loads persisted bridge state from a fresh thread detail read after completion', async () => {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:786:        bridgeSession: {
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:787:          bridgeSessionId: expect.any(String),
+apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts:28:const CONNECTSHYFT_REQUIRED_CALL_TRANSPORT = 'bridge';
+apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts:675:      providerLegId: `${providerKey}-bridge-leg-${command.legRole}-${command.bridgeSessionId}`,
+apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts:684:      bridgeSessionId: command.bridgeSessionId,
+apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts:685:      bridgeEstablished: true,
+apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts:738:        message: 'Outbound calls require bridge transport only.',
+apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts:795:      throw new Error(`Provider ${baseAdapter.providerKey} does not support bridge control.`);
+apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts:836:export const resolveConnectShyftProviderAdapter = (input: {
+apps/connectshyft-api/src/modules/connectshyft/providerCorrelationMappings.ts:611:  bridgeLegId: string;
+apps/connectshyft-api/src/modules/connectshyft/providerCorrelationMappings.ts:627:    internalReferenceId: input.bridgeLegId,
+apps/connectshyft-api/src/modules/connectshyft/providerCorrelationMappings.ts:633:export const resolveConnectShyftProviderCorrelationByIdentifiers = async (input: {
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectThreadMessage.ts:4:export const postConnectThreadMessage = async (req: Request, res: Response) =>
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:4:const BRIDGE_SESSIONS_TABLE = 'cs_bridge_sessions'
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:5:const BRIDGE_LEGS_TABLE = 'cs_bridge_legs'
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:21:      bridge_status TEXT NOT NULL,
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:30:      CONSTRAINT cs_bridge_sessions_status_ck CHECK (
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:31:        bridge_status IN (
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:37:          'bridged',
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:52:      bridge_session_id TEXT NOT NULL REFERENCES ${CONNECTSHYFT_SCHEMA}.${BRIDGE_SESSIONS_TABLE}(id) ON DELETE CASCADE,
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:64:      CONSTRAINT cs_bridge_legs_role_ck CHECK (leg_role IN ('operator', 'neighbor')),
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:65:      CONSTRAINT cs_bridge_legs_status_ck CHECK (
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:68:      CONSTRAINT cs_bridge_legs_session_role_uq UNIQUE (bridge_session_id, leg_role)
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:73:    CREATE INDEX IF NOT EXISTS connectshyft_cs_bridge_sessions_scope_idx
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:78:    CREATE INDEX IF NOT EXISTS connectshyft_cs_bridge_legs_session_idx
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:79:    ON ${CONNECTSHYFT_SCHEMA}.${BRIDGE_LEGS_TABLE} (bridge_session_id, leg_role, id)
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts:83:    CREATE UNIQUE INDEX IF NOT EXISTS connectshyft_cs_bridge_legs_provider_call_id_uq
+apps/connectshyft-api/src/modules/connectshyft/handlers/NEIGHBOR_IDENTITY_BRIDGE_NOTES.md:5:The ConnectShyft neighbor / identity bridge surface is currently split across these files:
+apps/connectshyft-api/src/modules/connectshyft/handlers/NEIGHBOR_IDENTITY_BRIDGE_NOTES.md:27:  - owns identity-match request handoff, identity bridge refusal mapping, and preserved identity-match response assembly
+apps/connectshyft-api/src/modules/connectshyft/handlers/NEIGHBOR_IDENTITY_BRIDGE_NOTES.md:35:Slice 7 intentionally preserves the exact current response shapes for the full neighbor / identity bridge family.
+apps/connectshyft-api/src/modules/connectshyft/handlers/NEIGHBOR_IDENTITY_BRIDGE_NOTES.md:47:This was deliberate. The goal of this slice was thin-router extraction and a cleaner bridge boundary, not payload redesign.
+apps/connectshyft-api/src/modules/connectshyft/handlers/NEIGHBOR_IDENTITY_BRIDGE_NOTES.md:82:- the bridge boundary is documented as the seam where future PeopleCore convergence can swap internals without re-thickening the router
+apps/connectshyft-api/src/modules/connectshyft/handlers/NEIGHBOR_IDENTITY_BRIDGE_NOTES.md:88:The following work remains deferred beyond the neighbor / identity bridge family:
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectThreadCall.ts:4:export const postConnectThreadCall = async (req: Request, res: Response) =>
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:1:import { down, up } from '../20260311110000_create_connectshyft_bridge_sessions'
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:23:describe('20260311110000_create_connectshyft_bridge_sessions migration', () => {
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:24:  it('creates bridge session and bridge leg persistence with scope and provider-call indexes', async () => {
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:34:    expect(rawCalls.some((sql: string) => sql.includes('CREATE TABLE IF NOT EXISTS connectshyft.cs_bridge_sessions'))).toBe(true)
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:35:    expect(rawCalls.some((sql: string) => sql.includes('bridge_status TEXT NOT NULL'))).toBe(true)
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:36:    expect(rawCalls.some((sql: string) => sql.includes('CONSTRAINT cs_bridge_sessions_status_ck CHECK'))).toBe(true)
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:38:    expect(rawCalls.some((sql: string) => sql.includes('CREATE TABLE IF NOT EXISTS connectshyft.cs_bridge_legs'))).toBe(true)
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:39:    expect(rawCalls.some((sql: string) => sql.includes("CONSTRAINT cs_bridge_legs_role_ck CHECK (leg_role IN ('operator', 'neighbor'))"))).toBe(true)
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:41:    expect(rawCalls.some((sql: string) => sql.includes('CONSTRAINT cs_bridge_legs_session_role_uq UNIQUE'))).toBe(true)
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:42:    expect(rawCalls.some((sql: string) => sql.includes('connectshyft_cs_bridge_sessions_scope_idx'))).toBe(true)
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:43:    expect(rawCalls.some((sql: string) => sql.includes('connectshyft_cs_bridge_legs_session_idx'))).toBe(true)
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:44:    expect(rawCalls.some((sql: string) => sql.includes('connectshyft_cs_bridge_legs_provider_call_id_uq'))).toBe(true)
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:47:  it('drops bridge leg and bridge session tables in down migration', async () => {
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:53:      'connectshyft.cs_bridge_legs',
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts:54:      'connectshyft.cs_bridge_sessions',
+apps/connectshyft-api/src/modules/connectshyft/senderNumberResolver.ts:184:export const resolveSenderNumber = async (
+apps/connectshyft-api/src/modules/connectshyft/handlers/index.ts:19:export { postConnectThreadCall } from './postConnectThreadCall';
+apps/connectshyft-api/src/modules/connectshyft/handlers/index.ts:21:export { postConnectThreadMessage } from './postConnectThreadMessage';
+apps/connectshyft-api/src/modules/connectshyft/handlers/index.ts:24:export { postConnectWebhookInbound } from './postConnectWebhookInbound';
+apps/connectshyft-api/src/modules/connectshyft/handlers/index.ts:25:export { postConnectWebhookSms } from './postConnectWebhookSms';
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md:12:- `apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectThreadCall.ts`
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md:14:- `apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectThreadMessage.ts`
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md:27:- bridge session startup and bridge-session state orchestration
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md:28:  - still owned by the existing outbound core in `connectshyft.ts` and `bridgeSessions.ts`
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md:36:Slice 8 was an extraction slice, not a provider, bridge, reliability, or audit redesign.
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md:46:- existing nested provider, bridge-session, idempotency, audit, override, and side-effect payload structure remains unchanged
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md:72:- provider or bridge architecture redesign
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md:83:5. Do not fold provider, bridge, reliability, audit, or SMS-override internals into the thin handlers or helper boundary.
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md:90:That separation should stay explicit. Follow-up cleanup should not use the outbound handlers or `threadOutboundContext.ts` as a place to absorb inbound message intake, webhook correlation, provider signature handling, bridge webhook progression, voicemail processing, or transcription callbacks. Those surfaces remain intentionally deferred to the next slice after Slice 8.
+apps/connectshyft-api/src/migrations/20260312120000_add_connectshyft_communication_reliability.ts:79:        channel IN ('sms', 'voice', 'bridge', 'webhook')
+apps/connectshyft-api/src/modules/connectshyft/http/inboundWebhookContext.ts:6:  resolveConnectShyftProviderAdapter,
+apps/connectshyft-api/src/modules/connectshyft/http/inboundWebhookContext.ts:12:import { resolveConnectShyftProviderCorrelationByIdentifiers } from '../providerCorrelationMappings';
+apps/connectshyft-api/src/modules/connectshyft/http/inboundWebhookContext.ts:170:    const fallbackProbe = await resolveConnectShyftProviderCorrelationByIdentifiers({
+apps/connectshyft-api/src/modules/connectshyft/http/inboundWebhookContext.ts:211:  const fallback = await resolveConnectShyftProviderCorrelationByIdentifiers({
+apps/connectshyft-api/src/modules/connectshyft/http/inboundWebhookContext.ts:330:  const providerSelection = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/http/inboundWebhookContext.ts:456:  const rolloutContextValidation = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/handlers/INBOUND_WEBHOOK_NOTES.md:12:- `apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectWebhookInbound.ts`
+apps/connectshyft-api/src/modules/connectshyft/handlers/INBOUND_WEBHOOK_NOTES.md:14:- `apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectWebhookSms.ts`
+apps/connectshyft-api/src/modules/connectshyft/handlers/INBOUND_WEBHOOK_NOTES.md:36:- bridge-session webhook progression and bridge alignment behavior
+apps/connectshyft-api/src/modules/connectshyft/handlers/INBOUND_WEBHOOK_NOTES.md:37:  - still owned by the existing inbound core in `connectshyft.ts` and `bridgeSessions.ts`
+apps/connectshyft-api/src/modules/connectshyft/handlers/INBOUND_WEBHOOK_NOTES.md:43:Provider, correlation, canonical, bridge, and transcription internals remain intentionally deferred from the route-family extraction sequence.
+apps/connectshyft-api/src/modules/connectshyft/handlers/INBOUND_WEBHOOK_NOTES.md:53:- existing nested provider, correlation, canonical, bridge, voicemail, transcription, auto-claim, and side-effect payload structure remains unchanged
+apps/connectshyft-api/src/modules/connectshyft/handlers/INBOUND_WEBHOOK_NOTES.md:80:- redesign bridge handling
+apps/connectshyft-api/src/modules/connectshyft/handlers/INBOUND_WEBHOOK_NOTES.md:87:That work should build on the current thin handlers and `inboundWebhookContext.ts` boundary rather than pulling deferred provider, correlation, canonical, bridge, or transcription internals into the route-family extraction seam.
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectWebhookSms.ts:4:export const postConnectWebhookSms = async (req: Request, res: Response) =>
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.ts:7:import { loadConnectShyftBridgeAggregateByThreadId } from '../bridgeSessions';
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.ts:83:  bridgeSessionId: aggregate.session.id,
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.ts:337:      bridgeSession: activeBridgeSession
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:2:import { postConnectWebhookInbound } from '../handlers/postConnectWebhookInbound';
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:3:import { postConnectWebhookSms } from '../handlers/postConnectWebhookSms';
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:13:import * as bridgeSessionsModule from '../bridgeSessions';
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:148:      .spyOn(providerRegistryModule, 'resolveConnectShyftProviderAdapter')
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:151:      .spyOn(providerCorrelationMappingsModule, 'resolveConnectShyftProviderCorrelationByIdentifiers')
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:250:      'resolveConnectShyftProviderCorrelationByIdentifiers',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:252:    jest.spyOn(providerRegistryModule, 'resolveConnectShyftProviderAdapter').mockReturnValue(selection as any);
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:300:  it('stays limited to prerequisite resolution and execution delegation without bridge or canonical side effects', async () => {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:302:    jest.spyOn(providerRegistryModule, 'resolveConnectShyftProviderAdapter').mockReturnValue(selection as any);
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:305:      'resolveConnectShyftProviderCorrelationByIdentifiers',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:310:    const bridgeWebhookSpy = jest.spyOn(
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:311:      bridgeSessionsModule,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:390:    expect(bridgeWebhookSpy).not.toHaveBeenCalled();
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:405:    await postConnectWebhookInbound(req, res);
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts:406:    await postConnectWebhookSms(req, res);
+apps/connectshyft-api/src/modules/connectshyft/http/neighborIdentityContext.ts:1560:// This helper intentionally keeps the neighbor/identity bridge ConnectShyft-local for now.
+apps/connectshyft-api/src/modules/connectshyft/handlers/README.md:71:- bridge-session orchestration moves
+apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.ts:7:} from '../bridgeSessions'
+apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.ts:25:const startBridgeSessionMock = jest.fn(async (input: { bridgeSessionId: string }) => ({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.ts:27:  bridgeSessionId: input.bridgeSessionId,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.ts:28:  bridgeEstablished: true as const,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.ts:29:  providerRequestId: 'req-bridge-1001',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.ts:83:describe('connectshyft bridgeSessions', () => {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.ts:109:  it('persists a created bridge session with operator and neighbor legs on startup', async () => {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.ts:206:  it('persists completed bridge sessions after both legs answer and the bridge ends', async () => {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.ts:240:    expect(afterNeighborAnswer.aggregate?.session.status).toBe('bridged')
+apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.ts:264:  it('persists failed bridge sessions when the neighbor leg fails before bridge completion', async () => {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/senderNumberResolver.test.ts:1:import { resolveSenderNumber } from '../senderNumberResolver';
+apps/connectshyft-api/src/modules/connectshyft/__tests__/senderNumberResolver.test.ts:27:    const result = await resolveSenderNumber(
+apps/connectshyft-api/src/modules/connectshyft/__tests__/senderNumberResolver.test.ts:68:    const result = await resolveSenderNumber(
+apps/connectshyft-api/src/modules/connectshyft/__tests__/senderNumberResolver.test.ts:97:    const result = await resolveSenderNumber(
+apps/connectshyft-api/src/modules/connectshyft/__tests__/senderNumberResolver.test.ts:126:    const result = await resolveSenderNumber(
+apps/connectshyft-api/src/modules/connectshyft/__tests__/threads.contract.test.ts:4:import { resolveSenderNumber } from '../senderNumberResolver';
+apps/connectshyft-api/src/modules/connectshyft/__tests__/threads.contract.test.ts:278:    const resolved = await resolveSenderNumber(
+apps/connectshyft-api/src/modules/connectshyft/__tests__/threads.contract.test.ts:329:    const refused = await resolveSenderNumber(
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectWebhookInbound.ts:4:export const postConnectWebhookInbound = async (req: Request, res: Response) =>
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.neighborIdentityContext.test.ts:278:  it('stays limited to neighbor identity prerequisites and does not execute bridge side effects', async () => {
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_READ_NOTES.md:12:  - owns thread detail request handoff, response assembly, canonical timeline inclusion, voicemail artifact projection, and bridge-session payload shaping
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_READ_NOTES.md:24:- the current detail envelope with `thread`, `bridgeSession`, `voicemailArtifacts`, `actions`, and policy metadata
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:6:  resolveConnectShyftProviderAdapter,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:62:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:85:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:129:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:172:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:219:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:253:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:300:    const preCorrelation = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:315:    const postCorrelation = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:348:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:476:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:512:  it('enforces bridge-only/manual retry policy at the adapter dispatch boundary', async () => {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:513:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:550:          transport: 'bridge',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:580:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:637:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:693:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:753:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts:808:    const result = resolveConnectShyftProviderAdapter({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadOutboundContext.test.ts:11:import * as bridgeSessionsModule from '../bridgeSessions';
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadOutboundContext.test.ts:265:  it('stays limited to prerequisite resolution and execution delegation without provider or bridge side effects', async () => {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadOutboundContext.test.ts:268:      'resolveConnectShyftProviderAdapter',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadOutboundContext.test.ts:271:      bridgeSessionsModule,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/threads.test.ts:7:import { resolveSenderNumber } from '../senderNumberResolver';
+apps/connectshyft-api/src/modules/connectshyft/__tests__/threads.test.ts:728:    const resolved = await resolveSenderNumber(
+apps/connectshyft-api/src/modules/connectshyft/__tests__/threads.test.ts:784:    const resolved = await resolveSenderNumber(
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_LIFECYCLE_NOTES.md:59:- PeopleCore neighbor or identity bridge convergence work
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_LIFECYCLE_NOTES.md:77:That separation should remain explicit. Follow-up cleanup should not use the lifecycle helper boundary as a place to absorb outbound reopen rules, provider dispatch concerns, inbound correlation work, or webhook processing. The next extraction target after Slice 6 is neighbors / identity bridge, while outbound and webhook surfaces remain intentionally deferred.
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:10:  resolveConnectShyftProviderCorrelationByIdentifiers,
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:71:  it('records provider call-leg mappings against persisted bridge-leg ids', async () => {
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:77:      providerIdentifier: 'provider-leg-bridge-f3-1001',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:78:      bridgeLegId: 'bridge-leg-neighbor-f3-1001',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:86:        providerIdentifier: 'provider-leg-bridge-f3-1001',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:87:        internalReferenceId: 'bridge-leg-neighbor-f3-1001',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:91:    const resolved = await resolveConnectShyftProviderCorrelationByIdentifiers({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:93:      providerLegId: 'provider-leg-bridge-f3-1001',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:100:        internalCallReferenceId: 'bridge-leg-neighbor-f3-1001',
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:116:    const resolvedByCallLeg = await resolveConnectShyftProviderCorrelationByIdentifiers({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:141:    const resolvedByMessage = await resolveConnectShyftProviderCorrelationByIdentifiers({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:178:    const resolution = await resolveConnectShyftProviderCorrelationByIdentifiers({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:191:    const missingIdentifiers = await resolveConnectShyftProviderCorrelationByIdentifiers({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:199:    const notFound = await resolveConnectShyftProviderCorrelationByIdentifiers({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:489:    const ambiguousLookup = await resolveConnectShyftProviderCorrelationByIdentifiers({
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts:499:    const tenantScopedLookup = await resolveConnectShyftProviderCorrelationByIdentifiers({

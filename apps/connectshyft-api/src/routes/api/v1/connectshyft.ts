@@ -179,6 +179,7 @@ import {
   markIdentityAmbiguityEventReviewed,
 } from '../../../modules/connectshyft/ambiguityEvents';
 import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService';
+import connectShyftOpsRouter from './connectshyft/ops.routes';
 
 const router = Router();
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -3964,6 +3965,8 @@ router.get('/availability', getConnectAvailability);
 router.get('/context', getConnectContext);
 
 router.get('/inbox', getConnectInbox);
+
+router.use('/ops', connectShyftOpsRouter);
 
 router.post('/neighbors', postConnectNeighborCreate);
 
