@@ -1,5 +1,11 @@
-import type { BridgeSessionAggregate, BridgeSessionStatus } from '../../../../../../domains/communication';
 import { loadConnectShyftBridgeAggregateBySessionId } from '../bridgeSessions';
+
+type ConnectShyftBridgeRuntimeAggregate = NonNullable<
+  Awaited<ReturnType<typeof loadConnectShyftBridgeAggregateBySessionId>>
+>;
+
+type ConnectShyftBridgeRuntimeStatus =
+  ConnectShyftBridgeRuntimeAggregate['session']['status'];
 
 export type ConnectShyftBridgeVisibility = {
   bridgeId: string;
@@ -17,7 +23,7 @@ export type ConnectShyftBridgeVisibility = {
 };
 
 const mapBridgeStatus = (
-  status: BridgeSessionStatus,
+  status: ConnectShyftBridgeRuntimeStatus,
 ): ConnectShyftBridgeVisibility['status'] => {
   if (status === 'bridged') {
     return 'connected';
@@ -31,14 +37,21 @@ const mapBridgeStatus = (
     return 'ended';
   }
 
-  if (status === 'neighbor_dialing' || status === 'operator_answered' || status === 'neighbor_answered') {
+  if (
+    status === 'operator_dialing'
+    || status === 'operator_answered'
+    || status === 'neighbor_dialing'
+    || status === 'neighbor_answered'
+  ) {
     return 'ringing';
   }
 
   return 'initiated';
 };
 
-const resolveLastEventAt = (aggregate: BridgeSessionAggregate): string => {
+const resolveLastEventAt = (
+  aggregate: ConnectShyftBridgeRuntimeAggregate,
+): string => {
   const timestamps = [
     aggregate.session.completedAt,
     aggregate.session.updatedAt,

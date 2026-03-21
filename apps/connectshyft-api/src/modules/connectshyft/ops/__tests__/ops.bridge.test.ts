@@ -102,4 +102,51 @@ describe('connectshyft ops bridge visibility route', () => {
       },
     });
   });
+
+  it('maps operator dialing bridge state to ringing from the runtime seam', async () => {
+    jest.spyOn(
+      BridgeSessionsModule,
+      'loadConnectShyftBridgeAggregateBySessionId',
+    ).mockResolvedValue({
+      ...buildBridgeAggregate(),
+      session: {
+        ...buildBridgeAggregate().session,
+        status: 'operator_dialing',
+      },
+      operatorLeg: {
+        ...buildBridgeAggregate().operatorLeg,
+        status: 'ringing',
+      },
+      neighborLeg: {
+        ...buildBridgeAggregate().neighborLeg,
+        status: 'created',
+        startedAt: null,
+        answeredAt: null,
+        updatedAt: new Date('2026-03-21T12:00:30.000Z'),
+      },
+    });
+
+    const response = await request(buildApp())
+      .get('/api/v1/connectshyft/ops/bridge/bridge-session-ops-1001')
+      .set(buildHeaders());
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_OPS_BRIDGE_VISIBILITY_LOADED',
+      data: {
+        bridgeId: 'bridge-session-ops-1001',
+        status: 'ringing',
+        operatorLeg: {
+          phone: '+12605550155',
+          status: 'ringing',
+        },
+        neighborLeg: {
+          phone: '+12605550111',
+          status: 'created',
+        },
+        provider: 'telnyx',
+      },
+    });
+  });
 });
