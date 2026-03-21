@@ -7,6 +7,7 @@ import { ConnectShyftSubjectResolver } from '../identityResolver';
 const buildNeighbor = (
   neighborId: string,
   value: string,
+  overrides: Partial<ConnectShyftIdentityBoundaryNeighbor['phones'][number]> = {},
 ): ConnectShyftIdentityBoundaryNeighbor => ({
   neighborId,
   phones: [
@@ -15,6 +16,7 @@ const buildNeighbor = (
       value,
       isShared: false,
       verificationStatus: 'verified',
+      ...overrides,
     },
   ],
 });
@@ -128,6 +130,26 @@ describe('connectshyft identity resolver', () => {
     })).resolves.toEqual({
       type: 'no_match',
       normalizedContactPoint: '+12605551213',
+    });
+  });
+
+  it('returns single_match for a unique shared contact even when auto-merge remains blocked', async () => {
+    const resolver = buildResolver({
+      'tenant-a': [
+        buildNeighbor('neighbor-1', '+12605551215', {
+          isShared: true,
+        }),
+      ],
+    });
+
+    await expect(resolver.resolveSubjectByContactPoint({
+      tenantId: 'tenant-a',
+      orgUnitId: 'org-a',
+      contactPoint: '(260) 555-1215',
+    })).resolves.toEqual({
+      type: 'single_match',
+      neighborId: 'neighbor-1',
+      normalizedContactPoint: '+12605551215',
     });
   });
 

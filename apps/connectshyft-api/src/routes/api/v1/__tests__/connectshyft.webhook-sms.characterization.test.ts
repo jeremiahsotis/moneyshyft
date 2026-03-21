@@ -694,6 +694,90 @@ describe('connectshyft inbound sms webhook route characterization', () => {
     }
   });
 
+  it('returns the current inbound SMS success shape when subject resolution finds a single reusable neighbor', async () => {
+    const app = buildApp();
+    const { canonicalEventSpy, ensureThreadSpy, restore } = mockInboundSmsPersistence({
+      ensuredThreadId: 'thread-sms-characterization-single-match-2002',
+      ensuredNeighborId: 'neighbor-connectshyft-f1-2002',
+    });
+    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
+      .mockResolvedValue({
+        type: 'single_match',
+        neighborId: 'neighbor-connectshyft-f1-2002',
+        normalizedContactPoint: '+12605552002',
+      });
+    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound');
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/sms')
+        .set(buildSmsHeaders())
+        .send(buildInboundSmsBody({
+          threadId: undefined,
+          providerEventId: 'provider-event-sms-single-match-2002',
+          providerMessageId: 'provider-message-sms-single-match-2002',
+          from: '(260) 555-2002',
+        }));
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        message: 'Inbound webhook accepted for processing',
+        data: {
+          from: '(260) 555-2002',
+          to: TEST_PROVIDER_NUMBER,
+          eventType: 'sms.inbound',
+          correlation: {
+            source: 'number_mapping',
+            deterministic: true,
+            threadId: 'thread-sms-characterization-single-match-2002',
+            tenantId: TEST_TENANT_ID,
+            orgUnitId: TEST_ORG_UNIT_ID,
+            neighborId: 'neighbor-connectshyft-f1-2002',
+            providerMessageId: 'provider-message-sms-single-match-2002',
+            providerEventId: 'provider-event-sms-single-match-2002',
+            providerNumberE164: TEST_PROVIDER_NUMBER,
+          },
+          replaySafe: {
+            duplicate: false,
+            suppressedDomainWrites: false,
+            dedupeKey: 'provider-event:provider-event-sms-single-match-2002',
+          },
+          threadId: 'thread-sms-characterization-single-match-2002',
+          threadState: 'UNCLAIMED',
+          thread: buildEnsuredThread({
+            threadId: 'thread-sms-characterization-single-match-2002',
+            neighborId: 'neighbor-connectshyft-f1-2002',
+          }),
+          lifecycle: {
+            ensuredActiveThread: true,
+            createdNewThread: true,
+          },
+          inboundMessageArtifact: {
+            body: 'Please call me back when you can.',
+            from: '(260) 555-2002',
+            to: TEST_PROVIDER_NUMBER,
+            providerEventId: 'provider-event-sms-single-match-2002',
+            providerMessageId: 'provider-message-sms-single-match-2002',
+          },
+        },
+      });
+      expect(resolveSubjectSpy).toHaveBeenCalledWith({
+        tenantId: TEST_TENANT_ID,
+        orgUnitId: TEST_ORG_UNIT_ID,
+        contactPoint: '+12605552002',
+      });
+      expect(createNeighborSpy).not.toHaveBeenCalled();
+      expect(ensureThreadSpy).toHaveBeenCalledTimes(1);
+      expect(canonicalEventSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      createNeighborSpy.mockRestore();
+      resolveSubjectSpy.mockRestore();
+      restore();
+    }
+  });
+
   it('returns the current unresolved-neighbor refusal shape when inbound neighbor creation yields no reusable neighbor id', async () => {
     const app = buildApp();
     const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')

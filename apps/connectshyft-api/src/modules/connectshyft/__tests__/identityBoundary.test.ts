@@ -107,6 +107,39 @@ describe('connectshyft identity boundary', () => {
     });
   });
 
+  it('refuses auto-merge when the input canonical phone identity is explicitly shared', () => {
+    const result = evaluateConnectShyftIdentityBoundary({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-alpha',
+      contactPoint: {
+        label: 'mobile',
+        value: '2605551212',
+        isShared: true,
+        verificationStatus: 'verified',
+      },
+    }, [
+      buildNeighbor('neighbor-1', '+12605551212'),
+    ]);
+
+    expect(result).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_MATCH_NO_AUTO_MERGE',
+      data: {
+        identityMatch: {
+          matchedNeighborId: 'neighbor-1',
+          decision: 'NO_AUTO_MERGE',
+          reason: 'INPUT_CONTACT_SHARED',
+          autoMergeAllowed: false,
+          contactPoint: {
+            value: '+12605551212',
+            isShared: true,
+            verificationStatus: 'verified',
+          },
+        },
+      },
+    });
+  });
+
   it('refuses auto-merge when the matched canonical phone identity is shared', () => {
     const result = evaluateConnectShyftIdentityBoundary({
       actorRoles: ['ORGUNIT_MEMBER'],
