@@ -23,21 +23,29 @@ import {
   getConnectNeighborDetail,
   getConnectNeighbors,
   getConnectContext,
+  getConnectEscalationConfig,
+  getConnectEscalationRecipients,
   getConnectInbox,
+  getConnectNumberMappings,
   getConnectSettingsNavigation,
   getConnectThreadDetail,
   getConnectThreadTimeline,
+  getConnectWebhookReceiptMetrics,
   postConnectNeighborCreate,
   postConnectNeighborIdentityMatch,
   postConnectNeighborMerge,
+  postConnectNumberMapping,
   postConnectThreadClaim,
   postConnectThreadCall,
   postConnectThreadClose,
   postConnectThreadMessage,
   postConnectThreadTakeover,
+  postConnectWebhookReceiptCleanup,
   postConnectWebhookInbound,
   postConnectWebhookSms,
   putConnectNeighbor,
+  putConnectEscalationConfig,
+  putConnectNumberMapping,
 } from '../../../modules/connectshyft/handlers';
 import {
   resolveConnectShyftOrgUnitContext,
@@ -54,7 +62,6 @@ import {
 } from '../../../modules/connectshyft/http/inboundWebhookContext';
 import {
   connectShyftNumberMappingServiceAsync,
-  type ConnectShyftNumberMapping,
 } from '../../../modules/connectshyft/numberMappings';
 import {
   AsyncConnectShyftNeighborService,
@@ -68,10 +75,6 @@ import {
 import {
   ConnectShyftEscalationConfigService,
   KnexConnectShyftEscalationConfigStore,
-  connectShyftEscalationRecipientScopes,
-  createEscalationRecipientDirectory,
-  type ConnectShyftEscalationRecipientDirectory,
-  type ConnectShyftEscalationRecipientOption,
 } from '../../../modules/connectshyft/escalationConfig';
 import {
   AsyncConnectShyftThreadService,
@@ -152,9 +155,6 @@ import {
 import { serializeConnectShyftThreadTimelineResponse } from '../../../modules/connectshyft/threadTimelineDto';
 import {
   beginConnectShyftWebhookReceiptProcessing,
-  cleanupConnectShyftWebhookReceipts,
-  CONNECTSHYFT_WEBHOOK_RECEIPT_RETENTION_POLICY_DAYS,
-  loadConnectShyftWebhookReceiptMetrics,
   markConnectShyftWebhookReceiptProcessingResult,
   recordConnectShyftProviderIdentifierMapping,
   resolveConnectShyftProviderCorrelationByIdentifiers,
@@ -191,7 +191,6 @@ const MAX_ESCALATION_STAGE = 3;
 const DEFAULT_SCHEDULER_LIMIT = 50;
 const MAX_SCHEDULER_LIMIT = 250;
 const HOUR_MS = 60 * 60 * 1000;
-const CONNECTSHYFT_WEBHOOK_RECEIPT_RETENTION_DAYS_MAX = 3650;
 const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
   claimed: 'connectshyft.thread.claimed',
   takenOver: 'connectshyft.thread.taken_over',
@@ -547,6 +546,15 @@ const actorFromRequest = (req: Request): PlatformAdminActorContext => ({
   headerRoles: [],
   activeTenantId: req.user?.activeTenantId || null,
 });
+
+const normalizeNonEmptyString = (value: unknown): string | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
 
 const resolveTenantIdFromRequest = async (req: Request): Promise<string | null> => {
   const directTenantCandidates = [
@@ -2019,44 +2027,6 @@ const resolveConnectShyftActorRoles = (
   return deduped;
 };
 
-const enforceNumberMappingManageCapability = (
-  req: Request,
-  res: Response,
-  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
-): boolean => {
-  const actorRoles = resolveConnectShyftActorRoles(req, context);
-  if (hasCapability(actorRoles, CAPABILITIES.NUMBER_MAPPING_MANAGE)) {
-    return true;
-  }
-
-  refusal(res, {
-    code: 'CONNECTSHYFT_NUMBER_MAPPING_FORBIDDEN',
-    message: 'Number mapping management requires an authorized ConnectShyft role.',
-    refusalType: 'business',
-    httpStatus: 200,
-  });
-  return false;
-};
-
-const enforceEscalationConfigCapability = (
-  req: Request,
-  res: Response,
-  context?: Pick<ResolvedConnectShyftContext, 'effectiveRoles'> | null,
-): boolean => {
-  const actorRoles = resolveConnectShyftActorRoles(req, context);
-  if (hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_ESCALATION_CONFIG)) {
-    return true;
-  }
-
-  refusal(res, {
-    code: 'CONNECTSHYFT_ESCALATION_CONFIG_FORBIDDEN',
-    message: 'Escalation configuration requires an authorized orgUnit role.',
-    refusalType: 'business',
-    httpStatus: 200,
-  });
-  return false;
-};
-
 const enforceThreadViewCapability = (
   req: Request,
   res: Response,
@@ -3001,53 +2971,6 @@ const parseOptionalNonNegativeInteger = (value: unknown): number | null => {
   return null;
 };
 
-const normalizeWebhookReceiptRetentionDays = (
-  value: unknown,
-  fallback = CONNECTSHYFT_WEBHOOK_RECEIPT_RETENTION_POLICY_DAYS,
-): number => {
-  const parsed = parseOptionalNonNegativeInteger(value);
-  if (parsed === null || parsed <= 0) {
-    return fallback;
-  }
-
-  return Math.min(parsed, CONNECTSHYFT_WEBHOOK_RECEIPT_RETENTION_DAYS_MAX);
-};
-
-const parseWebhookReceiptMetricsQuery = (req: Request): {
-  orgUnitId: string | null;
-  retentionWindowDays: number;
-  asOfUtc: string | null;
-} => {
-  const asOfCandidate = typeof req.query?.asOfUtc === 'string'
-    ? req.query.asOfUtc.trim()
-    : '';
-  return {
-    orgUnitId: parseOrgUnitIdFromQuery(req),
-    retentionWindowDays: normalizeWebhookReceiptRetentionDays(req.query?.retentionWindowDays),
-    asOfUtc: asOfCandidate.length > 0 ? asOfCandidate : null,
-  };
-};
-
-const parseWebhookReceiptCleanupBody = (req: Request): {
-  orgUnitId: string | null;
-  policyWindowDays: number;
-  dryRun: boolean;
-  asOfUtc: string | null;
-} => {
-  const asOfCandidate = typeof req.body?.asOfUtc === 'string'
-    ? req.body.asOfUtc.trim()
-    : '';
-  return {
-    orgUnitId: parseOrgUnitIdFromBody(req),
-    policyWindowDays: normalizeWebhookReceiptRetentionDays(
-      req.body?.policyWindowDays,
-      CONNECTSHYFT_WEBHOOK_RECEIPT_RETENTION_POLICY_DAYS,
-    ),
-    dryRun: parseOptionalBoolean(req.body?.dryRun) === true,
-    asOfUtc: asOfCandidate.length > 0 ? asOfCandidate : null,
-  };
-};
-
 const parseOutboundCallRequestPolicy = (req: Request): {
   transport: string | null;
   autoRetry: boolean | null;
@@ -3887,377 +3810,6 @@ const resolveNeighborIdForThreadCorrelation = async (input: {
     return null;
   }
 };
-const parseMappingBody = (req: Request) => ({
-  // Preserve explicit false values from JSON/string payloads instead of truthy coercion.
-  isActive: parseOptionalBoolean(req.body?.isActive) ?? true,
-  providerNumberE164: typeof req.body?.providerNumberE164 === 'string'
-    ? req.body.providerNumberE164
-    : (typeof req.body?.twilioNumberE164 === 'string' ? req.body.twilioNumberE164 : ''),
-  label: typeof req.body?.label === 'string' ? req.body.label : '',
-});
-
-const normalizeProviderNumberContract = (value: unknown): unknown => {
-  if (Array.isArray(value)) {
-    return value.map((entry) => normalizeProviderNumberContract(entry));
-  }
-
-  if (!value || typeof value !== 'object') {
-    return value;
-  }
-
-  const normalized: Record<string, unknown> = {};
-  Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
-    const normalizedEntry = normalizeProviderNumberContract(entry);
-    if (key === 'twilioNumberE164') {
-      normalized.twilioNumberE164 = normalizedEntry;
-      normalized.providerNumberE164 = normalizedEntry;
-      return;
-    }
-
-    if (key === 'providerNumberE164') {
-      normalized.providerNumberE164 = normalizedEntry;
-      normalized.twilioNumberE164 = normalizedEntry;
-      return;
-    }
-
-    if (key === 'field' && normalizedEntry === 'twilioNumberE164') {
-      normalized[key] = 'twilioNumberE164';
-      normalized.providerField = 'providerNumberE164';
-      return;
-    }
-
-    normalized[key] = normalizedEntry;
-  });
-
-  return normalized;
-};
-
-const parseEscalationConfigBody = (req: Request) => ({
-  escalationBaselineHours: req.body?.escalationBaselineHours,
-  recipients: req.body?.recipients,
-});
-
-const TEST_RECIPIENT_DIRECTORY_HEADER = 'x-test-connectshyft-recipient-directory';
-
-const normalizeNonEmptyString = (value: unknown): string | null => {
-  if (typeof value !== 'string') {
-    return null;
-  }
-
-  const normalized = value.trim();
-  return normalized.length > 0 ? normalized : null;
-};
-
-const parseScopedRecipientEntries = (
-  rawEntries: unknown,
-  scope: ConnectShyftEscalationRecipientOption['scope'],
-): {
-  recipientIds: string[];
-  options: ConnectShyftEscalationRecipientOption[];
-} => {
-  if (!Array.isArray(rawEntries)) {
-    return {
-      recipientIds: [],
-      options: [],
-    };
-  }
-
-  const recipientIds: string[] = [];
-  const options: ConnectShyftEscalationRecipientOption[] = [];
-
-  rawEntries.forEach((entry) => {
-    if (typeof entry === 'string') {
-      const userId = normalizeNonEmptyString(entry);
-      if (!userId) {
-        return;
-      }
-
-      recipientIds.push(userId);
-      options.push({
-        value: userId,
-        label: userId,
-        scope,
-      });
-      return;
-    }
-
-    if (!entry || typeof entry !== 'object') {
-      return;
-    }
-
-    const candidate = entry as {
-      userId?: unknown;
-      label?: unknown;
-    };
-
-    const userId = normalizeNonEmptyString(candidate.userId);
-    if (!userId) {
-      return;
-    }
-
-    const label = normalizeNonEmptyString(candidate.label) || userId;
-    recipientIds.push(userId);
-    options.push({
-      value: userId,
-      label,
-      scope,
-    });
-  });
-
-  return {
-    recipientIds,
-    options,
-  };
-};
-
-const parseRecipientOptions = (
-  rawOptions: unknown,
-): ConnectShyftEscalationRecipientOption[] => {
-  if (!Array.isArray(rawOptions)) {
-    return [];
-  }
-
-  return rawOptions
-    .map((entry) => {
-      if (!entry || typeof entry !== 'object') {
-        return null;
-      }
-
-      const candidate = entry as {
-        value?: unknown;
-        label?: unknown;
-        scope?: unknown;
-      };
-
-      const value = normalizeNonEmptyString(candidate.value);
-      if (!value) {
-        return null;
-      }
-
-      const label = normalizeNonEmptyString(candidate.label) || value;
-      const scope = normalizeNonEmptyString(candidate.scope)
-        || connectShyftEscalationRecipientScopes.TEST_ONLY;
-
-      return {
-        value,
-        label,
-        scope,
-      } as ConnectShyftEscalationRecipientOption;
-    })
-    .filter((entry): entry is ConnectShyftEscalationRecipientOption => entry !== null);
-};
-
-const buildDefaultTestRecipientDirectory = (): ConnectShyftEscalationRecipientDirectory =>
-  createEscalationRecipientDirectory({
-    orgUnitRecipientIds: [
-      'user-connectshyft-a4-primary-recipient',
-      'user-connectshyft-a4-secondary-recipient',
-      'user-connectshyft-a5-orgunit-admin',
-      'user-connectshyft-a5-orgunit-member',
-    ],
-    tenantRecipientIds: [
-      'user-connectshyft-a4-primary-recipient',
-      'user-connectshyft-a4-secondary-recipient',
-      'user-connectshyft-a4-tenant-staff-recipient',
-      'user-connectshyft-a5-orgunit-admin',
-      'user-connectshyft-a5-orgunit-member',
-      'user-connectshyft-a5-tenant-staff',
-    ],
-    options: [
-      {
-        value: 'user-connectshyft-a4-primary-recipient',
-        label: 'Primary OrgUnit Admin',
-        scope: connectShyftEscalationRecipientScopes.ORG_UNIT,
-      },
-      {
-        value: 'user-connectshyft-a4-secondary-recipient',
-        label: 'Secondary OrgUnit Admin',
-        scope: connectShyftEscalationRecipientScopes.ORG_UNIT,
-      },
-      {
-        value: 'user-connectshyft-a4-tenant-staff-recipient',
-        label: 'Tenant Staff Recipient',
-        scope: connectShyftEscalationRecipientScopes.TENANT,
-      },
-      {
-        value: 'user-connectshyft-a5-orgunit-admin',
-        label: 'A5 OrgUnit Admin',
-        scope: connectShyftEscalationRecipientScopes.ORG_UNIT,
-      },
-      {
-        value: 'user-connectshyft-a5-orgunit-member',
-        label: 'A5 OrgUnit Member',
-        scope: connectShyftEscalationRecipientScopes.ORG_UNIT,
-      },
-      {
-        value: 'user-connectshyft-a5-tenant-staff',
-        label: 'A5 Tenant Staff',
-        scope: connectShyftEscalationRecipientScopes.TENANT,
-      },
-      {
-        value: 'user-connectshyft-a4-cross-tenant-recipient',
-        label: 'Cross-tenant recipient (invalid test option)',
-        scope: connectShyftEscalationRecipientScopes.TEST_ONLY,
-      },
-    ],
-  });
-
-const resolveEscalationRecipientDirectoryFromHeader = (
-  req: Request,
-): ConnectShyftEscalationRecipientDirectory | null => {
-  if (!isConnectShyftTestOverrideEnabled()) {
-    return null;
-  }
-
-  const rawHeader = req.header(TEST_RECIPIENT_DIRECTORY_HEADER);
-  if (!rawHeader) {
-    return buildDefaultTestRecipientDirectory();
-  }
-
-  try {
-    const parsed = JSON.parse(rawHeader) as {
-      orgUnitRecipients?: unknown;
-      tenantRecipients?: unknown;
-      options?: unknown;
-    };
-
-    const orgUnitRecipients = parseScopedRecipientEntries(
-      parsed.orgUnitRecipients,
-      connectShyftEscalationRecipientScopes.ORG_UNIT,
-    );
-    const tenantRecipients = parseScopedRecipientEntries(
-      parsed.tenantRecipients,
-      connectShyftEscalationRecipientScopes.TENANT,
-    );
-
-    const options = [
-      ...orgUnitRecipients.options,
-      ...tenantRecipients.options,
-      ...parseRecipientOptions(parsed.options),
-    ];
-
-    return createEscalationRecipientDirectory({
-      orgUnitRecipientIds: orgUnitRecipients.recipientIds,
-      tenantRecipientIds: [
-        ...tenantRecipients.recipientIds,
-        ...orgUnitRecipients.recipientIds,
-      ],
-      options,
-    });
-  } catch (_error) {
-    return buildDefaultTestRecipientDirectory();
-  }
-};
-
-const buildRecipientLabel = (
-  userId: string,
-  firstName: unknown,
-  lastName: unknown,
-): string => {
-  const first = typeof firstName === 'string' ? firstName.trim() : '';
-  const last = typeof lastName === 'string' ? lastName.trim() : '';
-  const fullName = `${first} ${last}`.trim();
-  return fullName.length > 0 ? fullName : userId;
-};
-
-const buildDatabaseRecipientDirectory = async (
-  tenantId: string,
-  orgUnitId: string,
-): Promise<ConnectShyftEscalationRecipientDirectory> => {
-  if (!UUID_PATTERN.test(tenantId) || !UUID_PATTERN.test(orgUnitId)) {
-    return createEscalationRecipientDirectory({
-      orgUnitRecipientIds: [],
-      tenantRecipientIds: [],
-      options: [],
-    });
-  }
-
-  const db = loadPlatformDb();
-
-  const tenantRows = await db('platform.tenant_memberships as tm')
-    .leftJoin('users as u', 'u.id', 'tm.user_id')
-    .where('tm.tenant_id', tenantId)
-    .select('tm.user_id as userId', 'u.first_name as firstName', 'u.last_name as lastName');
-
-  const orgUnitRows = await db('platform.org_unit_memberships as om')
-    .join('platform.org_units as ou', 'ou.id', 'om.org_unit_id')
-    .leftJoin('users as u', 'u.id', 'om.user_id')
-    .where('om.org_unit_id', orgUnitId)
-    .andWhere('ou.tenant_id', tenantId)
-    .select('om.user_id as userId', 'u.first_name as firstName', 'u.last_name as lastName');
-
-  const orgUnitRecipientIds: string[] = [];
-  const orgUnitOptions: ConnectShyftEscalationRecipientOption[] = [];
-  orgUnitRows.forEach((row) => {
-    const userId = normalizeNonEmptyString((row as { userId?: unknown }).userId);
-    if (!userId) {
-      return;
-    }
-
-    orgUnitRecipientIds.push(userId);
-    orgUnitOptions.push({
-      value: userId,
-      label: buildRecipientLabel(
-        userId,
-        (row as { firstName?: unknown }).firstName,
-        (row as { lastName?: unknown }).lastName,
-      ),
-      scope: connectShyftEscalationRecipientScopes.ORG_UNIT,
-    });
-  });
-
-  const tenantRecipientIds: string[] = [];
-  const tenantOptions: ConnectShyftEscalationRecipientOption[] = [];
-  tenantRows.forEach((row) => {
-    const userId = normalizeNonEmptyString((row as { userId?: unknown }).userId);
-    if (!userId) {
-      return;
-    }
-
-    tenantRecipientIds.push(userId);
-    tenantOptions.push({
-      value: userId,
-      label: buildRecipientLabel(
-        userId,
-        (row as { firstName?: unknown }).firstName,
-        (row as { lastName?: unknown }).lastName,
-      ),
-      scope: connectShyftEscalationRecipientScopes.TENANT,
-    });
-  });
-
-  const directory = createEscalationRecipientDirectory({
-    orgUnitRecipientIds,
-    tenantRecipientIds,
-    options: [...orgUnitOptions, ...tenantOptions],
-  });
-
-  directory.options.sort((a, b) => {
-    if (a.label < b.label) {
-      return -1;
-    }
-    if (a.label > b.label) {
-      return 1;
-    }
-    return a.value.localeCompare(b.value);
-  });
-
-  return directory;
-};
-
-const resolveEscalationRecipientDirectory = async (
-  req: Request,
-  tenantId: string,
-  orgUnitId: string,
-): Promise<ConnectShyftEscalationRecipientDirectory> => {
-  const testDirectory = resolveEscalationRecipientDirectoryFromHeader(req);
-  if (testDirectory) {
-    return testDirectory;
-  }
-
-  return buildDatabaseRecipientDirectory(tenantId, orgUnitId);
-};
-
 router.get('/settings/navigation', getConnectSettingsNavigation);
 
 router.get('/availability', getConnectAvailability);
@@ -4280,372 +3832,21 @@ router.post('/neighbors/identity-match', postConnectNeighborIdentityMatch);
 
 router.post('/neighbors/merge', postConnectNeighborMerge);
 
-router.get('/numbers', async (req: Request, res: Response) => {
-  if (!await enforceCapability(req, res, 'module')) {
-    return;
-  }
+router.get('/numbers', getConnectNumberMappings);
 
-  const context = await enforceOrgUnitContext(req, res);
-  if (!context) {
-    return;
-  }
+router.post('/numbers', postConnectNumberMapping);
 
-  if (!enforceNumberMappingManageCapability(req, res, context)) {
-    return;
-  }
+router.put('/numbers/:mappingId', putConnectNumberMapping);
 
-  return success(res, {
-    code: 'CONNECTSHYFT_NUMBER_MAPPINGS_RESOLVED',
-    message: 'ConnectShyft number mappings resolved',
-    data: {
-      orgUnitId: context.orgUnitId,
-      mappings: normalizeProviderNumberContract(
-        await connectShyftNumberMappingServiceAsync.listMappings(context.tenantId, context.orgUnitId),
-      ),
-    },
-  });
-});
+router.get('/admin/webhook-receipts/metrics', getConnectWebhookReceiptMetrics);
 
-router.post('/numbers', async (req: Request, res: Response) => {
-  if (!await enforceCapability(req, res, 'module')) {
-    return;
-  }
+router.post('/admin/webhook-receipts/cleanup', postConnectWebhookReceiptCleanup);
 
-  const requestedOrgUnitId = parseOrgUnitIdFromBody(req);
-  const context = await enforceOrgUnitContext(req, res, requestedOrgUnitId);
-  if (!context) {
-    return;
-  }
+router.get('/escalation/recipients', getConnectEscalationRecipients);
 
-  if (!enforceNumberMappingManageCapability(req, res, context)) {
-    return;
-  }
+router.get('/escalation/config', getConnectEscalationConfig);
 
-  const payload = parseMappingBody(req);
-  const actorRoles = resolveConnectShyftActorRoles(req, context);
-  const saved = await connectShyftNumberMappingServiceAsync.createMapping({
-    actorRoles,
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    twilioNumberE164: payload.providerNumberE164,
-    label: payload.label,
-    isActive: payload.isActive,
-  });
-
-  if (!saved.ok) {
-    const refusalData = 'data' in saved ? saved.data : undefined;
-    refusal(res, {
-      code: saved.code,
-      message: saved.message,
-      refusalType: 'business',
-      httpStatus: 200,
-      data: normalizeProviderNumberContract(refusalData),
-    });
-    return;
-  }
-
-  return success(res, {
-    code: saved.code,
-    message: 'ConnectShyft number mapping saved',
-    httpStatus: saved.httpStatus,
-    data: normalizeProviderNumberContract({
-      orgUnitId: saved.data.orgUnitId,
-      mappingId: saved.data.mappingId,
-      twilioNumberE164: saved.data.twilioNumberE164,
-      label: saved.data.label,
-      isActive: saved.data.isActive,
-      mappings: saved.data.mappings,
-    }),
-  });
-});
-
-router.put('/numbers/:mappingId', async (req: Request, res: Response) => {
-  if (!await enforceCapability(req, res, 'module')) {
-    return;
-  }
-
-  const mappingId = typeof req.params.mappingId === 'string' ? req.params.mappingId.trim() : '';
-  if (!mappingId) {
-    refusal(res, {
-      code: 'CONNECTSHYFT_NUMBER_MAPPING_ID_REQUIRED',
-      message: 'mappingId is required',
-      refusalType: 'client',
-      httpStatus: 400,
-    });
-    return;
-  }
-
-  const requestedOrgUnitId = parseOrgUnitIdFromBody(req);
-  const context = await enforceOrgUnitContext(req, res, requestedOrgUnitId);
-  if (!context) {
-    return;
-  }
-
-  if (!enforceNumberMappingManageCapability(req, res, context)) {
-    return;
-  }
-
-  const payload = parseMappingBody(req);
-  const actorRoles = resolveConnectShyftActorRoles(req, context);
-  const updated = await connectShyftNumberMappingServiceAsync.updateMapping({
-    actorRoles,
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    mappingId,
-    twilioNumberE164: payload.providerNumberE164,
-    label: payload.label,
-    isActive: payload.isActive,
-  });
-
-  if (!updated.ok) {
-    refusal(res, {
-      code: updated.code,
-      message: updated.message,
-      refusalType: 'business',
-      httpStatus: 200,
-      data: normalizeProviderNumberContract(updated.data),
-    });
-    return;
-  }
-
-  return success(res, {
-    code: updated.code,
-    message: 'ConnectShyft number mapping updated',
-    httpStatus: updated.httpStatus,
-    data: normalizeProviderNumberContract({
-      mappingId: updated.data.mappingId,
-      orgUnitId: updated.data.orgUnitId,
-      twilioNumberE164: updated.data.twilioNumberE164,
-      label: updated.data.label,
-      isActive: updated.data.isActive,
-      mappings: updated.data.mappings,
-    }),
-  });
-});
-
-router.get('/admin/webhook-receipts/metrics', async (req: Request, res: Response) => {
-  if (!await enforceCapability(req, res, 'module')) {
-    return;
-  }
-
-  const query = parseWebhookReceiptMetricsQuery(req);
-  const context = await enforceOrgUnitContext(req, res, query.orgUnitId);
-  if (!context) {
-    return;
-  }
-
-  if (!enforceNumberMappingManageCapability(req, res, context)) {
-    return;
-  }
-
-  const metrics = await loadConnectShyftWebhookReceiptMetrics({
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    retentionWindowDays: query.retentionWindowDays,
-    asOfUtc: query.asOfUtc || undefined,
-    db: loadPlatformDb(),
-  });
-
-  if (metrics.error) {
-    refusal(res, {
-      code: metrics.error.code,
-      message: 'Webhook receipt metrics are temporarily unavailable.',
-      refusalType: 'business',
-      httpStatus: 200,
-      data: {
-        orgUnitId: context.orgUnitId,
-      },
-    });
-    return;
-  }
-
-  return success(res, {
-    code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_METRICS_LOADED',
-    message: 'Webhook receipt metrics loaded',
-    data: {
-      orgUnitId: context.orgUnitId,
-      retentionWindowDays: metrics.retentionWindowDays,
-      totalRows: metrics.totalRows,
-      expiredRowsCandidate: metrics.expiredRowsCandidate,
-      oldestRetainedAt: metrics.oldestRetainedAt,
-      asOfUtc: metrics.asOfUtc,
-      cutoffUtc: metrics.cutoffUtc,
-    },
-  });
-});
-
-router.post('/admin/webhook-receipts/cleanup', async (req: Request, res: Response) => {
-  if (!await enforceCapability(req, res, 'module')) {
-    return;
-  }
-
-  const payload = parseWebhookReceiptCleanupBody(req);
-  const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
-  if (!context) {
-    return;
-  }
-
-  if (!enforceNumberMappingManageCapability(req, res, context)) {
-    return;
-  }
-
-  const cleanup = await cleanupConnectShyftWebhookReceipts({
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    policyWindowDays: payload.policyWindowDays,
-    dryRun: payload.dryRun,
-    asOfUtc: payload.asOfUtc || undefined,
-    db: loadPlatformDb(),
-  });
-
-  if (cleanup.error) {
-    refusal(res, {
-      code: cleanup.error.code,
-      message: 'Webhook receipt cleanup is temporarily unavailable.',
-      refusalType: 'business',
-      httpStatus: 200,
-      data: {
-        orgUnitId: context.orgUnitId,
-        policyWindowDays: payload.policyWindowDays,
-      },
-    });
-    return;
-  }
-
-  return success(res, {
-    code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_RETENTION_APPLIED',
-    message: cleanup.dryRun
-      ? 'Webhook receipt retention cleanup dry-run complete'
-      : 'Webhook receipt retention cleanup complete',
-    data: {
-      orgUnitId: context.orgUnitId,
-      policyWindowDays: cleanup.policyWindowDays,
-      dryRun: cleanup.dryRun,
-      expiredRowsRemoved: cleanup.expiredRowsRemoved,
-      activeWindowProtected: cleanup.activeWindowProtected,
-      totalRowsBefore: cleanup.totalRowsBefore,
-      totalRowsAfter: cleanup.totalRowsAfter,
-      oldestRetainedAt: cleanup.oldestRetainedAt,
-      executedAtUtc: cleanup.executedAtUtc,
-      cutoffUtc: cleanup.cutoffUtc,
-    },
-  });
-});
-
-router.get('/escalation/recipients', async (req: Request, res: Response) => {
-  if (!await enforceCapability(req, res, 'escalation')) {
-    return;
-  }
-
-  const context = await enforceOrgUnitContext(req, res);
-  if (!context) {
-    return;
-  }
-
-  if (!enforceEscalationConfigCapability(req, res, context)) {
-    return;
-  }
-
-  const recipientDirectory = await resolveEscalationRecipientDirectory(
-    req,
-    context.tenantId,
-    context.orgUnitId,
-  );
-
-  return success(res, {
-    code: 'CONNECTSHYFT_ESCALATION_RECIPIENTS_RESOLVED',
-    message: 'ConnectShyft escalation recipients resolved',
-    data: {
-      orgUnitId: context.orgUnitId,
-      recipientOptions: recipientDirectory.options,
-    },
-  });
-});
-
-router.get('/escalation/config', async (req: Request, res: Response) => {
-  if (!await enforceCapability(req, res, 'escalation')) {
-    return;
-  }
-
-  const context = await enforceOrgUnitContext(req, res);
-  if (!context) {
-    return;
-  }
-
-  if (!enforceEscalationConfigCapability(req, res, context)) {
-    return;
-  }
-
-  const config = await connectShyftEscalationConfigService.getConfig(context.tenantId, context.orgUnitId);
-
-  return success(res, {
-    code: 'CONNECTSHYFT_ESCALATION_CONFIG_RESOLVED',
-    message: 'ConnectShyft escalation configuration resolved',
-    data: {
-      orgUnitId: config.orgUnitId,
-      escalationBaselineHours: config.escalationBaselineHours,
-      recipients: config.recipients,
-      updatedAtUtc: config.updatedAtUtc,
-    },
-  });
-});
-
-router.put('/escalation/config', async (req: Request, res: Response) => {
-  if (!await enforceCapability(req, res, 'escalation')) {
-    return;
-  }
-
-  const requestedOrgUnitId = parseOrgUnitIdFromBody(req);
-  const context = await enforceOrgUnitContext(req, res, requestedOrgUnitId);
-  if (!context) {
-    return;
-  }
-
-  if (!enforceEscalationConfigCapability(req, res, context)) {
-    return;
-  }
-
-  const recipientDirectory = await resolveEscalationRecipientDirectory(
-    req,
-    context.tenantId,
-    context.orgUnitId,
-  );
-
-  const payload = parseEscalationConfigBody(req);
-  const actorRoles = resolveConnectShyftActorRoles(req, context);
-  const saved = await connectShyftEscalationConfigService.saveConfig({
-    actorRoles,
-    tenantId: context.tenantId,
-    orgUnitId: context.orgUnitId,
-    escalationBaselineHours: payload.escalationBaselineHours,
-    recipients: payload.recipients,
-    recipientDirectory,
-  });
-
-  if (!saved.ok) {
-    const refusalData = 'data' in saved ? saved.data : undefined;
-    refusal(res, {
-      code: saved.code,
-      message: saved.message,
-      refusalType: 'business',
-      httpStatus: 200,
-      data: refusalData,
-    });
-    return;
-  }
-
-  return success(res, {
-    code: saved.code,
-    message: 'ConnectShyft escalation settings saved',
-    httpStatus: saved.httpStatus,
-    data: {
-      orgUnitId: saved.data.orgUnitId,
-      escalationBaselineHours: saved.data.escalationBaselineHours,
-      recipients: saved.data.recipients,
-      updatedAtUtc: saved.data.updatedAtUtc,
-    },
-  });
-});
+router.put('/escalation/config', putConnectEscalationConfig);
 
 router.post('/internal/escalation/evaluate', async (req: Request, res: Response) => {
   if (!await enforceCapability(req, res, 'escalation')) {
