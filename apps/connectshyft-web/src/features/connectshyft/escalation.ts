@@ -11,6 +11,7 @@ export type ConnectShyftEscalationConfig = {
   orgUnitId: string | null;
   escalationBaselineHours: number;
   recipients: ConnectShyftEscalationRecipients;
+  defaultOperatorPhoneE164: string | null;
 };
 
 export type ConnectShyftEscalationRecipientOption = {
@@ -42,6 +43,7 @@ type ConnectShyftEscalationEnvelope = {
     orgUnitId?: string;
     escalationBaselineHours?: number;
     recipients?: Partial<ConnectShyftEscalationRecipients>;
+    defaultOperatorPhoneE164?: string | null;
     recipientOptions?: Array<{
       value?: string;
       label?: string;
@@ -58,6 +60,7 @@ type ConnectShyftEscalationEnvelope = {
 export type ConnectShyftEscalationSaveInput = {
   escalationBaselineHours?: number;
   recipients: ConnectShyftEscalationRecipients;
+  defaultOperatorPhoneE164?: string | null;
 };
 
 export type ConnectShyftEscalationSaveResult =
@@ -81,6 +84,7 @@ export const DEFAULT_CONNECTSHYFT_ESCALATION_CONFIG: ConnectShyftEscalationConfi
     secondaryOrgUnitAdminUserId: '',
     tenantStaffUserId: '',
   },
+  defaultOperatorPhoneE164: null,
 };
 
 const parseRecipients = (value: unknown): ConnectShyftEscalationRecipients => {
@@ -118,6 +122,9 @@ const parseEscalationConfig = (payload: unknown): ConnectShyftEscalationConfig =
       ? envelope.data.escalationBaselineHours
       : DEFAULT_CONNECTSHYFT_ESCALATION_CONFIG.escalationBaselineHours,
     recipients: parseRecipients(envelope.data?.recipients),
+    defaultOperatorPhoneE164: typeof envelope.data?.defaultOperatorPhoneE164 === 'string'
+      ? envelope.data.defaultOperatorPhoneE164
+      : null,
   };
 };
 
@@ -265,6 +272,7 @@ export const saveConnectShyftEscalationConfig = async (
     recipients: {
       ...input.recipients,
     },
+    defaultOperatorPhoneE164: input.defaultOperatorPhoneE164 ?? '',
   };
 
   try {

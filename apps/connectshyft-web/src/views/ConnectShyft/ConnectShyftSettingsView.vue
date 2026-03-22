@@ -74,6 +74,74 @@
           </p>
         </div>
 
+        <div
+          v-if="readiness.degradedMode"
+          data-testid="connectshyft-degraded-mode-banner"
+          class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+          <p
+            data-testid="connectshyft-fallback-indicator"
+            class="font-medium"
+          >
+            OrgUnit fallback active
+          </p>
+          <p class="mt-1">
+            ConnectShyft is routing through the orgUnit fallback phone until a usable personal callback number is available.
+          </p>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <article
+            data-testid="connectshyft-voice-readiness-card"
+            class="rounded-lg border px-4 py-3"
+            :class="readinessCardClass(readiness.voiceReady)"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-sm font-semibold text-slate-900">
+                Voice
+              </p>
+              <span
+                data-testid="connectshyft-voice-readiness-chip"
+                class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
+                :class="readinessChipClass(readiness.voiceReady)"
+              >
+                {{ readiness.voiceReady ? 'Ready' : 'Blocked' }}
+              </span>
+            </div>
+            <p
+              data-testid="connectshyft-voice-readiness-detail"
+              class="mt-2 text-sm"
+            >
+              {{ voiceStatusDetail }}
+            </p>
+          </article>
+
+          <article
+            data-testid="connectshyft-sms-readiness-card"
+            class="rounded-lg border px-4 py-3"
+            :class="readinessCardClass(readiness.smsReady)"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-sm font-semibold text-slate-900">
+                SMS
+              </p>
+              <span
+                data-testid="connectshyft-sms-readiness-chip"
+                class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
+                :class="readinessChipClass(readiness.smsReady)"
+              >
+                {{ readiness.smsReady ? 'Ready' : 'Blocked' }}
+              </span>
+            </div>
+            <p
+              data-testid="connectshyft-sms-readiness-detail"
+              class="mt-2 text-sm"
+            >
+              {{ smsStatusDetail }}
+            </p>
+          </article>
+        </div>
+
         <div class="mt-4 rounded-lg border border-slate-200 bg-white px-4 py-3">
           <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Current number
@@ -209,11 +277,24 @@ const currentCallbackNumberLabel = computed(() =>
 const callbackBlockingReason = computed(() =>
   readiness.value.blockingReasons.find((reason) => reason.category === 'callback_number') || null);
 
+const orgUnitFallbackReason = computed(() =>
+  readiness.value.blockingReasons.find((reason) => reason.category === 'orgunit_fallback') || null);
+
+const smsBlockingReason = computed(() =>
+  readiness.value.blockingReasons.find((reason) =>
+    reason.category === 'sms'
+    || reason.channel === 'sms'
+    || reason.channel === 'both') || null);
+
 const fallbackNextAction = computed(() =>
   readiness.value.nextActions[0]?.message || '');
 
 const statusChipLabel = computed(() => {
-  if (readiness.value.voiceReady) {
+  if (readiness.value.degradedMode) {
+    return 'Degraded Mode';
+  }
+
+  if (readiness.value.voiceReady && readiness.value.smsReady) {
     return 'Ready';
   }
 
@@ -225,7 +306,11 @@ const statusChipLabel = computed(() => {
 });
 
 const statusChipClass = computed(() => {
-  if (readiness.value.voiceReady) {
+  if (readiness.value.degradedMode) {
+    return 'border border-amber-200 bg-amber-100 text-amber-800';
+  }
+
+  if (readiness.value.voiceReady && readiness.value.smsReady) {
     return 'border border-emerald-200 bg-emerald-100 text-emerald-800';
   }
 
@@ -237,7 +322,11 @@ const statusChipClass = computed(() => {
 });
 
 const statusPanelClass = computed(() => {
-  if (readiness.value.voiceReady) {
+  if (readiness.value.degradedMode) {
+    return 'border-amber-200 bg-amber-50 text-amber-900';
+  }
+
+  if (readiness.value.voiceReady && readiness.value.smsReady) {
     return 'border-emerald-200 bg-emerald-50 text-emerald-900';
   }
 
@@ -249,8 +338,20 @@ const statusPanelClass = computed(() => {
 });
 
 const statusMessage = computed(() => {
+  if (readiness.value.degradedMode) {
+    return 'Voice and SMS are available, but ConnectShyft is relying on the orgUnit fallback phone.';
+  }
+
+  if (readiness.value.voiceReady && readiness.value.smsReady) {
+    return 'Voice and SMS are ready for this operator.';
+  }
+
   if (readiness.value.voiceReady) {
-    return 'Voice forwarding is ready for this operator.';
+    return 'Voice is ready, but SMS still needs more setup.';
+  }
+
+  if (readiness.value.smsReady) {
+    return 'SMS is ready, but voice forwarding still needs more setup.';
   }
 
   if (callbackBlockingReason.value?.message) {
@@ -265,7 +366,7 @@ const statusMessage = computed(() => {
 });
 
 const nextActionMessage = computed(() => {
-  if (readiness.value.voiceReady) {
+  if (readiness.value.voiceReady && readiness.value.smsReady && !readiness.value.degradedMode) {
     return '';
   }
 
@@ -275,6 +376,50 @@ const nextActionMessage = computed(() => {
 
   return callbackSpecificAction?.message || fallbackNextAction.value;
 });
+
+const voiceStatusDetail = computed(() => {
+  if (readiness.value.degradedMode && orgUnitFallbackReason.value?.message) {
+    return orgUnitFallbackReason.value.message;
+  }
+
+  if (readiness.value.voiceReady) {
+    return 'Bridge and inbound voice calls can route to the active operator destination.';
+  }
+
+  if (callbackBlockingReason.value?.message) {
+    return callbackBlockingReason.value.message;
+  }
+
+  return 'Voice forwarding still needs a usable operator destination.';
+});
+
+const smsStatusDetail = computed(() => {
+  if (readiness.value.degradedMode && orgUnitFallbackReason.value?.message) {
+    return 'SMS remains runnable while the orgUnit fallback phone is carrying telephony readiness.';
+  }
+
+  if (readiness.value.smsReady) {
+    return 'Outbound SMS can route through the current telephony configuration.';
+  }
+
+  if (smsBlockingReason.value?.message) {
+    return smsBlockingReason.value.message;
+  }
+
+  if (callbackBlockingReason.value?.message) {
+    return 'SMS is blocked until the operator phone path becomes runnable.';
+  }
+
+  return 'SMS still needs more telephony setup before dispatch is allowed.';
+});
+
+const readinessCardClass = (isReady: boolean): string => isReady
+  ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+  : 'border-amber-200 bg-amber-50 text-amber-900';
+
+const readinessChipClass = (isReady: boolean): string => isReady
+  ? 'border border-emerald-200 bg-emerald-100 text-emerald-800'
+  : 'border border-amber-200 bg-amber-100 text-amber-800';
 
 const saveButtonLabel = computed(() =>
   hasSavedCallbackNumber.value ? 'Update Callback Number' : 'Save Callback Number');
@@ -299,7 +444,7 @@ const refreshReadiness = async (): Promise<void> => {
     appendLoadError(
       sanitizeConnectShyftOperatorCopy(
         error instanceof Error ? error.message : '',
-        'Unable to load voice-forwarding readiness right now.',
+        'Unable to load telephony readiness right now.',
       ),
     );
   }
@@ -333,7 +478,7 @@ const loadSettings = async (): Promise<void> => {
     appendLoadError(
       sanitizeConnectShyftOperatorCopy(
         readinessResult.reason instanceof Error ? readinessResult.reason.message : '',
-        'Unable to load voice-forwarding readiness right now.',
+        'Unable to load telephony readiness right now.',
       ),
     );
   }
