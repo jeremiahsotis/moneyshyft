@@ -2,6 +2,7 @@
 import request from 'supertest';
 import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
 import * as SenderNumberResolverModule from '../../../../modules/connectshyft/senderNumberResolver';
+import * as TelephonyReadinessModule from '../../../../modules/connectshyft/telephonyReadiness';
 import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents';
 import { resetConnectShyftCommunicationAuditLogForTests } from '../../../../modules/connectshyft/communicationAuditLog';
@@ -157,11 +158,54 @@ const buildVoiceSenderRefusal = (input: {
   },
 });
 
+const buildTelephonyReadiness = (overrides: Record<string, unknown> = {}) => ({
+  providerReady: true,
+  providerSelectionPathActive: true,
+  webhookSignatureConfigured: true,
+  orgUnitNumberMappingReady: true,
+  voiceSupported: true,
+  callbackNumberConfigured: true,
+  callbackNumberNormalized: true,
+  voiceReady: true,
+  bridgeCallRunnable: true,
+  smsReady: true,
+  messageDispatchRunnable: true,
+  provider: {
+    requestedProvider: 'telnyx',
+    resolvedProvider: 'telnyx',
+    deterministic: true,
+    adapterInterfaceVersion: 'v1',
+  },
+  orgUnitNumberMappings: {
+    activeCount: 1,
+    mappings: [
+      {
+        mappingId: 'mapping-f1-001',
+        twilioNumberE164: '+12605550191',
+        label: 'Front Desk',
+      },
+    ],
+  },
+  callbackNumber: {
+    value: '+12605550155',
+    rawInput: '(260) 555-0155',
+    createdAtUtc: '2026-03-22T12:00:00.000Z',
+    updatedAtUtc: '2026-03-22T12:00:00.000Z',
+    persistenceAvailable: true,
+  },
+  operatorPhoneSource: 'callback_number',
+  degradedMode: false,
+  blockingReasons: [],
+  nextActions: [],
+  ...overrides,
+});
+
 describe('connectshyft outbound call route characterization', () => {
   registerProviderRegistryRouteIntegrationHooks();
 
   let resolveOperatorDestinationSpy: jest.SpyInstance;
   let resolveSenderNumberSpy: jest.SpyInstance;
+  let inspectReadinessSpy: jest.SpyInstance;
 
   beforeEach(() => {
     sendSmsMock.mockClear();
@@ -176,6 +220,10 @@ describe('connectshyft outbound call route characterization', () => {
     resetConnectShyftCommunicationAuditLogForTests();
     resetConnectShyftCommunicationReliabilityStateForTests();
 
+    inspectReadinessSpy = jest.spyOn(
+      TelephonyReadinessModule.connectShyftTelephonyReadinessServiceAsync,
+      'inspectReadiness',
+    ).mockResolvedValue(buildTelephonyReadiness());
     resolveOperatorDestinationSpy = jest.spyOn(
       OperatorDestinationResolverModule,
       'resolveOperatorDestination',
@@ -190,6 +238,7 @@ describe('connectshyft outbound call route characterization', () => {
   });
 
   afterEach(() => {
+    inspectReadinessSpy.mockRestore();
     resolveOperatorDestinationSpy.mockRestore();
     resolveSenderNumberSpy.mockRestore();
   });
@@ -433,6 +482,43 @@ describe('connectshyft outbound call route characterization', () => {
     expect(startOutboundCallMock).toHaveBeenCalledTimes(1);
   });
 
+  it('allows outbound bridge calls to continue when degraded mode is active but voice remains runnable', async () => {
+    inspectReadinessSpy.mockResolvedValueOnce(buildTelephonyReadiness({
+      operatorPhoneSource: 'orgunit_default',
+      degradedMode: true,
+      blockingReasons: [
+        {
+          code: 'CONNECTSHYFT_ORGUNIT_DEFAULT_OPERATOR_PHONE_ACTIVE',
+          category: 'orgunit_fallback',
+          message: 'Using the orgUnit fallback phone until the operator callback number is set.',
+          blocking: false,
+          channel: 'both',
+        },
+      ],
+      nextActions: [
+        {
+          code: 'SET_OPERATOR_CALLBACK_NUMBER',
+          message: 'Save a callback / forwarding number so telephony no longer depends on the orgUnit fallback phone.',
+        },
+      ],
+    }));
+
+    const app = buildApp();
+    const response = await request(app)
+      .post(`/api/v1/connectshyft/threads/${CALL_SUCCESS_THREAD_ID}/call`)
+      .set(buildCallHeaders())
+      .send({
+        providerKey: 'telnyx',
+        operatorPhoneId: '+12605550155',
+        targetPhone: '+12605550111',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.ok).toBe(true);
+    expect(response.body.code).toBe('CONNECTSHYFT_THREAD_CALL_DISPATCHED');
+    expect(startOutboundCallMock).toHaveBeenCalledTimes(1);
+  });
+
   it('preserves the current closed-thread reopen behavior for outbound calls on the same thread', async () => {
     const app = buildApp();
     const response = await request(app)
@@ -640,6 +726,117 @@ describe('connectshyft outbound call route characterization', () => {
       },
     });
     expect(startOutboundCallMock).not.toHaveBeenCalled();
+  });
+
+  it('returns the current voice-not-ready refusal shape before outbound call dispatch', async () => {
+    inspectReadinessSpy.mockResolvedValueOnce(buildTelephonyReadiness({
+      callbackNumberConfigured: false,
+      callbackNumberNormalized: false,
+      voiceReady: false,
+      bridgeCallRunnable: false,
+      smsReady: false,
+      messageDispatchRunnable: false,
+      callbackNumber: {
+        value: null,
+        rawInput: null,
+        createdAtUtc: null,
+        updatedAtUtc: null,
+        persistenceAvailable: true,
+      },
+      operatorPhoneSource: 'none',
+      degradedMode: false,
+      blockingReasons: [
+        {
+          code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
+          category: 'callback_number',
+          message: 'Voice forwarding requires an operator callback number.',
+          blocking: true,
+          channel: 'both',
+        },
+      ],
+      nextActions: [
+        {
+          code: 'SET_OPERATOR_CALLBACK_NUMBER',
+          message: 'Save a callback / forwarding number for the current operator.',
+        },
+      ],
+    }));
+
+    const app = buildApp();
+    const response = await request(app)
+      .post(`/api/v1/connectshyft/threads/${CALL_SUCCESS_THREAD_ID}/call`)
+      .set(buildCallHeaders())
+      .send({
+        providerKey: 'telnyx',
+        operatorPhoneId: '+12605550155',
+        targetPhone: '+12605550111',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_VOICE_NOT_READY',
+      message: 'Outbound bridge calls are unavailable until telephony readiness requirements are satisfied.',
+      refusalType: 'business',
+      data: {
+        context: {
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+          bypassedOrgUnitMembership: false,
+        },
+        threadId: CALL_SUCCESS_THREAD_ID,
+        providerResolution: {
+          requestedProvider: 'telnyx',
+          resolvedProvider: 'telnyx',
+          deterministic: true,
+          adapterInterfaceVersion: 'v1',
+          providerBranchingInDomain: false,
+        },
+        telephonyReadiness: {
+          voiceReady: false,
+          bridgeCallRunnable: false,
+          smsReady: false,
+          messageDispatchRunnable: false,
+          operatorPhoneSource: 'none',
+          degradedMode: false,
+          blockingReasons: [
+            expect.objectContaining({
+              code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
+            }),
+          ],
+          nextActions: [
+            expect.objectContaining({
+              code: 'SET_OPERATOR_CALLBACK_NUMBER',
+            }),
+          ],
+        },
+        uiFeedback: {
+          severity: 'warning',
+          ariaLive: 'assertive',
+          messageKey: 'connectshyft.outbound.call.not_ready',
+          presentation: 'contextual-action-feedback',
+          requiresAction: true,
+          actionLabel: 'Review telephony',
+          accessibilityHint:
+            'Resolve telephony readiness requirements before retrying the outbound call.',
+          message:
+            'Outbound bridge calls are unavailable until telephony readiness requirements are satisfied.',
+        },
+        chrome: {
+          persistentOperationsBannerVisible: false,
+          heavyOperationsDefaultLayout: false,
+        },
+        sideEffects: {
+          dispatchAttempted: false,
+          lifecycleMutationApplied: false,
+          auditPersisted: false,
+        },
+      },
+    });
+    expect(resolveOperatorDestinationSpy).not.toHaveBeenCalled();
+    expect(resolveSenderNumberSpy).not.toHaveBeenCalled();
+    expect(startOutboundCallMock).not.toHaveBeenCalled();
+    expect(startBridgeSessionMock).not.toHaveBeenCalled();
   });
 
   it('returns the current neighbor-phone-required refusal shape for outbound bridge calls', async () => {
