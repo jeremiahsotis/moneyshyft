@@ -64,6 +64,7 @@ export type EscalationConfigSaveInput = {
   orgUnitId: string;
   escalationBaselineHours?: unknown;
   recipients?: unknown;
+  defaultOperatorPhoneE164?: unknown;
   recipientDirectory: ConnectShyftEscalationRecipientDirectory;
   actorRoles: Array<string | null | undefined>;
 };
@@ -76,6 +77,7 @@ type EscalationConfigSuccessResult = {
     orgUnitId: string;
     escalationBaselineHours: number;
     recipients: ConnectShyftEscalationRecipients;
+    defaultOperatorPhoneE164: string | null;
     updatedAtUtc: string;
   };
 };
@@ -584,12 +586,19 @@ export class ConnectShyftEscalationConfigService {
       return recipientValidation;
     }
 
-    const persisted = await this.store.saveConfig(
+    const baselinePersisted = await this.store.saveConfig(
       input.tenantId,
       input.orgUnitId,
       baselineResolution.baselineHours,
       recipients,
     );
+    const persisted = Object.prototype.hasOwnProperty.call(input, 'defaultOperatorPhoneE164')
+      ? await this.store.setDefaultOperatorPhone(
+        input.tenantId,
+        input.orgUnitId,
+        input.defaultOperatorPhoneE164 as string | null,
+      )
+      : baselinePersisted;
 
     return {
       ok: true,
@@ -599,6 +608,7 @@ export class ConnectShyftEscalationConfigService {
         orgUnitId: persisted.orgUnitId,
         escalationBaselineHours: persisted.escalationBaselineHours,
         recipients: { ...persisted.recipients },
+        defaultOperatorPhoneE164: persisted.defaultOperatorPhoneE164,
         updatedAtUtc: persisted.updatedAtUtc,
       },
     };

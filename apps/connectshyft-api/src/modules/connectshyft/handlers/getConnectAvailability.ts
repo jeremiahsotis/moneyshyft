@@ -2,13 +2,29 @@ import { Request, Response } from 'express';
 import { success } from '../../../platform/envelopes/response';
 import { CAPABILITIES } from '../../../platform/rbac/capabilities';
 import { evaluateConnectShyftCapability } from '../featureFlags';
+import { connectShyftTelephonyReadinessServiceAsync } from '../telephonyReadiness';
+import { resolveConnectShyftRequestedProviderKey } from '../providerRegistry';
 import {
   requestHasAnyCapability,
+  resolveConnectShyftRequestedActorUserId,
   resolveEntitlementAwareConnectShyftFlags,
   resolveConnectShyftRouteContextDecision,
   sendConnectShyftRouteRefusal,
 } from '../http/accessContext';
 import type { ResolvedConnectShyftContext } from '../contextAccess';
+
+const resolveProviderRegistryHeaders = (
+  req: Request,
+): Record<string, string | undefined> => Object.fromEntries(
+  Object.entries(req.headers).map(([key, value]) => [
+    key,
+    Array.isArray(value)
+      ? value[0]
+      : typeof value === 'string'
+        ? value
+        : undefined,
+  ]),
+);
 
 const canAccessConnectShyftAdminSettingsByCapability = (
   req: Request,
@@ -24,6 +40,12 @@ const canAccessConnectShyftAdminSettingsByCapability = (
 const buildConnectShyftAvailabilityPayload = (input: {
   flags: Awaited<ReturnType<typeof resolveEntitlementAwareConnectShyftFlags>>['flags'];
   entitlementDecision: Awaited<ReturnType<typeof resolveEntitlementAwareConnectShyftFlags>>['entitlementDecision'];
+  telephonyReadiness?: {
+    voiceReady: boolean;
+    smsReady: boolean;
+    degradedMode: boolean;
+    blockingReasonCount: number;
+  };
 }) => ({
   flags: input.flags,
   entitlement: input.entitlementDecision
@@ -39,6 +61,11 @@ const buildConnectShyftAvailabilityPayload = (input: {
     escalation: evaluateConnectShyftCapability(input.flags, 'escalation').ok,
     webhooks: evaluateConnectShyftCapability(input.flags, 'webhooks').ok,
   },
+  ...(input.telephonyReadiness
+    ? {
+      telephonyReadiness: input.telephonyReadiness,
+    }
+    : {}),
 });
 
 const sendAvailabilityForbidden = (res: Response, data: ReturnType<typeof buildConnectShyftAvailabilityPayload>) =>
@@ -68,9 +95,27 @@ export const getConnectAvailability = async (req: Request, res: Response) => {
     return;
   }
 
+  const readiness = await connectShyftTelephonyReadinessServiceAsync.inspectReadiness({
+    tenantId: contextDecision.context.tenantId,
+    orgUnitId: contextDecision.context.orgUnitId,
+    userId: resolveConnectShyftRequestedActorUserId(req) || '',
+    requestedProvider: resolveConnectShyftRequestedProviderKey(req),
+    providerRegistryHeaders: resolveProviderRegistryHeaders(req),
+  });
+  const availabilityWithTelephony = buildConnectShyftAvailabilityPayload({
+    flags,
+    entitlementDecision,
+    telephonyReadiness: {
+      voiceReady: readiness.voiceReady,
+      smsReady: readiness.smsReady,
+      degradedMode: readiness.degradedMode,
+      blockingReasonCount: readiness.blockingReasons.length,
+    },
+  });
+
   return success(res, {
     code: 'CONNECTSHYFT_AVAILABILITY_RESOLVED',
     message: 'ConnectShyft availability state resolved',
-    data: availabilityData,
+    data: availabilityWithTelephony,
   });
 };

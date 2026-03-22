@@ -14,6 +14,7 @@ export type ConnectShyftEscalationConfigPayload = {
   orgUnitId: string | null;
   escalationBaselineHours: unknown;
   recipients: unknown;
+  defaultOperatorPhoneE164?: unknown;
 };
 
 export type ConnectShyftEscalationConfigAccessContext = {
@@ -35,11 +36,19 @@ const parseOrgUnitIdFromBody = (req: Request): string | null => {
   return normalized.length > 0 ? normalized : null;
 };
 
-const parseEscalationConfigBody = (req: Request): ConnectShyftEscalationConfigPayload => ({
-  orgUnitId: parseOrgUnitIdFromBody(req),
-  escalationBaselineHours: req.body?.escalationBaselineHours,
-  recipients: req.body?.recipients,
-});
+const parseEscalationConfigBody = (req: Request): ConnectShyftEscalationConfigPayload => {
+  const payload: ConnectShyftEscalationConfigPayload = {
+    orgUnitId: parseOrgUnitIdFromBody(req),
+    escalationBaselineHours: req.body?.escalationBaselineHours,
+    recipients: req.body?.recipients,
+  };
+
+  if (Object.prototype.hasOwnProperty.call(req.body || {}, 'defaultOperatorPhoneE164')) {
+    payload.defaultOperatorPhoneE164 = req.body?.defaultOperatorPhoneE164;
+  }
+
+  return payload;
+};
 
 const sendEscalationConfigForbidden = (res: Response) => {
   sendConnectShyftRouteRefusal(res, {

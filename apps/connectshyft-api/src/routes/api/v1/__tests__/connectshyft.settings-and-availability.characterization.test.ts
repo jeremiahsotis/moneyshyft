@@ -1,6 +1,7 @@
 // @ts-nocheck
 import express from 'express';
 import request from 'supertest';
+import * as TelephonyReadinessModule from '../../../../modules/connectshyft/telephonyReadiness';
 import { responseEnvelope } from '../../../../platform/middleware/responseEnvelope';
 import connectShyftRouter from '../connectshyft';
 
@@ -11,6 +12,55 @@ const CONNECTSHYFT_TEST_FLAGS = JSON.stringify({
   connectshyft_inbox_enabled: true,
   connectshyft_escalation_enabled: true,
   connectshyft_webhooks_enabled: true,
+});
+
+const buildTelephonyReadiness = (overrides: Record<string, unknown> = {}) => ({
+  providerReady: true,
+  providerSelectionPathActive: true,
+  webhookSignatureConfigured: true,
+  orgUnitNumberMappingReady: true,
+  voiceSupported: true,
+  callbackNumberConfigured: true,
+  callbackNumberNormalized: true,
+  voiceReady: true,
+  bridgeCallRunnable: true,
+  smsReady: false,
+  messageDispatchRunnable: false,
+  provider: {
+    requestedProvider: 'telnyx',
+    resolvedProvider: 'telnyx',
+    deterministic: true,
+    adapterInterfaceVersion: 'v1',
+  },
+  orgUnitNumberMappings: {
+    activeCount: 1,
+    mappings: [],
+  },
+  callbackNumber: {
+    value: '+12605550155',
+    rawInput: '(260) 555-0155',
+    createdAtUtc: '2026-03-22T12:00:00.000Z',
+    updatedAtUtc: '2026-03-22T12:00:00.000Z',
+    persistenceAvailable: true,
+  },
+  operatorPhoneSource: 'orgunit_default',
+  degradedMode: true,
+  blockingReasons: [
+    {
+      code: 'CONNECTSHYFT_ORGUNIT_DEFAULT_OPERATOR_PHONE_ACTIVE',
+      category: 'orgunit_fallback',
+      message: 'Using the orgUnit fallback phone until the operator callback number is set.',
+      blocking: false,
+      channel: 'both',
+    },
+  ],
+  nextActions: [
+    {
+      code: 'SET_OPERATOR_CALLBACK_NUMBER',
+      message: 'Save a callback / forwarding number so telephony no longer depends on the orgUnit fallback phone.',
+    },
+  ],
+  ...overrides,
 });
 
 type HarnessOptions = {
@@ -143,6 +193,13 @@ describe('connectshyft settings and availability route characterization', () => 
     process.env.CONNECTSHYFT_INBOX_ENABLED = 'true';
     process.env.CONNECTSHYFT_ESCALATION_ENABLED = 'true';
     process.env.CONNECTSHYFT_WEBHOOKS_ENABLED = 'true';
+  });
+
+  beforeEach(() => {
+    jest.spyOn(
+      TelephonyReadinessModule.connectShyftTelephonyReadinessServiceAsync,
+      'inspectReadiness',
+    ).mockResolvedValue(buildTelephonyReadiness());
   });
 
   afterEach(() => {
@@ -335,11 +392,17 @@ describe('connectshyft settings and availability route characterization', () => 
           escalation: true,
           webhooks: true,
         },
+        telephonyReadiness: {
+          voiceReady: true,
+          smsReady: false,
+          degradedMode: true,
+          blockingReasonCount: 1,
+        },
       },
     });
   });
 
-  it('preserves the availability response contract while telephony readiness stays on a dedicated route', async () => {
+  it('preserves the availability response contract while surfacing only summary readiness fields', async () => {
     const app = buildApp({
       defaultRole: 'ORGUNIT_ADMIN',
       defaultUserId: 'user-connectshyft-alpha-admin',
@@ -352,7 +415,12 @@ describe('connectshyft settings and availability route characterization', () => 
       }));
 
     expect(response.status).toBe(200);
-    expect(response.body.data.voiceReady).toBeUndefined();
+    expect(response.body.data.telephonyReadiness).toMatchObject({
+      voiceReady: true,
+      smsReady: false,
+      degradedMode: true,
+      blockingReasonCount: 1,
+    });
     expect(response.body.data.callbackNumberConfigured).toBeUndefined();
     expect(response.body.data.callbackNumberNormalized).toBeUndefined();
     expect(response.body.data.blockingReasons).toBeUndefined();
@@ -392,5 +460,6 @@ describe('connectshyft settings and availability route characterization', () => 
         },
       },
     });
+    expect(response.body.data.telephonyReadiness).toBeUndefined();
   });
 });

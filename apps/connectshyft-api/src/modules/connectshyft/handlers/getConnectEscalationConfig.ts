@@ -29,6 +29,7 @@ export const getConnectEscalationConfig = async (req: Request, res: Response) =>
       orgUnitId: config.orgUnitId,
       escalationBaselineHours: config.escalationBaselineHours,
       recipients: config.recipients,
+      defaultOperatorPhoneE164: config.defaultOperatorPhoneE164,
       updatedAtUtc: config.updatedAtUtc,
     },
   });

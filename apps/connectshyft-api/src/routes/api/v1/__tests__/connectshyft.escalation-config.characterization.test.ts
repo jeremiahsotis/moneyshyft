@@ -233,6 +233,7 @@ describe('connectshyft escalation config route characterization', () => {
         secondaryOrgUnitAdminUserId: 'user-connectshyft-s11-escalation-secondary',
         tenantStaffUserId: 'user-connectshyft-s11-escalation-tenant-staff',
       },
+      defaultOperatorPhoneE164: '+12605550123',
       createdAtUtc: '2026-03-20T11:00:00.000Z',
       updatedAtUtc: '2026-03-20T12:00:00.000Z',
     } as any);
@@ -255,10 +256,12 @@ describe('connectshyft escalation config route characterization', () => {
           secondaryOrgUnitAdminUserId: 'user-connectshyft-s11-escalation-secondary',
           tenantStaffUserId: 'user-connectshyft-s11-escalation-tenant-staff',
         },
+        defaultOperatorPhoneE164: '+12605550123',
         updatedAtUtc: '2026-03-20T12:00:00.000Z',
       },
     });
     expect(Object.keys(response.body.data).sort()).toEqual([
+      'defaultOperatorPhoneE164',
       'escalationBaselineHours',
       'orgUnitId',
       'recipients',
@@ -288,6 +291,7 @@ describe('connectshyft escalation config route characterization', () => {
           secondaryOrgUnitAdminUserId: 'user-connectshyft-s11-escalation-secondary',
           tenantStaffUserId: 'user-connectshyft-s11-escalation-tenant-staff',
         },
+        defaultOperatorPhoneE164: '+12605550123',
         updatedAtUtc: '2026-03-20T13:00:00.000Z',
       },
     } as any);
@@ -306,6 +310,7 @@ describe('connectshyft escalation config route characterization', () => {
           secondaryOrgUnitAdminUserId: 'user-connectshyft-s11-escalation-secondary',
           tenantStaffUserId: 'user-connectshyft-s11-escalation-tenant-staff',
         },
+        defaultOperatorPhoneE164: '+12605550123',
       });
 
     expect(response.status).toBe(200);
@@ -321,6 +326,7 @@ describe('connectshyft escalation config route characterization', () => {
           secondaryOrgUnitAdminUserId: 'user-connectshyft-s11-escalation-secondary',
           tenantStaffUserId: 'user-connectshyft-s11-escalation-tenant-staff',
         },
+        defaultOperatorPhoneE164: '+12605550123',
         updatedAtUtc: '2026-03-20T13:00:00.000Z',
       },
     });
@@ -334,6 +340,7 @@ describe('connectshyft escalation config route characterization', () => {
         secondaryOrgUnitAdminUserId: 'user-connectshyft-s11-escalation-secondary',
         tenantStaffUserId: 'user-connectshyft-s11-escalation-tenant-staff',
       },
+      defaultOperatorPhoneE164: '+12605550123',
       recipientDirectory: expect.objectContaining({
         options: expect.arrayContaining([
           expect.objectContaining({
