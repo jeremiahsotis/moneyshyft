@@ -245,6 +245,29 @@ describe('connectshyft settings and availability route characterization', () => 
     ]));
   });
 
+  it('does not currently advertise callback-number or telephony-readiness pathways', async () => {
+    const app = buildApp({
+      defaultRole: 'ORGUNIT_ADMIN',
+      defaultUserId: 'user-connectshyft-alpha-admin',
+    });
+    const response = await request(app)
+      .get('/api/v1/connectshyft/settings/navigation')
+      .set(buildHeaders({
+        role: 'ORGUNIT_ADMIN',
+        userId: 'user-connectshyft-alpha-admin',
+      }));
+
+    expect(response.status).toBe(200);
+    const optionPaths = [
+      ...response.body.data.primaryOptions.map((option: { path: string }) => option.path),
+      ...response.body.data.adminOptions.map((option: { path: string }) => option.path),
+      ...response.body.data.pathways.map((pathway: { path: string }) => pathway.path),
+    ];
+
+    expect(optionPaths.some((path) =>
+      /callback|forwarding|readiness|telephony/i.test(path))).toBe(false);
+  });
+
   it('preserves the current settings navigation access refusal payload', async () => {
     const app = buildApp({
       defaultRole: 'UNAUTHORIZED',
@@ -314,6 +337,26 @@ describe('connectshyft settings and availability route characterization', () => 
         },
       },
     });
+  });
+
+  it('does not currently expose operator callback readiness fields in availability responses', async () => {
+    const app = buildApp({
+      defaultRole: 'ORGUNIT_ADMIN',
+      defaultUserId: 'user-connectshyft-alpha-admin',
+    });
+    const response = await request(app)
+      .get('/api/v1/connectshyft/availability')
+      .set(buildHeaders({
+        role: 'ORGUNIT_ADMIN',
+        userId: 'user-connectshyft-alpha-admin',
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.voiceReady).toBeUndefined();
+    expect(response.body.data.callbackNumberConfigured).toBeUndefined();
+    expect(response.body.data.callbackNumberNormalized).toBeUndefined();
+    expect(response.body.data.blockingReasons).toBeUndefined();
+    expect(response.body.data.nextActions).toBeUndefined();
   });
 
   it('preserves the availability refusal payload for callers without admin settings access', async () => {
