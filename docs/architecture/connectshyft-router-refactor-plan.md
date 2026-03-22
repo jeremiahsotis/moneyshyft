@@ -8,12 +8,14 @@
 - Slice 12 PeopleCore persistence foundation and identity seam complete.
 - Slice 13 PeopleCore ambiguity precedence documentation and handler-preservation rules complete.
 - Slice 14 operational ambiguity visibility and review-status documentation complete.
+- Slice 15 or later remains the earliest opening for true resolver operations.
+- Slice 16 telephony runtime stabilization complete.
 
 ## Purpose
 
 This document records the completed extraction of `apps/connectshyft-api/src/routes/api/v1/connectshyft.ts` into a thin route-registration shell with module-owned handlers and helper boundaries.
 
-It also captures the post-Slice 13 stop point so future work does not treat the extraction sequence as still in progress.
+It also captures the post-Slice 16 stop point so future work does not treat the extraction sequence as still in progress or mistake telephony stabilization for a fresh extraction program.
 
 ## Non-negotiable rules
 
@@ -25,6 +27,7 @@ It also captures the post-Slice 13 stop point so future work does not treat the 
 6. Treat Slice 11 as stabilization and architecture lock, not behavior redesign.
 7. Treat Slice 12 seam work as identity foundation behind the extracted handlers, not as a reason to re-thicken `connectshyft.ts`.
 8. Treat Slice 13 as authority refinement behind the seam, not as reconciliation or router redesign.
+9. Treat Slice 16 as telephony stabilization and boundary lock, not telephony expansion or provider redesign.
 
 ## Completed sequence
 
@@ -291,11 +294,32 @@ Slice 13 adds ambiguity precedence behind that extracted surface, not a router r
 
 Slice 14 adds a narrow operational ambiguity surface, not reconciliation or a router redesign.
 
+Slice 15 or later remains the earliest opening for true resolver operations, not a reason to rewrite telephony behavior during stabilization.
+
+Slice 16 stabilizes the remaining telephony runtime seams without claiming that telephony is fully absent from `connectshyft.ts`.
+
+## Slice 16 Telephony Lock
+
+Slice 16 documents the current telephony ownership boundary rather than inventing a new one.
+
+The current lock is:
+
+- telephony route registration still lives in `connectshyft.ts`
+- outbound call and message entry points still delegate through the existing named handlers
+- inbound webhook routes still delegate through the existing named handlers and `http/inboundWebhookContext.ts`
+- the inbound webhook core executor and synthetic bridge-thread detail fallback still remain in `connectshyft.ts`
+- provider registry, sender-number resolution, SMS override persistence, bridge-session persistence, identity lookup, neighbor lifecycle, canonical events, correlation mappings, reliability, and audit logging remain module-owned
+- ambiguity rules remain governed by Slices 13 through 15
+- PeopleCore does not replace the ConnectShyft neighbor runtime in this slice
+
+See `docs/architecture/connectshyft-telephony-runtime-notes.md` for the current telephony runtime note that future telephony audit or launch-readiness work should start from.
+
 ## Next intentional work
 
-Next work after Slice 14 should be:
+Next work after Slice 16 should be:
 
 - true resolver operations no earlier than Slice 15
+- telephony audit or launch-readiness review that starts from the current runtime note and preserves current route envelopes
 - continued model-alignment work without changing current route envelopes lightly
 - not reconciliation or crosswalk implementation by default
 - not Application Shell by default

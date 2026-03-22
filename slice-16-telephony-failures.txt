@@ -1,0 +1,15 @@
+=== FAILURES ONLY: TELEPHONY TARGETS ===
+1:FAIL src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts
+13:  ● connectshyft bridge webhook flow › loads persisted bridge state from a fresh thread detail read after completion
+52:PASS src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts
+81:PASS src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts
+98:PASS src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts
+110:PASS src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts
+136:PASS src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts
+143:PASS src/modules/connectshyft/__tests__/numberMappings.test.ts
+162:PASS src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts
+180:PASS src/modules/connectshyft/__tests__/inboundVoice.test.ts
+190:PASS src/modules/connectshyft/__tests__/inboundSms.test.ts
+196:PASS src/modules/connectshyft/__tests__/senderNumberResolver.test.ts
+203:Test Suites: 1 failed, 1 skipped, 10 passed, 11 of 12 total
+204:Tests:       1 failed, 7 skipped, 116 passed, 124 total
