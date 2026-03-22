@@ -521,7 +521,7 @@ describe('connectshyft identity-match route', () => {
     }));
   });
 
-  it('does not expose the identity ambiguity reviewed-status route before the checkpoint 5 implementation lands', async () => {
+  it('returns the current tenant-privileged refusal for identity ambiguity review updates from the identity-match harness', async () => {
     const app = buildApp();
     const response = await request(app)
       .patch('/api/v1/connectshyft/identity-ambiguities/ambiguity-event-1')
@@ -530,7 +530,12 @@ describe('connectshyft identity-match route', () => {
         status: 'reviewed',
       });
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_UPDATE_FORBIDDEN',
+      refusalType: 'business',
+    });
   });
 
 });

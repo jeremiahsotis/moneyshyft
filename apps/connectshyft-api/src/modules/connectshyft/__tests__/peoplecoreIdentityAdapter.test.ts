@@ -1,30 +1,8 @@
 import { PeopleCorePersistenceUnavailableError } from '../../peoplecore/service';
+import * as ambiguityEventsModule from '../ambiguityEvents';
 import { AsyncConnectShyftPeopleCoreIdentityBoundaryAdapter } from '../peoplecoreIdentityAdapter';
 import type { ConnectShyftIdentityBoundaryNeighbor } from '../identityBoundary';
-
-jest.mock('../../../utils/logger', () => ({
-  __esModule: true,
-  default: {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-  },
-}));
-
-jest.mock('../ambiguityEvents', () => ({
-  createIdentityAmbiguityEvent: jest.fn(),
-}), { virtual: true });
-
-const ambiguityEventsModule = jest.requireMock('../ambiguityEvents') as {
-  createIdentityAmbiguityEvent: jest.Mock;
-};
-const loggerModule = jest.requireMock('../../../utils/logger') as {
-  default: {
-    info: jest.Mock;
-    warn: jest.Mock;
-    error: jest.Mock;
-  };
-};
+import logger from '../../../utils/logger';
 
 const TIMESTAMP = '2026-03-21T12:00:00.000Z';
 
@@ -77,9 +55,22 @@ const buildContactPointLink = (contactPointId: string, subjectId: string) => ({
 });
 
 describe('connectshyft peoplecore identity adapter', () => {
+  let createIdentityAmbiguityEventSpy: jest.SpyInstance;
+  let loggerWarnSpy: jest.SpyInstance;
+
   beforeEach(() => {
-    ambiguityEventsModule.createIdentityAmbiguityEvent.mockReset();
-    loggerModule.default.warn.mockReset();
+    createIdentityAmbiguityEventSpy = jest.spyOn(
+      ambiguityEventsModule,
+      'createIdentityAmbiguityEvent',
+    ).mockResolvedValue({
+      id: 'ambiguity-event-test',
+    } as any);
+    loggerWarnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => logger as any);
+  });
+
+  afterEach(() => {
+    createIdentityAmbiguityEventSpy.mockRestore();
+    loggerWarnSpy.mockRestore();
   });
 
   it('creates provisional PeopleCore foundation on no-match without changing the ConnectShyft result', async () => {
@@ -467,7 +458,7 @@ describe('connectshyft peoplecore identity adapter', () => {
   });
 
   it('logs and continues when ambiguity-event persistence fails', async () => {
-    ambiguityEventsModule.createIdentityAmbiguityEvent.mockRejectedValueOnce(
+    createIdentityAmbiguityEventSpy.mockRejectedValueOnce(
       new Error('ambiguity event persistence unavailable'),
     );
 
@@ -516,7 +507,7 @@ describe('connectshyft peoplecore identity adapter', () => {
       },
     });
 
-    expect(loggerModule.default.warn).toHaveBeenCalledWith(
+    expect(loggerWarnSpy).toHaveBeenCalledWith(
       'ConnectShyft identity ambiguity event persistence failed',
       expect.objectContaining({
         tenantId: 'tenant-a',
