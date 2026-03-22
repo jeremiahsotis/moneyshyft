@@ -727,7 +727,7 @@ describe('connectshyft bridge webhook flow', () => {
   })
 
   it('loads persisted bridge state from a fresh thread detail read after completion', async () => {
-    await invokeRoute({
+    const startResponse = await invokeRoute({
       url: '/threads/thread-f1-unclaimed-1001/call',
       headers: buildHeaders(),
       body: {
@@ -736,6 +736,10 @@ describe('connectshyft bridge webhook flow', () => {
         targetPhone: '+12605550111',
       },
     })
+    const initialBridgeSessionId = (startResponse.body as any)?.data?.bridgeSession?.bridgeSessionId
+
+    expect(startResponse.status).toBe(200)
+    expect(initialBridgeSessionId).toEqual(expect.any(String))
 
     await invokeRoute({
       url: '/webhooks/inbound',
@@ -759,7 +763,7 @@ describe('connectshyft bridge webhook flow', () => {
         providerLegId: 'provider-leg-neighbor-thread-f1-unclaimed-1001',
       },
     })
-    await invokeRoute({
+    const completed = await invokeRoute({
       url: '/webhooks/inbound',
       headers: buildHeaders(),
       body: {
@@ -772,19 +776,26 @@ describe('connectshyft bridge webhook flow', () => {
       },
     })
 
-    const detailResponse = await invokeRoute({
+    expect(completed.status).toBe(200)
+
+    const firstDetailResponse = await invokeRoute({
+      method: 'GET',
+      url: '/threads/thread-f1-unclaimed-1001',
+      headers: buildHeaders(),
+    })
+    const secondDetailResponse = await invokeRoute({
       method: 'GET',
       url: '/threads/thread-f1-unclaimed-1001',
       headers: buildHeaders(),
     })
 
-    expect(detailResponse.status).toBe(200)
-    expect(detailResponse.body).toMatchObject({
+    expect(firstDetailResponse.status).toBe(200)
+    expect(firstDetailResponse.body).toMatchObject({
       ok: true,
       code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
       data: {
         bridgeSession: {
-          bridgeSessionId: expect.any(String),
+          bridgeSessionId: initialBridgeSessionId,
           status: 'completed',
           sessionState: 'completed',
           operatorLegState: 'completed',
@@ -794,5 +805,24 @@ describe('connectshyft bridge webhook flow', () => {
         },
       },
     })
+    expect(secondDetailResponse.status).toBe(200)
+    expect(secondDetailResponse.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+      data: {
+        bridgeSession: {
+          bridgeSessionId: initialBridgeSessionId,
+          status: 'completed',
+          sessionState: 'completed',
+          operatorLegState: 'completed',
+          neighborLegState: 'completed',
+          failureCode: null,
+          failureMessage: null,
+        },
+      },
+    })
+    expect((secondDetailResponse.body as any)?.data?.bridgeSession).toMatchObject(
+      (firstDetailResponse.body as any)?.data?.bridgeSession,
+    )
   })
 })
