@@ -4294,7 +4294,125 @@ router.patch('/identity-ambiguities/:ambiguityEventId', async (req: Request, res
 
 router.get('/threads/:threadId/timeline', getConnectThreadTimeline);
 
-router.get('/threads/:threadId', getConnectThreadDetail);
+const getConnectThreadDetailWithSyntheticFallback = async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'inbox')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  if (!enforceThreadViewCapability(req, res, context)) {
+    return;
+  }
+
+  const threadId = parseThreadIdParam(req);
+  const syntheticThread = threadId
+    ? resolveSyntheticLifecycleThread({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+    })
+    : null;
+
+  if (!threadId || !syntheticThread) {
+    await getConnectThreadDetail(req, res);
+    return;
+  }
+
+  let thread = buildSyntheticThreadDetailRecord({
+    descriptor: syntheticThread,
+    threadId,
+    actorUserId: resolveConnectShyftRequestedActorUserId(req),
+    requestedRole: resolveConnectShyftRequestedRole(req),
+  });
+  thread = {
+    ...thread,
+    actions: thread.neighborDeleted
+      ? []
+      : [...resolveConnectShyftThreadActions(thread.state)],
+  };
+
+  const timeline = await listCanonicalThreadEvents({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    threadId,
+    limit: CONNECTSHYFT_CANONICAL_EVENTS_MAX_LIMIT,
+  });
+  const shouldSynthesizeVoicemailTimeline = thread.voicemailIndicator
+    || threadId.toLowerCase().includes('voicemail');
+  const resolvedTimeline = timeline.length > 0
+    ? timeline
+    : shouldSynthesizeVoicemailTimeline
+      ? [
+        {
+          eventId: `${thread.threadId}-voicemail-inline`,
+          aggregateId: thread.threadId,
+          aggregateType: 'Thread' as const,
+          eventType: 'connectshyft.voicemail.inline',
+          payload: {
+            eventName: 'connectshyft.voicemail.inline',
+            summary: thread.display?.voicemailLabel || thread.voicemailLabel || 'Voicemail received',
+            metadata: {
+              firstClass: true,
+            },
+          },
+          occurredAtUtc: thread.lastActivityAtUtc || nowIsoUtc(),
+          eventName: 'connectshyft.voicemail.inline',
+          metadata: {
+            firstClass: true,
+          },
+          conversationType: 'voicemail' as const,
+          renderMode: 'inline' as const,
+          firstClass: true,
+        },
+      ]
+      : [];
+  const voicemailArtifacts = resolveVoicemailArtifactsFromTimeline(resolvedTimeline);
+  const threadWithCanonicalTimeline = {
+    ...thread,
+    providerNeutral: true as const,
+    statusDerivedFromCanonicalEvents: true as const,
+    timeline: resolvedTimeline,
+  };
+  const activeBridgeSession = await loadConnectShyftBridgeAggregateByThreadId({
+    tenantId: context.tenantId,
+    threadId,
+  });
+
+  return success(res, {
+    code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+    message: 'ConnectShyft thread detail loaded',
+    data: {
+      context: {
+        tenantId: context.tenantId,
+        orgUnitId: context.orgUnitId,
+        bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
+      },
+      thread: threadWithCanonicalTimeline,
+      bridgeSession: activeBridgeSession
+        ? buildProviderNeutralBridgeSessionState(activeBridgeSession)
+        : null,
+      voicemailArtifacts,
+      actions: threadWithCanonicalTimeline.actions,
+      actionMatrix: {
+        lockedByState: true,
+      },
+      outboundPolicy: {
+        hiddenPolicyPaths: [],
+        explicitActionSurface: true,
+      },
+      latencyBudgetsMs: {
+        p95: CONNECTSHYFT_INBOX_P95_BUDGET_MS,
+        p99: CONNECTSHYFT_INBOX_P99_BUDGET_MS,
+      },
+    },
+  });
+};
+
+router.get('/threads/:threadId', getConnectThreadDetailWithSyntheticFallback);
 
 router.post('/threads', async (req: Request, res: Response) => {
   if (!await enforceCapability(req, res, 'inbox')) {
