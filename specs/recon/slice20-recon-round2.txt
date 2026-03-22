@@ -1,0 +1,378 @@
+Last login: Sun Mar 22 18:04:02 on ttys016
+jeremiahotis@Jeremiahs-MacBook-Air connectshyft % cd ~/projects/shyftunity
+
+printf '\n=== GIT ===\n'
+git rev-parse --abbrev-ref HEAD
+git rev-parse HEAD
+git status --short
+
+printf '\n=== SLICE 19 DIFF ===\n'
+git diff --stat origin/codex/dev...HEAD
+git diff --name-only origin/codex/dev...HEAD
+
+printf '\n=== TELEPHONY / READINESS / CALLBACK / ESCALATION DELTA ===\n'
+git diff origin/codex/dev...HEAD -- \
+  apps/connectshyft-api/src/routes/api/v1/connectshyft.ts \
+  apps/connectshyft-api/src/modules/connectshyft \
+  apps/connectshyft-api/src/routes/api/v1/__tests__ \
+  apps/connectshyft-web/src/features/connectshyft \
+  apps/connectshyft-web/src/views/ConnectShyft \
+  shared/database/migrations
+jeremiahotis@Jeremiahs-MacBook-Air connectshyft % clear
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+jeremiahotis@Jeremiahs-MacBook-Air connectshyft % printf '\n=== GIT ===\n'
+git rev-parse --abbrev-ref HEAD
+git rev-parse HEAD
+git status --short
+
+printf '\n=== SLICE 19 DIFF ===\n'
+git diff --stat origin/codex/dev...HEAD
+git diff --name-only origin/codex/dev...HEAD
+
+printf '\n=== TELEPHONY / READINESS / CALLBACK / ESCALATION DELTA ===\n'
+git diff origin/codex/dev...HEAD -- \
+  apps/connectshyft-api/src/routes/api/v1/connectshyft.ts \
+  apps/connectshyft-api/src/modules/connectshyft \
+  apps/connectshyft-api/src/routes/api/v1/__tests__ \
+  apps/connectshyft-web/src/features/connectshyft \
+  apps/connectshyft-web/src/views/ConnectShyft \
+  shared/database/migrations
+
+=== GIT ===
+codex/dev
+11a5a408c42fea0c3b21c9174de2eeedf6805a0e
+?? specs/recon/slice20-production-recon.txt
+?? specs/recon/slice20-recon.txt
+
+=== SLICE 19 DIFF ===
+
+=== TELEPHONY / READINESS / CALLBACK / ESCALATION DELTA ===
+jeremiahotis@Jeremiahs-MacBook-Air connectshyft % pnpm --dir apps/connectshyft-api exec jest --runInBand --config jest.config.js --runTestsByPath \
+  src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.escalation-config.characterization.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts \
+  src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts
+ PASS  src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.ts
+ PASS  src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts
+  ● Console
+
+    console.log
+      info: ConnectShyft telephony runtime outcome {"actorUserId":"user-connectshyft-f1-operator","claimedByUserId":null,"operatorDestinationResolved":true,"operatorDestinationSource":"actor_user","orgUnitId":"org-connectshyft-f1-east","outcome":"bridged","senderNumber":"+12605550191","service":"connectshyft-api","tenantId":"tenant-connectshyft-f1","threadId":"thread-f1-unclaimed-1001","timestamp":"2026-03-22T22:16:36.999Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      info: ConnectShyft telephony runtime outcome {"actorUserId":"user-connectshyft-f1-operator","claimedByUserId":null,"operatorDestinationResolved":true,"operatorDestinationSource":"actor_user","orgUnitId":"org-connectshyft-f1-east","outcome":"bridged","senderNumber":"+12605550191","service":"connectshyft-api","tenantId":"tenant-connectshyft-f1","threadId":"thread-f1-unclaimed-1001","timestamp":"2026-03-22T22:16:37.015Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      info: ConnectShyft telephony runtime outcome {"actorUserId":"user-connectshyft-f1-operator","claimedByUserId":null,"operatorDestinationResolved":true,"operatorDestinationSource":"actor_user","orgUnitId":"org-connectshyft-f1-east","outcome":"bridged","senderNumber":"+12605550191","service":"connectshyft-api","tenantId":"tenant-connectshyft-f1","threadId":"thread-f1-closed-1003","timestamp":"2026-03-22T22:16:37.024Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      info: ConnectShyft telephony runtime outcome {"actorUserId":"user-connectshyft-f1-operator","claimedByUserId":null,"operatorDestinationResolved":false,"operatorDestinationSource":"none","orgUnitId":"org-connectshyft-f1-east","outcome":"refused","senderNumber":null,"service":"connectshyft-api","tenantId":"tenant-connectshyft-f1","threadId":"thread-f1-unclaimed-1001","timestamp":"2026-03-22T22:16:37.029Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      info: ConnectShyft telephony runtime outcome {"actorUserId":"user-connectshyft-f1-operator","claimedByUserId":null,"operatorDestinationResolved":true,"operatorDestinationSource":"actor_user","orgUnitId":"org-connectshyft-f1-east","outcome":"refused","senderNumber":null,"service":"connectshyft-api","tenantId":"tenant-connectshyft-f1","threadId":"thread-f1-unclaimed-1001","timestamp":"2026-03-22T22:16:37.040Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      info: ConnectShyft telephony runtime outcome {"actorUserId":"user-connectshyft-f1-operator","claimedByUserId":null,"operatorDestinationResolved":true,"operatorDestinationSource":"actor_user","orgUnitId":"org-connectshyft-f1-east","outcome":"refused","senderNumber":null,"service":"connectshyft-api","tenantId":"tenant-connectshyft-f1","threadId":"thread-f1-unclaimed-1001","timestamp":"2026-03-22T22:16:37.045Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+ PASS  src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.ts
+ PASS  src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.ts
+ PASS  src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts
+ PASS  src/routes/api/v1/__tests__/connectshyft.escalation-config.characterization.test.ts
+ PASS  src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts
+ FAIL  src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts (35.302 s)
+  ● connectshyft bridge webhook flow › creates a persisted bridge session on call start with operator-first dialing
+
+    error: role "postgres" does not exist
+
+      at parseErrorMessage (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:394:9)
+      at Parser.handlePacket (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:212:19)
+      at Parser.parse (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:105:30)
+      at Socket.<anonymous> (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/index.ts:7:48)
+
+  ● connectshyft bridge webhook flow › creates a persisted bridge session on call start with operator-first dialing
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      260 |
+      261 |   afterAll(() => {
+    > 262 |     process.env.NODE_ENV = previousNodeEnv
+          |     ^
+      263 |     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = previousEnableFlags
+      264 |   })
+      265 |
+
+      at src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:262:5
+      at Object.<anonymous> (src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:211:1)
+
+  ● connectshyft bridge webhook flow › refuses outbound call start when sender alignment cannot resolve to an active mapped number
+
+    error: role "postgres" does not exist
+
+      at parseErrorMessage (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:394:9)
+      at Parser.handlePacket (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:212:19)
+      at Parser.parse (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:105:30)
+      at Socket.<anonymous> (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/index.ts:7:48)
+
+  ● connectshyft bridge webhook flow › refuses outbound call start when sender alignment cannot resolve to an active mapped number
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      305 |       },
+      306 |     })
+    > 307 |     expect(startOutboundCallMock).toHaveBeenCalledTimes(1)
+          |     ^
+      308 |     expect(startOutboundCallMock).toHaveBeenCalledWith(expect.objectContaining({
+      309 |       targetPhone: '+12605550155',
+      310 |     }))
+
+      at src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:307:5
+      at Object.<anonymous> (src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:211:1)
+
+  ● connectshyft bridge webhook flow › advances operator answered to neighbor dialing and bridges on neighbor answered
+
+    error: role "postgres" does not exist
+
+      at parseErrorMessage (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:394:9)
+      at Parser.handlePacket (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:212:19)
+      at Parser.parse (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:105:30)
+      at Socket.<anonymous> (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/index.ts:7:48)
+
+  ● connectshyft bridge webhook flow › advances operator answered to neighbor dialing and bridges on neighbor answered
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      386 |       threadId: 'thread-f1-unclaimed-1001',
+      387 |       eventType: 'call.answered',
+    > 388 |       providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
+          |     ^
+      389 |     }
+      390 |     const rawBody = JSON.stringify(payload)
+      391 |
+
+      at src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:388:5
+      at Object.<anonymous> (src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:211:1)
+
+  ● connectshyft bridge webhook flow › suppresses duplicate webhook receipts before bridge side effects are re-applied
+
+    error: role "postgres" does not exist
+
+      at parseErrorMessage (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:394:9)
+      at Parser.handlePacket (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:212:19)
+      at Parser.parse (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:105:30)
+      at Socket.<anonymous> (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/index.ts:7:48)
+
+  ● connectshyft bridge webhook flow › suppresses duplicate webhook receipts before bridge side effects are re-applied
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      478 |           status: 'bridged',
+      479 |           sessionState: 'bridged',
+    > 480 |           operatorLegState: 'answered',
+          |     ^
+      481 |           neighborLegState: 'answered',
+      482 |           failureCode: null,
+      483 |           failureMessage: null,
+
+      at src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:480:5
+      at Object.<anonymous> (src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:211:1)
+
+  ● connectshyft bridge webhook flow › persists terminal completion without repeating side effects on duplicate webhook delivery
+
+    error: role "postgres" does not exist
+
+      at parseErrorMessage (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:394:9)
+      at Parser.handlePacket (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:212:19)
+      at Parser.parse (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:105:30)
+      at Socket.<anonymous> (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/index.ts:7:48)
+
+  ● connectshyft bridge webhook flow › persists terminal completion without repeating side effects on duplicate webhook delivery
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      549 |           sessionState: 'neighbor_dialing',
+      550 |           operatorLegState: 'answered',
+    > 551 |           neighborLegState: 'ringing',
+          |     ^
+      552 |         },
+      553 |       },
+      554 |     })
+
+      at src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:551:5
+      at Object.<anonymous> (src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:211:1)
+
+  ● connectshyft bridge webhook flow › persists terminal bridge failure when the neighbor leg fails before bridge completion
+
+    error: role "postgres" does not exist
+
+      at parseErrorMessage (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:394:9)
+      at Parser.handlePacket (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:212:19)
+      at Parser.parse (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:105:30)
+      at Socket.<anonymous> (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/index.ts:7:48)
+
+  ● connectshyft bridge webhook flow › persists terminal bridge failure when the neighbor leg fails before bridge completion
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      642 |           status: 'completed',
+      643 |           sessionState: 'completed',
+    > 644 |           operatorLegState: 'completed',
+          |     ^
+      645 |           neighborLegState: 'completed',
+      646 |           failureCode: null,
+      647 |           failureMessage: null,
+
+      at src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:644:5
+      at Object.<anonymous> (src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:211:1)
+
+  ● connectshyft bridge webhook flow › loads persisted bridge state from a fresh thread detail read after completion
+
+    error: role "postgres" does not exist
+
+      at parseErrorMessage (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:394:9)
+      at Parser.handlePacket (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:212:19)
+      at Parser.parse (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/parser.ts:105:30)
+      at Socket.<anonymous> (../../node_modules/.pnpm/pg-protocol@1.13.0/node_modules/pg-protocol/src/index.ts:7:48)
+
+  ● connectshyft bridge webhook flow › loads persisted bridge state from a fresh thread detail read after completion
+
+    thrown: "Exceeded timeout of 5000 ms for a test.
+    Add a timeout value to this test to increase the timeout, if this is a long-running test. See https://jestjs.io/docs/api#testname-fn-timeout."
+
+      700 |       body: {
+      701 |         tenantId: 'tenant-connectshyft-f1',
+    > 702 |         orgUnitId: 'org-connectshyft-f1-east',
+          |     ^
+      703 |         threadId: 'thread-f1-unclaimed-1001',
+      704 |         eventType: 'call.failed',
+      705 |         providerLegId: 'provider-leg-neighbor-thread-f1-unclaimed-1001',
+
+      at src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:702:5
+      at Object.<anonymous> (src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts:211:1)
+
+Test Suites: 1 failed, 7 passed, 8 total
+Tests:       7 failed, 55 passed, 62 total
+Snapshots:   0 total
+Time:        39.716 s
+Ran all test suites within paths "src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.ts", "src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts", "src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts", "src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.ts", "src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.ts", "src/routes/api/v1/__tests__/connectshyft.escalation-config.characterization.test.ts", "src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts", "src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts".
+jeremiahotis@Jeremiahs-MacBook-Air connectshyft % pnpm nx run connectshyft-api:test
+
+> moneyshyft-monorepo@0.3.6 nx /Users/jeremiahotis/projects/connectshyft
+> node scripts/nx-shim.mjs "run" "connectshyft-api:test"
+
+
+> connectshyft-api@0.3.6 test:integration
+> NODE_ENV=test CONNECTSHYFT_MINIMAL_APP=1 jest --runInBand --config jest.config.js --runTestsByPath ../../tests/integration/connectshyft-api/health.test.ts ../../tests/integration/connectshyft-api/work-intents.test.ts ../../tests/integration/peoplecore/contact-points.test.ts ../../tests/integration/peoplecore/identity-decision.test.ts ../../tests/integration/peoplecore/resolver-reviews.test.ts
+
+ PASS  ../../tests/integration/peoplecore/contact-points.test.ts
+  ● Console
+
+    console.log
+      info: POST /people/contact-points {"service":"connectshyft-api","timestamp":"2026-03-22T22:17:46.456Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      info: GET /people/contact-points {"service":"connectshyft-api","timestamp":"2026-03-22T22:17:46.468Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      info: POST /people/contact-point-links {"service":"connectshyft-api","timestamp":"2026-03-22T22:17:46.472Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+ PASS  ../../tests/integration/peoplecore/identity-decision.test.ts
+  ● Console
+
+    console.log
+      info: POST /people/identity/decision {"service":"connectshyft-api","timestamp":"2026-03-22T22:17:46.603Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      info: POST /people/identity/decision {"service":"connectshyft-api","timestamp":"2026-03-22T22:17:46.609Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+ PASS  ../../tests/integration/connectshyft-api/health.test.ts
+  ● Console
+
+    console.log
+      info: GET /health {"service":"connectshyft-api","timestamp":"2026-03-22T22:17:46.722Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+ PASS  ../../tests/integration/peoplecore/resolver-reviews.test.ts
+  ● Console
+
+    console.log
+      info: POST /people/resolver-reviews {"service":"connectshyft-api","timestamp":"2026-03-22T22:17:46.838Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+    console.log
+      info: GET /people/resolver-reviews {"service":"connectshyft-api","timestamp":"2026-03-22T22:17:46.841Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+ PASS  ../../tests/integration/connectshyft-api/work-intents.test.ts
+  ● Console
+
+    console.log
+      info: POST /work-intents {"service":"connectshyft-api","timestamp":"2026-03-22T22:17:46.953Z"}
+
+      at Console.log (../../node_modules/.pnpm/winston@3.19.0/node_modules/winston/lib/winston/transports/console.js:87:23)
+
+
+Test Suites: 5 passed, 5 total
+Tests:       6 passed, 6 total
+Snapshots:   0 total
+Time:        2.168 s
+Ran all test suites within paths "../../tests/integration/connectshyft-api/health.test.ts", "../../tests/integration/connectshyft-api/work-intents.test.ts", "../../tests/integration/peoplecore/contact-points.test.ts", "../../tests/integration/peoplecore/identity-decision.test.ts", "../../tests/integration/peoplecore/resolver-reviews.test.ts".
+jeremiahotis@Jeremiahs-MacBook-Air connectshyft % 

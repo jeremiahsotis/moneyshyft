@@ -1,0 +1,1440 @@
+Last login: Sun Mar 22 17:50:53 on ttys011
+jeremiahotis@Jeremiahs-MacBook-Air connectshyft % rg -n "Router\\(|router\\.(get|post|put|patch|delete)|telephony-readiness|/threads/:threadId/call" apps/connectshyft-api/src/routes apps/connectshyft-api/src/modules/connectshyft
+apps/connectshyft-api/src/modules/connectshyft/telephonyReadiness.ts
+140:    originalUrl: '/api/v1/connectshyft/telephony-readiness',
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md
+9:    - `POST /threads/:threadId/call`
+44:- `POST /threads/:threadId/call` still returns the existing success and refusal envelopes
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.ts
+266:      .get('/api/v1/connectshyft/telephony-readiness')
+363:      .get('/api/v1/connectshyft/telephony-readiness')
+460:      .get('/api/v1/connectshyft/telephony-readiness')
+591:      .get('/api/v1/connectshyft/telephony-readiness')
+
+apps/connectshyft-api/src/routes/api/v1/connectshyft/ops.routes.ts
+8:const router = Router();
+10:router.get('/identity/:phone', getConnectOpsIdentityVisibility);
+11:router.get('/threads/:threadId', getConnectOpsThreadVisibility);
+12:router.get('/bridge/:bridgeId', getConnectOpsBridgeVisibility);
+
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts
+192:const router = Router();
+4002:router.get('/settings/navigation', getConnectSettingsNavigation);
+4004:router.get('/availability', getConnectAvailability);
+4006:router.get('/telephony-readiness', getConnectTelephonyReadiness);
+4008:router.get('/operator/callback-number', getConnectOperatorCallbackNumber);
+4010:router.put('/operator/callback-number', putConnectOperatorCallbackNumber);
+4012:router.get('/context', getConnectContext);
+4014:router.get('/inbox', getConnectInbox);
+4018:router.post('/neighbors', postConnectNeighborCreate);
+4020:router.get('/neighbors', getConnectNeighbors);
+4022:router.get('/neighbors/:neighborId', getConnectNeighborDetail);
+4024:router.delete('/neighbors/:neighborId', deleteConnectNeighbor);
+4026:router.put('/neighbors/:neighborId', putConnectNeighbor);
+4028:router.post('/neighbors/identity-match', postConnectNeighborIdentityMatch);
+4030:router.post('/neighbors/merge', postConnectNeighborMerge);
+4032:router.get('/numbers', getConnectNumberMappings);
+4034:router.post('/numbers', postConnectNumberMapping);
+4036:router.put('/numbers/:mappingId', putConnectNumberMapping);
+4038:router.get('/admin/webhook-receipts/metrics', getConnectWebhookReceiptMetrics);
+4040:router.post('/admin/webhook-receipts/cleanup', postConnectWebhookReceiptCleanup);
+4042:router.get('/escalation/recipients', getConnectEscalationRecipients);
+4044:router.get('/escalation/config', getConnectEscalationConfig);
+4046:router.put('/escalation/config', putConnectEscalationConfig);
+4048:router.post('/internal/escalation/evaluate', async (req: Request, res: Response) => {
+4149:router.get('/internal/threads/due', async (req: Request, res: Response) => {
+4194:router.get('/events', async (req: Request, res: Response) => {
+4235:router.get('/identity-ambiguities', async (req: Request, res: Response) => {
+4277:router.patch('/identity-ambiguities/:ambiguityEventId', async (req: Request, res: Response) => {
+4342:router.get('/threads/:threadId/timeline', getConnectThreadTimeline);
+4468:router.get('/threads/:threadId', getConnectThreadDetailWithSyntheticFallback);
+4470:router.post('/threads', async (req: Request, res: Response) => {
+7797:router.post('/threads/:threadId/claim', postConnectThreadClaim);
+7799:router.post('/threads/:threadId/takeover', postConnectThreadTakeover);
+7801:router.post('/threads/:threadId/close', postConnectThreadClose);
+7803:router.post('/threads/:threadId/call', postConnectThreadCall);
+7805:router.post('/threads/:threadId/messages', postConnectThreadMessage);
+7807:router.post('/webhooks/inbound', postConnectWebhookInbound);
+7809:router.post('/webhooks/sms', postConnectWebhookSms);
+jeremiahotis@Jeremiahs-MacBook-Air connectshyft % rg -n "postConnect.*call|thread.*call|bridge.*session|inboundVoice|operatorDestinationResolver|telephonyReadiness|operatorCallbackNumbers|escalationConfig" apps/connectshyft-api/src
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts
+3:import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
+5:import * as TelephonyReadinessModule from '../../../../modules/connectshyft/telephonyReadiness';
+246:  it('returns the current outbound call success envelope and bridge-session response shape', async () => {
+249:      .post(`/api/v1/connectshyft/threads/${CALL_SUCCESS_THREAD_ID}/call`)
+335:            eventName: 'connectshyft.thread.outbound_call_dispatched',
+336:            lifecycleEvent: 'connectshyft.thread.outbound_call_dispatched',
+397:          eventName: 'connectshyft.thread.outbound_call_dispatched',
+413:          eventName: 'connectshyft.thread.outbound_call_dispatched',
+430:            eventName: 'connectshyft.thread.outbound_call_dispatched',
+433:            eventName: 'connectshyft.thread.outbound_call_dispatched',
+508:      .post(`/api/v1/connectshyft/threads/${CALL_SUCCESS_THREAD_ID}/call`)
+522:  it('preserves the current closed-thread reopen behavior for outbound calls on the same thread', async () => {
+525:      .post(`/api/v1/connectshyft/threads/${CALL_CLOSED_THREAD_ID}/call`)
+585:            lifecycleEvent: 'connectshyft.thread.outbound_call_dispatched',
+630:            eventName: 'connectshyft.thread.outbound_call_dispatched',
+650:            eventName: 'connectshyft.thread.outbound_call_dispatched',
+694:      .post(`/api/v1/connectshyft/threads/${CALL_SUCCESS_THREAD_ID}/call`)
+767:      .post(`/api/v1/connectshyft/threads/${CALL_SUCCESS_THREAD_ID}/call`)
+795:        telephonyReadiness: {
+845:      .post(`/api/v1/connectshyft/threads/${CALL_SUCCESS_THREAD_ID}/call`)
+891:      .post(`/api/v1/connectshyft/threads/${CALL_SUCCESS_THREAD_ID}/call`)
+903:      message: 'Persist one valid mapped ConnectShyft outbound line on the thread before starting a call.',
+936:      .post('/api/v1/connectshyft/threads/%20/call')
+953:  it('returns the current thread-not-found refusal when call runs outside the active tenant and orgUnit scope', async () => {
+956:      .post(`/api/v1/connectshyft/threads/${CALL_SUCCESS_THREAD_ID}/call`)
+
+apps/connectshyft-api/src/migrations/20260311110000_create_connectshyft_bridge_sessions.ts
+4:const BRIDGE_SESSIONS_TABLE = 'cs_bridge_sessions'
+30:      CONSTRAINT cs_bridge_sessions_status_ck CHECK (
+52:      bridge_session_id TEXT NOT NULL REFERENCES ${CONNECTSHYFT_SCHEMA}.${BRIDGE_SESSIONS_TABLE}(id) ON DELETE CASCADE,
+68:      CONSTRAINT cs_bridge_legs_session_role_uq UNIQUE (bridge_session_id, leg_role)
+73:    CREATE INDEX IF NOT EXISTS connectshyft_cs_bridge_sessions_scope_idx
+78:    CREATE INDEX IF NOT EXISTS connectshyft_cs_bridge_legs_session_idx
+79:    ON ${CONNECTSHYFT_SCHEMA}.${BRIDGE_LEGS_TABLE} (bridge_session_id, leg_role, id)
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts
+4:import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts
+4:import * as TelephonyReadinessModule from '../../../../modules/connectshyft/telephonyReadiness';
+536:        telephonyReadiness: {
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-timeline.characterization.test.ts
+8:import { CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME } from '../../../../modules/connectshyft/inboundVoice';
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts
+10:import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
+160:      .post('/api/v1/connectshyft/threads/thread-f1-claimed-1002/call')
+191:      .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/call')
+236:      .post('/api/v1/connectshyft/threads/thread-f2-unclaimed-1001/call')
+500:      .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/call')
+559:        .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/call')
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts
+23:import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
+1152:  it('starts a persisted bridge session for outbound calls and returns bridge-session state', async () => {
+1154:      url: '/threads/thread-f1-unclaimed-1001/call',
+1235:  it('uses the claimed thread operator destination before provider dispatch on bridge calls', async () => {
+1244:      url: '/threads/thread-f1-claimed-1002/call',
+1278:      url: '/threads/thread-f1-unclaimed-1001/call',
+1342:      url: '/threads/thread-f1-unclaimed-1001/call',
+1387:      url: '/threads/thread-f1-unclaimed-1001/call',
+
+apps/connectshyft-api/src/migrations/__tests__/connectShyftEscalationConfigMigration.test.ts
+108:    const escalationConfig = tables.get('connectshyft.cs_org_unit_escalation_config')!;
+109:    expect(escalationConfig.columns.tenant_id.type).toBe('text');
+110:    expect(escalationConfig.columns.org_unit_id.type).toBe('text');
+111:    expect(escalationConfig.columns.escalation_baseline_hours.type).toBe('integer');
+112:    expect(escalationConfig.primaryKeys).toContainEqual(['tenant_id', 'org_unit_id']);
+113:    expect(escalationConfig.checks).toContain('escalation_baseline_hours >= 1 AND escalation_baseline_hours <= 24');
+114:    expect(escalationConfig.indexes).toContainEqual(['tenant_id']);
+115:    expect(escalationConfig.indexes).toContainEqual(['org_unit_id']);
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.ts
+4:import { AsyncConnectShyftOperatorCallbackNumberService } from '../../../../modules/connectshyft/operatorCallbackNumbers';
+5:import { AsyncConnectShyftTelephonyReadinessService } from '../../../../modules/connectshyft/telephonyReadiness';
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.escalation-config.characterization.test.ts
+4:import { ConnectShyftEscalationConfigService } from '../../../../modules/connectshyft/escalationConfig';
+
+apps/connectshyft-api/src/migrations/__tests__/connectShyftBridgeSessionsMigration.test.ts
+1:import { down, up } from '../20260311110000_create_connectshyft_bridge_sessions'
+23:describe('20260311110000_create_connectshyft_bridge_sessions migration', () => {
+24:  it('creates bridge session and bridge leg persistence with scope and provider-call indexes', async () => {
+34:    expect(rawCalls.some((sql: string) => sql.includes('CREATE TABLE IF NOT EXISTS connectshyft.cs_bridge_sessions'))).toBe(true)
+36:    expect(rawCalls.some((sql: string) => sql.includes('CONSTRAINT cs_bridge_sessions_status_ck CHECK'))).toBe(true)
+41:    expect(rawCalls.some((sql: string) => sql.includes('CONSTRAINT cs_bridge_legs_session_role_uq UNIQUE'))).toBe(true)
+42:    expect(rawCalls.some((sql: string) => sql.includes('connectshyft_cs_bridge_sessions_scope_idx'))).toBe(true)
+43:    expect(rawCalls.some((sql: string) => sql.includes('connectshyft_cs_bridge_legs_session_idx'))).toBe(true)
+47:  it('drops bridge leg and bridge session tables in down migration', async () => {
+54:      'connectshyft.cs_bridge_sessions',
+
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts
+72:} from '../../../modules/connectshyft/operatorDestinationResolver';
+85:} from '../../../modules/connectshyft/escalationConfig';
+152:} from '../../../modules/connectshyft/inboundVoice';
+213:  inboundVoiceVoicemail: CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
+214:  inboundVoiceFallback: CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
+219:  callDispatched: 'connectshyft.thread.outbound_call_dispatched',
+924:  bridgeSessionId: aggregate.session.id,
+2967:      callbackCorrelation?.threadId || callbackCorrelation?.thread_id,
+3739:): 'send_sms' | 'start_bridge_session' => (
+3740:  outboundAction === 'call' ? 'start_bridge_session' : 'send_sms'
+5175:          : 'Persist one valid mapped ConnectShyft outbound line on the thread before starting a call.',
+5328:        targetEntityType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+5538:        targetEntityType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+5606:      targetEntityType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+5937:      resourceType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+5950:    targetEntityType: outboundAction === 'call' ? 'bridge_session' : 'message_dispatch',
+7495:      : CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceVoicemail;
+7574:      ...voiceDomainEvent.inboundVoiceArtifact,
+7663:      from: voiceDomainEvent?.inboundVoiceArtifact.from || (typeof req.body?.from === 'string' ? req.body.from : null),
+7664:      to: voiceDomainEvent?.inboundVoiceArtifact.to || (typeof req.body?.to === 'string' ? req.body.to : null),
+7803:router.post('/threads/:threadId/call', postConnectThreadCall);
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.ts
+4:import * as TelephonyReadinessModule from '../../../../modules/connectshyft/telephonyReadiness';
+395:        telephonyReadiness: {
+418:    expect(response.body.data.telephonyReadiness).toMatchObject({
+463:    expect(response.body.data.telephonyReadiness).toBeUndefined();
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.ts
+4:import * as TelephonyReadinessModule from '../../../../modules/connectshyft/telephonyReadiness';
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts
+12:import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
+318:      .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/call')
+907:      .post(`/api/v1/connectshyft/threads/${threadId}/call`)
+
+apps/connectshyft-api/src/modules/connectshyft/escalationRecipientDirectory.ts
+7:} from './escalationConfig';
+
+apps/connectshyft-api/src/modules/connectshyft/threadTimeline.ts
+12:} from './inboundVoice';
+22:  outboundDispatched: 'connectshyft.thread.outbound_call_dispatched',
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts
+5:import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver'
+266:  it('creates a persisted bridge session on call start with operator-first dialing', async () => {
+268:      url: '/threads/thread-f1-unclaimed-1001/call',
+320:      url: '/threads/thread-f1-unclaimed-1001/call',
+407:      url: '/threads/thread-f1-unclaimed-1001/call',
+505:      url: '/threads/thread-f1-unclaimed-1001/call',
+579:      url: '/threads/thread-f1-unclaimed-1001/call',
+676:      url: '/threads/thread-f1-unclaimed-1001/call',
+738:      url: '/threads/thread-f1-unclaimed-1001/call',
+
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts
+22:const BRIDGE_SESSIONS_TABLE = 'cs_bridge_sessions'
+50:  bridge_session_id: string
+171:  bridgeSessionId: row.bridge_session_id,
+195:  bridge_status: session.status,
+210:  bridge_session_id: leg.bridgeSessionId,
+364:      .where({ bridge_session_id: sessionId })
+369:        'bridge_session_id',
+403:      .join(`${BRIDGE_SESSIONS_TABLE} as bs`, 'bs.id', 'bl.bridge_session_id')
+412:      .first<{ bridgeSessionId?: string }>('bl.bridge_session_id as bridgeSessionId')
+598:        bridgeSessionId: input.aggregate.session.id,
+607:        bridgeSessionId: input.aggregate.session.id,
+620:      bridgeSessionId: input.aggregate.session.id,
+630:    if (input.aggregate.session.status === 'bridged' || input.aggregate.session.status === 'completed') {
+633:        bridgeSessionId: input.aggregate.session.id,
+642:        bridgeSessionId: input.aggregate.session.id,
+652:        bridgeSessionId: input.aggregate.session.id,
+668:        bridgeSessionId: input.aggregate.session.id,
+678:        bridgeSessionId: input.aggregate.session.id,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectEscalationConfig.ts
+6:} from '../escalationConfig';
+7:import { resolveConnectShyftEscalationConfigReadAccessContext } from '../http/escalationConfigContext';
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/putConnectOperatorCallbackNumber.ts
+6:} from '../operatorCallbackNumbers';
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectContext.ts
+3:import { connectShyftTelephonyReadinessServiceAsync } from '../telephonyReadiness';
+
+apps/connectshyft-api/src/modules/connectshyft/ops/__tests__/ops.bridge.test.ts
+15:    id: 'bridge-session-ops-1001',
+38:    bridgeSessionId: 'bridge-session-ops-1001',
+55:    bridgeSessionId: 'bridge-session-ops-1001',
+75:  it('surfaces bridge runtime state from the existing bridge-session seam', async () => {
+82:      .get('/api/v1/connectshyft/ops/bridge/bridge-session-ops-1001')
+90:        bridgeId: 'bridge-session-ops-1001',
+130:      .get('/api/v1/connectshyft/ops/bridge/bridge-session-ops-1001')
+138:        bridgeId: 'bridge-session-ops-1001',
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.ts
+10:} from '../inboundVoice';
+83:  bridgeSessionId: aggregate.session.id,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_READ_NOTES.md
+12:  - owns thread detail request handoff, response assembly, canonical timeline inclusion, voicemail artifact projection, and bridge-session payload shaping
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md
+9:    - `POST /threads/:threadId/call`
+27:- bridge session startup and bridge-session state orchestration
+44:- `POST /threads/:threadId/call` still returns the existing success and refusal envelopes
+46:- existing nested provider, bridge-session, idempotency, audit, override, and side-effect payload structure remains unchanged
+56:- the current same-thread reopen behavior for outbound calls
+90:That separation should stay explicit. Follow-up cleanup should not use the outbound handlers or `threadOutboundContext.ts` as a place to absorb inbound message intake, webhook correlation, provider signature handling, bridge webhook progression, voicemail processing, or transcription callbacks. Those surfaces remain intentionally deferred to the next slice after Slice 8.
+
+apps/connectshyft-api/src/modules/connectshyft/ops/bridgeVisibility.service.ts
+92:    bridgeId: aggregate.session.id,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectEscalationRecipients.ts
+4:import { resolveConnectShyftEscalationRecipientsAccessContext } from '../http/escalationConfigContext';
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectOperatorCallbackNumber.ts
+6:} from '../operatorCallbackNumbers';
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectTelephonyReadiness.ts
+3:import { connectShyftTelephonyReadinessServiceAsync } from '../telephonyReadiness';
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectAvailability.ts
+5:import { connectShyftTelephonyReadinessServiceAsync } from '../telephonyReadiness';
+43:  telephonyReadiness?: {
+64:  ...(input.telephonyReadiness
+66:      telephonyReadiness: input.telephonyReadiness,
+108:    telephonyReadiness: {
+
+apps/connectshyft-api/src/modules/connectshyft/operatorDestinationResolver.ts
+7:import { KnexConnectShyftEscalationConfigStore } from './escalationConfig';
+239:  private readonly escalationConfigStore: KnexConnectShyftEscalationConfigStore;
+242:    this.escalationConfigStore = new KnexConnectShyftEscalationConfigStore(resolveDb);
+274:    const config = await this.escalationConfigStore.getConfig(input.tenantId, input.orgUnitId);
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/putConnectEscalationConfig.ts
+7:} from '../escalationConfig';
+9:import { resolveConnectShyftEscalationConfigUpdateAccessContext } from '../http/escalationConfigContext';
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/README.md
+71:- bridge-session orchestration moves
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/INBOUND_WEBHOOK_NOTES.md
+36:- bridge-session webhook progression and bridge alignment behavior
+41:  - still owned by the existing inbound core in `connectshyft.ts` and `inboundVoice.ts`
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/operatorCallbackNumberContract.ts
+1:import type { ConnectShyftOperatorCallbackNumber } from '../operatorCallbackNumbers';
+
+apps/connectshyft-api/src/modules/connectshyft/telephonyReadiness.ts
+17:} from './operatorCallbackNumbers';
+22:} from './operatorDestinationResolver';
+
+apps/connectshyft-api/src/modules/connectshyft/http/threadOutboundContext.ts
+5:import type { ConnectShyftTelephonyReadiness } from '../telephonyReadiness';
+6:import { connectShyftTelephonyReadinessServiceAsync } from '../telephonyReadiness';
+119:      telephonyReadiness: readiness,
+
+apps/connectshyft-api/src/modules/connectshyft/inboundVoice.ts
+2:import type { ConnectShyftOperatorDestinationResolution } from './operatorDestinationResolver';
+151:  inboundVoiceArtifact: ConnectShyftInboundVoiceArtifact;
+348:    inboundVoiceArtifact: {
+380:      ...input.domainEvent.inboundVoiceArtifact,
+431:      threadId: input.callbackCorrelation.threadId,
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/escalationConfig.test.ts
+7:} from '../escalationConfig';
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.escalationConfigContext.test.ts
+6:} from '../http/escalationConfigContext';
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts
+16:import * as inboundVoiceModule from '../inboundVoice';
+328:    const inboundVoiceSpy = jest.spyOn(
+329:      inboundVoiceModule,
+393:    expect(inboundVoiceSpy).not.toHaveBeenCalled();
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.ts
+109:  it('persists a created bridge session with operator and neighbor legs on startup', async () => {
+206:  it('persists completed bridge sessions after both legs answer and the bridge ends', async () => {
+264:  it('persists failed bridge sessions when the neighbor leg fails before bridge completion', async () => {
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/threadTimeline.test.ts
+6:} from '../inboundVoice';
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/inboundVoice.test.ts
+14:} from '../inboundVoice';
+40:      inboundVoiceArtifact: {
+52:    expect(domainEvent.inboundVoiceArtifact.to).toBe('+12605550171');
+53:    expect(domainEvent.inboundVoiceArtifact.to).not.toContain('cs-number');
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/operatorDestinationResolver.test.ts
+5:} from '../operatorDestinationResolver';
+7:describe('connectshyft operatorDestinationResolver', () => {
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/telephonyReadiness.test.ts
+4:} from '../telephonyReadiness';
+8:} from '../operatorCallbackNumbers';
+9:import type { ConnectShyftTelephonyOperatorPhoneResolution } from '../operatorDestinationResolver';
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/operatorCallbackNumbers.test.ts
+6:} from '../operatorCallbackNumbers';
+jeremiahotis@Jeremiahs-MacBook-Air connectshyft % rg -n "voicemail|recording|transcription|webhook|inbound voice|call recording" apps/connectshyft-api/src
+apps/connectshyft-api/src/migrations/20260312120000_add_connectshyft_communication_reliability.ts
+6:const WEBHOOK_RECEIPTS_TABLE = 'cs_webhook_receipts'
+79:        channel IN ('sms', 'voice', 'bridge', 'webhook')
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts
+164:  webhookSignatureConfigured: true,
+
+apps/connectshyft-api/src/migrations/20260303153000_add_connectshyft_webhook_receipt_processing_state.ts
+4:const WEBHOOK_RECEIPTS_TABLE = 'cs_webhook_receipts';
+5:const WEBHOOK_RECEIPT_PROCESSING_STATUS_CHECK = 'cs_webhook_receipts_processing_status_ck';
+6:const WEBHOOK_RECEIPT_PROCESSING_STATUS_INDEX = 'connectshyft_cs_webhook_receipts_processing_status_idx';
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.shared.ts
+59:    connectshyft_webhooks_enabled: true,
+103:      .table('cs_webhook_receipts')
+
+apps/connectshyft-api/src/migrations/20260301113000_scope_provider_correlation_uniqueness_to_tenant.ts
+5:const WEBHOOK_RECEIPTS_TABLE = 'cs_webhook_receipts';
+8:const WEBHOOK_RECEIPT_PROVIDER_DEDUPE_UNIQUE = 'cs_webhook_receipts_provider_dedupe_uq';
+
+apps/connectshyft-api/src/migrations/20260228103000_create_connectshyft_provider_correlation_mappings.ts
+5:const WEBHOOK_RECEIPTS_TABLE = 'cs_webhook_receipts';
+11:const WEBHOOK_RECEIPT_IDENTIFIER_KIND_CHECK = 'cs_webhook_receipts_identifier_kind_ck';
+12:const WEBHOOK_RECEIPT_IDENTIFIER_PRESENCE_CHECK = 'cs_webhook_receipts_identifier_presence_ck';
+13:const WEBHOOK_RECEIPT_PROVIDER_DEDUPE_UNIQUE = 'cs_webhook_receipts_provider_dedupe_uq';
+14:const WEBHOOK_RECEIPT_SCOPE_INDEX = 'connectshyft_cs_webhook_receipts_scope_idx';
+
+apps/connectshyft-api/src/migrations/20260303170000_add_connectshyft_webhook_receipt_replay_identity.ts
+4:const WEBHOOK_RECEIPTS_TABLE = 'cs_webhook_receipts';
+5:const LEGACY_DEDUPE_UNIQUE = 'cs_webhook_receipts_provider_dedupe_uq';
+6:const REPLAY_IDENTITY_UNIQUE = 'cs_webhook_receipts_replay_identity_uq';
+7:const RETENTION_LOOKUP_INDEX = 'connectshyft_cs_webhook_receipts_retention_idx';
+
+apps/connectshyft-api/src/migrations/__tests__/connectShyftCommunicationReliabilityMigration.test.ts
+24:  it('creates durable idempotency and append-only audit persistence and extends webhook receipts', async () => {
+43:  it('drops audit/idempotency persistence and removes webhook retry metadata in down migration', async () => {
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-receipts-admin.characterization.test.ts
+8:const TEST_TENANT_ID = 'tenant-connectshyft-s11-webhook-admin';
+9:const TEST_ORG_UNIT_ID = 'org-connectshyft-s11-webhook-admin-east';
+10:const TEST_USER_ID = 'user-connectshyft-s11-webhook-admin';
+15:  connectshyft_webhooks_enabled: true,
+99:    : 'corr-connectshyft-webhook-admin-characterization';
+123:describe('connectshyft webhook receipt admin route characterization', () => {
+153:  it('returns the current webhook receipt metrics success envelope and retention window payload fields', async () => {
+169:      .get('/api/v1/connectshyft/admin/webhook-receipts/metrics')
+230:      .get('/api/v1/connectshyft/admin/webhook-receipts/metrics')
+267:      .post('/api/v1/connectshyft/admin/webhook-receipts/cleanup')
+339:      .post('/api/v1/connectshyft/admin/webhook-receipts/cleanup')
+
+apps/connectshyft-api/src/migrations/__tests__/scopeProviderCorrelationUniquenessToTenantMigration.test.ts
+32:      'DROP CONSTRAINT IF EXISTS cs_webhook_receipts_provider_dedupe_uq',
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.ts
+20:  connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts
+168:  webhookSignatureConfigured: true,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.ts
+49:  voicemailIndicator: false,
+50:  voicemailLabel: null,
+134:        voicemailArtifacts: [],
+188:      'voicemailArtifacts',
+220:      'voicemailIndicator',
+221:      'voicemailLabel',
+260:        voicemailArtifacts: [],
+
+apps/connectshyft-api/src/migrations/__tests__/connectShyftWebhookReceiptReplayIdentityMigration.test.ts
+1:import { down, up } from '../20260303170000_add_connectshyft_webhook_receipt_replay_identity';
+11:describe('20260303170000_add_connectshyft_webhook_receipt_replay_identity migration', () => {
+22:    expect(rawCalls.some((sql: string) => sql.includes('DROP CONSTRAINT IF EXISTS cs_webhook_receipts_provider_dedupe_uq'))).toBe(true);
+24:    expect(rawCalls.some((sql: string) => sql.includes('connectshyft_cs_webhook_receipts_retention_idx'))).toBe(true);
+33:    expect(rawCalls.some((sql: string) => sql.includes('DROP CONSTRAINT IF EXISTS cs_webhook_receipts_replay_identity_uq'))).toBe(true);
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts
+152:    connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts
+61:    eventType: readString(rawEventType) || 'voice.voicemail',
+116:  eventType: 'voice.voicemail',
+118:  providerEventId: 'provider-event-voice-voicemail-1001',
+119:  providerLegId: 'provider-leg-voice-voicemail-1001',
+122:  recordingUrl: 'https://connectshyft.test/voicemail-characterization-1001.mp3',
+123:  voicemail_duration_seconds: 47,
+127:describe('connectshyft inbound voice webhook route characterization', () => {
+172:  it('returns the current inbound voice success envelope and voicemail routing shape', async () => {
+175:      .post('/api/v1/connectshyft/webhooks/inbound')
+183:      message: 'Inbound webhook accepted for processing',
+188:        eventType: 'voice.voicemail',
+202:          providerLegId: 'provider-leg-voice-voicemail-1001',
+204:          providerEventId: 'provider-event-voice-voicemail-1001',
+210:          dedupeKey: 'provider-event:provider-event-voice-voicemail-1001',
+213:          eventType: 'voice.voicemail',
+224:          eventType: 'voice.voicemail',
+256:        voicemailArtifact: {
+257:          artifactId: 'vm-thread-f1-unclaimed-1001-provider-event-voice-voicemail-1001',
+260:          providerEventId: 'provider-event-voice-voicemail-1001',
+262:          providerLegId: 'provider-leg-voice-voicemail-1001',
+265:          recordingUrl: 'https://connectshyft.test/voicemail-characterization-1001.mp3',
+268:        transcription: {
+270:          queueName: 'connectshyft.voicemail.transcription',
+275:            providerEventId: 'provider-event-voice-voicemail-1001',
+276:            correlationEventId: 'provider-event-voice-voicemail-1001',
+277:            providerLegId: 'provider-leg-voice-voicemail-1001',
+278:            voicemailArtifactId: 'vm-thread-f1-unclaimed-1001-provider-event-voice-voicemail-1001',
+288:          eventName: 'connectshyft.inbound.voice_voicemail_recorded',
+289:          routingDecision: 'voicemail_only',
+293:          eventName: 'connectshyft.inbound.voice_voicemail_recorded',
+294:          routingDecision: 'voicemail_only',
+297:          eventName: 'connectshyft.inbound.voice_voicemail_recorded',
+304:            event_type: 'voice.voicemail',
+305:            routing_decision: 'voicemail_only',
+306:            voicemail_artifact_id: 'vm-thread-f1-unclaimed-1001-provider-event-voice-voicemail-1001',
+307:            transcription_queue: 'connectshyft.voicemail.transcription',
+316:          eventName: 'connectshyft.inbound.voice_voicemail_recorded',
+318:        transcriptionOutbox: {
+319:          eventName: 'connectshyft.voicemail.transcription_requested',
+320:          queueName: 'connectshyft.voicemail.transcription',
+325:            voicemail_artifact_id: 'vm-thread-f1-unclaimed-1001-provider-event-voice-voicemail-1001',
+326:            provider_event_id: 'provider-event-voice-voicemail-1001',
+327:            provider_leg_id: 'provider-leg-voice-voicemail-1001',
+353:      'transcription',
+354:      'transcriptionOutbox',
+355:      'voicemailArtifact',
+377:  it('preserves the current fallback routing shape for inbound voice events', async () => {
+380:      .post('/api/v1/connectshyft/webhooks/inbound')
+387:        recordingUrl: 'https://connectshyft.test/fallback-characterization-1002.mp3',
+388:        voicemail_duration_seconds: 33,
+395:      message: 'Inbound webhook accepted for processing',
+441:            voicemail_artifact_id: null,
+442:            transcription_queue: null,
+455:    expect(response.body.data).not.toHaveProperty('voicemailArtifact');
+456:    expect(response.body.data).not.toHaveProperty('transcription');
+457:    expect(response.body.data).not.toHaveProperty('transcriptionOutbox');
+464:      .post('/api/v1/connectshyft/webhooks/inbound')
+470:        recordingUrl: 'https://connectshyft.test/claimed-characterization-1004.mp3',
+471:        voicemail_duration_seconds: 29,
+489:          eventName: 'connectshyft.inbound.voice_voicemail_recorded',
+494:          eventName: 'connectshyft.inbound.voice_voicemail_recorded',
+497:        voicemailArtifact: {
+501:          recordingUrl: 'https://connectshyft.test/claimed-characterization-1004.mp3',
+504:        transcription: {
+506:          queueName: 'connectshyft.voicemail.transcription',
+509:            voicemailArtifactId: 'vm-thread-f1-claimed-1002-provider-event-voice-claimed-1004',
+531:      .post('/api/v1/connectshyft/webhooks/inbound')
+537:        recordingUrl: 'https://connectshyft.test/claimed-missing-1005.mp3',
+538:        voicemail_duration_seconds: 18,
+559:    expect(response.body.data).not.toHaveProperty('voicemailArtifact');
+560:    expect(response.body.data).not.toHaveProperty('transcription');
+587:      .post('/api/v1/connectshyft/webhooks/inbound')
+593:        recordingUrl: 'https://connectshyft.test/claimed-invalid-1006.mp3',
+594:        voicemail_duration_seconds: 21,
+615:    expect(response.body.data).not.toHaveProperty('voicemailArtifact');
+616:    expect(response.body.data).not.toHaveProperty('transcription');
+619:  it('preserves the current connected-call auto-claim behavior for inbound voice webhooks', async () => {
+635:        .post('/api/v1/connectshyft/webhooks/inbound')
+651:          recordingUrl: undefined,
+652:          voicemail_duration_seconds: undefined,
+659:        message: 'Inbound webhook accepted for processing',
+747:      expect(response.body.data).not.toHaveProperty('voicemailArtifact');
+748:      expect(response.body.data).not.toHaveProperty('transcription');
+749:      expect(response.body.data).not.toHaveProperty('transcriptionOutbox');
+756:  it('returns the current canonical-persistence refusal shape for inbound voice webhooks', async () => {
+760:      .post('/api/v1/connectshyft/webhooks/inbound')
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectWebhookReceiptMetrics.ts
+7:import { resolveConnectShyftWebhookReceiptMetricsAccessContext } from '../http/webhookReceiptAdminContext';
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.number-mappings.characterization.test.ts
+16:  connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/NEIGHBOR_IDENTITY_BRIDGE_NOTES.md
+93:- inbound voice extraction
+94:- webhook and provider-correlation extraction
+107:6. Do not pull inbound or webhook orchestration into the neighbor / identity helper boundary.
+112:Neighbor / identity extraction is now separate from outbound and webhook extraction.
+114:That separation should stay explicit. Follow-up cleanup should not use the neighbor / identity handler family as a place to absorb outbound action rules, provider dispatch concerns, inbound correlation work, or webhook processing. The next extraction target after Slice 7 is outbound actions, while inbound and webhook surfaces remain intentionally deferred.
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-create.characterization.test.ts
+16:  connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.ts
+22:  connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.ts
+14:  connectshyft_webhooks_enabled: true,
+20:  webhookSignatureConfigured: true,
+386:          connectshyft_webhooks_enabled: true,
+393:          webhooks: true,
+452:          connectshyft_webhooks_enabled: true,
+459:          webhooks: true,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts
+56:    connectshyft_webhooks_enabled: true,
+658:      voicemailIndicator: false,
+659:      voicemailLabel: null,
+
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts
+215:  voicemailTranscriptionRequested: CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME,
+216:  voicemailTranscriptionAttached: CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME,
+1418:    voicemailIndicator: false,
+1419:    voicemailLabel: null,
+1435:      voicemailLabel: '',
+2506:  routingDecision: 'voicemail_only' | 'intake_fallback' | 'accepted';
+2737:  conversationType: 'message' | 'voicemail' | 'lifecycle';
+2744:): 'message' | 'voicemail' | 'lifecycle' => {
+2747:    normalized.includes('voicemail')
+2748:    || normalized.includes('transcription')
+2751:    return 'voicemail';
+2793:      firstClass: conversationType === 'voicemail' || conversationType === 'message',
+2800:  transcription: {
+2820:      transcription: {
+2831:    const voicemailArtifact = asRecord(payload?.voicemailArtifact);
+2832:    const payloadArtifactId = normalizeLifecycleString(voicemailArtifact?.artifactId);
+2835:      const transcription = asRecord(voicemailArtifact?.transcription);
+2836:      const available = transcription?.available === true;
+2837:      const text = normalizeLifecycleString(transcription?.text);
+2839:        artifact.transcription = {
+2841:          text: text || artifact.transcription.text,
+2846:    if (event.eventName !== CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.voicemailTranscriptionAttached) {
+2851:    const transcription = asRecord(payload?.transcription);
+2853:      metadata?.voicemailArtifactId
+2854:      || payload?.voicemailArtifactId
+2855:      || voicemailArtifact?.artifactId,
+2863:      || transcription?.text
+2864:      || asRecord(voicemailArtifact?.transcription)?.text,
+2867:    artifact.transcription = {
+2880:  voicemailArtifactId: string;
+2904:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'tenantId',
+2905:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'tenant_id'
+2911:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'orgUnitId',
+2912:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'org_unit_id'
+2918:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'threadId',
+2919:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'thread_id'
+2925:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'providerEventId',
+2926:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'provider_event_id',
+2927:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'correlationEventId',
+2928:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'correlation_event_id'
+2934:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'voicemailArtifactId',
+2935:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'voicemail_artifact_id'
+2937:          [input.voicemailArtifactId],
+2958:    const transcription = asRecord(payload?.transcription);
+2959:    const callbackCorrelation = asRecord(transcription?.callbackCorrelation);
+2970:      callbackCorrelation?.voicemailArtifactId || callbackCorrelation?.voicemail_artifact_id,
+2982:      && callbackArtifactId === input.voicemailArtifactId
+3759:  channel: 'sms' | 'voice' | 'bridge' | 'webhook';
+4038:router.get('/admin/webhook-receipts/metrics', getConnectWebhookReceiptMetrics);
+4040:router.post('/admin/webhook-receipts/cleanup', postConnectWebhookReceiptCleanup);
+4402:  const shouldSynthesizeVoicemailTimeline = thread.voicemailIndicator
+4403:    || threadId.toLowerCase().includes('voicemail');
+4409:          eventId: `${thread.threadId}-voicemail-inline`,
+4412:          eventType: 'connectshyft.voicemail.inline',
+4414:            eventName: 'connectshyft.voicemail.inline',
+4415:            summary: thread.display?.voicemailLabel || thread.voicemailLabel || 'Voicemail received',
+4421:          eventName: 'connectshyft.voicemail.inline',
+4425:          conversationType: 'voicemail' as const,
+4431:  const voicemailArtifacts = resolveVoicemailArtifactsFromTimeline(resolvedTimeline);
+4451:      voicemailArtifacts,
+5994:  const webhookPersistenceDb = isConnectShyftTestOverrideEnabled()
+6033:            eventName: 'connectshyft.voicemail.transcription_refused',
+6046:    const transcriptionReceipt = await beginConnectShyftWebhookReceiptProcessing({
+6060:        voicemailArtifactId: callbackPayload.correlation.voicemailArtifactId || null,
+6062:      db: webhookPersistenceDb,
+6064:    if (transcriptionReceipt.error) {
+6066:        code: transcriptionReceipt.error.code,
+6067:        message: 'Inbound webhook correlation resolved but receipt persistence is unavailable.',
+6089:            dedupeKey: transcriptionReceipt.dedupeKey,
+6104:    const shouldSuppressTranscriptionDuplicate = transcriptionReceipt.alreadyApplied
+6105:      || transcriptionReceipt.previousStatus === 'RECEIVED'
+6106:      || transcriptionReceipt.previousStatus === 'FAILED_TERMINAL';
+6132:            dedupeKey: transcriptionReceipt.dedupeKey,
+6148:      callbackPayload.correlation.voicemailArtifactId,
+6175:        voicemailArtifactId: callbackVoicemailArtifactId,
+6185:        dedupeKey: transcriptionReceipt.dedupeKey,
+6196:        db: webhookPersistenceDb,
+6200:        message: 'Transcription callback correlation is invalid or unresolved for voicemail attachment.',
+6215:            voicemailArtifactId: callbackVoicemailArtifactId || null,
+6220:            dedupeKey: transcriptionReceipt.dedupeKey,
+6227:            eventName: 'connectshyft.voicemail.transcription_refused',
+6233:              voicemail_artifact_id: callbackVoicemailArtifactId || null,
+6255:          voicemailArtifactId: callbackVoicemailArtifactId,
+6271:        dedupeKey: transcriptionReceipt.dedupeKey,
+6278:        db: webhookPersistenceDb,
+6293:            voicemailArtifactId: callbackVoicemailArtifactId,
+6298:            dedupeKey: transcriptionReceipt.dedupeKey,
+6314:      dedupeKey: transcriptionReceipt.dedupeKey,
+6320:      db: webhookPersistenceDb,
+6325:      message: 'Transcription callback attached to voicemail artifact',
+6339:          voicemailArtifactId: callbackVoicemailArtifactId,
+6344:          dedupeKey: transcriptionReceipt.dedupeKey,
+6346:        transcriptionAttachment: {
+6349:          voicemailArtifactId: callbackVoicemailArtifactId,
+6352:          eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.voicemailTranscriptionAttached,
+6365:  const webhookReceipt = await beginConnectShyftWebhookReceiptProcessing({
+6383:    db: webhookPersistenceDb,
+6385:  if (webhookReceipt.error) {
+6387:      code: webhookReceipt.error.code,
+6388:      message: 'Inbound webhook correlation resolved but receipt persistence is unavailable.',
+6410:          dedupeKey: webhookReceipt.dedupeKey,
+6453:        attemptCount: webhookReceipt.attemptCount,
+6471:      dedupeKey: webhookReceipt.dedupeKey,
+6480:      db: webhookPersistenceDb,
+6484:      correlationId: webhookReceipt.dedupeKey || correlation.providerEventId || randomUUID(),
+6487:      targetEntityType: 'webhook_receipt',
+6488:      targetEntityId: webhookReceipt.dedupeKey,
+6489:      channel: 'webhook',
+6504:        attemptCount: webhookReceipt.attemptCount,
+6508:      db: webhookPersistenceDb,
+6512:  const shouldSuppressWebhookDuplicate = webhookReceipt.alreadyApplied
+6513:    || webhookReceipt.previousStatus === 'RECEIVED'
+6514:    || webhookReceipt.previousStatus === 'FAILED_TERMINAL';
+6519:      correlationId: webhookReceipt.dedupeKey || correlation.providerEventId || randomUUID(),
+6522:      targetEntityType: 'webhook_receipt',
+6523:      targetEntityId: webhookReceipt.dedupeKey,
+6524:      channel: 'webhook',
+6527:      resultMessage: 'Duplicate webhook suppressed before domain side effects.',
+6533:        attemptCount: webhookReceipt.attemptCount,
+6535:      db: webhookPersistenceDb,
+6539:      message: 'Inbound webhook accepted (duplicate suppressed)',
+6563:          dedupeKey: webhookReceipt.dedupeKey,
+6597:      message: 'Inbound webhook accepted',
+6618:          dedupeKey: webhookReceipt.dedupeKey,
+6696:            dedupeKey: webhookReceipt.dedupeKey,
+6739:              dedupeKey: webhookReceipt.dedupeKey,
+6775:            correlationId: webhookReceipt.dedupeKey
+6820:                  dedupeKey: webhookReceipt.dedupeKey,
+6864:                dedupeKey: webhookReceipt.dedupeKey,
+6908:              dedupeKey: webhookReceipt.dedupeKey,
+6949:            dedupeKey: webhookReceipt.dedupeKey,
+7048:            dedupeKey: webhookReceipt.dedupeKey,
+7065:      webhookBody: req.body,
+7120:              dedupeKey: webhookReceipt.dedupeKey,
+7163:              dedupeKey: webhookReceipt.dedupeKey,
+7202:            dedupeKey: webhookReceipt.dedupeKey,
+7229:      message: 'Inbound webhook accepted for processing',
+7254:          dedupeKey: webhookReceipt.dedupeKey,
+7491:  let routingDecision: 'voicemail_only' | 'intake_fallback' | 'accepted' = 'accepted';
+7540:      webhookBody: req.body,
+7554:  const voicemailArtifactId = shouldCreateVoicemailArtifact
+7561:  const transcription = shouldCreateVoicemailArtifact && voicemailArtifactId
+7568:      voicemailArtifactId,
+7571:  const voicemailArtifact = shouldCreateVoicemailArtifact && voicemailArtifactId && voiceDomainEvent
+7573:      artifactId: voicemailArtifactId,
+7590:          voicemailArtifactId,
+7591:          transcription,
+7629:          dedupeKey: webhookReceipt.dedupeKey,
+7660:    message: 'Inbound webhook accepted for processing',
+7685:        dedupeKey: webhookReceipt.dedupeKey,
+7719:      ...(voicemailArtifact ? { voicemailArtifact } : {}),
+7720:      ...(transcription ? { transcription } : {}),
+7746:          voicemail_artifact_id: voicemailArtifactId,
+7747:          transcription_queue: transcription?.queueName || null,
+7765:          voicemail_artifact_id: voicemailArtifactId,
+7766:          transcription_queue: transcription?.queueName || null,
+7774:      ...(transcription
+7776:            transcriptionOutbox: {
+7777:              eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.voicemailTranscriptionRequested,
+7783:                voicemail_artifact_id: transcription.callbackCorrelation.voicemailArtifactId,
+7784:                provider_event_id: transcription.callbackCorrelation.providerEventId,
+7785:                provider_leg_id: transcription.callbackCorrelation.providerLegId,
+7807:router.post('/webhooks/inbound', postConnectWebhookInbound);
+7809:router.post('/webhooks/sms', postConnectWebhookSms);
+
+apps/connectshyft-api/src/migrations/__tests__/connectShyftWebhookReceiptProcessingStateMigration.test.ts
+1:import { down, up } from '../20260303153000_add_connectshyft_webhook_receipt_processing_state';
+11:describe('20260303153000_add_connectshyft_webhook_receipt_processing_state migration', () => {
+12:  it('adds webhook receipt processing-state columns and guardrails idempotently', async () => {
+24:    expect(rawCalls.some((sql: string) => sql.includes('cs_webhook_receipts_processing_status_ck'))).toBe(true);
+25:    expect(rawCalls.some((sql: string) => sql.includes('connectshyft_cs_webhook_receipts_processing_status_idx'))).toBe(true);
+34:    expect(rawCalls.some((sql: string) => sql.includes('DROP CONSTRAINT IF EXISTS cs_webhook_receipts_processing_status_ck'))).toBe(true);
+35:    expect(rawCalls.some((sql: string) => sql.includes('DROP INDEX IF EXISTS connectshyft.connectshyft_cs_webhook_receipts_processing_status_idx'))).toBe(true);
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.ts
+16:  connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/migrations/__tests__/connectShyftProviderCorrelationMappingsMigration.test.ts
+24:  it('creates provider identifier mappings and webhook receipt dedupe schema idempotently', async () => {
+43:    expect(rawCalls.some((sql: string) => sql.includes('CREATE TABLE IF NOT EXISTS connectshyft.cs_webhook_receipts'))).toBe(true);
+46:    expect(rawCalls.some((sql: string) => sql.includes('cs_webhook_receipts_identifier_kind_ck'))).toBe(true);
+47:    expect(rawCalls.some((sql: string) => sql.includes('cs_webhook_receipts_identifier_presence_ck'))).toBe(true);
+48:    expect(rawCalls.some((sql: string) => sql.includes('cs_webhook_receipts_provider_dedupe_uq'))).toBe(true);
+50:    expect(rawCalls.some((sql: string) => sql.includes('connectshyft_cs_webhook_receipts_scope_idx'))).toBe(true);
+53:  it('drops webhook receipt and provider identifier mapping tables in down migration', async () => {
+59:      'connectshyft.cs_webhook_receipts',
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectAvailability.ts
+62:    webhooks: evaluateConnectShyftCapability(input.flags, 'webhooks').ok,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.ts
+55:    connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts
+240:describe('connectshyft inbound sms webhook route characterization', () => {
+285:  it('returns the current inbound SMS success envelope and response payload shape on /webhooks/sms', async () => {
+294:        .post('/api/v1/connectshyft/webhooks/sms')
+305:        message: 'Inbound webhook accepted for processing',
+443:  it('preserves the current duplicate-safe replay surface for inbound SMS webhooks', async () => {
+457:        .post('/api/v1/connectshyft/webhooks/sms')
+461:        .post('/api/v1/connectshyft/webhooks/sms')
+470:        message: 'Inbound webhook accepted (duplicate suppressed)',
+556:        .post('/api/v1/connectshyft/webhooks/sms')
+628:        .post('/api/v1/connectshyft/webhooks/sms')
+711:        .post('/api/v1/connectshyft/webhooks/sms')
+769:        .post('/api/v1/connectshyft/webhooks/sms')
+829:        .post('/api/v1/connectshyft/webhooks/sms')
+842:        message: 'Inbound webhook accepted for processing',
+922:        .post('/api/v1/connectshyft/webhooks/sms')
+935:        message: 'Inbound webhook accepted for processing',
+1019:        .post('/api/v1/connectshyft/webhooks/sms')
+1078:        .post('/api/v1/connectshyft/webhooks/sms')
+1133:        .post('/api/v1/connectshyft/webhooks/sms')
+1206:        .post('/api/v1/connectshyft/webhooks/sms')
+1272:        .post('/api/v1/connectshyft/webhooks/sms')
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.ts
+16:  connectshyft_webhooks_enabled: true,
+226:      webhookSignatureConfigured: true,
+310:      webhookSignatureConfigured: true,
+407:      webhookSignatureConfigured: true,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-timeline.characterization.test.ts
+50:  voicemailIndicator: false,
+51:  voicemailLabel: null,
+87:  it('returns the current timeline response shape in chronological order for sms and voicemail items', async () => {
+119:        voicemailArtifact: {
+120:          recordingUrl: 'https://connectshyft.test/voicemail-characterization-1001.mp3',
+122:          transcription: {
+190:      'recording_url',
+207:        type: 'voicemail',
+209:        channel: 'voicemail',
+213:        recording_url: 'https://connectshyft.test/voicemail-characterization-1001.mp3',
+229:      'voicemail',
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts
+109:    connectshyft_webhooks_enabled: true,
+207:describe('connectshyft bridge webhook flow', () => {
+346:  it('rejects unverified webhooks before receipt processing or bridge side effects', async () => {
+358:      url: '/webhooks/inbound',
+362:        providerEventId: 'provider-event-webhook-invalid-1001',
+363:        providerLegId: 'provider-leg-webhook-invalid-1001',
+382:  it('passes the exact rawBody through webhook signature verification', async () => {
+393:      url: '/webhooks/inbound',
+420:      url: '/webhooks/inbound',
+461:      url: '/webhooks/inbound',
+503:  it('suppresses duplicate webhook receipts before bridge side effects are re-applied', async () => {
+515:      url: '/webhooks/inbound',
+527:      url: '/webhooks/inbound',
+577:  it('persists terminal completion without repeating side effects on duplicate webhook delivery', async () => {
+589:      url: '/webhooks/inbound',
+600:      url: '/webhooks/inbound',
+612:      url: '/webhooks/inbound',
+624:      url: '/webhooks/inbound',
+686:      url: '/webhooks/inbound',
+698:      url: '/webhooks/inbound',
+752:      url: '/webhooks/inbound',
+763:      url: '/webhooks/inbound',
+774:      url: '/webhooks/inbound',
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.ts
+17:  connectshyft_webhooks_enabled: true,
+23:  webhookSignatureConfigured: true,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.escalation-config.characterization.test.ts
+16:  connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectWebhookReceiptCleanup.ts
+7:import { resolveConnectShyftWebhookReceiptCleanupAccessContext } from '../http/webhookReceiptAdminContext';
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.ts
+22:  connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md
+67:- inbound voice extraction
+68:- voicemail handling extraction
+69:- transcription callback extraction
+70:- webhook entry extraction
+71:- webhook correlation and receipt orchestration extraction
+84:6. Do not pull inbound, webhook, or telephony callback orchestration into the outbound handler family.
+88:Outbound extraction is now separate from inbound, webhook, and telephony extraction.
+90:That separation should stay explicit. Follow-up cleanup should not use the outbound handlers or `threadOutboundContext.ts` as a place to absorb inbound message intake, webhook correlation, provider signature handling, bridge webhook progression, voicemail processing, or transcription callbacks. Those surfaces remain intentionally deferred to the next slice after Slice 8.
+
+apps/connectshyft-api/src/modules/connectshyft/threadTimelineDto.ts
+9:  type: 'message' | 'voice_event' | 'voicemail';
+11:  channel: 'sms' | 'voice' | 'voicemail';
+17:  recording_url?: string | null;
+47:  if (item.type !== 'voicemail') {
+53:    recording_url: item.recordingUrl,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts
+227:  it('revalidates rollout allow-list against correlated webhook context before side effects', async () => {
+248:    const webhookResponse = await request(app)
+249:      .post('/api/v1/connectshyft/webhooks/inbound')
+265:    expect(webhookResponse.status).toBe(200);
+266:    expect(webhookResponse.body).toMatchObject({
+296:        .post('/api/v1/connectshyft/webhooks/inbound')
+367:      .post('/api/v1/connectshyft/webhooks/inbound')
+406:        .post('/api/v1/connectshyft/webhooks/inbound')
+439:      .post('/api/v1/connectshyft/webhooks/inbound')
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.timeline.test.ts
+54:  voicemailIndicator: false,
+55:  voicemailLabel: null,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.ts
+32:  conversationType: 'message' | 'voicemail' | 'lifecycle';
+39:  transcription: {
+106:): 'message' | 'voicemail' | 'lifecycle' => {
+109:    normalized.includes('voicemail')
+110:    || normalized.includes('transcription')
+113:    return 'voicemail';
+156:      firstClass: conversationType === 'voicemail' || conversationType === 'message',
+175:      transcription: {
+186:    const voicemailArtifact = asRecord(payload?.voicemailArtifact);
+187:    const payloadArtifactId = normalizeString(voicemailArtifact?.artifactId);
+190:      const transcription = asRecord(voicemailArtifact?.transcription);
+191:      const available = transcription?.available === true;
+192:      const text = normalizeString(transcription?.text);
+194:        artifact.transcription = {
+196:          text: text || artifact.transcription.text,
+206:    const transcription = asRecord(payload?.transcription);
+208:      metadata?.voicemailArtifactId
+209:      || payload?.voicemailArtifactId
+210:      || voicemailArtifact?.artifactId,
+218:      || transcription?.text
+219:      || asRecord(voicemailArtifact?.transcription)?.text,
+222:    artifact.transcription = {
+289:  const shouldSynthesizeVoicemailTimeline = thread.voicemailIndicator
+290:    || readContext.threadId.toLowerCase().includes('voicemail');
+296:          eventId: `${thread.threadId}-voicemail-inline`,
+299:          eventType: 'connectshyft.voicemail.inline',
+301:            eventName: 'connectshyft.voicemail.inline',
+302:            summary: thread.display?.voicemailLabel || thread.voicemailLabel || 'Voicemail received',
+308:          eventName: 'connectshyft.voicemail.inline',
+312:          conversationType: 'voicemail' as const,
+318:  const voicemailArtifacts = resolveVoicemailArtifactsFromTimeline(resolvedTimeline);
+340:      voicemailArtifacts,
+
+apps/connectshyft-api/src/modules/connectshyft/inboundSms.ts
+84:  webhookBody: unknown,
+86:  const payload = asRecord(webhookBody);
+115:  webhookBody: unknown,
+118:    readWebhookSources(webhookBody),
+124:  webhookBody: unknown,
+127:    readWebhookSources(webhookBody),
+159:  webhookBody: unknown;
+165:  const sources = readWebhookSources(input.webhookBody);
+
+apps/connectshyft-api/src/modules/connectshyft/providerCorrelationMappings.ts
+5:const WEBHOOK_RECEIPTS_TABLE = 'cs_webhook_receipts';
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-transcription.characterization.test.ts
+44:    eventType: readString(rawEventType) || 'voice.transcription.completed',
+85:  'x-test-connectshyft-user-id': 'user-connectshyft-transcription-characterization',
+94:  eventType: 'voice.transcription.completed',
+95:  providerEventId: 'provider-event-transcription-callback-1001',
+96:  providerLegId: 'provider-leg-transcription-1001',
+103:    providerLegId: 'provider-leg-transcription-1001',
+104:    voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+116:  eventType: 'voice.voicemail',
+118:    transcription: {
+124:        voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+131:describe('connectshyft inbound transcription callback webhook route characterization', () => {
+157:      eventId: 'canonical-event-transcription-1001',
+171:  it('returns the current transcription callback success envelope and attachment payload shape', async () => {
+174:      .post('/api/v1/connectshyft/webhooks/inbound')
+182:      message: 'Transcription callback attached to voicemail artifact',
+184:        eventType: 'voice.transcription.completed',
+198:          voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+203:          dedupeKey: 'provider-event:provider-event-transcription-callback-1001',
+205:        transcriptionAttachment: {
+208:          voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+211:          eventName: 'connectshyft.voicemail.transcription_attached',
+219:          eventId: 'canonical-event-transcription-1001',
+222:          eventType: 'voice.transcription.completed',
+224:            eventName: 'connectshyft.voicemail.transcription_attached',
+226:            voicemailArtifact: {
+228:              transcription: {
+233:            transcription: {
+249:      'transcriptionAttachment',
+255:  it('preserves the current duplicate suppression surface for transcription callbacks', async () => {
+258:      providerEventId: 'provider-event-transcription-duplicate-1002',
+262:      .post('/api/v1/connectshyft/webhooks/inbound')
+266:      .post('/api/v1/connectshyft/webhooks/inbound')
+277:        eventType: 'voice.transcription.completed',
+290:          providerLegId: 'provider-leg-transcription-1001',
+292:          providerEventId: 'provider-event-transcription-duplicate-1002',
+298:          dedupeKey: 'provider-event:provider-event-transcription-duplicate-1002',
+317:  it('returns the current invalid-correlation refusal shape for transcription callbacks', async () => {
+321:      .post('/api/v1/connectshyft/webhooks/inbound')
+324:        providerEventId: 'provider-event-transcription-invalid-1003',
+331:      message: 'Transcription callback correlation is invalid or unresolved for voicemail attachment.',
+347:          voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+352:          dedupeKey: 'provider-event:provider-event-transcription-invalid-1003',
+359:          eventName: 'connectshyft.voicemail.transcription_refused',
+365:            voicemail_artifact_id: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+381:  it('returns the current callback-persistence failure mapping when transcription attachment persistence fails', async () => {
+382:    recordCanonicalEventSpy.mockRejectedValueOnce(new Error('transcription-canonical-down'));
+385:      .post('/api/v1/connectshyft/webhooks/inbound')
+388:        providerEventId: 'provider-event-transcription-error-1004',
+405:          voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+410:          dedupeKey: 'provider-event:provider-event-transcription-error-1004',
+416:        error: 'transcription-canonical-down',
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/INBOUND_WEBHOOK_NOTES.md
+5:The ConnectShyft inbound webhook surface is currently split across these files:
+9:    - `POST /webhooks/inbound`
+10:    - `POST /webhooks/sms`
+11:  - owns the currently registered inbound webhook core execution path that preserves the existing inbound SMS, inbound voice, voicemail, transcription callback, and auto-claim behavior
+13:  - owns inbound-webhook route handoff and delegates execution through the shared helper boundary with deterministic `inbound` route preparation
+15:  - owns SMS-webhook route handoff and delegates execution through the shared helper boundary with deterministic `sms` route preparation
+18:  - owns capability enforcement for webhook access
+21:  - owns webhook correlation resolution and rollout-context validation
+32:- correlation persistence and webhook-receipt orchestration internals
+36:- bridge-session webhook progression and bridge alignment behavior
+40:- inbound voice, voicemail artifact, and transcription internals
+43:Provider, correlation, canonical, bridge, and transcription internals remain intentionally deferred from the route-family extraction sequence.
+47:Slice 9 intentionally preserves the exact current inbound webhook response shapes.
+51:- `POST /webhooks/inbound` still returns the existing success and refusal envelopes
+52:- `POST /webhooks/sms` still returns the existing success and refusal envelopes
+53:- existing nested provider, correlation, canonical, bridge, voicemail, transcription, auto-claim, and side-effect payload structure remains unchanged
+64:- current inbound voice behavior
+66:- current voicemail behavior
+67:- current transcription callback behavior
+77:- re-architect webhook routing semantics
+81:- redesign voicemail or transcription processing
+87:That work should build on the current thin handlers and `inboundWebhookContext.ts` boundary rather than pulling deferred provider, correlation, canonical, bridge, or transcription internals into the route-family extraction seam.
+
+apps/connectshyft-api/src/modules/connectshyft/readContracts.ts
+17:  voicemailLabel: string;
+50:  voicemailIndicator: boolean;
+51:  voicemailLabel: string | null;
+83:  voicemailIndicator: boolean;
+102:  voicemail_waiting?: boolean | number | string | null;
+103:  voicemail_indicator?: boolean | number | string | null;
+104:  unread_voicemail_count?: number | string | null;
+105:  unread_voicemail_count_mine?: number | string | null;
+185:    voicemailIndicator: false,
+201:    voicemailIndicator: false,
+217:    voicemailIndicator: false,
+233:    voicemailIndicator: false,
+249:    voicemailIndicator: false,
+265:    voicemailIndicator: true,
+281:    voicemailIndicator: false,
+297:    voicemailIndicator: false,
+313:    voicemailIndicator: false,
+329:    voicemailIndicator: false,
+345:    voicemailIndicator: false,
+361:    voicemailIndicator: false,
+377:    voicemailIndicator: false,
+393:    voicemailIndicator: false,
+409:    voicemailIndicator: false,
+425:    voicemailIndicator: false,
+441:    voicemailIndicator: false,
+447:    threadId: 'thread-ux-r1-claimed-voicemail-1004',
+457:    voicemailIndicator: true,
+473:    voicemailIndicator: true,
+489:    voicemailIndicator: true,
+490:    summary: 'Claimed voicemail remains with assigned owner',
+505:    voicemailIndicator: false,
+521:    voicemailIndicator: false,
+537:    voicemailIndicator: false,
+553:    voicemailIndicator: false,
+569:    voicemailIndicator: true,
+585:    voicemailIndicator: false,
+601:    voicemailIndicator: false,
+617:    voicemailIndicator: false,
+633:    voicemailIndicator: true,
+649:    voicemailIndicator: false,
+665:    voicemailIndicator: false,
+823:  voicemailIndicator: boolean;
+826:  if (!input.voicemailIndicator) {
+875:  voicemailLabel: string | null;
+906:    voicemailLabel: input.voicemailLabel || '',
+930:  const voicemailLabel = resolveVoicemailLabel({
+931:    voicemailIndicator: seed.voicemailIndicator,
+970:    voicemailIndicator: seed.voicemailIndicator,
+971:    voicemailLabel,
+980:      voicemailLabel,
+1137:    'voicemail_waiting',
+1138:    'voicemail_indicator',
+1139:    'unread_voicemail_count',
+1140:    'unread_voicemail_count_mine',
+1297:  const unreadVoicemailCount = normalizeFiniteNumber(row.unread_voicemail_count, 0);
+1298:  const unreadVoicemailCountMine = normalizeFiniteNumber(row.unread_voicemail_count_mine, 0);
+1300:  const voicemailIndicator = normalizeBoolean(row.voicemail_indicator)
+1301:    || normalizeBoolean(row.voicemail_waiting)
+1304:  const voicemailLabel = resolveVoicemailLabel({
+1305:    voicemailIndicator,
+1339:    voicemailIndicator,
+1340:    voicemailLabel,
+1349:      voicemailLabel,
+
+apps/connectshyft-api/src/modules/connectshyft/featureFlags.ts
+7:  connectshyft_webhooks_enabled: boolean;
+10:export type ConnectShyftCapability = 'module' | 'inbox' | 'escalation' | 'webhooks';
+33:  connectshyft_webhooks_enabled: 'CONNECTSHYFT_WEBHOOKS_ENABLED',
+40:  connectshyft_webhooks_enabled: false,
+63:  webhooks: {
+65:    message: 'Inbound webhook processing is unavailable for this tenant.',
+96:    connectshyft_webhooks_enabled: normalizeFlag(candidate.connectshyft_webhooks_enabled),
+106:  connectshyft_webhooks_enabled: parseBooleanEnv(
+107:    process.env[CONNECTSHYFT_FLAG_ENV_MAP.connectshyft_webhooks_enabled],
+157:      connectshyft_webhooks_enabled: false,
+165:    connectshyft_webhooks_enabled: flags.connectshyft_webhooks_enabled,
+184:    webhooks: flags.connectshyft_webhooks_enabled,
+
+apps/connectshyft-api/src/modules/connectshyft/inboundVoice.ts
+28:  'recordingUrl',
+29:  'recording_url',
+33:  'voicemail_duration_seconds',
+39:export const CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME = 'connectshyft.inbound.voice_voicemail_recorded' as const;
+41:export const CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME = 'connectshyft.voicemail.transcription_requested' as const;
+42:export const CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME = 'connectshyft.voicemail.transcription_attached' as const;
+43:export const CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_QUEUE_NAME = 'connectshyft.voicemail.transcription' as const;
+116:const readWebhookSources = (webhookBody: unknown): Array<Record<string, unknown> | null> => {
+117:  const payload = asRecord(webhookBody);
+125:export type ConnectShyftInboundVoiceRoutingDecision = 'voicemail_only' | 'intake_fallback' | 'accepted';
+139:  recordingUrl: string | null;
+164:    voicemailArtifactId: string;
+174:  voicemailArtifactId: string | null;
+203:  webhookBody: unknown,
+206:    readWebhookSources(webhookBody),
+219:  return normalized.includes('transcription')
+224:  webhookBody: unknown,
+226:  const payload = asRecord(webhookBody);
+244:      'transcriptionText',
+245:      'transcription_text',
+261:      voicemailArtifactId: readFromSources(correlationSources, [
+262:        'voicemailArtifactId',
+263:        'voicemail_artifact_id',
+318:    routingDecision: 'voicemail_only',
+325:  webhookBody: unknown;
+336:  const sources = readWebhookSources(input.webhookBody);
+339:  const recordingUrl = readFromSources(sources, CONNECTSHYFT_INBOUND_VOICE_RECORDING_URL_KEYS);
+356:      recordingUrl,
+366:  voicemailArtifactId: string | null;
+367:  transcription: ConnectShyftVoicemailTranscriptionRequest | null;
+377:  voicemailArtifact: input.voicemailArtifactId
+379:      artifactId: input.voicemailArtifactId,
+383:  transcription: input.transcription,
+392:  voicemailArtifactId: string;
+403:    voicemailArtifactId: input.voicemailArtifactId,
+409:  voicemailArtifactId: string;
+425:    voicemailArtifactId: input.voicemailArtifactId,
+435:  voicemailArtifact: {
+436:    artifactId: input.voicemailArtifactId,
+437:    transcription: {
+442:  transcription: {
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_READ_NOTES.md
+12:  - owns thread detail request handoff, response assembly, canonical timeline inclusion, voicemail artifact projection, and bridge-session payload shaping
+24:- the current detail envelope with `thread`, `bridgeSession`, `voicemailArtifacts`, `actions`, and policy metadata
+38:- later slices clarify how outbound, webhook, and neighboring identity flows should contribute to the canonical read surface
+49:- inbound SMS and inbound voice extraction
+50:- webhook and provider-correlation extraction
+60:4. Do not pull outbound dispatch or webhook orchestration into the read surface.
+65:Lifecycle, outbound, and webhook extraction remain separate work.
+67:They should not be folded into the thread read family as part of follow-up cleanup. The next extraction target after Slice 5 is lifecycle actions, while outbound and webhook surfaces remain intentionally deferred.
+
+apps/connectshyft-api/src/modules/connectshyft/http/inboundWebhookContext.ts
+100:  return pathCandidates.some((value) => value.endsWith('/webhooks/sms') || value.endsWith('/sms'))
+118:      message: 'Inbound webhook requires correlation metadata or provider identifiers.',
+124:      message: 'Inbound webhook correlation is ambiguous across provider identifiers.',
+130:      message: 'Inbound webhook correlation lookup is temporarily unavailable.',
+136:    message: 'Inbound webhook correlation mapping not found for provider identifiers.',
+189:        message: 'Inbound webhook correlation metadata conflicts with provider identifier mapping.',
+242:          message: 'Inbound webhook correlation is ambiguous across provider number mappings.',
+254:        message: 'Inbound webhook correlation lookup is temporarily unavailable.',
+267:        message: 'Inbound webhook correlation mapping not found for provider identifiers.',
+299:      message: 'Inbound webhook partial metadata conflicts with provider identifier mapping.',
+326:  if (!await enforceConnectShyftCapability(req, res, 'webhooks')) {
+332:    operation: 'webhook',
+356:      ? 'connectshyft.webhook.signature.missing'
+358:        ? 'connectshyft.webhook.signature.not_configured'
+359:        : 'connectshyft.webhook.signature.invalid';
+379:          remediation: 'Ensure provider webhook signing is configured and include a valid signature.',
+435:          messageKey: 'connectshyft.webhook.correlation.unresolved',
+467:    operation: 'webhook',
+524:    throw new Error('ConnectShyft inbound webhook core executor is not registered.');
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/README.md
+64:Outbound, webhook, and telephony extraction is explicitly deferred in Slice 4.
+70:- webhook/provider orchestration rewrites
+
+apps/connectshyft-api/src/modules/connectshyft/threadTimeline.ts
+26:export type ConnectShyftThreadTimelineChannel = 'sms' | 'voice' | 'voicemail';
+28:export type ConnectShyftThreadTimelineItemType = 'message' | 'voice_event' | 'voicemail';
+53:  type: 'voicemail';
+54:  channel: 'voicemail';
+56:  recordingUrl: string | null;
+159:  return asRecord(payload.voicemailArtifact);
+247:  const transcription = asRecord(artifact?.transcription);
+260:    type: 'voicemail',
+261:    channel: 'voicemail',
+263:    recordingUrl: normalizeString(artifact?.recordingUrl) || null,
+265:    transcript: normalizeString(transcription?.text)
+
+apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts
+24:const TEST_ENFORCE_WEBHOOK_SIGNATURE_HEADER = 'x-test-connectshyft-enforce-webhook-signature';
+31:export type ConnectShyftProviderOperation = 'call' | 'message' | 'webhook';
+903:    deferIfContextMissing: input.operation === 'webhook',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadOutboundContext.test.ts
+97:      connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts
+386:        .post('/api/v1/connectshyft/webhooks/inbound')
+427:        .post('/api/v1/connectshyft/webhooks/inbound')
+532:        .post('/api/v1/connectshyft/webhooks/inbound')
+622:        .post('/api/v1/connectshyft/webhooks/inbound')
+689:        .post('/api/v1/connectshyft/webhooks/inbound')
+740:        .post('/api/v1/connectshyft/webhooks/inbound')
+783:        .post('/api/v1/connectshyft/webhooks/inbound')
+930:    const webhookResponse = await request(app)
+931:      .post('/api/v1/connectshyft/webhooks/inbound')
+946:    expect(webhookResponse.status).toBe(200);
+947:    expect(webhookResponse.body).toMatchObject({
+1036:      .post('/api/v1/connectshyft/webhooks/inbound')
+1066:  it('records voice-family canonical webhook payloads with channel=voice', async () => {
+1076:    const webhookResponse = await request(app)
+1077:      .post('/api/v1/connectshyft/webhooks/inbound')
+1087:    expect(webhookResponse.status).toBe(200);
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.webhookReceiptAdminContext.test.ts
+7:} from '../http/webhookReceiptAdminContext';
+15:const TEST_TENANT_ID = 'tenant-webhook-admin-context';
+16:const TEST_ORG_UNIT_ID = 'org-webhook-admin-context-east';
+42:      userId: 'user-webhook-admin-context-1001',
+47:      email: 'webhook-admin-context@test.local',
+59:        correlationId: 'corr-webhook-admin-context',
+73:describe('connectshyft webhook receipt admin helper boundary', () => {
+86:      connectshyft_webhooks_enabled: true,
+183:  it('maps admin capability refusals to the current webhook-receipt admin refusal envelope', async () => {
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.ts
+209:  it('suppresses duplicate webhook receipts using provider-scoped deterministic dedupe keys', async () => {
+243:  it('suppresses duplicate webhook receipts even before inbound processing has established a thread id', async () => {
+276:  it('scopes webhook replay identity by canonical event type for the same provider sid', async () => {
+336:  it('allows retry attempts for non-applied webhook receipts and only suppresses after applied', async () => {
+343:      providerEventId: 'provider-event-f3-transcription-1001',
+350:      dedupeKey: 'provider-event:provider-event-f3-transcription-1001',
+370:      providerEventId: 'provider-event-f3-transcription-1001',
+377:      dedupeKey: 'provider-event:provider-event-f3-transcription-1001',
+396:      providerEventId: 'provider-event-f3-transcription-1001',
+403:      dedupeKey: 'provider-event:provider-event-f3-transcription-1001',
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_LIFECYCLE_NOTES.md
+57:- inbound voice extraction
+58:- webhook and provider-correlation extraction
+70:5. Do not pull webhook or inbound orchestration into the lifecycle helper boundary.
+75:Lifecycle extraction is now separate from outbound and webhook extraction.
+77:That separation should remain explicit. Follow-up cleanup should not use the lifecycle helper boundary as a place to absorb outbound reopen rules, provider dispatch concerns, inbound correlation work, or webhook processing. The next extraction target after Slice 6 is neighbors / identity bridge, while outbound and webhook surfaces remain intentionally deferred.
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/telephonyReadiness.test.ts
+81:      webhookSignatureConfigured: true,
+170:      webhookSignatureConfigured: true,
+193:  it('reports webhook signature readiness as blocked when provider signature validation is not configured', async () => {
+238:      webhookSignatureConfigured: false,
+306:      webhookSignatureConfigured: true,
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/inboundVoice.test.ts
+16:describe('connectshyft inbound voice domain mapping', () => {
+17:  it('[E3-UNIT-001][P0] maps voicemail webhook payload fields into a canonical inbound voice domain event @P0', () => {
+19:      webhookBody: {
+23:          recording_url: 'https://example.invalid/recordings/voice-001.mp3',
+24:          voicemail_duration_seconds: 47,
+29:      routingDecision: 'voicemail_only',
+37:      routingDecision: 'voicemail_only',
+48:        recordingUrl: 'https://example.invalid/recordings/voice-001.mp3',
+58:      normalizedEventType: 'voice.voicemail',
+67:      normalizedEventType: 'voice.voicemail',
+71:      routingDecision: 'voicemail_only',
+76:      normalizedEventType: 'voice.voicemail',
+92:      normalizedEventType: 'voice.voicemail',
+105:      normalizedEventType: 'voice.voicemail',
+118:      normalizedEventType: 'voice.voicemail',
+127:  it('[E3-UNIT-003][P1] builds canonical payload and transcription callback correlation for voicemail artifacts @P1', () => {
+129:      webhookBody: {
+133:          recording_url: 'https://example.invalid/recordings/voice-002.mp3',
+134:          voicemail_duration_seconds: '63',
+139:      routingDecision: 'voicemail_only',
+145:    const transcription = buildConnectShyftVoicemailTranscriptionRequest({
+151:      voicemailArtifactId: 'vm-thread-connectshyft-e3-001-provider-event-e3-002',
+158:      voicemailArtifactId: transcription.callbackCorrelation.voicemailArtifactId,
+159:      transcription,
+162:    expect(transcription).toEqual({
+172:        voicemailArtifactId: 'vm-thread-connectshyft-e3-001-provider-event-e3-002',
+181:      routingDecision: 'voicemail_only',
+185:      voicemailArtifact: {
+187:        recordingUrl: 'https://example.invalid/recordings/voice-002.mp3',
+190:      transcription,
+194:  it('[E3-UNIT-004][P1] extracts neighbor id from voice webhook envelope aliases @P1', () => {
+206:  it('[E4-UNIT-001][P0] detects canonical transcription callback event families deterministically @P0', () => {
+208:    expect(isConnectShyftVoicemailTranscriptionCallbackEventType('voice.transcription.completed')).toBe(true);
+221:        voicemailArtifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
+227:        transcription_text: 'Follow-up requested after noon.',
+238:        voicemailArtifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
+244:  it('[E4-UNIT-003][P1] builds canonical transcription-attached payload with deterministic metadata @P1', () => {
+247:      voicemailArtifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
+265:        voicemailArtifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
+275:      voicemailArtifact: {
+277:        transcription: {
+282:      transcription: {
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadReadContext.test.ts
+76:      connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadLifecycleContext.test.ts
+85:      connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts
+44:    path: '/api/v1/connect/webhooks/inbound',
+45:    url: '/api/v1/connect/webhooks/inbound',
+46:    originalUrl: '/api/v1/connect/webhooks/inbound',
+63:      email: 'inbound-webhook-context@test.local',
+74:        correlationId: 'corr-inbound-webhook-context',
+131:describe('connectshyft inbound webhook helper boundary', () => {
+145:  it('returns the scoped webhook prerequisites for a valid SMS webhook request', async () => {
+157:      path: '/api/v1/connect/webhooks/sms',
+158:      url: '/api/v1/connect/webhooks/sms',
+159:      originalUrl: '/api/v1/connect/webhooks/sms',
+204:      operation: 'webhook',
+216:      operation: 'webhook',
+236:  it('maps missing webhook signatures to the current refusal envelope', async () => {
+267:      correlationId: 'corr-inbound-webhook-context',
+284:          messageKey: 'connectshyft.webhook.signature.missing',
+285:          remediation: 'Ensure provider webhook signing is configured and include a valid signature.',
+314:      throw new Error('Bridge webhook handling should not run during inbound helper preparation.');
+336:      path: '/api/v1/connect/webhooks/sms',
+337:      url: '/api/v1/connect/webhooks/sms',
+338:      originalUrl: '/api/v1/connect/webhooks/sms',
+350:      throw new Error('Expected inbound webhook core executor to receive execution input.');
+398:  it('prepares deterministic route kinds for the thin inbound webhook handlers', async () => {
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/inboundSms.test.ts
+11:      webhookBody: {
+43:  it('resolves neighbor id only from the canonical webhook field', () => {
+57:      webhookBody: {
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/readContracts.test.ts
+213:  it('keeps ux-r3 voicemail threads in deterministic mine/inbox buckets with explicit labels', () => {
+233:      voicemailIndicator: true,
+234:      voicemailLabel: 'Voicemail',
+239:      voicemailIndicator: true,
+240:      voicemailLabel: 'Voicemail received',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts
+28:    originalUrl: '/api/v1/connectshyft/webhooks/inbound',
+30:    url: '/api/v1/connectshyft/webhooks/inbound',
+288:  it('defers webhook allow-list gating without context and enforces after context is known', () => {
+307:      operation: 'webhook',
+312:      throw new Error('Expected webhook provider resolution to defer allow-list gating before correlation context');
+324:      operation: 'webhook',
+329:      throw new Error('Expected webhook provider resolution to fail once correlation context is evaluated');
+347:  it('routes outbound call/message and webhook translation through the adapter interface', async () => {
+573:  it('enforces webhook signature validation in test override mode when explicitly requested', () => {
+586:      operation: 'webhook',
+602:          'x-test-connectshyft-enforce-webhook-signature': 'true',
+618:  it('accepts valid webhook signatures in test override mode when explicit signature enforcement is enabled', () => {
+642:      operation: 'webhook',
+657:          'x-test-connectshyft-enforce-webhook-signature': 'true',
+669:  it('preserves rawBody buffers when building webhook verification input', () => {
+690:  it('rejects webhook signatures when Telnyx signature headers are missing outside override mode', () => {
+699:      operation: 'webhook',
+732:  it('accepts valid Telnyx webhook signatures outside override mode', () => {
+762:      operation: 'webhook',
+787:  it('rejects validly-signed webhooks when timestamp falls outside replay window', () => {
+817:      operation: 'webhook',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/featureFlags.test.ts
+48:      connectshyft_webhooks_enabled: false,
+63:      connectshyft_webhooks_enabled: true,
+77:      connectshyft_webhooks_enabled: true,
+84:      connectshyft_webhooks_enabled: false,
+100:      connectshyft_webhooks_enabled: true,
+111:      connectshyft_webhooks_enabled: true,
+118:      connectshyft_webhooks_enabled: true,
+129:      connectshyft_webhooks_enabled: {},
+136:      connectshyft_webhooks_enabled: false,
+147:      connectshyft_webhooks_enabled: true,
+163:      connectshyft_webhooks_enabled: false,
+182:      connectshyft_webhooks_enabled: true,
+191:      connectshyft_webhooks_enabled: false,
+200:      connectshyft_webhooks_enabled: true,
+209:      connectshyft_webhooks_enabled: true,
+218:      connectshyft_webhooks_enabled: true,
+227:      connectshyft_webhooks_enabled: false,
+
+apps/connectshyft-api/src/modules/connectshyft/telephonyReadiness.ts
+47:  webhookSignatureConfigured: boolean;
+88:  webhookSignatureConfigured: boolean;
+89:  webhookSignatureBlockingReason: ConnectShyftTelephonyReadinessBlockingReason | null;
+132:    && !headers['x-test-connectshyft-enforce-webhook-signature']
+134:    headers['x-test-connectshyft-enforce-webhook-signature'] = 'true';
+216:      webhookSignatureConfigured: false,
+217:      webhookSignatureBlockingReason: null,
+229:  const webhookVerification = mapConnectShyftWebhookVerificationResult(
+238:  const webhookSignatureConfigured = webhookVerification.ok
+239:    || webhookVerification.refusal.code !== 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED';
+248:    webhookSignatureConfigured,
+249:    webhookSignatureBlockingReason: webhookSignatureConfigured
+254:        webhookVerification.refusal.message,
+396:            'Configure webhook signature validation for the active telephony provider.',
+539:    pushUniqueBlockingReason(blockingReasons, providerReadiness.webhookSignatureBlockingReason);
+576:      && providerReadiness.webhookSignatureConfigured
+581:      && providerReadiness.webhookSignatureConfigured
+588:      webhookSignatureConfigured: providerReadiness.webhookSignatureConfigured,
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.numberMappingContext.test.ts
+85:      connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/threadTimeline.test.ts
+230:  it('maps explicit voice lifecycle and voicemail placeholder events without changing sms ordering semantics', async () => {
+262:        eventId: 'event-voicemail-001',
+271:          voicemailArtifact: {
+273:            recordingUrl: 'https://example.test/vm-001.mp3',
+279:        eventId: 'event-voicemail-002',
+291:          voicemailArtifact: {
+293:            transcription: {
+311:      'voicemail',
+312:      'voicemail',
+320:      id: 'event-voicemail-001',
+321:      channel: 'voicemail',
+322:      type: 'voicemail',
+323:      recordingUrl: 'https://example.test/vm-001.mp3',
+327:      id: 'event-voicemail-002',
+328:      channel: 'voicemail',
+329:      type: 'voicemail',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.escalationConfigContext.test.ts
+83:      connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.telephonySettingsContext.test.ts
+83:      connectshyft_webhooks_enabled: true,
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/numberMappings.test.ts
+47:  it('resolves tenant-scoped mapping context by provider number for webhook routing', () => {
+70:  it('treats inactive mappings as non-routable for webhook routing', () => {
+87:  it('resolves unscoped webhook routing by globally unique active number', () => {
+112:  it('refuses unscoped webhook routing when active mappings are ambiguous across tenants', () => {
+jeremiahotis@Jeremiahs-MacBook-Air connectshyft % rg -n "dialer|call control|telephony|callback number|telephony-readiness|operator callback" apps/connectshyft-web/src
+apps/connectshyft-web/src/views/ConnectShyft/ConnectShyftEscalationSettingsView.vue
+63:            Used when an operator callback number is missing or unusable and the orgUnit fallback must carry telephony readiness.
+
+apps/connectshyft-web/src/features/connectshyft/telephonySettings.ts
+174:        'Unable to save the callback number right now.',
+340:    const response = await api.get('/connectshyft/telephony-readiness', {
+389:          'Unable to save the callback number right now.',
+407:        'Unable to save the callback number right now.',
+
+apps/connectshyft-web/src/views/ConnectShyft/ConnectShyftSettingsView.vue
+89:            ConnectShyft is routing through the orgUnit fallback phone until a usable personal callback number is available.
+161:            No callback number saved yet.
+233:} from '@/features/connectshyft/telephonySettings';
+362:    return 'Your callback number is saved, but voice forwarding still needs more setup.';
+365:  return 'Save a callback number so inbound and bridge calls can reach you.';
+398:    return 'SMS remains runnable while the orgUnit fallback phone is carrying telephony readiness.';
+402:    return 'Outbound SMS can route through the current telephony configuration.';
+413:  return 'SMS still needs more telephony setup before dispatch is allowed.';
+447:        'Unable to load telephony readiness right now.',
+481:        'Unable to load telephony readiness right now.',
+504:      'Unable to save the callback number right now.',
+
+apps/connectshyft-web/src/views/ConnectShyft/__tests__/ConnectShyftSettingsView.test.ts
+7:import * as telephonySettingsModule from '@/features/connectshyft/telephonySettings';
+9:vi.mock('@/features/connectshyft/telephonySettings', () => ({
+139:      message: 'Voice forwarding requires an operator callback number.',
+202:      message: 'Using the orgUnit fallback phone until the operator callback number is set.',
+210:      message: 'Save a callback / forwarding number so telephony no longer depends on the orgUnit fallback phone.',
+216:  telephonySettingsModule.fetchConnectShyftOperatorCallbackNumber,
+219:  telephonySettingsModule.fetchConnectShyftTelephonyReadiness,
+222:  telephonySettingsModule.saveConnectShyftOperatorCallbackNumber,
+302:  it('renders both channel statuses when telephony is fully ready', async () => {
+346:      'No callback number saved yet.',
+349:      'Voice forwarding requires an operator callback number.',
+386:      'Save a callback / forwarding number so telephony no longer depends on the orgUnit fallback phone.',
+390:  it('saves a callback number and refreshes the readiness surface', async () => {
+414:  it('shows explicit failure messaging when the callback number save is refused', async () => {
+418:      message: 'Operator callback number must be a dialable voice number.',
+423:          message: 'Operator callback number must be a dialable voice number.',
+434:      'Operator callback number must be a dialable voice number.',
+jeremiahotis@Jeremiahs-MacBook-Air connectshyft % 
