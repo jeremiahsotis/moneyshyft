@@ -20,7 +20,9 @@ const buildRouter = async (initialPath: string) => {
       },
       {
         path: '/app/connectshyft/settings',
-        component: ConnectShyftMoreView,
+        component: {
+          template: '<div>Settings</div>',
+        },
       },
     ],
   });
@@ -30,7 +32,7 @@ const buildRouter = async (initialPath: string) => {
   return router;
 };
 
-const renderMoreView = async (initialPath = '/app/connectshyft/settings') => {
+const renderMoreView = async (initialPath = '/app/connectshyft/more') => {
   const router = await buildRouter(initialPath);
   const wrapper = mount(ConnectShyftMoreView, {
     global: {
@@ -47,30 +49,31 @@ afterEach(() => {
 });
 
 describe('ConnectShyftMoreView', () => {
-  it('preserves the current shared settings surface without callback-number controls', async () => {
+  it('keeps the More hub focused while pointing settings callers to the callback setup surface', async () => {
     const wrapper = await renderMoreView();
 
     expect(wrapper.get('[data-testid="connectshyft-more-surface"]').text()).toContain(
       'ConnectShyft More',
     );
     expect(wrapper.text()).toContain('ConnectShyft Settings');
-    expect(wrapper.text()).toContain('Open personal account settings and profile defaults.');
+    expect(wrapper.text()).toContain(
+      'Set your callback / forwarding number and check voice forwarding readiness.',
+    );
     expect(wrapper.text()).toContain('Notifications');
     expect(wrapper.text()).toContain('Display Preferences');
     expect(wrapper.find('[data-testid="connectshyft-more-admin-option-availability"]').exists()).toBe(false);
-    expect(wrapper.text()).not.toContain('Callback / forwarding number');
-    expect(wrapper.text()).not.toContain('telephony readiness');
+    expect(wrapper.text()).not.toContain('Save Callback Number');
   });
 
-  it('preserves the current admin refusal guidance on the shared settings surface', async () => {
+  it('preserves the current admin refusal guidance on the More surface', async () => {
     const wrapper = await renderMoreView(
-      '/app/connectshyft/settings?refusedPath=%2Fapp%2Fconnectshyft%2Fsettings%2Favailability',
+      '/app/connectshyft/more?refusedPath=%2Fapp%2Fconnectshyft%2Fsettings%2Favailability',
     );
 
     expect(wrapper.get('[data-testid="connectshyft-settings-refusal-guidance"]').text()).toContain(
       'Access to /app/connectshyft/settings/availability is available to authorized admin users only.',
     );
     expect(wrapper.text()).toContain('Use the approved settings entry points for your role.');
-    expect(wrapper.text()).not.toContain('Callback / forwarding number');
+    expect(wrapper.text()).not.toContain('Save Callback Number');
   });
 });
