@@ -16,34 +16,29 @@ import {
   type ConnectShyftOperatorCallbackNumber,
 } from './operatorCallbackNumbers';
 import { validatePhoneForChannel } from '../../../../../domains/communication';
+import {
+  resolveConnectShyftTelephonyOperatorPhone,
+  type ConnectShyftTelephonyOperatorPhoneResolution,
+} from './operatorDestinationResolver';
 
 export type ConnectShyftTelephonyReadinessBlockingReason = {
-  code:
-    | 'CONNECTSHYFT_PROVIDER_DISABLED'
-    | 'CONNECTSHYFT_PROVIDER_UNAVAILABLE'
-    | 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED'
-    | 'CONNECTSHYFT_TELEPHONY_NUMBER_MAPPING_REQUIRED'
-    | 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING'
-    | 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_INVALID'
-    | 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_PERSISTENCE_UNAVAILABLE';
+  code: string;
   category:
     | 'provider'
-    | 'webhook_signature'
+    | 'callback_number'
+    | 'orgunit_fallback'
     | 'number_mapping'
-    | 'callback_number';
+    | 'sms'
+    | 'voice';
   message: string;
-  blocking: true;
+  blocking: boolean;
+  channel?: 'sms' | 'voice' | 'both';
 };
 
 export type ConnectShyftTelephonyReadinessNextAction = {
-  code:
-    | 'CONFIGURE_PROVIDER_SELECTION'
-    | 'CONFIGURE_WEBHOOK_SIGNATURE_VALIDATION'
-    | 'ADD_OR_ACTIVATE_NUMBER_MAPPING'
-    | 'SET_OPERATOR_CALLBACK_NUMBER'
-    | 'REPLACE_OPERATOR_CALLBACK_NUMBER'
-    | 'RESTORE_CALLBACK_NUMBER_PERSISTENCE';
+  code: string;
   message: string;
+  path?: string;
 };
 
 export type ConnectShyftTelephonyReadiness = {
@@ -56,6 +51,8 @@ export type ConnectShyftTelephonyReadiness = {
   callbackNumberNormalized: boolean;
   voiceReady: boolean;
   bridgeCallRunnable: boolean;
+  smsReady: boolean;
+  messageDispatchRunnable: boolean;
   provider: ConnectShyftProviderResolution & {
     adapterInterfaceVersion: 'v1' | null;
   };
@@ -66,8 +63,12 @@ export type ConnectShyftTelephonyReadiness = {
   callbackNumber: {
     value: string | null;
     rawInput: string | null;
+    createdAtUtc: string | null;
+    updatedAtUtc: string | null;
     persistenceAvailable: boolean;
   };
+  operatorPhoneSource: 'callback_number' | 'orgunit_default' | 'none';
+  degradedMode: boolean;
   blockingReasons: ConnectShyftTelephonyReadinessBlockingReason[];
   nextActions: ConnectShyftTelephonyReadinessNextAction[];
 };
@@ -147,22 +148,29 @@ const buildProviderRegistryRequest = (
 };
 
 const buildBlockingReason = (
-  code: ConnectShyftTelephonyReadinessBlockingReason['code'],
+  code: string,
   category: ConnectShyftTelephonyReadinessBlockingReason['category'],
   message: string,
+  input: {
+    blocking?: boolean;
+    channel?: 'sms' | 'voice' | 'both';
+  } = {},
 ): ConnectShyftTelephonyReadinessBlockingReason => ({
   code,
   category,
   message,
-  blocking: true,
+  blocking: input.blocking ?? true,
+  channel: input.channel || 'both',
 });
 
 const buildNextAction = (
-  code: ConnectShyftTelephonyReadinessNextAction['code'],
+  code: string,
   message: string,
+  path?: string,
 ): ConnectShyftTelephonyReadinessNextAction => ({
   code,
   message,
+  ...(path ? { path } : {}),
 });
 
 const pushUniqueBlockingReason = (
@@ -211,6 +219,9 @@ const mapProviderReadiness = (
         resolution.refusal.code,
         'provider',
         resolution.refusal.message,
+        {
+          channel: 'both',
+        },
       ),
     };
   }
@@ -239,8 +250,11 @@ const mapProviderReadiness = (
       ? null
       : buildBlockingReason(
         'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED',
-        'webhook_signature',
+        'provider',
         webhookVerification.refusal.message,
+        {
+          channel: 'both',
+        },
       ),
     providerBlockingReason: null,
   };
@@ -279,12 +293,17 @@ const mapCallbackNumberReadiness = (
       callbackNumber: {
         value: null,
         rawInput: null,
+        createdAtUtc: null,
+        updatedAtUtc: null,
         persistenceAvailable: false,
       },
       blockingReason: buildBlockingReason(
         'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_PERSISTENCE_UNAVAILABLE',
         'callback_number',
         'Operator callback number storage is unavailable. Voice forwarding readiness cannot be confirmed.',
+        {
+          channel: 'both',
+        },
       ),
     };
   }
@@ -296,12 +315,17 @@ const mapCallbackNumberReadiness = (
       callbackNumber: {
         value: null,
         rawInput: null,
+        createdAtUtc: null,
+        updatedAtUtc: null,
         persistenceAvailable: true,
       },
       blockingReason: buildBlockingReason(
         'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
         'callback_number',
         'Voice forwarding requires an operator callback number.',
+        {
+          channel: 'both',
+        },
       ),
     };
   }
@@ -314,12 +338,17 @@ const mapCallbackNumberReadiness = (
       callbackNumber: {
         value: callbackNumber.callbackNumberE164,
         rawInput: callbackNumber.callbackNumberRawInput,
+        createdAtUtc: callbackNumber.createdAtUtc,
+        updatedAtUtc: callbackNumber.updatedAtUtc,
         persistenceAvailable: true,
       },
       blockingReason: buildBlockingReason(
         'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_INVALID',
         'callback_number',
         'Operator callback number must be a dialable voice number.',
+        {
+          channel: 'both',
+        },
       ),
     };
   }
@@ -330,6 +359,8 @@ const mapCallbackNumberReadiness = (
     callbackNumber: {
       value: callbackNumber.callbackNumberE164,
       rawInput: callbackNumber.callbackNumberRawInput,
+      createdAtUtc: callbackNumber.createdAtUtc,
+      updatedAtUtc: callbackNumber.updatedAtUtc,
       persistenceAvailable: true,
     },
     blockingReason: null,
@@ -337,11 +368,15 @@ const mapCallbackNumberReadiness = (
 };
 
 const buildNextActions = (
-  blockingReasons: ConnectShyftTelephonyReadinessBlockingReason[],
+  input: {
+    blockingReasons: ConnectShyftTelephonyReadinessBlockingReason[];
+    degradedMode: boolean;
+    callbackReadiness: ReturnType<typeof mapCallbackNumberReadiness>;
+  },
 ): ConnectShyftTelephonyReadinessNextAction[] => {
   const nextActions: ConnectShyftTelephonyReadinessNextAction[] = [];
 
-  blockingReasons.forEach((reason) => {
+  input.blockingReasons.forEach((reason) => {
     switch (reason.code) {
       case 'CONNECTSHYFT_PROVIDER_DISABLED':
       case 'CONNECTSHYFT_PROVIDER_UNAVAILABLE':
@@ -403,13 +438,64 @@ const buildNextActions = (
     }
   });
 
+  if (input.degradedMode) {
+    pushUniqueNextAction(
+      nextActions,
+      input.callbackReadiness.callbackNumberConfigured
+        ? buildNextAction(
+          'REPLACE_OPERATOR_CALLBACK_NUMBER',
+          'Replace the current callback number so telephony no longer depends on the orgUnit fallback phone.',
+        )
+        : buildNextAction(
+          'SET_OPERATOR_CALLBACK_NUMBER',
+          'Save a callback / forwarding number so telephony no longer depends on the orgUnit fallback phone.',
+        ),
+    );
+  }
+
   return nextActions;
+};
+
+const buildDegradedModeReason = (
+  callbackReadiness: ReturnType<typeof mapCallbackNumberReadiness>,
+): ConnectShyftTelephonyReadinessBlockingReason => buildBlockingReason(
+  'CONNECTSHYFT_ORGUNIT_DEFAULT_OPERATOR_PHONE_ACTIVE',
+  'orgunit_fallback',
+  callbackReadiness.callbackNumberConfigured
+    ? 'Using the orgUnit fallback phone because the current operator callback number is not currently usable.'
+    : 'Using the orgUnit fallback phone until the operator callback number is set.',
+  {
+    blocking: false,
+    channel: 'both',
+  },
+);
+
+const buildInvalidOrgUnitFallbackReason = (): ConnectShyftTelephonyReadinessBlockingReason =>
+  buildBlockingReason(
+    'CONNECTSHYFT_ORGUNIT_DEFAULT_OPERATOR_PHONE_INVALID',
+    'orgunit_fallback',
+    'OrgUnit fallback phone must be a valid dialable number before telephony can route through fallback.',
+    {
+      channel: 'both',
+    },
+  );
+
+const canDispatchForChannel = (
+  operatorPhoneResolution: ConnectShyftTelephonyOperatorPhoneResolution,
+  channel: 'sms' | 'voice',
+): boolean => {
+  if (!operatorPhoneResolution.normalized || !operatorPhoneResolution.value) {
+    return false;
+  }
+
+  return validatePhoneForChannel(operatorPhoneResolution.value, channel).ok;
 };
 
 export class AsyncConnectShyftTelephonyReadinessService {
   constructor(
     private readonly numberMappingService: Pick<AsyncConnectShyftNumberMappingService, 'listMappings'> = connectShyftNumberMappingServiceAsync,
     private readonly callbackNumberService: Pick<AsyncConnectShyftOperatorCallbackNumberService, 'getCurrentCallbackNumber'> = connectShyftOperatorCallbackNumberServiceAsync,
+    private readonly operatorPhoneResolver: typeof resolveConnectShyftTelephonyOperatorPhone = resolveConnectShyftTelephonyOperatorPhone,
   ) {}
 
   async inspectReadiness(
@@ -439,6 +525,14 @@ export class AsyncConnectShyftTelephonyReadinessService {
       callbackNumber,
       callbackNumberPersistenceAvailable,
     );
+    const operatorPhoneResolution = await this.operatorPhoneResolver({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      callbackNumberE164: callbackNumber?.callbackNumberE164,
+      callbackNumberPersistenceAvailable,
+    });
+    const degradedMode = operatorPhoneResolution.source === 'orgunit_default'
+      && operatorPhoneResolution.normalized;
 
     const blockingReasons: ConnectShyftTelephonyReadinessBlockingReason[] = [];
     pushUniqueBlockingReason(blockingReasons, providerReadiness.providerBlockingReason);
@@ -451,18 +545,42 @@ export class AsyncConnectShyftTelephonyReadinessService {
           'CONNECTSHYFT_TELEPHONY_NUMBER_MAPPING_REQUIRED',
           'number_mapping',
           'Voice routing requires at least one active ConnectShyft number mapping for this orgUnit.',
+          {
+            channel: 'both',
+          },
         ),
       );
     }
 
-    pushUniqueBlockingReason(blockingReasons, callbackReadiness.blockingReason);
+    if (callbackNumberPersistenceAvailable && degradedMode) {
+      pushUniqueBlockingReason(
+        blockingReasons,
+        buildDegradedModeReason(callbackReadiness),
+      );
+    } else {
+      pushUniqueBlockingReason(blockingReasons, callbackReadiness.blockingReason);
+    }
 
+    if (
+      callbackNumberPersistenceAvailable
+      && !degradedMode
+      && operatorPhoneResolution.orgUnitDefaultStatus === 'invalid'
+      && callbackReadiness.callbackNumberNormalized !== true
+    ) {
+      pushUniqueBlockingReason(blockingReasons, buildInvalidOrgUnitFallbackReason());
+    }
+
+    const voiceChannelReady = canDispatchForChannel(operatorPhoneResolution, 'voice');
+    const smsChannelReady = canDispatchForChannel(operatorPhoneResolution, 'sms');
     const bridgeCallRunnable = providerReadiness.providerReady
       && providerReadiness.webhookSignatureConfigured
       && numberMappings.activeCount > 0
       && providerReadiness.voiceSupported
-      && callbackReadiness.callbackNumberConfigured
-      && callbackReadiness.callbackNumberNormalized;
+      && voiceChannelReady;
+    const messageDispatchRunnable = providerReadiness.providerReady
+      && providerReadiness.webhookSignatureConfigured
+      && numberMappings.activeCount > 0
+      && smsChannelReady;
 
     return {
       providerReady: providerReadiness.providerReady,
@@ -474,11 +592,19 @@ export class AsyncConnectShyftTelephonyReadinessService {
       callbackNumberNormalized: callbackReadiness.callbackNumberNormalized,
       voiceReady: bridgeCallRunnable,
       bridgeCallRunnable,
+      smsReady: messageDispatchRunnable,
+      messageDispatchRunnable,
       provider: providerReadiness.provider,
       orgUnitNumberMappings: numberMappings,
       callbackNumber: callbackReadiness.callbackNumber,
+      operatorPhoneSource: operatorPhoneResolution.source,
+      degradedMode,
       blockingReasons,
-      nextActions: buildNextActions(blockingReasons),
+      nextActions: buildNextActions({
+        blockingReasons,
+        degradedMode,
+        callbackReadiness,
+      }),
     };
   }
 }

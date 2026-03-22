@@ -13,6 +13,24 @@ export type ConnectShyftOperatorDestinationResolution = {
   orgUnitId: string;
 };
 
+export type ConnectShyftTelephonyOperatorPhoneSource =
+  | 'callback_number'
+  | 'orgunit_default'
+  | 'none';
+
+type ConnectShyftTelephonyOperatorPhoneCandidateStatus =
+  | 'missing'
+  | 'invalid'
+  | 'valid';
+
+export type ConnectShyftTelephonyOperatorPhoneResolution = {
+  value: string | null;
+  source: ConnectShyftTelephonyOperatorPhoneSource;
+  normalized: boolean;
+  callbackNumberStatus: ConnectShyftTelephonyOperatorPhoneCandidateStatus;
+  orgUnitDefaultStatus: ConnectShyftTelephonyOperatorPhoneCandidateStatus;
+};
+
 export type ResolveConnectShyftOperatorDestinationInput = {
   tenantId: string;
   orgUnitId: string;
@@ -49,6 +67,20 @@ type ResolveCandidatePhoneResult =
   | {
     status: 'valid';
     phoneNumber: string;
+  };
+
+type ResolveNormalizedPhoneResult =
+  | {
+    status: 'missing';
+    value: null;
+  }
+  | {
+    status: 'invalid';
+    value: null;
+  }
+  | {
+    status: 'valid';
+    value: string;
   };
 
 type ConnectShyftUserPhoneRow = {
@@ -98,6 +130,31 @@ const resolveCandidatePhone = (value: unknown): ResolveCandidatePhoneResult => {
   };
 };
 
+const resolveNormalizedPhone = (value: unknown): ResolveNormalizedPhoneResult => {
+  const rawPhone = normalizeString(value);
+  if (!rawPhone) {
+    return {
+      status: 'missing',
+      value: null,
+    };
+  }
+
+  const normalizedPhone = normalizePhone(rawPhone, {
+    defaultCountry: 'US',
+  });
+  if (!normalizedPhone.ok) {
+    return {
+      status: 'invalid',
+      value: null,
+    };
+  }
+
+  return {
+    status: 'valid',
+    value: normalizedPhone.phone.normalizedE164,
+  };
+};
+
 const buildResolution = (
   input: {
     orgUnitId: string;
@@ -110,6 +167,20 @@ const buildResolution = (
   source: input.source,
   userId: input.userId,
   orgUnitId: input.orgUnitId,
+});
+
+const buildTelephonyOperatorPhoneResolution = (input: {
+  value: string | null;
+  source: ConnectShyftTelephonyOperatorPhoneSource;
+  normalized: boolean;
+  callbackNumberStatus: ConnectShyftTelephonyOperatorPhoneCandidateStatus;
+  orgUnitDefaultStatus: ConnectShyftTelephonyOperatorPhoneCandidateStatus;
+}): ConnectShyftTelephonyOperatorPhoneResolution => ({
+  value: input.value,
+  source: input.source,
+  normalized: input.normalized,
+  callbackNumberStatus: input.callbackNumberStatus,
+  orgUnitDefaultStatus: input.orgUnitDefaultStatus,
 });
 
 export class InMemoryConnectShyftOperatorDestinationStore
@@ -311,8 +382,91 @@ export class ConnectShyftOperatorDestinationResolverService {
   }
 }
 
+export class ConnectShyftTelephonyOperatorPhoneResolverService {
+  constructor(
+    private readonly store: Pick<ConnectShyftOperatorDestinationStore, 'getOrgUnitDefaultPhone'>,
+  ) {}
+
+  async resolve(input: {
+    tenantId: string;
+    orgUnitId: string;
+    callbackNumberE164?: string | null;
+    callbackNumberPersistenceAvailable?: boolean;
+  }): Promise<ConnectShyftTelephonyOperatorPhoneResolution> {
+    if (input.callbackNumberPersistenceAvailable === false) {
+      return buildTelephonyOperatorPhoneResolution({
+        value: null,
+        source: 'none',
+        normalized: false,
+        callbackNumberStatus: 'missing',
+        orgUnitDefaultStatus: 'missing',
+      });
+    }
+
+    const callbackNumber = resolveNormalizedPhone(input.callbackNumberE164);
+    const orgUnitDefault = await this.store.getOrgUnitDefaultPhone({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+    });
+    const orgUnitDefaultPhone = resolveNormalizedPhone(orgUnitDefault?.phoneNumber);
+
+    if (callbackNumber.status === 'valid') {
+      return buildTelephonyOperatorPhoneResolution({
+        value: callbackNumber.value,
+        source: 'callback_number',
+        normalized: true,
+        callbackNumberStatus: callbackNumber.status,
+        orgUnitDefaultStatus: orgUnitDefaultPhone.status,
+      });
+    }
+
+    if (orgUnitDefaultPhone.status === 'valid') {
+      return buildTelephonyOperatorPhoneResolution({
+        value: orgUnitDefaultPhone.value,
+        source: 'orgunit_default',
+        normalized: true,
+        callbackNumberStatus: callbackNumber.status,
+        orgUnitDefaultStatus: orgUnitDefaultPhone.status,
+      });
+    }
+
+    if (callbackNumber.status === 'invalid') {
+      return buildTelephonyOperatorPhoneResolution({
+        value: null,
+        source: 'callback_number',
+        normalized: false,
+        callbackNumberStatus: callbackNumber.status,
+        orgUnitDefaultStatus: orgUnitDefaultPhone.status,
+      });
+    }
+
+    if (orgUnitDefaultPhone.status === 'invalid') {
+      return buildTelephonyOperatorPhoneResolution({
+        value: null,
+        source: 'orgunit_default',
+        normalized: false,
+        callbackNumberStatus: callbackNumber.status,
+        orgUnitDefaultStatus: orgUnitDefaultPhone.status,
+      });
+    }
+
+    return buildTelephonyOperatorPhoneResolution({
+      value: null,
+      source: 'none',
+      normalized: false,
+      callbackNumberStatus: callbackNumber.status,
+      orgUnitDefaultStatus: orgUnitDefaultPhone.status,
+    });
+  }
+}
+
 const connectShyftOperatorDestinationResolverService =
   new ConnectShyftOperatorDestinationResolverService(
+    new KnexConnectShyftOperatorDestinationStore(() => db),
+  );
+
+const connectShyftTelephonyOperatorPhoneResolverService =
+  new ConnectShyftTelephonyOperatorPhoneResolverService(
     new KnexConnectShyftOperatorDestinationStore(() => db),
   );
 
@@ -320,4 +474,13 @@ export async function resolveOperatorDestination(
   input: ResolveConnectShyftOperatorDestinationInput,
 ): Promise<ConnectShyftOperatorDestinationResolution> {
   return connectShyftOperatorDestinationResolverService.resolve(input);
+}
+
+export async function resolveConnectShyftTelephonyOperatorPhone(input: {
+  tenantId: string;
+  orgUnitId: string;
+  callbackNumberE164?: string | null;
+  callbackNumberPersistenceAvailable?: boolean;
+}): Promise<ConnectShyftTelephonyOperatorPhoneResolution> {
+  return connectShyftTelephonyOperatorPhoneResolverService.resolve(input);
 }
