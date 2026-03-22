@@ -30,6 +30,7 @@ export const putConnectEscalationConfig = async (req: Request, res: Response) =>
     orgUnitId: accessContext.context.orgUnitId,
     escalationBaselineHours: accessContext.payload.escalationBaselineHours,
     recipients: accessContext.payload.recipients,
+    defaultOperatorPhoneE164: accessContext.payload.defaultOperatorPhoneE164,
     recipientDirectory,
   });
 
@@ -53,6 +54,7 @@ export const putConnectEscalationConfig = async (req: Request, res: Response) =>
       orgUnitId: saved.data.orgUnitId,
       escalationBaselineHours: saved.data.escalationBaselineHours,
       recipients: saved.data.recipients,
+      defaultOperatorPhoneE164: saved.data.defaultOperatorPhoneE164,
       updatedAtUtc: saved.data.updatedAtUtc,
     },
   });

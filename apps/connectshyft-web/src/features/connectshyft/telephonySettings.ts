@@ -14,6 +14,7 @@ export type ConnectShyftTelephonyReadinessBlockingReason = {
   category: string;
   message: string;
   blocking: boolean;
+  channel?: string;
 };
 
 export type ConnectShyftTelephonyReadinessNextAction = {
@@ -31,11 +32,17 @@ export type ConnectShyftTelephonyReadiness = {
   callbackNumberNormalized: boolean;
   voiceReady: boolean;
   bridgeCallRunnable: boolean;
+  smsReady: boolean;
+  messageDispatchRunnable: boolean;
   callbackNumber: {
     value: string | null;
     rawInput: string | null;
+    createdAtUtc: string | null;
+    updatedAtUtc: string | null;
     persistenceAvailable: boolean;
   };
+  operatorPhoneSource: 'callback_number' | 'orgunit_default' | 'none';
+  degradedMode: boolean;
   blockingReasons: ConnectShyftTelephonyReadinessBlockingReason[];
   nextActions: ConnectShyftTelephonyReadinessNextAction[];
 };
@@ -68,11 +75,16 @@ type ConnectShyftTelephonySettingsEnvelope = {
     callbackNumberNormalized?: boolean;
     voiceReady?: boolean;
     bridgeCallRunnable?: boolean;
+    smsReady?: boolean;
+    messageDispatchRunnable?: boolean;
+    operatorPhoneSource?: 'callback_number' | 'orgunit_default' | 'none';
+    degradedMode?: boolean;
     blockingReasons?: Array<{
       code?: string;
       category?: string;
       message?: string;
       blocking?: boolean;
+      channel?: string;
     }>;
     nextActions?: Array<{
       code?: string;
@@ -116,11 +128,17 @@ export const DEFAULT_CONNECTSHYFT_TELEPHONY_READINESS: ConnectShyftTelephonyRead
   callbackNumberNormalized: false,
   voiceReady: false,
   bridgeCallRunnable: false,
+  smsReady: false,
+  messageDispatchRunnable: false,
   callbackNumber: {
     value: null,
     rawInput: null,
+    createdAtUtc: null,
+    updatedAtUtc: null,
     persistenceAvailable: true,
   },
+  operatorPhoneSource: 'none',
+  degradedMode: false,
   blockingReasons: [],
   nextActions: [],
 };
@@ -216,6 +234,7 @@ const parseBlockingReasons = (
         'Voice forwarding needs additional setup.',
       ),
       blocking: reason?.blocking === true,
+      channel: normalizeString(reason?.channel) || undefined,
     }))
     .filter((reason) => reason.code.length > 0 && reason.message.length > 0);
 };
@@ -265,11 +284,20 @@ const parseTelephonyReadiness = (
     callbackNumberNormalized: envelope.data?.callbackNumberNormalized === true,
     voiceReady: envelope.data?.voiceReady === true,
     bridgeCallRunnable: envelope.data?.bridgeCallRunnable === true,
+    smsReady: envelope.data?.smsReady === true,
+    messageDispatchRunnable: envelope.data?.messageDispatchRunnable === true,
     callbackNumber: {
       value: normalizeString(callbackNumber?.value) || null,
       rawInput: normalizeString(callbackNumber?.rawInput) || null,
+      createdAtUtc: normalizeString(callbackNumber?.createdAtUtc) || null,
+      updatedAtUtc: normalizeString(callbackNumber?.updatedAtUtc) || null,
       persistenceAvailable: callbackNumber?.persistenceAvailable !== false,
     },
+    operatorPhoneSource: envelope.data?.operatorPhoneSource === 'callback_number'
+      || envelope.data?.operatorPhoneSource === 'orgunit_default'
+      ? envelope.data.operatorPhoneSource
+      : 'none',
+    degradedMode: envelope.data?.degradedMode === true,
     blockingReasons: parseBlockingReasons(payload),
     nextActions: parseNextActions(payload),
   };

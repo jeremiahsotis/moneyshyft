@@ -1,6 +1,7 @@
 import type { Knex } from 'knex';
 import db from '../../config/knex';
 import {
+  formatDisplayPhone,
   normalizePhone,
   validatePhoneForChannel,
   type PhoneNormalizationError,
@@ -78,6 +79,14 @@ type DbOperatorCallbackNumberRow = {
   updated_at_utc: string | Date;
 };
 
+type DbUserOperatorCallbackNumberRow = {
+  id: string;
+  household_id: string | null;
+  phone_e164: string | null;
+  created_at: string | Date;
+  updated_at: string | Date;
+};
+
 type ValidatedCallbackNumber =
   | {
     ok: true;
@@ -85,8 +94,6 @@ type ValidatedCallbackNumber =
     callbackNumberRawInput: string;
   }
   | Extract<ConnectShyftOperatorCallbackNumberSaveResult, { ok: false }>;
-
-const CONNECTSHYFT_OPERATOR_CALLBACK_NUMBERS_TABLE = 'cs_operator_callback_numbers';
 
 const normalizeRequiredString = (value: unknown): string => {
   if (typeof value !== 'string') {
@@ -114,6 +121,35 @@ const mapDbRowToOperatorCallbackNumber = (
   createdAtUtc: toIsoUtc(row.created_at_utc),
   updatedAtUtc: toIsoUtc(row.updated_at_utc),
 });
+
+const formatCallbackNumberRawInput = (value: string): string =>
+  formatDisplayPhone(value, 'en-US');
+
+const normalizePersistedCallbackNumber = (
+  callbackNumber: ConnectShyftOperatorCallbackNumber,
+): ConnectShyftOperatorCallbackNumber => ({
+  ...callbackNumber,
+  callbackNumberRawInput: formatCallbackNumberRawInput(callbackNumber.callbackNumberE164),
+});
+
+const mapUserRowToOperatorCallbackNumber = (
+  row: DbUserOperatorCallbackNumberRow,
+): ConnectShyftOperatorCallbackNumber | null => {
+  const callbackNumberE164 = normalizeRequiredString(row.phone_e164);
+  const tenantId = normalizeRequiredString(row.household_id);
+  if (!callbackNumberE164 || !tenantId) {
+    return null;
+  }
+
+  return {
+    tenantId,
+    userId: row.id,
+    callbackNumberE164,
+    callbackNumberRawInput: formatCallbackNumberRawInput(callbackNumberE164),
+    createdAtUtc: toIsoUtc(row.created_at),
+    updatedAtUtc: toIsoUtc(row.updated_at),
+  };
+};
 
 const buildRequiredRefusal = (): ConnectShyftOperatorCallbackNumberRequiredResult => ({
   ok: false,
@@ -247,27 +283,28 @@ export class KnexConnectShyftOperatorCallbackNumberStore
 implements ConnectShyftOperatorCallbackNumberStore {
   constructor(private readonly knexClient: Knex = db) {}
 
+  private usersTable() {
+    return this.knexClient.table<DbUserOperatorCallbackNumberRow>('users');
+  }
+
   async getCallbackNumber(input: {
     tenantId: string;
     userId: string;
   }): Promise<ConnectShyftOperatorCallbackNumber | null> {
-    const row = await this.knexClient
-      .withSchema('connectshyft')
-      .table(CONNECTSHYFT_OPERATOR_CALLBACK_NUMBERS_TABLE)
+    const row = await this.usersTable()
       .where({
-        tenant_id: input.tenantId,
-        user_id: input.userId,
+        id: input.userId,
+        household_id: input.tenantId,
       })
-      .first<DbOperatorCallbackNumberRow>([
-        'tenant_id',
-        'user_id',
-        'callback_number_e164',
-        'callback_number_raw_input',
-        'created_at_utc',
-        'updated_at_utc',
+      .first<DbUserOperatorCallbackNumberRow>([
+        'id',
+        'household_id',
+        'phone_e164',
+        'created_at',
+        'updated_at',
       ]);
 
-    return row ? mapDbRowToOperatorCallbackNumber(row) : null;
+    return row ? mapUserRowToOperatorCallbackNumber(row) : null;
   }
 
   async saveCallbackNumber(input: {
@@ -276,33 +313,28 @@ implements ConnectShyftOperatorCallbackNumberStore {
     callbackNumberE164: string;
     callbackNumberRawInput: string;
   }): Promise<ConnectShyftOperatorCallbackNumber> {
-    const [row] = await this.knexClient
-      .withSchema('connectshyft')
-      .table(CONNECTSHYFT_OPERATOR_CALLBACK_NUMBERS_TABLE)
-      .insert({
-        tenant_id: input.tenantId,
-        user_id: input.userId,
-        callback_number_e164: input.callbackNumberE164,
-        callback_number_raw_input: input.callbackNumberRawInput,
-        created_at_utc: this.knexClient.fn.now(),
-        updated_at_utc: this.knexClient.fn.now(),
+    const updatedRows = await this.usersTable()
+      .where({
+        id: input.userId,
+        household_id: input.tenantId,
       })
-      .onConflict(['tenant_id', 'user_id'])
-      .merge({
-        callback_number_e164: input.callbackNumberE164,
-        callback_number_raw_input: input.callbackNumberRawInput,
-        updated_at_utc: this.knexClient.fn.now(),
-      })
-      .returning<DbOperatorCallbackNumberRow[]>([
-        'tenant_id',
-        'user_id',
-        'callback_number_e164',
-        'callback_number_raw_input',
-        'created_at_utc',
-        'updated_at_utc',
+      .update({
+        phone_e164: input.callbackNumberE164,
+        updated_at: this.knexClient.fn.now(),
+      }, [
+        'id',
+        'household_id',
+        'phone_e164',
+        'created_at',
+        'updated_at',
       ]);
+    const [row] = updatedRows as DbUserOperatorCallbackNumberRow[];
+    const callbackNumber = row ? mapUserRowToOperatorCallbackNumber(row) : null;
+    if (!callbackNumber) {
+      throw new Error('Operator callback number user scope is unavailable.');
+    }
 
-    return mapDbRowToOperatorCallbackNumber(row);
+    return callbackNumber;
   }
 }
 
@@ -316,7 +348,8 @@ export class AsyncConnectShyftOperatorCallbackNumberService {
     userId: string;
   }): Promise<ConnectShyftOperatorCallbackNumber | null> {
     try {
-      return await this.store.getCallbackNumber(input);
+      const callbackNumber = await this.store.getCallbackNumber(input);
+      return callbackNumber ? normalizePersistedCallbackNumber(callbackNumber) : null;
     } catch (error) {
       if (!isMissingPersistenceError(error)) {
         throw error;
@@ -349,7 +382,7 @@ export class AsyncConnectShyftOperatorCallbackNumberService {
         code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_SAVED',
         httpStatus: 200,
         data: {
-          callbackNumber,
+          callbackNumber: normalizePersistedCallbackNumber(callbackNumber),
         },
       };
     } catch (error) {

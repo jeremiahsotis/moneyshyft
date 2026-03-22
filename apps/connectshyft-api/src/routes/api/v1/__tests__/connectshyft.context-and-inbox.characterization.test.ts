@@ -1,6 +1,7 @@
 // @ts-nocheck
 import express from 'express';
 import request from 'supertest';
+import * as TelephonyReadinessModule from '../../../../modules/connectshyft/telephonyReadiness';
 import { responseEnvelope } from '../../../../platform/middleware/responseEnvelope';
 import connectShyftRouter from '../connectshyft';
 
@@ -14,6 +15,42 @@ const CONNECTSHYFT_TEST_FLAGS = JSON.stringify({
   connectshyft_inbox_enabled: true,
   connectshyft_escalation_enabled: true,
   connectshyft_webhooks_enabled: true,
+});
+
+const buildTelephonyReadiness = (overrides: Record<string, unknown> = {}) => ({
+  providerReady: true,
+  providerSelectionPathActive: true,
+  webhookSignatureConfigured: true,
+  orgUnitNumberMappingReady: true,
+  voiceSupported: true,
+  callbackNumberConfigured: true,
+  callbackNumberNormalized: true,
+  voiceReady: true,
+  bridgeCallRunnable: true,
+  smsReady: true,
+  messageDispatchRunnable: true,
+  provider: {
+    requestedProvider: 'telnyx',
+    resolvedProvider: 'telnyx',
+    deterministic: true,
+    adapterInterfaceVersion: 'v1',
+  },
+  orgUnitNumberMappings: {
+    activeCount: 1,
+    mappings: [],
+  },
+  callbackNumber: {
+    value: '+12605550155',
+    rawInput: '(260) 555-0155',
+    createdAtUtc: '2026-03-22T12:00:00.000Z',
+    updatedAtUtc: '2026-03-22T12:00:00.000Z',
+    persistenceAvailable: true,
+  },
+  operatorPhoneSource: 'callback_number',
+  degradedMode: false,
+  blockingReasons: [],
+  nextActions: [],
+  ...overrides,
 });
 
 type HarnessOptions = {
@@ -148,6 +185,13 @@ describe('connectshyft context and inbox route characterization', () => {
     process.env.CONNECTSHYFT_WEBHOOKS_ENABLED = 'true';
   });
 
+  beforeEach(() => {
+    jest.spyOn(
+      TelephonyReadinessModule.connectShyftTelephonyReadinessServiceAsync,
+      'inspectReadiness',
+    ).mockResolvedValue(buildTelephonyReadiness());
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
@@ -176,12 +220,26 @@ describe('connectshyft context and inbox route characterization', () => {
           tenantId: CONTEXT_TENANT_ID,
           orgUnitId: CONTEXT_ORG_UNIT_ID,
           bypassedOrgUnitMembership: false,
+          telephony: {
+            operatorPhoneSource: 'callback_number',
+            voiceReady: true,
+            smsReady: true,
+            degradedMode: false,
+          },
         },
       },
     });
   });
 
   it('preserves tenant-privileged orgUnit bypass semantics in the resolved context payload', async () => {
+    (
+      TelephonyReadinessModule.connectShyftTelephonyReadinessServiceAsync
+        .inspectReadiness as jest.Mock
+    ).mockResolvedValueOnce(buildTelephonyReadiness({
+      operatorPhoneSource: 'orgunit_default',
+      degradedMode: true,
+    }));
+
     const app = buildApp();
     const response = await request(app)
       .get('/api/v1/connectshyft/context')
@@ -202,6 +260,12 @@ describe('connectshyft context and inbox route characterization', () => {
           tenantId: CONTEXT_TENANT_ID,
           orgUnitId: 'org-connectshyft-alpha-west',
           bypassedOrgUnitMembership: true,
+          telephony: {
+            operatorPhoneSource: 'orgunit_default',
+            voiceReady: true,
+            smsReady: true,
+            degradedMode: true,
+          },
         },
       },
     });

@@ -64,6 +64,7 @@ export type EscalationConfigSaveInput = {
   orgUnitId: string;
   escalationBaselineHours?: unknown;
   recipients?: unknown;
+  defaultOperatorPhoneE164?: unknown;
   recipientDirectory: ConnectShyftEscalationRecipientDirectory;
   actorRoles: Array<string | null | undefined>;
 };
@@ -76,6 +77,7 @@ type EscalationConfigSuccessResult = {
     orgUnitId: string;
     escalationBaselineHours: number;
     recipients: ConnectShyftEscalationRecipients;
+    defaultOperatorPhoneE164: string | null;
     updatedAtUtc: string;
   };
 };
@@ -123,6 +125,11 @@ export type ConnectShyftEscalationConfigStore = {
     orgUnitId: string,
     escalationBaselineHours: number,
     recipients: ConnectShyftEscalationRecipients,
+  ): Promise<ConnectShyftEscalationConfig>;
+  setDefaultOperatorPhone(
+    tenantId: string,
+    orgUnitId: string,
+    defaultOperatorPhoneE164: string | null,
   ): Promise<ConnectShyftEscalationConfig>;
 };
 
@@ -488,6 +495,49 @@ export class KnexConnectShyftEscalationConfigStore implements ConnectShyftEscala
       updatedAtUtc: now,
     };
   }
+
+  async setDefaultOperatorPhone(
+    tenantId: string,
+    orgUnitId: string,
+    defaultOperatorPhoneE164: string | null,
+  ): Promise<ConnectShyftEscalationConfig> {
+    const now = nowIsoUtc();
+    const existing = await this.getConfig(tenantId, orgUnitId);
+    const normalizedDefaultOperatorPhoneE164 =
+      normalizeRecipientValue(defaultOperatorPhoneE164) || null;
+
+    await this.table()
+      .insert({
+        tenant_id: tenantId,
+        org_unit_id: orgUnitId,
+        escalation_baseline_hours: existing?.escalationBaselineHours ?? DEFAULT_ESCALATION_BASELINE_HOURS,
+        primary_org_unit_admin_user_id: existing?.recipients.primaryOrgUnitAdminUserId || '',
+        secondary_org_unit_admin_user_id: existing?.recipients.secondaryOrgUnitAdminUserId || null,
+        tenant_staff_user_id: existing?.recipients.tenantStaffUserId || null,
+        default_operator_phone_e164: normalizedDefaultOperatorPhoneE164,
+        created_at_utc: existing?.createdAtUtc || now,
+        updated_at_utc: now,
+      })
+      .onConflict(['tenant_id', 'org_unit_id'])
+      .merge({
+        default_operator_phone_e164: normalizedDefaultOperatorPhoneE164,
+        updated_at_utc: now,
+      });
+
+    return {
+      tenantId,
+      orgUnitId,
+      escalationBaselineHours: existing?.escalationBaselineHours ?? DEFAULT_ESCALATION_BASELINE_HOURS,
+      recipients: existing?.recipients ?? {
+        primaryOrgUnitAdminUserId: '',
+        secondaryOrgUnitAdminUserId: '',
+        tenantStaffUserId: '',
+      },
+      defaultOperatorPhoneE164: normalizedDefaultOperatorPhoneE164,
+      createdAtUtc: existing?.createdAtUtc || now,
+      updatedAtUtc: now,
+    };
+  }
 }
 
 export class ConnectShyftEscalationConfigService {
@@ -536,12 +586,19 @@ export class ConnectShyftEscalationConfigService {
       return recipientValidation;
     }
 
-    const persisted = await this.store.saveConfig(
+    const baselinePersisted = await this.store.saveConfig(
       input.tenantId,
       input.orgUnitId,
       baselineResolution.baselineHours,
       recipients,
     );
+    const persisted = Object.prototype.hasOwnProperty.call(input, 'defaultOperatorPhoneE164')
+      ? await this.store.setDefaultOperatorPhone(
+        input.tenantId,
+        input.orgUnitId,
+        input.defaultOperatorPhoneE164 as string | null,
+      )
+      : baselinePersisted;
 
     return {
       ok: true,
@@ -551,6 +608,7 @@ export class ConnectShyftEscalationConfigService {
         orgUnitId: persisted.orgUnitId,
         escalationBaselineHours: persisted.escalationBaselineHours,
         recipients: { ...persisted.recipients },
+        defaultOperatorPhoneE164: persisted.defaultOperatorPhoneE164,
         updatedAtUtc: persisted.updatedAtUtc,
       },
     };

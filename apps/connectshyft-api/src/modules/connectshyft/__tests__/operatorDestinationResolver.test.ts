@@ -1,5 +1,6 @@
 import {
   ConnectShyftOperatorDestinationResolverService,
+  ConnectShyftTelephonyOperatorPhoneResolverService,
   InMemoryConnectShyftOperatorDestinationStore,
 } from '../operatorDestinationResolver';
 
@@ -152,6 +153,96 @@ describe('connectshyft operatorDestinationResolver', () => {
       source: 'actor_user',
       userId: 'user-connectshyft-actor',
       orgUnitId: 'org-connectshyft-f1-east',
+    });
+  });
+});
+
+describe('connectshyft telephony operator phone resolver', () => {
+  let store: InMemoryConnectShyftOperatorDestinationStore;
+  let service: ConnectShyftTelephonyOperatorPhoneResolverService;
+
+  beforeEach(() => {
+    store = new InMemoryConnectShyftOperatorDestinationStore();
+    service = new ConnectShyftTelephonyOperatorPhoneResolverService(store);
+  });
+
+  it('prefers the operator callback number when it is valid', async () => {
+    store.seedOrgUnitDefaultPhone({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      phoneNumber: '+12605550333',
+    });
+
+    await expect(service.resolve({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      callbackNumberE164: '+12605550111',
+    })).resolves.toEqual({
+      value: '+12605550111',
+      source: 'callback_number',
+      normalized: true,
+      callbackNumberStatus: 'valid',
+      orgUnitDefaultStatus: 'valid',
+    });
+  });
+
+  it('falls back to the orgUnit default when the callback number is missing', async () => {
+    store.seedOrgUnitDefaultPhone({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      phoneNumber: '+12605550333',
+    });
+
+    await expect(service.resolve({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      callbackNumberE164: null,
+    })).resolves.toEqual({
+      value: '+12605550333',
+      source: 'orgunit_default',
+      normalized: true,
+      callbackNumberStatus: 'missing',
+      orgUnitDefaultStatus: 'valid',
+    });
+  });
+
+  it('falls back to the orgUnit default when the callback number is invalid', async () => {
+    store.seedOrgUnitDefaultPhone({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      phoneNumber: '+12605550333',
+    });
+
+    await expect(service.resolve({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      callbackNumberE164: 'invalid-phone',
+    })).resolves.toEqual({
+      value: '+12605550333',
+      source: 'orgunit_default',
+      normalized: true,
+      callbackNumberStatus: 'invalid',
+      orgUnitDefaultStatus: 'valid',
+    });
+  });
+
+  it('surfaces an invalid orgUnit fallback when no valid callback number exists', async () => {
+    store.seedOrgUnitDefaultPhone({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      phoneNumber: 'invalid-phone',
+    });
+
+    await expect(service.resolve({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      callbackNumberE164: null,
+    })).resolves.toEqual({
+      value: null,
+      source: 'orgunit_default',
+      normalized: false,
+      callbackNumberStatus: 'missing',
+      orgUnitDefaultStatus: 'invalid',
     });
   });
 });

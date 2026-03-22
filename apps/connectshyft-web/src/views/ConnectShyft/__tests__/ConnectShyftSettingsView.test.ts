@@ -1,7 +1,9 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter } from 'vue-router';
+import ConnectShyftEscalationSettingsView from '../ConnectShyftEscalationSettingsView.vue';
 import ConnectShyftSettingsView from '../ConnectShyftSettingsView.vue';
+import * as escalationModule from '@/features/connectshyft/escalation';
 import * as telephonySettingsModule from '@/features/connectshyft/telephonySettings';
 
 vi.mock('@/features/connectshyft/telephonySettings', () => ({
@@ -21,17 +23,34 @@ vi.mock('@/features/connectshyft/telephonySettings', () => ({
     callbackNumberNormalized: false,
     voiceReady: false,
     bridgeCallRunnable: false,
+    smsReady: false,
+    messageDispatchRunnable: false,
     callbackNumber: {
       value: null,
       rawInput: null,
+      createdAtUtc: null,
+      updatedAtUtc: null,
       persistenceAvailable: true,
     },
+    operatorPhoneSource: 'none',
+    degradedMode: false,
     blockingReasons: [],
     nextActions: [],
   },
   fetchConnectShyftOperatorCallbackNumber: vi.fn(),
   fetchConnectShyftTelephonyReadiness: vi.fn(),
   saveConnectShyftOperatorCallbackNumber: vi.fn(),
+}));
+
+vi.mock('@/features/connectshyft/escalation', () => ({
+  connectShyftEscalationRecipientScopes: {
+    ORG_UNIT: 'ORG_UNIT',
+    TENANT: 'TENANT',
+    TEST_ONLY: 'TEST_ONLY',
+  },
+  fetchConnectShyftEscalationRecipientOptions: vi.fn(),
+  fetchConnectShyftEscalationConfig: vi.fn(),
+  saveConnectShyftEscalationConfig: vi.fn(),
 }));
 
 const buildRouter = async (initialPath: string) => {
@@ -54,6 +73,10 @@ const buildRouter = async (initialPath: string) => {
         path: '/app/connectshyft/settings',
         component: ConnectShyftSettingsView,
       },
+      {
+        path: '/app/connectshyft/settings/escalation',
+        component: ConnectShyftEscalationSettingsView,
+      },
     ],
   });
 
@@ -74,6 +97,20 @@ const renderSettingsView = async (initialPath = '/app/connectshyft/settings') =>
   return wrapper;
 };
 
+const renderEscalationSettingsView = async (
+  initialPath = '/app/connectshyft/settings/escalation',
+) => {
+  const router = await buildRouter(initialPath);
+  const wrapper = mount(ConnectShyftEscalationSettingsView, {
+    global: {
+      plugins: [router],
+    },
+  });
+
+  await flushPromises();
+  return wrapper;
+};
+
 const createMissingReadiness = () => ({
   providerReady: true,
   providerSelectionPathActive: true,
@@ -84,17 +121,24 @@ const createMissingReadiness = () => ({
   callbackNumberNormalized: false,
   voiceReady: false,
   bridgeCallRunnable: false,
+  smsReady: false,
+  messageDispatchRunnable: false,
   callbackNumber: {
     value: null,
     rawInput: null,
+    createdAtUtc: null,
+    updatedAtUtc: null,
     persistenceAvailable: true,
   },
+  operatorPhoneSource: 'none',
+  degradedMode: false,
   blockingReasons: [
     {
       code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
       category: 'callback_number',
       message: 'Voice forwarding requires an operator callback number.',
       blocking: true,
+      channel: 'both',
     },
   ],
   nextActions: [
@@ -115,13 +159,57 @@ const createReadyReadiness = () => ({
   callbackNumberNormalized: true,
   voiceReady: true,
   bridgeCallRunnable: true,
+  smsReady: true,
+  messageDispatchRunnable: true,
   callbackNumber: {
     value: '+13175550100',
     rawInput: '(317) 555-0100',
+    createdAtUtc: '2026-03-22T11:00:00.000Z',
+    updatedAtUtc: '2026-03-22T11:05:00.000Z',
     persistenceAvailable: true,
   },
+  operatorPhoneSource: 'callback_number',
+  degradedMode: false,
   blockingReasons: [],
   nextActions: [],
+});
+
+const createDegradedReadiness = () => ({
+  providerReady: true,
+  providerSelectionPathActive: true,
+  webhookSignatureConfigured: true,
+  orgUnitNumberMappingReady: true,
+  voiceSupported: true,
+  callbackNumberConfigured: false,
+  callbackNumberNormalized: false,
+  voiceReady: true,
+  bridgeCallRunnable: true,
+  smsReady: true,
+  messageDispatchRunnable: true,
+  callbackNumber: {
+    value: null,
+    rawInput: null,
+    createdAtUtc: null,
+    updatedAtUtc: null,
+    persistenceAvailable: true,
+  },
+  operatorPhoneSource: 'orgunit_default',
+  degradedMode: true,
+  blockingReasons: [
+    {
+      code: 'CONNECTSHYFT_ORGUNIT_DEFAULT_OPERATOR_PHONE_ACTIVE',
+      category: 'orgunit_fallback',
+      message: 'Using the orgUnit fallback phone until the operator callback number is set.',
+      blocking: false,
+      channel: 'both',
+    },
+  ],
+  nextActions: [
+    {
+      code: 'SET_OPERATOR_CALLBACK_NUMBER',
+      message: 'Save a callback / forwarding number so telephony no longer depends on the orgUnit fallback phone.',
+    },
+  ],
 });
 
 const fetchCallbackNumberMock = vi.mocked(
@@ -132,6 +220,15 @@ const fetchReadinessMock = vi.mocked(
 );
 const saveCallbackNumberMock = vi.mocked(
   telephonySettingsModule.saveConnectShyftOperatorCallbackNumber,
+);
+const fetchEscalationConfigMock = vi.mocked(
+  escalationModule.fetchConnectShyftEscalationConfig,
+);
+const fetchEscalationRecipientOptionsMock = vi.mocked(
+  escalationModule.fetchConnectShyftEscalationRecipientOptions,
+);
+const saveEscalationConfigMock = vi.mocked(
+  escalationModule.saveConnectShyftEscalationConfig,
 );
 
 beforeEach(() => {
@@ -152,6 +249,48 @@ beforeEach(() => {
       updatedAtUtc: '2026-03-22T11:05:00.000Z',
     },
   });
+
+  fetchEscalationConfigMock.mockResolvedValue({
+    orgUnitId: 'org-connectshyft-alpha-east',
+    escalationBaselineHours: 24,
+    recipients: {
+      primaryOrgUnitAdminUserId: 'user-orgunit-primary',
+      secondaryOrgUnitAdminUserId: 'user-orgunit-secondary',
+      tenantStaffUserId: 'user-tenant-staff',
+    },
+    defaultOperatorPhoneE164: '+13175550123',
+  });
+  fetchEscalationRecipientOptionsMock.mockResolvedValue([
+    {
+      value: 'user-orgunit-primary',
+      label: 'Primary Admin',
+      scope: 'ORG_UNIT',
+    },
+    {
+      value: 'user-orgunit-secondary',
+      label: 'Secondary Admin',
+      scope: 'ORG_UNIT',
+    },
+    {
+      value: 'user-tenant-staff',
+      label: 'Tenant Staff',
+      scope: 'TENANT',
+    },
+  ]);
+  saveEscalationConfigMock.mockResolvedValue({
+    ok: true,
+    code: 'CONNECTSHYFT_ESCALATION_CONFIG_SAVED',
+    config: {
+      orgUnitId: 'org-connectshyft-alpha-east',
+      escalationBaselineHours: 6,
+      recipients: {
+        primaryOrgUnitAdminUserId: 'user-orgunit-primary',
+        secondaryOrgUnitAdminUserId: 'user-orgunit-secondary',
+        tenantStaffUserId: 'user-tenant-staff',
+      },
+      defaultOperatorPhoneE164: '+13175550199',
+    },
+  });
 });
 
 afterEach(() => {
@@ -160,7 +299,7 @@ afterEach(() => {
 });
 
 describe('ConnectShyftSettingsView', () => {
-  it('renders the current callback number and ready status when voice forwarding is configured', async () => {
+  it('renders both channel statuses when telephony is fully ready', async () => {
     fetchCallbackNumberMock.mockResolvedValueOnce({
       value: '+13175550100',
       rawInput: '(317) 555-0100',
@@ -174,23 +313,28 @@ describe('ConnectShyftSettingsView', () => {
     expect(wrapper.get('[data-testid="connectshyft-settings-surface"]').text()).toContain(
       'ConnectShyft Settings',
     );
-    expect(wrapper.text()).toContain('Make voice forwarding work for your operator account.');
     expect(wrapper.get('[data-testid="connectshyft-callback-readiness-chip"]').text()).toContain(
       'Ready',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-readiness-message"]').text()).toContain(
-      'Voice forwarding is ready for this operator.',
+      'Voice and SMS are ready for this operator.',
+    );
+    expect(wrapper.get('[data-testid="connectshyft-voice-readiness-chip"]').text()).toContain(
+      'Ready',
+    );
+    expect(wrapper.get('[data-testid="connectshyft-sms-readiness-chip"]').text()).toContain(
+      'Ready',
     );
     expect(wrapper.get('[data-testid="connectshyft-current-callback-number"]').text()).toContain(
       '(317) 555-0100',
     );
-    expect(wrapper.text()).not.toContain('ConnectShyft More');
+    expect(wrapper.find('[data-testid="connectshyft-degraded-mode-banner"]').exists()).toBe(false);
     expect(
       (wrapper.get('[data-testid="connectshyft-callback-number-input"]').element as HTMLInputElement).value,
     ).toBe('(317) 555-0100');
   });
 
-  it('shows the empty state, next action, and admin refusal guidance when callback setup is missing', async () => {
+  it('shows the empty state and both blocked channel summaries when callback setup is missing', async () => {
     const wrapper = await renderSettingsView(
       '/app/connectshyft/settings?refusedPath=%2Fapp%2Fconnectshyft%2Fsettings%2Favailability',
     );
@@ -207,12 +351,43 @@ describe('ConnectShyftSettingsView', () => {
     expect(wrapper.get('[data-testid="connectshyft-callback-readiness-chip"]').text()).toContain(
       'Action Needed',
     );
+    expect(wrapper.get('[data-testid="connectshyft-voice-readiness-chip"]').text()).toContain(
+      'Blocked',
+    );
+    expect(wrapper.get('[data-testid="connectshyft-sms-readiness-chip"]').text()).toContain(
+      'Blocked',
+    );
     expect(wrapper.get('[data-testid="connectshyft-callback-next-action"]').text()).toContain(
       'Save a callback / forwarding number for the current operator.',
     );
   });
 
-  it('saves a callback number and shows explicit success messaging', async () => {
+  it('shows degraded mode when orgUnit fallback is carrying readiness', async () => {
+    fetchReadinessMock.mockResolvedValueOnce(createDegradedReadiness());
+
+    const wrapper = await renderSettingsView();
+
+    expect(wrapper.get('[data-testid="connectshyft-callback-readiness-chip"]').text()).toContain(
+      'Degraded Mode',
+    );
+    expect(wrapper.get('[data-testid="connectshyft-callback-readiness-message"]').text()).toContain(
+      'Voice and SMS are available, but ConnectShyft is relying on the orgUnit fallback phone.',
+    );
+    expect(wrapper.get('[data-testid="connectshyft-degraded-mode-banner"]').text()).toContain(
+      'OrgUnit fallback active',
+    );
+    expect(wrapper.get('[data-testid="connectshyft-voice-readiness-chip"]').text()).toContain(
+      'Ready',
+    );
+    expect(wrapper.get('[data-testid="connectshyft-sms-readiness-chip"]').text()).toContain(
+      'Ready',
+    );
+    expect(wrapper.get('[data-testid="connectshyft-callback-next-action"]').text()).toContain(
+      'Save a callback / forwarding number so telephony no longer depends on the orgUnit fallback phone.',
+    );
+  });
+
+  it('saves a callback number and refreshes the readiness surface', async () => {
     fetchReadinessMock
       .mockResolvedValueOnce(createMissingReadiness())
       .mockResolvedValueOnce(createReadyReadiness());
@@ -258,5 +433,43 @@ describe('ConnectShyftSettingsView', () => {
     expect(wrapper.get('[data-testid="connectshyft-callback-validation-error"]').text()).toContain(
       'Operator callback number must be a dialable voice number.',
     );
+  });
+});
+
+describe('ConnectShyftEscalationSettingsView', () => {
+  it('loads the orgUnit fallback phone on the existing escalation settings surface', async () => {
+    const wrapper = await renderEscalationSettingsView();
+
+    expect(wrapper.get('[data-testid="connectshyft-escalation-settings-surface"]').text()).toContain(
+      'ConnectShyft Escalation Settings',
+    );
+    expect(
+      (wrapper.get('[data-testid="connectshyft-escalation-fallback-phone-input"]').element as HTMLInputElement).value,
+    ).toBe('+13175550123');
+  });
+
+  it('saves the orgUnit fallback phone through the existing escalation helper', async () => {
+    const wrapper = await renderEscalationSettingsView();
+
+    await wrapper.get('[data-testid="connectshyft-escalation-baseline-input"]').setValue('6');
+    await wrapper.get('[data-testid="connectshyft-escalation-fallback-phone-input"]').setValue('+13175550199');
+    await wrapper.get('[data-testid="connectshyft-escalation-settings-form"]').trigger('submit.prevent');
+    await flushPromises();
+
+    expect(saveEscalationConfigMock).toHaveBeenCalledWith({
+      escalationBaselineHours: 6,
+      defaultOperatorPhoneE164: '+13175550199',
+      recipients: {
+        primaryOrgUnitAdminUserId: 'user-orgunit-primary',
+        secondaryOrgUnitAdminUserId: 'user-orgunit-secondary',
+        tenantStaffUserId: 'user-tenant-staff',
+      },
+    });
+    expect(wrapper.get('[data-testid="connectshyft-escalation-save-success"]').text()).toContain(
+      'Escalation settings saved.',
+    );
+    expect(
+      (wrapper.get('[data-testid="connectshyft-escalation-fallback-phone-input"]').element as HTMLInputElement).value,
+    ).toBe('+13175550199');
   });
 });

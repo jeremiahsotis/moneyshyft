@@ -47,6 +47,23 @@
           >
         </label>
 
+        <label class="mb-4 flex flex-col gap-1 text-sm text-slate-700">
+          OrgUnit fallback phone (E.164)
+          <input
+            data-testid="connectshyft-escalation-fallback-phone-input"
+            v-model="defaultOperatorPhoneInput"
+            type="tel"
+            inputmode="tel"
+            autocomplete="tel"
+            placeholder="+13175550100"
+            :disabled="isSaving || isInitializing"
+            class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+          >
+          <span class="text-xs text-slate-500">
+            Used when an operator callback number is missing or unusable and the orgUnit fallback must carry telephony readiness.
+          </span>
+        </label>
+
         <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
           <label class="flex flex-col gap-1 text-sm text-slate-700">
             Primary recipient
@@ -168,6 +185,7 @@ const recipientOptions = ref<ConnectShyftEscalationRecipientOption[]>([]);
 
 const baselineHoursInput = ref<number | null>(24);
 const savedBaselineHours = ref(24);
+const defaultOperatorPhoneInput = ref('');
 const primaryRecipientUserId = ref('');
 const secondaryRecipientUserId = ref('');
 const tenantStaffRecipientUserId = ref('');
@@ -198,6 +216,7 @@ const clearFeedback = (): void => {
 
 const syncFromServer = (
   baselineHours: number,
+  defaultOperatorPhoneE164: string | null,
   recipients: {
     primaryOrgUnitAdminUserId: string;
     secondaryOrgUnitAdminUserId: string;
@@ -206,6 +225,7 @@ const syncFromServer = (
 ): void => {
   baselineHoursInput.value = baselineHours;
   savedBaselineHours.value = baselineHours;
+  defaultOperatorPhoneInput.value = defaultOperatorPhoneE164 || '';
   primaryRecipientUserId.value = recipients.primaryOrgUnitAdminUserId;
   secondaryRecipientUserId.value = recipients.secondaryOrgUnitAdminUserId;
   tenantStaffRecipientUserId.value = recipients.tenantStaffUserId;
@@ -226,6 +246,7 @@ const handleSave = async (): Promise<void> => {
 
   const result = await saveConnectShyftEscalationConfig({
     escalationBaselineHours: parsedBaseline,
+    defaultOperatorPhoneE164: defaultOperatorPhoneInput.value,
     recipients: {
       primaryOrgUnitAdminUserId: primaryRecipientUserId.value,
       secondaryOrgUnitAdminUserId: secondaryRecipientUserId.value,
@@ -252,7 +273,11 @@ const handleSave = async (): Promise<void> => {
     return;
   }
 
-  syncFromServer(result.config.escalationBaselineHours, result.config.recipients);
+  syncFromServer(
+    result.config.escalationBaselineHours,
+    result.config.defaultOperatorPhoneE164,
+    result.config.recipients,
+  );
   saveSuccessMessage.value = 'Escalation settings saved.';
 };
 
@@ -261,7 +286,11 @@ onMounted(async () => {
 
   try {
     const config = await fetchConnectShyftEscalationConfig();
-    syncFromServer(config.escalationBaselineHours, config.recipients);
+    syncFromServer(
+      config.escalationBaselineHours,
+      config.defaultOperatorPhoneE164,
+      config.recipients,
+    );
   } catch (error: unknown) {
     validationError.value = error instanceof Error
       ? error.message

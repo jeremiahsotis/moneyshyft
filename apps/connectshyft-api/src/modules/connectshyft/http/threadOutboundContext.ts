@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import { refusal } from '../../../platform/envelopes/response';
 import { CAPABILITIES } from '../../../platform/rbac/capabilities';
 import type { ResolvedConnectShyftContext } from '../contextAccess';
+import type { ConnectShyftTelephonyReadiness } from '../telephonyReadiness';
+import { connectShyftTelephonyReadinessServiceAsync } from '../telephonyReadiness';
+import { resolveConnectShyftRequestedProviderKey } from '../providerRegistry';
 import {
   resolveConnectShyftThreadLifecycleStateContext,
   type ConnectShyftResolvedThreadLifecycleContext,
@@ -45,6 +48,93 @@ const parseThreadIdParam = (req: Request): string => {
   }
 
   return req.params.threadId.trim();
+};
+
+const resolveProviderRegistryHeaders = (
+  req: Request,
+): Record<string, string | undefined> => Object.fromEntries(
+  Object.entries(req.headers).map(([key, value]) => [
+    key,
+    Array.isArray(value)
+      ? value[0]
+      : typeof value === 'string'
+        ? value
+        : undefined,
+  ]),
+);
+
+const buildThreadOutboundReadinessMessage = (
+  outboundAction: ConnectShyftThreadOutboundAction,
+): string => outboundAction === 'call'
+  ? 'Outbound bridge calls are unavailable until telephony readiness requirements are satisfied.'
+  : 'Outbound SMS is unavailable until telephony readiness requirements are satisfied.';
+
+const buildThreadOutboundReadinessUiFeedback = (
+  outboundAction: ConnectShyftThreadOutboundAction,
+  message: string,
+) => ({
+  severity: 'warning' as const,
+  ariaLive: 'assertive' as const,
+  messageKey: outboundAction === 'call'
+    ? 'connectshyft.outbound.call.not_ready'
+    : 'connectshyft.outbound.message.not_ready',
+  presentation: 'contextual-action-feedback' as const,
+  requiresAction: true,
+  actionLabel: 'Review telephony',
+  accessibilityHint: outboundAction === 'call'
+    ? 'Resolve telephony readiness requirements before retrying the outbound call.'
+    : 'Resolve telephony readiness requirements before retrying the outbound message.',
+  message,
+});
+
+const buildThreadOutboundProviderResolution = (
+  readiness: ConnectShyftTelephonyReadiness,
+) => ({
+  requestedProvider: readiness.provider.requestedProvider,
+  resolvedProvider: readiness.provider.resolvedProvider,
+  deterministic: readiness.provider.deterministic,
+  adapterInterfaceVersion: readiness.provider.adapterInterfaceVersion,
+  providerBranchingInDomain: false,
+});
+
+const sendThreadOutboundReadinessRefusal = (
+  res: Response,
+  accessContext: ConnectShyftThreadOutboundAccessContext,
+  outboundAction: ConnectShyftThreadOutboundAction,
+  readiness: ConnectShyftTelephonyReadiness,
+): void => {
+  const message = buildThreadOutboundReadinessMessage(outboundAction);
+
+  sendConnectShyftRouteRefusal(res, {
+    code: outboundAction === 'call'
+      ? 'CONNECTSHYFT_VOICE_NOT_READY'
+      : 'CONNECTSHYFT_SMS_NOT_READY',
+    message,
+    refusalType: 'business',
+    httpStatus: 200,
+    data: {
+      context: accessContext.context,
+      threadId: accessContext.threadId,
+      providerResolution: buildThreadOutboundProviderResolution(readiness),
+      telephonyReadiness: readiness,
+      uiFeedback: buildThreadOutboundReadinessUiFeedback(outboundAction, message),
+      chrome: {
+        persistentOperationsBannerVisible: false,
+        heavyOperationsDefaultLayout: false,
+      },
+      sideEffects: outboundAction === 'call'
+        ? {
+          dispatchAttempted: false,
+          lifecycleMutationApplied: false,
+          auditPersisted: false,
+        }
+        : {
+          messageDispatched: false,
+          lifecycleMutationApplied: false,
+          auditPersisted: false,
+        },
+    },
+  });
 };
 
 const sendThreadViewCapabilityRefusal = (res: Response): void => {
@@ -185,6 +275,21 @@ export const executeConnectShyftThreadOutboundAction = async (
     outboundAction,
   );
   if (!accessContext) {
+    return;
+  }
+
+  const readiness = await connectShyftTelephonyReadinessServiceAsync.inspectReadiness({
+    tenantId: accessContext.context.tenantId,
+    orgUnitId: accessContext.context.orgUnitId,
+    userId: accessContext.actorUserId || '',
+    requestedProvider: resolveConnectShyftRequestedProviderKey(req),
+    providerRegistryHeaders: resolveProviderRegistryHeaders(req),
+  });
+  const channelReady = outboundAction === 'call'
+    ? readiness.voiceReady
+    : readiness.smsReady;
+  if (!channelReady) {
+    sendThreadOutboundReadinessRefusal(res, accessContext, outboundAction, readiness);
     return;
   }
 

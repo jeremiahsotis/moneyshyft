@@ -1,6 +1,7 @@
 // @ts-nocheck
 import request from 'supertest';
 import * as SenderNumberResolverModule from '../../../../modules/connectshyft/senderNumberResolver';
+import * as TelephonyReadinessModule from '../../../../modules/connectshyft/telephonyReadiness';
 import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents';
 import { resetConnectShyftCommunicationAuditLogForTests } from '../../../../modules/connectshyft/communicationAuditLog';
@@ -161,11 +162,54 @@ const buildSmsSenderRefusal = (input: {
   },
 });
 
+const buildTelephonyReadiness = (overrides: Record<string, unknown> = {}) => ({
+  providerReady: true,
+  providerSelectionPathActive: true,
+  webhookSignatureConfigured: true,
+  orgUnitNumberMappingReady: true,
+  voiceSupported: true,
+  callbackNumberConfigured: true,
+  callbackNumberNormalized: true,
+  voiceReady: true,
+  bridgeCallRunnable: true,
+  smsReady: true,
+  messageDispatchRunnable: true,
+  provider: {
+    requestedProvider: 'telnyx',
+    resolvedProvider: 'telnyx',
+    deterministic: true,
+    adapterInterfaceVersion: 'v1',
+  },
+  orgUnitNumberMappings: {
+    activeCount: 1,
+    mappings: [
+      {
+        mappingId: 'mapping-f2-001',
+        twilioNumberE164: '+12605550192',
+        label: 'Overflow',
+      },
+    ],
+  },
+  callbackNumber: {
+    value: '+12605550124',
+    rawInput: '(260) 555-0124',
+    createdAtUtc: '2026-03-22T12:00:00.000Z',
+    updatedAtUtc: '2026-03-22T12:00:00.000Z',
+    persistenceAvailable: true,
+  },
+  operatorPhoneSource: 'callback_number',
+  degradedMode: false,
+  blockingReasons: [],
+  nextActions: [],
+  ...overrides,
+});
+
 describe('connectshyft outbound message route characterization', () => {
   registerProviderRegistryRouteIntegrationHooks();
 
   let resolvePreferenceSpy: jest.SpyInstance;
   let resolveSenderNumberSpy: jest.SpyInstance;
+  let inspectReadinessSpy: jest.SpyInstance;
 
   beforeEach(() => {
     sendSmsMock.mockClear();
@@ -180,6 +224,10 @@ describe('connectshyft outbound message route characterization', () => {
     resetConnectShyftCommunicationAuditLogForTests();
     resetConnectShyftCommunicationReliabilityStateForTests();
 
+    inspectReadinessSpy = jest.spyOn(
+      TelephonyReadinessModule.connectShyftTelephonyReadinessServiceAsync,
+      'inspectReadiness',
+    ).mockResolvedValue(buildTelephonyReadiness());
     resolvePreferenceSpy = jest.spyOn(
       connectShyftSmsPreferenceOverrideServiceAsync,
       'resolvePreference',
@@ -189,6 +237,7 @@ describe('connectshyft outbound message route characterization', () => {
   });
 
   afterEach(() => {
+    inspectReadinessSpy.mockRestore();
     resolvePreferenceSpy.mockRestore();
     resolveSenderNumberSpy.mockRestore();
   });
@@ -418,6 +467,115 @@ describe('connectshyft outbound message route characterization', () => {
     expect(response.body.data.audit).toEqual(response.body.data.outbox);
     expect(response.body.data.outboundDispatch.audit).toEqual(response.body.data.audit);
     expect(sendSmsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns the current SMS-not-ready refusal shape before outbound message dispatch', async () => {
+    inspectReadinessSpy.mockResolvedValueOnce(buildTelephonyReadiness({
+      callbackNumberConfigured: false,
+      callbackNumberNormalized: false,
+      voiceReady: false,
+      bridgeCallRunnable: false,
+      smsReady: false,
+      messageDispatchRunnable: false,
+      callbackNumber: {
+        value: null,
+        rawInput: null,
+        createdAtUtc: null,
+        updatedAtUtc: null,
+        persistenceAvailable: true,
+      },
+      operatorPhoneSource: 'none',
+      degradedMode: false,
+      blockingReasons: [
+        {
+          code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
+          category: 'callback_number',
+          message: 'Voice forwarding requires an operator callback number.',
+          blocking: true,
+          channel: 'both',
+        },
+      ],
+      nextActions: [
+        {
+          code: 'SET_OPERATOR_CALLBACK_NUMBER',
+          message: 'Save a callback / forwarding number for the current operator.',
+        },
+      ],
+    }));
+
+    const app = buildApp();
+    const response = await request(app)
+      .post(`/api/v1/connectshyft/threads/${MESSAGE_SUCCESS_THREAD_ID}/messages`)
+      .set(buildMessageHeaders())
+      .send({
+        providerKey: 'telnyx',
+        body: 'Need assistance',
+        targetPhone: '+12605550222',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_NOT_READY',
+      message: 'Outbound SMS is unavailable until telephony readiness requirements are satisfied.',
+      refusalType: 'business',
+      data: {
+        context: {
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+          bypassedOrgUnitMembership: false,
+        },
+        threadId: MESSAGE_SUCCESS_THREAD_ID,
+        providerResolution: {
+          requestedProvider: 'telnyx',
+          resolvedProvider: 'telnyx',
+          deterministic: true,
+          adapterInterfaceVersion: 'v1',
+          providerBranchingInDomain: false,
+        },
+        telephonyReadiness: {
+          voiceReady: false,
+          bridgeCallRunnable: false,
+          smsReady: false,
+          messageDispatchRunnable: false,
+          operatorPhoneSource: 'none',
+          degradedMode: false,
+          blockingReasons: [
+            expect.objectContaining({
+              code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
+            }),
+          ],
+          nextActions: [
+            expect.objectContaining({
+              code: 'SET_OPERATOR_CALLBACK_NUMBER',
+            }),
+          ],
+        },
+        uiFeedback: {
+          severity: 'warning',
+          ariaLive: 'assertive',
+          messageKey: 'connectshyft.outbound.message.not_ready',
+          presentation: 'contextual-action-feedback',
+          requiresAction: true,
+          actionLabel: 'Review telephony',
+          accessibilityHint:
+            'Resolve telephony readiness requirements before retrying the outbound message.',
+          message: 'Outbound SMS is unavailable until telephony readiness requirements are satisfied.',
+        },
+        chrome: {
+          persistentOperationsBannerVisible: false,
+          heavyOperationsDefaultLayout: false,
+        },
+        sideEffects: {
+          messageDispatched: false,
+          lifecycleMutationApplied: false,
+          auditPersisted: false,
+        },
+      },
+    });
+    expect(resolvePreferenceSpy).not.toHaveBeenCalled();
+    expect(resolveSenderNumberSpy).not.toHaveBeenCalled();
+    expect(sendSmsMock).not.toHaveBeenCalled();
   });
 
   it('preserves the current closed-thread reopen behavior for outbound messages on the same thread', async () => {

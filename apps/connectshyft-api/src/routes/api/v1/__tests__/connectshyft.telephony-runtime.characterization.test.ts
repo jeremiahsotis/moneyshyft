@@ -230,6 +230,8 @@ describe('connectshyft telephony runtime route characterization', () => {
       callbackNumberNormalized: true,
       voiceReady: true,
       bridgeCallRunnable: true,
+      smsReady: true,
+      messageDispatchRunnable: true,
       provider: {
         requestedProvider: 'telnyx',
         resolvedProvider: 'telnyx',
@@ -249,8 +251,12 @@ describe('connectshyft telephony runtime route characterization', () => {
       callbackNumber: {
         value: '+13175550100',
         rawInput: '(317) 555-0100',
+        createdAtUtc: '2026-03-22T10:00:00.000Z',
+        updatedAtUtc: '2026-03-22T11:00:00.000Z',
         persistenceAvailable: true,
       },
+      operatorPhoneSource: 'callback_number',
+      degradedMode: false,
       blockingReasons: [],
       nextActions: [],
     } as any);
@@ -270,8 +276,12 @@ describe('connectshyft telephony runtime route characterization', () => {
       data: {
         voiceReady: true,
         bridgeCallRunnable: true,
+        smsReady: true,
+        messageDispatchRunnable: true,
         callbackNumberConfigured: true,
         callbackNumberNormalized: true,
+        operatorPhoneSource: 'callback_number',
+        degradedMode: false,
         provider: {
           requestedProvider: 'telnyx',
           resolvedProvider: 'telnyx',
@@ -280,6 +290,8 @@ describe('connectshyft telephony runtime route characterization', () => {
         callbackNumber: {
           value: '+13175550100',
           rawInput: '(317) 555-0100',
+          createdAtUtc: '2026-03-22T10:00:00.000Z',
+          updatedAtUtc: '2026-03-22T11:00:00.000Z',
           persistenceAvailable: true,
         },
         blockingReasons: [],
@@ -302,6 +314,8 @@ describe('connectshyft telephony runtime route characterization', () => {
       callbackNumberNormalized: false,
       voiceReady: false,
       bridgeCallRunnable: false,
+      smsReady: false,
+      messageDispatchRunnable: false,
       provider: {
         requestedProvider: 'telnyx',
         resolvedProvider: 'telnyx',
@@ -321,14 +335,19 @@ describe('connectshyft telephony runtime route characterization', () => {
       callbackNumber: {
         value: null,
         rawInput: null,
+        createdAtUtc: null,
+        updatedAtUtc: null,
         persistenceAvailable: true,
       },
+      operatorPhoneSource: 'none',
+      degradedMode: false,
       blockingReasons: [
         {
           code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
           category: 'callback_number',
           message: 'Voice forwarding requires an operator callback number.',
           blocking: true,
+          channel: 'both',
         },
       ],
       nextActions: [
@@ -353,20 +372,122 @@ describe('connectshyft telephony runtime route characterization', () => {
       data: {
         voiceReady: false,
         bridgeCallRunnable: false,
+        smsReady: false,
+        messageDispatchRunnable: false,
         callbackNumberConfigured: false,
         callbackNumberNormalized: false,
+        operatorPhoneSource: 'none',
+        degradedMode: false,
         blockingReasons: [
           {
             code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
             category: 'callback_number',
             message: 'Voice forwarding requires an operator callback number.',
             blocking: true,
+            channel: 'both',
           },
         ],
         nextActions: [
           {
             code: 'SET_OPERATOR_CALLBACK_NUMBER',
             message: 'Save a callback / forwarding number for the current operator.',
+          },
+        ],
+      },
+    });
+  });
+
+  it('returns degraded readiness truth when orgUnit fallback keeps telephony runnable', async () => {
+    jest.spyOn(
+      AsyncConnectShyftTelephonyReadinessService.prototype,
+      'inspectReadiness',
+    ).mockResolvedValue({
+      providerReady: true,
+      providerSelectionPathActive: true,
+      webhookSignatureConfigured: true,
+      orgUnitNumberMappingReady: true,
+      voiceSupported: true,
+      callbackNumberConfigured: false,
+      callbackNumberNormalized: false,
+      voiceReady: true,
+      bridgeCallRunnable: true,
+      smsReady: true,
+      messageDispatchRunnable: true,
+      provider: {
+        requestedProvider: 'telnyx',
+        resolvedProvider: 'telnyx',
+        deterministic: true,
+        adapterInterfaceVersion: 'v1',
+      },
+      orgUnitNumberMappings: {
+        activeCount: 1,
+        mappings: [
+          {
+            mappingId: 'mapping-telephony-runtime-1001',
+            twilioNumberE164: '+13175550111',
+            label: 'Front desk',
+          },
+        ],
+      },
+      callbackNumber: {
+        value: null,
+        rawInput: null,
+        createdAtUtc: null,
+        updatedAtUtc: null,
+        persistenceAvailable: true,
+      },
+      operatorPhoneSource: 'orgunit_default',
+      degradedMode: true,
+      blockingReasons: [
+        {
+          code: 'CONNECTSHYFT_ORGUNIT_DEFAULT_OPERATOR_PHONE_ACTIVE',
+          category: 'orgunit_fallback',
+          message: 'Using the orgUnit fallback phone until the operator callback number is set.',
+          blocking: false,
+          channel: 'both',
+        },
+      ],
+      nextActions: [
+        {
+          code: 'SET_OPERATOR_CALLBACK_NUMBER',
+          message: 'Save a callback / forwarding number so telephony no longer depends on the orgUnit fallback phone.',
+        },
+      ],
+    } as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/telephony-readiness')
+      .set(buildHeaders({
+        requestedProvider: 'telnyx',
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_TELEPHONY_READINESS_RESOLVED',
+      data: {
+        voiceReady: true,
+        bridgeCallRunnable: true,
+        smsReady: true,
+        messageDispatchRunnable: true,
+        callbackNumberConfigured: false,
+        callbackNumberNormalized: false,
+        operatorPhoneSource: 'orgunit_default',
+        degradedMode: true,
+        blockingReasons: [
+          {
+            code: 'CONNECTSHYFT_ORGUNIT_DEFAULT_OPERATOR_PHONE_ACTIVE',
+            category: 'orgunit_fallback',
+            message: 'Using the orgUnit fallback phone until the operator callback number is set.',
+            blocking: false,
+            channel: 'both',
+          },
+        ],
+        nextActions: [
+          {
+            code: 'SET_OPERATOR_CALLBACK_NUMBER',
+            message: 'Save a callback / forwarding number so telephony no longer depends on the orgUnit fallback phone.',
           },
         ],
       },
