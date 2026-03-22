@@ -3,6 +3,7 @@
   "exclude": [
     "node_modules",
     "dist",
+    "src/migrations/**",
     "src/**/__tests__/**",
     "src/**/*.test.ts",
     "src/**/*.spec.ts",
