@@ -6,6 +6,7 @@ import ForgotPasswordView from '../views/Auth/ForgotPasswordView.vue';
 import ResetPasswordView from '../views/Auth/ResetPasswordView.vue';
 import ConnectShyftInboxView from '../views/ConnectShyft/ConnectShyftInboxView.vue';
 import ConnectShyftMoreView from '../views/ConnectShyft/ConnectShyftMoreView.vue';
+import ConnectShyftSettingsView from '../views/ConnectShyft/ConnectShyftSettingsView.vue';
 import ConnectShyftThreadDetailView from '../views/ConnectShyft/ConnectShyftThreadDetailView.vue';
 import ConnectShyftNeighborProfileView from '../views/ConnectShyft/ConnectShyftNeighborProfileView.vue';
 import ConnectShyftNeighborCreateView from '../views/ConnectShyft/ConnectShyftNeighborCreateView.vue';
@@ -122,7 +123,7 @@ const router = createRouter({
     {
       path: '/app/connectshyft/settings',
       name: 'connectshyft-settings',
-      component: ConnectShyftMoreView,
+      component: ConnectShyftSettingsView,
     },
     {
       path: '/app/connectshyft/threads/:threadId',

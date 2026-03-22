@@ -27,7 +27,9 @@ import {
   getConnectEscalationRecipients,
   getConnectInbox,
   getConnectNumberMappings,
+  getConnectOperatorCallbackNumber,
   getConnectSettingsNavigation,
+  getConnectTelephonyReadiness,
   getConnectThreadDetail,
   getConnectThreadTimeline,
   getConnectWebhookReceiptMetrics,
@@ -46,6 +48,7 @@ import {
   putConnectNeighbor,
   putConnectEscalationConfig,
   putConnectNumberMapping,
+  putConnectOperatorCallbackNumber,
 } from '../../../modules/connectshyft/handlers';
 import {
   resolveConnectShyftOrgUnitContext,
@@ -63,6 +66,10 @@ import {
 import {
   connectShyftNumberMappingServiceAsync,
 } from '../../../modules/connectshyft/numberMappings';
+import {
+  ConnectShyftOperatorCallbackNumberPersistenceUnavailableError,
+  connectShyftOperatorCallbackNumberServiceAsync,
+} from '../../../modules/connectshyft/operatorCallbackNumbers';
 import {
   AsyncConnectShyftNeighborService,
   KnexConnectShyftNeighborStore,
@@ -3979,6 +3986,12 @@ router.get('/settings/navigation', getConnectSettingsNavigation);
 
 router.get('/availability', getConnectAvailability);
 
+router.get('/telephony-readiness', getConnectTelephonyReadiness);
+
+router.get('/operator/callback-number', getConnectOperatorCallbackNumber);
+
+router.put('/operator/callback-number', putConnectOperatorCallbackNumber);
+
 router.get('/context', getConnectContext);
 
 router.get('/inbox', getConnectInbox);
@@ -4841,6 +4854,20 @@ const performOutboundAction = async ({
   let neighborContactPointId: string | null = null;
   if (outboundAction === 'call') {
     operatorContactPointId = outboundCallPolicyRequest?.operatorContactPointId || null;
+    if (!operatorContactPointId && actorUserId) {
+      try {
+        const savedCallbackNumber =
+          await connectShyftOperatorCallbackNumberServiceAsync.getCurrentCallbackNumber({
+            tenantId: context.tenantId,
+            userId: actorUserId,
+          });
+        operatorContactPointId = savedCallbackNumber?.callbackNumberE164 || null;
+      } catch (error) {
+        if (!(error instanceof ConnectShyftOperatorCallbackNumberPersistenceUnavailableError)) {
+          throw error;
+        }
+      }
+    }
     if (!operatorContactPointId) {
       operatorContactPointId = resolveTestOverridePhoneFallback({
         allowTestFallback: allowPhoneFallback,

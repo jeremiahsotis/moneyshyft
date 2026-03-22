@@ -40,7 +40,7 @@
           class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700 transition hover:bg-slate-100"
         >
           <p class="font-semibold text-slate-900">ConnectShyft Settings</p>
-          <p class="mt-1">Open personal account settings and profile defaults.</p>
+          <p class="mt-1">Set your callback / forwarding number and check voice forwarding readiness.</p>
         </RouterLink>
 
         <div
