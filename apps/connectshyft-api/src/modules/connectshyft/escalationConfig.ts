@@ -124,6 +124,11 @@ export type ConnectShyftEscalationConfigStore = {
     escalationBaselineHours: number,
     recipients: ConnectShyftEscalationRecipients,
   ): Promise<ConnectShyftEscalationConfig>;
+  setDefaultOperatorPhone(
+    tenantId: string,
+    orgUnitId: string,
+    defaultOperatorPhoneE164: string | null,
+  ): Promise<ConnectShyftEscalationConfig>;
 };
 
 const buildTenantOrgUnitKey = (tenantId: string, orgUnitId: string): string =>
@@ -484,6 +489,49 @@ export class KnexConnectShyftEscalationConfigStore implements ConnectShyftEscala
         ...recipients,
       },
       defaultOperatorPhoneE164: existing?.defaultOperatorPhoneE164 || null,
+      createdAtUtc: existing?.createdAtUtc || now,
+      updatedAtUtc: now,
+    };
+  }
+
+  async setDefaultOperatorPhone(
+    tenantId: string,
+    orgUnitId: string,
+    defaultOperatorPhoneE164: string | null,
+  ): Promise<ConnectShyftEscalationConfig> {
+    const now = nowIsoUtc();
+    const existing = await this.getConfig(tenantId, orgUnitId);
+    const normalizedDefaultOperatorPhoneE164 =
+      normalizeRecipientValue(defaultOperatorPhoneE164) || null;
+
+    await this.table()
+      .insert({
+        tenant_id: tenantId,
+        org_unit_id: orgUnitId,
+        escalation_baseline_hours: existing?.escalationBaselineHours ?? DEFAULT_ESCALATION_BASELINE_HOURS,
+        primary_org_unit_admin_user_id: existing?.recipients.primaryOrgUnitAdminUserId || '',
+        secondary_org_unit_admin_user_id: existing?.recipients.secondaryOrgUnitAdminUserId || null,
+        tenant_staff_user_id: existing?.recipients.tenantStaffUserId || null,
+        default_operator_phone_e164: normalizedDefaultOperatorPhoneE164,
+        created_at_utc: existing?.createdAtUtc || now,
+        updated_at_utc: now,
+      })
+      .onConflict(['tenant_id', 'org_unit_id'])
+      .merge({
+        default_operator_phone_e164: normalizedDefaultOperatorPhoneE164,
+        updated_at_utc: now,
+      });
+
+    return {
+      tenantId,
+      orgUnitId,
+      escalationBaselineHours: existing?.escalationBaselineHours ?? DEFAULT_ESCALATION_BASELINE_HOURS,
+      recipients: existing?.recipients ?? {
+        primaryOrgUnitAdminUserId: '',
+        secondaryOrgUnitAdminUserId: '',
+        tenantStaffUserId: '',
+      },
+      defaultOperatorPhoneE164: normalizedDefaultOperatorPhoneE164,
       createdAtUtc: existing?.createdAtUtc || now,
       updatedAtUtc: now,
     };

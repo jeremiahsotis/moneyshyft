@@ -1,6 +1,7 @@
 import {
   ConnectShyftEscalationConfigService,
   InMemoryConnectShyftEscalationConfigStore,
+  KnexConnectShyftEscalationConfigStore,
   connectShyftEscalationRecipientScopes,
   createEscalationRecipientDirectory,
 } from '../escalationConfig';
@@ -284,5 +285,124 @@ describe('connectshyft escalation config service', () => {
         tenantStaffUserId: '',
       },
     });
+  });
+});
+
+function buildEscalationKnexMock(firstResults: Array<Record<string, unknown> | null>) {
+  const first = jest.fn(async () => firstResults.shift() ?? null);
+  const where = jest.fn(() => ({
+    first,
+  }));
+  const merge = jest.fn(async () => undefined);
+  const onConflict = jest.fn(() => ({
+    merge,
+  }));
+  const insert = jest.fn(() => ({
+    onConflict,
+  }));
+  const table = jest.fn(() => ({
+    where,
+    insert,
+  }));
+  const withSchema = jest.fn(() => ({
+    table,
+  }));
+
+  const knex: any = {
+    withSchema,
+  };
+
+  return {
+    knex,
+    withSchema,
+    table,
+    where,
+    first,
+    insert,
+    onConflict,
+    merge,
+  };
+}
+
+describe('KnexConnectShyftEscalationConfigStore', () => {
+  it('stores the default operator phone on the escalation-config seam', async () => {
+    const { knex, withSchema, table, insert, onConflict, merge } = buildEscalationKnexMock([null]);
+    const store = new KnexConnectShyftEscalationConfigStore(() => knex);
+
+    await expect(store.setDefaultOperatorPhone(
+      'tenant-connectshyft-alpha',
+      'org-connectshyft-alpha-east',
+      '+12605550123',
+    )).resolves.toMatchObject({
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      escalationBaselineHours: 24,
+      defaultOperatorPhoneE164: '+12605550123',
+      recipients: {
+        primaryOrgUnitAdminUserId: '',
+        secondaryOrgUnitAdminUserId: '',
+        tenantStaffUserId: '',
+      },
+    });
+
+    expect(withSchema).toHaveBeenCalledWith('connectshyft');
+    expect(table).toHaveBeenCalledWith('cs_org_unit_escalation_config');
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+      tenant_id: 'tenant-connectshyft-alpha',
+      org_unit_id: 'org-connectshyft-alpha-east',
+      escalation_baseline_hours: 24,
+      primary_org_unit_admin_user_id: '',
+      secondary_org_unit_admin_user_id: null,
+      tenant_staff_user_id: null,
+      default_operator_phone_e164: '+12605550123',
+    }));
+    expect(onConflict).toHaveBeenCalledWith(['tenant_id', 'org_unit_id']);
+    expect(merge).toHaveBeenCalledWith(expect.objectContaining({
+      default_operator_phone_e164: '+12605550123',
+    }));
+  });
+
+  it('preserves an existing default operator phone when saving escalation recipients', async () => {
+    const { knex, insert, merge } = buildEscalationKnexMock([
+      {
+        tenant_id: 'tenant-connectshyft-alpha',
+        org_unit_id: 'org-connectshyft-alpha-east',
+        escalation_baseline_hours: 12,
+        primary_org_unit_admin_user_id: 'user-connectshyft-a4-primary-recipient',
+        secondary_org_unit_admin_user_id: 'user-connectshyft-a4-secondary-recipient',
+        tenant_staff_user_id: 'user-connectshyft-a4-tenant-staff-recipient',
+        default_operator_phone_e164: '+12605550123',
+        created_at_utc: '2026-03-22T12:00:00.000Z',
+        updated_at_utc: '2026-03-22T13:00:00.000Z',
+      },
+    ]);
+    const store = new KnexConnectShyftEscalationConfigStore(() => knex);
+
+    await expect(store.saveConfig(
+      'tenant-connectshyft-alpha',
+      'org-connectshyft-alpha-east',
+      6,
+      {
+        primaryOrgUnitAdminUserId: 'user-connectshyft-a4-primary-recipient',
+        secondaryOrgUnitAdminUserId: 'user-connectshyft-a4-secondary-recipient',
+        tenantStaffUserId: 'user-connectshyft-a4-tenant-staff-recipient',
+      },
+    )).resolves.toMatchObject({
+      tenantId: 'tenant-connectshyft-alpha',
+      orgUnitId: 'org-connectshyft-alpha-east',
+      escalationBaselineHours: 6,
+      defaultOperatorPhoneE164: '+12605550123',
+      createdAtUtc: '2026-03-22T12:00:00.000Z',
+    });
+
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+      default_operator_phone_e164: '+12605550123',
+    }));
+    expect(merge).toHaveBeenCalledWith(expect.objectContaining({
+      escalation_baseline_hours: 6,
+      primary_org_unit_admin_user_id: 'user-connectshyft-a4-primary-recipient',
+      secondary_org_unit_admin_user_id: 'user-connectshyft-a4-secondary-recipient',
+      tenant_staff_user_id: 'user-connectshyft-a4-tenant-staff-recipient',
+    }));
   });
 });

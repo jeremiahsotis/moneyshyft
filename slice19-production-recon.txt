@@ -1,0 +1,2207 @@
+jeremiahotis@jeremiah-otis:~/projects/shyftunity$ cd ~/projects/shyftunity
+
+docker ps --format 'table {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}'
+docker exec connectshyft-api /bin/sh -lc 'node -e "console.log(process.env.PORT)"'
+docker exec connectshyft-api /bin/sh -lc 'find /app/dist/apps/connectshyft-api/src/modules/connectshyft -type f | sed -n "1,260p"'
+docker exec connectshyft-api /bin/sh -lc 'find /app/dist/apps/connectshyft-api/src/routes/api/v1 -type f | sed -n "1,260p"'
+CONTAINER ID   NAMES                 IMAGE                         STATUS
+e9b45db87f77   admin-api             shyftunity-admin-api          Up 3 hours (healthy)
+8c7d89f7f50a   connectshyft-api      shyftunity-connectshyft-api   Up 3 hours (healthy)
+2a1524fa9987   moneyshyft-api        988ea6382b07                  Up 7 hours (healthy)
+010925df315e   moneyshyft_postgres   postgres:15-alpine            Up 7 days
+3002
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/neighbors.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/identityResolver.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/phoneIdentityContext.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/inboundVoice.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/operatorCallbackNumbers.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/escalationConfig.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/identityBoundary.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/featureFlags.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/inboundSms.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ops/bridgeVisibility.service.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ops/threadVisibility.service.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ops/identityVisibility.service.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ops/__tests__/ops.bridge.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ops/__tests__/ops.thread.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ops/__tests__/ops.identity.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityHooks.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/threads.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/threadTimeline.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/peoplecoreIdentityAdapter.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectNeighbors.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/operatorCallbackNumberContract.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectTelephonyReadiness.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNeighborIdentityMatch.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectWebhookInbound.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectThreadClaim.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectWebhookSms.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadTimeline.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNumberMapping.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectNeighborDetail.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectOperatorCallbackNumber.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectContext.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectSettingsNavigation.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/putConnectNeighbor.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectThreadTakeover.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/putConnectOperatorCallbackNumber.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectThreadCall.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectInbox.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectNumberMappings.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectEscalationConfig.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNeighborMerge.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectWebhookReceiptMetrics.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/deleteConnectNeighbor.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectThreadMessage.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectThreadClose.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/putConnectNumberMapping.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectEscalationRecipients.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectAvailability.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/index.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNeighborCreate.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/numberMappingContract.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/putConnectEscalationConfig.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectWebhookReceiptCleanup.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/communicationAuditLog.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/operatorDestinationResolver.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/contextAccess.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/numberMappings.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/readContracts.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/http/telephonySettingsContext.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/http/ops.handlers.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/http/threadOutboundContext.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/http/threadLifecycleContext.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/http/accessContext.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/http/threadReadContext.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/http/numberMappingContext.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/http/escalationConfigContext.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/http/inboundWebhookContext.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/http/neighborIdentityContext.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/http/webhookReceiptAdminContext.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/threadTimelineDto.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/canonicalEvents.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/senderNumberResolver.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/providerRegistry.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/smsPreferenceOverrides.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/telephonyReadiness.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/communicationReliability.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.accessContext.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/featureFlags.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadReadContext.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/senderNumberResolver.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/threads.contract.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityHooks.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/readContracts.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/providerCorrelationMappings.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/inboundVoice.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/operatorDestinationResolver.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/contextAccess.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.escalationConfigContext.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/peoplecoreIdentityAdapter.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/escalationConfig.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.numberMappingContext.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/identityResolver.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.webhookReceiptAdminContext.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/operatorCallbackNumbers.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/threadTimeline.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/ambiguityEvents.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/telephonyReadiness.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/canonicalEvents.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/numberMappings.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.neighborIdentityContext.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadLifecycleContext.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadOutboundContext.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.telephonySettingsContext.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/inboundSms.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/threads.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/__tests__/identityBoundary.test.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/escalationRecipientDirectory.js
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/providerCorrelationMappings.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft/ops.routes.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-timeline.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.number-mappings.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-receipts-admin.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-transcription.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.shared.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.escalation-config.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.timeline.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-create.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-match.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-identity-merge.characterization.test.js
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.js
+jeremiahotis@jeremiah-otis:~/projects/shyftunity$ docker exec connectshyft-api /bin/sh -lc 'grep -R -n "phone_e164\\|default_operator_phone_e164\\|operator.*phone\\|fallback.*phone\\|telephony.*readiness\\|readiness\\|settings/navigation\\|profile\\|context\\|availability" /app/dist/apps/connectshyft-api/src /app/dist 2>/dev/null | sed -n "1,320p"'
+/app/dist/apps/connectshyft-api/src/platform/tenancy/__tests__/tenantScope.test.js:16:    it('requires orgunit context for orgUnit-scoped access', () => {
+/app/dist/apps/connectshyft-api/src/platform/tenancy/__tests__/tenantScope.test.js:49:    it('rejects orgUnit scope mode when orgunit context is missing', () => {
+/app/dist/apps/connectshyft-api/src/platform/tenancy/__tests__/requestContext.test.js:16:    it('returns public tenant context when unauthenticated', () => {
+/app/dist/apps/connectshyft-api/src/platform/tenancy/__tests__/requestContext.test.js:25:    it('uses authenticated active tenant context by default', () => {
+/app/dist/apps/connectshyft-api/src/platform/tenancy/__tests__/requestContext.test.js:63:    it('ignores caller-supplied tenant and orgunit headers for authenticated context', () => {
+/app/dist/apps/connectshyft-api/src/platform/tenancy/__tests__/orgUnitAccess.test.js:34:    it('rejects orgunit access when orgunit does not belong to tenant context', async () => {
+/app/dist/apps/connectshyft-api/src/services/AuthService.js:438:            throw new Error('Session tenant context is required');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectshyftIdentityAmbiguityEventsMigration.test.js:35:        expect(rawSql).toContain('connectshyft_cs_identity_ambiguity_events_tenant_source_context_created_idx');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectshyftIdentityAmbiguityEventsMigration.test.js:36:        expect(rawSql).toContain('(tenant_id, source_context, created_at_utc DESC)');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:16:        expect(rawSql).toContain('ADD COLUMN IF NOT EXISTS phone_e164');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:17:        expect(rawSql).toContain('users_phone_e164_ck');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:18:        expect(rawSql).toContain("phone_e164 ~ '^\\+[1-9][0-9]{1,14}$'");
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:19:        expect(rawSql).toContain('ADD COLUMN IF NOT EXISTS default_operator_phone_e164');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:20:        expect(rawSql).toContain('cs_org_unit_escalation_config_default_operator_phone_e164_ck');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:21:        expect(rawSql).toContain("default_operator_phone_e164 ~ '^\\+[1-9][0-9]{1,14}$'");
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:27:        expect(rawSql).toContain('DROP CONSTRAINT IF EXISTS cs_org_unit_escalation_config_default_operator_phone_e164_ck');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:28:        expect(rawSql).toContain('DROP COLUMN IF EXISTS default_operator_phone_e164');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:29:        expect(rawSql).toContain('DROP CONSTRAINT IF EXISTS users_phone_e164_ck');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:30:        expect(rawSql).toContain('DROP COLUMN IF EXISTS phone_e164');
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:14:const contextAccess_1 = require("../../../modules/connectshyft/contextAccess");
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:585:    const decision = await (0, contextAccess_1.resolveConnectShyftOrgUnitContext)(req, {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:595:        return decision.context;
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:999:        preferred_outbound_context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1013:            neighborContext: `Neighbor context: ${summary}`,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1014:            conferenceContext: `Conference context: ${outboundContextLabel}`,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1016:                ? 'Claim context: Unclaimed conversation'
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1018:                    ? 'Claim context: Claimed conversation'
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1019:                    : 'Claim context: Closed conversation',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1115:                    throw new OutboundDispatchRefusalError('CONNECTSHYFT_THREAD_NOT_FOUND', 'Thread not found for this tenant/orgUnit context.');
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1443:const resolveConnectShyftActorRoles = (req, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1445:    const contextRoles = Array.isArray(context?.effectiveRoles)
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1446:        ? context.effectiveRoles
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1451:    const deduped = Array.from(new Set(contextRoles));
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1457:const enforceThreadViewCapability = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1458:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1471:const enforceEscalationActionMembership = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1472:    if (!context.bypassedOrgUnitMembership) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1475:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1487:const enforceThreadClaimCapability = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1488:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1501:const enforceThreadTakeoverCapability = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1502:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1515:const enforceThreadCloseCapability = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1516:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1529:const enforceThreadCallCapability = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1530:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1543:const enforceThreadMessageCapability = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1544:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1557:const resolveIdentityAmbiguityReadScope = (req, res, context, requestedOrgUnitId) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1558:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1570:    if (requestedOrgUnitId && !tenantPrivileged && requestedOrgUnitId !== context.orgUnitId) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1573:            message: 'Cross-orgUnit context overrides are not allowed for this route',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1581:        orgUnitId: requestedOrgUnitId ?? (tenantPrivileged ? null : context.orgUnitId),
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1584:const resolveIdentityAmbiguityTenantPrivilegedScope = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1585:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2051:            // Fall through to bounded in-memory/list fallback for non-production contexts.
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2301:            presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2329:            presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2388:            : 'Update the neighbor profile or choose a valid phone number before sending the outbound message.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2463:                accessibilityHint: 'Update the neighbor profile or choose a valid phone number before sending the outbound message.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2501:        accessibilityHint: 'Update the neighbor profile or choose a valid phone number before sending the outbound message.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2725:router.get('/settings/navigation', handlers_1.getConnectSettingsNavigation);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2726:router.get('/availability', handlers_1.getConnectAvailability);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2727:router.get('/telephony-readiness', handlers_1.getConnectTelephonyReadiness);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2730:router.get('/context', handlers_1.getConnectContext);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2753:    const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2754:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2757:    if (!enforceThreadViewCapability(req, res, context)) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2772:        const config = await connectShyftEscalationConfigService.getConfig(context.tenantId, context.orgUnitId);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2784:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2787:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2788:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2804:        && !UUID_PATTERN.test(context.tenantId);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2808:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2809:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2841:    const context = await enforceOrgUnitContext(req, res, parseOrgUnitIdFromQuery(req));
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2842:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2845:    if (!enforceThreadViewCapability(req, res, context)) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2848:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2851:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2852:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2880:    const context = await enforceOrgUnitContext(req, res, parseOrgUnitIdFromQuery(req));
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2881:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2884:    if (!enforceThreadViewCapability(req, res, context)) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2889:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2890:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2917:    const context = await enforceOrgUnitContext(req, res);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2918:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2921:    const readScope = resolveIdentityAmbiguityReadScope(req, res, context, filters.orgUnitId);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2926:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2948:    const context = await enforceOrgUnitContext(req, res);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2949:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2952:    if (!resolveIdentityAmbiguityTenantPrivilegedScope(req, res, context)) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2980:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2986:            message: 'Identity ambiguity event is unavailable for the active tenant context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3006:    const context = await enforceOrgUnitContext(req, res);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3007:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3010:    if (!enforceThreadViewCapability(req, res, context)) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3016:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3017:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3023:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3047:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3048:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3092:            context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3093:                tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3094:                orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3095:                bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3123:    const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3124:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3127:    if (!enforceThreadViewCapability(req, res, context)) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3174:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3177:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3178:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3206:const performOutboundAction = async ({ req, res, outboundAction, context, threadId, actorUserId, actorRoles, lifecycleContext, }) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3241:                context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3262:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3263:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3292:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3293:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3308:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3309:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3324:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3325:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3346:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3400:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3401:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3406:            operatorDestinationResolved: Boolean(operatorDestinationResolution.phoneNumber),
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3415:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3416:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3435:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3450:                        presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3480:                tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3481:                orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3496:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3497:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3501:        operatorContactPointId = operatorDestinationResolution.phoneNumber;
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3508:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3529:                message: 'Outbound bridge calls require a valid operator destination phone.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3531:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3551:                tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3574:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3594:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3595:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3609:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3654:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3688:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3689:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3700:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3746:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3747:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3766:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3801:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3802:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3826:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3855:                context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3872:                context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3896:                tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3939:                context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3955:                tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3956:                orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3979:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3995:                        presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4021:                    tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4022:                    orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4049:                    tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4050:                    orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4067:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4101:                tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4132:                context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4168:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4199:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4200:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4224:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4225:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4241:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4271:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4272:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4320:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4321:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4383:        presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4396:        context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4504:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:5431:                message: 'Inbound SMS processing requires a resolvable neighbor context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:5990:            operatorDestinationResolved: Boolean(operatorDestinationResolution.phoneNumber),
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-timeline.characterization.test.js:75:    preferred_outbound_context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.number-mappings.characterization.test.js:327:            message: 'Cross-orgUnit context overrides are not allowed for this route',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:83:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:150:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:194:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:211:            message: 'Thread not found for this tenant/orgUnit context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:214:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:223:    it('returns the current missing-orgUnit refusal for close requests without orgUnit context', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:235:            message: 'orgUnit context is required for ConnectShyft orgUnit-scoped routes',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.js:603:            message: 'Neighbor detail is unavailable for the requested orgUnit context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.js:650:            preferred_outbound_context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.js:269:            message: 'Cross-orgUnit context overrides are not allowed for this route',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.js:272:    it('applies optional status, contact-point, and source-context filters', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.js:478:            message: 'Identity ambiguity event is unavailable for the active tenant context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.js:196:    it('fails closed when Telnyx rollout allow-list excludes tenant/orgUnit context', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.js:233:    it('revalidates rollout allow-list against correlated webhook context before side effects', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:212:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:256:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:379:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:469:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:564:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:603:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:627:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:630:                    accessibilityHint: 'Update the neighbor profile or choose a valid phone number before sending the outbound message.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:666:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:694:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:733:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:755:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:804:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:70:        : 'corr-connectshyft-settings-availability-characterization';
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:96:describe('connectshyft settings and availability route characterization', () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:125:            .get('/api/v1/connectshyft/settings/navigation')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:155:                path: '/app/connectshyft/settings/availability',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:166:            .get('/api/v1/connectshyft/settings/navigation')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:178:                key: 'availability',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:179:                path: '/app/connectshyft/settings/availability',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:192:                path: '/app/connectshyft/settings/availability',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:211:            .get('/api/v1/connectshyft/settings/navigation')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:222:        expect(optionPaths.some((path) => /callback|forwarding|readiness|telephony/i.test(path))).toBe(false);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:230:            .get('/api/v1/connectshyft/settings/navigation')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:254:                path: '/app/connectshyft/settings/availability',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:259:    it('returns the availability payload shape for admin-capable callers', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:265:            .get('/api/v1/connectshyft/availability')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:291:    it('preserves the availability response contract while telephony readiness stays on a dedicated route', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:297:            .get('/api/v1/connectshyft/availability')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:309:    it('preserves the availability refusal payload for callers without admin settings access', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:315:            .get('/api/v1/connectshyft/availability')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:215:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:259:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:396:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:481:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:574:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:617:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:655:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:697:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:760:            message: 'Thread not found for this tenant/orgUnit context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:763:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.js:1088:                message: 'Inbound SMS processing requires a resolvable neighbor context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.js:249:            message: 'Neighbor profile updated',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.js:263:                contextOverrideNotice: null,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.js:271:                        mutation_context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.js:291:            'contextOverrideNotice',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.js:299:                contextOverrideNotice: 'Tenant-privileged override applied',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.js:303:            'contextOverrideNotice',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.js:318:            message: 'Neighbor profile not found for this tenant.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.js:330:            message: 'Neighbor profile not found for this tenant.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.escalation-config.characterization.test.js:393:            message: 'Cross-orgUnit context overrides are not allowed for this route',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:73:        : 'corr-connectshyft-context-inbox-characterization';
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:99:describe('connectshyft context and inbox route characterization', () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:125:    it('returns resolved member-scoped tenant and orgUnit context', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:128:            .get('/api/v1/connectshyft/context')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:135:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:143:    it('preserves tenant-privileged orgUnit bypass semantics in the resolved context payload', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:146:            .get('/api/v1/connectshyft/context')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:157:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:165:    it('returns the current missing-orgUnit refusal for orgUnit-scoped context requests', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:171:            .get('/api/v1/connectshyft/context')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:189:            .get('/api/v1/connectshyft/context')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:191:            orgUnitId: 'invalid-orgunit-context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:192:            memberships: ['invalid-orgunit-context'],
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:221:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:280:    it('requires an actor context for mine bucket reads', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.timeline.test.js:74:    preferred_outbound_context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-create.characterization.test.js:437:            message: 'orgUnit context is required for ConnectShyft orgUnit-scoped routes',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.js:314:    it('refuses mine bucket reads when actor context is missing', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.js:1037:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:77:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:147:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:157:        expect(Object.keys(response.body.data.context).sort()).toEqual([
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:197:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:214:            message: 'Thread not found for this tenant/orgUnit context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:217:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:252:    it('returns the current missing-orgUnit refusal for claim requests without orgUnit context', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:264:            message: 'orgUnit context is required for ConnectShyft orgUnit-scoped routes',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:86:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:153:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:197:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:217:            message: 'Thread not found for this tenant/orgUnit context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:220:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:229:    it('returns the current missing-orgUnit refusal for takeover requests without orgUnit context', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:246:            message: 'orgUnit context is required for ConnectShyft orgUnit-scoped routes',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.js:169:    it('returns the telephony readiness response shape for operator callers', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.js:206:            .get('/api/v1/connectshyft/telephony-readiness')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.js:214:            message: 'ConnectShyft telephony readiness resolved',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.js:235:    it('returns blocking readiness truth when the operator callback number is missing', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.js:284:            .get('/api/v1/connectshyft/telephony-readiness')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.js:396:            .get('/api/v1/connectshyft/telephony-readiness')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.js:74:    preferred_outbound_context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.js:138:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.js:194:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.js:219:            'preferred_outbound_context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.js:275:    it('returns the current not-found refusal when thread detail is unavailable for the orgUnit context', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.js:287:                context: {
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/neighbors.js:91:    message: 'Neighbor profile access requires an authorized ConnectShyft role.',
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/neighbors.js:96:    message: 'Neighbor profile updates require an authorized ConnectShyft role.',
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/neighbors.js:136:    message: 'Neighbor profile not found for this tenant.',
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/neighbors.js:157:    const context = (0, phoneIdentityContext_1.resolveConnectShyftPhoneNormalizationContext)('user_entered');
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/neighbors.js:161:        const resolvedPhone = (0, communication_1.normalizePhone)(normalizeNonEmptyString(phone?.value), context);
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/inboundVoice.js:179:        if (input.operatorDestination !== undefined && !input.operatorDestination?.phoneNumber) {
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/escalationConfig.js:197:        defaultOperatorPhoneE164: normalizeRecipientValue(row.default_operator_phone_e164) || null,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/escalationConfig.js:271:            default_operator_phone_e164: existing?.defaultOperatorPhoneE164 || null,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.js:124:    sourceContext: row.source_context,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.js:125:    sourceContextId: row.source_context_id,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.js:239:            source_context: event.sourceContext,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.js:240:            source_context_id: event.sourceContextId,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.js:281:            query.andWhere('source_context', sourceContext);
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ops/__tests__/ops.thread.test.js:63:            message: 'Thread visibility is unavailable for the requested orgUnit context.',
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectNeighbors.js:15:        tenantId: accessContext.context.tenantId,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectNeighbors.js:23:            data: (0, neighborIdentityContext_1.buildConnectShyftNeighborRefusalData)(resolved, accessContext.context),
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectNeighbors.js:33:            ...(0, neighborIdentityContext_1.buildConnectShyftNeighborScopePayload)(accessContext.context),
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectTelephonyReadiness.js:16:    const readiness = await telephonyReadiness_1.connectShyftTelephonyReadinessServiceAsync.inspectReadiness({
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectTelephonyReadiness.js:17:        tenantId: accessContext.context.tenantId,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectTelephonyReadiness.js:18:        orgUnitId: accessContext.context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectTelephonyReadiness.js:25:        message: 'ConnectShyft telephony readiness resolved',
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectTelephonyReadiness.js:26:        data: readiness,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.js:166:            tenantId: readContext.context.tenantId,
+jeremiahotis@jeremiah-otis:~/projects/shyftunity$ docker exec connectshyft-api /bin/sh -lc 'sed -n "1,320p" /app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js'
+docker exec connectshyft-api /bin/sh -lc 'sed -n "1,260p" /app/dist/apps/connectshyft-api/src/modules/connectshyft/escalationConfig.js'
+docker exec connectshyft-api /bin/sh -lc 'sed -n "1,260p" /app/dist/apps/connectshyft-api/src/modules/connectshyft/numberMappings.js'
+docker exec connectshyft-api /bin/sh -lc 'sed -n "1,260p" /app/dist/apps/connectshyft-api/src/modules/connectshyft/operatorDestinationResolver.js'
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.resolveConnectShyftSmsSenderForTests = exports.resolveConnectShyftSmsTargetForTests = exports.ensureConnectShyftDispatchReadySmsTargetForTests = exports.resetConnectShyftOutboundDispatchReplayLedgerForTests = void 0;
+const node_crypto_1 = require("node:crypto");
+const express_1 = require("express");
+const communication_1 = require("../../../../../../domains/communication");
+const response_1 = require("../../../platform/envelopes/response");
+const capabilities_1 = require("../../../platform/rbac/capabilities");
+const featureFlags_1 = require("../../../modules/connectshyft/featureFlags");
+const handlers_1 = require("../../../modules/connectshyft/handlers");
+const contextAccess_1 = require("../../../modules/connectshyft/contextAccess");
+const threadOutboundContext_1 = require("../../../modules/connectshyft/http/threadOutboundContext");
+const inboundWebhookContext_1 = require("../../../modules/connectshyft/http/inboundWebhookContext");
+const numberMappings_1 = require("../../../modules/connectshyft/numberMappings");
+const operatorDestinationResolver_1 = require("../../../modules/connectshyft/operatorDestinationResolver");
+const neighbors_1 = require("../../../modules/connectshyft/neighbors");
+const escalationConfig_1 = require("../../../modules/connectshyft/escalationConfig");
+const threads_1 = require("../../../modules/connectshyft/threads");
+const senderNumberResolver_1 = require("../../../modules/connectshyft/senderNumberResolver");
+const smsPreferenceOverrides_1 = require("../../../modules/connectshyft/smsPreferenceOverrides");
+const providerRegistry_1 = require("../../../modules/connectshyft/providerRegistry");
+const executePlatformMutation_1 = require("../../../platform/mutations/executePlatformMutation");
+const orgUnitAccess_1 = require("../../../platform/tenancy/orgUnitAccess");
+const tenantModuleEntitlements_1 = require("../../../platform/tenantModuleEntitlements");
+const logger_1 = __importDefault(require("../../../utils/logger"));
+const readContracts_1 = require("../../../modules/connectshyft/readContracts");
+const inboundSms_1 = require("../../../modules/connectshyft/inboundSms");
+const identityResolver_1 = require("../../../modules/connectshyft/identityResolver");
+const inboundVoice_1 = require("../../../modules/connectshyft/inboundVoice");
+const canonicalEvents_1 = require("../../../modules/connectshyft/canonicalEvents");
+const threadTimeline_1 = require("../../../modules/connectshyft/threadTimeline");
+const providerCorrelationMappings_1 = require("../../../modules/connectshyft/providerCorrelationMappings");
+const bridgeSessions_1 = require("../../../modules/connectshyft/bridgeSessions");
+const communicationReliability_1 = require("../../../modules/connectshyft/communicationReliability");
+const communicationAuditLog_1 = require("../../../modules/connectshyft/communicationAuditLog");
+const ambiguityEvents_1 = require("../../../modules/connectshyft/ambiguityEvents");
+const timezoneService_1 = require("../../../platform/time/timezoneService");
+const ops_routes_1 = __importDefault(require("./connectshyft/ops.routes"));
+const router = (0, express_1.Router)();
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CONNECTSHYFT_NEIGHBOR_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const TEST_USER_ID_HEADER = 'x-test-connectshyft-user-id';
+const CONNECTSHYFT_SYSTEM_ACTOR_USER_ID = '00000000-0000-4000-8000-000000000001';
+const IDENTITY_MATCH_AMBIGUOUS_CODE = 'IDENTITY_MATCH_AMBIGUOUS';
+const CONNECTSHYFT_INBOX_P95_BUDGET_MS = 750;
+const CONNECTSHYFT_INBOX_P99_BUDGET_MS = 1500;
+const DEFAULT_ESCALATION_BASELINE_HOURS = 24;
+const MIN_ESCALATION_BASELINE_HOURS = 1;
+const MAX_ESCALATION_BASELINE_HOURS = 24;
+const MAX_ESCALATION_STAGE = 3;
+const DEFAULT_SCHEDULER_LIMIT = 50;
+const MAX_SCHEDULER_LIMIT = 250;
+const HOUR_MS = 60 * 60 * 1000;
+const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
+    claimed: 'connectshyft.thread.claimed',
+    takenOver: 'connectshyft.thread.taken_over',
+    closed: 'connectshyft.thread.closed',
+    reopenedByUser: 'connectshyft.thread_reopened_by_user',
+    inboundSmsAppended: inboundSms_1.CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME,
+    inboundVoiceVoicemail: inboundVoice_1.CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
+    inboundVoiceFallback: inboundVoice_1.CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
+    voicemailTranscriptionRequested: inboundVoice_1.CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME,
+    voicemailTranscriptionAttached: inboundVoice_1.CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME,
+};
+const CONNECTSHYFT_OUTBOUND_EVENT_NAMES = {
+    callDispatched: 'connectshyft.thread.outbound_call_dispatched',
+    messageDispatched: 'connectshyft.thread.outbound_message_dispatched',
+};
+const CONNECTSHYFT_CANONICAL_EVENT_TYPES = {
+    callAttemptStarted: 'CallAttemptStarted',
+    messageQueued: 'MessageQueued',
+    callConnected: 'CallConnected',
+    messageDelivered: 'MessageDelivered',
+};
+const CONNECTSHYFT_CANONICAL_EVENTS_DEFAULT_LIMIT = 50;
+const CONNECTSHYFT_CANONICAL_EVENTS_MAX_LIMIT = 200;
+const CONNECTSHYFT_IDENTITY_AMBIGUITIES_DEFAULT_LIMIT = 50;
+const CONNECTSHYFT_IDENTITY_AMBIGUITIES_MAX_LIMIT = 200;
+const CONNECTSHYFT_OUTBOUND_CALL_POLICY = {
+    transport: 'bridge',
+    autoRetry: false,
+    redialPolicy: 'manual_only',
+    phases: ['initiated', 'ringing', 'connected', 'completed'],
+};
+const CONNECTSHYFT_OUTBOUND_CALL_AUTO_CLAIM_POLICY = {
+    trigger: 'CONNECTED',
+    appliesToState: 'UNCLAIMED',
+    nextState: 'CLAIMED',
+};
+const CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT = CONNECTSHYFT_OUTBOUND_CALL_POLICY.transport;
+const CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_REDIAL_POLICY = CONNECTSHYFT_OUTBOUND_CALL_POLICY.redialPolicy;
+const CONNECTSHYFT_CONNECTED_CALL_EVENT_TYPES = new Set(['voice.connected', 'call.connected', 'callconnected']);
+const CONNECTSHYFT_ESCALATION_NOTIFICATION_EVENT_PREFIXES = [
+    'connectshyft.thread.escalation.',
+    'connectshyft.escalation.',
+];
+const CONNECTSHYFT_LEGACY_ROLE_ALIASES = {
+    admin: 'TENANT_ADMIN',
+    member: 'ORGUNIT_MEMBER',
+};
+const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS = {
+    '483a4c51-e677-422a-8bc6-faeea89c6dcf': {
+        tenantId: 'tenant-connectshyft-c4',
+        orgUnitId: 'org-connectshyft-c4-east',
+        state: 'UNCLAIMED',
+        claimedByUserId: null,
+        escalationStage: 2,
+        nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+        neighborId: 'neighbor-connectshyft-c4-1001',
+        lastInboundCsNumberId: '+12605550198',
+        preferredOutboundCsNumberId: '+12605550198',
+        summary: 'Unclaimed intake ready for assignment',
+    },
+    '6fb01cbc-069d-485a-86f7-ee72359543b9': {
+        tenantId: 'tenant-connectshyft-c4',
+        orgUnitId: 'org-connectshyft-c4-east',
+        state: 'CLAIMED',
+        claimedByUserId: 'user-connectshyft-c4-other-operator',
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-c4-1002',
+        lastInboundCsNumberId: '+12605550198',
+        preferredOutboundCsNumberId: '+12605550198',
+        summary: 'Claimed thread eligible for takeover/close',
+    },
+    '2f6bbd34-49c7-4400-8982-889c996ab87b': {
+        tenantId: 'tenant-connectshyft-c4',
+        orgUnitId: 'org-connectshyft-c4-east',
+        state: 'CLOSED',
+        claimedByUserId: null,
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-c4-1003',
+        lastInboundCsNumberId: '+12605550198',
+        preferredOutboundCsNumberId: '+12605550198',
+        summary: 'Closed thread awaiting explicit outbound reopen',
+    },
+    '4332bb8e-940f-4927-8320-a8d3f3093d72': {
+        tenantId: 'tenant-connectshyft-d4',
+        orgUnitId: 'org-connectshyft-d4-east',
+        state: 'UNCLAIMED',
+        claimedByUserId: null,
+        escalationStage: 2,
+        nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+        neighborId: 'neighbor-connectshyft-d4-1001',
+        lastInboundCsNumberId: '+12605550192',
+        preferredOutboundCsNumberId: '+12605550192',
+        summary: 'Unclaimed intake ready for policy-safe outbound action',
+    },
+    '0b3060e8-d0e1-4366-8655-8c7ec44cf0ee': {
+        tenantId: 'tenant-connectshyft-d4',
+        orgUnitId: 'org-connectshyft-d4-east',
+        state: 'CLAIMED',
+        claimedByUserId: 'user-connectshyft-d4-other-operator',
+        escalationStage: 1,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-d4-1002',
+        lastInboundCsNumberId: '+12605550192',
+        preferredOutboundCsNumberId: '+12605550192',
+        summary: 'Claimed thread eligible for close action',
+    },
+    '20ab942f-27c6-4ae5-8af2-06b727c36b2a': {
+        tenantId: 'tenant-connectshyft-d4',
+        orgUnitId: 'org-connectshyft-d4-east',
+        state: 'CLOSED',
+        claimedByUserId: null,
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-d4-1003',
+        lastInboundCsNumberId: '+12605550192',
+        preferredOutboundCsNumberId: '+12605550192',
+        summary: 'Closed thread awaiting explicit same-thread reopen',
+    },
+    '06a77807-6575-4c63-8824-38a89f9dae12': {
+        tenantId: 'tenant-connectshyft-d4',
+        orgUnitId: 'org-connectshyft-d4-east',
+        state: 'CLOSED',
+        claimedByUserId: null,
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-d4-pref-no-1005',
+        lastInboundCsNumberId: '+12605550192',
+        preferredOutboundCsNumberId: '+12605550192',
+        summary: 'Closed thread with prefers_texting=NO policy.',
+    },
+    '59b44eb4-c8e7-4cd1-8a22-bbeceb871dd7': {
+        tenantId: 'tenant-connectshyft-d4',
+        orgUnitId: 'org-connectshyft-d4-east',
+        state: 'UNCLAIMED',
+        claimedByUserId: null,
+        escalationStage: 1,
+        nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+        neighborId: 'neighbor-connectshyft-d4-pref-no-1004',
+        lastInboundCsNumberId: '+12605550192',
+        preferredOutboundCsNumberId: '+12605550192',
+        summary: 'Unclaimed thread with prefers_texting=NO policy.',
+    },
+    '1641c3dd-4d4c-4997-8b72-ae4876649b37': {
+        tenantId: 'tenant-connectshyft-ux-r4',
+        orgUnitId: 'org-connectshyft-ux-r4-east',
+        state: 'UNCLAIMED',
+        claimedByUserId: null,
+        escalationStage: 2,
+        nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+        neighborId: 'neighbor-connectshyft-ux-r4-1001',
+        lastInboundCsNumberId: '+12605550196',
+        preferredOutboundCsNumberId: '+12605550196',
+        summary: 'Unclaimed thread with explicit outbound guardrail controls.',
+    },
+    '69c239d2-8f02-4202-8cec-a7f0de61cbf7': {
+        tenantId: 'tenant-connectshyft-ux-r4',
+        orgUnitId: 'org-connectshyft-ux-r4-east',
+        state: 'CLAIMED',
+        claimedByUserId: 'user-connectshyft-ux-r4-other-operator',
+        escalationStage: 1,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-ux-r4-1002',
+        lastInboundCsNumberId: '+12605550196',
+        preferredOutboundCsNumberId: '+12605550196',
+        summary: 'Claimed thread with deterministic policy-safe outbound controls.',
+    },
+    'aedcda71-42b7-4857-8a0a-70013e01d4cd': {
+        tenantId: 'tenant-connectshyft-ux-r4',
+        orgUnitId: 'org-connectshyft-ux-r4-east',
+        state: 'CLOSED',
+        claimedByUserId: null,
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-ux-r4-1003',
+        lastInboundCsNumberId: '+12605550196',
+        preferredOutboundCsNumberId: '+12605550196',
+        summary: 'Closed thread requiring explicit same-thread reopen before outbound.',
+    },
+    '21f2866f-37ff-42da-80fc-0b5d2c3bc09d': {
+        tenantId: 'tenant-connectshyft-ux-r4',
+        orgUnitId: 'org-connectshyft-ux-r4-east',
+        state: 'UNCLAIMED',
+        claimedByUserId: null,
+        escalationStage: 1,
+        nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+        neighborId: 'neighbor-connectshyft-ux-r4-pref-no-1004',
+        lastInboundCsNumberId: '+12605550196',
+        preferredOutboundCsNumberId: '+12605550196',
+        summary: 'Unclaimed thread with prefers_texting=NO policy.',
+    },
+    'e37b00e0-228f-43c0-8c70-b3d0a5bfad40': {
+        tenantId: 'tenant-connectshyft-ux-r4',
+        orgUnitId: 'org-connectshyft-ux-r4-east',
+        state: 'CLOSED',
+        claimedByUserId: null,
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-ux-r4-pref-no-1005',
+        lastInboundCsNumberId: '+12605550196',
+        preferredOutboundCsNumberId: '+12605550196',
+        summary: 'Closed thread with prefers_texting=NO policy.',
+    },
+    'thread-c5-unclaimed-1001': {
+        tenantId: 'tenant-connectshyft-c5',
+        orgUnitId: 'org-connectshyft-c5-east',
+        state: 'UNCLAIMED',
+        claimedByUserId: null,
+        escalationStage: 0,
+        nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+        neighborId: 'neighbor-connectshyft-c5-1001',
+        lastInboundCsNumberId: '+12605550179',
+        preferredOutboundCsNumberId: '+12605550179',
+        summary: 'Unclaimed thread pending deterministic escalation evaluation',
+    },
+    'cc9bb30e-4b36-4419-8563-819432f4ba14': {
+        tenantId: 'tenant-connectshyft-c4',
+        orgUnitId: 'org-connectshyft-c4-east',
+        state: 'UNCLAIMED',
+        claimedByUserId: null,
+        escalationStage: 1,
+        nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+        neighborId: 'neighbor-connectshyft-c4-pref-no-1004',
+        lastInboundCsNumberId: '+12605550198',
+        preferredOutboundCsNumberId: '+12605550198',
+        summary: 'Unclaimed thread with prefers_texting=NO policy.',
+    },
+    '935eed99-c710-49e8-838d-ab25d02ca821': {
+        tenantId: 'tenant-connectshyft-c4',
+        orgUnitId: 'org-connectshyft-c4-east',
+        state: 'CLOSED',
+        claimedByUserId: null,
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-c4-pref-no-1005',
+        lastInboundCsNumberId: '+12605550198',
+        preferredOutboundCsNumberId: '+12605550198',
+        summary: 'Closed thread with prefers_texting=NO policy.',
+    },
+    'thread-f1-unclaimed-1001': {
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        state: 'UNCLAIMED',
+        claimedByUserId: null,
+        escalationStage: 0,
+        nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+        neighborId: 'neighbor-connectshyft-f1-1001',
+        lastInboundCsNumberId: '+12605550191',
+        preferredOutboundCsNumberId: '+12605550191',
+        summary: 'F1 unclaimed thread for provider adapter registry contracts.',
+    },
+    'thread-f1-claimed-1002': {
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        state: 'CLAIMED',
+        claimedByUserId: 'user-connectshyft-f1-other-operator',
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-f1-1002',
+        lastInboundCsNumberId: '+12605550191',
+        preferredOutboundCsNumberId: '+12605550191',
+        summary: 'F1 claimed thread for provider disabled refusal validation.',
+    },
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.connectShyftEscalationRecipientScopes = exports.ConnectShyftEscalationConfigService = exports.KnexConnectShyftEscalationConfigStore = exports.InMemoryConnectShyftEscalationConfigStore = exports.createEscalationRecipientDirectory = void 0;
+const capabilities_1 = require("../../platform/rbac/capabilities");
+const DEFAULT_ESCALATION_BASELINE_HOURS = 24;
+const MIN_ESCALATION_BASELINE_HOURS = 1;
+const MAX_ESCALATION_BASELINE_HOURS = 24;
+const ESCALATION_RECIPIENT_SCOPES = {
+    ORG_UNIT: 'ORG_UNIT',
+    TENANT: 'TENANT',
+    TEST_ONLY: 'TEST_ONLY',
+};
+const buildTenantOrgUnitKey = (tenantId, orgUnitId) => `${tenantId}::${orgUnitId}`;
+const nowIsoUtc = () => new Date().toISOString();
+const toIsoUtc = (value, fallbackIsoUtc) => {
+    if (typeof value === 'string') {
+        const parsed = new Date(value);
+        if (!Number.isNaN(parsed.valueOf())) {
+            return parsed.toISOString();
+        }
+    }
+    if (value instanceof Date && !Number.isNaN(value.valueOf())) {
+        return value.toISOString();
+    }
+    return fallbackIsoUtc;
+};
+const normalizeRecipientValue = (value) => {
+    if (typeof value !== 'string') {
+        return '';
+    }
+    return value.trim();
+};
+const parseRecipients = (value) => {
+    if (!value || typeof value !== 'object') {
+        return {
+            primaryOrgUnitAdminUserId: '',
+            secondaryOrgUnitAdminUserId: '',
+            tenantStaffUserId: '',
+        };
+    }
+    const candidate = value;
+    return {
+        primaryOrgUnitAdminUserId: normalizeRecipientValue(candidate.primaryOrgUnitAdminUserId),
+        secondaryOrgUnitAdminUserId: normalizeRecipientValue(candidate.secondaryOrgUnitAdminUserId),
+        tenantStaffUserId: normalizeRecipientValue(candidate.tenantStaffUserId),
+    };
+};
+const buildInvalidIntegerRefusal = () => ({
+    ok: false,
+    code: 'CONNECTSHYFT_ESCALATION_BASELINE_INVALID_INTEGER',
+    message: 'Use whole hours between 1 and 24.',
+    data: {
+        fieldErrors: [
+            {
+                field: 'escalationBaselineHours',
+                reason: 'NOT_INTEGER',
+                message: 'Use whole hours between 1 and 24.',
+            },
+        ],
+    },
+});
+const buildInvalidRangeRefusal = () => ({
+    ok: false,
+    code: 'CONNECTSHYFT_ESCALATION_BASELINE_INVALID_RANGE',
+    message: 'Use whole hours between 1 and 24.',
+    data: {
+        fieldErrors: [
+            {
+                field: 'escalationBaselineHours',
+                reason: 'OUT_OF_RANGE',
+                message: 'Use whole hours between 1 and 24.',
+            },
+        ],
+    },
+});
+const buildRequiredPrimaryRecipientRefusal = () => ({
+    ok: false,
+    code: 'CONNECTSHYFT_ESCALATION_RECIPIENT_REQUIRED',
+    message: 'Primary recipient is required.',
+    data: {
+        fieldErrors: [
+            {
+                field: 'recipients.primaryOrgUnitAdminUserId',
+                reason: 'REQUIRED',
+                message: 'Primary recipient is required.',
+            },
+        ],
+    },
+});
+const buildInvalidRecipientAssignmentRefusal = (fieldErrors) => ({
+    ok: false,
+    code: 'CONNECTSHYFT_ESCALATION_RECIPIENT_INVALID_ASSIGNMENT',
+    message: 'Recipient must belong to the active tenant and orgUnit scope.',
+    data: {
+        fieldErrors,
+    },
+});
+const buildCapabilityRefusal = () => ({
+    ok: false,
+    code: 'CONNECTSHYFT_ESCALATION_CONFIG_FORBIDDEN',
+    message: 'Escalation configuration requires an authorized orgUnit role.',
+});
+const resolveBaselineHours = (value) => {
+    if (value === undefined || value === null) {
+        return {
+            ok: true,
+            baselineHours: DEFAULT_ESCALATION_BASELINE_HOURS,
+        };
+    }
+    if (typeof value !== 'number' || !Number.isFinite(value) || !Number.isInteger(value)) {
+        return buildInvalidIntegerRefusal();
+    }
+    if (value < MIN_ESCALATION_BASELINE_HOURS || value > MAX_ESCALATION_BASELINE_HOURS) {
+        return buildInvalidRangeRefusal();
+    }
+    return {
+        ok: true,
+        baselineHours: value,
+    };
+};
+const normalizeRecipientDirectory = (input) => {
+    const orgUnitRecipientIds = new Set(input.orgUnitRecipientIds
+        .map((value) => normalizeRecipientValue(value))
+        .filter((value) => value.length > 0));
+    const tenantRecipientIds = new Set(input.tenantRecipientIds
+        .map((value) => normalizeRecipientValue(value))
+        .filter((value) => value.length > 0));
+    orgUnitRecipientIds.forEach((value) => tenantRecipientIds.add(value));
+    const seenOptions = new Set();
+    const options = input.options
+        .map((option) => ({
+        value: normalizeRecipientValue(option.value),
+        label: typeof option.label === 'string' ? option.label.trim() : '',
+        scope: option.scope,
+    }))
+        .filter((option) => option.value.length > 0)
+        .filter((option) => {
+        if (seenOptions.has(option.value)) {
+            return false;
+        }
+        seenOptions.add(option.value);
+        return true;
+    });
+    return {
+        orgUnitRecipientIds,
+        tenantRecipientIds,
+        options,
+    };
+};
+const createEscalationRecipientDirectory = (input) => normalizeRecipientDirectory(input);
+exports.createEscalationRecipientDirectory = createEscalationRecipientDirectory;
+const validateRecipients = (recipients, recipientDirectory) => {
+    if (!recipients.primaryOrgUnitAdminUserId) {
+        return buildRequiredPrimaryRecipientRefusal();
+    }
+    const recipientChecks = [
+        {
+            field: 'recipients.primaryOrgUnitAdminUserId',
+            value: recipients.primaryOrgUnitAdminUserId,
+            isAllowed: recipientDirectory.orgUnitRecipientIds.has(recipients.primaryOrgUnitAdminUserId),
+        },
+        {
+            field: 'recipients.secondaryOrgUnitAdminUserId',
+            value: recipients.secondaryOrgUnitAdminUserId,
+            isAllowed: recipientDirectory.orgUnitRecipientIds.has(recipients.secondaryOrgUnitAdminUserId),
+        },
+        {
+            field: 'recipients.tenantStaffUserId',
+            value: recipients.tenantStaffUserId,
+            isAllowed: recipientDirectory.tenantRecipientIds.has(recipients.tenantStaffUserId),
+        },
+    ];
+    const assignmentErrors = recipientChecks
+        .filter((recipientCheck) => recipientCheck.value.length > 0)
+        .filter((recipientCheck) => !recipientCheck.isAllowed)
+        .map((recipientCheck) => ({
+        field: recipientCheck.field,
+        reason: 'RECIPIENT_OUTSIDE_TENANT_OR_ORGUNIT_SCOPE',
+        message: 'Recipient must belong to the active tenant and orgUnit scope.',
+    }));
+    if (assignmentErrors.length > 0) {
+        return buildInvalidRecipientAssignmentRefusal(assignmentErrors);
+    }
+    return null;
+};
+const mapStoredRowToConfig = (row) => {
+    const fallbackNow = nowIsoUtc();
+    return {
+        tenantId: row.tenant_id,
+        orgUnitId: row.org_unit_id,
+        escalationBaselineHours: row.escalation_baseline_hours,
+        recipients: {
+            primaryOrgUnitAdminUserId: normalizeRecipientValue(row.primary_org_unit_admin_user_id),
+            secondaryOrgUnitAdminUserId: normalizeRecipientValue(row.secondary_org_unit_admin_user_id),
+            tenantStaffUserId: normalizeRecipientValue(row.tenant_staff_user_id),
+        },
+        defaultOperatorPhoneE164: normalizeRecipientValue(row.default_operator_phone_e164) || null,
+        createdAtUtc: toIsoUtc(row.created_at_utc, fallbackNow),
+        updatedAtUtc: toIsoUtc(row.updated_at_utc, fallbackNow),
+    };
+};
+class InMemoryConnectShyftEscalationConfigStore {
+    configByTenantOrgUnit = new Map();
+    async getConfig(tenantId, orgUnitId) {
+        return this.configByTenantOrgUnit.get(buildTenantOrgUnitKey(tenantId, orgUnitId)) || null;
+    }
+    async saveConfig(tenantId, orgUnitId, escalationBaselineHours, recipients) {
+        const existing = await this.getConfig(tenantId, orgUnitId);
+        const now = nowIsoUtc();
+        const next = {
+            tenantId,
+            orgUnitId,
+            escalationBaselineHours,
+            recipients: { ...recipients },
+            defaultOperatorPhoneE164: existing?.defaultOperatorPhoneE164 || null,
+            createdAtUtc: existing?.createdAtUtc || now,
+            updatedAtUtc: now,
+        };
+        this.configByTenantOrgUnit.set(buildTenantOrgUnitKey(tenantId, orgUnitId), next);
+        return next;
+    }
+    async setDefaultOperatorPhone(tenantId, orgUnitId, defaultOperatorPhoneE164) {
+        const existing = await this.getConfig(tenantId, orgUnitId);
+        const now = nowIsoUtc();
+        const next = {
+            tenantId,
+            orgUnitId,
+            escalationBaselineHours: existing?.escalationBaselineHours ?? DEFAULT_ESCALATION_BASELINE_HOURS,
+            recipients: existing?.recipients ?? {
+                primaryOrgUnitAdminUserId: '',
+                secondaryOrgUnitAdminUserId: '',
+                tenantStaffUserId: '',
+            },
+            defaultOperatorPhoneE164: normalizeRecipientValue(defaultOperatorPhoneE164) || null,
+            createdAtUtc: existing?.createdAtUtc || now,
+            updatedAtUtc: now,
+        };
+        this.configByTenantOrgUnit.set(buildTenantOrgUnitKey(tenantId, orgUnitId), next);
+        return next;
+    }
+}
+exports.InMemoryConnectShyftEscalationConfigStore = InMemoryConnectShyftEscalationConfigStore;
+class KnexConnectShyftEscalationConfigStore {
+    resolveDb;
+    constructor(resolveDb) {
+        this.resolveDb = resolveDb;
+    }
+    table() {
+        return this.resolveDb().withSchema('connectshyft').table('cs_org_unit_escalation_config');
+    }
+    async getConfig(tenantId, orgUnitId) {
+        const row = await this.table()
+            .where({
+            tenant_id: tenantId,
+            org_unit_id: orgUnitId,
+        })
+            .first();
+        return row ? mapStoredRowToConfig(row) : null;
+    }
+    async saveConfig(tenantId, orgUnitId, escalationBaselineHours, recipients) {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.connectShyftNumberMappingServiceAsync = exports.AsyncConnectShyftNumberMappingService = exports.connectShyftNumberMappingService = exports.ConnectShyftNumberMappingService = exports.KnexConnectShyftNumberMappingStore = exports.InMemoryConnectShyftNumberMappingStore = exports.isValidTwilioE164 = void 0;
+const node_crypto_1 = require("node:crypto");
+const capabilities_1 = require("../../platform/rbac/capabilities");
+const knex_1 = __importDefault(require("../../config/knex"));
+const TWILIO_E164_PATTERN = /^\+[1-9]\d{1,14}$/;
+const normalizeTwilioNumber = (value) => value.trim();
+const normalizeLabel = (value) => value.trim();
+const buildTenantNumberKey = (tenantId, twilioNumberE164) => `${tenantId}::${twilioNumberE164}`;
+const buildTenantOrgUnitKey = (tenantId, orgUnitId) => `${tenantId}::${orgUnitId}`;
+const nowIsoUtc = () => new Date().toISOString();
+const isValidTwilioE164 = (value) => TWILIO_E164_PATTERN.test(normalizeTwilioNumber(value));
+exports.isValidTwilioE164 = isValidTwilioE164;
+const buildInvalidE164Refusal = () => ({
+    ok: false,
+    code: 'CONNECTSHYFT_NUMBER_MAPPING_INVALID_E164',
+    message: 'Use a valid Twilio E.164 number (for example, +12605550111).',
+    data: {
+        fieldErrors: [
+            {
+                field: 'twilioNumberE164',
+                reason: 'INVALID_E164',
+                message: 'Use a valid Twilio E.164 number (for example, +12605550111).',
+            },
+        ],
+    },
+});
+const buildDuplicateRefusal = () => ({
+    ok: false,
+    code: 'CONNECTSHYFT_NUMBER_MAPPING_DUPLICATE',
+    message: 'This Twilio number is already mapped in this tenant.',
+    data: {
+        fieldErrors: [
+            {
+                field: 'twilioNumberE164',
+                reason: 'DUPLICATE_TENANT_NUMBER',
+                message: 'This Twilio number is already mapped in this tenant.',
+            },
+        ],
+    },
+});
+const buildMappingIdConflictRefusal = () => ({
+    ok: false,
+    code: 'CONNECTSHYFT_NUMBER_MAPPING_ID_CONFLICT',
+    message: 'Unable to save number mapping right now. Please retry.',
+});
+const buildNotFoundRefusal = () => ({
+    ok: false,
+    code: 'CONNECTSHYFT_NUMBER_MAPPING_NOT_FOUND',
+    message: 'Number mapping not found for this tenant and orgUnit.',
+});
+const buildCapabilityRefusal = () => ({
+    ok: false,
+    code: 'CONNECTSHYFT_NUMBER_MAPPING_FORBIDDEN',
+    message: 'Number mapping management requires an authorized ConnectShyft role.',
+});
+const isMissingPersistenceError = (error) => {
+    if (!error || typeof error !== 'object') {
+        return false;
+    }
+    const record = error;
+    return record.code === '42P01' || record.code === '3F000';
+};
+const mapDbRowToMapping = (row) => ({
+    mappingId: row.id,
+    tenantId: row.tenant_id,
+    orgUnitId: row.org_unit_id,
+    twilioNumberE164: row.twilio_number_e164,
+    label: row.label,
+    isActive: row.is_active,
+    createdAtUtc: row.created_at_utc instanceof Date ? row.created_at_utc.toISOString() : String(row.created_at_utc),
+    updatedAtUtc: row.updated_at_utc instanceof Date ? row.updated_at_utc.toISOString() : String(row.updated_at_utc),
+});
+class InMemoryConnectShyftNumberMappingStore {
+    mappingsById = new Map();
+    mappingIdsByTenantOrgUnit = new Map();
+    mappingIdByTenantNumber = new Map();
+    listByOrgUnit(tenantId, orgUnitId) {
+        const tenantOrgUnitKey = buildTenantOrgUnitKey(tenantId, orgUnitId);
+        const mappingIds = this.mappingIdsByTenantOrgUnit.get(tenantOrgUnitKey);
+        if (!mappingIds || mappingIds.size === 0) {
+            return [];
+        }
+        return Array.from(mappingIds)
+            .map((mappingId) => this.mappingsById.get(mappingId))
+            .filter((mapping) => !!mapping)
+            .sort((a, b) => {
+            if (a.twilioNumberE164 < b.twilioNumberE164) {
+                return -1;
+            }
+            if (a.twilioNumberE164 > b.twilioNumberE164) {
+                return 1;
+            }
+            return a.mappingId.localeCompare(b.mappingId);
+        });
+    }
+    findById(tenantId, mappingId) {
+        const mapping = this.mappingsById.get(mappingId);
+        if (!mapping || mapping.tenantId !== tenantId) {
+            return null;
+        }
+        return mapping;
+    }
+    findByTenantNumber(tenantId, twilioNumberE164) {
+        const mappingId = this.mappingIdByTenantNumber.get(buildTenantNumberKey(tenantId, twilioNumberE164));
+        if (!mappingId) {
+            return null;
+        }
+        const mapping = this.mappingsById.get(mappingId);
+        return mapping || null;
+    }
+    listActiveByNumber(twilioNumberE164) {
+        return Array.from(this.mappingsById.values())
+            .filter((mapping) => mapping.twilioNumberE164 === twilioNumberE164 && mapping.isActive)
+            .sort((left, right) => {
+            if (left.tenantId !== right.tenantId) {
+                return left.tenantId.localeCompare(right.tenantId);
+            }
+            if (left.orgUnitId !== right.orgUnitId) {
+                return left.orgUnitId.localeCompare(right.orgUnitId);
+            }
+            return left.mappingId.localeCompare(right.mappingId);
+        });
+    }
+    createMapping(input) {
+        const mappingId = input.mappingId || (0, node_crypto_1.randomUUID)();
+        const now = nowIsoUtc();
+        const tenantNumberKey = buildTenantNumberKey(input.tenantId, input.twilioNumberE164);
+        if (this.mappingsById.has(mappingId)) {
+            return {
+                ok: false,
+                reason: 'MAPPING_ID_CONFLICT',
+            };
+        }
+        if (this.mappingIdByTenantNumber.has(tenantNumberKey)) {
+            return {
+                ok: false,
+                reason: 'DUPLICATE_TENANT_NUMBER',
+            };
+        }
+        const mapping = {
+            mappingId,
+            tenantId: input.tenantId,
+            orgUnitId: input.orgUnitId,
+            twilioNumberE164: input.twilioNumberE164,
+            label: input.label,
+            isActive: input.isActive,
+            createdAtUtc: now,
+            updatedAtUtc: now,
+        };
+        this.mappingsById.set(mappingId, mapping);
+        this.mappingIdByTenantNumber.set(tenantNumberKey, mappingId);
+        const tenantOrgUnitKey = buildTenantOrgUnitKey(input.tenantId, input.orgUnitId);
+        const orgUnitMappings = this.mappingIdsByTenantOrgUnit.get(tenantOrgUnitKey) || new Set();
+        orgUnitMappings.add(mappingId);
+        this.mappingIdsByTenantOrgUnit.set(tenantOrgUnitKey, orgUnitMappings);
+        return {
+            ok: true,
+            mapping,
+        };
+    }
+    updateMapping(input) {
+        const existing = this.findById(input.tenantId, input.mappingId);
+        if (!existing) {
+            return {
+                ok: false,
+                reason: 'NOT_FOUND',
+            };
+        }
+        const existingTenantNumberKey = buildTenantNumberKey(existing.tenantId, existing.twilioNumberE164);
+        const nextTenantNumberKey = buildTenantNumberKey(input.tenantId, input.twilioNumberE164);
+        if (existingTenantNumberKey !== nextTenantNumberKey && this.mappingIdByTenantNumber.has(nextTenantNumberKey)) {
+            return {
+                ok: false,
+                reason: 'DUPLICATE_TENANT_NUMBER',
+            };
+        }
+        this.mappingIdByTenantNumber.delete(existingTenantNumberKey);
+        this.mappingIdByTenantNumber.set(nextTenantNumberKey, existing.mappingId);
+        const updated = {
+            ...existing,
+            twilioNumberE164: input.twilioNumberE164,
+            label: input.label,
+            isActive: input.isActive,
+            updatedAtUtc: nowIsoUtc(),
+        };
+        this.mappingsById.set(updated.mappingId, updated);
+        return {
+            ok: true,
+            mapping: updated,
+        };
+    }
+}
+exports.InMemoryConnectShyftNumberMappingStore = InMemoryConnectShyftNumberMappingStore;
+class KnexConnectShyftNumberMappingStore {
+    knexClient;
+    constructor(knexClient = knex_1.default) {
+        this.knexClient = knexClient;
+    }
+    async listByOrgUnit(tenantId, orgUnitId) {
+        const rows = await this.knexClient
+            .withSchema('connectshyft')
+            .table('cs_number_mappings')
+            .where({
+            tenant_id: tenantId,
+            org_unit_id: orgUnitId,
+        })
+            .orderBy('twilio_number_e164', 'asc')
+            .orderBy('id', 'asc')
+            .select([
+            'id',
+            'tenant_id',
+            'org_unit_id',
+            'twilio_number_e164',
+            'label',
+            'is_active',
+            'created_at_utc',
+            'updated_at_utc',
+        ]);
+        return rows.map(mapDbRowToMapping);
+    }
+    async findById(tenantId, mappingId) {
+        const row = await this.knexClient
+            .withSchema('connectshyft')
+            .table('cs_number_mappings')
+            .where({
+            id: mappingId,
+            tenant_id: tenantId,
+        })
+            .first([
+            'id',
+            'tenant_id',
+            'org_unit_id',
+            'twilio_number_e164',
+            'label',
+            'is_active',
+            'created_at_utc',
+            'updated_at_utc',
+        ]);
+        return row ? mapDbRowToMapping(row) : null;
+    }
+    async findByTenantNumber(tenantId, twilioNumberE164) {
+        const row = await this.knexClient
+            .withSchema('connectshyft')
+            .table('cs_number_mappings')
+            .where({
+            tenant_id: tenantId,
+            twilio_number_e164: twilioNumberE164,
+        })
+            .first([
+            'id',
+            'tenant_id',
+            'org_unit_id',
+            'twilio_number_e164',
+            'label',
+            'is_active',
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ConnectShyftOperatorDestinationResolverService = exports.KnexConnectShyftOperatorDestinationStore = exports.InMemoryConnectShyftOperatorDestinationStore = void 0;
+exports.resolveOperatorDestination = resolveOperatorDestination;
+const knex_1 = __importDefault(require("../../config/knex"));
+const communication_1 = require("../../../../../domains/communication");
+const escalationConfig_1 = require("./escalationConfig");
+const normalizeString = (value) => {
+    if (typeof value !== 'string') {
+        return '';
+    }
+    return value.trim();
+};
+const resolveCandidatePhone = (value) => {
+    const rawPhone = normalizeString(value);
+    if (!rawPhone) {
+        return {
+            status: 'missing',
+            phoneNumber: null,
+        };
+    }
+    const normalizedPhone = (0, communication_1.normalizePhone)(rawPhone, {
+        defaultCountry: 'US',
+    });
+    if (!normalizedPhone.ok) {
+        return {
+            status: 'invalid',
+            phoneNumber: null,
+        };
+    }
+    const voiceValidation = (0, communication_1.validatePhoneForChannel)(normalizedPhone.phone, 'voice');
+    if (!voiceValidation.ok) {
+        return {
+            status: 'invalid',
+            phoneNumber: null,
+        };
+    }
+    return {
+        status: 'valid',
+        phoneNumber: normalizedPhone.phone.normalizedE164,
+    };
+};
+const buildResolution = (input) => ({
+    phoneNumber: input.phoneNumber,
+    source: input.source,
+    userId: input.userId,
+    orgUnitId: input.orgUnitId,
+});
+class InMemoryConnectShyftOperatorDestinationStore {
+    userPhones = new Map();
+    orgUnitDefaultPhones = new Map();
+    buildUserKey(tenantId, userId) {
+        return `${tenantId}::${userId}`;
+    }
+    buildOrgUnitKey(tenantId, orgUnitId) {
+        return `${tenantId}::${orgUnitId}`;
+    }
+    seedUserPhone(input) {
+        this.userPhones.set(this.buildUserKey(input.tenantId, input.userId), {
+            userId: input.userId,
+            phoneNumber: normalizeString(input.phoneNumber) || null,
+        });
+    }
+    seedOrgUnitDefaultPhone(input) {
+        this.orgUnitDefaultPhones.set(this.buildOrgUnitKey(input.tenantId, input.orgUnitId), {
+            orgUnitId: input.orgUnitId,
+            phoneNumber: normalizeString(input.phoneNumber) || null,
+        });
+    }
+    async getUserPhone(input) {
+        return this.userPhones.get(this.buildUserKey(input.tenantId, input.userId)) || null;
+    }
+    async getOrgUnitDefaultPhone(input) {
+        return this.orgUnitDefaultPhones.get(this.buildOrgUnitKey(input.tenantId, input.orgUnitId)) || null;
+    }
+}
+exports.InMemoryConnectShyftOperatorDestinationStore = InMemoryConnectShyftOperatorDestinationStore;
+class KnexConnectShyftOperatorDestinationStore {
+    resolveDb;
+    escalationConfigStore;
+    constructor(resolveDb) {
+        this.resolveDb = resolveDb;
+        this.escalationConfigStore = new escalationConfig_1.KnexConnectShyftEscalationConfigStore(resolveDb);
+    }
+    usersTable() {
+        return this.resolveDb().table('users');
+    }
+    async getUserPhone(input) {
+        const row = await this.usersTable()
+            .where({
+            id: input.userId,
+            household_id: input.tenantId,
+        })
+            .first(['id', 'phone_e164']);
+        if (!row) {
+            return null;
+        }
+        return {
+            userId: row.id,
+            phoneNumber: normalizeString(row.phone_e164) || null,
+        };
+    }
+    async getOrgUnitDefaultPhone(input) {
+        const config = await this.escalationConfigStore.getConfig(input.tenantId, input.orgUnitId);
+        if (!config) {
+            return null;
+        }
+        return {
+            orgUnitId: config.orgUnitId,
+            phoneNumber: config.defaultOperatorPhoneE164,
+        };
+    }
+}
+exports.KnexConnectShyftOperatorDestinationStore = KnexConnectShyftOperatorDestinationStore;
+class ConnectShyftOperatorDestinationResolverService {
+    store;
+    constructor(store) {
+        this.store = store;
+    }
+    async resolve(input) {
+        const claimedByUserId = normalizeString(input.claimedByUserId);
+        const actorUserId = normalizeString(input.actorUserId);
+        const visitedUserIds = new Set();
+        if (claimedByUserId) {
+            visitedUserIds.add(claimedByUserId);
+            const claimedUser = await this.store.getUserPhone({
+                tenantId: input.tenantId,
+                userId: claimedByUserId,
+            });
+            const claimedPhone = resolveCandidatePhone(claimedUser?.phoneNumber);
+            if (claimedPhone.status === 'valid') {
+                return buildResolution({
+                    orgUnitId: input.orgUnitId,
+                    phoneNumber: claimedPhone.phoneNumber,
+                    source: 'thread_assignee',
+                    userId: claimedUser?.userId || claimedByUserId,
+                });
+            }
+            if (claimedPhone.status === 'invalid') {
+                return buildResolution({
+                    orgUnitId: input.orgUnitId,
+                    phoneNumber: null,
+                    source: 'thread_assignee',
+                    userId: claimedUser?.userId || claimedByUserId,
+                });
+            }
+        }
+        if (actorUserId && !visitedUserIds.has(actorUserId)) {
+            visitedUserIds.add(actorUserId);
+            const actorUser = await this.store.getUserPhone({
+                tenantId: input.tenantId,
+                userId: actorUserId,
+            });
+            const actorPhone = resolveCandidatePhone(actorUser?.phoneNumber);
+            if (actorPhone.status === 'valid') {
+                return buildResolution({
+                    orgUnitId: input.orgUnitId,
+                    phoneNumber: actorPhone.phoneNumber,
+                    source: 'actor_user',
+                    userId: actorUser?.userId || actorUserId,
+                });
+            }
+            if (actorPhone.status === 'invalid') {
+                return buildResolution({
+                    orgUnitId: input.orgUnitId,
+                    phoneNumber: null,
+                    source: 'actor_user',
+                    userId: actorUser?.userId || actorUserId,
+                });
+            }
+        }
+        const orgUnitDefault = await this.store.getOrgUnitDefaultPhone({
+            tenantId: input.tenantId,
+            orgUnitId: input.orgUnitId,
+        });
+        const orgUnitDefaultPhone = resolveCandidatePhone(orgUnitDefault?.phoneNumber);
+        if (orgUnitDefaultPhone.status === 'valid') {
+            return buildResolution({
+                orgUnitId: input.orgUnitId,
+                phoneNumber: orgUnitDefaultPhone.phoneNumber,
+                source: 'org_unit_default',
+                userId: null,
+            });
+        }
+        if (orgUnitDefaultPhone.status === 'invalid') {
+            return buildResolution({
+                orgUnitId: input.orgUnitId,
+                phoneNumber: null,
+                source: 'org_unit_default',
+                userId: null,
+            });
+        }
+        return buildResolution({
+            orgUnitId: input.orgUnitId,
+            phoneNumber: null,
+            source: 'none',
+            userId: null,
+        });
+    }
+}
+exports.ConnectShyftOperatorDestinationResolverService = ConnectShyftOperatorDestinationResolverService;
+const connectShyftOperatorDestinationResolverService = new ConnectShyftOperatorDestinationResolverService(new KnexConnectShyftOperatorDestinationStore(() => knex_1.default));
+async function resolveOperatorDestination(input) {
+    return connectShyftOperatorDestinationResolverService.resolve(input);
+}
+jeremiahotis@jeremiah-otis:~/projects/shyftunity$ curl -i http://127.0.0.1:3002/health
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Access-Control-Allow-Origin: https://connect.shyftunity.com
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: 8a1af992-1f49-47d7-9b33-50764317e9f8
+x-tenant-id: public
+x-scope-mode: TENANT
+Content-Type: application/json; charset=utf-8
+Content-Length: 54
+ETag: W/"36-y23wVTvxN2C2SU24CtoeVmIfwoE"
+Date: Sun, 22 Mar 2026 20:12:24 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"status":"ok","timestamp":"2026-03-22T20:12:24.62curl -i http://127.0.0.1:3002/api/v1/connectshyft/settings/navigation127.0.0.1:3002/api/v1/connectshyft/settings/navigation
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Access-Control-Allow-Origin: https://connect.shyftunity.com
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: 273438a0-95c9-425c-83d3-d2ca69237434
+x-tenant-id: public
+x-scope-mode: TENANT
+Content-Type: application/json; charset=utf-8
+Content-Length: 1154
+ETag: W/"482-NMQw2eQQ1G7uvdXlA8nxFTQ1P/E"
+Date: Sun, 22 Mar 2026 20:12:32 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":false,"code":"CONNECTSHYFT_SETTINGS_NAVIGATION_FORBIDDEN","message":"Settings navigation requires an authorized role with active orgUnit access.","refusalType":"business","correlationId":"273438a0-95c9-425c-83d3-d2ca69237434","tenantId":null,"data":{"primaryOptions":[{"key":"directory","label":"Directory","path":"/app/connectshyft/directory"},{"key":"settings","label":"Settings","path":"/app/connectshyft/settings"},{"key":"notification-preferences","label":"Notification Preferences","path":"/app/connectshyft/settings"},{"key":"display-preferences","label":"Display Preferences","path":"/app/connectshyft/settings"},{"key":"sign-out","label":"Sign Out","path":"/login"}],"adminOptions":[],"pathways":[{"path":"/app/connectshyft/directory","allowed":true},{"path":"/app/connectshyft/settings","allowed":true},{"path":"/app/connectshyft/settings","allowed":true},{"path":"/app/connectshyft/settings","allowed":true},{"path":"/login","allowed":true},{"path":"/app/connectshyft/settings/availability","allowed":false},{"path":"/app/connectshyft/settings/numbers","allowed":false},{"path":"/app/connectshyft/settings/escalation","allowed":false}]}}jeremiahotis@jeremiah-otis:~/projects/shyftunity$ curl -i http://127.0.0.1:3002/api/v1/connectshyft/context                                                 curl -i http://127.0.0.1:3002/api/v1/connectshyft/context
+HTTP/1.1 403 Forbidden
+X-Powered-By: Express
+Access-Control-Allow-Origin: https://connect.shyftunity.com
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: 94e2b821-60dd-4e9e-b1b4-65b0a30f84ff
+x-tenant-id: public
+x-scope-mode: TENANT
+Content-Type: application/json; charset=utf-8
+Content-Length: 242
+ETag: W/"f2-p0UqTwTrgqKJIn5etOqabJPamzQ"
+Date: Sun, 22 Mar 2026 20:12:41 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":false,"code":"CONNECTSHYFT_AUTH_CONTEXT_REQUIRED","message":"Authenticated user context is required for ConnectShyft orgUnit-scoped routes","refusalType":"security","correlationId":"94e2b821-60dd-4e9e-b1b4-65b0a30f84ff","tencurl -i http://127.0.0.1:3002/api/v1/connectshyft/availabilitycurl -i http://127.0.0.1:3002/api/v1/connectshyft/availability
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Access-Control-Allow-Origin: https://connect.shyftunity.com
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: d257ae04-950d-46f5-b0ad-7202d4bcef81
+x-tenant-id: public
+x-scope-mode: TENANT
+Content-Type: application/json; charset=utf-8
+Content-Length: 475
+ETag: W/"1db-XB1wi989lLqfuxH03WT7Z4fLId4"
+Date: Sun, 22 Mar 2026 20:12:56 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":false,"code":"CONNECTSHYFT_AVAILABILITY_FORBIDDEN","message":"Availability settings require an authorized admin role.","refusalType":"business","correlationId":"d257ae04-950d-46f5-b0ad-7202d4bcef81","tenantId":null,"data":{"flags":{"connectshyft_enabled":true,"connectshyft_inbox_enabled":true,"connectshyft_escalation_enabled":true,"connectshyft_webhooks_enabled":true},"entitlement":null,"capabilities":{"module":true,"inbox":true,"escalation":true,"webhooks":true}}}jeremiahotis@jeremiah-otis:~/projects/shyftunity$ curl -i http://127.0.0.1:3002/api/v1/connectshyft/escalation/confcurl -i http://127.0.0.1:3002/api/v1/connectshyft/escalation/config
+HTTP/1.1 403 Forbidden
+X-Powered-By: Express
+Access-Control-Allow-Origin: https://connect.shyftunity.com
+Vary: Origin
+Access-Control-Allow-Credentials: true
+x-correlation-id: 08419922-9f3c-4239-a97b-d1c8ff1e07be
+x-tenant-id: public
+x-scope-mode: TENANT
+Content-Type: application/json; charset=utf-8
+Content-Length: 242
+ETag: W/"f2-mCVYmVxTImDat3UHwDrimuw3fmU"
+Date: Sun, 22 Mar 2026 20:13:07 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"ok":false,"code":"CONNECTSHYFT_AUTH_CONTEXT_REQUIRED","message":"Authenticated user context is required for ConnectShyft orgUnit-scoped routes","refusalType":"security","correlationId":"08419922-9f3c-4239-a97b-d1c8ff1e07be","tenantId":null}jeremiahotis@jeremiah-otis:~/projects/shyftunity$ docker exec connectshyft-api /bin/sh -lc 'grep -R -n "router\\.(post|put|patch).*profile\\|router\\.(post|put|patch).*docker exec connectshyft-api /bin/sh -lc 'grep -R -n "router\\.(post|put|patch).*profile\\|router\\.(post|put|patch).*context\\|router\\.(post|put|patch).*settings\\|router\\.(post|put|patch).*user\\|router\\.(post|put|patch).*me" /app/dist/apps/connectshyft-api/src /app/dist 2>/dev/null | sed -n "1,260p"'
+
+
+jeremiahotis@jeremiah-otis:~/projects/shyftunity$ docker exec connectshyft-api /bin/sh -lc '
+echo "=== ROUTES ===";
+sed -n "1,260p" /app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js;
+echo;
+echo "=== SEARCH ===";
+grep -R -n "phone_e164\|default_operator_phone_e164\|operator.*phone\|fallback.*phone\|telephony.*readiness\|settings/navigation\|profile\|context\|availability" /app/dist/apps/connectshyft-api/src /app/dist 2>/dev/null | sed -n "1,320p";
+' > slice19-production-recon.txt
+
+=== ROUTES ===
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.resolveConnectShyftSmsSenderForTests = exports.resolveConnectShyftSmsTargetForTests = exports.ensureConnectShyftDispatchReadySmsTargetForTests = exports.resetConnectShyftOutboundDispatchReplayLedgerForTests = void 0;
+const node_crypto_1 = require("node:crypto");
+const express_1 = require("express");
+const communication_1 = require("../../../../../../domains/communication");
+const response_1 = require("../../../platform/envelopes/response");
+const capabilities_1 = require("../../../platform/rbac/capabilities");
+const featureFlags_1 = require("../../../modules/connectshyft/featureFlags");
+const handlers_1 = require("../../../modules/connectshyft/handlers");
+const contextAccess_1 = require("../../../modules/connectshyft/contextAccess");
+const threadOutboundContext_1 = require("../../../modules/connectshyft/http/threadOutboundContext");
+const inboundWebhookContext_1 = require("../../../modules/connectshyft/http/inboundWebhookContext");
+const numberMappings_1 = require("../../../modules/connectshyft/numberMappings");
+const operatorDestinationResolver_1 = require("../../../modules/connectshyft/operatorDestinationResolver");
+const neighbors_1 = require("../../../modules/connectshyft/neighbors");
+const escalationConfig_1 = require("../../../modules/connectshyft/escalationConfig");
+const threads_1 = require("../../../modules/connectshyft/threads");
+const senderNumberResolver_1 = require("../../../modules/connectshyft/senderNumberResolver");
+const smsPreferenceOverrides_1 = require("../../../modules/connectshyft/smsPreferenceOverrides");
+const providerRegistry_1 = require("../../../modules/connectshyft/providerRegistry");
+const executePlatformMutation_1 = require("../../../platform/mutations/executePlatformMutation");
+const orgUnitAccess_1 = require("../../../platform/tenancy/orgUnitAccess");
+const tenantModuleEntitlements_1 = require("../../../platform/tenantModuleEntitlements");
+const logger_1 = __importDefault(require("../../../utils/logger"));
+const readContracts_1 = require("../../../modules/connectshyft/readContracts");
+const inboundSms_1 = require("../../../modules/connectshyft/inboundSms");
+const identityResolver_1 = require("../../../modules/connectshyft/identityResolver");
+const inboundVoice_1 = require("../../../modules/connectshyft/inboundVoice");
+const canonicalEvents_1 = require("../../../modules/connectshyft/canonicalEvents");
+const threadTimeline_1 = require("../../../modules/connectshyft/threadTimeline");
+const providerCorrelationMappings_1 = require("../../../modules/connectshyft/providerCorrelationMappings");
+const bridgeSessions_1 = require("../../../modules/connectshyft/bridgeSessions");
+const communicationReliability_1 = require("../../../modules/connectshyft/communicationReliability");
+const communicationAuditLog_1 = require("../../../modules/connectshyft/communicationAuditLog");
+const ambiguityEvents_1 = require("../../../modules/connectshyft/ambiguityEvents");
+const timezoneService_1 = require("../../../platform/time/timezoneService");
+const ops_routes_1 = __importDefault(require("./connectshyft/ops.routes"));
+const router = (0, express_1.Router)();
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CONNECTSHYFT_NEIGHBOR_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const TEST_USER_ID_HEADER = 'x-test-connectshyft-user-id';
+const CONNECTSHYFT_SYSTEM_ACTOR_USER_ID = '00000000-0000-4000-8000-000000000001';
+const IDENTITY_MATCH_AMBIGUOUS_CODE = 'IDENTITY_MATCH_AMBIGUOUS';
+const CONNECTSHYFT_INBOX_P95_BUDGET_MS = 750;
+const CONNECTSHYFT_INBOX_P99_BUDGET_MS = 1500;
+const DEFAULT_ESCALATION_BASELINE_HOURS = 24;
+const MIN_ESCALATION_BASELINE_HOURS = 1;
+const MAX_ESCALATION_BASELINE_HOURS = 24;
+const MAX_ESCALATION_STAGE = 3;
+const DEFAULT_SCHEDULER_LIMIT = 50;
+const MAX_SCHEDULER_LIMIT = 250;
+const HOUR_MS = 60 * 60 * 1000;
+const CONNECTSHYFT_LIFECYCLE_EVENT_NAMES = {
+    claimed: 'connectshyft.thread.claimed',
+    takenOver: 'connectshyft.thread.taken_over',
+    closed: 'connectshyft.thread.closed',
+    reopenedByUser: 'connectshyft.thread_reopened_by_user',
+    inboundSmsAppended: inboundSms_1.CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME,
+    inboundVoiceVoicemail: inboundVoice_1.CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
+    inboundVoiceFallback: inboundVoice_1.CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
+    voicemailTranscriptionRequested: inboundVoice_1.CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME,
+    voicemailTranscriptionAttached: inboundVoice_1.CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME,
+};
+const CONNECTSHYFT_OUTBOUND_EVENT_NAMES = {
+    callDispatched: 'connectshyft.thread.outbound_call_dispatched',
+    messageDispatched: 'connectshyft.thread.outbound_message_dispatched',
+};
+const CONNECTSHYFT_CANONICAL_EVENT_TYPES = {
+    callAttemptStarted: 'CallAttemptStarted',
+    messageQueued: 'MessageQueued',
+    callConnected: 'CallConnected',
+    messageDelivered: 'MessageDelivered',
+};
+const CONNECTSHYFT_CANONICAL_EVENTS_DEFAULT_LIMIT = 50;
+const CONNECTSHYFT_CANONICAL_EVENTS_MAX_LIMIT = 200;
+const CONNECTSHYFT_IDENTITY_AMBIGUITIES_DEFAULT_LIMIT = 50;
+const CONNECTSHYFT_IDENTITY_AMBIGUITIES_MAX_LIMIT = 200;
+const CONNECTSHYFT_OUTBOUND_CALL_POLICY = {
+    transport: 'bridge',
+    autoRetry: false,
+    redialPolicy: 'manual_only',
+    phases: ['initiated', 'ringing', 'connected', 'completed'],
+};
+const CONNECTSHYFT_OUTBOUND_CALL_AUTO_CLAIM_POLICY = {
+    trigger: 'CONNECTED',
+    appliesToState: 'UNCLAIMED',
+    nextState: 'CLAIMED',
+};
+const CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_TRANSPORT = CONNECTSHYFT_OUTBOUND_CALL_POLICY.transport;
+const CONNECTSHYFT_OUTBOUND_CALL_ALLOWED_REDIAL_POLICY = CONNECTSHYFT_OUTBOUND_CALL_POLICY.redialPolicy;
+const CONNECTSHYFT_CONNECTED_CALL_EVENT_TYPES = new Set(['voice.connected', 'call.connected', 'callconnected']);
+const CONNECTSHYFT_ESCALATION_NOTIFICATION_EVENT_PREFIXES = [
+    'connectshyft.thread.escalation.',
+    'connectshyft.escalation.',
+];
+const CONNECTSHYFT_LEGACY_ROLE_ALIASES = {
+    admin: 'TENANT_ADMIN',
+    member: 'ORGUNIT_MEMBER',
+};
+const CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS = {
+    '483a4c51-e677-422a-8bc6-faeea89c6dcf': {
+        tenantId: 'tenant-connectshyft-c4',
+        orgUnitId: 'org-connectshyft-c4-east',
+        state: 'UNCLAIMED',
+        claimedByUserId: null,
+        escalationStage: 2,
+        nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+        neighborId: 'neighbor-connectshyft-c4-1001',
+        lastInboundCsNumberId: '+12605550198',
+        preferredOutboundCsNumberId: '+12605550198',
+        summary: 'Unclaimed intake ready for assignment',
+    },
+    '6fb01cbc-069d-485a-86f7-ee72359543b9': {
+        tenantId: 'tenant-connectshyft-c4',
+        orgUnitId: 'org-connectshyft-c4-east',
+        state: 'CLAIMED',
+        claimedByUserId: 'user-connectshyft-c4-other-operator',
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-c4-1002',
+        lastInboundCsNumberId: '+12605550198',
+        preferredOutboundCsNumberId: '+12605550198',
+        summary: 'Claimed thread eligible for takeover/close',
+    },
+    '2f6bbd34-49c7-4400-8982-889c996ab87b': {
+        tenantId: 'tenant-connectshyft-c4',
+        orgUnitId: 'org-connectshyft-c4-east',
+        state: 'CLOSED',
+        claimedByUserId: null,
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-c4-1003',
+        lastInboundCsNumberId: '+12605550198',
+        preferredOutboundCsNumberId: '+12605550198',
+        summary: 'Closed thread awaiting explicit outbound reopen',
+    },
+    '4332bb8e-940f-4927-8320-a8d3f3093d72': {
+        tenantId: 'tenant-connectshyft-d4',
+        orgUnitId: 'org-connectshyft-d4-east',
+        state: 'UNCLAIMED',
+        claimedByUserId: null,
+        escalationStage: 2,
+        nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+        neighborId: 'neighbor-connectshyft-d4-1001',
+        lastInboundCsNumberId: '+12605550192',
+        preferredOutboundCsNumberId: '+12605550192',
+        summary: 'Unclaimed intake ready for policy-safe outbound action',
+    },
+    '0b3060e8-d0e1-4366-8655-8c7ec44cf0ee': {
+        tenantId: 'tenant-connectshyft-d4',
+        orgUnitId: 'org-connectshyft-d4-east',
+        state: 'CLAIMED',
+        claimedByUserId: 'user-connectshyft-d4-other-operator',
+        escalationStage: 1,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-d4-1002',
+        lastInboundCsNumberId: '+12605550192',
+        preferredOutboundCsNumberId: '+12605550192',
+        summary: 'Claimed thread eligible for close action',
+    },
+    '20ab942f-27c6-4ae5-8af2-06b727c36b2a': {
+        tenantId: 'tenant-connectshyft-d4',
+        orgUnitId: 'org-connectshyft-d4-east',
+        state: 'CLOSED',
+        claimedByUserId: null,
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-d4-1003',
+        lastInboundCsNumberId: '+12605550192',
+        preferredOutboundCsNumberId: '+12605550192',
+        summary: 'Closed thread awaiting explicit same-thread reopen',
+    },
+    '06a77807-6575-4c63-8824-38a89f9dae12': {
+        tenantId: 'tenant-connectshyft-d4',
+        orgUnitId: 'org-connectshyft-d4-east',
+        state: 'CLOSED',
+        claimedByUserId: null,
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-d4-pref-no-1005',
+        lastInboundCsNumberId: '+12605550192',
+        preferredOutboundCsNumberId: '+12605550192',
+        summary: 'Closed thread with prefers_texting=NO policy.',
+    },
+    '59b44eb4-c8e7-4cd1-8a22-bbeceb871dd7': {
+        tenantId: 'tenant-connectshyft-d4',
+        orgUnitId: 'org-connectshyft-d4-east',
+        state: 'UNCLAIMED',
+        claimedByUserId: null,
+        escalationStage: 1,
+        nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+        neighborId: 'neighbor-connectshyft-d4-pref-no-1004',
+        lastInboundCsNumberId: '+12605550192',
+        preferredOutboundCsNumberId: '+12605550192',
+        summary: 'Unclaimed thread with prefers_texting=NO policy.',
+    },
+    '1641c3dd-4d4c-4997-8b72-ae4876649b37': {
+        tenantId: 'tenant-connectshyft-ux-r4',
+        orgUnitId: 'org-connectshyft-ux-r4-east',
+        state: 'UNCLAIMED',
+        claimedByUserId: null,
+        escalationStage: 2,
+        nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+        neighborId: 'neighbor-connectshyft-ux-r4-1001',
+        lastInboundCsNumberId: '+12605550196',
+        preferredOutboundCsNumberId: '+12605550196',
+        summary: 'Unclaimed thread with explicit outbound guardrail controls.',
+    },
+    '69c239d2-8f02-4202-8cec-a7f0de61cbf7': {
+        tenantId: 'tenant-connectshyft-ux-r4',
+        orgUnitId: 'org-connectshyft-ux-r4-east',
+        state: 'CLAIMED',
+        claimedByUserId: 'user-connectshyft-ux-r4-other-operator',
+        escalationStage: 1,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-ux-r4-1002',
+        lastInboundCsNumberId: '+12605550196',
+        preferredOutboundCsNumberId: '+12605550196',
+        summary: 'Claimed thread with deterministic policy-safe outbound controls.',
+    },
+    'aedcda71-42b7-4857-8a0a-70013e01d4cd': {
+        tenantId: 'tenant-connectshyft-ux-r4',
+        orgUnitId: 'org-connectshyft-ux-r4-east',
+        state: 'CLOSED',
+        claimedByUserId: null,
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-ux-r4-1003',
+        lastInboundCsNumberId: '+12605550196',
+        preferredOutboundCsNumberId: '+12605550196',
+        summary: 'Closed thread requiring explicit same-thread reopen before outbound.',
+    },
+    '21f2866f-37ff-42da-80fc-0b5d2c3bc09d': {
+        tenantId: 'tenant-connectshyft-ux-r4',
+        orgUnitId: 'org-connectshyft-ux-r4-east',
+        state: 'UNCLAIMED',
+        claimedByUserId: null,
+        escalationStage: 1,
+        nextEvaluationAtUtc: '2026-03-01T00:00:00.000Z',
+        neighborId: 'neighbor-connectshyft-ux-r4-pref-no-1004',
+        lastInboundCsNumberId: '+12605550196',
+        preferredOutboundCsNumberId: '+12605550196',
+        summary: 'Unclaimed thread with prefers_texting=NO policy.',
+    },
+    'e37b00e0-228f-43c0-8c70-b3d0a5bfad40': {
+        tenantId: 'tenant-connectshyft-ux-r4',
+        orgUnitId: 'org-connectshyft-ux-r4-east',
+        state: 'CLOSED',
+        claimedByUserId: null,
+        escalationStage: 0,
+        nextEvaluationAtUtc: null,
+        neighborId: 'neighbor-connectshyft-ux-r4-pref-no-1005',
+        lastInboundCsNumberId: '+12605550196',
+        preferredOutboundCsNumberId: '+12605550196',
+        summary: 'Closed thread with prefers_texting=NO policy.',
+    },
+
+=== SEARCH ===
+/app/dist/apps/connectshyft-api/src/platform/tenancy/__tests__/tenantScope.test.js:16:    it('requires orgunit context for orgUnit-scoped access', () => {
+/app/dist/apps/connectshyft-api/src/platform/tenancy/__tests__/tenantScope.test.js:49:    it('rejects orgUnit scope mode when orgunit context is missing', () => {
+/app/dist/apps/connectshyft-api/src/platform/tenancy/__tests__/requestContext.test.js:16:    it('returns public tenant context when unauthenticated', () => {
+/app/dist/apps/connectshyft-api/src/platform/tenancy/__tests__/requestContext.test.js:25:    it('uses authenticated active tenant context by default', () => {
+/app/dist/apps/connectshyft-api/src/platform/tenancy/__tests__/requestContext.test.js:63:    it('ignores caller-supplied tenant and orgunit headers for authenticated context', () => {
+/app/dist/apps/connectshyft-api/src/platform/tenancy/__tests__/orgUnitAccess.test.js:34:    it('rejects orgunit access when orgunit does not belong to tenant context', async () => {
+/app/dist/apps/connectshyft-api/src/services/AuthService.js:438:            throw new Error('Session tenant context is required');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectshyftIdentityAmbiguityEventsMigration.test.js:35:        expect(rawSql).toContain('connectshyft_cs_identity_ambiguity_events_tenant_source_context_created_idx');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectshyftIdentityAmbiguityEventsMigration.test.js:36:        expect(rawSql).toContain('(tenant_id, source_context, created_at_utc DESC)');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:16:        expect(rawSql).toContain('ADD COLUMN IF NOT EXISTS phone_e164');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:17:        expect(rawSql).toContain('users_phone_e164_ck');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:18:        expect(rawSql).toContain("phone_e164 ~ '^\\+[1-9][0-9]{1,14}$'");
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:19:        expect(rawSql).toContain('ADD COLUMN IF NOT EXISTS default_operator_phone_e164');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:20:        expect(rawSql).toContain('cs_org_unit_escalation_config_default_operator_phone_e164_ck');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:21:        expect(rawSql).toContain("default_operator_phone_e164 ~ '^\\+[1-9][0-9]{1,14}$'");
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:27:        expect(rawSql).toContain('DROP CONSTRAINT IF EXISTS cs_org_unit_escalation_config_default_operator_phone_e164_ck');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:28:        expect(rawSql).toContain('DROP COLUMN IF EXISTS default_operator_phone_e164');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:29:        expect(rawSql).toContain('DROP CONSTRAINT IF EXISTS users_phone_e164_ck');
+/app/dist/apps/connectshyft-api/src/migrations/__tests__/connectShyftOperatorDestinationFieldsMigration.test.js:30:        expect(rawSql).toContain('DROP COLUMN IF EXISTS phone_e164');
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:14:const contextAccess_1 = require("../../../modules/connectshyft/contextAccess");
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:585:    const decision = await (0, contextAccess_1.resolveConnectShyftOrgUnitContext)(req, {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:595:        return decision.context;
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:999:        preferred_outbound_context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1013:            neighborContext: `Neighbor context: ${summary}`,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1014:            conferenceContext: `Conference context: ${outboundContextLabel}`,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1016:                ? 'Claim context: Unclaimed conversation'
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1018:                    ? 'Claim context: Claimed conversation'
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1019:                    : 'Claim context: Closed conversation',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1115:                    throw new OutboundDispatchRefusalError('CONNECTSHYFT_THREAD_NOT_FOUND', 'Thread not found for this tenant/orgUnit context.');
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1443:const resolveConnectShyftActorRoles = (req, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1445:    const contextRoles = Array.isArray(context?.effectiveRoles)
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1446:        ? context.effectiveRoles
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1451:    const deduped = Array.from(new Set(contextRoles));
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1457:const enforceThreadViewCapability = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1458:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1471:const enforceEscalationActionMembership = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1472:    if (!context.bypassedOrgUnitMembership) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1475:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1487:const enforceThreadClaimCapability = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1488:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1501:const enforceThreadTakeoverCapability = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1502:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1515:const enforceThreadCloseCapability = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1516:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1529:const enforceThreadCallCapability = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1530:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1543:const enforceThreadMessageCapability = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1544:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1557:const resolveIdentityAmbiguityReadScope = (req, res, context, requestedOrgUnitId) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1558:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1570:    if (requestedOrgUnitId && !tenantPrivileged && requestedOrgUnitId !== context.orgUnitId) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1573:            message: 'Cross-orgUnit context overrides are not allowed for this route',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1581:        orgUnitId: requestedOrgUnitId ?? (tenantPrivileged ? null : context.orgUnitId),
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1584:const resolveIdentityAmbiguityTenantPrivilegedScope = (req, res, context) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:1585:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2051:            // Fall through to bounded in-memory/list fallback for non-production contexts.
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2301:            presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2329:            presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2388:            : 'Update the neighbor profile or choose a valid phone number before sending the outbound message.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2463:                accessibilityHint: 'Update the neighbor profile or choose a valid phone number before sending the outbound message.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2501:        accessibilityHint: 'Update the neighbor profile or choose a valid phone number before sending the outbound message.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2725:router.get('/settings/navigation', handlers_1.getConnectSettingsNavigation);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2726:router.get('/availability', handlers_1.getConnectAvailability);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2727:router.get('/telephony-readiness', handlers_1.getConnectTelephonyReadiness);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2730:router.get('/context', handlers_1.getConnectContext);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2753:    const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2754:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2757:    if (!enforceThreadViewCapability(req, res, context)) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2772:        const config = await connectShyftEscalationConfigService.getConfig(context.tenantId, context.orgUnitId);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2784:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2787:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2788:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2804:        && !UUID_PATTERN.test(context.tenantId);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2808:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2809:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2841:    const context = await enforceOrgUnitContext(req, res, parseOrgUnitIdFromQuery(req));
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2842:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2845:    if (!enforceThreadViewCapability(req, res, context)) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2848:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2851:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2852:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2880:    const context = await enforceOrgUnitContext(req, res, parseOrgUnitIdFromQuery(req));
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2881:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2884:    if (!enforceThreadViewCapability(req, res, context)) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2889:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2890:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2917:    const context = await enforceOrgUnitContext(req, res);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2918:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2921:    const readScope = resolveIdentityAmbiguityReadScope(req, res, context, filters.orgUnitId);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2926:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2948:    const context = await enforceOrgUnitContext(req, res);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2949:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2952:    if (!resolveIdentityAmbiguityTenantPrivilegedScope(req, res, context)) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2980:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:2986:            message: 'Identity ambiguity event is unavailable for the active tenant context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3006:    const context = await enforceOrgUnitContext(req, res);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3007:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3010:    if (!enforceThreadViewCapability(req, res, context)) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3016:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3017:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3023:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3047:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3048:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3092:            context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3093:                tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3094:                orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3095:                bypassedOrgUnitMembership: context.bypassedOrgUnitMembership,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3123:    const context = await enforceOrgUnitContext(req, res, payload.orgUnitId);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3124:    if (!context) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3127:    if (!enforceThreadViewCapability(req, res, context)) {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3174:    const actorRoles = resolveConnectShyftActorRoles(req, context);
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3177:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3178:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3206:const performOutboundAction = async ({ req, res, outboundAction, context, threadId, actorUserId, actorRoles, lifecycleContext, }) => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3241:                context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3262:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3263:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3292:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3293:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3308:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3309:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3324:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3325:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3346:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3400:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3401:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3406:            operatorDestinationResolved: Boolean(operatorDestinationResolution.phoneNumber),
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3415:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3416:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3435:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3450:                        presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3480:                tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3481:                orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3496:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3497:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3501:        operatorContactPointId = operatorDestinationResolution.phoneNumber;
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3508:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3529:                message: 'Outbound bridge calls require a valid operator destination phone.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3531:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3551:                tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3574:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3594:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3595:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3609:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3654:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3688:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3689:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3700:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3746:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3747:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3766:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3801:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3802:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3826:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3855:                context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3872:                context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3896:                tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3939:                context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3955:                tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3956:                orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3979:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:3995:                        presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4021:                    tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4022:                    orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4049:                    tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4050:                    orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4067:                    context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4101:                tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4132:                context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4168:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4199:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4200:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4224:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4225:        orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4241:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4271:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4272:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4320:            tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4321:            orgUnitId: context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4383:        presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4396:        context,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:4504:        tenantId: context.tenantId,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:5431:                message: 'Inbound SMS processing requires a resolvable neighbor context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/connectshyft.js:5990:            operatorDestinationResolved: Boolean(operatorDestinationResolution.phoneNumber),
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-timeline.characterization.test.js:75:    preferred_outbound_context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.number-mappings.characterization.test.js:327:            message: 'Cross-orgUnit context overrides are not allowed for this route',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:83:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:150:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:194:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:211:            message: 'Thread not found for this tenant/orgUnit context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:214:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:223:    it('returns the current missing-orgUnit refusal for close requests without orgUnit context', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-close.characterization.test.js:235:            message: 'orgUnit context is required for ConnectShyft orgUnit-scoped routes',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.js:603:            message: 'Neighbor detail is unavailable for the requested orgUnit context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.js:650:            preferred_outbound_context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.js:269:            message: 'Cross-orgUnit context overrides are not allowed for this route',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.js:272:    it('applies optional status, contact-point, and source-context filters', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.identity-ambiguity-ops.test.js:478:            message: 'Identity ambiguity event is unavailable for the active tenant context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.js:196:    it('fails closed when Telnyx rollout allow-list excludes tenant/orgUnit context', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.js:233:    it('revalidates rollout allow-list against correlated webhook context before side effects', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:212:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:256:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:379:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:469:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:564:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:603:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:627:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:630:                    accessibilityHint: 'Update the neighbor profile or choose a valid phone number before sending the outbound message.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:666:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:694:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:733:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:755:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.js:804:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:70:        : 'corr-connectshyft-settings-availability-characterization';
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:96:describe('connectshyft settings and availability route characterization', () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:125:            .get('/api/v1/connectshyft/settings/navigation')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:155:                path: '/app/connectshyft/settings/availability',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:166:            .get('/api/v1/connectshyft/settings/navigation')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:178:                key: 'availability',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:179:                path: '/app/connectshyft/settings/availability',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:192:                path: '/app/connectshyft/settings/availability',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:211:            .get('/api/v1/connectshyft/settings/navigation')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:230:            .get('/api/v1/connectshyft/settings/navigation')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:254:                path: '/app/connectshyft/settings/availability',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:259:    it('returns the availability payload shape for admin-capable callers', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:265:            .get('/api/v1/connectshyft/availability')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:291:    it('preserves the availability response contract while telephony readiness stays on a dedicated route', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:297:            .get('/api/v1/connectshyft/availability')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:309:    it('preserves the availability refusal payload for callers without admin settings access', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.settings-and-availability.characterization.test.js:315:            .get('/api/v1/connectshyft/availability')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:215:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:259:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:396:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:481:                    presentation: 'contextual-action-feedback',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:574:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:617:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:655:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:697:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:760:            message: 'Thread not found for this tenant/orgUnit context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.js:763:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.js:1088:                message: 'Inbound SMS processing requires a resolvable neighbor context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.js:249:            message: 'Neighbor profile updated',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.js:263:                contextOverrideNotice: null,
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.js:271:                        mutation_context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-update-delete.characterization.test.js:291:            'contextOverrideNotice',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.js:299:                contextOverrideNotice: 'Tenant-privileged override applied',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.js:303:            'contextOverrideNotice',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.js:318:            message: 'Neighbor profile not found for this tenant.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-list-detail.characterization.test.js:330:            message: 'Neighbor profile not found for this tenant.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.escalation-config.characterization.test.js:393:            message: 'Cross-orgUnit context overrides are not allowed for this route',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:73:        : 'corr-connectshyft-context-inbox-characterization';
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:99:describe('connectshyft context and inbox route characterization', () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:125:    it('returns resolved member-scoped tenant and orgUnit context', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:128:            .get('/api/v1/connectshyft/context')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:135:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:143:    it('preserves tenant-privileged orgUnit bypass semantics in the resolved context payload', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:146:            .get('/api/v1/connectshyft/context')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:157:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:165:    it('returns the current missing-orgUnit refusal for orgUnit-scoped context requests', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:171:            .get('/api/v1/connectshyft/context')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:189:            .get('/api/v1/connectshyft/context')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:191:            orgUnitId: 'invalid-orgunit-context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:192:            memberships: ['invalid-orgunit-context'],
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:221:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.context-and-inbox.characterization.test.js:280:    it('requires an actor context for mine bucket reads', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.timeline.test.js:74:    preferred_outbound_context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbor-create.characterization.test.js:437:            message: 'orgUnit context is required for ConnectShyft orgUnit-scoped routes',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.js:314:    it('refuses mine bucket reads when actor context is missing', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.js:1037:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:77:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:147:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:157:        expect(Object.keys(response.body.data.context).sort()).toEqual([
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:197:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:214:            message: 'Thread not found for this tenant/orgUnit context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:217:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:252:    it('returns the current missing-orgUnit refusal for claim requests without orgUnit context', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-claim.characterization.test.js:264:            message: 'orgUnit context is required for ConnectShyft orgUnit-scoped routes',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:86:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:153:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:197:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:217:            message: 'Thread not found for this tenant/orgUnit context.',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:220:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:229:    it('returns the current missing-orgUnit refusal for takeover requests without orgUnit context', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-takeover.characterization.test.js:246:            message: 'orgUnit context is required for ConnectShyft orgUnit-scoped routes',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.js:169:    it('returns the telephony readiness response shape for operator callers', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.js:206:            .get('/api/v1/connectshyft/telephony-readiness')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.js:214:            message: 'ConnectShyft telephony readiness resolved',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.js:284:            .get('/api/v1/connectshyft/telephony-readiness')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.telephony-runtime.characterization.test.js:396:            .get('/api/v1/connectshyft/telephony-readiness')
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.js:74:    preferred_outbound_context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.js:138:                context: {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.js:194:            'context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.js:219:            'preferred_outbound_context',
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.js:275:    it('returns the current not-found refusal when thread detail is unavailable for the orgUnit context', async () => {
+/app/dist/apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.js:287:                context: {
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/neighbors.js:91:    message: 'Neighbor profile access requires an authorized ConnectShyft role.',
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/neighbors.js:96:    message: 'Neighbor profile updates require an authorized ConnectShyft role.',
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/neighbors.js:136:    message: 'Neighbor profile not found for this tenant.',
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/neighbors.js:157:    const context = (0, phoneIdentityContext_1.resolveConnectShyftPhoneNormalizationContext)('user_entered');
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/neighbors.js:161:        const resolvedPhone = (0, communication_1.normalizePhone)(normalizeNonEmptyString(phone?.value), context);
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/inboundVoice.js:179:        if (input.operatorDestination !== undefined && !input.operatorDestination?.phoneNumber) {
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/escalationConfig.js:197:        defaultOperatorPhoneE164: normalizeRecipientValue(row.default_operator_phone_e164) || null,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/escalationConfig.js:271:            default_operator_phone_e164: existing?.defaultOperatorPhoneE164 || null,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.js:124:    sourceContext: row.source_context,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.js:125:    sourceContextId: row.source_context_id,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.js:239:            source_context: event.sourceContext,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.js:240:            source_context_id: event.sourceContextId,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ambiguityEvents.js:281:            query.andWhere('source_context', sourceContext);
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/ops/__tests__/ops.thread.test.js:63:            message: 'Thread visibility is unavailable for the requested orgUnit context.',
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectNeighbors.js:15:        tenantId: accessContext.context.tenantId,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectNeighbors.js:23:            data: (0, neighborIdentityContext_1.buildConnectShyftNeighborRefusalData)(resolved, accessContext.context),
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectNeighbors.js:33:            ...(0, neighborIdentityContext_1.buildConnectShyftNeighborScopePayload)(accessContext.context),
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectTelephonyReadiness.js:17:        tenantId: accessContext.context.tenantId,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectTelephonyReadiness.js:18:        orgUnitId: accessContext.context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectTelephonyReadiness.js:25:        message: 'ConnectShyft telephony readiness resolved',
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.js:166:            tenantId: readContext.context.tenantId,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.js:167:            orgUnitId: readContext.context.orgUnitId,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.js:174:        (0, threadReadContext_1.sendConnectShyftThreadUnavailableRefusal)(res, readContext.context);
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.js:184:        tenantId: readContext.context.tenantId,
+/app/dist/apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.js:185:        orgUnitId: readContext.context.orgUnitId,
+jeremiahotis@jeremiah-otis:~/projects/shyftunity$ 
