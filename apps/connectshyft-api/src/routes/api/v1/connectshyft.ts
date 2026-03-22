@@ -68,6 +68,7 @@ import {
 } from '../../../modules/connectshyft/numberMappings';
 import {
   resolveOperatorDestination,
+  type ConnectShyftOperatorDestinationResolution,
 } from '../../../modules/connectshyft/operatorDestinationResolver';
 import {
   AsyncConnectShyftNeighborService,
@@ -118,6 +119,7 @@ import {
   evaluateActorTenantModuleEntitlement,
   type PlatformAdminActorContext,
 } from '../../../platform/tenantModuleEntitlements';
+import logger from '../../../utils/logger';
 import {
   resolveConnectShyftThreadActions,
   resolveConnectShyftThreadDetailContract,
@@ -2518,6 +2520,22 @@ const buildCanonicalPayloadForInboundWebhook = (input: {
   autoClaimApplied: input.autoClaimApplied,
 });
 
+type ConnectShyftTelephonyRuntimeOutcome = 'bridged' | 'fallback' | 'refused';
+
+const logConnectShyftTelephonyRuntimeOutcome = (input: {
+  threadId: string;
+  tenantId: string;
+  orgUnitId: string;
+  actorUserId: string | null;
+  claimedByUserId: string | null;
+  senderNumber: string | null;
+  operatorDestinationSource: ConnectShyftOperatorDestinationResolution['source'];
+  operatorDestinationResolved: boolean;
+  outcome: ConnectShyftTelephonyRuntimeOutcome;
+}): void => {
+  logger.info('ConnectShyft telephony runtime outcome', input);
+};
+
 const recordCanonicalThreadEvent = async (input: {
   tenantId: string;
   orgUnitId: string;
@@ -4763,6 +4781,26 @@ const performOutboundAction = async ({
     };
   };
 
+  let operatorDestinationResolution: ConnectShyftOperatorDestinationResolution | null = null;
+  let claimedByUserIdForOperatorDestination: string | null = null;
+  const logOutboundCallRuntimeOutcome = (outcome: ConnectShyftTelephonyRuntimeOutcome): void => {
+    if (outboundAction !== 'call' || !operatorDestinationResolution) {
+      return;
+    }
+
+    logConnectShyftTelephonyRuntimeOutcome({
+      threadId,
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      actorUserId,
+      claimedByUserId: claimedByUserIdForOperatorDestination,
+      senderNumber: outboundCallSenderPhone,
+      operatorDestinationSource: operatorDestinationResolution.source,
+      operatorDestinationResolved: Boolean(operatorDestinationResolution.phoneNumber),
+      outcome,
+    });
+  };
+
   if (outboundAction === 'message' && outboundMessagePolicy) {
     const preferenceNeighborId = lifecycleContext.syntheticThread?.neighborId
       || resolvedThreadNeighborId
@@ -4852,15 +4890,17 @@ const performOutboundAction = async ({
   let operatorContactPointId: string | null = null;
   let neighborContactPointId: string | null = null;
   if (outboundAction === 'call') {
-    const operatorDestination = await resolveOperatorDestination({
+    claimedByUserIdForOperatorDestination = lifecycleContext.claimedByUserId || thread.claimedByUserId || null;
+    operatorDestinationResolution = await resolveOperatorDestination({
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
       actorUserId,
-      claimedByUserId: lifecycleContext.claimedByUserId || thread.claimedByUserId || null,
+      claimedByUserId: claimedByUserIdForOperatorDestination,
     });
-    operatorContactPointId = operatorDestination.phoneNumber;
+    operatorContactPointId = operatorDestinationResolution.phoneNumber;
 
-    if (!operatorContactPointId && operatorDestination.source === 'none') {
+    if (!operatorContactPointId && operatorDestinationResolution.source === 'none') {
+      logOutboundCallRuntimeOutcome('refused');
       respondConnectShyftBusinessRefusal(res, {
         code: 'CONNECTSHYFT_OPERATOR_DESTINATION_MISSING',
         message: 'Outbound bridge calls require a resolved operator destination.',
@@ -4884,6 +4924,7 @@ const performOutboundAction = async ({
     }
 
     if (!operatorContactPointId) {
+      logOutboundCallRuntimeOutcome('refused');
       respondConnectShyftBusinessRefusal(res, {
         code: 'CONNECTSHYFT_OPERATOR_INVALID_PHONE',
         message: 'Outbound bridge calls require a valid operator destination phone.',
@@ -4929,6 +4970,7 @@ const performOutboundAction = async ({
     }
 
     if (!neighborContactPointId) {
+      logOutboundCallRuntimeOutcome('refused');
       respondConnectShyftBusinessRefusal(res, {
         code: 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED',
         message: 'Outbound bridge calls require a dialable neighbor phone.',
@@ -5125,6 +5167,7 @@ const performOutboundAction = async ({
       const voiceSenderCode = voiceSenderResolution.reason === 'sender_mapping_ambiguous'
         ? 'CONNECTSHYFT_CALL_SENDER_AMBIGUOUS'
         : 'CONNECTSHYFT_CALL_SENDER_REQUIRED';
+      logOutboundCallRuntimeOutcome('refused');
       refusal(res, {
         code: voiceSenderCode,
         message: voiceSenderResolution.reason === 'sender_mapping_ambiguous'
@@ -5222,6 +5265,7 @@ const performOutboundAction = async ({
     })
     : null;
   if (outboundIdempotencyRecord?.decision === 'conflict') {
+    logOutboundCallRuntimeOutcome('refused');
     respondConnectShyftBusinessRefusal(res, {
       code: 'CONNECTSHYFT_IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_PAYLOAD',
       message: 'Idempotency key cannot be reused for a materially different outbound request.',
@@ -5238,6 +5282,7 @@ const performOutboundAction = async ({
     return;
   }
   if (outboundIdempotencyRecord?.decision === 'in_progress') {
+    logOutboundCallRuntimeOutcome('refused');
     respondConnectShyftBusinessRefusal(res, {
       code: 'CONNECTSHYFT_IDEMPOTENT_OPERATION_IN_PROGRESS',
       message: 'An identical outbound request is already in progress.',
@@ -5313,6 +5358,7 @@ const performOutboundAction = async ({
         : replaySnapshot.body);
       return;
     }
+    logOutboundCallRuntimeOutcome('refused');
     respondConnectShyftBusinessRefusal(res, {
       code: 'CONNECTSHYFT_IDEMPOTENT_REPLAY_UNAVAILABLE',
       message: 'Idempotent replay state is unavailable for this completed outbound request.',
@@ -5504,6 +5550,7 @@ const performOutboundAction = async ({
       },
       db: communicationReliabilityDb,
     });
+      logOutboundCallRuntimeOutcome('refused');
       respondConnectShyftBusinessRefusal(res, refusalPayload);
       return;
     }
@@ -5573,6 +5620,7 @@ const performOutboundAction = async ({
       },
       db: communicationReliabilityDb,
     });
+    logOutboundCallRuntimeOutcome('refused');
     respondConnectShyftBusinessRefusal(res, refusalPayload);
     return;
   }
@@ -5918,6 +5966,7 @@ const performOutboundAction = async ({
     db: communicationReliabilityDb,
   });
 
+  logOutboundCallRuntimeOutcome('bridged');
   success(res, {
     code: responseCode,
     message: responseMessage,
@@ -7446,20 +7495,42 @@ const performInboundWebhook = async ({
       : CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceVoicemail;
   let voiceRoutingPolicy: { claimedMode?: 'orgunit_configured_mode' } = {};
   let voiceDomainEvent: ReturnType<typeof mapConnectShyftInboundVoiceWebhookToDomainEvent> | null = null;
+  let operatorDestinationResolution: ConnectShyftOperatorDestinationResolution | null = null;
+  let claimedByUserIdForOperatorDestination: string | null = null;
+  const logInboundVoiceRuntimeOutcome = (outcome: ConnectShyftTelephonyRuntimeOutcome): void => {
+    if (!operatorDestinationResolution) {
+      return;
+    }
+
+    logConnectShyftTelephonyRuntimeOutcome({
+      threadId: resolvedVoiceThreadId,
+      tenantId,
+      orgUnitId,
+      actorUserId: resolveWebhookActorUserId(req),
+      claimedByUserId: claimedByUserIdForOperatorDestination,
+      senderNumber: correlation.providerNumberE164 || null,
+      operatorDestinationSource: operatorDestinationResolution.source,
+      operatorDestinationResolved: Boolean(operatorDestinationResolution.phoneNumber),
+      outcome,
+    });
+  };
 
   if (isVoiceEvent && !isConnectedCallEvent) {
-    const operatorDestination = threadState === 'CLAIMED'
+    operatorDestinationResolution = threadState === 'CLAIMED'
       ? await resolveOperatorDestination({
         tenantId,
         orgUnitId,
         actorUserId: resolveWebhookActorUserId(req),
-        claimedByUserId: lifecycleContext?.claimedByUserId || thread?.claimedByUserId || null,
+        claimedByUserId: (
+          claimedByUserIdForOperatorDestination =
+            lifecycleContext?.claimedByUserId || thread?.claimedByUserId || null
+        ),
       })
-      : undefined;
+      : null;
     const routing = resolveConnectShyftInboundVoiceRouting({
       normalizedEventType,
       threadState,
-      operatorDestination,
+      operatorDestination: operatorDestinationResolution,
     });
     timelineEventName = routing.eventName;
     routingDecision = routing.routingDecision;
@@ -7528,6 +7599,7 @@ const performInboundWebhook = async ({
       actorUserId: resolveWebhookActorUserId(req),
     });
   } catch (error) {
+    logInboundVoiceRuntimeOutcome('refused');
     await markWebhookReceipt('FAILED_RETRYABLE', 'inbound_voice_canonical_persistence_unavailable');
     refusal(res, {
       code: 'CONNECTSHYFT_CANONICAL_EVENT_PERSISTENCE_UNAVAILABLE',
@@ -7580,6 +7652,9 @@ const performInboundWebhook = async ({
     : thread;
 
   await markWebhookReceipt('APPLIED');
+  if (operatorDestinationResolution) {
+    logInboundVoiceRuntimeOutcome(routingDecision === 'accepted' ? 'bridged' : 'fallback');
+  }
   success(res, {
     code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
     message: 'Inbound webhook accepted for processing',

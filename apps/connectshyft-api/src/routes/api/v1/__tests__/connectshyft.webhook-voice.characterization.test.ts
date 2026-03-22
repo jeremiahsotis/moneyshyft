@@ -12,6 +12,23 @@ import {
   registerProviderRegistryRouteIntegrationHooks,
 } from './connectshyft.provider-registry.test.shared';
 
+jest.mock('../../../../utils/logger', () => ({
+  __esModule: true,
+  default: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
+}));
+
+const loggerModule = jest.requireMock('../../../../utils/logger') as {
+  default: {
+    info: jest.Mock;
+    warn: jest.Mock;
+    error: jest.Mock;
+  };
+};
+
 const TEST_TIMESTAMP = '2026-03-18T12:00:00.000Z';
 const TEST_PROVIDER_NUMBER_F1 = '+12605550191';
 const TEST_PROVIDER_NUMBER_F2 = '+12605550192';
@@ -114,6 +131,7 @@ describe('connectshyft inbound voice webhook route characterization', () => {
   let resolveOperatorDestinationSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    loggerModule.default.info.mockReset();
     sendSmsMock.mockClear();
     startOutboundCallMock.mockClear();
     startBridgeSessionMock.mockClear();
@@ -540,6 +558,20 @@ describe('connectshyft inbound voice webhook route characterization', () => {
     });
     expect(response.body.data).not.toHaveProperty('voicemailArtifact');
     expect(response.body.data).not.toHaveProperty('transcription');
+    expect(loggerModule.default.info).toHaveBeenCalledWith(
+      'ConnectShyft telephony runtime outcome',
+      expect.objectContaining({
+        threadId: 'thread-f1-claimed-1002',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        actorUserId: CONNECTSHYFT_SYSTEM_ACTOR_USER_ID,
+        claimedByUserId: 'user-connectshyft-f1-other-operator',
+        senderNumber: TEST_PROVIDER_NUMBER_F1,
+        operatorDestinationSource: 'none',
+        operatorDestinationResolved: false,
+        outcome: 'fallback',
+      }),
+    );
   });
 
   it('uses the safe fallback path for claimed-thread voice events when operator destination is invalid', async () => {

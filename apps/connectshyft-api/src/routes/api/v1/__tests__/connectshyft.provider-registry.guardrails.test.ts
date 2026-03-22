@@ -7,6 +7,7 @@ import * as identityResolverModule from '../../../../modules/connectshyft/identi
 import * as neighborsModule from '../../../../modules/connectshyft/neighbors';
 import { AsyncConnectShyftNeighborService } from '../../../../modules/connectshyft/neighbors';
 import { connectShyftNumberMappingServiceAsync } from '../../../../modules/connectshyft/numberMappings';
+import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
 import { AsyncConnectShyftThreadService } from '../../../../modules/connectshyft/threads';
 import * as ProviderRegistry from '../../../../modules/connectshyft/providerRegistry';
 import {
@@ -139,6 +140,12 @@ describe('connectshyft provider adapter registry route integration - guardrails'
   registerProviderRegistryRouteIntegrationHooks();
 
   beforeEach(() => {
+    jest.spyOn(OperatorDestinationResolverModule, 'resolveOperatorDestination').mockResolvedValue({
+      phoneNumber: '+12605550155',
+      source: 'actor_user',
+      userId: 'user-connectshyft-f1-operator',
+      orgUnitId: 'org-connectshyft-f1-east',
+    });
     jest.spyOn(connectShyftNumberMappingServiceAsync, 'resolveRoutingMappingByNumber')
       .mockImplementation(resolveRoutingMappingByNumberForTests);
   });

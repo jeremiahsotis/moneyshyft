@@ -2,6 +2,7 @@ import connectShyftRouter from '../connectshyft'
 import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions'
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents'
 import { connectShyftNumberMappingServiceAsync } from '../../../../modules/connectshyft/numberMappings'
+import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver'
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings'
 
 const toCanonicalEventType = (rawEventType: string): string => rawEventType
@@ -222,6 +223,12 @@ describe('connectshyft bridge webhook flow', () => {
     resetConnectShyftCanonicalEventsForTests()
     resetConnectShyftBridgeSessionStateForTests()
     resetConnectShyftProviderCorrelationStateForTests()
+    jest.spyOn(OperatorDestinationResolverModule, 'resolveOperatorDestination').mockResolvedValue({
+      phoneNumber: '+12605550155',
+      source: 'actor_user',
+      userId: 'user-connectshyft-f1-primary-operator',
+      orgUnitId: 'org-connectshyft-f1-east',
+    })
     jest.spyOn(connectShyftNumberMappingServiceAsync, 'resolveRoutingMappingByNumber').mockImplementation(
       async (input) => {
         if (input.tenantId === 'tenant-connectshyft-f1' && input.twilioNumberE164 === '+12605550191') {

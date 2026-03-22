@@ -29,6 +29,23 @@ import {
 import { resetConnectShyftCommunicationReliabilityStateForTests } from '../../../../modules/connectshyft/communicationReliability';
 import type { ConnectShyftThread } from '../../../../modules/connectshyft/threads';
 
+jest.mock('../../../../utils/logger', () => ({
+  __esModule: true,
+  default: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
+}));
+
+const loggerModule = jest.requireMock('../../../../utils/logger') as {
+  default: {
+    info: jest.Mock;
+    warn: jest.Mock;
+    error: jest.Mock;
+  };
+};
+
 const toCanonicalEventType = (rawEventType: string): string => rawEventType
   .split(/[._-]+/)
   .map((part) => (part ? `${part.charAt(0).toUpperCase()}${part.slice(1)}` : ''))
@@ -379,6 +396,7 @@ describe('connectshyft outbound dispatch routes', () => {
 
   beforeEach(() => {
     jest.restoreAllMocks();
+    loggerModule.default.info.mockReset();
     sendSmsMock.mockClear();
     startOutboundCallMock.mockClear();
     verifyWebhookMock.mockClear();
@@ -1198,6 +1216,20 @@ describe('connectshyft outbound dispatch routes', () => {
         redialPolicy: 'manual_only',
       },
     }));
+    expect(loggerModule.default.info).toHaveBeenCalledWith(
+      'ConnectShyft telephony runtime outcome',
+      expect.objectContaining({
+        threadId: 'thread-f1-unclaimed-1001',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        actorUserId: 'user-connectshyft-f1-primary-operator',
+        claimedByUserId: null,
+        senderNumber: '+12605550191',
+        operatorDestinationSource: 'actor_user',
+        operatorDestinationResolved: true,
+        outcome: 'bridged',
+      }),
+    );
   });
 
   it('uses the claimed thread operator destination before provider dispatch on bridge calls', async () => {
@@ -1327,6 +1359,20 @@ describe('connectshyft outbound dispatch routes', () => {
     });
     expect(startOutboundCallMock).not.toHaveBeenCalled();
     expect(startBridgeSessionMock).not.toHaveBeenCalled();
+    expect(loggerModule.default.info).toHaveBeenCalledWith(
+      'ConnectShyft telephony runtime outcome',
+      expect.objectContaining({
+        threadId: 'thread-f1-unclaimed-1001',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        actorUserId: 'user-connectshyft-f1-primary-operator',
+        claimedByUserId: null,
+        senderNumber: null,
+        operatorDestinationSource: 'none',
+        operatorDestinationResolved: false,
+        outcome: 'refused',
+      }),
+    );
   });
 
   it('refuses outbound bridge calls when operator destination is invalid', async () => {

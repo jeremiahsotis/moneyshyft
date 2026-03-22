@@ -9,6 +9,7 @@ import {
   connectShyftNumberMappingServiceAsync,
   type ConnectShyftNumberMapping,
 } from '../../../../modules/connectshyft/numberMappings';
+import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
 import { AsyncConnectShyftThreadService } from '../../../../modules/connectshyft/threads';
 import {
   buildApp,
@@ -201,6 +202,7 @@ describe('connectshyft provider adapter registry route integration - dispatch an
   let numberMappingsByScope: Map<string, ConnectShyftNumberMapping[]>;
   let listMappingsSpy: jest.SpyInstance;
   let resolveRoutingMappingByNumberSpy: jest.SpyInstance;
+  let resolveOperatorDestinationSpy: jest.SpyInstance;
   let createMappingSpy: jest.SpyInstance;
   let updateMappingSpy: jest.SpyInstance;
 
@@ -215,6 +217,15 @@ describe('connectshyft provider adapter registry route integration - dispatch an
       connectShyftNumberMappingServiceAsync,
       'resolveRoutingMappingByNumber',
     ).mockImplementation(async (input) => resolveRoutingMappingByNumberFromState(numberMappingsByScope, input));
+    resolveOperatorDestinationSpy = jest.spyOn(
+      OperatorDestinationResolverModule,
+      'resolveOperatorDestination',
+    ).mockResolvedValue({
+      phoneNumber: '+12605550155',
+      source: 'actor_user',
+      userId: 'user-connectshyft-f1-operator',
+      orgUnitId: 'org-connectshyft-f1-east',
+    });
 
     createMappingSpy = jest.spyOn(connectShyftNumberMappingServiceAsync, 'createMapping').mockImplementation(
       async (input) => {
@@ -296,6 +307,7 @@ describe('connectshyft provider adapter registry route integration - dispatch an
   afterEach(() => {
     updateMappingSpy.mockRestore();
     createMappingSpy.mockRestore();
+    resolveOperatorDestinationSpy.mockRestore();
     resolveRoutingMappingByNumberSpy.mockRestore();
     listMappingsSpy.mockRestore();
   });
