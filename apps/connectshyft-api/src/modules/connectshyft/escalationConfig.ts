@@ -42,6 +42,7 @@ export type ConnectShyftEscalationConfig = {
   orgUnitId: string;
   escalationBaselineHours: number;
   recipients: ConnectShyftEscalationRecipients;
+  defaultOperatorPhoneE164: string | null;
   createdAtUtc: string;
   updatedAtUtc: string;
 };
@@ -110,6 +111,7 @@ type StoredEscalationConfigRow = {
   primary_org_unit_admin_user_id: string;
   secondary_org_unit_admin_user_id: string | null;
   tenant_staff_user_id: string | null;
+  default_operator_phone_e164: string | null;
   created_at_utc: string | Date;
   updated_at_utc: string | Date;
 };
@@ -363,6 +365,7 @@ const mapStoredRowToConfig = (row: StoredEscalationConfigRow): ConnectShyftEscal
       secondaryOrgUnitAdminUserId: normalizeRecipientValue(row.secondary_org_unit_admin_user_id),
       tenantStaffUserId: normalizeRecipientValue(row.tenant_staff_user_id),
     },
+    defaultOperatorPhoneE164: normalizeRecipientValue(row.default_operator_phone_e164) || null,
     createdAtUtc: toIsoUtc(row.created_at_utc, fallbackNow),
     updatedAtUtc: toIsoUtc(row.updated_at_utc, fallbackNow),
   };
@@ -389,6 +392,33 @@ export class InMemoryConnectShyftEscalationConfigStore implements ConnectShyftEs
       orgUnitId,
       escalationBaselineHours,
       recipients: { ...recipients },
+      defaultOperatorPhoneE164: existing?.defaultOperatorPhoneE164 || null,
+      createdAtUtc: existing?.createdAtUtc || now,
+      updatedAtUtc: now,
+    };
+
+    this.configByTenantOrgUnit.set(buildTenantOrgUnitKey(tenantId, orgUnitId), next);
+    return next;
+  }
+
+  async setDefaultOperatorPhone(
+    tenantId: string,
+    orgUnitId: string,
+    defaultOperatorPhoneE164: string | null,
+  ): Promise<ConnectShyftEscalationConfig> {
+    const existing = await this.getConfig(tenantId, orgUnitId);
+    const now = nowIsoUtc();
+
+    const next: ConnectShyftEscalationConfig = {
+      tenantId,
+      orgUnitId,
+      escalationBaselineHours: existing?.escalationBaselineHours ?? DEFAULT_ESCALATION_BASELINE_HOURS,
+      recipients: existing?.recipients ?? {
+        primaryOrgUnitAdminUserId: '',
+        secondaryOrgUnitAdminUserId: '',
+        tenantStaffUserId: '',
+      },
+      defaultOperatorPhoneE164: normalizeRecipientValue(defaultOperatorPhoneE164) || null,
       createdAtUtc: existing?.createdAtUtc || now,
       updatedAtUtc: now,
     };
@@ -433,6 +463,7 @@ export class KnexConnectShyftEscalationConfigStore implements ConnectShyftEscala
         primary_org_unit_admin_user_id: recipients.primaryOrgUnitAdminUserId,
         secondary_org_unit_admin_user_id: recipients.secondaryOrgUnitAdminUserId || null,
         tenant_staff_user_id: recipients.tenantStaffUserId || null,
+        default_operator_phone_e164: existing?.defaultOperatorPhoneE164 || null,
         created_at_utc: existing?.createdAtUtc || now,
         updated_at_utc: now,
       })
@@ -452,6 +483,7 @@ export class KnexConnectShyftEscalationConfigStore implements ConnectShyftEscala
       recipients: {
         ...recipients,
       },
+      defaultOperatorPhoneE164: existing?.defaultOperatorPhoneE164 || null,
       createdAtUtc: existing?.createdAtUtc || now,
       updatedAtUtc: now,
     };
@@ -479,6 +511,7 @@ export class ConnectShyftEscalationConfigService {
         secondaryOrgUnitAdminUserId: '',
         tenantStaffUserId: '',
       },
+      defaultOperatorPhoneE164: null,
       createdAtUtc: now,
       updatedAtUtc: now,
     };

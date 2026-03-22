@@ -1,0 +1,323 @@
+import type { Knex } from 'knex';
+import db from '../../config/knex';
+import {
+  normalizePhone,
+  validatePhoneForChannel,
+} from '../../../../../domains/communication';
+import { KnexConnectShyftEscalationConfigStore } from './escalationConfig';
+
+export type ConnectShyftOperatorDestinationResolution = {
+  phoneNumber: string | null;
+  source: 'thread_assignee' | 'actor_user' | 'org_unit_default' | 'none';
+  userId: string | null;
+  orgUnitId: string;
+};
+
+export type ResolveConnectShyftOperatorDestinationInput = {
+  tenantId: string;
+  orgUnitId: string;
+  actorUserId?: string | null;
+  claimedByUserId?: string | null;
+};
+
+type ConnectShyftOperatorDestinationStore = {
+  getUserPhone(input: {
+    tenantId: string;
+    userId: string;
+  }): Promise<{
+    userId: string;
+    phoneNumber: string | null;
+  } | null>;
+  getOrgUnitDefaultPhone(input: {
+    tenantId: string;
+    orgUnitId: string;
+  }): Promise<{
+    orgUnitId: string;
+    phoneNumber: string | null;
+  } | null>;
+};
+
+type ResolveCandidatePhoneResult =
+  | {
+    status: 'missing';
+    phoneNumber: null;
+  }
+  | {
+    status: 'invalid';
+    phoneNumber: null;
+  }
+  | {
+    status: 'valid';
+    phoneNumber: string;
+  };
+
+type ConnectShyftUserPhoneRow = {
+  id: string;
+  household_id: string | null;
+  phone_e164: string | null;
+};
+
+const normalizeString = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  return value.trim();
+};
+
+const resolveCandidatePhone = (value: unknown): ResolveCandidatePhoneResult => {
+  const rawPhone = normalizeString(value);
+  if (!rawPhone) {
+    return {
+      status: 'missing',
+      phoneNumber: null,
+    };
+  }
+
+  const normalizedPhone = normalizePhone(rawPhone, {
+    defaultCountry: 'US',
+  });
+  if (!normalizedPhone.ok) {
+    return {
+      status: 'invalid',
+      phoneNumber: null,
+    };
+  }
+
+  const voiceValidation = validatePhoneForChannel(normalizedPhone.phone, 'voice');
+  if (!voiceValidation.ok) {
+    return {
+      status: 'invalid',
+      phoneNumber: null,
+    };
+  }
+
+  return {
+    status: 'valid',
+    phoneNumber: normalizedPhone.phone.normalizedE164,
+  };
+};
+
+const buildResolution = (
+  input: {
+    orgUnitId: string;
+    phoneNumber: string | null;
+    source: ConnectShyftOperatorDestinationResolution['source'];
+    userId: string | null;
+  },
+): ConnectShyftOperatorDestinationResolution => ({
+  phoneNumber: input.phoneNumber,
+  source: input.source,
+  userId: input.userId,
+  orgUnitId: input.orgUnitId,
+});
+
+export class InMemoryConnectShyftOperatorDestinationStore
+implements ConnectShyftOperatorDestinationStore {
+  private readonly userPhones = new Map<string, { userId: string; phoneNumber: string | null }>();
+
+  private readonly orgUnitDefaultPhones = new Map<string, { orgUnitId: string; phoneNumber: string | null }>();
+
+  private buildUserKey(tenantId: string, userId: string): string {
+    return `${tenantId}::${userId}`;
+  }
+
+  private buildOrgUnitKey(tenantId: string, orgUnitId: string): string {
+    return `${tenantId}::${orgUnitId}`;
+  }
+
+  seedUserPhone(input: {
+    tenantId: string;
+    userId: string;
+    phoneNumber?: string | null;
+  }): void {
+    this.userPhones.set(this.buildUserKey(input.tenantId, input.userId), {
+      userId: input.userId,
+      phoneNumber: normalizeString(input.phoneNumber) || null,
+    });
+  }
+
+  seedOrgUnitDefaultPhone(input: {
+    tenantId: string;
+    orgUnitId: string;
+    phoneNumber?: string | null;
+  }): void {
+    this.orgUnitDefaultPhones.set(this.buildOrgUnitKey(input.tenantId, input.orgUnitId), {
+      orgUnitId: input.orgUnitId,
+      phoneNumber: normalizeString(input.phoneNumber) || null,
+    });
+  }
+
+  async getUserPhone(input: {
+    tenantId: string;
+    userId: string;
+  }): Promise<{ userId: string; phoneNumber: string | null } | null> {
+    return this.userPhones.get(this.buildUserKey(input.tenantId, input.userId)) || null;
+  }
+
+  async getOrgUnitDefaultPhone(input: {
+    tenantId: string;
+    orgUnitId: string;
+  }): Promise<{ orgUnitId: string; phoneNumber: string | null } | null> {
+    return this.orgUnitDefaultPhones.get(this.buildOrgUnitKey(input.tenantId, input.orgUnitId)) || null;
+  }
+}
+
+export class KnexConnectShyftOperatorDestinationStore
+implements ConnectShyftOperatorDestinationStore {
+  private readonly escalationConfigStore: KnexConnectShyftEscalationConfigStore;
+
+  constructor(private readonly resolveDb: () => Knex) {
+    this.escalationConfigStore = new KnexConnectShyftEscalationConfigStore(resolveDb);
+  }
+
+  private usersTable() {
+    return this.resolveDb().table<ConnectShyftUserPhoneRow>('users');
+  }
+
+  async getUserPhone(input: {
+    tenantId: string;
+    userId: string;
+  }): Promise<{ userId: string; phoneNumber: string | null } | null> {
+    const row = await this.usersTable()
+      .where({
+        id: input.userId,
+        household_id: input.tenantId,
+      })
+      .first(['id', 'phone_e164']);
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      userId: row.id,
+      phoneNumber: normalizeString(row.phone_e164) || null,
+    };
+  }
+
+  async getOrgUnitDefaultPhone(input: {
+    tenantId: string;
+    orgUnitId: string;
+  }): Promise<{ orgUnitId: string; phoneNumber: string | null } | null> {
+    const config = await this.escalationConfigStore.getConfig(input.tenantId, input.orgUnitId);
+    if (!config) {
+      return null;
+    }
+
+    return {
+      orgUnitId: config.orgUnitId,
+      phoneNumber: config.defaultOperatorPhoneE164,
+    };
+  }
+}
+
+export class ConnectShyftOperatorDestinationResolverService {
+  constructor(private readonly store: ConnectShyftOperatorDestinationStore) {}
+
+  async resolve(
+    input: ResolveConnectShyftOperatorDestinationInput,
+  ): Promise<ConnectShyftOperatorDestinationResolution> {
+    const claimedByUserId = normalizeString(input.claimedByUserId);
+    const actorUserId = normalizeString(input.actorUserId);
+    const visitedUserIds = new Set<string>();
+
+    if (claimedByUserId) {
+      visitedUserIds.add(claimedByUserId);
+
+      const claimedUser = await this.store.getUserPhone({
+        tenantId: input.tenantId,
+        userId: claimedByUserId,
+      });
+      const claimedPhone = resolveCandidatePhone(claimedUser?.phoneNumber);
+
+      if (claimedPhone.status === 'valid') {
+        return buildResolution({
+          orgUnitId: input.orgUnitId,
+          phoneNumber: claimedPhone.phoneNumber,
+          source: 'thread_assignee',
+          userId: claimedUser?.userId || claimedByUserId,
+        });
+      }
+
+      if (claimedPhone.status === 'invalid') {
+        return buildResolution({
+          orgUnitId: input.orgUnitId,
+          phoneNumber: null,
+          source: 'thread_assignee',
+          userId: claimedUser?.userId || claimedByUserId,
+        });
+      }
+    }
+
+    if (actorUserId && !visitedUserIds.has(actorUserId)) {
+      visitedUserIds.add(actorUserId);
+
+      const actorUser = await this.store.getUserPhone({
+        tenantId: input.tenantId,
+        userId: actorUserId,
+      });
+      const actorPhone = resolveCandidatePhone(actorUser?.phoneNumber);
+
+      if (actorPhone.status === 'valid') {
+        return buildResolution({
+          orgUnitId: input.orgUnitId,
+          phoneNumber: actorPhone.phoneNumber,
+          source: 'actor_user',
+          userId: actorUser?.userId || actorUserId,
+        });
+      }
+
+      if (actorPhone.status === 'invalid') {
+        return buildResolution({
+          orgUnitId: input.orgUnitId,
+          phoneNumber: null,
+          source: 'actor_user',
+          userId: actorUser?.userId || actorUserId,
+        });
+      }
+    }
+
+    const orgUnitDefault = await this.store.getOrgUnitDefaultPhone({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+    });
+    const orgUnitDefaultPhone = resolveCandidatePhone(orgUnitDefault?.phoneNumber);
+
+    if (orgUnitDefaultPhone.status === 'valid') {
+      return buildResolution({
+        orgUnitId: input.orgUnitId,
+        phoneNumber: orgUnitDefaultPhone.phoneNumber,
+        source: 'org_unit_default',
+        userId: null,
+      });
+    }
+
+    if (orgUnitDefaultPhone.status === 'invalid') {
+      return buildResolution({
+        orgUnitId: input.orgUnitId,
+        phoneNumber: null,
+        source: 'org_unit_default',
+        userId: null,
+      });
+    }
+
+    return buildResolution({
+      orgUnitId: input.orgUnitId,
+      phoneNumber: null,
+      source: 'none',
+      userId: null,
+    });
+  }
+}
+
+const connectShyftOperatorDestinationResolverService =
+  new ConnectShyftOperatorDestinationResolverService(
+    new KnexConnectShyftOperatorDestinationStore(() => db),
+  );
+
+export async function resolveOperatorDestination(
+  input: ResolveConnectShyftOperatorDestinationInput,
+): Promise<ConnectShyftOperatorDestinationResolution> {
+  return connectShyftOperatorDestinationResolverService.resolve(input);
+}
