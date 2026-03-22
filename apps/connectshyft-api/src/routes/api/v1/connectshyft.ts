@@ -67,6 +67,10 @@ import {
   connectShyftNumberMappingServiceAsync,
 } from '../../../modules/connectshyft/numberMappings';
 import {
+  ConnectShyftOperatorCallbackNumberPersistenceUnavailableError,
+  connectShyftOperatorCallbackNumberServiceAsync,
+} from '../../../modules/connectshyft/operatorCallbackNumbers';
+import {
   AsyncConnectShyftNeighborService,
   KnexConnectShyftNeighborStore,
   applyInboundSmsTextingPreference,
@@ -4850,6 +4854,20 @@ const performOutboundAction = async ({
   let neighborContactPointId: string | null = null;
   if (outboundAction === 'call') {
     operatorContactPointId = outboundCallPolicyRequest?.operatorContactPointId || null;
+    if (!operatorContactPointId && actorUserId) {
+      try {
+        const savedCallbackNumber =
+          await connectShyftOperatorCallbackNumberServiceAsync.getCurrentCallbackNumber({
+            tenantId: context.tenantId,
+            userId: actorUserId,
+          });
+        operatorContactPointId = savedCallbackNumber?.callbackNumberE164 || null;
+      } catch (error) {
+        if (!(error instanceof ConnectShyftOperatorCallbackNumberPersistenceUnavailableError)) {
+          throw error;
+        }
+      }
+    }
     if (!operatorContactPointId) {
       operatorContactPointId = resolveTestOverridePhoneFallback({
         allowTestFallback: allowPhoneFallback,

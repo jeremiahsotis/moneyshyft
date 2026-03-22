@@ -154,9 +154,18 @@ const isMissingPersistenceError = (error: unknown): boolean => {
   }
 
   const candidate = error as { code?: string };
-  return candidate.code === '42P01'
-    || candidate.code === '3F000'
-    || candidate.code === '42703';
+  const normalizedCode = typeof candidate.code === 'string'
+    ? candidate.code.toUpperCase()
+    : '';
+  return normalizedCode === '42P01'
+    || normalizedCode === '3F000'
+    || normalizedCode === '42703'
+    || normalizedCode === '28000'
+    || normalizedCode === '28P01'
+    || normalizedCode.startsWith('08')
+    || normalizedCode === 'ECONNREFUSED'
+    || normalizedCode === 'ENOTFOUND'
+    || normalizedCode === 'ETIMEDOUT';
 };
 
 const validateCallbackNumber = (value: unknown): ValidatedCallbackNumber => {

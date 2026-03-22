@@ -245,7 +245,7 @@ describe('connectshyft settings and availability route characterization', () => 
     ]));
   });
 
-  it('does not currently advertise callback-number or telephony-readiness pathways', async () => {
+  it('keeps callback setup anchored to the shared settings entry point without extra navigation routes', async () => {
     const app = buildApp({
       defaultRole: 'ORGUNIT_ADMIN',
       defaultUserId: 'user-connectshyft-alpha-admin',
@@ -339,7 +339,7 @@ describe('connectshyft settings and availability route characterization', () => 
     });
   });
 
-  it('does not currently expose operator callback readiness fields in availability responses', async () => {
+  it('preserves the availability response contract while telephony readiness stays on a dedicated route', async () => {
     const app = buildApp({
       defaultRole: 'ORGUNIT_ADMIN',
       defaultUserId: 'user-connectshyft-alpha-admin',

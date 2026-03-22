@@ -184,6 +184,7 @@ describe('ConnectShyftSettingsView', () => {
     expect(wrapper.get('[data-testid="connectshyft-current-callback-number"]').text()).toContain(
       '(317) 555-0100',
     );
+    expect(wrapper.text()).not.toContain('ConnectShyft More');
     expect(
       (wrapper.get('[data-testid="connectshyft-callback-number-input"]').element as HTMLInputElement).value,
     ).toBe('(317) 555-0100');
@@ -202,6 +203,9 @@ describe('ConnectShyftSettingsView', () => {
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-readiness-message"]').text()).toContain(
       'Voice forwarding requires an operator callback number.',
+    );
+    expect(wrapper.get('[data-testid="connectshyft-callback-readiness-chip"]').text()).toContain(
+      'Action Needed',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-next-action"]').text()).toContain(
       'Save a callback / forwarding number for the current operator.',

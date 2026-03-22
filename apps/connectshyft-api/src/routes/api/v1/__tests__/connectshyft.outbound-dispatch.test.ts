@@ -20,6 +20,7 @@ import {
   connectShyftNumberMappingServiceAsync,
   type ConnectShyftNumberMapping,
 } from '../../../../modules/connectshyft/numberMappings';
+import { AsyncConnectShyftOperatorCallbackNumberService } from '../../../../modules/connectshyft/operatorCallbackNumbers';
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings';
 import {
   connectShyftSmsPreferenceOverrideServiceAsync,
@@ -1230,6 +1231,39 @@ describe('connectshyft outbound dispatch routes', () => {
       code: 'CONNECTSHYFT_OPERATOR_CALLBACK_REQUIRED',
     });
     expect(startOutboundCallMock).not.toHaveBeenCalled();
+  });
+
+  it('clears the callback-number prerequisite when a saved operator callback number exists', async () => {
+    jest.spyOn(
+      AsyncConnectShyftOperatorCallbackNumberService.prototype,
+      'getCurrentCallbackNumber',
+    ).mockResolvedValue({
+      tenantId: 'tenant-connectshyft-f1',
+      userId: 'user-connectshyft-f1-primary-operator',
+      callbackNumberE164: '+12605550155',
+      callbackNumberRawInput: '(260) 555-0155',
+      createdAtUtc: '2026-03-22T12:00:00.000Z',
+      updatedAtUtc: '2026-03-22T12:05:00.000Z',
+    });
+
+    const response = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/call',
+      headers: buildHeaders(),
+      body: {
+        providerKey: 'telnyx',
+        targetPhone: '+12605550111',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_CALL_DISPATCHED',
+    });
+    expect(startOutboundCallMock).toHaveBeenCalledWith(expect.objectContaining({
+      providerKey: 'telnyx',
+      targetPhone: '+12605550155',
+    }));
   });
 
   it('surfaces normalized provider failure classification only after a valid resolved target reaches provider dispatch', async () => {
