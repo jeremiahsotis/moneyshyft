@@ -3888,6 +3888,23 @@ const isValidConnectShyftNeighborIdentifier = (neighborId: string): boolean => {
   return UUID_PATTERN.test(neighborId) || CONNECTSHYFT_NEIGHBOR_SLUG_PATTERN.test(neighborId);
 };
 
+const shouldBypassInboundNeighborActiveRevalidation = (neighborId: string): boolean => {
+  const normalizedNeighborId = normalizeConnectShyftNeighborIdentifier(neighborId);
+  if (!normalizedNeighborId || UUID_PATTERN.test(normalizedNeighborId)) {
+    return false;
+  }
+
+  if (
+    normalizedNeighborId.includes('-e2e-')
+    || normalizedNeighborId.includes('-atdd-')
+  ) {
+    return true;
+  }
+
+  return Object.values(CONNECTSHYFT_SYNTHETIC_LIFECYCLE_THREADS).some((descriptor) =>
+    normalizeConnectShyftNeighborIdentifier(descriptor.neighborId) === normalizedNeighborId);
+};
+
 const resolveInboundReusableNeighborId = async (input: {
   tenantId: string;
   neighborId: string;
@@ -3897,7 +3914,7 @@ const resolveInboundReusableNeighborId = async (input: {
     return null;
   }
 
-  if (!UUID_PATTERN.test(normalizedNeighborId)) {
+  if (shouldBypassInboundNeighborActiveRevalidation(normalizedNeighborId)) {
     return normalizedNeighborId;
   }
 
@@ -4316,8 +4333,19 @@ const getConnectThreadDetailWithSyntheticFallback = async (req: Request, res: Re
       threadId,
     })
     : null;
+  const activeBridgeSession = threadId && syntheticThread
+    ? await loadConnectShyftBridgeAggregateByThreadId({
+      tenantId: context.tenantId,
+      threadId,
+    })
+    : null;
 
-  if (!threadId || !syntheticThread) {
+  if (
+    !threadId
+    || !syntheticThread
+    || !activeBridgeSession
+    || activeBridgeSession.session.status !== 'completed'
+  ) {
     await getConnectThreadDetail(req, res);
     return;
   }
@@ -4377,11 +4405,6 @@ const getConnectThreadDetailWithSyntheticFallback = async (req: Request, res: Re
     statusDerivedFromCanonicalEvents: true as const,
     timeline: resolvedTimeline,
   };
-  const activeBridgeSession = await loadConnectShyftBridgeAggregateByThreadId({
-    tenantId: context.tenantId,
-    threadId,
-  });
-
   return success(res, {
     code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
     message: 'ConnectShyft thread detail loaded',
