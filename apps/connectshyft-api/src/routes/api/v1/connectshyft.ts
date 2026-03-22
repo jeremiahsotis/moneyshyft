@@ -67,9 +67,8 @@ import {
   connectShyftNumberMappingServiceAsync,
 } from '../../../modules/connectshyft/numberMappings';
 import {
-  ConnectShyftOperatorCallbackNumberPersistenceUnavailableError,
-  connectShyftOperatorCallbackNumberServiceAsync,
-} from '../../../modules/connectshyft/operatorCallbackNumbers';
+  resolveOperatorDestination,
+} from '../../../modules/connectshyft/operatorDestinationResolver';
 import {
   AsyncConnectShyftNeighborService,
   KnexConnectShyftNeighborStore,
@@ -4853,32 +4852,41 @@ const performOutboundAction = async ({
   let operatorContactPointId: string | null = null;
   let neighborContactPointId: string | null = null;
   if (outboundAction === 'call') {
-    operatorContactPointId = outboundCallPolicyRequest?.operatorContactPointId || null;
-    if (!operatorContactPointId && actorUserId) {
-      try {
-        const savedCallbackNumber =
-          await connectShyftOperatorCallbackNumberServiceAsync.getCurrentCallbackNumber({
-            tenantId: context.tenantId,
-            userId: actorUserId,
-          });
-        operatorContactPointId = savedCallbackNumber?.callbackNumberE164 || null;
-      } catch (error) {
-        if (!(error instanceof ConnectShyftOperatorCallbackNumberPersistenceUnavailableError)) {
-          throw error;
-        }
-      }
-    }
-    if (!operatorContactPointId) {
-      operatorContactPointId = resolveTestOverridePhoneFallback({
-        allowTestFallback: allowPhoneFallback,
-        primarySeed: actorUserId,
-        secondarySeed: threadId,
+    const operatorDestination = await resolveOperatorDestination({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      actorUserId,
+      claimedByUserId: lifecycleContext.claimedByUserId || thread.claimedByUserId || null,
+    });
+    operatorContactPointId = operatorDestination.phoneNumber;
+
+    if (!operatorContactPointId && operatorDestination.source === 'none') {
+      respondConnectShyftBusinessRefusal(res, {
+        code: 'CONNECTSHYFT_OPERATOR_DESTINATION_MISSING',
+        message: 'Outbound bridge calls require a resolved operator destination.',
+        data: {
+          context,
+          threadId,
+          providerResolution: {
+            ...providerSelection.providerResolution,
+            adapterInterfaceVersion: providerSelection.adapter.adapterInterfaceVersion,
+            providerBranchingInDomain: false,
+          },
+          sideEffects: {
+            dispatchAttempted: false,
+            lifecycleMutationApplied,
+            auditPersisted: false,
+          },
+          ...buildReopenLifecycleData(),
+        },
       });
+      return;
     }
+
     if (!operatorContactPointId) {
       respondConnectShyftBusinessRefusal(res, {
-        code: 'CONNECTSHYFT_OPERATOR_CALLBACK_REQUIRED',
-        message: 'Outbound bridge calls require an operator callback number.',
+        code: 'CONNECTSHYFT_OPERATOR_INVALID_PHONE',
+        message: 'Outbound bridge calls require a valid operator destination phone.',
         data: {
           context,
           threadId,
@@ -7440,9 +7448,18 @@ const performInboundWebhook = async ({
   let voiceDomainEvent: ReturnType<typeof mapConnectShyftInboundVoiceWebhookToDomainEvent> | null = null;
 
   if (isVoiceEvent && !isConnectedCallEvent) {
+    const operatorDestination = threadState === 'CLAIMED'
+      ? await resolveOperatorDestination({
+        tenantId,
+        orgUnitId,
+        actorUserId: resolveWebhookActorUserId(req),
+        claimedByUserId: lifecycleContext?.claimedByUserId || thread?.claimedByUserId || null,
+      })
+      : undefined;
     const routing = resolveConnectShyftInboundVoiceRouting({
       normalizedEventType,
       threadState,
+      operatorDestination,
     });
     timelineEventName = routing.eventName;
     routingDecision = routing.routingDecision;

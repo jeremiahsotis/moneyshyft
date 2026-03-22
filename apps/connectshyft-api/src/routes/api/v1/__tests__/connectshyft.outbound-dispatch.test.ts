@@ -20,7 +20,7 @@ import {
   connectShyftNumberMappingServiceAsync,
   type ConnectShyftNumberMapping,
 } from '../../../../modules/connectshyft/numberMappings';
-import { AsyncConnectShyftOperatorCallbackNumberService } from '../../../../modules/connectshyft/operatorCallbackNumbers';
+import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings';
 import {
   connectShyftSmsPreferenceOverrideServiceAsync,
@@ -370,6 +370,7 @@ const buildSmsTargetThread = (overrides: Partial<ConnectShyftThread> = {}): Conn
 describe('connectshyft outbound dispatch routes', () => {
   const previousNodeEnv = process.env.NODE_ENV;
   const previousEnableFlags = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
+  let resolveOperatorDestinationSpy: jest.SpyInstance;
 
   beforeAll(() => {
     process.env.NODE_ENV = 'test';
@@ -390,6 +391,15 @@ describe('connectshyft outbound dispatch routes', () => {
     resetConnectShyftOutboundDispatchReplayLedgerForTests();
     resetConnectShyftCommunicationAuditLogForTests();
     resetConnectShyftCommunicationReliabilityStateForTests();
+    resolveOperatorDestinationSpy = jest.spyOn(
+      OperatorDestinationResolverModule,
+      'resolveOperatorDestination',
+    ).mockResolvedValue({
+      phoneNumber: '+12605550155',
+      source: 'actor_user',
+      userId: 'user-connectshyft-f1-primary-operator',
+      orgUnitId: 'org-connectshyft-f1-east',
+    });
     jest.spyOn(connectShyftNumberMappingServiceAsync, 'resolveRoutingMappingByNumber').mockImplementation(
       async (input) => resolveRoutingMappingByNumberFromState(input),
     );
@@ -1137,6 +1147,11 @@ describe('connectshyft outbound dispatch routes', () => {
       ok: true,
       code: 'CONNECTSHYFT_THREAD_CALL_DISPATCHED',
       data: {
+        senderResolution: {
+          source: 'thread_alignment',
+          channel: 'voice',
+          senderPhone: '+12605550191',
+        },
         dispatch: {
           providerKey: 'telnyx',
           providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
@@ -1167,6 +1182,12 @@ describe('connectshyft outbound dispatch routes', () => {
       },
     });
     expect((response.body as any).data.bridgeSession.bridgeSessionId).toBeTruthy();
+    expect(resolveOperatorDestinationSpy).toHaveBeenCalledWith({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      actorUserId: 'user-connectshyft-f1-primary-operator',
+      claimedByUserId: null,
+    });
     expect(startOutboundCallMock).toHaveBeenCalledTimes(1);
     expect(startOutboundCallMock).toHaveBeenCalledWith(expect.objectContaining({
       providerKey: 'telnyx',
@@ -1176,6 +1197,68 @@ describe('connectshyft outbound dispatch routes', () => {
         autoRetry: false,
         redialPolicy: 'manual_only',
       },
+    }));
+  });
+
+  it('uses the claimed thread operator destination before provider dispatch on bridge calls', async () => {
+    resolveOperatorDestinationSpy.mockResolvedValueOnce({
+      phoneNumber: '+12605550156',
+      source: 'thread_assignee',
+      userId: 'user-connectshyft-f1-other-operator',
+      orgUnitId: 'org-connectshyft-f1-east',
+    });
+
+    const response = await invokeRoute({
+      url: '/threads/thread-f1-claimed-1002/call',
+      headers: buildHeaders(),
+      body: {
+        providerKey: 'telnyx',
+        targetPhone: '+12605550111',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_CALL_DISPATCHED',
+    });
+    expect(resolveOperatorDestinationSpy).toHaveBeenCalledWith({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      actorUserId: 'user-connectshyft-f1-primary-operator',
+      claimedByUserId: 'user-connectshyft-f1-other-operator',
+    });
+    expect(startOutboundCallMock).toHaveBeenCalledWith(expect.objectContaining({
+      threadId: 'thread-f1-claimed-1002',
+      targetPhone: '+12605550156',
+    }));
+  });
+
+  it('uses the orgUnit fallback operator destination before provider dispatch on bridge calls', async () => {
+    resolveOperatorDestinationSpy.mockResolvedValueOnce({
+      phoneNumber: '+12605550157',
+      source: 'org_unit_default',
+      userId: null,
+      orgUnitId: 'org-connectshyft-f1-east',
+    });
+
+    const response = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/call',
+      headers: buildHeaders(),
+      body: {
+        providerKey: 'telnyx',
+        targetPhone: '+12605550111',
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_CALL_DISPATCHED',
+    });
+    expect(startOutboundCallMock).toHaveBeenCalledWith(expect.objectContaining({
+      threadId: 'thread-f1-unclaimed-1001',
+      targetPhone: '+12605550157',
     }));
   });
 
@@ -1215,7 +1298,14 @@ describe('connectshyft outbound dispatch routes', () => {
     expect(sendSmsMock).toHaveBeenCalledTimes(1);
   });
 
-  it('refuses outbound bridge calls when no operator callback number is provided', async () => {
+  it('refuses outbound bridge calls when operator destination is missing', async () => {
+    resolveOperatorDestinationSpy.mockResolvedValueOnce({
+      phoneNumber: null,
+      source: 'none',
+      userId: null,
+      orgUnitId: 'org-connectshyft-f1-east',
+    });
+
     const response = await invokeRoute({
       url: '/threads/thread-f1-unclaimed-1001/call',
       headers: buildHeaders(),
@@ -1228,22 +1318,23 @@ describe('connectshyft outbound dispatch routes', () => {
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       ok: false,
-      code: 'CONNECTSHYFT_OPERATOR_CALLBACK_REQUIRED',
+      code: 'CONNECTSHYFT_OPERATOR_DESTINATION_MISSING',
+      data: {
+        sideEffects: {
+          dispatchAttempted: false,
+        },
+      },
     });
     expect(startOutboundCallMock).not.toHaveBeenCalled();
+    expect(startBridgeSessionMock).not.toHaveBeenCalled();
   });
 
-  it('clears the callback-number prerequisite when a saved operator callback number exists', async () => {
-    jest.spyOn(
-      AsyncConnectShyftOperatorCallbackNumberService.prototype,
-      'getCurrentCallbackNumber',
-    ).mockResolvedValue({
-      tenantId: 'tenant-connectshyft-f1',
-      userId: 'user-connectshyft-f1-primary-operator',
-      callbackNumberE164: '+12605550155',
-      callbackNumberRawInput: '(260) 555-0155',
-      createdAtUtc: '2026-03-22T12:00:00.000Z',
-      updatedAtUtc: '2026-03-22T12:05:00.000Z',
+  it('refuses outbound bridge calls when operator destination is invalid', async () => {
+    resolveOperatorDestinationSpy.mockResolvedValueOnce({
+      phoneNumber: null,
+      source: 'thread_assignee',
+      userId: 'user-connectshyft-f1-other-operator',
+      orgUnitId: 'org-connectshyft-f1-east',
     });
 
     const response = await invokeRoute({
@@ -1257,13 +1348,16 @@ describe('connectshyft outbound dispatch routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
-      ok: true,
-      code: 'CONNECTSHYFT_THREAD_CALL_DISPATCHED',
+      ok: false,
+      code: 'CONNECTSHYFT_OPERATOR_INVALID_PHONE',
+      data: {
+        sideEffects: {
+          dispatchAttempted: false,
+        },
+      },
     });
-    expect(startOutboundCallMock).toHaveBeenCalledWith(expect.objectContaining({
-      providerKey: 'telnyx',
-      targetPhone: '+12605550155',
-    }));
+    expect(startOutboundCallMock).not.toHaveBeenCalled();
+    expect(startBridgeSessionMock).not.toHaveBeenCalled();
   });
 
   it('surfaces normalized provider failure classification only after a valid resolved target reaches provider dispatch', async () => {

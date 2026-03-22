@@ -1,6 +1,7 @@
 // @ts-nocheck
 import request from 'supertest';
 import * as canonicalEventsModule from '../../../../modules/connectshyft/canonicalEvents';
+import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
 import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents';
 import * as providerCorrelationMappingsModule from '../../../../modules/connectshyft/providerCorrelationMappings';
@@ -110,6 +111,7 @@ describe('connectshyft inbound voice webhook route characterization', () => {
   registerProviderRegistryRouteIntegrationHooks();
 
   let recordCanonicalEventSpy: jest.SpyInstance;
+  let resolveOperatorDestinationSpy: jest.SpyInstance;
 
   beforeEach(() => {
     sendSmsMock.mockClear();
@@ -122,6 +124,15 @@ describe('connectshyft inbound voice webhook route characterization', () => {
     resetConnectShyftCanonicalEventsForTests();
     resetConnectShyftProviderCorrelationStateForTests();
 
+    resolveOperatorDestinationSpy = jest.spyOn(
+      OperatorDestinationResolverModule,
+      'resolveOperatorDestination',
+    ).mockResolvedValue({
+      phoneNumber: '+12605550155',
+      source: 'thread_assignee',
+      userId: 'user-connectshyft-f1-other-operator',
+      orgUnitId: 'org-connectshyft-f1-east',
+    });
     recordCanonicalEventSpy = jest.spyOn(
       canonicalEventsModule,
       'recordConnectShyftCanonicalEvent',
@@ -136,6 +147,7 @@ describe('connectshyft inbound voice webhook route characterization', () => {
   });
 
   afterEach(() => {
+    resolveOperatorDestinationSpy.mockRestore();
     recordCanonicalEventSpy.mockRestore();
   });
 
@@ -426,6 +438,150 @@ describe('connectshyft inbound voice webhook route characterization', () => {
     expect(response.body.data).not.toHaveProperty('transcription');
     expect(response.body.data).not.toHaveProperty('transcriptionOutbox');
     expect(response.body.data.audit).toEqual(response.body.data.outbox);
+  });
+
+  it('preserves claimed-thread accepted routing when operator destination resolves', async () => {
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildVoiceHeaders())
+      .send(buildVoiceWebhookBody({
+        threadId: 'thread-f1-claimed-1002',
+        providerEventId: 'provider-event-voice-claimed-1004',
+        providerLegId: 'provider-leg-voice-claimed-1004',
+        recordingUrl: 'https://connectshyft.test/claimed-characterization-1004.mp3',
+        voicemail_duration_seconds: 29,
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+      data: {
+        threadId: 'thread-f1-claimed-1002',
+        threadState: 'CLAIMED',
+        thread: {
+          threadId: 'thread-f1-claimed-1002',
+          state: 'CLAIMED',
+        },
+        routingPolicy: {
+          claimedMode: 'orgunit_configured_mode',
+        },
+        timeline: {
+          eventName: 'connectshyft.inbound.voice_voicemail_recorded',
+          routingDecision: 'accepted',
+          deterministicOrdering: true,
+        },
+        timelineOutcome: {
+          eventName: 'connectshyft.inbound.voice_voicemail_recorded',
+          routingDecision: 'accepted',
+        },
+        voicemailArtifact: {
+          artifactId: 'vm-thread-f1-claimed-1002-provider-event-voice-claimed-1004',
+          providerEventId: 'provider-event-voice-claimed-1004',
+          providerLegId: 'provider-leg-voice-claimed-1004',
+          recordingUrl: 'https://connectshyft.test/claimed-characterization-1004.mp3',
+          durationSeconds: 29,
+        },
+        transcription: {
+          requestQueued: true,
+          queueName: 'connectshyft.voicemail.transcription',
+          callbackCorrelation: {
+            threadId: 'thread-f1-claimed-1002',
+            voicemailArtifactId: 'vm-thread-f1-claimed-1002-provider-event-voice-claimed-1004',
+          },
+        },
+      },
+    });
+    expect(resolveOperatorDestinationSpy).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      claimedByUserId: 'user-connectshyft-f1-other-operator',
+    }));
+  });
+
+  it('uses the safe fallback path for claimed-thread voice events when operator destination is missing', async () => {
+    resolveOperatorDestinationSpy.mockResolvedValueOnce({
+      phoneNumber: null,
+      source: 'none',
+      userId: null,
+      orgUnitId: 'org-connectshyft-f1-east',
+    });
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildVoiceHeaders())
+      .send(buildVoiceWebhookBody({
+        threadId: 'thread-f1-claimed-1002',
+        providerEventId: 'provider-event-voice-claimed-missing-1005',
+        providerLegId: 'provider-leg-voice-claimed-missing-1005',
+        recordingUrl: 'https://connectshyft.test/claimed-missing-1005.mp3',
+        voicemail_duration_seconds: 18,
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+      data: {
+        threadId: 'thread-f1-claimed-1002',
+        threadState: 'CLAIMED',
+        timeline: {
+          eventName: 'connectshyft.inbound.voice_fallback_recorded',
+          routingDecision: 'intake_fallback',
+          deterministicOrdering: true,
+        },
+        timelineOutcome: {
+          eventName: 'connectshyft.inbound.voice_fallback_recorded',
+          routingDecision: 'intake_fallback',
+        },
+      },
+    });
+    expect(response.body.data).not.toHaveProperty('voicemailArtifact');
+    expect(response.body.data).not.toHaveProperty('transcription');
+  });
+
+  it('uses the safe fallback path for claimed-thread voice events when operator destination is invalid', async () => {
+    resolveOperatorDestinationSpy.mockResolvedValueOnce({
+      phoneNumber: null,
+      source: 'thread_assignee',
+      userId: 'user-connectshyft-f1-other-operator',
+      orgUnitId: 'org-connectshyft-f1-east',
+    });
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildVoiceHeaders())
+      .send(buildVoiceWebhookBody({
+        threadId: 'thread-f1-claimed-1002',
+        providerEventId: 'provider-event-voice-claimed-invalid-1006',
+        providerLegId: 'provider-leg-voice-claimed-invalid-1006',
+        recordingUrl: 'https://connectshyft.test/claimed-invalid-1006.mp3',
+        voicemail_duration_seconds: 21,
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+      data: {
+        threadId: 'thread-f1-claimed-1002',
+        threadState: 'CLAIMED',
+        timeline: {
+          eventName: 'connectshyft.inbound.voice_fallback_recorded',
+          routingDecision: 'intake_fallback',
+          deterministicOrdering: true,
+        },
+        timelineOutcome: {
+          eventName: 'connectshyft.inbound.voice_fallback_recorded',
+          routingDecision: 'intake_fallback',
+        },
+      },
+    });
+    expect(response.body.data).not.toHaveProperty('voicemailArtifact');
+    expect(response.body.data).not.toHaveProperty('transcription');
   });
 
   it('preserves the current connected-call auto-claim behavior for inbound voice webhooks', async () => {
