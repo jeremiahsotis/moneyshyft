@@ -1,0 +1,2785 @@
+jeremiahotis@jeremiah-otis:~/projects/shyftunity$ rg -n "ops/telephony/readiness|telephony/readiness|getTelephonyReadiness|ops.handlers|ops.router" apps/connectshyft-api/src
+jeremiahotis@jeremiah-otis:~/projects/shyftunity$ rg -n "calls/start|calls/bridge|messages/send" apps/connectshyft-api/src/routes apps/connectshyft-api/src/modules
+jeremiahotis@jeremiah-otis:~/projects/shyftunity$ rg -n "forward.*phone|operator.*phone|user.*phone|destination.*phone|forwardTo|forward_to|call.*forward" apps/connectshyft-api/src
+jeremiahotis@jeremiah-otis:~/projects/shyftunity$ cd ~/projects/shyftunity
+
+rg -n "postConnectThreadCall|getConnectThreadDetail|postConnectWebhookInbound|inboundVoice|bridgeSessions|senderNumberResolver|providerRegistry|telnyx|voice" apps/connectshyft-api/src
+
+rg -n "threadId.*call|/threads/:threadId/call|post\\('/api/v1/connectshyft/threads/.*/call|router.post\\('/threads/:threadId/call" apps/connectshyft-api/src
+
+rg -n "claimedByUserId|actorUserId|requestedByUserId|operatorParticipantId|participantId|userId" apps/connectshyft-api/src/modules/connectshyft
+
+rg -n "phone" apps/connectshyft-api/src/platform apps/connectshyft-api/src/modules/connectshyft apps/connectshyft-api/src/routes/api/v1 | sed -n '1,240p'
+apps/connectshyft-api/src/migrations/20260312120000_add_connectshyft_communication_reliability.ts
+79:        channel IN ('sms', 'voice', 'bridge', 'webhook')
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-detail.characterization.test.ts
+3:import * as BridgeSessionsModule from '../../../../modules/connectshyft/bridgeSessions';
+49:  voicemailIndicator: false,
+50:  voicemailLabel: null,
+134:        voicemailArtifacts: [],
+188:      'voicemailArtifacts',
+220:      'voicemailIndicator',
+221:      'voicemailLabel',
+260:        voicemailArtifacts: [],
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-message.characterization.test.ts
+3:import * as SenderNumberResolverModule from '../../../../modules/connectshyft/senderNumberResolver';
+4:import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
+24:  providerKey: 'telnyx',
+35:  providerKey: 'telnyx',
+48:  providerKey: 'telnyx',
+59:  providerKey: 'telnyx',
+84:    providerKey: 'telnyx',
+109:  'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+202:        providerKey: 'telnyx',
+270:          requestedProvider: 'telnyx',
+271:          resolvedProvider: 'telnyx',
+314:          providerKey: 'telnyx',
+433:        providerKey: 'telnyx',
+599:        providerKey: 'telnyx',
+666:        providerKey: 'telnyx',
+736:        providerKey: 'telnyx',
+800:        providerKey: 'telnyx',
+812:        providerKey: 'telnyx',
+846:        providerKey: 'telnyx',
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-sms.characterization.test.ts
+77:    providerKey: 'telnyx',
+96:  'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+312:            requestedProvider: 'telnyx',
+313:            resolvedProvider: 'telnyx',
+477:            requestedProvider: 'telnyx',
+478:            resolvedProvider: 'telnyx',
+568:            requestedProvider: 'telnyx',
+569:            resolvedProvider: 'telnyx',
+645:            requestedProvider: 'telnyx',
+646:            resolvedProvider: 'telnyx',
+735:            requestedProvider: 'telnyx',
+736:            resolvedProvider: 'telnyx',
+806:            requestedProvider: 'telnyx',
+807:            resolvedProvider: 'telnyx',
+872:            requestedProvider: 'telnyx',
+873:            resolvedProvider: 'telnyx',
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.neighbors.test.ts
+5:import * as BridgeSessionsModule from '../../../../modules/connectshyft/bridgeSessions';
+658:      voicemailIndicator: false,
+659:      voicemailLabel: null,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-voice.characterization.test.ts
+4:import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
+43:    eventType: readString(rawEventType) || 'voice.voicemail',
+69:    providerKey: 'telnyx',
+87:  'x-test-connectshyft-user-id': 'user-connectshyft-voice-characterization',
+91:  'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+98:  eventType: 'voice.voicemail',
+99:  sid: 'voice-sid-characterization-1001',
+100:  providerEventId: 'provider-event-voice-voicemail-1001',
+101:  providerLegId: 'provider-leg-voice-voicemail-1001',
+104:  recordingUrl: 'https://connectshyft.test/voicemail-characterization-1001.mp3',
+105:  voicemail_duration_seconds: 47,
+109:describe('connectshyft inbound voice webhook route characterization', () => {
+142:  it('returns the current inbound voice success envelope and voicemail routing shape', async () => {
+155:        sid: 'voice-sid-characterization-1001',
+158:        eventType: 'voice.voicemail',
+160:          requestedProvider: 'telnyx',
+161:          resolvedProvider: 'telnyx',
+172:          providerLegId: 'provider-leg-voice-voicemail-1001',
+174:          providerEventId: 'provider-event-voice-voicemail-1001',
+180:          dedupeKey: 'provider-event:provider-event-voice-voicemail-1001',
+183:          eventType: 'voice.voicemail',
+194:          eventType: 'voice.voicemail',
+226:        voicemailArtifact: {
+227:          artifactId: 'vm-thread-f1-unclaimed-1001-provider-event-voice-voicemail-1001',
+228:          channel: 'voice',
+230:          providerEventId: 'provider-event-voice-voicemail-1001',
+232:          providerLegId: 'provider-leg-voice-voicemail-1001',
+235:          recordingUrl: 'https://connectshyft.test/voicemail-characterization-1001.mp3',
+240:          queueName: 'connectshyft.voicemail.transcription',
+245:            providerEventId: 'provider-event-voice-voicemail-1001',
+246:            correlationEventId: 'provider-event-voice-voicemail-1001',
+247:            providerLegId: 'provider-leg-voice-voicemail-1001',
+248:            voicemailArtifactId: 'vm-thread-f1-unclaimed-1001-provider-event-voice-voicemail-1001',
+258:          eventName: 'connectshyft.inbound.voice_voicemail_recorded',
+259:          routingDecision: 'voicemail_only',
+263:          eventName: 'connectshyft.inbound.voice_voicemail_recorded',
+264:          routingDecision: 'voicemail_only',
+267:          eventName: 'connectshyft.inbound.voice_voicemail_recorded',
+274:            event_type: 'voice.voicemail',
+275:            routing_decision: 'voicemail_only',
+276:            voicemail_artifact_id: 'vm-thread-f1-unclaimed-1001-provider-event-voice-voicemail-1001',
+277:            transcription_queue: 'connectshyft.voicemail.transcription',
+286:          eventName: 'connectshyft.inbound.voice_voicemail_recorded',
+289:          eventName: 'connectshyft.voicemail.transcription_requested',
+290:          queueName: 'connectshyft.voicemail.transcription',
+295:            voicemail_artifact_id: 'vm-thread-f1-unclaimed-1001-provider-event-voice-voicemail-1001',
+296:            provider_event_id: 'provider-event-voice-voicemail-1001',
+297:            provider_leg_id: 'provider-leg-voice-voicemail-1001',
+325:      'voicemailArtifact',
+347:  it('preserves the current fallback routing shape for inbound voice events', async () => {
+354:        eventType: 'voice.fallback',
+355:        providerEventId: 'provider-event-voice-fallback-1002',
+356:        providerLegId: 'provider-leg-voice-fallback-1002',
+358:        voicemail_duration_seconds: 33,
+367:        eventType: 'voice.fallback',
+373:          providerLegId: 'provider-leg-voice-fallback-1002',
+374:          providerEventId: 'provider-event-voice-fallback-1002',
+380:          dedupeKey: 'provider-event:provider-event-voice-fallback-1002',
+398:          eventName: 'connectshyft.inbound.voice_fallback_recorded',
+403:          eventName: 'connectshyft.inbound.voice_fallback_recorded',
+407:          eventName: 'connectshyft.inbound.voice_fallback_recorded',
+411:            voicemail_artifact_id: null,
+421:          eventName: 'connectshyft.inbound.voice_fallback_recorded',
+425:    expect(response.body.data).not.toHaveProperty('voicemailArtifact');
+431:  it('preserves the current connected-call auto-claim behavior for inbound voice webhooks', async () => {
+456:          eventType: 'voice.connected',
+457:          sid: 'voice-sid-connected-2003',
+458:          providerEventId: 'provider-event-voice-connected-2003',
+459:          providerLegId: 'provider-leg-voice-connected-2003',
+464:          voicemail_duration_seconds: undefined,
+473:          sid: 'voice-sid-connected-2003',
+476:          eventType: 'voice.connected',
+484:            providerLegId: 'provider-leg-voice-connected-2003',
+485:            providerEventId: 'provider-event-voice-connected-2003',
+491:            dedupeKey: 'provider-event:provider-event-voice-connected-2003',
+559:      expect(response.body.data).not.toHaveProperty('voicemailArtifact');
+568:  it('returns the current canonical-persistence refusal shape for inbound voice webhooks', async () => {
+569:    recordCanonicalEventSpy.mockRejectedValueOnce(new Error('voice-canonical-down'));
+575:        providerEventId: 'provider-event-voice-error-1004',
+576:        providerLegId: 'provider-leg-voice-error-1004',
+583:      message: 'Inbound voice processing could not persist canonical event side effects.',
+587:          requestedProvider: 'telnyx',
+588:          resolvedProvider: 'telnyx',
+599:          providerLegId: 'provider-leg-voice-error-1004',
+600:          providerEventId: 'provider-event-voice-error-1004',
+606:          dedupeKey: 'provider-event:provider-event-voice-error-1004',
+617:        error: 'voice-canonical-down',
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-timeline.characterization.test.ts
+8:import { CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME } from '../../../../modules/connectshyft/inboundVoice';
+50:  voicemailIndicator: false,
+51:  voicemailLabel: null,
+87:  it('returns the current timeline response shape in chronological order for sms and voicemail items', async () => {
+119:        voicemailArtifact: {
+120:          recordingUrl: 'https://connectshyft.test/voicemail-characterization-1001.mp3',
+207:        type: 'voicemail',
+209:        channel: 'voicemail',
+213:        recording_url: 'https://connectshyft.test/voicemail-characterization-1001.mp3',
+229:      'voicemail',
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts
+11:import * as ProviderRegistry from '../../../../modules/connectshyft/providerRegistry';
+187:          telnyx: {
+196:        providerKey: 'telnyx',
+206:          requestedProvider: 'telnyx',
+233:        providerKey: 'telnyx',
+245:          telnyx: {
+253:        eventType: 'voice.connected',
+254:        providerKey: 'telnyx',
+265:          requestedProvider: 'telnyx',
+497:        providerKey: 'telnyx',
+516:        requestedProvider: 'telnyx',
+517:        resolvedProvider: 'telnyx',
+521:        providerKey: 'telnyx',
+527:          providerKey: 'telnyx',
+530:          providerMessageId: 'telnyx-message-thread-f1-unclaimed-1001',
+556:          providerKey: 'telnyx',
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts
+310:        providerKey: 'telnyx',
+320:          requestedProvider: 'telnyx',
+321:          resolvedProvider: 'telnyx',
+465:          providerKey: 'telnyx',
+899:        providerKey: 'telnyx',
+908:        providerKey: 'telnyx',
+922:        eventType: 'voice.connected',
+926:        providerKey: 'telnyx',
+929:          telnyxCallControlId: 'telnyx-hidden',
+1027:        eventType: 'voice.connected',
+1031:        providerKey: 'telnyx',
+1054:  it('records voice-family canonical webhook payloads with channel=voice', async () => {
+1068:        eventType: 'voice.fallback',
+1072:        providerKey: 'telnyx',
+1095:        channel: 'voice',
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.test.shared.ts
+66:  'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx', 'mock-sandbox']),
+93:  expect(payload).not.toHaveProperty('telnyxCallControlId');
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.bridge-flow.test.ts
+2:import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions'
+31:  providerKey: 'telnyx',
+47:  providerKey: 'telnyx',
+67:  providerKey: 'telnyx',
+86:    providerKey: 'telnyx',
+103:  'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+264:        providerKey: 'telnyx',
+276:          providerKey: 'telnyx',
+316:        providerKey: 'telnyx',
+329:          channel: 'voice',
+403:        providerKey: 'telnyx',
+501:        providerKey: 'telnyx',
+575:        providerKey: 'telnyx',
+672:        providerKey: 'telnyx',
+734:        providerKey: 'telnyx',
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.outbound-dispatch.test.ts
+12:import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
+59:  providerKey: 'telnyx',
+70:  providerKey: 'telnyx',
+82:  providerKey: 'telnyx',
+93:  providerKey: 'telnyx',
+112:    providerKey: 'telnyx',
+129:  'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+407:      providerKey: 'telnyx',
+424:          providerKey: 'telnyx',
+450:          providerKey: 'telnyx',
+462:      providerKey: 'telnyx',
+480:        providerKey: 'telnyx',
+502:        'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx', 'mock-sandbox']),
+522:      providerKey: 'telnyx',
+534:        providerKey: 'telnyx',
+549:        providerKey: 'telnyx',
+751:        providerKey: 'telnyx',
+760:        providerKey: 'telnyx',
+1021:        providerKey: 'telnyx',
+1070:        providerKey: 'telnyx',
+1102:        providerKey: 'telnyx',
+1128:        providerKey: 'telnyx',
+1140:          providerKey: 'telnyx',
+1171:      providerKey: 'telnyx',
+1190:        providerKey: 'telnyx',
+1203:        providerKey: 'telnyx',
+1222:        providerKey: 'telnyx',
+1239:        providerKey: 'telnyx',
+1250:        'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx', 'mock-sandbox']),
+1263:          providerKey: 'telnyx',
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.webhook-transcription.characterization.test.ts
+17:const TEST_CALLBACK_PROVIDER_EVENT_ID = 'provider-event-voice-seed-1001';
+18:const TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID = 'vm-thread-f1-claimed-1002-provider-event-voice-seed-1001';
+44:    eventType: readString(rawEventType) || 'voice.transcription.completed',
+70:    providerKey: 'telnyx',
+87:  'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+94:  eventType: 'voice.transcription.completed',
+104:    voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+113:  eventId: 'canonical-event-voice-seed-1001',
+116:  eventType: 'voice.voicemail',
+124:        voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+182:      message: 'Transcription callback attached to voicemail artifact',
+184:        eventType: 'voice.transcription.completed',
+186:          requestedProvider: 'telnyx',
+187:          resolvedProvider: 'telnyx',
+198:          voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+208:          voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+211:          eventName: 'connectshyft.voicemail.transcription_attached',
+222:          eventType: 'voice.transcription.completed',
+224:            eventName: 'connectshyft.voicemail.transcription_attached',
+226:            voicemailArtifact: {
+277:        eventType: 'voice.transcription.completed',
+279:          requestedProvider: 'telnyx',
+280:          resolvedProvider: 'telnyx',
+331:      message: 'Transcription callback correlation is invalid or unresolved for voicemail attachment.',
+335:          requestedProvider: 'telnyx',
+336:          resolvedProvider: 'telnyx',
+347:          voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+359:          eventName: 'connectshyft.voicemail.transcription_refused',
+365:            voicemail_artifact_id: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+405:          voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.timeline.test.ts
+54:  voicemailIndicator: false,
+55:  voicemailLabel: null,
+373:  it('keeps future voice placeholders in stable order alongside sms items', async () => {
+378:      threadId: 'thread-timeline-voice-1001',
+383:        threadId: 'thread-timeline-voice-1001',
+397:        threadId: 'thread-timeline-voice-1001',
+402:          channel: 'voice',
+408:        threadId: 'thread-timeline-voice-1001',
+424:        .get('/api/v1/connectshyft/threads/thread-timeline-voice-1001/timeline')
+430:        'voice_event',
+434:        channel: 'voice',
+435:        type: 'voice_event',
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts
+3:import * as SenderNumberResolverModule from '../../../../modules/connectshyft/senderNumberResolver';
+4:import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
+21:  providerKey: 'telnyx',
+32:  providerKey: 'telnyx',
+45:  providerKey: 'telnyx',
+56:  providerKey: 'telnyx',
+81:    providerKey: 'telnyx',
+106:  'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+120:    channel: 'voice',
+147:    channel: 'voice',
+191:        providerKey: 'telnyx',
+259:          requestedProvider: 'telnyx',
+260:          resolvedProvider: 'telnyx',
+272:            channel: 'voice',
+284:          channel: 'voice',
+292:          providerKey: 'telnyx',
+430:        providerKey: 'telnyx',
+486:            channel: 'voice',
+592:        providerKey: 'telnyx',
+610:          requestedProvider: 'telnyx',
+611:          resolvedProvider: 'telnyx',
+632:        providerKey: 'telnyx',
+650:          requestedProvider: 'telnyx',
+651:          resolvedProvider: 'telnyx',
+678:        providerKey: 'telnyx',
+699:          channel: 'voice',
+723:        providerKey: 'telnyx',
+748:        providerKey: 'telnyx',
+
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts
+31:  getConnectThreadDetail,
+39:  postConnectThreadCall,
+44:  postConnectWebhookInbound,
+91:} from '../../../modules/connectshyft/senderNumberResolver';
+105:} from '../../../modules/connectshyft/providerRegistry';
+144:} from '../../../modules/connectshyft/inboundVoice';
+166:} from '../../../modules/connectshyft/bridgeSessions';
+200:  inboundVoiceVoicemail: CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
+201:  inboundVoiceFallback: CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
+202:  voicemailTranscriptionRequested: CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME,
+203:  voicemailTranscriptionAttached: CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME,
+230:const CONNECTSHYFT_CONNECTED_CALL_EVENT_TYPES = new Set(['voice.connected', 'call.connected', 'callconnected']);
+1403:    voicemailIndicator: false,
+1404:    voicemailLabel: null,
+1420:      voicemailLabel: '',
+2328:    channel: isSms ? 'sms' : 'voice',
+2350:  routingDecision: 'voicemail_only' | 'intake_fallback' | 'accepted';
+2357:    || input.eventType.toLowerCase().includes('voice')
+2359:    ? 'voice'
+2565:  conversationType: 'message' | 'voicemail' | 'lifecycle';
+2572:): 'message' | 'voicemail' | 'lifecycle' => {
+2575:    normalized.includes('voicemail')
+2577:    || normalized.includes('voice.')
+2579:    return 'voicemail';
+2621:      firstClass: conversationType === 'voicemail' || conversationType === 'message',
+2659:    const voicemailArtifact = asRecord(payload?.voicemailArtifact);
+2660:    const payloadArtifactId = normalizeLifecycleString(voicemailArtifact?.artifactId);
+2663:      const transcription = asRecord(voicemailArtifact?.transcription);
+2674:    if (event.eventName !== CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.voicemailTranscriptionAttached) {
+2681:      metadata?.voicemailArtifactId
+2682:      || payload?.voicemailArtifactId
+2683:      || voicemailArtifact?.artifactId,
+2692:      || asRecord(voicemailArtifact?.transcription)?.text,
+2708:  voicemailArtifactId: string;
+2762:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'voicemailArtifactId',
+2763:            payload -> 'payload' -> 'transcription' -> 'callbackCorrelation' ->> 'voicemail_artifact_id'
+2765:          [input.voicemailArtifactId],
+2798:      callbackCorrelation?.voicemailArtifactId || callbackCorrelation?.voicemail_artifact_id,
+2810:      && callbackArtifactId === input.voicemailArtifactId
+3587:  channel: 'sms' | 'voice' | 'bridge' | 'webhook';
+4040:router.get('/threads/:threadId', getConnectThreadDetail);
+4680:    const voiceSenderResolution = await resolveSenderNumber(
+4685:        channel: 'voice',
+4691:    if (!voiceSenderResolution.ok) {
+4692:      const voiceSenderCode = voiceSenderResolution.reason === 'sender_mapping_ambiguous'
+4696:        code: voiceSenderCode,
+4697:        message: voiceSenderResolution.reason === 'sender_mapping_ambiguous'
+4706:            reason: voiceSenderResolution.reason,
+4708:            channel: 'voice',
+4709:            orgUnitId: voiceSenderResolution.routingMetadata.orgUnitId,
+4710:            candidateProviderNumberE164: voiceSenderResolution.routingMetadata.candidateProviderNumberE164,
+4727:    outboundCallSenderPhone = voiceSenderResolution.providerNumberE164;
+4729:      source: voiceSenderResolution.routingMetadata.source,
+4730:      channel: 'voice',
+4731:      senderPhone: voiceSenderResolution.providerNumberE164,
+4732:      orgUnitId: voiceSenderResolution.routingMetadata.orgUnitId,
+4733:      selectedMappingId: voiceSenderResolution.mappingId,
+4734:      selectedMappingLabel: voiceSenderResolution.routingMetadata.mappingLabel,
+4735:      alignedFrom: voiceSenderResolution.routingMetadata.alignedFrom,
+5551:            eventName: 'connectshyft.voicemail.transcription_refused',
+5578:        voicemailArtifactId: callbackPayload.correlation.voicemailArtifactId || null,
+5666:      callbackPayload.correlation.voicemailArtifactId,
+5693:        voicemailArtifactId: callbackVoicemailArtifactId,
+5718:        message: 'Transcription callback correlation is invalid or unresolved for voicemail attachment.',
+5733:            voicemailArtifactId: callbackVoicemailArtifactId || null,
+5745:            eventName: 'connectshyft.voicemail.transcription_refused',
+5751:              voicemail_artifact_id: callbackVoicemailArtifactId || null,
+5773:          voicemailArtifactId: callbackVoicemailArtifactId,
+5811:            voicemailArtifactId: callbackVoicemailArtifactId,
+5843:      message: 'Transcription callback attached to voicemail artifact',
+5857:          voicemailArtifactId: callbackVoicemailArtifactId,
+5867:          voicemailArtifactId: callbackVoicemailArtifactId,
+5870:          eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.voicemailTranscriptionAttached,
+6850:  const isVoiceEvent = normalizedEventType.startsWith('voice') || normalizedEventType.includes('call');
+6882:  const voiceNeighborId = resolvedVoiceNeighborId || candidateVoiceNeighborId;
+6989:      neighborId: voiceNeighborId,
+7001:      fallbackNeighborId: voiceNeighborId || lifecycleContext.syntheticThread.neighborId,
+7009:  let routingDecision: 'voicemail_only' | 'intake_fallback' | 'accepted' = 'accepted';
+7013:      : CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.inboundVoiceVoicemail;
+7014:  let voiceRoutingPolicy: { claimedMode?: 'orgunit_configured_mode' } = {};
+7015:  let voiceDomainEvent: ReturnType<typeof mapConnectShyftInboundVoiceWebhookToDomainEvent> | null = null;
+7024:    voiceRoutingPolicy = routing.routingPolicy;
+7026:    voiceDomainEvent = mapConnectShyftInboundVoiceWebhookToDomainEvent({
+7039:    voiceDomainEvent && routingDecision !== 'intake_fallback',
+7041:  const voicemailArtifactId = shouldCreateVoicemailArtifact
+7048:  const transcription = shouldCreateVoicemailArtifact && voicemailArtifactId
+7055:      voicemailArtifactId,
+7058:  const voicemailArtifact = shouldCreateVoicemailArtifact && voicemailArtifactId && voiceDomainEvent
+7060:      artifactId: voicemailArtifactId,
+7061:      ...voiceDomainEvent.inboundVoiceArtifact,
+7072:      payload: voiceDomainEvent
+7074:          domainEvent: voiceDomainEvent,
+7077:          voicemailArtifactId,
+7089:    await markWebhookReceipt('FAILED_RETRYABLE', 'inbound_voice_canonical_persistence_unavailable');
+7092:      message: 'Inbound voice processing could not persist canonical event side effects.',
+7106:          ...(voiceNeighborId ? { neighborId: voiceNeighborId } : {}),
+7133:  const responseThread = thread && voiceNeighborId
+7136:      neighborId: voiceNeighborId,
+7146:      from: voiceDomainEvent?.inboundVoiceArtifact.from || (typeof req.body?.from === 'string' ? req.body.from : null),
+7147:      to: voiceDomainEvent?.inboundVoiceArtifact.to || (typeof req.body?.to === 'string' ? req.body.to : null),
+7159:        ...(voiceNeighborId ? { neighborId: voiceNeighborId } : {}),
+7195:      ...(voiceRoutingPolicy.claimedMode
+7198:              claimedMode: voiceRoutingPolicy.claimedMode,
+7202:      ...(voicemailArtifact ? { voicemailArtifact } : {}),
+7225:          neighbor_id: voiceNeighborId,
+7229:          voicemail_artifact_id: voicemailArtifactId,
+7244:          neighbor_id: voiceNeighborId,
+7248:          voicemail_artifact_id: voicemailArtifactId,
+7260:              eventName: CONNECTSHYFT_LIFECYCLE_EVENT_NAMES.voicemailTranscriptionRequested,
+7266:                voicemail_artifact_id: transcription.callbackCorrelation.voicemailArtifactId,
+7286:router.post('/threads/:threadId/call', postConnectThreadCall);
+7290:router.post('/webhooks/inbound', postConnectWebhookInbound);
+
+apps/connectshyft-api/src/modules/connectshyft/threadTimelineDto.ts
+9:  type: 'message' | 'voice_event' | 'voicemail';
+11:  channel: 'sms' | 'voice' | 'voicemail';
+47:  if (item.type !== 'voicemail') {
+
+apps/connectshyft-api/src/modules/connectshyft/threadTimeline.ts
+12:} from './inboundVoice';
+19:  started: 'connectshyft.voice.started',
+20:  connected: 'connectshyft.voice.connected',
+21:  ended: 'connectshyft.voice.ended',
+26:export type ConnectShyftThreadTimelineChannel = 'sms' | 'voice' | 'voicemail';
+28:export type ConnectShyftThreadTimelineItemType = 'message' | 'voice_event' | 'voicemail';
+47:  type: 'voice_event';
+48:  channel: 'voice';
+53:  type: 'voicemail';
+54:  channel: 'voicemail';
+159:  return asRecord(payload.voicemailArtifact);
+239:    type: 'voice_event',
+240:    channel: 'voice',
+260:    type: 'voicemail',
+261:    channel: 'voicemail',
+
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts
+20:} from './providerRegistry'
+594:  if (normalizedEventType === 'callanswered' || normalizedEventType === 'voiceanswered') {
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_READ_NOTES.md
+11:- `apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.ts`
+12:  - owns thread detail request handoff, response assembly, canonical timeline inclusion, voicemail artifact projection, and bridge-session payload shaping
+24:- the current detail envelope with `thread`, `bridgeSession`, `voicemailArtifacts`, `actions`, and policy metadata
+49:- inbound SMS and inbound voice extraction
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/NEIGHBOR_IDENTITY_BRIDGE_NOTES.md
+93:- inbound voice extraction
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_LIFECYCLE_NOTES.md
+57:- inbound voice extraction
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectThreadCall.ts
+4:export const postConnectThreadCall = async (req: Request, res: Response) =>
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.ts
+7:import { loadConnectShyftBridgeAggregateByThreadId } from '../bridgeSessions';
+10:} from '../inboundVoice';
+32:  conversationType: 'message' | 'voicemail' | 'lifecycle';
+106:): 'message' | 'voicemail' | 'lifecycle' => {
+109:    normalized.includes('voicemail')
+111:    || normalized.includes('voice.')
+113:    return 'voicemail';
+156:      firstClass: conversationType === 'voicemail' || conversationType === 'message',
+186:    const voicemailArtifact = asRecord(payload?.voicemailArtifact);
+187:    const payloadArtifactId = normalizeString(voicemailArtifact?.artifactId);
+190:      const transcription = asRecord(voicemailArtifact?.transcription);
+208:      metadata?.voicemailArtifactId
+209:      || payload?.voicemailArtifactId
+210:      || voicemailArtifact?.artifactId,
+219:      || asRecord(voicemailArtifact?.transcription)?.text,
+254:export const getConnectThreadDetail = async (req: Request, res: Response) => {
+289:  const shouldSynthesizeVoicemailTimeline = thread.voicemailIndicator
+290:    || readContext.threadId.toLowerCase().includes('voicemail');
+296:          eventId: `${thread.threadId}-voicemail-inline`,
+299:          eventType: 'connectshyft.voicemail.inline',
+301:            eventName: 'connectshyft.voicemail.inline',
+302:            summary: thread.display?.voicemailLabel || thread.voicemailLabel || 'Voicemail received',
+308:          eventName: 'connectshyft.voicemail.inline',
+312:          conversationType: 'voicemail' as const,
+318:  const voicemailArtifacts = resolveVoicemailArtifactsFromTimeline(resolvedTimeline);
+340:      voicemailArtifacts,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectWebhookInbound.ts
+4:export const postConnectWebhookInbound = async (req: Request, res: Response) =>
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/INBOUND_WEBHOOK_NOTES.md
+11:  - owns the currently registered inbound webhook core execution path that preserves the existing inbound SMS, inbound voice, voicemail, transcription callback, and auto-claim behavior
+12:- `apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectWebhookInbound.ts`
+31:  - still owned by the existing inbound core in `connectshyft.ts` and provider-facing modules such as `providerRegistry.ts`
+37:  - still owned by the existing inbound core in `connectshyft.ts` and `bridgeSessions.ts`
+40:- inbound voice, voicemail artifact, and transcription internals
+41:  - still owned by the existing inbound core in `connectshyft.ts` and `inboundVoice.ts`
+53:- existing nested provider, correlation, canonical, bridge, voicemail, transcription, auto-claim, and side-effect payload structure remains unchanged
+64:- current inbound voice behavior
+65:- current voice auto-claim behavior
+66:- current voicemail behavior
+81:- redesign voicemail or transcription processing
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/README.md
+69:- inbound SMS or voice rewrites
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/index.ts
+10:export { getConnectThreadDetail } from './getConnectThreadDetail';
+19:export { postConnectThreadCall } from './postConnectThreadCall';
+24:export { postConnectWebhookInbound } from './postConnectWebhookInbound';
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md
+12:- `apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectThreadCall.ts`
+26:  - still owned by the existing outbound core in `connectshyft.ts` and provider-facing modules such as `providerRegistry.ts`
+28:  - still owned by the existing outbound core in `connectshyft.ts` and `bridgeSessions.ts`
+67:- inbound voice extraction
+68:- voicemail handling extraction
+90:That separation should stay explicit. Follow-up cleanup should not use the outbound handlers or `threadOutboundContext.ts` as a place to absorb inbound message intake, webhook correlation, provider signature handling, bridge webhook progression, voicemail processing, or transcription callbacks. Those surfaces remain intentionally deferred to the next slice after Slice 8.
+
+apps/connectshyft-api/src/modules/connectshyft/http/inboundWebhookContext.ts
+10:} from '../providerRegistry';
+142:  channelHint: 'sms' | 'voice';
+406:        : 'voice',
+
+apps/connectshyft-api/src/modules/connectshyft/senderNumberResolver.ts
+13:export type ConnectShyftSenderChannel = 'sms' | 'voice';
+
+apps/connectshyft-api/src/modules/connectshyft/readContracts.ts
+17:  voicemailLabel: string;
+50:  voicemailIndicator: boolean;
+51:  voicemailLabel: string | null;
+83:  voicemailIndicator: boolean;
+102:  voicemail_waiting?: boolean | number | string | null;
+103:  voicemail_indicator?: boolean | number | string | null;
+104:  unread_voicemail_count?: number | string | null;
+105:  unread_voicemail_count_mine?: number | string | null;
+185:    voicemailIndicator: false,
+201:    voicemailIndicator: false,
+217:    voicemailIndicator: false,
+233:    voicemailIndicator: false,
+249:    voicemailIndicator: false,
+265:    voicemailIndicator: true,
+281:    voicemailIndicator: false,
+297:    voicemailIndicator: false,
+313:    voicemailIndicator: false,
+329:    voicemailIndicator: false,
+345:    voicemailIndicator: false,
+361:    voicemailIndicator: false,
+377:    voicemailIndicator: false,
+393:    voicemailIndicator: false,
+409:    voicemailIndicator: false,
+425:    voicemailIndicator: false,
+441:    voicemailIndicator: false,
+447:    threadId: 'thread-ux-r1-claimed-voicemail-1004',
+457:    voicemailIndicator: true,
+473:    voicemailIndicator: true,
+489:    voicemailIndicator: true,
+490:    summary: 'Claimed voicemail remains with assigned owner',
+505:    voicemailIndicator: false,
+521:    voicemailIndicator: false,
+537:    voicemailIndicator: false,
+553:    voicemailIndicator: false,
+569:    voicemailIndicator: true,
+585:    voicemailIndicator: false,
+601:    voicemailIndicator: false,
+617:    voicemailIndicator: false,
+633:    voicemailIndicator: true,
+649:    voicemailIndicator: false,
+665:    voicemailIndicator: false,
+823:  voicemailIndicator: boolean;
+826:  if (!input.voicemailIndicator) {
+875:  voicemailLabel: string | null;
+906:    voicemailLabel: input.voicemailLabel || '',
+930:  const voicemailLabel = resolveVoicemailLabel({
+931:    voicemailIndicator: seed.voicemailIndicator,
+970:    voicemailIndicator: seed.voicemailIndicator,
+971:    voicemailLabel,
+980:      voicemailLabel,
+1137:    'voicemail_waiting',
+1138:    'voicemail_indicator',
+1139:    'unread_voicemail_count',
+1140:    'unread_voicemail_count_mine',
+1297:  const unreadVoicemailCount = normalizeFiniteNumber(row.unread_voicemail_count, 0);
+1298:  const unreadVoicemailCountMine = normalizeFiniteNumber(row.unread_voicemail_count_mine, 0);
+1300:  const voicemailIndicator = normalizeBoolean(row.voicemail_indicator)
+1301:    || normalizeBoolean(row.voicemail_waiting)
+1304:  const voicemailLabel = resolveVoicemailLabel({
+1305:    voicemailIndicator,
+1339:    voicemailIndicator,
+1340:    voicemailLabel,
+1349:      voicemailLabel,
+
+apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts
+16:const DEFAULT_ENABLED_PROVIDERS = ['telnyx'];
+27:const TEST_PROVIDER_PUBLIC_KEY_LEGACY_HEADER = 'x-test-connectshyft-telnyx-public-key';
+546:  if (normalized === 'call.connected' || normalized === 'voice.connected') {
+
+apps/connectshyft-api/src/modules/connectshyft/inboundVoice.ts
+32:  'voicemail_duration_seconds',
+38:export const CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME = 'connectshyft.inbound.voice_voicemail_recorded' as const;
+39:export const CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME = 'connectshyft.inbound.voice_fallback_recorded' as const;
+40:export const CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME = 'connectshyft.voicemail.transcription_requested' as const;
+41:export const CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME = 'connectshyft.voicemail.transcription_attached' as const;
+42:export const CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_QUEUE_NAME = 'connectshyft.voicemail.transcription' as const;
+124:export type ConnectShyftInboundVoiceRoutingDecision = 'voicemail_only' | 'intake_fallback' | 'accepted';
+131:  channel: 'voice';
+150:  inboundVoiceArtifact: ConnectShyftInboundVoiceArtifact;
+163:    voicemailArtifactId: string;
+173:  voicemailArtifactId: string | null;
+260:      voicemailArtifactId: readFromSources(correlationSources, [
+261:        'voicemailArtifactId',
+262:        'voicemail_artifact_id',
+283:  const isFallbackEvent = normalizedEventType === 'voice.fallback' || normalizedEventType === 'voicefallback';
+307:    routingDecision: 'voicemail_only',
+337:    inboundVoiceArtifact: {
+338:      channel: 'voice',
+355:  voicemailArtifactId: string | null;
+359:  channel: 'voice',
+366:  voicemailArtifact: input.voicemailArtifactId
+368:      artifactId: input.voicemailArtifactId,
+369:      ...input.domainEvent.inboundVoiceArtifact,
+381:  voicemailArtifactId: string;
+392:    voicemailArtifactId: input.voicemailArtifactId,
+398:  voicemailArtifactId: string;
+408:  channel: 'voice',
+414:    voicemailArtifactId: input.voicemailArtifactId,
+424:  voicemailArtifact: {
+425:    artifactId: input.voicemailArtifactId,
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/threads.contract.test.ts
+4:import { resolveSenderNumber } from '../senderNumberResolver';
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.ts
+7:} from '../bridgeSessions'
+9:import type { ConnectShyftProviderAdapter } from '../providerRegistry'
+83:describe('connectshyft bridgeSessions', () => {
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts
+2:import { postConnectWebhookInbound } from '../handlers/postConnectWebhookInbound';
+11:import * as providerRegistryModule from '../providerRegistry';
+13:import * as bridgeSessionsModule from '../bridgeSessions';
+16:import * as inboundVoiceModule from '../inboundVoice';
+109:    providerKey: 'telnyx',
+118:      requestedProvider: 'telnyx',
+119:      resolvedProvider: 'telnyx',
+138:    jest.spyOn(providerRegistryModule, 'resolveConnectShyftRequestedProviderKey').mockReturnValue('telnyx');
+148:      .spyOn(providerRegistryModule, 'resolveConnectShyftProviderAdapter')
+169:          requestedProvider: 'telnyx',
+170:          resolvedProvider: 'telnyx',
+205:      requestedProvider: 'telnyx',
+217:      requestedProvider: 'telnyx',
+225:      providerName: 'telnyx',
+252:    jest.spyOn(providerRegistryModule, 'resolveConnectShyftProviderAdapter').mockReturnValue(selection as any);
+271:          requestedProvider: 'telnyx',
+272:          resolvedProvider: 'telnyx',
+279:          provider: 'telnyx',
+302:    jest.spyOn(providerRegistryModule, 'resolveConnectShyftProviderAdapter').mockReturnValue(selection as any);
+311:      bridgeSessionsModule,
+328:    const inboundVoiceSpy = jest.spyOn(
+329:      inboundVoiceModule,
+332:      throw new Error('Inbound voice domain mapping should not run during inbound helper preparation.');
+359:          requestedProvider: 'telnyx',
+360:          resolvedProvider: 'telnyx',
+393:    expect(inboundVoiceSpy).not.toHaveBeenCalled();
+405:    await postConnectWebhookInbound(req, res);
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/senderNumberResolver.test.ts
+1:import { resolveSenderNumber } from '../senderNumberResolver';
+25:describe('connectshyft senderNumberResolver', () => {
+131:        channel: 'voice',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/threadTimeline.test.ts
+6:} from '../inboundVoice';
+230:  it('maps explicit voice lifecycle and voicemail placeholder events without changing sms ordering semantics', async () => {
+234:        aggregateId: 'thread-timeline-voice-1001',
+249:        eventId: 'event-voice-001',
+250:        aggregateId: 'thread-timeline-voice-1001',
+256:          channel: 'voice',
+262:        eventId: 'event-voicemail-001',
+263:        aggregateId: 'thread-timeline-voice-1001',
+269:          channel: 'voice',
+271:          voicemailArtifact: {
+279:        eventId: 'event-voicemail-002',
+280:        aggregateId: 'thread-timeline-voice-1001',
+286:          channel: 'voice',
+291:          voicemailArtifact: {
+305:      threadId: 'thread-timeline-voice-1001',
+310:      'voice_event',
+311:      'voicemail',
+312:      'voicemail',
+315:      id: 'event-voice-001',
+316:      channel: 'voice',
+317:      type: 'voice_event',
+320:      id: 'event-voicemail-001',
+321:      channel: 'voicemail',
+322:      type: 'voicemail',
+327:      id: 'event-voicemail-002',
+328:      channel: 'voicemail',
+329:      type: 'voicemail',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/providerRegistry.test.ts
+8:} from '../providerRegistry';
+65:          'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx', 'mock-sandbox']),
+78:      requestedProvider: 'telnyx',
+79:      resolvedProvider: 'telnyx',
+88:          'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx', 'mock-sandbox']),
+132:          'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+175:          'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+177:            telnyx: {
+185:          providerKey: 'telnyx',
+204:          requestedProvider: 'telnyx',
+222:          'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+224:            telnyx: {
+232:          providerKey: 'telnyx',
+246:      requestedProvider: 'telnyx',
+247:      resolvedProvider: 'telnyx',
+256:          'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+260:          providerKey: 'telnyx',
+279:          requestedProvider: 'telnyx',
+290:      'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+292:        telnyx: {
+304:          providerKey: 'telnyx',
+319:          providerKey: 'telnyx',
+338:          requestedProvider: 'telnyx',
+351:          'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx', 'mock-sandbox']),
+442:  it('preserves targetPhone and senderPhone unchanged across providerRegistry.sendSms', async () => {
+444:      providerKey: 'telnyx',
+455:        providerKey: 'telnyx',
+479:          'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+482:          providerKey: 'telnyx',
+490:      throw new Error('Expected telnyx adapter resolution to succeed');
+497:      providerKey: 'telnyx',
+503:    expect(resolveAdapterSpy).toHaveBeenCalledWith('telnyx');
+516:          providerKey: 'telnyx',
+532:        providerKey: 'telnyx',
+548:        providerKey: 'telnyx',
+565:          providerKey: 'telnyx',
+570:    expect(requested).toBe('telnyx');
+583:          providerKey: 'telnyx',
+596:        providerKey: 'telnyx',
+599:          eventType: 'voice.connected',
+626:      eventType: 'voice.connected',
+652:        providerKey: 'telnyx',
+659:          'telnyx-timestamp': timestamp,
+660:          'telnyx-signature-ed25519': signature,
+676:      providerKey: 'telnyx',
+696:          providerKey: 'telnyx',
+714:        providerKey: 'telnyx',
+717:          eventType: 'voice.connected',
+742:      eventType: 'voice.connected',
+758:          'telnyx-timestamp': timestamp,
+759:          'telnyx-signature-ed25519': signature,
+772:        providerKey: 'telnyx',
+777:          'telnyx-timestamp': timestamp,
+778:          'telnyx-signature-ed25519': signature,
+797:      eventType: 'voice.connected',
+813:          'telnyx-timestamp': staleTimestamp,
+814:          'telnyx-signature-ed25519': signature,
+827:        providerKey: 'telnyx',
+832:          'telnyx-timestamp': staleTimestamp,
+833:          'telnyx-signature-ed25519': signature,
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/readContracts.test.ts
+213:  it('keeps ux-r3 voicemail threads in deterministic mine/inbox buckets with explicit labels', () => {
+233:      voicemailIndicator: true,
+234:      voicemailLabel: 'Voicemail',
+239:      voicemailIndicator: true,
+240:      voicemailLabel: 'Voicemail received',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/threads.test.ts
+7:import { resolveSenderNumber } from '../senderNumberResolver';
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadOutboundContext.test.ts
+10:import * as providerRegistryModule from '../providerRegistry';
+11:import * as bridgeSessionsModule from '../bridgeSessions';
+267:      providerRegistryModule,
+271:      bridgeSessionsModule,
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/inboundVoice.test.ts
+14:} from '../inboundVoice';
+16:describe('connectshyft inbound voice domain mapping', () => {
+17:  it('[E3-UNIT-001][P0] maps voicemail webhook payload fields into a canonical inbound voice domain event @P0', () => {
+23:          recording_url: 'https://example.invalid/recordings/voice-001.mp3',
+24:          voicemail_duration_seconds: 47,
+29:      routingDecision: 'voicemail_only',
+37:      routingDecision: 'voicemail_only',
+40:      inboundVoiceArtifact: {
+41:        channel: 'voice',
+48:        recordingUrl: 'https://example.invalid/recordings/voice-001.mp3',
+52:    expect(domainEvent.inboundVoiceArtifact.to).toBe('+12605550171');
+53:    expect(domainEvent.inboundVoiceArtifact.to).not.toContain('cs-number');
+56:  it('[E3-UNIT-002][P0] resolves voice routing matrix across no-thread, unclaimed, claimed, and closed states @P0', () => {
+58:      normalizedEventType: 'voice.voicemail',
+67:      normalizedEventType: 'voice.voicemail',
+71:      routingDecision: 'voicemail_only',
+76:      normalizedEventType: 'voice.voicemail',
+88:      normalizedEventType: 'voice.voicemail',
+97:  it('[E3-UNIT-003][P1] builds canonical payload and transcription callback correlation for voicemail artifacts @P1', () => {
+103:          recording_url: 'https://example.invalid/recordings/voice-002.mp3',
+104:          voicemail_duration_seconds: '63',
+109:      routingDecision: 'voicemail_only',
+121:      voicemailArtifactId: 'vm-thread-connectshyft-e3-001-provider-event-e3-002',
+128:      voicemailArtifactId: transcription.callbackCorrelation.voicemailArtifactId,
+142:        voicemailArtifactId: 'vm-thread-connectshyft-e3-001-provider-event-e3-002',
+148:      channel: 'voice',
+151:      routingDecision: 'voicemail_only',
+155:      voicemailArtifact: {
+157:        recordingUrl: 'https://example.invalid/recordings/voice-002.mp3',
+164:  it('[E3-UNIT-004][P1] extracts neighbor id from voice webhook envelope aliases @P1', () => {
+178:    expect(isConnectShyftVoicemailTranscriptionCallbackEventType('voice.transcription.completed')).toBe(true);
+191:        voicemailArtifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
+208:        voicemailArtifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
+217:      voicemailArtifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
+229:      channel: 'voice',
+235:        voicemailArtifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
+245:      voicemailArtifact: {
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/canonicalEvents.test.ts
+91:        channel: 'voice',
+110:      channel: 'voice',
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.guardrails.test.ts
+153:      .post('/api/v1/connectshyft/threads/thread-f1-claimed-1002/call')
+184:      .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/call')
+229:      .post('/api/v1/connectshyft/threads/thread-f2-unclaimed-1001/call')
+493:      .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/call')
+552:        .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/call')
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.provider-registry.dispatch-events.test.ts
+306:      .post('/api/v1/connectshyft/threads/thread-f1-unclaimed-1001/call')
+895:      .post(`/api/v1/connectshyft/threads/${threadId}/call`)
+
+apps/connectshyft-api/src/routes/api/v1/__tests__/connectshyft.thread-call.characterization.test.ts
+720:      .post('/api/v1/connectshyft/threads/%20/call')
+
+apps/connectshyft-api/src/routes/api/v1/connectshyft.ts
+2795:      callbackCorrelation?.threadId || callbackCorrelation?.thread_id,
+7286:router.post('/threads/:threadId/call', postConnectThreadCall);
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/THREAD_OUTBOUND_NOTES.md
+9:    - `POST /threads/:threadId/call`
+44:- `POST /threads/:threadId/call` still returns the existing success and refusal envelopes
+
+apps/connectshyft-api/src/modules/connectshyft/inboundVoice.ts
+420:      threadId: input.callbackCorrelation.threadId,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts
+159:  actorUserId: string;
+1042:    actorUserId: string;
+1069:      deletedByUserId: input.actorUserId,
+1654:    actorUserId: string;
+1701:          deleted_by_user_id: input.actorUserId,
+2531:      actorUserId: input.actorUserId,
+2958:        actorUserId: input.actorUserId,
+
+apps/connectshyft-api/src/modules/connectshyft/escalationRecipientDirectory.ts
+42:      const userId = normalizeNonEmptyString(entry);
+43:      if (!userId) {
+47:      recipientIds.push(userId);
+49:        value: userId,
+50:        label: userId,
+61:      userId?: unknown;
+65:    const userId = normalizeNonEmptyString(candidate.userId);
+66:    if (!userId) {
+70:    const label = normalizeNonEmptyString(candidate.label) || userId;
+71:    recipientIds.push(userId);
+73:      value: userId,
+225:  userId: string,
+232:  return fullName.length > 0 ? fullName : userId;
+252:    .select('tm.user_id as userId', 'u.first_name as firstName', 'u.last_name as lastName');
+259:    .select('om.user_id as userId', 'u.first_name as firstName', 'u.last_name as lastName');
+264:    const userId = normalizeNonEmptyString((row as { userId?: unknown }).userId);
+265:    if (!userId) {
+269:    orgUnitRecipientIds.push(userId);
+271:      value: userId,
+273:        userId,
+284:    const userId = normalizeNonEmptyString((row as { userId?: unknown }).userId);
+285:    if (!userId) {
+289:    tenantRecipientIds.push(userId);
+291:      value: userId,
+293:        userId,
+
+apps/connectshyft-api/src/modules/connectshyft/threads.ts
+42:  claimedByUserId: string | null;
+56:  'claimedByUserId' | 'claimedAtUtc' | 'closedByUserId' | 'closedAtUtc'
+68:  actorUserId?: string | null;
+84:  actorUserId?: string | null;
+91:  actorUserId?: string | null;
+158:  actorUserId?: string | null;
+176:  actorUserId?: string | null;
+184:  actorUserId?: string | null;
+449:  actorUserId: string | null | undefined,
+451:  const normalizedActorUserId = normalizeString(actorUserId);
+455:      claimedByUserId: null,
+468:      claimedByUserId: normalizedActorUserId,
+476:    claimedByUserId: null,
+487:  actorUserId: string | null | undefined,
+489:  const normalizedActorUserId = normalizeString(actorUserId);
+493:      claimedByUserId: null,
+506:      claimedByUserId: normalizedActorUserId,
+514:    claimedByUserId: existing.claimedByUserId,
+530:  claimedByUserId: row.claimed_by_user_id,
+668:  claimedByUserId: string | null;
+669:  actorUserId: string | null | undefined;
+672:  const actorUserId = normalizeString(input.actorUserId);
+673:  if (!actorUserId) {
+689:  const claimedByUserId = normalizeString(input.claimedByUserId);
+693:    && claimedByUserId
+694:    && claimedByUserId !== actorUserId
+750:      input.actorUserId,
+769:      claimedByUserId: lifecycle.claimedByUserId,
+815:    const lifecycle = transitionLifecycleFields(existing, input.nextState, now, input.actorUserId);
+826:      claimedByUserId: lifecycle.claimedByUserId,
+871:        && thread.claimedByUserId === null
+944:    const normalizedActorUserId = normalizeUuid(input.actorUserId);
+1130:      const normalizedActorUserId = normalizeUuid(input.actorUserId);
+1201:      const normalizedActorUserId = normalizeUuid(input.actorUserId);
+1295:      actorUserId: input.actorUserId,
+1365:      actorUserId: input.actorUserId,
+1396:      actorUserId: input.actorUserId,
+1462:        actorUserId: input.actorUserId,
+1550:        actorUserId: input.actorUserId,
+1589:        actorUserId: input.actorUserId,
+
+apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts
+68:  operatorParticipantId: string
+151:  operatorParticipantId: row.operator_participant_id,
+190:  operator_participant_id: session.operatorParticipantId,
+822:    operatorParticipantId: input.operatorParticipantId,
+
+apps/connectshyft-api/src/modules/connectshyft/contextAccess.ts
+37:    userId: string;
+185:  const userId = normalizeContextValue(req.header(TEST_USER_HEADER));
+188:  if (!tenantId || !role || !userId) {
+193:    userId,
+194:    email: `${userId}@connectshyft.test`,
+311:  if (!resolvedUser?.userId) {
+457:      userId: resolvedUser.userId,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNeighborMerge.ts
+29:    accessContext.actorUserId,
+41:    actorUserId: accessContext.actorUserId,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/deleteConnectNeighbor.ts
+21:    actorUserId: accessContext.actorUserId,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectNeighborIdentityMatch.ts
+39:        actorUserId: accessContext.actorUserId,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectThreadDetail.ts
+235:  actorUserId: string | null;
+246:    actorUserId: input.actorUserId,
+266:      actorUserId: readContext.actorUserId,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/putConnectNeighbor.ts
+23:    actorUserId: accessContext.actorUserId,
+
+apps/connectshyft-api/src/modules/connectshyft/handlers/getConnectInbox.ts
+49:  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+50:  if (resolvedBucket === 'mine' && !actorUserId) {
+67:    actorUserId,
+
+apps/connectshyft-api/src/modules/connectshyft/smsPreferenceOverrides.ts
+62:  actorUserId: string | null;
+75:  actorUserId: string | null;
+253:    const actorUserId = normalizeOptionalUuid(input.actorUserId);
+260:      actorUserId,
+271:        actor_user_id: actorUserId,
+373:    const actorUserId = normalizeOptionalUuid(input.actorUserId);
+379:      actor_user_id: actorUserId,
+395:        actor_user_id: actorUserId,
+442:      actorUserId: normalizeOptionalUuid(row.actor_user_id),
+
+apps/connectshyft-api/src/modules/connectshyft/http/threadReadContext.ts
+29:  actorUserId: string | null;
+158:    actorUserId: resolveConnectShyftRequestedActorUserId(req),
+182:    actorUserId: input.actorUserId,
+
+apps/connectshyft-api/src/modules/connectshyft/http/neighborIdentityContext.ts
+121:  actorUserId: string | null;
+130:  actorUserId: string | null;
+140:  actorUserId: string;
+148:  actorUserId: string | null;
+155:  actorUserId: string | null;
+373:  actorUserId: string | null;
+375:  if (!input.actorUserId || !UUID_PATTERN.test(input.actorUserId)) {
+387:        claimed_by_user_id: input.actorUserId,
+404:  actorUserId: string | null;
+407:  const { req, actorRoles, tenantId, orgUnitId, neighborId, actorUserId, scope } = input;
+441:      actorUserId,
+494:  actorUserId: string | null,
+496:  const resolvedActorUserId = actorUserId || 'unknown';
+530:  actorUserId: string,
+537:    actor_user_id: actorUserId,
+558:  actorUserId: string | null,
+563:  const resolvedActorUserId = actorUserId || 'unknown';
+625:  actorUserId: string | null;
+630:  actor_user_id: input.actorUserId || 'unknown',
+654:  actorUserId: string | null;
+667:      actorId: resolveMutationActorUserId(input.actorUserId),
+680:const resolveMutationActorUserId = (actorUserId: string | null): string | null => {
+681:  const normalized = normalizeNonEmptyString(actorUserId);
+697:  actorUserId: string;
+701:    && UUID_PATTERN.test(input.actorUserId);
+761:  actorUserId: string | null;
+838:        actorId: resolveMutationActorUserId(input.actorUserId),
+876:  actorUserId: string;
+898:    actorUserId: input.actorUserId,
+905:    actorUserId: input.actorUserId,
+931:          input.actorUserId,
+960:          input.actorUserId,
+966:          actorId: resolveMutationActorUserId(input.actorUserId),
+981:      input.actorUserId,
+1028:  actorUserId: string | null;
+1103:        actorId: resolveMutationActorUserId(input.actorUserId),
+1350:  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+1357:    actorUserId,
+1374:    actorUserId,
+1411:  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+1418:    actorUserId,
+1435:    actorUserId,
+1443:      actorUserId,
+1477:  const actorUserId = resolveMutationActorUserId(resolveConnectShyftRequestedActorUserId(req));
+1478:  if (!actorUserId) {
+1492:    actorUserId,
+1519:    actorUserId: resolveConnectShyftRequestedActorUserId(req),
+1545:    actorUserId: resolveConnectShyftRequestedActorUserId(req),
+
+apps/connectshyft-api/src/modules/connectshyft/http/threadLifecycleContext.ts
+48:  claimedByUserId: string | null;
+62:    claimedByUserId: null,
+74:    claimedByUserId: 'user-connectshyft-c4-other-operator',
+86:    claimedByUserId: null,
+98:    claimedByUserId: null,
+110:    claimedByUserId: 'user-connectshyft-d4-other-operator',
+122:    claimedByUserId: null,
+134:    claimedByUserId: null,
+146:    claimedByUserId: null,
+158:    claimedByUserId: null,
+170:    claimedByUserId: 'user-connectshyft-ux-r4-other-operator',
+182:    claimedByUserId: null,
+194:    claimedByUserId: null,
+206:    claimedByUserId: null,
+218:    claimedByUserId: null,
+230:    claimedByUserId: null,
+242:    claimedByUserId: null,
+254:    claimedByUserId: null,
+266:    claimedByUserId: 'user-connectshyft-f1-other-operator',
+278:    claimedByUserId: null,
+290:    claimedByUserId: null,
+302:    claimedByUserId: 'user-connectshyft-f2-other-operator',
+314:    claimedByUserId: null,
+331:  claimedByUserId: string | null;
+349:  actorUserId: string | null;
+410:  actorUserId: string | null;
+422:  actor_user_id: normalizeLifecycleString(input.actorUserId) || 'unknown',
+455:const resolveMutationActorUserId = (actorUserId: string | null): string | null => {
+456:  const normalized = normalizeLifecycleString(actorUserId);
+490:        claimedByUserId: seededThreadDetail.claimedByUserId,
+520:    claimedByUserId: null,
+541:  descriptor.claimedByUserId = thread.claimedByUserId;
+555:  actorUserId: string | null;
+563:  const actorUserId = normalizeLifecycleString(input.actorUserId) || null;
+590:    claimedByUserId: input.nextState === 'CLAIMED' ? actorUserId : null,
+592:    closedByUserId: input.nextState === 'CLOSED' ? actorUserId : null,
+624:  actorUserId: string | null;
+636:      claimedByUserId: syntheticThread.claimedByUserId,
+644:    actorUserId: input.actorUserId,
+653:      claimedByUserId: detail.claimedByUserId || null,
+661:    claimedByUserId: null,
+669:  actorUserId: string | null;
+677:  actorUserId: string | null;
+706:            actorUserId: input.actorUserId,
+716:          actorId: resolveMutationActorUserId(input.actorUserId),
+753:      actorUserId: input.actorUserId,
+774:    actorUserId: input.actorUserId,
+799:    actorUserId: input.actorUserId,
+983:  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+988:    actorUserId,
+1008:    claimedByUserId: lifecycleContext.claimedByUserId,
+1009:    actorUserId,
+1031:    actorUserId,
+1054:    actorUserId: lifecycleRequest.actorUserId,
+1067:    actorUserId: lifecycleRequest.actorUserId,
+
+apps/connectshyft-api/src/modules/connectshyft/http/accessContext.ts
+58:  userId: req.user?.userId || null,
+125:  if (typeof req.user?.userId === 'string') {
+126:    const normalizedActorUserId = req.user.userId.trim();
+177:  const actorUserId = normalizeNonEmptyString(req.user?.userId || null);
+178:  if (!actorUserId || !UUID_PATTERN.test(actorUserId)) {
+185:    .where('user_id', actorUserId)
+210:  const actorUserId = req.user?.userId || null;
+212:  if (!actorUserId || !tenantId || !UUID_PATTERN.test(tenantId)) {
+221:    .where('om.user_id', actorUserId)
+293:  const actorUserId = normalizeNonEmptyString(req.user?.userId || null);
+294:  const membershipOrgUnitIds = actorUserId && UUID_PATTERN.test(actorUserId)
+300:        .where('om.user_id', actorUserId)
+418:    resolveOrgUnitAccess: async ({ tenantId, orgUnitId, userId, baseRoles }) =>
+424:          userId,
+
+apps/connectshyft-api/src/modules/connectshyft/http/threadOutboundContext.ts
+24:  actorUserId: string | null;
+139:  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+145:    actorUserId,
+165:    actorUserId,
+
+apps/connectshyft-api/src/modules/connectshyft/readContracts.ts
+30:  claimedByUserId: string | null;
+76:  claimedByUserId: string | null;
+178:    claimedByUserId: 'user-connectshyft-c3-other-operator',
+194:    claimedByUserId: null,
+210:    claimedByUserId: null,
+226:    claimedByUserId: null,
+242:    claimedByUserId: null,
+258:    claimedByUserId: 'user-connectshyft-c3-operator',
+274:    claimedByUserId: null,
+290:    claimedByUserId: 'user-connectshyft-c4-other-operator',
+306:    claimedByUserId: null,
+322:    claimedByUserId: null,
+338:    claimedByUserId: 'user-connectshyft-d4-other-operator',
+354:    claimedByUserId: null,
+370:    claimedByUserId: null,
+386:    claimedByUserId: null,
+402:    claimedByUserId: null,
+418:    claimedByUserId: 'user-connectshyft-ux-r1-other-operator',
+434:    claimedByUserId: null,
+450:    claimedByUserId: 'user-connectshyft-ux-r1-operator',
+466:    claimedByUserId: null,
+482:    claimedByUserId: 'user-connectshyft-ux-r3-operator',
+498:    claimedByUserId: null,
+514:    claimedByUserId: null,
+530:    claimedByUserId: 'user-connectshyft-g1-other-operator',
+546:    claimedByUserId: null,
+562:    claimedByUserId: 'user-connectshyft-g1-operator',
+578:    claimedByUserId: null,
+594:    claimedByUserId: 'user-connectshyft-ux-r4-other-operator',
+610:    claimedByUserId: null,
+626:    claimedByUserId: 'user-connectshyft-ux-r4-operator',
+642:    claimedByUserId: null,
+658:    claimedByUserId: null,
+950:    claimedByUserId: seed.claimedByUserId,
+951:    claimed_by_user_id: seed.claimedByUserId,
+986:  seed: Pick<ConnectShyftThreadSeed, 'state' | 'claimedByUserId'>,
+987:  actorUserId?: string | null,
+991:    && actorUserId
+992:    && seed.claimedByUserId === actorUserId
+1003:  actorUserId?: string | null,
+1005:  return resolveSeedPerspectiveBucket(seed, actorUserId) === bucket;
+1012:  actorUserId?: string | null;
+1018:      && resolveSeedBucketMatch(seed, scope.bucket, scope.actorUserId))
+1019:    .map((seed) => toSummaryRecord(seed, resolveSeedPerspectiveBucket(seed, scope.actorUserId)));
+1026:  actorUserId?: string | null;
+1036:  actorUserId?: string | null;
+1056:    resolveSeedPerspectiveBucket(matchedSeed, input.actorUserId),
+1319:    claimedByUserId: normalizeOptionalString(row.claimed_by_user_id),
+1358:    actorUserId?: string | null;
+1367:    const claimedByUserId = normalizeOptionalString(row.claimed_by_user_id);
+1374:      if (scope.actorUserId) {
+1375:        return claimedByUserId === scope.actorUserId;
+1381:    if (scope.actorUserId && state === 'CLAIMED' && claimedByUserId === scope.actorUserId) {
+1393:  actorUserId?: string | null;
+1406:      actorUserId: scope.actorUserId,
+1415:      actorUserId: scope.actorUserId,
+1421:    actorUserId: scope.actorUserId,
+1444:  actorUserId?: string | null,
+1447:  if (state === 'CLAIMED' && actorUserId) {
+1448:    const claimedByUserId = normalizeOptionalString(row.claimed_by_user_id);
+1449:    if (claimedByUserId === actorUserId) {
+1472:  actorUserId?: string | null;
+1493:      actorUserId: input.actorUserId,
+1507:        actorUserId: input.actorUserId,
+1523:    resolveBucketFromDbRow(row, input.actorUserId),
+
+apps/connectshyft-api/src/modules/connectshyft/canonicalEvents.ts
+36:  actorUserId?: string | null;
+314:      actorId: isUuid(input.actorUserId || '') ? input.actorUserId : null,
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.neighborIdentityContext.test.ts
+72:      userId: 'user-neighbor-identity-context-1001',
+163:      actorUserId: 'user-neighbor-identity-context-1001',
+199:      'actorUserId',
+308:      actorUserId: 'user-neighbor-identity-context-1001',
+316:      actorUserId: 'user-neighbor-identity-context-1001',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/smsPreferenceOverrides.test.ts
+249:        actorUserId: '00000000-0000-4000-8000-000000000001',
+275:        actorUserId: '00000000-0000-4000-8000-000000000001',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/threads.contract.test.ts
+148:      actorUserId: 'user-connectshyft-c1-operator',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/bridgeSessions.test.ts
+74:  operatorParticipantId: 'user-connectshyft-f1-primary-operator',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadReadContext.test.ts
+32:      userId: 'user-thread-read-context-1001',
+106:      actorUserId: 'user-thread-read-context-1001',
+110:      'actorUserId',
+187:      actorUserId: 'user-thread-read-context-1001',
+198:      actorUserId: 'user-thread-read-context-1001',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.numberMappingContext.test.ts
+41:      userId: 'user-number-mapping-context-1001',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.inboundWebhookContext.test.ts
+58:      userId: 'user-connectshyft-c9-1001',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadLifecycleContext.test.ts
+34:      userId: 'user-thread-lifecycle-context-1001',
+123:      actorUserId: 'user-thread-lifecycle-context-1001',
+130:        claimedByUserId: null,
+141:      'actorUserId',
+208:      actorUserId: 'user-thread-lifecycle-context-1001',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.webhookReceiptAdminContext.test.ts
+42:      userId: 'user-webhook-admin-context-1001',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/contextAccess.test.ts
+11:  userId?: string;
+39:      userId: options.userId ?? 'user-connectshyft-a2-member',
+126:        userId: 'user-connectshyft-a2-non-member',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/senderNumberResolver.test.ts
+13:  claimedByUserId: overrides.claimedByUserId ?? null,
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/neighbors.test.ts
+622:      actorUserId: 'user-connectshyft-alpha-admin',
+634:      actorUserId: 'user-connectshyft-alpha-admin',
+646:      actorUserId: 'user-connectshyft-alpha-admin',
+718:      actorUserId: 'user-connectshyft-alpha-admin-2',
+759:      actorUserId: 'user-connectshyft-alpha-admin',
+1870:      actorUserId: '11111111-1111-4111-8111-111111111111',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.accessContext.test.ts
+14:  userId?: string;
+47:      userId: options.userId ?? 'user-connectshyft-handler-access',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.escalationConfigContext.test.ts
+39:      userId: 'user-escalation-config-context-1001',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/readContracts.test.ts
+185:      actorUserId: 'user-connectshyft-c3-operator',
+191:      actorUserId: 'user-connectshyft-c3-operator',
+197:      actorUserId: 'user-connectshyft-c3-other-operator',
+203:      actorUserId: 'user-connectshyft-c3-other-operator',
+218:      actorUserId: 'user-connectshyft-ux-r3-operator',
+224:      actorUserId: 'user-connectshyft-ux-r3-operator',
+250:      actorUserId: 'user-connectshyft-c3-operator',
+256:      actorUserId: 'user-connectshyft-c3-other-operator',
+517:      actorUserId: 'user-connectshyft-soft-delete',
+527:      actorUserId: 'user-connectshyft-soft-delete',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/threads.test.ts
+41:          claimedByUserId: null,
+71:      actorUserId: 'user-connectshyft-c1-operator',
+288:      actorUserId: 'user-connectshyft-c1-operator',
+296:    expect(claimed.data.thread.claimedByUserId).toBe('user-connectshyft-c1-operator');
+307:      actorUserId: 'user-connectshyft-c1-supervisor',
+331:    expect(reopened.data.thread.claimedByUserId).toBeNull();
+344:      claimedByUserId: null,
+345:      actorUserId: 'user-connectshyft-c4-member',
+357:      claimedByUserId: null,
+358:      actorUserId: 'user-connectshyft-c4-member',
+372:      claimedByUserId: 'user-connectshyft-c4-owner',
+373:      actorUserId: 'user-connectshyft-c4-member',
+387:      claimedByUserId: 'user-connectshyft-c4-owner',
+388:      actorUserId: 'user-connectshyft-c4-admin',
+406:        claimedByUserId: action === 'claim' ? null : 'user-connectshyft-c4-owner',
+407:        actorUserId: '',
+444:      actorUserId: 'user-connectshyft-c1-supervisor',
+678:      actorUserId: 'user-connectshyft-c5-operator',
+703:      actorUserId: 'user-connectshyft-c5-operator',
+
+apps/connectshyft-api/src/modules/connectshyft/__tests__/handlers.threadOutboundContext.test.ts
+38:      userId: 'user-thread-outbound-context-1001',
+88:    claimedByUserId: null,
+132:      actorUserId: 'user-thread-outbound-context-1001',
+136:        claimedByUserId: null,
+146:      'actorUserId',
+173:      actorUserId: 'user-thread-outbound-context-1001',
+239:      claimedByUserId: null,
+306:      actorUserId: 'user-thread-outbound-context-1001',
+312:      'actorUserId',
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:21:import { resolveConnectShyftPhoneNormalizationContext } from './phoneIdentityContext';
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:55:const CONNECTSHYFT_PHONE_DUPLICATE_INDEX = 'connectshyft_cs_neighbor_phones_current_unique_e164_uq';
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:56:const CONNECTSHYFT_PHONE_DUPLICATE_MESSAGE = 'That phone number is already assigned to another current neighbor.';
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:85:  phoneId: string;
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:117:  phones: ConnectShyftNeighborPhone[];
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:132:  phones: ConnectShyftNeighborPhoneInput[];
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:152:  phones: ConnectShyftNeighborPhoneInput[];
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:187:  phone: string;
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:202:  field: 'phones';
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:203:  reason: 'REQUIRED' | 'INVALID_FORMAT' | 'duplicate_phone';
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:208:  reason?: 'duplicate_phone';
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:384:  message: 'Provide at least one phone to create or update a neighbor.',
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:388:        field: 'phones',
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:390:        message: 'Provide at least one phone to create or update a neighbor.',
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:399:  message: 'Provide a valid phone number (for example, 2605550199).',
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:403:        field: 'phones',
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:405:        message: 'Provide a valid phone number (for example, 2605550199).',
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:416:    reason: 'duplicate_phone',
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:419:        field: 'phones',
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:420:        reason: 'duplicate_phone',
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:512:  phones: ConnectShyftNeighborPhoneInput[],
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:513:): { ok: true; phones: NormalizedConnectShyftNeighborPhoneInput[] } | NeighborRefusalResult => {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:514:  if (!Array.isArray(phones) || phones.length === 0) {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:520:  for (let index = 0; index < phones.length; index += 1) {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:521:    const phone = phones[index];
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:522:    const resolvedPhone = normalizePhone(normalizeNonEmptyString(phone?.value), context);
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:528:      label: normalizePhoneLabel(phone?.label),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:529:      value: resolvedPhone.phone.normalizedE164,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:530:      rawInput: resolvedPhone.phone.rawInput,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:531:      normalizedE164: resolvedPhone.phone.normalizedE164,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:532:      displayNational: resolvedPhone.phone.displayNational,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:533:      countryCode: resolvedPhone.phone.countryCode,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:534:      nationalNumber: resolvedPhone.phone.nationalNumber,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:535:      extension: resolvedPhone.phone.extension,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:536:      validationStatus: resolvedPhone.phone.validationStatus,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:537:      usageType: resolvedPhone.phone.usageType,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:538:      source: resolvedPhone.phone.source,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:541:      isShared: phone?.isShared === true,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:542:      verificationStatus: normalizeVerificationStatus(phone?.verificationStatus),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:549:    phones: normalizedPhones,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:554:  phones: NormalizedConnectShyftNeighborPhoneInput[],
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:555:): string[] => Array.from(new Set(phones.map((phone) => phone.normalizedE164)));
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:558:  phones: NormalizedConnectShyftNeighborPhoneInput[],
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:559:): boolean => listDistinctCandidateNormalizedPhones(phones).length !== phones.length;
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:696:const resolveStoredPhoneValue = (phoneRow: DbNeighborPhoneRow): string =>
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:697:  normalizeNonEmptyString(phoneRow.normalized_e164 || phoneRow.value_e164);
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:699:const sortPhones = (phoneRows: DbNeighborPhoneRow[]): DbNeighborPhoneRow[] => {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:700:  return phoneRows
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:718:  [...sortPhones(survivorPhoneRows), ...sortPhones(sourcePhoneRows)].forEach((phone) => {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:719:    const label = normalizePhoneLabel(phone.label);
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:720:    const value = resolveStoredPhoneValue(phone);
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:734:      rawInput: normalizeNonEmptyString(phone.raw_input || value),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:736:      displayNational: normalizeNonEmptyString(phone.display_national || value),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:737:      countryCode: normalizeNonEmptyString(phone.country_code),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:738:      nationalNumber: normalizeNonEmptyString(phone.national_number),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:739:      extension: normalizeNonEmptyString(phone.extension) || undefined,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:740:      validationStatus: normalizePhoneValidationStatus(phone.validation_status),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:741:      usageType: normalizePhoneUsageType(phone.usage_type),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:742:      source: normalizePhoneSource(phone.source),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:745:      isShared: phone.is_shared === true,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:746:      verificationStatus: normalizeVerificationStatus(phone.verification_status),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:747:      isActive: phone.is_active !== false,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:751:  return merged.map((phone, index) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:752:    ...phone,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:780:  phones: neighbor.phones.map((phone) => ({ ...phone })),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:785:  phoneRows: DbNeighborPhoneRow[],
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:796:  phones: sortPhones(phoneRows).map((phoneRow) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:797:    phoneId: phoneRow.id,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:798:    label: phoneRow.label,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:799:    value: resolveStoredPhoneValue(phoneRow),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:800:    rawInput: phoneRow.raw_input || null,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:801:    displayNational: phoneRow.display_national || null,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:802:    countryCode: phoneRow.country_code || null,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:803:    nationalNumber: phoneRow.national_number || null,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:804:    extension: phoneRow.extension || null,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:805:    validationStatus: normalizePhoneValidationStatus(phoneRow.validation_status),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:806:    usageType: normalizePhoneUsageType(phoneRow.usage_type),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:807:    source: normalizePhoneSource(phoneRow.source),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:808:    sortOrder: phoneRow.sort_order,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:809:    isPrimary: phoneRow.is_primary,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:810:    isShared: phoneRow.is_shared === true,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:811:    verificationStatus: normalizeVerificationStatus(phoneRow.verification_status),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:812:    isActive: phoneRow.is_active !== false,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:813:    createdAtUtc: toIsoUtc(phoneRow.created_at_utc),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:814:    updatedAtUtc: toIsoUtc(phoneRow.updated_at_utc),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:845:  phones: NormalizedConnectShyftNeighborPhoneInput[];
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:855:  phones: NormalizedConnectShyftNeighborPhoneInput[];
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:906:          phones: existing.phones.map((phone) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:907:            ...phone,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:952:      phones: input.phones.map((phone) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:953:        phoneId: randomUUID(),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:954:        label: phone.label,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:955:        value: phone.value,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:956:        rawInput: phone.rawInput,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:957:        displayNational: phone.displayNational,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:958:        countryCode: phone.countryCode,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:959:        nationalNumber: phone.nationalNumber,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:960:        extension: phone.extension || null,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:961:        validationStatus: phone.validationStatus,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:962:        usageType: phone.usageType,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:963:        source: phone.source,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:964:        sortOrder: phone.sortOrder,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:965:        isPrimary: phone.isPrimary,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:966:        isShared: phone.isShared,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:967:        verificationStatus: phone.verificationStatus,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:968:        isActive: phone.isActive,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1009:      phones: input.phones.map((phone) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1010:        phoneId: randomUUID(),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1011:        label: phone.label,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1012:        value: phone.value,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1013:        rawInput: phone.rawInput,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1014:        displayNational: phone.displayNational,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1015:        countryCode: phone.countryCode,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1016:        nationalNumber: phone.nationalNumber,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1017:        extension: phone.extension || null,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1018:        validationStatus: phone.validationStatus,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1019:        usageType: phone.usageType,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1020:        source: phone.source,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1021:        sortOrder: phone.sortOrder,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1022:        isPrimary: phone.isPrimary,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1023:        isShared: phone.isShared,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1024:        verificationStatus: phone.verificationStatus,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1025:        isActive: phone.isActive,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1071:      phones: existing.phones.map((phone) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1072:        ...phone,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1110:      survivorNeighbor.phones.map((phone) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1111:        id: phone.phoneId,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1114:        label: phone.label,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1115:        value_e164: phone.value,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1116:        raw_input: phone.rawInput,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1117:        normalized_e164: phone.value,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1118:        display_national: phone.displayNational,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1119:        country_code: phone.countryCode,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1120:        national_number: phone.nationalNumber,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1121:        extension: phone.extension,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1122:        validation_status: phone.validationStatus,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1123:        usage_type: phone.usageType,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1124:        source: phone.source,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1125:        sort_order: phone.sortOrder,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1126:        is_primary: phone.isPrimary,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1127:        is_shared: phone.isShared,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1128:        verification_status: phone.verificationStatus,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1129:        is_active: phone.isActive,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1130:        created_at_utc: phone.createdAtUtc,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1131:        updated_at_utc: phone.updatedAtUtc,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1133:      sourceNeighbor.phones.map((phone) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1134:        id: phone.phoneId,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1137:        label: phone.label,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1138:        value_e164: phone.value,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1139:        raw_input: phone.rawInput,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1140:        normalized_e164: phone.value,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1141:        display_national: phone.displayNational,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1142:        country_code: phone.countryCode,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1143:        national_number: phone.nationalNumber,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1144:        extension: phone.extension,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1145:        validation_status: phone.validationStatus,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1146:        usage_type: phone.usageType,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1147:        source: phone.source,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1148:        sort_order: phone.sortOrder,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1149:        is_primary: phone.isPrimary,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1150:        is_shared: phone.isShared,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1151:        verification_status: phone.verificationStatus,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1152:        is_active: phone.isActive,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1153:        created_at_utc: phone.createdAtUtc,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1154:        updated_at_utc: phone.updatedAtUtc,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1162:      phones: mergedPhones.map((phone) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1163:        phoneId: randomUUID(),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1164:        label: phone.label,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1165:        value: phone.value,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1166:        rawInput: phone.rawInput,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1167:        displayNational: phone.displayNational,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1168:        countryCode: phone.countryCode,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1169:        nationalNumber: phone.nationalNumber,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1170:        extension: phone.extension || null,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1171:        validationStatus: phone.validationStatus,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1172:        usageType: phone.usageType,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1173:        source: phone.source,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1174:        sortOrder: phone.sortOrder,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1175:        isPrimary: phone.isPrimary,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1176:        isShared: phone.isShared,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1177:        verificationStatus: phone.verificationStatus,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1178:        isActive: phone.isActive,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1249:      neighbor.phones.forEach((phone) => {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1250:        if (phone.isActive === false || !candidateValues.has(phone.value)) {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1254:        const current = conflictsByPhone.get(phone.value) || new Set<string>();
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1256:        conflictsByPhone.set(phone.value, current);
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1299:      const phones = neighbor.phones
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1300:        .filter((phone) => phone.isActive !== false)
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1301:        .map((phone) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1302:          phoneId: phone.phoneId,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1303:          value: phone.value,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1304:          isShared: phone.isShared === true,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1305:          verificationStatus: normalizeVerificationStatus(phone.verificationStatus),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1308:      if (phones.length === 0) {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1314:        phones,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1323:    phoneValue: string,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1337:      const phones = neighbor.phones
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1338:        .filter((phone) => phone.value === phoneValue)
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1339:        .map((phone) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1340:          phoneId: phone.phoneId,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1341:          value: phone.value,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1342:          isShared: phone.isShared === true,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1343:          verificationStatus: normalizeVerificationStatus(phone.verificationStatus),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1346:      if (phones.length === 0) {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1352:        phones,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1361:    phoneValue: string,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1375:      const phones = neighbor.phones
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1376:        .filter((phone) => phone.value === phoneValue && phone.isActive !== false)
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1377:        .map((phone) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1378:          phoneId: phone.phoneId,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1379:          value: phone.value,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1380:          isShared: phone.isShared === true,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1381:          verificationStatus: normalizeVerificationStatus(phone.verificationStatus),
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1384:      if (phones.length === 0) {
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1390:        phones,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1421:      phones: existing.phones.map((phone) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1422:        ...phone,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1507:      .table('cs_neighbor_phones')
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1508:      .join('cs_neighbors', 'cs_neighbors.id', '=', 'cs_neighbor_phones.neighbor_id')
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1510:        'cs_neighbor_phones.tenant_id': input.tenantId,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1512:        'cs_neighbor_phones.is_active': true,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1515:      .whereIn('cs_neighbor_phones.normalized_e164', input.normalizedE164Values)
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1516:      .orderBy('cs_neighbor_phones.normalized_e164', 'asc')
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1517:      .orderBy('cs_neighbor_phones.neighbor_id', 'asc')
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1519:        'cs_neighbor_phones.normalized_e164',
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1520:        'cs_neighbor_phones.neighbor_id',
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1567:        const phoneRows = input.phones.map((phone) => ({
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1571:          label: phone.label,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1572:          value_e164: phone.value,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1573:          raw_input: phone.rawInput,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1574:          normalized_e164: phone.normalizedE164,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1575:          display_national: phone.displayNational,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1576:          country_code: phone.countryCode,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1577:          national_number: phone.nationalNumber,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1578:          extension: phone.extension || null,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1579:          validation_status: phone.validationStatus,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1580:          usage_type: phone.usageType,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1581:          source: phone.source,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1582:          sort_order: phone.sortOrder,
+apps/connectshyft-api/src/modules/connectshyft/neighbors.ts:1583:          is_primary: phone.isPrimary,
+jeremiahotis@jeremiah-otis:~/projects/shyftunity$ cd ~/projects/shyftunity
+
+sed -n '1,260p' apps/connectshyft-api/src/modules/connectshyft/handlers/postConnectThreadCall.ts
+sed -n '1,320p' apps/connectshyft-api/src/modules/connectshyft/inboundVoice.ts
+sed -n '1,320p' apps/connectshyft-api/src/modules/connectshyft/bridgeSessions.ts
+sed -n '1,320p' apps/connectshyft-api/src/modules/connectshyft/providerRegistry.ts
+sed -n '1,260p' apps/connectshyft-api/src/modules/connectshyft/senderNumberResolver.ts
+import { Request, Response } from 'express';
+import { executeConnectShyftThreadOutboundAction } from '../http/threadOutboundContext';
+
+export const postConnectThreadCall = async (req: Request, res: Response) =>
+  executeConnectShyftThreadOutboundAction(req, res, 'call');
+import type { ConnectShyftThreadState } from './threads';
+
+const CONNECTSHYFT_INBOUND_VOICE_FROM_KEYS = [
+  'from',
+  'fromNumber',
+  'from_number',
+  'caller',
+  'callerNumber',
+  'caller_number',
+] as const;
+
+const CONNECTSHYFT_INBOUND_VOICE_TO_KEYS = [
+  'to',
+  'toNumber',
+  'to_number',
+  'recipient',
+  'recipientNumber',
+  'recipient_number',
+] as const;
+
+const CONNECTSHYFT_INBOUND_VOICE_NEIGHBOR_KEYS = [
+  'neighborId',
+  'neighbor_id',
+] as const;
+
+const CONNECTSHYFT_INBOUND_VOICE_RECORDING_URL_KEYS = [
+  'recordingUrl',
+  'recording_url',
+] as const;
+
+const CONNECTSHYFT_INBOUND_VOICE_DURATION_KEYS = [
+  'voicemail_duration_seconds',
+  'duration_seconds',
+  'durationSeconds',
+  'duration',
+] as const;
+
+export const CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME = 'connectshyft.inbound.voice_voicemail_recorded' as const;
+export const CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME = 'connectshyft.inbound.voice_fallback_recorded' as const;
+export const CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME = 'connectshyft.voicemail.transcription_requested' as const;
+export const CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME = 'connectshyft.voicemail.transcription_attached' as const;
+export const CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_QUEUE_NAME = 'connectshyft.voicemail.transcription' as const;
+
+const normalizeString = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  return value.trim();
+};
+
+const normalizeDurationSeconds = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.max(0, Math.trunc(value));
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value.trim());
+    if (Number.isFinite(parsed)) {
+      return Math.max(0, Math.trunc(parsed));
+    }
+  }
+
+  return null;
+};
+
+const asRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+};
+
+const readFromSources = (
+  sources: Array<Record<string, unknown> | null>,
+  keys: readonly string[],
+): string | null => {
+  for (const source of sources) {
+    if (!source) {
+      continue;
+    }
+
+    for (const key of keys) {
+      const normalized = normalizeString(source[key]);
+      if (normalized) {
+        return normalized;
+      }
+    }
+  }
+
+  return null;
+};
+
+const readDurationFromSources = (
+  sources: Array<Record<string, unknown> | null>,
+  keys: readonly string[],
+): number | null => {
+  for (const source of sources) {
+    if (!source) {
+      continue;
+    }
+
+    for (const key of keys) {
+      const normalized = normalizeDurationSeconds(source[key]);
+      if (normalized !== null) {
+        return normalized;
+      }
+    }
+  }
+
+  return null;
+};
+
+const readWebhookSources = (webhookBody: unknown): Array<Record<string, unknown> | null> => {
+  const payload = asRecord(webhookBody);
+  const providerPayload = asRecord(payload?.providerPayload);
+  const data = asRecord(payload?.data);
+  const dataPayload = asRecord(data?.payload);
+
+  return [payload, providerPayload, dataPayload, data];
+};
+
+export type ConnectShyftInboundVoiceRoutingDecision = 'voicemail_only' | 'intake_fallback' | 'accepted';
+
+export type ConnectShyftInboundVoiceRoutingPolicy = {
+  claimedMode?: 'orgunit_configured_mode';
+};
+
+export type ConnectShyftInboundVoiceArtifact = {
+  channel: 'voice';
+  direction: 'inbound';
+  providerEventId: string | null;
+  providerMessageId: string | null;
+  providerLegId: string | null;
+  from: string | null;
+  to: string | null;
+  recordingUrl: string | null;
+  durationSeconds: number | null;
+};
+
+export type ConnectShyftInboundVoiceDomainEvent = {
+  eventName:
+    | typeof CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME
+    | typeof CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME;
+  routingDecision: ConnectShyftInboundVoiceRoutingDecision;
+  deterministicOrdering: true;
+  canonicalEventType: string;
+  routingPolicy: ConnectShyftInboundVoiceRoutingPolicy;
+  inboundVoiceArtifact: ConnectShyftInboundVoiceArtifact;
+};
+
+export type ConnectShyftVoicemailTranscriptionRequest = {
+  requestQueued: true;
+  queueName: typeof CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_QUEUE_NAME;
+  callbackCorrelation: {
+    tenantId: string;
+    orgUnitId: string;
+    threadId: string;
+    providerEventId: string | null;
+    correlationEventId: string | null;
+    providerLegId: string | null;
+    voicemailArtifactId: string;
+  };
+};
+
+export type ConnectShyftVoicemailTranscriptionCallbackCorrelation = {
+  tenantId: string | null;
+  orgUnitId: string | null;
+  threadId: string | null;
+  providerEventId: string | null;
+  providerLegId: string | null;
+  voicemailArtifactId: string | null;
+};
+
+export type ConnectShyftVoicemailTranscriptionCallbackPayload = {
+  correlation: ConnectShyftVoicemailTranscriptionCallbackCorrelation;
+  transcriptText: string | null;
+};
+
+const readRecordFromSources = (
+  sources: Array<Record<string, unknown> | null>,
+  keys: readonly string[],
+): Record<string, unknown> | null => {
+  for (const source of sources) {
+    if (!source) {
+      continue;
+    }
+
+    for (const key of keys) {
+      const nested = asRecord(source[key]);
+      if (nested) {
+        return nested;
+      }
+    }
+  }
+
+  return null;
+};
+
+export const extractConnectShyftInboundVoiceNeighborId = (
+  webhookBody: unknown,
+): string | null => {
+  return readFromSources(
+    readWebhookSources(webhookBody),
+    CONNECTSHYFT_INBOUND_VOICE_NEIGHBOR_KEYS,
+  );
+};
+
+export const isConnectShyftVoicemailTranscriptionCallbackEventType = (
+  canonicalEventType: string,
+): boolean => {
+  const normalized = normalizeString(canonicalEventType).toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+
+  return normalized.includes('transcription')
+    && (normalized.includes('completed') || normalized.includes('callback'));
+};
+
+export const extractConnectShyftVoicemailTranscriptionCallbackPayload = (
+  webhookBody: unknown,
+): ConnectShyftVoicemailTranscriptionCallbackPayload => {
+  const payload = asRecord(webhookBody);
+  const providerPayload = asRecord(payload?.providerPayload);
+  const data = asRecord(payload?.data);
+  const dataPayload = asRecord(data?.payload);
+  const sources = [payload, providerPayload, dataPayload, data];
+
+  const callbackCorrelation = readRecordFromSources(sources, [
+    'callbackCorrelation',
+    'callback_correlation',
+  ]);
+  const correlationSources = [callbackCorrelation, ...sources];
+  const transcriptRecord = readRecordFromSources(sources, ['transcript']);
+  const transcriptText = readFromSources(
+    [transcriptRecord, ...sources],
+    [
+      'text',
+      'transcriptText',
+      'transcript_text',
+      'transcriptionText',
+      'transcription_text',
+    ],
+  );
+
+  return {
+    correlation: {
+      tenantId: readFromSources(correlationSources, ['tenantId', 'tenant_id']),
+      orgUnitId: readFromSources(correlationSources, ['orgUnitId', 'org_unit_id']),
+      threadId: readFromSources(correlationSources, ['threadId', 'thread_id']),
+      providerEventId: readFromSources(correlationSources, [
+        'providerEventId',
+        'provider_event_id',
+        'correlationEventId',
+        'correlation_event_id',
+      ]),
+      providerLegId: readFromSources(correlationSources, ['providerLegId', 'provider_leg_id']),
+      voicemailArtifactId: readFromSources(correlationSources, [
+        'voicemailArtifactId',
+        'voicemail_artifact_id',
+        'artifactId',
+        'artifact_id',
+      ]),
+    },
+    transcriptText,
+  };
+};
+
+export const resolveConnectShyftInboundVoiceRouting = (input: {
+  normalizedEventType: string;
+  threadState: ConnectShyftThreadState | null;
+}): {
+  eventName:
+    | typeof CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME
+    | typeof CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME;
+  routingDecision: ConnectShyftInboundVoiceRoutingDecision;
+  deterministicOrdering: true;
+  routingPolicy: ConnectShyftInboundVoiceRoutingPolicy;
+} => {
+  const normalizedEventType = normalizeString(input.normalizedEventType).toLowerCase();
+  const isFallbackEvent = normalizedEventType === 'voice.fallback' || normalizedEventType === 'voicefallback';
+
+  if (isFallbackEvent || !input.threadState || input.threadState === 'CLOSED') {
+    return {
+      eventName: CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
+      routingDecision: 'intake_fallback',
+      deterministicOrdering: true,
+      routingPolicy: {},
+    };
+  }
+
+  if (input.threadState === 'CLAIMED') {
+    return {
+      eventName: CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
+      routingDecision: 'accepted',
+      deterministicOrdering: true,
+      routingPolicy: {
+        claimedMode: 'orgunit_configured_mode',
+      },
+    };
+  }
+
+  return {
+    eventName: CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
+    routingDecision: 'voicemail_only',
+    deterministicOrdering: true,
+    routingPolicy: {},
+  };
+};
+
+export const mapConnectShyftInboundVoiceWebhookToDomainEvent = (input: {
+  webhookBody: unknown;
+  canonicalEventType: string;
+  eventName:
+    | typeof CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME
+    | typeof CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME;
+  routingDecision: ConnectShyftInboundVoiceRoutingDecision;
+  providerEventId: string | null;
+import { randomUUID } from 'node:crypto'
+import type { Knex } from 'knex'
+import db from '../../config/knex'
+import {
+  buildHandleProviderBridgeEvent,
+  buildStartBridgeSession,
+  type BridgeSessionAggregate,
+  type BridgeLegRecord,
+  type BridgeSessionRecord,
+  type BridgeSessionRepository,
+  type BridgeTelephonyProvider,
+  type ProviderBridgeEvent,
+  type StartBridgeSessionCommand,
+} from '../../../../../domains/communication'
+import { recordConnectShyftBridgeLegProviderIdentifierMapping } from './providerCorrelationMappings'
+import { isConnectShyftTestOverrideEnabled } from './featureFlags'
+import type {
+  ConnectShyftOutboundCallDispatchPolicy,
+  ConnectShyftProviderAdapter,
+} from './providerRegistry'
+
+const BRIDGE_SESSIONS_TABLE = 'cs_bridge_sessions'
+const BRIDGE_LEGS_TABLE = 'cs_bridge_legs'
+
+type DbBridgeSessionRow = {
+  id: string
+  tenant_id: string
+  org_unit_id: string
+  thread_id: string
+  operator_participant_id: string
+  neighbor_participant_id: string
+  operator_contact_point_id: string
+  neighbor_contact_point_id: string
+  selected_outbound_contact_point_id?: string | null
+  bridge_status: string
+  failure_code?: string | null
+  failure_message?: string | null
+  ended_by?: string | null
+  idempotency_key?: string | null
+  audit_correlation_id?: string | null
+  created_at_utc: string | Date
+  updated_at_utc: string | Date
+  completed_at_utc?: string | Date | null
+}
+
+type DbBridgeLegRow = {
+  id: string
+  tenant_id: string
+  org_unit_id: string
+  bridge_session_id: string
+  leg_role: 'operator' | 'neighbor'
+  contact_point_id: string
+  provider_call_id?: string | null
+  leg_status: string
+  started_at_utc?: string | Date | null
+  answered_at_utc?: string | Date | null
+  ended_at_utc?: string | Date | null
+  failure_code?: string | null
+  failure_message?: string | null
+  created_at_utc: string | Date
+  updated_at_utc: string | Date
+}
+
+type StartConnectShyftBridgeSessionInput = {
+  tenantId: string
+  orgUnitId: string
+  threadId: string
+  operatorParticipantId: string
+  neighborParticipantId: string
+  operatorContactPointId: string
+  neighborContactPointId: string
+  selectedOutboundContactPointId?: string | null
+  providerKey: string
+  providerAdapter: ConnectShyftProviderAdapter
+  idempotencyKey?: string | null
+  auditCorrelationId?: string | null
+  callPolicy?: ConnectShyftOutboundCallDispatchPolicy
+}
+
+type HandleConnectShyftBridgeWebhookEventInput = {
+  tenantId: string
+  orgUnitId: string
+  threadId: string
+  providerKey: string
+  providerAdapter: ConnectShyftProviderAdapter
+  providerLegId: string | null
+  eventType: string
+  occurredAt?: Date
+  reason?: string | null
+  callPolicy?: ConnectShyftOutboundCallDispatchPolicy
+}
+
+type BridgeMappingStatus = 'created' | 'duplicate' | 'ignored' | 'error'
+
+type BridgeMappingResult = {
+  deterministic: true
+  operatorLegMapping: BridgeMappingStatus
+  neighborLegMapping: BridgeMappingStatus
+  error: {
+    code: 'CONNECTSHYFT_PROVIDER_CORRELATION_PERSISTENCE_UNAVAILABLE'
+    message: string
+  } | null
+}
+
+const normalizeString = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  return value.trim()
+}
+
+const toIsoString = (value: string | Date | null | undefined): string | null => {
+  if (!value) {
+    return null
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString()
+  }
+
+  const parsed = new Date(value)
+  if (!Number.isNaN(parsed.valueOf())) {
+    return parsed.toISOString()
+  }
+
+  return normalizeString(value) || null
+}
+
+const toDate = (value: string | Date | null | undefined): Date | null => {
+  const iso = toIsoString(value)
+  return iso ? new Date(iso) : null
+}
+
+const isMissingPersistenceError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const candidate = error as { code?: string }
+  return candidate.code === '42P01'
+    || candidate.code === '3F000'
+    || candidate.code === '42703'
+}
+
+const mapSessionRow = (row: DbBridgeSessionRow): BridgeSessionRecord => ({
+  id: row.id,
+  tenantId: row.tenant_id,
+  orgUnitId: row.org_unit_id,
+  threadId: row.thread_id,
+  operatorParticipantId: row.operator_participant_id,
+  neighborParticipantId: row.neighbor_participant_id,
+  operatorContactPointId: row.operator_contact_point_id,
+  neighborContactPointId: row.neighbor_contact_point_id,
+  selectedOutboundContactPointId: normalizeString(row.selected_outbound_contact_point_id) || null,
+  status: row.bridge_status as BridgeSessionRecord['status'],
+  failureCode: normalizeString(row.failure_code) as BridgeSessionRecord['failureCode'],
+  failureMessage: normalizeString(row.failure_message) || null,
+  endedBy: normalizeString(row.ended_by) || null,
+  idempotencyKey: normalizeString(row.idempotency_key) || null,
+  auditCorrelationId: normalizeString(row.audit_correlation_id) || null,
+  createdAt: new Date(toIsoString(row.created_at_utc) || new Date().toISOString()),
+  updatedAt: new Date(toIsoString(row.updated_at_utc) || new Date().toISOString()),
+  completedAt: toDate(row.completed_at_utc),
+})
+
+const mapLegRow = (row: DbBridgeLegRow): BridgeLegRecord => ({
+  id: row.id,
+  tenantId: row.tenant_id,
+  orgUnitId: row.org_unit_id,
+  bridgeSessionId: row.bridge_session_id,
+  legRole: row.leg_role,
+  contactPointId: row.contact_point_id,
+  providerCallId: normalizeString(row.provider_call_id) || null,
+  status: row.leg_status as BridgeLegRecord['status'],
+  startedAt: toDate(row.started_at_utc),
+  answeredAt: toDate(row.answered_at_utc),
+  endedAt: toDate(row.ended_at_utc),
+  failureCode: normalizeString(row.failure_code) as BridgeLegRecord['failureCode'],
+  failureMessage: normalizeString(row.failure_message) || null,
+  createdAt: new Date(toIsoString(row.created_at_utc) || new Date().toISOString()),
+  updatedAt: new Date(toIsoString(row.updated_at_utc) || new Date().toISOString()),
+})
+
+const sessionToRow = (session: BridgeSessionRecord) => ({
+  id: session.id,
+  tenant_id: session.tenantId,
+  org_unit_id: session.orgUnitId,
+  thread_id: session.threadId,
+  operator_participant_id: session.operatorParticipantId,
+  neighbor_participant_id: session.neighborParticipantId,
+  operator_contact_point_id: session.operatorContactPointId,
+  neighbor_contact_point_id: session.neighborContactPointId,
+  selected_outbound_contact_point_id: session.selectedOutboundContactPointId ?? null,
+  bridge_status: session.status,
+  failure_code: session.failureCode ?? null,
+  failure_message: session.failureMessage ?? null,
+  ended_by: session.endedBy ?? null,
+  idempotency_key: session.idempotencyKey ?? null,
+  audit_correlation_id: session.auditCorrelationId ?? null,
+  created_at_utc: session.createdAt.toISOString(),
+  updated_at_utc: session.updatedAt.toISOString(),
+  completed_at_utc: session.completedAt ? session.completedAt.toISOString() : null,
+})
+
+const legToRow = (leg: BridgeLegRecord) => ({
+  id: leg.id,
+  tenant_id: leg.tenantId,
+  org_unit_id: leg.orgUnitId,
+  bridge_session_id: leg.bridgeSessionId,
+  leg_role: leg.legRole,
+  contact_point_id: leg.contactPointId,
+  provider_call_id: leg.providerCallId ?? null,
+  leg_status: leg.status,
+  started_at_utc: leg.startedAt ? leg.startedAt.toISOString() : null,
+  answered_at_utc: leg.answeredAt ? leg.answeredAt.toISOString() : null,
+  ended_at_utc: leg.endedAt ? leg.endedAt.toISOString() : null,
+  failure_code: leg.failureCode ?? null,
+  failure_message: leg.failureMessage ?? null,
+  created_at_utc: leg.createdAt.toISOString(),
+  updated_at_utc: leg.updatedAt.toISOString(),
+})
+
+class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository {
+  private sessions = new Map<string, BridgeSessionRecord>()
+  private legsBySessionId = new Map<string, Map<'operator' | 'neighbor', BridgeLegRecord>>()
+  private sessionIdByProviderCallId = new Map<string, string>()
+
+  createSession(session: BridgeSessionRecord): Promise<void> {
+    this.sessions.set(session.id, { ...session })
+    return Promise.resolve()
+  }
+
+  createLeg(leg: BridgeLegRecord): Promise<void> {
+    const current = this.legsBySessionId.get(leg.bridgeSessionId) || new Map()
+    current.set(leg.legRole, { ...leg })
+    this.legsBySessionId.set(leg.bridgeSessionId, current)
+    if (leg.providerCallId) {
+      this.sessionIdByProviderCallId.set(leg.providerCallId, leg.bridgeSessionId)
+    }
+    return Promise.resolve()
+  }
+
+  saveAggregate(aggregate: BridgeSessionAggregate): Promise<void> {
+    this.sessions.set(aggregate.session.id, { ...aggregate.session })
+    const legs = new Map<'operator' | 'neighbor', BridgeLegRecord>()
+    legs.set('operator', { ...aggregate.operatorLeg })
+    legs.set('neighbor', { ...aggregate.neighborLeg })
+    this.legsBySessionId.set(aggregate.session.id, legs)
+    if (aggregate.operatorLeg.providerCallId) {
+      this.sessionIdByProviderCallId.set(aggregate.operatorLeg.providerCallId, aggregate.session.id)
+    }
+    if (aggregate.neighborLeg.providerCallId) {
+      this.sessionIdByProviderCallId.set(aggregate.neighborLeg.providerCallId, aggregate.session.id)
+    }
+    return Promise.resolve()
+  }
+
+  getAggregateBySessionId(sessionId: string): Promise<BridgeSessionAggregate | null> {
+    const session = this.sessions.get(sessionId)
+    const legs = this.legsBySessionId.get(sessionId)
+    const operatorLeg = legs?.get('operator')
+    const neighborLeg = legs?.get('neighbor')
+    if (!session || !operatorLeg || !neighborLeg) {
+      return Promise.resolve(null)
+    }
+
+    return Promise.resolve({
+      session: { ...session },
+      operatorLeg: { ...operatorLeg },
+      neighborLeg: { ...neighborLeg },
+    })
+  }
+
+  getAggregateByProviderCallId(input: {
+    tenantId?: string | null
+    providerCallId: string
+  }): Promise<BridgeSessionAggregate | null> {
+    const sessionId = this.sessionIdByProviderCallId.get(input.providerCallId)
+    if (!sessionId) {
+      return Promise.resolve(null)
+    }
+
+    return this.getAggregateBySessionId(sessionId)
+  }
+
+  getAggregateByThreadId(input: {
+    tenantId?: string | null
+    threadId: string
+  }): Promise<BridgeSessionAggregate | null> {
+    const tenantId = normalizeString(input.tenantId || null)
+    const latestSession = Array.from(this.sessions.values())
+      .filter((session) => {
+        if (session.threadId !== input.threadId) {
+          return false
+        }
+        return !tenantId || session.tenantId === tenantId
+      })
+      .sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime())[0]
+
+    if (!latestSession) {
+      return Promise.resolve(null)
+    }
+
+    return this.getAggregateBySessionId(latestSession.id)
+  }
+
+  reset(): void {
+    this.sessions.clear()
+    this.legsBySessionId.clear()
+    this.sessionIdByProviderCallId.clear()
+  }
+}
+
+class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
+  constructor(private readonly knexClient: Knex = db) {}
+
+  async createSession(session: BridgeSessionRecord): Promise<void> {
+    await this.knexClient
+      .withSchema('connectshyft')
+import {
+  assertValidCallDispatchResult,
+  assertValidEndCallResult,
+  assertValidSmsDispatchResult,
+  type TelephonyEndCallResult,
+  type TelephonyDispatchResult,
+  type TelephonyOutboundCallPolicy,
+  type TelephonyProviderAdapter,
+  type TelephonyProviderEvent,
+  type TelephonyWebhookVerificationInput,
+  type TelephonyWebhookVerificationResult,
+} from '../../../../../domains/communication';
+import { resolveTelephonyProviderAdapter } from '../../../../../infrastructure/communications';
+import { isConnectShyftTestOverrideEnabled } from './featureFlags';
+
+const DEFAULT_ENABLED_PROVIDERS = ['telnyx'];
+const ENABLED_PROVIDERS_ENV = 'CONNECTSHYFT_ENABLED_PROVIDERS';
+const DISABLED_PROVIDERS_ENV = 'CONNECTSHYFT_DISABLED_PROVIDERS';
+const PROVIDER_ROLLOUT_ALLOWLIST_ENV = 'CONNECTSHYFT_PROVIDER_ROLLOUT_ALLOWLIST';
+const TEST_ENABLED_PROVIDERS_HEADER = 'x-test-connectshyft-enabled-providers';
+const TEST_DISABLED_PROVIDERS_HEADER = 'x-test-connectshyft-disabled-providers';
+const TEST_REQUESTED_PROVIDER_HEADER = 'x-test-connectshyft-provider-requested';
+const TEST_PROVIDER_ROLLOUT_ALLOWLIST_HEADER = 'x-test-connectshyft-provider-rollout-allowlist';
+const TEST_ENFORCE_WEBHOOK_SIGNATURE_HEADER = 'x-test-connectshyft-enforce-webhook-signature';
+const CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS_ENV = 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MAX_AGE_SECONDS';
+const TEST_PROVIDER_PUBLIC_KEY_HEADER = 'x-test-connectshyft-provider-public-key';
+const TEST_PROVIDER_PUBLIC_KEY_LEGACY_HEADER = 'x-test-connectshyft-telnyx-public-key';
+const CONNECTSHYFT_REQUIRED_CALL_TRANSPORT = 'bridge';
+const CONNECTSHYFT_REQUIRED_CALL_REDIAL_POLICY = 'manual_only';
+
+export type ConnectShyftProviderOperation = 'call' | 'message' | 'webhook';
+export type ConnectShyftProviderResolutionReason =
+  | 'provider-disabled'
+  | 'provider-not-allowlisted'
+  | 'provider-not-registered'
+  | 'no-enabled-provider';
+
+export type ConnectShyftProviderResolution = {
+  requestedProvider: string | null;
+  resolvedProvider: string | null;
+  deterministic: true;
+  reason?: ConnectShyftProviderResolutionReason;
+};
+
+export type ConnectShyftProviderDispatchResult = TelephonyDispatchResult;
+
+export type ConnectShyftOutboundCallDispatchPolicy = TelephonyOutboundCallPolicy;
+
+export class ConnectShyftProviderDispatchPolicyError extends Error {
+  readonly code:
+    | 'CONNECTSHYFT_OUTBOUND_CALL_TRANSPORT_UNSUPPORTED'
+    | 'CONNECTSHYFT_OUTBOUND_CALL_RETRY_FORBIDDEN';
+  readonly data: Record<string, unknown>;
+
+  constructor(input: {
+    code:
+      | 'CONNECTSHYFT_OUTBOUND_CALL_TRANSPORT_UNSUPPORTED'
+      | 'CONNECTSHYFT_OUTBOUND_CALL_RETRY_FORBIDDEN';
+    message: string;
+    data: Record<string, unknown>;
+  }) {
+    super(input.message);
+    this.name = 'ConnectShyftProviderDispatchPolicyError';
+    this.code = input.code;
+    this.data = input.data;
+  }
+}
+
+export type ConnectShyftProviderCanonicalEvent = TelephonyProviderEvent;
+
+export type ConnectShyftProviderSideEffectsContract = {
+  dispatchAttempted: false;
+  lifecycleMutationApplied: false;
+  auditPersisted: false;
+};
+
+export type ConnectShyftProviderOperatorFeedbackMeta = {
+  actionable: true;
+  hiddenTransition: false;
+  messageKey: 'connectshyft.provider.disabled' | 'connectshyft.provider.unavailable';
+  remediation: string;
+};
+
+export type ConnectShyftProviderResolutionRefusal = {
+  code: 'CONNECTSHYFT_PROVIDER_DISABLED' | 'CONNECTSHYFT_PROVIDER_UNAVAILABLE';
+  message: string;
+  refusalType: 'business';
+  httpStatus: 200;
+  data: {
+    providerResolution: ConnectShyftProviderResolution;
+    operatorFeedbackMeta: ConnectShyftProviderOperatorFeedbackMeta;
+    sideEffects: ConnectShyftProviderSideEffectsContract;
+  };
+};
+
+export type ConnectShyftWebhookSignatureRefusal = {
+  code:
+    | 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED'
+    | 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING'
+    | 'CONNECTSHYFT_WEBHOOK_SIGNATURE_INVALID';
+  message: string;
+  refusalType: 'business' | 'client';
+  httpStatus: 401 | 503;
+};
+
+export type ConnectShyftWebhookSignatureResult =
+  | { ok: true }
+  | { ok: false; refusal: ConnectShyftWebhookSignatureRefusal };
+
+type ConnectShyftHeaderValue = string | string[] | undefined;
+
+type ConnectShyftHeaderReader = {
+  header(name: string): ConnectShyftHeaderValue;
+};
+
+type ConnectShyftWebhookRequest = ConnectShyftHeaderReader & {
+  body: unknown;
+  rawBody?: Buffer | string;
+  originalUrl?: string;
+  protocol?: string;
+  url?: string;
+  tenantId?: string | null;
+  orgUnitId?: string | null;
+  headers?: Record<string, unknown>;
+};
+
+type ConnectShyftProviderRolloutAllowlistRule = {
+  tenantIds: string[];
+  orgUnitIds: string[];
+  tenantOrgUnitPairs: string[];
+};
+
+type ConnectShyftProviderRolloutAllowlist = Record<string, ConnectShyftProviderRolloutAllowlistRule>;
+
+type ConnectShyftProviderRolloutAllowlistParseResult = {
+  allowlist: ConnectShyftProviderRolloutAllowlist;
+  configured: boolean;
+  invalid: boolean;
+};
+
+export type ConnectShyftProviderAdapter = TelephonyProviderAdapter;
+
+export type ConnectShyftProviderResolutionSuccess = {
+  ok: true;
+  adapter: ConnectShyftProviderAdapter;
+  providerResolution: ConnectShyftProviderResolution & {
+    resolvedProvider: string;
+  };
+};
+
+export type ConnectShyftProviderResolutionFailure = {
+  ok: false;
+  refusal: ConnectShyftProviderResolutionRefusal;
+};
+
+export type ConnectShyftProviderResolutionResult =
+  | ConnectShyftProviderResolutionSuccess
+  | ConnectShyftProviderResolutionFailure;
+
+const normalizeString = (value: unknown): string => {
+  if (Array.isArray(value)) {
+    const firstValue = value.find((entry) => typeof entry === 'string');
+    if (typeof firstValue === 'string') {
+      return firstValue.trim();
+    }
+    return '';
+  }
+
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  return value.trim();
+};
+
+const normalizeProviderKey = (value: unknown): string | null => {
+  const normalized = normalizeString(value).toLowerCase();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const appendUnique = (target: string[], candidate: string | null): void => {
+  if (!candidate || target.includes(candidate)) {
+    return;
+  }
+  target.push(candidate);
+};
+
+const parseProviderList = (raw: unknown): string[] => {
+  if (Array.isArray(raw)) {
+    const providers: string[] = [];
+    raw.forEach((entry) => {
+      appendUnique(providers, normalizeProviderKey(entry));
+    });
+    return providers;
+  }
+
+  if (typeof raw !== 'string') {
+    return [];
+  }
+
+  if (!raw) {
+    return [];
+  }
+
+  const normalizedRaw = raw.trim();
+  if (!normalizedRaw) {
+    return [];
+  }
+
+  const providers: string[] = [];
+
+  const appendFromArray = (values: unknown[]): void => {
+    values.forEach((value) => {
+      appendUnique(providers, normalizeProviderKey(value));
+    });
+  };
+
+  try {
+    const parsed = JSON.parse(normalizedRaw);
+    if (Array.isArray(parsed)) {
+      appendFromArray(parsed);
+      return providers;
+    }
+    appendUnique(providers, normalizeProviderKey(parsed));
+    return providers;
+  } catch (_error) {
+    normalizedRaw
+      .split(',')
+      .map((value) => normalizeProviderKey(value))
+      .forEach((value) => appendUnique(providers, value));
+    return providers;
+  }
+};
+
+const parseNormalizedStringList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const resolved: string[] = [];
+  value.forEach((entry) => {
+    const normalized = normalizeString(entry);
+    if (!normalized || resolved.includes(normalized)) {
+      return;
+    }
+    resolved.push(normalized);
+  });
+  return resolved;
+};
+
+const resolveProviderRolloutAllowlist = (raw: unknown): ConnectShyftProviderRolloutAllowlistParseResult => {
+  let candidate: unknown = raw;
+
+  if (typeof candidate === 'string') {
+    const normalized = candidate.trim();
+    if (!normalized) {
+      return {
+        allowlist: {},
+        configured: false,
+        invalid: false,
+      };
+    }
+
+    try {
+      candidate = JSON.parse(normalized);
+    } catch (_error) {
+      return {
+        allowlist: {},
+        configured: true,
+        invalid: true,
+      };
+    }
+  }
+
+  if (candidate === null || typeof candidate === 'undefined') {
+    return {
+      allowlist: {},
+      configured: false,
+      invalid: false,
+    };
+  }
+
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+    return {
+      allowlist: {},
+      configured: true,
+      invalid: true,
+    };
+  }
+
+  const resolved: ConnectShyftProviderRolloutAllowlist = {};
+  let invalid = false;
+  Object.entries(candidate as Record<string, unknown>).forEach(([providerKey, entry]) => {
+    const normalizedProviderKey = normalizeProviderKey(providerKey);
+    if (!normalizedProviderKey || !entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      invalid = true;
+      return;
+    }
+
+    const rule = entry as Record<string, unknown>;
+    if (
+      ('tenantIds' in rule && !Array.isArray(rule.tenantIds))
+      || ('orgUnitIds' in rule && !Array.isArray(rule.orgUnitIds))
+      || ('tenantOrgUnitPairs' in rule && !Array.isArray(rule.tenantOrgUnitPairs))
+    ) {
+      invalid = true;
+      return;
+    }
+    resolved[normalizedProviderKey] = {
+      tenantIds: parseNormalizedStringList(rule.tenantIds),
+      orgUnitIds: parseNormalizedStringList(rule.orgUnitIds),
+      tenantOrgUnitPairs: parseNormalizedStringList(rule.tenantOrgUnitPairs),
+    };
+  });
+
+  return {
+    allowlist: resolved,
+    configured: true,
+    invalid,
+  };
+import { validatePhoneForChannel } from '../../../../../domains/communication';
+import {
+  connectShyftNumberMappingServiceAsync,
+  type AsyncConnectShyftNumberMappingService,
+  type ConnectShyftNumberMapping,
+} from './numberMappings';
+import {
+  connectShyftThreadServiceAsync,
+  type AsyncConnectShyftThreadService,
+  type ConnectShyftThread,
+} from './threads';
+
+export type ConnectShyftSenderChannel = 'sms' | 'voice';
+
+type SenderAlignmentSource = 'preferred_outbound' | 'last_inbound';
+
+type SenderAlignmentMetadata = {
+  threadId: string;
+  tenantId: string;
+  orgUnitId: string;
+  preferredOutboundCsNumberId: string | null;
+  lastInboundCsNumberId: string | null;
+  alignedFrom: SenderAlignmentSource | null;
+  candidateProviderNumberE164: string | null;
+};
+
+export type ResolveSenderNumberInput = {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  channel: ConnectShyftSenderChannel;
+};
+
+export type ResolveSenderNumberSuccess = {
+  ok: true;
+  providerNumberE164: string;
+  mappingId: string;
+  routingMetadata: SenderAlignmentMetadata & {
+    deterministic: true;
+    channel: ConnectShyftSenderChannel;
+    source: 'thread_alignment';
+    mappingLabel: string | null;
+  };
+};
+
+export type ResolveSenderNumberRefusal = {
+  ok: false;
+  code:
+    | 'CONNECTSHYFT_THREAD_NOT_FOUND'
+    | 'CONNECTSHYFT_SENDER_ALIGNMENT_REQUIRED'
+    | 'CONNECTSHYFT_SENDER_ALIGNMENT_INVALID'
+    | 'CONNECTSHYFT_SENDER_MAPPING_REQUIRED'
+    | 'CONNECTSHYFT_SENDER_MAPPING_AMBIGUOUS'
+    | 'CONNECTSHYFT_SENDER_SCOPE_MISMATCH';
+  message: string;
+  reason:
+    | 'thread_not_found'
+    | 'sender_alignment_missing'
+    | 'sender_alignment_invalid'
+    | 'sender_mapping_missing'
+    | 'sender_mapping_ambiguous'
+    | 'sender_scope_mismatch';
+  routingMetadata: SenderAlignmentMetadata & {
+    deterministic: true;
+    channel: ConnectShyftSenderChannel;
+    source: 'thread_alignment';
+    candidateMappings?: Array<{
+      mappingId: string;
+      providerNumberE164: string;
+      label: string | null;
+      isActive: boolean;
+    }>;
+  };
+};
+
+export type ResolveSenderNumberResult =
+  | ResolveSenderNumberSuccess
+  | ResolveSenderNumberRefusal;
+
+type ResolveSenderNumberDependencies = {
+  loadThread?: (input: ResolveSenderNumberInput) => Promise<ConnectShyftThread | null>;
+  numberMappingService?: Pick<AsyncConnectShyftNumberMappingService, 'resolveRoutingMappingByNumber'>;
+};
+
+const normalizeString = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  return value.trim();
+};
+
+const buildAlignmentMetadata = (input: {
+  request: ResolveSenderNumberInput;
+  thread: ConnectShyftThread | null;
+  alignedFrom: SenderAlignmentSource | null;
+  candidateProviderNumberE164: string | null;
+}) => ({
+  threadId: input.request.threadId,
+  tenantId: input.request.tenantId,
+  orgUnitId: input.request.orgUnitId,
+  preferredOutboundCsNumberId: normalizeString(input.thread?.preferredOutboundCsNumberId) || null,
+  lastInboundCsNumberId: normalizeString(input.thread?.lastInboundCsNumberId) || null,
+  alignedFrom: input.alignedFrom,
+  candidateProviderNumberE164: input.candidateProviderNumberE164,
+});
+
+const resolveAlignedThreadNumber = (
+  thread: ConnectShyftThread,
+): { alignedFrom: SenderAlignmentSource | null; providerNumberE164: string | null; invalid: boolean } => {
+  const preferredOutbound = normalizeString(thread.preferredOutboundCsNumberId);
+  const lastInbound = normalizeString(thread.lastInboundCsNumberId);
+
+  if (preferredOutbound && lastInbound && preferredOutbound !== lastInbound) {
+    return {
+      alignedFrom: 'preferred_outbound',
+      providerNumberE164: preferredOutbound,
+      invalid: true,
+    };
+  }
+
+  if (preferredOutbound) {
+    return {
+      alignedFrom: 'preferred_outbound',
+      providerNumberE164: preferredOutbound,
+      invalid: false,
+    };
+  }
+
+  if (lastInbound) {
+    return {
+      alignedFrom: 'last_inbound',
+      providerNumberE164: lastInbound,
+      invalid: false,
+    };
+  }
+
+  return {
+    alignedFrom: null,
+    providerNumberE164: null,
+    invalid: false,
+  };
+};
+
+const buildRefusal = (
+  input: {
+    request: ResolveSenderNumberInput;
+    thread: ConnectShyftThread | null;
+    alignedFrom: SenderAlignmentSource | null;
+    candidateProviderNumberE164: string | null;
+    code: ResolveSenderNumberRefusal['code'];
+    message: string;
+    reason: ResolveSenderNumberRefusal['reason'];
+    candidateMappings?: ConnectShyftNumberMapping[];
+  },
+): ResolveSenderNumberRefusal => ({
+  ok: false,
+  code: input.code,
+  message: input.message,
+  reason: input.reason,
+  routingMetadata: {
+    deterministic: true,
+    channel: input.request.channel,
+    source: 'thread_alignment',
+    ...buildAlignmentMetadata({
+      request: input.request,
+      thread: input.thread,
+      alignedFrom: input.alignedFrom,
+      candidateProviderNumberE164: input.candidateProviderNumberE164,
+    }),
+    ...(input.candidateMappings && input.candidateMappings.length > 0
+      ? {
+        candidateMappings: input.candidateMappings.map((mapping) => ({
+          mappingId: mapping.mappingId,
+          providerNumberE164: mapping.twilioNumberE164,
+          label: normalizeString(mapping.label) || null,
+          isActive: mapping.isActive === true,
+        })),
+      }
+      : {}),
+  },
+});
+
+export const resolveSenderNumber = async (
+  input: ResolveSenderNumberInput,
+  dependencies: ResolveSenderNumberDependencies = {},
+): Promise<ResolveSenderNumberResult> => {
+  const loadThread = dependencies.loadThread
+    || (async (request: ResolveSenderNumberInput) => (
+      connectShyftThreadServiceAsync.findThreadById({
+        tenantId: request.tenantId,
+        threadId: request.threadId,
+      })
+    ));
+  const numberMappingService = dependencies.numberMappingService || connectShyftNumberMappingServiceAsync;
+  const thread = await loadThread(input);
+
+  if (!thread || thread.orgUnitId !== input.orgUnitId) {
+    return buildRefusal({
+      request: input,
+      thread,
+      alignedFrom: null,
+      candidateProviderNumberE164: null,
+      code: 'CONNECTSHYFT_THREAD_NOT_FOUND',
+      message: 'Thread sender resolution requires an existing tenant-scoped thread.',
+      reason: 'thread_not_found',
+    });
+  }
+
+  const aligned = resolveAlignedThreadNumber(thread);
+  if (!aligned.providerNumberE164) {
+    return buildRefusal({
+      request: input,
+      thread,
+      alignedFrom: aligned.alignedFrom,
+      candidateProviderNumberE164: null,
+      code: 'CONNECTSHYFT_SENDER_ALIGNMENT_REQUIRED',
+      message: 'Thread sender resolution requires a persisted provider-number alignment.',
+      reason: 'sender_alignment_missing',
+    });
+  }
+
+  if (
+    aligned.invalid
+    || !validatePhoneForChannel(aligned.providerNumberE164, input.channel).ok
+  ) {
+    return buildRefusal({
+      request: input,
+      thread,
+      alignedFrom: aligned.alignedFrom,
+      candidateProviderNumberE164: aligned.providerNumberE164,
+      code: 'CONNECTSHYFT_SENDER_ALIGNMENT_INVALID',
+      message: 'Thread sender alignment must contain one valid provider number.',
+      reason: 'sender_alignment_invalid',
+    });
+  }
+
+  const mapping = await numberMappingService.resolveRoutingMappingByNumber({
+    tenantId: input.tenantId,
+    twilioNumberE164: aligned.providerNumberE164,
+  });
+
+  if (mapping.status === 'not-found') {
+    return buildRefusal({
+      request: input,
+      thread,
+      alignedFrom: aligned.alignedFrom,
+      candidateProviderNumberE164: aligned.providerNumberE164,
+      code: 'CONNECTSHYFT_SENDER_MAPPING_REQUIRED',
+      message: 'Thread sender alignment does not map to an active provider number in this tenant.',
+      reason: 'sender_mapping_missing',
+    });
+  }
+
+  if (mapping.status === 'ambiguous') {
+    return buildRefusal({
+      request: input,
+      thread,
+      alignedFrom: aligned.alignedFrom,
+      candidateProviderNumberE164: aligned.providerNumberE164,
+jeremiahotis@jeremiah-otis:~/projects/shyftunity$ 
