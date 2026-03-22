@@ -27,7 +27,9 @@ import {
   getConnectEscalationRecipients,
   getConnectInbox,
   getConnectNumberMappings,
+  getConnectOperatorCallbackNumber,
   getConnectSettingsNavigation,
+  getConnectTelephonyReadiness,
   getConnectThreadDetail,
   getConnectThreadTimeline,
   getConnectWebhookReceiptMetrics,
@@ -46,6 +48,7 @@ import {
   putConnectNeighbor,
   putConnectEscalationConfig,
   putConnectNumberMapping,
+  putConnectOperatorCallbackNumber,
 } from '../../../modules/connectshyft/handlers';
 import {
   resolveConnectShyftOrgUnitContext,
@@ -3978,6 +3981,12 @@ const resolveNeighborIdForThreadCorrelation = async (input: {
 router.get('/settings/navigation', getConnectSettingsNavigation);
 
 router.get('/availability', getConnectAvailability);
+
+router.get('/telephony-readiness', getConnectTelephonyReadiness);
+
+router.get('/operator/callback-number', getConnectOperatorCallbackNumber);
+
+router.put('/operator/callback-number', putConnectOperatorCallbackNumber);
 
 router.get('/context', getConnectContext);
 
