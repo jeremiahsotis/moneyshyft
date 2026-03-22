@@ -1,4 +1,5 @@
 import type { ConnectShyftThreadState } from './threads';
+import type { ConnectShyftOperatorDestinationResolution } from './operatorDestinationResolver';
 
 const CONNECTSHYFT_INBOUND_VOICE_FROM_KEYS = [
   'from',
@@ -271,6 +272,7 @@ export const extractConnectShyftVoicemailTranscriptionCallbackPayload = (
 export const resolveConnectShyftInboundVoiceRouting = (input: {
   normalizedEventType: string;
   threadState: ConnectShyftThreadState | null;
+  operatorDestination?: Pick<ConnectShyftOperatorDestinationResolution, 'phoneNumber' | 'source'> | null;
 }): {
   eventName:
     | typeof CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME
@@ -292,6 +294,15 @@ export const resolveConnectShyftInboundVoiceRouting = (input: {
   }
 
   if (input.threadState === 'CLAIMED') {
+    if (input.operatorDestination !== undefined && !input.operatorDestination?.phoneNumber) {
+      return {
+        eventName: CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
+        routingDecision: 'intake_fallback',
+        deterministicOrdering: true,
+        routingPolicy: {},
+      };
+    }
+
     return {
       eventName: CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
       routingDecision: 'accepted',

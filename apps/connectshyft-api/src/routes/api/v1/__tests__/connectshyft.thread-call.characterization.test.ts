@@ -1,5 +1,6 @@
 // @ts-nocheck
 import request from 'supertest';
+import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
 import * as SenderNumberResolverModule from '../../../../modules/connectshyft/senderNumberResolver';
 import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents';
@@ -159,6 +160,7 @@ const buildVoiceSenderRefusal = (input: {
 describe('connectshyft outbound call route characterization', () => {
   registerProviderRegistryRouteIntegrationHooks();
 
+  let resolveOperatorDestinationSpy: jest.SpyInstance;
   let resolveSenderNumberSpy: jest.SpyInstance;
 
   beforeEach(() => {
@@ -174,11 +176,21 @@ describe('connectshyft outbound call route characterization', () => {
     resetConnectShyftCommunicationAuditLogForTests();
     resetConnectShyftCommunicationReliabilityStateForTests();
 
+    resolveOperatorDestinationSpy = jest.spyOn(
+      OperatorDestinationResolverModule,
+      'resolveOperatorDestination',
+    ).mockResolvedValue({
+      phoneNumber: '+12605550155',
+      source: 'actor_user',
+      userId: TEST_ACTOR_USER_ID,
+      orgUnitId: TEST_ORG_UNIT_ID,
+    });
     resolveSenderNumberSpy = jest.spyOn(SenderNumberResolverModule, 'resolveSenderNumber')
       .mockImplementation(async (input) => buildVoiceSenderResolution(input));
   });
 
   afterEach(() => {
+    resolveOperatorDestinationSpy.mockRestore();
     resolveSenderNumberSpy.mockRestore();
   });
 
@@ -583,7 +595,14 @@ describe('connectshyft outbound call route characterization', () => {
     expect(startOutboundCallMock).toHaveBeenCalledTimes(1);
   });
 
-  it('returns the current operator-callback-required refusal shape for outbound bridge calls', async () => {
+  it('returns the current operator-destination-missing refusal shape for outbound bridge calls', async () => {
+    resolveOperatorDestinationSpy.mockResolvedValueOnce({
+      phoneNumber: null,
+      source: 'none',
+      userId: null,
+      orgUnitId: TEST_ORG_UNIT_ID,
+    });
+
     const app = buildApp();
     const response = await request(app)
       .post(`/api/v1/connectshyft/threads/${CALL_SUCCESS_THREAD_ID}/call`)
@@ -596,8 +615,8 @@ describe('connectshyft outbound call route characterization', () => {
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       ok: false,
-      code: 'CONNECTSHYFT_OPERATOR_CALLBACK_REQUIRED',
-      message: 'Outbound bridge calls require an operator callback number.',
+      code: 'CONNECTSHYFT_OPERATOR_DESTINATION_MISSING',
+      message: 'Outbound bridge calls require a resolved operator destination.',
       refusalType: 'business',
       data: {
         context: {

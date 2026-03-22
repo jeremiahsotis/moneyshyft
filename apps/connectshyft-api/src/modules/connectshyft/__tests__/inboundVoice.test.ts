@@ -75,6 +75,10 @@ describe('connectshyft inbound voice domain mapping', () => {
     expect(resolveConnectShyftInboundVoiceRouting({
       normalizedEventType: 'voice.voicemail',
       threadState: 'CLAIMED',
+      operatorDestination: {
+        phoneNumber: '+12605550172',
+        source: 'thread_assignee',
+      },
     })).toMatchObject({
       eventName: CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
       routingDecision: 'accepted',
@@ -82,6 +86,32 @@ describe('connectshyft inbound voice domain mapping', () => {
       routingPolicy: {
         claimedMode: 'orgunit_configured_mode',
       },
+    });
+
+    expect(resolveConnectShyftInboundVoiceRouting({
+      normalizedEventType: 'voice.voicemail',
+      threadState: 'CLAIMED',
+      operatorDestination: {
+        phoneNumber: null,
+        source: 'none',
+      },
+    })).toMatchObject({
+      eventName: CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
+      routingDecision: 'intake_fallback',
+      deterministicOrdering: true,
+    });
+
+    expect(resolveConnectShyftInboundVoiceRouting({
+      normalizedEventType: 'voice.voicemail',
+      threadState: 'CLAIMED',
+      operatorDestination: {
+        phoneNumber: null,
+        source: 'actor_user',
+      },
+    })).toMatchObject({
+      eventName: CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
+      routingDecision: 'intake_fallback',
+      deterministicOrdering: true,
     });
 
     expect(resolveConnectShyftInboundVoiceRouting({

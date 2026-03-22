@@ -263,4 +263,26 @@ describe('connectshyft escalation config service', () => {
       code: 'CONNECTSHYFT_ESCALATION_CONFIG_FORBIDDEN',
     });
   });
+
+  it('preserves a stored default operator phone on the config seam', async () => {
+    await store.setDefaultOperatorPhone(
+      'tenant-connectshyft-alpha',
+      'org-connectshyft-alpha-east',
+      '+12605550123',
+    );
+
+    await expect(service.getConfig(
+      'tenant-connectshyft-alpha',
+      'org-connectshyft-alpha-east',
+    )).resolves.toMatchObject({
+      orgUnitId: 'org-connectshyft-alpha-east',
+      defaultOperatorPhoneE164: '+12605550123',
+      escalationBaselineHours: 24,
+      recipients: {
+        primaryOrgUnitAdminUserId: '',
+        secondaryOrgUnitAdminUserId: '',
+        tenantStaffUserId: '',
+      },
+    });
+  });
 });
