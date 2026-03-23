@@ -79,14 +79,6 @@ type DbOperatorCallbackNumberRow = {
   updated_at_utc: string | Date;
 };
 
-type DbUserOperatorCallbackNumberRow = {
-  id: string;
-  household_id: string | null;
-  phone_e164: string | null;
-  created_at: string | Date;
-  updated_at: string | Date;
-};
-
 type ValidatedCallbackNumber =
   | {
     ok: true;
@@ -131,25 +123,6 @@ const normalizePersistedCallbackNumber = (
   ...callbackNumber,
   callbackNumberRawInput: formatCallbackNumberRawInput(callbackNumber.callbackNumberE164),
 });
-
-const mapUserRowToOperatorCallbackNumber = (
-  row: DbUserOperatorCallbackNumberRow,
-): ConnectShyftOperatorCallbackNumber | null => {
-  const callbackNumberE164 = normalizeRequiredString(row.phone_e164);
-  const tenantId = normalizeRequiredString(row.household_id);
-  if (!callbackNumberE164 || !tenantId) {
-    return null;
-  }
-
-  return {
-    tenantId,
-    userId: row.id,
-    callbackNumberE164,
-    callbackNumberRawInput: formatCallbackNumberRawInput(callbackNumberE164),
-    createdAtUtc: toIsoUtc(row.created_at),
-    updatedAtUtc: toIsoUtc(row.updated_at),
-  };
-};
 
 const buildRequiredRefusal = (): ConnectShyftOperatorCallbackNumberRequiredResult => ({
   ok: false,
@@ -283,28 +256,24 @@ export class KnexConnectShyftOperatorCallbackNumberStore
 implements ConnectShyftOperatorCallbackNumberStore {
   constructor(private readonly knexClient: Knex = db) {}
 
-  private usersTable() {
-    return this.knexClient.table<DbUserOperatorCallbackNumberRow>('users');
+  private table() {
+    return this.knexClient
+      .withSchema('connectshyft')
+      .table<DbOperatorCallbackNumberRow>('cs_operator_callback_numbers');
   }
 
   async getCallbackNumber(input: {
     tenantId: string;
     userId: string;
   }): Promise<ConnectShyftOperatorCallbackNumber | null> {
-    const row = await this.usersTable()
+    const row = await this.table()
       .where({
-        id: input.userId,
-        household_id: input.tenantId,
+        tenant_id: input.tenantId,
+        user_id: input.userId,
       })
-      .first<DbUserOperatorCallbackNumberRow>([
-        'id',
-        'household_id',
-        'phone_e164',
-        'created_at',
-        'updated_at',
-      ]);
+      .first<DbOperatorCallbackNumberRow>();
 
-    return row ? mapUserRowToOperatorCallbackNumber(row) : null;
+    return row ? mapDbRowToOperatorCallbackNumber(row) : null;
   }
 
   async saveCallbackNumber(input: {
@@ -313,28 +282,41 @@ implements ConnectShyftOperatorCallbackNumberStore {
     callbackNumberE164: string;
     callbackNumberRawInput: string;
   }): Promise<ConnectShyftOperatorCallbackNumber> {
-    const updatedRows = await this.usersTable()
+    const existing = await this.table()
       .where({
-        id: input.userId,
-        household_id: input.tenantId,
+        tenant_id: input.tenantId,
+        user_id: input.userId,
       })
-      .update({
-        phone_e164: input.callbackNumberE164,
-        updated_at: this.knexClient.fn.now(),
-      }, [
-        'id',
-        'household_id',
-        'phone_e164',
-        'created_at',
-        'updated_at',
-      ]);
-    const [row] = updatedRows as DbUserOperatorCallbackNumberRow[];
-    const callbackNumber = row ? mapUserRowToOperatorCallbackNumber(row) : null;
-    if (!callbackNumber) {
-      throw new Error('Operator callback number user scope is unavailable.');
+      .first<DbOperatorCallbackNumberRow>();
+
+    let row: DbOperatorCallbackNumberRow | undefined;
+
+    if (existing) {
+      [row] = await this.table()
+        .where({
+          tenant_id: input.tenantId,
+          user_id: input.userId,
+        })
+        .update({
+          callback_number_e164: input.callbackNumberE164,
+          callback_number_raw_input: input.callbackNumberRawInput,
+          updated_at_utc: this.knexClient.fn.now(),
+        }, '*') as DbOperatorCallbackNumberRow[];
+    } else {
+      [row] = await this.table()
+        .insert({
+          tenant_id: input.tenantId,
+          user_id: input.userId,
+          callback_number_e164: input.callbackNumberE164,
+          callback_number_raw_input: input.callbackNumberRawInput,
+        }, '*') as DbOperatorCallbackNumberRow[];
     }
 
-    return callbackNumber;
+    if (!row) {
+      throw new Error('Operator callback number persistence did not return a row.');
+    }
+
+    return mapDbRowToOperatorCallbackNumber(row);
   }
 }
 
