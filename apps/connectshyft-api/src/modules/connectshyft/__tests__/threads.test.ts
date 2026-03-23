@@ -6,6 +6,21 @@ import {
 } from '../threads';
 import { resolveSenderNumber } from '../senderNumberResolver';
 
+const withRequiredPersonId = <T extends { neighborId: string; personId?: string }>(
+  input: T,
+): Omit<T, 'personId'> & { personId: string } => ({
+  ...input,
+  personId: input.personId ?? `person-${input.neighborId}`,
+});
+
+const ensureThreadWithPerson = <TService extends { ensureThread: (input: any) => any }>(
+  service: TService,
+  input: Omit<Parameters<TService['ensureThread']>[0], 'personId'> & {
+    neighborId: string;
+    personId?: string;
+  },
+): ReturnType<TService['ensureThread']> => service.ensureThread(withRequiredPersonId(input));
+
 describe('connectshyft thread service', () => {
   let store: InMemoryConnectShyftThreadStore;
   let service: ConnectShyftThreadService;
@@ -16,7 +31,7 @@ describe('connectshyft thread service', () => {
   });
 
   it('ensures canonical UNCLAIMED thread state and required lifecycle metadata fields', () => {
-    const result = service.ensureThread({
+    const result = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -61,7 +76,7 @@ describe('connectshyft thread service', () => {
   });
 
   it('refuses lifecycle state transitions through ensureThread even for valid canonical states', () => {
-    const result = service.ensureThread({
+    const result = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -81,7 +96,7 @@ describe('connectshyft thread service', () => {
   });
 
   it('keeps one active thread identity under duplicate ensure attempts for the same tenant-orgUnit-neighbor tuple', () => {
-    const first = service.ensureThread({
+    const first = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -92,7 +107,7 @@ describe('connectshyft thread service', () => {
       threadId: 'thread-c1-duplicate-check',
     });
 
-    const second = service.ensureThread({
+    const second = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -127,7 +142,7 @@ describe('connectshyft thread service', () => {
   });
 
   it('preserves existing escalation due timestamp on non-claim ensure updates when nextEvaluationAtUtc is omitted', () => {
-    const first = service.ensureThread({
+    const first = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -139,7 +154,7 @@ describe('connectshyft thread service', () => {
       preferredOutboundCsNumberId: 'cs-outbound-c1-101',
     });
 
-    const second = service.ensureThread({
+    const second = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -163,7 +178,7 @@ describe('connectshyft thread service', () => {
   });
 
   it('rejects non-canonical forced state values with deterministic refusal contracts', () => {
-    const result = service.ensureThread({
+    const result = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -182,7 +197,7 @@ describe('connectshyft thread service', () => {
   });
 
   it('returns due-thread scans in deterministic next_evaluation_at_utc then thread_id order', () => {
-    service.ensureThread({
+    ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -193,7 +208,7 @@ describe('connectshyft thread service', () => {
       lastInboundCsNumberId: 'cs-inbound-c1-010',
       preferredOutboundCsNumberId: 'cs-outbound-c1-010',
     });
-    service.ensureThread({
+    ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -204,7 +219,7 @@ describe('connectshyft thread service', () => {
       lastInboundCsNumberId: 'cs-inbound-c1-011',
       preferredOutboundCsNumberId: 'cs-outbound-c1-011',
     });
-    service.ensureThread({
+    ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -236,7 +251,7 @@ describe('connectshyft thread service', () => {
   });
 
   it('stores and reloads provider-number sender alignment values for an ensured thread', () => {
-    const ensured = service.ensureThread({
+    const ensured = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -265,7 +280,7 @@ describe('connectshyft thread service', () => {
   });
 
   it('aligns lifecycle nullable fields with canonical state transitions', () => {
-    const ensured = service.ensureThread({
+    const ensured = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -421,7 +436,7 @@ describe('connectshyft thread persistence guards', () => {
     const store = new InMemoryConnectShyftThreadStore();
     const service = new ConnectShyftThreadService(store);
 
-    const first = service.ensureThread({
+    const first = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -446,7 +461,7 @@ describe('connectshyft thread persistence guards', () => {
 
     expect(closed.ok).toBe(true);
 
-    const second = service.ensureThread({
+    const second = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -478,7 +493,7 @@ describe('connectshyft async thread service persistence guards', () => {
     } as any;
 
     const service = new AsyncConnectShyftThreadService(store);
-    const result = await service.ensureThread({
+    const result = await ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c1',
       orgUnitId: 'org-connectshyft-c1-east',
@@ -506,7 +521,7 @@ describe('connectshyft deterministic escalation scheduler', () => {
   });
 
   it('progresses due unclaimed threads using deterministic X -> 2X -> 3X offsets from persisted due timestamps', () => {
-    const ensured = service.ensureThread({
+    const ensured = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c5',
       orgUnitId: 'org-connectshyft-c5-east',
@@ -600,7 +615,7 @@ describe('connectshyft deterministic escalation scheduler', () => {
   });
 
   it('is replay-safe for repeated due-window evaluation calls', () => {
-    const ensured = service.ensureThread({
+    const ensured = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c5',
       orgUnitId: 'org-connectshyft-c5-east',
@@ -645,7 +660,7 @@ describe('connectshyft deterministic escalation scheduler', () => {
   });
 
   it('resets escalation state only on explicit claim transitions', () => {
-    const ensured = service.ensureThread({
+    const ensured = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c5',
       orgUnitId: 'org-connectshyft-c5-east',
@@ -711,7 +726,7 @@ describe('connectshyft deterministic escalation scheduler', () => {
   });
 
   it('reuses persisted provider-number alignment for sender resolution on the same thread', async () => {
-    const ensured = service.ensureThread({
+    const ensured = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c5',
       orgUnitId: 'org-connectshyft-c5-east',
@@ -767,7 +782,7 @@ describe('connectshyft deterministic escalation scheduler', () => {
   });
 
   it('rejects legacy synthetic sender tokens when resolving from persisted thread alignment', async () => {
-    const ensured = service.ensureThread({
+    const ensured = ensureThreadWithPerson(service, {
       actorRoles: ['ORGUNIT_MEMBER'],
       tenantId: 'tenant-connectshyft-c5',
       orgUnitId: 'org-connectshyft-c5-east',

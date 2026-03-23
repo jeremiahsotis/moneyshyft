@@ -6,6 +6,7 @@ const buildThread = (overrides: Partial<ConnectShyftThread> = {}): ConnectShyftT
   tenantId: overrides.tenantId ?? 'tenant-connectshyft-f1',
   orgUnitId: overrides.orgUnitId ?? 'org-connectshyft-f1-east',
   neighborId: overrides.neighborId ?? 'neighbor-connectshyft-f1-1001',
+  personId: overrides.personId ?? 'person-connectshyft-f1-1001',
   source: overrides.source ?? 'SMS',
   state: overrides.state ?? 'UNCLAIMED',
   lastInboundCsNumberId: overrides.lastInboundCsNumberId ?? '+12605550191',
