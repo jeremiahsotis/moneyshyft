@@ -297,13 +297,15 @@ describe('resolveInboundContactPointIdentityAsync slice 22', () => {
     const second = await resolveInboundContactPointIdentityAsync(BASE_INPUT);
 
     expect(first).toMatchObject({
-      outcome: 'resolver_needed',
+      outcome: 'resolver_required',
+      confidenceBand: 'medium',
       personId: provisionalPerson.id,
       provisionalPersonId: provisionalPerson.id,
       resolverReviewId: existingReview.id,
     });
     expect(second).toMatchObject({
-      outcome: 'resolver_needed',
+      outcome: 'resolver_required',
+      confidenceBand: 'medium',
       personId: provisionalPerson.id,
       provisionalPersonId: provisionalPerson.id,
       resolverReviewId: existingReview.id,

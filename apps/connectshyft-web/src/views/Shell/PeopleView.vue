@@ -1,31 +1,20 @@
 <script setup lang="ts">
-import type { ContactPoint, IdentityConfidenceBand } from '@shyft/contracts';
-import { ref } from 'vue';
+import type { ContactPoint } from '@shyft/contracts';
+import { computed, ref } from 'vue';
+import {
+  resolveConnectShyftIdentityResolutionPresentation,
+  type ConnectShyftIdentityResolutionCandidate,
+  type ConnectShyftIdentityResolutionResponse,
+} from '@/features/connectshyft/identityResolution';
 import { useSubjectContext } from '../../shell/subjectContext';
-
-type IdentityDecisionType =
-  | 'create_new_default'
-  | 'suggest_attach'
-  | 'require_confirmation'
-  | 'require_override';
-
-type IdentityDecisionResponse = {
-  confidenceBand: IdentityConfidenceBand;
-  decisionType: IdentityDecisionType;
-  candidates: Array<{
-    personId: string;
-    score: number;
-    reasons: string[];
-  }>;
-};
 
 const subjectContext = useSubjectContext();
 const contactPoints = ref<ContactPoint[]>([]);
 const contactPointError = ref('');
-const decisionResult = ref<IdentityDecisionResponse | null>(null);
+const decisionResult = ref<ConnectShyftIdentityResolutionResponse | null>(null);
 const decisionError = ref('');
 
-const SAMPLE_CANDIDATES: IdentityDecisionResponse['candidates'] = [
+const SAMPLE_CANDIDATES: ConnectShyftIdentityResolutionCandidate[] = [
   {
     personId: 'person_very_high',
     score: 140,
@@ -37,6 +26,13 @@ const SAMPLE_CANDIDATES: IdentityDecisionResponse['candidates'] = [
     reasons: ['Name similarity'],
   },
 ];
+
+const decisionPresentation = computed(() => (
+  decisionResult.value
+    ? resolveConnectShyftIdentityResolutionPresentation(decisionResult.value)
+    : null
+));
+const decisionCandidates = computed(() => decisionResult.value?.candidates || []);
 
 async function loadContactPoints() {
   contactPointError.value = '';
@@ -71,7 +67,7 @@ async function runSampleDecision() {
       throw new Error(`Failed to run identity decision (${response.status})`);
     }
 
-    decisionResult.value = (await response.json()) as IdentityDecisionResponse;
+    decisionResult.value = (await response.json()) as ConnectShyftIdentityResolutionResponse;
   } catch (error) {
     decisionError.value = error instanceof Error ? error.message : 'Failed to run identity decision';
   }
@@ -118,9 +114,48 @@ async function runSampleDecision() {
 
       <p v-if="decisionError">{{ decisionError }}</p>
 
-      <div v-if="decisionResult" data-test="decision-result" class="space-y-1">
+      <div v-if="decisionResult && decisionPresentation" data-test="decision-result" class="space-y-2">
         <p>Confidence band: {{ decisionResult.confidenceBand }}</p>
-        <p>Decision type: {{ decisionResult.decisionType }}</p>
+        <p>Resolution state: {{ decisionPresentation.resolvedState }}</p>
+        <p>Default action: {{ decisionPresentation.defaultAction }}</p>
+        <p data-test="decision-guidance">{{ decisionPresentation.guidance }}</p>
+        <p v-if="decisionResult.resolverReviewId" data-test="resolver-review-id">
+          Resolver review: {{ decisionResult.resolverReviewId }}
+        </p>
+        <ul
+          v-if="decisionPresentation.showCandidates && decisionCandidates.length > 0"
+          data-test="decision-candidates"
+          class="list-disc pl-5"
+        >
+          <li v-for="candidate in decisionCandidates" :key="candidate.personId">
+            {{ candidate.personId }} (score {{ candidate.score }})
+          </li>
+        </ul>
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-if="decisionPresentation.showAttachAction"
+            data-test="attach-existing"
+            type="button"
+            class="border border-slate-300 px-3 py-2"
+          >
+            Attach to suggested match
+          </button>
+          <button
+            v-if="decisionPresentation.showCreateNewAction"
+            data-test="create-new"
+            type="button"
+            class="border border-slate-300 px-3 py-2"
+            :disabled="!decisionPresentation.createNewAllowed"
+          >
+            Create new person
+          </button>
+        </div>
+        <p
+          v-if="decisionPresentation.mode === 'resolver_required'"
+          data-test="resolver-required-message"
+        >
+          Resolver review is required before creating a new person.
+        </p>
       </div>
       <p v-else>No identity decision run yet.</p>
     </div>

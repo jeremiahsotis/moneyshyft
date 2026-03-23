@@ -40,7 +40,8 @@ describe('PeopleView', () => {
       ok: true,
       json: async () => ({
         confidenceBand: 'very_high',
-        decisionType: 'require_override',
+        outcome: 'resolver_required',
+        resolverReviewId: 'review-1',
         candidates: [],
       }),
     });
@@ -62,6 +63,38 @@ describe('PeopleView', () => {
       }),
     );
     expect(wrapper.text()).toContain('Confidence band: very_high');
-    expect(wrapper.text()).toContain('Decision type: require_override');
+    expect(wrapper.text()).toContain('Resolution state: resolver_required');
+    expect(wrapper.text()).toContain('Default action: resolver_review');
+    expect(wrapper.get('[data-test="resolver-review-id"]').text()).toContain('review-1');
+    expect(wrapper.find('[data-test="create-new"]').exists()).toBe(false);
+    expect(wrapper.get('[data-test="resolver-required-message"]').text()).toContain(
+      'Resolver review is required before creating a new person.',
+    );
+  });
+
+  it('shows candidate suggestions while keeping create-new as the default for low confidence', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        confidenceBand: 'low',
+        candidates: [{
+          personId: 'person-low',
+          score: 24,
+          reasons: ['historical contact match'],
+        }],
+      }),
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const wrapper = renderPeopleView();
+
+    await wrapper.get('[data-test="run-sample-decision"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Default action: create_new');
+    expect(wrapper.get('[data-test="decision-candidates"]').text()).toContain('person-low');
+    expect(wrapper.find('[data-test="attach-existing"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="create-new"]').exists()).toBe(true);
   });
 });

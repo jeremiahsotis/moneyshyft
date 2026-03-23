@@ -27,7 +27,7 @@ export type PeopleCoreIdentityCandidateGenerationReason =
   | 'historical_household_link'
   | 'current_household_member';
 
-export type PeopleCoreIdentityResolutionOutcome = 'canonical' | 'provisional' | 'resolver_needed';
+export type PeopleCoreIdentityResolutionOutcome = 'canonical' | 'provisional' | 'resolver_required';
 
 export interface PeopleCoreGeneratedIdentityCandidate {
   subjectType: 'person' | 'household';
@@ -59,6 +59,7 @@ export interface ResolveInboundContactPointIdentityInput {
 
 export interface ResolveInboundContactPointIdentityResult {
   outcome: PeopleCoreIdentityResolutionOutcome;
+  confidenceBand: PeopleCoreScoredIdentityCandidate['confidenceBand'];
   personId: string;
   contactPointId: string;
   contactPointEventId: string;
@@ -664,11 +665,11 @@ async function resolveInboundContactPointIdentityWithServiceAsync(
     || isTie
     || finalBand === 'very_high'
   ) {
-    outcome = 'resolver_needed';
+    outcome = 'resolver_required';
   } else if (ATTACHABLE_CONFIDENCE_BANDS.has(finalBand)) {
     outcome = 'canonical';
   } else {
-    outcome = 'resolver_needed';
+    outcome = 'resolver_required';
   }
 
   let personId = selectedCandidatePersonId;
@@ -686,7 +687,7 @@ async function resolveInboundContactPointIdentityWithServiceAsync(
     personId = topCandidate.subjectId;
   }
 
-  if (outcome === 'resolver_needed') {
+  if (outcome === 'resolver_required') {
     const existingReview = await findExistingPendingResolverReviewAsync(service, input);
     if (existingReview?.provisionalPersonId) {
       resolverReviewId = existingReview.id;
@@ -717,6 +718,7 @@ async function resolveInboundContactPointIdentityWithServiceAsync(
 
   return {
     outcome,
+    confidenceBand: finalBand,
     personId,
     contactPointId: contactPoint.id,
     contactPointEventId: contactPointEvent.id,

@@ -242,6 +242,7 @@ describe('resolveInboundContactPointIdentityAsync', () => {
 
     expect(result).toMatchObject({
       outcome: 'canonical',
+      confidenceBand: 'high',
       personId: canonicalPerson.id,
       contactPointId: CONTACT_POINT.id,
       contactPointEventId: CONTACT_POINT_EVENT.id,
@@ -292,6 +293,7 @@ describe('resolveInboundContactPointIdentityAsync', () => {
 
     expect(result).toMatchObject({
       outcome: 'provisional',
+      confidenceBand: 'very_low',
       personId: provisionalPerson.id,
       contactPointId: createdContactPoint.id,
       provisionalPersonId: provisionalPerson.id,
@@ -315,7 +317,7 @@ describe('resolveInboundContactPointIdentityAsync', () => {
     );
   });
 
-  it('forces resolver_needed when the top candidate lead is under 20 points', async () => {
+  it('forces resolver_required when the top candidate lead is under 20 points', async () => {
     const personA = buildPerson({ id: 'person-a' });
     const personB = buildPerson({ id: 'person-b' });
     const provisionalPerson = buildPerson({
@@ -382,7 +384,8 @@ describe('resolveInboundContactPointIdentityAsync', () => {
     });
 
     expect(result).toMatchObject({
-      outcome: 'resolver_needed',
+      outcome: 'resolver_required',
+      confidenceBand: 'medium',
       personId: provisionalPerson.id,
       provisionalPersonId: provisionalPerson.id,
       resolverReviewId: 'review-tie',
@@ -400,6 +403,89 @@ describe('resolveInboundContactPointIdentityAsync', () => {
         candidatePersonIds: [personA.id, personB.id],
         confidenceBand: 'medium',
         riskFlags: ['shared_contact_possible'],
+      }),
+    );
+  });
+
+  it('forces resolver_required when the top candidate lands in the very_high band', async () => {
+    const person = buildPerson({ id: 'person-very-high' });
+    const provisionalPerson = buildPerson({
+      id: 'person-provisional-very-high',
+      status: 'active_provisional',
+      firstName: 'Unknown',
+      lastName: 'Contact',
+    });
+
+    mockPeopleCoreService.listContactPointLinks.mockImplementation(async ({ isCurrent }: { isCurrent?: boolean }) =>
+      isCurrent
+        ? [
+          buildLink({
+            id: 'current-person-link-very-high',
+            subjectId: person.id,
+            manuallyConfirmed: true,
+            confirmationSource: 'resolver',
+            lastUsedAt: '2026-03-23T11:50:00.000Z',
+            lastConfirmedAt: '2026-03-23T11:45:00.000Z',
+          }),
+        ]
+        : []);
+    defaultPersonLookup([person]);
+    mockPeopleCoreService.createPerson.mockResolvedValue(provisionalPerson);
+    mockPeopleCoreService.createContactPointLink.mockResolvedValue(
+      buildLink({
+        id: 'link-provisional-very-high',
+        subjectId: provisionalPerson.id,
+      }),
+    );
+    mockPeopleCoreService.createResolverReview.mockResolvedValue({
+      id: 'review-very-high',
+      tenantId: BASE_INPUT.tenantId,
+      orgUnitId: BASE_INPUT.orgUnitId,
+      reviewType: 'identity_conflict',
+      reviewStatus: 'pending',
+      priority: 'normal',
+      triggerSourceType: 'contact_point_resolution',
+      triggerSourceId: 'receipt-4',
+      provisionalPersonId: provisionalPerson.id,
+      candidatePersonIds: [person.id],
+      contactPointId: CONTACT_POINT.id,
+      confidenceBand: 'very_high',
+      confidenceReasons: [
+        'exact current person link (+60)',
+        'current primary link (+15)',
+        'manual confirmation on current link (+40)',
+        'resolver verified current link (+60)',
+        'recent activity in last 0-30 days (+20)',
+        'recent confirmation in last 0-180 days (+15)',
+        'Resolver review required because inbound identity is not decisive.',
+      ],
+      riskFlags: ['high_confidence_override_attempt'],
+      requestedByUserId: 'system-connectshyft-identity-seam',
+      requestedAt: '2026-03-23T12:06:00.000Z',
+    });
+
+    const result = await resolveInboundContactPointIdentityAsync({
+      ...BASE_INPUT,
+      relatedObjectId: 'receipt-4',
+    });
+
+    expect(result).toMatchObject({
+      outcome: 'resolver_required',
+      confidenceBand: 'very_high',
+      personId: provisionalPerson.id,
+      provisionalPersonId: provisionalPerson.id,
+      resolverReviewId: 'review-very-high',
+      selectedCandidatePersonId: person.id,
+    });
+    expect(mockPeopleCoreService.createResolverReview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: BASE_INPUT.tenantId,
+        orgUnitId: BASE_INPUT.orgUnitId,
+        triggerSourceId: 'receipt-4',
+        provisionalPersonId: provisionalPerson.id,
+        candidatePersonIds: [person.id],
+        confidenceBand: 'very_high',
+        riskFlags: expect.arrayContaining(['high_confidence_override_attempt']),
       }),
     );
   });
