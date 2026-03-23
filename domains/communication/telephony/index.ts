@@ -32,7 +32,7 @@ export type TelephonyStartOutboundCallCommand = TelephonyDispatchCommandBase & {
   callPolicy?: TelephonyOutboundCallPolicy
 }
 
-export type TelephonyBridgeLegRole = 'operator' | 'neighbor'
+export type TelephonyBridgeLegRole = 'operator' | 'neighbor' | 'voicemail'
 
 export type TelephonyStartBridgeOutboundCallCommand = TelephonyDispatchCommandBase & {
   bridgeSessionId: string

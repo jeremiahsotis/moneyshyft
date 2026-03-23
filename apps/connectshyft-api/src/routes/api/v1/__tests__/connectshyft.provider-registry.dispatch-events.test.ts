@@ -10,6 +10,11 @@ import {
   type ConnectShyftNumberMapping,
 } from '../../../../modules/connectshyft/numberMappings';
 import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
+import {
+  resolveConnectShyftProviderAdapter,
+} from '../../../../modules/connectshyft/providerRegistry';
+import * as TelephonyReadinessModule from '../../../../modules/connectshyft/telephonyReadiness';
+import type { ConnectShyftTelephonyReadiness } from '../../../../modules/connectshyft/telephonyReadiness';
 import { AsyncConnectShyftThreadService } from '../../../../modules/connectshyft/threads';
 import {
   buildApp,
@@ -197,6 +202,51 @@ const buildDefaultNumberMappingState = (): Map<string, ConnectShyftNumberMapping
     ]),
   ],
 ]);
+
+const buildTelephonyReadiness = (
+  overrides: Partial<ConnectShyftTelephonyReadiness> = {},
+): ConnectShyftTelephonyReadiness => ({
+  providerReady: true,
+  providerSelectionPathActive: true,
+  webhookSignatureConfigured: true,
+  orgUnitNumberMappingReady: true,
+  voiceSupported: true,
+  callbackNumberConfigured: true,
+  callbackNumberNormalized: true,
+  voiceReady: true,
+  bridgeCallRunnable: true,
+  smsReady: true,
+  messageDispatchRunnable: true,
+  provider: {
+    requestedProvider: 'telnyx',
+    resolvedProvider: 'telnyx',
+    deterministic: true,
+    adapterInterfaceVersion: 'v1',
+  },
+  orgUnitNumberMappings: {
+    activeCount: 1,
+    mappings: [
+      {
+        mappingId: 'mapping-f1-001',
+        twilioNumberE164: '+12605550191',
+        label: 'Front Desk',
+      },
+    ],
+  },
+  callbackNumber: {
+    value: '+12605550155',
+    rawInput: '(260) 555-0155',
+    createdAtUtc: '2026-03-22T12:00:00.000Z',
+    updatedAtUtc: '2026-03-22T12:00:00.000Z',
+    persistenceAvailable: true,
+  },
+  operatorPhoneSource: 'callback_number',
+  degradedMode: false,
+  blockingReasons: [],
+  nextActions: [],
+  ...overrides,
+});
+
 describe('connectshyft provider adapter registry route integration - dispatch and canonical events', () => {
   registerProviderRegistryRouteIntegrationHooks();
   let numberMappingsByScope: Map<string, ConnectShyftNumberMapping[]>;
@@ -205,9 +255,14 @@ describe('connectshyft provider adapter registry route integration - dispatch an
   let resolveOperatorDestinationSpy: jest.SpyInstance;
   let createMappingSpy: jest.SpyInstance;
   let updateMappingSpy: jest.SpyInstance;
+  let inspectReadinessSpy: jest.SpyInstance;
 
   beforeEach(() => {
     numberMappingsByScope = buildDefaultNumberMappingState();
+    inspectReadinessSpy = jest.spyOn(
+      TelephonyReadinessModule.connectShyftTelephonyReadinessServiceAsync,
+      'inspectReadiness',
+    ).mockResolvedValue(buildTelephonyReadiness());
 
     listMappingsSpy = jest.spyOn(connectShyftNumberMappingServiceAsync, 'listMappings').mockImplementation(
       async (tenantId: string, orgUnitId: string) =>
@@ -305,11 +360,58 @@ describe('connectshyft provider adapter registry route integration - dispatch an
   });
 
   afterEach(() => {
+    inspectReadinessSpy.mockRestore();
     updateMappingSpy.mockRestore();
     createMappingSpy.mockRestore();
     resolveOperatorDestinationSpy.mockRestore();
     resolveRoutingMappingByNumberSpy.mockRestore();
     listMappingsSpy.mockRestore();
+  });
+
+  it('resolves deterministic voicemail bridge-leg dispatch through the provider adapter registry', async () => {
+    const headers = buildHeaders();
+    const providerSelection = resolveConnectShyftProviderAdapter({
+      req: {
+        body: {
+          providerKey: 'telnyx',
+          tenantId: 'tenant-connectshyft-f1',
+          orgUnitId: 'org-connectshyft-f1-east',
+        },
+        headers,
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        header(name: string) {
+          return headers[name.toLowerCase()];
+        },
+      },
+      requestedProvider: 'telnyx',
+      operation: 'call',
+    });
+
+    expect(providerSelection.ok).toBe(true);
+    if (!providerSelection.ok) {
+      return;
+    }
+
+    const dispatch = await providerSelection.adapter.startBridgeOutboundCall({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: 'thread-f1-unclaimed-1001',
+      providerKey: 'telnyx',
+      bridgeSessionId: 'bridge-session-voicemail-1001',
+      legId: 'bridge-leg-voicemail-1001',
+      legRole: 'voicemail',
+      targetPhone: '+12605550111',
+      fromContactPointId: '+12605550191',
+    });
+
+    expect(dispatch).toMatchObject({
+      providerKey: 'telnyx',
+      channel: 'call',
+      adapterInvoked: true,
+      providerBranchingInDomain: false,
+      providerLegId: 'telnyx-bridge-leg-voicemail-bridge-session-voicemail-1001',
+    });
   });
 
   it('dispatches outbound call through deterministic provider adapter resolution metadata', async () => {

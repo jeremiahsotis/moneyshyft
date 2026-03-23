@@ -3,6 +3,7 @@ import {
   listConnectShyftCanonicalEvents,
   type ConnectShyftCanonicalEventRecord,
 } from './canonicalEvents';
+import { loadConnectShyftBridgeAggregateByThreadId } from './bridgeSessions';
 import { CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME } from './inboundSms';
 import {
   CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
@@ -129,6 +130,24 @@ const normalizeDurationSeconds = (value: unknown): number | null => {
   }
 
   return null;
+};
+
+const toIsoString = (value: unknown): string | null => {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  const normalized = normalizeString(value);
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = new Date(normalized);
+  if (!Number.isNaN(parsed.valueOf())) {
+    return parsed.toISOString();
+  }
+
+  return normalized;
 };
 
 const resolveTimelineBase = (input: {
@@ -268,6 +287,80 @@ const mapVoicemailTimelineEvent: TimelineEventMapper = (event, payload) => {
   };
 };
 
+const resolveBridgeSessionVoicemailProjection = (aggregate: {
+  session: {
+    updatedAt?: Date | string | null;
+  };
+} | null): {
+  artifactId: string;
+  recordingUrl: string;
+  occurredAtUtc: string;
+} | null => {
+  if (!aggregate) {
+    return null;
+  }
+
+  const sessionRecord = asRecord(aggregate.session as unknown);
+  const artifactId = normalizeString(sessionRecord?.voicemailArtifactId);
+  const recordingUrl = normalizeString(sessionRecord?.voicemailRecordingUrl);
+  const recordingStatus = normalizeString(sessionRecord?.voicemailRecordingStatus);
+  const occurredAtUtc = toIsoString(aggregate.session.updatedAt) || null;
+
+  if (!artifactId || !recordingUrl || recordingStatus !== 'completed' || !occurredAtUtc) {
+    return null;
+  }
+
+  return {
+    artifactId,
+    recordingUrl,
+    occurredAtUtc,
+  };
+};
+
+const canonicalPayloadAlreadyProjectsVoicemail = (input: {
+  events: readonly ConnectShyftCanonicalEventRecord[];
+  voicemailProjection: {
+    artifactId: string;
+    recordingUrl: string;
+  };
+}): boolean => {
+  return input.events.some((event) => {
+    const payload = asRecord(event.payload);
+    const voicemailArtifact = asRecord(payload?.voicemailArtifact);
+    const artifactId = normalizeString(voicemailArtifact?.artifactId);
+    const recordingUrl = normalizeString(voicemailArtifact?.recordingUrl);
+
+    return artifactId === input.voicemailProjection.artifactId
+      || (
+        Boolean(recordingUrl)
+        && recordingUrl === input.voicemailProjection.recordingUrl
+      );
+  });
+};
+
+const buildBridgeSessionVoicemailTimelineItem = (input: {
+  threadId: string;
+  voicemailProjection: {
+    artifactId: string;
+    recordingUrl: string;
+    occurredAtUtc: string;
+  };
+}): ConnectShyftVoicemailTimelineItem => ({
+  id: `bridge-voicemail-${input.voicemailProjection.artifactId}`,
+  threadId: input.threadId,
+  type: 'voicemail',
+  direction: 'outbound',
+  channel: 'voicemail',
+  body: null,
+  occurredAtUtc: input.voicemailProjection.occurredAtUtc,
+  actor: 'system',
+  providerMetadata: null,
+  deliveryStatus: null,
+  recordingUrl: input.voicemailProjection.recordingUrl,
+  durationSeconds: null,
+  transcript: null,
+});
+
 const CONNECTSHYFT_TIMELINE_MAPPERS = new Map<string, TimelineEventMapper>([
   [CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME, mapInboundSmsTimelineEvent],
   [CONNECTSHYFT_OUTBOUND_SMS_APPENDED_EVENT_NAME, mapOutboundSmsTimelineEvent],
@@ -371,18 +464,36 @@ export const getThreadTimeline = async (
     window: 'most_recent',
     db: input.db,
   });
+  const activeBridgeSession = await loadConnectShyftBridgeAggregateByThreadId({
+    tenantId: input.tenantId,
+    threadId,
+  });
+  const voicemailProjection = resolveBridgeSessionVoicemailProjection(activeBridgeSession);
 
-  const items = sortConnectShyftThreadTimelineItems(
-    events
-      .map((event) => mapConnectShyftCanonicalEventToTimelineItem(event))
-      .filter((item): item is ConnectShyftThreadTimelineItem => item !== null),
-  );
+  const items = events
+    .map((event) => mapConnectShyftCanonicalEventToTimelineItem(event))
+    .filter((item): item is ConnectShyftThreadTimelineItem => item !== null);
+
+  if (
+    voicemailProjection
+    && !canonicalPayloadAlreadyProjectsVoicemail({
+      events,
+      voicemailProjection,
+    })
+  ) {
+    items.push(buildBridgeSessionVoicemailTimelineItem({
+      threadId,
+      voicemailProjection,
+    }));
+  }
+
+  const sortedItems = sortConnectShyftThreadTimelineItems(items);
 
   return {
     threadId,
     source: 'canonical_events',
     deterministic: true,
     limitApplied,
-    items: items.slice(-limitApplied),
+    items: sortedItems.slice(-limitApplied),
   };
 };

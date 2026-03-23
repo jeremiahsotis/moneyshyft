@@ -142,6 +142,7 @@ import {
   CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_QUEUE_NAME,
   CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME,
   buildConnectShyftInboundVoiceCanonicalPayload,
+  buildConnectShyftOutboundVoicemailArtifact,
   buildConnectShyftVoicemailTranscriptionAttachedCanonicalPayload,
   buildConnectShyftVoicemailTranscriptionRequest,
   extractConnectShyftVoicemailTranscriptionCallbackPayload,
@@ -168,9 +169,14 @@ import {
   resolveConnectShyftProviderCorrelationByIdentifiers,
 } from '../../../modules/connectshyft/providerCorrelationMappings';
 import {
+  findConnectShyftBridgeSessionByProviderCallControlIdAsync,
   handleConnectShyftBridgeWebhookEvent,
+  loadConnectShyftBridgeAggregateBySessionId,
   loadConnectShyftBridgeAggregateByThreadId,
+  setConnectShyftBridgeLegProviderCallControlIdAsync,
   startConnectShyftBridgeSession,
+  updateConnectShyftBridgeSessionVoicemailFallbackAsync,
+  type ConnectShyftBridgeSessionAggregate,
 } from '../../../modules/connectshyft/bridgeSessions';
 import {
   beginConnectShyftCommunicationIdempotency,
@@ -539,6 +545,8 @@ const CONNECTSHYFT_COMMUNICATION_IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
 const CONNECTSHYFT_WEBHOOK_RETRY_MAX_ATTEMPTS = 3;
 const CONNECTSHYFT_WEBHOOK_RETRY_BASE_DELAY_MS = 60 * 1000;
 const CONNECTSHYFT_WEBHOOK_RETRY_MAX_DELAY_MS = 15 * 60 * 1000;
+const CONNECTSHYFT_NEIGHBOR_RING_TIMEOUT_MS = 30 * 1000;
+const connectShyftNeighborRingTimeoutExecutionLedger = new Set<string>();
 
 const loadPlatformDb = (): Knex => {
   const knexModule = require('../../../config/knex') as { default: Knex };
@@ -548,6 +556,7 @@ const loadPlatformDb = (): Knex => {
 export const resetConnectShyftOutboundDispatchReplayLedgerForTests = (): void => {
   resetConnectShyftCommunicationReliabilityStateForTests();
   resetConnectShyftCommunicationAuditLogForTests();
+  connectShyftNeighborRingTimeoutExecutionLedger.clear();
 };
 
 const connectShyftEscalationConfigService = new ConnectShyftEscalationConfigService(
@@ -981,6 +990,22 @@ const asRecord = (value: unknown): Record<string, unknown> | null => {
   return value as Record<string, unknown>;
 };
 
+const resolveBridgeSessionVoicemailFallbackState = (aggregate: {
+  session: unknown;
+} | null): {
+  voicemailFallbackStartedAtUtc: string | null;
+  voicemailArtifactId: string | null;
+  voicemailRecordingStatus: string | null;
+} => {
+  const sessionRecord = asRecord(aggregate?.session);
+
+  return {
+    voicemailFallbackStartedAtUtc: normalizeLifecycleString(sessionRecord?.voicemailFallbackStartedAtUtc) || null,
+    voicemailArtifactId: normalizeLifecycleString(sessionRecord?.voicemailArtifactId) || null,
+    voicemailRecordingStatus: normalizeLifecycleString(sessionRecord?.voicemailRecordingStatus) || null,
+  };
+};
+
 const normalizeRoutingSlug = (value: string): string => {
   const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   return normalized || 'unknown';
@@ -1145,6 +1170,359 @@ const verifyConnectedCallLineage = async (input: {
 };
 
 const nowIsoUtc = (): string => new Date().toISOString();
+
+const persistConnectShyftBridgeLegProviderCallControlIdIfPresentAsync = async (
+  input: {
+    bridgeSessionId: string;
+    tenantId: string;
+    orgUnitId: string;
+    legRole: 'operator' | 'neighbor';
+    providerCallControlId: string | null | undefined;
+  },
+): Promise<void> => {
+  const providerCallControlId = normalizeLifecycleString(input.providerCallControlId);
+  if (!providerCallControlId) {
+    return;
+  }
+
+  await setConnectShyftBridgeLegProviderCallControlIdAsync({
+    bridgeSessionId: input.bridgeSessionId,
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    legRole: input.legRole,
+    providerCallControlId,
+  });
+};
+
+const persistConnectShyftNeighborRingStartedAtIfNeededAsync = async (
+  input: {
+    bridgeSessionId: string;
+    tenantId: string;
+    orgUnitId: string;
+    neighborLegState: string | null | undefined;
+    neighborProviderLegId: string | null | undefined;
+  },
+): Promise<void> => {
+  if (normalizeLifecycleString(input.neighborLegState) !== 'ringing') {
+    return;
+  }
+
+  if (!normalizeLifecycleString(input.neighborProviderLegId)) {
+    return;
+  }
+
+  await updateConnectShyftBridgeSessionVoicemailFallbackAsync({
+    bridgeSessionId: input.bridgeSessionId,
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    neighborRingStartedAtUtc: nowIsoUtc(),
+  });
+};
+
+async function executeConnectShyftNeighborRingTimeoutAsync(input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  bridgeSessionId: string;
+  neighborProviderLegId: string | null;
+}): Promise<{
+  handled: boolean;
+  aggregate: ConnectShyftBridgeSessionAggregate | null;
+}> {
+  const aggregate = await loadConnectShyftBridgeAggregateBySessionId(input.bridgeSessionId);
+  if (!aggregate) {
+    return {
+      handled: false,
+      aggregate: null,
+    };
+  }
+
+  if (
+    aggregate.session.tenantId !== input.tenantId
+    || aggregate.session.orgUnitId !== input.orgUnitId
+    || aggregate.session.threadId !== input.threadId
+  ) {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  const voicemailFallbackState = resolveBridgeSessionVoicemailFallbackState(aggregate);
+  if (
+    voicemailFallbackState.voicemailFallbackStartedAtUtc
+    || voicemailFallbackState.voicemailArtifactId
+    || voicemailFallbackState.voicemailRecordingStatus === 'completed'
+  ) {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  if (connectShyftNeighborRingTimeoutExecutionLedger.has(input.bridgeSessionId)) {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  if (aggregate.voicemailLeg) {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  const neighborProviderLegId = normalizeLifecycleString(input.neighborProviderLegId);
+  const persistedNeighborProviderLegId = normalizeLifecycleString(aggregate.neighborLeg.providerCallId);
+  if (neighborProviderLegId && persistedNeighborProviderLegId && neighborProviderLegId !== persistedNeighborProviderLegId) {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  if (normalizeLifecycleString(aggregate.session.status) === 'bridged') {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  if (normalizeLifecycleString(aggregate.neighborLeg.status) !== 'ringing') {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  const timeoutRecordedAtUtc = nowIsoUtc();
+  const updatedAggregate = await updateConnectShyftBridgeSessionVoicemailFallbackAsync({
+    bridgeSessionId: input.bridgeSessionId,
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    neighborTimeoutAtUtc: timeoutRecordedAtUtc,
+    voicemailFallbackStartedAtUtc: timeoutRecordedAtUtc,
+    voicemailRecordingStatus: 'pending',
+  });
+
+  if (!updatedAggregate) {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  connectShyftNeighborRingTimeoutExecutionLedger.add(input.bridgeSessionId);
+
+  const providerSelectionRequestHeaders = {
+    'x-test-connectshyft-tenant-id': input.tenantId,
+    'x-test-connectshyft-orgunit-id': input.orgUnitId,
+    'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
+  };
+  const providerSelection = resolveConnectShyftProviderAdapter({
+    req: {
+      body: {
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        providerKey: 'telnyx',
+      },
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      headers: providerSelectionRequestHeaders,
+      header(name: string): string | undefined {
+        return providerSelectionRequestHeaders[name.toLowerCase() as keyof typeof providerSelectionRequestHeaders];
+      },
+    },
+    requestedProvider: 'telnyx',
+    operation: 'call',
+  });
+
+  if (!providerSelection.ok) {
+    const failedAggregate = await updateConnectShyftBridgeSessionVoicemailFallbackAsync({
+      bridgeSessionId: input.bridgeSessionId,
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      voicemailRecordingStatus: 'failed',
+    });
+    return {
+      handled: true,
+      aggregate: failedAggregate || updatedAggregate,
+    };
+  }
+
+  try {
+    const startBridgeOutboundCall = providerSelection.adapter.startBridgeOutboundCall;
+    if (!startBridgeOutboundCall) {
+      const failedAggregate = await updateConnectShyftBridgeSessionVoicemailFallbackAsync({
+        bridgeSessionId: input.bridgeSessionId,
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        voicemailRecordingStatus: 'failed',
+      });
+      return {
+        handled: true,
+        aggregate: failedAggregate || updatedAggregate,
+      };
+    }
+
+    const voicemailLegDispatch = await startBridgeOutboundCall({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId: input.threadId,
+      providerKey: providerSelection.providerResolution.resolvedProvider,
+      bridgeSessionId: input.bridgeSessionId,
+      legId: `voicemail-leg-${input.bridgeSessionId}`,
+      legRole: 'voicemail',
+      targetPhone: updatedAggregate.neighborLeg.contactPointId,
+      fromContactPointId: updatedAggregate.session.selectedOutboundContactPointId ?? null,
+    });
+    const persistedAggregate = await setConnectShyftBridgeLegProviderCallControlIdAsync({
+      bridgeSessionId: input.bridgeSessionId,
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      legRole: 'voicemail',
+      providerCallControlId: voicemailLegDispatch.providerLegId || '',
+    });
+
+    return {
+      handled: true,
+      aggregate: persistedAggregate || updatedAggregate,
+    };
+  } catch (_error) {
+    const failedAggregate = await updateConnectShyftBridgeSessionVoicemailFallbackAsync({
+      bridgeSessionId: input.bridgeSessionId,
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      voicemailRecordingStatus: 'failed',
+    });
+    return {
+      handled: true,
+      aggregate: failedAggregate || updatedAggregate,
+    };
+  }
+}
+
+async function attachConnectShyftOutboundVoicemailRecordingAsync(input: {
+  tenantId: string;
+  orgUnitId: string;
+  providerEventId: string;
+  providerLegId: string | null;
+  recordingUrl: string;
+}): Promise<{
+  handled: boolean;
+  bridgeSession: ConnectShyftBridgeSessionAggregate | null;
+  voicemailArtifactId: string | null;
+}> {
+  const providerEventId = normalizeLifecycleString(input.providerEventId);
+  const providerLegId = normalizeLifecycleString(input.providerLegId);
+  const recordingUrl = normalizeLifecycleString(input.recordingUrl);
+
+  if (!providerEventId || !providerLegId || !recordingUrl) {
+    return {
+      handled: false,
+      bridgeSession: null,
+      voicemailArtifactId: null,
+    };
+  }
+
+  const bridgeSession = await findConnectShyftBridgeSessionByProviderCallControlIdAsync({
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    providerCallControlId: providerLegId,
+  });
+  if (!bridgeSession) {
+    return {
+      handled: false,
+      bridgeSession: null,
+      voicemailArtifactId: null,
+    };
+  }
+
+  if (bridgeSession.voicemailLeg?.providerCallControlId !== providerLegId) {
+    return {
+      handled: true,
+      bridgeSession,
+      voicemailArtifactId: null,
+    };
+  }
+
+  const voicemailFallbackState = resolveBridgeSessionVoicemailFallbackState(bridgeSession);
+  if (
+    voicemailFallbackState.voicemailArtifactId
+    || voicemailFallbackState.voicemailRecordingStatus === 'completed'
+  ) {
+    return {
+      handled: true,
+      bridgeSession,
+      voicemailArtifactId: null,
+    };
+  }
+
+  const voicemailArtifact = buildConnectShyftOutboundVoicemailArtifact({
+    threadId: bridgeSession.session.threadId,
+    providerEventId,
+    providerLegId,
+    recordingUrl,
+  });
+  const updatedBridgeSession = await updateConnectShyftBridgeSessionVoicemailFallbackAsync({
+    bridgeSessionId: bridgeSession.session.id,
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    voicemailArtifactId: voicemailArtifact.artifactId,
+    voicemailRecordingUrl: voicemailArtifact.recordingUrl,
+    voicemailRecordingStatus: 'completed',
+    voicemailProviderEventId: providerEventId,
+    voicemailProviderLegId: providerLegId,
+  });
+
+  return {
+    handled: true,
+    bridgeSession: updatedBridgeSession || bridgeSession,
+    voicemailArtifactId: voicemailArtifact.artifactId,
+  };
+}
+
+async function scheduleConnectShyftNeighborRingTimeoutAsync(input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  bridgeSessionId: string;
+  neighborProviderLegId: string | null;
+  timeoutMs: number;
+}): Promise<void> {
+  const bridgeSessionId = normalizeLifecycleString(input.bridgeSessionId);
+  const neighborProviderLegId = normalizeLifecycleString(input.neighborProviderLegId);
+  if (!bridgeSessionId || !neighborProviderLegId) {
+    return;
+  }
+
+  const timeoutMs = Number.isFinite(input.timeoutMs) && input.timeoutMs >= 0
+    ? input.timeoutMs
+    : CONNECTSHYFT_NEIGHBOR_RING_TIMEOUT_MS;
+
+  const timer = globalThis.setTimeout(() => {
+    void executeConnectShyftNeighborRingTimeoutAsync({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId: input.threadId,
+      bridgeSessionId,
+      neighborProviderLegId,
+    }).catch((error: unknown) => {
+      logger.error('ConnectShyft neighbor ring timeout execution failed', {
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        threadId: input.threadId,
+        bridgeSessionId,
+        neighborProviderLegId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }, timeoutMs);
+
+  timer.unref?.();
+}
 
 const resolveLifecycleEventName = (
   action: ConnectShyftLifecycleAction,
@@ -5462,6 +5840,41 @@ const performOutboundAction = async ({
           auditCorrelationId: outboundDispatchReplayKey || undefined,
           callPolicy: outboundCallDispatchPolicy || undefined,
         });
+        const bridgeSessionId = normalizeLifecycleString(bridgeStart.aggregate.session.id);
+        const operatorProviderLegId = normalizeLifecycleString(bridgeStart.aggregate.operatorLeg.providerCallId);
+        const neighborProviderLegId = normalizeLifecycleString(bridgeStart.aggregate.neighborLeg.providerCallId);
+
+        if (bridgeSessionId) {
+          await persistConnectShyftBridgeLegProviderCallControlIdIfPresentAsync({
+            bridgeSessionId,
+            tenantId: context.tenantId,
+            orgUnitId: context.orgUnitId,
+            legRole: 'operator',
+            providerCallControlId: operatorProviderLegId,
+          });
+          await persistConnectShyftBridgeLegProviderCallControlIdIfPresentAsync({
+            bridgeSessionId,
+            tenantId: context.tenantId,
+            orgUnitId: context.orgUnitId,
+            legRole: 'neighbor',
+            providerCallControlId: neighborProviderLegId,
+          });
+          await persistConnectShyftNeighborRingStartedAtIfNeededAsync({
+            bridgeSessionId,
+            tenantId: context.tenantId,
+            orgUnitId: context.orgUnitId,
+            neighborLegState: bridgeStart.aggregate.neighborLeg.status,
+            neighborProviderLegId,
+          });
+          await scheduleConnectShyftNeighborRingTimeoutAsync({
+            tenantId: context.tenantId,
+            orgUnitId: context.orgUnitId,
+            threadId,
+            bridgeSessionId,
+            neighborProviderLegId,
+            timeoutMs: CONNECTSHYFT_NEIGHBOR_RING_TIMEOUT_MS,
+          });
+        }
 
         bridgeSessionState = buildProviderNeutralBridgeSessionState(bridgeStart.aggregate);
         bridgeCorrelationMapping = bridgeStart.correlationMapping;
@@ -6590,6 +7003,39 @@ const performInboundWebhook = async ({
       || null,
     callPolicy: CONNECTSHYFT_OUTBOUND_CALL_POLICY,
   });
+  if (
+    bridgeWebhookProgression.handled
+    && bridgeWebhookProgression.aggregate
+    && bridgeWebhookProgression.domainEvent?.type === 'operator_answered'
+  ) {
+    const bridgeSessionId = normalizeLifecycleString(bridgeWebhookProgression.aggregate.session.id);
+    const neighborProviderLegId = normalizeLifecycleString(bridgeWebhookProgression.aggregate.neighborLeg.providerCallId);
+
+    if (bridgeSessionId) {
+      await persistConnectShyftBridgeLegProviderCallControlIdIfPresentAsync({
+        bridgeSessionId,
+        tenantId,
+        orgUnitId,
+        legRole: 'neighbor',
+        providerCallControlId: neighborProviderLegId,
+      });
+      await persistConnectShyftNeighborRingStartedAtIfNeededAsync({
+        bridgeSessionId,
+        tenantId,
+        orgUnitId,
+        neighborLegState: bridgeWebhookProgression.aggregate.neighborLeg.status,
+        neighborProviderLegId,
+      });
+      await scheduleConnectShyftNeighborRingTimeoutAsync({
+        tenantId,
+        orgUnitId,
+        threadId,
+        bridgeSessionId,
+        neighborProviderLegId,
+        timeoutMs: CONNECTSHYFT_NEIGHBOR_RING_TIMEOUT_MS,
+      });
+    }
+  }
   if (bridgeWebhookProgression.handled && !isConnectedCallEvent) {
     await markWebhookReceipt('APPLIED');
     success(res, {
@@ -7548,29 +7994,56 @@ const performInboundWebhook = async ({
     });
   }
 
-  const shouldCreateVoicemailArtifact = Boolean(
-    voiceDomainEvent && routingDecision !== 'intake_fallback',
+  const outboundVoicemailRecording = voiceDomainEvent
+    ? await attachConnectShyftOutboundVoicemailRecordingAsync({
+      tenantId,
+      orgUnitId,
+      providerEventId: correlation.providerEventId || '',
+      providerLegId: correlation.providerLegId,
+      recordingUrl: voiceDomainEvent.inboundVoiceArtifact.recordingUrl || '',
+    })
+    : {
+      handled: false,
+      bridgeSession: null,
+      voicemailArtifactId: null,
+    };
+
+  const shouldCreateInboundVoicemailArtifact = Boolean(
+    voiceDomainEvent
+      && routingDecision !== 'intake_fallback'
+      && !outboundVoicemailRecording.handled,
   );
-  const voicemailArtifactId = shouldCreateVoicemailArtifact
+  const inboundVoicemailArtifactId = shouldCreateInboundVoicemailArtifact
     ? `vm-${normalizeRoutingSlug(resolvedVoiceThreadId)}-${normalizeRoutingSlug(
       correlation.providerEventId
       || correlation.providerLegId
       || eventType,
     )}`
     : null;
-  const transcription = shouldCreateVoicemailArtifact && voicemailArtifactId
+  const voicemailArtifactId = outboundVoicemailRecording.voicemailArtifactId || inboundVoicemailArtifactId;
+  const transcription = shouldCreateInboundVoicemailArtifact && inboundVoicemailArtifactId
     ? buildConnectShyftVoicemailTranscriptionRequest({
       tenantId,
       orgUnitId,
       threadId: resolvedVoiceThreadId,
       providerEventId: correlation.providerEventId,
       providerLegId: correlation.providerLegId,
-      voicemailArtifactId,
+      voicemailArtifactId: inboundVoicemailArtifactId,
     })
     : null;
-  const voicemailArtifact = shouldCreateVoicemailArtifact && voicemailArtifactId && voiceDomainEvent
+  const voicemailArtifact = outboundVoicemailRecording.voicemailArtifactId
+    && outboundVoicemailRecording.bridgeSession
+    && correlation.providerEventId
+    && voiceDomainEvent
+    ? buildConnectShyftOutboundVoicemailArtifact({
+      threadId: outboundVoicemailRecording.bridgeSession.session.threadId,
+      providerEventId: correlation.providerEventId,
+      providerLegId: correlation.providerLegId,
+      recordingUrl: voiceDomainEvent.inboundVoiceArtifact.recordingUrl || '',
+    })
+    : shouldCreateInboundVoicemailArtifact && inboundVoicemailArtifactId && voiceDomainEvent
     ? {
-      artifactId: voicemailArtifactId,
+      artifactId: inboundVoicemailArtifactId,
       ...voiceDomainEvent.inboundVoiceArtifact,
     }
     : null;
@@ -7587,7 +8060,7 @@ const performInboundWebhook = async ({
           domainEvent: voiceDomainEvent,
           threadState,
           autoClaimApplied: autoClaim?.applied === true,
-          voicemailArtifactId,
+          voicemailArtifactId: shouldCreateInboundVoicemailArtifact ? inboundVoicemailArtifactId : null,
           transcription,
         })
         : buildCanonicalPayloadForInboundWebhook({
@@ -7650,6 +8123,7 @@ const performInboundWebhook = async ({
       neighborId: voiceNeighborId,
     }
     : thread;
+  const responseBridgeAggregate = bridgeWebhookProgression.aggregate || outboundVoicemailRecording.bridgeSession;
 
   await markWebhookReceipt('APPLIED');
   if (operatorDestinationResolution) {
@@ -7689,11 +8163,15 @@ const performInboundWebhook = async ({
         providerBranchingInDomain: false,
       },
       canonicalEvent,
+      ...((bridgeWebhookProgression.handled || outboundVoicemailRecording.handled)
+        ? {
+            bridgeSession: responseBridgeAggregate
+              ? buildProviderNeutralBridgeSessionState(responseBridgeAggregate)
+              : null,
+          }
+        : {}),
       ...(bridgeWebhookProgression.handled
         ? {
-            bridgeSession: bridgeWebhookProgression.aggregate
-              ? buildProviderNeutralBridgeSessionState(bridgeWebhookProgression.aggregate)
-              : null,
             bridgeEvent: bridgeWebhookProgression.domainEvent,
             correlationMapping: bridgeWebhookProgression.correlationMapping,
           }

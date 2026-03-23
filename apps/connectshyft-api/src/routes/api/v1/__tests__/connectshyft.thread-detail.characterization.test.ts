@@ -56,6 +56,69 @@ const buildThreadDetailRecord = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const buildBridgeSessionAggregate = (overrides: Record<string, unknown> = {}) => ({
+  session: {
+    id: 'bridge-session-detail-1001',
+    tenantId: TEST_TENANT_ID,
+    orgUnitId: TEST_ORG_UNIT_ID,
+    threadId: 'thread-detail-characterization-1001',
+    operatorParticipantId: 'user-connectshyft-f1-operator',
+    neighborParticipantId: 'neighbor-detail-characterization-1001',
+    operatorContactPointId: '+12605550155',
+    neighborContactPointId: '+12605550111',
+    selectedOutboundContactPointId: '+12605550191',
+    status: 'neighbor_dialing',
+    failureCode: null,
+    failureMessage: null,
+    endedBy: null,
+    idempotencyKey: null,
+    auditCorrelationId: null,
+    createdAt: new Date('2026-03-19T10:00:00.000Z'),
+    updatedAt: new Date('2026-03-19T10:03:00.000Z'),
+    completedAt: null,
+    voicemailArtifactId: 'vm-thread-detail-characterization-1001-provider-event-outbound-voicemail-1001',
+    voicemailRecordingUrl: 'https://connectshyft.test/outbound-voicemail-detail-1001.mp3',
+    voicemailRecordingStatus: 'completed',
+    ...overrides,
+  },
+  operatorLeg: {
+    id: 'bridge-leg-operator-detail-1001',
+    tenantId: TEST_TENANT_ID,
+    orgUnitId: TEST_ORG_UNIT_ID,
+    bridgeSessionId: 'bridge-session-detail-1001',
+    legRole: 'operator',
+    contactPointId: '+12605550155',
+    providerCallId: 'provider-leg-operator-detail-1001',
+    providerCallControlId: 'provider-leg-operator-detail-1001',
+    status: 'answered',
+    startedAt: new Date('2026-03-19T10:00:00.000Z'),
+    answeredAt: new Date('2026-03-19T10:00:05.000Z'),
+    endedAt: null,
+    failureCode: null,
+    failureMessage: null,
+    createdAt: new Date('2026-03-19T10:00:00.000Z'),
+    updatedAt: new Date('2026-03-19T10:03:00.000Z'),
+  },
+  neighborLeg: {
+    id: 'bridge-leg-neighbor-detail-1001',
+    tenantId: TEST_TENANT_ID,
+    orgUnitId: TEST_ORG_UNIT_ID,
+    bridgeSessionId: 'bridge-session-detail-1001',
+    legRole: 'neighbor',
+    contactPointId: '+12605550111',
+    providerCallId: 'provider-leg-neighbor-detail-1001',
+    providerCallControlId: 'provider-leg-neighbor-detail-1001',
+    status: 'ringing',
+    startedAt: new Date('2026-03-19T10:00:10.000Z'),
+    answeredAt: null,
+    endedAt: null,
+    failureCode: null,
+    failureMessage: null,
+    createdAt: new Date('2026-03-19T10:00:10.000Z'),
+    updatedAt: new Date('2026-03-19T10:03:00.000Z'),
+  },
+} as any);
+
 const recordCanonicalThreadEvent = async (input: {
   threadId: string;
   eventType: string;
@@ -270,6 +333,58 @@ describe('connectshyft thread detail route characterization', () => {
         },
       },
     });
+  });
+
+  it('projects outbound voicemail artifacts from the active bridge session without changing the detail envelope', async () => {
+    const threadId = 'thread-detail-outbound-voicemail-1002';
+    jest.spyOn(
+      ReadContractsModule,
+      'resolveConnectShyftThreadDetailContractAsync',
+    ).mockResolvedValue(buildThreadDetailRecord({
+      threadId,
+      neighborId: 'neighbor-detail-outbound-voicemail-1002',
+      summary: 'Timed-out outbound call thread',
+    }) as any);
+    jest.spyOn(
+      BridgeSessionsModule,
+      'loadConnectShyftBridgeAggregateByThreadId',
+    ).mockResolvedValue(buildBridgeSessionAggregate({
+      id: 'bridge-session-detail-outbound-1002',
+      threadId,
+      neighborParticipantId: 'neighbor-detail-outbound-voicemail-1002',
+      voicemailArtifactId: 'vm-thread-detail-outbound-voicemail-1002-provider-event-outbound-voicemail-1002',
+      voicemailRecordingUrl: 'https://connectshyft.test/outbound-voicemail-detail-1002.mp3',
+      voicemailRecordingStatus: 'completed',
+    }) as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get(`/api/v1/connectshyft/threads/${threadId}`)
+      .set(buildHeaders());
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+      data: {
+        bridgeSession: {
+          bridgeSessionId: 'bridge-session-detail-outbound-1002',
+          status: 'neighbor_dialing',
+          operatorLegState: 'answered',
+          neighborLegState: 'ringing',
+        },
+        voicemailArtifacts: [
+          {
+            artifactId: 'vm-thread-detail-outbound-voicemail-1002-provider-event-outbound-voicemail-1002',
+            transcription: {
+              available: false,
+              text: null,
+            },
+          },
+        ],
+      },
+    });
+    expect(response.body.data.actions).toEqual(response.body.data.thread.actions);
   });
 
   it('returns the current not-found refusal when thread detail is unavailable for the orgUnit context', async () => {

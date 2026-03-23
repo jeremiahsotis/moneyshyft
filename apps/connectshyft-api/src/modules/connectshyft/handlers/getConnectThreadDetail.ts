@@ -228,6 +228,48 @@ const resolveVoicemailArtifactsFromTimeline = (
   return Array.from(artifacts.values());
 };
 
+const resolveBridgeSessionVoicemailArtifact = (aggregate: {
+  session: {
+    updatedAt?: Date | string | null;
+  };
+} | null): ConnectShyftVoicemailArtifactContract | null => {
+  if (!aggregate) {
+    return null;
+  }
+
+  const sessionRecord = asRecord(aggregate.session as unknown);
+  const artifactId = normalizeString(sessionRecord?.voicemailArtifactId);
+  const recordingUrl = normalizeString(sessionRecord?.voicemailRecordingUrl);
+  const recordingStatus = normalizeString(sessionRecord?.voicemailRecordingStatus);
+
+  if (!artifactId || !recordingUrl || recordingStatus !== 'completed') {
+    return null;
+  }
+
+  return {
+    artifactId,
+    transcription: {
+      available: false,
+      text: null,
+    },
+  };
+};
+
+const mergeBridgeSessionVoicemailArtifacts = (
+  artifacts: ConnectShyftVoicemailArtifactContract[],
+  bridgeSessionArtifact: ConnectShyftVoicemailArtifactContract | null,
+): ConnectShyftVoicemailArtifactContract[] => {
+  if (!bridgeSessionArtifact) {
+    return artifacts;
+  }
+
+  if (artifacts.some((artifact) => artifact.artifactId === bridgeSessionArtifact.artifactId)) {
+    return artifacts;
+  }
+
+  return [...artifacts, bridgeSessionArtifact];
+};
+
 const resolveFallbackThreadDetail = (input: {
   tenantId: string;
   orgUnitId: string;
@@ -315,7 +357,14 @@ export const getConnectThreadDetail = async (req: Request, res: Response) => {
         },
       ]
       : [];
-  const voicemailArtifacts = resolveVoicemailArtifactsFromTimeline(resolvedTimeline);
+  const activeBridgeSession = await loadConnectShyftBridgeAggregateByThreadId({
+    tenantId: readContext.context.tenantId,
+    threadId: readContext.threadId,
+  });
+  const voicemailArtifacts = mergeBridgeSessionVoicemailArtifacts(
+    resolveVoicemailArtifactsFromTimeline(resolvedTimeline),
+    resolveBridgeSessionVoicemailArtifact(activeBridgeSession),
+  );
 
   const threadWithCanonicalTimeline = {
     ...thread,
@@ -323,10 +372,6 @@ export const getConnectThreadDetail = async (req: Request, res: Response) => {
     statusDerivedFromCanonicalEvents: true as const,
     timeline: resolvedTimeline,
   };
-  const activeBridgeSession = await loadConnectShyftBridgeAggregateByThreadId({
-    tenantId: readContext.context.tenantId,
-    threadId: readContext.threadId,
-  });
 
   return success(res, {
     code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',

@@ -1,29 +1,35 @@
 module.exports = {
-  testEnvironment: 'node',
+  testEnvironment: "node",
   roots: [
-    '<rootDir>/src',
-    '<rootDir>/../../domains/communication',
-    '<rootDir>/../../infrastructure/communications',
-    '<rootDir>/../../tests/integration/connectshyft-api',
-    '<rootDir>/../../tests/integration/peoplecore',
+    "<rootDir>/src",
+    "<rootDir>/../../domains/communication",
+    "<rootDir>/../../infrastructure/communications",
+    "<rootDir>/../../tests/integration/connectshyft-api",
+    "<rootDir>/../../tests/integration/peoplecore",
   ],
   testMatch: [
-    '<rootDir>/src/**/__tests__/**/*.test.ts',
-    '<rootDir>/../../domains/communication/**/__tests__/**/*.test.ts',
-    '<rootDir>/../../infrastructure/communications/**/__tests__/**/*.test.ts',
-    '<rootDir>/../../tests/integration/connectshyft-api/**/*.test.ts',
-    '<rootDir>/../../tests/integration/peoplecore/**/*.test.ts',
+    "<rootDir>/src/**/__tests__/**/*.test.ts",
+    "<rootDir>/../../domains/communication/**/__tests__/**/*.test.ts",
+    "<rootDir>/../../infrastructure/communications/**/__tests__/**/*.test.ts",
+    "<rootDir>/../../tests/integration/connectshyft-api/**/*.test.ts",
+    "<rootDir>/../../tests/integration/peoplecore/**/*.test.ts",
   ],
-  modulePathIgnorePatterns: ['<rootDir>/dist/'],
-  moduleFileExtensions: ['ts', 'js', 'json'],
-  modulePaths: ['<rootDir>/node_modules'],
+  modulePathIgnorePatterns: ["<rootDir>/dist/"],
+  moduleFileExtensions: ["ts", "js", "json"],
+  modulePaths: ["<rootDir>/node_modules"],
   clearMocks: true,
-  setupFilesAfterEnv: ['<rootDir>/src/__tests__/jest.setup.ts'],
+
+  // ✅ ADD THIS BLOCK (env must load BEFORE anything else)
+  setupFiles: ["<rootDir>/jest.setup.env.ts"],
+
+  // existing
+  setupFilesAfterEnv: ["<rootDir>/src/__tests__/jest.setup.ts"],
+
   transform: {
-    '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }],
+    "^.+\\.ts$": ["ts-jest", { tsconfig: "<rootDir>/tsconfig.json" }],
   },
-  transformIgnorePatterns: ['/node_modules/(?!uuid)/'],
+  transformIgnorePatterns: ["/node_modules/(?!uuid)/"],
   moduleNameMapper: {
-    '^uuid$': '<rootDir>/src/__mocks__/uuid.ts',
+    "^uuid$": "<rootDir>/src/__mocks__/uuid.ts",
   },
 };
