@@ -374,6 +374,7 @@ const buildSmsTargetThread = (overrides: Partial<ConnectShyftThread> = {}): Conn
   orgUnitId: overrides.orgUnitId ?? 'org-connectshyft-f1-east',
   neighborId: overrides.neighborId ?? '22222222-2222-4222-8222-222222222222',
   personId: overrides.personId ?? '33333333-3333-4333-8333-333333333333',
+  activityId: overrides.activityId ?? null,
   source: overrides.source ?? 'VOICE',
   state: overrides.state ?? 'UNCLAIMED',
   lastInboundCsNumberId: overrides.lastInboundCsNumberId ?? '+12605550191',
