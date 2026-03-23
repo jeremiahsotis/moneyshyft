@@ -1,11 +1,9 @@
 # Contract: EventEnvelope
 
 ## Purpose
+EventEnvelope is the shared transport wrapper for domain events that cross service or subsystem boundaries.
 
-`EventEnvelope` is the shared event shape used for domain events that need a consistent wrapper.
-
-## Current shape
-
+## Canonical shape
 ```ts
 type EventEnvelope<T = unknown> = {
   id: string
@@ -20,22 +18,33 @@ type EventEnvelope<T = unknown> = {
 ```
 
 ## Validation rules
+Required:
+- id
+- type
+- orgUnitId
+- subject.orgUnitId
 
-Current validation requires:
+## Locked rule
+EventEnvelope is the only approved cross-boundary transport shape for domain events.
 
-- `id`
-- `type`
-- `orgUnitId`
-- `subject.orgUnitId`
+This means:
+- ContactPointEvent is a domain payload
+- ResolverReview-triggering events are domain payloads
+- future PeopleCore and ConnectShyft domain events must also use this wrapper when crossing boundaries
 
-## Intent
+Canonical pattern:
+```ts
+EventEnvelope<ContactPointEvent>
+```
 
+## Operational meaning
 This contract provides:
 - consistent event identity
-- consistent orgUnit context
+- consistent tenant / orgUnit context
 - consistent subject context
-- a stable wrapper for future PeopleCore and ConnectShyft events
+- replay-safe transport normalization
+- one event pipeline, not multiple competing shapes
 
-## Rule
-
-The code contract is the source of truth for exact fields. This doc explains the operational meaning.
+## Anti-drift rule
+Do not create raw one-off event formats for cross-boundary delivery.
+The code contract is the source of truth for exact fields.
