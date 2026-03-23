@@ -3117,7 +3117,7 @@ const persistInboundIdentityAttachmentEventsAsync = async (input: {
     });
 
     if (
-      input.identityAttachment.outcome !== 'resolver_needed'
+      input.identityAttachment.outcome !== 'resolver_required'
       || !input.identityAttachment.resolverReviewId
     ) {
       return true;
@@ -7977,6 +7977,11 @@ const performInboundWebhook = async ({
         threadId: ensuredThread.threadId,
         threadState: ensuredThread.state,
         thread: ensuredThread,
+        identityResolution: {
+          outcome: identityAttachment.outcome,
+          confidenceBand: identityAttachment.confidenceBand,
+          resolverReviewId: identityAttachment.resolverReviewId,
+        },
         lifecycle: {
           ensuredActiveThread: true,
           createdNewThread,

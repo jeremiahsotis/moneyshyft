@@ -157,6 +157,7 @@ const buildInboundSmsBody = (overrides: Record<string, unknown> = {}) => ({
 
 const buildIdentityAttachment = (overrides: Record<string, unknown> = {}) => ({
   outcome: 'canonical',
+  confidenceBand: 'high',
   personId: 'person-connectshyft-f1-1001',
   contactPointId: 'contact-point-connectshyft-f1-1001',
   contactPointEventId: 'contact-point-event-connectshyft-f1-1001',
@@ -463,6 +464,7 @@ describe('connectshyft inbound sms webhook route characterization', () => {
         'domainHandlers',
         'eventType',
         'from',
+        'identityResolution',
         'inboundMessageArtifact',
         'lifecycle',
         'providerResolution',
@@ -920,7 +922,8 @@ describe('connectshyft inbound sms webhook route characterization', () => {
       outboxId: 'platform-outbox-connectshyft-f1-2005',
     });
     resolveInboundIdentitySpy.mockResolvedValueOnce(buildIdentityAttachment({
-      outcome: 'resolver_needed',
+      outcome: 'resolver_required',
+      confidenceBand: 'medium',
       personId: 'person-connectshyft-f1-provisional-2005',
       provisionalPersonId: 'person-connectshyft-f1-provisional-2005',
       resolverReviewId: 'resolver-review-connectshyft-f1-2005',
@@ -948,6 +951,11 @@ describe('connectshyft inbound sms webhook route characterization', () => {
           correlation: {
             source: 'number_mapping',
             neighborId: 'neighbor-connectshyft-f1-2005',
+          },
+          identityResolution: {
+            outcome: 'resolver_required',
+            confidenceBand: 'medium',
+            resolverReviewId: 'resolver-review-connectshyft-f1-2005',
           },
           thread: buildEnsuredThread({
             threadId: 'thread-sms-characterization-ambiguous-2005',
