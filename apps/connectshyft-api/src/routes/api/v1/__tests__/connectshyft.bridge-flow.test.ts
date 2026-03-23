@@ -1,9 +1,14 @@
-import connectShyftRouter from '../connectshyft'
+import connectShyftRouter, {
+  resetConnectShyftOutboundDispatchReplayLedgerForTests,
+} from '../connectshyft'
+import * as BridgeSessionsModule from '../../../../modules/connectshyft/bridgeSessions'
 import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions'
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents'
 import { connectShyftNumberMappingServiceAsync } from '../../../../modules/connectshyft/numberMappings'
 import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver'
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings'
+import * as TelephonyReadinessModule from '../../../../modules/connectshyft/telephonyReadiness'
+import type { ConnectShyftTelephonyReadiness } from '../../../../modules/connectshyft/telephonyReadiness'
 
 const toCanonicalEventType = (rawEventType: string): string => rawEventType
   .split(/[._-]+/)
@@ -111,6 +116,50 @@ const buildHeaders = (extra: Record<string, string> = {}): Record<string, string
   ...extra,
 })
 
+const buildTelephonyReadiness = (
+  overrides: Partial<ConnectShyftTelephonyReadiness> = {},
+): ConnectShyftTelephonyReadiness => ({
+  providerReady: true,
+  providerSelectionPathActive: true,
+  webhookSignatureConfigured: true,
+  orgUnitNumberMappingReady: true,
+  voiceSupported: true,
+  callbackNumberConfigured: true,
+  callbackNumberNormalized: true,
+  voiceReady: true,
+  bridgeCallRunnable: true,
+  smsReady: true,
+  messageDispatchRunnable: true,
+  provider: {
+    requestedProvider: 'telnyx',
+    resolvedProvider: 'telnyx',
+    deterministic: true,
+    adapterInterfaceVersion: 'v1',
+  },
+  orgUnitNumberMappings: {
+    activeCount: 1,
+    mappings: [
+      {
+        mappingId: 'mapping-f1-001',
+        twilioNumberE164: '+12605550191',
+        label: 'Front Desk',
+      },
+    ],
+  },
+  callbackNumber: {
+    value: '+12605550155',
+    rawInput: '(260) 555-0155',
+    createdAtUtc: '2026-03-22T12:00:00.000Z',
+    updatedAtUtc: '2026-03-22T12:00:00.000Z',
+    persistenceAvailable: true,
+  },
+  operatorPhoneSource: 'callback_number',
+  degradedMode: false,
+  blockingReasons: [],
+  nextActions: [],
+  ...overrides,
+})
+
 const invokeRoute = async (input: {
   method?: 'GET' | 'POST'
   url: string
@@ -207,6 +256,7 @@ const invokeRoute = async (input: {
 describe('connectshyft bridge webhook flow', () => {
   const previousNodeEnv = process.env.NODE_ENV
   const previousEnableFlags = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS
+  let inspectReadinessSpy: jest.SpyInstance
 
   beforeAll(() => {
     process.env.NODE_ENV = 'test'
@@ -223,6 +273,11 @@ describe('connectshyft bridge webhook flow', () => {
     resetConnectShyftCanonicalEventsForTests()
     resetConnectShyftBridgeSessionStateForTests()
     resetConnectShyftProviderCorrelationStateForTests()
+    resetConnectShyftOutboundDispatchReplayLedgerForTests()
+    inspectReadinessSpy = jest.spyOn(
+      TelephonyReadinessModule.connectShyftTelephonyReadinessServiceAsync,
+      'inspectReadiness',
+    ).mockResolvedValue(buildTelephonyReadiness())
     jest.spyOn(OperatorDestinationResolverModule, 'resolveOperatorDestination').mockResolvedValue({
       phoneNumber: '+12605550155',
       source: 'actor_user',
@@ -255,6 +310,7 @@ describe('connectshyft bridge webhook flow', () => {
   })
 
   afterEach(() => {
+    jest.useRealTimers()
     jest.restoreAllMocks()
   })
 
@@ -498,6 +554,67 @@ describe('connectshyft bridge webhook flow', () => {
       operatorProviderCallId: 'provider-leg-operator-thread-f1-unclaimed-1001',
       neighborProviderCallId: 'provider-leg-neighbor-thread-f1-unclaimed-1001',
     }))
+  })
+
+  it('marks timeout and voicemail fallback pending exactly once when the neighbor keeps ringing for 30 seconds', async () => {
+    jest.useFakeTimers()
+    const updateVoicemailFallbackSpy = jest.spyOn(
+      BridgeSessionsModule,
+      'updateConnectShyftBridgeSessionVoicemailFallbackAsync',
+    )
+
+    const startResponse = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/call',
+      headers: buildHeaders(),
+      body: {
+        providerKey: 'telnyx',
+        operatorPhoneId: '+12605550155',
+        targetPhone: '+12605550111',
+      },
+    })
+    const bridgeSessionId = (startResponse.body as any)?.data?.bridgeSession?.bridgeSessionId
+
+    expect(startResponse.status).toBe(200)
+    expect(bridgeSessionId).toEqual(expect.any(String))
+
+    const operatorAnswered = await invokeRoute({
+      url: '/webhooks/inbound',
+      headers: buildHeaders(),
+      body: {
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        threadId: 'thread-f1-unclaimed-1001',
+        eventType: 'call.answered',
+        providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
+      },
+    })
+
+    expect(operatorAnswered.status).toBe(200)
+    expect(updateVoicemailFallbackSpy).toHaveBeenCalledWith(expect.objectContaining({
+      bridgeSessionId,
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      neighborRingStartedAtUtc: expect.any(String),
+    }))
+
+    updateVoicemailFallbackSpy.mockClear()
+
+    await jest.advanceTimersByTimeAsync(30000)
+
+    expect(updateVoicemailFallbackSpy).toHaveBeenCalledTimes(1)
+    expect(updateVoicemailFallbackSpy).toHaveBeenCalledWith(expect.objectContaining({
+      bridgeSessionId,
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      neighborTimeoutAtUtc: expect.any(String),
+      voicemailFallbackStartedAtUtc: expect.any(String),
+      voicemailRecordingStatus: 'pending',
+    }))
+
+    await jest.advanceTimersByTimeAsync(30000)
+
+    expect(updateVoicemailFallbackSpy).toHaveBeenCalledTimes(1)
+    expect(startBridgeSessionMock).not.toHaveBeenCalled()
   })
 
   it('suppresses duplicate webhook receipts before bridge side effects are re-applied', async () => {

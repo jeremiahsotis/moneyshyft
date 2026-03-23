@@ -169,10 +169,12 @@ import {
 } from '../../../modules/connectshyft/providerCorrelationMappings';
 import {
   handleConnectShyftBridgeWebhookEvent,
+  loadConnectShyftBridgeAggregateBySessionId,
   loadConnectShyftBridgeAggregateByThreadId,
   setConnectShyftBridgeLegProviderCallControlIdAsync,
   startConnectShyftBridgeSession,
   updateConnectShyftBridgeSessionVoicemailFallbackAsync,
+  type ConnectShyftBridgeSessionAggregate,
 } from '../../../modules/connectshyft/bridgeSessions';
 import {
   beginConnectShyftCommunicationIdempotency,
@@ -541,6 +543,8 @@ const CONNECTSHYFT_COMMUNICATION_IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
 const CONNECTSHYFT_WEBHOOK_RETRY_MAX_ATTEMPTS = 3;
 const CONNECTSHYFT_WEBHOOK_RETRY_BASE_DELAY_MS = 60 * 1000;
 const CONNECTSHYFT_WEBHOOK_RETRY_MAX_DELAY_MS = 15 * 60 * 1000;
+const CONNECTSHYFT_NEIGHBOR_RING_TIMEOUT_MS = 30 * 1000;
+const connectShyftNeighborRingTimeoutExecutionLedger = new Set<string>();
 
 const loadPlatformDb = (): Knex => {
   const knexModule = require('../../../config/knex') as { default: Knex };
@@ -550,6 +554,7 @@ const loadPlatformDb = (): Knex => {
 export const resetConnectShyftOutboundDispatchReplayLedgerForTests = (): void => {
   resetConnectShyftCommunicationReliabilityStateForTests();
   resetConnectShyftCommunicationAuditLogForTests();
+  connectShyftNeighborRingTimeoutExecutionLedger.clear();
 };
 
 const connectShyftEscalationConfigService = new ConnectShyftEscalationConfigService(
@@ -1195,6 +1200,130 @@ const persistConnectShyftNeighborRingStartedAtIfNeededAsync = async (
     neighborRingStartedAtUtc: nowIsoUtc(),
   });
 };
+
+async function executeConnectShyftNeighborRingTimeoutAsync(input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  bridgeSessionId: string;
+  neighborProviderLegId: string | null;
+}): Promise<{
+  handled: boolean;
+  aggregate: ConnectShyftBridgeSessionAggregate | null;
+}> {
+  const aggregate = await loadConnectShyftBridgeAggregateBySessionId(input.bridgeSessionId);
+  if (!aggregate) {
+    return {
+      handled: false,
+      aggregate: null,
+    };
+  }
+
+  if (
+    aggregate.session.tenantId !== input.tenantId
+    || aggregate.session.orgUnitId !== input.orgUnitId
+    || aggregate.session.threadId !== input.threadId
+  ) {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  if (connectShyftNeighborRingTimeoutExecutionLedger.has(input.bridgeSessionId)) {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  const neighborProviderLegId = normalizeLifecycleString(input.neighborProviderLegId);
+  const persistedNeighborProviderLegId = normalizeLifecycleString(aggregate.neighborLeg.providerCallId);
+  if (neighborProviderLegId && persistedNeighborProviderLegId && neighborProviderLegId !== persistedNeighborProviderLegId) {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  if (normalizeLifecycleString(aggregate.session.status) === 'bridged') {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  if (normalizeLifecycleString(aggregate.neighborLeg.status) !== 'ringing') {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  const timeoutRecordedAtUtc = nowIsoUtc();
+  const updatedAggregate = await updateConnectShyftBridgeSessionVoicemailFallbackAsync({
+    bridgeSessionId: input.bridgeSessionId,
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    neighborTimeoutAtUtc: timeoutRecordedAtUtc,
+    voicemailFallbackStartedAtUtc: timeoutRecordedAtUtc,
+    voicemailRecordingStatus: 'pending',
+  });
+
+  if (!updatedAggregate) {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  connectShyftNeighborRingTimeoutExecutionLedger.add(input.bridgeSessionId);
+
+  return {
+    handled: true,
+    aggregate: updatedAggregate,
+  };
+}
+
+async function scheduleConnectShyftNeighborRingTimeoutAsync(input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  bridgeSessionId: string;
+  neighborProviderLegId: string | null;
+  timeoutMs: number;
+}): Promise<void> {
+  const bridgeSessionId = normalizeLifecycleString(input.bridgeSessionId);
+  const neighborProviderLegId = normalizeLifecycleString(input.neighborProviderLegId);
+  if (!bridgeSessionId || !neighborProviderLegId) {
+    return;
+  }
+
+  const timeoutMs = Number.isFinite(input.timeoutMs) && input.timeoutMs >= 0
+    ? input.timeoutMs
+    : CONNECTSHYFT_NEIGHBOR_RING_TIMEOUT_MS;
+
+  const timer = globalThis.setTimeout(() => {
+    void executeConnectShyftNeighborRingTimeoutAsync({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId: input.threadId,
+      bridgeSessionId,
+      neighborProviderLegId,
+    }).catch((error: unknown) => {
+      logger.error('ConnectShyft neighbor ring timeout execution failed', {
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        threadId: input.threadId,
+        bridgeSessionId,
+        neighborProviderLegId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }, timeoutMs);
+
+  timer.unref?.();
+}
 
 const resolveLifecycleEventName = (
   action: ConnectShyftLifecycleAction,
@@ -5538,6 +5667,14 @@ const performOutboundAction = async ({
             neighborLegState: bridgeStart.aggregate.neighborLeg.status,
             neighborProviderLegId,
           });
+          await scheduleConnectShyftNeighborRingTimeoutAsync({
+            tenantId: context.tenantId,
+            orgUnitId: context.orgUnitId,
+            threadId,
+            bridgeSessionId,
+            neighborProviderLegId,
+            timeoutMs: CONNECTSHYFT_NEIGHBOR_RING_TIMEOUT_MS,
+          });
         }
 
         bridgeSessionState = buildProviderNeutralBridgeSessionState(bridgeStart.aggregate);
@@ -6689,6 +6826,14 @@ const performInboundWebhook = async ({
         orgUnitId,
         neighborLegState: bridgeWebhookProgression.aggregate.neighborLeg.status,
         neighborProviderLegId,
+      });
+      await scheduleConnectShyftNeighborRingTimeoutAsync({
+        tenantId,
+        orgUnitId,
+        threadId,
+        bridgeSessionId,
+        neighborProviderLegId,
+        timeoutMs: CONNECTSHYFT_NEIGHBOR_RING_TIMEOUT_MS,
       });
     }
   }
