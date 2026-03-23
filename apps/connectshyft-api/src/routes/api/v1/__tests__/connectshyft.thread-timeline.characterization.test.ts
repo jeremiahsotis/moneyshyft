@@ -1,5 +1,6 @@
 // @ts-nocheck
 import request from 'supertest';
+import * as BridgeSessionsModule from '../../../../modules/connectshyft/bridgeSessions';
 import {
   recordConnectShyftCanonicalEvent,
   resetConnectShyftCanonicalEventsForTests,
@@ -57,6 +58,69 @@ const buildThreadDetailRecord = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const buildBridgeSessionAggregate = (overrides: Record<string, unknown> = {}) => ({
+  session: {
+    id: 'bridge-session-timeline-1001',
+    tenantId: TEST_TENANT_ID,
+    orgUnitId: TEST_ORG_UNIT_ID,
+    threadId: 'thread-timeline-characterization-1001',
+    operatorParticipantId: 'user-connectshyft-f1-operator',
+    neighborParticipantId: 'neighbor-timeline-characterization-1001',
+    operatorContactPointId: '+12605550155',
+    neighborContactPointId: '+12605550111',
+    selectedOutboundContactPointId: '+12605550191',
+    status: 'neighbor_dialing',
+    failureCode: null,
+    failureMessage: null,
+    endedBy: null,
+    idempotencyKey: null,
+    auditCorrelationId: null,
+    createdAt: new Date('2026-03-19T10:00:00.000Z'),
+    updatedAt: new Date('2026-03-19T10:03:00.000Z'),
+    completedAt: null,
+    voicemailArtifactId: 'vm-thread-timeline-characterization-1001-provider-event-outbound-voicemail-1001',
+    voicemailRecordingUrl: 'https://connectshyft.test/outbound-voicemail-timeline-1001.mp3',
+    voicemailRecordingStatus: 'completed',
+    ...overrides,
+  },
+  operatorLeg: {
+    id: 'bridge-leg-operator-timeline-1001',
+    tenantId: TEST_TENANT_ID,
+    orgUnitId: TEST_ORG_UNIT_ID,
+    bridgeSessionId: 'bridge-session-timeline-1001',
+    legRole: 'operator',
+    contactPointId: '+12605550155',
+    providerCallId: 'provider-leg-operator-timeline-1001',
+    providerCallControlId: 'provider-leg-operator-timeline-1001',
+    status: 'answered',
+    startedAt: new Date('2026-03-19T10:00:00.000Z'),
+    answeredAt: new Date('2026-03-19T10:00:05.000Z'),
+    endedAt: null,
+    failureCode: null,
+    failureMessage: null,
+    createdAt: new Date('2026-03-19T10:00:00.000Z'),
+    updatedAt: new Date('2026-03-19T10:03:00.000Z'),
+  },
+  neighborLeg: {
+    id: 'bridge-leg-neighbor-timeline-1001',
+    tenantId: TEST_TENANT_ID,
+    orgUnitId: TEST_ORG_UNIT_ID,
+    bridgeSessionId: 'bridge-session-timeline-1001',
+    legRole: 'neighbor',
+    contactPointId: '+12605550111',
+    providerCallId: 'provider-leg-neighbor-timeline-1001',
+    providerCallControlId: 'provider-leg-neighbor-timeline-1001',
+    status: 'ringing',
+    startedAt: new Date('2026-03-19T10:00:10.000Z'),
+    answeredAt: null,
+    endedAt: null,
+    failureCode: null,
+    failureMessage: null,
+    createdAt: new Date('2026-03-19T10:00:10.000Z'),
+    updatedAt: new Date('2026-03-19T10:03:00.000Z'),
+  },
+} as any);
+
 const recordTimelineEvent = async (input: {
   threadId: string;
   eventType: string;
@@ -93,6 +157,10 @@ describe('connectshyft thread timeline route characterization', () => {
       threadId,
       neighborId: 'neighbor-timeline-characterization-1001',
     }) as any);
+    jest.spyOn(
+      BridgeSessionsModule,
+      'loadConnectShyftBridgeAggregateByThreadId',
+    ).mockResolvedValue(null as any);
 
     await recordTimelineEvent({
       threadId,
@@ -231,11 +299,66 @@ describe('connectshyft thread timeline route characterization', () => {
     ]);
   });
 
+  it('projects outbound voicemail bridge-session recordings as first-class voicemail timeline items', async () => {
+    const threadId = 'thread-timeline-outbound-voicemail-1002';
+    jest.spyOn(
+      ReadContractsModule,
+      'resolveConnectShyftThreadDetailContractAsync',
+    ).mockResolvedValue(buildThreadDetailRecord({
+      threadId,
+      neighborId: 'neighbor-timeline-outbound-voicemail-1002',
+    }) as any);
+    jest.spyOn(
+      BridgeSessionsModule,
+      'loadConnectShyftBridgeAggregateByThreadId',
+    ).mockResolvedValue(buildBridgeSessionAggregate({
+      id: 'bridge-session-timeline-outbound-1002',
+      threadId,
+      neighborParticipantId: 'neighbor-timeline-outbound-voicemail-1002',
+      voicemailArtifactId: 'vm-thread-timeline-outbound-voicemail-1002-provider-event-outbound-voicemail-1002',
+      voicemailRecordingUrl: 'https://connectshyft.test/outbound-voicemail-timeline-1002.mp3',
+      voicemailRecordingStatus: 'completed',
+      updatedAt: new Date('2026-03-19T10:06:00.000Z'),
+    }) as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get(`/api/v1/connectshyft/threads/${threadId}/timeline`)
+      .set(buildHeaders());
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_TIMELINE_LOADED',
+      data: {
+        thread_id: threadId,
+        items: [
+          expect.objectContaining({
+            thread_id: threadId,
+            type: 'voicemail',
+            direction: 'outbound',
+            channel: 'voicemail',
+            body: null,
+            occurred_at_utc: '2026-03-19T10:06:00.000Z',
+            actor: 'system',
+            recording_url: 'https://connectshyft.test/outbound-voicemail-timeline-1002.mp3',
+            duration_seconds: null,
+            transcript: null,
+          }),
+        ],
+      },
+    });
+  });
+
   it('applies the current deterministic most-recent limit window', async () => {
     jest.spyOn(
       ReadContractsModule,
       'resolveConnectShyftThreadDetailContractAsync',
     ).mockImplementation(async ({ threadId }) => buildThreadDetailRecord({ threadId }) as any);
+    jest.spyOn(
+      BridgeSessionsModule,
+      'loadConnectShyftBridgeAggregateByThreadId',
+    ).mockResolvedValue(null as any);
 
     await recordTimelineEvent({
       threadId: 'thread-timeline-limit-1001',
@@ -326,6 +449,10 @@ describe('connectshyft thread timeline route characterization', () => {
         neighbor_deleted_at_utc: '2026-03-19T10:00:00.000Z',
       }) as any;
     });
+    jest.spyOn(
+      BridgeSessionsModule,
+      'loadConnectShyftBridgeAggregateByThreadId',
+    ).mockResolvedValue(null as any);
 
     await recordTimelineEvent({
       threadId: 'thread-soft-delete-timeline-1001',

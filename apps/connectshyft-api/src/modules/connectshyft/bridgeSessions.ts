@@ -22,6 +22,53 @@ import type {
 const BRIDGE_SESSIONS_TABLE = 'cs_bridge_sessions'
 const BRIDGE_LEGS_TABLE = 'cs_bridge_legs'
 
+export type ConnectShyftBridgeSessionAggregate = BridgeSessionAggregate
+
+export type ConnectShyftBridgeLegRole = 'operator' | 'neighbor' | 'voicemail'
+
+export type ConnectShyftVoicemailRecordingStatus = 'pending' | 'completed' | 'failed'
+
+export interface ConnectShyftBridgeSessionVoicemailFallbackUpdateInput {
+  bridgeSessionId: string
+  tenantId: string
+  orgUnitId: string
+  neighborRingStartedAtUtc?: string | null
+  neighborTimeoutAtUtc?: string | null
+  voicemailFallbackStartedAtUtc?: string | null
+  voicemailArtifactId?: string | null
+  voicemailRecordingUrl?: string | null
+  voicemailRecordingStatus?: ConnectShyftVoicemailRecordingStatus | null
+  voicemailProviderEventId?: string | null
+  voicemailProviderLegId?: string | null
+}
+
+export interface ConnectShyftBridgeLegProviderControlUpdateInput {
+  bridgeSessionId: string
+  tenantId: string
+  orgUnitId: string
+  legRole: ConnectShyftBridgeLegRole
+  providerCallControlId: string
+}
+
+type PersistedConnectShyftBridgeLegRole = ConnectShyftBridgeLegRole
+
+type ConnectShyftBridgeSessionScope = {
+  bridgeSessionId: string
+  tenantId: string
+  orgUnitId: string
+}
+
+type ConnectShyftBridgeSessionVoicemailFallbackState = {
+  neighborRingStartedAtUtc?: string | null
+  neighborTimeoutAtUtc?: string | null
+  voicemailFallbackStartedAtUtc?: string | null
+  voicemailArtifactId?: string | null
+  voicemailRecordingUrl?: string | null
+  voicemailRecordingStatus?: ConnectShyftVoicemailRecordingStatus | null
+  voicemailProviderEventId?: string | null
+  voicemailProviderLegId?: string | null
+}
+
 type DbBridgeSessionRow = {
   id: string
   tenant_id: string
@@ -41,6 +88,14 @@ type DbBridgeSessionRow = {
   created_at_utc: string | Date
   updated_at_utc: string | Date
   completed_at_utc?: string | Date | null
+  neighbor_ring_started_at_utc?: string | Date | null
+  neighbor_timeout_at_utc?: string | Date | null
+  voicemail_fallback_started_at_utc?: string | Date | null
+  voicemail_artifact_id?: string | null
+  voicemail_recording_url?: string | null
+  voicemail_recording_status?: ConnectShyftVoicemailRecordingStatus | null
+  voicemail_provider_event_id?: string | null
+  voicemail_provider_leg_id?: string | null
 }
 
 type DbBridgeLegRow = {
@@ -48,9 +103,10 @@ type DbBridgeLegRow = {
   tenant_id: string
   org_unit_id: string
   bridge_session_id: string
-  leg_role: 'operator' | 'neighbor'
+  leg_role: PersistedConnectShyftBridgeLegRole
   contact_point_id: string
   provider_call_id?: string | null
+  provider_call_control_id?: string | null
   leg_status: string
   started_at_utc?: string | Date | null
   answered_at_utc?: string | Date | null
@@ -132,6 +188,80 @@ const toDate = (value: string | Date | null | undefined): Date | null => {
   return iso ? new Date(iso) : null
 }
 
+const normalizeNullableString = (value: unknown): string | null => normalizeString(value) || null
+
+const toPersistedBridgeLegRole = (
+  legRole: ConnectShyftBridgeLegRole,
+): PersistedConnectShyftBridgeLegRole | null => (
+  legRole === 'operator' || legRole === 'neighbor' ? legRole : null
+)
+
+const buildVoicemailFallbackStatePatch = (
+  input: ConnectShyftBridgeSessionVoicemailFallbackUpdateInput,
+): Partial<ConnectShyftBridgeSessionVoicemailFallbackState> => {
+  const patch: Partial<ConnectShyftBridgeSessionVoicemailFallbackState> = {}
+
+  if (input.neighborRingStartedAtUtc !== undefined) {
+    patch.neighborRingStartedAtUtc = toIsoString(input.neighborRingStartedAtUtc)
+  }
+  if (input.neighborTimeoutAtUtc !== undefined) {
+    patch.neighborTimeoutAtUtc = toIsoString(input.neighborTimeoutAtUtc)
+  }
+  if (input.voicemailFallbackStartedAtUtc !== undefined) {
+    patch.voicemailFallbackStartedAtUtc = toIsoString(input.voicemailFallbackStartedAtUtc)
+  }
+  if (input.voicemailArtifactId !== undefined) {
+    patch.voicemailArtifactId = normalizeNullableString(input.voicemailArtifactId)
+  }
+  if (input.voicemailRecordingUrl !== undefined) {
+    patch.voicemailRecordingUrl = normalizeNullableString(input.voicemailRecordingUrl)
+  }
+  if (input.voicemailRecordingStatus !== undefined) {
+    patch.voicemailRecordingStatus = input.voicemailRecordingStatus ?? null
+  }
+  if (input.voicemailProviderEventId !== undefined) {
+    patch.voicemailProviderEventId = normalizeNullableString(input.voicemailProviderEventId)
+  }
+  if (input.voicemailProviderLegId !== undefined) {
+    patch.voicemailProviderLegId = normalizeNullableString(input.voicemailProviderLegId)
+  }
+
+  return patch
+}
+
+const buildVoicemailFallbackRowPatch = (
+  patch: Partial<ConnectShyftBridgeSessionVoicemailFallbackState>,
+): Record<string, string | null> => {
+  const rowPatch: Record<string, string | null> = {}
+
+  if (Object.prototype.hasOwnProperty.call(patch, 'neighborRingStartedAtUtc')) {
+    rowPatch.neighbor_ring_started_at_utc = patch.neighborRingStartedAtUtc ?? null
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'neighborTimeoutAtUtc')) {
+    rowPatch.neighbor_timeout_at_utc = patch.neighborTimeoutAtUtc ?? null
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'voicemailFallbackStartedAtUtc')) {
+    rowPatch.voicemail_fallback_started_at_utc = patch.voicemailFallbackStartedAtUtc ?? null
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'voicemailArtifactId')) {
+    rowPatch.voicemail_artifact_id = patch.voicemailArtifactId ?? null
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'voicemailRecordingUrl')) {
+    rowPatch.voicemail_recording_url = patch.voicemailRecordingUrl ?? null
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'voicemailRecordingStatus')) {
+    rowPatch.voicemail_recording_status = patch.voicemailRecordingStatus ?? null
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'voicemailProviderEventId')) {
+    rowPatch.voicemail_provider_event_id = patch.voicemailProviderEventId ?? null
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'voicemailProviderLegId')) {
+    rowPatch.voicemail_provider_leg_id = patch.voicemailProviderLegId ?? null
+  }
+
+  return rowPatch
+}
+
 const isMissingPersistenceError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
     return false
@@ -172,6 +302,7 @@ const mapLegRow = (row: DbBridgeLegRow): BridgeLegRecord => ({
   legRole: row.leg_role,
   contactPointId: row.contact_point_id,
   providerCallId: normalizeString(row.provider_call_id) || null,
+  providerCallControlId: normalizeString(row.provider_call_control_id) || null,
   status: row.leg_status as BridgeLegRecord['status'],
   startedAt: toDate(row.started_at_utc),
   answeredAt: toDate(row.answered_at_utc),
@@ -211,6 +342,7 @@ const legToRow = (leg: BridgeLegRecord) => ({
   leg_role: leg.legRole,
   contact_point_id: leg.contactPointId,
   provider_call_id: leg.providerCallId ?? null,
+  provider_call_control_id: leg.providerCallControlId ?? null,
   leg_status: leg.status,
   started_at_utc: leg.startedAt ? leg.startedAt.toISOString() : null,
   answered_at_utc: leg.answeredAt ? leg.answeredAt.toISOString() : null,
@@ -223,8 +355,10 @@ const legToRow = (leg: BridgeLegRecord) => ({
 
 class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository {
   private sessions = new Map<string, BridgeSessionRecord>()
-  private legsBySessionId = new Map<string, Map<'operator' | 'neighbor', BridgeLegRecord>>()
+  private legsBySessionId = new Map<string, Map<PersistedConnectShyftBridgeLegRole, BridgeLegRecord>>()
   private sessionIdByProviderCallId = new Map<string, string>()
+  private sessionIdByProviderCallControlId = new Map<string, string>()
+  private voicemailFallbackBySessionId = new Map<string, ConnectShyftBridgeSessionVoicemailFallbackState>()
 
   createSession(session: BridgeSessionRecord): Promise<void> {
     this.sessions.set(session.id, { ...session })
@@ -238,20 +372,44 @@ class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository 
     if (leg.providerCallId) {
       this.sessionIdByProviderCallId.set(leg.providerCallId, leg.bridgeSessionId)
     }
+    if (leg.providerCallControlId) {
+      this.sessionIdByProviderCallControlId.set(leg.providerCallControlId, leg.bridgeSessionId)
+    }
     return Promise.resolve()
   }
 
   saveAggregate(aggregate: BridgeSessionAggregate): Promise<void> {
     this.sessions.set(aggregate.session.id, { ...aggregate.session })
-    const legs = new Map<'operator' | 'neighbor', BridgeLegRecord>()
+    const legs = new Map<PersistedConnectShyftBridgeLegRole, BridgeLegRecord>()
     legs.set('operator', { ...aggregate.operatorLeg })
     legs.set('neighbor', { ...aggregate.neighborLeg })
+    if (aggregate.voicemailLeg) {
+      legs.set('voicemail', { ...aggregate.voicemailLeg })
+    }
     this.legsBySessionId.set(aggregate.session.id, legs)
     if (aggregate.operatorLeg.providerCallId) {
       this.sessionIdByProviderCallId.set(aggregate.operatorLeg.providerCallId, aggregate.session.id)
     }
     if (aggregate.neighborLeg.providerCallId) {
       this.sessionIdByProviderCallId.set(aggregate.neighborLeg.providerCallId, aggregate.session.id)
+    }
+    if (aggregate.operatorLeg.providerCallControlId) {
+      this.sessionIdByProviderCallControlId.set(
+        aggregate.operatorLeg.providerCallControlId,
+        aggregate.session.id,
+      )
+    }
+    if (aggregate.neighborLeg.providerCallControlId) {
+      this.sessionIdByProviderCallControlId.set(
+        aggregate.neighborLeg.providerCallControlId,
+        aggregate.session.id,
+      )
+    }
+    if (aggregate.voicemailLeg?.providerCallControlId) {
+      this.sessionIdByProviderCallControlId.set(
+        aggregate.voicemailLeg.providerCallControlId,
+        aggregate.session.id,
+      )
     }
     return Promise.resolve()
   }
@@ -261,6 +419,7 @@ class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository 
     const legs = this.legsBySessionId.get(sessionId)
     const operatorLeg = legs?.get('operator')
     const neighborLeg = legs?.get('neighbor')
+    const voicemailLeg = legs?.get('voicemail') ?? null
     if (!session || !operatorLeg || !neighborLeg) {
       return Promise.resolve(null)
     }
@@ -269,6 +428,7 @@ class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository 
       session: { ...session },
       operatorLeg: { ...operatorLeg },
       neighborLeg: { ...neighborLeg },
+      ...(voicemailLeg ? { voicemailLeg: { ...voicemailLeg } } : {}),
     })
   }
 
@@ -305,10 +465,133 @@ class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository 
     return this.getAggregateBySessionId(latestSession.id)
   }
 
+  private getScopedAggregate(scope: ConnectShyftBridgeSessionScope): Promise<ConnectShyftBridgeSessionAggregate | null> {
+    const session = this.sessions.get(scope.bridgeSessionId)
+    if (!session || session.tenantId !== scope.tenantId || session.orgUnitId !== scope.orgUnitId) {
+      return Promise.resolve(null)
+    }
+
+    return this.getAggregateBySessionId(scope.bridgeSessionId)
+  }
+
+  async updateVoicemailFallback(
+    input: ConnectShyftBridgeSessionVoicemailFallbackUpdateInput,
+  ): Promise<ConnectShyftBridgeSessionAggregate | null> {
+    const scopedAggregate = await this.getScopedAggregate({
+      bridgeSessionId: input.bridgeSessionId,
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+    })
+    if (!scopedAggregate) {
+      return null
+    }
+
+    const patch = buildVoicemailFallbackStatePatch(input)
+    if (Object.keys(patch).length > 0) {
+      this.voicemailFallbackBySessionId.set(input.bridgeSessionId, {
+        ...(this.voicemailFallbackBySessionId.get(input.bridgeSessionId) || {}),
+        ...patch,
+      })
+      this.sessions.set(input.bridgeSessionId, {
+        ...scopedAggregate.session,
+        updatedAt: new Date(),
+      })
+    }
+
+    return this.getAggregateBySessionId(input.bridgeSessionId)
+  }
+
+  async setLegProviderCallControlId(
+    input: ConnectShyftBridgeLegProviderControlUpdateInput,
+  ): Promise<ConnectShyftBridgeSessionAggregate | null> {
+    const scopedAggregate = await this.getScopedAggregate({
+      bridgeSessionId: input.bridgeSessionId,
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+    })
+    if (!scopedAggregate) {
+      return null
+    }
+
+    const providerCallControlId = normalizeString(input.providerCallControlId)
+    if (!providerCallControlId) {
+      return scopedAggregate
+    }
+
+    const persistedLegRole = toPersistedBridgeLegRole(input.legRole) || input.legRole
+    const current = this.legsBySessionId.get(input.bridgeSessionId) || new Map()
+    const existingLeg = current.get(persistedLegRole)
+    const now = new Date()
+    const nextLeg = existingLeg
+      ? {
+        ...existingLeg,
+        providerCallControlId,
+        updatedAt: now,
+      }
+      : input.legRole === 'voicemail'
+        ? {
+          id: randomUUID(),
+          tenantId: input.tenantId,
+          orgUnitId: input.orgUnitId,
+          bridgeSessionId: input.bridgeSessionId,
+          legRole: 'voicemail' as const,
+          contactPointId: scopedAggregate.neighborLeg.contactPointId,
+          providerCallId: null,
+          providerCallControlId,
+          status: 'ringing' as const,
+          startedAt: now,
+          answeredAt: null,
+          endedAt: null,
+          failureCode: null,
+          failureMessage: null,
+          createdAt: now,
+          updatedAt: now,
+        }
+        : null
+
+    if (!nextLeg) {
+      return null
+    }
+
+    current.set(persistedLegRole, nextLeg)
+    this.legsBySessionId.set(input.bridgeSessionId, current)
+    this.sessionIdByProviderCallControlId.set(providerCallControlId, input.bridgeSessionId)
+    this.sessions.set(input.bridgeSessionId, {
+      ...scopedAggregate.session,
+      updatedAt: now,
+    })
+
+    return this.getAggregateBySessionId(input.bridgeSessionId)
+  }
+
+  async findAggregateByProviderCallControlId(input: {
+    tenantId: string
+    orgUnitId: string
+    providerCallControlId: string
+  }): Promise<ConnectShyftBridgeSessionAggregate | null> {
+    const providerCallControlId = normalizeString(input.providerCallControlId)
+    if (!providerCallControlId) {
+      return null
+    }
+
+    const sessionId = this.sessionIdByProviderCallControlId.get(providerCallControlId)
+    if (!sessionId) {
+      return null
+    }
+
+    return this.getScopedAggregate({
+      bridgeSessionId: sessionId,
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+    })
+  }
+
   reset(): void {
     this.sessions.clear()
     this.legsBySessionId.clear()
     this.sessionIdByProviderCallId.clear()
+    this.sessionIdByProviderCallControlId.clear()
+    this.voicemailFallbackBySessionId.clear()
   }
 }
 
@@ -370,6 +653,7 @@ class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
         'leg_role',
         'contact_point_id',
         'provider_call_id',
+        'provider_call_control_id',
         'leg_status',
         'started_at_utc',
         'answered_at_utc',
@@ -382,6 +666,7 @@ class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
 
     const operatorLeg = legRows.find((row) => row.leg_role === 'operator')
     const neighborLeg = legRows.find((row) => row.leg_role === 'neighbor')
+    const voicemailLeg = legRows.find((row) => row.leg_role === 'voicemail')
     if (!operatorLeg || !neighborLeg) {
       return null
     }
@@ -390,6 +675,7 @@ class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
       session: mapSessionRow(sessionRow),
       operatorLeg: mapLegRow(operatorLeg),
       neighborLeg: mapLegRow(neighborLeg),
+      ...(voicemailLeg ? { voicemailLeg: mapLegRow(voicemailLeg) } : {}),
     }
   }
 
@@ -440,6 +726,186 @@ class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
     }
 
     return this.getAggregateBySessionId(sessionRow.id)
+  }
+
+  private async getScopedAggregate(
+    scope: ConnectShyftBridgeSessionScope,
+  ): Promise<ConnectShyftBridgeSessionAggregate | null> {
+    const sessionRow = await this.knexClient
+      .withSchema('connectshyft')
+      .table(BRIDGE_SESSIONS_TABLE)
+      .where({
+        id: scope.bridgeSessionId,
+        tenant_id: scope.tenantId,
+        org_unit_id: scope.orgUnitId,
+      })
+      .first<{ id: string }>('id')
+
+    if (!sessionRow?.id) {
+      return null
+    }
+
+    return this.getAggregateBySessionId(scope.bridgeSessionId)
+  }
+
+  async updateVoicemailFallback(
+    input: ConnectShyftBridgeSessionVoicemailFallbackUpdateInput,
+  ): Promise<ConnectShyftBridgeSessionAggregate | null> {
+    const scopedAggregate = await this.getScopedAggregate({
+      bridgeSessionId: input.bridgeSessionId,
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+    })
+    if (!scopedAggregate) {
+      return null
+    }
+
+    const patch = buildVoicemailFallbackRowPatch(buildVoicemailFallbackStatePatch(input))
+    if (Object.keys(patch).length === 0) {
+      return scopedAggregate
+    }
+
+    const updatedRows = await this.knexClient
+      .withSchema('connectshyft')
+      .table(BRIDGE_SESSIONS_TABLE)
+      .where({
+        id: input.bridgeSessionId,
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+      })
+      .update({
+        ...patch,
+        updated_at_utc: new Date().toISOString(),
+      })
+
+    if (!updatedRows) {
+      return null
+    }
+
+    return this.getAggregateBySessionId(input.bridgeSessionId)
+  }
+
+  async setLegProviderCallControlId(
+    input: ConnectShyftBridgeLegProviderControlUpdateInput,
+  ): Promise<ConnectShyftBridgeSessionAggregate | null> {
+    const scopedAggregate = await this.getScopedAggregate({
+      bridgeSessionId: input.bridgeSessionId,
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+    })
+    if (!scopedAggregate) {
+      return null
+    }
+
+    const providerCallControlId = normalizeString(input.providerCallControlId)
+    if (!providerCallControlId) {
+      return scopedAggregate
+    }
+
+    const persistedLegRole = toPersistedBridgeLegRole(input.legRole) || input.legRole
+    let updatedLegRows = 0
+    const nowIsoUtc = new Date().toISOString()
+
+    await this.knexClient.transaction(async (trx) => {
+      const existingLegRow = await trx
+        .withSchema('connectshyft')
+        .table(BRIDGE_LEGS_TABLE)
+        .where({
+          bridge_session_id: input.bridgeSessionId,
+          tenant_id: input.tenantId,
+          org_unit_id: input.orgUnitId,
+          leg_role: persistedLegRole,
+        })
+        .first<{ id: string }>('id')
+
+      if (!existingLegRow && input.legRole === 'voicemail') {
+        updatedLegRows = 1
+        await trx
+          .withSchema('connectshyft')
+          .table(BRIDGE_LEGS_TABLE)
+          .insert({
+            id: randomUUID(),
+            tenant_id: input.tenantId,
+            org_unit_id: input.orgUnitId,
+            bridge_session_id: input.bridgeSessionId,
+            leg_role: 'voicemail',
+            contact_point_id: scopedAggregate.neighborLeg.contactPointId,
+            provider_call_id: null,
+            provider_call_control_id: providerCallControlId,
+            leg_status: 'ringing',
+            started_at_utc: nowIsoUtc,
+            answered_at_utc: null,
+            ended_at_utc: null,
+            failure_code: null,
+            failure_message: null,
+            created_at_utc: nowIsoUtc,
+            updated_at_utc: nowIsoUtc,
+          })
+      } else {
+        updatedLegRows = await trx
+        .withSchema('connectshyft')
+        .table(BRIDGE_LEGS_TABLE)
+        .where({
+          bridge_session_id: input.bridgeSessionId,
+          tenant_id: input.tenantId,
+          org_unit_id: input.orgUnitId,
+          leg_role: persistedLegRole,
+        })
+        .update({
+          provider_call_control_id: providerCallControlId,
+          updated_at_utc: nowIsoUtc,
+        })
+      }
+
+      if (!updatedLegRows) {
+        return
+      }
+
+      await trx
+        .withSchema('connectshyft')
+        .table(BRIDGE_SESSIONS_TABLE)
+        .where({
+          id: input.bridgeSessionId,
+          tenant_id: input.tenantId,
+          org_unit_id: input.orgUnitId,
+        })
+        .update({
+          updated_at_utc: nowIsoUtc,
+        })
+    })
+
+    if (!updatedLegRows) {
+      return null
+    }
+
+    return this.getAggregateBySessionId(input.bridgeSessionId)
+  }
+
+  async findAggregateByProviderCallControlId(input: {
+    tenantId: string
+    orgUnitId: string
+    providerCallControlId: string
+  }): Promise<ConnectShyftBridgeSessionAggregate | null> {
+    const providerCallControlId = normalizeString(input.providerCallControlId)
+    if (!providerCallControlId) {
+      return null
+    }
+
+    const legRow = await this.knexClient
+      .withSchema('connectshyft')
+      .table(`${BRIDGE_LEGS_TABLE} as bl`)
+      .join(`${BRIDGE_SESSIONS_TABLE} as bs`, 'bs.id', 'bl.bridge_session_id')
+      .where('bs.tenant_id', input.tenantId)
+      .andWhere('bs.org_unit_id', input.orgUnitId)
+      .andWhere('bl.provider_call_control_id', providerCallControlId)
+      .first<{ bridgeSessionId?: string }>('bl.bridge_session_id as bridgeSessionId')
+
+    const sessionId = normalizeString(legRow?.bridgeSessionId)
+    if (!sessionId) {
+      return null
+    }
+
+    return this.getAggregateBySessionId(sessionId)
   }
 }
 
@@ -778,6 +1244,62 @@ const repositoryProxy: BridgeSessionRepository = {
 
 export const resetConnectShyftBridgeSessionStateForTests = (): void => {
   inMemoryBridgeSessionStore.reset()
+}
+
+export async function updateConnectShyftBridgeSessionVoicemailFallbackAsync(
+  input: ConnectShyftBridgeSessionVoicemailFallbackUpdateInput,
+): Promise<ConnectShyftBridgeSessionAggregate | null> {
+  if (isConnectShyftTestOverrideEnabled()) {
+    return inMemoryBridgeSessionStore.updateVoicemailFallback(input)
+  }
+
+  try {
+    return await knexBridgeSessionStore.updateVoicemailFallback(input)
+  } catch (error) {
+    if (!isMissingPersistenceError(error)) {
+      throw error
+    }
+
+    return inMemoryBridgeSessionStore.updateVoicemailFallback(input)
+  }
+}
+
+export async function setConnectShyftBridgeLegProviderCallControlIdAsync(
+  input: ConnectShyftBridgeLegProviderControlUpdateInput,
+): Promise<ConnectShyftBridgeSessionAggregate | null> {
+  if (isConnectShyftTestOverrideEnabled()) {
+    return inMemoryBridgeSessionStore.setLegProviderCallControlId(input)
+  }
+
+  try {
+    return await knexBridgeSessionStore.setLegProviderCallControlId(input)
+  } catch (error) {
+    if (!isMissingPersistenceError(error)) {
+      throw error
+    }
+
+    return inMemoryBridgeSessionStore.setLegProviderCallControlId(input)
+  }
+}
+
+export async function findConnectShyftBridgeSessionByProviderCallControlIdAsync(input: {
+  tenantId: string
+  orgUnitId: string
+  providerCallControlId: string
+}): Promise<ConnectShyftBridgeSessionAggregate | null> {
+  if (isConnectShyftTestOverrideEnabled()) {
+    return inMemoryBridgeSessionStore.findAggregateByProviderCallControlId(input)
+  }
+
+  try {
+    return await knexBridgeSessionStore.findAggregateByProviderCallControlId(input)
+  } catch (error) {
+    if (!isMissingPersistenceError(error)) {
+      throw error
+    }
+
+    return inMemoryBridgeSessionStore.findAggregateByProviderCallControlId(input)
+  }
 }
 
 export const loadConnectShyftBridgeAggregateBySessionId = async (

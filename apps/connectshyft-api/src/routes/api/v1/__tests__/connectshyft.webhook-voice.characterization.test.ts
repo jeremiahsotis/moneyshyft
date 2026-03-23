@@ -2,10 +2,18 @@
 import request from 'supertest';
 import * as canonicalEventsModule from '../../../../modules/connectshyft/canonicalEvents';
 import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
-import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
+import * as BridgeSessionsModule from '../../../../modules/connectshyft/bridgeSessions';
+import {
+  loadConnectShyftBridgeAggregateBySessionId,
+  resetConnectShyftBridgeSessionStateForTests,
+  setConnectShyftBridgeLegProviderCallControlIdAsync,
+  startConnectShyftBridgeSession,
+  updateConnectShyftBridgeSessionVoicemailFallbackAsync,
+} from '../../../../modules/connectshyft/bridgeSessions';
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents';
 import * as providerCorrelationMappingsModule from '../../../../modules/connectshyft/providerCorrelationMappings';
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings';
+import type { ConnectShyftProviderAdapter } from '../../../../modules/connectshyft/providerRegistry';
 import {
   buildApp,
   buildHeaders,
@@ -46,6 +54,22 @@ const readString = (...values: unknown[]): string | null => {
 
 const sendSmsMock = jest.fn();
 const startOutboundCallMock = jest.fn();
+const startBridgeOutboundCallMock = jest.fn(async (command: {
+  legRole: string;
+  threadId: string;
+  bridgeSessionId: string;
+}) => ({
+  providerKey: 'telnyx',
+  channel: 'call' as const,
+  providerLegId: command.legRole === 'voicemail'
+    ? `provider-leg-voicemail-${command.bridgeSessionId}`
+    : `provider-leg-${command.legRole}-${command.threadId}`,
+  providerMessageId: null,
+  providerRequestId: `req-${command.legRole}-${command.threadId}`,
+  adapterInvoked: true as const,
+  providerBranchingInDomain: false as const,
+  requestedAt: TEST_TIMESTAMP,
+}));
 const startBridgeSessionMock = jest.fn();
 const endCallMock = jest.fn();
 const verifyWebhookMock = jest.fn(() => ({ ok: true as const }));
@@ -88,12 +112,25 @@ jest.mock('../../../../../../../infrastructure/communications', () => ({
     adapterInterfaceVersion: 'v1',
     sendSms: sendSmsMock,
     startOutboundCall: startOutboundCallMock,
+    startBridgeOutboundCall: startBridgeOutboundCallMock,
     startBridgeSession: startBridgeSessionMock,
     endCall: endCallMock,
     verifyWebhook: verifyWebhookMock,
     translateProviderEvent: translateProviderEventMock,
   })),
 }));
+
+const bridgeProviderAdapter: ConnectShyftProviderAdapter = {
+  providerKey: 'telnyx',
+  adapterInterfaceVersion: 'v1',
+  sendSms: sendSmsMock,
+  startOutboundCall: startOutboundCallMock,
+  startBridgeOutboundCall: startBridgeOutboundCallMock,
+  startBridgeSession: startBridgeSessionMock,
+  endCall: endCallMock,
+  verifyWebhook: verifyWebhookMock,
+  translateProviderEvent: translateProviderEventMock,
+};
 
 const buildVoiceHeaders = (input?: {
   tenantId?: string;
@@ -124,6 +161,53 @@ const buildVoiceWebhookBody = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const seedOutboundVoicemailBridgeSession = async (input?: {
+  matchedLegRole?: 'operator' | 'neighbor' | 'voicemail';
+  providerCallControlId?: string;
+  threadId?: string;
+}) => {
+  const threadId = input?.threadId || 'thread-f1-unclaimed-1001';
+  const matchedLegRole = input?.matchedLegRole || 'voicemail';
+  const providerCallControlId = input?.providerCallControlId
+    || `provider-leg-${matchedLegRole}-recording-1001`;
+  const started = await startConnectShyftBridgeSession({
+    tenantId: 'tenant-connectshyft-f1',
+    orgUnitId: 'org-connectshyft-f1-east',
+    threadId,
+    operatorParticipantId: 'user-connectshyft-f1-primary-operator',
+    neighborParticipantId: 'neighbor-connectshyft-f1-1001',
+    operatorContactPointId: '+12605550155',
+    neighborContactPointId: '+12605550111',
+    selectedOutboundContactPointId: TEST_PROVIDER_NUMBER_F1,
+    providerKey: 'telnyx',
+    providerAdapter: bridgeProviderAdapter,
+  });
+
+  if (matchedLegRole === 'voicemail') {
+    await updateConnectShyftBridgeSessionVoicemailFallbackAsync({
+      bridgeSessionId: started.aggregate.session.id,
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      voicemailFallbackStartedAtUtc: TEST_TIMESTAMP,
+      voicemailRecordingStatus: 'pending',
+    });
+  }
+
+  const aggregate = await setConnectShyftBridgeLegProviderCallControlIdAsync({
+    bridgeSessionId: started.aggregate.session.id,
+    tenantId: 'tenant-connectshyft-f1',
+    orgUnitId: 'org-connectshyft-f1-east',
+    legRole: matchedLegRole,
+    providerCallControlId,
+  });
+
+  return {
+    bridgeSessionId: started.aggregate.session.id,
+    providerCallControlId,
+    aggregate: aggregate || started.aggregate,
+  };
+};
+
 describe('connectshyft inbound voice webhook route characterization', () => {
   registerProviderRegistryRouteIntegrationHooks();
 
@@ -134,6 +218,7 @@ describe('connectshyft inbound voice webhook route characterization', () => {
     loggerModule.default.info.mockReset();
     sendSmsMock.mockClear();
     startOutboundCallMock.mockClear();
+    startBridgeOutboundCallMock.mockClear();
     startBridgeSessionMock.mockClear();
     endCallMock.mockClear();
     verifyWebhookMock.mockClear();
@@ -372,6 +457,159 @@ describe('connectshyft inbound voice webhook route characterization', () => {
       'updatedAtUtc',
     ].sort());
     expect(response.body.data.audit).toEqual(response.body.data.outbox);
+  });
+
+  it('attaches outbound voicemail recordings to the persisted voicemail bridge leg', async () => {
+    const seededBridge = await seedOutboundVoicemailBridgeSession({
+      matchedLegRole: 'voicemail',
+      providerCallControlId: 'provider-leg-voicemail-recording-1007',
+    });
+    const updateVoicemailFallbackSpy = jest.spyOn(
+      BridgeSessionsModule,
+      'updateConnectShyftBridgeSessionVoicemailFallbackAsync',
+    );
+    const app = buildApp();
+    const recordingUrl = 'https://connectshyft.test/outbound-voicemail-recording-1007.mp3';
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildVoiceHeaders())
+        .send(buildVoiceWebhookBody({
+          providerEventId: 'provider-event-voice-outbound-voicemail-1007',
+          providerLegId: seededBridge.providerCallControlId,
+          recordingUrl,
+        }));
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          correlation: {
+            providerLegId: 'provider-leg-voicemail-recording-1007',
+            providerEventId: 'provider-event-voice-outbound-voicemail-1007',
+          },
+          bridgeSession: {
+            bridgeSessionId: seededBridge.bridgeSessionId,
+          },
+          voicemailArtifact: {
+            artifactId: 'vm-thread-f1-unclaimed-1001-provider-event-voice-outbound-voicemail-1007',
+            recordingUrl,
+          },
+        },
+      });
+      expect(response.body.data).not.toHaveProperty('transcription');
+      expect(response.body.data).not.toHaveProperty('transcriptionOutbox');
+      expect(updateVoicemailFallbackSpy).toHaveBeenCalledWith(expect.objectContaining({
+        bridgeSessionId: seededBridge.bridgeSessionId,
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        voicemailArtifactId: 'vm-thread-f1-unclaimed-1001-provider-event-voice-outbound-voicemail-1007',
+        voicemailRecordingUrl: recordingUrl,
+        voicemailRecordingStatus: 'completed',
+        voicemailProviderEventId: 'provider-event-voice-outbound-voicemail-1007',
+        voicemailProviderLegId: 'provider-leg-voicemail-recording-1007',
+      }));
+    } finally {
+      updateVoicemailFallbackSpy.mockRestore();
+    }
+  });
+
+  it('does not attach a second outbound voicemail artifact when the matched voicemail leg already has one', async () => {
+    const seededBridge = await seedOutboundVoicemailBridgeSession({
+      matchedLegRole: 'voicemail',
+      providerCallControlId: 'provider-leg-voicemail-recording-1011',
+    });
+    const updateVoicemailFallbackSpy = jest.spyOn(
+      BridgeSessionsModule,
+      'updateConnectShyftBridgeSessionVoicemailFallbackAsync',
+    );
+    const findBridgeSessionSpy = jest.spyOn(
+      BridgeSessionsModule,
+      'findConnectShyftBridgeSessionByProviderCallControlIdAsync',
+    ).mockResolvedValue({
+      ...seededBridge.aggregate,
+      session: {
+        ...seededBridge.aggregate.session,
+        voicemailArtifactId: 'vm-thread-f1-unclaimed-1001-provider-event-voice-outbound-voicemail-1011',
+        voicemailRecordingStatus: 'completed',
+      },
+      voicemailLeg: {
+        ...(seededBridge.aggregate as any).voicemailLeg,
+        providerCallControlId: seededBridge.providerCallControlId,
+      },
+    } as any);
+    const app = buildApp();
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildVoiceHeaders())
+        .send(buildVoiceWebhookBody({
+          providerEventId: 'provider-event-voice-outbound-voicemail-1012',
+          providerLegId: seededBridge.providerCallControlId,
+          recordingUrl: 'https://connectshyft.test/outbound-voicemail-recording-1012.mp3',
+        }));
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          bridgeSession: {
+            bridgeSessionId: seededBridge.bridgeSessionId,
+          },
+        },
+      });
+      expect(response.body.data).not.toHaveProperty('voicemailArtifact');
+      expect(response.body.data).not.toHaveProperty('transcription');
+      expect(response.body.data).not.toHaveProperty('transcriptionOutbox');
+      expect(updateVoicemailFallbackSpy).not.toHaveBeenCalled();
+    } finally {
+      findBridgeSessionSpy.mockRestore();
+      updateVoicemailFallbackSpy.mockRestore();
+    }
+  });
+
+  it('ignores operator-leg recordings when the matched bridge recording is not voicemail', async () => {
+    const seededBridge = await seedOutboundVoicemailBridgeSession({
+      matchedLegRole: 'operator',
+      providerCallControlId: 'provider-leg-operator-recording-1008',
+    });
+    const updateVoicemailFallbackSpy = jest.spyOn(
+      BridgeSessionsModule,
+      'updateConnectShyftBridgeSessionVoicemailFallbackAsync',
+    );
+    const app = buildApp();
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildVoiceHeaders())
+        .send(buildVoiceWebhookBody({
+          providerEventId: 'provider-event-voice-operator-recording-1008',
+          providerLegId: seededBridge.providerCallControlId,
+          recordingUrl: 'https://connectshyft.test/operator-recording-1008.mp3',
+        }));
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          bridgeSession: {
+            bridgeSessionId: seededBridge.bridgeSessionId,
+          },
+        },
+      });
+      expect(response.body.data).not.toHaveProperty('voicemailArtifact');
+      expect(response.body.data).not.toHaveProperty('transcription');
+      expect(response.body.data).not.toHaveProperty('transcriptionOutbox');
+      expect(updateVoicemailFallbackSpy).not.toHaveBeenCalled();
+    } finally {
+      updateVoicemailFallbackSpy.mockRestore();
+    }
   });
 
   it('preserves the current fallback routing shape for inbound voice events', async () => {
