@@ -1,8 +1,14 @@
 import type { Knex } from 'knex';
+import {
+  type SubjectContext,
+  validateSubjectContext,
+} from '../../../../../libs/contracts/src/subject-context';
+import { peopleCoreServiceAsync } from '../peoplecore/service';
 
 export type ConnectShyftInboxBucket = 'inbox' | 'mine';
 export type ConnectShyftThreadState = 'UNCLAIMED' | 'CLAIMED' | 'CLOSED';
 export type ConnectShyftThreadAction = 'Call' | 'Text' | 'Claim' | 'Close' | 'Send Message' | 'Take Over';
+export type ConnectShyftThreadIdentityState = 'confirmed' | 'provisional';
 
 export type ConnectShyftThreadDisplayRecord = {
   title: string;
@@ -54,6 +60,9 @@ export type ConnectShyftThreadSummaryRecord = {
 };
 
 export type ConnectShyftThreadDetailRecord = ConnectShyftThreadSummaryRecord & {
+  personId: string | null;
+  identityState: ConnectShyftThreadIdentityState | null;
+  subjectContext: SubjectContext;
   actions: readonly ConnectShyftThreadAction[];
   lifecycle: {
     reopenedByInbound: boolean;
@@ -71,6 +80,8 @@ type ConnectShyftThreadSeed = {
   orgUnitId: string;
   threadId: string;
   neighborId?: string | null;
+  personId?: string | null;
+  personStatus?: string | null;
   state: ConnectShyftThreadState;
   bucket: ConnectShyftInboxBucket;
   claimedByUserId: string | null;
@@ -87,6 +98,7 @@ type ConnectShyftThreadSeed = {
 type ConnectShyftThreadDbRow = {
   thread_id: string;
   neighbor_id?: string | null;
+  person_id?: string | null;
   tenant_id: string;
   org_unit_id: string;
   state: string;
@@ -907,6 +919,56 @@ const buildThreadDisplayRecord = (input: {
   };
 };
 
+const buildThreadSubjectContext = (input: {
+  orgUnitId: string;
+  personId: string | null;
+  identityState: ConnectShyftThreadIdentityState | null;
+}): SubjectContext => {
+  const subject: SubjectContext = input.personId
+    ? input.identityState === 'provisional'
+      ? {
+        orgUnitId: input.orgUnitId,
+        provisionalPersonId: input.personId,
+      }
+      : {
+        orgUnitId: input.orgUnitId,
+        personId: input.personId,
+      }
+    : {
+      orgUnitId: input.orgUnitId,
+    };
+
+  validateSubjectContext(subject);
+  return subject;
+};
+
+const buildThreadIdentityProjection = (input: {
+  orgUnitId: string;
+  personId?: string | null;
+  personStatus?: string | null;
+}): {
+  personId: string | null;
+  identityState: ConnectShyftThreadIdentityState | null;
+  subjectContext: SubjectContext;
+} => {
+  const personId = normalizeOptionalString(input.personId);
+  const identityState: ConnectShyftThreadIdentityState | null = !personId
+    ? null
+    : input.personStatus === 'active_provisional'
+      ? 'provisional'
+      : 'confirmed';
+
+  return {
+    personId,
+    identityState,
+    subjectContext: buildThreadSubjectContext({
+      orgUnitId: input.orgUnitId,
+      personId,
+      identityState,
+    }),
+  };
+};
+
 const hasSeedScope = (scope: {
   tenantId: string;
   orgUnitId: string;
@@ -1058,6 +1120,11 @@ export const resolveConnectShyftThreadDetailContract = (input: {
 
   return {
     ...summary,
+    ...buildThreadIdentityProjection({
+      orgUnitId: summary.orgUnitId,
+      personId: matchedSeed.personId,
+      personStatus: matchedSeed.personStatus,
+    }),
     actions: resolveConnectShyftThreadActions(summary.state, {
       requestedRole: input.requestedRole,
     }),
@@ -1126,6 +1193,7 @@ const resolveDbSelectableColumns = (
 
   const optionalColumns = [
     'neighbor_id',
+    'person_id',
     'claimed_by_user_id',
     'escalation_stage',
     'is_new_unread',
@@ -1530,8 +1598,26 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
     return null;
   }
 
+  let threadPersonStatus: string | null = null;
+  const threadPersonId = normalizeOptionalString(row.person_id);
+  if (threadPersonId) {
+    try {
+      threadPersonStatus = (await peopleCoreServiceAsync.getPerson({
+        tenantId: input.tenantId,
+        personId: threadPersonId,
+      }))?.status ?? null;
+    } catch (_error) {
+      threadPersonStatus = null;
+    }
+  }
+
   return {
     ...summary,
+    ...buildThreadIdentityProjection({
+      orgUnitId: summary.orgUnitId,
+      personId: threadPersonId,
+      personStatus: threadPersonStatus,
+    }),
     actions: resolveConnectShyftThreadActions(summary.state, {
       requestedRole: input.requestedRole,
     }),

@@ -19,6 +19,12 @@ const TEST_ORG_UNIT_ID = 'org-connectshyft-f1-east';
 const buildThreadDetailRecord = (overrides: Record<string, unknown> = {}) => ({
   threadId: 'thread-detail-characterization-1001',
   neighborId: 'neighbor-detail-characterization-1001',
+  personId: 'person-detail-characterization-1001',
+  identityState: 'confirmed',
+  subjectContext: {
+    orgUnitId: TEST_ORG_UNIT_ID,
+    personId: 'person-detail-characterization-1001',
+  },
   neighborDeleted: false,
   neighbor_deleted: false,
   neighborDeletedAtUtc: null,
@@ -210,6 +216,12 @@ describe('connectshyft thread detail route characterization', () => {
         thread: {
           threadId,
           neighborId: 'neighbor-detail-characterization-1001',
+          personId: 'person-detail-characterization-1001',
+          identityState: 'confirmed',
+          subjectContext: {
+            orgUnitId: TEST_ORG_UNIT_ID,
+            personId: 'person-detail-characterization-1001',
+          },
           neighborDeleted: false,
           neighbor_deleted: false,
           providerNeutral: true,
@@ -257,6 +269,7 @@ describe('connectshyft thread detail route characterization', () => {
       'claimed_by_user_id',
       'escalationStage',
       'isNewUnread',
+      'identityState',
       'lastActivityAtUtc',
       'lastInboundCsNumberId',
       'last_inbound_cs_number_id',
@@ -267,6 +280,7 @@ describe('connectshyft thread detail route characterization', () => {
       'neighbor_deleted',
       'neighbor_deleted_at_utc',
       'orgUnitId',
+      'personId',
       'preferredOutboundContext',
       'preferredOutboundCsNumberId',
       'preferred_outbound_context',
@@ -275,6 +289,7 @@ describe('connectshyft thread detail route characterization', () => {
       'providerNeutral',
       'state',
       'statusDerivedFromCanonicalEvents',
+      'subjectContext',
       'summary',
       'tenantId',
       'threadId',
@@ -284,6 +299,50 @@ describe('connectshyft thread detail route characterization', () => {
       'voicemailLabel',
     ].sort());
     expect(response.body.data.actions).toEqual(response.body.data.thread.actions);
+  });
+
+  it('returns provisional person context with exactly one identity field in thread detail', async () => {
+    const threadId = 'thread-detail-provisional-1003';
+    jest.spyOn(
+      ReadContractsModule,
+      'resolveConnectShyftThreadDetailContractAsync',
+    ).mockResolvedValue(buildThreadDetailRecord({
+      threadId,
+      neighborId: 'neighbor-detail-provisional-1003',
+      personId: 'person-detail-provisional-1003',
+      identityState: 'provisional',
+      subjectContext: {
+        orgUnitId: TEST_ORG_UNIT_ID,
+        provisionalPersonId: 'person-detail-provisional-1003',
+      },
+    }) as any);
+    jest.spyOn(
+      BridgeSessionsModule,
+      'loadConnectShyftBridgeAggregateByThreadId',
+    ).mockResolvedValue(null as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get(`/api/v1/connectshyft/threads/${threadId}`)
+      .set(buildHeaders());
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+      data: {
+        thread: {
+          threadId,
+          personId: 'person-detail-provisional-1003',
+          identityState: 'provisional',
+          subjectContext: {
+            orgUnitId: TEST_ORG_UNIT_ID,
+            provisionalPersonId: 'person-detail-provisional-1003',
+          },
+        },
+      },
+    });
+    expect(response.body.data.thread.subjectContext).not.toHaveProperty('personId');
   });
 
   it('returns deleted-neighbor detail only through includeDeleted=true and clears operational actions', async () => {

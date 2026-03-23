@@ -1778,6 +1778,11 @@ const buildSyntheticThreadDetailRecord = (input: {
   return {
     threadId: input.threadId,
     neighborId: input.descriptor.neighborId || null,
+    personId: null,
+    identityState: null,
+    subjectContext: {
+      orgUnitId: input.descriptor.orgUnitId,
+    },
     neighborDeleted: false,
     neighbor_deleted: false,
     neighborDeletedAtUtc: null,
