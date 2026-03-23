@@ -1,6 +1,9 @@
 import knex, { Knex } from 'knex';
 import { up as migrateThreadsUp } from '../../../migrations/20260224170000_create_connectshyft_threads';
+import { up as migratePeopleCoreIdentityFoundationUp } from '../../../migrations/20260321100000_create_peoplecore_identity_foundation';
 import { up as migrateThreadPersonIdentityUp } from '../../../migrations/20260323180000_add_connectshyft_thread_person_identity';
+import { up as migratePeopleActivitiesUp } from '../../../migrations/20260324130000_create_people_activities';
+import { up as migrateThreadActivityIdUp } from '../../../migrations/20260324131000_add_activity_id_to_connectshyft_threads';
 import { AsyncConnectShyftThreadService, KnexConnectShyftThreadStore } from '../threads';
 import { resolveSenderNumber } from '../senderNumberResolver';
 
@@ -15,7 +18,37 @@ async function ensurePerson(db: Knex, personId: string): Promise<void> {
   await db
     .withSchema('people')
     .table('persons')
-    .insert({ id: personId })
+    .insert({
+      id: personId,
+      tenant_id: 'tenant-contract-c1-people',
+      org_unit_id: 'org-contract-c1-people',
+      first_name: 'Contract',
+      last_name: 'Person',
+    })
+    .onConflict('id')
+    .ignore();
+}
+
+async function ensureActivity(input: {
+  db: Knex;
+  activityId: string;
+  tenantId: string;
+  orgUnitId: string;
+  personId: string;
+  type?: string;
+  status?: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+}): Promise<void> {
+  await input.db
+    .withSchema('people')
+    .table('activities')
+    .insert({
+      id: input.activityId,
+      tenant_id: input.tenantId,
+      org_unit_id: input.orgUnitId,
+      person_id: input.personId,
+      type: input.type ?? 'housing-intake',
+      status: input.status ?? 'ACTIVE',
+    })
     .onConflict('id')
     .ignore();
 }
@@ -30,8 +63,6 @@ describeIfDb('connectshyft threads (postgres contract)', () => {
     });
 
     await db.raw('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
-    await db.raw('CREATE SCHEMA IF NOT EXISTS people');
-    await db.raw('CREATE TABLE IF NOT EXISTS people.persons (id UUID PRIMARY KEY)');
 
     const hasUsersTable = await db.schema.hasTable('users');
     if (!hasUsersTable) {
@@ -40,14 +71,22 @@ describeIfDb('connectshyft threads (postgres contract)', () => {
       });
     }
 
+    await migratePeopleCoreIdentityFoundationUp(db);
     await migrateThreadsUp(db);
     await migrateThreadPersonIdentityUp(db);
+    await migratePeopleActivitiesUp(db);
+    await migrateThreadActivityIdUp(db);
   });
 
   afterEach(async () => {
     await db
       .withSchema('connectshyft')
       .table('cs_threads')
+      .where('tenant_id', 'like', `${CONTRACT_TENANT_PREFIX}%`)
+      .del();
+    await db
+      .withSchema('people')
+      .table('activities')
       .where('tenant_id', 'like', `${CONTRACT_TENANT_PREFIX}%`)
       .del();
   });
@@ -484,6 +523,173 @@ describeIfDb('connectshyft threads (postgres contract)', () => {
       ok: false,
       code: 'CONNECTSHYFT_THREAD_PERSON_REQUIRED',
       message: 'ConnectShyft thread persistence requires personId.',
+    });
+
+    const persistedRows = await db
+      .withSchema('connectshyft')
+      .table('cs_threads')
+      .where({ tenant_id: tenantId })
+      .count<{ count: string }[]>('* as count');
+
+    expect(Number(persistedRows[0]?.count ?? 0)).toBe(0);
+  });
+
+  it('binds a valid activityId on thread creation and returns it in the DTO', async () => {
+    const tenantId = `${CONTRACT_TENANT_PREFIX}activity-valid`;
+    const orgUnitId = 'org-contract-c1-activity-valid';
+    const neighborId = 'neighbor-contract-c1-activity-valid';
+    const personId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa6';
+    const activityId = '55555555-5555-4555-8555-555555555555';
+    const service = new AsyncConnectShyftThreadService(new KnexConnectShyftThreadStore(db));
+
+    await ensurePerson(db, personId);
+    await ensureActivity({
+      db,
+      activityId,
+      tenantId,
+      orgUnitId,
+      personId,
+      status: 'ACTIVE',
+    });
+
+    const result = await service.ensureThread({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId,
+      orgUnitId,
+      neighborId,
+      personId,
+      activityId,
+      source: 'SMS',
+      lastInboundCsNumberId: 'cs-inbound-activity-valid',
+      preferredOutboundCsNumberId: 'cs-outbound-activity-valid',
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_ENSURED',
+      data: {
+        thread: {
+          personId,
+          activityId,
+        },
+      },
+    });
+
+    const persisted = await db
+      .withSchema('connectshyft')
+      .table('cs_threads')
+      .where({
+        tenant_id: tenantId,
+        org_unit_id: orgUnitId,
+        neighbor_id: neighborId,
+      })
+      .first<{ activity_id: string | null; person_id: string }>('activity_id', 'person_id');
+
+    expect(persisted?.person_id).toBe(personId);
+    expect(persisted?.activity_id).toBe(activityId);
+  });
+
+  it.each([
+    [
+      'missing activity',
+      async () => undefined,
+    ],
+    [
+      'activity owned by a different person',
+      async () => {
+        const tenantId = `${CONTRACT_TENANT_PREFIX}activity-invalid-different-person`;
+        const orgUnitId = 'org-contract-c1-activity-invalid-different-person';
+        const personId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa7';
+        const otherPersonId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa8';
+        const activityId = '66666666-6666-4666-8666-666666666666';
+
+        await ensurePerson(db, personId);
+        await ensurePerson(db, otherPersonId);
+        await ensureActivity({
+          db,
+          activityId,
+          tenantId,
+          orgUnitId,
+          personId: otherPersonId,
+          status: 'ACTIVE',
+        });
+
+        return { tenantId, orgUnitId, personId, activityId };
+      },
+    ],
+  ])('refuses ensureThread for %s activity associations', async (_label, setup) => {
+    const fallbackTenantId = `${CONTRACT_TENANT_PREFIX}activity-invalid-missing`;
+    const fallbackOrgUnitId = 'org-contract-c1-activity-invalid-missing';
+    const fallbackPersonId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa9';
+    const fallbackActivityId = '77777777-7777-4777-8777-777777777777';
+    const service = new AsyncConnectShyftThreadService(new KnexConnectShyftThreadStore(db));
+
+    await ensurePerson(db, fallbackPersonId);
+
+    const seeded = await setup();
+    const tenantId = seeded?.tenantId ?? fallbackTenantId;
+    const orgUnitId = seeded?.orgUnitId ?? fallbackOrgUnitId;
+    const personId = seeded?.personId ?? fallbackPersonId;
+    const activityId = seeded?.activityId ?? fallbackActivityId;
+
+    const result = await service.ensureThread({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId,
+      orgUnitId,
+      neighborId: `neighbor-${tenantId}`,
+      personId,
+      activityId,
+      source: 'SMS',
+      lastInboundCsNumberId: 'cs-inbound-activity-invalid',
+      preferredOutboundCsNumberId: 'cs-outbound-activity-invalid',
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_ACTIVITY_INVALID',
+    });
+
+    const persistedRows = await db
+      .withSchema('connectshyft')
+      .table('cs_threads')
+      .where({ tenant_id: tenantId })
+      .count<{ count: string }[]>('* as count');
+
+    expect(Number(persistedRows[0]?.count ?? 0)).toBe(0);
+  });
+
+  it('refuses ensureThread when activityId references a non-active activity', async () => {
+    const tenantId = `${CONTRACT_TENANT_PREFIX}activity-not-active`;
+    const orgUnitId = 'org-contract-c1-activity-not-active';
+    const personId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa10';
+    const activityId = '88888888-8888-4888-8888-888888888888';
+    const service = new AsyncConnectShyftThreadService(new KnexConnectShyftThreadStore(db));
+
+    await ensurePerson(db, personId);
+    await ensureActivity({
+      db,
+      activityId,
+      tenantId,
+      orgUnitId,
+      personId,
+      status: 'COMPLETED',
+    });
+
+    const result = await service.ensureThread({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId,
+      orgUnitId,
+      neighborId: 'neighbor-contract-c1-activity-not-active',
+      personId,
+      activityId,
+      source: 'SMS',
+      lastInboundCsNumberId: 'cs-inbound-activity-not-active',
+      preferredOutboundCsNumberId: 'cs-outbound-activity-not-active',
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_ACTIVITY_NOT_ACTIVE',
     });
 
     const persistedRows = await db

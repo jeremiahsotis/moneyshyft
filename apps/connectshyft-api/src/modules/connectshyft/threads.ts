@@ -3,6 +3,10 @@ import type { Knex } from 'knex';
 import db from '../../config/knex';
 import { CAPABILITIES, hasCapability } from '../../platform/rbac/capabilities';
 import { isStrictUtcIsoTimestamp } from '../../platform/time/timezoneService';
+import {
+  AsyncPeopleCoreService,
+  peopleCoreServiceAsync,
+} from '../peoplecore/service';
 
 const CONNECTSHYFT_CANONICAL_THREAD_STATES = ['UNCLAIMED', 'CLAIMED', 'CLOSED'] as const;
 const CONNECTSHYFT_CANONICAL_THREAD_STATE_SET = new Set<string>(CONNECTSHYFT_CANONICAL_THREAD_STATES);
@@ -36,6 +40,7 @@ export type ConnectShyftThread = {
   orgUnitId: string;
   neighborId: string;
   personId: string;
+  activityId: string | null;
   source: string;
   state: ConnectShyftThreadState;
   lastInboundCsNumberId: string;
@@ -62,6 +67,7 @@ type ThreadStoreEnsureInput = {
   orgUnitId: string;
   neighborId: string;
   personId: string;
+  activityId?: string | null;
   source: string;
   state: ConnectShyftThreadState;
   lastInboundCsNumberId: string;
@@ -136,6 +142,8 @@ type ThreadRefusalResult = {
     | 'CONNECTSHYFT_THREAD_VIEW_FORBIDDEN'
     | 'CONNECTSHYFT_THREAD_TRANSITION_FORBIDDEN'
     | 'CONNECTSHYFT_THREAD_PERSON_REQUIRED'
+    | 'CONNECTSHYFT_THREAD_ACTIVITY_INVALID'
+    | 'CONNECTSHYFT_THREAD_ACTIVITY_NOT_ACTIVE'
     | 'CONNECTSHYFT_THREAD_STATE_INVALID'
     | 'CONNECTSHYFT_THREAD_NEXT_EVALUATION_INVALID'
     | 'CONNECTSHYFT_ESCALATION_AS_OF_INVALID'
@@ -154,6 +162,7 @@ export type ConnectShyftEnsureThreadCommand = {
   orgUnitId: string;
   neighborId: string;
   personId: string;
+  activityId?: string;
   source?: string;
   forcedState?: string | null;
   lastInboundCsNumberId: string;
@@ -250,6 +259,7 @@ type DbThreadRow = {
   org_unit_id: string;
   neighbor_id: string;
   person_id: string;
+  activity_id: string | null;
   source: string;
   state: ConnectShyftThreadState;
   escalation_stage: number;
@@ -529,6 +539,7 @@ const mapDbRowToThread = (row: DbThreadRow): ConnectShyftThread => ({
   orgUnitId: row.org_unit_id,
   neighborId: row.neighbor_id,
   personId: row.person_id,
+  activityId: row.activity_id,
   source: row.source,
   state: row.state,
   lastInboundCsNumberId: normalizeThreadSenderAlignmentValue(row.last_inbound_cs_number_id),
@@ -590,6 +601,18 @@ const buildThreadPersonRequiredRefusal = (): ThreadRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_THREAD_PERSON_REQUIRED',
   message: 'ConnectShyft thread persistence requires personId.',
+});
+
+const buildThreadActivityInvalidRefusal = (): ThreadRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_THREAD_ACTIVITY_INVALID',
+  message: 'activityId must reference an activity for the same tenant, orgUnit, and person.',
+});
+
+const buildThreadActivityNotActiveRefusal = (): ThreadRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_THREAD_ACTIVITY_NOT_ACTIVE',
+  message: 'activityId must reference an ACTIVE activity.',
 });
 
 const buildThreadStateInvalidRefusal = (): ThreadRefusalResult => ({
@@ -736,12 +759,12 @@ export class InMemoryConnectShyftThreadStore {
     if (activeThreadId) {
       const existing = this.threadsById.get(activeThreadId);
       if (existing) {
-      const updated: ConnectShyftThread = {
-        ...existing,
-        personId: input.personId,
-        source: input.source,
-        lastInboundCsNumberId,
-        preferredOutboundCsNumberId,
+        const updated: ConnectShyftThread = {
+          ...existing,
+          personId: input.personId,
+          source: input.source,
+          lastInboundCsNumberId,
+          preferredOutboundCsNumberId,
           updatedAtUtc: now,
           escalation: {
             ...existing.escalation,
@@ -776,6 +799,7 @@ export class InMemoryConnectShyftThreadStore {
       orgUnitId: input.orgUnitId,
       neighborId: input.neighborId,
       personId: input.personId,
+      activityId: input.activityId ?? null,
       source: input.source,
       state: input.state,
       lastInboundCsNumberId,
@@ -940,6 +964,7 @@ export class KnexConnectShyftThreadStore {
       'org_unit_id',
       'neighbor_id',
       'person_id',
+      'activity_id',
       'source',
       'state',
       'escalation_stage',
@@ -1018,6 +1043,7 @@ export class KnexConnectShyftThreadStore {
           org_unit_id: input.orgUnitId,
           neighbor_id: input.neighborId,
           person_id: input.personId,
+          activity_id: input.activityId ?? null,
           source: input.source,
           state: input.state,
           escalation_stage: 0,
@@ -1298,6 +1324,14 @@ export class ConnectShyftThreadService {
       return buildThreadPersonRequiredRefusal();
     }
 
+    const requestedActivityId = normalizeString(input.activityId);
+    const normalizedActivityId = requestedActivityId.length > 0
+      ? normalizeUuid(requestedActivityId)
+      : null;
+    if (requestedActivityId.length > 0 && !normalizedActivityId) {
+      return buildThreadActivityInvalidRefusal();
+    }
+
     const requestedNextEvaluationAtUtc = normalizeString(input.nextEvaluationAtUtc);
     if (
       requestedNextEvaluationAtUtc.length > 0
@@ -1311,6 +1345,7 @@ export class ConnectShyftThreadService {
       orgUnitId: input.orgUnitId,
       neighborId: input.neighborId,
       personId: normalizedPersonId,
+      activityId: normalizedActivityId,
       source: normalizeString(input.source) || DEFAULT_THREAD_SOURCE,
       state,
       lastInboundCsNumberId: normalizeString(input.lastInboundCsNumberId),
@@ -1450,6 +1485,7 @@ export const connectShyftThreadService = new ConnectShyftThreadService(defaultTh
 export class AsyncConnectShyftThreadService {
   constructor(
     private readonly store: KnexConnectShyftThreadStore = defaultKnexThreadStore,
+    private readonly peopleCoreService: Pick<AsyncPeopleCoreService, 'getActivity'> = peopleCoreServiceAsync,
   ) {}
 
   async ensureThread(input: ConnectShyftEnsureThreadCommand): Promise<ConnectShyftEnsureThreadResult> {
@@ -1470,6 +1506,14 @@ export class AsyncConnectShyftThreadService {
       return buildThreadPersonRequiredRefusal();
     }
 
+    const requestedActivityId = normalizeString(input.activityId);
+    const normalizedActivityId = requestedActivityId.length > 0
+      ? normalizeUuid(requestedActivityId)
+      : null;
+    if (requestedActivityId.length > 0 && !normalizedActivityId) {
+      return buildThreadActivityInvalidRefusal();
+    }
+
     const requestedNextEvaluationAtUtc = normalizeString(input.nextEvaluationAtUtc);
     if (
       requestedNextEvaluationAtUtc.length > 0
@@ -1479,11 +1523,28 @@ export class AsyncConnectShyftThreadService {
     }
 
     try {
+      if (normalizedActivityId) {
+        const activity = await this.peopleCoreService.getActivity({
+          tenantId: input.tenantId,
+          orgUnitId: input.orgUnitId,
+          activityId: normalizedActivityId,
+        });
+
+        if (!activity || activity.personId !== normalizedPersonId) {
+          return buildThreadActivityInvalidRefusal();
+        }
+
+        if (activity.status !== 'ACTIVE') {
+          return buildThreadActivityNotActiveRefusal();
+        }
+      }
+
       const persisted = await this.store.ensureActiveThread({
         tenantId: input.tenantId,
         orgUnitId: input.orgUnitId,
         neighborId: input.neighborId,
         personId: normalizedPersonId,
+        activityId: normalizedActivityId,
         source: normalizeString(input.source) || DEFAULT_THREAD_SOURCE,
         state,
         lastInboundCsNumberId: normalizeString(input.lastInboundCsNumberId),
