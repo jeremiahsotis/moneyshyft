@@ -179,6 +179,13 @@ export type ConnectShyftVoicemailTranscriptionCallbackPayload = {
   transcriptText: string | null;
 };
 
+export interface ConnectShyftOutboundVoicemailArtifactInput {
+  threadId: string;
+  providerEventId: string;
+  providerLegId: string | null;
+  recordingUrl: string;
+}
+
 const readRecordFromSources = (
   sources: Array<Record<string, unknown> | null>,
   keys: readonly string[],
@@ -382,6 +389,22 @@ export const buildConnectShyftInboundVoiceCanonicalPayload = (input: {
     : null,
   transcription: input.transcription,
 });
+
+export function buildConnectShyftOutboundVoicemailArtifact(
+  input: ConnectShyftOutboundVoicemailArtifactInput,
+): {
+  artifactId: string;
+  recordingUrl: string;
+} {
+  const threadId = normalizeString(input.threadId);
+  const providerEventId = normalizeString(input.providerEventId);
+  const recordingUrl = normalizeString(input.recordingUrl);
+
+  return {
+    artifactId: `vm-${threadId}-${providerEventId}`,
+    recordingUrl,
+  };
+}
 
 export const buildConnectShyftVoicemailTranscriptionRequest = (input: {
   tenantId: string;
