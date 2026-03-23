@@ -35,6 +35,7 @@ export type ConnectShyftThread = {
   tenantId: string;
   orgUnitId: string;
   neighborId: string;
+  personId: string;
   source: string;
   state: ConnectShyftThreadState;
   lastInboundCsNumberId: string;
@@ -60,6 +61,7 @@ type ThreadStoreEnsureInput = {
   tenantId: string;
   orgUnitId: string;
   neighborId: string;
+  personId: string;
   source: string;
   state: ConnectShyftThreadState;
   lastInboundCsNumberId: string;
@@ -133,6 +135,7 @@ type ThreadRefusalResult = {
   code:
     | 'CONNECTSHYFT_THREAD_VIEW_FORBIDDEN'
     | 'CONNECTSHYFT_THREAD_TRANSITION_FORBIDDEN'
+    | 'CONNECTSHYFT_THREAD_PERSON_REQUIRED'
     | 'CONNECTSHYFT_THREAD_STATE_INVALID'
     | 'CONNECTSHYFT_THREAD_NEXT_EVALUATION_INVALID'
     | 'CONNECTSHYFT_ESCALATION_AS_OF_INVALID'
@@ -150,6 +153,7 @@ export type ConnectShyftEnsureThreadCommand = {
   tenantId: string;
   orgUnitId: string;
   neighborId: string;
+  personId: string;
   source?: string;
   forcedState?: string | null;
   lastInboundCsNumberId: string;
@@ -245,6 +249,7 @@ type DbThreadRow = {
   tenant_id: string;
   org_unit_id: string;
   neighbor_id: string;
+  person_id: string;
   source: string;
   state: ConnectShyftThreadState;
   escalation_stage: number;
@@ -523,6 +528,7 @@ const mapDbRowToThread = (row: DbThreadRow): ConnectShyftThread => ({
   tenantId: row.tenant_id,
   orgUnitId: row.org_unit_id,
   neighborId: row.neighbor_id,
+  personId: row.person_id,
   source: row.source,
   state: row.state,
   lastInboundCsNumberId: normalizeThreadSenderAlignmentValue(row.last_inbound_cs_number_id),
@@ -578,6 +584,12 @@ const buildEnsureStateTransitionRefusal = (): ThreadRefusalResult => ({
   ok: false,
   code: 'CONNECTSHYFT_THREAD_TRANSITION_FORBIDDEN',
   message: 'POST /threads only supports UNCLAIMED ensures. Use claim/takeover/close lifecycle actions.',
+});
+
+const buildThreadPersonRequiredRefusal = (): ThreadRefusalResult => ({
+  ok: false,
+  code: 'CONNECTSHYFT_THREAD_PERSON_REQUIRED',
+  message: 'ConnectShyft thread persistence requires personId.',
 });
 
 const buildThreadStateInvalidRefusal = (): ThreadRefusalResult => ({
@@ -724,11 +736,12 @@ export class InMemoryConnectShyftThreadStore {
     if (activeThreadId) {
       const existing = this.threadsById.get(activeThreadId);
       if (existing) {
-        const updated: ConnectShyftThread = {
-          ...existing,
-          source: input.source,
-          lastInboundCsNumberId,
-          preferredOutboundCsNumberId,
+      const updated: ConnectShyftThread = {
+        ...existing,
+        personId: input.personId,
+        source: input.source,
+        lastInboundCsNumberId,
+        preferredOutboundCsNumberId,
           updatedAtUtc: now,
           escalation: {
             ...existing.escalation,
@@ -762,6 +775,7 @@ export class InMemoryConnectShyftThreadStore {
       tenantId: input.tenantId,
       orgUnitId: input.orgUnitId,
       neighborId: input.neighborId,
+      personId: input.personId,
       source: input.source,
       state: input.state,
       lastInboundCsNumberId,
@@ -925,6 +939,7 @@ export class KnexConnectShyftThreadStore {
       'tenant_id',
       'org_unit_id',
       'neighbor_id',
+      'person_id',
       'source',
       'state',
       'escalation_stage',
@@ -962,6 +977,7 @@ export class KnexConnectShyftThreadStore {
         if (existing) {
           const updatePayload: Record<string, unknown> = {
             source: input.source,
+            person_id: input.personId,
             last_inbound_cs_number_id: lastInboundCsNumberId,
             preferred_outbound_cs_number_id: preferredOutboundCsNumberId,
             updated_by_user_id: normalizedActorUserId,
@@ -1001,6 +1017,7 @@ export class KnexConnectShyftThreadStore {
           tenant_id: input.tenantId,
           org_unit_id: input.orgUnitId,
           neighbor_id: input.neighborId,
+          person_id: input.personId,
           source: input.source,
           state: input.state,
           escalation_stage: 0,
@@ -1057,6 +1074,7 @@ export class KnexConnectShyftThreadStore {
           if (existing) {
             const updatePayload: Record<string, unknown> = {
               source: input.source,
+              person_id: input.personId,
               last_inbound_cs_number_id: lastInboundCsNumberId,
               preferred_outbound_cs_number_id: preferredOutboundCsNumberId,
               updated_by_user_id: normalizedActorUserId,
@@ -1275,6 +1293,11 @@ export class ConnectShyftThreadService {
       return buildEnsureStateTransitionRefusal();
     }
 
+    const normalizedPersonId = normalizeString(input.personId);
+    if (!normalizedPersonId) {
+      return buildThreadPersonRequiredRefusal();
+    }
+
     const requestedNextEvaluationAtUtc = normalizeString(input.nextEvaluationAtUtc);
     if (
       requestedNextEvaluationAtUtc.length > 0
@@ -1287,6 +1310,7 @@ export class ConnectShyftThreadService {
       tenantId: input.tenantId,
       orgUnitId: input.orgUnitId,
       neighborId: input.neighborId,
+      personId: normalizedPersonId,
       source: normalizeString(input.source) || DEFAULT_THREAD_SOURCE,
       state,
       lastInboundCsNumberId: normalizeString(input.lastInboundCsNumberId),
@@ -1441,6 +1465,11 @@ export class AsyncConnectShyftThreadService {
       return buildEnsureStateTransitionRefusal();
     }
 
+    const normalizedPersonId = normalizeString(input.personId);
+    if (!normalizedPersonId) {
+      return buildThreadPersonRequiredRefusal();
+    }
+
     const requestedNextEvaluationAtUtc = normalizeString(input.nextEvaluationAtUtc);
     if (
       requestedNextEvaluationAtUtc.length > 0
@@ -1454,6 +1483,7 @@ export class AsyncConnectShyftThreadService {
         tenantId: input.tenantId,
         orgUnitId: input.orgUnitId,
         neighborId: input.neighborId,
+        personId: normalizedPersonId,
         source: normalizeString(input.source) || DEFAULT_THREAD_SOURCE,
         state,
         lastInboundCsNumberId: normalizeString(input.lastInboundCsNumberId),
