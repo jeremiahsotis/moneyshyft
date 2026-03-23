@@ -1,3 +1,8 @@
+import type {
+  CreateActivityInput,
+  GetActivityInput,
+  ListActivitiesInput,
+} from './activity';
 import {
   KnexPeopleCoreStore,
   type AppendContactPointEventInput,
@@ -65,12 +70,24 @@ export class AsyncPeopleCoreService {
     return this.execute(() => this.store.createPerson(input));
   }
 
+  createActivity(input: CreateActivityInput) {
+    return this.execute(() => this.store.createActivity(input));
+  }
+
   getPerson(input: GetPersonInput) {
     return this.execute(() => this.store.getPerson(input));
   }
 
+  getActivity(input: GetActivityInput) {
+    return this.execute(() => this.store.getActivity(input));
+  }
+
   listPersons(input: ListPersonsInput) {
     return this.execute(() => this.store.listPersons(input));
+  }
+
+  listActivities(input: ListActivitiesInput) {
+    return this.execute(() => this.store.listActivities(input));
   }
 
   createHousehold(input: CreateHouseholdInput) {

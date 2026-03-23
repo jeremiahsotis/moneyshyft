@@ -11,6 +11,13 @@ import type {
 } from '@shyft/contracts';
 import type { Knex } from 'knex';
 import db from '../../config/knex';
+import type {
+  Activity,
+  CreateActivityInput,
+  GetActivityInput,
+  ListActivitiesInput,
+  PeopleCoreActivityStore,
+} from './activity';
 
 const PEOPLE_SCHEMA = 'people';
 const DEFAULT_CONTACT_POINT_EVENT_LIMIT = 50;
@@ -172,7 +179,7 @@ export type ListResolverReviewsInput = {
   orgUnitId?: string;
 };
 
-export interface PeopleCoreStore {
+export interface PeopleCoreStore extends PeopleCoreActivityStore {
   createPerson(input: CreatePersonInput): Promise<Person>;
   getPerson(input: GetPersonInput): Promise<Person | null>;
   listPersons(input: ListPersonsInput): Promise<Person[]>;
@@ -307,6 +314,17 @@ type DbResolverReviewRow = {
   resolution_type: ResolverReview['resolutionType'] | null;
   resolution_reason: string | null;
   resolution_notes: string | null;
+};
+
+type DbActivityRow = {
+  id: string;
+  tenant_id: string;
+  org_unit_id: string;
+  person_id: string;
+  type: string;
+  status: Activity['status'];
+  created_at_utc: string | Date;
+  updated_at_utc: string | Date;
 };
 
 const mapPersonRow = (row: DbPersonRow): Person => {
@@ -457,6 +475,21 @@ const mapResolverReviewRow = (row: DbResolverReviewRow): ResolverReview => {
   };
 };
 
+const mapActivityRow = (row: DbActivityRow): Activity => {
+  const fallbackIsoUtc = new Date().toISOString();
+
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    orgUnitId: row.org_unit_id,
+    personId: row.person_id,
+    type: row.type,
+    status: row.status,
+    createdAtUtc: toIsoUtc(row.created_at_utc, fallbackIsoUtc),
+    updatedAtUtc: toIsoUtc(row.updated_at_utc, fallbackIsoUtc),
+  };
+};
+
 export class KnexPeopleCoreStore implements PeopleCoreStore {
   constructor(private readonly knexClient: Knex = db) {}
 
@@ -586,19 +619,44 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
     ];
   }
 
-  private async assertPersonInTenant(tenantId: string, personId: string): Promise<void> {
+  private activityColumns(): string[] {
+    return [
+      'id',
+      'tenant_id',
+      'org_unit_id',
+      'person_id',
+      'type',
+      'status',
+      'created_at_utc',
+      'updated_at_utc',
+    ];
+  }
+
+  private async assertPersonInTenant(
+    tenantId: string,
+    personId: string,
+    orgUnitId?: string,
+  ): Promise<void> {
+    const whereClause: Record<string, string> = {
+      id: personId,
+      tenant_id: tenantId,
+    };
+
+    if (orgUnitId) {
+      whereClause.org_unit_id = orgUnitId;
+    }
+
     const row = await this.knexClient
       .withSchema(PEOPLE_SCHEMA)
       .table('persons')
-      .where({
-        id: personId,
-        tenant_id: tenantId,
-      })
+      .where(whereClause)
       .first(['id']);
 
     if (!row) {
       throw new PeopleCoreScopeViolationError(
-        `Person ${personId} is not available in tenant ${tenantId}.`,
+        orgUnitId
+          ? `Person ${personId} is not available in tenant ${tenantId} org unit ${orgUnitId}.`
+          : `Person ${personId} is not available in tenant ${tenantId}.`,
       );
     }
   }
@@ -691,6 +749,58 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
       .select<DbPersonRow[]>(this.personColumns());
 
     return rows.map(mapPersonRow);
+  }
+
+  async createActivity(input: CreateActivityInput): Promise<Activity> {
+    await this.assertPersonInTenant(input.tenantId, input.personId, input.orgUnitId);
+
+    const [row] = await this.knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('activities')
+      .insert({
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+        person_id: input.personId,
+        type: input.type,
+        status: input.status ?? 'ACTIVE',
+        created_at_utc: this.knexClient.fn.now(),
+        updated_at_utc: this.knexClient.fn.now(),
+      })
+      .returning<DbActivityRow[]>(this.activityColumns());
+
+    return mapActivityRow(row);
+  }
+
+  async getActivity(input: GetActivityInput): Promise<Activity | null> {
+    const row = await this.knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('activities')
+      .where({
+        id: input.activityId,
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+      })
+      .first<DbActivityRow>(this.activityColumns());
+
+    return row ? mapActivityRow(row) : null;
+  }
+
+  async listActivities(input: ListActivitiesInput): Promise<Activity[]> {
+    await this.assertPersonInTenant(input.tenantId, input.personId, input.orgUnitId);
+
+    const rows = await this.knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('activities')
+      .where({
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+        person_id: input.personId,
+      })
+      .orderBy('created_at_utc', 'asc')
+      .orderBy('id', 'asc')
+      .select<DbActivityRow[]>(this.activityColumns());
+
+    return rows.map(mapActivityRow);
   }
 
   async createHousehold(input: CreateHouseholdInput): Promise<Household> {
