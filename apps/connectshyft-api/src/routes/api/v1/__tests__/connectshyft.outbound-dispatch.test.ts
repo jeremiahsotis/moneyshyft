@@ -9,7 +9,10 @@ import {
   listConnectShyftCommunicationAuditEntriesForTests,
   resetConnectShyftCommunicationAuditLogForTests,
 } from '../../../../modules/connectshyft/communicationAuditLog';
-import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
+import {
+  findConnectShyftBridgeSessionByProviderCallControlIdAsync,
+  resetConnectShyftBridgeSessionStateForTests,
+} from '../../../../modules/connectshyft/bridgeSessions';
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents';
 import {
   connectShyftNeighborServiceAsync,
@@ -22,6 +25,8 @@ import {
 } from '../../../../modules/connectshyft/numberMappings';
 import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings';
+import * as TelephonyReadinessModule from '../../../../modules/connectshyft/telephonyReadiness';
+import type { ConnectShyftTelephonyReadiness } from '../../../../modules/connectshyft/telephonyReadiness';
 import {
   connectShyftSmsPreferenceOverrideServiceAsync,
   type ConnectShyftResolvedSmsPreference,
@@ -384,10 +389,61 @@ const buildSmsTargetThread = (overrides: Partial<ConnectShyftThread> = {}): Conn
   updatedAtUtc: overrides.updatedAtUtc ?? '2026-03-11T12:00:00.000Z',
 });
 
+const buildDispatchReadyTelephonyReadiness = (
+  overrides: Partial<ConnectShyftTelephonyReadiness> = {},
+): ConnectShyftTelephonyReadiness => ({
+  providerReady: true,
+  providerSelectionPathActive: true,
+  webhookSignatureConfigured: true,
+  orgUnitNumberMappingReady: true,
+  voiceSupported: true,
+  callbackNumberConfigured: true,
+  callbackNumberNormalized: true,
+  voiceReady: true,
+  bridgeCallRunnable: true,
+  smsReady: true,
+  messageDispatchRunnable: true,
+  provider: {
+    requestedProvider: 'telnyx',
+    resolvedProvider: 'telnyx',
+    deterministic: true,
+    adapterInterfaceVersion: 'v1',
+  },
+  orgUnitNumberMappings: {
+    activeCount: 1,
+    mappings: [
+      {
+        mappingId: 'mapping-f1-001',
+        twilioNumberE164: '+12605550191',
+        label: 'Front Desk',
+      },
+    ],
+  },
+  callbackNumber: {
+    value: '+12605550155',
+    rawInput: '(260) 555-0155',
+    createdAtUtc: '2026-03-22T12:00:00.000Z',
+    updatedAtUtc: '2026-03-22T12:00:00.000Z',
+    persistenceAvailable: true,
+  },
+  operatorPhoneSource: 'callback_number',
+  degradedMode: false,
+  blockingReasons: [],
+  nextActions: [],
+  ...overrides,
+});
+
 describe('connectshyft outbound dispatch routes', () => {
   const previousNodeEnv = process.env.NODE_ENV;
   const previousEnableFlags = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
+  let inspectReadinessSpy: jest.SpyInstance;
   let resolveOperatorDestinationSpy: jest.SpyInstance;
+
+  const setDispatchReadyTelephony = (
+    overrides: Partial<ConnectShyftTelephonyReadiness> = {},
+  ): void => {
+    inspectReadinessSpy.mockResolvedValue(buildDispatchReadyTelephonyReadiness(overrides));
+  };
 
   beforeAll(() => {
     process.env.NODE_ENV = 'test';
@@ -409,6 +465,11 @@ describe('connectshyft outbound dispatch routes', () => {
     resetConnectShyftOutboundDispatchReplayLedgerForTests();
     resetConnectShyftCommunicationAuditLogForTests();
     resetConnectShyftCommunicationReliabilityStateForTests();
+    inspectReadinessSpy = jest.spyOn(
+      TelephonyReadinessModule.connectShyftTelephonyReadinessServiceAsync,
+      'inspectReadiness',
+    );
+    setDispatchReadyTelephony();
     resolveOperatorDestinationSpy = jest.spyOn(
       OperatorDestinationResolverModule,
       'resolveOperatorDestination',
@@ -1015,7 +1076,28 @@ describe('connectshyft outbound dispatch routes', () => {
     });
   });
 
-  it('refuses outbound SMS before provider dispatch when the route does not hold a dispatch-ready target', async () => {
+  it('returns CONNECTSHYFT_SMS_NOT_READY before route-level target validation when telephony readiness blocks outbound SMS', async () => {
+    inspectReadinessSpy.mockResolvedValueOnce(buildDispatchReadyTelephonyReadiness({
+      orgUnitNumberMappingReady: false,
+      smsReady: false,
+      messageDispatchRunnable: false,
+      blockingReasons: [
+        {
+          code: 'CONNECTSHYFT_TELEPHONY_NUMBER_MAPPING_REQUIRED',
+          category: 'number_mapping',
+          message: 'Voice routing requires at least one active ConnectShyft number mapping for this orgUnit.',
+          blocking: true,
+          channel: 'both',
+        },
+      ],
+      nextActions: [
+        {
+          code: 'ADD_CONNECTSHYFT_NUMBER_MAPPING',
+          message: 'Assign at least one active ConnectShyft number mapping to this orgUnit before retrying outbound telephony.',
+        },
+      ],
+    }));
+
     const response = await invokeRoute({
       url: '/threads/thread-f1-unclaimed-1001/messages',
       headers: buildHeaders(),
@@ -1027,21 +1109,50 @@ describe('connectshyft outbound dispatch routes', () => {
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       ok: false,
-      code: 'CONNECTSHYFT_SMS_TARGET_REQUIRED',
+      code: 'CONNECTSHYFT_SMS_NOT_READY',
       data: {
-        targetResolution: {
-          reason: 'missing_target',
+        telephonyReadiness: {
+          smsReady: false,
+          messageDispatchRunnable: false,
+          blockingReasons: [
+            expect.objectContaining({
+              code: 'CONNECTSHYFT_TELEPHONY_NUMBER_MAPPING_REQUIRED',
+            }),
+          ],
+        },
+        sideEffects: {
+          messageDispatched: false,
         },
       },
     });
     expect(sendSmsMock).not.toHaveBeenCalled();
   });
 
-  it('refuses outbound SMS before provider dispatch when no active sender mapping exists', async () => {
+  it('returns CONNECTSHYFT_SMS_NOT_READY before route-level sender-required validation when telephony readiness blocks outbound SMS', async () => {
     const routingMappingMock = connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber as jest.MockedFunction<
       typeof connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber
     >;
     routingMappingMock.mockResolvedValueOnce({ status: 'not-found' });
+    inspectReadinessSpy.mockResolvedValueOnce(buildDispatchReadyTelephonyReadiness({
+      webhookSignatureConfigured: false,
+      smsReady: false,
+      messageDispatchRunnable: false,
+      blockingReasons: [
+        {
+          code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED',
+          category: 'provider',
+          message: 'Webhook signature verification must be configured before outbound telephony can be dispatched.',
+          blocking: true,
+          channel: 'both',
+        },
+      ],
+      nextActions: [
+        {
+          code: 'CONFIGURE_CONNECTSHYFT_WEBHOOK_SIGNATURE',
+          message: 'Configure webhook signature verification for the active telephony provider.',
+        },
+      ],
+    }));
 
     const response = await invokeRoute({
       url: '/threads/thread-f1-unclaimed-1001/messages',
@@ -1056,19 +1167,26 @@ describe('connectshyft outbound dispatch routes', () => {
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       ok: false,
-      code: 'CONNECTSHYFT_SMS_SENDER_REQUIRED',
+      code: 'CONNECTSHYFT_SMS_NOT_READY',
       data: {
-        senderResolution: {
-          reason: 'invalid_sender_alignment',
-          source: 'thread_alignment',
-          activeMappingCount: 0,
+        telephonyReadiness: {
+          webhookSignatureConfigured: false,
+          smsReady: false,
+          blockingReasons: [
+            expect.objectContaining({
+              code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED',
+            }),
+          ],
+        },
+        sideEffects: {
+          messageDispatched: false,
         },
       },
     });
     expect(sendSmsMock).not.toHaveBeenCalled();
   });
 
-  it('refuses outbound SMS before provider dispatch when sender mappings are ambiguous', async () => {
+  it('returns CONNECTSHYFT_SMS_NOT_READY before route-level sender-ambiguity validation when telephony readiness blocks outbound SMS', async () => {
     const routingMappingMock = connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber as jest.MockedFunction<
       typeof connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber
     >;
@@ -1091,6 +1209,35 @@ describe('connectshyft outbound dispatch routes', () => {
         }),
       ],
     });
+    inspectReadinessSpy.mockResolvedValueOnce(buildDispatchReadyTelephonyReadiness({
+      callbackNumberConfigured: false,
+      callbackNumberNormalized: false,
+      smsReady: false,
+      messageDispatchRunnable: false,
+      callbackNumber: {
+        value: null,
+        rawInput: null,
+        createdAtUtc: null,
+        updatedAtUtc: null,
+        persistenceAvailable: true,
+      },
+      operatorPhoneSource: 'none',
+      blockingReasons: [
+        {
+          code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
+          category: 'callback_number',
+          message: 'Voice forwarding requires an operator callback number.',
+          blocking: true,
+          channel: 'both',
+        },
+      ],
+      nextActions: [
+        {
+          code: 'SET_OPERATOR_CALLBACK_NUMBER',
+          message: 'Save a callback / forwarding number for the current operator.',
+        },
+      ],
+    }));
 
     const response = await invokeRoute({
       url: '/threads/thread-f1-unclaimed-1001/messages',
@@ -1105,12 +1252,19 @@ describe('connectshyft outbound dispatch routes', () => {
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       ok: false,
-      code: 'CONNECTSHYFT_SMS_SENDER_AMBIGUOUS',
+      code: 'CONNECTSHYFT_SMS_NOT_READY',
       data: {
-        senderResolution: {
-          reason: 'ambiguous_sender',
-          source: 'thread_alignment',
-          activeMappingCount: 2,
+        telephonyReadiness: {
+          callbackNumberConfigured: false,
+          smsReady: false,
+          blockingReasons: [
+            expect.objectContaining({
+              code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
+            }),
+          ],
+        },
+        sideEffects: {
+          messageDispatched: false,
         },
       },
     });
@@ -1230,6 +1384,80 @@ describe('connectshyft outbound dispatch routes', () => {
         outcome: 'bridged',
       }),
     );
+
+    const persistedBridgeSession = await findConnectShyftBridgeSessionByProviderCallControlIdAsync({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      providerCallControlId: 'provider-leg-operator-thread-f1-unclaimed-1001',
+    });
+    expect(persistedBridgeSession?.session.id).toBe((response.body as any).data.bridgeSession.bridgeSessionId);
+  });
+
+  it('persists the neighbor bridge leg provider call-control id when operator answer starts neighbor ringing', async () => {
+    const callResponse = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/call',
+      headers: buildHeaders(),
+      body: {
+        providerKey: 'telnyx',
+        operatorPhoneId: '+12605550155',
+        targetPhone: '+12605550111',
+      },
+    });
+
+    expect(callResponse.status).toBe(200);
+
+    const webhookResponse = await invokeRoute({
+      url: '/webhooks/inbound',
+      headers: buildHeaders(),
+      body: {
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        threadId: 'thread-f1-unclaimed-1001',
+        eventType: 'CallAnswered',
+        providerEventId: 'provider-event-operator-answered-1001',
+        providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
+        from: '+12605550155',
+        to: '+12605550191',
+      },
+    });
+
+    expect(webhookResponse.status).toBe(200);
+    expect(webhookResponse.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+      data: {
+        bridgeSession: {
+          status: 'neighbor_dialing',
+          operatorLeg: {
+            status: 'answered',
+          },
+          neighborLeg: {
+            status: 'ringing',
+          },
+        },
+        bridgeEvent: {
+          type: 'operator_answered',
+        },
+        correlationMapping: {
+          deterministic: true,
+          operatorLegMapping: 'duplicate',
+          neighborLegMapping: 'created',
+          error: null,
+        },
+      },
+    });
+
+    const persistedNeighborBridgeSession = await findConnectShyftBridgeSessionByProviderCallControlIdAsync({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      providerCallControlId: 'provider-leg-neighbor-thread-f1-unclaimed-1001',
+    });
+    expect(persistedNeighborBridgeSession?.session.id).toBe((callResponse.body as any).data.bridgeSession.bridgeSessionId);
+    expect(startOutboundCallMock).toHaveBeenCalledTimes(2);
+    expect(startOutboundCallMock).toHaveBeenLastCalledWith(expect.objectContaining({
+      threadId: 'thread-f1-unclaimed-1001',
+      targetPhone: '+12605550111',
+    }));
   });
 
   it('uses the claimed thread operator destination before provider dispatch on bridge calls', async () => {

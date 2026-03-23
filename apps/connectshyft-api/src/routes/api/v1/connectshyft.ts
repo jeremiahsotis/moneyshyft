@@ -170,7 +170,9 @@ import {
 import {
   handleConnectShyftBridgeWebhookEvent,
   loadConnectShyftBridgeAggregateByThreadId,
+  setConnectShyftBridgeLegProviderCallControlIdAsync,
   startConnectShyftBridgeSession,
+  updateConnectShyftBridgeSessionVoicemailFallbackAsync,
 } from '../../../modules/connectshyft/bridgeSessions';
 import {
   beginConnectShyftCommunicationIdempotency,
@@ -1145,6 +1147,54 @@ const verifyConnectedCallLineage = async (input: {
 };
 
 const nowIsoUtc = (): string => new Date().toISOString();
+
+const persistConnectShyftBridgeLegProviderCallControlIdIfPresentAsync = async (
+  input: {
+    bridgeSessionId: string;
+    tenantId: string;
+    orgUnitId: string;
+    legRole: 'operator' | 'neighbor';
+    providerCallControlId: string | null | undefined;
+  },
+): Promise<void> => {
+  const providerCallControlId = normalizeLifecycleString(input.providerCallControlId);
+  if (!providerCallControlId) {
+    return;
+  }
+
+  await setConnectShyftBridgeLegProviderCallControlIdAsync({
+    bridgeSessionId: input.bridgeSessionId,
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    legRole: input.legRole,
+    providerCallControlId,
+  });
+};
+
+const persistConnectShyftNeighborRingStartedAtIfNeededAsync = async (
+  input: {
+    bridgeSessionId: string;
+    tenantId: string;
+    orgUnitId: string;
+    neighborLegState: string | null | undefined;
+    neighborProviderLegId: string | null | undefined;
+  },
+): Promise<void> => {
+  if (normalizeLifecycleString(input.neighborLegState) !== 'ringing') {
+    return;
+  }
+
+  if (!normalizeLifecycleString(input.neighborProviderLegId)) {
+    return;
+  }
+
+  await updateConnectShyftBridgeSessionVoicemailFallbackAsync({
+    bridgeSessionId: input.bridgeSessionId,
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    neighborRingStartedAtUtc: nowIsoUtc(),
+  });
+};
 
 const resolveLifecycleEventName = (
   action: ConnectShyftLifecycleAction,
@@ -5462,6 +5512,33 @@ const performOutboundAction = async ({
           auditCorrelationId: outboundDispatchReplayKey || undefined,
           callPolicy: outboundCallDispatchPolicy || undefined,
         });
+        const bridgeSessionId = normalizeLifecycleString(bridgeStart.aggregate.session.id);
+        const operatorProviderLegId = normalizeLifecycleString(bridgeStart.aggregate.operatorLeg.providerCallId);
+        const neighborProviderLegId = normalizeLifecycleString(bridgeStart.aggregate.neighborLeg.providerCallId);
+
+        if (bridgeSessionId) {
+          await persistConnectShyftBridgeLegProviderCallControlIdIfPresentAsync({
+            bridgeSessionId,
+            tenantId: context.tenantId,
+            orgUnitId: context.orgUnitId,
+            legRole: 'operator',
+            providerCallControlId: operatorProviderLegId,
+          });
+          await persistConnectShyftBridgeLegProviderCallControlIdIfPresentAsync({
+            bridgeSessionId,
+            tenantId: context.tenantId,
+            orgUnitId: context.orgUnitId,
+            legRole: 'neighbor',
+            providerCallControlId: neighborProviderLegId,
+          });
+          await persistConnectShyftNeighborRingStartedAtIfNeededAsync({
+            bridgeSessionId,
+            tenantId: context.tenantId,
+            orgUnitId: context.orgUnitId,
+            neighborLegState: bridgeStart.aggregate.neighborLeg.status,
+            neighborProviderLegId,
+          });
+        }
 
         bridgeSessionState = buildProviderNeutralBridgeSessionState(bridgeStart.aggregate);
         bridgeCorrelationMapping = bridgeStart.correlationMapping;
@@ -6590,6 +6667,31 @@ const performInboundWebhook = async ({
       || null,
     callPolicy: CONNECTSHYFT_OUTBOUND_CALL_POLICY,
   });
+  if (
+    bridgeWebhookProgression.handled
+    && bridgeWebhookProgression.aggregate
+    && bridgeWebhookProgression.domainEvent?.type === 'operator_answered'
+  ) {
+    const bridgeSessionId = normalizeLifecycleString(bridgeWebhookProgression.aggregate.session.id);
+    const neighborProviderLegId = normalizeLifecycleString(bridgeWebhookProgression.aggregate.neighborLeg.providerCallId);
+
+    if (bridgeSessionId) {
+      await persistConnectShyftBridgeLegProviderCallControlIdIfPresentAsync({
+        bridgeSessionId,
+        tenantId,
+        orgUnitId,
+        legRole: 'neighbor',
+        providerCallControlId: neighborProviderLegId,
+      });
+      await persistConnectShyftNeighborRingStartedAtIfNeededAsync({
+        bridgeSessionId,
+        tenantId,
+        orgUnitId,
+        neighborLegState: bridgeWebhookProgression.aggregate.neighborLeg.status,
+        neighborProviderLegId,
+      });
+    }
+  }
   if (bridgeWebhookProgression.handled && !isConnectedCallEvent) {
     await markWebhookReceipt('APPLIED');
     success(res, {
