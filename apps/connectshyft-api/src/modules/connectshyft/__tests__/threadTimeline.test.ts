@@ -1,4 +1,5 @@
 import * as canonicalEventsModule from '../canonicalEvents';
+import * as callsModule from '../calls';
 import { CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME } from '../inboundSms';
 import {
   CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
@@ -11,6 +12,7 @@ import {
   mapConnectShyftCanonicalEventToTimelineItem,
   sortConnectShyftThreadTimelineItems,
 } from '../threadTimeline';
+import * as voicemailsModule from '../voicemails';
 
 describe('connectshyft thread timeline projection', () => {
   afterEach(() => {
@@ -329,5 +331,69 @@ describe('connectshyft thread timeline projection', () => {
       type: 'voicemail',
       transcript: 'Leave package at the side door',
     });
+  });
+
+  it('projects persisted calls and persisted voicemails alongside canonical events', async () => {
+    jest.spyOn(canonicalEventsModule, 'listConnectShyftCanonicalEvents').mockResolvedValueOnce([]);
+    jest.spyOn(callsModule.connectShyftCallServiceAsync, 'listThreadCalls').mockResolvedValueOnce([
+      {
+        id: 'call-timeline-1001',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        threadId: 'thread-timeline-persisted-1001',
+        personId: 'person-connectshyft-f1-1001',
+        bridgeSessionId: 'bridge-timeline-1001',
+        status: 'bridged',
+        failureCode: null,
+        failureMessage: null,
+        startedAtUtc: '2026-03-19T10:00:00.000Z',
+        operatorAnsweredAtUtc: '2026-03-19T10:00:30.000Z',
+        neighborAnsweredAtUtc: '2026-03-19T10:01:00.000Z',
+        bridgedAtUtc: '2026-03-19T10:01:30.000Z',
+        endedAtUtc: null,
+        createdAtUtc: '2026-03-19T10:00:00.000Z',
+        updatedAtUtc: '2026-03-19T10:01:30.000Z',
+      },
+    ]);
+    jest.spyOn(voicemailsModule.connectShyftVoicemailServiceAsync, 'listCallVoicemails').mockResolvedValueOnce([
+      {
+        id: 'voicemail-timeline-1001',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        callId: 'call-timeline-1001',
+        threadId: 'thread-timeline-persisted-1001',
+        personId: 'person-connectshyft-f1-1001',
+        artifactId: 'artifact-timeline-1001',
+        recordingUrl: 'https://example.test/timeline-vm.mp3',
+        recordingStatus: 'completed',
+        occurredAtUtc: '2026-03-19T10:02:00.000Z',
+        createdAtUtc: '2026-03-19T10:02:00.000Z',
+        updatedAtUtc: '2026-03-19T10:02:00.000Z',
+        transcriptionJson: null,
+      },
+    ]);
+
+    const timeline = await getThreadTimeline({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: 'thread-timeline-persisted-1001',
+    });
+
+    expect(timeline.items).toEqual([
+      expect.objectContaining({
+        id: 'call-call-timeline-1001',
+        type: 'voice_event',
+        deliveryStatus: 'bridged',
+        providerMetadata: expect.objectContaining({
+          callId: 'call-timeline-1001',
+          status: 'bridged',
+        }),
+      }),
+      expect.objectContaining({
+        id: 'voicemail-voicemail-timeline-1001',
+        type: 'voicemail',
+        recordingUrl: 'https://example.test/timeline-vm.mp3',
+      }),
+    ]);
   });
 });
