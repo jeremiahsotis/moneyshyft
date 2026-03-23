@@ -1,4 +1,17 @@
 services:
+  migration-runner:
+    build:
+      context: .
+      dockerfile: ./apps/migration-runner/Dockerfile
+    env_file:
+      - ${MIGRATION_RUNNER_ENV_FILE:-/opt/shyftunity/env/migration-runner.env}
+    environment:
+      NODE_ENV: production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["npm", "run", "migrate:latest:prod"]
+    restart: "no"
+
   admin-api:
     build:
       context: .
