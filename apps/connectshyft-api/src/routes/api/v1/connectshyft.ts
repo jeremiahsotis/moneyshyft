@@ -6038,6 +6038,7 @@ const performOutboundAction = async ({
           tenantId: context.tenantId,
           orgUnitId: context.orgUnitId,
           threadId,
+          personId: thread.personId,
           operatorParticipantId: actorUserId || 'unknown-operator',
           neighborParticipantId: thread.neighborId,
           operatorContactPointId: operatorContactPointId || '',

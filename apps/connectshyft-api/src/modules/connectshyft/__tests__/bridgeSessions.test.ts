@@ -71,6 +71,7 @@ const baseInput = {
   tenantId: 'tenant-connectshyft-f1',
   orgUnitId: 'org-connectshyft-f1-east',
   threadId: 'thread-f1-unclaimed-1001',
+  personId: 'person-connectshyft-f1-1001',
   operatorParticipantId: 'user-connectshyft-f1-primary-operator',
   neighborParticipantId: 'neighbor-f1-1001',
   operatorContactPointId: '+12605550155',

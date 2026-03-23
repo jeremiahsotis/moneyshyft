@@ -14,6 +14,7 @@ import {
 } from '../../../../../domains/communication'
 import { recordConnectShyftBridgeLegProviderIdentifierMapping } from './providerCorrelationMappings'
 import { isConnectShyftTestOverrideEnabled } from './featureFlags'
+import { connectShyftProviderEventServiceAsync } from './providerEvents'
 import type {
   ConnectShyftOutboundCallDispatchPolicy,
   ConnectShyftProviderAdapter,
@@ -74,6 +75,7 @@ type DbBridgeSessionRow = {
   tenant_id: string
   org_unit_id: string
   thread_id: string
+  person_id?: string | null
   operator_participant_id: string
   neighbor_participant_id: string
   operator_contact_point_id: string
@@ -121,6 +123,7 @@ type StartConnectShyftBridgeSessionInput = {
   tenantId: string
   orgUnitId: string
   threadId: string
+  personId: string
   operatorParticipantId: string
   neighborParticipantId: string
   operatorContactPointId: string
@@ -157,6 +160,19 @@ type BridgeMappingResult = {
     message: string
   } | null
 }
+
+type ConnectShyftBridgeSessionRecordWithPersonId = BridgeSessionRecord & {
+  personId?: string | null
+}
+
+export type ConnectShyftBridgeCallStatusHookInput = {
+  aggregate: BridgeSessionAggregate
+  domainEvent: ProviderBridgeEvent | null
+}
+
+type ConnectShyftBridgeCallStatusHook = (
+  input: ConnectShyftBridgeCallStatusHookInput,
+) => Promise<void>
 
 const normalizeString = (value: unknown): string => {
   if (typeof value !== 'string') {
@@ -273,26 +289,31 @@ const isMissingPersistenceError = (error: unknown): boolean => {
     || candidate.code === '42703'
 }
 
-const mapSessionRow = (row: DbBridgeSessionRow): BridgeSessionRecord => ({
-  id: row.id,
-  tenantId: row.tenant_id,
-  orgUnitId: row.org_unit_id,
-  threadId: row.thread_id,
-  operatorParticipantId: row.operator_participant_id,
-  neighborParticipantId: row.neighbor_participant_id,
-  operatorContactPointId: row.operator_contact_point_id,
-  neighborContactPointId: row.neighbor_contact_point_id,
-  selectedOutboundContactPointId: normalizeString(row.selected_outbound_contact_point_id) || null,
-  status: row.bridge_status as BridgeSessionRecord['status'],
-  failureCode: normalizeString(row.failure_code) as BridgeSessionRecord['failureCode'],
-  failureMessage: normalizeString(row.failure_message) || null,
-  endedBy: normalizeString(row.ended_by) || null,
-  idempotencyKey: normalizeString(row.idempotency_key) || null,
-  auditCorrelationId: normalizeString(row.audit_correlation_id) || null,
-  createdAt: new Date(toIsoString(row.created_at_utc) || new Date().toISOString()),
-  updatedAt: new Date(toIsoString(row.updated_at_utc) || new Date().toISOString()),
-  completedAt: toDate(row.completed_at_utc),
-})
+const mapSessionRow = (row: DbBridgeSessionRow): BridgeSessionRecord => {
+  const session: ConnectShyftBridgeSessionRecordWithPersonId = {
+    id: row.id,
+    tenantId: row.tenant_id,
+    orgUnitId: row.org_unit_id,
+    threadId: row.thread_id,
+    personId: normalizeString(row.person_id) || null,
+    operatorParticipantId: row.operator_participant_id,
+    neighborParticipantId: row.neighbor_participant_id,
+    operatorContactPointId: row.operator_contact_point_id,
+    neighborContactPointId: row.neighbor_contact_point_id,
+    selectedOutboundContactPointId: normalizeString(row.selected_outbound_contact_point_id) || null,
+    status: row.bridge_status as BridgeSessionRecord['status'],
+    failureCode: normalizeString(row.failure_code) as BridgeSessionRecord['failureCode'],
+    failureMessage: normalizeString(row.failure_message) || null,
+    endedBy: normalizeString(row.ended_by) || null,
+    idempotencyKey: normalizeString(row.idempotency_key) || null,
+    auditCorrelationId: normalizeString(row.audit_correlation_id) || null,
+    createdAt: new Date(toIsoString(row.created_at_utc) || new Date().toISOString()),
+    updatedAt: new Date(toIsoString(row.updated_at_utc) || new Date().toISOString()),
+    completedAt: toDate(row.completed_at_utc),
+  }
+
+  return session
+}
 
 const mapLegRow = (row: DbBridgeLegRow): BridgeLegRecord => ({
   id: row.id,
@@ -313,26 +334,31 @@ const mapLegRow = (row: DbBridgeLegRow): BridgeLegRecord => ({
   updatedAt: new Date(toIsoString(row.updated_at_utc) || new Date().toISOString()),
 })
 
-const sessionToRow = (session: BridgeSessionRecord) => ({
-  id: session.id,
-  tenant_id: session.tenantId,
-  org_unit_id: session.orgUnitId,
-  thread_id: session.threadId,
-  operator_participant_id: session.operatorParticipantId,
-  neighbor_participant_id: session.neighborParticipantId,
-  operator_contact_point_id: session.operatorContactPointId,
-  neighbor_contact_point_id: session.neighborContactPointId,
-  selected_outbound_contact_point_id: session.selectedOutboundContactPointId ?? null,
-  bridge_status: session.status,
-  failure_code: session.failureCode ?? null,
-  failure_message: session.failureMessage ?? null,
-  ended_by: session.endedBy ?? null,
-  idempotency_key: session.idempotencyKey ?? null,
-  audit_correlation_id: session.auditCorrelationId ?? null,
-  created_at_utc: session.createdAt.toISOString(),
-  updated_at_utc: session.updatedAt.toISOString(),
-  completed_at_utc: session.completedAt ? session.completedAt.toISOString() : null,
-})
+const sessionToRow = (session: BridgeSessionRecord) => {
+  const persistedSession = session as ConnectShyftBridgeSessionRecordWithPersonId
+
+  return {
+    id: session.id,
+    tenant_id: session.tenantId,
+    org_unit_id: session.orgUnitId,
+    thread_id: session.threadId,
+    person_id: normalizeString(persistedSession.personId) || null,
+    operator_participant_id: session.operatorParticipantId,
+    neighbor_participant_id: session.neighborParticipantId,
+    operator_contact_point_id: session.operatorContactPointId,
+    neighbor_contact_point_id: session.neighborContactPointId,
+    selected_outbound_contact_point_id: session.selectedOutboundContactPointId ?? null,
+    bridge_status: session.status,
+    failure_code: session.failureCode ?? null,
+    failure_message: session.failureMessage ?? null,
+    ended_by: session.endedBy ?? null,
+    idempotency_key: session.idempotencyKey ?? null,
+    audit_correlation_id: session.auditCorrelationId ?? null,
+    created_at_utc: session.createdAt.toISOString(),
+    updated_at_utc: session.updatedAt.toISOString(),
+    completed_at_utc: session.completedAt ? session.completedAt.toISOString() : null,
+  }
+}
 
 const legToRow = (leg: BridgeLegRecord) => ({
   id: leg.id,
@@ -354,7 +380,7 @@ const legToRow = (leg: BridgeLegRecord) => ({
 })
 
 class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository {
-  private sessions = new Map<string, BridgeSessionRecord>()
+  private sessions = new Map<string, ConnectShyftBridgeSessionRecordWithPersonId>()
   private legsBySessionId = new Map<string, Map<PersistedConnectShyftBridgeLegRole, BridgeLegRecord>>()
   private sessionIdByProviderCallId = new Map<string, string>()
   private sessionIdByProviderCallControlId = new Map<string, string>()
@@ -911,6 +937,84 @@ class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
 
 const inMemoryBridgeSessionStore = new InMemoryConnectShyftBridgeSessionStore()
 const knexBridgeSessionStore = new KnexConnectShyftBridgeSessionStore()
+let connectShyftBridgeCallStatusHook: ConnectShyftBridgeCallStatusHook = async () => {}
+
+const attachPersonIdToSessionRecord = (
+  session: BridgeSessionRecord,
+  personId: string,
+): BridgeSessionRecord => ({
+  ...(session as ConnectShyftBridgeSessionRecordWithPersonId),
+  personId,
+}) as BridgeSessionRecord
+
+const attachPersonIdToAggregate = (
+  aggregate: BridgeSessionAggregate,
+  personId: string,
+): BridgeSessionAggregate => ({
+  ...aggregate,
+  session: attachPersonIdToSessionRecord(aggregate.session, personId),
+})
+
+const buildStartBridgeSessionRepository = (personId: string): BridgeSessionRepository => ({
+  async createSession(session) {
+    await repositoryProxy.createSession(attachPersonIdToSessionRecord(session, personId))
+  },
+  createLeg(leg) {
+    return repositoryProxy.createLeg(leg)
+  },
+  async saveAggregate(aggregate) {
+    await repositoryProxy.saveAggregate(attachPersonIdToAggregate(aggregate, personId))
+  },
+  getAggregateBySessionId(sessionId) {
+    return repositoryProxy.getAggregateBySessionId(sessionId)
+  },
+  getAggregateByThreadId(input) {
+    return repositoryProxy.getAggregateByThreadId(input)
+  },
+  getAggregateByProviderCallId(input) {
+    return repositoryProxy.getAggregateByProviderCallId(input)
+  },
+})
+
+const recordBridgeProviderEvent = async (input: {
+  tenantId: string
+  provider: string
+  providerCallId: string | null
+  aggregate: BridgeSessionAggregate
+  domainEvent: ProviderBridgeEvent
+  rawEventType: string
+  occurredAt?: Date
+  reason?: string | null
+}): Promise<void> => {
+  await connectShyftProviderEventServiceAsync.recordEvent({
+    tenantId: input.tenantId,
+    provider: input.provider,
+    eventType: input.domainEvent.type,
+    eventJson: {
+      domainEvent: input.domainEvent,
+      rawEventType: input.rawEventType,
+      reason: input.reason ?? null,
+      providerCallId: input.providerCallId,
+      bridgeSessionId: input.aggregate.session.id,
+      occurredAtUtc: input.occurredAt ? input.occurredAt.toISOString() : null,
+    },
+    bridgeSessionId: input.aggregate.session.id,
+    providerCallId: input.providerCallId,
+    occurredAtUtc: input.occurredAt
+      ? input.occurredAt.toISOString()
+      : new Date().toISOString(),
+  })
+}
+
+const invokeBridgeCallStatusHook = async (input: {
+  aggregate: BridgeSessionAggregate
+  domainEvent: ProviderBridgeEvent | null
+}): Promise<void> => {
+  await connectShyftBridgeCallStatusHook({
+    aggregate: input.aggregate,
+    domainEvent: input.domainEvent,
+  })
+}
 
 const callPolicyOrDefault = (
   callPolicy?: ConnectShyftOutboundCallDispatchPolicy,
@@ -1244,6 +1348,13 @@ const repositoryProxy: BridgeSessionRepository = {
 
 export const resetConnectShyftBridgeSessionStateForTests = (): void => {
   inMemoryBridgeSessionStore.reset()
+  connectShyftBridgeCallStatusHook = async () => {}
+}
+
+export const registerConnectShyftBridgeCallStatusHook = (
+  hook: ConnectShyftBridgeCallStatusHook,
+): void => {
+  connectShyftBridgeCallStatusHook = hook
 }
 
 export async function updateConnectShyftBridgeSessionVoicemailFallbackAsync(
@@ -1332,7 +1443,7 @@ export const startConnectShyftBridgeSession = async (
     callPolicy: input.callPolicy,
   })
   const startBridgeSession = buildStartBridgeSession({
-    repository: repositoryProxy,
+    repository: buildStartBridgeSessionRepository(input.personId),
     telephonyProvider,
     idGenerator: randomUUID,
   })
@@ -1349,6 +1460,11 @@ export const startConnectShyftBridgeSession = async (
     idempotencyKey: input.idempotencyKey ?? undefined,
     auditCorrelationId: input.auditCorrelationId ?? undefined,
   } satisfies StartBridgeSessionCommand)
+
+  await invokeBridgeCallStatusHook({
+    aggregate,
+    domainEvent: null,
+  })
 
   return {
     aggregate,
@@ -1427,6 +1543,21 @@ export const handleConnectShyftBridgeWebhookEvent = async (
       correlationMapping: null,
     }
   }
+
+  await recordBridgeProviderEvent({
+    tenantId: input.tenantId,
+    provider: input.providerKey,
+    providerCallId: providerLegId,
+    aggregate,
+    domainEvent,
+    rawEventType: input.eventType,
+    occurredAt: input.occurredAt,
+    reason: input.reason ?? null,
+  })
+  await invokeBridgeCallStatusHook({
+    aggregate,
+    domainEvent,
+  })
 
   return {
     handled: true,

@@ -174,6 +174,7 @@ const seedOutboundVoicemailBridgeSession = async (input?: {
     tenantId: 'tenant-connectshyft-f1',
     orgUnitId: 'org-connectshyft-f1-east',
     threadId,
+    personId: 'person-connectshyft-f1-1001',
     operatorParticipantId: 'user-connectshyft-f1-primary-operator',
     neighborParticipantId: 'neighbor-connectshyft-f1-1001',
     operatorContactPointId: '+12605550155',
