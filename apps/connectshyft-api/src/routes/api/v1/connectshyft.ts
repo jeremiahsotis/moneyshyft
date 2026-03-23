@@ -142,6 +142,7 @@ import {
 import {
   persistConnectShyftThreadIdentityEventAsync,
 } from '../../../modules/connectshyft/threadIdentityEvents';
+import connectShyftActivityHttpRouter from '../../../modules/connectshyft/http';
 import {
   CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
   CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
@@ -4475,6 +4476,9 @@ const parseThreadEnsureBody = (req: Request) => ({
   personId: typeof req.body?.personId === 'string'
     ? req.body.personId.trim()
     : '',
+  activityId: typeof req.body?.activityId === 'string'
+    ? req.body.activityId.trim()
+    : undefined,
   source: typeof req.body?.source === 'string' ? req.body.source : 'VOICE',
   forcedState: typeof req.body?.forcedState === 'string' ? req.body.forcedState : undefined,
   lastInboundCsNumberId: typeof req.body?.lastInboundCsNumberId === 'string'
@@ -4594,6 +4598,7 @@ router.get('/context', getConnectContext);
 router.get('/inbox', getConnectInbox);
 
 router.use('/ops', connectShyftOpsRouter);
+router.use(connectShyftActivityHttpRouter);
 
 router.post('/neighbors', postConnectNeighborCreate);
 
@@ -5116,6 +5121,7 @@ router.post('/threads', async (req: Request, res: Response) => {
     orgUnitId: context.orgUnitId,
     neighborId: payload.neighborId,
     personId: payload.personId,
+    activityId: payload.activityId,
     source: payload.source,
     forcedState: payload.forcedState,
     lastInboundCsNumberId: payload.lastInboundCsNumberId,
