@@ -1,0 +1,241 @@
+import { flushPromises, mount } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createMemoryHistory, createRouter } from 'vue-router';
+import { nextTick, ref } from 'vue';
+import ConnectShyftThreadDetailView from '../ConnectShyftThreadDetailView.vue';
+import { SUBJECT_CONTEXT_KEY } from '../../../shell/subjectContext';
+import * as flagsModule from '@/features/connectshyft/flags';
+import * as neighborsModule from '@/features/connectshyft/neighbors';
+import * as readContractsModule from '@/features/connectshyft/readContracts';
+
+vi.mock('@/features/connectshyft/flags', () => ({
+  DEFAULT_CONNECTSHYFT_AVAILABILITY: {
+    flags: {
+      connectshyft_enabled: true,
+      connectshyft_inbox_enabled: true,
+      connectshyft_escalation_enabled: true,
+      connectshyft_webhooks_enabled: true,
+    },
+    entitlement: null,
+    capabilities: {
+      module: true,
+      inbox: true,
+      escalation: true,
+      webhooks: true,
+    },
+    refusal: null,
+  },
+  fetchConnectShyftAvailability: vi.fn(),
+  buildConnectShyftTestOverrideHeaders: vi.fn(() => ({})),
+  resolveConnectShyftDeterministicTestPhone: vi.fn(() => '+13175550100'),
+}));
+
+vi.mock('@/features/connectshyft/neighbors', () => ({
+  fetchConnectShyftNeighborsCollection: vi.fn(),
+  createConnectShyftNeighbor: vi.fn(),
+}));
+
+vi.mock('@/features/connectshyft/readContracts', () => ({
+  fetchConnectShyftThreadDetail: vi.fn(),
+}));
+
+const fetchAvailabilityMock = vi.mocked(flagsModule.fetchConnectShyftAvailability);
+const fetchNeighborsMock = vi.mocked(neighborsModule.fetchConnectShyftNeighborsCollection);
+const fetchThreadDetailMock = vi.mocked(readContractsModule.fetchConnectShyftThreadDetail);
+
+const buildThreadDetail = (overrides: Record<string, unknown> = {}) => ({
+  threadId: 'thread-detail-view-1001',
+  neighborId: 'neighbor-detail-view-1001',
+  orgUnitId: 'org-connectshyft-ui-east',
+  state: 'CLAIMED',
+  stateLabel: 'Claimed',
+  claimedByUserId: 'user-connectshyft-ui-operator',
+  bucket: 'mine',
+  escalationStage: 1,
+  priorityRank: 2,
+  urgencyLabel: 'Needs attention soon',
+  lastActivityAtUtc: '2026-03-23T10:15:00.000Z',
+  lastInboundCsNumberId: '+12605550191',
+  lastInboundContext: 'Mapped inbound number configured',
+  preferredOutboundCsNumberId: '+12605550191',
+  preferredOutboundContextLabel: 'Primary Queue',
+  neighborContextLabel: 'Neighbor context: Jordan Lee',
+  conferenceContextLabel: 'Conference context: Primary Queue',
+  claimContextLabel: 'Claimed by you',
+  preferredOutboundContext: {
+    csNumberId: '+12605550191',
+    label: 'Primary Queue',
+  },
+  voicemailIndicator: false,
+  voicemailLabel: null,
+  summary: 'Jordan Lee',
+  preview: 'Latest update: Jordan Lee',
+  personId: 'person-detail-view-1001',
+  identityState: 'confirmed',
+  subjectContext: {
+    orgUnitId: 'org-connectshyft-ui-east',
+    personId: 'person-detail-view-1001',
+  },
+  actions: ['Call', 'Text', 'Close'],
+  timeline: [],
+  lifecycle: {
+    reopenedByInbound: false,
+  },
+  ...overrides,
+});
+
+const buildRouter = async (initialPath: string) => {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      {
+        path: '/login',
+        component: {
+          template: '<div>Login</div>',
+        },
+      },
+      {
+        path: '/app/connectshyft/threads/:threadId',
+        component: ConnectShyftThreadDetailView,
+      },
+    ],
+  });
+
+  await router.push(initialPath);
+  await router.isReady();
+  return router;
+};
+
+const renderThreadDetailView = async (input?: {
+  initialPath?: string;
+  shellSubjectContext?: {
+    orgUnitId: string;
+    personId?: string;
+    provisionalPersonId?: string;
+  };
+}) => {
+  const router = await buildRouter(
+    input?.initialPath || '/app/connectshyft/threads/thread-detail-view-1001',
+  );
+  const shellSubjectContext = ref({
+    orgUnitId: input?.shellSubjectContext?.orgUnitId || 'demo-org',
+    ...(input?.shellSubjectContext?.personId
+      ? { personId: input.shellSubjectContext.personId }
+      : {}),
+    ...(input?.shellSubjectContext?.provisionalPersonId
+      ? { provisionalPersonId: input.shellSubjectContext.provisionalPersonId }
+      : {}),
+  });
+
+  const wrapper = mount(ConnectShyftThreadDetailView, {
+    global: {
+      plugins: [router],
+      provide: {
+        [SUBJECT_CONTEXT_KEY as symbol]: shellSubjectContext,
+      },
+      stubs: {
+        ConnectShyftComposer: true,
+        ConnectShyftMessageBubble: true,
+        ConnectShyftNeighborSnapshot: true,
+        ConnectShyftPrimaryNav: true,
+        ConnectShyftThreadActionBar: true,
+        ConnectShyftThreadHeader: true,
+        ConnectShyftVoicemailCard: true,
+      },
+    },
+  });
+
+  await flushPromises();
+  await nextTick();
+
+  return {
+    wrapper,
+    shellSubjectContext,
+  };
+};
+
+beforeEach(() => {
+  fetchAvailabilityMock.mockResolvedValue({
+    flags: {
+      connectshyft_enabled: true,
+      connectshyft_inbox_enabled: true,
+      connectshyft_escalation_enabled: true,
+      connectshyft_webhooks_enabled: true,
+    },
+    entitlement: null,
+    capabilities: {
+      module: true,
+      inbox: true,
+      escalation: true,
+      webhooks: true,
+    },
+    refusal: null,
+  });
+  fetchNeighborsMock.mockResolvedValue({
+    ok: true,
+    code: 'CONNECTSHYFT_NEIGHBORS_LISTED',
+    neighbors: [],
+    scope: {
+      tenantId: 'tenant-connectshyft-ui',
+      orgUnitId: 'org-connectshyft-ui-east',
+    },
+  });
+  fetchThreadDetailMock.mockResolvedValue({
+    ok: true,
+    code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+    message: 'Thread detail loaded',
+    thread: buildThreadDetail(),
+  });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  document.body.innerHTML = '';
+});
+
+describe('ConnectShyftThreadDetailView', () => {
+  it('renders provisional identity state and syncs the shell subject context without keeping a confirmed id', async () => {
+    fetchThreadDetailMock.mockResolvedValueOnce({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+      message: 'Thread detail loaded',
+      thread: buildThreadDetail({
+        personId: 'person-detail-view-provisional-2005',
+        identityState: 'provisional',
+        subjectContext: {
+          orgUnitId: 'org-connectshyft-ui-east',
+          provisionalPersonId: 'person-detail-view-provisional-2005',
+        },
+      }),
+    });
+
+    const { wrapper, shellSubjectContext } = await renderThreadDetailView({
+      shellSubjectContext: {
+        orgUnitId: 'demo-org',
+        personId: 'stale-confirmed-person',
+      },
+    });
+
+    expect(wrapper.get('[data-testid="connectshyft-thread-identity-state"]').text()).toBe(
+      'Provisional person',
+    );
+    expect(shellSubjectContext.value).toEqual({
+      orgUnitId: 'org-connectshyft-ui-east',
+      provisionalPersonId: 'person-detail-view-provisional-2005',
+    });
+    expect(shellSubjectContext.value).not.toHaveProperty('personId');
+  });
+
+  it('renders confirmed identity state and syncs the shell subject context with the confirmed person id', async () => {
+    const { wrapper, shellSubjectContext } = await renderThreadDetailView();
+
+    expect(wrapper.get('[data-testid="connectshyft-thread-identity-state"]').text()).toBe(
+      'Confirmed person',
+    );
+    expect(shellSubjectContext.value).toEqual({
+      orgUnitId: 'org-connectshyft-ui-east',
+      personId: 'person-detail-view-1001',
+    });
+    expect(shellSubjectContext.value).not.toHaveProperty('provisionalPersonId');
+  });
+});

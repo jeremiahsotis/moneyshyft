@@ -151,6 +151,32 @@
                   :voicemail-indicator="threadDetail.voicemailIndicator === true"
                 />
 
+                <section
+                  v-if="threadDetail.identityState"
+                  class="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.35)]"
+                >
+                  <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                        Neighbor context
+                      </p>
+                      <p class="mt-2 text-base text-slate-600">
+                        {{ neighborContextLabel }}
+                      </p>
+                    </div>
+                    <div>
+                      <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                        Person context
+                      </p>
+                      <p class="mt-2 text-base text-slate-600">
+                        <span data-testid="connectshyft-thread-identity-state">
+                          {{ threadDetail.identityState === 'provisional' ? 'Provisional person' : 'Confirmed person' }}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
                 <p
                   v-if="showPreferenceOverrideRequiredChip"
                   data-testid="connectshyft-preference-override-required-chip"
@@ -474,6 +500,7 @@
 </template>
 
 <script setup lang="ts">
+import type { SubjectContext } from '@shyft/contracts';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import ConnectShyftComposer from '@/components/connectshyft/ConnectShyftComposer.vue';
@@ -516,8 +543,10 @@ import {
   type ConnectShyftFeedback,
   type ConnectShyftFeedbackTaxonomy,
 } from '@/features/connectshyft/uiContracts';
+import { useSubjectContext } from '@/shell/subjectContext';
 
 const route = useRoute();
+const subjectContext = useSubjectContext();
 const availability = ref({ ...DEFAULT_CONNECTSHYFT_AVAILABILITY });
 const threadDetail = ref<ConnectShyftThreadDetail | null>(null);
 const threadNeighbors = ref<ConnectShyftNeighbor[]>([]);
@@ -614,6 +643,23 @@ const isViewerRole = computed(() => role.value === 'TENANT_VIEWER');
 const threadId = computed(() => {
   const rawValue = route.params.threadId;
   return typeof rawValue === 'string' ? rawValue.trim() : '';
+});
+
+const activeOrgUnitId = computed<string>(() => {
+  const threadOrgUnitId = threadDetail.value?.orgUnitId?.trim();
+  if (threadOrgUnitId) {
+    return threadOrgUnitId;
+  }
+
+  const queryOrgUnitId = typeof route.query.orgUnitId === 'string'
+    ? route.query.orgUnitId.trim()
+    : '';
+  return queryOrgUnitId || subjectContext.value.orgUnitId || '';
+});
+
+const threadSubjectContext = computed<SubjectContext>(() => {
+  const subject = threadDetail.value?.subjectContext;
+  return subject && subject.orgUnitId ? subject : { orgUnitId: activeOrgUnitId.value };
 });
 
 const resolveQueryString = (...keys: string[]): string | null => {
@@ -1639,6 +1685,18 @@ watch(closeModalOpen, (isOpen) => {
 
   void focusFirstModalElement(closeModalRef.value);
 });
+
+watch(
+  threadSubjectContext,
+  (nextSubjectContext) => {
+    subjectContext.value = {
+      ...nextSubjectContext,
+    };
+  },
+  {
+    immediate: true,
+  },
+);
 
 watch(
   () => route.fullPath,
