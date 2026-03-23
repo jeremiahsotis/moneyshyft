@@ -9,6 +9,13 @@ import {
   AsyncPeopleCoreService,
   peopleCoreServiceAsync,
 } from './service';
+import {
+  assignConfidenceBand,
+} from './confidenceBand';
+import {
+  scoreIdentityCandidates,
+  type ScoreContext,
+} from './identityScoring';
 
 export type PeopleCoreIdentityCandidateGenerationReason =
   | 'current_person_link'
@@ -84,13 +91,6 @@ const HIGH_CONFIDENCE_BANDS = new Set<PeopleCoreScoredIdentityCandidate['confide
   'high',
   'very_high',
 ]);
-const BAND_ORDER: Array<PeopleCoreScoredIdentityCandidate['confidenceBand']> = [
-  'very_low',
-  'low',
-  'medium',
-  'high',
-  'very_high',
-];
 const MAX_SCORING_CANDIDATES = 10;
 
 const normalizeString = (value: unknown): string => {
@@ -111,20 +111,6 @@ const isUniqueViolation = (error: unknown): boolean => {
   return (error as { code?: string }).code === UNIQUE_VIOLATION_CODE;
 };
 
-const daysBetweenUtc = (value: string | undefined, asOfUtc: string): number | null => {
-  if (!value) {
-    return null;
-  }
-
-  const valueMs = Date.parse(value);
-  const asOfMs = Date.parse(asOfUtc);
-  if (Number.isNaN(valueMs) || Number.isNaN(asOfMs)) {
-    return null;
-  }
-
-  return Math.max(0, Math.floor((asOfMs - valueMs) / (24 * 60 * 60 * 1000)));
-};
-
 const uniqueStrings = (values: Iterable<string>): string[] =>
   Array.from(new Set(Array.from(values).filter((value) => value.length > 0)));
 
@@ -139,50 +125,11 @@ const appendUnique = (target: string[], values: Iterable<string>): string[] => {
   return Array.from(merged);
 };
 
-const toBand = (
-  score: number,
-): PeopleCoreScoredIdentityCandidate['confidenceBand'] => {
-  if (score <= 0) {
-    return 'very_low';
-  }
-  if (score < 40) {
-    return 'low';
-  }
-  if (score < 80) {
-    return 'medium';
-  }
-  if (score < 120) {
-    return 'high';
-  }
-  return 'very_high';
-};
-
-const capBand = (
-  band: PeopleCoreScoredIdentityCandidate['confidenceBand'],
-  maxBand: PeopleCoreScoredIdentityCandidate['confidenceBand'],
-): PeopleCoreScoredIdentityCandidate['confidenceBand'] =>
-  BAND_ORDER.indexOf(band) > BAND_ORDER.indexOf(maxBand) ? maxBand : band;
-
 const isActivePerson = (person: Person | undefined): boolean =>
   Boolean(person && ACTIVE_PERSON_STATUSES.has(person.status));
 
 const isActiveHousehold = (household: Household | undefined): boolean =>
   Boolean(household && ACTIVE_HOUSEHOLD_STATUSES.has(household.status));
-
-const buildSupportingLinkMap = (
-  links: ContactPointLink[],
-): Map<string, ContactPointLink[]> => {
-  const map = new Map<string, ContactPointLink[]>();
-
-  links.forEach((link) => {
-    const key = `${link.subjectType}:${link.subjectId}`;
-    const existing = map.get(key) || [];
-    existing.push(link);
-    map.set(key, existing);
-  });
-
-  return map;
-};
 
 const addCandidate = (
   candidates: PeopleCoreGeneratedIdentityCandidate[],
@@ -520,209 +467,39 @@ export function scorePeopleCoreIdentityCandidates(input: {
   householdMemberships: HouseholdMembership[];
   asOfUtc: string;
 }): PeopleCoreScoredIdentityCandidate[] {
-  const currentLinksBySubject = buildSupportingLinkMap(input.currentLinks);
-  const historicalLinksBySubject = buildSupportingLinkMap(input.historicalLinks);
   const currentPersonLinkCount = input.currentLinks.filter((link) => link.subjectType === 'person').length;
-  const currentHouseholdLinkIds = new Set(
-    input.currentLinks
-      .filter((link) => link.subjectType === 'household')
-      .map((link) => link.subjectId),
-  );
-  const currentHouseholdIdsByPersonId = new Map<string, Set<string>>();
-  const currentPersonIdsByHouseholdId = new Map<string, Set<string>>();
-
-  input.householdMemberships
-    .filter((membership) => membership.isCurrent)
-    .forEach((membership) => {
-      const personHouseholds = currentHouseholdIdsByPersonId.get(membership.personId) || new Set<string>();
-      personHouseholds.add(membership.householdId);
-      currentHouseholdIdsByPersonId.set(membership.personId, personHouseholds);
-
-      const householdPeople = currentPersonIdsByHouseholdId.get(membership.householdId) || new Set<string>();
-      householdPeople.add(membership.personId);
-      currentPersonIdsByHouseholdId.set(membership.householdId, householdPeople);
-    });
-
-  const scoreLinkRecency = (links: ContactPointLink[]): { score: number; reasons: string[] } => {
-    const reasons: string[] = [];
-    const linkAges = links
-      .map((link) => daysBetweenUtc(link.lastUsedAt, input.asOfUtc))
-      .filter((days): days is number => days !== null);
-
-    if (linkAges.some((days) => days <= 30)) {
-      reasons.push('recent activity in last 0-30 days (+20)');
-      return { score: 20, reasons };
-    }
-
-    if (linkAges.some((days) => days >= 31 && days <= 180)) {
-      reasons.push('recent activity in last 31-180 days (+10)');
-      return { score: 10, reasons };
-    }
-
-    if (linkAges.length > 0 && linkAges.every((days) => days > 365)) {
-      reasons.push('no recent use over 365 days (-15)');
-      return { score: -15, reasons };
-    }
-
-    return { score: 0, reasons };
+  const scoreContext: ScoreContext = {
+    contactPoint: {
+      status: input.contactPoint.status,
+      confirmedShared: input.contactPoint.confirmedShared,
+      reassignmentSuspected: input.contactPoint.reassignmentSuspected,
+    },
+    contactPointStatus: input.contactPoint.status,
+    currentLinkCount: currentPersonLinkCount,
+    currentLinks: input.currentLinks,
+    historicalLinks: input.historicalLinks,
+    householdMemberships: input.householdMemberships,
+    recentActivity: uniqueStrings([
+      ...input.currentLinks.map((link) => normalizeString(link.lastUsedAt)),
+      ...input.historicalLinks.map((link) => normalizeString(link.lastUsedAt)),
+    ]),
+    recentConfirmation: uniqueStrings([
+      ...input.currentLinks.map((link) => normalizeString(link.lastConfirmedAt)),
+      ...input.historicalLinks.map((link) => normalizeString(link.lastConfirmedAt)),
+    ]),
+    asOfUtc: input.asOfUtc,
   };
 
-  const scoreLinkConfirmation = (links: ContactPointLink[]): { score: number; reasons: string[] } => {
-    const reasons: string[] = [];
-    if (links.some((link) => link.manuallyConfirmed)) {
-      reasons.push('manual confirmation on current link (+40)');
-    }
-    if (links.some((link) => link.confirmationSource === 'resolver')) {
-      reasons.push('resolver verified current link (+60)');
-    }
-    if (links.some((link) => {
-      const age = daysBetweenUtc(link.lastConfirmedAt, input.asOfUtc);
-      return age !== null && age <= 180;
-    })) {
-      reasons.push('recent confirmation in last 0-180 days (+15)');
-    }
-
-    return {
-      score:
-        (links.some((link) => link.manuallyConfirmed) ? 40 : 0)
-        + (links.some((link) => link.confirmationSource === 'resolver') ? 60 : 0)
-        + (links.some((link) => {
-          const age = daysBetweenUtc(link.lastConfirmedAt, input.asOfUtc);
-          return age !== null && age <= 180;
-        }) ? 15 : 0),
-      reasons,
-    };
-  };
-
-  return input.candidates
-    .map((candidate, index) => {
-      let score = 0;
-      const scoreReasons: string[] = [];
-      const subjectKey = `${candidate.subjectType}:${candidate.subjectId}`;
-      const directCurrentLinks = currentLinksBySubject.get(subjectKey) || [];
-      const directHistoricalLinks = historicalLinksBySubject.get(subjectKey) || [];
-      const personHouseholdIds = currentHouseholdIdsByPersonId.get(candidate.subjectId) || new Set<string>();
-      const corroboratingCurrentHouseholdLinks = candidate.subjectType === 'person'
-        ? input.currentLinks.filter((link) =>
-          link.subjectType === 'household' && personHouseholdIds.has(link.subjectId))
-        : [];
-      const corroboratingCurrentPersonLinks = candidate.subjectType === 'household'
-        ? input.currentLinks.filter((link) =>
-          link.subjectType === 'person'
-          && (currentPersonIdsByHouseholdId.get(candidate.subjectId) || new Set<string>()).has(link.subjectId))
-        : [];
-
-      if (candidate.subjectType === 'person' && directCurrentLinks.length > 0) {
-        score += 60;
-        scoreReasons.push('exact current person link (+60)');
-      }
-
-      if (
-        (candidate.subjectType === 'household' && directCurrentLinks.length > 0)
-        || (candidate.subjectType === 'person' && corroboratingCurrentHouseholdLinks.length > 0)
-      ) {
-        score += 20;
-        scoreReasons.push('exact current household link (+20)');
-      }
-
-      const currentPrimaryLinks = [
-        ...directCurrentLinks,
-        ...corroboratingCurrentHouseholdLinks,
-        ...corroboratingCurrentPersonLinks,
-      ];
-      if (currentPrimaryLinks.some((link) => link.isPrimary)) {
-        score += 15;
-        scoreReasons.push('current primary link (+15)');
-      }
-
-      const confirmationScore = scoreLinkConfirmation(currentPrimaryLinks);
-      score += confirmationScore.score;
-      scoreReasons.push(...confirmationScore.reasons);
-
-      const activityScore = scoreLinkRecency([
-        ...currentPrimaryLinks,
-        ...directHistoricalLinks,
-      ]);
-      score += activityScore.score;
-      scoreReasons.push(...activityScore.reasons);
-
-      if (candidate.subjectType === 'person' && corroboratingCurrentHouseholdLinks.length > 0) {
-        score += 15;
-        scoreReasons.push('same-household corroboration (+15)');
-      }
-
-      if (currentPersonLinkCount > 1) {
-        score -= 35;
-        scoreReasons.push('multiple current person links on same ContactPoint (-35)');
-      }
-
-      if (input.contactPoint.status === 'active_shared_possible') {
-        score -= 20;
-        scoreReasons.push('ContactPoint status active_shared_possible (-20)');
-      }
-      if (input.contactPoint.status === 'active_shared_confirmed') {
-        score -= 45;
-        scoreReasons.push('ContactPoint status active_shared_confirmed (-45)');
-      }
-      if (input.contactPoint.status === 'stale') {
-        score -= 25;
-        scoreReasons.push('ContactPoint status stale (-25)');
-      }
-      if (input.contactPoint.status === 'reassignment_suspected') {
-        score -= 70;
-        scoreReasons.push('ContactPoint status reassignment_suspected (-70)');
-      }
-
-      if (directCurrentLinks.length === 0 && directHistoricalLinks.length > 0) {
-        score -= 40;
-        scoreReasons.push('historical-only link (-40)');
-      }
-
-      if (candidate.subjectType === 'person' && currentHouseholdLinkIds.size > 0) {
-        if (directCurrentLinks.length > 0 && corroboratingCurrentHouseholdLinks.length === 0) {
-          score -= 60;
-          scoreReasons.push('conflicting identity fields (-60)');
-        } else if (
-          corroboratingCurrentHouseholdLinks.length > 0
-          && corroboratingCurrentHouseholdLinks.length < currentHouseholdLinkIds.size
-        ) {
-          score -= 25;
-          scoreReasons.push('cross-household conflict (-25)');
-        }
-      }
-
-      if (candidate.subjectType === 'household' && corroboratingCurrentPersonLinks.length > 0) {
-        score += 15;
-        scoreReasons.push('same-household corroboration (+15)');
-      }
-
-      let confidenceBand = toBand(score);
-      if (input.contactPoint.status === 'reassignment_suspected' || input.contactPoint.reassignmentSuspected) {
-        confidenceBand = capBand(confidenceBand, 'medium');
-      }
-      if (input.contactPoint.status === 'active_shared_confirmed' || input.contactPoint.confirmedShared) {
-        confidenceBand = capBand(confidenceBand, 'high');
-      }
-      if (currentPersonLinkCount > 1) {
-        confidenceBand = capBand(confidenceBand, 'high');
-      }
-
-      return {
-        ...candidate,
-        score,
-        confidenceBand,
-        scoreReasons,
-        __index: index,
-      };
-    })
-    .sort((left, right) => {
-      if (right.score !== left.score) {
-        return right.score - left.score;
-      }
-
-      return left.__index - right.__index;
-    })
-    .map(({ __index, ...candidate }) => candidate);
+  return scoreIdentityCandidates(input.candidates, scoreContext)
+    .map((candidate) => ({
+      ...candidate,
+      confidenceBand: assignConfidenceBand(
+        candidate.score,
+        input.contactPoint.status,
+        currentPersonLinkCount > 1,
+      ),
+      scoreReasons: candidate.confidenceReasons,
+    }));
 }
 
 async function resolveInboundContactPointIdentityWithServiceAsync(
