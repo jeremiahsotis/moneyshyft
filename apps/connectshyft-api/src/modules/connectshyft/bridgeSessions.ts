@@ -50,7 +50,7 @@ export interface ConnectShyftBridgeLegProviderControlUpdateInput {
   providerCallControlId: string
 }
 
-type PersistedConnectShyftBridgeLegRole = Extract<ConnectShyftBridgeLegRole, 'operator' | 'neighbor'>
+type PersistedConnectShyftBridgeLegRole = ConnectShyftBridgeLegRole
 
 type ConnectShyftBridgeSessionScope = {
   bridgeSessionId: string
@@ -302,6 +302,7 @@ const mapLegRow = (row: DbBridgeLegRow): BridgeLegRecord => ({
   legRole: row.leg_role,
   contactPointId: row.contact_point_id,
   providerCallId: normalizeString(row.provider_call_id) || null,
+  providerCallControlId: normalizeString(row.provider_call_control_id) || null,
   status: row.leg_status as BridgeLegRecord['status'],
   startedAt: toDate(row.started_at_utc),
   answeredAt: toDate(row.answered_at_utc),
@@ -341,6 +342,7 @@ const legToRow = (leg: BridgeLegRecord) => ({
   leg_role: leg.legRole,
   contact_point_id: leg.contactPointId,
   provider_call_id: leg.providerCallId ?? null,
+  provider_call_control_id: leg.providerCallControlId ?? null,
   leg_status: leg.status,
   started_at_utc: leg.startedAt ? leg.startedAt.toISOString() : null,
   answered_at_utc: leg.answeredAt ? leg.answeredAt.toISOString() : null,
@@ -370,6 +372,9 @@ class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository 
     if (leg.providerCallId) {
       this.sessionIdByProviderCallId.set(leg.providerCallId, leg.bridgeSessionId)
     }
+    if (leg.providerCallControlId) {
+      this.sessionIdByProviderCallControlId.set(leg.providerCallControlId, leg.bridgeSessionId)
+    }
     return Promise.resolve()
   }
 
@@ -378,12 +383,33 @@ class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository 
     const legs = new Map<PersistedConnectShyftBridgeLegRole, BridgeLegRecord>()
     legs.set('operator', { ...aggregate.operatorLeg })
     legs.set('neighbor', { ...aggregate.neighborLeg })
+    if (aggregate.voicemailLeg) {
+      legs.set('voicemail', { ...aggregate.voicemailLeg })
+    }
     this.legsBySessionId.set(aggregate.session.id, legs)
     if (aggregate.operatorLeg.providerCallId) {
       this.sessionIdByProviderCallId.set(aggregate.operatorLeg.providerCallId, aggregate.session.id)
     }
     if (aggregate.neighborLeg.providerCallId) {
       this.sessionIdByProviderCallId.set(aggregate.neighborLeg.providerCallId, aggregate.session.id)
+    }
+    if (aggregate.operatorLeg.providerCallControlId) {
+      this.sessionIdByProviderCallControlId.set(
+        aggregate.operatorLeg.providerCallControlId,
+        aggregate.session.id,
+      )
+    }
+    if (aggregate.neighborLeg.providerCallControlId) {
+      this.sessionIdByProviderCallControlId.set(
+        aggregate.neighborLeg.providerCallControlId,
+        aggregate.session.id,
+      )
+    }
+    if (aggregate.voicemailLeg?.providerCallControlId) {
+      this.sessionIdByProviderCallControlId.set(
+        aggregate.voicemailLeg.providerCallControlId,
+        aggregate.session.id,
+      )
     }
     return Promise.resolve()
   }
@@ -393,6 +419,7 @@ class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository 
     const legs = this.legsBySessionId.get(sessionId)
     const operatorLeg = legs?.get('operator')
     const neighborLeg = legs?.get('neighbor')
+    const voicemailLeg = legs?.get('voicemail') ?? null
     if (!session || !operatorLeg || !neighborLeg) {
       return Promise.resolve(null)
     }
@@ -401,6 +428,7 @@ class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository 
       session: { ...session },
       operatorLeg: { ...operatorLeg },
       neighborLeg: { ...neighborLeg },
+      ...(voicemailLeg ? { voicemailLeg: { ...voicemailLeg } } : {}),
     })
   }
 
@@ -490,20 +518,47 @@ class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository 
       return scopedAggregate
     }
 
-    const persistedLegRole = toPersistedBridgeLegRole(input.legRole)
-    if (!persistedLegRole) {
+    const persistedLegRole = toPersistedBridgeLegRole(input.legRole) || input.legRole
+    const current = this.legsBySessionId.get(input.bridgeSessionId) || new Map()
+    const existingLeg = current.get(persistedLegRole)
+    const now = new Date()
+    const nextLeg = existingLeg
+      ? {
+        ...existingLeg,
+        providerCallControlId,
+        updatedAt: now,
+      }
+      : input.legRole === 'voicemail'
+        ? {
+          id: randomUUID(),
+          tenantId: input.tenantId,
+          orgUnitId: input.orgUnitId,
+          bridgeSessionId: input.bridgeSessionId,
+          legRole: 'voicemail' as const,
+          contactPointId: scopedAggregate.neighborLeg.contactPointId,
+          providerCallId: null,
+          providerCallControlId,
+          status: 'ringing' as const,
+          startedAt: now,
+          answeredAt: null,
+          endedAt: null,
+          failureCode: null,
+          failureMessage: null,
+          createdAt: now,
+          updatedAt: now,
+        }
+        : null
+
+    if (!nextLeg) {
       return null
     }
 
-    const existingLeg = this.legsBySessionId.get(input.bridgeSessionId)?.get(persistedLegRole)
-    if (!existingLeg) {
-      return null
-    }
-
+    current.set(persistedLegRole, nextLeg)
+    this.legsBySessionId.set(input.bridgeSessionId, current)
     this.sessionIdByProviderCallControlId.set(providerCallControlId, input.bridgeSessionId)
     this.sessions.set(input.bridgeSessionId, {
       ...scopedAggregate.session,
-      updatedAt: new Date(),
+      updatedAt: now,
     })
 
     return this.getAggregateBySessionId(input.bridgeSessionId)
@@ -598,6 +653,7 @@ class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
         'leg_role',
         'contact_point_id',
         'provider_call_id',
+        'provider_call_control_id',
         'leg_status',
         'started_at_utc',
         'answered_at_utc',
@@ -610,6 +666,7 @@ class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
 
     const operatorLeg = legRows.find((row) => row.leg_role === 'operator')
     const neighborLeg = legRows.find((row) => row.leg_role === 'neighbor')
+    const voicemailLeg = legRows.find((row) => row.leg_role === 'voicemail')
     if (!operatorLeg || !neighborLeg) {
       return null
     }
@@ -618,6 +675,7 @@ class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
       session: mapSessionRow(sessionRow),
       operatorLeg: mapLegRow(operatorLeg),
       neighborLeg: mapLegRow(neighborLeg),
+      ...(voicemailLeg ? { voicemailLeg: mapLegRow(voicemailLeg) } : {}),
     }
   }
 
@@ -744,16 +802,47 @@ class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
       return scopedAggregate
     }
 
-    const persistedLegRole = toPersistedBridgeLegRole(input.legRole)
-    if (!persistedLegRole) {
-      return null
-    }
-
+    const persistedLegRole = toPersistedBridgeLegRole(input.legRole) || input.legRole
     let updatedLegRows = 0
     const nowIsoUtc = new Date().toISOString()
 
     await this.knexClient.transaction(async (trx) => {
-      updatedLegRows = await trx
+      const existingLegRow = await trx
+        .withSchema('connectshyft')
+        .table(BRIDGE_LEGS_TABLE)
+        .where({
+          bridge_session_id: input.bridgeSessionId,
+          tenant_id: input.tenantId,
+          org_unit_id: input.orgUnitId,
+          leg_role: persistedLegRole,
+        })
+        .first<{ id: string }>('id')
+
+      if (!existingLegRow && input.legRole === 'voicemail') {
+        updatedLegRows = 1
+        await trx
+          .withSchema('connectshyft')
+          .table(BRIDGE_LEGS_TABLE)
+          .insert({
+            id: randomUUID(),
+            tenant_id: input.tenantId,
+            org_unit_id: input.orgUnitId,
+            bridge_session_id: input.bridgeSessionId,
+            leg_role: 'voicemail',
+            contact_point_id: scopedAggregate.neighborLeg.contactPointId,
+            provider_call_id: null,
+            provider_call_control_id: providerCallControlId,
+            leg_status: 'ringing',
+            started_at_utc: nowIsoUtc,
+            answered_at_utc: null,
+            ended_at_utc: null,
+            failure_code: null,
+            failure_message: null,
+            created_at_utc: nowIsoUtc,
+            updated_at_utc: nowIsoUtc,
+          })
+      } else {
+        updatedLegRows = await trx
         .withSchema('connectshyft')
         .table(BRIDGE_LEGS_TABLE)
         .where({
@@ -766,6 +855,7 @@ class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
           provider_call_control_id: providerCallControlId,
           updated_at_utc: nowIsoUtc,
         })
+      }
 
       if (!updatedLegRows) {
         return

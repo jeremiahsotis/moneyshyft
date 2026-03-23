@@ -2,7 +2,10 @@ import connectShyftRouter, {
   resetConnectShyftOutboundDispatchReplayLedgerForTests,
 } from '../connectshyft'
 import * as BridgeSessionsModule from '../../../../modules/connectshyft/bridgeSessions'
-import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions'
+import {
+  findConnectShyftBridgeSessionByProviderCallControlIdAsync,
+  resetConnectShyftBridgeSessionStateForTests,
+} from '../../../../modules/connectshyft/bridgeSessions'
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents'
 import { connectShyftNumberMappingServiceAsync } from '../../../../modules/connectshyft/numberMappings'
 import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver'
@@ -44,6 +47,22 @@ const startOutboundCallMock = jest.fn(async (command: { threadId: string; target
   adapterInvoked: true as const,
   providerBranchingInDomain: false as const,
   requestedAt: '2026-03-11T12:05:00.000Z',
+}))
+const startBridgeOutboundCallMock = jest.fn(async (command: {
+  threadId: string
+  bridgeSessionId: string
+  legRole: string
+}) => ({
+  providerKey: 'telnyx',
+  channel: 'call' as const,
+  providerLegId: command.legRole === 'voicemail'
+    ? `provider-leg-voicemail-${command.bridgeSessionId}`
+    : `provider-leg-${command.legRole}-${command.threadId}`,
+  providerMessageId: null,
+  providerRequestId: `req-bridge-leg-${command.legRole}-2001`,
+  adapterInvoked: true as const,
+  providerBranchingInDomain: false as const,
+  requestedAt: '2026-03-11T12:05:30.000Z',
 }))
 const startBridgeSessionMock = jest.fn(async (command: {
   bridgeSessionId: string
@@ -93,6 +112,7 @@ jest.mock('../../../../../../../infrastructure/communications', () => ({
     adapterInterfaceVersion: 'v1',
     sendSms: sendSmsMock,
     startOutboundCall: startOutboundCallMock,
+    startBridgeOutboundCall: startBridgeOutboundCallMock,
     startBridgeSession: startBridgeSessionMock,
     endCall: endCallMock,
     verifyWebhook: verifyWebhookMock,
@@ -266,6 +286,7 @@ describe('connectshyft bridge webhook flow', () => {
   beforeEach(() => {
     sendSmsMock.mockClear()
     startOutboundCallMock.mockClear()
+    startBridgeOutboundCallMock.mockClear()
     startBridgeSessionMock.mockClear()
     endCallMock.mockClear()
     verifyWebhookMock.mockClear()
@@ -360,9 +381,10 @@ describe('connectshyft bridge webhook flow', () => {
         },
       },
     })
-    expect(startOutboundCallMock).toHaveBeenCalledTimes(1)
-    expect(startOutboundCallMock).toHaveBeenCalledWith(expect.objectContaining({
+    expect(startBridgeOutboundCallMock).toHaveBeenCalledTimes(1)
+    expect(startBridgeOutboundCallMock).toHaveBeenCalledWith(expect.objectContaining({
       targetPhone: '+12605550155',
+      legRole: 'operator',
     }))
   })
 
@@ -470,7 +492,7 @@ describe('connectshyft bridge webhook flow', () => {
     })
 
     expect(startResponse.status).toBe(200)
-    expect(startOutboundCallMock).toHaveBeenCalledTimes(1)
+    expect(startBridgeOutboundCallMock).toHaveBeenCalledTimes(1)
 
     const operatorAnswered = await invokeRoute({
       url: '/webhooks/inbound',
@@ -508,9 +530,10 @@ describe('connectshyft bridge webhook flow', () => {
         },
       },
     })
-    expect(startOutboundCallMock).toHaveBeenCalledTimes(2)
-    expect(startOutboundCallMock).toHaveBeenLastCalledWith(expect.objectContaining({
+    expect(startBridgeOutboundCallMock).toHaveBeenCalledTimes(2)
+    expect(startBridgeOutboundCallMock).toHaveBeenLastCalledWith(expect.objectContaining({
       targetPhone: '+12605550111',
+      legRole: 'neighbor',
     }))
 
     const neighborAnswered = await invokeRoute({
@@ -556,7 +579,7 @@ describe('connectshyft bridge webhook flow', () => {
     }))
   })
 
-  it('marks timeout and voicemail fallback pending exactly once when the neighbor keeps ringing for 30 seconds', async () => {
+  it('marks timeout, dispatches a voicemail leg, and persists it exactly once when the neighbor keeps ringing for 30 seconds', async () => {
     jest.useFakeTimers()
     const updateVoicemailFallbackSpy = jest.spyOn(
       BridgeSessionsModule,
@@ -598,6 +621,7 @@ describe('connectshyft bridge webhook flow', () => {
     }))
 
     updateVoicemailFallbackSpy.mockClear()
+    startBridgeOutboundCallMock.mockClear()
 
     await jest.advanceTimersByTimeAsync(30000)
 
@@ -610,10 +634,31 @@ describe('connectshyft bridge webhook flow', () => {
       voicemailFallbackStartedAtUtc: expect.any(String),
       voicemailRecordingStatus: 'pending',
     }))
+    expect(startBridgeOutboundCallMock).toHaveBeenCalledTimes(1)
+    expect(startBridgeOutboundCallMock).toHaveBeenCalledWith(expect.objectContaining({
+      bridgeSessionId,
+      legRole: 'voicemail',
+      targetPhone: '+12605550111',
+      fromContactPointId: '+12605550191',
+    }))
+
+    const persistedVoicemailBridgeSession = await findConnectShyftBridgeSessionByProviderCallControlIdAsync({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      providerCallControlId: `provider-leg-voicemail-${bridgeSessionId}`,
+    })
+    expect(persistedVoicemailBridgeSession?.session.id).toBe(bridgeSessionId)
+    expect(persistedVoicemailBridgeSession?.voicemailLeg).toMatchObject({
+      legRole: 'voicemail',
+      contactPointId: '+12605550111',
+      providerCallControlId: `provider-leg-voicemail-${bridgeSessionId}`,
+      status: 'ringing',
+    })
 
     await jest.advanceTimersByTimeAsync(30000)
 
     expect(updateVoicemailFallbackSpy).toHaveBeenCalledTimes(1)
+    expect(startBridgeOutboundCallMock).toHaveBeenCalledTimes(1)
     expect(startBridgeSessionMock).not.toHaveBeenCalled()
   })
 
@@ -687,7 +732,7 @@ describe('connectshyft bridge webhook flow', () => {
     })
     expect((operatorAnsweredDuplicate.body as any).data.replaySafe.dedupeKey)
       .toContain('provider-event-operator-answered-1001')
-    expect(startOutboundCallMock).toHaveBeenCalledTimes(2)
+    expect(startBridgeOutboundCallMock).toHaveBeenCalledTimes(2)
     expect(startBridgeSessionMock).toHaveBeenCalledTimes(0)
   })
 

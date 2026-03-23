@@ -1237,6 +1237,13 @@ async function executeConnectShyftNeighborRingTimeoutAsync(input: {
     };
   }
 
+  if (aggregate.voicemailLeg) {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
   const neighborProviderLegId = normalizeLifecycleString(input.neighborProviderLegId);
   const persistedNeighborProviderLegId = normalizeLifecycleString(aggregate.neighborLeg.providerCallId);
   if (neighborProviderLegId && persistedNeighborProviderLegId && neighborProviderLegId !== persistedNeighborProviderLegId) {
@@ -1279,10 +1286,74 @@ async function executeConnectShyftNeighborRingTimeoutAsync(input: {
 
   connectShyftNeighborRingTimeoutExecutionLedger.add(input.bridgeSessionId);
 
-  return {
-    handled: true,
-    aggregate: updatedAggregate,
+  const providerSelectionRequestHeaders = {
+    'x-test-connectshyft-tenant-id': input.tenantId,
+    'x-test-connectshyft-orgunit-id': input.orgUnitId,
+    'x-test-connectshyft-enabled-providers': JSON.stringify(['telnyx']),
   };
+  const providerSelection = resolveConnectShyftProviderAdapter({
+    req: {
+      body: {
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        providerKey: 'telnyx',
+      },
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      headers: providerSelectionRequestHeaders,
+      header(name: string): string | undefined {
+        return providerSelectionRequestHeaders[name.toLowerCase() as keyof typeof providerSelectionRequestHeaders];
+      },
+    },
+    requestedProvider: 'telnyx',
+    operation: 'call',
+  });
+
+  if (!providerSelection.ok) {
+    return {
+      handled: true,
+      aggregate: updatedAggregate,
+    };
+  }
+
+  try {
+    const startBridgeOutboundCall = providerSelection.adapter.startBridgeOutboundCall;
+    if (!startBridgeOutboundCall) {
+      return {
+        handled: true,
+        aggregate: updatedAggregate,
+      };
+    }
+
+    const voicemailLegDispatch = await startBridgeOutboundCall({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId: input.threadId,
+      providerKey: providerSelection.providerResolution.resolvedProvider,
+      bridgeSessionId: input.bridgeSessionId,
+      legId: `voicemail-leg-${input.bridgeSessionId}`,
+      legRole: 'voicemail',
+      targetPhone: updatedAggregate.neighborLeg.contactPointId,
+      fromContactPointId: updatedAggregate.session.selectedOutboundContactPointId ?? null,
+    });
+    const persistedAggregate = await setConnectShyftBridgeLegProviderCallControlIdAsync({
+      bridgeSessionId: input.bridgeSessionId,
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      legRole: 'voicemail',
+      providerCallControlId: voicemailLegDispatch.providerLegId || '',
+    });
+
+    return {
+      handled: true,
+      aggregate: persistedAggregate || updatedAggregate,
+    };
+  } catch (_error) {
+    return {
+      handled: true,
+      aggregate: updatedAggregate,
+    };
+  }
 }
 
 async function scheduleConnectShyftNeighborRingTimeoutAsync(input: {

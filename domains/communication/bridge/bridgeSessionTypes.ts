@@ -10,7 +10,7 @@ export type BridgeSessionStatus =
   | 'canceled'
   | 'expired'
 
-export type BridgeLegRole = 'operator' | 'neighbor'
+export type BridgeLegRole = 'operator' | 'neighbor' | 'voicemail'
 
 export type BridgeLegStatus =
   | 'created'
@@ -59,6 +59,7 @@ export type BridgeLegRecord = {
   legRole: BridgeLegRole
   contactPointId: string
   providerCallId?: string | null
+  providerCallControlId?: string | null
   status: BridgeLegStatus
   startedAt?: Date | null
   answeredAt?: Date | null
@@ -141,6 +142,7 @@ export type BridgeSessionAggregate = {
   session: BridgeSessionRecord
   operatorLeg: BridgeLegRecord
   neighborLeg: BridgeLegRecord
+  voicemailLeg?: BridgeLegRecord | null
 }
 
 export type BridgeSessionRepository = {
