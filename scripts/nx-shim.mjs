@@ -52,9 +52,9 @@ function loadProjects() {
 }
 
 function runShellCommand(command, cwd) {
-  const child = spawn(command, {
+  const shellPath = process.env.SHELL || '/bin/bash';
+  const child = spawn(shellPath, ['-lc', command], {
     cwd,
-    shell: true,
     stdio: 'inherit',
     env: process.env,
   });
@@ -87,8 +87,7 @@ function delegateToNx() {
   });
 }
 
-if (argv[0] === 'run' && typeof argv[1] === 'string' && argv[1].includes(':')) {
-  const [projectName, targetName] = argv[1].split(':');
+function tryRunProjectTarget(projectName, targetName) {
   const projects = loadProjects();
   const project = projects.get(projectName);
   const target = project?.config?.targets?.[targetName];
@@ -98,7 +97,20 @@ if (argv[0] === 'run' && typeof argv[1] === 'string' && argv[1].includes(':')) {
       ? path.resolve(workspaceRoot, target.options.cwd)
       : workspaceRoot;
     runShellCommand(target.options.command, cwd);
-  } else {
+    return true;
+  }
+
+  return false;
+}
+
+if (argv[0] === 'run' && typeof argv[1] === 'string' && argv[1].includes(':')) {
+  const [projectName, targetName] = argv[1].split(':');
+
+  if (!tryRunProjectTarget(projectName, targetName)) {
+    delegateToNx();
+  }
+} else if (argv[0] === 'run' && typeof argv[1] === 'string') {
+  if (!tryRunProjectTarget(argv[1], 'run')) {
     delegateToNx();
   }
 } else {
