@@ -5,6 +5,14 @@ import type {
 
 export type ConfidenceBand = IdentityConfidenceBand;
 
+const BAND_ORDER: ConfidenceBand[] = [
+  'very_low',
+  'low',
+  'medium',
+  'high',
+  'very_high',
+];
+
 function mapScoreToBand(score: number): ConfidenceBand {
   if (!Number.isFinite(score)) {
     throw new Error('assignConfidenceBand requires a finite numeric score.');
@@ -41,9 +49,23 @@ export function assignConfidenceBand(
   }
 
   const initial = mapScoreToBand(score);
+  let cappedBand = initial;
 
-  void initial;
-  void hasMultipleCurrentLinks;
+  const capBand = (maximumBand: ConfidenceBand): void => {
+    if (BAND_ORDER.indexOf(cappedBand) > BAND_ORDER.indexOf(maximumBand)) {
+      cappedBand = maximumBand;
+    }
+  };
 
-  throw new Error('assignConfidenceBand not implemented');
+  if (status === 'reassignment_suspected') {
+    capBand('medium');
+  }
+  if (status === 'active_shared_confirmed') {
+    capBand('high');
+  }
+  if (hasMultipleCurrentLinks) {
+    capBand('high');
+  }
+
+  return cappedBand;
 }
