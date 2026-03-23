@@ -143,6 +143,10 @@ export type ListCurrentContactPointLinksInput = {
   subjectId?: string;
 };
 
+export type ListContactPointLinksInput = ListCurrentContactPointLinksInput & {
+  isCurrent?: boolean;
+};
+
 export type AppendContactPointEventInput = Omit<ContactPointEvent, 'id' | 'createdAt'> & {
   eventId?: string;
   createdAt?: string;
@@ -182,6 +186,7 @@ export interface PeopleCoreStore {
     input: ListContactPointsByNormalizedValueInput,
   ): Promise<ContactPoint[]>;
   createContactPointLink(input: CreateContactPointLinkInput): Promise<ContactPointLink>;
+  listContactPointLinks(input: ListContactPointLinksInput): Promise<ContactPointLink[]>;
   listCurrentContactPointLinks(
     input: ListCurrentContactPointLinksInput,
   ): Promise<ContactPointLink[]>;
@@ -871,14 +876,26 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
   async listCurrentContactPointLinks(
     input: ListCurrentContactPointLinksInput,
   ): Promise<ContactPointLink[]> {
+    return this.listContactPointLinks({
+      ...input,
+      isCurrent: true,
+    });
+  }
+
+  async listContactPointLinks(input: ListContactPointLinksInput): Promise<ContactPointLink[]> {
     const query = this.knexClient
       .withSchema(PEOPLE_SCHEMA)
       .table('contact_point_links')
       .join('contact_points', 'contact_points.id', '=', 'contact_point_links.contact_point_id')
       .where({
         'contact_points.tenant_id': input.tenantId,
-        'contact_point_links.is_current': true,
       });
+
+    if (typeof input.isCurrent === 'boolean') {
+      query.where({
+        'contact_point_links.is_current': input.isCurrent,
+      });
+    }
 
     if (input.contactPointId) {
       query.where({
@@ -899,6 +916,7 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
     }
 
     const rows = await query
+      .orderBy('contact_point_links.is_current', 'desc')
       .orderBy('contact_point_links.is_primary', 'desc')
       .orderBy('contact_point_links.created_at_utc', 'asc')
       .orderBy('contact_point_links.id', 'asc')
