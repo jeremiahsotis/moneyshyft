@@ -516,6 +516,62 @@ describe('connectshyft inbound voice webhook route characterization', () => {
     }
   });
 
+  it('does not attach a second outbound voicemail artifact when the matched voicemail leg already has one', async () => {
+    const seededBridge = await seedOutboundVoicemailBridgeSession({
+      matchedLegRole: 'voicemail',
+      providerCallControlId: 'provider-leg-voicemail-recording-1011',
+    });
+    const updateVoicemailFallbackSpy = jest.spyOn(
+      BridgeSessionsModule,
+      'updateConnectShyftBridgeSessionVoicemailFallbackAsync',
+    );
+    const findBridgeSessionSpy = jest.spyOn(
+      BridgeSessionsModule,
+      'findConnectShyftBridgeSessionByProviderCallControlIdAsync',
+    ).mockResolvedValue({
+      ...seededBridge.aggregate,
+      session: {
+        ...seededBridge.aggregate.session,
+        voicemailArtifactId: 'vm-thread-f1-unclaimed-1001-provider-event-voice-outbound-voicemail-1011',
+        voicemailRecordingStatus: 'completed',
+      },
+      voicemailLeg: {
+        ...(seededBridge.aggregate as any).voicemailLeg,
+        providerCallControlId: seededBridge.providerCallControlId,
+      },
+    } as any);
+    const app = buildApp();
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildVoiceHeaders())
+        .send(buildVoiceWebhookBody({
+          providerEventId: 'provider-event-voice-outbound-voicemail-1012',
+          providerLegId: seededBridge.providerCallControlId,
+          recordingUrl: 'https://connectshyft.test/outbound-voicemail-recording-1012.mp3',
+        }));
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          bridgeSession: {
+            bridgeSessionId: seededBridge.bridgeSessionId,
+          },
+        },
+      });
+      expect(response.body.data).not.toHaveProperty('voicemailArtifact');
+      expect(response.body.data).not.toHaveProperty('transcription');
+      expect(response.body.data).not.toHaveProperty('transcriptionOutbox');
+      expect(updateVoicemailFallbackSpy).not.toHaveBeenCalled();
+    } finally {
+      findBridgeSessionSpy.mockRestore();
+      updateVoicemailFallbackSpy.mockRestore();
+    }
+  });
+
   it('ignores operator-leg recordings when the matched bridge recording is not voicemail', async () => {
     const seededBridge = await seedOutboundVoicemailBridgeSession({
       matchedLegRole: 'operator',

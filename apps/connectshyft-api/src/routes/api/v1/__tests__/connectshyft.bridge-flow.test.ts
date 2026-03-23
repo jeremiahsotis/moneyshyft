@@ -662,6 +662,112 @@ describe('connectshyft bridge webhook flow', () => {
     expect(startBridgeSessionMock).not.toHaveBeenCalled()
   })
 
+  it('marks voicemail fallback failed and suppresses duplicate timeout execution when voicemail dispatch cannot start', async () => {
+    jest.useFakeTimers()
+    const updateVoicemailFallbackSpy = jest.spyOn(
+      BridgeSessionsModule,
+      'updateConnectShyftBridgeSessionVoicemailFallbackAsync',
+    )
+
+    const startResponse = await invokeRoute({
+      url: '/threads/thread-f1-unclaimed-1001/call',
+      headers: buildHeaders(),
+      body: {
+        providerKey: 'telnyx',
+        operatorPhoneId: '+12605550155',
+        targetPhone: '+12605550111',
+      },
+    })
+    const bridgeSessionId = (startResponse.body as any)?.data?.bridgeSession?.bridgeSessionId
+
+    expect(startResponse.status).toBe(200)
+    expect(bridgeSessionId).toEqual(expect.any(String))
+
+    await invokeRoute({
+      url: '/webhooks/inbound',
+      headers: buildHeaders(),
+      body: {
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        threadId: 'thread-f1-unclaimed-1001',
+        eventType: 'call.answered',
+        providerLegId: 'provider-leg-operator-thread-f1-unclaimed-1001',
+      },
+    })
+
+    updateVoicemailFallbackSpy.mockClear()
+    startBridgeOutboundCallMock.mockClear()
+    startBridgeOutboundCallMock.mockImplementationOnce(async (command: {
+      threadId: string
+      bridgeSessionId: string
+      legRole: string
+    }) => {
+      if (command.legRole === 'voicemail') {
+        throw new Error('voicemail-dispatch-unavailable')
+      }
+
+      return {
+        providerKey: 'telnyx',
+        channel: 'call' as const,
+        providerLegId: `provider-leg-${command.legRole}-${command.threadId}`,
+        providerMessageId: null,
+        providerRequestId: `req-bridge-leg-${command.legRole}-2001`,
+        adapterInvoked: true as const,
+        providerBranchingInDomain: false as const,
+        requestedAt: '2026-03-11T12:05:30.000Z',
+      }
+    })
+
+    await jest.advanceTimersByTimeAsync(30000)
+
+    expect(updateVoicemailFallbackSpy).toHaveBeenCalledTimes(2)
+    expect(updateVoicemailFallbackSpy).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      bridgeSessionId,
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      neighborTimeoutAtUtc: expect.any(String),
+      voicemailFallbackStartedAtUtc: expect.any(String),
+      voicemailRecordingStatus: 'pending',
+    }))
+    expect(updateVoicemailFallbackSpy).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      bridgeSessionId,
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      voicemailRecordingStatus: 'failed',
+    }))
+    expect(startBridgeOutboundCallMock).toHaveBeenCalledTimes(1)
+
+    const failedVoicemailBridgeSession = await findConnectShyftBridgeSessionByProviderCallControlIdAsync({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      providerCallControlId: `provider-leg-voicemail-${bridgeSessionId}`,
+    })
+    expect(failedVoicemailBridgeSession).toBeNull()
+
+    const failedTimeoutAggregate = await BridgeSessionsModule.loadConnectShyftBridgeAggregateBySessionId(
+      bridgeSessionId,
+    )
+
+    expect(failedTimeoutAggregate).toMatchObject({
+      session: {
+        id: bridgeSessionId,
+        status: 'neighbor_dialing',
+      },
+      operatorLeg: {
+        status: 'answered',
+      },
+      neighborLeg: {
+        status: 'ringing',
+      },
+    })
+
+    await jest.advanceTimersByTimeAsync(30000)
+
+    expect(updateVoicemailFallbackSpy).toHaveBeenCalledTimes(2)
+    expect(startBridgeOutboundCallMock).toHaveBeenCalledTimes(1)
+    expect(startBridgeSessionMock).not.toHaveBeenCalled()
+  })
+
   it('suppresses duplicate webhook receipts before bridge side effects are re-applied', async () => {
     await invokeRoute({
       url: '/threads/thread-f1-unclaimed-1001/call',
