@@ -5,3 +5,9 @@ export type SubjectContext = {
   conversationId?: string;
   contactPointId?: string;
 };
+
+export function validateSubjectContext(subject: SubjectContext): void {
+  if (subject.personId && subject.provisionalPersonId) {
+    throw new Error('SubjectContext cannot include both personId and provisionalPersonId');
+  }
+}

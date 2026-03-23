@@ -10,6 +10,7 @@ import {
   type GetContactPointInput,
   type GetHouseholdInput,
   type GetPersonInput,
+  type ListContactPointLinksInput,
   type GetResolverReviewInput,
   type ListContactPointEventsInput,
   type ListContactPointsByNormalizedValueInput,
@@ -102,6 +103,10 @@ export class AsyncPeopleCoreService {
 
   createContactPointLink(input: CreateContactPointLinkInput) {
     return this.execute(() => this.store.createContactPointLink(input));
+  }
+
+  listContactPointLinks(input: ListContactPointLinksInput) {
+    return this.execute(() => this.store.listContactPointLinks(input));
   }
 
   listCurrentContactPointLinks(input: ListCurrentContactPointLinksInput) {

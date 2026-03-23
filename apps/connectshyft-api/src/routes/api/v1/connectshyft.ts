@@ -1,6 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Request, Response, Router } from 'express';
 import type { Knex } from 'knex';
+import type {
+  PersonProvisionalCreatedEvent,
+  ResolverReviewCreatedEvent,
+  SubjectContext,
+} from '@shyft/contracts';
 import {
   buildTelephonyDispatchReplayKey,
   evaluateRetryPolicy,
@@ -134,7 +139,9 @@ import {
   mapConnectShyftInboundSmsWebhookToDomainEvent,
   resolveConnectShyftInboundSmsSenderPhone,
 } from '../../../modules/connectshyft/inboundSms';
-import { resolveSubjectByContactPoint } from '../../../modules/connectshyft/identityResolver';
+import {
+  persistConnectShyftThreadIdentityEventAsync,
+} from '../../../modules/connectshyft/threadIdentityEvents';
 import {
   CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
   CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
@@ -192,6 +199,11 @@ import {
   listIdentityAmbiguityEvents,
   markIdentityAmbiguityEventReviewed,
 } from '../../../modules/connectshyft/ambiguityEvents';
+import {
+  resolveInboundContactPointIdentityAsync,
+  type ResolveInboundContactPointIdentityResult,
+} from '../../../modules/peoplecore/contactPointIdentityResolution';
+import { peopleCoreServiceAsync } from '../../../modules/peoplecore/service';
 import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService';
 import connectShyftOpsRouter from './connectshyft/ops.routes';
 
@@ -1686,7 +1698,7 @@ const buildSyntheticThread = (input: {
       stage: escalationStage,
       nextEvaluationAtUtc,
     },
-  };
+  } as ConnectShyftThread;
 };
 
 const buildLifecycleThreadResponse = (
@@ -1728,7 +1740,7 @@ const buildThreadFromDetailRecord = (
       stage: detail.escalationStage,
       nextEvaluationAtUtc: detail.state === 'UNCLAIMED' ? now : null,
     },
-  };
+  } as ConnectShyftThread;
 };
 
 const buildSyntheticThreadDetailRecord = (input: {
@@ -1766,6 +1778,11 @@ const buildSyntheticThreadDetailRecord = (input: {
   return {
     threadId: input.threadId,
     neighborId: input.descriptor.neighborId || null,
+    personId: null,
+    identityState: null,
+    subjectContext: {
+      orgUnitId: input.descriptor.orgUnitId,
+    },
     neighborDeleted: false,
     neighbor_deleted: false,
     neighborDeletedAtUtc: null,
@@ -2965,11 +2982,192 @@ const canPersistConnectShyftCanonicalSideEffects = (input: {
   return UUID_PATTERN.test(input.tenantId) && UUID_PATTERN.test(input.threadId);
 };
 
+const listInboundCompatibilityNeighborIdsByPhone = async (input: {
+  tenantId: string;
+  normalizedPhone: string;
+}): Promise<string[]> => {
+  const store = new KnexConnectShyftNeighborStore(loadPlatformDb());
+  const matches = await store.listActiveIdentityBoundaryNeighborsByPhoneValue(
+    input.tenantId,
+    input.normalizedPhone,
+  );
+
+  return Array.from(new Set(
+    matches
+      .map((neighbor) => normalizeConnectShyftNeighborIdentifier(neighbor.neighborId || ''))
+      .filter((candidate): candidate is string =>
+        Boolean(candidate) && isValidConnectShyftNeighborIdentifier(candidate)),
+  )).sort((left, right) => left.localeCompare(right));
+};
+
+const buildInboundIdentityEventSubject = (input: {
+  orgUnitId: string;
+  provisionalPersonId: string;
+  contactPointId: string;
+}): SubjectContext => ({
+  orgUnitId: input.orgUnitId,
+  provisionalPersonId: input.provisionalPersonId,
+  contactPointId: input.contactPointId,
+});
+
+const buildPersonProvisionalCreatedEnvelope = (input: {
+  tenantId: string;
+  orgUnitId: string;
+  contactPointId: string;
+  provisionalPerson: Awaited<ReturnType<typeof peopleCoreServiceAsync.getPerson>>;
+}): PersonProvisionalCreatedEvent => ({
+  id: randomUUID(),
+  type: 'person.provisional_created',
+  source: 'connectshyft.inbound_webhook',
+  tenantId: input.tenantId,
+  orgUnitId: input.orgUnitId,
+  subject: buildInboundIdentityEventSubject({
+    orgUnitId: input.orgUnitId,
+    provisionalPersonId: input.provisionalPerson!.id,
+    contactPointId: input.contactPointId,
+  }),
+  createdAt: input.provisionalPerson!.createdAt,
+  payload: {
+    id: input.provisionalPerson!.id,
+    tenantId: input.provisionalPerson!.tenantId,
+    orgUnitId: input.provisionalPerson!.orgUnitId,
+    firstName: input.provisionalPerson!.firstName,
+    lastName: input.provisionalPerson!.lastName,
+    preferredName: input.provisionalPerson!.preferredName,
+    status: input.provisionalPerson!.status,
+    contactPointId: input.contactPointId,
+  },
+});
+
+const buildResolverReviewCreatedEnvelope = (input: {
+  tenantId: string;
+  orgUnitId: string;
+  contactPointId: string;
+  provisionalPersonId: string;
+  resolverReview: Awaited<ReturnType<typeof peopleCoreServiceAsync.getResolverReview>>;
+}): ResolverReviewCreatedEvent => ({
+  id: randomUUID(),
+  type: 'resolver_review.created',
+  source: 'connectshyft.inbound_webhook',
+  tenantId: input.tenantId,
+  orgUnitId: input.orgUnitId,
+  subject: buildInboundIdentityEventSubject({
+    orgUnitId: input.orgUnitId,
+    provisionalPersonId: input.provisionalPersonId,
+    contactPointId: input.contactPointId,
+  }),
+  createdAt: input.resolverReview!.requestedAt,
+  payload: {
+    id: input.resolverReview!.id,
+    tenantId: input.resolverReview!.tenantId,
+    orgUnitId: input.resolverReview!.orgUnitId,
+    reviewType: input.resolverReview!.reviewType,
+    reviewStatus: input.resolverReview!.reviewStatus,
+    priority: input.resolverReview!.priority,
+    triggerSourceType: input.resolverReview!.triggerSourceType,
+    triggerSourceId: input.resolverReview!.triggerSourceId,
+    candidatePersonIds: input.resolverReview!.candidatePersonIds,
+    contactPointId: input.resolverReview!.contactPointId || input.contactPointId,
+    confidenceBand: input.resolverReview!.confidenceBand,
+    riskFlags: input.resolverReview!.riskFlags,
+    requestedAt: input.resolverReview!.requestedAt,
+    provisionalPersonId: input.resolverReview!.provisionalPersonId,
+  },
+});
+
+const persistInboundIdentityAttachmentEventsAsync = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  identityAttachment: ResolveInboundContactPointIdentityResult;
+}): Promise<boolean> => {
+  if (input.identityAttachment.outcome === 'canonical') {
+    return true;
+  }
+
+  const provisionalPersonId = input.identityAttachment.provisionalPersonId;
+  if (!provisionalPersonId) {
+    return false;
+  }
+
+  try {
+    const provisionalPerson = await peopleCoreServiceAsync.getPerson({
+      tenantId: input.tenantId,
+      personId: provisionalPersonId,
+    });
+    if (!provisionalPerson) {
+      throw new Error('Resolved provisional person could not be loaded for inbound identity event persistence.');
+    }
+
+    await persistConnectShyftThreadIdentityEventAsync({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId: input.threadId,
+      subject: buildInboundIdentityEventSubject({
+        orgUnitId: input.orgUnitId,
+        provisionalPersonId,
+        contactPointId: input.identityAttachment.contactPointId,
+      }),
+      event: buildPersonProvisionalCreatedEnvelope({
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        contactPointId: input.identityAttachment.contactPointId,
+        provisionalPerson,
+      }),
+    });
+
+    if (
+      input.identityAttachment.outcome !== 'resolver_needed'
+      || !input.identityAttachment.resolverReviewId
+    ) {
+      return true;
+    }
+
+    const resolverReview = await peopleCoreServiceAsync.getResolverReview({
+      tenantId: input.tenantId,
+      reviewId: input.identityAttachment.resolverReviewId,
+    });
+    if (!resolverReview) {
+      throw new Error('Resolved resolver review could not be loaded for inbound identity event persistence.');
+    }
+
+    await persistConnectShyftThreadIdentityEventAsync({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId: input.threadId,
+      subject: buildInboundIdentityEventSubject({
+        orgUnitId: input.orgUnitId,
+        provisionalPersonId,
+        contactPointId: input.identityAttachment.contactPointId,
+      }),
+      event: buildResolverReviewCreatedEnvelope({
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        contactPointId: input.identityAttachment.contactPointId,
+        provisionalPersonId,
+        resolverReview,
+      }),
+    });
+
+    return true;
+  } catch (error) {
+    logger.warn('ConnectShyft inbound identity event persistence degraded', {
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId: input.threadId,
+      outcome: input.identityAttachment.outcome,
+      error: error instanceof Error ? error.message : 'identity-event-persistence-error',
+    });
+    return false;
+  }
+};
+
 const persistInboundSmsEnsureAndCanonicalEvent = async (input: {
   actorRoles: string[];
   tenantId: string;
   orgUnitId: string;
   neighborId: string;
+  personId: string;
   actorUserId: string;
   lastInboundCsNumberId: string;
   preferredOutboundCsNumberId: string;
@@ -2995,6 +3193,7 @@ const persistInboundSmsEnsureAndCanonicalEvent = async (input: {
         tenantId: input.tenantId,
         orgUnitId: input.orgUnitId,
         neighborId: input.neighborId,
+        personId: input.personId,
         source: 'SMS',
         lastInboundCsNumberId: input.lastInboundCsNumberId,
         preferredOutboundCsNumberId: input.preferredOutboundCsNumberId,
@@ -4273,6 +4472,9 @@ const parseThreadEnsureBody = (req: Request) => ({
   neighborId: typeof req.body?.neighborId === 'string'
     ? normalizeConnectShyftNeighborIdentifier(req.body.neighborId)
     : '',
+  personId: typeof req.body?.personId === 'string'
+    ? req.body.personId.trim()
+    : '',
   source: typeof req.body?.source === 'string' ? req.body.source : 'VOICE',
   forcedState: typeof req.body?.forcedState === 'string' ? req.body.forcedState : undefined,
   lastInboundCsNumberId: typeof req.body?.lastInboundCsNumberId === 'string'
@@ -4913,6 +5115,7 @@ router.post('/threads', async (req: Request, res: Response) => {
     tenantId: context.tenantId,
     orgUnitId: context.orgUnitId,
     neighborId: payload.neighborId,
+    personId: payload.personId,
     source: payload.source,
     forcedState: payload.forcedState,
     lastInboundCsNumberId: payload.lastInboundCsNumberId,
@@ -7092,11 +7295,10 @@ const performInboundWebhook = async ({
 
     try {
       if (explicitNeighborId) {
-        const resolvedExplicitNeighborId = await resolveInboundReusableNeighborId({
+        neighborId = await resolveInboundReusableNeighborId({
           tenantId,
           neighborId: explicitNeighborId,
         });
-        neighborId = resolvedExplicitNeighborId;
       }
 
       if (!neighborId) {
@@ -7106,11 +7308,10 @@ const performInboundWebhook = async ({
           threadId,
         });
         if (correlatedNeighborId) {
-          const resolvedCorrelatedNeighborId = await resolveInboundReusableNeighborId({
+          neighborId = await resolveInboundReusableNeighborId({
             tenantId,
             neighborId: correlatedNeighborId,
           });
-          neighborId = resolvedCorrelatedNeighborId;
         }
       }
     } catch (error) {
@@ -7152,72 +7353,172 @@ const performInboundWebhook = async ({
       return;
     }
 
-    if (!neighborId) {
-      const senderPhone = resolveConnectShyftInboundSmsSenderPhone(req.body);
-      if (!senderPhone.ok) {
-        await markWebhookReceipt('FAILED_TERMINAL', senderPhone.code === 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED'
-          ? 'sender_phone_required'
-          : 'sender_phone_invalid');
-        refusal(res, {
-          code: senderPhone.code,
-          message: senderPhone.message,
-          refusalType: 'business',
-          httpStatus: 200,
-          data: {
-            providerResolution: {
-              ...providerSelection.providerResolution,
-              adapterInvoked: true,
-            },
-            correlation: {
-              source: correlation.source,
-              deterministic: true,
-              threadId,
-              tenantId,
-              orgUnitId,
-              providerLegId: correlation.providerLegId,
-              providerMessageId: correlation.providerMessageId,
-              providerEventId: correlation.providerEventId,
-              providerNumberE164: correlation.providerNumberE164,
-            },
-            replaySafe: {
-              duplicate: false,
-              suppressedDomainWrites: false,
-              dedupeKey: webhookReceipt.dedupeKey,
-            },
-            sideEffects: {
-              lifecycleMutationApplied: false,
-              canonicalEventPersisted: false,
-              outboxPersisted: false,
-            },
-            timelineOutcome: {
-              eventName: null,
-              routingDecision: 'refused',
-            },
-            reason: senderPhone.code === 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED'
-              ? 'sender_phone_required'
-              : 'sender_phone_invalid',
+    const senderPhone = resolveConnectShyftInboundSmsSenderPhone(req.body);
+    if (!senderPhone.ok) {
+      await markWebhookReceipt('FAILED_TERMINAL', senderPhone.code === 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED'
+        ? 'sender_phone_required'
+        : 'sender_phone_invalid');
+      refusal(res, {
+        code: senderPhone.code,
+        message: senderPhone.message,
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          providerResolution: {
+            ...providerSelection.providerResolution,
+            adapterInvoked: true,
           },
-        });
-        return;
-      }
+          correlation: {
+            source: correlation.source,
+            deterministic: true,
+            threadId,
+            tenantId,
+            orgUnitId,
+            providerLegId: correlation.providerLegId,
+            providerMessageId: correlation.providerMessageId,
+            providerEventId: correlation.providerEventId,
+            providerNumberE164: correlation.providerNumberE164,
+          },
+          replaySafe: {
+            duplicate: false,
+            suppressedDomainWrites: false,
+            dedupeKey: webhookReceipt.dedupeKey,
+          },
+          sideEffects: {
+            lifecycleMutationApplied: false,
+            canonicalEventPersisted: false,
+            outboxPersisted: false,
+          },
+          timelineOutcome: {
+            eventName: null,
+            routingDecision: 'refused',
+          },
+          reason: senderPhone.code === 'CONNECTSHYFT_NEIGHBOR_PHONE_REQUIRED'
+            ? 'sender_phone_required'
+            : 'sender_phone_invalid',
+        },
+      });
+      return;
+    }
 
-      normalizedSenderPhone = senderPhone.normalizedPhone;
+    normalizedSenderPhone = senderPhone.normalizedPhone;
+    const actorUserId = resolveWebhookActorUserId(req);
+    let identityAttachment: ResolveInboundContactPointIdentityResult;
 
+    try {
+      identityAttachment = await resolveInboundContactPointIdentityAsync({
+        tenantId,
+        orgUnitId,
+        normalizedContactPointValue: senderPhone.normalizedPhone,
+        rawContactPointValue: senderPhone.rawPhone,
+        contactPointType: 'phone',
+        eventSource: 'connectshyft.inbound_webhook',
+        relatedObjectType: 'connectshyft_webhook_receipt',
+        relatedObjectId: webhookReceipt.dedupeKey || correlation.providerEventId || correlation.providerMessageId || '',
+        requestedByUserId: actorUserId,
+      });
+    } catch (error) {
+      await markWebhookReceipt('FAILED_RETRYABLE', 'identity_attachment_unavailable');
+      refusal(res, {
+        code: 'CONNECTSHYFT_INBOUND_IDENTITY_ATTACHMENT_UNAVAILABLE',
+        message: 'Inbound SMS identity attachment is temporarily unavailable.',
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          providerResolution: {
+            ...providerSelection.providerResolution,
+            adapterInvoked: true,
+          },
+          correlation: {
+            source: correlation.source,
+            deterministic: true,
+            threadId,
+            tenantId,
+            orgUnitId,
+            providerLegId: correlation.providerLegId,
+            providerMessageId: correlation.providerMessageId,
+            providerEventId: correlation.providerEventId,
+            providerNumberE164: correlation.providerNumberE164,
+          },
+          replaySafe: {
+            duplicate: false,
+            suppressedDomainWrites: false,
+            dedupeKey: webhookReceipt.dedupeKey,
+          },
+          sideEffects: {
+            lifecycleMutationApplied: false,
+            canonicalEventPersisted: false,
+            outboxPersisted: false,
+          },
+          senderPhone: normalizedSenderPhone,
+          timelineOutcome: {
+            eventName: null,
+            routingDecision: 'refused',
+          },
+          reason: 'identity_attachment_unavailable',
+          error: error instanceof Error ? error.message : 'identity-attachment-error',
+        },
+      });
+      return;
+    }
+
+    if (!neighborId) {
       try {
-        const subjectResolution = await resolveSubjectByContactPoint({
+        const compatibilityNeighborIds = await listInboundCompatibilityNeighborIdsByPhone({
           tenantId,
-          orgUnitId,
-          contactPoint: senderPhone.normalizedPhone,
+          normalizedPhone: senderPhone.normalizedPhone,
         });
-        normalizedSenderPhone = subjectResolution.normalizedContactPoint;
 
-        if (subjectResolution.type === 'single_match') {
-          neighborId = subjectResolution.neighborId;
-        } else if (subjectResolution.type === 'no_match') {
+        if (compatibilityNeighborIds.length === 1) {
+          [neighborId] = compatibilityNeighborIds;
+        } else if (compatibilityNeighborIds.length > 1) {
+          await markWebhookReceipt('FAILED_TERMINAL', 'neighbor_ambiguous');
+          refusal(res, {
+            code: IDENTITY_MATCH_AMBIGUOUS_CODE,
+            message: 'Inbound SMS sender phone matches multiple neighbors. Resolve manually before retrying.',
+            refusalType: 'business',
+            httpStatus: 200,
+            data: {
+              providerResolution: {
+                ...providerSelection.providerResolution,
+                adapterInvoked: true,
+              },
+              correlation: {
+                source: correlation.source,
+                deterministic: true,
+                threadId,
+                tenantId,
+                orgUnitId,
+                providerLegId: correlation.providerLegId,
+                providerMessageId: correlation.providerMessageId,
+                providerEventId: correlation.providerEventId,
+                providerNumberE164: correlation.providerNumberE164,
+              },
+              replaySafe: {
+                duplicate: false,
+                suppressedDomainWrites: false,
+                dedupeKey: webhookReceipt.dedupeKey,
+              },
+              sideEffects: {
+                lifecycleMutationApplied: false,
+                canonicalEventPersisted: false,
+                outboxPersisted: false,
+              },
+              timelineOutcome: {
+                eventName: null,
+                routingDecision: 'refused',
+              },
+              senderPhone: senderPhone.normalizedPhone,
+              candidateNeighborIds: compatibilityNeighborIds,
+              reason: 'neighbor_ambiguous',
+            },
+          });
+          return;
+        } else {
           const createdNeighbor = await createNeighborFromInbound({
             tenantId,
             orgUnitId,
-            phone: subjectResolution.normalizedContactPoint,
+            phone: senderPhone.normalizedPhone,
             correlationId: webhookReceipt.dedupeKey
               || correlation.providerMessageId
               || correlation.providerEventId
@@ -7228,7 +7529,7 @@ const performInboundWebhook = async ({
               || correlation.providerEventId
               || correlation.providerLegId,
             requestFingerprint: createHash('sha256')
-              .update(subjectResolution.normalizedContactPoint)
+              .update(senderPhone.normalizedPhone)
               .digest('hex'),
           });
           if (!createdNeighbor.ok) {
@@ -7274,56 +7575,13 @@ const performInboundWebhook = async ({
                   eventName: null,
                   routingDecision: 'refused',
                 },
-                senderPhone: subjectResolution.normalizedContactPoint,
+                senderPhone: senderPhone.normalizedPhone,
                 reason: lifecycleReason,
               },
             });
             return;
           }
           neighborId = createdNeighbor.data.neighbor.neighborId;
-        } else {
-          await markWebhookReceipt('FAILED_TERMINAL', 'neighbor_ambiguous');
-          refusal(res, {
-            code: IDENTITY_MATCH_AMBIGUOUS_CODE,
-            message: 'Inbound SMS sender phone matches multiple neighbors. Resolve manually before retrying.',
-            refusalType: 'business',
-            httpStatus: 200,
-            data: {
-              providerResolution: {
-                ...providerSelection.providerResolution,
-                adapterInvoked: true,
-              },
-              correlation: {
-                source: correlation.source,
-                deterministic: true,
-                threadId,
-                tenantId,
-                orgUnitId,
-                providerLegId: correlation.providerLegId,
-                providerMessageId: correlation.providerMessageId,
-                providerEventId: correlation.providerEventId,
-                providerNumberE164: correlation.providerNumberE164,
-              },
-              replaySafe: {
-                duplicate: false,
-                suppressedDomainWrites: false,
-                dedupeKey: webhookReceipt.dedupeKey,
-              },
-              sideEffects: {
-                lifecycleMutationApplied: false,
-                canonicalEventPersisted: false,
-                outboxPersisted: false,
-              },
-              timelineOutcome: {
-                eventName: null,
-                routingDecision: 'refused',
-              },
-              senderPhone: subjectResolution.normalizedContactPoint,
-              candidateNeighborIds: subjectResolution.candidateNeighborIds,
-              reason: 'neighbor_ambiguous',
-            },
-          });
-          return;
         }
       } catch (error) {
         await markWebhookReceipt('FAILED_RETRYABLE', 'neighbor_resolution_unavailable');
@@ -7359,6 +7617,10 @@ const performInboundWebhook = async ({
               outboxPersisted: false,
             },
             senderPhone: normalizedSenderPhone,
+            timelineOutcome: {
+              eventName: null,
+              routingDecision: 'refused',
+            },
             reason: 'neighbor_resolution_unavailable',
           },
         });
@@ -7415,7 +7677,6 @@ const performInboundWebhook = async ({
       orgUnitId,
       neighborId,
     });
-    const actorUserId = resolveWebhookActorUserId(req);
     const inboundAlignedProviderNumber = await resolveInboundAlignedProviderNumber({
       tenantId,
       orgUnitId,
@@ -7507,6 +7768,7 @@ const performInboundWebhook = async ({
       });
       return;
     }
+
     const domainEvent = mapConnectShyftInboundSmsWebhookToDomainEvent({
       webhookBody: req.body,
       canonicalEventType: eventType,
@@ -7523,6 +7785,7 @@ const performInboundWebhook = async ({
         tenantId,
         orgUnitId,
         neighborId,
+        personId: identityAttachment.personId,
         actorUserId,
         lastInboundCsNumberId: inboundAlignedProviderNumber.providerNumberE164,
         preferredOutboundCsNumberId: inboundAlignedProviderNumber.providerNumberE164,
@@ -7535,6 +7798,13 @@ const performInboundWebhook = async ({
       ensuredThread = persisted.thread;
       canonicalEvent = persisted.canonicalEvent;
       sideEffectsPersisted = persisted.sideEffectsPersisted;
+      const identityEventsPersisted = await persistInboundIdentityAttachmentEventsAsync({
+        tenantId,
+        orgUnitId,
+        threadId: persisted.thread.threadId,
+        identityAttachment,
+      });
+      sideEffectsPersisted = sideEffectsPersisted && identityEventsPersisted;
     } catch (error) {
       if (error instanceof InboundSmsEnsureRefusalError) {
         await markWebhookReceipt('FAILED_TERMINAL', 'inbound_sms_ensure_refused');

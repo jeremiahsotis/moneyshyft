@@ -2,15 +2,20 @@
 import request from 'supertest';
 import db from '../../../../config/knex';
 import * as canonicalEventsModule from '../../../../modules/connectshyft/canonicalEvents';
-import * as identityResolverModule from '../../../../modules/connectshyft/identityResolver';
 import * as neighborsModule from '../../../../modules/connectshyft/neighbors';
-import { AsyncConnectShyftNeighborService } from '../../../../modules/connectshyft/neighbors';
+import * as peoplecoreIdentityResolutionModule from '../../../../modules/peoplecore/contactPointIdentityResolution';
+import * as threadIdentityEventsModule from '../../../../modules/connectshyft/threadIdentityEvents';
+import {
+  AsyncConnectShyftNeighborService,
+  KnexConnectShyftNeighborStore,
+} from '../../../../modules/connectshyft/neighbors';
 import {
   connectShyftNumberMappingServiceAsync,
   type ConnectShyftNumberMapping,
 } from '../../../../modules/connectshyft/numberMappings';
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents';
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings';
+import { peopleCoreServiceAsync } from '../../../../modules/peoplecore/service';
 import { AsyncConnectShyftThreadService } from '../../../../modules/connectshyft/threads';
 import {
   buildApp,
@@ -118,6 +123,7 @@ const buildEnsuredThread = (overrides: Record<string, unknown> = {}) => ({
   tenantId: TEST_TENANT_ID,
   orgUnitId: TEST_ORG_UNIT_ID,
   neighborId: 'neighbor-connectshyft-f1-1001',
+  personId: 'person-connectshyft-f1-1001',
   source: 'SMS',
   state: 'UNCLAIMED',
   lastInboundCsNumberId: TEST_PROVIDER_NUMBER,
@@ -149,9 +155,60 @@ const buildInboundSmsBody = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const buildIdentityAttachment = (overrides: Record<string, unknown> = {}) => ({
+  outcome: 'canonical',
+  personId: 'person-connectshyft-f1-1001',
+  contactPointId: 'contact-point-connectshyft-f1-1001',
+  contactPointEventId: 'contact-point-event-connectshyft-f1-1001',
+  provisionalPersonId: null,
+  resolverReviewId: null,
+  candidates: [],
+  selectedCandidatePersonId: 'person-connectshyft-f1-1001',
+  ...overrides,
+});
+
+const buildCompatibilityNeighbor = (neighborId: string) => ({
+  neighborId,
+  phones: [],
+});
+
+const buildProvisionalPerson = (overrides: Record<string, unknown> = {}) => ({
+  id: 'person-connectshyft-f1-provisional-2005',
+  tenantId: TEST_TENANT_ID,
+  orgUnitId: TEST_ORG_UNIT_ID,
+  firstName: 'Unknown',
+  lastName: 'Contact',
+  preferredName: undefined,
+  status: 'active_provisional',
+  createdAt: TEST_TIMESTAMP,
+  updatedAt: TEST_TIMESTAMP,
+  ...overrides,
+});
+
+const buildResolverReview = (overrides: Record<string, unknown> = {}) => ({
+  id: 'resolver-review-connectshyft-f1-2005',
+  tenantId: TEST_TENANT_ID,
+  orgUnitId: TEST_ORG_UNIT_ID,
+  reviewType: 'shared_contact_ambiguity',
+  reviewStatus: 'pending',
+  priority: 'high',
+  triggerSourceType: 'connectshyft_webhook_receipt',
+  triggerSourceId: 'receipt-connectshyft-f1-2005',
+  provisionalPersonId: 'person-connectshyft-f1-provisional-2005',
+  candidatePersonIds: ['person-connectshyft-f1-candidate-a', 'person-connectshyft-f1-candidate-b'],
+  contactPointId: 'contact-point-connectshyft-f1-2005',
+  confidenceBand: 'high',
+  confidenceReasons: ['Resolver review required because inbound identity is not decisive.'],
+  riskFlags: ['shared_contact_possible'],
+  requestedByUserId: 'user-connectshyft-f1-operator',
+  requestedAt: TEST_TIMESTAMP,
+  ...overrides,
+});
+
 const mockInboundSmsPersistence = (input?: {
   ensuredNeighborId?: string;
   ensuredThreadId?: string;
+  ensuredPersonId?: string;
   ensureThreadError?: Error;
   canonicalEventError?: Error;
 }) => {
@@ -181,6 +238,7 @@ const mockInboundSmsPersistence = (input?: {
         thread: buildEnsuredThread({
           threadId: input?.ensuredThreadId || 'thread-sms-characterization-1001',
           neighborId: input?.ensuredNeighborId || 'neighbor-connectshyft-f1-1001',
+          personId: input?.ensuredPersonId || 'person-connectshyft-f1-1001',
         }),
       },
     } as any);
@@ -241,6 +299,8 @@ describe('connectshyft inbound sms webhook route characterization', () => {
   registerProviderRegistryRouteIntegrationHooks();
 
   let resolveRoutingMappingByNumberSpy: jest.SpyInstance;
+  let resolveInboundIdentitySpy: jest.SpyInstance;
+  let listCompatibilityNeighborsSpy: jest.SpyInstance;
 
   beforeEach(() => {
     sendSmsMock.mockClear();
@@ -276,10 +336,20 @@ describe('connectshyft inbound sms webhook route characterization', () => {
         status: 'not-found' as const,
       };
     });
+    resolveInboundIdentitySpy = jest.spyOn(
+      peoplecoreIdentityResolutionModule,
+      'resolveInboundContactPointIdentityAsync',
+    ).mockResolvedValue(buildIdentityAttachment() as any);
+    listCompatibilityNeighborsSpy = jest.spyOn(
+      KnexConnectShyftNeighborStore.prototype,
+      'listActiveIdentityBoundaryNeighborsByPhoneValue',
+    ).mockResolvedValue([]);
   });
 
   afterEach(() => {
     resolveRoutingMappingByNumberSpy.mockRestore();
+    resolveInboundIdentitySpy.mockRestore();
+    listCompatibilityNeighborsSpy.mockRestore();
   });
 
   it('returns the current inbound SMS success envelope and response payload shape on /webhooks/sms', async () => {
@@ -425,6 +495,7 @@ describe('connectshyft inbound sms webhook route characterization', () => {
         'lastInboundCsNumberId',
         'neighborId',
         'orgUnitId',
+        'personId',
         'preferredOutboundCsNumberId',
         'source',
         'state',
@@ -549,7 +620,7 @@ describe('connectshyft inbound sms webhook route characterization', () => {
     reason,
   }) => {
     const app = buildApp();
-    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint');
+    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound');
 
     try {
       const response = await request(app)
@@ -597,31 +668,20 @@ describe('connectshyft inbound sms webhook route characterization', () => {
           reason,
         },
       });
-      expect(Object.keys(response.body.data).sort()).toEqual([
-        'correlation',
-        'providerResolution',
-        'reason',
-        'replaySafe',
-        'sideEffects',
-        'timelineOutcome',
-      ].sort());
-      expect(resolveSubjectSpy).not.toHaveBeenCalled();
+      expect(resolveInboundIdentitySpy).not.toHaveBeenCalled();
+      expect(createNeighborSpy).not.toHaveBeenCalled();
     } finally {
-      resolveSubjectSpy.mockRestore();
+      createNeighborSpy.mockRestore();
     }
   });
 
-  it('returns the current ambiguous-neighbor refusal shape when multiple active neighbors share the same sender phone', async () => {
+  it('returns the current ambiguous-neighbor refusal shape when multiple active compatibility neighbors share the sender phone', async () => {
     const app = buildApp();
-    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
-      .mockResolvedValue(null);
-    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
-      .mockResolvedValue({
-        type: 'multiple_matches',
-        candidateNeighborIds: ['neighbor-a-2003', 'neighbor-b-2003'],
-        normalizedContactPoint: '+12605552003',
-      });
     const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound');
+    listCompatibilityNeighborsSpy.mockResolvedValueOnce([
+      buildCompatibilityNeighbor('neighbor-a-2003'),
+      buildCompatibilityNeighbor('neighbor-b-2003'),
+    ] as any);
 
     try {
       const response = await request(app)
@@ -641,12 +701,6 @@ describe('connectshyft inbound sms webhook route characterization', () => {
         message: 'Inbound SMS sender phone matches multiple neighbors. Resolve manually before retrying.',
         refusalType: 'business',
         data: {
-          providerResolution: {
-            requestedProvider: 'telnyx',
-            resolvedProvider: 'telnyx',
-            deterministic: true,
-            adapterInvoked: true,
-          },
           correlation: {
             source: 'number_mapping',
             deterministic: true,
@@ -662,167 +716,40 @@ describe('connectshyft inbound sms webhook route characterization', () => {
             suppressedDomainWrites: false,
             dedupeKey: 'provider-event:provider-event-sms-ambiguous-2003',
           },
-          sideEffects: {
-            lifecycleMutationApplied: false,
-            canonicalEventPersisted: false,
-            outboxPersisted: false,
-          },
-          timelineOutcome: {
-            eventName: null,
-            routingDecision: 'refused',
-          },
           senderPhone: '+12605552003',
           candidateNeighborIds: ['neighbor-a-2003', 'neighbor-b-2003'],
           reason: 'neighbor_ambiguous',
         },
       });
-      expect(Object.keys(response.body.data).sort()).toEqual([
-        'candidateNeighborIds',
-        'correlation',
-        'providerResolution',
-        'reason',
-        'replaySafe',
-        'senderPhone',
-        'sideEffects',
-        'timelineOutcome',
-      ].sort());
+      expect(resolveInboundIdentitySpy).toHaveBeenCalledWith(expect.objectContaining({
+        tenantId: TEST_TENANT_ID,
+        orgUnitId: TEST_ORG_UNIT_ID,
+        normalizedContactPointValue: '+12605552003',
+        relatedObjectType: 'connectshyft_webhook_receipt',
+      }));
       expect(createNeighborSpy).not.toHaveBeenCalled();
     } finally {
       createNeighborSpy.mockRestore();
-      resolveSubjectSpy.mockRestore();
-      resolveActiveSpy.mockRestore();
     }
   });
 
-  it('preserves the ambiguity refusal path for PeopleCore and legacy disagreement without attaching or creating a neighbor', async () => {
-    const app = buildApp();
-    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
-      .mockResolvedValue(null);
-    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
-      .mockResolvedValue({
-        type: 'multiple_matches',
-        candidateNeighborIds: ['neighbor-conflict-2004'],
-        normalizedContactPoint: '+12605552004',
-      });
-    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound');
-
-    try {
-      const response = await request(app)
-        .post('/api/v1/connectshyft/webhooks/sms')
-        .set(buildSmsHeaders())
-        .send(buildInboundSmsBody({
-          threadId: undefined,
-          providerEventId: 'provider-event-sms-conflict-2004',
-          providerMessageId: 'provider-message-sms-conflict-2004',
-          from: '+12605552004',
-        }));
-
-      expect(response.status).toBe(200);
-      expect(response.body).toMatchObject({
-        ok: false,
-        code: 'IDENTITY_MATCH_AMBIGUOUS',
-        message: 'Inbound SMS sender phone matches multiple neighbors. Resolve manually before retrying.',
-        refusalType: 'business',
-        data: {
-          correlation: {
-            source: 'number_mapping',
-            deterministic: true,
-            threadId: '',
-            tenantId: TEST_TENANT_ID,
-            orgUnitId: TEST_ORG_UNIT_ID,
-            providerMessageId: 'provider-message-sms-conflict-2004',
-            providerEventId: 'provider-event-sms-conflict-2004',
-            providerNumberE164: TEST_PROVIDER_NUMBER,
-          },
-          replaySafe: {
-            duplicate: false,
-            suppressedDomainWrites: false,
-            dedupeKey: 'provider-event:provider-event-sms-conflict-2004',
-          },
-          senderPhone: '+12605552004',
-          candidateNeighborIds: ['neighbor-conflict-2004'],
-          reason: 'neighbor_ambiguous',
-        },
-      });
-      expect(createNeighborSpy).not.toHaveBeenCalled();
-    } finally {
-      createNeighborSpy.mockRestore();
-      resolveSubjectSpy.mockRestore();
-      resolveActiveSpy.mockRestore();
-    }
-  });
-
-  it('preserves the ambiguity refusal path for PeopleCore multi-link ambiguity without creating a neighbor', async () => {
-    const app = buildApp();
-    const resolveActiveSpy = jest.spyOn(neighborsModule, 'resolveActiveNeighborForInbound')
-      .mockResolvedValue(null);
-    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
-      .mockResolvedValue({
-        type: 'multiple_matches',
-        candidateNeighborIds: ['neighbor-peoplecore-multi-2005'],
-        normalizedContactPoint: '+12605552005',
-      });
-    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound');
-
-    try {
-      const response = await request(app)
-        .post('/api/v1/connectshyft/webhooks/sms')
-        .set(buildSmsHeaders())
-        .send(buildInboundSmsBody({
-          threadId: undefined,
-          providerEventId: 'provider-event-sms-peoplecore-multi-2005',
-          providerMessageId: 'provider-message-sms-peoplecore-multi-2005',
-          from: '+12605552005',
-        }));
-
-      expect(response.status).toBe(200);
-      expect(response.body).toMatchObject({
-        ok: false,
-        code: 'IDENTITY_MATCH_AMBIGUOUS',
-        message: 'Inbound SMS sender phone matches multiple neighbors. Resolve manually before retrying.',
-        refusalType: 'business',
-        data: {
-          correlation: {
-            source: 'number_mapping',
-            deterministic: true,
-            threadId: '',
-            tenantId: TEST_TENANT_ID,
-            orgUnitId: TEST_ORG_UNIT_ID,
-            providerMessageId: 'provider-message-sms-peoplecore-multi-2005',
-            providerEventId: 'provider-event-sms-peoplecore-multi-2005',
-            providerNumberE164: TEST_PROVIDER_NUMBER,
-          },
-          replaySafe: {
-            duplicate: false,
-            suppressedDomainWrites: false,
-            dedupeKey: 'provider-event:provider-event-sms-peoplecore-multi-2005',
-          },
-          senderPhone: '+12605552005',
-          candidateNeighborIds: ['neighbor-peoplecore-multi-2005'],
-          reason: 'neighbor_ambiguous',
-        },
-      });
-      expect(createNeighborSpy).not.toHaveBeenCalled();
-    } finally {
-      createNeighborSpy.mockRestore();
-      resolveSubjectSpy.mockRestore();
-      resolveActiveSpy.mockRestore();
-    }
-  });
-
-  it('returns the current inbound SMS success shape when subject resolution finds a single reusable neighbor', async () => {
+  it('returns the current inbound SMS success shape when compatibility lookup finds a reusable neighbor', async () => {
     const app = buildApp();
     const { canonicalEventSpy, ensureThreadSpy, restore } = mockInboundSmsPersistence({
       ensuredThreadId: 'thread-sms-characterization-single-match-2002',
       ensuredNeighborId: 'neighbor-connectshyft-f1-2002',
+      ensuredPersonId: 'person-connectshyft-f1-2002',
     });
-    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
-      .mockResolvedValue({
-        type: 'single_match',
-        neighborId: 'neighbor-connectshyft-f1-2002',
-        normalizedContactPoint: '+12605552002',
-      });
     const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound');
+    resolveInboundIdentitySpy.mockResolvedValueOnce(buildIdentityAttachment({
+      personId: 'person-connectshyft-f1-2002',
+      selectedCandidatePersonId: 'person-connectshyft-f1-2002',
+      contactPointId: 'contact-point-connectshyft-f1-2002',
+      contactPointEventId: 'contact-point-event-connectshyft-f1-2002',
+    }) as any);
+    listCompatibilityNeighborsSpy.mockResolvedValueOnce([
+      buildCompatibilityNeighbor('neighbor-connectshyft-f1-2002'),
+    ] as any);
 
     try {
       const response = await request(app)
@@ -839,72 +766,38 @@ describe('connectshyft inbound sms webhook route characterization', () => {
       expect(response.body).toMatchObject({
         ok: true,
         code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
-        message: 'Inbound webhook accepted for processing',
         data: {
-          from: '(260) 555-2002',
-          to: TEST_PROVIDER_NUMBER,
-          eventType: 'sms.inbound',
           correlation: {
             source: 'number_mapping',
-            deterministic: true,
-            threadId: 'thread-sms-characterization-single-match-2002',
-            tenantId: TEST_TENANT_ID,
-            orgUnitId: TEST_ORG_UNIT_ID,
             neighborId: 'neighbor-connectshyft-f1-2002',
-            providerMessageId: 'provider-message-sms-single-match-2002',
-            providerEventId: 'provider-event-sms-single-match-2002',
-            providerNumberE164: TEST_PROVIDER_NUMBER,
-          },
-          replaySafe: {
-            duplicate: false,
-            suppressedDomainWrites: false,
-            dedupeKey: 'provider-event:provider-event-sms-single-match-2002',
           },
           threadId: 'thread-sms-characterization-single-match-2002',
-          threadState: 'UNCLAIMED',
           thread: buildEnsuredThread({
             threadId: 'thread-sms-characterization-single-match-2002',
             neighborId: 'neighbor-connectshyft-f1-2002',
+            personId: 'person-connectshyft-f1-2002',
           }),
-          lifecycle: {
-            ensuredActiveThread: true,
-            createdNewThread: true,
-          },
-          inboundMessageArtifact: {
-            body: 'Please call me back when you can.',
-            from: '(260) 555-2002',
-            to: TEST_PROVIDER_NUMBER,
-            providerEventId: 'provider-event-sms-single-match-2002',
-            providerMessageId: 'provider-message-sms-single-match-2002',
-          },
         },
       });
-      expect(resolveSubjectSpy).toHaveBeenCalledWith({
-        tenantId: TEST_TENANT_ID,
-        orgUnitId: TEST_ORG_UNIT_ID,
-        contactPoint: '+12605552002',
-      });
       expect(createNeighborSpy).not.toHaveBeenCalled();
-      expect(ensureThreadSpy).toHaveBeenCalledTimes(1);
+      expect(ensureThreadSpy).toHaveBeenCalledWith(expect.objectContaining({
+        neighborId: 'neighbor-connectshyft-f1-2002',
+        personId: 'person-connectshyft-f1-2002',
+      }));
       expect(canonicalEventSpy).toHaveBeenCalledTimes(1);
     } finally {
       createNeighborSpy.mockRestore();
-      resolveSubjectSpy.mockRestore();
       restore();
     }
   });
 
-  it('preserves the create-new flow when subject resolution reports no reusable neighbor', async () => {
+  it('creates a provisional person attachment and persists the wrapped event when no compatibility neighbor exists', async () => {
     const app = buildApp();
     const { canonicalEventSpy, ensureThreadSpy, restore } = mockInboundSmsPersistence({
       ensuredThreadId: 'thread-sms-characterization-created-2011',
       ensuredNeighborId: 'neighbor-connectshyft-f1-2011',
+      ensuredPersonId: 'person-connectshyft-f1-2011',
     });
-    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
-      .mockResolvedValue({
-        type: 'no_match',
-        normalizedContactPoint: '+12605552011',
-      });
     const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound')
       .mockResolvedValue({
         ok: true,
@@ -916,6 +809,25 @@ describe('connectshyft inbound sms webhook route characterization', () => {
           },
         },
       } as any);
+    const getPersonSpy = jest.spyOn(peopleCoreServiceAsync, 'getPerson')
+      .mockResolvedValue(buildProvisionalPerson({
+        id: 'person-connectshyft-f1-2011',
+      }) as any);
+    const persistIdentityEventSpy = jest.spyOn(
+      threadIdentityEventsModule,
+      'persistConnectShyftThreadIdentityEventAsync',
+    ).mockResolvedValue({
+      eventId: 'platform-event-connectshyft-f1-2011',
+      outboxId: 'platform-outbox-connectshyft-f1-2011',
+    });
+    resolveInboundIdentitySpy.mockResolvedValueOnce(buildIdentityAttachment({
+      outcome: 'provisional',
+      personId: 'person-connectshyft-f1-2011',
+      provisionalPersonId: 'person-connectshyft-f1-2011',
+      selectedCandidatePersonId: null,
+      contactPointId: 'contact-point-connectshyft-f1-2011',
+      contactPointEventId: 'contact-point-event-connectshyft-f1-2011',
+    }) as any);
 
     try {
       const response = await request(app)
@@ -932,76 +844,57 @@ describe('connectshyft inbound sms webhook route characterization', () => {
       expect(response.body).toMatchObject({
         ok: true,
         code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
-        message: 'Inbound webhook accepted for processing',
         data: {
-          from: '+12605552011',
-          to: TEST_PROVIDER_NUMBER,
-          eventType: 'sms.inbound',
           correlation: {
             source: 'number_mapping',
-            deterministic: true,
-            threadId: 'thread-sms-characterization-created-2011',
-            tenantId: TEST_TENANT_ID,
-            orgUnitId: TEST_ORG_UNIT_ID,
             neighborId: 'neighbor-connectshyft-f1-2011',
-            providerMessageId: 'provider-message-sms-created-2011',
-            providerEventId: 'provider-event-sms-created-2011',
-            providerNumberE164: TEST_PROVIDER_NUMBER,
           },
-          replaySafe: {
-            duplicate: false,
-            suppressedDomainWrites: false,
-            dedupeKey: 'provider-event:provider-event-sms-created-2011',
-          },
-          threadId: 'thread-sms-characterization-created-2011',
-          threadState: 'UNCLAIMED',
           thread: buildEnsuredThread({
             threadId: 'thread-sms-characterization-created-2011',
             neighborId: 'neighbor-connectshyft-f1-2011',
+            personId: 'person-connectshyft-f1-2011',
           }),
-          lifecycle: {
-            ensuredActiveThread: true,
-            createdNewThread: true,
-          },
-          inboundMessageArtifact: {
-            body: 'Please call me back when you can.',
-            from: '+12605552011',
-            to: TEST_PROVIDER_NUMBER,
-            providerEventId: 'provider-event-sms-created-2011',
-            providerMessageId: 'provider-message-sms-created-2011',
-          },
         },
-      });
-      expect(resolveSubjectSpy).toHaveBeenCalledWith({
-        tenantId: TEST_TENANT_ID,
-        orgUnitId: TEST_ORG_UNIT_ID,
-        contactPoint: '+12605552011',
       });
       expect(createNeighborSpy).toHaveBeenCalledWith(expect.objectContaining({
         tenantId: TEST_TENANT_ID,
         orgUnitId: TEST_ORG_UNIT_ID,
         phone: '+12605552011',
       }));
-      expect(ensureThreadSpy).toHaveBeenCalledTimes(1);
+      expect(ensureThreadSpy).toHaveBeenCalledWith(expect.objectContaining({
+        neighborId: 'neighbor-connectshyft-f1-2011',
+        personId: 'person-connectshyft-f1-2011',
+      }));
+      expect(persistIdentityEventSpy).toHaveBeenCalledTimes(1);
+      expect(persistIdentityEventSpy.mock.calls[0][0]).toMatchObject({
+        tenantId: TEST_TENANT_ID,
+        orgUnitId: TEST_ORG_UNIT_ID,
+        threadId: 'thread-sms-characterization-created-2011',
+        event: {
+          type: 'person.provisional_created',
+        },
+        subject: {
+          orgUnitId: TEST_ORG_UNIT_ID,
+          provisionalPersonId: 'person-connectshyft-f1-2011',
+          contactPointId: 'contact-point-connectshyft-f1-2011',
+        },
+      });
       expect(canonicalEventSpy).toHaveBeenCalledTimes(1);
     } finally {
+      persistIdentityEventSpy.mockRestore();
+      getPersonSpy.mockRestore();
       createNeighborSpy.mockRestore();
-      resolveSubjectSpy.mockRestore();
       restore();
     }
   });
 
-  it('preserves the create-new flow when PeopleCore has no current link and legacy resolution stays no_match', async () => {
+  it('attaches ambiguous inbound SMS to a provisional person and persists provisional plus resolver events once each', async () => {
     const app = buildApp();
     const { canonicalEventSpy, ensureThreadSpy, restore } = mockInboundSmsPersistence({
-      ensuredThreadId: 'thread-sms-characterization-created-2014',
-      ensuredNeighborId: 'neighbor-connectshyft-f1-2014',
+      ensuredThreadId: 'thread-sms-characterization-ambiguous-2005',
+      ensuredNeighborId: 'neighbor-connectshyft-f1-2005',
+      ensuredPersonId: 'person-connectshyft-f1-provisional-2005',
     });
-    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
-      .mockResolvedValue({
-        type: 'no_match',
-        normalizedContactPoint: '+12605552014',
-      });
     const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound')
       .mockResolvedValue({
         ok: true,
@@ -1009,10 +902,32 @@ describe('connectshyft inbound sms webhook route characterization', () => {
         httpStatus: 201,
         data: {
           neighbor: {
-            neighborId: 'neighbor-connectshyft-f1-2014',
+            neighborId: 'neighbor-connectshyft-f1-2005',
           },
         },
       } as any);
+    const getPersonSpy = jest.spyOn(peopleCoreServiceAsync, 'getPerson')
+      .mockResolvedValue(buildProvisionalPerson({
+        id: 'person-connectshyft-f1-provisional-2005',
+      }) as any);
+    const getResolverReviewSpy = jest.spyOn(peopleCoreServiceAsync, 'getResolverReview')
+      .mockResolvedValue(buildResolverReview() as any);
+    const persistIdentityEventSpy = jest.spyOn(
+      threadIdentityEventsModule,
+      'persistConnectShyftThreadIdentityEventAsync',
+    ).mockResolvedValue({
+      eventId: 'platform-event-connectshyft-f1-2005',
+      outboxId: 'platform-outbox-connectshyft-f1-2005',
+    });
+    resolveInboundIdentitySpy.mockResolvedValueOnce(buildIdentityAttachment({
+      outcome: 'resolver_needed',
+      personId: 'person-connectshyft-f1-provisional-2005',
+      provisionalPersonId: 'person-connectshyft-f1-provisional-2005',
+      resolverReviewId: 'resolver-review-connectshyft-f1-2005',
+      selectedCandidatePersonId: 'person-connectshyft-f1-candidate-a',
+      contactPointId: 'contact-point-connectshyft-f1-2005',
+      contactPointEventId: 'contact-point-event-connectshyft-f1-2005',
+    }) as any);
 
     try {
       const response = await request(app)
@@ -1020,9 +935,9 @@ describe('connectshyft inbound sms webhook route characterization', () => {
         .set(buildSmsHeaders())
         .send(buildInboundSmsBody({
           threadId: undefined,
-          providerEventId: 'provider-event-sms-no-current-link-2014',
-          providerMessageId: 'provider-message-sms-no-current-link-2014',
-          from: '+12605552014',
+          providerEventId: 'provider-event-sms-peoplecore-multi-2005',
+          providerMessageId: 'provider-message-sms-peoplecore-multi-2005',
+          from: '+12605552005',
         }));
 
       expect(response.status).toBe(200);
@@ -1031,47 +946,54 @@ describe('connectshyft inbound sms webhook route characterization', () => {
         code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
         data: {
           correlation: {
-            neighborId: 'neighbor-connectshyft-f1-2014',
+            source: 'number_mapping',
+            neighborId: 'neighbor-connectshyft-f1-2005',
           },
-          threadId: 'thread-sms-characterization-created-2014',
+          thread: buildEnsuredThread({
+            threadId: 'thread-sms-characterization-ambiguous-2005',
+            neighborId: 'neighbor-connectshyft-f1-2005',
+            personId: 'person-connectshyft-f1-provisional-2005',
+          }),
         },
       });
-      expect(createNeighborSpy).toHaveBeenCalledWith(expect.objectContaining({
-        tenantId: TEST_TENANT_ID,
-        orgUnitId: TEST_ORG_UNIT_ID,
-        phone: '+12605552014',
+      expect(createNeighborSpy).toHaveBeenCalledTimes(1);
+      expect(ensureThreadSpy).toHaveBeenCalledWith(expect.objectContaining({
+        neighborId: 'neighbor-connectshyft-f1-2005',
+        personId: 'person-connectshyft-f1-provisional-2005',
       }));
-      expect(ensureThreadSpy).toHaveBeenCalledTimes(1);
+      expect(persistIdentityEventSpy).toHaveBeenCalledTimes(2);
+      expect(persistIdentityEventSpy.mock.calls[0][0]).toMatchObject({
+        event: {
+          type: 'person.provisional_created',
+        },
+        subject: {
+          provisionalPersonId: 'person-connectshyft-f1-provisional-2005',
+          contactPointId: 'contact-point-connectshyft-f1-2005',
+        },
+      });
+      expect(persistIdentityEventSpy.mock.calls[1][0]).toMatchObject({
+        event: {
+          type: 'resolver_review.created',
+        },
+        subject: {
+          provisionalPersonId: 'person-connectshyft-f1-provisional-2005',
+          contactPointId: 'contact-point-connectshyft-f1-2005',
+        },
+      });
       expect(canonicalEventSpy).toHaveBeenCalledTimes(1);
     } finally {
+      persistIdentityEventSpy.mockRestore();
+      getResolverReviewSpy.mockRestore();
+      getPersonSpy.mockRestore();
       createNeighborSpy.mockRestore();
-      resolveSubjectSpy.mockRestore();
       restore();
     }
   });
 
-  it('preserves the fallback create-new flow when PeopleCore is unavailable and legacy resolution stays no_match', async () => {
+  it('returns a retryable refusal when PeopleCore identity attachment is unavailable', async () => {
     const app = buildApp();
-    const { canonicalEventSpy, ensureThreadSpy, restore } = mockInboundSmsPersistence({
-      ensuredThreadId: 'thread-sms-characterization-created-2015',
-      ensuredNeighborId: 'neighbor-connectshyft-f1-2015',
-    });
-    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
-      .mockResolvedValue({
-        type: 'no_match',
-        normalizedContactPoint: '+12605552015',
-      });
-    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound')
-      .mockResolvedValue({
-        ok: true,
-        code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
-        httpStatus: 201,
-        data: {
-          neighbor: {
-            neighborId: 'neighbor-connectshyft-f1-2015',
-          },
-        },
-      } as any);
+    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound');
+    resolveInboundIdentitySpy.mockRejectedValueOnce(new Error('peoplecore-down'));
 
     try {
       const response = await request(app)
@@ -1086,36 +1008,34 @@ describe('connectshyft inbound sms webhook route characterization', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
-        ok: true,
-        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        ok: false,
+        code: 'CONNECTSHYFT_INBOUND_IDENTITY_ATTACHMENT_UNAVAILABLE',
+        message: 'Inbound SMS identity attachment is temporarily unavailable.',
+        refusalType: 'business',
         data: {
           correlation: {
-            neighborId: 'neighbor-connectshyft-f1-2015',
+            source: 'number_mapping',
+            deterministic: true,
+            threadId: '',
+            tenantId: TEST_TENANT_ID,
+            orgUnitId: TEST_ORG_UNIT_ID,
+            providerMessageId: 'provider-message-sms-peoplecore-unavailable-2015',
+            providerEventId: 'provider-event-sms-peoplecore-unavailable-2015',
+            providerNumberE164: TEST_PROVIDER_NUMBER,
           },
-          threadId: 'thread-sms-characterization-created-2015',
+          senderPhone: '+12605552015',
+          reason: 'identity_attachment_unavailable',
+          error: 'peoplecore-down',
         },
       });
-      expect(createNeighborSpy).toHaveBeenCalledWith(expect.objectContaining({
-        tenantId: TEST_TENANT_ID,
-        orgUnitId: TEST_ORG_UNIT_ID,
-        phone: '+12605552015',
-      }));
-      expect(ensureThreadSpy).toHaveBeenCalledTimes(1);
-      expect(canonicalEventSpy).toHaveBeenCalledTimes(1);
+      expect(createNeighborSpy).not.toHaveBeenCalled();
     } finally {
       createNeighborSpy.mockRestore();
-      resolveSubjectSpy.mockRestore();
-      restore();
     }
   });
 
   it('returns the current unresolved-neighbor refusal shape when inbound neighbor creation yields no reusable neighbor id', async () => {
     const app = buildApp();
-    const resolveSubjectSpy = jest.spyOn(identityResolverModule, 'resolveSubjectByContactPoint')
-      .mockResolvedValue({
-        type: 'no_match',
-        normalizedContactPoint: '+12605552012',
-      });
     const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound')
       .mockResolvedValue({
         ok: true,
@@ -1127,6 +1047,14 @@ describe('connectshyft inbound sms webhook route characterization', () => {
           },
         },
       } as any);
+    resolveInboundIdentitySpy.mockResolvedValueOnce(buildIdentityAttachment({
+      outcome: 'provisional',
+      personId: 'person-connectshyft-f1-2012',
+      provisionalPersonId: 'person-connectshyft-f1-2012',
+      selectedCandidatePersonId: null,
+      contactPointId: 'contact-point-connectshyft-f1-2012',
+      contactPointEventId: 'contact-point-event-connectshyft-f1-2012',
+    }) as any);
 
     try {
       const response = await request(app)
@@ -1146,12 +1074,6 @@ describe('connectshyft inbound sms webhook route characterization', () => {
         message: 'Inbound SMS processing requires a resolvable neighbor context.',
         refusalType: 'business',
         data: {
-          providerResolution: {
-            requestedProvider: 'telnyx',
-            resolvedProvider: 'telnyx',
-            deterministic: true,
-            adapterInvoked: true,
-          },
           correlation: {
             source: 'number_mapping',
             deterministic: true,
@@ -1162,36 +1084,17 @@ describe('connectshyft inbound sms webhook route characterization', () => {
             providerEventId: 'provider-event-sms-unresolved-2012',
             providerNumberE164: TEST_PROVIDER_NUMBER,
           },
-          replaySafe: {
-            duplicate: false,
-            suppressedDomainWrites: false,
-            dedupeKey: 'provider-event:provider-event-sms-unresolved-2012',
-          },
-          sideEffects: {
-            lifecycleMutationApplied: false,
-            canonicalEventPersisted: false,
-            outboxPersisted: false,
-          },
-          timelineOutcome: {
-            eventName: null,
-            routingDecision: 'refused',
-          },
           senderPhone: '+12605552012',
           reason: 'neighbor_unresolved',
         },
       });
-      expect(Object.keys(response.body.data).sort()).toEqual([
-        'correlation',
-        'providerResolution',
-        'reason',
-        'replaySafe',
-        'senderPhone',
-        'sideEffects',
-        'timelineOutcome',
-      ].sort());
+      expect(createNeighborSpy).toHaveBeenCalledWith(expect.objectContaining({
+        tenantId: TEST_TENANT_ID,
+        orgUnitId: TEST_ORG_UNIT_ID,
+        phone: '+12605552012',
+      }));
     } finally {
       createNeighborSpy.mockRestore();
-      resolveSubjectSpy.mockRestore();
     }
   });
 

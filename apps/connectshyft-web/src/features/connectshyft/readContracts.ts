@@ -1,8 +1,10 @@
 import api from '@/services/api';
 import { buildConnectShyftTestOverrideHeaders } from '@/features/connectshyft/flags';
+import type { SubjectContext } from '@shyft/contracts';
 
 export type ConnectShyftThreadState = 'UNCLAIMED' | 'CLAIMED' | 'CLOSED';
 export type ConnectShyftInboxBucket = 'inbox' | 'mine';
+export type ConnectShyftThreadIdentityState = 'confirmed' | 'provisional';
 
 export type ConnectShyftInboxActions = {
   claim: boolean;
@@ -52,6 +54,9 @@ export type ConnectShyftTimelineEvent = {
 };
 
 export type ConnectShyftThreadDetail = ConnectShyftThreadSummary & {
+  personId: string | null;
+  identityState: ConnectShyftThreadIdentityState | null;
+  subjectContext: SubjectContext;
   actions: string[];
   timeline: ConnectShyftTimelineEvent[];
   lifecycle: {
@@ -144,6 +149,14 @@ const normalizeState = (value: unknown): ConnectShyftThreadState => {
   }
 
   return 'UNCLAIMED';
+};
+
+const normalizeIdentityState = (value: unknown): ConnectShyftThreadIdentityState | null => {
+  if (value === 'confirmed' || value === 'provisional') {
+    return value;
+  }
+
+  return null;
 };
 
 const parsePreferredOutboundContext = (
@@ -261,6 +274,85 @@ const parseTimelineEvents = (payload: unknown): ConnectShyftTimelineEvent[] => {
       };
     })
     .filter((event): event is ConnectShyftTimelineEvent => event !== null);
+};
+
+const buildFallbackSubjectContext = (input: {
+  orgUnitId: string;
+  personId: string | null;
+  identityState: ConnectShyftThreadIdentityState | null;
+}): SubjectContext => {
+  if (!input.personId) {
+    return {
+      orgUnitId: input.orgUnitId,
+    };
+  }
+
+  if (input.identityState === 'provisional') {
+    return {
+      orgUnitId: input.orgUnitId,
+      provisionalPersonId: input.personId,
+    };
+  }
+
+  return {
+    orgUnitId: input.orgUnitId,
+    personId: input.personId,
+  };
+};
+
+const parseSubjectContext = (input: {
+  payload: unknown;
+  orgUnitId: string;
+  personId: string | null;
+  identityState: ConnectShyftThreadIdentityState | null;
+}): SubjectContext => {
+  if (!input.payload || typeof input.payload !== 'object') {
+    return buildFallbackSubjectContext(input);
+  }
+
+  const candidate = input.payload as {
+    orgUnitId?: unknown;
+    personId?: unknown;
+    provisionalPersonId?: unknown;
+    conversationId?: unknown;
+    contactPointId?: unknown;
+  };
+
+  const orgUnitId = normalizeString(candidate.orgUnitId) || input.orgUnitId;
+  const personId = normalizeString(candidate.personId);
+  const provisionalPersonId = normalizeString(candidate.provisionalPersonId);
+  const conversationId = normalizeString(candidate.conversationId);
+  const contactPointId = normalizeString(candidate.contactPointId);
+
+  if (personId && !provisionalPersonId) {
+    return {
+      orgUnitId,
+      personId,
+      conversationId: conversationId || undefined,
+      contactPointId: contactPointId || undefined,
+    };
+  }
+
+  if (provisionalPersonId && !personId) {
+    return {
+      orgUnitId,
+      provisionalPersonId,
+      conversationId: conversationId || undefined,
+      contactPointId: contactPointId || undefined,
+    };
+  }
+
+  const fallback = buildFallbackSubjectContext({
+    orgUnitId,
+    personId: input.personId,
+    identityState: input.identityState,
+  });
+
+  return {
+    ...fallback,
+    conversationId: conversationId || undefined,
+    contactPointId: contactPointId || undefined,
+  };
 };
 
 const hasVoicemailTimelineEvent = (payload: unknown): boolean => {
@@ -390,6 +482,9 @@ const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null =>
 
   const candidate = payload as {
     actions?: unknown;
+    personId?: unknown;
+    identityState?: unknown;
+    subjectContext?: unknown;
     timeline?: unknown;
     lifecycle?: {
       reopenedByInbound?: unknown;
@@ -401,9 +496,30 @@ const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null =>
       .map((entry) => normalizeString(entry))
       .filter((entry) => entry.length > 0)
     : [];
+  const parsedIdentityState = normalizeIdentityState(candidate.identityState);
+  const fallbackPersonId = normalizeString(candidate.personId) || null;
+  const subjectContext = parseSubjectContext({
+    payload: candidate.subjectContext,
+    orgUnitId: summary.orgUnitId,
+    personId: fallbackPersonId,
+    identityState: parsedIdentityState,
+  });
+  const personId = fallbackPersonId
+    || subjectContext.personId
+    || subjectContext.provisionalPersonId
+    || null;
+  const identityState = parsedIdentityState
+    || (subjectContext.provisionalPersonId
+      ? 'provisional'
+      : personId
+        ? 'confirmed'
+        : null);
 
   return {
     ...summary,
+    personId,
+    identityState,
+    subjectContext,
     actions,
     timeline: parseTimelineEvents(candidate.timeline),
     lifecycle: {

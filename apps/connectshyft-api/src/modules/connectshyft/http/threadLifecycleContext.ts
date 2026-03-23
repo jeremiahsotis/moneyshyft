@@ -597,7 +597,7 @@ const buildSyntheticThread = (input: {
       stage: escalationStage,
       nextEvaluationAtUtc,
     },
-  };
+  } as ConnectShyftThread;
 };
 
 const canPersistLifecycleSideEffects = (input: {

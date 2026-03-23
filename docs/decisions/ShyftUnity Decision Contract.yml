@@ -1,0 +1,151 @@
+version: 1.5
+status: LOCKED
+
+core_principles:
+  person_centric: true
+  history_preservation_required: true
+  communication_is_not_identity: true
+  deterministic_scoring_required: true
+  deterministic_candidate_generation_required: true
+
+contact_point:
+  uniqueness_basis: normalized_value
+  duplicate_allowed: false
+  source_of_truth:
+    lifecycle: status
+  states:
+    - active_personal
+    - active_shared_possible
+    - active_shared_confirmed
+    - stale
+    - reassignment_suspected
+    - archived
+
+contact_point_event:
+  included_in_mvp: true
+  enters_execution_at_slice: 21
+  transport_rule: wrapped_in_event_envelope
+
+event_transport:
+  envelope_required_for_cross_boundary_domain_events: true
+  canonical_pattern: EventEnvelope<DomainPayload>
+
+subject_context:
+  org_unit_id_required: true
+  exactly_one_identity_field_required: true
+  allowed_identity_fields:
+    - personId
+    - provisionalPersonId
+  forbid_both_simultaneously: true
+
+identity_resolution:
+  provisional_person_required_when_unresolved: true
+  threads_require_person_id: true
+
+candidate_generation:
+  scheduled_slice: 21
+  owner: PeopleCore
+  deterministic: true
+  explainable: true
+  max_candidates: 10
+  inputs:
+    - normalized_contact_point
+    - current_contact_point_links
+    - historical_contact_point_links
+    - household_links
+    - recent_activity_context
+    - resolver_review_context
+  required_generation_order:
+    - current_person_links
+    - current_household_links
+    - historical_person_links
+    - historical_household_links
+    - household_members_from_current_household_links
+  generation_rules:
+    current_person_links:
+      include: true
+      dedupe_by: person_id
+    current_household_links:
+      include: true
+      dedupe_by: household_id
+    historical_person_links:
+      include_only_if_no_current_person_links: true
+      dedupe_by: person_id
+    historical_household_links:
+      include_only_if_no_current_household_links: true
+      dedupe_by: household_id
+    household_members_from_current_household_links:
+      include_only_when:
+        - current_household_link_exists
+        - household_member_is_active
+      mark_as_indirect: true
+  exclusions:
+    - archived_people
+    - merged_people_non_survivor_records
+    - suppressed_people
+    - archived_households
+  anti_expansion_rules:
+    - do_not_search_global_fuzzy_people_pool_from_contact_point_alone
+    - do_not_generate_candidates_from_name_or_address_without_contact_link_evidence
+    - do_not_generate_candidates_from_org_unit_history_alone
+  tie_policy:
+    candidate_generation_is_not_selection: true
+    unresolved_after_scoring_creates_provisional_person: true
+
+score_composition:
+  scheduled_slice: 22
+  base_score: 0
+  additive_factors:
+    exact_current_person_link: 60
+    exact_current_household_link: 20
+    current_primary_link: 15
+    manual_confirmation_current_link: 40
+    resolver_verified_current_link: 60
+    recent_activity_0_30_days: 20
+    recent_activity_31_180_days: 10
+    recent_confirmation_0_180_days: 15
+    same_household_corroboration: 15
+  subtractive_factors:
+    multiple_current_person_links: -35
+    active_shared_possible: -20
+    active_shared_confirmed: -45
+    stale_contact_point: -25
+    reassignment_suspected: -70
+    historical_only_link: -40
+    conflicting_identity_fields: -60
+    cross_household_conflict: -25
+    no_recent_use_over_365_days: -15
+  band_caps:
+    reassignment_suspected_max_band: medium
+    active_shared_confirmed_max_band: high
+    multiple_current_person_links_max_band: high
+  tie_break_rules:
+    minimum_lead_for_auto_selection_over_next_candidate: 20
+    below_lead_threshold_result: medium_review_bias
+
+friction_model:
+  scheduled_slice: 22
+  very_low:
+    create_new: easy
+  low:
+    create_new: easy_with_warning
+  medium:
+    create_new: requires_explicit_choice
+  high:
+    create_new: strongly_discouraged
+  very_high:
+    create_new: resolver_required
+
+rebinding:
+  scheduled_slice: 26
+  classes:
+    - auto_rebind
+    - review_rebind
+    - historical_only
+
+contact_point_lifecycle:
+  scheduled_slice: 27
+  source_of_truth: status
+
+deferrals:
+  work_intent_until_caseshyft: true
