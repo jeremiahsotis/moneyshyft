@@ -4,6 +4,10 @@ import * as canonicalEventsModule from '../../../../modules/connectshyft/canonic
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents';
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings';
 import {
+  connectShyftVoicemailServiceAsync,
+  resetConnectShyftVoicemailStateForTests,
+} from '../../../../modules/connectshyft/voicemails';
+import {
   buildApp,
   buildHeaders,
   registerProviderRegistryRouteIntegrationHooks,
@@ -16,6 +20,7 @@ const TEST_THREAD_ID = 'thread-f1-claimed-1002';
 const TEST_PROVIDER_NUMBER = '+12605550191';
 const TEST_CALLBACK_PROVIDER_EVENT_ID = 'provider-event-voice-seed-1001';
 const TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID = 'vm-thread-f1-claimed-1002-provider-event-voice-seed-1001';
+const TEST_PERSON_ID = 'person-connectshyft-transcription-1001';
 
 const readString = (...values: unknown[]): string | null => {
   for (const value of values) {
@@ -109,32 +114,12 @@ const buildTranscriptionWebhookBody = (overrides: Record<string, unknown> = {}) 
   ...overrides,
 });
 
-const buildPersistedVoicemailCorrelationEvent = () => ({
-  eventId: 'canonical-event-voice-seed-1001',
-  aggregateId: TEST_THREAD_ID,
-  aggregateType: 'Thread',
-  eventType: 'voice.voicemail',
-  payload: {
-    transcription: {
-      callbackCorrelation: {
-        tenantId: TEST_TENANT_ID,
-        orgUnitId: TEST_ORG_UNIT_ID,
-        threadId: TEST_THREAD_ID,
-        providerEventId: TEST_CALLBACK_PROVIDER_EVENT_ID,
-        voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
-      },
-    },
-  },
-  occurredAtUtc: TEST_TIMESTAMP,
-});
-
 describe('connectshyft inbound transcription callback webhook route characterization', () => {
   registerProviderRegistryRouteIntegrationHooks();
 
-  let listCanonicalEventsSpy: jest.SpyInstance;
   let recordCanonicalEventSpy: jest.SpyInstance;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     sendSmsMock.mockClear();
     startOutboundCallMock.mockClear();
     startBridgeSessionMock.mockClear();
@@ -143,13 +128,8 @@ describe('connectshyft inbound transcription callback webhook route characteriza
     translateProviderEventMock.mockClear();
     resetConnectShyftCanonicalEventsForTests();
     resetConnectShyftProviderCorrelationStateForTests();
+    resetConnectShyftVoicemailStateForTests();
 
-    listCanonicalEventsSpy = jest.spyOn(
-      canonicalEventsModule,
-      'listConnectShyftCanonicalEvents',
-    ).mockResolvedValue([
-      buildPersistedVoicemailCorrelationEvent(),
-    ] as any);
     recordCanonicalEventSpy = jest.spyOn(
       canonicalEventsModule,
       'recordConnectShyftCanonicalEvent',
@@ -161,11 +141,27 @@ describe('connectshyft inbound transcription callback webhook route characteriza
       payload: eventInput.payload,
       occurredAtUtc: TEST_TIMESTAMP,
     }) as any);
+
+    await connectShyftVoicemailServiceAsync.upsertVoicemailArtifact({
+      tenantId: TEST_TENANT_ID,
+      orgUnitId: TEST_ORG_UNIT_ID,
+      threadId: TEST_THREAD_ID,
+      personId: TEST_PERSON_ID,
+      artifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+      direction: 'inbound',
+      contactPointId: '+12605552021',
+      recordingUrl: 'https://connectshyft.test/transcription-seed-1001.mp3',
+      recordingStatus: 'completed',
+      providerEventId: TEST_CALLBACK_PROVIDER_EVENT_ID,
+      providerLegId: 'provider-leg-transcription-1001',
+      occurredAtUtc: TEST_TIMESTAMP,
+      transcriptionStatus: 'pending',
+      transcriptionRequestedAtUtc: TEST_TIMESTAMP,
+    });
   });
 
   afterEach(() => {
     recordCanonicalEventSpy.mockRestore();
-    listCanonicalEventsSpy.mockRestore();
   });
 
   it('returns the current transcription callback success envelope and attachment payload shape', async () => {
@@ -249,7 +245,82 @@ describe('connectshyft inbound transcription callback webhook route characteriza
       'transcriptionAttachment',
     ].sort());
     expect(recordCanonicalEventSpy).toHaveBeenCalledTimes(1);
-    expect(listCanonicalEventsSpy).toHaveBeenCalledTimes(1);
+    const persistedArtifact = await connectShyftVoicemailServiceAsync.findVoicemailArtifact({
+      tenantId: TEST_TENANT_ID,
+      artifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+      providerEventId: TEST_CALLBACK_PROVIDER_EVENT_ID,
+    });
+    expect(persistedArtifact?.transcriptionStatus).toBe('completed');
+    expect(persistedArtifact?.transcriptionText).toBe('Neighbor confirmed transport coordination.');
+  });
+
+  it('records failed transcription callbacks on the voicemail artifact without creating a timeline attachment event', async () => {
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildTranscriptionHeaders())
+      .send(buildTranscriptionWebhookBody({
+        eventType: 'voice.transcription.failed',
+        providerEventId: 'provider-event-transcription-failed-1005',
+        transcript: undefined,
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_TRANSCRIPTION_CALLBACK_RECORDED',
+      message: 'Transcription callback recorded on voicemail artifact',
+      data: {
+        eventType: 'voice.transcription.failed',
+        providerResolution: {
+          requestedProvider: 'telnyx',
+          resolvedProvider: 'telnyx',
+          deterministic: true,
+          adapterInvoked: true,
+        },
+        correlation: {
+          source: 'metadata',
+          deterministic: true,
+          threadId: TEST_THREAD_ID,
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+          providerEventId: TEST_CALLBACK_PROVIDER_EVENT_ID,
+          voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+        },
+        replaySafe: {
+          duplicate: false,
+          suppressedDomainWrites: false,
+          dedupeKey: 'provider-event:provider-event-transcription-failed-1005',
+        },
+        transcriptionAttachment: {
+          applied: false,
+          transcriptText: null,
+          voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+          transcriptionStatus: 'failed',
+        },
+        sideEffects: {
+          transcriptMutationApplied: true,
+          timelineMutationApplied: false,
+        },
+      },
+    });
+    expect(Object.keys(response.body.data).sort()).toEqual([
+      'correlation',
+      'eventType',
+      'providerResolution',
+      'replaySafe',
+      'sideEffects',
+      'transcriptionAttachment',
+    ].sort());
+    expect(recordCanonicalEventSpy).not.toHaveBeenCalled();
+    const persistedArtifact = await connectShyftVoicemailServiceAsync.findVoicemailArtifact({
+      tenantId: TEST_TENANT_ID,
+      artifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+      providerEventId: TEST_CALLBACK_PROVIDER_EVENT_ID,
+    });
+    expect(persistedArtifact?.recordingUrl).toBe('https://connectshyft.test/transcription-seed-1001.mp3');
+    expect(persistedArtifact?.transcriptionStatus).toBe('failed');
+    expect(persistedArtifact?.transcriptionText).toBe(null);
   });
 
   it('preserves the current duplicate suppression surface for transcription callbacks', async () => {
@@ -311,11 +382,10 @@ describe('connectshyft inbound transcription callback webhook route characteriza
       'sideEffects',
     ].sort());
     expect(recordCanonicalEventSpy).toHaveBeenCalledTimes(1);
-    expect(listCanonicalEventsSpy).toHaveBeenCalledTimes(1);
   });
 
   it('returns the current invalid-correlation refusal shape for transcription callbacks', async () => {
-    listCanonicalEventsSpy.mockResolvedValueOnce([]);
+    resetConnectShyftVoicemailStateForTests();
     const app = buildApp();
     const response = await request(app)
       .post('/api/v1/connectshyft/webhooks/inbound')
@@ -422,6 +492,5 @@ describe('connectshyft inbound transcription callback webhook route characteriza
       'replaySafe',
       'sideEffects',
     ].sort());
-    expect(listCanonicalEventsSpy).toHaveBeenCalledTimes(1);
   });
 });

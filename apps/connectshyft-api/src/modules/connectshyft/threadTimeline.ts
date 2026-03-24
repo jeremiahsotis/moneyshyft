@@ -18,6 +18,8 @@ import {
 } from './inboundVoice';
 import {
   connectShyftVoicemailServiceAsync,
+  type ConnectShyftVoicemailRecordingStatus,
+  type ConnectShyftVoicemailTranscriptionStatus,
   type Voicemail,
 } from './voicemails';
 
@@ -64,8 +66,13 @@ export type ConnectShyftVoicemailTimelineItem = ConnectShyftThreadTimelineItemBa
   channel: 'voicemail';
   body: null;
   recordingUrl: string | null;
+  recordingStatus: ConnectShyftVoicemailRecordingStatus | null;
   durationSeconds: number | null;
   transcript: string | null;
+  transcriptionText: string | null;
+  transcriptionStatus: ConnectShyftVoicemailTranscriptionStatus | null;
+  seenAtUtc: string | null;
+  reviewedAtUtc: string | null;
 };
 
 export type ConnectShyftThreadTimelineItem =
@@ -114,6 +121,22 @@ const normalizeDirection = (
   value: unknown,
 ): ConnectShyftThreadTimelineDirection | null => {
   return value === 'inbound' || value === 'outbound'
+    ? value
+    : null;
+};
+
+const normalizeRecordingStatus = (
+  value: unknown,
+): ConnectShyftVoicemailRecordingStatus | null => {
+  return value === 'pending' || value === 'completed' || value === 'failed'
+    ? value
+    : null;
+};
+
+const normalizeTranscriptionStatus = (
+  value: unknown,
+): ConnectShyftVoicemailTranscriptionStatus | null => {
+  return value === 'pending' || value === 'completed' || value === 'failed'
     ? value
     : null;
 };
@@ -274,35 +297,149 @@ const mapVoicemailTimelineEvent: TimelineEventMapper = (event, payload) => {
   const artifact = resolveVoiceOrVoicemailArtifact(payload);
   const transcription = asRecord(artifact?.transcription);
   const metadata = asRecord(payload.metadata);
+  const transcriptionRequest = asRecord(payload.transcription);
+  const callbackCorrelation = asRecord(
+    metadata?.callbackCorrelation || transcriptionRequest?.callbackCorrelation,
+  );
+  const recordingUrl = normalizeString(
+    artifact?.recordingUrl || artifact?.recording_url,
+  ) || null;
+  const direction = normalizeDirection(payload.direction) || 'inbound';
+  const transcriptionText = normalizeString(
+    transcription?.text
+    || artifact?.transcriptionText
+    || artifact?.transcription_text
+    || metadata?.transcriptText
+    || metadata?.transcriptionText
+    || metadata?.transcription_text,
+  ) || null;
+  const artifactRenderSource = {
+    recording_url: recordingUrl,
+    recording_status: normalizeRecordingStatus(
+      artifact?.recordingStatus
+      || artifact?.recording_status,
+    ) || (recordingUrl ? 'completed' : 'pending'),
+    transcription_text: transcriptionText,
+    transcription_status: normalizeTranscriptionStatus(
+      transcription?.status
+      || artifact?.transcriptionStatus
+      || artifact?.transcription_status
+      || metadata?.transcriptionStatus
+      || metadata?.transcription_status,
+    ) || (
+      transcriptionText
+        ? 'completed'
+        : normalizeString(payload.eventName) === CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME
+          ? 'pending'
+          : null
+    ),
+    seen_at_utc: toIsoString(
+      artifact?.seenAtUtc
+      || artifact?.seen_at_utc
+      || metadata?.seenAtUtc
+      || metadata?.seen_at_utc,
+    ) || (direction === 'outbound' ? event.occurredAtUtc : null),
+    reviewed_at_utc: toIsoString(
+      artifact?.reviewedAtUtc
+      || artifact?.reviewed_at_utc
+      || metadata?.reviewedAtUtc
+      || metadata?.reviewed_at_utc,
+    ) || (direction === 'outbound' ? event.occurredAtUtc : null),
+  };
+  const providerMetadata = {
+    ...(asRecord(payload.providerMetadata) || {}),
+    ...(normalizeString(artifact?.artifactId || metadata?.voicemailArtifactId)
+      ? {
+          artifactId: normalizeString(artifact?.artifactId || metadata?.voicemailArtifactId),
+        }
+      : {}),
+    ...(normalizeDirection(payload.direction)
+      ? {
+          direction: normalizeDirection(payload.direction),
+        }
+      : {}),
+    ...(normalizeString(
+      artifact?.providerEventId
+      || callbackCorrelation?.correlationEventId
+      || callbackCorrelation?.providerEventId,
+    )
+      ? {
+          providerEventId: normalizeString(
+            artifact?.providerEventId
+            || callbackCorrelation?.correlationEventId
+            || callbackCorrelation?.providerEventId,
+          ),
+        }
+      : {}),
+    ...(normalizeString(
+      artifact?.providerLegId
+      || callbackCorrelation?.providerLegId,
+    )
+      ? {
+          providerLegId: normalizeString(
+            artifact?.providerLegId
+            || callbackCorrelation?.providerLegId,
+          ),
+        }
+      : {}),
+    ...(normalizeString(artifact?.providerRecordingId || artifact?.provider_recording_id)
+      ? {
+          providerRecordingId: normalizeString(
+            artifact?.providerRecordingId || artifact?.provider_recording_id,
+          ),
+        }
+      : {}),
+    ...(artifactRenderSource.recording_status
+      ? {
+          recordingStatus: artifactRenderSource.recording_status,
+        }
+      : {}),
+    ...(artifactRenderSource.transcription_status
+      ? {
+          transcriptionStatus: artifactRenderSource.transcription_status,
+        }
+      : {}),
+  };
 
   return {
     ...resolveTimelineBase({
       event,
       payload,
-      direction: normalizeDirection(payload.direction) || 'inbound',
+      direction,
       actor: resolveTimelineActor({
         payload,
-        fallbackDirection: 'inbound',
+        fallbackDirection: direction,
       }),
     }),
     type: 'voicemail',
     channel: 'voicemail',
     body: null,
-    recordingUrl: normalizeString(artifact?.recordingUrl) || null,
+    providerMetadata: Object.keys(providerMetadata).length > 0 ? providerMetadata : null,
+    recordingUrl: artifactRenderSource.recording_url,
+    recordingStatus: artifactRenderSource.recording_status,
     durationSeconds: normalizeDurationSeconds(artifact?.durationSeconds),
-    transcript: normalizeString(transcription?.text)
-      || normalizeString(metadata?.transcriptText)
-      || null,
+    transcript: artifactRenderSource.transcription_status === 'completed'
+      ? artifactRenderSource.transcription_text
+      : null,
+    transcriptionText: artifactRenderSource.transcription_text,
+    transcriptionStatus: artifactRenderSource.transcription_status,
+    seenAtUtc: artifactRenderSource.seen_at_utc,
+    reviewedAtUtc: artifactRenderSource.reviewed_at_utc,
   };
 };
 
 const resolveBridgeSessionVoicemailProjection = (aggregate: {
   session: {
+    id?: string | null;
     updatedAt?: Date | string | null;
   };
 } | null): {
   artifactId: string;
+  bridgeSessionId: string | null;
   recordingUrl: string;
+  recordingStatus: ConnectShyftVoicemailRecordingStatus;
+  providerEventId: string | null;
+  providerLegId: string | null;
   occurredAtUtc: string;
 } | null => {
   if (!aggregate) {
@@ -321,7 +458,11 @@ const resolveBridgeSessionVoicemailProjection = (aggregate: {
 
   return {
     artifactId,
+    bridgeSessionId: normalizeString(sessionRecord?.id) || null,
     recordingUrl,
+    recordingStatus: 'completed',
+    providerEventId: normalizeString(sessionRecord?.voicemailProviderEventId) || null,
+    providerLegId: normalizeString(sessionRecord?.voicemailProviderLegId) || null,
     occurredAtUtc,
   };
 };
@@ -351,7 +492,11 @@ const buildBridgeSessionVoicemailTimelineItem = (input: {
   threadId: string;
   voicemailProjection: {
     artifactId: string;
+    bridgeSessionId: string | null;
     recordingUrl: string;
+    recordingStatus: ConnectShyftVoicemailRecordingStatus;
+    providerEventId: string | null;
+    providerLegId: string | null;
     occurredAtUtc: string;
   };
 }): ConnectShyftVoicemailTimelineItem => ({
@@ -363,11 +508,23 @@ const buildBridgeSessionVoicemailTimelineItem = (input: {
   body: null,
   occurredAtUtc: input.voicemailProjection.occurredAtUtc,
   actor: 'system',
-  providerMetadata: null,
-  deliveryStatus: null,
+  providerMetadata: {
+    artifactId: input.voicemailProjection.artifactId,
+    bridgeSessionId: input.voicemailProjection.bridgeSessionId,
+    direction: 'outbound',
+    recordingStatus: input.voicemailProjection.recordingStatus,
+    providerEventId: input.voicemailProjection.providerEventId,
+    providerLegId: input.voicemailProjection.providerLegId,
+  },
+  deliveryStatus: input.voicemailProjection.recordingStatus,
   recordingUrl: input.voicemailProjection.recordingUrl,
+  recordingStatus: input.voicemailProjection.recordingStatus,
   durationSeconds: null,
   transcript: null,
+  transcriptionText: null,
+  transcriptionStatus: null,
+  seenAtUtc: input.voicemailProjection.occurredAtUtc,
+  reviewedAtUtc: input.voicemailProjection.occurredAtUtc,
 });
 
 const buildCallStatusEvents = (call: Call): Array<{ status: string; occurredAtUtc: string }> => {
@@ -433,25 +590,280 @@ const buildCallTimelineItem = (call: Call): ConnectShyftVoiceEventTimelineItem =
   deliveryStatus: call.status,
 });
 
-const buildVoicemailTimelineItem = (voicemail: Voicemail): ConnectShyftVoicemailTimelineItem => ({
-  id: `voicemail-${voicemail.id}`,
-  threadId: voicemail.threadId,
-  type: 'voicemail',
-  direction: 'outbound',
-  channel: 'voicemail',
-  body: null,
-  occurredAtUtc: voicemail.occurredAtUtc,
-  actor: 'system',
-  providerMetadata: {
-    callId: voicemail.callId,
-    artifactId: voicemail.artifactId,
-    recordingStatus: voicemail.recordingStatus,
-  },
-  deliveryStatus: voicemail.recordingStatus,
-  recordingUrl: voicemail.recordingUrl,
-  durationSeconds: null,
-  transcript: null,
-});
+const buildVoicemailTimelineItem = (voicemail: Voicemail): ConnectShyftVoicemailTimelineItem => {
+  const artifactRenderSource = {
+    recording_url: voicemail.recordingUrl,
+    recording_status: voicemail.recordingStatus,
+    transcription_text: voicemail.transcriptionStatus === 'completed'
+      ? voicemail.transcriptionText
+      : null,
+    transcription_status: voicemail.transcriptionStatus,
+    direction: voicemail.direction,
+  };
+
+  return {
+    id: `voicemail-${voicemail.id}`,
+    threadId: voicemail.threadId,
+    type: 'voicemail',
+    direction: artifactRenderSource.direction,
+    channel: 'voicemail',
+    body: null,
+    occurredAtUtc: voicemail.occurredAtUtc,
+    actor: voicemail.direction === 'inbound' ? 'neighbor' : 'user',
+    providerMetadata: {
+      callId: voicemail.callId,
+      bridgeSessionId: voicemail.bridgeSessionId,
+      contactPointId: voicemail.contactPointId,
+      artifactId: voicemail.artifactId,
+      direction: voicemail.direction,
+      recordingStatus: voicemail.recordingStatus,
+      providerEventId: voicemail.providerEventId,
+      providerLegId: voicemail.providerLegId,
+      providerRecordingId: voicemail.providerRecordingId,
+      transcriptionStatus: voicemail.transcriptionStatus,
+      transcriptionProvider: voicemail.transcriptionProvider,
+    },
+    deliveryStatus: voicemail.recordingStatus,
+    recordingUrl: artifactRenderSource.recording_url,
+    recordingStatus: artifactRenderSource.recording_status,
+    durationSeconds: null,
+    transcript: artifactRenderSource.transcription_status === 'completed'
+      ? artifactRenderSource.transcription_text
+      : null,
+    transcriptionText: artifactRenderSource.transcription_text,
+    transcriptionStatus: artifactRenderSource.transcription_status,
+    seenAtUtc: voicemail.seenAtUtc,
+    reviewedAtUtc: voicemail.reviewedAtUtc,
+  };
+};
+
+const resolveMergedVoicemailTimestamp = (
+  left: string | null,
+  right: string | null,
+): string | null => {
+  if (left) {
+    return left;
+  }
+
+  return right;
+};
+
+const resolveVoicemailProjectionSource = (
+  item: ConnectShyftVoicemailTimelineItem,
+): 'persisted_artifact' | 'bridge_fallback' | 'canonical' => {
+  if (item.id.startsWith('voicemail-')) {
+    return 'persisted_artifact';
+  }
+
+  if (item.id.startsWith('bridge-voicemail-')) {
+    return 'bridge_fallback';
+  }
+
+  return 'canonical';
+};
+
+const resolveVoicemailDedupeKey = (
+  item: ConnectShyftVoicemailTimelineItem,
+): string | null => {
+  const providerMetadata = asRecord(item.providerMetadata);
+  const providerRecordingId = normalizeString(
+    providerMetadata?.providerRecordingId || providerMetadata?.provider_recording_id,
+  );
+  if (providerRecordingId) {
+    return `provider_recording_id:${providerRecordingId}`;
+  }
+
+  const providerEventId = normalizeString(
+    providerMetadata?.providerEventId || providerMetadata?.provider_event_id,
+  );
+  if (providerEventId) {
+    return `provider_event_id:${providerEventId}`;
+  }
+
+  const bridgeSessionId = normalizeString(
+    providerMetadata?.bridgeSessionId || providerMetadata?.bridge_session_id,
+  );
+  const providerLegId = normalizeString(
+    providerMetadata?.providerLegId || providerMetadata?.provider_leg_id,
+  );
+  if (bridgeSessionId && providerLegId) {
+    return `bridge_session_id:${bridgeSessionId}|provider_leg_id:${providerLegId}|direction:${item.direction}`;
+  }
+
+  return null;
+};
+
+const resolveVoicemailSourcePriority = (
+  source: 'persisted_artifact' | 'bridge_fallback' | 'canonical',
+): number => {
+  if (source === 'persisted_artifact') {
+    return 3;
+  }
+
+  if (source === 'canonical') {
+    return 2;
+  }
+
+  return 1;
+};
+
+const resolveMergedVoicemailRecordingStatus = (
+  left: ConnectShyftVoicemailRecordingStatus | null,
+  right: ConnectShyftVoicemailRecordingStatus | null,
+): ConnectShyftVoicemailRecordingStatus | null => {
+  if (left === 'completed' || right === 'completed') {
+    return 'completed';
+  }
+
+  if (left === 'failed' || right === 'failed') {
+    return 'failed';
+  }
+
+  if (left === 'pending' || right === 'pending') {
+    return 'pending';
+  }
+
+  return null;
+};
+
+const resolveMergedVoicemailTranscriptionStatus = (
+  left: ConnectShyftVoicemailTranscriptionStatus | null,
+  right: ConnectShyftVoicemailTranscriptionStatus | null,
+): ConnectShyftVoicemailTranscriptionStatus | null => {
+  if (left === 'completed' || right === 'completed') {
+    return 'completed';
+  }
+
+  if (left === 'failed' || right === 'failed') {
+    return 'failed';
+  }
+
+  if (left === 'pending' || right === 'pending') {
+    return 'pending';
+  }
+
+  return null;
+};
+
+const resolvePreferredVoicemailTimelineItem = (
+  left: ConnectShyftVoicemailTimelineItem,
+  right: ConnectShyftVoicemailTimelineItem,
+): ConnectShyftVoicemailTimelineItem => {
+  const leftPriority = resolveVoicemailSourcePriority(resolveVoicemailProjectionSource(left));
+  const rightPriority = resolveVoicemailSourcePriority(resolveVoicemailProjectionSource(right));
+
+  if (leftPriority !== rightPriority) {
+    return leftPriority > rightPriority ? left : right;
+  }
+
+  const leftScore = (
+    (left.transcriptionStatus === 'completed' ? 40 : 0)
+    + (left.recordingStatus === 'completed' ? 20 : 0)
+    + (left.transcriptionText ? 10 : 0)
+    + (left.recordingUrl ? 5 : 0)
+  );
+  const rightScore = (
+    (right.transcriptionStatus === 'completed' ? 40 : 0)
+    + (right.recordingStatus === 'completed' ? 20 : 0)
+    + (right.transcriptionText ? 10 : 0)
+    + (right.recordingUrl ? 5 : 0)
+  );
+
+  if (leftScore !== rightScore) {
+    return leftScore > rightScore ? left : right;
+  }
+
+  return new Date(left.occurredAtUtc).getTime() <= new Date(right.occurredAtUtc).getTime()
+    ? left
+    : right;
+};
+
+const mergeVoicemailTimelineItems = (
+  left: ConnectShyftVoicemailTimelineItem,
+  right: ConnectShyftVoicemailTimelineItem,
+): ConnectShyftVoicemailTimelineItem => {
+  const preferred = resolvePreferredVoicemailTimelineItem(left, right);
+  const secondary = preferred === left ? right : left;
+  const transcriptionStatus = resolveMergedVoicemailTranscriptionStatus(
+    preferred.transcriptionStatus,
+    secondary.transcriptionStatus,
+  );
+  const transcriptionText = transcriptionStatus === 'completed'
+    ? preferred.transcriptionText
+      || preferred.transcript
+      || secondary.transcriptionText
+      || secondary.transcript
+      || null
+    : null;
+
+  return {
+    ...preferred,
+    occurredAtUtc: new Date(left.occurredAtUtc).getTime() <= new Date(right.occurredAtUtc).getTime()
+      ? left.occurredAtUtc
+      : right.occurredAtUtc,
+    providerMetadata: {
+      ...(asRecord(secondary.providerMetadata) || {}),
+      ...(asRecord(preferred.providerMetadata) || {}),
+    },
+    deliveryStatus: resolveMergedVoicemailRecordingStatus(
+      preferred.recordingStatus,
+      secondary.recordingStatus,
+    ) || preferred.deliveryStatus || secondary.deliveryStatus,
+    recordingUrl: preferred.recordingUrl || secondary.recordingUrl,
+    recordingStatus: resolveMergedVoicemailRecordingStatus(
+      preferred.recordingStatus,
+      secondary.recordingStatus,
+    ),
+    transcript: transcriptionText,
+    transcriptionText,
+    transcriptionStatus,
+    seenAtUtc: resolveMergedVoicemailTimestamp(
+      preferred.seenAtUtc,
+      secondary.seenAtUtc,
+    ),
+    reviewedAtUtc: resolveMergedVoicemailTimestamp(
+      preferred.reviewedAtUtc,
+      secondary.reviewedAtUtc,
+    ),
+  };
+};
+
+const dedupeVoicemailTimelineItems = (
+  items: readonly ConnectShyftThreadTimelineItem[],
+): ConnectShyftThreadTimelineItem[] => {
+  const passthrough: ConnectShyftThreadTimelineItem[] = [];
+  const dedupedVoicemails = new Map<string, ConnectShyftVoicemailTimelineItem>();
+  const dedupeOrder: string[] = [];
+
+  items.forEach((item) => {
+    if (item.type !== 'voicemail') {
+      passthrough.push(item);
+      return;
+    }
+
+    const dedupeKey = resolveVoicemailDedupeKey(item);
+    if (!dedupeKey) {
+      passthrough.push(item);
+      return;
+    }
+
+    const existing = dedupedVoicemails.get(dedupeKey);
+    if (!existing) {
+      dedupedVoicemails.set(dedupeKey, item);
+      dedupeOrder.push(dedupeKey);
+      return;
+    }
+
+    dedupedVoicemails.set(dedupeKey, mergeVoicemailTimelineItems(existing, item));
+  });
+
+  return [
+    ...passthrough,
+    ...dedupeOrder
+      .map((dedupeKey) => dedupedVoicemails.get(dedupeKey))
+      .filter((item): item is ConnectShyftVoicemailTimelineItem => item !== undefined),
+  ];
+};
 
 const CONNECTSHYFT_TIMELINE_MAPPERS = new Map<string, TimelineEventMapper>([
   [CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME, mapInboundSmsTimelineEvent],
@@ -583,13 +995,12 @@ export const getThreadTimeline = async (
   });
 
   try {
-    const persistedVoicemails = await Promise.all(
-      persistedCalls.map((call) => connectShyftVoicemailServiceAsync.listCallVoicemails({
-        tenantId: input.tenantId,
-        callId: call.id,
-      })),
-    );
-    persistedVoicemails.flat().forEach((voicemail) => {
+    const persistedVoicemails = await connectShyftVoicemailServiceAsync.listThreadVoicemails({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId,
+    });
+    persistedVoicemails.forEach((voicemail) => {
       items.push(buildVoicemailTimelineItem(voicemail));
     });
   } catch (error) {
@@ -611,7 +1022,9 @@ export const getThreadTimeline = async (
     }));
   }
 
-  const sortedItems = sortConnectShyftThreadTimelineItems(items);
+  const sortedItems = sortConnectShyftThreadTimelineItems(
+    dedupeVoicemailTimelineItems(items),
+  );
 
   return {
     threadId,

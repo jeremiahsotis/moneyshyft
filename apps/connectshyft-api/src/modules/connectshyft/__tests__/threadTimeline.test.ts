@@ -1,4 +1,5 @@
 import * as canonicalEventsModule from '../canonicalEvents';
+import * as bridgeSessionsModule from '../bridgeSessions';
 import * as callsModule from '../calls';
 import { CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME } from '../inboundSms';
 import {
@@ -323,13 +324,24 @@ describe('connectshyft thread timeline projection', () => {
       channel: 'voicemail',
       type: 'voicemail',
       recordingUrl: 'https://example.test/vm-001.mp3',
+      recordingStatus: 'completed',
       durationSeconds: 42,
+      transcript: null,
+      transcriptionText: null,
+      transcriptionStatus: null,
+      seenAtUtc: null,
+      reviewedAtUtc: null,
     });
     expect(timeline.items[3]).toMatchObject({
       id: 'event-voicemail-002',
       channel: 'voicemail',
       type: 'voicemail',
+      recordingStatus: 'pending',
       transcript: 'Leave package at the side door',
+      transcriptionText: 'Leave package at the side door',
+      transcriptionStatus: 'completed',
+      seenAtUtc: null,
+      reviewedAtUtc: null,
     });
   });
 
@@ -372,7 +384,7 @@ describe('connectshyft thread timeline projection', () => {
         updatedAtUtc: '2026-03-19T10:01:30.000Z',
       },
     ]);
-    jest.spyOn(voicemailsModule.connectShyftVoicemailServiceAsync, 'listCallVoicemails').mockResolvedValueOnce([
+    jest.spyOn(voicemailsModule.connectShyftVoicemailServiceAsync, 'listThreadVoicemails').mockResolvedValueOnce([
       {
         id: 'voicemail-timeline-1001',
         tenantId: 'tenant-connectshyft-f1',
@@ -381,12 +393,29 @@ describe('connectshyft thread timeline projection', () => {
         threadId: 'thread-timeline-persisted-1001',
         personId: 'person-connectshyft-f1-1001',
         artifactId: 'artifact-timeline-1001',
+        bridgeSessionId: 'bridge-timeline-1001',
+        contactPointId: '+13175550100',
+        direction: 'inbound',
         recordingUrl: 'https://example.test/timeline-vm.mp3',
         recordingStatus: 'completed',
+        providerEventId: 'provider-event-vm-1001',
+        providerLegId: 'provider-leg-vm-1001',
+        providerRecordingId: 'provider-recording-vm-1001',
         occurredAtUtc: '2026-03-19T10:02:00.000Z',
         createdAtUtc: '2026-03-19T10:02:00.000Z',
         updatedAtUtc: '2026-03-19T10:02:00.000Z',
-        transcriptionJson: null,
+        transcriptionStatus: 'completed',
+        transcriptionText: 'Please call me back after 5.',
+        transcriptionProvider: 'telnyx',
+        transcriptionRequestedAtUtc: '2026-03-19T10:02:00.000Z',
+        transcriptionCompletedAtUtc: '2026-03-19T10:02:20.000Z',
+        transcriptionFailedAtUtc: null,
+        seenAtUtc: null,
+        reviewedAtUtc: null,
+        transcriptionJson: {
+          status: 'completed',
+          text: 'Please call me back after 5.',
+        },
       },
     ]);
 
@@ -437,14 +466,167 @@ describe('connectshyft thread timeline projection', () => {
       expect.objectContaining({
         id: 'voicemail-voicemail-timeline-1001',
         type: 'voicemail',
+        direction: 'inbound',
         occurredAtUtc: '2026-03-19T10:02:00.000Z',
         deliveryStatus: 'completed',
         recordingUrl: 'https://example.test/timeline-vm.mp3',
+        recordingStatus: 'completed',
+        transcript: 'Please call me back after 5.',
+        transcriptionText: 'Please call me back after 5.',
+        transcriptionStatus: 'completed',
         providerMetadata: {
           callId: 'call-timeline-1001',
+          bridgeSessionId: 'bridge-timeline-1001',
+          contactPointId: '+13175550100',
           artifactId: 'artifact-timeline-1001',
+          direction: 'inbound',
           recordingStatus: 'completed',
+          providerEventId: 'provider-event-vm-1001',
+          providerLegId: 'provider-leg-vm-1001',
+          providerRecordingId: 'provider-recording-vm-1001',
+          transcriptionStatus: 'completed',
+          transcriptionProvider: 'telnyx',
         },
+        seenAtUtc: null,
+        reviewedAtUtc: null,
+      }),
+    ]);
+  });
+
+  it('deduplicates canonical voicemail updates into one artifact-first card anchored to the earliest voicemail occurrence', async () => {
+    jest.spyOn(canonicalEventsModule, 'listConnectShyftCanonicalEvents').mockResolvedValueOnce([
+      {
+        eventId: 'event-voicemail-dedupe-1001',
+        aggregateId: 'thread-timeline-dedupe-1001',
+        aggregateType: 'Thread',
+        eventType: CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
+        occurredAtUtc: '2026-03-19T10:01:00.000Z',
+        payload: {
+          direction: 'inbound',
+          actor: 'neighbor',
+          eventName: CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME,
+          voicemailArtifact: {
+            artifactId: 'artifact-timeline-dedupe-1001',
+            providerEventId: 'provider-event-timeline-dedupe-1001',
+            providerLegId: 'provider-leg-timeline-dedupe-1001',
+            recordingUrl: 'https://example.test/timeline-dedupe-1001.mp3',
+          },
+        },
+      },
+      {
+        eventId: 'event-transcription-dedupe-1001',
+        aggregateId: 'thread-timeline-dedupe-1001',
+        aggregateType: 'Thread',
+        eventType: CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME,
+        occurredAtUtc: '2026-03-19T10:03:00.000Z',
+        payload: {
+          direction: 'inbound',
+          actor: 'neighbor',
+          eventName: CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME,
+          metadata: {
+            voicemailArtifactId: 'artifact-timeline-dedupe-1001',
+            callbackCorrelation: {
+              correlationEventId: 'provider-event-timeline-dedupe-1001',
+            },
+            transcriptText: 'Transcript should enrich the original voicemail card.',
+          },
+          voicemailArtifact: {
+            artifactId: 'artifact-timeline-dedupe-1001',
+            transcription: {
+              text: 'Transcript should enrich the original voicemail card.',
+            },
+          },
+        },
+      },
+    ]);
+    jest.spyOn(bridgeSessionsModule, 'loadConnectShyftBridgeAggregateByThreadId').mockResolvedValue(null as any);
+    jest.spyOn(callsModule.connectShyftCallServiceAsync, 'listThreadCalls').mockResolvedValueOnce([]);
+    jest.spyOn(voicemailsModule.connectShyftVoicemailServiceAsync, 'listThreadVoicemails').mockResolvedValueOnce([]);
+
+    const timeline = await getThreadTimeline({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: 'thread-timeline-dedupe-1001',
+    });
+
+    expect(timeline.items.filter((item) => item.type === 'voicemail')).toEqual([
+      expect.objectContaining({
+        id: 'event-transcription-dedupe-1001',
+        occurredAtUtc: '2026-03-19T10:01:00.000Z',
+        direction: 'inbound',
+        recordingUrl: 'https://example.test/timeline-dedupe-1001.mp3',
+        recordingStatus: 'completed',
+        transcript: 'Transcript should enrich the original voicemail card.',
+        transcriptionText: 'Transcript should enrich the original voicemail card.',
+        transcriptionStatus: 'completed',
+      }),
+    ]);
+  });
+
+  it('renders the persisted voicemail artifact once when a bridge fallback projection matches the same voicemail dedupe key', async () => {
+    jest.spyOn(canonicalEventsModule, 'listConnectShyftCanonicalEvents').mockResolvedValueOnce([]);
+    jest.spyOn(bridgeSessionsModule, 'loadConnectShyftBridgeAggregateByThreadId').mockResolvedValue({
+      session: {
+        id: 'bridge-session-timeline-artifact-first-1002',
+        status: 'voicemail',
+        voicemailArtifactId: 'artifact-timeline-artifact-first-1002',
+        voicemailRecordingUrl: 'https://example.test/timeline-artifact-first-1002.mp3',
+        voicemailRecordingStatus: 'completed',
+        voicemailProviderEventId: 'provider-event-timeline-artifact-first-1002',
+        voicemailProviderLegId: 'provider-leg-timeline-artifact-first-1002',
+        updatedAt: new Date('2026-03-19T10:06:00.000Z'),
+      },
+    } as any);
+    jest.spyOn(callsModule.connectShyftCallServiceAsync, 'listThreadCalls').mockResolvedValueOnce([]);
+    jest.spyOn(voicemailsModule.connectShyftVoicemailServiceAsync, 'listThreadVoicemails').mockResolvedValueOnce([
+      {
+        id: 'voicemail-timeline-artifact-first-1002',
+        tenantId: 'tenant-connectshyft-f1',
+        orgUnitId: 'org-connectshyft-f1-east',
+        callId: null,
+        threadId: 'thread-timeline-artifact-first-1002',
+        personId: 'person-connectshyft-f1-1002',
+        artifactId: 'artifact-timeline-artifact-first-1002',
+        bridgeSessionId: 'bridge-session-timeline-artifact-first-1002',
+        contactPointId: '+13175550100',
+        direction: 'outbound',
+        recordingUrl: 'https://example.test/timeline-artifact-first-1002.mp3',
+        recordingStatus: 'completed',
+        providerEventId: 'provider-event-timeline-artifact-first-1002',
+        providerLegId: 'provider-leg-timeline-artifact-first-1002',
+        providerRecordingId: null,
+        occurredAtUtc: '2026-03-19T10:05:00.000Z',
+        createdAtUtc: '2026-03-19T10:05:00.000Z',
+        updatedAtUtc: '2026-03-19T10:06:30.000Z',
+        transcriptionStatus: 'pending',
+        transcriptionText: null,
+        transcriptionProvider: null,
+        transcriptionRequestedAtUtc: '2026-03-19T10:05:30.000Z',
+        transcriptionCompletedAtUtc: null,
+        transcriptionFailedAtUtc: null,
+        seenAtUtc: '2026-03-19T10:05:00.000Z',
+        reviewedAtUtc: '2026-03-19T10:05:00.000Z',
+        transcriptionJson: null,
+      },
+    ]);
+
+    const timeline = await getThreadTimeline({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: 'thread-timeline-artifact-first-1002',
+    });
+
+    expect(timeline.items.filter((item) => item.type === 'voicemail')).toEqual([
+      expect.objectContaining({
+        id: 'voicemail-voicemail-timeline-artifact-first-1002',
+        occurredAtUtc: '2026-03-19T10:05:00.000Z',
+        direction: 'outbound',
+        actor: 'user',
+        recordingUrl: 'https://example.test/timeline-artifact-first-1002.mp3',
+        recordingStatus: 'completed',
+        transcriptionStatus: 'pending',
+        seenAtUtc: '2026-03-19T10:05:00.000Z',
+        reviewedAtUtc: '2026-03-19T10:05:00.000Z',
       }),
     ]);
   });

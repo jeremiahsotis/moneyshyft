@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { success } from '../../../platform/envelopes/response';
 import { resolveConnectShyftThreadTimelineMetadata } from '../readContracts';
+import { ConnectShyftPersistenceUnavailableError } from '../calls';
 import {
   getThreadTimeline,
   normalizeConnectShyftThreadTimelineLimit,
@@ -8,6 +9,7 @@ import {
 import { serializeConnectShyftThreadTimelineResponse } from '../threadTimelineDto';
 import { loadConnectShyftPlatformDb } from '../http/accessContext';
 import { resolveConnectShyftThreadTimelineReadContext } from '../http/threadReadContext';
+import { connectShyftVoicemailServiceAsync } from '../voicemails';
 
 const resolveTimelineLimit = (req: Request): number => {
   const rawLimit = typeof req.query?.limit === 'string'
@@ -21,6 +23,18 @@ export const getConnectThreadTimeline = async (req: Request, res: Response) => {
   const readContext = await resolveConnectShyftThreadTimelineReadContext(req, res);
   if (!readContext) {
     return;
+  }
+
+  try {
+    await connectShyftVoicemailServiceAsync.markThreadVoicemailsSeen({
+      tenantId: readContext.context.tenantId,
+      orgUnitId: readContext.context.orgUnitId,
+      threadId: readContext.threadId,
+    });
+  } catch (error) {
+    if (!(error instanceof ConnectShyftPersistenceUnavailableError)) {
+      throw error;
+    }
   }
 
   const timeline = await getThreadTimeline({

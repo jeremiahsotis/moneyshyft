@@ -29,6 +29,13 @@ const CONNECTSHYFT_INBOUND_VOICE_RECORDING_URL_KEYS = [
   'recording_url',
 ] as const;
 
+const CONNECTSHYFT_INBOUND_VOICE_RECORDING_ID_KEYS = [
+  'recordingId',
+  'recording_id',
+  'providerRecordingId',
+  'provider_recording_id',
+] as const;
+
 const CONNECTSHYFT_INBOUND_VOICE_DURATION_KEYS = [
   'voicemail_duration_seconds',
   'duration_seconds',
@@ -113,6 +120,51 @@ const readDurationFromSources = (
   return null;
 };
 
+const normalizeTranscriptionCallbackStatus = (
+  value: unknown,
+): 'completed' | 'failed' | null => {
+  const normalized = normalizeString(value).toLowerCase();
+
+  if (
+    normalized === 'completed'
+    || normalized === 'complete'
+    || normalized === 'success'
+    || normalized === 'succeeded'
+  ) {
+    return 'completed';
+  }
+
+  if (
+    normalized === 'failed'
+    || normalized === 'failure'
+    || normalized === 'error'
+    || normalized === 'errored'
+  ) {
+    return 'failed';
+  }
+
+  return null;
+};
+
+const resolveTranscriptionCallbackStatusFromEventType = (
+  value: unknown,
+): 'completed' | 'failed' | null => {
+  const normalized = normalizeString(value).toLowerCase();
+  if (!normalized || !normalized.includes('transcription')) {
+    return null;
+  }
+
+  if (normalized.includes('failed') || normalized.includes('error')) {
+    return 'failed';
+  }
+
+  if (normalized.includes('completed')) {
+    return 'completed';
+  }
+
+  return null;
+};
+
 const readWebhookSources = (webhookBody: unknown): Array<Record<string, unknown> | null> => {
   const payload = asRecord(webhookBody);
   const providerPayload = asRecord(payload?.providerPayload);
@@ -134,6 +186,7 @@ export type ConnectShyftInboundVoiceArtifact = {
   providerEventId: string | null;
   providerMessageId: string | null;
   providerLegId: string | null;
+  providerRecordingId: string | null;
   from: string | null;
   to: string | null;
   recordingUrl: string | null;
@@ -176,6 +229,7 @@ export type ConnectShyftVoicemailTranscriptionCallbackCorrelation = {
 
 export type ConnectShyftVoicemailTranscriptionCallbackPayload = {
   correlation: ConnectShyftVoicemailTranscriptionCallbackCorrelation;
+  transcriptionStatus: 'completed' | 'failed';
   transcriptText: string | null;
 };
 
@@ -224,7 +278,23 @@ export const isConnectShyftVoicemailTranscriptionCallbackEventType = (
   }
 
   return normalized.includes('transcription')
-    && (normalized.includes('completed') || normalized.includes('callback'));
+    && (
+      normalized.includes('completed')
+      || normalized.includes('callback')
+      || normalized.includes('failed')
+      || normalized.includes('error')
+    );
+};
+
+export const isConnectShyftInboundVoiceRecordingSavedEventType = (
+  canonicalEventType: string,
+): boolean => {
+  const normalized = normalizeString(canonicalEventType).toLowerCase();
+
+  return normalized === 'voice.voicemail'
+    || normalized === 'recording.saved'
+    || normalized === 'voice.recording.saved'
+    || normalized === 'call.recording.saved';
 };
 
 export const extractConnectShyftVoicemailTranscriptionCallbackPayload = (
@@ -252,6 +322,15 @@ export const extractConnectShyftVoicemailTranscriptionCallbackPayload = (
       'transcription_text',
     ],
   );
+  const transcriptionStatus = normalizeTranscriptionCallbackStatus(
+    readFromSources([transcriptRecord, ...sources], [
+      'status',
+      'transcriptionStatus',
+      'transcription_status',
+    ]),
+  ) || resolveTranscriptionCallbackStatusFromEventType(
+    readFromSources(sources, ['eventType', 'event_type']),
+  ) || (transcriptText ? 'completed' : 'failed');
 
   return {
     correlation: {
@@ -272,6 +351,7 @@ export const extractConnectShyftVoicemailTranscriptionCallbackPayload = (
         'artifact_id',
       ]),
     },
+    transcriptionStatus,
     transcriptText,
   };
 };
@@ -344,6 +424,7 @@ export const mapConnectShyftInboundVoiceWebhookToDomainEvent = (input: {
   const from = readFromSources(sources, CONNECTSHYFT_INBOUND_VOICE_FROM_KEYS);
   const to = readFromSources(sources, CONNECTSHYFT_INBOUND_VOICE_TO_KEYS);
   const recordingUrl = readFromSources(sources, CONNECTSHYFT_INBOUND_VOICE_RECORDING_URL_KEYS);
+  const providerRecordingId = readFromSources(sources, CONNECTSHYFT_INBOUND_VOICE_RECORDING_ID_KEYS);
   const durationSeconds = readDurationFromSources(sources, CONNECTSHYFT_INBOUND_VOICE_DURATION_KEYS);
 
   return {
@@ -358,6 +439,7 @@ export const mapConnectShyftInboundVoiceWebhookToDomainEvent = (input: {
       providerEventId: input.providerEventId,
       providerMessageId: input.providerMessageId,
       providerLegId: input.providerLegId,
+      providerRecordingId,
       from,
       to,
       recordingUrl,

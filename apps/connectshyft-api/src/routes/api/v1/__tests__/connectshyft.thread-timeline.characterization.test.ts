@@ -10,6 +10,10 @@ import { CONNECTSHYFT_INBOUND_VOICE_VOICEMAIL_EVENT_NAME } from '../../../../mod
 import * as ReadContractsModule from '../../../../modules/connectshyft/readContracts';
 import { CONNECTSHYFT_OUTBOUND_SMS_APPENDED_EVENT_NAME } from '../../../../modules/connectshyft/threadTimeline';
 import {
+  connectShyftVoicemailServiceAsync,
+  resetConnectShyftVoicemailStateForTests,
+} from '../../../../modules/connectshyft/voicemails';
+import {
   buildApp,
   buildHeaders,
   registerProviderRegistryRouteIntegrationHooks,
@@ -141,10 +145,12 @@ describe('connectshyft thread timeline route characterization', () => {
 
   beforeEach(() => {
     resetConnectShyftCanonicalEventsForTests();
+    resetConnectShyftVoicemailStateForTests();
   });
 
   afterEach(() => {
     resetConnectShyftCanonicalEventsForTests();
+    resetConnectShyftVoicemailStateForTests();
     jest.restoreAllMocks();
   });
 
@@ -256,8 +262,13 @@ describe('connectshyft thread timeline route characterization', () => {
       'occurred_at_utc',
       'provider_metadata',
       'recording_url',
+      'recording_status',
+      'reviewed_at_utc',
+      'seen_at_utc',
       'thread_id',
       'transcript',
+      'transcription_status',
+      'transcription_text',
       'type',
     ].sort());
     expect(response.body.data.items).toEqual([
@@ -279,8 +290,13 @@ describe('connectshyft thread timeline route characterization', () => {
         occurred_at_utc: '2026-03-19T10:01:00.000Z',
         actor: 'neighbor',
         recording_url: 'https://connectshyft.test/voicemail-characterization-1001.mp3',
+        recording_status: 'completed',
         duration_seconds: 47,
         transcript: 'Please call me back.',
+        transcription_text: 'Please call me back.',
+        transcription_status: 'completed',
+        seen_at_utc: null,
+        reviewed_at_utc: null,
       }),
       expect.objectContaining({
         thread_id: threadId,
@@ -342,8 +358,13 @@ describe('connectshyft thread timeline route characterization', () => {
             occurred_at_utc: '2026-03-19T10:06:00.000Z',
             actor: 'system',
             recording_url: 'https://connectshyft.test/outbound-voicemail-timeline-1002.mp3',
+            recording_status: 'completed',
+            reviewed_at_utc: '2026-03-19T10:06:00.000Z',
+            seen_at_utc: '2026-03-19T10:06:00.000Z',
             duration_seconds: null,
             transcript: null,
+            transcription_text: null,
+            transcription_status: null,
           }),
         ],
       },
@@ -425,6 +446,57 @@ describe('connectshyft thread timeline route characterization', () => {
       'middle',
       'newest',
     ]);
+  });
+
+  it('marks inbound persisted voicemails seen on thread open without changing the first seen timestamp on repeat loads', async () => {
+    const threadId = 'thread-timeline-seen-1001';
+    jest.spyOn(
+      ReadContractsModule,
+      'resolveConnectShyftThreadDetailContractAsync',
+    ).mockResolvedValue(buildThreadDetailRecord({
+      threadId,
+      neighborId: 'neighbor-timeline-seen-1001',
+    }) as any);
+    jest.spyOn(
+      BridgeSessionsModule,
+      'loadConnectShyftBridgeAggregateByThreadId',
+    ).mockResolvedValue(null as any);
+
+    await connectShyftVoicemailServiceAsync.upsertVoicemailArtifact({
+      tenantId: TEST_TENANT_ID,
+      orgUnitId: TEST_ORG_UNIT_ID,
+      threadId,
+      personId: 'person-timeline-seen-1001',
+      artifactId: 'artifact-timeline-seen-1001',
+      direction: 'inbound',
+      recordingUrl: 'https://connectshyft.test/timeline-seen-1001.mp3',
+      recordingStatus: 'completed',
+      providerEventId: 'provider-event-timeline-seen-1001',
+      occurredAtUtc: '2026-03-19T10:04:00.000Z',
+    });
+
+    const app = buildApp();
+    const firstResponse = await request(app)
+      .get(`/api/v1/connectshyft/threads/${threadId}/timeline`)
+      .set(buildHeaders());
+    const firstSeenAtUtc = firstResponse.body.data.items[0].seen_at_utc;
+    const secondResponse = await request(app)
+      .get(`/api/v1/connectshyft/threads/${threadId}/timeline`)
+      .set(buildHeaders());
+
+    expect(firstResponse.status).toBe(200);
+    expect(firstSeenAtUtc).toEqual(expect.any(String));
+    expect(firstResponse.body.data.items).toEqual([
+      expect.objectContaining({
+        type: 'voicemail',
+        direction: 'inbound',
+        seen_at_utc: firstSeenAtUtc,
+        reviewed_at_utc: null,
+      }),
+    ]);
+    expect(secondResponse.status).toBe(200);
+    expect(secondResponse.body.data.items[0].seen_at_utc).toBe(firstSeenAtUtc);
+    expect(secondResponse.body.data.items[0].reviewed_at_utc).toBeNull();
   });
 
   it('returns deleted-neighbor timeline metadata only through includeDeleted=true', async () => {

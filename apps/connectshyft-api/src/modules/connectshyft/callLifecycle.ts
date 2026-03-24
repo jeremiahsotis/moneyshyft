@@ -10,6 +10,8 @@ import {
   type ConnectShyftCallService,
 } from './calls';
 import {
+  canAttachConnectShyftVoicemailToBridgeSession,
+  canEnterConnectShyftVoicemailFromBridgeSession,
   connectShyftVoicemailServiceAsync,
   type ConnectShyftVoicemailService,
   type Voicemail,
@@ -23,12 +25,15 @@ import {
   type ConnectShyftProviderEventService,
 } from './providerEvents';
 import {
+  BridgeSessionState,
   handleConnectShyftBridgeWebhookEvent,
   loadConnectShyftBridgeAggregateByProviderCallId,
   loadConnectShyftBridgeAggregateBySessionId,
   loadConnectShyftBridgeAggregateByThreadId,
   registerConnectShyftBridgeCallStatusHook,
   startConnectShyftBridgeSession,
+  transitionBridgeSessionState,
+  transitionConnectShyftBridgeSessionStateAsync,
 } from './bridgeSessions';
 import {
   connectShyftThreadServiceAsync,
@@ -120,10 +125,22 @@ export interface HandleVoicemailInput {
   threadId: string;
   personId: string;
   artifactId: string;
+  bridgeSessionId?: string | null;
+  contactPointId?: string | null;
+  direction?: 'inbound' | 'outbound';
   recordingUrl: string | null;
   recordingStatus: 'pending' | 'completed' | 'failed';
+  providerEventId?: string | null;
+  providerLegId?: string | null;
+  providerRecordingId?: string | null;
   occurredAt: Date;
   transcriptionJson?: unknown;
+  transcriptionStatus?: 'pending' | 'completed' | 'failed' | null;
+  transcriptionText?: string | null;
+  transcriptionProvider?: string | null;
+  transcriptionRequestedAtUtc?: string | null;
+  transcriptionCompletedAtUtc?: string | null;
+  transcriptionFailedAtUtc?: string | null;
 }
 
 export interface ConnectShyftCallLifecycleService {
@@ -991,10 +1008,17 @@ export const buildConnectShyftCallLifecycleService = (
         );
       }
 
-      let voicemailEligible = call.status === 'failed' || call.status === 'voicemail';
-      if (!voicemailEligible && call.bridgeSessionId) {
-        const aggregate = await loadBridgeAggregateBySessionIdFn(call.bridgeSessionId);
-        voicemailEligible = aggregate?.session.failureCode === 'neighbor_failed';
+      const bridgeAggregate = call.bridgeSessionId
+        ? await loadBridgeAggregateBySessionIdFn(call.bridgeSessionId)
+        : null;
+
+      let voicemailEligible = call.status === 'voicemail';
+      if (bridgeAggregate) {
+        voicemailEligible = canAttachConnectShyftVoicemailToBridgeSession(
+          bridgeAggregate.session.status,
+        );
+      } else if (!voicemailEligible) {
+        voicemailEligible = call.status === 'failed';
       }
 
       if (!voicemailEligible) {
@@ -1004,17 +1028,58 @@ export const buildConnectShyftCallLifecycleService = (
         );
       }
 
-      const voicemail = await voicemailService.createVoicemail({
+      if (
+        bridgeAggregate
+        && canEnterConnectShyftVoicemailFromBridgeSession(bridgeAggregate.session.status)
+      ) {
+        const bridgeSessionTransition = transitionBridgeSessionState(
+          bridgeAggregate.session,
+          BridgeSessionState.VOICEMAIL,
+          {
+            source: 'system',
+            eventType: 'voicemail.recorded',
+            occurredAt: input.occurredAt,
+          },
+        );
+
+        if (bridgeSessionTransition !== bridgeAggregate.session) {
+          await transitionConnectShyftBridgeSessionStateAsync({
+            bridgeSessionId: bridgeAggregate.session.id,
+            tenantId: bridgeAggregate.session.tenantId,
+            orgUnitId: bridgeAggregate.session.orgUnitId,
+            nextState: BridgeSessionState.VOICEMAIL,
+            context: {
+              source: 'system',
+              eventType: 'voicemail.recorded',
+              occurredAt: input.occurredAt,
+            },
+          });
+        }
+      }
+
+      const voicemail = await voicemailService.upsertVoicemailArtifact({
         tenantId: input.tenantId,
         orgUnitId: input.orgUnitId,
         callId: input.callId,
         threadId: input.threadId,
         personId: input.personId,
         artifactId: input.artifactId,
+        bridgeSessionId: input.bridgeSessionId || bridgeAggregate?.session.id || null,
+        contactPointId: input.contactPointId || bridgeAggregate?.neighborLeg.contactPointId || null,
+        direction: input.direction || 'outbound',
         recordingUrl: input.recordingUrl,
         recordingStatus: input.recordingStatus,
+        providerEventId: input.providerEventId || null,
+        providerLegId: input.providerLegId || null,
+        providerRecordingId: input.providerRecordingId || null,
         occurredAtUtc: input.occurredAt.toISOString(),
         transcriptionJson: input.transcriptionJson,
+        transcriptionStatus: input.transcriptionStatus ?? null,
+        transcriptionText: input.transcriptionText ?? null,
+        transcriptionProvider: input.transcriptionProvider ?? null,
+        transcriptionRequestedAtUtc: input.transcriptionRequestedAtUtc ?? null,
+        transcriptionCompletedAtUtc: input.transcriptionCompletedAtUtc ?? null,
+        transcriptionFailedAtUtc: input.transcriptionFailedAtUtc ?? null,
       });
 
       if (shouldApplyCallUpdate(call.status, 'voicemail')) {

@@ -15,8 +15,13 @@ export type ConnectShyftThreadTimelineItemDto = {
   provider_metadata: Record<string, unknown> | null;
   delivery_status: string | null;
   recording_url?: string | null;
+  recording_status?: 'pending' | 'completed' | 'failed' | null;
   duration_seconds?: number | null;
   transcript?: string | null;
+  transcription_text?: string | null;
+  transcription_status?: 'pending' | 'completed' | 'failed' | null;
+  seen_at_utc?: string | null;
+  reviewed_at_utc?: string | null;
 };
 
 export type ConnectShyftThreadTimelineResponseDto = {
@@ -51,8 +56,13 @@ const serializeConnectShyftThreadTimelineItem = (
   return {
     ...base,
     recording_url: item.recordingUrl,
+    recording_status: item.recordingStatus,
     duration_seconds: item.durationSeconds,
     transcript: item.transcript,
+    transcription_text: item.transcriptionText,
+    transcription_status: item.transcriptionStatus,
+    seen_at_utc: item.seenAtUtc,
+    reviewed_at_utc: item.reviewedAtUtc,
   };
 };
 
