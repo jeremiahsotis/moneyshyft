@@ -3,6 +3,10 @@ import {
   type SubjectContext,
   validateSubjectContext,
 } from '../../../../../libs/contracts/src/subject-context';
+import {
+  connectShyftCallServiceAsync,
+  ConnectShyftPersistenceUnavailableError,
+} from './calls';
 import { peopleCoreServiceAsync } from '../peoplecore/service';
 
 export type ConnectShyftInboxBucket = 'inbox' | 'mine';
@@ -21,6 +25,13 @@ export type ConnectShyftThreadDisplayRecord = {
   conferenceContext: string;
   claimContext: string;
   voicemailLabel: string;
+};
+
+export type ConnectShyftThreadTelephonyRecord = {
+  callIndicator: boolean;
+  callLabel: string | null;
+  voicemailIndicator: boolean;
+  voicemailLabel: string | null;
 };
 
 export type ConnectShyftThreadSummaryRecord = {
@@ -53,6 +64,8 @@ export type ConnectShyftThreadSummaryRecord = {
     cs_number_id: string;
     label: string;
   };
+  callIndicator?: boolean;
+  callLabel?: string | null;
   voicemailIndicator: boolean;
   voicemailLabel: string | null;
   summary: string;
@@ -67,6 +80,7 @@ export type ConnectShyftThreadDetailRecord = ConnectShyftThreadSummaryRecord & {
   lifecycle: {
     reopenedByInbound: boolean;
   };
+  telephony?: ConnectShyftThreadTelephonyRecord;
 };
 
 export type ConnectShyftThreadTimelineMetadata = {
@@ -91,6 +105,7 @@ type ConnectShyftThreadSeed = {
   lastInboundCsNumberId: string;
   preferredOutboundCsNumberId: string;
   preferredOutboundLabel: string;
+  callIndicator?: boolean;
   voicemailIndicator: boolean;
   summary: string;
 };
@@ -846,6 +861,24 @@ const resolveVoicemailLabel = (input: {
   return 'Voicemail';
 };
 
+const resolveCallLabel = (input: {
+  callIndicator: boolean;
+}): string | null => {
+  return input.callIndicator ? 'Call activity' : null;
+};
+
+const buildThreadTelephonyRecord = (input: {
+  callIndicator: boolean;
+  callLabel: string | null;
+  voicemailIndicator: boolean;
+  voicemailLabel: string | null;
+}): ConnectShyftThreadTelephonyRecord => ({
+  callIndicator: input.callIndicator,
+  callLabel: input.callLabel,
+  voicemailIndicator: input.voicemailIndicator,
+  voicemailLabel: input.voicemailLabel,
+});
+
 const resolveThreadStateLabel = (state: ConnectShyftThreadState): string => {
   if (state === 'UNCLAIMED') {
     return 'Unclaimed';
@@ -989,6 +1022,10 @@ const toSummaryRecord = (
   });
 
   const urgencyLabel = resolveConnectShyftUrgencyLabel(seed.escalationStage);
+  const callIndicator = seed.callIndicator === true;
+  const callLabel = resolveCallLabel({
+    callIndicator,
+  });
   const voicemailLabel = resolveVoicemailLabel({
     voicemailIndicator: seed.voicemailIndicator,
     state: seed.state,
@@ -1029,6 +1066,8 @@ const toSummaryRecord = (
       cs_number_id: preferredOutboundCsNumberId,
       label: seed.preferredOutboundLabel,
     },
+    callIndicator,
+    callLabel,
     voicemailIndicator: seed.voicemailIndicator,
     voicemailLabel,
     summary: seed.summary,
@@ -1131,6 +1170,12 @@ export const resolveConnectShyftThreadDetailContract = (input: {
     lifecycle: {
       reopenedByInbound: false,
     },
+    telephony: buildThreadTelephonyRecord({
+      callIndicator: summary.callIndicator === true,
+      callLabel: summary.callLabel || null,
+      voicemailIndicator: summary.voicemailIndicator,
+      voicemailLabel: summary.voicemailLabel,
+    }),
   };
 };
 
@@ -1373,6 +1418,10 @@ const mapDbRowToSummary = (
     voicemailIndicator,
     state,
   });
+  const callIndicator = false;
+  const callLabel = resolveCallLabel({
+    callIndicator,
+  });
 
   return {
     threadId,
@@ -1404,6 +1453,8 @@ const mapDbRowToSummary = (
       cs_number_id: normalizedPreferredOutboundCsNumberId,
       label: preferredOutboundLabel,
     },
+    callIndicator,
+    callLabel,
     voicemailIndicator,
     voicemailLabel,
     summary: normalizeString(row.summary ?? row.preview ?? row.last_message_preview),
@@ -1417,6 +1468,33 @@ const mapDbRowToSummary = (
       voicemailLabel,
     }),
   };
+};
+
+const enrichSummaryWithCallIndicators = async (
+  summary: ConnectShyftThreadSummaryRecord,
+): Promise<ConnectShyftThreadSummaryRecord> => {
+  try {
+    const calls = await connectShyftCallServiceAsync.listThreadCalls({
+      tenantId: summary.tenantId,
+      orgUnitId: summary.orgUnitId,
+      threadId: summary.threadId,
+    });
+    const callIndicator = calls.length > 0;
+
+    return {
+      ...summary,
+      callIndicator,
+      callLabel: resolveCallLabel({
+        callIndicator,
+      }),
+    };
+  } catch (error) {
+    if (error instanceof ConnectShyftPersistenceUnavailableError) {
+      return summary;
+    }
+
+    throw error;
+  }
 };
 
 const filterRowsForBucket = (
@@ -1504,7 +1582,13 @@ export const resolveConnectShyftInboxContractAsync = async (scope: {
     ))
     .filter((row): row is ConnectShyftThreadSummaryRecord => row !== null);
 
-  return sortConnectShyftThreadSummaries(mapped.filter((row) => row.neighborDeleted !== true));
+  const enriched = await Promise.all(
+    mapped
+      .filter((row) => row.neighborDeleted !== true)
+      .map((row) => enrichSummaryWithCallIndicators(row)),
+  );
+
+  return sortConnectShyftThreadSummaries(enriched);
 };
 
 const resolveBucketFromDbRow = (
@@ -1586,17 +1670,19 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
       [normalizeOptionalString(row.neighbor_id)].filter((neighborId): neighborId is string => Boolean(neighborId)),
     )),
   });
-  const summary = mapDbRowToSummary(
+  const baseSummary = mapDbRowToSummary(
     row,
     resolveBucketFromDbRow(row, input.actorUserId),
     neighborLifecycle?.get(normalizeOptionalString(row.neighbor_id) || '') || null,
   );
-  if (!summary) {
+  if (!baseSummary) {
     return null;
   }
-  if (summary.neighborDeleted && input.includeDeleted !== true) {
+  if (baseSummary.neighborDeleted && input.includeDeleted !== true) {
     return null;
   }
+
+  const summary = await enrichSummaryWithCallIndicators(baseSummary);
 
   let threadPersonStatus: string | null = null;
   const threadPersonId = normalizeOptionalString(row.person_id);
@@ -1624,5 +1710,11 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
     lifecycle: {
       reopenedByInbound: false,
     },
+    telephony: buildThreadTelephonyRecord({
+      callIndicator: summary.callIndicator === true,
+      callLabel: summary.callLabel || null,
+      voicemailIndicator: summary.voicemailIndicator,
+      voicemailLabel: summary.voicemailLabel,
+    }),
   };
 };

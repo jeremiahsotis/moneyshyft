@@ -4,6 +4,11 @@ import {
   type ConnectShyftCanonicalEventRecord,
 } from './canonicalEvents';
 import { loadConnectShyftBridgeAggregateByThreadId } from './bridgeSessions';
+import {
+  connectShyftCallServiceAsync,
+  ConnectShyftPersistenceUnavailableError,
+  type Call,
+} from './calls';
 import { CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME } from './inboundSms';
 import {
   CONNECTSHYFT_INBOUND_VOICE_FALLBACK_EVENT_NAME,
@@ -11,6 +16,10 @@ import {
   CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_ATTACHED_EVENT_NAME,
   CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME,
 } from './inboundVoice';
+import {
+  connectShyftVoicemailServiceAsync,
+  type Voicemail,
+} from './voicemails';
 
 export const CONNECTSHYFT_THREAD_TIMELINE_DEFAULT_LIMIT = 200;
 export const CONNECTSHYFT_THREAD_TIMELINE_MAX_LIMIT = 200;
@@ -361,6 +370,89 @@ const buildBridgeSessionVoicemailTimelineItem = (input: {
   transcript: null,
 });
 
+const buildCallStatusEvents = (call: Call): Array<{ status: string; occurredAtUtc: string }> => {
+  const events: Array<{ status: string; occurredAtUtc: string }> = [
+    {
+      status: 'operator_dialing',
+      occurredAtUtc: call.startedAtUtc,
+    },
+  ];
+
+  if (call.operatorAnsweredAtUtc) {
+    events.push({
+      status: 'operator_answered',
+      occurredAtUtc: call.operatorAnsweredAtUtc,
+    });
+    events.push({
+      status: 'neighbor_dialing',
+      occurredAtUtc: call.operatorAnsweredAtUtc,
+    });
+  }
+
+  if (call.neighborAnsweredAtUtc) {
+    events.push({
+      status: 'neighbor_answered',
+      occurredAtUtc: call.neighborAnsweredAtUtc,
+    });
+  }
+
+  if (call.bridgedAtUtc) {
+    events.push({
+      status: 'bridged',
+      occurredAtUtc: call.bridgedAtUtc,
+    });
+  }
+
+  if (call.status === 'voicemail' || call.status === 'completed' || call.status === 'failed' || call.status === 'canceled' || call.status === 'expired') {
+    events.push({
+      status: call.status,
+      occurredAtUtc: call.endedAtUtc || call.updatedAtUtc,
+    });
+  }
+
+  return events;
+};
+
+const buildCallTimelineItem = (call: Call): ConnectShyftVoiceEventTimelineItem => ({
+  id: `call-${call.id}`,
+  threadId: call.threadId,
+  type: 'voice_event',
+  direction: 'outbound',
+  channel: 'voice',
+  body: null,
+  occurredAtUtc: call.startedAtUtc,
+  actor: 'user',
+  providerMetadata: {
+    callId: call.id,
+    bridgeSessionId: call.bridgeSessionId,
+    status: call.status,
+    failureCode: call.failureCode,
+    failureMessage: call.failureMessage,
+    statusEvents: buildCallStatusEvents(call),
+  },
+  deliveryStatus: call.status,
+});
+
+const buildVoicemailTimelineItem = (voicemail: Voicemail): ConnectShyftVoicemailTimelineItem => ({
+  id: `voicemail-${voicemail.id}`,
+  threadId: voicemail.threadId,
+  type: 'voicemail',
+  direction: 'outbound',
+  channel: 'voicemail',
+  body: null,
+  occurredAtUtc: voicemail.occurredAtUtc,
+  actor: 'system',
+  providerMetadata: {
+    callId: voicemail.callId,
+    artifactId: voicemail.artifactId,
+    recordingStatus: voicemail.recordingStatus,
+  },
+  deliveryStatus: voicemail.recordingStatus,
+  recordingUrl: voicemail.recordingUrl,
+  durationSeconds: null,
+  transcript: null,
+});
+
 const CONNECTSHYFT_TIMELINE_MAPPERS = new Map<string, TimelineEventMapper>([
   [CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME, mapInboundSmsTimelineEvent],
   [CONNECTSHYFT_OUTBOUND_SMS_APPENDED_EVENT_NAME, mapOutboundSmsTimelineEvent],
@@ -468,11 +560,43 @@ export const getThreadTimeline = async (
     tenantId: input.tenantId,
     threadId,
   });
+  let persistedCalls: Call[] = [];
+  try {
+    persistedCalls = await connectShyftCallServiceAsync.listThreadCalls({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId,
+    });
+  } catch (error) {
+    if (!(error instanceof ConnectShyftPersistenceUnavailableError)) {
+      throw error;
+    }
+  }
   const voicemailProjection = resolveBridgeSessionVoicemailProjection(activeBridgeSession);
 
   const items = events
     .map((event) => mapConnectShyftCanonicalEventToTimelineItem(event))
     .filter((item): item is ConnectShyftThreadTimelineItem => item !== null);
+
+  persistedCalls.forEach((call) => {
+    items.push(buildCallTimelineItem(call));
+  });
+
+  try {
+    const persistedVoicemails = await Promise.all(
+      persistedCalls.map((call) => connectShyftVoicemailServiceAsync.listCallVoicemails({
+        tenantId: input.tenantId,
+        callId: call.id,
+      })),
+    );
+    persistedVoicemails.flat().forEach((voicemail) => {
+      items.push(buildVoicemailTimelineItem(voicemail));
+    });
+  } catch (error) {
+    if (!(error instanceof ConnectShyftPersistenceUnavailableError)) {
+      throw error;
+    }
+  }
 
   if (
     voicemailProjection
