@@ -44,10 +44,36 @@
           </p>
 
           <section
-            v-if="showContextualActionFeedback || detailLoadError"
+            v-if="threadSubjectImpactPresentation || showContextualActionFeedback || detailLoadError"
             data-testid="connectshyft-thread-action-feedback-contextual"
             class="space-y-3"
           >
+            <section
+              v-if="threadSubjectImpactPresentation"
+              data-testid="connectshyft-thread-subject-impact-banner"
+              class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-base text-amber-900"
+            >
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div class="space-y-1">
+                  <p class="font-semibold text-amber-950">
+                    Conversation context still resolving
+                  </p>
+                  <p data-testid="connectshyft-thread-subject-impact-message">
+                    {{ threadSubjectImpactPresentation.message }}
+                  </p>
+                </div>
+
+                <RouterLink
+                  v-if="threadSubjectImpactPresentation.ctaLabel"
+                  :to="peopleWorkspaceLink"
+                  data-testid="connectshyft-thread-subject-impact-people-link"
+                  class="inline-flex min-h-[44px] items-center justify-center rounded-full border border-amber-300 bg-white px-4 py-2 text-base font-semibold text-amber-900"
+                >
+                  {{ threadSubjectImpactPresentation.ctaLabel }}
+                </RouterLink>
+              </div>
+            </section>
+
             <p
               v-if="feedbackBanner"
               data-testid="connectshyft-feedback-banner"
@@ -166,12 +192,18 @@
                     </div>
                     <div>
                       <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                        Person context
+                        Subject snapshot
                       </p>
                       <p class="mt-2 text-base text-slate-600">
                         <span data-testid="connectshyft-thread-identity-state">
                           {{ threadDetail.identityState === 'provisional' ? 'Provisional person' : 'Confirmed person' }}
                         </span>
+                      </p>
+                      <p
+                        data-testid="connectshyft-thread-subject-snapshot-note"
+                        class="mt-2 text-sm text-slate-500"
+                      >
+                        {{ threadSubjectSnapshotNote }}
                       </p>
                     </div>
                   </div>
@@ -501,8 +533,8 @@
 
 <script setup lang="ts">
 import type { SubjectContext } from '@shyft/contracts';
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { RouterLink, useRoute } from 'vue-router';
 import ConnectShyftComposer from '@/components/connectshyft/ConnectShyftComposer.vue';
 import ConnectShyftMessageBubble from '@/components/connectshyft/ConnectShyftMessageBubble.vue';
 import ConnectShyftNeighborSnapshot from '@/components/connectshyft/ConnectShyftNeighborSnapshot.vue';
@@ -533,6 +565,7 @@ import {
   fetchConnectShyftThreadDetail,
   type ConnectShyftThreadDetail,
 } from '@/features/connectshyft/readContracts';
+import { resolveConnectShyftThreadSubjectImpactPresentation } from '@/features/connectshyft/identityResolution';
 import {
   CONNECTSHYFT_ACCESSIBILITY_LOCKS,
   CONNECTSHYFT_DEFAULT_SMS_OVERRIDE_REASONS,
@@ -587,6 +620,7 @@ const CONNECTSHYFT_OVERRIDE_REFUSAL_CODES = new Set([
   'CONNECTSHYFT_SMS_OVERRIDE_REASON_INVALID',
   'CONNECTSHYFT_OUTBOUND_OVERRIDE_REASON_REQUIRED',
 ]);
+const THREAD_SUBJECT_IMPACT_REFRESH_INTERVAL_MS = 15000;
 const CONNECTSHYFT_MODAL_FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
   '[href]',
@@ -639,6 +673,8 @@ const actorUserId = computed(() => {
 });
 
 const isViewerRole = computed(() => role.value === 'TENANT_VIEWER');
+const isTenantAdminResolver = computed(() =>
+  role.value === 'TENANT_ADMIN' || role.value === 'ADMIN');
 
 const threadId = computed(() => {
   const rawValue = route.params.threadId;
@@ -661,6 +697,27 @@ const threadSubjectContext = computed<SubjectContext>(() => {
   const subject = threadDetail.value?.subjectContext;
   return subject && subject.orgUnitId ? subject : { orgUnitId: activeOrgUnitId.value };
 });
+
+const threadSubjectImpact = computed(() => threadDetail.value?.subjectImpact || null);
+
+const threadSubjectImpactPresentation = computed(() => {
+  if (!threadSubjectImpact.value) {
+    return null;
+  }
+
+  return resolveConnectShyftThreadSubjectImpactPresentation({
+    subjectImpact: threadSubjectImpact.value,
+    isTenantAdminResolver: isTenantAdminResolver.value,
+  });
+});
+
+const peopleWorkspaceLink = computed(() => ({
+  path: '/app/people',
+  query: {
+    ...route.query,
+    ...(activeOrgUnitId.value ? { orgUnitId: activeOrgUnitId.value } : {}),
+  },
+}));
 
 const resolveQueryString = (...keys: string[]): string | null => {
   for (const key of keys) {
@@ -1000,11 +1057,39 @@ const threadTimestampLabel = computed(() => {
 });
 
 const threadSnapshotNote = computed(() => {
+  if (threadSubjectImpact.value) {
+    return 'Temporary identity warnings appear above when this conversation is still being resolved. Final subject truth updates here once that work is complete.';
+  }
+
+  if (threadDetail.value?.identityState === 'provisional') {
+    return 'This snapshot is still provisional. Final subject truth will replace it once identity confirmation is complete.';
+  }
+
   if (threadDetail.value?.voicemailIndicator) {
     return 'Keep the voicemail and the next volunteer step visible without leaking routing internals into the conversation flow.';
   }
 
-  return 'Keep the case conversation front and center. Conference, claim status, and key contact context stay visible without cluttering the timeline.';
+  return 'Final subject truth is reflected here while conversation context stays front and center.';
+});
+
+const threadSubjectSnapshotNote = computed(() => {
+  if (!threadDetail.value?.identityState) {
+    return 'Subject truth will appear here once this conversation is matched to a person.';
+  }
+
+  if (threadSubjectImpact.value?.impactType === 'resolver_required') {
+    return 'This snapshot shows the current subject while tenant-admin review is still in progress.';
+  }
+
+  if (threadSubjectImpact.value?.impactType === 'rebind_review') {
+    return 'This snapshot updates to final truth as soon as rebind review finishes.';
+  }
+
+  if (threadDetail.value.identityState === 'provisional') {
+    return 'This snapshot is still provisional until subject truth is confirmed.';
+  }
+
+  return 'Resolved subject truth is currently in sync with this conversation.';
 });
 
 const timelineEvents = computed(() => {
@@ -1611,9 +1696,31 @@ const loadThreadNeighbors = async (): Promise<void> => {
   threadNeighbors.value = neighborsResult.neighbors;
 };
 
-const refreshThreadDetail = async () => {
+let threadSubjectImpactRefreshHandle: number | null = null;
+
+const clearThreadSubjectImpactRefresh = (): void => {
+  if (threadSubjectImpactRefreshHandle === null || typeof window === 'undefined') {
+    return;
+  }
+
+  window.clearInterval(threadSubjectImpactRefreshHandle);
+  threadSubjectImpactRefreshHandle = null;
+};
+
+const refreshThreadDetail = async (options: {
+  preserveUiState?: boolean;
+  background?: boolean;
+} = {}) => {
+  if (options.background && actionPending.value) {
+    return;
+  }
+
   availability.value = await fetchConnectShyftAvailability();
   if (showUnavailableState.value) {
+    if (options.background) {
+      return;
+    }
+
     threadDetail.value = null;
     threadNeighbors.value = [];
     detailLoadError.value = '';
@@ -1629,6 +1736,10 @@ const refreshThreadDetail = async () => {
 
   const detailResult = await fetchConnectShyftThreadDetail(threadId.value);
   if (!detailResult.ok) {
+    if (options.background && threadDetail.value) {
+      return;
+    }
+
     threadDetail.value = null;
     detailLoadError.value = sanitizeConnectShyftOperatorCopy(
       detailResult.message,
@@ -1654,21 +1765,34 @@ const refreshThreadDetail = async () => {
     }),
   };
   detailLoadError.value = '';
-  lifecycleToast.value = '';
-  actionError.value = '';
-  threadComposerBody.value = '';
-  hiddenTransitionWarning.value = false;
-  closeModalOpen.value = false;
-  inactivityReset.value = false;
-  closeAddNeighborForm();
-  closePreferenceOverrideModal();
-  clearPolicyBanners();
-  clearFeedbackBanner();
+  if (!options.preserveUiState) {
+    lifecycleToast.value = '';
+    actionError.value = '';
+    threadComposerBody.value = '';
+    hiddenTransitionWarning.value = false;
+    closeModalOpen.value = false;
+    inactivityReset.value = false;
+    closeAddNeighborForm();
+    closePreferenceOverrideModal();
+    clearPolicyBanners();
+    clearFeedbackBanner();
+  }
 };
 
 onMounted(() => {
   void refreshThreadDetail();
 });
+
+const handleWindowFocus = (): void => {
+  if (!threadSubjectImpact.value) {
+    return;
+  }
+
+  void refreshThreadDetail({
+    preserveUiState: true,
+    background: true,
+  });
+};
 
 watch(preferenceOverrideModalOpen, (isOpen) => {
   if (!isOpen) {
@@ -1699,9 +1823,47 @@ watch(
 );
 
 watch(
+  threadSubjectImpact,
+  (nextImpact) => {
+    clearThreadSubjectImpactRefresh();
+
+    if (!nextImpact || typeof window === 'undefined') {
+      return;
+    }
+
+    threadSubjectImpactRefreshHandle = window.setInterval(() => {
+      void refreshThreadDetail({
+        preserveUiState: true,
+        background: true,
+      });
+    }, THREAD_SUBJECT_IMPACT_REFRESH_INTERVAL_MS);
+  },
+  {
+    immediate: true,
+  },
+);
+
+watch(
   () => route.fullPath,
   () => {
     void refreshThreadDetail();
   },
 );
+
+onMounted(() => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.addEventListener('focus', handleWindowFocus);
+});
+
+onUnmounted(() => {
+  clearThreadSubjectImpactRefresh();
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.removeEventListener('focus', handleWindowFocus);
+});
 </script>

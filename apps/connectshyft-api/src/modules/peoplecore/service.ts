@@ -64,7 +64,7 @@ import {
 } from './lifecycle';
 
 const CONTACT_POINT_LIFECYCLE_EVENT_LIMIT = 200;
-const CONNECTSHYFT_REBIND_REVIEW_TRIGGER_SOURCE_TYPE = 'connectshyft_person_rebind_review';
+export const CONNECTSHYFT_REBIND_REVIEW_TRIGGER_SOURCE_TYPE = 'connectshyft_person_rebind_review';
 const CONNECTSHYFT_REBIND_REVIEW_RESOLVER_REVIEW_NAMESPACE = 'f4f9a8f7-49e0-5e25-aa9b-f0f93ad7c9c4';
 
 const RESOLVER_ALLOWED_TRANSITIONS: Record<ResolverReviewStatus, readonly ResolverReviewStatus[]> = {
@@ -324,12 +324,12 @@ const toResolverReviewRecord = (
   decisionStatus: deriveResolverDecisionStatus(review.reviewStatus),
 });
 
-const isQueueBackedRebindReview = (review: ResolverReview): boolean => (
+export const isQueueBackedRebindReview = (review: ResolverReview): boolean => (
   isResolverRebindReviewType(review.reviewType)
   && review.triggerSourceType === CONNECTSHYFT_REBIND_REVIEW_TRIGGER_SOURCE_TYPE
 );
 
-const resolveResolverQueueItemType = (
+export const resolveResolverQueueItemType = (
   review: ResolverReview,
 ): ConnectShyftResolverQueueItemType => (
   isQueueBackedRebindReview(review) ? 'rebind_review' : 'identity_review'

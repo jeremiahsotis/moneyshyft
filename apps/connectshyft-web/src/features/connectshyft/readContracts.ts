@@ -1,6 +1,13 @@
 import api from '@/services/api';
 import { buildConnectShyftTestOverrideHeaders } from '@/features/connectshyft/flags';
-import type { SubjectContext } from '@shyft/contracts';
+import type {
+  ConnectShyftThreadSubjectImpact,
+  SubjectContext,
+} from '@shyft/contracts';
+import {
+  isConnectShyftResolverQueueItemType,
+  isConnectShyftThreadSubjectImpactType,
+} from '@shyft/contracts';
 
 export type ConnectShyftThreadState = 'UNCLAIMED' | 'CLAIMED' | 'CLOSED';
 export type ConnectShyftInboxBucket = 'inbox' | 'mine';
@@ -56,6 +63,7 @@ export type ConnectShyftTimelineEvent = {
 export type ConnectShyftThreadDetail = ConnectShyftThreadSummary & {
   personId: string | null;
   identityState: ConnectShyftThreadIdentityState | null;
+  subjectImpact: ConnectShyftThreadSubjectImpact | null;
   subjectContext: SubjectContext;
   actions: string[];
   timeline: ConnectShyftTimelineEvent[];
@@ -117,6 +125,11 @@ const normalizeString = (value: unknown): string => {
   }
 
   return value.trim();
+};
+
+const normalizeOptionalString = (value: unknown): string | null => {
+  const normalized = normalizeString(value);
+  return normalized.length > 0 ? normalized : null;
 };
 
 const normalizeStage = (value: unknown): number => {
@@ -470,6 +483,41 @@ const parseThreadSummary = (payload: unknown): ConnectShyftThreadSummary | null 
   };
 };
 
+const parseThreadSubjectImpact = (payload: unknown): ConnectShyftThreadSubjectImpact | null => {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const candidate = payload as {
+    impactType?: unknown;
+    impact_type?: unknown;
+    actionable?: unknown;
+    resolverQueueItemId?: unknown;
+    resolver_queue_item_id?: unknown;
+    resolverQueueItemType?: unknown;
+    resolver_queue_item_type?: unknown;
+  };
+
+  const impactType = candidate.impactType ?? candidate.impact_type;
+  const resolverQueueItemType =
+    candidate.resolverQueueItemType ?? candidate.resolver_queue_item_type;
+
+  if (!isConnectShyftThreadSubjectImpactType(impactType)) {
+    return null;
+  }
+
+  return {
+    impactType,
+    actionable: candidate.actionable === true,
+    resolverQueueItemId: normalizeOptionalString(
+      candidate.resolverQueueItemId ?? candidate.resolver_queue_item_id,
+    ),
+    resolverQueueItemType: isConnectShyftResolverQueueItemType(resolverQueueItemType)
+      ? resolverQueueItemType
+      : null,
+  };
+};
+
 const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null => {
   if (!payload || typeof payload !== 'object') {
     return null;
@@ -484,6 +532,7 @@ const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null =>
     actions?: unknown;
     personId?: unknown;
     identityState?: unknown;
+    subjectImpact?: unknown;
     subjectContext?: unknown;
     timeline?: unknown;
     lifecycle?: {
@@ -519,6 +568,7 @@ const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null =>
     ...summary,
     personId,
     identityState,
+    subjectImpact: parseThreadSubjectImpact(candidate.subjectImpact),
     subjectContext,
     actions,
     timeline: parseTimelineEvents(candidate.timeline),

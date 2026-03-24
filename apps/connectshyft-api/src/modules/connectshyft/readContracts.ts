@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import type { ConnectShyftThreadSubjectImpact } from '@shyft/contracts';
 import {
   type SubjectContext,
   validateSubjectContext,
@@ -75,6 +76,7 @@ export type ConnectShyftThreadSummaryRecord = {
 export type ConnectShyftThreadDetailRecord = ConnectShyftThreadSummaryRecord & {
   personId: string | null;
   identityState: ConnectShyftThreadIdentityState | null;
+  subjectImpact: ConnectShyftThreadSubjectImpact | null;
   subjectContext: SubjectContext;
   actions: readonly ConnectShyftThreadAction[];
   lifecycle: {
@@ -982,6 +984,7 @@ const buildThreadIdentityProjection = (input: {
 }): {
   personId: string | null;
   identityState: ConnectShyftThreadIdentityState | null;
+  subjectImpact: ConnectShyftThreadSubjectImpact | null;
   subjectContext: SubjectContext;
 } => {
   const personId = normalizeOptionalString(input.personId);
@@ -994,6 +997,7 @@ const buildThreadIdentityProjection = (input: {
   return {
     personId,
     identityState,
+    subjectImpact: null,
     subjectContext: buildThreadSubjectContext({
       orgUnitId: input.orgUnitId,
       personId,

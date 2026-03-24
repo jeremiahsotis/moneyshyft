@@ -72,6 +72,7 @@ const buildThreadDetail = (overrides: Record<string, unknown> = {}) => ({
   preview: 'Latest update: Jordan Lee',
   personId: 'person-detail-view-1001',
   identityState: 'confirmed',
+  subjectImpact: null,
   subjectContext: {
     orgUnitId: 'org-connectshyft-ui-east',
     personId: 'person-detail-view-1001',
@@ -189,6 +190,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   document.body.innerHTML = '';
 });
@@ -219,6 +221,7 @@ describe('ConnectShyftThreadDetailView', () => {
     expect(wrapper.get('[data-testid="connectshyft-thread-identity-state"]').text()).toBe(
       'Provisional person',
     );
+    expect(wrapper.find('[data-testid="connectshyft-thread-subject-impact-banner"]').exists()).toBe(false);
     expect(shellSubjectContext.value).toEqual({
       orgUnitId: 'org-connectshyft-ui-east',
       provisionalPersonId: 'person-detail-view-provisional-2005',
@@ -232,10 +235,154 @@ describe('ConnectShyftThreadDetailView', () => {
     expect(wrapper.get('[data-testid="connectshyft-thread-identity-state"]').text()).toBe(
       'Confirmed person',
     );
+    expect(wrapper.find('[data-testid="connectshyft-thread-subject-impact-banner"]').exists()).toBe(false);
     expect(shellSubjectContext.value).toEqual({
       orgUnitId: 'org-connectshyft-ui-east',
       personId: 'person-detail-view-1001',
     });
     expect(shellSubjectContext.value).not.toHaveProperty('provisionalPersonId');
+  });
+
+  it('renders a plain-language banner when provisional subject impact affects the current thread', async () => {
+    fetchThreadDetailMock.mockResolvedValueOnce({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+      message: 'Thread detail loaded',
+      thread: buildThreadDetail({
+        personId: 'person-detail-view-provisional-2006',
+        identityState: 'provisional',
+        subjectImpact: {
+          impactType: 'provisional_identity',
+          actionable: false,
+          resolverQueueItemId: null,
+          resolverQueueItemType: null,
+        },
+        subjectContext: {
+          orgUnitId: 'org-connectshyft-ui-east',
+          provisionalPersonId: 'person-detail-view-provisional-2006',
+        },
+      }),
+    });
+
+    const { wrapper } = await renderThreadDetailView({
+      initialPath: '/app/connectshyft/threads/thread-detail-view-1001?tenantRole=ORGUNIT_MEMBER',
+    });
+
+    expect(wrapper.get('[data-testid="connectshyft-thread-subject-impact-banner"]').text()).toContain(
+      'Conversation context still resolving',
+    );
+    expect(wrapper.get('[data-testid="connectshyft-thread-subject-impact-message"]').text()).toContain(
+      'Subject details for this conversation are still settling',
+    );
+    expect(wrapper.find('[data-testid="connectshyft-thread-subject-impact-people-link"]').exists()).toBe(false);
+  });
+
+  it('shows a secondary People affordance for tenant-admin resolver context', async () => {
+    fetchThreadDetailMock.mockResolvedValueOnce({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+      message: 'Thread detail loaded',
+      thread: buildThreadDetail({
+        personId: 'person-detail-view-resolver-2007',
+        identityState: 'provisional',
+        subjectImpact: {
+          impactType: 'resolver_required',
+          actionable: true,
+          resolverQueueItemId: 'review-1',
+          resolverQueueItemType: 'identity_review',
+        },
+        subjectContext: {
+          orgUnitId: 'org-connectshyft-ui-east',
+          provisionalPersonId: 'person-detail-view-resolver-2007',
+        },
+      }),
+    });
+
+    const { wrapper } = await renderThreadDetailView({
+      initialPath: '/app/connectshyft/threads/thread-detail-view-1001?tenantRole=TENANT_ADMIN&orgUnitId=org-connectshyft-ui-east',
+    });
+
+    expect(wrapper.get('[data-testid="connectshyft-thread-subject-impact-message"]').text()).toContain(
+      'Identity for this conversation is still waiting on tenant-admin review',
+    );
+    expect(wrapper.get('[data-testid="connectshyft-thread-subject-impact-people-link"]').text()).toContain(
+      'Review in People',
+    );
+    expect(wrapper.get('[data-testid="connectshyft-thread-subject-impact-people-link"]').attributes('href')).toContain(
+      '/app/people',
+    );
+  });
+
+  it('refreshes impacted thread detail and clears stale banner state when backend truth resolves', async () => {
+    vi.useFakeTimers();
+    fetchThreadDetailMock
+      .mockResolvedValueOnce({
+        ok: true,
+        code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+        message: 'Thread detail loaded',
+        thread: buildThreadDetail({
+          personId: 'person-detail-view-provisional-2008',
+          identityState: 'provisional',
+          subjectImpact: {
+            impactType: 'resolver_required',
+            actionable: true,
+            resolverQueueItemId: 'review-refresh-1',
+            resolverQueueItemType: 'identity_review',
+          },
+          subjectContext: {
+            orgUnitId: 'org-connectshyft-ui-east',
+            provisionalPersonId: 'person-detail-view-provisional-2008',
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+        message: 'Thread detail loaded',
+        thread: buildThreadDetail({
+          personId: 'person-detail-view-confirmed-2008',
+          identityState: 'confirmed',
+          subjectImpact: null,
+          subjectContext: {
+            orgUnitId: 'org-connectshyft-ui-east',
+            personId: 'person-detail-view-confirmed-2008',
+          },
+        }),
+      })
+      .mockResolvedValue({
+        ok: true,
+        code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+        message: 'Thread detail loaded',
+        thread: buildThreadDetail({
+          personId: 'person-detail-view-confirmed-2008',
+          identityState: 'confirmed',
+          subjectImpact: null,
+          subjectContext: {
+            orgUnitId: 'org-connectshyft-ui-east',
+            personId: 'person-detail-view-confirmed-2008',
+          },
+        }),
+      });
+
+    const { wrapper, shellSubjectContext } = await renderThreadDetailView();
+
+    expect(wrapper.get('[data-testid="connectshyft-thread-subject-impact-banner"]').exists()).toBe(true);
+    expect(wrapper.get('[data-testid="connectshyft-thread-identity-state"]').text()).toBe(
+      'Provisional person',
+    );
+
+    await vi.advanceTimersByTimeAsync(15000);
+    await flushPromises();
+    await nextTick();
+
+    expect(fetchThreadDetailMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(wrapper.find('[data-testid="connectshyft-thread-subject-impact-banner"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="connectshyft-thread-identity-state"]').text()).toBe(
+      'Confirmed person',
+    );
+    expect(shellSubjectContext.value).toEqual({
+      orgUnitId: 'org-connectshyft-ui-east',
+      personId: 'person-detail-view-confirmed-2008',
+    });
   });
 });

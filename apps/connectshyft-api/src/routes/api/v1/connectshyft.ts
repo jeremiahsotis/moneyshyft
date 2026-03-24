@@ -52,6 +52,7 @@ import {
   getConnectOperatorCallbackNumber,
   getConnectSettingsNavigation,
   getConnectTelephonyReadiness,
+  enrichThreadDetailWithSubjectImpact,
   getConnectThreadDetail,
   getConnectThreadTimeline,
   getConnectWebhookReceiptMetrics,
@@ -1897,6 +1898,7 @@ const buildSyntheticThreadDetailRecord = (input: {
     neighborId: input.descriptor.neighborId || null,
     personId: null,
     identityState: null,
+    subjectImpact: null,
     subjectContext: {
       orgUnitId: input.descriptor.orgUnitId,
     },
@@ -5741,6 +5743,11 @@ const getConnectThreadDetailWithSyntheticFallback = async (req: Request, res: Re
       ? []
       : [...resolveConnectShyftThreadActions(thread.state)],
   };
+  thread = await enrichThreadDetailWithSubjectImpact({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    thread,
+  });
 
   const timeline = await listCanonicalThreadEvents({
     tenantId: context.tenantId,

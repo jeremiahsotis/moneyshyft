@@ -143,6 +143,22 @@ export const CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_STATES = [
 export type ConnectShyftResolverQueueClaimState =
   typeof CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_STATES[number];
 
+export const CONNECTSHYFT_THREAD_SUBJECT_IMPACT_TYPES = [
+  'provisional_identity',
+  'resolver_required',
+  'rebind_review',
+] as const;
+
+export type ConnectShyftThreadSubjectImpactType =
+  typeof CONNECTSHYFT_THREAD_SUBJECT_IMPACT_TYPES[number];
+
+export type ConnectShyftThreadSubjectImpact = {
+  impactType: ConnectShyftThreadSubjectImpactType;
+  actionable: boolean;
+  resolverQueueItemId: string | null;
+  resolverQueueItemType: ConnectShyftResolverQueueItemType | null;
+};
+
 export const CONNECTSHYFT_REBIND_REVIEW_AFFECTED_OBJECT_TYPES = [
   'contact_point_link',
 ] as const;
@@ -229,6 +245,12 @@ export const isConnectShyftResolverQueueClaimState = (
 ): value is ConnectShyftResolverQueueClaimState =>
   typeof value === 'string'
   && (CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_STATES as readonly string[]).includes(value);
+
+export const isConnectShyftThreadSubjectImpactType = (
+  value: unknown,
+): value is ConnectShyftThreadSubjectImpactType =>
+  typeof value === 'string'
+  && (CONNECTSHYFT_THREAD_SUBJECT_IMPACT_TYPES as readonly string[]).includes(value);
 
 export const isConnectShyftRebindReviewAffectedObjectType = (
   value: unknown,

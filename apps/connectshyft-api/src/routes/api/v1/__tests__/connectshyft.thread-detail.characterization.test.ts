@@ -1,6 +1,7 @@
 // @ts-nocheck
 import request from 'supertest';
 import * as BridgeSessionsModule from '../../../../modules/connectshyft/bridgeSessions';
+import * as PeopleCoreServiceModule from '../../../../modules/peoplecore/service';
 import {
   recordConnectShyftCanonicalEvent,
   resetConnectShyftCanonicalEventsForTests,
@@ -21,6 +22,7 @@ const buildThreadDetailRecord = (overrides: Record<string, unknown> = {}) => ({
   neighborId: 'neighbor-detail-characterization-1001',
   personId: 'person-detail-characterization-1001',
   identityState: 'confirmed',
+  subjectImpact: null,
   subjectContext: {
     orgUnitId: TEST_ORG_UNIT_ID,
     personId: 'person-detail-characterization-1001',
@@ -145,6 +147,10 @@ describe('connectshyft thread detail route characterization', () => {
 
   beforeEach(() => {
     resetConnectShyftCanonicalEventsForTests();
+    jest.spyOn(
+      PeopleCoreServiceModule.peopleCoreServiceAsync,
+      'listResolverReviews',
+    ).mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -218,6 +224,7 @@ describe('connectshyft thread detail route characterization', () => {
           neighborId: 'neighbor-detail-characterization-1001',
           personId: 'person-detail-characterization-1001',
           identityState: 'confirmed',
+          subjectImpact: null,
           subjectContext: {
             orgUnitId: TEST_ORG_UNIT_ID,
             personId: 'person-detail-characterization-1001',
@@ -289,6 +296,7 @@ describe('connectshyft thread detail route characterization', () => {
       'providerNeutral',
       'state',
       'statusDerivedFromCanonicalEvents',
+      'subjectImpact',
       'subjectContext',
       'summary',
       'tenantId',
@@ -335,6 +343,12 @@ describe('connectshyft thread detail route characterization', () => {
           threadId,
           personId: 'person-detail-provisional-1003',
           identityState: 'provisional',
+          subjectImpact: {
+            impactType: 'provisional_identity',
+            actionable: false,
+            resolverQueueItemId: null,
+            resolverQueueItemType: null,
+          },
           subjectContext: {
             orgUnitId: TEST_ORG_UNIT_ID,
             provisionalPersonId: 'person-detail-provisional-1003',
@@ -343,6 +357,121 @@ describe('connectshyft thread detail route characterization', () => {
       },
     });
     expect(response.body.data.thread.subjectContext).not.toHaveProperty('personId');
+  });
+
+  it('returns resolver-required subject impact only when the active review matches the current thread', async () => {
+    const threadId = 'thread-detail-resolver-impact-1007';
+    jest.spyOn(
+      ReadContractsModule,
+      'resolveConnectShyftThreadDetailContractAsync',
+    ).mockResolvedValue(buildThreadDetailRecord({
+      threadId,
+      personId: 'person-detail-resolver-impact-1007',
+      identityState: 'provisional',
+      subjectContext: {
+        orgUnitId: TEST_ORG_UNIT_ID,
+        provisionalPersonId: 'person-detail-resolver-impact-1007',
+      },
+    }) as any);
+    jest.spyOn(
+      BridgeSessionsModule,
+      'loadConnectShyftBridgeAggregateByThreadId',
+    ).mockResolvedValue(null as any);
+    jest.spyOn(
+      PeopleCoreServiceModule.peopleCoreServiceAsync,
+      'listResolverReviews',
+    ).mockResolvedValue([
+      {
+        id: 'review-thread-impact-1',
+        tenantId: TEST_TENANT_ID,
+        orgUnitId: TEST_ORG_UNIT_ID,
+        reviewType: 'shared_contact_ambiguity',
+        reviewStatus: 'in_review',
+        priority: 'high',
+        triggerSourceType: 'connectshyft_identity_seam',
+        triggerSourceId: 'impact-trigger-1',
+        conversationId: threadId,
+        provisionalPersonId: 'person-detail-resolver-impact-1007',
+        candidatePersonIds: ['person-detail-resolver-impact-1007'],
+        contactPointId: 'contact-point-impact-1',
+        confidenceBand: 'high',
+        confidenceReasons: ['Multiple exact matches require review.'],
+        riskFlags: ['shared_contact_possible'],
+        requestedByUserId: 'requested-by-user',
+        assignedResolverUserId: 'resolver-1',
+        requestedAt: '2026-03-19T10:05:00.000Z',
+        startedAt: '2026-03-19T10:07:00.000Z',
+      },
+    ] as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get(`/api/v1/connectshyft/threads/${threadId}`)
+      .set(buildHeaders());
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.thread.subjectImpact).toEqual({
+      impactType: 'resolver_required',
+      actionable: true,
+      resolverQueueItemId: 'review-thread-impact-1',
+      resolverQueueItemType: 'identity_review',
+    });
+  });
+
+  it('returns rebind-review subject impact when active rebind work affects the current thread person', async () => {
+    const threadId = 'thread-detail-rebind-impact-1008';
+    jest.spyOn(
+      ReadContractsModule,
+      'resolveConnectShyftThreadDetailContractAsync',
+    ).mockResolvedValue(buildThreadDetailRecord({
+      threadId,
+      personId: 'person-detail-rebind-impact-1008',
+      identityState: 'confirmed',
+      subjectContext: {
+        orgUnitId: TEST_ORG_UNIT_ID,
+        personId: 'person-detail-rebind-impact-1008',
+      },
+    }) as any);
+    jest.spyOn(
+      BridgeSessionsModule,
+      'loadConnectShyftBridgeAggregateByThreadId',
+    ).mockResolvedValue(null as any);
+    jest.spyOn(
+      PeopleCoreServiceModule.peopleCoreServiceAsync,
+      'listResolverReviews',
+    ).mockResolvedValue([
+      {
+        id: 'review-rebind-impact-1',
+        tenantId: TEST_TENANT_ID,
+        orgUnitId: TEST_ORG_UNIT_ID,
+        reviewType: 'subject_reassignment_review',
+        reviewStatus: 'queued',
+        priority: 'normal',
+        triggerSourceType: 'connectshyft_person_rebind_review',
+        triggerSourceId: 'rebind-history-impact-1',
+        provisionalPersonId: 'person-detail-rebind-impact-1008',
+        candidatePersonIds: ['person-detail-rebind-target-1008'],
+        contactPointId: 'contact-point-impact-2',
+        confidenceBand: 'medium',
+        confidenceReasons: ['Review-class rebind work is pending.'],
+        riskFlags: [],
+        requestedByUserId: 'requested-by-user',
+        requestedAt: '2026-03-19T10:05:00.000Z',
+      },
+    ] as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get(`/api/v1/connectshyft/threads/${threadId}`)
+      .set(buildHeaders());
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.thread.subjectImpact).toEqual({
+      impactType: 'rebind_review',
+      actionable: true,
+      resolverQueueItemId: 'review-rebind-impact-1',
+      resolverQueueItemType: 'rebind_review',
+    });
   });
 
   it('returns deleted-neighbor detail only through includeDeleted=true and clears operational actions', async () => {

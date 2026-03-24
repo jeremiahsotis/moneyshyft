@@ -1,4 +1,6 @@
 import { Request, Response } from 'express';
+import type { ConnectShyftThreadSubjectImpact } from '@shyft/contracts';
+import { isResolverReviewActiveStatus } from '@shyft/contracts';
 import { success } from '../../../platform/envelopes/response';
 import {
   listConnectShyftCanonicalEvents,
@@ -14,6 +16,11 @@ import {
   type ConnectShyftThreadDetailRecord,
 } from '../readContracts';
 import { loadConnectShyftPlatformDb } from '../http/accessContext';
+import {
+  isQueueBackedRebindReview,
+  peopleCoreServiceAsync,
+  resolveResolverQueueItemType,
+} from '../../peoplecore/service';
 import {
   buildConnectShyftThreadReadResponseContext,
   loadConnectShyftThreadReadContractAsync,
@@ -293,6 +300,101 @@ const resolveFallbackThreadDetail = (input: {
 const resolveThreadDetailActions = (thread: ConnectShyftThreadDetailRecord) =>
   [...resolveConnectShyftThreadActions(thread.state)];
 
+const matchesThreadIdentityImpact = (
+  thread: ConnectShyftThreadDetailRecord,
+  review: {
+    conversationId?: string;
+    provisionalPersonId?: string;
+    candidatePersonIds: string[];
+  },
+): boolean => {
+  const threadPersonId = normalizeString(thread.personId);
+  if (normalizeString(review.conversationId) === thread.threadId) {
+    return true;
+  }
+
+  if (!threadPersonId) {
+    return false;
+  }
+
+  return normalizeString(review.provisionalPersonId) === threadPersonId
+    || review.candidatePersonIds.includes(threadPersonId);
+};
+
+const resolveThreadSubjectImpact = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  thread: ConnectShyftThreadDetailRecord;
+}): Promise<ConnectShyftThreadSubjectImpact | null> => {
+  const threadPersonId = normalizeString(input.thread.personId);
+  let activeReviews: Awaited<ReturnType<typeof peopleCoreServiceAsync.listResolverReviews>> = [];
+
+  try {
+    activeReviews = (await peopleCoreServiceAsync.listResolverReviews({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+    })).filter((review) => isResolverReviewActiveStatus(review.reviewStatus));
+  } catch (_error) {
+    return input.thread.identityState === 'provisional'
+      ? {
+        impactType: 'provisional_identity',
+        actionable: false,
+        resolverQueueItemId: null,
+        resolverQueueItemType: null,
+      }
+      : null;
+  }
+
+  const activeIdentityReview = activeReviews.find((review) =>
+    !isQueueBackedRebindReview(review)
+    && matchesThreadIdentityImpact(input.thread, review));
+  if (activeIdentityReview) {
+    return {
+      impactType: 'resolver_required',
+      actionable: activeIdentityReview.reviewStatus !== 'waiting_for_more_info',
+      resolverQueueItemId: activeIdentityReview.id,
+      resolverQueueItemType: resolveResolverQueueItemType(activeIdentityReview),
+    };
+  }
+
+  if (threadPersonId) {
+    const activeRebindReview = activeReviews.find((review) =>
+      isQueueBackedRebindReview(review)
+      && (
+        normalizeString(review.provisionalPersonId) === threadPersonId
+        || review.candidatePersonIds.includes(threadPersonId)
+      ));
+    if (activeRebindReview) {
+      return {
+        impactType: 'rebind_review',
+        actionable: activeRebindReview.reviewStatus !== 'waiting_for_more_info',
+        resolverQueueItemId: activeRebindReview.id,
+        resolverQueueItemType: resolveResolverQueueItemType(activeRebindReview),
+      };
+    }
+  }
+
+  if (input.thread.identityState === 'provisional') {
+    return {
+      impactType: 'provisional_identity',
+      actionable: false,
+      resolverQueueItemId: null,
+      resolverQueueItemType: null,
+    };
+  }
+
+  return null;
+};
+
+export const enrichThreadDetailWithSubjectImpact = async (input: {
+  tenantId: string;
+  orgUnitId: string;
+  thread: ConnectShyftThreadDetailRecord;
+}): Promise<ConnectShyftThreadDetailRecord> => ({
+  ...input.thread,
+  subjectImpact: await resolveThreadSubjectImpact(input),
+});
+
 export const getConnectThreadDetail = async (req: Request, res: Response) => {
   const readContext = await resolveConnectShyftThreadDetailReadAccessContext(req, res);
   if (!readContext) {
@@ -321,6 +423,11 @@ export const getConnectThreadDetail = async (req: Request, res: Response) => {
       ? []
       : resolveThreadDetailActions(thread),
   };
+  thread = await enrichThreadDetailWithSubjectImpact({
+    tenantId: readContext.context.tenantId,
+    orgUnitId: readContext.context.orgUnitId,
+    thread,
+  });
 
   const timeline = await listCanonicalThreadEvents({
     tenantId: readContext.context.tenantId,

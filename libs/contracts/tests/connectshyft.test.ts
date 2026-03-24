@@ -1,12 +1,15 @@
+import { describe, expect, it } from 'vitest';
 import type {
   ConnectShyftRebindReviewContext,
   ConnectShyftResolverQueueDetailData,
   ConnectShyftResolverQueueItemRecord,
+  ConnectShyftThreadSubjectImpact,
 } from '../src/connectshyft';
 import {
   isConnectShyftRebindReviewAffectedObjectType,
   isConnectShyftResolverQueueItemType,
   isConnectShyftResolverQueueClaimState,
+  isConnectShyftThreadSubjectImpactType,
 } from '../src/connectshyft';
 
 describe('connectshyft contracts', () => {
@@ -67,5 +70,18 @@ describe('connectshyft contracts', () => {
     expect(isConnectShyftResolverQueueItemType(rebindItem.itemType)).toBe(true);
     expect(isConnectShyftResolverQueueClaimState(identityItem.claimState)).toBe(true);
     expect(isConnectShyftRebindReviewAffectedObjectType(rebindReview.affectedObjectType)).toBe(true);
+  });
+
+  it('supports contract-backed thread subject impact states for contextual banners', () => {
+    const impact: ConnectShyftThreadSubjectImpact = {
+      impactType: 'resolver_required',
+      actionable: true,
+      resolverQueueItemId: 'review-1',
+      resolverQueueItemType: 'identity_review',
+    };
+
+    expect(isConnectShyftThreadSubjectImpactType(impact.impactType)).toBe(true);
+    expect(isConnectShyftResolverQueueItemType(impact.resolverQueueItemType)).toBe(true);
+    expect(impact.actionable).toBe(true);
   });
 });
