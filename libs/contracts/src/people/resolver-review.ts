@@ -11,6 +11,12 @@ export const RESOLVER_REVIEW_TYPES = [
 
 export type ResolverReviewType = typeof RESOLVER_REVIEW_TYPES[number];
 
+export const RESOLVER_REBIND_REVIEW_TYPES = [
+  'subject_reassignment_review',
+] as const;
+
+export type ResolverRebindReviewType = typeof RESOLVER_REBIND_REVIEW_TYPES[number];
+
 export const RESOLVER_REVIEW_ACTIVE_STATUSES = [
   'pending',
   'queued',
@@ -128,6 +134,12 @@ export type ResolverDecisionResult = {
 export const isResolverActionType = (value: unknown): value is ResolverActionType =>
   typeof value === 'string'
   && (RESOLVER_ACTION_TYPES as readonly string[]).includes(value);
+
+export const isResolverRebindReviewType = (
+  value: unknown,
+): value is ResolverRebindReviewType =>
+  typeof value === 'string'
+  && (RESOLVER_REBIND_REVIEW_TYPES as readonly string[]).includes(value);
 
 export const isResolverReviewActiveStatus = (
   value: unknown,

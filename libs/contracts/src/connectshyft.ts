@@ -143,6 +143,24 @@ export const CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_STATES = [
 export type ConnectShyftResolverQueueClaimState =
   typeof CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_STATES[number];
 
+export const CONNECTSHYFT_REBIND_REVIEW_AFFECTED_OBJECT_TYPES = [
+  'contact_point_link',
+] as const;
+
+export type ConnectShyftRebindReviewAffectedObjectType =
+  typeof CONNECTSHYFT_REBIND_REVIEW_AFFECTED_OBJECT_TYPES[number];
+
+export type ConnectShyftRebindReviewContext = {
+  rebindHistoryId: string;
+  affectedObjectType: ConnectShyftRebindReviewAffectedObjectType;
+  affectedObjectIds: string[];
+  sourcePersonId: string;
+  targetPersonId: string;
+  contactPointIds: string[];
+  originatingResolverReviewId: string | null;
+  originatingResolutionType: ResolverActionType | null;
+};
+
 export type ConnectShyftResolverQueueItemRecord = {
   id: string;
   itemType: ConnectShyftResolverQueueItemType;
@@ -175,6 +193,7 @@ export type ConnectShyftResolverQueueListData = {
 export type ConnectShyftResolverQueueDetailData = {
   item: ConnectShyftResolverQueueItemRecord;
   review: ConnectShyftResolverReviewRecord | null;
+  rebindReview: ConnectShyftRebindReviewContext | null;
 };
 
 export type ConnectShyftResolverDecisionData = {
@@ -210,6 +229,12 @@ export const isConnectShyftResolverQueueClaimState = (
 ): value is ConnectShyftResolverQueueClaimState =>
   typeof value === 'string'
   && (CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_STATES as readonly string[]).includes(value);
+
+export const isConnectShyftRebindReviewAffectedObjectType = (
+  value: unknown,
+): value is ConnectShyftRebindReviewAffectedObjectType =>
+  typeof value === 'string'
+  && (CONNECTSHYFT_REBIND_REVIEW_AFFECTED_OBJECT_TYPES as readonly string[]).includes(value);
 
 export type ConnectShyftIdentityResolutionResponse = {
   confidenceBand: IdentityConfidenceBand;

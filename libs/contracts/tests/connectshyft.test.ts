@@ -1,5 +1,10 @@
-import type { ConnectShyftResolverQueueItemRecord } from '../src/connectshyft';
+import type {
+  ConnectShyftRebindReviewContext,
+  ConnectShyftResolverQueueDetailData,
+  ConnectShyftResolverQueueItemRecord,
+} from '../src/connectshyft';
 import {
+  isConnectShyftRebindReviewAffectedObjectType,
   isConnectShyftResolverQueueItemType,
   isConnectShyftResolverQueueClaimState,
 } from '../src/connectshyft';
@@ -35,14 +40,32 @@ describe('connectshyft contracts', () => {
       ...identityItem,
       id: 'rebind-1',
       itemType: 'rebind_review',
-      resolverReviewId: null,
-      threadId: 'thread-1',
+      resolverReviewId: 'review-rebind-1',
+    };
+
+    const rebindReview: ConnectShyftRebindReviewContext = {
+      rebindHistoryId: 'rebind-history-1',
+      affectedObjectType: 'contact_point_link',
+      affectedObjectIds: ['link-review-1'],
+      sourcePersonId: 'person-1',
+      targetPersonId: 'person-2',
+      contactPointIds: ['contact-point-1'],
+      originatingResolverReviewId: 'review-1',
+      originatingResolutionType: 'merge_people',
+    };
+
+    const detail: ConnectShyftResolverQueueDetailData = {
+      item: rebindItem,
+      review: null,
+      rebindReview,
     };
 
     expect(identityItem.itemType).toBe('identity_review');
     expect(rebindItem.itemType).toBe('rebind_review');
+    expect(detail.rebindReview?.rebindHistoryId).toBe('rebind-history-1');
     expect(isConnectShyftResolverQueueItemType(identityItem.itemType)).toBe(true);
     expect(isConnectShyftResolverQueueItemType(rebindItem.itemType)).toBe(true);
     expect(isConnectShyftResolverQueueClaimState(identityItem.claimState)).toBe(true);
+    expect(isConnectShyftRebindReviewAffectedObjectType(rebindReview.affectedObjectType)).toBe(true);
   });
 });

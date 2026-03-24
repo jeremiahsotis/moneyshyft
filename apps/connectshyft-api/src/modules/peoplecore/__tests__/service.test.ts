@@ -135,6 +135,21 @@ const buildResolvedReviewForAction = (
   ...overrides,
 });
 
+const buildRebindQueueReview = (overrides: Record<string, unknown> = {}) => buildResolverReview({
+  id: 'review-rebind-1',
+  reviewType: 'subject_reassignment_review' as const,
+  reviewStatus: 'queued' as const,
+  triggerSourceType: 'connectshyft_person_rebind_review',
+  triggerSourceId: 'rebind-history-1',
+  provisionalPersonId: 'person-provisional',
+  candidatePersonIds: ['person-canonical'],
+  contactPointId: 'contact-point-1',
+  confidenceBand: 'medium' as const,
+  confidenceReasons: ['Manual subject reassignment review is required.'],
+  riskFlags: [],
+  ...overrides,
+});
+
 const createApplyResolverDecisionStore = (overrides: Record<string, jest.Mock> = {}) => ({
   getResolverReview: jest.fn(),
   listCurrentContactPointLinks: jest.fn(),
@@ -406,6 +421,127 @@ describe('AsyncPeopleCoreService', () => {
         actionable: true,
       }),
     ]);
+  });
+
+  it('includes rebind_review items in the active resolver queue', async () => {
+    const identityReview = buildDecisionReview({
+      id: 'review-identity',
+    });
+    const rebindReview = buildRebindQueueReview({
+      id: 'review-rebind',
+    });
+    const store = {
+      listResolverReviews: jest.fn(async () => [identityReview, rebindReview]),
+    };
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const items = await service.listResolverQueue({
+      tenantId: 'tenant-1',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
+    });
+
+    expect(items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'review-identity',
+        itemType: 'identity_review',
+      }),
+      expect.objectContaining({
+        id: 'review-rebind',
+        itemType: 'rebind_review',
+        contactPointId: 'contact-point-1',
+        personIds: ['person-provisional', 'person-canonical'],
+      }),
+    ]));
+  });
+
+  it('returns structured rebind review detail from queue-backed history context', async () => {
+    const rebindReview = buildRebindQueueReview({
+      id: 'review-rebind-detail',
+      triggerSourceId: 'rebind-history-detail',
+    });
+    const reviewContext = {
+      rebindHistoryId: 'rebind-history-detail',
+      affectedObjectType: 'contact_point_link' as const,
+      affectedObjectIds: ['link-review-1'],
+      sourcePersonId: 'person-provisional',
+      targetPersonId: 'person-canonical',
+      contactPointIds: ['contact-point-1'],
+      originatingResolverReviewId: 'resolver-review-1',
+      originatingResolutionType: 'merge_people' as const,
+    };
+    const store = {
+      getResolverReview: jest.fn(async () => rebindReview),
+    };
+    jest.spyOn(personRebindServiceAsync, 'getRebindReviewContext').mockResolvedValue(reviewContext);
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const detail = await service.getResolverQueueItemDetail({
+      tenantId: 'tenant-1',
+      itemType: 'rebind_review',
+      itemId: 'review-rebind-detail',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
+    });
+
+    expect(detail).toMatchObject({
+      item: {
+        id: 'review-rebind-detail',
+        itemType: 'rebind_review',
+      },
+      review: {
+        reviewType: 'subject_reassignment_review',
+      },
+      rebindReview: reviewContext,
+    });
+  });
+
+  it('claims rebind_review queue items through the shared claim lifecycle', async () => {
+    const currentReview = buildRebindQueueReview({
+      reviewStatus: 'queued',
+      assignedResolverUserId: undefined,
+      startedAt: undefined,
+    });
+    const updatedReview = buildRebindQueueReview({
+      reviewStatus: 'in_review',
+      assignedResolverUserId: 'resolver-1',
+      startedAt: '2026-03-21T12:20:00.000Z',
+    });
+    const store = {
+      getResolverReview: jest.fn(async () => currentReview),
+      updateResolverReview: jest.fn(async () => updatedReview),
+    };
+    jest.spyOn(personRebindServiceAsync, 'getRebindReviewContext').mockResolvedValue({
+      rebindHistoryId: 'rebind-history-1',
+      affectedObjectType: 'contact_point_link',
+      affectedObjectIds: ['link-review-1'],
+      sourcePersonId: 'person-provisional',
+      targetPersonId: 'person-canonical',
+      contactPointIds: ['contact-point-1'],
+      originatingResolverReviewId: 'resolver-review-1',
+      originatingResolutionType: 'merge_people',
+    });
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const detail = await service.claimResolverQueueItem({
+      tenantId: 'tenant-1',
+      itemType: 'rebind_review',
+      itemId: 'review-rebind-1',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
+    });
+
+    expect(store.updateResolverReview).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      reviewId: 'review-rebind-1',
+      reviewStatus: 'in_review',
+      assignedResolverUserId: 'resolver-1',
+    }));
+    expect(detail.item).toMatchObject({
+      itemType: 'rebind_review',
+      claimState: 'claimed_by_current_user',
+      claimedByCurrentUser: true,
+    });
   });
 
   it('lets a tenant-admin resolver claim an unclaimed queue item', async () => {
@@ -854,6 +990,102 @@ describe('AsyncPeopleCoreService', () => {
       rebindTriggered: true,
       affectedPersonIds: ['person-provisional', 'person-canonical'],
     });
+  });
+
+  it('operationalizes review-class merge consequences as deduped rebind_review queue work', async () => {
+    const rebindHistory = {
+      id: 'rebind-history-1',
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      provisionalPersonId: 'person-provisional',
+      canonicalPersonId: 'person-canonical',
+      rebindClass: 'review' as const,
+      performedByUserId: 'resolver-1',
+      createdAtUtc: '2026-03-21T12:15:00.000Z',
+      reviewContext: {
+        rebindHistoryId: 'rebind-history-1',
+        affectedObjectType: 'contact_point_link' as const,
+        affectedObjectIds: ['link-review-1'],
+        sourcePersonId: 'person-provisional',
+        targetPersonId: 'person-canonical',
+        contactPointIds: ['contact-point-1'],
+        originatingResolverReviewId: 'review-merge',
+        originatingResolutionType: 'merge_people' as const,
+      },
+    };
+    const store = {
+      mergePerson: jest.fn()
+        .mockResolvedValueOnce({
+          mergedProvisionalPersonId: 'person-provisional',
+          canonicalPersonId: 'person-canonical',
+          autoMergedContactPointLinkIds: [],
+          reviewContactPointLinkIds: ['link-review-1'],
+          resolverReviewId: 'review-merge',
+          didPersistMerge: true,
+        })
+        .mockResolvedValueOnce({
+          mergedProvisionalPersonId: 'person-provisional',
+          canonicalPersonId: 'person-canonical',
+          autoMergedContactPointLinkIds: [],
+          reviewContactPointLinkIds: ['link-review-1'],
+          resolverReviewId: 'review-merge',
+          didPersistMerge: false,
+        }),
+      listContactPointLinks: jest.fn(async () => [
+        buildContactPointLink('person-provisional', {
+          id: 'link-review-1',
+          contactPointId: 'contact-point-1',
+        }),
+      ]),
+      getResolverReview: jest.fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(buildRebindQueueReview({
+          id: 'generated-rebind-review-id',
+          triggerSourceId: 'rebind-history-1',
+        })),
+      createResolverReview: jest.fn(async (input) => buildRebindQueueReview({
+        id: input.reviewId,
+        triggerSourceId: String(input.triggerSourceId),
+      })),
+    };
+    const mergeEventPublisher = {
+      publishPersonMerged: jest.fn(async () => undefined),
+    };
+    const enqueueSpy = jest.spyOn(personRebindServiceAsync, 'enqueueRebindReview')
+      .mockResolvedValue(rebindHistory);
+    const service = new AsyncPeopleCoreService(store as any, mergeEventPublisher as any);
+
+    await service.mergePerson({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      provisionalPersonId: 'person-provisional',
+      canonicalPersonId: 'person-canonical',
+      performedByUserId: 'resolver-1',
+      mergeReason: 'Merge review consequence cleanup.',
+    });
+    await service.mergePerson({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      provisionalPersonId: 'person-provisional',
+      canonicalPersonId: 'person-canonical',
+      performedByUserId: 'resolver-1',
+      mergeReason: 'Merge review consequence cleanup.',
+    });
+
+    expect(enqueueSpy).toHaveBeenCalledTimes(2);
+    expect(store.createResolverReview).toHaveBeenCalledTimes(1);
+    expect(store.createResolverReview).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      reviewType: 'subject_reassignment_review',
+      reviewStatus: 'queued',
+      triggerSourceType: 'connectshyft_person_rebind_review',
+      triggerSourceId: 'rebind-history-1',
+      provisionalPersonId: 'person-provisional',
+      candidatePersonIds: ['person-canonical'],
+      contactPointId: 'contact-point-1',
+    }));
+    expect(mergeEventPublisher.publishPersonMerged).toHaveBeenCalledTimes(1);
   });
 
   it('applies link_without_merge without merge or broad rebind fanout', async () => {

@@ -13,6 +13,7 @@ import {
   resetConnectShyftDeliveryAttemptStateForTests,
 } from '../deliveryAttempts';
 import {
+  listConnectShyftPersonRebindHistoryForTests,
   personRebindServiceAsync,
   resetConnectShyftPersonRebindStateForTests,
 } from '../personRebind';
@@ -329,6 +330,84 @@ describe('connectshyft person rebinding', () => {
 
     expect(secondThreadState).toEqual(firstThreadState);
     expect(secondCallState).toEqual(firstCallState);
+  });
+
+  it('deduplicates review-class rebind history and preserves merged review context', async () => {
+    const first = await personRebindServiceAsync.enqueueRebindReview({
+      tenantId,
+      orgUnitId,
+      provisionalPersonId,
+      canonicalPersonId,
+      performedByUserId,
+      affectedObjectType: 'contact_point_link',
+      affectedObjectIds: ['link-review-1'],
+      contactPointIds: ['contact-point-1'],
+      originatingResolverReviewId: 'resolver-review-1',
+      originatingResolutionType: 'merge_people',
+    });
+    const second = await personRebindServiceAsync.enqueueRebindReview({
+      tenantId,
+      orgUnitId,
+      provisionalPersonId,
+      canonicalPersonId,
+      performedByUserId,
+      affectedObjectType: 'contact_point_link',
+      affectedObjectIds: ['link-review-1', 'link-review-2'],
+      contactPointIds: ['contact-point-1', 'contact-point-2'],
+      originatingResolverReviewId: 'resolver-review-1',
+      originatingResolutionType: 'merge_people',
+    });
+
+    const history = listConnectShyftPersonRebindHistoryForTests();
+
+    expect(first.id).toBe(second.id);
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      rebindClass: 'review',
+      provisionalPersonId,
+      canonicalPersonId,
+      reviewContext: {
+        rebindHistoryId: first.id,
+        affectedObjectType: 'contact_point_link',
+        affectedObjectIds: ['link-review-1', 'link-review-2'],
+        contactPointIds: ['contact-point-1', 'contact-point-2'],
+        sourcePersonId: provisionalPersonId,
+        targetPersonId: canonicalPersonId,
+        originatingResolverReviewId: 'resolver-review-1',
+        originatingResolutionType: 'merge_people',
+      },
+    });
+  });
+
+  it('loads structured review context for persisted review-class rebind history', async () => {
+    const history = await personRebindServiceAsync.enqueueRebindReview({
+      tenantId,
+      orgUnitId,
+      provisionalPersonId,
+      canonicalPersonId,
+      performedByUserId,
+      affectedObjectType: 'contact_point_link',
+      affectedObjectIds: ['link-review-detail-1'],
+      contactPointIds: ['contact-point-detail-1'],
+      originatingResolverReviewId: 'resolver-review-detail-1',
+      originatingResolutionType: 'merge_people',
+    });
+
+    const reviewContext = await personRebindServiceAsync.getRebindReviewContext({
+      tenantId,
+      rebindHistoryId: history.id,
+    });
+
+    expect(reviewContext).toEqual({
+      rebindHistoryId: history.id,
+      affectedObjectType: 'contact_point_link',
+      affectedObjectIds: ['link-review-detail-1'],
+      sourcePersonId: provisionalPersonId,
+      targetPersonId: canonicalPersonId,
+      contactPointIds: ['contact-point-detail-1'],
+      originatingResolverReviewId: 'resolver-review-detail-1',
+      originatingResolutionType: 'merge_people',
+    });
   });
 
   it('returns a unified, ordered timeline spanning canonical and merged person history with origin context', async () => {

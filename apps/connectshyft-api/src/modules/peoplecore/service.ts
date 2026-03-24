@@ -3,6 +3,7 @@ import type {
   GetActivityInput,
   ListActivitiesInput,
 } from './activity';
+import { createHash } from 'node:crypto';
 import type {
   ConnectShyftResolverQueueDetailData,
   ConnectShyftResolverQueueItemRecord,
@@ -19,6 +20,7 @@ import type {
 import {
   deriveResolverDecisionStatus,
   isResolverActionType,
+  isResolverRebindReviewType,
   isResolverReviewActiveStatus,
   isResolverReviewResolvedStatus,
   isResolverReviewTerminalStatus,
@@ -62,6 +64,8 @@ import {
 } from './lifecycle';
 
 const CONTACT_POINT_LIFECYCLE_EVENT_LIMIT = 200;
+const CONNECTSHYFT_REBIND_REVIEW_TRIGGER_SOURCE_TYPE = 'connectshyft_person_rebind_review';
+const CONNECTSHYFT_REBIND_REVIEW_RESOLVER_REVIEW_NAMESPACE = 'f4f9a8f7-49e0-5e25-aa9b-f0f93ad7c9c4';
 
 const RESOLVER_ALLOWED_TRANSITIONS: Record<ResolverReviewStatus, readonly ResolverReviewStatus[]> = {
   pending: [
@@ -159,6 +163,14 @@ const isMissingPersistenceError = (error: unknown): boolean => {
   return candidate.code === '42P01'
     || candidate.code === '3F000'
     || candidate.code === '42703';
+};
+
+const isUniqueViolationError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  return (error as { code?: string }).code === '23505';
 };
 
 export class PeopleCorePersistenceUnavailableError extends Error {
@@ -312,6 +324,43 @@ const toResolverReviewRecord = (
   decisionStatus: deriveResolverDecisionStatus(review.reviewStatus),
 });
 
+const isQueueBackedRebindReview = (review: ResolverReview): boolean => (
+  isResolverRebindReviewType(review.reviewType)
+  && review.triggerSourceType === CONNECTSHYFT_REBIND_REVIEW_TRIGGER_SOURCE_TYPE
+);
+
+const resolveResolverQueueItemType = (
+  review: ResolverReview,
+): ConnectShyftResolverQueueItemType => (
+  isQueueBackedRebindReview(review) ? 'rebind_review' : 'identity_review'
+);
+
+const buildRebindReviewResolverReviewId = (rebindHistoryId: string): string => (
+  buildDeterministicUuid(
+    CONNECTSHYFT_REBIND_REVIEW_RESOLVER_REVIEW_NAMESPACE,
+    rebindHistoryId,
+  )
+);
+
+const buildDeterministicUuid = (namespace: string, value: string): string => {
+  const digest = createHash('sha1')
+    .update(`${namespace}:${value}`)
+    .digest('hex')
+    .slice(0, 32)
+    .split('');
+
+  digest[12] = '5';
+  digest[16] = ((parseInt(digest[16] || '0', 16) & 0x3) | 0x8).toString(16);
+
+  return [
+    digest.slice(0, 8).join(''),
+    digest.slice(8, 12).join(''),
+    digest.slice(12, 16).join(''),
+    digest.slice(16, 20).join(''),
+    digest.slice(20, 32).join(''),
+  ].join('-');
+};
+
 const buildResolverQueueClaimMetadata = (
   review: ResolverReview,
   actorUserId: string,
@@ -357,7 +406,7 @@ const buildResolverQueueClaimMetadata = (
   };
 };
 
-const toIdentityReviewQueueItem = (
+const toResolverQueueItem = (
   review: ResolverReview,
   actorUserId: string,
 ): ConnectShyftResolverQueueItemRecord => {
@@ -367,7 +416,7 @@ const toIdentityReviewQueueItem = (
 
   return {
     id: review.id,
-    itemType: 'identity_review',
+    itemType: resolveResolverQueueItemType(review),
     status: review.reviewStatus,
     active,
     terminal,
@@ -837,7 +886,7 @@ const assertTerminalReviewMutationAllowed = (
 
 const loadPersonRebindService = (): Pick<
   import('../connectshyft/personRebind').PersonRebindService,
-  'rebindPersonThreads'
+  'rebindPersonThreads' | 'enqueueRebindReview' | 'getRebindReviewContext'
 > => {
   // Keep the ConnectShyft dependency lazy so the existing service singleton can stay the owner.
   const { personRebindServiceAsync } = require('../connectshyft/personRebind') as typeof import('../connectshyft/personRebind');
@@ -887,6 +936,102 @@ export class AsyncPeopleCoreService {
     } catch (error) {
       if (isMissingPersistenceError(error)) {
         throw new PeopleCorePersistenceUnavailableError(error);
+      }
+
+      throw error;
+    }
+  }
+
+  private async buildResolverQueueItemDetail(
+    review: ResolverReview,
+    actorUserId: string,
+  ): Promise<ConnectShyftResolverQueueDetailData> {
+    const rebindReview = isQueueBackedRebindReview(review)
+      ? await loadPersonRebindService().getRebindReviewContext({
+        tenantId: review.tenantId,
+        rebindHistoryId: review.triggerSourceId,
+      })
+      : null;
+
+    return {
+      item: toResolverQueueItem(review, actorUserId),
+      review: toResolverReviewRecord(review),
+      rebindReview,
+    };
+  }
+
+  private async enqueueRebindReview(input: {
+    tenantId: string;
+    orgUnitId: string;
+    provisionalPersonId: string;
+    canonicalPersonId: string;
+    performedByUserId: string;
+    affectedObjectIds: string[];
+    contactPointIds: string[];
+    originatingResolverReviewId?: string;
+    originatingResolutionType?: ResolverActionType | null;
+  }): Promise<void> {
+    const affectedObjectIds = uniqueStrings(input.affectedObjectIds);
+    if (affectedObjectIds.length === 0) {
+      return;
+    }
+
+    const rebindHistory = await loadPersonRebindService().enqueueRebindReview({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      provisionalPersonId: input.provisionalPersonId,
+      canonicalPersonId: input.canonicalPersonId,
+      performedByUserId: input.performedByUserId,
+      affectedObjectType: 'contact_point_link',
+      affectedObjectIds,
+      contactPointIds: uniqueStrings(input.contactPointIds),
+      originatingResolverReviewId: input.originatingResolverReviewId ?? null,
+      originatingResolutionType: input.originatingResolutionType ?? null,
+    });
+    const reviewId = buildRebindReviewResolverReviewId(rebindHistory.id);
+    const existingReview = await this.store.getResolverReview({
+      tenantId: input.tenantId,
+      reviewId,
+    });
+
+    if (existingReview) {
+      return;
+    }
+
+    const rebindReview = rebindHistory.reviewContext;
+    const contactPointCount = rebindReview?.contactPointIds.length ?? 0;
+    const affectedCount = rebindReview?.affectedObjectIds.length ?? affectedObjectIds.length;
+    const confidenceReasons = [
+      contactPointCount > 1
+        ? `${contactPointCount} contact points require manual subject reassignment review.`
+        : 'Manual subject reassignment review is required before finalizing contact-point truth.',
+      affectedCount > 1
+        ? `${affectedCount} current contact-point links remain review-class rebind work.`
+        : 'A current contact-point link remains review-class rebind work.',
+    ];
+
+    try {
+      await this.createResolverReview({
+        reviewId,
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        reviewType: 'subject_reassignment_review',
+        reviewStatus: 'queued',
+        priority: 'normal',
+        triggerSourceType: CONNECTSHYFT_REBIND_REVIEW_TRIGGER_SOURCE_TYPE,
+        triggerSourceId: rebindHistory.id,
+        provisionalPersonId: input.provisionalPersonId,
+        candidatePersonIds: [input.canonicalPersonId],
+        contactPointId: rebindReview?.contactPointIds[0] ?? undefined,
+        confidenceBand: 'medium',
+        confidenceReasons,
+        riskFlags: [],
+        requestedByUserId: input.performedByUserId,
+        requestedAt: rebindHistory.createdAtUtc,
+      });
+    } catch (error) {
+      if (isUniqueViolationError(error)) {
+        return;
       }
 
       throw error;
@@ -968,6 +1113,31 @@ export class AsyncPeopleCoreService {
 
   async mergePerson(input: MergePersonInput): Promise<PeopleCoreMergeResult> {
     const result = await this.execute(() => this.store.mergePerson(input));
+
+    if (result.reviewContactPointLinkIds.length > 0) {
+      const provisionalLinks = await this.listContactPointLinks({
+        tenantId: input.tenantId,
+        subjectType: 'person',
+        subjectId: result.mergedProvisionalPersonId,
+        isCurrent: true,
+      });
+      const reviewLinks = provisionalLinks.filter((link) =>
+        result.reviewContactPointLinkIds.includes(link.id));
+
+      await this.enqueueRebindReview({
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        provisionalPersonId: result.mergedProvisionalPersonId,
+        canonicalPersonId: result.canonicalPersonId,
+        performedByUserId: input.performedByUserId,
+        affectedObjectIds: reviewLinks.length > 0
+          ? reviewLinks.map((link) => link.id)
+          : result.reviewContactPointLinkIds,
+        contactPointIds: reviewLinks.map((link) => link.contactPointId),
+        originatingResolverReviewId: result.resolverReviewId,
+        originatingResolutionType: 'merge_people',
+      });
+    }
 
     if (result.didPersistMerge) {
       await this.mergeEventPublisher.publishPersonMerged({
@@ -1167,7 +1337,7 @@ export class AsyncPeopleCoreService {
       const includeTerminal = input.includeTerminal === true;
 
       return reviews
-        .map((review) => toIdentityReviewQueueItem(review, actorUserId))
+        .map((review) => toResolverQueueItem(review, actorUserId))
         .filter((item) => {
           if (input.itemType && item.itemType !== input.itemType) {
             return false;
@@ -1206,23 +1376,16 @@ export class AsyncPeopleCoreService {
       const actorRoles = normalizeStringList(input.actorRoles);
       assertTenantAdminResolverActor(actorRoles);
 
-      if (input.itemType !== 'identity_review') {
-        return null;
-      }
-
       const review = await this.store.getResolverReview({
         tenantId,
         reviewId: itemId,
       });
 
-      if (!review) {
+      if (!review || resolveResolverQueueItemType(review) !== input.itemType) {
         return null;
       }
 
-      return {
-        item: toIdentityReviewQueueItem(review, actorUserId),
-        review: toResolverReviewRecord(review),
-      };
+      return this.buildResolverQueueItemDetail(review, actorUserId);
     });
   }
 
@@ -1246,12 +1409,6 @@ export class AsyncPeopleCoreService {
       const actorRoles = normalizeStringList(input.actorRoles);
       assertTenantAdminResolverActor(actorRoles);
 
-      if (input.itemType !== 'identity_review') {
-        throw new PeopleCoreScopeViolationError(
-          `Resolver queue item ${input.itemType}:${itemId} is not available in tenant ${tenantId}.`,
-        );
-      }
-
       const review = await this.store.getResolverReview({
         tenantId,
         reviewId: itemId,
@@ -1260,6 +1417,12 @@ export class AsyncPeopleCoreService {
       if (!review) {
         throw new PeopleCoreScopeViolationError(
           `Resolver review ${itemId} is not available in tenant ${tenantId}.`,
+        );
+      }
+
+      if (resolveResolverQueueItemType(review) !== input.itemType) {
+        throw new PeopleCoreScopeViolationError(
+          `Resolver queue item ${input.itemType}:${itemId} is not available in tenant ${tenantId}.`,
         );
       }
 
@@ -1296,10 +1459,7 @@ export class AsyncPeopleCoreService {
           startedAt: review.startedAt ?? nowIsoUtc(),
         });
 
-      return {
-        item: toIdentityReviewQueueItem(updatedReview, actorUserId),
-        review: toResolverReviewRecord(updatedReview),
-      };
+      return this.buildResolverQueueItemDetail(updatedReview, actorUserId);
     });
   }
 
@@ -1323,12 +1483,6 @@ export class AsyncPeopleCoreService {
       const actorRoles = normalizeStringList(input.actorRoles);
       assertTenantAdminResolverActor(actorRoles);
 
-      if (input.itemType !== 'identity_review') {
-        throw new PeopleCoreScopeViolationError(
-          `Resolver queue item ${input.itemType}:${itemId} is not available in tenant ${tenantId}.`,
-        );
-      }
-
       const review = await this.store.getResolverReview({
         tenantId,
         reviewId: itemId,
@@ -1337,6 +1491,12 @@ export class AsyncPeopleCoreService {
       if (!review) {
         throw new PeopleCoreScopeViolationError(
           `Resolver review ${itemId} is not available in tenant ${tenantId}.`,
+        );
+      }
+
+      if (resolveResolverQueueItemType(review) !== input.itemType) {
+        throw new PeopleCoreScopeViolationError(
+          `Resolver queue item ${input.itemType}:${itemId} is not available in tenant ${tenantId}.`,
         );
       }
 
@@ -1372,10 +1532,7 @@ export class AsyncPeopleCoreService {
         assignedResolverUserId: null,
       });
 
-      return {
-        item: toIdentityReviewQueueItem(updatedReview, actorUserId),
-        review: toResolverReviewRecord(updatedReview),
-      };
+      return this.buildResolverQueueItemDetail(updatedReview, actorUserId);
     });
   }
 
@@ -1432,6 +1589,19 @@ export class AsyncPeopleCoreService {
       if (!review) {
         throw new PeopleCoreScopeViolationError(
           `Resolver review ${validated.reviewId} is not available in tenant ${validated.tenantId}.`,
+        );
+      }
+
+      if (isQueueBackedRebindReview(review)) {
+        throw new ResolverReviewValidationError(
+          'Rebind-review queue work is not processed through identity resolver actions.',
+          [
+            buildFieldError(
+              'reviewId',
+              'CONFLICT',
+              'Use the rebind-review workflow to resolve subject reassignment queue work.',
+            ),
+          ],
         );
       }
 
