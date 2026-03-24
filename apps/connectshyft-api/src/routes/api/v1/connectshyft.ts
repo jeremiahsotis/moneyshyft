@@ -156,6 +156,7 @@ import {
   buildConnectShyftVoicemailTranscriptionRequest,
   extractConnectShyftVoicemailTranscriptionCallbackPayload,
   extractConnectShyftInboundVoiceNeighborId,
+  isConnectShyftInboundVoiceRecordingSavedEventType,
   isConnectShyftVoicemailTranscriptionCallbackEventType,
   mapConnectShyftInboundVoiceWebhookToDomainEvent,
   resolveConnectShyftInboundVoiceRouting,
@@ -178,15 +179,19 @@ import {
   resolveConnectShyftProviderCorrelationByIdentifiers,
 } from '../../../modules/connectshyft/providerCorrelationMappings';
 import {
+  BridgeSessionState,
   findConnectShyftBridgeSessionByProviderCallControlIdAsync,
   handleConnectShyftBridgeWebhookEvent,
   loadConnectShyftBridgeAggregateBySessionId,
   loadConnectShyftBridgeAggregateByThreadId,
   setConnectShyftBridgeLegProviderCallControlIdAsync,
   startConnectShyftBridgeSession,
+  transitionBridgeSessionState,
+  transitionConnectShyftBridgeSessionStateAsync,
   updateConnectShyftBridgeSessionVoicemailFallbackAsync,
   type ConnectShyftBridgeSessionAggregate,
 } from '../../../modules/connectshyft/bridgeSessions';
+import { canAttachConnectShyftVoicemailToBridgeSession } from '../../../modules/connectshyft/voicemails';
 import {
   beginConnectShyftCommunicationIdempotency,
   completeConnectShyftCommunicationIdempotency,
@@ -1312,6 +1317,44 @@ async function executeConnectShyftNeighborRingTimeoutAsync(input: {
   }
 
   const timeoutRecordedAtUtc = nowIsoUtc();
+  const timeoutOccurredAt = new Date(timeoutRecordedAtUtc);
+  const timeoutTransitionPreview = transitionBridgeSessionState(
+    aggregate.session,
+    BridgeSessionState.VOICEMAIL,
+    {
+      source: 'system',
+      eventType: 'neighbor_ring_timeout',
+      occurredAt: timeoutOccurredAt,
+    },
+  );
+  if (timeoutTransitionPreview === aggregate.session) {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
+  const voicemailAggregate = await transitionConnectShyftBridgeSessionStateAsync({
+    bridgeSessionId: input.bridgeSessionId,
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    nextState: BridgeSessionState.VOICEMAIL,
+    context: {
+      source: 'system',
+      eventType: 'neighbor_ring_timeout',
+      occurredAt: timeoutOccurredAt,
+    },
+  });
+  if (
+    !voicemailAggregate
+    || normalizeLifecycleString(voicemailAggregate.session.status) !== BridgeSessionState.VOICEMAIL
+  ) {
+    return {
+      handled: false,
+      aggregate,
+    };
+  }
+
   const updatedAggregate = await updateConnectShyftBridgeSessionVoicemailFallbackAsync({
     bridgeSessionId: input.bridgeSessionId,
     tenantId: input.tenantId,
@@ -1324,7 +1367,7 @@ async function executeConnectShyftNeighborRingTimeoutAsync(input: {
   if (!updatedAggregate) {
     return {
       handled: false,
-      aggregate,
+      aggregate: voicemailAggregate,
     };
   }
 
@@ -1474,14 +1517,54 @@ async function attachConnectShyftOutboundVoicemailRecordingAsync(input: {
     };
   }
 
+  if (!canAttachConnectShyftVoicemailToBridgeSession(bridgeSession.session.status)) {
+    return {
+      handled: true,
+      bridgeSession,
+      voicemailArtifactId: null,
+    };
+  }
+
+  let voicemailBridgeSession: ConnectShyftBridgeSessionAggregate | null = bridgeSession;
+  if (normalizeLifecycleString(bridgeSession.session.status) !== BridgeSessionState.VOICEMAIL) {
+    const voicemailTransitionPreview = transitionBridgeSessionState(
+      bridgeSession.session,
+      BridgeSessionState.VOICEMAIL,
+      {
+        source: 'provider',
+        eventType: 'recording.saved',
+      },
+    );
+
+    voicemailBridgeSession = voicemailTransitionPreview === bridgeSession.session
+      ? null
+      : await transitionConnectShyftBridgeSessionStateAsync({
+        bridgeSessionId: bridgeSession.session.id,
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        nextState: BridgeSessionState.VOICEMAIL,
+        context: {
+          source: 'provider',
+          eventType: 'recording.saved',
+        },
+      });
+  }
+  if (!voicemailBridgeSession) {
+    return {
+      handled: false,
+      bridgeSession,
+      voicemailArtifactId: null,
+    };
+  }
+
   const voicemailArtifact = buildConnectShyftOutboundVoicemailArtifact({
-    threadId: bridgeSession.session.threadId,
+    threadId: voicemailBridgeSession.session.threadId,
     providerEventId,
     providerLegId,
     recordingUrl,
   });
   const updatedBridgeSession = await updateConnectShyftBridgeSessionVoicemailFallbackAsync({
-    bridgeSessionId: bridgeSession.session.id,
+    bridgeSessionId: voicemailBridgeSession.session.id,
     tenantId: input.tenantId,
     orgUnitId: input.orgUnitId,
     voicemailArtifactId: voicemailArtifact.artifactId,
@@ -1493,7 +1576,7 @@ async function attachConnectShyftOutboundVoicemailRecordingAsync(input: {
 
   return {
     handled: true,
-    bridgeSession: updatedBridgeSession || bridgeSession,
+    bridgeSession: updatedBridgeSession || voicemailBridgeSession,
     voicemailArtifactId: voicemailArtifact.artifactId,
   };
 }
@@ -8281,6 +8364,7 @@ const performInboundWebhook = async ({
   }
 
   const outboundVoicemailRecording = voiceDomainEvent
+    && isConnectShyftInboundVoiceRecordingSavedEventType(eventType)
     ? await attachConnectShyftOutboundVoicemailRecordingAsync({
       tenantId,
       orgUnitId,

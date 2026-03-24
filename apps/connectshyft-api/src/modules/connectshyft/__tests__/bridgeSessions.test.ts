@@ -1,9 +1,12 @@
 import {
+  BridgeSessionState,
   handleConnectShyftBridgeWebhookEvent,
   loadConnectShyftBridgeAggregateByProviderCallId,
   loadConnectShyftBridgeAggregateBySessionId,
   resetConnectShyftBridgeSessionStateForTests,
   startConnectShyftBridgeSession,
+  transitionBridgeSessionState,
+  transitionConnectShyftBridgeSessionStateAsync,
 } from '../bridgeSessions'
 import { resetConnectShyftProviderCorrelationStateForTests } from '../providerCorrelationMappings'
 import type { ConnectShyftProviderAdapter } from '../providerRegistry'
@@ -81,6 +84,27 @@ const baseInput = {
   providerAdapter,
 } as const
 
+const buildTransitionSession = (status: string) => ({
+  id: 'bridge-session-transition-1001',
+  tenantId: baseInput.tenantId,
+  orgUnitId: baseInput.orgUnitId,
+  threadId: baseInput.threadId,
+  operatorParticipantId: baseInput.operatorParticipantId,
+  neighborParticipantId: baseInput.neighborParticipantId,
+  operatorContactPointId: baseInput.operatorContactPointId,
+  neighborContactPointId: baseInput.neighborContactPointId,
+  selectedOutboundContactPointId: baseInput.selectedOutboundContactPointId,
+  status,
+  failureCode: null,
+  failureMessage: null,
+  endedBy: null,
+  idempotencyKey: null,
+  auditCorrelationId: null,
+  createdAt: new Date('2026-03-11T12:00:00.000Z'),
+  updatedAt: new Date('2026-03-11T12:00:00.000Z'),
+  completedAt: null,
+}) as any
+
 describe('connectshyft bridgeSessions', () => {
   const previousNodeEnv = process.env.NODE_ENV
   const previousEnableFlags = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS
@@ -105,6 +129,67 @@ describe('connectshyft bridgeSessions', () => {
   afterAll(() => {
     process.env.NODE_ENV = previousNodeEnv
     process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS = previousEnableFlags
+  })
+
+  it('allows valid bridge session transitions through the central state machine', () => {
+    const transitioned = transitionBridgeSessionState(
+      buildTransitionSession(BridgeSessionState.NEIGHBOR_DIALING),
+      BridgeSessionState.VOICEMAIL,
+      {
+        source: 'provider',
+        eventType: 'recording.saved',
+        occurredAt: new Date('2026-03-11T12:03:00.000Z'),
+      },
+    )
+
+    expect(transitioned).toMatchObject({
+      status: 'voicemail',
+    })
+    expect(transitioned.updatedAt.toISOString()).toBe('2026-03-11T12:03:00.000Z')
+  })
+
+  it('ignores invalid bridge session transitions', () => {
+    const session = buildTransitionSession(BridgeSessionState.OPERATOR_DIALING)
+    const transitioned = transitionBridgeSessionState(
+      session,
+      BridgeSessionState.BRIDGED,
+      {
+        source: 'provider',
+        eventType: 'call.bridged',
+      },
+    )
+
+    expect(transitioned).toBe(session)
+    expect(transitioned.status).toBe('operator_dialing')
+  })
+
+  it('keeps terminal bridge session states immutable', () => {
+    const session = buildTransitionSession(BridgeSessionState.COMPLETED)
+    const transitioned = transitionBridgeSessionState(
+      session,
+      BridgeSessionState.FAILED,
+      {
+        source: 'provider',
+        eventType: 'call.failed',
+      },
+    )
+
+    expect(transitioned).toBe(session)
+    expect(transitioned.status).toBe('completed')
+  })
+
+  it('treats duplicate bridge session transitions as idempotent', () => {
+    const session = buildTransitionSession(BridgeSessionState.NEIGHBOR_DIALING)
+    const transitioned = transitionBridgeSessionState(
+      session,
+      BridgeSessionState.NEIGHBOR_DIALING,
+      {
+        source: 'provider',
+        eventType: 'call.ringing',
+      },
+    )
+
+    expect(transitioned).toBe(session)
   })
 
   it('persists a created bridge session with operator and neighbor legs on startup', async () => {
@@ -202,6 +287,35 @@ describe('connectshyft bridgeSessions', () => {
       legRole: 'neighbor',
       targetPhone: '+12605550111',
     }))
+  })
+
+  it('allows voicemail only from the unanswered neighbor flow', async () => {
+    const started = await startConnectShyftBridgeSession(baseInput)
+    const afterOperatorAnswer = await handleConnectShyftBridgeWebhookEvent({
+      tenantId: baseInput.tenantId,
+      orgUnitId: baseInput.orgUnitId,
+      threadId: baseInput.threadId,
+      providerKey: 'provider-a',
+      providerAdapter,
+      providerLegId: started.aggregate.operatorLeg.providerCallId || null,
+      eventType: 'CallAnswered',
+      occurredAt: new Date('2026-03-11T12:01:00.000Z'),
+    })
+
+    const voicemailAggregate = await transitionConnectShyftBridgeSessionStateAsync({
+      bridgeSessionId: started.aggregate.session.id,
+      tenantId: baseInput.tenantId,
+      orgUnitId: baseInput.orgUnitId,
+      nextState: BridgeSessionState.VOICEMAIL,
+      context: {
+        source: 'system',
+        eventType: 'neighbor_ring_timeout',
+        occurredAt: new Date('2026-03-11T12:02:00.000Z'),
+      },
+    })
+
+    expect(afterOperatorAnswer.aggregate?.session.status).toBe('neighbor_dialing')
+    expect(voicemailAggregate?.session.status).toBe('voicemail')
   })
 
   it('persists completed bridge sessions after both legs answer and the bridge ends', async () => {
@@ -315,6 +429,97 @@ describe('connectshyft bridgeSessions', () => {
         status: 'failed',
         failureCode: 'neighbor_failed',
         failureMessage: 'neighbor_declined',
+      },
+    })
+  })
+
+  it('keeps replayed provider events from re-triggering the same state progression', async () => {
+    const started = await startConnectShyftBridgeSession(baseInput)
+
+    const firstOperatorAnswer = await handleConnectShyftBridgeWebhookEvent({
+      tenantId: baseInput.tenantId,
+      orgUnitId: baseInput.orgUnitId,
+      threadId: baseInput.threadId,
+      providerKey: 'provider-a',
+      providerAdapter,
+      providerLegId: started.aggregate.operatorLeg.providerCallId || null,
+      eventType: 'CallAnswered',
+      occurredAt: new Date('2026-03-11T12:01:00.000Z'),
+    })
+    const replayedOperatorAnswer = await handleConnectShyftBridgeWebhookEvent({
+      tenantId: baseInput.tenantId,
+      orgUnitId: baseInput.orgUnitId,
+      threadId: baseInput.threadId,
+      providerKey: 'provider-a',
+      providerAdapter,
+      providerLegId: started.aggregate.operatorLeg.providerCallId || null,
+      eventType: 'CallAnswered',
+      occurredAt: new Date('2026-03-11T12:02:00.000Z'),
+    })
+
+    expect(firstOperatorAnswer.aggregate?.session.status).toBe('neighbor_dialing')
+    expect(replayedOperatorAnswer.aggregate?.session.status).toBe('neighbor_dialing')
+    expect(replayedOperatorAnswer.aggregate?.neighborLeg.providerCallId)
+      .toBe(firstOperatorAnswer.aggregate?.neighborLeg.providerCallId)
+    expect(startBridgeOutboundCallMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps out-of-order provider events from regressing a completed bridge session', async () => {
+    const started = await startConnectShyftBridgeSession(baseInput)
+
+    const afterOperatorAnswer = await handleConnectShyftBridgeWebhookEvent({
+      tenantId: baseInput.tenantId,
+      orgUnitId: baseInput.orgUnitId,
+      threadId: baseInput.threadId,
+      providerKey: 'provider-a',
+      providerAdapter,
+      providerLegId: started.aggregate.operatorLeg.providerCallId || null,
+      eventType: 'CallAnswered',
+      occurredAt: new Date('2026-03-11T12:01:00.000Z'),
+    })
+    const afterNeighborAnswer = await handleConnectShyftBridgeWebhookEvent({
+      tenantId: baseInput.tenantId,
+      orgUnitId: baseInput.orgUnitId,
+      threadId: baseInput.threadId,
+      providerKey: 'provider-a',
+      providerAdapter,
+      providerLegId: afterOperatorAnswer.aggregate?.neighborLeg.providerCallId || null,
+      eventType: 'CallAnswered',
+      occurredAt: new Date('2026-03-11T12:02:00.000Z'),
+    })
+    await handleConnectShyftBridgeWebhookEvent({
+      tenantId: baseInput.tenantId,
+      orgUnitId: baseInput.orgUnitId,
+      threadId: baseInput.threadId,
+      providerKey: 'provider-a',
+      providerAdapter,
+      providerLegId: afterNeighborAnswer.aggregate?.neighborLeg.providerCallId || null,
+      eventType: 'CallCompleted',
+      occurredAt: new Date('2026-03-11T12:03:00.000Z'),
+    })
+
+    const outOfOrderFailure = await handleConnectShyftBridgeWebhookEvent({
+      tenantId: baseInput.tenantId,
+      orgUnitId: baseInput.orgUnitId,
+      threadId: baseInput.threadId,
+      providerKey: 'provider-a',
+      providerAdapter,
+      providerLegId: afterNeighborAnswer.aggregate?.neighborLeg.providerCallId || null,
+      eventType: 'CallFailed',
+      reason: 'late_failure',
+      occurredAt: new Date('2026-03-11T12:04:00.000Z'),
+    })
+
+    expect(outOfOrderFailure.aggregate).toMatchObject({
+      session: {
+        status: 'completed',
+        failureCode: null,
+      },
+      operatorLeg: {
+        status: 'completed',
+      },
+      neighborLeg: {
+        status: 'completed',
       },
     })
   })

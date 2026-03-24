@@ -10,6 +10,8 @@ import {
   type ConnectShyftCallService,
 } from './calls';
 import {
+  canAttachConnectShyftVoicemailToBridgeSession,
+  canEnterConnectShyftVoicemailFromBridgeSession,
   connectShyftVoicemailServiceAsync,
   type ConnectShyftVoicemailService,
   type Voicemail,
@@ -23,12 +25,15 @@ import {
   type ConnectShyftProviderEventService,
 } from './providerEvents';
 import {
+  BridgeSessionState,
   handleConnectShyftBridgeWebhookEvent,
   loadConnectShyftBridgeAggregateByProviderCallId,
   loadConnectShyftBridgeAggregateBySessionId,
   loadConnectShyftBridgeAggregateByThreadId,
   registerConnectShyftBridgeCallStatusHook,
   startConnectShyftBridgeSession,
+  transitionBridgeSessionState,
+  transitionConnectShyftBridgeSessionStateAsync,
 } from './bridgeSessions';
 import {
   connectShyftThreadServiceAsync,
@@ -991,10 +996,17 @@ export const buildConnectShyftCallLifecycleService = (
         );
       }
 
-      let voicemailEligible = call.status === 'failed' || call.status === 'voicemail';
-      if (!voicemailEligible && call.bridgeSessionId) {
-        const aggregate = await loadBridgeAggregateBySessionIdFn(call.bridgeSessionId);
-        voicemailEligible = aggregate?.session.failureCode === 'neighbor_failed';
+      const bridgeAggregate = call.bridgeSessionId
+        ? await loadBridgeAggregateBySessionIdFn(call.bridgeSessionId)
+        : null;
+
+      let voicemailEligible = call.status === 'voicemail';
+      if (bridgeAggregate) {
+        voicemailEligible = canAttachConnectShyftVoicemailToBridgeSession(
+          bridgeAggregate.session.status,
+        );
+      } else if (!voicemailEligible) {
+        voicemailEligible = call.status === 'failed';
       }
 
       if (!voicemailEligible) {
@@ -1002,6 +1014,35 @@ export const buildConnectShyftCallLifecycleService = (
           'CONNECTSHYFT_VOICEMAIL_NOT_ALLOWED',
           'Voicemail fallback is only allowed after a failed neighbor connection.',
         );
+      }
+
+      if (
+        bridgeAggregate
+        && canEnterConnectShyftVoicemailFromBridgeSession(bridgeAggregate.session.status)
+      ) {
+        const bridgeSessionTransition = transitionBridgeSessionState(
+          bridgeAggregate.session,
+          BridgeSessionState.VOICEMAIL,
+          {
+            source: 'system',
+            eventType: 'voicemail.recorded',
+            occurredAt: input.occurredAt,
+          },
+        );
+
+        if (bridgeSessionTransition !== bridgeAggregate.session) {
+          await transitionConnectShyftBridgeSessionStateAsync({
+            bridgeSessionId: bridgeAggregate.session.id,
+            tenantId: bridgeAggregate.session.tenantId,
+            orgUnitId: bridgeAggregate.session.orgUnitId,
+            nextState: BridgeSessionState.VOICEMAIL,
+            context: {
+              source: 'system',
+              eventType: 'voicemail.recorded',
+              occurredAt: input.occurredAt,
+            },
+          });
+        }
       }
 
       const voicemail = await voicemailService.createVoicemail({

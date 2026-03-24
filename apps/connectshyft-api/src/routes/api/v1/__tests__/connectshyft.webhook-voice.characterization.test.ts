@@ -184,6 +184,31 @@ const seedOutboundVoicemailBridgeSession = async (input?: {
     providerAdapter: bridgeProviderAdapter,
   });
 
+  const afterOperatorAnswer = await BridgeSessionsModule.handleConnectShyftBridgeWebhookEvent({
+    tenantId: 'tenant-connectshyft-f1',
+    orgUnitId: 'org-connectshyft-f1-east',
+    threadId,
+    providerKey: 'telnyx',
+    providerAdapter: bridgeProviderAdapter,
+    providerLegId: started.aggregate.operatorLeg.providerCallId || null,
+    eventType: 'CallAnswered',
+    occurredAt: new Date(TEST_TIMESTAMP),
+  });
+
+  const runtimeAggregate = matchedLegRole === 'voicemail'
+    ? await BridgeSessionsModule.transitionConnectShyftBridgeSessionStateAsync({
+      bridgeSessionId: started.aggregate.session.id,
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      nextState: BridgeSessionsModule.BridgeSessionState.VOICEMAIL,
+      context: {
+        source: 'system',
+        eventType: 'neighbor_ring_timeout',
+        occurredAt: new Date(TEST_TIMESTAMP),
+      },
+    })
+    : afterOperatorAnswer.aggregate;
+
   if (matchedLegRole === 'voicemail') {
     await updateConnectShyftBridgeSessionVoicemailFallbackAsync({
       bridgeSessionId: started.aggregate.session.id,
@@ -205,7 +230,7 @@ const seedOutboundVoicemailBridgeSession = async (input?: {
   return {
     bridgeSessionId: started.aggregate.session.id,
     providerCallControlId,
-    aggregate: aggregate || started.aggregate,
+    aggregate: aggregate || runtimeAggregate || afterOperatorAnswer.aggregate || started.aggregate,
   };
 };
 
@@ -569,6 +594,56 @@ describe('connectshyft inbound voice webhook route characterization', () => {
       expect(updateVoicemailFallbackSpy).not.toHaveBeenCalled();
     } finally {
       findBridgeSessionSpy.mockRestore();
+      updateVoicemailFallbackSpy.mockRestore();
+    }
+  });
+
+  it('ignores outbound voicemail recordings when the matched bridge session is already completed', async () => {
+    const seededBridge = await seedOutboundVoicemailBridgeSession({
+      matchedLegRole: 'voicemail',
+      providerCallControlId: 'provider-leg-voicemail-recording-completed-1013',
+    });
+    await BridgeSessionsModule.transitionConnectShyftBridgeSessionStateAsync({
+      bridgeSessionId: seededBridge.bridgeSessionId,
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      nextState: BridgeSessionsModule.BridgeSessionState.COMPLETED,
+      context: {
+        source: 'system',
+        eventType: 'call.completed',
+        occurredAt: new Date(TEST_TIMESTAMP),
+      },
+    });
+    const updateVoicemailFallbackSpy = jest.spyOn(
+      BridgeSessionsModule,
+      'updateConnectShyftBridgeSessionVoicemailFallbackAsync',
+    );
+    const app = buildApp();
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/inbound')
+        .set(buildVoiceHeaders())
+        .send(buildVoiceWebhookBody({
+          providerEventId: 'provider-event-voice-outbound-voicemail-completed-1013',
+          providerLegId: seededBridge.providerCallControlId,
+          recordingUrl: 'https://connectshyft.test/outbound-voicemail-recording-completed-1013.mp3',
+        }));
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          bridgeSession: {
+            bridgeSessionId: seededBridge.bridgeSessionId,
+            sessionState: 'completed',
+          },
+        },
+      });
+      expect(response.body.data).not.toHaveProperty('voicemailArtifact');
+      expect(updateVoicemailFallbackSpy).not.toHaveBeenCalled();
+    } finally {
       updateVoicemailFallbackSpy.mockRestore();
     }
   });

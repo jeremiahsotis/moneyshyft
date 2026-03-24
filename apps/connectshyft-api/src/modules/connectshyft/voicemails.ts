@@ -6,6 +6,10 @@ import {
   ConnectShyftPersistenceUnavailableError,
   isConnectShyftPersistenceErrorCause,
 } from './calls';
+import {
+  BridgeSessionState,
+  normalizeConnectShyftBridgeSessionState,
+} from './bridgeSessions';
 
 const CONNECTSHYFT_SCHEMA = 'connectshyft';
 const VOICEMAILS_TABLE = 'cs_voicemails';
@@ -118,6 +122,21 @@ const mapVoicemailRow = (row: DbVoicemailRow): Voicemail => ({
   updatedAtUtc: toIsoUtc(row.updated_at_utc) || new Date().toISOString(),
   transcriptionJson: row.transcription_json ?? null,
 });
+
+export const canAttachConnectShyftVoicemailToBridgeSession = (
+  bridgeSessionStatus: string | null | undefined,
+): boolean => {
+  const normalizedState = normalizeConnectShyftBridgeSessionState(bridgeSessionStatus)
+
+  return normalizedState === BridgeSessionState.NEIGHBOR_DIALING
+    || normalizedState === BridgeSessionState.VOICEMAIL
+}
+
+export const canEnterConnectShyftVoicemailFromBridgeSession = (
+  bridgeSessionStatus: string | null | undefined,
+): boolean => (
+  normalizeConnectShyftBridgeSessionState(bridgeSessionStatus) === BridgeSessionState.NEIGHBOR_DIALING
+)
 
 class InMemoryConnectShyftVoicemailStore implements ConnectShyftVoicemailService {
   private readonly records = new Map<string, Voicemail>();

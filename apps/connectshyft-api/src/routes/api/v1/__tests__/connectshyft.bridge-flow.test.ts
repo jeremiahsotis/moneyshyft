@@ -647,7 +647,10 @@ describe('connectshyft bridge webhook flow', () => {
       orgUnitId: 'org-connectshyft-f1-east',
       providerCallControlId: `provider-leg-voicemail-${bridgeSessionId}`,
     })
-    expect(persistedVoicemailBridgeSession?.session.id).toBe(bridgeSessionId)
+    expect(persistedVoicemailBridgeSession?.session).toMatchObject({
+      id: bridgeSessionId,
+      status: 'voicemail',
+    })
     expect(persistedVoicemailBridgeSession?.voicemailLeg).toMatchObject({
       legRole: 'voicemail',
       contactPointId: '+12605550111',
@@ -751,7 +754,7 @@ describe('connectshyft bridge webhook flow', () => {
     expect(failedTimeoutAggregate).toMatchObject({
       session: {
         id: bridgeSessionId,
-        status: 'neighbor_dialing',
+        status: 'voicemail',
       },
       operatorLeg: {
         status: 'answered',

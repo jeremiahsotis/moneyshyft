@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { Knex } from 'knex'
 import db from '../../config/knex'
+import logger from '../../utils/logger'
 import {
   buildHandleProviderBridgeEvent,
   buildStartBridgeSession,
@@ -22,6 +23,77 @@ import type {
 
 const BRIDGE_SESSIONS_TABLE = 'cs_bridge_sessions'
 const BRIDGE_LEGS_TABLE = 'cs_bridge_legs'
+
+export const BridgeSessionState = {
+  INITIATED: 'initiated',
+  OPERATOR_DIALING: 'operator_dialing',
+  OPERATOR_ANSWERED: 'operator_answered',
+  NEIGHBOR_DIALING: 'neighbor_dialing',
+  NEIGHBOR_ANSWERED: 'neighbor_answered',
+  BRIDGED: 'bridged',
+  VOICEMAIL: 'voicemail',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+  CANCELED: 'canceled',
+  EXPIRED: 'expired',
+} as const
+
+export type ConnectShyftBridgeSessionState =
+  typeof BridgeSessionState[keyof typeof BridgeSessionState]
+
+export type BridgeSessionTransitionContext = {
+  source: 'provider' | 'system' | 'user'
+  eventType?: string
+  occurredAt?: Date
+}
+
+const LEGACY_BRIDGE_SESSION_STATE_ALIASES: Record<string, ConnectShyftBridgeSessionState> = {
+  created: BridgeSessionState.INITIATED,
+}
+
+const ALLOWED_TRANSITIONS: Record<ConnectShyftBridgeSessionState, ConnectShyftBridgeSessionState[]> = {
+  [BridgeSessionState.INITIATED]: [
+    BridgeSessionState.OPERATOR_DIALING,
+    BridgeSessionState.FAILED,
+    BridgeSessionState.CANCELED,
+  ],
+  [BridgeSessionState.OPERATOR_DIALING]: [
+    BridgeSessionState.OPERATOR_ANSWERED,
+    BridgeSessionState.FAILED,
+    BridgeSessionState.EXPIRED,
+  ],
+  [BridgeSessionState.OPERATOR_ANSWERED]: [
+    BridgeSessionState.NEIGHBOR_DIALING,
+    BridgeSessionState.FAILED,
+  ],
+  [BridgeSessionState.NEIGHBOR_DIALING]: [
+    BridgeSessionState.NEIGHBOR_ANSWERED,
+    BridgeSessionState.VOICEMAIL,
+    BridgeSessionState.FAILED,
+  ],
+  [BridgeSessionState.NEIGHBOR_ANSWERED]: [
+    BridgeSessionState.BRIDGED,
+    BridgeSessionState.FAILED,
+  ],
+  [BridgeSessionState.BRIDGED]: [
+    BridgeSessionState.COMPLETED,
+    BridgeSessionState.FAILED,
+  ],
+  [BridgeSessionState.VOICEMAIL]: [
+    BridgeSessionState.COMPLETED,
+  ],
+  [BridgeSessionState.COMPLETED]: [],
+  [BridgeSessionState.FAILED]: [],
+  [BridgeSessionState.CANCELED]: [],
+  [BridgeSessionState.EXPIRED]: [],
+}
+
+const TERMINAL_BRIDGE_SESSION_STATES = new Set<ConnectShyftBridgeSessionState>([
+  BridgeSessionState.COMPLETED,
+  BridgeSessionState.FAILED,
+  BridgeSessionState.CANCELED,
+  BridgeSessionState.EXPIRED,
+])
 
 export type ConnectShyftBridgeSessionAggregate = BridgeSessionAggregate
 
@@ -213,6 +285,197 @@ const toDate = (value: string | Date | null | undefined): Date | null => {
 
 const normalizeNullableString = (value: unknown): string | null => normalizeString(value) || null
 
+export const normalizeConnectShyftBridgeSessionState = (
+  value: unknown,
+): ConnectShyftBridgeSessionState | null => {
+  const normalized = normalizeString(value).toLowerCase()
+  if (!normalized) {
+    return null
+  }
+
+  if (Object.prototype.hasOwnProperty.call(LEGACY_BRIDGE_SESSION_STATE_ALIASES, normalized)) {
+    return LEGACY_BRIDGE_SESSION_STATE_ALIASES[normalized] || null
+  }
+
+  return Object.values(BridgeSessionState).includes(normalized as ConnectShyftBridgeSessionState)
+    ? normalized as ConnectShyftBridgeSessionState
+    : null
+}
+
+export const isConnectShyftBridgeSessionTerminalState = (value: unknown): boolean => {
+  const normalizedState = normalizeConnectShyftBridgeSessionState(value)
+  return normalizedState ? TERMINAL_BRIDGE_SESSION_STATES.has(normalizedState) : false
+}
+
+export const canConnectShyftBridgeSessionEnterVoicemail = (value: unknown): boolean => (
+  normalizeConnectShyftBridgeSessionState(value) === BridgeSessionState.NEIGHBOR_DIALING
+)
+
+const logRejectedBridgeSessionStateTransition = (input: {
+  currentState: string
+  attemptedState: string
+  context: BridgeSessionTransitionContext
+}): void => {
+  if (typeof logger.debug !== 'function') {
+    return
+  }
+
+  logger.debug({
+    message: 'Rejected state transition',
+    currentState: input.currentState,
+    attemptedState: input.attemptedState,
+    context: input.context,
+  })
+}
+
+type BridgeSessionTransitionResolution =
+  | {
+      type: 'transition'
+      currentState: ConnectShyftBridgeSessionState
+      nextState: ConnectShyftBridgeSessionState
+    }
+  | {
+      type: 'noop'
+      currentState: ConnectShyftBridgeSessionState | null
+      nextState: ConnectShyftBridgeSessionState | null
+    }
+  | {
+      type: 'reject'
+      currentState: ConnectShyftBridgeSessionState | null
+      nextState: ConnectShyftBridgeSessionState | null
+    }
+
+const resolveBridgeSessionTransition = (
+  currentStateInput: unknown,
+  nextStateInput: unknown,
+): BridgeSessionTransitionResolution => {
+  const currentState = normalizeConnectShyftBridgeSessionState(currentStateInput)
+  const nextState = normalizeConnectShyftBridgeSessionState(nextStateInput)
+
+  if (!currentState || !nextState) {
+    return {
+      type: 'reject',
+      currentState,
+      nextState,
+    }
+  }
+
+  if (currentState === nextState) {
+    return {
+      type: 'noop',
+      currentState,
+      nextState,
+    }
+  }
+
+  if (TERMINAL_BRIDGE_SESSION_STATES.has(currentState)) {
+    return {
+      type: 'reject',
+      currentState,
+      nextState,
+    }
+  }
+
+  const allowedTransitions = ALLOWED_TRANSITIONS[currentState] || []
+  if (!allowedTransitions.includes(nextState)) {
+    return {
+      type: 'reject',
+      currentState,
+      nextState,
+    }
+  }
+
+  return {
+    type: 'transition',
+    currentState,
+    nextState,
+  }
+}
+
+const normalizeBridgeSessionStatusForPersistence = (value: unknown): string => (
+  normalizeConnectShyftBridgeSessionState(value)
+  || normalizeString(value)
+  || BridgeSessionState.INITIATED
+)
+
+const resolveBridgeSessionTransitionSequence = (input: {
+  session: BridgeSessionRecord
+  nextState: string
+  context: BridgeSessionTransitionContext
+}): ConnectShyftBridgeSessionState[] | null => {
+  const directResolution = resolveBridgeSessionTransition(input.session.status, input.nextState)
+  if (directResolution.type === 'transition') {
+    return [directResolution.nextState]
+  }
+
+  if (directResolution.type === 'noop') {
+    return []
+  }
+
+  const currentState = normalizeConnectShyftBridgeSessionState(input.session.status)
+  const nextState = normalizeConnectShyftBridgeSessionState(input.nextState)
+  if (
+    input.context.source === 'provider'
+    && currentState === BridgeSessionState.OPERATOR_DIALING
+    && nextState === BridgeSessionState.NEIGHBOR_DIALING
+  ) {
+    return [
+      BridgeSessionState.OPERATOR_ANSWERED,
+      BridgeSessionState.NEIGHBOR_DIALING,
+    ]
+  }
+
+  if (
+    input.context.source === 'provider'
+    && currentState === BridgeSessionState.NEIGHBOR_DIALING
+    && nextState === BridgeSessionState.BRIDGED
+  ) {
+    return [
+      BridgeSessionState.NEIGHBOR_ANSWERED,
+      BridgeSessionState.BRIDGED,
+    ]
+  }
+
+  logRejectedBridgeSessionStateTransition({
+    currentState: currentState || normalizeString(input.session.status) || 'unknown',
+    attemptedState: nextState || normalizeString(input.nextState) || 'unknown',
+    context: input.context,
+  })
+
+  return null
+}
+
+export function transitionBridgeSessionState(
+  session: BridgeSessionRecord,
+  nextState: string,
+  context: BridgeSessionTransitionContext,
+): BridgeSessionRecord {
+  const resolution = resolveBridgeSessionTransition(session.status, nextState)
+  if (resolution.type === 'noop') {
+    return session
+  }
+
+  if (resolution.type === 'reject') {
+    logRejectedBridgeSessionStateTransition({
+      currentState: resolution.currentState || normalizeString(session.status) || 'unknown',
+      attemptedState: resolution.nextState || normalizeString(nextState) || 'unknown',
+      context,
+    })
+    return session
+  }
+
+  const updatedAt = context.occurredAt instanceof Date ? context.occurredAt : new Date()
+
+  return {
+    ...session,
+    status: resolution.nextState as BridgeSessionRecord['status'],
+    updatedAt,
+    completedAt: resolution.nextState === BridgeSessionState.COMPLETED
+      ? session.completedAt ?? updatedAt
+      : session.completedAt ?? null,
+  }
+}
+
 const toPersistedBridgeLegRole = (
   legRole: ConnectShyftBridgeLegRole,
 ): PersistedConnectShyftBridgeLegRole | null => (
@@ -297,6 +560,7 @@ const isMissingPersistenceError = (error: unknown): boolean => {
 }
 
 const mapSessionRow = (row: DbBridgeSessionRow): BridgeSessionRecord => {
+  const normalizedStatus = normalizeBridgeSessionStatusForPersistence(row.bridge_status)
   const session: ConnectShyftBridgeSessionRecordWithPersonId = {
     id: row.id,
     tenantId: row.tenant_id,
@@ -308,7 +572,7 @@ const mapSessionRow = (row: DbBridgeSessionRow): BridgeSessionRecord => {
     operatorContactPointId: row.operator_contact_point_id,
     neighborContactPointId: row.neighbor_contact_point_id,
     selectedOutboundContactPointId: normalizeString(row.selected_outbound_contact_point_id) || null,
-    status: row.bridge_status as BridgeSessionRecord['status'],
+    status: normalizedStatus as BridgeSessionRecord['status'],
     failureCode: normalizeString(row.failure_code) as BridgeSessionRecord['failureCode'],
     failureMessage: normalizeString(row.failure_message) || null,
     endedBy: normalizeString(row.ended_by) || null,
@@ -355,7 +619,7 @@ const sessionToRow = (session: BridgeSessionRecord) => {
     operator_contact_point_id: session.operatorContactPointId,
     neighbor_contact_point_id: session.neighborContactPointId,
     selected_outbound_contact_point_id: session.selectedOutboundContactPointId ?? null,
-    bridge_status: session.status,
+    bridge_status: normalizeBridgeSessionStatusForPersistence(session.status),
     failure_code: session.failureCode ?? null,
     failure_message: session.failureMessage ?? null,
     ended_by: session.endedBy ?? null,
@@ -993,6 +1257,74 @@ const attachPersonIdToAggregate = (
   session: attachPersonIdToSessionRecord(aggregate.session, personId),
 })
 
+const lockBridgeSessionAggregateStatus = (input: {
+  currentAggregate: BridgeSessionAggregate | null
+  nextAggregate: BridgeSessionAggregate
+  context: BridgeSessionTransitionContext
+}): BridgeSessionAggregate => {
+  if (!input.currentAggregate) {
+    return {
+      ...input.nextAggregate,
+      session: {
+        ...input.nextAggregate.session,
+        status: normalizeBridgeSessionStatusForPersistence(
+          input.nextAggregate.session.status,
+        ) as BridgeSessionRecord['status'],
+      },
+    }
+  }
+
+  const desiredUpdatedAt = input.nextAggregate.session.updatedAt instanceof Date
+    ? input.nextAggregate.session.updatedAt
+    : input.context.occurredAt
+  const transitionSequence = resolveBridgeSessionTransitionSequence({
+    session: input.currentAggregate.session,
+    nextState: input.nextAggregate.session.status,
+    context: {
+      ...input.context,
+      occurredAt: desiredUpdatedAt,
+    },
+  })
+  if (!transitionSequence || transitionSequence.length === 0) {
+    return input.currentAggregate
+  }
+
+  let transitionedSession = input.currentAggregate.session
+  for (const transitionState of transitionSequence) {
+    transitionedSession = transitionBridgeSessionState(transitionedSession, transitionState, {
+      ...input.context,
+      occurredAt: desiredUpdatedAt,
+    })
+  }
+
+  return {
+    ...input.nextAggregate,
+    session: {
+      ...input.currentAggregate.session,
+      ...input.nextAggregate.session,
+      status: transitionedSession.status,
+      updatedAt: transitionedSession.updatedAt,
+      completedAt: transitionedSession.completedAt ?? null,
+    },
+  }
+}
+
+const saveBridgeAggregateWithStateLock = async (input: {
+  aggregate: BridgeSessionAggregate
+  context: BridgeSessionTransitionContext
+}): Promise<BridgeSessionAggregate> => {
+  const currentAggregate = await repositoryProxy.getAggregateBySessionId(input.aggregate.session.id)
+  const lockedAggregate = lockBridgeSessionAggregateStatus({
+    currentAggregate,
+    nextAggregate: input.aggregate,
+    context: input.context,
+  })
+
+  await repositoryProxy.saveAggregate(lockedAggregate)
+
+  return lockedAggregate
+}
+
 const buildStartBridgeSessionRepository = (personId: string): BridgeSessionRepository => ({
   async createSession(session) {
     await repositoryProxy.createSession(attachPersonIdToSessionRecord(session, personId))
@@ -1001,7 +1333,39 @@ const buildStartBridgeSessionRepository = (personId: string): BridgeSessionRepos
     return repositoryProxy.createLeg(leg)
   },
   async saveAggregate(aggregate) {
-    await repositoryProxy.saveAggregate(attachPersonIdToAggregate(aggregate, personId))
+    await saveBridgeAggregateWithStateLock({
+      aggregate: attachPersonIdToAggregate(aggregate, personId),
+      context: {
+        source: 'system',
+        eventType: 'operator_call_created',
+      },
+    })
+  },
+  getAggregateBySessionId(sessionId) {
+    return repositoryProxy.getAggregateBySessionId(sessionId)
+  },
+  getAggregateByThreadId(input) {
+    return repositoryProxy.getAggregateByThreadId(input)
+  },
+  getAggregateByProviderCallId(input) {
+    return repositoryProxy.getAggregateByProviderCallId(input)
+  },
+})
+
+const buildProviderLifecycleRepository = (
+  context: BridgeSessionTransitionContext,
+): BridgeSessionRepository => ({
+  createSession(session) {
+    return repositoryProxy.createSession(session)
+  },
+  createLeg(leg) {
+    return repositoryProxy.createLeg(leg)
+  },
+  async saveAggregate(aggregate) {
+    await saveBridgeAggregateWithStateLock({
+      aggregate,
+      context,
+    })
   },
   getAggregateBySessionId(sessionId) {
     return repositoryProxy.getAggregateBySessionId(sessionId)
@@ -1431,6 +1795,42 @@ export async function setConnectShyftBridgeLegProviderCallControlIdAsync(
   }
 }
 
+export async function transitionConnectShyftBridgeSessionStateAsync(input: {
+  bridgeSessionId: string
+  tenantId: string
+  orgUnitId: string
+  nextState: string
+  context: BridgeSessionTransitionContext
+}): Promise<ConnectShyftBridgeSessionAggregate | null> {
+  const aggregate = await repositoryProxy.getAggregateBySessionId(input.bridgeSessionId)
+  if (
+    !aggregate
+    || aggregate.session.tenantId !== input.tenantId
+    || aggregate.session.orgUnitId !== input.orgUnitId
+  ) {
+    return null
+  }
+
+  const lockedAggregate = lockBridgeSessionAggregateStatus({
+    currentAggregate: aggregate,
+    nextAggregate: {
+      ...aggregate,
+      session: {
+        ...aggregate.session,
+        status: input.nextState as BridgeSessionRecord['status'],
+      },
+    },
+    context: input.context,
+  })
+
+  if (lockedAggregate === aggregate) {
+    return aggregate
+  }
+
+  await repositoryProxy.saveAggregate(lockedAggregate)
+  return repositoryProxy.getAggregateBySessionId(input.bridgeSessionId)
+}
+
 export async function findConnectShyftBridgeSessionByProviderCallControlIdAsync(input: {
   tenantId: string
   orgUnitId: string
@@ -1592,11 +1992,15 @@ export const handleConnectShyftBridgeWebhookEvent = async (
     callPolicy: input.callPolicy,
   })
   const handleProviderBridgeEvent = buildHandleProviderBridgeEvent({
-    repository: repositoryProxy,
+    repository: buildProviderLifecycleRepository({
+      source: 'provider',
+      eventType: domainEvent.type,
+      occurredAt: input.occurredAt,
+    }),
     telephonyProvider,
   })
-  const aggregate = await handleProviderBridgeEvent(domainEvent)
-  if (!aggregate) {
+  const handledAggregate = await handleProviderBridgeEvent(domainEvent)
+  if (!handledAggregate) {
     return {
       handled: false,
       aggregate: null,
@@ -1604,6 +2008,8 @@ export const handleConnectShyftBridgeWebhookEvent = async (
       correlationMapping: null,
     }
   }
+  const aggregate = await repositoryProxy.getAggregateBySessionId(handledAggregate.session.id)
+    || handledAggregate
 
   await recordBridgeProviderEvent({
     tenantId: input.tenantId,

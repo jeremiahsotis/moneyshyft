@@ -227,6 +227,17 @@ export const isConnectShyftVoicemailTranscriptionCallbackEventType = (
     && (normalized.includes('completed') || normalized.includes('callback'));
 };
 
+export const isConnectShyftInboundVoiceRecordingSavedEventType = (
+  canonicalEventType: string,
+): boolean => {
+  const normalized = normalizeString(canonicalEventType).toLowerCase();
+
+  return normalized === 'voice.voicemail'
+    || normalized === 'recording.saved'
+    || normalized === 'voice.recording.saved'
+    || normalized === 'call.recording.saved';
+};
+
 export const extractConnectShyftVoicemailTranscriptionCallbackPayload = (
   webhookBody: unknown,
 ): ConnectShyftVoicemailTranscriptionCallbackPayload => {

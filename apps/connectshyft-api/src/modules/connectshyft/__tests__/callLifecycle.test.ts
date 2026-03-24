@@ -8,6 +8,7 @@ import {
   resetConnectShyftCallStateForTests,
 } from '../calls';
 import {
+  loadConnectShyftBridgeAggregateBySessionId,
   loadConnectShyftBridgeAggregateByThreadId,
   resetConnectShyftBridgeSessionStateForTests,
 } from '../bridgeSessions';
@@ -246,6 +247,9 @@ describe('connectshyft callLifecycle', () => {
     });
 
     const completedCall = await connectShyftCallServiceAsync.getCallById(startedCall.id, tenantId);
+    const voicemailBridgeAggregate = await loadConnectShyftBridgeAggregateBySessionId(
+      startedCall.bridgeSessionId!,
+    );
     const callVoicemails = await connectShyftVoicemailServiceAsync.listCallVoicemails({
       tenantId,
       callId: startedCall.id,
@@ -254,6 +258,7 @@ describe('connectshyft callLifecycle', () => {
     expect(voicemail.recordingStatus).toBe('completed');
     expect(callVoicemails).toHaveLength(1);
     expect(completedCall?.status).toBe('voicemail');
+    expect(voicemailBridgeAggregate?.session.status).toBe('voicemail');
     expect(completedCall?.endedAtUtc).toBe('2026-03-23T12:02:00.000Z');
     expect(listConnectShyftLifecycleEventsForTests()).toEqual(
       expect.arrayContaining([
@@ -267,5 +272,83 @@ describe('connectshyft callLifecycle', () => {
         }),
       ]),
     );
+  });
+
+  it('refuses voicemail when the bridge session is already completed', async () => {
+    const service = buildService();
+
+    const startedCall = await service.startCall(baseStartInput);
+    const startedAggregate = await loadConnectShyftBridgeAggregateByThreadId({
+      tenantId,
+      threadId,
+    });
+
+    await service.handleProviderEvent({
+      tenantId,
+      provider: 'mock-sandbox',
+      event: {
+        type: 'operator_answered',
+        bridgeSessionId: startedAggregate!.session.id,
+        providerCallId: startedAggregate!.operatorLeg.providerCallId!,
+        occurredAt: new Date('2026-03-23T12:01:00.000Z'),
+      },
+      eventJson: {
+        eventType: 'CallAnswered',
+      },
+      providerCallId: startedAggregate!.operatorLeg.providerCallId!,
+      occurredAt: new Date('2026-03-23T12:01:00.000Z'),
+    });
+
+    const afterOperatorAnswer = await loadConnectShyftBridgeAggregateBySessionId(
+      startedAggregate!.session.id,
+    );
+    await service.handleProviderEvent({
+      tenantId,
+      provider: 'mock-sandbox',
+      event: {
+        type: 'neighbor_answered',
+        bridgeSessionId: startedAggregate!.session.id,
+        providerCallId: afterOperatorAnswer!.neighborLeg.providerCallId!,
+        occurredAt: new Date('2026-03-23T12:02:00.000Z'),
+      },
+      eventJson: {
+        eventType: 'CallAnswered',
+      },
+      providerCallId: afterOperatorAnswer!.neighborLeg.providerCallId!,
+      occurredAt: new Date('2026-03-23T12:02:00.000Z'),
+    });
+
+    const afterNeighborAnswer = await loadConnectShyftBridgeAggregateBySessionId(
+      startedAggregate!.session.id,
+    );
+    await service.handleProviderEvent({
+      tenantId,
+      provider: 'mock-sandbox',
+      event: {
+        type: 'completed',
+        bridgeSessionId: startedAggregate!.session.id,
+        providerCallId: afterNeighborAnswer!.neighborLeg.providerCallId!,
+        occurredAt: new Date('2026-03-23T12:03:00.000Z'),
+      },
+      eventJson: {
+        eventType: 'CallCompleted',
+      },
+      providerCallId: afterNeighborAnswer!.neighborLeg.providerCallId!,
+      occurredAt: new Date('2026-03-23T12:03:00.000Z'),
+    });
+
+    await expect(service.handleVoicemail({
+      tenantId,
+      orgUnitId,
+      callId: startedCall.id,
+      threadId,
+      personId,
+      artifactId: 'artifact-call-lifecycle-completed-1002',
+      recordingUrl: 'https://example.test/voicemail-1002.mp3',
+      recordingStatus: 'completed',
+      occurredAt: new Date('2026-03-23T12:04:00.000Z'),
+    })).rejects.toMatchObject({
+      code: 'CONNECTSHYFT_VOICEMAIL_NOT_ALLOWED',
+    });
   });
 });
