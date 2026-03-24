@@ -2,9 +2,22 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Request, Response, Router } from 'express';
 import type { Knex } from 'knex';
 import type {
+  ConnectShyftIdentityAmbiguityEvent,
+  ConnectShyftIdentityAmbiguityRecord,
+  ConnectShyftResolverReviewRecord,
   PersonProvisionalCreatedEvent,
+  ResolverDecisionInput,
+  ResolverReview,
   ResolverReviewCreatedEvent,
   SubjectContext,
+} from '@shyft/contracts';
+import {
+  deriveResolverDecisionStatus,
+  isConnectShyftIdentityAmbiguityActiveStatus,
+  isConnectShyftIdentityAmbiguityTerminalStatus,
+  isResolverActionType,
+  isResolverReviewActiveStatus,
+  isResolverReviewTerminalStatus,
 } from '@shyft/contracts';
 import {
   buildTelephonyDispatchReplayKey,
@@ -208,6 +221,7 @@ import {
   resetConnectShyftCommunicationAuditLogForTests,
 } from '../../../modules/connectshyft/communicationAuditLog';
 import {
+  getIdentityAmbiguityEvent,
   listIdentityAmbiguityEvents,
   markIdentityAmbiguityEventReviewed,
 } from '../../../modules/connectshyft/ambiguityEvents';
@@ -216,7 +230,12 @@ import {
   resolveInboundContactPointIdentityAsync,
   type ResolveInboundContactPointIdentityResult,
 } from '../../../modules/peoplecore/contactPointIdentityResolution';
-import { peopleCoreServiceAsync } from '../../../modules/peoplecore/service';
+import {
+  InvalidResolverReviewTransitionError,
+  peopleCoreServiceAsync,
+  ResolverReviewValidationError,
+} from '../../../modules/peoplecore/service';
+import { PeopleCoreScopeViolationError } from '../../../modules/peoplecore/store';
 import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService';
 import connectShyftOpsRouter from './connectshyft/ops.routes';
 
@@ -2747,6 +2766,89 @@ const resolveIdentityAmbiguityTenantPrivilegedScope = (
   return null;
 };
 
+const resolveResolverReviewReadScope = (
+  req: Request,
+  res: Response,
+  context: Pick<ResolvedConnectShyftContext, 'orgUnitId' | 'effectiveRoles'>,
+  requestedOrgUnitId: string | null,
+): {
+  actorRoles: string[];
+  orgUnitId: string | null;
+  tenantPrivileged: boolean;
+} | null => {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  const tenantPrivileged =
+    hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL);
+  const identityResolutionCapable =
+    hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_IDENTITY_RESOLVE);
+
+  if (!tenantPrivileged && !identityResolutionCapable) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_RESOLVER_REVIEW_READ_FORBIDDEN',
+      message: 'Resolver review access requires an authorized ConnectShyft role.',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return null;
+  }
+
+  if (requestedOrgUnitId && !tenantPrivileged && requestedOrgUnitId !== context.orgUnitId) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_ORGUNIT_SCOPE_VIOLATION',
+      message: 'Cross-orgUnit context overrides are not allowed for this route',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return null;
+  }
+
+  return {
+    actorRoles,
+    orgUnitId: requestedOrgUnitId ?? (tenantPrivileged ? null : context.orgUnitId),
+    tenantPrivileged,
+  };
+};
+
+const resolveResolverReviewTenantPrivilegedScope = (
+  req: Request,
+  res: Response,
+  context: Pick<ResolvedConnectShyftContext, 'effectiveRoles'>,
+): {
+  actorRoles: string[];
+} | null => {
+  const actorRoles = resolveConnectShyftActorRoles(req, context);
+  if (hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)) {
+    return {
+      actorRoles,
+    };
+  }
+
+  refusal(res, {
+    code: 'CONNECTSHYFT_RESOLVER_REVIEW_UPDATE_FORBIDDEN',
+    message: 'Resolver decision updates require a tenant-privileged ConnectShyft admin role.',
+    refusalType: 'business',
+    httpStatus: 200,
+  });
+  return null;
+};
+
+const toResolverReviewRecord = (
+  review: ResolverReview,
+): ConnectShyftResolverReviewRecord => ({
+  ...review,
+  actionable: isResolverReviewActiveStatus(review.reviewStatus),
+  terminal: isResolverReviewTerminalStatus(review.reviewStatus),
+  decisionStatus: deriveResolverDecisionStatus(review.reviewStatus),
+});
+
+const toIdentityAmbiguityRecord = (
+  event: ConnectShyftIdentityAmbiguityEvent,
+): ConnectShyftIdentityAmbiguityRecord => ({
+  ...event,
+  actionable: isConnectShyftIdentityAmbiguityActiveStatus(event.status),
+  terminal: isConnectShyftIdentityAmbiguityTerminalStatus(event.status),
+});
+
 const parseOrgUnitIdFromBody = (req: Request): string | null => {
   if (typeof req.body?.orgUnitId !== 'string') {
     return null;
@@ -2766,17 +2868,26 @@ const parseOrgUnitIdFromQuery = (req: Request): string | null => {
 
 const parseIdentityAmbiguityStatusFromQuery = (
   req: Request,
-): 'pending' | 'reviewed' | null => {
+): 'pending' | 'reviewed' | 'resolved' | 'dismissed' | null => {
   if (typeof req.query?.status !== 'string') {
-    return null;
+    return 'pending';
   }
 
   const normalized = req.query.status.trim().toLowerCase();
-  if (normalized === 'pending' || normalized === 'reviewed') {
+  if (normalized === 'all') {
+    return null;
+  }
+
+  if (
+    normalized === 'pending'
+    || normalized === 'reviewed'
+    || normalized === 'resolved'
+    || normalized === 'dismissed'
+  ) {
     return normalized;
   }
 
-  return null;
+  return 'pending';
 };
 
 const parseIdentityAmbiguityOptionalFilter = (
@@ -2806,9 +2917,10 @@ const parseIdentityAmbiguityLimit = (req: Request): number => {
 
 const parseIdentityAmbiguityFilters = (req: Request): {
   orgUnitId: string | null;
-  status: 'pending' | 'reviewed' | null;
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed' | null;
   normalizedContactPoint: string | null;
   sourceContext: string | null;
+  sourceContextId: string | null;
   limit: number;
   cursor: string | null;
 } => ({
@@ -2818,8 +2930,15 @@ const parseIdentityAmbiguityFilters = (req: Request): {
     req.query?.normalizedContactPoint,
   ),
   sourceContext: parseIdentityAmbiguityOptionalFilter(req.query?.sourceContext),
+  sourceContextId: parseIdentityAmbiguityOptionalFilter(req.query?.sourceContextId),
   limit: parseIdentityAmbiguityLimit(req),
   cursor: parseIdentityAmbiguityOptionalFilter(req.query?.cursor),
+});
+
+const parseResolverReviewFilters = (req: Request): {
+  orgUnitId: string | null;
+} => ({
+  orgUnitId: parseOrgUnitIdFromQuery(req),
 });
 
 const parseIdentityAmbiguityEventIdParam = (req: Request): string => {
@@ -2828,6 +2947,46 @@ const parseIdentityAmbiguityEventIdParam = (req: Request): string => {
   }
 
   return req.params.ambiguityEventId.trim();
+};
+
+const parseResolverReviewIdParam = (req: Request): string => {
+  if (typeof req.params.reviewId !== 'string') {
+    return '';
+  }
+
+  return req.params.reviewId.trim();
+};
+
+const parseResolverDecisionBody = (
+  req: Request,
+): Partial<ResolverDecisionInput> => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    return {};
+  }
+
+  const body = req.body as Record<string, unknown>;
+  const normalizeOptionalBodyString = (value: unknown): string | undefined => {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : undefined;
+  };
+
+  const action = normalizeOptionalBodyString(body.action);
+
+  return {
+    action: isResolverActionType(action) ? action : undefined,
+    reason: normalizeOptionalBodyString(body.reason),
+    notes: normalizeOptionalBodyString(body.notes),
+    personId: normalizeOptionalBodyString(body.personId),
+    provisionalPersonId: normalizeOptionalBodyString(body.provisionalPersonId),
+    sourcePersonId: normalizeOptionalBodyString(body.sourcePersonId),
+    targetPersonId: normalizeOptionalBodyString(body.targetPersonId),
+    contactPointId: normalizeOptionalBodyString(body.contactPointId),
+    ambiguityEventId: normalizeOptionalBodyString(body.ambiguityEventId),
+  };
 };
 
 const parseIdentityAmbiguityStatusUpdate = (
@@ -4796,6 +4955,96 @@ router.get('/events', async (req: Request, res: Response) => {
   });
 });
 
+router.get('/resolver-reviews', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const filters = parseResolverReviewFilters(req);
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  const readScope = resolveResolverReviewReadScope(
+    req,
+    res,
+    context,
+    filters.orgUnitId,
+  );
+  if (!readScope) {
+    return;
+  }
+
+  const reviews = await peopleCoreServiceAsync.listResolverReviews({
+    tenantId: context.tenantId,
+    orgUnitId: readScope.orgUnitId ?? undefined,
+  });
+
+  return success(res, {
+    code: 'CONNECTSHYFT_RESOLVER_REVIEWS_LISTED',
+    message: 'ConnectShyft resolver reviews listed',
+    httpStatus: 200,
+    data: {
+      reviews: reviews.map(toResolverReviewRecord),
+    },
+  });
+});
+
+router.get('/resolver-reviews/:reviewId', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  const reviewId = parseResolverReviewIdParam(req);
+  if (!reviewId) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_RESOLVER_REVIEW_ID_REQUIRED',
+      message: 'reviewId is required',
+    });
+    return;
+  }
+
+  const readScope = resolveResolverReviewReadScope(
+    req,
+    res,
+    context,
+    null,
+  );
+  if (!readScope) {
+    return;
+  }
+
+  const review = await peopleCoreServiceAsync.getResolverReview({
+    tenantId: context.tenantId,
+    reviewId,
+  });
+
+  if (!review || (!readScope.tenantPrivileged && review.orgUnitId !== context.orgUnitId)) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_RESOLVER_REVIEW_NOT_FOUND',
+      message: 'Resolver review is unavailable for the active tenant context.',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return;
+  }
+
+  return success(res, {
+    code: 'CONNECTSHYFT_RESOLVER_REVIEW_RETRIEVED',
+    message: 'ConnectShyft resolver review retrieved',
+    httpStatus: 200,
+    data: {
+      review: toResolverReviewRecord(review),
+    },
+  });
+});
+
 router.get('/identity-ambiguities', async (req: Request, res: Response) => {
   if (!await enforceCapability(req, res, 'module')) {
     return;
@@ -4823,6 +5072,7 @@ router.get('/identity-ambiguities', async (req: Request, res: Response) => {
     status: filters.status,
     normalizedContactPoint: filters.normalizedContactPoint,
     sourceContext: filters.sourceContext,
+    sourceContextId: filters.sourceContextId,
     limit: filters.limit,
     cursor: filters.cursor,
   });
@@ -4832,10 +5082,162 @@ router.get('/identity-ambiguities', async (req: Request, res: Response) => {
     message: 'ConnectShyft identity ambiguities resolved',
     httpStatus: 200,
     data: {
-      events: listed.events,
+      events: listed.events.map(toIdentityAmbiguityRecord),
       nextCursor: listed.nextCursor,
     },
   });
+});
+
+router.get('/identity-ambiguities/:ambiguityEventId', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  if (!resolveIdentityAmbiguityTenantPrivilegedScope(req, res, context)) {
+    return;
+  }
+
+  const ambiguityEventId = parseIdentityAmbiguityEventIdParam(req);
+  if (!ambiguityEventId) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_ID_REQUIRED',
+      message: 'ambiguityEventId is required',
+    });
+    return;
+  }
+
+  const event = await getIdentityAmbiguityEvent({
+    tenantId: context.tenantId,
+    ambiguityEventId,
+  });
+
+  if (!event) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_NOT_FOUND',
+      message: 'Identity ambiguity event is unavailable for the active tenant context.',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return;
+  }
+
+  return success(res, {
+    code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_RETRIEVED',
+    message: 'ConnectShyft identity ambiguity retrieved',
+    httpStatus: 200,
+    data: {
+      event: toIdentityAmbiguityRecord(event),
+    },
+  });
+});
+
+router.post('/resolver-reviews/:reviewId/decision', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  if (!resolveResolverReviewTenantPrivilegedScope(req, res, context)) {
+    return;
+  }
+
+  const reviewId = parseResolverReviewIdParam(req);
+  if (!reviewId) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_RESOLVER_REVIEW_ID_REQUIRED',
+      message: 'reviewId is required',
+    });
+    return;
+  }
+
+  const body = parseResolverDecisionBody(req);
+  if (!body.action) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_RESOLVER_DECISION_INVALID',
+      message: 'action must be a canonical resolver action.',
+      data: {
+        fieldErrors: [
+          {
+            field: 'action',
+            reason: 'INVALID',
+            message: 'action must be a canonical resolver action.',
+          },
+        ],
+      },
+    });
+    return;
+  }
+
+  try {
+    const result = await peopleCoreServiceAsync.applyResolverDecision({
+      tenantId: context.tenantId,
+      reviewId,
+      actorUserId: resolveConnectShyftRequestedActorUserId(req) || CONNECTSHYFT_SYSTEM_ACTOR_USER_ID,
+      action: body.action,
+      reason: body.reason,
+      notes: body.notes,
+      personId: body.personId,
+      provisionalPersonId: body.provisionalPersonId,
+      sourcePersonId: body.sourcePersonId,
+      targetPersonId: body.targetPersonId,
+      contactPointId: body.contactPointId,
+      ambiguityEventId: body.ambiguityEventId,
+    });
+
+    return success(res, {
+      code: 'CONNECTSHYFT_RESOLVER_DECISION_APPLIED',
+      message: 'ConnectShyft resolver decision applied',
+      httpStatus: 200,
+      data: {
+        result,
+      },
+    });
+  } catch (error) {
+    if (error instanceof InvalidResolverReviewTransitionError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_DECISION_TERMINAL',
+        message: 'Resolver review is already terminal for the requested decision.',
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          fieldErrors: error.fieldErrors,
+        },
+      });
+      return;
+    }
+
+    if (error instanceof ResolverReviewValidationError) {
+      respondConnectShyftClientRefusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_DECISION_INVALID',
+        message: error.message,
+        data: {
+          fieldErrors: error.fieldErrors,
+        },
+      });
+      return;
+    }
+
+    if (error instanceof PeopleCoreScopeViolationError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_REVIEW_NOT_FOUND',
+        message: 'Resolver review is unavailable for the active tenant context.',
+        refusalType: 'business',
+        httpStatus: 200,
+      });
+      return;
+    }
+
+    throw error;
+  }
 });
 
 router.patch('/identity-ambiguities/:ambiguityEventId', async (req: Request, res: Response) => {
@@ -4898,7 +5300,7 @@ router.patch('/identity-ambiguities/:ambiguityEventId', async (req: Request, res
     message: 'ConnectShyft identity ambiguity reviewed',
     httpStatus: 200,
     data: {
-      event,
+      event: toIdentityAmbiguityRecord(event),
     },
   });
 });
@@ -8271,6 +8673,7 @@ const performInboundWebhook = async ({
         threadState: ensuredThread.state,
         thread: ensuredThread,
         identityResolution: {
+          resolvedState: identityAttachment.outcome,
           outcome: identityAttachment.outcome,
           confidenceBand: identityAttachment.confidenceBand,
           contactPointStatus: identityAttachment.contactPointStatus,

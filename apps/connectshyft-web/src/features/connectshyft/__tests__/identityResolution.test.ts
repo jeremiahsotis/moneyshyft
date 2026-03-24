@@ -26,8 +26,9 @@ describe('resolveConnectShyftIdentityResolutionPresentation', () => {
     });
   });
 
-  it('blocks create-new when the confidence band is very_high even without an explicit resolver state', () => {
+  it('treats active resolver review states as resolver-required without inferring from confidence alone', () => {
     expect(resolveConnectShyftIdentityResolutionPresentation({
+      state: 'pending',
       confidenceBand: 'very_high',
       contactPointStatus: 'reassignment_suspected',
       candidates: [],

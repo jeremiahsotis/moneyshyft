@@ -13,6 +13,7 @@ type TableFixture = {
   firstQueue: any[];
   returningQueue: any[][];
   inserted: any[];
+  updated: any[];
   whereCalls: Array<Record<string, unknown>>;
   joinCalls: Array<{ table: string; left: string; operator: string; right: string }>;
   orderByCalls: Array<[string, string]>;
@@ -24,6 +25,7 @@ const createFixture = (input: Partial<TableFixture> = {}): TableFixture => ({
   firstQueue: input.firstQueue ? [...input.firstQueue] : [],
   returningQueue: input.returningQueue ? [...input.returningQueue] : [],
   inserted: [],
+  updated: [],
   whereCalls: [],
   joinCalls: [],
   orderByCalls: [],
@@ -74,6 +76,12 @@ const buildKnexMock = (initial: Record<string, Partial<TableFixture>> = {}) => {
           first: async () => (fixture.firstQueue.length > 0 ? fixture.firstQueue.shift() || null : null),
           insert: (value: Record<string, unknown>) => {
             fixture.inserted.push(value);
+            return {
+              returning: async () => (fixture.returningQueue.length > 0 ? fixture.returningQueue.shift() || [] : []),
+            };
+          },
+          update: (value: Record<string, unknown>) => {
+            fixture.updated.push(value);
             return {
               returning: async () => (fixture.returningQueue.length > 0 ? fixture.returningQueue.shift() || [] : []),
             };
@@ -439,6 +447,69 @@ describe('KnexPeopleCoreStore', () => {
       candidate_person_ids: JSON.stringify(['person-a', 'person-b']),
       confidence_reasons: JSON.stringify(['exact phone match']),
       risk_flags: JSON.stringify(['duplicate_creation_attempt']),
+    });
+  });
+
+  it('updates resolver review lifecycle fields through the shared persistence shape', async () => {
+    const updatedReviewRow = {
+      id: RESOLVER_REVIEW_ID,
+      tenant_id: 'tenant-1',
+      org_unit_id: 'org-1',
+      review_type: 'identity_conflict',
+      review_status: 'resolved_confirmed_existing',
+      priority: 'normal',
+      trigger_source_type: 'conversation',
+      trigger_source_id: 'conversation-1',
+      conversation_id: 'conversation-1',
+      provisional_person_id: PERSON_ID,
+      candidate_person_ids: ['person-a', 'person-b'],
+      contact_point_id: CONTACT_POINT_ID,
+      confidence_band: 'high',
+      confidence_reasons: ['exact phone match'],
+      risk_flags: ['duplicate_creation_attempt'],
+      requested_by_user_id: 'user-1',
+      assigned_resolver_user_id: 'resolver-1',
+      requested_at_utc: '2026-03-21T12:06:00.000Z',
+      started_at_utc: '2026-03-21T12:10:00.000Z',
+      resolved_at_utc: '2026-03-21T12:12:00.000Z',
+      resolution_type: 'confirm_existing_person',
+      resolution_reason: 'Matched against the existing canonical person.',
+      resolution_notes: 'Stable lifecycle update.',
+    };
+    const { knex, getFixture } = buildKnexMock({
+      'people.resolver_reviews': {
+        returningQueue: [[updatedReviewRow]],
+      },
+    });
+    const store = new KnexPeopleCoreStore(knex);
+
+    const updated = await store.updateResolverReview({
+      tenantId: 'tenant-1',
+      reviewId: RESOLVER_REVIEW_ID,
+      reviewStatus: 'resolved_confirmed_existing',
+      assignedResolverUserId: 'resolver-1',
+      startedAt: '2026-03-21T12:10:00.000Z',
+      resolvedAt: '2026-03-21T12:12:00.000Z',
+      resolutionType: 'confirm_existing_person',
+      resolutionReason: 'Matched against the existing canonical person.',
+      resolutionNotes: 'Stable lifecycle update.',
+    });
+
+    expect(updated).toMatchObject({
+      id: RESOLVER_REVIEW_ID,
+      reviewStatus: 'resolved_confirmed_existing',
+      assignedResolverUserId: 'resolver-1',
+      resolutionType: 'confirm_existing_person',
+      resolutionReason: 'Matched against the existing canonical person.',
+    });
+    expect(getFixture('people.resolver_reviews').updated[0]).toMatchObject({
+      review_status: 'resolved_confirmed_existing',
+      assigned_resolver_user_id: 'resolver-1',
+      started_at_utc: '2026-03-21T12:10:00.000Z',
+      resolved_at_utc: '2026-03-21T12:12:00.000Z',
+      resolution_type: 'confirm_existing_person',
+      resolution_reason: 'Matched against the existing canonical person.',
+      resolution_notes: 'Stable lifecycle update.',
     });
   });
 

@@ -2,9 +2,16 @@
 import express from 'express';
 import request from 'supertest';
 import {
+  consumeAmbiguityEventsForResolverOutcome,
   createIdentityAmbiguityEvent,
   resetIdentityAmbiguityEventsForTests,
 } from '../../../../modules/connectshyft/ambiguityEvents';
+import {
+  InvalidResolverReviewTransitionError,
+  peopleCoreServiceAsync,
+  ResolverReviewValidationError,
+} from '../../../../modules/peoplecore/service';
+import { PeopleCoreScopeViolationError } from '../../../../modules/peoplecore/store';
 import { responseEnvelope } from '../../../../platform/middleware/responseEnvelope';
 import connectShyftRouter from '../connectshyft';
 
@@ -142,6 +149,25 @@ const createEvent = async (overrides: Record<string, unknown> = {}) => createIde
   ...overrides,
 });
 
+const buildResolverReview = (overrides: Record<string, unknown> = {}) => ({
+  id: 'review-1',
+  tenantId: TEST_TENANT_ID,
+  orgUnitId: TEST_ORG_UNIT_ID,
+  reviewType: 'shared_contact_ambiguity',
+  reviewStatus: 'pending',
+  priority: 'high',
+  triggerSourceType: 'connectshyft_identity_match',
+  triggerSourceId: 'identity-match:resolver-review-route',
+  candidatePersonIds: ['person-a', 'person-b'],
+  contactPointId: 'contact-point-1',
+  confidenceBand: 'medium',
+  confidenceReasons: ['shared phone contact point'],
+  riskFlags: ['shared_contact_possible'],
+  requestedByUserId: TEST_USER_ID,
+  requestedAt: '2026-03-21T12:00:00.000Z',
+  ...overrides,
+});
+
 describe('connectshyft identity ambiguity ops route', () => {
   const previousNodeEnv = process.env.NODE_ENV;
   const previousOverrideFlag = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
@@ -234,6 +260,7 @@ describe('connectshyft identity ambiguity ops route', () => {
     });
     expect(response.body.data.events).toHaveLength(2);
     expect(Object.keys(response.body.data.events[0]).sort()).toEqual([
+      'actionable',
       'ambiguityReasonCode',
       'candidateCount',
       'candidateNeighborIds',
@@ -245,10 +272,15 @@ describe('connectshyft identity ambiguity ops route', () => {
       'normalizedContactPoint',
       'orgUnitId',
       'requestedByUserId',
+      'resolverConsumedAtUtc',
+      'resolverConsumedByUserId',
+      'resolverOutcome',
+      'resolverReviewId',
       'sourceContext',
       'sourceContextId',
       'status',
       'tenantId',
+      'terminal',
       'updatedAtUtc',
     ].sort());
 
@@ -611,6 +643,437 @@ describe('connectshyft identity ambiguity ops route', () => {
       ok: false,
       code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_UPDATE_FORBIDDEN',
       message: 'Identity ambiguity review requires a tenant-privileged ConnectShyft admin role.',
+    });
+  });
+
+  it('lists only active ambiguity events by default while allowing explicit terminal-status filters', async () => {
+    const pending = await createEvent({
+      id: 'ambiguity-event-pending-default-list',
+      sourceContextId: 'identity-match:pending-default-list',
+      createdAtUtc: '2026-03-21T14:00:00.000Z',
+      updatedAtUtc: '2026-03-21T14:00:00.000Z',
+    });
+    await createEvent({
+      id: 'ambiguity-event-reviewed-default-list',
+      status: 'reviewed',
+      sourceContextId: 'identity-match:reviewed-default-list',
+      createdAtUtc: '2026-03-21T14:05:00.000Z',
+      updatedAtUtc: '2026-03-21T14:05:00.000Z',
+    });
+    await createEvent({
+      id: 'ambiguity-event-resolved-default-list',
+      sourceContextId: 'identity-match:resolved-default-list',
+      createdAtUtc: '2026-03-21T14:10:00.000Z',
+      updatedAtUtc: '2026-03-21T14:10:00.000Z',
+    });
+
+    await consumeAmbiguityEventsForResolverOutcome({
+      tenantId: TEST_TENANT_ID,
+      resolverReviewId: 'review-default-list',
+      triggerSourceId: 'identity-match:resolved-default-list',
+      outcome: 'resolved',
+      consumedByUserId: TEST_USER_ID,
+      consumedAtUtc: '2026-03-21T14:15:00.000Z',
+      resolverOutcome: {
+        reviewId: 'review-default-list',
+        action: 'confirm_existing_person',
+        reviewStatus: 'resolved_confirmed_existing',
+        actorUserId: TEST_USER_ID,
+        occurredAtUtc: '2026-03-21T14:15:00.000Z',
+        personId: 'person-default-list',
+      },
+    });
+
+    const app = buildApp();
+    const activeResponse = await request(app)
+      .get('/api/v1/connectshyft/identity-ambiguities')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(activeResponse.status).toBe(200);
+    expect(activeResponse.body.data.events).toEqual([
+      expect.objectContaining({
+        id: pending.id,
+        status: 'pending',
+        actionable: true,
+        terminal: false,
+      }),
+    ]);
+
+    const resolvedResponse = await request(app)
+      .get('/api/v1/connectshyft/identity-ambiguities')
+      .query({
+        status: 'resolved',
+      })
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(resolvedResponse.status).toBe(200);
+    expect(resolvedResponse.body.data.events).toEqual([
+      expect.objectContaining({
+        id: 'ambiguity-event-resolved-default-list',
+        status: 'resolved',
+        actionable: false,
+        terminal: true,
+      }),
+    ]);
+  });
+
+  it('returns terminal ambiguity detail with resolver-outcome linkage intact', async () => {
+    const created = await createEvent({
+      id: 'ambiguity-event-detail-terminal',
+      sourceContextId: 'identity-match:detail-terminal',
+      createdAtUtc: '2026-03-21T14:20:00.000Z',
+      updatedAtUtc: '2026-03-21T14:20:00.000Z',
+    });
+
+    await consumeAmbiguityEventsForResolverOutcome({
+      tenantId: TEST_TENANT_ID,
+      resolverReviewId: 'review-detail-terminal',
+      triggerSourceId: 'identity-match:detail-terminal',
+      outcome: 'dismissed',
+      consumedByUserId: TEST_USER_ID,
+      consumedAtUtc: '2026-03-21T14:25:00.000Z',
+      resolverOutcome: {
+        reviewId: 'review-detail-terminal',
+        action: 'dismiss_no_action',
+        reviewStatus: 'dismissed',
+        actorUserId: TEST_USER_ID,
+        occurredAtUtc: '2026-03-21T14:25:00.000Z',
+        reason: 'No identity change required.',
+      },
+    });
+
+    const app = buildApp();
+    const response = await request(app)
+      .get(`/api/v1/connectshyft/identity-ambiguities/${created.id}`)
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_RETRIEVED',
+      data: {
+        event: {
+          id: created.id,
+          status: 'dismissed',
+          actionable: false,
+          terminal: true,
+          resolverReviewId: 'review-detail-terminal',
+          resolverOutcome: {
+            action: 'dismiss_no_action',
+            reviewStatus: 'dismissed',
+          },
+        },
+      },
+    });
+  });
+
+  it('lists resolver reviews with normalized actionability semantics', async () => {
+    const listSpy = jest.spyOn(peopleCoreServiceAsync, 'listResolverReviews')
+      .mockResolvedValue([
+        buildResolverReview({
+          id: 'review-active',
+          reviewStatus: 'pending',
+        }) as any,
+        buildResolverReview({
+          id: 'review-terminal',
+          reviewStatus: 'resolved_confirmed_existing',
+          resolutionType: 'confirm_existing_person',
+          resolvedAt: '2026-03-21T13:00:00.000Z',
+        }) as any,
+      ]);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/resolver-reviews')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(response.status).toBe(200);
+    expect(listSpy).toHaveBeenCalledWith({
+      tenantId: TEST_TENANT_ID,
+      orgUnitId: undefined,
+    });
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_RESOLVER_REVIEWS_LISTED',
+      data: {
+        reviews: [
+          expect.objectContaining({
+            id: 'review-active',
+            reviewStatus: 'pending',
+            actionable: true,
+            terminal: false,
+            decisionStatus: null,
+          }),
+          expect.objectContaining({
+            id: 'review-terminal',
+            reviewStatus: 'resolved_confirmed_existing',
+            actionable: false,
+            terminal: true,
+            decisionStatus: 'resolved',
+          }),
+        ],
+      },
+    });
+  });
+
+  it('returns resolver review detail with stable lifecycle fields', async () => {
+    jest.spyOn(peopleCoreServiceAsync, 'getResolverReview')
+      .mockResolvedValue(buildResolverReview({
+        id: 'review-detail',
+        reviewStatus: 'resolved_confirmed_new',
+        resolutionType: 'confirm_new_person',
+        resolvedAt: '2026-03-21T14:00:00.000Z',
+      }) as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/resolver-reviews/review-detail')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_RESOLVER_REVIEW_RETRIEVED',
+      data: {
+        review: {
+          id: 'review-detail',
+          reviewStatus: 'resolved_confirmed_new',
+          actionable: false,
+          terminal: true,
+          decisionStatus: 'resolved',
+          resolutionType: 'confirm_new_person',
+        },
+      },
+    });
+  });
+
+  it('maps missing resolver review detail to a normalized business refusal', async () => {
+    jest.spyOn(peopleCoreServiceAsync, 'getResolverReview').mockResolvedValue(null);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/resolver-reviews/review-missing')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_RESOLVER_REVIEW_NOT_FOUND',
+      refusalType: 'business',
+      message: 'Resolver review is unavailable for the active tenant context.',
+    });
+  });
+
+  it('delegates resolver decisions to PeopleCore and returns the normalized result envelope', async () => {
+    const applySpy = jest.spyOn(peopleCoreServiceAsync, 'applyResolverDecision')
+      .mockResolvedValue({
+        reviewId: 'review-1',
+        status: 'resolved',
+        action: 'confirm_existing_person',
+        reviewStatus: 'resolved_confirmed_existing',
+        resolutionType: 'confirm_existing_person',
+        affectedPersonIds: ['person-existing'],
+        affectedContactPointIds: ['contact-point-1'],
+        ambiguityEventIds: ['ambiguity-event-1'],
+        mergeApplied: false,
+        rebindTriggered: true,
+      });
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/resolver-reviews/review-1/decision')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }))
+      .send({
+        action: 'confirm_existing_person',
+        personId: 'person-existing',
+        reason: 'Matched the existing person.',
+        ambiguityEventId: 'ambiguity-event-1',
+      });
+
+    expect(response.status).toBe(200);
+    expect(applySpy).toHaveBeenCalledWith({
+      tenantId: TEST_TENANT_ID,
+      reviewId: 'review-1',
+      actorUserId: TEST_USER_ID,
+      action: 'confirm_existing_person',
+      reason: 'Matched the existing person.',
+      notes: undefined,
+      personId: 'person-existing',
+      provisionalPersonId: undefined,
+      sourcePersonId: undefined,
+      targetPersonId: undefined,
+      contactPointId: undefined,
+      ambiguityEventId: 'ambiguity-event-1',
+    });
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_RESOLVER_DECISION_APPLIED',
+      data: {
+        result: {
+          reviewId: 'review-1',
+          action: 'confirm_existing_person',
+          reviewStatus: 'resolved_confirmed_existing',
+          resolutionType: 'confirm_existing_person',
+          mergeApplied: false,
+          rebindTriggered: true,
+        },
+      },
+    });
+  });
+
+  it('rejects malformed resolver decision payloads before service dispatch', async () => {
+    const applySpy = jest.spyOn(peopleCoreServiceAsync, 'applyResolverDecision');
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/resolver-reviews/review-1/decision')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }))
+      .send({
+        action: 'invented_action',
+      });
+
+    expect(response.status).toBe(400);
+    expect(applySpy).not.toHaveBeenCalled();
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_RESOLVER_DECISION_INVALID',
+      data: {
+        fieldErrors: [
+          {
+            field: 'action',
+            reason: 'INVALID',
+            message: 'action must be a canonical resolver action.',
+          },
+        ],
+      },
+    });
+  });
+
+  it('maps terminal resolver decisions to a normalized business refusal', async () => {
+    jest.spyOn(peopleCoreServiceAsync, 'applyResolverDecision').mockRejectedValue(
+      new InvalidResolverReviewTransitionError('Resolver review is already terminal.', [
+        {
+          field: 'reviewStatus',
+          reason: 'INVALID',
+          message: 'reviewStatus resolved_confirmed_existing is terminal.',
+        },
+      ]),
+    );
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/resolver-reviews/review-1/decision')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }))
+      .send({
+        action: 'dismiss_no_action',
+        reason: 'Trying to override a terminal decision.',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_RESOLVER_DECISION_TERMINAL',
+      refusalType: 'business',
+      data: {
+        fieldErrors: [
+          {
+            field: 'reviewStatus',
+            reason: 'INVALID',
+            message: 'reviewStatus resolved_confirmed_existing is terminal.',
+          },
+        ],
+      },
+    });
+  });
+
+  it('maps resolver review scope misses to a normalized business refusal', async () => {
+    jest.spyOn(peopleCoreServiceAsync, 'applyResolverDecision').mockRejectedValue(
+      new PeopleCoreScopeViolationError('Resolver review review-404 is unavailable.'),
+    );
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/resolver-reviews/review-404/decision')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }))
+      .send({
+        action: 'dismiss_no_action',
+        reason: 'No identity change required.',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_RESOLVER_REVIEW_NOT_FOUND',
+      refusalType: 'business',
+      message: 'Resolver review is unavailable for the active tenant context.',
+    });
+  });
+
+  it('maps resolver validation failures to client refusals', async () => {
+    jest.spyOn(peopleCoreServiceAsync, 'applyResolverDecision').mockRejectedValue(
+      new ResolverReviewValidationError('personId is required for confirm_existing_person.', [
+        {
+          field: 'personId',
+          reason: 'REQUIRED',
+          message: 'personId is required for confirm_existing_person.',
+        },
+      ]),
+    );
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/resolver-reviews/review-1/decision')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }))
+      .send({
+        action: 'confirm_existing_person',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_RESOLVER_DECISION_INVALID',
+      data: {
+        fieldErrors: [
+          {
+            field: 'personId',
+            reason: 'REQUIRED',
+            message: 'personId is required for confirm_existing_person.',
+          },
+        ],
+      },
     });
   });
 });

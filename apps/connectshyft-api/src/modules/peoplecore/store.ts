@@ -3,14 +3,16 @@ import type {
   ContactPointEvent,
   ContactPointLink,
   ContactPointStatus,
-  ResolverReviewStatus,
   ContactPointLinkSubjectType,
   ContactPointType,
   Household,
   HouseholdMembership,
   Person,
   ResolverReview,
+  ResolverResolutionType,
+  ResolverReviewStatus,
 } from '@shyft/contracts';
+import { isResolverReviewActiveStatus } from '@shyft/contracts';
 import type { Knex } from 'knex';
 import db from '../../config/knex';
 import {
@@ -75,13 +77,6 @@ const normalizeEventLimit = (value: unknown): number => {
 
   return Math.min(normalized, MAX_CONTACT_POINT_EVENT_LIMIT);
 };
-
-const PENDING_RESOLVER_REVIEW_STATUSES = new Set<ResolverReviewStatus>([
-  'pending',
-  'queued',
-  'in_review',
-  'waiting_for_more_info',
-]);
 
 const normalizePersonMergeStatus = (person: Pick<Person, 'status' | 'mergedIntoPersonId'>): PersonMergeStatus => {
   if (person.status === 'merged' || normalizeOptionalString(person.mergedIntoPersonId)) {
@@ -247,6 +242,28 @@ export type CreateResolverReviewInput = Omit<ResolverReview, 'id'> & {
   reviewId?: string;
 };
 
+export type UpdateResolverReviewInput = {
+  tenantId: string;
+  reviewId: string;
+  reviewStatus: ResolverReviewStatus;
+  assignedResolverUserId: string | null;
+  startedAt: string | null;
+  resolvedAt: string | null;
+  resolutionType: ResolverReview['resolutionType'] | null;
+  resolutionReason: string | null;
+  resolutionNotes: string | null;
+};
+
+export type SetResolverContactPointPersonsInput = {
+  tenantId: string;
+  contactPointId: string;
+  personIds: string[];
+  primaryPersonId: string;
+  performedByUserId: string;
+  resolutionType: ResolverResolutionType;
+  unlinkReason?: string;
+};
+
 export type GetResolverReviewInput = {
   tenantId: string;
   reviewId: string;
@@ -266,6 +283,8 @@ export type MergePersonInput = {
   canonicalPersonId: string;
   performedByUserId: string;
   mergeReason?: string;
+  resolverReviewId?: string;
+  skipResolverReviewCreation?: boolean;
 };
 
 export type PersonMergeStatus = 'provisional' | 'canonical' | 'merged';
@@ -307,6 +326,10 @@ export interface PeopleCoreStore extends PeopleCoreActivityStore {
   }): Promise<void>;
   listContactPointEvents(input: ListContactPointEventsInput): Promise<ContactPointEvent[]>;
   createResolverReview(input: CreateResolverReviewInput): Promise<ResolverReview>;
+  updateResolverReview(input: UpdateResolverReviewInput): Promise<ResolverReview | null>;
+  setResolverContactPointPersons(
+    input: SetResolverContactPointPersonsInput,
+  ): Promise<ContactPointLink[]>;
   getResolverReview(input: GetResolverReviewInput): Promise<ResolverReview | null>;
   listResolverReviews(input: ListResolverReviewsInput): Promise<ResolverReview[]>;
 }
@@ -1144,7 +1167,7 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
       .find((review) =>
         review.provisionalPersonId === input.provisionalPersonId
         && review.candidatePersonIds.includes(input.canonicalPersonId)
-        && PENDING_RESOLVER_REVIEW_STATUSES.has(review.reviewStatus));
+        && isResolverReviewActiveStatus(review.reviewStatus));
 
     return existing ?? null;
   }
@@ -1341,6 +1364,20 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
       for (const link of provisionalLinks) {
         const canonicalLinksForContactPoint = canonicalLinksByContactPointId.get(link.contact_point_id) ?? [];
         if (this.hasPrimaryContactConflict(link, canonicalLinksForContactPoint)) {
+          if (input.skipResolverReviewCreation) {
+            await this.markContactPointLinkMerged(trx, {
+              linkId: link.id,
+              canonicalPersonId: input.canonicalPersonId,
+              mergedAtUtc,
+              mergedByUserId: input.performedByUserId,
+              mergeClass: 'review',
+              mergeReason: input.mergeReason,
+            });
+            autoMergedContactPointLinkIds.push(link.id);
+            affectedContactPointIds.add(link.contact_point_id);
+            continue;
+          }
+
           reviewContactPointLinkIds.push(link.id);
           continue;
         }
@@ -1417,8 +1454,11 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
       const householdAmbiguity = provisionalHouseholds.some((membership) =>
         canonicalHouseholds.some((candidate) => candidate.household_id !== membership.household_id));
 
-      let resolverReviewId: string | undefined;
-      if (reviewContactPointLinkIds.length > 0 || householdAmbiguity) {
+      let resolverReviewId: string | undefined = input.resolverReviewId;
+      if (
+        !input.skipResolverReviewCreation
+        && (reviewContactPointLinkIds.length > 0 || householdAmbiguity)
+      ) {
         const existingReview = await this.findExistingMergeReview(trx, input);
         if (existingReview) {
           resolverReviewId = existingReview.id;
@@ -1867,6 +1907,142 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
       .returning<DbResolverReviewRow[]>(this.resolverReviewColumns());
 
     return mapResolverReviewRow(row);
+  }
+
+  async updateResolverReview(input: UpdateResolverReviewInput): Promise<ResolverReview | null> {
+    const rows = await this.knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('resolver_reviews')
+      .where({
+        id: input.reviewId,
+        tenant_id: input.tenantId,
+      })
+      .update({
+        review_status: input.reviewStatus,
+        assigned_resolver_user_id: input.assignedResolverUserId,
+        started_at_utc: input.startedAt,
+        resolved_at_utc: input.resolvedAt,
+        resolution_type: input.resolutionType,
+        resolution_reason: input.resolutionReason,
+        resolution_notes: input.resolutionNotes,
+      })
+      .returning<DbResolverReviewRow[]>(this.resolverReviewColumns());
+
+    const [row] = rows;
+    return row ? mapResolverReviewRow(row) : null;
+  }
+
+  async setResolverContactPointPersons(
+    input: SetResolverContactPointPersonsInput,
+  ): Promise<ContactPointLink[]> {
+    const personIds = uniqueStrings(input.personIds);
+    if (personIds.length === 0) {
+      throw new PeopleCoreConflictError(
+        `Resolver contact-point updates require at least one person for ${input.contactPointId}.`,
+      );
+    }
+
+    if (!personIds.includes(input.primaryPersonId)) {
+      throw new PeopleCoreConflictError(
+        `Primary resolver contact-point person ${input.primaryPersonId} must be included in the target set.`,
+      );
+    }
+
+    await this.assertContactPointInTenant(input.tenantId, input.contactPointId);
+    await Promise.all(personIds.map((personId) => this.assertPersonInTenant(input.tenantId, personId)));
+
+    return this.knexClient.transaction(async (trx) => {
+      const transactionalStore = new KnexPeopleCoreStore(trx as unknown as Knex);
+      const updatedAtUtc = new Date().toISOString();
+      const linkRows = await trx
+        .withSchema(PEOPLE_SCHEMA)
+        .table('contact_point_links')
+        .where({
+          contact_point_id: input.contactPointId,
+          subject_type: 'person',
+        })
+        .orderBy('created_at_utc', 'asc')
+        .orderBy('id', 'asc')
+        .select<DbContactPointLinkRow[]>(this.contactPointLinkColumns());
+
+      const currentRows = linkRows.filter((row) => row.is_current);
+      const targetPersonIds = new Set(personIds);
+
+      for (const row of currentRows) {
+        if (targetPersonIds.has(row.subject_id)) {
+          await trx
+            .withSchema(PEOPLE_SCHEMA)
+            .table('contact_point_links')
+            .where({ id: row.id })
+            .update({
+              is_primary: row.subject_id === input.primaryPersonId,
+              manually_confirmed: true,
+              confirmation_source: 'resolver',
+              last_confirmed_at_utc: updatedAtUtc,
+              unlink_reason: null,
+              unlinked_at_utc: null,
+              updated_at_utc: updatedAtUtc,
+            });
+          continue;
+        }
+
+        await trx
+          .withSchema(PEOPLE_SCHEMA)
+          .table('contact_point_links')
+          .where({ id: row.id })
+          .update({
+            is_current: false,
+            is_primary: false,
+            unlink_reason: input.unlinkReason ?? `resolver_${input.resolutionType}`,
+            unlinked_at_utc: updatedAtUtc,
+            updated_at_utc: updatedAtUtc,
+          });
+      }
+
+      for (const personId of personIds) {
+        if (currentRows.some((row) => row.subject_id === personId)) {
+          continue;
+        }
+
+        const priorLink = [...linkRows].reverse().find((row) => row.subject_id === personId);
+        await transactionalStore.createContactPointLink({
+          tenantId: input.tenantId,
+          contactPointId: input.contactPointId,
+          subjectType: 'person',
+          subjectId: personId,
+          linkType: personId === input.primaryPersonId
+            ? 'primary'
+            : priorLink?.link_type === 'primary'
+              ? 'secondary'
+              : priorLink?.link_type ?? 'secondary',
+          confidenceBand: priorLink?.confidence_band ?? 'high',
+          isCurrent: true,
+          isPrimary: personId === input.primaryPersonId,
+          manuallyConfirmed: true,
+          confirmationSource: 'resolver',
+          firstLinkedAt: updatedAtUtc,
+          lastConfirmedAt: updatedAtUtc,
+          lastUsedAt: priorLink?.last_used_at_utc
+            ? toIsoUtc(priorLink.last_used_at_utc, updatedAtUtc)
+            : undefined,
+          linkedBy: 'resolver',
+          linkedByUserId: input.performedByUserId,
+        });
+      }
+
+      await this.recomputeContactPointStatusWithinTransaction(trx as unknown as Knex, {
+        tenantId: input.tenantId,
+        contactPointId: input.contactPointId,
+      });
+
+      const rows = await this.listCurrentContactPointLinkRowsForContactPoint(trx as unknown as Knex, {
+        contactPointId: input.contactPointId,
+      });
+
+      return rows
+        .filter((row) => row.subject_type === 'person')
+        .map(mapContactPointLinkRow);
+    });
   }
 
   async getResolverReview(input: GetResolverReviewInput): Promise<ResolverReview | null> {

@@ -1,13 +1,14 @@
 import type {
   ContactPoint,
   ContactPointLink,
+  ConnectShyftIdentityResolutionOutcome,
   Household,
   HouseholdMembership,
   Person,
   ResolverReview,
-  ResolverReviewStatus,
   ResolverRiskFlag,
 } from '@shyft/contracts';
+import { isResolverReviewActiveStatus } from '@shyft/contracts';
 import {
   AsyncPeopleCoreService,
   peopleCoreServiceAsync,
@@ -27,7 +28,7 @@ export type PeopleCoreIdentityCandidateGenerationReason =
   | 'historical_household_link'
   | 'current_household_member';
 
-export type PeopleCoreIdentityResolutionOutcome = 'canonical' | 'provisional' | 'resolver_required';
+export type PeopleCoreIdentityResolutionOutcome = ConnectShyftIdentityResolutionOutcome;
 
 export interface PeopleCoreGeneratedIdentityCandidate {
   subjectType: 'person' | 'household';
@@ -98,12 +99,6 @@ const ATTACHABLE_CONFIDENCE_BANDS = new Set<PeopleCoreScoredIdentityCandidate['c
   'low',
   'medium',
   'high',
-]);
-const PENDING_RESOLVER_REVIEW_STATUSES = new Set<ResolverReviewStatus>([
-  'pending',
-  'queued',
-  'in_review',
-  'waiting_for_more_info',
 ]);
 const MAX_SCORING_CANDIDATES = 10;
 
@@ -351,7 +346,7 @@ const findExistingPendingResolverReviewAsync = async (
   return existingReviews.find((review) =>
     review.triggerSourceType === 'contact_point_resolution'
     && review.triggerSourceId === input.relatedObjectId
-    && PENDING_RESOLVER_REVIEW_STATUSES.has(review.reviewStatus)) || null;
+    && isResolverReviewActiveStatus(review.reviewStatus)) || null;
 };
 
 const createProvisionalPersonAsync = async (
