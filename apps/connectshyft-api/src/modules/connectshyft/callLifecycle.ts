@@ -1,6 +1,3 @@
-import type { Knex } from 'knex';
-import { executePlatformMutation } from '../../platform/mutations/executePlatformMutation';
-import db from '../../config/knex';
 import type {
   BridgeSessionAggregate,
   ProviderBridgeEvent,
@@ -56,9 +53,13 @@ import {
   type ConnectShyftProviderAdapter,
   type ConnectShyftProviderResolutionResult,
 } from './providerRegistry';
-import { isConnectShyftTestOverrideEnabled } from './featureFlags';
+import {
+  buildConnectShyftLifecycleEventPublisher,
+  listConnectShyftLifecycleEventsForTests as listLifecycleEventsForTests,
+  resetConnectShyftLifecycleEventsForTests as resetLifecycleEventsForTests,
+  type ConnectShyftCallLifecycleEventPublisher,
+} from './events';
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACTIVE_CALL_STATUSES = new Set<CallStatus>([
   'operator_dialing',
   'operator_answered',
@@ -144,24 +145,6 @@ export class ConnectShyftCallLifecycleRefusalError extends Error {
   }
 }
 
-export type ConnectShyftCallLifecycleEventPublisher = {
-  publishCallStarted(input: {
-    tenantId: string;
-    call: Call;
-    actorUserId?: string | null;
-  }): Promise<void>;
-  publishCallUpdated(input: {
-    tenantId: string;
-    call: Call;
-    actorUserId?: string | null;
-  }): Promise<void>;
-  publishVoicemailRecorded(input: {
-    tenantId: string;
-    voicemail: Voicemail;
-    actorUserId?: string | null;
-  }): Promise<void>;
-};
-
 type CallLifecycleDependencies = {
   callService?: ConnectShyftCallService;
   voicemailService?: ConnectShyftVoicemailService;
@@ -198,15 +181,6 @@ type CallLifecycleDependencies = {
   eventPublisher?: ConnectShyftCallLifecycleEventPublisher;
 };
 
-type PersistedLifecycleEvent = {
-  id: string;
-  eventName: string;
-  entityId: string;
-  payload: Record<string, unknown>;
-};
-
-const persistedLifecycleEventsForTests: PersistedLifecycleEvent[] = [];
-
 const normalizeString = (value: unknown): string => {
   if (typeof value !== 'string') {
     return '';
@@ -236,9 +210,6 @@ const toIsoString = (value: string | Date | null | undefined): string | null => 
 
   return normalized;
 };
-
-const isUuid = (value: string | null | undefined): value is string =>
-  typeof value === 'string' && UUID_PATTERN.test(value.trim());
 
 const isTerminalCallStatus = (status: CallStatus): boolean => TERMINAL_CALL_STATUSES.has(status);
 
@@ -367,152 +338,6 @@ const buildCallUpdateFromAggregate = (input: {
   }
 
   return patch;
-};
-
-const resolveCallStatusEvents = (call: Call): Array<{ status: CallStatus; occurredAtUtc: string }> => {
-  const events: Array<{ status: CallStatus; occurredAtUtc: string }> = [];
-  events.push({
-    status: 'operator_dialing',
-    occurredAtUtc: call.startedAtUtc,
-  });
-
-  if (call.operatorAnsweredAtUtc) {
-    events.push({
-      status: 'operator_answered',
-      occurredAtUtc: call.operatorAnsweredAtUtc,
-    });
-    events.push({
-      status: 'neighbor_dialing',
-      occurredAtUtc: call.operatorAnsweredAtUtc,
-    });
-  }
-
-  if (call.neighborAnsweredAtUtc) {
-    events.push({
-      status: 'neighbor_answered',
-      occurredAtUtc: call.neighborAnsweredAtUtc,
-    });
-  }
-
-  if (call.bridgedAtUtc) {
-    events.push({
-      status: 'bridged',
-      occurredAtUtc: call.bridgedAtUtc,
-    });
-  }
-
-  if (
-    call.status === 'voicemail'
-    || call.status === 'completed'
-    || call.status === 'failed'
-    || call.status === 'canceled'
-    || call.status === 'expired'
-  ) {
-    events.push({
-      status: call.status,
-      occurredAtUtc: call.endedAtUtc || call.updatedAtUtc,
-    });
-  }
-
-  return events;
-};
-
-const buildLifecycleEventPayload = (call: Call): Record<string, unknown> => ({
-  callId: call.id,
-  threadId: call.threadId,
-  personId: call.personId,
-  bridgeSessionId: call.bridgeSessionId,
-  status: call.status,
-  startedAtUtc: call.startedAtUtc,
-  operatorAnsweredAtUtc: call.operatorAnsweredAtUtc,
-  neighborAnsweredAtUtc: call.neighborAnsweredAtUtc,
-  bridgedAtUtc: call.bridgedAtUtc,
-  endedAtUtc: call.endedAtUtc,
-  failureCode: call.failureCode,
-  failureMessage: call.failureMessage,
-  statusEvents: resolveCallStatusEvents(call),
-});
-
-const buildBestEffortLifecycleEventPublisher = (
-  knexClient: Knex = db,
-): ConnectShyftCallLifecycleEventPublisher => {
-  const publish = async (input: {
-    tenantId: string;
-    actorUserId?: string | null;
-    eventName: string;
-    entityId: string;
-    payload: Record<string, unknown>;
-  }): Promise<void> => {
-    if (
-      isConnectShyftTestOverrideEnabled()
-      || !isUuid(input.tenantId)
-      || !isUuid(input.entityId)
-      || (input.actorUserId != null && !isUuid(input.actorUserId))
-    ) {
-      persistedLifecycleEventsForTests.push({
-        id: `${input.eventName}:${input.entityId}:${persistedLifecycleEventsForTests.length + 1}`,
-        eventName: input.eventName,
-        entityId: input.entityId,
-        payload: input.payload,
-      });
-      return;
-    }
-
-    try {
-      await executePlatformMutation({
-        mutation: async () => null,
-        event: {
-          tenantId: input.tenantId,
-          actorId: input.actorUserId ?? null,
-          eventName: input.eventName,
-          entityType: 'connectshyft.call',
-          entityId: input.entityId,
-          payload: input.payload,
-          occurredAtUtc: new Date(),
-        },
-      }, knexClient);
-    } catch (_error) {
-      // Event emission is best-effort in this checkpoint to avoid blocking the call path.
-    }
-  };
-
-  return {
-    publishCallStarted(input) {
-      return publish({
-        tenantId: input.tenantId,
-        actorUserId: input.actorUserId,
-        eventName: 'connectshyft.call.started',
-        entityId: input.call.id,
-        payload: buildLifecycleEventPayload(input.call),
-      });
-    },
-    publishCallUpdated(input) {
-      return publish({
-        tenantId: input.tenantId,
-        actorUserId: input.actorUserId,
-        eventName: 'connectshyft.call.updated',
-        entityId: input.call.id,
-        payload: buildLifecycleEventPayload(input.call),
-      });
-    },
-    publishVoicemailRecorded(input) {
-      return publish({
-        tenantId: input.tenantId,
-        actorUserId: input.actorUserId,
-        eventName: 'connectshyft.voicemail.recorded',
-        entityId: input.voicemail.id,
-        payload: {
-          voicemailId: input.voicemail.id,
-          callId: input.voicemail.callId,
-          threadId: input.voicemail.threadId,
-          personId: input.voicemail.personId,
-          recordingUrl: input.voicemail.recordingUrl,
-          recordingStatus: input.voicemail.recordingStatus,
-          occurredAtUtc: input.voicemail.occurredAtUtc,
-        },
-      });
-    },
-  };
 };
 
 const buildProviderResolutionRequest = (input: {
@@ -788,7 +613,7 @@ export const buildConnectShyftCallLifecycleService = (
   const registerBridgeCallStatusHookFn =
     dependencies.registerBridgeCallStatusHookFn || registerConnectShyftBridgeCallStatusHook;
   const eventPublisher =
-    dependencies.eventPublisher || buildBestEffortLifecycleEventPublisher();
+    dependencies.eventPublisher || buildConnectShyftLifecycleEventPublisher();
 
   const syncCallFromAggregate = async (
     aggregate: BridgeSessionAggregate,
@@ -1215,8 +1040,8 @@ export const connectShyftCallLifecycleServiceAsync =
   buildConnectShyftCallLifecycleService();
 
 export const resetConnectShyftCallLifecycleStateForTests = (): void => {
-  persistedLifecycleEventsForTests.splice(0, persistedLifecycleEventsForTests.length);
+  resetLifecycleEventsForTests();
 };
 
-export const listConnectShyftLifecycleEventsForTests = (): PersistedLifecycleEvent[] =>
-  [...persistedLifecycleEventsForTests];
+export const listConnectShyftLifecycleEventsForTests = () =>
+  listLifecycleEventsForTests();

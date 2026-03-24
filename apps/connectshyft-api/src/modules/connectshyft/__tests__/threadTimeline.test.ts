@@ -333,8 +333,25 @@ describe('connectshyft thread timeline projection', () => {
     });
   });
 
-  it('projects persisted calls and persisted voicemails alongside canonical events', async () => {
-    jest.spyOn(canonicalEventsModule, 'listConnectShyftCanonicalEvents').mockResolvedValueOnce([]);
+  it('projects persisted calls and persisted voicemails alongside canonical events in chronological order', async () => {
+    jest.spyOn(canonicalEventsModule, 'listConnectShyftCanonicalEvents').mockResolvedValueOnce([
+      {
+        eventId: 'event-sms-persisted-1001',
+        aggregateId: 'thread-timeline-persisted-1001',
+        aggregateType: 'Thread',
+        eventType: CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME,
+        occurredAtUtc: '2026-03-19T09:59:00.000Z',
+        payload: {
+          direction: 'inbound',
+          channel: 'sms',
+          actor: 'neighbor',
+          eventName: CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME,
+          inboundMessageArtifact: {
+            body: 'before the call',
+          },
+        },
+      },
+    ]);
     jest.spyOn(callsModule.connectShyftCallServiceAsync, 'listThreadCalls').mockResolvedValueOnce([
       {
         id: 'call-timeline-1001',
@@ -381,18 +398,53 @@ describe('connectshyft thread timeline projection', () => {
 
     expect(timeline.items).toEqual([
       expect.objectContaining({
+        id: 'event-sms-persisted-1001',
+        type: 'message',
+        body: 'before the call',
+      }),
+      expect.objectContaining({
         id: 'call-call-timeline-1001',
         type: 'voice_event',
+        occurredAtUtc: '2026-03-19T10:00:00.000Z',
         deliveryStatus: 'bridged',
         providerMetadata: expect.objectContaining({
           callId: 'call-timeline-1001',
           status: 'bridged',
+          statusEvents: [
+            {
+              status: 'operator_dialing',
+              occurredAtUtc: '2026-03-19T10:00:00.000Z',
+            },
+            {
+              status: 'operator_answered',
+              occurredAtUtc: '2026-03-19T10:00:30.000Z',
+            },
+            {
+              status: 'neighbor_dialing',
+              occurredAtUtc: '2026-03-19T10:00:30.000Z',
+            },
+            {
+              status: 'neighbor_answered',
+              occurredAtUtc: '2026-03-19T10:01:00.000Z',
+            },
+            {
+              status: 'bridged',
+              occurredAtUtc: '2026-03-19T10:01:30.000Z',
+            },
+          ],
         }),
       }),
       expect.objectContaining({
         id: 'voicemail-voicemail-timeline-1001',
         type: 'voicemail',
+        occurredAtUtc: '2026-03-19T10:02:00.000Z',
+        deliveryStatus: 'completed',
         recordingUrl: 'https://example.test/timeline-vm.mp3',
+        providerMetadata: {
+          callId: 'call-timeline-1001',
+          artifactId: 'artifact-timeline-1001',
+          recordingStatus: 'completed',
+        },
       }),
     ]);
   });
