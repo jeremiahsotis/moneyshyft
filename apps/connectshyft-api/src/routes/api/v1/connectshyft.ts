@@ -55,6 +55,7 @@ import {
   putConnectNumberMapping,
   putConnectOperatorCallbackNumber,
 } from '../../../modules/connectshyft/handlers';
+import { getUnifiedTimeline } from '../../../modules/connectshyft/handlers/getUnifiedTimeline';
 import {
   resolveConnectShyftOrgUnitContext,
   type ResolvedConnectShyftContext,
@@ -4923,6 +4924,8 @@ router.patch('/identity-ambiguities/:ambiguityEventId', async (req: Request, res
     },
   });
 });
+
+router.get('/person/:personId/unified-timeline', getUnifiedTimeline);
 
 router.get('/threads/:threadId/timeline', getConnectThreadTimeline);
 
