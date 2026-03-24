@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import type { ResolverReview } from '../../src/people';
 import { isResolverRebindReviewType } from '../../src/people';
 
