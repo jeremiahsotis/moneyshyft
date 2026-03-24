@@ -2,6 +2,7 @@ import type {
   ContactPoint,
   ContactPointEvent,
   ContactPointLink,
+  ResolverReviewStatus,
   ContactPointLinkSubjectType,
   ContactPointType,
   Household,
@@ -70,12 +71,67 @@ const normalizeEventLimit = (value: unknown): number => {
   return Math.min(normalized, MAX_CONTACT_POINT_EVENT_LIMIT);
 };
 
+const PENDING_RESOLVER_REVIEW_STATUSES = new Set<ResolverReviewStatus>([
+  'pending',
+  'queued',
+  'in_review',
+  'waiting_for_more_info',
+]);
+
+const normalizePersonMergeStatus = (person: Pick<Person, 'status' | 'mergedIntoPersonId'>): PersonMergeStatus => {
+  if (person.status === 'merged' || normalizeOptionalString(person.mergedIntoPersonId)) {
+    return 'merged';
+  }
+
+  return person.status === 'active_provisional' ? 'provisional' : 'canonical';
+};
+
+const uniqueStrings = (values: Iterable<string>): string[] =>
+  Array.from(new Set(Array.from(values).filter((value) => value.length > 0)));
+
+const normalizeOptionalUtc = (value: unknown): string | undefined => {
+  if (value == null) {
+    return undefined;
+  }
+
+  return toIsoUtc(value, new Date(0).toISOString());
+};
+
+const buildMergeReviewTriggerSourceId = (input: {
+  provisionalPersonId: string;
+  canonicalPersonId: string;
+}): string => `${input.provisionalPersonId}:${input.canonicalPersonId}`;
+
 export class PeopleCoreScopeViolationError extends Error {
   readonly code = 'PEOPLECORE_SCOPE_VIOLATION';
 
   constructor(message: string, cause?: unknown) {
     super(message);
     this.name = 'PeopleCoreScopeViolationError';
+    if (cause !== undefined) {
+      (this as Error & { cause?: unknown }).cause = cause;
+    }
+  }
+}
+
+export class PeopleCoreMergeScopeViolationError extends Error {
+  readonly code = 'PEOPLECORE_MERGE_SCOPE_VIOLATION';
+
+  constructor(message: string, cause?: unknown) {
+    super(message);
+    this.name = 'PeopleCoreMergeScopeViolationError';
+    if (cause !== undefined) {
+      (this as Error & { cause?: unknown }).cause = cause;
+    }
+  }
+}
+
+export class PeopleCorePersonAlreadyMergedError extends Error {
+  readonly code = 'PEOPLECORE_PERSON_ALREADY_MERGED';
+
+  constructor(message: string, cause?: unknown) {
+    super(message);
+    this.name = 'PeopleCorePersonAlreadyMergedError';
     if (cause !== undefined) {
       (this as Error & { cause?: unknown }).cause = cause;
     }
@@ -141,6 +197,11 @@ export type CreateContactPointLinkInput = Omit<
 > & {
   linkId?: string;
   tenantId: string;
+  mergedIntoSubjectId?: string;
+  mergedAt?: string;
+  mergedByUserId?: string;
+  mergeClass?: PeopleCoreMergeClass;
+  mergeReason?: string;
 };
 
 export type ListCurrentContactPointLinksInput = {
@@ -179,10 +240,34 @@ export type ListResolverReviewsInput = {
   orgUnitId?: string;
 };
 
+export type PeopleCoreMergeClass = 'auto' | 'review';
+
+export type MergePersonInput = {
+  tenantId: string;
+  orgUnitId: string;
+  provisionalPersonId: string;
+  canonicalPersonId: string;
+  performedByUserId: string;
+  mergeReason?: string;
+};
+
+export type PersonMergeStatus = 'provisional' | 'canonical' | 'merged';
+
+export type PeopleCoreMergeResult = {
+  mergedProvisionalPersonId: string;
+  canonicalPersonId: string;
+  autoMergedContactPointLinkIds: string[];
+  reviewContactPointLinkIds: string[];
+  resolverReviewId?: string;
+  didPersistMerge?: boolean;
+};
+
 export interface PeopleCoreStore extends PeopleCoreActivityStore {
   createPerson(input: CreatePersonInput): Promise<Person>;
   getPerson(input: GetPersonInput): Promise<Person | null>;
   listPersons(input: ListPersonsInput): Promise<Person[]>;
+  mergePerson(input: MergePersonInput): Promise<PeopleCoreMergeResult>;
+  getPersonMergeStatus(input: GetPersonInput): Promise<PersonMergeStatus>;
   createHousehold(input: CreateHouseholdInput): Promise<Household>;
   getHousehold(input: GetHouseholdInput): Promise<Household | null>;
   createHouseholdMembership(input: CreateHouseholdMembershipInput): Promise<HouseholdMembership>;
@@ -275,6 +360,11 @@ type DbContactPointLinkRow = {
   linked_by_user_id: string | null;
   unlink_reason: string | null;
   unlinked_at_utc: string | Date | null;
+  merged_into_subject_id: string | null;
+  merged_at_utc: string | Date | null;
+  merged_by_user_id: string | null;
+  merge_class: PeopleCoreMergeClass;
+  merge_reason: string | null;
   created_at_utc: string | Date;
   updated_at_utc: string | Date;
 };
@@ -403,7 +493,7 @@ const mapContactPointRow = (row: DbContactPointRow): ContactPoint => {
 const mapContactPointLinkRow = (row: DbContactPointLinkRow): ContactPointLink => {
   const fallbackIsoUtc = new Date().toISOString();
 
-  return {
+  const mappedLink = {
     id: row.id,
     contactPointId: row.contact_point_id,
     subjectType: row.subject_type,
@@ -425,9 +515,16 @@ const mapContactPointLinkRow = (row: DbContactPointLinkRow): ContactPointLink =>
     linkedByUserId: normalizeOptionalString(row.linked_by_user_id),
     unlinkReason: normalizeOptionalString(row.unlink_reason),
     unlinkedAt: row.unlinked_at_utc ? toIsoUtc(row.unlinked_at_utc, fallbackIsoUtc) : undefined,
+    mergedIntoSubjectId: normalizeOptionalString(row.merged_into_subject_id),
+    mergedAt: row.merged_at_utc ? toIsoUtc(row.merged_at_utc, fallbackIsoUtc) : undefined,
+    mergedByUserId: normalizeOptionalString(row.merged_by_user_id),
+    mergeClass: row.merge_class,
+    mergeReason: normalizeOptionalString(row.merge_reason),
     createdAt: toIsoUtc(row.created_at_utc, fallbackIsoUtc),
     updatedAt: toIsoUtc(row.updated_at_utc, fallbackIsoUtc),
   };
+
+  return mappedLink;
 };
 
 const mapContactPointEventRow = (row: DbContactPointEventRow): ContactPointEvent => {
@@ -573,6 +670,11 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
       'linked_by_user_id',
       'unlink_reason',
       'unlinked_at_utc',
+      'merged_into_subject_id',
+      'merged_at_utc',
+      'merged_by_user_id',
+      'merge_class',
+      'merge_reason',
       'created_at_utc',
       'updated_at_utc',
     ];
@@ -695,6 +797,249 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
     }
   }
 
+  private async getScopedPersonRow(
+    knexClient: Knex,
+    input: {
+      tenantId: string;
+      orgUnitId: string;
+      personId: string;
+    },
+  ): Promise<DbPersonRow | null> {
+    const row = await knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('persons')
+      .where({
+        id: input.personId,
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+      })
+      .first<DbPersonRow>(this.personColumns());
+
+    return row ?? null;
+  }
+
+  private async listPersonContactPointLinksForTenant(
+    knexClient: Knex,
+    input: {
+      tenantId: string;
+      personId: string;
+    },
+  ): Promise<DbContactPointLinkRow[]> {
+    const linkRows = await knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('contact_point_links')
+      .where({
+        subject_type: 'person',
+        subject_id: input.personId,
+      })
+      .orderBy('created_at_utc', 'asc')
+      .orderBy('id', 'asc')
+      .select<DbContactPointLinkRow[]>(this.contactPointLinkColumns());
+
+    if (linkRows.length === 0) {
+      return [];
+    }
+
+    const scopedContactPointRows = await knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('contact_points')
+      .where({
+        tenant_id: input.tenantId,
+      })
+      .whereIn('id', uniqueStrings(linkRows.map((row) => row.contact_point_id)))
+      .select<Array<{ id: string }>>(['id']);
+
+    const scopedContactPointIds = new Set(scopedContactPointRows.map((row) => row.id));
+    return linkRows.filter((row) => scopedContactPointIds.has(row.contact_point_id));
+  }
+
+  private async listCurrentHouseholdMembershipsForTenant(
+    knexClient: Knex,
+    input: {
+      tenantId: string;
+      personId: string;
+    },
+  ): Promise<DbHouseholdMembershipRow[]> {
+    const membershipRows = await knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('household_memberships')
+      .where({
+        person_id: input.personId,
+        is_current: true,
+      })
+      .orderBy('created_at_utc', 'asc')
+      .orderBy('id', 'asc')
+      .select<DbHouseholdMembershipRow[]>(this.householdMembershipColumns());
+
+    if (membershipRows.length === 0) {
+      return [];
+    }
+
+    const scopedHouseholdRows = await knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('households')
+      .where({
+        tenant_id: input.tenantId,
+      })
+      .whereIn('id', uniqueStrings(membershipRows.map((row) => row.household_id)))
+      .select<Array<{ id: string }>>(['id']);
+
+    const scopedHouseholdIds = new Set(scopedHouseholdRows.map((row) => row.id));
+    return membershipRows.filter((row) => scopedHouseholdIds.has(row.household_id));
+  }
+
+  private hasPrimaryContactConflict(
+    provisionalLink: DbContactPointLinkRow,
+    canonicalLinks: DbContactPointLinkRow[],
+  ): boolean {
+    if (!provisionalLink.is_current || !provisionalLink.is_primary) {
+      return false;
+    }
+
+    return canonicalLinks.some((candidate) => candidate.is_current && candidate.is_primary);
+  }
+
+  private hasEquivalentCanonicalLink(
+    canonicalLinks: DbContactPointLinkRow[],
+    provisionalLink: DbContactPointLinkRow,
+  ): boolean {
+    return canonicalLinks.some((candidate) =>
+      candidate.contact_point_id === provisionalLink.contact_point_id
+      && candidate.link_type === provisionalLink.link_type
+      && candidate.confidence_band === provisionalLink.confidence_band
+      && candidate.is_current === provisionalLink.is_current
+      && candidate.is_primary === provisionalLink.is_primary
+      && candidate.manually_confirmed === provisionalLink.manually_confirmed
+      && candidate.confirmation_source === provisionalLink.confirmation_source
+      && candidate.linked_by === provisionalLink.linked_by
+      && candidate.linked_by_user_id === provisionalLink.linked_by_user_id
+      && candidate.unlink_reason === provisionalLink.unlink_reason
+      && normalizeOptionalUtc(candidate.first_linked_at_utc)
+        === normalizeOptionalUtc(provisionalLink.first_linked_at_utc)
+      && normalizeOptionalUtc(candidate.last_confirmed_at_utc)
+        === normalizeOptionalUtc(provisionalLink.last_confirmed_at_utc)
+      && normalizeOptionalUtc(candidate.last_used_at_utc)
+        === normalizeOptionalUtc(provisionalLink.last_used_at_utc)
+      && normalizeOptionalUtc(candidate.unlinked_at_utc)
+        === normalizeOptionalUtc(provisionalLink.unlinked_at_utc));
+  }
+
+  private async markContactPointLinkMerged(
+    knexClient: Knex,
+    input: {
+      linkId: string;
+      canonicalPersonId: string;
+      mergedAtUtc: string;
+      mergedByUserId: string;
+      mergeClass: PeopleCoreMergeClass;
+      mergeReason?: string;
+    },
+  ): Promise<void> {
+    await knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('contact_point_links')
+      .where({
+        id: input.linkId,
+      })
+      .update({
+        is_current: false,
+        merged_into_subject_id: input.canonicalPersonId,
+        merged_at_utc: input.mergedAtUtc,
+        merged_by_user_id: input.mergedByUserId,
+        merge_class: input.mergeClass,
+        merge_reason: input.mergeReason ?? null,
+        updated_at_utc: input.mergedAtUtc,
+      });
+  }
+
+  private async findExistingMergeReview(
+    knexClient: Knex,
+    input: {
+      tenantId: string;
+      orgUnitId: string;
+      provisionalPersonId: string;
+      canonicalPersonId: string;
+    },
+  ): Promise<ResolverReview | null> {
+    const rows = await knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('resolver_reviews')
+      .where({
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+        trigger_source_type: 'person_merge',
+        trigger_source_id: buildMergeReviewTriggerSourceId(input),
+      })
+      .orderBy('requested_at_utc', 'asc')
+      .orderBy('id', 'asc')
+      .select<DbResolverReviewRow[]>(this.resolverReviewColumns());
+
+    const existing = rows
+      .map(mapResolverReviewRow)
+      .find((review) =>
+        review.provisionalPersonId === input.provisionalPersonId
+        && review.candidatePersonIds.includes(input.canonicalPersonId)
+        && PENDING_RESOLVER_REVIEW_STATUSES.has(review.reviewStatus));
+
+    return existing ?? null;
+  }
+
+  private async buildExistingMergeResult(
+    knexClient: Knex,
+    input: MergePersonInput,
+  ): Promise<PeopleCoreMergeResult> {
+    const provisionalLinks = await this.listPersonContactPointLinksForTenant(knexClient, {
+      tenantId: input.tenantId,
+      personId: input.provisionalPersonId,
+    });
+    const canonicalLinks = await this.listPersonContactPointLinksForTenant(knexClient, {
+      tenantId: input.tenantId,
+      personId: input.canonicalPersonId,
+    });
+    const provisionalHouseholds = await this.listCurrentHouseholdMembershipsForTenant(knexClient, {
+      tenantId: input.tenantId,
+      personId: input.provisionalPersonId,
+    });
+    const canonicalHouseholds = await this.listCurrentHouseholdMembershipsForTenant(knexClient, {
+      tenantId: input.tenantId,
+      personId: input.canonicalPersonId,
+    });
+
+    const canonicalLinksByContactPointId = new Map<string, DbContactPointLinkRow[]>();
+    canonicalLinks.forEach((link) => {
+      const existing = canonicalLinksByContactPointId.get(link.contact_point_id) ?? [];
+      existing.push(link);
+      canonicalLinksByContactPointId.set(link.contact_point_id, existing);
+    });
+
+    const autoMergedContactPointLinkIds = provisionalLinks
+      .filter((link) => normalizeOptionalString(link.merged_into_subject_id) === input.canonicalPersonId)
+      .map((link) => link.id);
+    const reviewContactPointLinkIds = provisionalLinks
+      .filter((link) => !normalizeOptionalString(link.merged_into_subject_id))
+      .filter((link) =>
+        this.hasPrimaryContactConflict(
+          link,
+          canonicalLinksByContactPointId.get(link.contact_point_id) ?? [],
+        ))
+      .map((link) => link.id);
+
+    const householdAmbiguity = provisionalHouseholds.some((membership) =>
+      canonicalHouseholds.some((candidate) => candidate.household_id !== membership.household_id));
+    const existingReview = await this.findExistingMergeReview(knexClient, input);
+
+    return {
+      mergedProvisionalPersonId: input.provisionalPersonId,
+      canonicalPersonId: input.canonicalPersonId,
+      autoMergedContactPointLinkIds,
+      reviewContactPointLinkIds,
+      resolverReviewId: householdAmbiguity || reviewContactPointLinkIds.length > 0
+        ? existingReview?.id
+        : undefined,
+      didPersistMerge: false,
+    };
+  }
+
   async createPerson(input: CreatePersonInput): Promise<Person> {
     const [row] = await this.knexClient
       .withSchema(PEOPLE_SCHEMA)
@@ -749,6 +1094,233 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
       .select<DbPersonRow[]>(this.personColumns());
 
     return rows.map(mapPersonRow);
+  }
+
+  async mergePerson(input: MergePersonInput): Promise<PeopleCoreMergeResult> {
+    return this.knexClient.transaction(async (trx) => {
+      const provisionalRow = await this.getScopedPersonRow(trx, {
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        personId: input.provisionalPersonId,
+      });
+      const canonicalRow = await this.getScopedPersonRow(trx, {
+        tenantId: input.tenantId,
+        orgUnitId: input.orgUnitId,
+        personId: input.canonicalPersonId,
+      });
+
+      if (!provisionalRow || !canonicalRow) {
+        throw new PeopleCoreMergeScopeViolationError(
+          `PeopleCore merge requires both persons to exist in tenant ${input.tenantId} org unit ${input.orgUnitId}.`,
+        );
+      }
+
+      if (input.provisionalPersonId === input.canonicalPersonId) {
+        throw new PeopleCoreMergeScopeViolationError(
+          'PeopleCore merge requires distinct provisional and canonical person ids.',
+        );
+      }
+
+      if (normalizeOptionalString(provisionalRow.merged_into_person_id)) {
+        if (provisionalRow.merged_into_person_id === input.canonicalPersonId) {
+          return this.buildExistingMergeResult(trx, input);
+        }
+
+        throw new PeopleCorePersonAlreadyMergedError(
+          `Person ${input.provisionalPersonId} is already merged into ${provisionalRow.merged_into_person_id}.`,
+        );
+      }
+
+      if (provisionalRow.status !== 'active_provisional') {
+        throw new PeopleCoreMergeScopeViolationError(
+          `Person ${input.provisionalPersonId} must be active_provisional before merge.`,
+        );
+      }
+
+      if (canonicalRow.status !== 'active_confirmed') {
+        throw new PeopleCoreMergeScopeViolationError(
+          `Person ${input.canonicalPersonId} must be active_confirmed before merge.`,
+        );
+      }
+
+      const provisionalLinks = await this.listPersonContactPointLinksForTenant(trx, {
+        tenantId: input.tenantId,
+        personId: input.provisionalPersonId,
+      });
+      const canonicalLinks = await this.listPersonContactPointLinksForTenant(trx, {
+        tenantId: input.tenantId,
+        personId: input.canonicalPersonId,
+      });
+      const provisionalHouseholds = await this.listCurrentHouseholdMembershipsForTenant(trx, {
+        tenantId: input.tenantId,
+        personId: input.provisionalPersonId,
+      });
+      const canonicalHouseholds = await this.listCurrentHouseholdMembershipsForTenant(trx, {
+        tenantId: input.tenantId,
+        personId: input.canonicalPersonId,
+      });
+      const canonicalLinksByContactPointId = new Map<string, DbContactPointLinkRow[]>();
+
+      canonicalLinks.forEach((link) => {
+        const existing = canonicalLinksByContactPointId.get(link.contact_point_id) ?? [];
+        existing.push(link);
+        canonicalLinksByContactPointId.set(link.contact_point_id, existing);
+      });
+
+      const autoMergedContactPointLinkIds: string[] = [];
+      const reviewContactPointLinkIds: string[] = [];
+      const mergedAtUtc = new Date().toISOString();
+      const transactionalStore = new KnexPeopleCoreStore(trx as unknown as Knex);
+
+      for (const link of provisionalLinks) {
+        const canonicalLinksForContactPoint = canonicalLinksByContactPointId.get(link.contact_point_id) ?? [];
+        if (this.hasPrimaryContactConflict(link, canonicalLinksForContactPoint)) {
+          reviewContactPointLinkIds.push(link.id);
+          continue;
+        }
+
+        await this.markContactPointLinkMerged(trx, {
+          linkId: link.id,
+          canonicalPersonId: input.canonicalPersonId,
+          mergedAtUtc,
+          mergedByUserId: input.performedByUserId,
+          mergeClass: 'auto',
+          mergeReason: input.mergeReason,
+        });
+        autoMergedContactPointLinkIds.push(link.id);
+
+        if (this.hasEquivalentCanonicalLink(canonicalLinksForContactPoint, link)) {
+          continue;
+        }
+
+        const createdLink = await transactionalStore.createContactPointLink({
+          tenantId: input.tenantId,
+          contactPointId: link.contact_point_id,
+          subjectType: 'person',
+          subjectId: input.canonicalPersonId,
+          linkType: link.link_type,
+          confidenceBand: link.confidence_band,
+          isCurrent: link.is_current,
+          isPrimary: link.is_primary,
+          manuallyConfirmed: link.manually_confirmed,
+          confirmationSource: link.confirmation_source ?? undefined,
+          firstLinkedAt: toIsoUtc(link.first_linked_at_utc, mergedAtUtc),
+          lastConfirmedAt: link.last_confirmed_at_utc
+            ? toIsoUtc(link.last_confirmed_at_utc, mergedAtUtc)
+            : undefined,
+          lastUsedAt: link.last_used_at_utc
+            ? toIsoUtc(link.last_used_at_utc, mergedAtUtc)
+            : undefined,
+          linkedBy: link.linked_by,
+          linkedByUserId: normalizeOptionalString(link.linked_by_user_id),
+          unlinkReason: normalizeOptionalString(link.unlink_reason),
+          unlinkedAt: link.unlinked_at_utc ? toIsoUtc(link.unlinked_at_utc, mergedAtUtc) : undefined,
+          mergeClass: 'auto',
+        });
+        const existing = canonicalLinksByContactPointId.get(link.contact_point_id) ?? [];
+        existing.push({
+          id: createdLink.id,
+          contact_point_id: createdLink.contactPointId,
+          subject_type: createdLink.subjectType,
+          subject_id: createdLink.subjectId,
+          link_type: createdLink.linkType,
+          confidence_band: createdLink.confidenceBand,
+          is_current: createdLink.isCurrent,
+          is_primary: createdLink.isPrimary,
+          manually_confirmed: createdLink.manuallyConfirmed,
+          confirmation_source: createdLink.confirmationSource ?? null,
+          first_linked_at_utc: createdLink.firstLinkedAt,
+          last_confirmed_at_utc: createdLink.lastConfirmedAt ?? null,
+          last_used_at_utc: createdLink.lastUsedAt ?? null,
+          linked_by: createdLink.linkedBy,
+          linked_by_user_id: createdLink.linkedByUserId ?? null,
+          unlink_reason: createdLink.unlinkReason ?? null,
+          unlinked_at_utc: createdLink.unlinkedAt ?? null,
+          merged_into_subject_id: null,
+          merged_at_utc: null,
+          merged_by_user_id: null,
+          merge_class: 'auto',
+          merge_reason: null,
+          created_at_utc: createdLink.createdAt,
+          updated_at_utc: createdLink.updatedAt,
+        });
+        canonicalLinksByContactPointId.set(link.contact_point_id, existing);
+      }
+
+      const householdAmbiguity = provisionalHouseholds.some((membership) =>
+        canonicalHouseholds.some((candidate) => candidate.household_id !== membership.household_id));
+
+      let resolverReviewId: string | undefined;
+      if (reviewContactPointLinkIds.length > 0 || householdAmbiguity) {
+        const existingReview = await this.findExistingMergeReview(trx, input);
+        if (existingReview) {
+          resolverReviewId = existingReview.id;
+        } else {
+          const reasons = reviewContactPointLinkIds.length > 0
+            ? ['Manual review required because both people own current primary contact links.']
+            : [];
+          if (householdAmbiguity) {
+            reasons.push('Manual review required because the people have ambiguous current household memberships.');
+          }
+
+          const review = await transactionalStore.createResolverReview({
+            tenantId: input.tenantId,
+            orgUnitId: input.orgUnitId,
+            reviewType: 'merge_review',
+            reviewStatus: 'pending',
+            priority: 'normal',
+            triggerSourceType: 'person_merge',
+            triggerSourceId: buildMergeReviewTriggerSourceId(input),
+            provisionalPersonId: input.provisionalPersonId,
+            candidatePersonIds: [input.canonicalPersonId],
+            contactPointId: provisionalLinks.find((link) =>
+              reviewContactPointLinkIds.includes(link.id))?.contact_point_id,
+            confidenceBand: 'medium',
+            confidenceReasons: reasons.length > 0
+              ? reasons
+              : ['Manual review required before finalizing this person merge.'],
+            riskFlags: [],
+            requestedByUserId: input.performedByUserId,
+            requestedAt: mergedAtUtc,
+          });
+          resolverReviewId = review.id;
+        }
+      }
+
+      await trx
+        .withSchema(PEOPLE_SCHEMA)
+        .table('persons')
+        .where({
+          id: input.provisionalPersonId,
+          tenant_id: input.tenantId,
+          org_unit_id: input.orgUnitId,
+        })
+        .update({
+          status: 'merged',
+          merged_into_person_id: input.canonicalPersonId,
+          updated_at_utc: mergedAtUtc,
+        });
+
+      return {
+        mergedProvisionalPersonId: input.provisionalPersonId,
+        canonicalPersonId: input.canonicalPersonId,
+        autoMergedContactPointLinkIds,
+        reviewContactPointLinkIds,
+        resolverReviewId,
+        didPersistMerge: true,
+      };
+    });
+  }
+
+  async getPersonMergeStatus(input: GetPersonInput): Promise<PersonMergeStatus> {
+    const person = await this.getPerson(input);
+    if (!person) {
+      throw new PeopleCoreScopeViolationError(
+        `Person ${input.personId} is not available in tenant ${input.tenantId}.`,
+      );
+    }
+
+    return normalizePersonMergeStatus(person);
   }
 
   async createActivity(input: CreateActivityInput): Promise<Activity> {
@@ -975,6 +1547,11 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
         linked_by_user_id: input.linkedByUserId ?? null,
         unlink_reason: input.unlinkReason ?? null,
         unlinked_at_utc: input.unlinkedAt ?? null,
+        merged_into_subject_id: input.mergedIntoSubjectId ?? null,
+        merged_at_utc: input.mergedAt ?? null,
+        merged_by_user_id: input.mergedByUserId ?? null,
+        merge_class: input.mergeClass ?? 'auto',
+        merge_reason: input.mergeReason ?? null,
         created_at_utc: this.knexClient.fn.now(),
         updated_at_utc: this.knexClient.fn.now(),
       })
