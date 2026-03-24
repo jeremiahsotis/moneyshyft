@@ -1,6 +1,7 @@
 import type {
   ContactPointStatus,
   IdentityConfidenceBand,
+  ResolverReviewStatus,
 } from './people';
 
 export type ConnectShyftIdentityResolutionCandidate = {
@@ -10,11 +11,16 @@ export type ConnectShyftIdentityResolutionCandidate = {
   contactPointStatus: ContactPointStatus;
 };
 
+export type ConnectShyftIdentityResolutionOutcome =
+  | 'canonical'
+  | 'provisional'
+  | 'resolver_required';
+
 export type ConnectShyftIdentityResolutionResponse = {
   confidenceBand: IdentityConfidenceBand;
   contactPointStatus: ContactPointStatus;
-  outcome?: string | null;
-  state?: string | null;
+  outcome?: ConnectShyftIdentityResolutionOutcome | null;
+  state?: ConnectShyftIdentityResolutionOutcome | ResolverReviewStatus | null;
   resolverReviewId?: string | null;
   candidates?: ConnectShyftIdentityResolutionCandidate[];
 };

@@ -3,14 +3,15 @@ import type {
   ContactPointEvent,
   ContactPointLink,
   ContactPointStatus,
-  ResolverReviewStatus,
   ContactPointLinkSubjectType,
   ContactPointType,
   Household,
   HouseholdMembership,
   Person,
   ResolverReview,
+  ResolverReviewStatus,
 } from '@shyft/contracts';
+import { isResolverReviewActiveStatus } from '@shyft/contracts';
 import type { Knex } from 'knex';
 import db from '../../config/knex';
 import {
@@ -75,13 +76,6 @@ const normalizeEventLimit = (value: unknown): number => {
 
   return Math.min(normalized, MAX_CONTACT_POINT_EVENT_LIMIT);
 };
-
-const PENDING_RESOLVER_REVIEW_STATUSES = new Set<ResolverReviewStatus>([
-  'pending',
-  'queued',
-  'in_review',
-  'waiting_for_more_info',
-]);
 
 const normalizePersonMergeStatus = (person: Pick<Person, 'status' | 'mergedIntoPersonId'>): PersonMergeStatus => {
   if (person.status === 'merged' || normalizeOptionalString(person.mergedIntoPersonId)) {
@@ -247,6 +241,18 @@ export type CreateResolverReviewInput = Omit<ResolverReview, 'id'> & {
   reviewId?: string;
 };
 
+export type UpdateResolverReviewInput = {
+  tenantId: string;
+  reviewId: string;
+  reviewStatus: ResolverReviewStatus;
+  assignedResolverUserId: string | null;
+  startedAt: string | null;
+  resolvedAt: string | null;
+  resolutionType: ResolverReview['resolutionType'] | null;
+  resolutionReason: string | null;
+  resolutionNotes: string | null;
+};
+
 export type GetResolverReviewInput = {
   tenantId: string;
   reviewId: string;
@@ -307,6 +313,7 @@ export interface PeopleCoreStore extends PeopleCoreActivityStore {
   }): Promise<void>;
   listContactPointEvents(input: ListContactPointEventsInput): Promise<ContactPointEvent[]>;
   createResolverReview(input: CreateResolverReviewInput): Promise<ResolverReview>;
+  updateResolverReview(input: UpdateResolverReviewInput): Promise<ResolverReview | null>;
   getResolverReview(input: GetResolverReviewInput): Promise<ResolverReview | null>;
   listResolverReviews(input: ListResolverReviewsInput): Promise<ResolverReview[]>;
 }
@@ -1144,7 +1151,7 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
       .find((review) =>
         review.provisionalPersonId === input.provisionalPersonId
         && review.candidatePersonIds.includes(input.canonicalPersonId)
-        && PENDING_RESOLVER_REVIEW_STATUSES.has(review.reviewStatus));
+        && isResolverReviewActiveStatus(review.reviewStatus));
 
     return existing ?? null;
   }
@@ -1867,6 +1874,29 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
       .returning<DbResolverReviewRow[]>(this.resolverReviewColumns());
 
     return mapResolverReviewRow(row);
+  }
+
+  async updateResolverReview(input: UpdateResolverReviewInput): Promise<ResolverReview | null> {
+    const rows = await this.knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('resolver_reviews')
+      .where({
+        id: input.reviewId,
+        tenant_id: input.tenantId,
+      })
+      .update({
+        review_status: input.reviewStatus,
+        assigned_resolver_user_id: input.assignedResolverUserId,
+        started_at_utc: input.startedAt,
+        resolved_at_utc: input.resolvedAt,
+        resolution_type: input.resolutionType,
+        resolution_reason: input.resolutionReason,
+        resolution_notes: input.resolutionNotes,
+      })
+      .returning<DbResolverReviewRow[]>(this.resolverReviewColumns());
+
+    const [row] = rows;
+    return row ? mapResolverReviewRow(row) : null;
   }
 
   async getResolverReview(input: GetResolverReviewInput): Promise<ResolverReview | null> {
