@@ -1,10 +1,12 @@
 import { scoreToConfidenceBand } from './confidenceBands'
 import type { IdentityConfidenceBand } from './confidenceBands'
+import type { ContactPointStatus } from '../contact-points/contactPointMemoryStore'
 
 export type IdentityCandidateInput = {
   personId: string
   score: number
   reasons: string[]
+  contactPointStatus: ContactPointStatus
 }
 
 export type IdentityDecisionType =
@@ -16,6 +18,7 @@ export type IdentityDecisionType =
 export type IdentityDecisionOutput = {
   confidenceBand: IdentityConfidenceBand
   decisionType: IdentityDecisionType
+  contactPointStatus: ContactPointStatus
   candidates: IdentityCandidateInput[]
 }
 
@@ -41,6 +44,7 @@ export function decideIdentity(candidates: IdentityCandidateInput[]): IdentityDe
   return {
     confidenceBand,
     decisionType: DECISION_TYPE_BY_BAND[confidenceBand],
+    contactPointStatus: sortedCandidates[0]?.contactPointStatus ?? 'active_personal',
     candidates: sortedCandidates,
   }
 }

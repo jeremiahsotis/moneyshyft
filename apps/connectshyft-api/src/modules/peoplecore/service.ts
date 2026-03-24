@@ -31,7 +31,14 @@ import {
   type ListPersonsInput,
   type ListResolverReviewsInput,
   type PeopleCoreStore,
+  PeopleCoreScopeViolationError,
 } from './store';
+import {
+  InvalidContactPointStatusError,
+  computeContactPointStatus,
+} from './lifecycle';
+
+const CONTACT_POINT_LIFECYCLE_EVENT_LIMIT = 200;
 
 const isMissingPersistenceError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
@@ -56,6 +63,18 @@ export class PeopleCorePersistenceUnavailableError extends Error {
   }
 }
 
+export class ContactPointLifecycleComputationError extends Error {
+  readonly code = 'CONTACT_POINT_LIFECYCLE_COMPUTATION_ERROR';
+
+  constructor(message: string, cause?: unknown) {
+    super(message);
+    this.name = 'ContactPointLifecycleComputationError';
+    if (cause !== undefined) {
+      (this as Error & { cause?: unknown }).cause = cause;
+    }
+  }
+}
+
 export class AsyncPeopleCoreService {
   constructor(
     private readonly store: PeopleCoreStore = new KnexPeopleCoreStore(),
@@ -72,6 +91,59 @@ export class AsyncPeopleCoreService {
       }
 
       throw error;
+    }
+  }
+
+  private async recomputeContactPointLifecycle(
+    input: {
+      tenantId: string;
+      contactPointId: string;
+    },
+  ): Promise<void> {
+    try {
+      const [contactPoint, events, links] = await Promise.all([
+        this.store.getContactPoint({
+          tenantId: input.tenantId,
+          contactPointId: input.contactPointId,
+        }),
+        this.store.listContactPointEvents({
+          tenantId: input.tenantId,
+          contactPointId: input.contactPointId,
+          limit: CONTACT_POINT_LIFECYCLE_EVENT_LIMIT,
+        }),
+        this.store.listCurrentContactPointLinks({
+          tenantId: input.tenantId,
+          contactPointId: input.contactPointId,
+        }),
+      ]);
+
+      if (!contactPoint) {
+        throw new PeopleCoreScopeViolationError(
+          `ContactPoint ${input.contactPointId} is not available in tenant ${input.tenantId}.`,
+        );
+      }
+
+      const computedStatus = computeContactPointStatus(events, links);
+      if (computedStatus !== contactPoint.status) {
+        await this.store.updateContactPointStatus({
+          tenantId: input.tenantId,
+          contactPointId: input.contactPointId,
+          newStatus: computedStatus,
+        });
+      }
+    } catch (error) {
+      if (
+        error instanceof InvalidContactPointStatusError
+        || error instanceof PeopleCoreScopeViolationError
+        || isMissingPersistenceError(error)
+      ) {
+        throw error;
+      }
+
+      throw new ContactPointLifecycleComputationError(
+        `Failed to compute ContactPoint lifecycle for ${input.contactPointId}.`,
+        error,
+      );
     }
   }
 
@@ -152,7 +224,14 @@ export class AsyncPeopleCoreService {
   }
 
   createContactPointLink(input: CreateContactPointLinkInput) {
-    return this.execute(() => this.store.createContactPointLink(input));
+    return this.execute(async () => {
+      const link = await this.store.createContactPointLink(input);
+      await this.recomputeContactPointLifecycle({
+        tenantId: input.tenantId,
+        contactPointId: input.contactPointId,
+      });
+      return link;
+    });
   }
 
   listContactPointLinks(input: ListContactPointLinksInput) {
@@ -164,7 +243,16 @@ export class AsyncPeopleCoreService {
   }
 
   appendContactPointEvent(input: AppendContactPointEventInput) {
-    return this.execute(() => this.store.appendContactPointEvent(input));
+    return this.execute(async () => {
+      const event = await this.store.appendContactPointEvent(input);
+      if (input.eventType !== 'lifecycle_changed') {
+        await this.recomputeContactPointLifecycle({
+          tenantId: input.tenantId,
+          contactPointId: input.contactPointId,
+        });
+      }
+      return event;
+    });
   }
 
   listContactPointEvents(input: ListContactPointEventsInput) {

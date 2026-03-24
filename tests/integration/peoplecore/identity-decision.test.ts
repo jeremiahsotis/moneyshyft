@@ -9,12 +9,14 @@ describe('peoplecore identity decision', () => {
           personId: 'person_very_high',
           score: 140,
           reasons: ['exact phone match'],
+          contactPointStatus: 'reassignment_suspected',
         },
       ],
     });
 
     expect(response.status).toBe(200);
     expect(response.body.confidenceBand).toBe('very_high');
+    expect(response.body.contactPointStatus).toBe('reassignment_suspected');
     expect(response.body.decisionType).toBe('require_override');
   });
 
@@ -25,12 +27,14 @@ describe('peoplecore identity decision', () => {
           personId: 'person_medium',
           score: 60,
           reasons: ['name similarity'],
+          contactPointStatus: 'active_shared_possible',
         },
       ],
     });
 
     expect(response.status).toBe(200);
     expect(response.body.confidenceBand).toBe('medium');
+    expect(response.body.contactPointStatus).toBe('active_shared_possible');
     expect(response.body.decisionType).toBe('require_confirmation');
   });
 });

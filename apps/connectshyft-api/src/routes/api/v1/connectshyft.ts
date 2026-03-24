@@ -7990,6 +7990,7 @@ const performInboundWebhook = async ({
         identityResolution: {
           outcome: identityAttachment.outcome,
           confidenceBand: identityAttachment.confidenceBand,
+          contactPointStatus: identityAttachment.contactPointStatus,
           resolverReviewId: identityAttachment.resolverReviewId,
         },
         lifecycle: {

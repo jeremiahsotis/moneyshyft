@@ -1,17 +1,11 @@
-import type { IdentityConfidenceBand } from '@shyft/contracts';
+import type {
+  ConnectShyftIdentityResolutionCandidate,
+  ConnectShyftIdentityResolutionResponse,
+} from '@shyft/contracts';
 
-export type ConnectShyftIdentityResolutionCandidate = {
-  personId: string;
-  score: number;
-  reasons: string[];
-};
-
-export type ConnectShyftIdentityResolutionResponse = {
-  confidenceBand: IdentityConfidenceBand;
-  outcome?: string | null;
-  state?: string | null;
-  resolverReviewId?: string | null;
-  candidates?: ConnectShyftIdentityResolutionCandidate[];
+export type {
+  ConnectShyftIdentityResolutionCandidate,
+  ConnectShyftIdentityResolutionResponse,
 };
 
 export type ConnectShyftIdentityResolutionMode =

@@ -8,11 +8,13 @@ describe('resolveConnectShyftIdentityResolutionPresentation', () => {
     expect(resolveConnectShyftIdentityResolutionPresentation({
       outcome: 'resolver_required',
       confidenceBand: 'medium',
+      contactPointStatus: 'active_shared_possible',
       resolverReviewId: 'review-1',
       candidates: [{
         personId: 'person-1',
         score: 80,
         reasons: ['current person link'],
+        contactPointStatus: 'active_shared_possible',
       }],
     })).toMatchObject({
       resolvedState: 'resolver_required',
@@ -27,6 +29,7 @@ describe('resolveConnectShyftIdentityResolutionPresentation', () => {
   it('blocks create-new when the confidence band is very_high even without an explicit resolver state', () => {
     expect(resolveConnectShyftIdentityResolutionPresentation({
       confidenceBand: 'very_high',
+      contactPointStatus: 'reassignment_suspected',
       candidates: [],
     })).toMatchObject({
       resolvedState: 'resolver_required',
@@ -39,7 +42,13 @@ describe('resolveConnectShyftIdentityResolutionPresentation', () => {
   it('maps low, medium, and high bands to the expected friction levels', () => {
     expect(resolveConnectShyftIdentityResolutionPresentation({
       confidenceBand: 'low',
-      candidates: [{ personId: 'person-low', score: 20, reasons: [] }],
+      contactPointStatus: 'active_shared_possible',
+      candidates: [{
+        personId: 'person-low',
+        score: 20,
+        reasons: [],
+        contactPointStatus: 'active_shared_possible',
+      }],
     })).toMatchObject({
       mode: 'create_new_default',
       defaultAction: 'create_new',
@@ -50,7 +59,13 @@ describe('resolveConnectShyftIdentityResolutionPresentation', () => {
 
     expect(resolveConnectShyftIdentityResolutionPresentation({
       confidenceBand: 'medium',
-      candidates: [{ personId: 'person-medium', score: 60, reasons: [] }],
+      contactPointStatus: 'stale',
+      candidates: [{
+        personId: 'person-medium',
+        score: 60,
+        reasons: [],
+        contactPointStatus: 'stale',
+      }],
     })).toMatchObject({
       mode: 'choice_required',
       defaultAction: 'explicit_choice',
@@ -60,7 +75,13 @@ describe('resolveConnectShyftIdentityResolutionPresentation', () => {
 
     expect(resolveConnectShyftIdentityResolutionPresentation({
       confidenceBand: 'high',
-      candidates: [{ personId: 'person-high', score: 95, reasons: [] }],
+      contactPointStatus: 'active_personal',
+      candidates: [{
+        personId: 'person-high',
+        score: 95,
+        reasons: [],
+        contactPointStatus: 'active_personal',
+      }],
     })).toMatchObject({
       mode: 'attach_default',
       defaultAction: 'attach_existing',
