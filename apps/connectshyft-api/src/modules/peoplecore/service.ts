@@ -4,6 +4,10 @@ import type {
   ListActivitiesInput,
 } from './activity';
 import type {
+  ConnectShyftResolverQueueDetailData,
+  ConnectShyftResolverQueueItemRecord,
+  ConnectShyftResolverQueueItemType,
+  ConnectShyftResolverReviewRecord,
   ResolverActionType,
   ResolverDecisionInput,
   ResolverDecisionResult,
@@ -20,6 +24,7 @@ import {
   isResolverReviewTerminalStatus,
   RESOLVER_ACTION_STATUS_MAP,
 } from '@shyft/contracts';
+import { normalizeRoles } from '../../platform/rbac/capabilities';
 import {
   buildPeopleCoreMergeEventPublisher,
   type PeopleCoreMergeEventPublisher,
@@ -80,6 +85,7 @@ const RESOLVER_ALLOWED_TRANSITIONS: Record<ResolverReviewStatus, readonly Resolv
     'dismissed',
   ],
   in_review: [
+    'queued',
     'waiting_for_more_info',
     'resolved_confirmed_existing',
     'resolved_confirmed_new',
@@ -89,6 +95,7 @@ const RESOLVER_ALLOWED_TRANSITIONS: Record<ResolverReviewStatus, readonly Resolv
     'dismissed',
   ],
   waiting_for_more_info: [
+    'queued',
     'in_review',
     'resolved_confirmed_existing',
     'resolved_confirmed_new',
@@ -117,12 +124,30 @@ export type UpdateResolverReviewLifecycleInput = {
   tenantId: string;
   reviewId: string;
   reviewStatus: ResolverReviewStatus;
-  assignedResolverUserId?: string;
-  startedAt?: string;
-  resolvedAt?: string;
-  resolutionType?: ResolverResolutionType;
-  resolutionReason?: string;
-  resolutionNotes?: string;
+  assignedResolverUserId?: string | null;
+  startedAt?: string | null;
+  resolvedAt?: string | null;
+  resolutionType?: ResolverResolutionType | null;
+  resolutionReason?: string | null;
+  resolutionNotes?: string | null;
+};
+
+type ResolverQueueActorInput = {
+  tenantId: string;
+  actorUserId: string;
+  actorRoles: string[];
+};
+
+export type ListResolverQueueInput = ResolverQueueActorInput & {
+  orgUnitId?: string;
+  itemType?: ConnectShyftResolverQueueItemType;
+  status?: ResolverReviewStatus | null;
+  includeTerminal?: boolean;
+};
+
+export type ResolverQueueItemLocatorInput = ResolverQueueActorInput & {
+  itemType: ConnectShyftResolverQueueItemType;
+  itemId: string;
 };
 
 const isMissingPersistenceError = (error: unknown): boolean => {
@@ -185,6 +210,33 @@ export class InvalidResolverReviewTransitionError extends ResolverReviewValidati
   }
 }
 
+export class ResolverQueueAuthorizationError extends Error {
+  readonly code = 'PEOPLECORE_RESOLVER_QUEUE_FORBIDDEN';
+
+  constructor(message = 'Resolver queue access requires a tenant-admin actor.') {
+    super(message);
+    this.name = 'ResolverQueueAuthorizationError';
+  }
+}
+
+export class ResolverQueueClaimRequiredError extends Error {
+  readonly code = 'PEOPLECORE_RESOLVER_QUEUE_CLAIM_REQUIRED';
+
+  constructor(message = 'Resolver queue work must be claimed before action.') {
+    super(message);
+    this.name = 'ResolverQueueClaimRequiredError';
+  }
+}
+
+export class ResolverQueueClaimConflictError extends Error {
+  readonly code = 'PEOPLECORE_RESOLVER_QUEUE_CLAIM_CONFLICT';
+
+  constructor(message = 'Resolver queue work is already claimed by another resolver.') {
+    super(message);
+    this.name = 'ResolverQueueClaimConflictError';
+  }
+}
+
 const nowIsoUtc = (): string => new Date().toISOString();
 
 const uniqueStrings = (values: Iterable<string | null | undefined>): string[] =>
@@ -203,6 +255,27 @@ const normalizeOptionalString = (value: unknown): string | undefined => {
 
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : undefined;
+};
+
+const normalizeStringList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry) => normalizeOptionalString(entry))
+    .filter((entry): entry is string => Boolean(entry));
+};
+
+const isTenantAdminResolverActor = (actorRoles: string[]): boolean =>
+  normalizeRoles(actorRoles).includes('TENANT_ADMIN');
+
+const assertTenantAdminResolverActor = (actorRoles: string[]): void => {
+  if (!isTenantAdminResolverActor(actorRoles)) {
+    throw new ResolverQueueAuthorizationError(
+      'Resolver queue actions are limited to tenant-admin actors in MVP.',
+    );
+  }
 };
 
 const buildFieldError = (
@@ -228,6 +301,111 @@ const requireNormalizedString = (
   }
 
   return normalized;
+};
+
+const toResolverReviewRecord = (
+  review: ResolverReview,
+): ConnectShyftResolverReviewRecord => ({
+  ...review,
+  actionable: isResolverReviewActiveStatus(review.reviewStatus),
+  terminal: isResolverReviewTerminalStatus(review.reviewStatus),
+  decisionStatus: deriveResolverDecisionStatus(review.reviewStatus),
+});
+
+const buildResolverQueueClaimMetadata = (
+  review: ResolverReview,
+  actorUserId: string,
+): Pick<
+  ConnectShyftResolverQueueItemRecord,
+  'claimState' | 'claimantUserId' | 'claimedByCurrentUser' | 'claimable' | 'releasable' | 'actionable'
+> => {
+  const active = isResolverReviewActiveStatus(review.reviewStatus);
+  const actionableActiveState = active && review.reviewStatus !== 'waiting_for_more_info';
+  const claimantUserId = active
+    ? review.assignedResolverUserId ?? null
+    : null;
+
+  if (!claimantUserId) {
+    return {
+      claimState: 'unclaimed',
+      claimantUserId: null,
+      claimedByCurrentUser: false,
+      claimable: actionableActiveState,
+      releasable: false,
+      actionable: false,
+    };
+  }
+
+  if (claimantUserId === actorUserId) {
+    return {
+      claimState: 'claimed_by_current_user',
+      claimantUserId,
+      claimedByCurrentUser: true,
+      claimable: false,
+      releasable: active,
+      actionable: actionableActiveState,
+    };
+  }
+
+  return {
+    claimState: 'claimed_by_other',
+    claimantUserId,
+    claimedByCurrentUser: false,
+    claimable: false,
+    releasable: false,
+    actionable: false,
+  };
+};
+
+const toIdentityReviewQueueItem = (
+  review: ResolverReview,
+  actorUserId: string,
+): ConnectShyftResolverQueueItemRecord => {
+  const active = isResolverReviewActiveStatus(review.reviewStatus);
+  const terminal = isResolverReviewTerminalStatus(review.reviewStatus);
+  const claimMetadata = buildResolverQueueClaimMetadata(review, actorUserId);
+
+  return {
+    id: review.id,
+    itemType: 'identity_review',
+    status: review.reviewStatus,
+    active,
+    terminal,
+    ...claimMetadata,
+    resolverReviewId: review.id,
+    orgUnitId: review.orgUnitId,
+    conversationId: review.conversationId ?? null,
+    contactPointId: review.contactPointId ?? null,
+    threadId: null,
+    personIds: uniqueStrings([
+      review.provisionalPersonId,
+      ...review.candidatePersonIds,
+    ]),
+    triggerSourceType: review.triggerSourceType,
+    triggerSourceId: review.triggerSourceId,
+    requestedAt: review.requestedAt,
+    startedAt: review.startedAt ?? null,
+    resolvedAt: review.resolvedAt ?? null,
+  };
+};
+
+const assertResolverReviewClaimedByActor = (
+  review: ResolverReview,
+  actorUserId: string,
+): void => {
+  const claimantUserId = review.assignedResolverUserId ?? null;
+
+  if (!claimantUserId) {
+    throw new ResolverQueueClaimRequiredError(
+      'Claim the resolver queue item before applying a resolver action.',
+    );
+  }
+
+  if (claimantUserId !== actorUserId) {
+    throw new ResolverQueueClaimConflictError(
+      'Resolver queue item is already claimed by another tenant-admin resolver.',
+    );
+  }
 };
 
 const assertResolutionTypeMatchesStatus = (
@@ -303,6 +481,7 @@ export const validateResolverDecisionInput = (
     'actorUserId',
     'actorUserId is required.',
   );
+  const actorRoles = normalizeStringList(input.actorRoles);
   if (!isResolverActionType(input.action)) {
     throw new ResolverReviewValidationError(
       'action must be a canonical resolver action.',
@@ -476,6 +655,7 @@ export const validateResolverDecisionInput = (
     reviewId,
     action: input.action,
     actorUserId,
+    actorRoles,
     reason,
     notes,
     personId,
@@ -490,9 +670,12 @@ const buildResolverReviewUpdatePayload = (
   currentReview: ResolverReview,
   input: UpdateResolverReviewLifecycleInput,
 ): UpdateResolverReviewInput => {
-  const assignedResolverUserId = normalizeOptionalString(input.assignedResolverUserId)
-    ?? currentReview.assignedResolverUserId
-    ?? null;
+  const assignedResolverUserId = Object.prototype.hasOwnProperty.call(
+    input,
+    'assignedResolverUserId',
+  )
+    ? normalizeOptionalString(input.assignedResolverUserId) ?? null
+    : currentReview.assignedResolverUserId ?? null;
   const startedAt = normalizeOptionalString(input.startedAt)
     ?? currentReview.startedAt
     ?? (
@@ -961,6 +1144,241 @@ export class AsyncPeopleCoreService {
     });
   }
 
+  listResolverQueue(input: ListResolverQueueInput) {
+    return this.execute(async () => {
+      const tenantId = requireNormalizedString(
+        input.tenantId,
+        'tenantId',
+        'tenantId is required.',
+      );
+      const actorUserId = requireNormalizedString(
+        input.actorUserId,
+        'actorUserId',
+        'actorUserId is required.',
+      );
+      const actorRoles = normalizeStringList(input.actorRoles);
+      assertTenantAdminResolverActor(actorRoles);
+
+      const reviews = await this.store.listResolverReviews({
+        tenantId,
+        orgUnitId: normalizeOptionalString(input.orgUnitId),
+      });
+      const requestedStatus = normalizeOptionalString(input.status) as ResolverReviewStatus | undefined;
+      const includeTerminal = input.includeTerminal === true;
+
+      return reviews
+        .map((review) => toIdentityReviewQueueItem(review, actorUserId))
+        .filter((item) => {
+          if (input.itemType && item.itemType !== input.itemType) {
+            return false;
+          }
+
+          if (requestedStatus && item.status !== requestedStatus) {
+            return false;
+          }
+
+          if (!includeTerminal && !item.active) {
+            return false;
+          }
+
+          return true;
+        });
+    });
+  }
+
+  getResolverQueueItemDetail(input: ResolverQueueItemLocatorInput): Promise<ConnectShyftResolverQueueDetailData | null> {
+    return this.execute(async () => {
+      const tenantId = requireNormalizedString(
+        input.tenantId,
+        'tenantId',
+        'tenantId is required.',
+      );
+      const itemId = requireNormalizedString(
+        input.itemId,
+        'itemId',
+        'itemId is required.',
+      );
+      const actorUserId = requireNormalizedString(
+        input.actorUserId,
+        'actorUserId',
+        'actorUserId is required.',
+      );
+      const actorRoles = normalizeStringList(input.actorRoles);
+      assertTenantAdminResolverActor(actorRoles);
+
+      if (input.itemType !== 'identity_review') {
+        return null;
+      }
+
+      const review = await this.store.getResolverReview({
+        tenantId,
+        reviewId: itemId,
+      });
+
+      if (!review) {
+        return null;
+      }
+
+      return {
+        item: toIdentityReviewQueueItem(review, actorUserId),
+        review: toResolverReviewRecord(review),
+      };
+    });
+  }
+
+  claimResolverQueueItem(input: ResolverQueueItemLocatorInput): Promise<ConnectShyftResolverQueueDetailData> {
+    return this.execute(async () => {
+      const tenantId = requireNormalizedString(
+        input.tenantId,
+        'tenantId',
+        'tenantId is required.',
+      );
+      const itemId = requireNormalizedString(
+        input.itemId,
+        'itemId',
+        'itemId is required.',
+      );
+      const actorUserId = requireNormalizedString(
+        input.actorUserId,
+        'actorUserId',
+        'actorUserId is required.',
+      );
+      const actorRoles = normalizeStringList(input.actorRoles);
+      assertTenantAdminResolverActor(actorRoles);
+
+      if (input.itemType !== 'identity_review') {
+        throw new PeopleCoreScopeViolationError(
+          `Resolver queue item ${input.itemType}:${itemId} is not available in tenant ${tenantId}.`,
+        );
+      }
+
+      const review = await this.store.getResolverReview({
+        tenantId,
+        reviewId: itemId,
+      });
+
+      if (!review) {
+        throw new PeopleCoreScopeViolationError(
+          `Resolver review ${itemId} is not available in tenant ${tenantId}.`,
+        );
+      }
+
+      if (isResolverReviewTerminalStatus(review.reviewStatus)) {
+        throw new InvalidResolverReviewTransitionError(
+          `Resolver review ${review.id} is already terminal and cannot be claimed.`,
+          [
+            buildFieldError(
+              'reviewStatus',
+              'INVALID',
+              `reviewStatus ${review.reviewStatus} is terminal and cannot be claimed.`,
+            ),
+          ],
+        );
+      }
+
+      if (review.assignedResolverUserId && review.assignedResolverUserId !== actorUserId) {
+        throw new ResolverQueueClaimConflictError(
+          'Resolver queue item is already claimed by another tenant-admin resolver.',
+        );
+      }
+
+      const nextStatus = review.reviewStatus === 'waiting_for_more_info'
+        ? 'waiting_for_more_info'
+        : 'in_review';
+      const updatedReview = review.assignedResolverUserId === actorUserId
+        && review.reviewStatus === nextStatus
+        ? review
+        : await this.updateResolverReview({
+          tenantId,
+          reviewId: review.id,
+          reviewStatus: nextStatus,
+          assignedResolverUserId: actorUserId,
+          startedAt: review.startedAt ?? nowIsoUtc(),
+        });
+
+      return {
+        item: toIdentityReviewQueueItem(updatedReview, actorUserId),
+        review: toResolverReviewRecord(updatedReview),
+      };
+    });
+  }
+
+  releaseResolverQueueItem(input: ResolverQueueItemLocatorInput): Promise<ConnectShyftResolverQueueDetailData> {
+    return this.execute(async () => {
+      const tenantId = requireNormalizedString(
+        input.tenantId,
+        'tenantId',
+        'tenantId is required.',
+      );
+      const itemId = requireNormalizedString(
+        input.itemId,
+        'itemId',
+        'itemId is required.',
+      );
+      const actorUserId = requireNormalizedString(
+        input.actorUserId,
+        'actorUserId',
+        'actorUserId is required.',
+      );
+      const actorRoles = normalizeStringList(input.actorRoles);
+      assertTenantAdminResolverActor(actorRoles);
+
+      if (input.itemType !== 'identity_review') {
+        throw new PeopleCoreScopeViolationError(
+          `Resolver queue item ${input.itemType}:${itemId} is not available in tenant ${tenantId}.`,
+        );
+      }
+
+      const review = await this.store.getResolverReview({
+        tenantId,
+        reviewId: itemId,
+      });
+
+      if (!review) {
+        throw new PeopleCoreScopeViolationError(
+          `Resolver review ${itemId} is not available in tenant ${tenantId}.`,
+        );
+      }
+
+      if (!isResolverReviewActiveStatus(review.reviewStatus)) {
+        throw new InvalidResolverReviewTransitionError(
+          `Resolver review ${review.id} is already terminal and cannot be released.`,
+          [
+            buildFieldError(
+              'reviewStatus',
+              'INVALID',
+              `reviewStatus ${review.reviewStatus} is terminal and cannot be released.`,
+            ),
+          ],
+        );
+      }
+
+      if (!review.assignedResolverUserId) {
+        throw new ResolverQueueClaimRequiredError(
+          'Resolver queue item is not currently claimed by the acting resolver.',
+        );
+      }
+
+      if (review.assignedResolverUserId !== actorUserId) {
+        throw new ResolverQueueClaimConflictError(
+          'Only the current claimant may release this resolver queue item.',
+        );
+      }
+
+      const updatedReview = await this.updateResolverReview({
+        tenantId,
+        reviewId: review.id,
+        reviewStatus: 'queued',
+        assignedResolverUserId: null,
+      });
+
+      return {
+        item: toIdentityReviewQueueItem(updatedReview, actorUserId),
+        review: toResolverReviewRecord(updatedReview),
+      };
+    });
+  }
+
   private async consumeLinkedAmbiguityEvents(input: {
     review: ResolverReview;
     action: ResolverActionType;
@@ -1005,6 +1423,7 @@ export class AsyncPeopleCoreService {
   applyResolverDecision(input: ResolverDecisionInput): Promise<ResolverDecisionResult> {
     return this.execute(async () => {
       const validated = validateResolverDecisionInput(input);
+      assertTenantAdminResolverActor(validated.actorRoles);
       const review = await this.store.getResolverReview({
         tenantId: validated.tenantId,
         reviewId: validated.reviewId,
@@ -1015,6 +1434,8 @@ export class AsyncPeopleCoreService {
           `Resolver review ${validated.reviewId} is not available in tenant ${validated.tenantId}.`,
         );
       }
+
+      assertResolverReviewClaimedByActor(review, validated.actorUserId);
 
       const targetReviewStatus = RESOLVER_ACTION_STATUS_MAP[validated.action];
       if (isResolverReviewTerminalStatus(review.reviewStatus)) {

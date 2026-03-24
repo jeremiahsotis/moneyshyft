@@ -86,6 +86,7 @@ export type ResolverDecisionInput = {
   reviewId: string;
   action: ResolverActionType;
   actorUserId: string;
+  actorRoles?: string[];
   reason?: string;
   notes?: string;
   personId?: string;
@@ -101,6 +102,7 @@ export type ValidatedResolverDecisionInput = {
   reviewId: string;
   action: ResolverActionType;
   actorUserId: string;
+  actorRoles: string[];
   reason?: string;
   notes?: string;
   personId?: string;
@@ -132,6 +134,12 @@ export const isResolverReviewActiveStatus = (
 ): value is typeof RESOLVER_REVIEW_ACTIVE_STATUSES[number] =>
   typeof value === 'string'
   && (RESOLVER_REVIEW_ACTIVE_STATUSES as readonly string[]).includes(value);
+
+export const isResolverReviewStatus = (
+  value: unknown,
+): value is ResolverReviewStatus =>
+  typeof value === 'string'
+  && (RESOLVER_REVIEW_STATUSES as readonly string[]).includes(value);
 
 export const isResolverReviewResolvedStatus = (
   value: unknown,

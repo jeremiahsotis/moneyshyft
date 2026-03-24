@@ -126,6 +126,57 @@ export type ConnectShyftResolverReviewDetailData = {
   review: ConnectShyftResolverReviewRecord;
 };
 
+export const CONNECTSHYFT_RESOLVER_QUEUE_ITEM_TYPES = [
+  'identity_review',
+  'rebind_review',
+] as const;
+
+export type ConnectShyftResolverQueueItemType =
+  typeof CONNECTSHYFT_RESOLVER_QUEUE_ITEM_TYPES[number];
+
+export const CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_STATES = [
+  'unclaimed',
+  'claimed_by_current_user',
+  'claimed_by_other',
+] as const;
+
+export type ConnectShyftResolverQueueClaimState =
+  typeof CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_STATES[number];
+
+export type ConnectShyftResolverQueueItemRecord = {
+  id: string;
+  itemType: ConnectShyftResolverQueueItemType;
+  status: ResolverReviewStatus;
+  active: boolean;
+  terminal: boolean;
+  claimState: ConnectShyftResolverQueueClaimState;
+  claimantUserId: string | null;
+  claimedByCurrentUser: boolean;
+  claimable: boolean;
+  releasable: boolean;
+  actionable: boolean;
+  resolverReviewId: string | null;
+  orgUnitId: string | null;
+  conversationId: string | null;
+  contactPointId: string | null;
+  threadId: string | null;
+  personIds: string[];
+  triggerSourceType: string | null;
+  triggerSourceId: string | null;
+  requestedAt: string | null;
+  startedAt: string | null;
+  resolvedAt: string | null;
+};
+
+export type ConnectShyftResolverQueueListData = {
+  items: ConnectShyftResolverQueueItemRecord[];
+};
+
+export type ConnectShyftResolverQueueDetailData = {
+  item: ConnectShyftResolverQueueItemRecord;
+  review: ConnectShyftResolverReviewRecord | null;
+};
+
 export type ConnectShyftResolverDecisionData = {
   result: ResolverDecisionResult;
 };
@@ -147,6 +198,18 @@ export const isConnectShyftIdentityAmbiguityTerminalStatus = (
 ): value is ConnectShyftIdentityAmbiguityTerminalStatus =>
   typeof value === 'string'
   && (CONNECTSHYFT_IDENTITY_AMBIGUITY_TERMINAL_STATUSES as readonly string[]).includes(value);
+
+export const isConnectShyftResolverQueueItemType = (
+  value: unknown,
+): value is ConnectShyftResolverQueueItemType =>
+  typeof value === 'string'
+  && (CONNECTSHYFT_RESOLVER_QUEUE_ITEM_TYPES as readonly string[]).includes(value);
+
+export const isConnectShyftResolverQueueClaimState = (
+  value: unknown,
+): value is ConnectShyftResolverQueueClaimState =>
+  typeof value === 'string'
+  && (CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_STATES as readonly string[]).includes(value);
 
 export type ConnectShyftIdentityResolutionResponse = {
   confidenceBand: IdentityConfidenceBand;
