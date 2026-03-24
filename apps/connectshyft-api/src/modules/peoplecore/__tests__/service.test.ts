@@ -13,6 +13,9 @@ import {
   ContactPointLifecycleComputationError,
   InvalidResolverReviewTransitionError,
   PeopleCorePersistenceUnavailableError,
+  ResolverQueueAuthorizationError,
+  ResolverQueueClaimConflictError,
+  ResolverQueueClaimRequiredError,
   ResolverReviewValidationError,
   validateResolverDecisionInput,
 } from '../service';
@@ -33,6 +36,9 @@ const HOUSEHOLD_INPUT = {
   name: 'Lovelace Home',
   status: 'active' as const,
 };
+
+const TENANT_ADMIN_ACTOR_ROLES = ['TENANT_ADMIN'];
+const TENANT_STAFF_ACTOR_ROLES = ['TENANT_STAFF'];
 
 const CONTACT_POINT_INPUT = {
   tenantId: 'tenant-1',
@@ -108,6 +114,9 @@ const buildContactPointLink = (subjectId: string, overrides: Record<string, unkn
 });
 
 const buildDecisionReview = (overrides: Record<string, unknown> = {}) => buildResolverReview({
+  reviewStatus: 'in_review',
+  assignedResolverUserId: 'resolver-1',
+  startedAt: '2026-03-21T12:05:00.000Z',
   contactPointId: 'contact-point-1',
   provisionalPersonId: 'person-provisional',
   candidatePersonIds: ['person-existing'],
@@ -123,6 +132,21 @@ const buildResolvedReviewForAction = (
   resolutionReason: 'Resolver decision applied.',
   resolvedAt: '2026-03-21T12:12:00.000Z',
   assignedResolverUserId: 'resolver-1',
+  ...overrides,
+});
+
+const buildRebindQueueReview = (overrides: Record<string, unknown> = {}) => buildResolverReview({
+  id: 'review-rebind-1',
+  reviewType: 'subject_reassignment_review' as const,
+  reviewStatus: 'queued' as const,
+  triggerSourceType: 'connectshyft_person_rebind_review',
+  triggerSourceId: 'rebind-history-1',
+  provisionalPersonId: 'person-provisional',
+  candidatePersonIds: ['person-canonical'],
+  contactPointId: 'contact-point-1',
+  confidenceBand: 'medium' as const,
+  confidenceReasons: ['Manual subject reassignment review is required.'],
+  riskFlags: [],
   ...overrides,
 });
 
@@ -277,6 +301,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action,
       ...(action === 'confirm_existing_person' ? { personId: 'person-1' } : {}),
       ...(action === 'confirm_new_person' ? { provisionalPersonId: 'person-provisional' } : {}),
@@ -296,6 +321,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'maybe_merge_later' as any,
     })).toThrow(ResolverReviewValidationError);
   });
@@ -330,6 +356,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'merge_people',
       sourcePersonId: 'person-1',
       targetPersonId: 'person-1',
@@ -341,6 +368,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'dismiss_no_action',
     })).toThrow(ResolverReviewValidationError);
   });
@@ -350,12 +378,339 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'confirm_new_person',
       provisionalPersonId: 'person-provisional',
     })).toMatchObject({
       personId: 'person-provisional',
       action: 'confirm_new_person',
     });
+  });
+
+  it('lists active resolver queue items and excludes terminal items by default', async () => {
+    const activeReview = buildDecisionReview({
+      id: 'review-active',
+    });
+    const terminalReview = buildResolvedReviewForAction('confirm_existing_person', {
+      id: 'review-terminal',
+    });
+    const store = {
+      listResolverReviews: jest.fn(async () => [activeReview, terminalReview]),
+    };
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const items = await service.listResolverQueue({
+      tenantId: 'tenant-1',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
+    });
+
+    expect(store.listResolverReviews).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      orgUnitId: undefined,
+    });
+    expect(items).toEqual([
+      expect.objectContaining({
+        id: 'review-active',
+        itemType: 'identity_review',
+        status: 'in_review',
+        active: true,
+        terminal: false,
+        claimState: 'claimed_by_current_user',
+        claimedByCurrentUser: true,
+        actionable: true,
+      }),
+    ]);
+  });
+
+  it('includes rebind_review items in the active resolver queue', async () => {
+    const identityReview = buildDecisionReview({
+      id: 'review-identity',
+    });
+    const rebindReview = buildRebindQueueReview({
+      id: 'review-rebind',
+    });
+    const store = {
+      listResolverReviews: jest.fn(async () => [identityReview, rebindReview]),
+    };
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const items = await service.listResolverQueue({
+      tenantId: 'tenant-1',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
+    });
+
+    expect(items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'review-identity',
+        itemType: 'identity_review',
+      }),
+      expect.objectContaining({
+        id: 'review-rebind',
+        itemType: 'rebind_review',
+        contactPointId: 'contact-point-1',
+        personIds: ['person-provisional', 'person-canonical'],
+      }),
+    ]));
+  });
+
+  it('returns structured rebind review detail from queue-backed history context', async () => {
+    const rebindReview = buildRebindQueueReview({
+      id: 'review-rebind-detail',
+      triggerSourceId: 'rebind-history-detail',
+    });
+    const reviewContext = {
+      rebindHistoryId: 'rebind-history-detail',
+      affectedObjectType: 'contact_point_link' as const,
+      affectedObjectIds: ['link-review-1'],
+      sourcePersonId: 'person-provisional',
+      targetPersonId: 'person-canonical',
+      contactPointIds: ['contact-point-1'],
+      originatingResolverReviewId: 'resolver-review-1',
+      originatingResolutionType: 'merge_people' as const,
+    };
+    const store = {
+      getResolverReview: jest.fn(async () => rebindReview),
+    };
+    jest.spyOn(personRebindServiceAsync, 'getRebindReviewContext').mockResolvedValue(reviewContext);
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const detail = await service.getResolverQueueItemDetail({
+      tenantId: 'tenant-1',
+      itemType: 'rebind_review',
+      itemId: 'review-rebind-detail',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
+    });
+
+    expect(detail).toMatchObject({
+      item: {
+        id: 'review-rebind-detail',
+        itemType: 'rebind_review',
+      },
+      review: {
+        reviewType: 'subject_reassignment_review',
+      },
+      rebindReview: reviewContext,
+    });
+  });
+
+  it('claims rebind_review queue items through the shared claim lifecycle', async () => {
+    const currentReview = buildRebindQueueReview({
+      reviewStatus: 'queued',
+      assignedResolverUserId: undefined,
+      startedAt: undefined,
+    });
+    const updatedReview = buildRebindQueueReview({
+      reviewStatus: 'in_review',
+      assignedResolverUserId: 'resolver-1',
+      startedAt: '2026-03-21T12:20:00.000Z',
+    });
+    const store = {
+      getResolverReview: jest.fn(async () => currentReview),
+      updateResolverReview: jest.fn(async () => updatedReview),
+    };
+    jest.spyOn(personRebindServiceAsync, 'getRebindReviewContext').mockResolvedValue({
+      rebindHistoryId: 'rebind-history-1',
+      affectedObjectType: 'contact_point_link',
+      affectedObjectIds: ['link-review-1'],
+      sourcePersonId: 'person-provisional',
+      targetPersonId: 'person-canonical',
+      contactPointIds: ['contact-point-1'],
+      originatingResolverReviewId: 'resolver-review-1',
+      originatingResolutionType: 'merge_people',
+    });
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const detail = await service.claimResolverQueueItem({
+      tenantId: 'tenant-1',
+      itemType: 'rebind_review',
+      itemId: 'review-rebind-1',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
+    });
+
+    expect(store.updateResolverReview).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      reviewId: 'review-rebind-1',
+      reviewStatus: 'in_review',
+      assignedResolverUserId: 'resolver-1',
+    }));
+    expect(detail.item).toMatchObject({
+      itemType: 'rebind_review',
+      claimState: 'claimed_by_current_user',
+      claimedByCurrentUser: true,
+    });
+  });
+
+  it('lets a tenant-admin resolver claim an unclaimed queue item', async () => {
+    const currentReview = buildDecisionReview({
+      reviewStatus: 'queued',
+      assignedResolverUserId: undefined,
+      startedAt: undefined,
+    });
+    const updatedReview = buildDecisionReview({
+      reviewStatus: 'in_review',
+      assignedResolverUserId: 'resolver-1',
+      startedAt: '2026-03-21T12:10:00.000Z',
+    });
+    const store = {
+      getResolverReview: jest.fn(async () => currentReview),
+      updateResolverReview: jest.fn(async () => updatedReview),
+    };
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const detail = await service.claimResolverQueueItem({
+      tenantId: 'tenant-1',
+      itemType: 'identity_review',
+      itemId: 'review-1',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
+    });
+
+    expect(store.updateResolverReview).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      reviewStatus: 'in_review',
+      assignedResolverUserId: 'resolver-1',
+    }));
+    expect(detail.item).toMatchObject({
+      id: 'review-1',
+      claimState: 'claimed_by_current_user',
+      claimedByCurrentUser: true,
+      actionable: true,
+    });
+  });
+
+  it('rejects queue claims from non-tenant-admin actors', async () => {
+    const store = {
+      getResolverReview: jest.fn(),
+      updateResolverReview: jest.fn(),
+    };
+    const service = new AsyncPeopleCoreService(store as any);
+
+    await expect(service.claimResolverQueueItem({
+      tenantId: 'tenant-1',
+      itemType: 'identity_review',
+      itemId: 'review-1',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_STAFF_ACTOR_ROLES,
+    })).rejects.toBeInstanceOf(ResolverQueueAuthorizationError);
+    expect(store.getResolverReview).not.toHaveBeenCalled();
+  });
+
+  it('rejects resolver actions from non-tenant-admin actors even when the item is claimed', async () => {
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => buildDecisionReview()),
+    });
+    const service = new AsyncPeopleCoreService(store as any);
+
+    await expect(service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_STAFF_ACTOR_ROLES,
+      action: 'confirm_existing_person',
+      personId: 'person-existing',
+    })).rejects.toBeInstanceOf(ResolverQueueAuthorizationError);
+  });
+
+  it('fails queue claim when the item is already claimed by another resolver', async () => {
+    const store = {
+      getResolverReview: jest.fn(async () => buildDecisionReview({
+        assignedResolverUserId: 'resolver-2',
+      })),
+      updateResolverReview: jest.fn(),
+    };
+    const service = new AsyncPeopleCoreService(store as any);
+
+    await expect(service.claimResolverQueueItem({
+      tenantId: 'tenant-1',
+      itemType: 'identity_review',
+      itemId: 'review-1',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
+    })).rejects.toBeInstanceOf(ResolverQueueClaimConflictError);
+    expect(store.updateResolverReview).not.toHaveBeenCalled();
+  });
+
+  it('allows the claimant to release a claimed queue item', async () => {
+    const currentReview = buildDecisionReview({
+      assignedResolverUserId: 'resolver-1',
+    });
+    const updatedReview = buildDecisionReview({
+      reviewStatus: 'queued',
+      assignedResolverUserId: undefined,
+    });
+    const store = {
+      getResolverReview: jest.fn(async () => currentReview),
+      updateResolverReview: jest.fn(async () => updatedReview),
+    };
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const detail = await service.releaseResolverQueueItem({
+      tenantId: 'tenant-1',
+      itemType: 'identity_review',
+      itemId: 'review-1',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
+    });
+
+    expect(store.updateResolverReview).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      reviewStatus: 'queued',
+      assignedResolverUserId: null,
+    }));
+    expect(detail.item).toMatchObject({
+      status: 'queued',
+      claimState: 'unclaimed',
+      claimable: true,
+      releasable: false,
+      actionable: false,
+    });
+  });
+
+  it('rejects queue release by a non-claimant resolver', async () => {
+    const store = {
+      getResolverReview: jest.fn(async () => buildDecisionReview({
+        assignedResolverUserId: 'resolver-2',
+      })),
+      updateResolverReview: jest.fn(),
+    };
+    const service = new AsyncPeopleCoreService(store as any);
+
+    await expect(service.releaseResolverQueueItem({
+      tenantId: 'tenant-1',
+      itemType: 'identity_review',
+      itemId: 'review-1',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
+    })).rejects.toBeInstanceOf(ResolverQueueClaimConflictError);
+    expect(store.updateResolverReview).not.toHaveBeenCalled();
+  });
+
+  it('rejects resolver actions on unclaimed queue items', async () => {
+    const currentReview = buildDecisionReview({
+      reviewStatus: 'queued',
+      assignedResolverUserId: undefined,
+      startedAt: undefined,
+    });
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => currentReview),
+    });
+    const service = new AsyncPeopleCoreService(store as any);
+
+    await expect(service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
+      action: 'confirm_existing_person',
+      personId: 'person-existing',
+    })).rejects.toBeInstanceOf(ResolverQueueClaimRequiredError);
+    expect(store.updateResolverReview).not.toHaveBeenCalled();
   });
 
   it('moves a resolver review from pending to in_review through the service lifecycle guard', async () => {
@@ -487,6 +842,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'confirm_existing_person',
       personId: 'person-existing',
       reason: 'Matched the existing person.',
@@ -541,6 +897,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'confirm_new_person',
       provisionalPersonId: 'person-provisional',
       reason: 'The provisional person is correct.',
@@ -595,6 +952,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'merge_people',
       sourcePersonId: 'person-provisional',
       targetPersonId: 'person-canonical',
@@ -634,6 +992,102 @@ describe('AsyncPeopleCoreService', () => {
     });
   });
 
+  it('operationalizes review-class merge consequences as deduped rebind_review queue work', async () => {
+    const rebindHistory = {
+      id: 'rebind-history-1',
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      provisionalPersonId: 'person-provisional',
+      canonicalPersonId: 'person-canonical',
+      rebindClass: 'review' as const,
+      performedByUserId: 'resolver-1',
+      createdAtUtc: '2026-03-21T12:15:00.000Z',
+      reviewContext: {
+        rebindHistoryId: 'rebind-history-1',
+        affectedObjectType: 'contact_point_link' as const,
+        affectedObjectIds: ['link-review-1'],
+        sourcePersonId: 'person-provisional',
+        targetPersonId: 'person-canonical',
+        contactPointIds: ['contact-point-1'],
+        originatingResolverReviewId: 'review-merge',
+        originatingResolutionType: 'merge_people' as const,
+      },
+    };
+    const store = {
+      mergePerson: jest.fn()
+        .mockResolvedValueOnce({
+          mergedProvisionalPersonId: 'person-provisional',
+          canonicalPersonId: 'person-canonical',
+          autoMergedContactPointLinkIds: [],
+          reviewContactPointLinkIds: ['link-review-1'],
+          resolverReviewId: 'review-merge',
+          didPersistMerge: true,
+        })
+        .mockResolvedValueOnce({
+          mergedProvisionalPersonId: 'person-provisional',
+          canonicalPersonId: 'person-canonical',
+          autoMergedContactPointLinkIds: [],
+          reviewContactPointLinkIds: ['link-review-1'],
+          resolverReviewId: 'review-merge',
+          didPersistMerge: false,
+        }),
+      listContactPointLinks: jest.fn(async () => [
+        buildContactPointLink('person-provisional', {
+          id: 'link-review-1',
+          contactPointId: 'contact-point-1',
+        }),
+      ]),
+      getResolverReview: jest.fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(buildRebindQueueReview({
+          id: 'generated-rebind-review-id',
+          triggerSourceId: 'rebind-history-1',
+        })),
+      createResolverReview: jest.fn(async (input) => buildRebindQueueReview({
+        id: input.reviewId,
+        triggerSourceId: String(input.triggerSourceId),
+      })),
+    };
+    const mergeEventPublisher = {
+      publishPersonMerged: jest.fn(async () => undefined),
+    };
+    const enqueueSpy = jest.spyOn(personRebindServiceAsync, 'enqueueRebindReview')
+      .mockResolvedValue(rebindHistory);
+    const service = new AsyncPeopleCoreService(store as any, mergeEventPublisher as any);
+
+    await service.mergePerson({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      provisionalPersonId: 'person-provisional',
+      canonicalPersonId: 'person-canonical',
+      performedByUserId: 'resolver-1',
+      mergeReason: 'Merge review consequence cleanup.',
+    });
+    await service.mergePerson({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      provisionalPersonId: 'person-provisional',
+      canonicalPersonId: 'person-canonical',
+      performedByUserId: 'resolver-1',
+      mergeReason: 'Merge review consequence cleanup.',
+    });
+
+    expect(enqueueSpy).toHaveBeenCalledTimes(2);
+    expect(store.createResolverReview).toHaveBeenCalledTimes(1);
+    expect(store.createResolverReview).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      reviewType: 'subject_reassignment_review',
+      reviewStatus: 'queued',
+      triggerSourceType: 'connectshyft_person_rebind_review',
+      triggerSourceId: 'rebind-history-1',
+      provisionalPersonId: 'person-provisional',
+      candidatePersonIds: ['person-canonical'],
+      contactPointId: 'contact-point-1',
+    }));
+    expect(mergeEventPublisher.publishPersonMerged).toHaveBeenCalledTimes(1);
+  });
+
   it('applies link_without_merge without merge or broad rebind fanout', async () => {
     const currentReview = buildDecisionReview();
     const updatedReview = buildResolvedReviewForAction('link_without_merge');
@@ -656,6 +1110,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'link_without_merge',
       personId: 'person-existing',
       reason: 'Keep both people distinct but maintain the operational link.',
@@ -708,6 +1163,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'mark_shared_contact',
       reason: 'This phone number is intentionally shared.',
     });
@@ -753,6 +1209,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'reassign_contact_point',
       personId: 'person-existing',
       contactPointId: 'contact-point-1',
@@ -801,6 +1258,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'dismiss_no_action',
       reason: 'No identity change is required.',
     });
@@ -832,6 +1290,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'confirm_existing_person',
       personId: 'person-existing',
       reason: 'Matched the existing person.',
@@ -858,6 +1317,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'dismiss_no_action',
       reason: 'Trying to override the existing terminal outcome.',
     })).rejects.toBeInstanceOf(InvalidResolverReviewTransitionError);
@@ -897,6 +1357,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'confirm_existing_person',
       personId: 'person-existing',
       reason: 'Matched the existing person.',
@@ -961,6 +1422,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'merge_people',
       sourcePersonId: 'person-provisional',
       targetPersonId: 'person-canonical',
@@ -1013,6 +1475,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'dismiss_no_action',
       reason: 'No identity change is required.',
     });
@@ -1058,6 +1521,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'confirm_existing_person',
       personId: 'person-existing',
       reason: 'Matched the existing person.',
@@ -1066,6 +1530,7 @@ describe('AsyncPeopleCoreService', () => {
       tenantId: 'tenant-1',
       reviewId: 'review-1',
       actorUserId: 'resolver-1',
+      actorRoles: TENANT_ADMIN_ACTOR_ROLES,
       action: 'confirm_existing_person',
       personId: 'person-existing',
       reason: 'Matched the existing person.',

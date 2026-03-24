@@ -9,6 +9,8 @@ import {
 import {
   InvalidResolverReviewTransitionError,
   peopleCoreServiceAsync,
+  ResolverQueueClaimConflictError,
+  ResolverQueueClaimRequiredError,
   ResolverReviewValidationError,
 } from '../../../../modules/peoplecore/service';
 import { PeopleCoreScopeViolationError } from '../../../../modules/peoplecore/store';
@@ -165,6 +167,32 @@ const buildResolverReview = (overrides: Record<string, unknown> = {}) => ({
   riskFlags: ['shared_contact_possible'],
   requestedByUserId: TEST_USER_ID,
   requestedAt: '2026-03-21T12:00:00.000Z',
+  ...overrides,
+});
+
+const buildResolverQueueItem = (overrides: Record<string, unknown> = {}) => ({
+  id: 'review-1',
+  itemType: 'identity_review',
+  status: 'queued',
+  active: true,
+  terminal: false,
+  claimState: 'unclaimed',
+  claimantUserId: null,
+  claimedByCurrentUser: false,
+  claimable: true,
+  releasable: false,
+  actionable: false,
+  resolverReviewId: 'review-1',
+  orgUnitId: TEST_ORG_UNIT_ID,
+  conversationId: 'conversation-1',
+  contactPointId: 'contact-point-1',
+  threadId: null,
+  personIds: ['person-a', 'person-b'],
+  triggerSourceType: 'connectshyft_identity_match',
+  triggerSourceId: 'identity-match:resolver-review-route',
+  requestedAt: '2026-03-21T12:00:00.000Z',
+  startedAt: null,
+  resolvedAt: null,
   ...overrides,
 });
 
@@ -776,6 +804,213 @@ describe('connectshyft identity ambiguity ops route', () => {
     });
   });
 
+  it('lists active resolver queue items through the backend queue service', async () => {
+    const listSpy = jest.spyOn(peopleCoreServiceAsync, 'listResolverQueue')
+      .mockResolvedValue([
+        buildResolverQueueItem(),
+      ] as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/resolver-queue')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(response.status).toBe(200);
+    expect(listSpy).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TEST_TENANT_ID,
+      actorUserId: TEST_USER_ID,
+      orgUnitId: undefined,
+      itemType: undefined,
+      status: null,
+      includeTerminal: false,
+      actorRoles: expect.arrayContaining(['TENANT_ADMIN']),
+    }));
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_LISTED',
+      data: {
+        items: [
+          expect.objectContaining({
+            id: 'review-1',
+            itemType: 'identity_review',
+            status: 'queued',
+            active: true,
+            terminal: false,
+            claimState: 'unclaimed',
+          }),
+        ],
+      },
+    });
+  });
+
+  it('returns terminal resolver queue item detail when explicitly requested', async () => {
+    const detailSpy = jest.spyOn(peopleCoreServiceAsync, 'getResolverQueueItemDetail')
+      .mockResolvedValue({
+        item: buildResolverQueueItem({
+          id: 'review-terminal',
+          status: 'resolved_confirmed_existing',
+          active: false,
+          terminal: true,
+          claimState: 'unclaimed',
+          claimable: false,
+          resolvedAt: '2026-03-21T13:00:00.000Z',
+        }),
+        review: buildResolverReview({
+          id: 'review-terminal',
+          reviewStatus: 'resolved_confirmed_existing',
+          resolutionType: 'confirm_existing_person',
+          resolvedAt: '2026-03-21T13:00:00.000Z',
+        }),
+      } as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/resolver-queue/identity_review/review-terminal')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(response.status).toBe(200);
+    expect(detailSpy).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TEST_TENANT_ID,
+      itemType: 'identity_review',
+      itemId: 'review-terminal',
+      actorRoles: expect.arrayContaining(['TENANT_ADMIN']),
+    }));
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_RETRIEVED',
+      data: {
+        item: {
+          id: 'review-terminal',
+          terminal: true,
+          status: 'resolved_confirmed_existing',
+        },
+        review: {
+          id: 'review-terminal',
+          reviewStatus: 'resolved_confirmed_existing',
+        },
+      },
+    });
+  });
+
+  it('claims and releases resolver queue items through thin routes', async () => {
+    const claimSpy = jest.spyOn(peopleCoreServiceAsync, 'claimResolverQueueItem')
+      .mockResolvedValue({
+        item: buildResolverQueueItem({
+          status: 'in_review',
+          claimState: 'claimed_by_current_user',
+          claimantUserId: TEST_USER_ID,
+          claimedByCurrentUser: true,
+          claimable: false,
+          releasable: true,
+          actionable: true,
+          startedAt: '2026-03-21T12:05:00.000Z',
+        }),
+        review: buildResolverReview({
+          reviewStatus: 'in_review',
+          assignedResolverUserId: TEST_USER_ID,
+          startedAt: '2026-03-21T12:05:00.000Z',
+        }),
+      } as any);
+    const releaseSpy = jest.spyOn(peopleCoreServiceAsync, 'releaseResolverQueueItem')
+      .mockResolvedValue({
+        item: buildResolverQueueItem(),
+        review: buildResolverReview({
+          reviewStatus: 'queued',
+          assignedResolverUserId: undefined,
+        }),
+      } as any);
+
+    const app = buildApp();
+    const claimResponse = await request(app)
+      .post('/api/v1/connectshyft/resolver-queue/identity_review/review-1/claim')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+    const releaseResponse = await request(app)
+      .post('/api/v1/connectshyft/resolver-queue/identity_review/review-1/release')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(claimResponse.status).toBe(200);
+    expect(releaseResponse.status).toBe(200);
+    expect(claimSpy).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TEST_TENANT_ID,
+      itemType: 'identity_review',
+      itemId: 'review-1',
+      actorUserId: TEST_USER_ID,
+      actorRoles: expect.arrayContaining(['TENANT_ADMIN']),
+    }));
+    expect(releaseSpy).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TEST_TENANT_ID,
+      itemType: 'identity_review',
+      itemId: 'review-1',
+      actorUserId: TEST_USER_ID,
+      actorRoles: expect.arrayContaining(['TENANT_ADMIN']),
+    }));
+    expect(claimResponse.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_CLAIMED',
+    });
+    expect(releaseResponse.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_RELEASED',
+    });
+  });
+
+  it('rejects resolver queue access for non-tenant-admin actors before service dispatch', async () => {
+    const listSpy = jest.spyOn(peopleCoreServiceAsync, 'listResolverQueue');
+
+    const app = buildApp({
+      defaultRole: 'TENANT_STAFF',
+    });
+    const response = await request(app)
+      .get('/api/v1/connectshyft/resolver-queue')
+      .set(buildHeaders({
+        role: 'TENANT_STAFF',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(response.status).toBe(200);
+    expect(listSpy).not.toHaveBeenCalled();
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_FORBIDDEN',
+      refusalType: 'business',
+      message: 'Resolver queue access requires a tenant-admin role.',
+    });
+  });
+
+  it('normalizes resolver queue claim conflicts without leaking internals', async () => {
+    jest.spyOn(peopleCoreServiceAsync, 'claimResolverQueueItem').mockRejectedValue(
+      new ResolverQueueClaimConflictError('debug-only internal claim collision'),
+    );
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/resolver-queue/identity_review/review-1/claim')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_CONFLICT',
+      refusalType: 'business',
+      message: 'Resolver queue item is already claimed by another resolver.',
+    });
+  });
+
   it('lists resolver reviews with normalized actionability semantics', async () => {
     const listSpy = jest.spyOn(peopleCoreServiceAsync, 'listResolverReviews')
       .mockResolvedValue([
@@ -916,6 +1151,7 @@ describe('connectshyft identity ambiguity ops route', () => {
       tenantId: TEST_TENANT_ID,
       reviewId: 'review-1',
       actorUserId: TEST_USER_ID,
+      actorRoles: expect.arrayContaining(['TENANT_ADMIN']),
       action: 'confirm_existing_person',
       reason: 'Matched the existing person.',
       notes: undefined,
@@ -939,6 +1175,32 @@ describe('connectshyft identity ambiguity ops route', () => {
           rebindTriggered: true,
         },
       },
+    });
+  });
+
+  it('maps claim-required resolver decisions to a normalized business refusal', async () => {
+    jest.spyOn(peopleCoreServiceAsync, 'applyResolverDecision').mockRejectedValue(
+      new ResolverQueueClaimRequiredError('internal claim state message'),
+    );
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/resolver-reviews/review-1/decision')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }))
+      .send({
+        action: 'confirm_existing_person',
+        personId: 'person-existing',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_REQUIRED',
+      refusalType: 'business',
+      message: 'Resolver queue item must be claimed before action.',
     });
   });
 

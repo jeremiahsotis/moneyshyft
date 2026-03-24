@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   resolveConnectShyftIdentityResolutionPresentation,
+  resolveConnectShyftThreadSubjectImpactPresentation,
 } from '../identityResolution';
 
 describe('resolveConnectShyftIdentityResolutionPresentation', () => {
@@ -89,6 +90,34 @@ describe('resolveConnectShyftIdentityResolutionPresentation', () => {
       showAttachAction: true,
       showCreateNewAction: true,
       createNewAllowed: true,
+    });
+  });
+
+  it('maps contextual thread impact states into plain-language banner copy', () => {
+    expect(resolveConnectShyftThreadSubjectImpactPresentation({
+      subjectImpact: {
+        impactType: 'resolver_required',
+        actionable: true,
+        resolverQueueItemId: 'review-1',
+        resolverQueueItemType: 'identity_review',
+      },
+      isTenantAdminResolver: false,
+    })).toEqual({
+      message: 'Identity for this conversation is still being reviewed. Conversation context may update once the review is complete.',
+      ctaLabel: null,
+    });
+
+    expect(resolveConnectShyftThreadSubjectImpactPresentation({
+      subjectImpact: {
+        impactType: 'rebind_review',
+        actionable: true,
+        resolverQueueItemId: 'review-2',
+        resolverQueueItemType: 'rebind_review',
+      },
+      isTenantAdminResolver: true,
+    })).toEqual({
+      message: 'This conversation is waiting on a subject-context rebind review. Review in People to continue resolver work.',
+      ctaLabel: 'Review in People',
     });
   });
 });

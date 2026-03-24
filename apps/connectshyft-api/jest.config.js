@@ -30,6 +30,7 @@ module.exports = {
   },
   transformIgnorePatterns: ["/node_modules/(?!uuid)/"],
   moduleNameMapper: {
+    "^@shyft/contracts$": "<rootDir>/../../libs/contracts/src/index.ts",
     "^uuid$": "<rootDir>/src/__mocks__/uuid.ts",
   },
 };

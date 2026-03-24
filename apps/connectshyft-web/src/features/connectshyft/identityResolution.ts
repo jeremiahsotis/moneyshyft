@@ -1,4 +1,5 @@
 import type {
+  ConnectShyftThreadSubjectImpact,
   ConnectShyftIdentityResolutionCandidate,
   ConnectShyftIdentityResolutionResponse,
 } from '@shyft/contracts';
@@ -29,6 +30,11 @@ export type ConnectShyftIdentityResolutionPresentation = {
   showCreateNewAction: boolean;
   createNewAllowed: boolean;
   guidance: string;
+};
+
+export type ConnectShyftThreadSubjectImpactPresentation = {
+  message: string;
+  ctaLabel: 'Open in People' | 'Review in People' | null;
 };
 
 const normalizeResolutionState = (
@@ -144,6 +150,41 @@ export const resolveConnectShyftIdentityResolutionPresentation = (
         showCreateNewAction: true,
         createNewAllowed: true,
         guidance: 'No strong identity match was found. Create a new person silently.',
+      };
+  }
+};
+
+export const resolveConnectShyftThreadSubjectImpactPresentation = (input: {
+  subjectImpact: ConnectShyftThreadSubjectImpact;
+  isTenantAdminResolver: boolean;
+}): ConnectShyftThreadSubjectImpactPresentation => {
+  const { subjectImpact, isTenantAdminResolver } = input;
+
+  switch (subjectImpact.impactType) {
+    case 'resolver_required':
+      return {
+        message: isTenantAdminResolver
+          ? 'Identity for this conversation is still waiting on tenant-admin review. Review in People to continue resolver work.'
+          : 'Identity for this conversation is still being reviewed. Conversation context may update once the review is complete.',
+        ctaLabel: isTenantAdminResolver
+          ? (subjectImpact.actionable ? 'Review in People' : 'Open in People')
+          : null,
+      };
+    case 'rebind_review':
+      return {
+        message: isTenantAdminResolver
+          ? 'This conversation is waiting on a subject-context rebind review. Review in People to continue resolver work.'
+          : 'Conversation context is being updated to match the latest subject record. Keep working from the current thread until the update is complete.',
+        ctaLabel: isTenantAdminResolver
+          ? (subjectImpact.actionable ? 'Review in People' : 'Open in People')
+          : null,
+      };
+    default:
+      return {
+        message: isTenantAdminResolver
+          ? 'This conversation is still tied to a provisional person record. Open in People if you need to review the latest subject context.'
+          : 'Subject details for this conversation are still settling. Keep working from the current conversation context until the person record is confirmed.',
+        ctaLabel: isTenantAdminResolver ? 'Open in People' : null,
       };
   }
 };

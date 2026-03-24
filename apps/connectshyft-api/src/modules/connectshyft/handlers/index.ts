@@ -9,7 +9,10 @@ export { getConnectNumberMappings } from './getConnectNumberMappings';
 export { getConnectOperatorCallbackNumber } from './getConnectOperatorCallbackNumber';
 export { getConnectSettingsNavigation } from './getConnectSettingsNavigation';
 export { getConnectTelephonyReadiness } from './getConnectTelephonyReadiness';
-export { getConnectThreadDetail } from './getConnectThreadDetail';
+export {
+  enrichThreadDetailWithSubjectImpact,
+  getConnectThreadDetail,
+} from './getConnectThreadDetail';
 export { getConnectThreadTimeline } from './getConnectThreadTimeline';
 export { getConnectWebhookReceiptMetrics } from './getConnectWebhookReceiptMetrics';
 export { deleteConnectNeighbor } from './deleteConnectNeighbor';

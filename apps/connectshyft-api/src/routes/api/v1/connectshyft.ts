@@ -4,10 +4,12 @@ import type { Knex } from 'knex';
 import type {
   ConnectShyftIdentityAmbiguityEvent,
   ConnectShyftIdentityAmbiguityRecord,
+  ConnectShyftResolverQueueItemType,
   ConnectShyftResolverReviewRecord,
   PersonProvisionalCreatedEvent,
   ResolverDecisionInput,
   ResolverReview,
+  ResolverReviewStatus,
   ResolverReviewCreatedEvent,
   SubjectContext,
 } from '@shyft/contracts';
@@ -15,8 +17,10 @@ import {
   deriveResolverDecisionStatus,
   isConnectShyftIdentityAmbiguityActiveStatus,
   isConnectShyftIdentityAmbiguityTerminalStatus,
+  isConnectShyftResolverQueueItemType,
   isResolverActionType,
   isResolverReviewActiveStatus,
+  isResolverReviewStatus,
   isResolverReviewTerminalStatus,
 } from '@shyft/contracts';
 import {
@@ -26,7 +30,7 @@ import {
   validatePhoneForChannel,
 } from '../../../../../../domains/communication';
 import { refusal, success } from '../../../platform/envelopes/response';
-import { CAPABILITIES, hasCapability } from '../../../platform/rbac/capabilities';
+import { CAPABILITIES, hasCapability, normalizeRoles } from '../../../platform/rbac/capabilities';
 import {
   evaluateConnectShyftCapability,
   isConnectShyftTestOverrideEnabled,
@@ -48,6 +52,7 @@ import {
   getConnectOperatorCallbackNumber,
   getConnectSettingsNavigation,
   getConnectTelephonyReadiness,
+  enrichThreadDetailWithSubjectImpact,
   getConnectThreadDetail,
   getConnectThreadTimeline,
   getConnectWebhookReceiptMetrics,
@@ -233,6 +238,9 @@ import {
 import {
   InvalidResolverReviewTransitionError,
   peopleCoreServiceAsync,
+  ResolverQueueAuthorizationError,
+  ResolverQueueClaimConflictError,
+  ResolverQueueClaimRequiredError,
   ResolverReviewValidationError,
 } from '../../../modules/peoplecore/service';
 import { PeopleCoreScopeViolationError } from '../../../modules/peoplecore/store';
@@ -1890,6 +1898,7 @@ const buildSyntheticThreadDetailRecord = (input: {
     neighborId: input.descriptor.neighborId || null,
     personId: null,
     identityState: null,
+    subjectImpact: null,
     subjectContext: {
       orgUnitId: input.descriptor.orgUnitId,
     },
@@ -2547,6 +2556,9 @@ const resolveConnectShyftActorRoles = (
   return deduped;
 };
 
+const isTenantAdminResolverRoleSet = (actorRoles: string[]): boolean =>
+  normalizeRoles(actorRoles).includes('TENANT_ADMIN');
+
 const enforceThreadViewCapability = (
   req: Request,
   res: Response,
@@ -2809,7 +2821,7 @@ const resolveResolverReviewReadScope = (
   };
 };
 
-const resolveResolverReviewTenantPrivilegedScope = (
+const resolveTenantAdminResolverQueueScope = (
   req: Request,
   res: Response,
   context: Pick<ResolvedConnectShyftContext, 'effectiveRoles'>,
@@ -2817,15 +2829,15 @@ const resolveResolverReviewTenantPrivilegedScope = (
   actorRoles: string[];
 } | null => {
   const actorRoles = resolveConnectShyftActorRoles(req, context);
-  if (hasCapability(actorRoles, CAPABILITIES.NEIGHBOR_EDIT_ALL)) {
+  if (isTenantAdminResolverRoleSet(actorRoles)) {
     return {
       actorRoles,
     };
   }
 
   refusal(res, {
-    code: 'CONNECTSHYFT_RESOLVER_REVIEW_UPDATE_FORBIDDEN',
-    message: 'Resolver decision updates require a tenant-privileged ConnectShyft admin role.',
+    code: 'CONNECTSHYFT_RESOLVER_QUEUE_FORBIDDEN',
+    message: 'Resolver queue access requires a tenant-admin role.',
     refusalType: 'business',
     httpStatus: 200,
   });
@@ -2940,6 +2952,58 @@ const parseResolverReviewFilters = (req: Request): {
 } => ({
   orgUnitId: parseOrgUnitIdFromQuery(req),
 });
+
+const parseResolverQueueItemTypeValue = (
+  value: unknown,
+): ConnectShyftResolverQueueItemType | null => {
+  if (!isConnectShyftResolverQueueItemType(value)) {
+    return null;
+  }
+
+  return value;
+};
+
+const parseResolverQueueStatusValue = (value: unknown): ResolverReviewStatus | null => {
+  if (!isResolverReviewStatus(value)) {
+    return null;
+  }
+
+  return value;
+};
+
+const parseResolverQueueBooleanFlag = (value: unknown): boolean => {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'true' || normalized === '1' || normalized === 'yes';
+};
+
+const parseResolverQueueFilters = (req: Request): {
+  orgUnitId: string | null;
+  itemType: ConnectShyftResolverQueueItemType | null;
+  status: ResolverReviewStatus | null;
+  includeTerminal: boolean;
+} => ({
+  orgUnitId: parseOrgUnitIdFromQuery(req),
+  itemType: parseResolverQueueItemTypeValue(req.query?.itemType),
+  status: parseResolverQueueStatusValue(req.query?.status),
+  includeTerminal: parseResolverQueueBooleanFlag(req.query?.includeTerminal),
+});
+
+const parseResolverQueueItemTypeParam = (
+  req: Request,
+): ConnectShyftResolverQueueItemType | null => parseResolverQueueItemTypeValue(req.params.itemType);
+
+const parseResolverQueueItemIdParam = (req: Request): string | null => {
+  if (typeof req.params.itemId !== 'string') {
+    return null;
+  }
+
+  const normalized = req.params.itemId.trim();
+  return normalized.length > 0 ? normalized : null;
+};
 
 const parseIdentityAmbiguityEventIdParam = (req: Request): string => {
   if (typeof req.params.ambiguityEventId !== 'string') {
@@ -4955,6 +5019,293 @@ router.get('/events', async (req: Request, res: Response) => {
   });
 });
 
+router.get('/resolver-queue', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  const queueScope = resolveTenantAdminResolverQueueScope(req, res, context);
+  if (!queueScope) {
+    return;
+  }
+
+  const filters = parseResolverQueueFilters(req);
+  const items = await peopleCoreServiceAsync.listResolverQueue({
+    tenantId: context.tenantId,
+    actorUserId: resolveConnectShyftRequestedActorUserId(req) || CONNECTSHYFT_SYSTEM_ACTOR_USER_ID,
+    actorRoles: queueScope.actorRoles,
+    orgUnitId: filters.orgUnitId ?? undefined,
+    itemType: filters.itemType ?? undefined,
+    status: filters.status,
+    includeTerminal: filters.includeTerminal,
+  });
+
+  return success(res, {
+    code: 'CONNECTSHYFT_RESOLVER_QUEUE_LISTED',
+    message: 'ConnectShyft resolver queue listed',
+    httpStatus: 200,
+    data: {
+      items,
+    },
+  });
+});
+
+router.get('/resolver-queue/:itemType/:itemId', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  const queueScope = resolveTenantAdminResolverQueueScope(req, res, context);
+  if (!queueScope) {
+    return;
+  }
+
+  const itemType = parseResolverQueueItemTypeParam(req);
+  if (!itemType) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_TYPE_INVALID',
+      message: 'itemType must be identity_review or rebind_review.',
+    });
+    return;
+  }
+
+  const itemId = parseResolverQueueItemIdParam(req);
+  if (!itemId) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_ID_REQUIRED',
+      message: 'itemId is required',
+    });
+    return;
+  }
+
+  const detail = await peopleCoreServiceAsync.getResolverQueueItemDetail({
+    tenantId: context.tenantId,
+    itemType,
+    itemId,
+    actorUserId: resolveConnectShyftRequestedActorUserId(req) || CONNECTSHYFT_SYSTEM_ACTOR_USER_ID,
+    actorRoles: queueScope.actorRoles,
+  });
+
+  if (!detail) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_NOT_FOUND',
+      message: 'Resolver queue item is unavailable for the active tenant context.',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return;
+  }
+
+  return success(res, {
+    code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_RETRIEVED',
+    message: 'ConnectShyft resolver queue item retrieved',
+    httpStatus: 200,
+    data: detail,
+  });
+});
+
+router.post('/resolver-queue/:itemType/:itemId/claim', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  const queueScope = resolveTenantAdminResolverQueueScope(req, res, context);
+  if (!queueScope) {
+    return;
+  }
+
+  const itemType = parseResolverQueueItemTypeParam(req);
+  if (!itemType) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_TYPE_INVALID',
+      message: 'itemType must be identity_review or rebind_review.',
+    });
+    return;
+  }
+
+  const itemId = parseResolverQueueItemIdParam(req);
+  if (!itemId) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_ID_REQUIRED',
+      message: 'itemId is required',
+    });
+    return;
+  }
+
+  try {
+    const detail = await peopleCoreServiceAsync.claimResolverQueueItem({
+      tenantId: context.tenantId,
+      itemType,
+      itemId,
+      actorUserId: resolveConnectShyftRequestedActorUserId(req) || CONNECTSHYFT_SYSTEM_ACTOR_USER_ID,
+      actorRoles: queueScope.actorRoles,
+    });
+
+    return success(res, {
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_CLAIMED',
+      message: 'ConnectShyft resolver queue item claimed',
+      httpStatus: 200,
+      data: detail,
+    });
+  } catch (error) {
+    if (error instanceof ResolverQueueClaimConflictError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_CONFLICT',
+        message: 'Resolver queue item is already claimed by another resolver.',
+        refusalType: 'business',
+        httpStatus: 200,
+      });
+      return;
+    }
+
+    if (error instanceof ResolverQueueClaimRequiredError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_REQUIRED',
+        message: 'Resolver queue item must be claimed before action.',
+        refusalType: 'business',
+        httpStatus: 200,
+      });
+      return;
+    }
+
+    if (error instanceof InvalidResolverReviewTransitionError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_INVALID',
+        message: 'Resolver queue item cannot be claimed in its current state.',
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          fieldErrors: error.fieldErrors,
+        },
+      });
+      return;
+    }
+
+    if (error instanceof PeopleCoreScopeViolationError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_NOT_FOUND',
+        message: 'Resolver queue item is unavailable for the active tenant context.',
+        refusalType: 'business',
+        httpStatus: 200,
+      });
+      return;
+    }
+
+    throw error;
+  }
+});
+
+router.post('/resolver-queue/:itemType/:itemId/release', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  const queueScope = resolveTenantAdminResolverQueueScope(req, res, context);
+  if (!queueScope) {
+    return;
+  }
+
+  const itemType = parseResolverQueueItemTypeParam(req);
+  if (!itemType) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_TYPE_INVALID',
+      message: 'itemType must be identity_review or rebind_review.',
+    });
+    return;
+  }
+
+  const itemId = parseResolverQueueItemIdParam(req);
+  if (!itemId) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_ID_REQUIRED',
+      message: 'itemId is required',
+    });
+    return;
+  }
+
+  try {
+    const detail = await peopleCoreServiceAsync.releaseResolverQueueItem({
+      tenantId: context.tenantId,
+      itemType,
+      itemId,
+      actorUserId: resolveConnectShyftRequestedActorUserId(req) || CONNECTSHYFT_SYSTEM_ACTOR_USER_ID,
+      actorRoles: queueScope.actorRoles,
+    });
+
+    return success(res, {
+      code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_RELEASED',
+      message: 'ConnectShyft resolver queue item released',
+      httpStatus: 200,
+      data: detail,
+    });
+  } catch (error) {
+    if (error instanceof ResolverQueueClaimConflictError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_CONFLICT',
+        message: 'Only the current claimant may release this resolver queue item.',
+        refusalType: 'business',
+        httpStatus: 200,
+      });
+      return;
+    }
+
+    if (error instanceof ResolverQueueClaimRequiredError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_REQUIRED',
+        message: 'Resolver queue item must be claimed before release.',
+        refusalType: 'business',
+        httpStatus: 200,
+      });
+      return;
+    }
+
+    if (error instanceof InvalidResolverReviewTransitionError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_QUEUE_RELEASE_INVALID',
+        message: 'Resolver queue item cannot be released in its current state.',
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          fieldErrors: error.fieldErrors,
+        },
+      });
+      return;
+    }
+
+    if (error instanceof PeopleCoreScopeViolationError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_QUEUE_ITEM_NOT_FOUND',
+        message: 'Resolver queue item is unavailable for the active tenant context.',
+        refusalType: 'business',
+        httpStatus: 200,
+      });
+      return;
+    }
+
+    throw error;
+  }
+});
+
 router.get('/resolver-reviews', async (req: Request, res: Response) => {
   if (!await enforceCapability(req, res, 'module')) {
     return;
@@ -5146,7 +5497,8 @@ router.post('/resolver-reviews/:reviewId/decision', async (req: Request, res: Re
     return;
   }
 
-  if (!resolveResolverReviewTenantPrivilegedScope(req, res, context)) {
+  const queueScope = resolveTenantAdminResolverQueueScope(req, res, context);
+  if (!queueScope) {
     return;
   }
 
@@ -5182,6 +5534,7 @@ router.post('/resolver-reviews/:reviewId/decision', async (req: Request, res: Re
       tenantId: context.tenantId,
       reviewId,
       actorUserId: resolveConnectShyftRequestedActorUserId(req) || CONNECTSHYFT_SYSTEM_ACTOR_USER_ID,
+      actorRoles: queueScope.actorRoles,
       action: body.action,
       reason: body.reason,
       notes: body.notes,
@@ -5202,6 +5555,36 @@ router.post('/resolver-reviews/:reviewId/decision', async (req: Request, res: Re
       },
     });
   } catch (error) {
+    if (error instanceof ResolverQueueAuthorizationError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_QUEUE_FORBIDDEN',
+        message: 'Resolver queue access requires a tenant-admin role.',
+        refusalType: 'business',
+        httpStatus: 200,
+      });
+      return;
+    }
+
+    if (error instanceof ResolverQueueClaimRequiredError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_REQUIRED',
+        message: 'Resolver queue item must be claimed before action.',
+        refusalType: 'business',
+        httpStatus: 200,
+      });
+      return;
+    }
+
+    if (error instanceof ResolverQueueClaimConflictError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_QUEUE_CLAIM_CONFLICT',
+        message: 'Resolver queue item is already claimed by another resolver.',
+        refusalType: 'business',
+        httpStatus: 200,
+      });
+      return;
+    }
+
     if (error instanceof InvalidResolverReviewTransitionError) {
       refusal(res, {
         code: 'CONNECTSHYFT_RESOLVER_DECISION_TERMINAL',
@@ -5360,6 +5743,11 @@ const getConnectThreadDetailWithSyntheticFallback = async (req: Request, res: Re
       ? []
       : [...resolveConnectShyftThreadActions(thread.state)],
   };
+  thread = await enrichThreadDetailWithSubjectImpact({
+    tenantId: context.tenantId,
+    orgUnitId: context.orgUnitId,
+    thread,
+  });
 
   const timeline = await listCanonicalThreadEvents({
     tenantId: context.tenantId,

@@ -1,4 +1,5 @@
 import type { ResolverReview } from '../../src/people';
+import { isResolverRebindReviewType } from '../../src/people';
 
 describe('resolver review contracts', () => {
   it('supports a first-class resolver review object', () => {
@@ -20,5 +21,10 @@ describe('resolver review contracts', () => {
     };
 
     expect(review.reviewType).toBe('identity_conflict');
+  });
+
+  it('marks subject reassignment reviews as rebind-backed review types', () => {
+    expect(isResolverRebindReviewType('subject_reassignment_review')).toBe(true);
+    expect(isResolverRebindReviewType('identity_conflict')).toBe(false);
   });
 });
