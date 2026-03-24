@@ -206,6 +206,7 @@ describe('connectshyft inbound voice domain mapping', () => {
   it('[E4-UNIT-001][P0] detects canonical transcription callback event families deterministically @P0', () => {
     expect(isConnectShyftVoicemailTranscriptionCallbackEventType('VoiceTranscriptionCompleted')).toBe(true);
     expect(isConnectShyftVoicemailTranscriptionCallbackEventType('voice.transcription.completed')).toBe(true);
+    expect(isConnectShyftVoicemailTranscriptionCallbackEventType('voice.transcription.failed')).toBe(true);
     expect(isConnectShyftVoicemailTranscriptionCallbackEventType('VoiceVoicemail')).toBe(false);
     expect(isConnectShyftVoicemailTranscriptionCallbackEventType('CallConnected')).toBe(false);
   });
@@ -237,7 +238,34 @@ describe('connectshyft inbound voice domain mapping', () => {
         providerLegId: 'provider-leg-e4-seed',
         voicemailArtifactId: 'vm-thread-connectshyft-e4-001-provider-event-e4-seed',
       },
+      transcriptionStatus: 'completed',
       transcriptText: 'Follow-up requested after noon.',
+    });
+  });
+
+  it('[E4-UNIT-004][P1] falls back to failed transcription status when callback payload is malformed @P1', () => {
+    const extracted = extractConnectShyftVoicemailTranscriptionCallbackPayload({
+      eventType: 'voice.transcription.failed',
+      callbackCorrelation: {
+        tenantId: 'tenant-connectshyft-e4',
+        orgUnitId: 'org-connectshyft-e4-east',
+        threadId: 'thread-connectshyft-e4-002',
+        providerEventId: 'provider-event-e4-failed',
+        voicemailArtifactId: 'vm-thread-connectshyft-e4-002-provider-event-e4-failed',
+      },
+    });
+
+    expect(extracted).toEqual({
+      correlation: {
+        tenantId: 'tenant-connectshyft-e4',
+        orgUnitId: 'org-connectshyft-e4-east',
+        threadId: 'thread-connectshyft-e4-002',
+        providerEventId: 'provider-event-e4-failed',
+        providerLegId: null,
+        voicemailArtifactId: 'vm-thread-connectshyft-e4-002-provider-event-e4-failed',
+      },
+      transcriptionStatus: 'failed',
+      transcriptText: null,
     });
   });
 

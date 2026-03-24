@@ -1,5 +1,6 @@
 import {
   connectShyftVoicemailServiceAsync,
+  handleVoicemailTranscriptionCallback,
   resetConnectShyftVoicemailStateForTests,
 } from '../voicemails';
 
@@ -257,5 +258,141 @@ describe('connectshyft voicemail artifact persistence', () => {
     expect(replayedRecording.id).toBe(seeded.id);
     expect(replayedRecording.transcriptionText).toBe('Call me when you are nearby.');
     expect(threadVoicemails).toHaveLength(1);
+  });
+
+  it('handles transcription callbacks through the artifact path and keeps playback metadata intact', async () => {
+    await connectShyftVoicemailServiceAsync.upsertVoicemailArtifact({
+      tenantId: 'tenant-voicemail-1007',
+      orgUnitId: 'org-voicemail-1007',
+      threadId: 'thread-voicemail-1007',
+      personId: 'person-voicemail-1007',
+      artifactId: 'artifact-voicemail-1007',
+      direction: 'inbound',
+      contactPointId: '+12605550117',
+      recordingUrl: 'https://example.test/voicemail-1007.mp3',
+      recordingStatus: 'completed',
+      providerEventId: 'provider-event-voicemail-1007',
+      providerLegId: 'provider-leg-voicemail-1007',
+      occurredAtUtc: '2026-03-24T11:30:00.000Z',
+      transcriptionStatus: 'pending',
+      transcriptionRequestedAtUtc: '2026-03-24T11:30:00.000Z',
+    });
+
+    const result = await handleVoicemailTranscriptionCallback({
+      tenantId: 'tenant-voicemail-1007',
+      orgUnitId: 'org-voicemail-1007',
+      threadId: 'thread-voicemail-1007',
+      voicemailArtifactId: 'artifact-voicemail-1007',
+      correlationProviderEventId: 'provider-event-voicemail-1007',
+      callbackProviderLegId: 'provider-leg-voicemail-1007',
+      occurredAtUtc: '2026-03-24T11:31:00.000Z',
+      transcriptionStatus: 'completed',
+      transcriptionText: 'Please ring the side doorbell.',
+      transcriptionProvider: 'telnyx',
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      callbackStatus: 'completed',
+      malformed: false,
+      voicemail: {
+        artifactId: 'artifact-voicemail-1007',
+        recordingUrl: 'https://example.test/voicemail-1007.mp3',
+        recordingStatus: 'completed',
+        transcriptionStatus: 'completed',
+        transcriptionText: 'Please ring the side doorbell.',
+        transcriptionProvider: 'telnyx',
+      },
+    });
+  });
+
+  it('marks malformed transcription callbacks as failed without invalidating playback', async () => {
+    await connectShyftVoicemailServiceAsync.upsertVoicemailArtifact({
+      tenantId: 'tenant-voicemail-1008',
+      orgUnitId: 'org-voicemail-1008',
+      threadId: 'thread-voicemail-1008',
+      personId: 'person-voicemail-1008',
+      artifactId: 'artifact-voicemail-1008',
+      direction: 'outbound',
+      bridgeSessionId: 'bridge-voicemail-1008',
+      contactPointId: '+12605550118',
+      recordingUrl: 'https://example.test/voicemail-1008.mp3',
+      recordingStatus: 'completed',
+      providerEventId: 'provider-event-voicemail-1008',
+      providerLegId: 'provider-leg-voicemail-1008',
+      occurredAtUtc: '2026-03-24T11:35:00.000Z',
+      transcriptionStatus: 'pending',
+      transcriptionRequestedAtUtc: '2026-03-24T11:35:00.000Z',
+    });
+
+    const result = await handleVoicemailTranscriptionCallback({
+      tenantId: 'tenant-voicemail-1008',
+      orgUnitId: 'org-voicemail-1008',
+      threadId: 'thread-voicemail-1008',
+      voicemailArtifactId: 'artifact-voicemail-1008',
+      correlationProviderEventId: 'provider-event-voicemail-1008',
+      callbackProviderLegId: 'provider-leg-voicemail-1008',
+      occurredAtUtc: '2026-03-24T11:36:00.000Z',
+      transcriptionStatus: 'completed',
+      transcriptionText: null,
+      transcriptionProvider: 'telnyx',
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      callbackStatus: 'failed',
+      malformed: true,
+      voicemail: {
+        artifactId: 'artifact-voicemail-1008',
+        recordingUrl: 'https://example.test/voicemail-1008.mp3',
+        recordingStatus: 'completed',
+        transcriptionStatus: 'failed',
+      },
+    });
+  });
+
+  it('does not let a failed transcription callback overwrite a completed transcript', async () => {
+    await connectShyftVoicemailServiceAsync.upsertVoicemailArtifact({
+      tenantId: 'tenant-voicemail-1009',
+      orgUnitId: 'org-voicemail-1009',
+      threadId: 'thread-voicemail-1009',
+      personId: 'person-voicemail-1009',
+      artifactId: 'artifact-voicemail-1009',
+      direction: 'inbound',
+      contactPointId: '+12605550119',
+      recordingUrl: 'https://example.test/voicemail-1009.mp3',
+      recordingStatus: 'completed',
+      providerEventId: 'provider-event-voicemail-1009',
+      providerLegId: 'provider-leg-voicemail-1009',
+      occurredAtUtc: '2026-03-24T11:40:00.000Z',
+      transcriptionStatus: 'completed',
+      transcriptionText: 'Completed transcript should win.',
+      transcriptionProvider: 'telnyx',
+      transcriptionRequestedAtUtc: '2026-03-24T11:40:00.000Z',
+      transcriptionCompletedAtUtc: '2026-03-24T11:41:00.000Z',
+    });
+
+    const result = await handleVoicemailTranscriptionCallback({
+      tenantId: 'tenant-voicemail-1009',
+      orgUnitId: 'org-voicemail-1009',
+      threadId: 'thread-voicemail-1009',
+      voicemailArtifactId: 'artifact-voicemail-1009',
+      correlationProviderEventId: 'provider-event-voicemail-1009',
+      callbackProviderLegId: 'provider-leg-voicemail-1009',
+      occurredAtUtc: '2026-03-24T11:42:00.000Z',
+      transcriptionStatus: 'failed',
+      transcriptionText: null,
+      transcriptionProvider: 'telnyx',
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      callbackStatus: 'failed',
+      voicemail: {
+        artifactId: 'artifact-voicemail-1009',
+        transcriptionStatus: 'completed',
+        transcriptionText: 'Completed transcript should win.',
+      },
+    });
   });
 });

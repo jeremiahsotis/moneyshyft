@@ -120,6 +120,51 @@ const readDurationFromSources = (
   return null;
 };
 
+const normalizeTranscriptionCallbackStatus = (
+  value: unknown,
+): 'completed' | 'failed' | null => {
+  const normalized = normalizeString(value).toLowerCase();
+
+  if (
+    normalized === 'completed'
+    || normalized === 'complete'
+    || normalized === 'success'
+    || normalized === 'succeeded'
+  ) {
+    return 'completed';
+  }
+
+  if (
+    normalized === 'failed'
+    || normalized === 'failure'
+    || normalized === 'error'
+    || normalized === 'errored'
+  ) {
+    return 'failed';
+  }
+
+  return null;
+};
+
+const resolveTranscriptionCallbackStatusFromEventType = (
+  value: unknown,
+): 'completed' | 'failed' | null => {
+  const normalized = normalizeString(value).toLowerCase();
+  if (!normalized || !normalized.includes('transcription')) {
+    return null;
+  }
+
+  if (normalized.includes('failed') || normalized.includes('error')) {
+    return 'failed';
+  }
+
+  if (normalized.includes('completed')) {
+    return 'completed';
+  }
+
+  return null;
+};
+
 const readWebhookSources = (webhookBody: unknown): Array<Record<string, unknown> | null> => {
   const payload = asRecord(webhookBody);
   const providerPayload = asRecord(payload?.providerPayload);
@@ -184,6 +229,7 @@ export type ConnectShyftVoicemailTranscriptionCallbackCorrelation = {
 
 export type ConnectShyftVoicemailTranscriptionCallbackPayload = {
   correlation: ConnectShyftVoicemailTranscriptionCallbackCorrelation;
+  transcriptionStatus: 'completed' | 'failed';
   transcriptText: string | null;
 };
 
@@ -232,7 +278,12 @@ export const isConnectShyftVoicemailTranscriptionCallbackEventType = (
   }
 
   return normalized.includes('transcription')
-    && (normalized.includes('completed') || normalized.includes('callback'));
+    && (
+      normalized.includes('completed')
+      || normalized.includes('callback')
+      || normalized.includes('failed')
+      || normalized.includes('error')
+    );
 };
 
 export const isConnectShyftInboundVoiceRecordingSavedEventType = (
@@ -271,6 +322,15 @@ export const extractConnectShyftVoicemailTranscriptionCallbackPayload = (
       'transcription_text',
     ],
   );
+  const transcriptionStatus = normalizeTranscriptionCallbackStatus(
+    readFromSources([transcriptRecord, ...sources], [
+      'status',
+      'transcriptionStatus',
+      'transcription_status',
+    ]),
+  ) || resolveTranscriptionCallbackStatusFromEventType(
+    readFromSources(sources, ['eventType', 'event_type']),
+  ) || (transcriptText ? 'completed' : 'failed');
 
   return {
     correlation: {
@@ -291,6 +351,7 @@ export const extractConnectShyftVoicemailTranscriptionCallbackPayload = (
         'artifact_id',
       ]),
     },
+    transcriptionStatus,
     transcriptText,
   };
 };

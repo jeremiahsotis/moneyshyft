@@ -134,6 +134,31 @@ export interface ConnectShyftVoicemailService {
   rebindPersonVoicemails(input: RebindVoicemailPersonInput): Promise<void>;
 }
 
+export interface HandleVoicemailTranscriptionCallbackInput {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  voicemailArtifactId: string;
+  correlationProviderEventId: string;
+  callbackProviderLegId?: string | null;
+  occurredAtUtc: string;
+  transcriptionStatus: 'completed' | 'failed';
+  transcriptionText?: string | null;
+  transcriptionProvider?: string | null;
+}
+
+export type HandleVoicemailTranscriptionCallbackResult =
+  | {
+      ok: true;
+      callbackStatus: 'completed' | 'failed';
+      malformed: boolean;
+      voicemail: Voicemail;
+    }
+  | {
+      ok: false;
+      reason: 'callback_correlation_scope_invalid' | 'callback_correlation_unresolved';
+    };
+
 type DbVoicemailRow = {
   id: string;
   tenant_id: string;
@@ -1126,6 +1151,87 @@ class AsyncConnectShyftVoicemailService implements ConnectShyftVoicemailService 
 
 export const connectShyftVoicemailServiceAsync: ConnectShyftVoicemailService =
   new AsyncConnectShyftVoicemailService();
+
+export const handleVoicemailTranscriptionCallback = async (
+  input: HandleVoicemailTranscriptionCallbackInput,
+): Promise<HandleVoicemailTranscriptionCallbackResult> => {
+  const tenantId = normalizeNullableString(input.tenantId);
+  const orgUnitId = normalizeNullableString(input.orgUnitId);
+  const threadId = normalizeNullableString(input.threadId);
+  const voicemailArtifactId = normalizeNullableString(input.voicemailArtifactId);
+  const correlationProviderEventId = normalizeNullableString(input.correlationProviderEventId);
+  const callbackProviderLegId = normalizeNullableString(input.callbackProviderLegId);
+  const occurredAtUtc = toIsoUtc(input.occurredAtUtc) || new Date().toISOString();
+  const transcriptionText = normalizeNullableString(input.transcriptionText);
+  const transcriptionProvider = normalizeNullableString(input.transcriptionProvider);
+
+  if (!tenantId || !orgUnitId || !threadId || !voicemailArtifactId || !correlationProviderEventId) {
+    return {
+      ok: false,
+      reason: 'callback_correlation_unresolved',
+    };
+  }
+
+  const matched = await connectShyftVoicemailServiceAsync.findVoicemailArtifact({
+    tenantId,
+    artifactId: voicemailArtifactId,
+    providerEventId: correlationProviderEventId,
+  });
+  if (!matched) {
+    return {
+      ok: false,
+      reason: 'callback_correlation_unresolved',
+    };
+  }
+
+  if (
+    matched.orgUnitId !== orgUnitId
+    || matched.threadId !== threadId
+    || matched.artifactId !== voicemailArtifactId
+    || matched.providerEventId !== correlationProviderEventId
+    || (
+      callbackProviderLegId
+      && matched.providerLegId
+      && matched.providerLegId !== callbackProviderLegId
+    )
+  ) {
+    return {
+      ok: false,
+      reason: 'callback_correlation_scope_invalid',
+    };
+  }
+
+  const malformed = input.transcriptionStatus === 'completed' && !transcriptionText;
+  const callbackStatus = malformed ? 'failed' : input.transcriptionStatus;
+  const voicemail = await connectShyftVoicemailServiceAsync.upsertVoicemailArtifact({
+    tenantId,
+    orgUnitId,
+    callId: matched.callId,
+    threadId: matched.threadId,
+    personId: matched.personId,
+    artifactId: matched.artifactId,
+    bridgeSessionId: matched.bridgeSessionId,
+    contactPointId: matched.contactPointId,
+    direction: matched.direction,
+    providerEventId: matched.providerEventId,
+    providerLegId: callbackProviderLegId || matched.providerLegId,
+    providerRecordingId: matched.providerRecordingId,
+    occurredAtUtc,
+    transcriptionStatus: callbackStatus,
+    transcriptionText: callbackStatus === 'completed' ? transcriptionText : null,
+    transcriptionProvider,
+    transcriptionRequestedAtUtc: matched.transcriptionRequestedAtUtc,
+    transcriptionCompletedAtUtc: callbackStatus === 'completed' ? occurredAtUtc : null,
+    transcriptionFailedAtUtc: callbackStatus === 'failed' ? occurredAtUtc : null,
+  });
+
+  return {
+    ok: true,
+    callbackStatus,
+    malformed,
+    voicemail,
+  };
+};
 
 export const resetConnectShyftVoicemailStateForTests = (): void => {
   inMemoryConnectShyftVoicemailStore.reset();

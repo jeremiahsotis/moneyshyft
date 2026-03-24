@@ -254,6 +254,75 @@ describe('connectshyft inbound transcription callback webhook route characteriza
     expect(persistedArtifact?.transcriptionText).toBe('Neighbor confirmed transport coordination.');
   });
 
+  it('records failed transcription callbacks on the voicemail artifact without creating a timeline attachment event', async () => {
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildTranscriptionHeaders())
+      .send(buildTranscriptionWebhookBody({
+        eventType: 'voice.transcription.failed',
+        providerEventId: 'provider-event-transcription-failed-1005',
+        transcript: undefined,
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_TRANSCRIPTION_CALLBACK_RECORDED',
+      message: 'Transcription callback recorded on voicemail artifact',
+      data: {
+        eventType: 'voice.transcription.failed',
+        providerResolution: {
+          requestedProvider: 'telnyx',
+          resolvedProvider: 'telnyx',
+          deterministic: true,
+          adapterInvoked: true,
+        },
+        correlation: {
+          source: 'metadata',
+          deterministic: true,
+          threadId: TEST_THREAD_ID,
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+          providerEventId: TEST_CALLBACK_PROVIDER_EVENT_ID,
+          voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+        },
+        replaySafe: {
+          duplicate: false,
+          suppressedDomainWrites: false,
+          dedupeKey: 'provider-event:provider-event-transcription-failed-1005',
+        },
+        transcriptionAttachment: {
+          applied: false,
+          transcriptText: null,
+          voicemailArtifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+          transcriptionStatus: 'failed',
+        },
+        sideEffects: {
+          transcriptMutationApplied: true,
+          timelineMutationApplied: false,
+        },
+      },
+    });
+    expect(Object.keys(response.body.data).sort()).toEqual([
+      'correlation',
+      'eventType',
+      'providerResolution',
+      'replaySafe',
+      'sideEffects',
+      'transcriptionAttachment',
+    ].sort());
+    expect(recordCanonicalEventSpy).not.toHaveBeenCalled();
+    const persistedArtifact = await connectShyftVoicemailServiceAsync.findVoicemailArtifact({
+      tenantId: TEST_TENANT_ID,
+      artifactId: TEST_CALLBACK_VOICEMAIL_ARTIFACT_ID,
+      providerEventId: TEST_CALLBACK_PROVIDER_EVENT_ID,
+    });
+    expect(persistedArtifact?.recordingUrl).toBe('https://connectshyft.test/transcription-seed-1001.mp3');
+    expect(persistedArtifact?.transcriptionStatus).toBe('failed');
+    expect(persistedArtifact?.transcriptionText).toBe(null);
+  });
+
   it('preserves the current duplicate suppression surface for transcription callbacks', async () => {
     const app = buildApp();
     const body = buildTranscriptionWebhookBody({

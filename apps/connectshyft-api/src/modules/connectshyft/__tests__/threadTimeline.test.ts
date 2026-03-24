@@ -323,13 +323,20 @@ describe('connectshyft thread timeline projection', () => {
       channel: 'voicemail',
       type: 'voicemail',
       recordingUrl: 'https://example.test/vm-001.mp3',
+      recordingStatus: 'completed',
       durationSeconds: 42,
+      transcript: null,
+      transcriptionText: null,
+      transcriptionStatus: null,
     });
     expect(timeline.items[3]).toMatchObject({
       id: 'event-voicemail-002',
       channel: 'voicemail',
       type: 'voicemail',
+      recordingStatus: 'pending',
       transcript: 'Leave package at the side door',
+      transcriptionText: 'Leave package at the side door',
+      transcriptionStatus: 'completed',
     });
   });
 
@@ -456,7 +463,10 @@ describe('connectshyft thread timeline projection', () => {
         occurredAtUtc: '2026-03-19T10:02:00.000Z',
         deliveryStatus: 'completed',
         recordingUrl: 'https://example.test/timeline-vm.mp3',
+        recordingStatus: 'completed',
         transcript: 'Please call me back after 5.',
+        transcriptionText: 'Please call me back after 5.',
+        transcriptionStatus: 'completed',
         providerMetadata: {
           callId: 'call-timeline-1001',
           bridgeSessionId: 'bridge-timeline-1001',

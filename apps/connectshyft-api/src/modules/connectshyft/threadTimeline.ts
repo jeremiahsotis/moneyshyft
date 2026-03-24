@@ -18,6 +18,8 @@ import {
 } from './inboundVoice';
 import {
   connectShyftVoicemailServiceAsync,
+  type ConnectShyftVoicemailRecordingStatus,
+  type ConnectShyftVoicemailTranscriptionStatus,
   type Voicemail,
 } from './voicemails';
 
@@ -64,8 +66,11 @@ export type ConnectShyftVoicemailTimelineItem = ConnectShyftThreadTimelineItemBa
   channel: 'voicemail';
   body: null;
   recordingUrl: string | null;
+  recordingStatus: ConnectShyftVoicemailRecordingStatus | null;
   durationSeconds: number | null;
   transcript: string | null;
+  transcriptionText: string | null;
+  transcriptionStatus: ConnectShyftVoicemailTranscriptionStatus | null;
 };
 
 export type ConnectShyftThreadTimelineItem =
@@ -114,6 +119,22 @@ const normalizeDirection = (
   value: unknown,
 ): ConnectShyftThreadTimelineDirection | null => {
   return value === 'inbound' || value === 'outbound'
+    ? value
+    : null;
+};
+
+const normalizeRecordingStatus = (
+  value: unknown,
+): ConnectShyftVoicemailRecordingStatus | null => {
+  return value === 'pending' || value === 'completed' || value === 'failed'
+    ? value
+    : null;
+};
+
+const normalizeTranscriptionStatus = (
+  value: unknown,
+): ConnectShyftVoicemailTranscriptionStatus | null => {
+  return value === 'pending' || value === 'completed' || value === 'failed'
     ? value
     : null;
 };
@@ -274,6 +295,38 @@ const mapVoicemailTimelineEvent: TimelineEventMapper = (event, payload) => {
   const artifact = resolveVoiceOrVoicemailArtifact(payload);
   const transcription = asRecord(artifact?.transcription);
   const metadata = asRecord(payload.metadata);
+  const recordingUrl = normalizeString(
+    artifact?.recordingUrl || artifact?.recording_url,
+  ) || null;
+  const transcriptionText = normalizeString(
+    transcription?.text
+    || artifact?.transcriptionText
+    || artifact?.transcription_text
+    || metadata?.transcriptText
+    || metadata?.transcriptionText
+    || metadata?.transcription_text,
+  ) || null;
+  const artifactRenderSource = {
+    recording_url: recordingUrl,
+    recording_status: normalizeRecordingStatus(
+      artifact?.recordingStatus
+      || artifact?.recording_status,
+    ) || (recordingUrl ? 'completed' : 'pending'),
+    transcription_text: transcriptionText,
+    transcription_status: normalizeTranscriptionStatus(
+      transcription?.status
+      || artifact?.transcriptionStatus
+      || artifact?.transcription_status
+      || metadata?.transcriptionStatus
+      || metadata?.transcription_status,
+    ) || (
+      transcriptionText
+        ? 'completed'
+        : normalizeString(payload.eventName) === CONNECTSHYFT_VOICEMAIL_TRANSCRIPTION_REQUESTED_EVENT_NAME
+          ? 'pending'
+          : null
+    ),
+  };
 
   return {
     ...resolveTimelineBase({
@@ -288,11 +341,14 @@ const mapVoicemailTimelineEvent: TimelineEventMapper = (event, payload) => {
     type: 'voicemail',
     channel: 'voicemail',
     body: null,
-    recordingUrl: normalizeString(artifact?.recordingUrl) || null,
+    recordingUrl: artifactRenderSource.recording_url,
+    recordingStatus: artifactRenderSource.recording_status,
     durationSeconds: normalizeDurationSeconds(artifact?.durationSeconds),
-    transcript: normalizeString(transcription?.text)
-      || normalizeString(metadata?.transcriptText)
-      || null,
+    transcript: artifactRenderSource.transcription_status === 'completed'
+      ? artifactRenderSource.transcription_text
+      : null,
+    transcriptionText: artifactRenderSource.transcription_text,
+    transcriptionStatus: artifactRenderSource.transcription_status,
   };
 };
 
@@ -366,8 +422,11 @@ const buildBridgeSessionVoicemailTimelineItem = (input: {
   providerMetadata: null,
   deliveryStatus: null,
   recordingUrl: input.voicemailProjection.recordingUrl,
+  recordingStatus: 'completed',
   durationSeconds: null,
   transcript: null,
+  transcriptionText: null,
+  transcriptionStatus: null,
 });
 
 const buildCallStatusEvents = (call: Call): Array<{ status: string; occurredAtUtc: string }> => {
@@ -433,33 +492,50 @@ const buildCallTimelineItem = (call: Call): ConnectShyftVoiceEventTimelineItem =
   deliveryStatus: call.status,
 });
 
-const buildVoicemailTimelineItem = (voicemail: Voicemail): ConnectShyftVoicemailTimelineItem => ({
-  id: `voicemail-${voicemail.id}`,
-  threadId: voicemail.threadId,
-  type: 'voicemail',
-  direction: voicemail.direction,
-  channel: 'voicemail',
-  body: null,
-  occurredAtUtc: voicemail.occurredAtUtc,
-  actor: voicemail.direction === 'inbound' ? 'neighbor' : 'user',
-  providerMetadata: {
-    callId: voicemail.callId,
-    bridgeSessionId: voicemail.bridgeSessionId,
-    contactPointId: voicemail.contactPointId,
-    artifactId: voicemail.artifactId,
+const buildVoicemailTimelineItem = (voicemail: Voicemail): ConnectShyftVoicemailTimelineItem => {
+  const artifactRenderSource = {
+    recording_url: voicemail.recordingUrl,
+    recording_status: voicemail.recordingStatus,
+    transcription_text: voicemail.transcriptionStatus === 'completed'
+      ? voicemail.transcriptionText
+      : null,
+    transcription_status: voicemail.transcriptionStatus,
     direction: voicemail.direction,
-    recordingStatus: voicemail.recordingStatus,
-    providerEventId: voicemail.providerEventId,
-    providerLegId: voicemail.providerLegId,
-    providerRecordingId: voicemail.providerRecordingId,
-    transcriptionStatus: voicemail.transcriptionStatus,
-    transcriptionProvider: voicemail.transcriptionProvider,
-  },
-  deliveryStatus: voicemail.recordingStatus,
-  recordingUrl: voicemail.recordingUrl,
-  durationSeconds: null,
-  transcript: voicemail.transcriptionText,
-});
+  };
+
+  return {
+    id: `voicemail-${voicemail.id}`,
+    threadId: voicemail.threadId,
+    type: 'voicemail',
+    direction: artifactRenderSource.direction,
+    channel: 'voicemail',
+    body: null,
+    occurredAtUtc: voicemail.occurredAtUtc,
+    actor: voicemail.direction === 'inbound' ? 'neighbor' : 'user',
+    providerMetadata: {
+      callId: voicemail.callId,
+      bridgeSessionId: voicemail.bridgeSessionId,
+      contactPointId: voicemail.contactPointId,
+      artifactId: voicemail.artifactId,
+      direction: voicemail.direction,
+      recordingStatus: voicemail.recordingStatus,
+      providerEventId: voicemail.providerEventId,
+      providerLegId: voicemail.providerLegId,
+      providerRecordingId: voicemail.providerRecordingId,
+      transcriptionStatus: voicemail.transcriptionStatus,
+      transcriptionProvider: voicemail.transcriptionProvider,
+    },
+    deliveryStatus: voicemail.recordingStatus,
+    recordingUrl: artifactRenderSource.recording_url,
+    recordingStatus: artifactRenderSource.recording_status,
+    durationSeconds: null,
+    transcript: artifactRenderSource.transcription_status === 'completed'
+      ? artifactRenderSource.transcription_text
+      : null,
+    transcriptionText: artifactRenderSource.transcription_text,
+    transcriptionStatus: artifactRenderSource.transcription_status,
+  };
+};
 
 const CONNECTSHYFT_TIMELINE_MAPPERS = new Map<string, TimelineEventMapper>([
   [CONNECTSHYFT_INBOUND_SMS_APPENDED_EVENT_NAME, mapInboundSmsTimelineEvent],

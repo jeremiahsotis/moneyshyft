@@ -528,10 +528,28 @@ describe('connectshyft inbound voice webhook route characterization', () => {
             artifactId: 'vm-thread-f1-unclaimed-1001-provider-event-voice-outbound-voicemail-1007',
             recordingUrl,
           },
+          transcription: {
+            requestQueued: true,
+            queueName: 'connectshyft.voicemail.transcription',
+            callbackCorrelation: {
+              threadId: 'thread-f1-unclaimed-1001',
+              providerEventId: 'provider-event-voice-outbound-voicemail-1007',
+              providerLegId: 'provider-leg-voicemail-recording-1007',
+              voicemailArtifactId: 'vm-thread-f1-unclaimed-1001-provider-event-voice-outbound-voicemail-1007',
+            },
+          },
+          transcriptionOutbox: {
+            eventName: 'connectshyft.voicemail.transcription_requested',
+            queueName: 'connectshyft.voicemail.transcription',
+            metadata: {
+              thread_id: 'thread-f1-unclaimed-1001',
+              voicemail_artifact_id: 'vm-thread-f1-unclaimed-1001-provider-event-voice-outbound-voicemail-1007',
+              provider_event_id: 'provider-event-voice-outbound-voicemail-1007',
+              provider_leg_id: 'provider-leg-voicemail-recording-1007',
+            },
+          },
         },
       });
-      expect(response.body.data).not.toHaveProperty('transcription');
-      expect(response.body.data).not.toHaveProperty('transcriptionOutbox');
       expect(updateVoicemailFallbackSpy).toHaveBeenCalledWith(expect.objectContaining({
         bridgeSessionId: seededBridge.bridgeSessionId,
         tenantId: 'tenant-connectshyft-f1',
