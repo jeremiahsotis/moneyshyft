@@ -8,7 +8,9 @@ const WEBHOOK_RECEIPT_RETENTION_DEFAULT_DAYS = 180;
 export type ConnectShyftProviderIdentifierKind = 'call_leg' | 'message';
 export type ConnectShyftWebhookReceiptProcessingStatus =
   | 'RECEIVED'
+  | 'PROCESSING'
   | 'APPLIED'
+  | 'IGNORED_DUPLICATE'
   | 'FAILED_RETRYABLE'
   | 'FAILED_TERMINAL';
 export type ConnectShyftWebhookFailureClassification = {
@@ -89,15 +91,73 @@ const inMemoryWebhookReceiptStates = new Map<string, {
   sid: string;
   eventType: string;
   dedupeKey: string;
+  payloadHash: string | null;
   status: ConnectShyftWebhookReceiptProcessingStatus;
   firstSeenAtUtc: string;
   lastSeenAtUtc: string;
+  processedAtUtc: string | null;
   attemptCount: number;
   correlationKeys: Record<string, unknown> | null;
+  errorCode: string | null;
+  errorMessage: string | null;
   failureReason: string | null;
   nextRetryAtUtc: string | null;
   lastFailureClassification: ConnectShyftWebhookFailureClassification | null;
 }>();
+
+type ConnectShyftWebhookReceiptRow = {
+  processing_status?: unknown;
+  attempt_count?: unknown;
+  thread_id?: unknown;
+  dedupe_key?: unknown;
+  payload_hash?: unknown;
+  processed_at_utc?: unknown;
+  first_seen_at_utc?: unknown;
+  last_seen_at_utc?: unknown;
+  failure_reason?: unknown;
+  error_code?: unknown;
+  error_message?: unknown;
+  next_retry_at_utc?: unknown;
+  last_failure_classification?: unknown;
+};
+
+type ConnectShyftWebhookReceiptStateRecord = {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  providerName: string;
+  sid: string;
+  eventType: string;
+  dedupeKey: string;
+  payloadHash: string | null;
+  status: ConnectShyftWebhookReceiptProcessingStatus;
+  firstSeenAtUtc: string;
+  lastSeenAtUtc: string;
+  processedAtUtc: string | null;
+  attemptCount: number;
+  correlationKeys: Record<string, unknown> | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  failureReason: string | null;
+  nextRetryAtUtc: string | null;
+  lastFailureClassification: ConnectShyftWebhookFailureClassification | null;
+};
+
+type ConnectShyftWebhookReceiptBeginResult = {
+  deterministic: true;
+  alreadyApplied: boolean;
+  shouldProcess: boolean;
+  previousStatus: ConnectShyftWebhookReceiptProcessingStatus | null;
+  dedupeKey: string | null;
+  status: ConnectShyftWebhookReceiptProcessingStatus;
+  attemptCount: number;
+  nextRetryAtUtc?: string | null;
+  lastFailureClassification?: ConnectShyftWebhookFailureClassification | null;
+  error?: {
+    code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_PERSISTENCE_UNAVAILABLE';
+    message: string;
+  };
+};
 
 const normalizeString = (value: unknown): string => {
   if (typeof value !== 'string') {
@@ -125,8 +185,14 @@ const normalizeWebhookReceiptProcessingStatus = (
   value: unknown,
 ): ConnectShyftWebhookReceiptProcessingStatus => {
   const normalized = normalizeString(value).toUpperCase();
+  if (normalized === 'PROCESSING') {
+    return 'PROCESSING';
+  }
   if (normalized === 'APPLIED') {
     return 'APPLIED';
+  }
+  if (normalized === 'IGNORED_DUPLICATE') {
+    return 'IGNORED_DUPLICATE';
   }
   if (normalized === 'FAILED_RETRYABLE') {
     return 'FAILED_RETRYABLE';
@@ -141,11 +207,14 @@ const normalizeWebhookReceiptSid = (input: {
   providerEventId?: string | null;
   providerLegId?: string | null;
   providerMessageId?: string | null;
+  payloadHash?: string | null;
 }): string => {
+  const payloadHash = normalizeString(input.payloadHash || null).toLowerCase();
   return (
     normalizeString(input.providerEventId || null)
     || normalizeString(input.providerLegId || null)
     || normalizeString(input.providerMessageId || null)
+    || (payloadHash ? `payload:${payloadHash}` : '')
   ).toLowerCase();
 };
 
@@ -192,6 +261,112 @@ const parseAttemptCount = (value: unknown): number => {
   }
 
   return 1;
+};
+
+const normalizeWebhookReceiptFailureClassification = (
+  value: unknown,
+): ConnectShyftWebhookFailureClassification | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const category = normalizeString(record.category);
+  if (!category) {
+    return null;
+  }
+
+  return {
+    category,
+    retryable: record.retryable === true,
+    httpStatus: typeof record.httpStatus === 'number'
+      ? record.httpStatus
+      : typeof record.http_status === 'number'
+        ? record.http_status
+        : null,
+    providerCode: normalizeString(record.providerCode ?? record.provider_code) || null,
+  };
+};
+
+const statusRepresentsProcessedWebhookReceipt = (
+  status: ConnectShyftWebhookReceiptProcessingStatus,
+): boolean => {
+  return status === 'APPLIED' || status === 'IGNORED_DUPLICATE';
+};
+
+const toFailureMetadata = (input: {
+  status: ConnectShyftWebhookReceiptProcessingStatus;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  failureReason?: string | null;
+}): {
+  errorCode: string | null;
+  errorMessage: string | null;
+  failureReason: string | null;
+} => {
+  if (input.status !== 'FAILED_RETRYABLE' && input.status !== 'FAILED_TERMINAL') {
+    return {
+      errorCode: null,
+      errorMessage: null,
+      failureReason: null,
+    };
+  }
+
+  const errorCode = normalizeString(input.errorCode || input.failureReason || null) || null;
+  const errorMessage = normalizeString(input.errorMessage || input.failureReason || null) || null;
+
+  return {
+    errorCode,
+    errorMessage,
+    failureReason: errorCode,
+  };
+};
+
+const mapWebhookReceiptRowToState = (input: {
+  tenantId: string;
+  orgUnitId: string;
+  providerName: string;
+  sid: string;
+  eventType: string;
+  row: ConnectShyftWebhookReceiptRow | null;
+}): ConnectShyftWebhookReceiptStateRecord | null => {
+  if (!input.row) {
+    return null;
+  }
+
+  const firstSeenAtUtc = input.row.first_seen_at_utc instanceof Date
+    ? input.row.first_seen_at_utc.toISOString()
+    : normalizeString(input.row.first_seen_at_utc);
+  const lastSeenAtUtc = input.row.last_seen_at_utc instanceof Date
+    ? input.row.last_seen_at_utc.toISOString()
+    : normalizeString(input.row.last_seen_at_utc);
+  const processedAtUtc = input.row.processed_at_utc instanceof Date
+    ? input.row.processed_at_utc.toISOString()
+    : normalizeString(input.row.processed_at_utc) || null;
+
+  return {
+    tenantId: input.tenantId,
+    orgUnitId: input.orgUnitId,
+    threadId: normalizeString(input.row.thread_id),
+    providerName: input.providerName,
+    sid: input.sid,
+    eventType: input.eventType,
+    dedupeKey: normalizeString(input.row.dedupe_key),
+    payloadHash: normalizeString(input.row.payload_hash) || null,
+    status: normalizeWebhookReceiptProcessingStatus(input.row.processing_status),
+    firstSeenAtUtc: firstSeenAtUtc || new Date().toISOString(),
+    lastSeenAtUtc: lastSeenAtUtc || firstSeenAtUtc || new Date().toISOString(),
+    processedAtUtc,
+    attemptCount: parseAttemptCount(input.row.attempt_count),
+    correlationKeys: null,
+    errorCode: normalizeString(input.row.error_code || input.row.failure_reason) || null,
+    errorMessage: normalizeString(input.row.error_message) || null,
+    failureReason: normalizeString(input.row.failure_reason) || null,
+    nextRetryAtUtc: normalizeString(input.row.next_retry_at_utc) || null,
+    lastFailureClassification: normalizeWebhookReceiptFailureClassification(
+      input.row.last_failure_classification,
+    ),
+  };
 };
 
 const shouldUseDb = (
@@ -480,11 +655,13 @@ const buildWebhookDedupeKey = (input: {
   providerEventId?: string | null;
   providerLegId?: string | null;
   providerMessageId?: string | null;
+  payloadHash?: string | null;
 }): string | null => {
   const canonicalEventType = normalizeString(input.canonicalEventType).toLowerCase();
   const providerEventId = normalizeString(input.providerEventId || null).toLowerCase();
   const providerLegId = normalizeString(input.providerLegId || null).toLowerCase();
   const providerMessageId = normalizeString(input.providerMessageId || null).toLowerCase();
+  const payloadHash = normalizeString(input.payloadHash || null).toLowerCase();
 
   if (providerEventId) {
     return `provider-event:${providerEventId}`;
@@ -495,6 +672,9 @@ const buildWebhookDedupeKey = (input: {
   if (providerMessageId && canonicalEventType) {
     return `message:${providerMessageId}|event:${canonicalEventType}`;
   }
+  if (payloadHash && canonicalEventType) {
+    return `payload:${payloadHash}|event:${canonicalEventType}`;
+  }
   return null;
 };
 
@@ -503,6 +683,7 @@ const buildWebhookReceiptIdentity = (input: {
   providerEventId?: string | null;
   providerLegId?: string | null;
   providerMessageId?: string | null;
+  payloadHash?: string | null;
 }): { sid: string; eventType: string } | null => {
   const sid = normalizeWebhookReceiptSid(input);
   const eventType = normalizeWebhookReceiptEventType(input.canonicalEventType);
@@ -840,6 +1021,7 @@ export const recordConnectShyftWebhookReceipt = async (input: {
   providerEventId?: string | null;
   providerLegId?: string | null;
   providerMessageId?: string | null;
+  payloadHash?: string | null;
   db?: Knex;
 }): Promise<{
   deterministic: true;
@@ -859,6 +1041,7 @@ export const recordConnectShyftWebhookReceipt = async (input: {
     providerEventId: input.providerEventId,
     providerLegId: input.providerLegId,
     providerMessageId: input.providerMessageId,
+    payloadHash: input.payloadHash,
     db: input.db,
   });
 
@@ -871,7 +1054,7 @@ export const recordConnectShyftWebhookReceipt = async (input: {
     };
   }
 
-  if (started.alreadyApplied) {
+  if (!started.shouldProcess) {
     return {
       deterministic: true,
       duplicate: true,
@@ -927,22 +1110,10 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
   providerEventId?: string | null;
   providerLegId?: string | null;
   providerMessageId?: string | null;
+  payloadHash?: string | null;
   correlationKeys?: Record<string, unknown> | null;
   db?: Knex;
-}): Promise<{
-  deterministic: true;
-  alreadyApplied: boolean;
-  previousStatus: ConnectShyftWebhookReceiptProcessingStatus | null;
-  dedupeKey: string | null;
-  status: ConnectShyftWebhookReceiptProcessingStatus;
-  attemptCount: number;
-  nextRetryAtUtc?: string | null;
-  lastFailureClassification?: ConnectShyftWebhookFailureClassification | null;
-  error?: {
-    code: 'CONNECTSHYFT_WEBHOOK_RECEIPT_PERSISTENCE_UNAVAILABLE';
-    message: string;
-  };
-}> => {
+}): Promise<ConnectShyftWebhookReceiptBeginResult> => {
   const providerName = normalizeProviderName(input.providerName);
   const tenantId = normalizeString(input.tenantId);
   const orgUnitId = normalizeString(input.orgUnitId);
@@ -951,17 +1122,20 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
   const providerEventId = normalizeString(input.providerEventId || null);
   const providerLegId = normalizeString(input.providerLegId || null);
   const providerMessageId = normalizeString(input.providerMessageId || null);
+  const payloadHash = normalizeString(input.payloadHash || null).toLowerCase() || null;
   const dedupeKey = buildWebhookDedupeKey({
     canonicalEventType,
     providerEventId,
     providerLegId,
     providerMessageId,
+    payloadHash,
   });
   const receiptIdentity = buildWebhookReceiptIdentity({
     canonicalEventType,
     providerEventId,
     providerLegId,
     providerMessageId,
+    payloadHash,
   });
   const correlationKeys = (
     input.correlationKeys
@@ -982,6 +1156,7 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
     return {
       deterministic: true,
       alreadyApplied: false,
+      shouldProcess: true,
       previousStatus: null,
       dedupeKey,
       status: 'RECEIVED',
@@ -1008,11 +1183,15 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
         sid: receiptIdentity.sid,
         eventType: receiptIdentity.eventType,
         dedupeKey,
-        status: 'RECEIVED',
+        payloadHash,
+        status: 'PROCESSING',
         firstSeenAtUtc: now,
         lastSeenAtUtc: now,
+        processedAtUtc: null,
         attemptCount: 1,
         correlationKeys,
+        errorCode: null,
+        errorMessage: null,
         failureReason: null,
         nextRetryAtUtc: null,
         lastFailureClassification: null,
@@ -1020,41 +1199,89 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
       return {
         deterministic: true,
         alreadyApplied: false,
+        shouldProcess: true,
         previousStatus: null,
         dedupeKey,
-        status: 'RECEIVED',
+        status: 'PROCESSING',
         attemptCount: 1,
       };
     }
 
     const nextAttemptCount = existing.attemptCount + 1;
-    const alreadyApplied = existing.status === 'APPLIED';
     const previousStatus = existing.status;
-    const nextStatus: ConnectShyftWebhookReceiptProcessingStatus = previousStatus === 'FAILED_TERMINAL'
-      ? 'FAILED_TERMINAL'
-      : alreadyApplied
-        ? 'APPLIED'
-        : 'RECEIVED';
+    if (statusRepresentsProcessedWebhookReceipt(previousStatus)) {
+      inMemoryWebhookReceiptStates.set(inMemoryStateKey, {
+        ...existing,
+        orgUnitId,
+        threadId: threadId || existing.threadId,
+        dedupeKey,
+        payloadHash: existing.payloadHash || payloadHash,
+        status: 'IGNORED_DUPLICATE',
+        lastSeenAtUtc: now,
+        processedAtUtc: existing.processedAtUtc || now,
+        attemptCount: nextAttemptCount,
+        correlationKeys: correlationKeys || existing.correlationKeys,
+      });
+      return {
+        deterministic: true,
+        alreadyApplied: true,
+        shouldProcess: false,
+        previousStatus,
+        dedupeKey,
+        status: 'IGNORED_DUPLICATE',
+        attemptCount: nextAttemptCount,
+      };
+    }
+
+    if (previousStatus === 'PROCESSING' || previousStatus === 'FAILED_TERMINAL') {
+      inMemoryWebhookReceiptStates.set(inMemoryStateKey, {
+        ...existing,
+        orgUnitId,
+        threadId: threadId || existing.threadId,
+        dedupeKey,
+        payloadHash: existing.payloadHash || payloadHash,
+        lastSeenAtUtc: now,
+        attemptCount: nextAttemptCount,
+        correlationKeys: correlationKeys || existing.correlationKeys,
+      });
+      return {
+        deterministic: true,
+        alreadyApplied: false,
+        shouldProcess: false,
+        previousStatus,
+        dedupeKey,
+        status: previousStatus,
+        attemptCount: nextAttemptCount,
+        nextRetryAtUtc: existing.nextRetryAtUtc,
+        lastFailureClassification: existing.lastFailureClassification,
+      };
+    }
+
     inMemoryWebhookReceiptStates.set(inMemoryStateKey, {
       ...existing,
       orgUnitId,
       threadId: threadId || existing.threadId,
       dedupeKey,
-      status: nextStatus,
+      payloadHash: existing.payloadHash || payloadHash,
+      status: 'PROCESSING',
       lastSeenAtUtc: now,
+      processedAtUtc: null,
       attemptCount: nextAttemptCount,
       correlationKeys: correlationKeys || existing.correlationKeys,
-      failureReason: nextStatus === 'APPLIED' ? existing.failureReason : null,
-      nextRetryAtUtc: nextStatus === 'APPLIED' ? null : existing.nextRetryAtUtc,
-      lastFailureClassification: nextStatus === 'APPLIED' ? null : existing.lastFailureClassification,
+      errorCode: null,
+      errorMessage: null,
+      failureReason: null,
+      nextRetryAtUtc: null,
+      lastFailureClassification: null,
     });
 
     return {
       deterministic: true,
-      alreadyApplied,
+      alreadyApplied: false,
+      shouldProcess: true,
       previousStatus,
       dedupeKey,
-      status: nextStatus,
+      status: 'PROCESSING',
       attemptCount: nextAttemptCount,
       nextRetryAtUtc: existing.nextRetryAtUtc,
       lastFailureClassification: existing.lastFailureClassification,
@@ -1088,12 +1315,15 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
         provider_identifier: providerLegId || providerMessageId || null,
         canonical_event_type: canonicalEventType,
         dedupe_key: dedupeKey,
-        processed_at_utc: now,
-        processing_status: 'RECEIVED',
+        payload_hash: payloadHash,
+        processed_at_utc: null,
+        processing_status: 'PROCESSING',
         first_seen_at_utc: now,
         last_seen_at_utc: now,
         attempt_count: 1,
         correlation_keys: correlationKeys,
+        error_code: null,
+        error_message: null,
         failure_reason: null,
         next_retry_at_utc: null,
         last_failure_classification: null,
@@ -1106,9 +1336,10 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
       return {
         deterministic: true,
         alreadyApplied: false,
+        shouldProcess: true,
         previousStatus: null,
         dedupeKey,
-        status: 'RECEIVED',
+        status: 'PROCESSING',
         attemptCount: 1,
       };
     }
@@ -1121,26 +1352,121 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
         'processing_status',
         'attempt_count',
         'thread_id',
+        'dedupe_key',
+        'payload_hash',
+        'processed_at_utc',
+        'first_seen_at_utc',
+        'last_seen_at_utc',
+        'failure_reason',
+        'error_code',
+        'error_message',
+        'next_retry_at_utc',
+        'last_failure_classification',
       ]);
+    const existingState = mapWebhookReceiptRowToState({
+      tenantId,
+      orgUnitId,
+      providerName,
+      sid: receiptIdentity.sid,
+      eventType: receiptIdentity.eventType,
+      row: existing,
+    });
     const existingThreadId = normalizeString(existing?.thread_id);
-    const existingStatus = normalizeWebhookReceiptProcessingStatus(existing?.processing_status);
-    const alreadyApplied = existingStatus === 'APPLIED';
-    const nextStatus: ConnectShyftWebhookReceiptProcessingStatus = existingStatus === 'FAILED_TERMINAL'
-      ? 'FAILED_TERMINAL'
-      : alreadyApplied
-        ? 'APPLIED'
-        : 'RECEIVED';
-    const nextAttemptCount = parseAttemptCount(existing?.attempt_count) + 1;
 
-    await db
+    if (!existingState) {
+      return {
+        deterministic: true,
+        alreadyApplied: false,
+        shouldProcess: true,
+        previousStatus: null,
+        dedupeKey,
+        status: 'RECEIVED',
+        attemptCount: 1,
+      };
+    }
+
+    const nextAttemptCount = existingState.attemptCount + 1;
+
+    if (statusRepresentsProcessedWebhookReceipt(existingState.status)) {
+      await db
+        .withSchema('connectshyft')
+        .table(WEBHOOK_RECEIPTS_TABLE)
+        .where(scope)
+        .update({
+          org_unit_id: orgUnitId,
+          thread_id: threadId || existingThreadId,
+          provider_event_id: providerEventId || null,
+          provider_identifier_kind: providerLegId
+            ? 'call_leg'
+            : providerMessageId
+              ? 'message'
+              : null,
+          provider_identifier: providerLegId || providerMessageId || null,
+          canonical_event_type: canonicalEventType,
+          dedupe_key: dedupeKey,
+          payload_hash: db.raw('COALESCE(payload_hash, ?)', [payloadHash]),
+          processing_status: 'IGNORED_DUPLICATE',
+          last_seen_at_utc: now,
+          processed_at_utc: existingState.processedAtUtc || now,
+          attempt_count: nextAttemptCount,
+          correlation_keys: correlationKeys || existingState.correlationKeys || null,
+        });
+
+      return {
+        deterministic: true,
+        alreadyApplied: true,
+        shouldProcess: false,
+        previousStatus: existingState.status,
+        dedupeKey,
+        status: 'IGNORED_DUPLICATE',
+        attemptCount: nextAttemptCount,
+      };
+    }
+
+    if (existingState.status === 'PROCESSING' || existingState.status === 'FAILED_TERMINAL') {
+      await db
+        .withSchema('connectshyft')
+        .table(WEBHOOK_RECEIPTS_TABLE)
+        .where(scope)
+        .update({
+          org_unit_id: orgUnitId,
+          thread_id: threadId || existingThreadId,
+          provider_event_id: providerEventId || null,
+          provider_identifier_kind: providerLegId
+            ? 'call_leg'
+            : providerMessageId
+              ? 'message'
+              : null,
+          provider_identifier: providerLegId || providerMessageId || null,
+          canonical_event_type: canonicalEventType,
+          dedupe_key: dedupeKey,
+          payload_hash: db.raw('COALESCE(payload_hash, ?)', [payloadHash]),
+          last_seen_at_utc: now,
+          attempt_count: nextAttemptCount,
+          correlation_keys: correlationKeys || existingState.correlationKeys || null,
+        });
+
+      return {
+        deterministic: true,
+        alreadyApplied: false,
+        shouldProcess: false,
+        previousStatus: existingState.status,
+        dedupeKey,
+        status: existingState.status,
+        attemptCount: nextAttemptCount,
+        nextRetryAtUtc: existingState.nextRetryAtUtc,
+        lastFailureClassification: existingState.lastFailureClassification,
+      };
+    }
+
+    const claimed = await db
       .withSchema('connectshyft')
       .table(WEBHOOK_RECEIPTS_TABLE)
       .where(scope)
+      .whereIn('processing_status', ['RECEIVED', 'FAILED_RETRYABLE'])
       .update({
         org_unit_id: orgUnitId,
         thread_id: threadId || existingThreadId,
-        sid: receiptIdentity.sid,
-        event_type: receiptIdentity.eventType,
         provider_event_id: providerEventId || null,
         provider_identifier_kind: providerLegId
           ? 'call_leg'
@@ -1150,30 +1476,77 @@ export const beginConnectShyftWebhookReceiptProcessing = async (input: {
         provider_identifier: providerLegId || providerMessageId || null,
         canonical_event_type: canonicalEventType,
         dedupe_key: dedupeKey,
-        processed_at_utc: now,
-        processing_status: nextStatus,
+        payload_hash: db.raw('COALESCE(payload_hash, ?)', [payloadHash]),
+        processing_status: 'PROCESSING',
+        processed_at_utc: null,
         last_seen_at_utc: now,
         attempt_count: nextAttemptCount,
-        correlation_keys: correlationKeys || null,
+        correlation_keys: correlationKeys || existingState.correlationKeys || null,
+        error_code: null,
+        error_message: null,
         failure_reason: null,
         next_retry_at_utc: null,
         last_failure_classification: null,
       });
 
+    if (claimed > 0) {
+      return {
+        deterministic: true,
+        alreadyApplied: false,
+        shouldProcess: true,
+        previousStatus: existingState.status,
+        dedupeKey,
+        status: 'PROCESSING',
+        attemptCount: nextAttemptCount,
+        nextRetryAtUtc: existingState.nextRetryAtUtc,
+        lastFailureClassification: existingState.lastFailureClassification,
+      };
+    }
+
+    const latest = await db
+      .withSchema('connectshyft')
+      .table(WEBHOOK_RECEIPTS_TABLE)
+      .where(scope)
+      .first([
+        'processing_status',
+        'attempt_count',
+        'thread_id',
+        'dedupe_key',
+        'payload_hash',
+        'processed_at_utc',
+        'first_seen_at_utc',
+        'last_seen_at_utc',
+        'failure_reason',
+        'error_code',
+        'error_message',
+        'next_retry_at_utc',
+        'last_failure_classification',
+      ]);
+    const latestState = mapWebhookReceiptRowToState({
+      tenantId,
+      orgUnitId,
+      providerName,
+      sid: receiptIdentity.sid,
+      eventType: receiptIdentity.eventType,
+      row: latest,
+    });
+
     return {
       deterministic: true,
-      alreadyApplied,
-      previousStatus: existingStatus,
+      alreadyApplied: latestState ? statusRepresentsProcessedWebhookReceipt(latestState.status) : false,
+      shouldProcess: false,
+      previousStatus: latestState?.status || existingState.status,
       dedupeKey,
-      status: nextStatus,
-      attemptCount: nextAttemptCount,
-      nextRetryAtUtc: null,
-      lastFailureClassification: null,
+      status: latestState?.status || existingState.status,
+      attemptCount: latestState?.attemptCount || nextAttemptCount,
+      nextRetryAtUtc: latestState?.nextRetryAtUtc || existingState.nextRetryAtUtc,
+      lastFailureClassification: latestState?.lastFailureClassification || existingState.lastFailureClassification,
     };
   } catch (error) {
     return {
       deterministic: true,
       alreadyApplied: false,
+      shouldProcess: true,
       previousStatus: null,
       dedupeKey,
       status: 'RECEIVED',
@@ -1198,6 +1571,8 @@ export const markConnectShyftWebhookReceiptProcessingResult = async (input: {
   providerLegId?: string | null;
   providerMessageId?: string | null;
   status: ConnectShyftWebhookReceiptProcessingStatus;
+  errorCode?: string | null;
+  errorMessage?: string | null;
   failureReason?: string | null;
   nextRetryAtUtc?: string | null;
   lastFailureClassification?: ConnectShyftWebhookFailureClassification | null;
@@ -1225,7 +1600,12 @@ export const markConnectShyftWebhookReceiptProcessingResult = async (input: {
     providerMessageId,
   });
   const status = normalizeWebhookReceiptProcessingStatus(input.status);
-  const failureReason = normalizeString(input.failureReason || null) || null;
+  const failureMetadata = toFailureMetadata({
+    status,
+    errorCode: input.errorCode,
+    errorMessage: input.errorMessage,
+    failureReason: input.failureReason,
+  });
   const nextRetryAtUtc = normalizeString(input.nextRetryAtUtc || null) || null;
   const lastFailureClassification = input.lastFailureClassification || null;
   const now = new Date().toISOString();
@@ -1258,9 +1638,12 @@ export const markConnectShyftWebhookReceiptProcessingResult = async (input: {
       ...existingInMemory,
       status,
       lastSeenAtUtc: now,
-      failureReason: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
-        ? failureReason
+      processedAtUtc: statusRepresentsProcessedWebhookReceipt(status)
+        ? existingInMemory.processedAtUtc || now
         : null,
+      errorCode: failureMetadata.errorCode,
+      errorMessage: failureMetadata.errorMessage,
+      failureReason: failureMetadata.failureReason,
       nextRetryAtUtc: status === 'FAILED_RETRYABLE' ? nextRetryAtUtc : null,
       lastFailureClassification: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
         ? lastFailureClassification
@@ -1295,14 +1678,16 @@ export const markConnectShyftWebhookReceiptProcessingResult = async (input: {
       sid: fallbackSid,
       eventType: fallbackEventType,
       dedupeKey: fallbackDedupeKey,
+      payloadHash: null,
       status,
       firstSeenAtUtc: now,
       lastSeenAtUtc: now,
+      processedAtUtc: statusRepresentsProcessedWebhookReceipt(status) ? now : null,
       attemptCount: 1,
       correlationKeys: null,
-      failureReason: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
-        ? failureReason
-        : null,
+      errorCode: failureMetadata.errorCode,
+      errorMessage: failureMetadata.errorMessage,
+      failureReason: failureMetadata.failureReason,
       nextRetryAtUtc: status === 'FAILED_RETRYABLE' ? nextRetryAtUtc : null,
       lastFailureClassification: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
         ? lastFailureClassification
@@ -1346,10 +1731,10 @@ export const markConnectShyftWebhookReceiptProcessingResult = async (input: {
       .update({
         processing_status: status,
         last_seen_at_utc: now,
-        processed_at_utc: now,
-        failure_reason: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
-          ? failureReason
-          : null,
+        processed_at_utc: statusRepresentsProcessedWebhookReceipt(status) ? now : null,
+        error_code: failureMetadata.errorCode,
+        error_message: failureMetadata.errorMessage,
+        failure_reason: failureMetadata.failureReason,
         next_retry_at_utc: status === 'FAILED_RETRYABLE' ? nextRetryAtUtc : null,
         last_failure_classification: status === 'FAILED_RETRYABLE' || status === 'FAILED_TERMINAL'
           ? lastFailureClassification

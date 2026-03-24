@@ -6610,6 +6610,38 @@ const performOutboundAction = async ({
 
 registerConnectShyftThreadOutboundCoreExecutor(performOutboundAction);
 
+const serializeConnectShyftWebhookPayload = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return 'null';
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => serializeConnectShyftWebhookPayload(item)).join(',')}]`;
+  }
+
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const entries = Object.keys(record)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${serializeConnectShyftWebhookPayload(record[key])}`);
+    return `{${entries.join(',')}}`;
+  }
+
+  return JSON.stringify(value);
+};
+
+const computeConnectShyftWebhookPayloadHash = (req: Request): string => {
+  const requestWithRawBody = req as Request & { rawBody?: Buffer | string };
+  const rawBody = requestWithRawBody.rawBody;
+  const serialized = Buffer.isBuffer(rawBody)
+    ? rawBody
+    : typeof rawBody === 'string'
+      ? rawBody
+      : serializeConnectShyftWebhookPayload(req.body);
+
+  return createHash('sha256').update(serialized).digest('hex');
+};
+
 const performInboundWebhook = async ({
   req,
   res,
@@ -6624,9 +6656,21 @@ const performInboundWebhook = async ({
 }: ConnectShyftInboundWebhookCoreExecutionInput): Promise<void> => {
   const isTranscriptionCallbackEvent = isConnectShyftVoicemailTranscriptionCallbackEventType(eventType);
   const isConnectedCallEvent = CONNECTSHYFT_CONNECTED_CALL_EVENT_TYPES.has(normalizedEventType);
+  const payloadHash = computeConnectShyftWebhookPayloadHash(req);
   const webhookPersistenceDb = isConnectShyftTestOverrideEnabled()
     ? undefined
     : loadPlatformDb();
+  logger.info('ConnectShyft inbound webhook received', {
+    tenantId,
+    orgUnitId,
+    threadId,
+    eventType,
+    payloadHash,
+    providerName: providerSelection.providerResolution.resolvedProvider,
+    providerEventId: correlation.providerEventId,
+    providerLegId: correlation.providerLegId,
+    providerMessageId: correlation.providerMessageId,
+  });
 
   if (isTranscriptionCallbackEvent) {
     const callbackPayload = extractConnectShyftVoicemailTranscriptionCallbackPayload(req.body);
@@ -6685,6 +6729,7 @@ const performInboundWebhook = async ({
       providerEventId: callbackInboundProviderEventId,
       providerLegId: correlation.providerLegId,
       providerMessageId: correlation.providerMessageId,
+      payloadHash,
       correlationKeys: {
         tenantId,
         orgUnitId,
@@ -6734,11 +6779,19 @@ const performInboundWebhook = async ({
       return;
     }
 
-    const shouldSuppressTranscriptionDuplicate = transcriptionReceipt.alreadyApplied
-      || transcriptionReceipt.previousStatus === 'RECEIVED'
-      || transcriptionReceipt.previousStatus === 'FAILED_TERMINAL';
+    const shouldSuppressTranscriptionDuplicate = !transcriptionReceipt.shouldProcess;
 
     if (shouldSuppressTranscriptionDuplicate) {
+      logger.info('ConnectShyft transcription webhook duplicate suppressed', {
+        tenantId,
+        orgUnitId,
+        threadId,
+        eventType,
+        payloadHash,
+        dedupeKey: transcriptionReceipt.dedupeKey,
+        previousStatus: transcriptionReceipt.previousStatus,
+        providerName: providerSelection.providerResolution.resolvedProvider,
+      });
       success(res, {
         code: 'CONNECTSHYFT_TRANSCRIPTION_CALLBACK_DUPLICATE_SUPPRESSED',
         message: 'Transcription callback duplicate suppressed',
@@ -6824,6 +6877,15 @@ const performInboundWebhook = async ({
           failureReason: 'voicemail_artifact_persistence_unavailable',
           db: webhookPersistenceDb,
         });
+        logger.warn('ConnectShyft transcription webhook processing failed', {
+          tenantId,
+          orgUnitId,
+          threadId,
+          eventType,
+          payloadHash,
+          dedupeKey: transcriptionReceipt.dedupeKey,
+          failureReason: 'voicemail_artifact_persistence_unavailable',
+        });
         refusal(res, {
           code: 'CONNECTSHYFT_VOICEMAIL_ARTIFACT_PERSISTENCE_UNAVAILABLE',
           message: 'Transcription callback could not load voicemail artifact persistence state.',
@@ -6876,6 +6938,19 @@ const performInboundWebhook = async ({
             ? 'callback_correlation_unresolved'
             : 'transcript_text_missing',
         db: webhookPersistenceDb,
+      });
+      logger.warn('ConnectShyft transcription webhook processing failed', {
+        tenantId,
+        orgUnitId,
+        threadId,
+        eventType,
+        payloadHash,
+        dedupeKey: transcriptionReceipt.dedupeKey,
+        failureReason: !callbackMatchesResolvedScope
+          ? 'callback_correlation_scope_invalid'
+          : !persistedVoicemailArtifact
+            ? 'callback_correlation_unresolved'
+            : 'transcript_text_missing',
       });
       refusal(res, {
         code: 'CONNECTSHYFT_TRANSCRIPTION_CORRELATION_INVALID',
@@ -6960,6 +7035,15 @@ const performInboundWebhook = async ({
         failureReason: 'voicemail_artifact_persistence_error',
         db: webhookPersistenceDb,
       });
+      logger.warn('ConnectShyft transcription webhook processing failed', {
+        tenantId,
+        orgUnitId,
+        threadId,
+        eventType,
+        payloadHash,
+        dedupeKey: transcriptionReceipt.dedupeKey,
+        failureReason: 'voicemail_artifact_persistence_error',
+      });
       refusal(res, {
         code: 'CONNECTSHYFT_TRANSCRIPTION_ATTACHMENT_UNAVAILABLE',
         message: 'Transcription callback could not persist voicemail artifact side effects.',
@@ -7024,6 +7108,15 @@ const performInboundWebhook = async ({
         failureReason: 'canonical_event_persistence_error',
         db: webhookPersistenceDb,
       });
+      logger.warn('ConnectShyft transcription webhook processing failed', {
+        tenantId,
+        orgUnitId,
+        threadId,
+        eventType,
+        payloadHash,
+        dedupeKey: transcriptionReceipt.dedupeKey,
+        failureReason: 'canonical_event_persistence_error',
+      });
       refusal(res, {
         code: 'CONNECTSHYFT_TRANSCRIPTION_ATTACHMENT_UNAVAILABLE',
         message: 'Transcription callback could not persist attachment side effects.',
@@ -7065,6 +7158,15 @@ const performInboundWebhook = async ({
       providerMessageId: correlation.providerMessageId,
       status: 'APPLIED',
       db: webhookPersistenceDb,
+    });
+    logger.info('ConnectShyft transcription webhook processing succeeded', {
+      tenantId,
+      orgUnitId,
+      threadId,
+      eventType,
+      payloadHash,
+      dedupeKey: transcriptionReceipt.dedupeKey,
+      providerName: providerSelection.providerResolution.resolvedProvider,
     });
 
     success(res, {
@@ -7118,6 +7220,7 @@ const performInboundWebhook = async ({
     providerEventId: correlation.providerEventId,
     providerLegId: correlation.providerLegId,
     providerMessageId: correlation.providerMessageId,
+    payloadHash,
     correlationKeys: {
       tenantId,
       orgUnitId,
@@ -7226,6 +7329,33 @@ const performInboundWebhook = async ({
       lastFailureClassification: normalizedFailureClassification,
       db: webhookPersistenceDb,
     });
+    if (persistedStatus === 'APPLIED') {
+      logger.info('ConnectShyft inbound webhook processing succeeded', {
+        tenantId,
+        orgUnitId,
+        threadId,
+        eventType,
+        payloadHash,
+        dedupeKey: webhookReceipt.dedupeKey,
+        persistedStatus,
+        failureReason: failureReason || null,
+        nextRetryAtUtc,
+        providerName: providerSelection.providerResolution.resolvedProvider,
+      });
+    } else {
+      logger.warn('ConnectShyft inbound webhook processing failed', {
+        tenantId,
+        orgUnitId,
+        threadId,
+        eventType,
+        payloadHash,
+        dedupeKey: webhookReceipt.dedupeKey,
+        persistedStatus,
+        failureReason: failureReason || null,
+        nextRetryAtUtc,
+        providerName: providerSelection.providerResolution.resolvedProvider,
+      });
+    }
     await appendConnectShyftCommunicationAudit({
       tenantId,
       correlationId: webhookReceipt.dedupeKey || correlation.providerEventId || randomUUID(),
@@ -7256,11 +7386,19 @@ const performInboundWebhook = async ({
     });
   };
 
-  const shouldSuppressWebhookDuplicate = webhookReceipt.alreadyApplied
-    || webhookReceipt.previousStatus === 'RECEIVED'
-    || webhookReceipt.previousStatus === 'FAILED_TERMINAL';
+  const shouldSuppressWebhookDuplicate = !webhookReceipt.shouldProcess;
 
   if (shouldSuppressWebhookDuplicate) {
+    logger.info('ConnectShyft inbound webhook duplicate suppressed', {
+      tenantId,
+      orgUnitId,
+      threadId,
+      eventType,
+      payloadHash,
+      dedupeKey: webhookReceipt.dedupeKey,
+      previousStatus: webhookReceipt.previousStatus,
+      providerName: providerSelection.providerResolution.resolvedProvider,
+    });
     await appendConnectShyftCommunicationAudit({
       tenantId,
       correlationId: webhookReceipt.dedupeKey || correlation.providerEventId || randomUUID(),

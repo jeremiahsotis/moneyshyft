@@ -347,9 +347,30 @@ describe('connectshyft provider correlation mappings', () => {
     expect(first).toMatchObject({
       deterministic: true,
       alreadyApplied: false,
+      shouldProcess: true,
       dedupeKey: 'provider-event:provider-event-f3-transcription-1001',
-      status: 'RECEIVED',
+      status: 'PROCESSING',
       attemptCount: 1,
+    });
+
+    const duplicateWhileProcessing = await beginConnectShyftWebhookReceiptProcessing({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'provider-a',
+      canonicalEventType: 'VoiceTranscriptionCompleted',
+      providerEventId: 'provider-event-f3-transcription-1001',
+      providerLegId: 'provider-leg-f3-1001',
+    });
+
+    expect(duplicateWhileProcessing).toMatchObject({
+      deterministic: true,
+      alreadyApplied: false,
+      shouldProcess: false,
+      previousStatus: 'PROCESSING',
+      dedupeKey: 'provider-event:provider-event-f3-transcription-1001',
+      status: 'PROCESSING',
+      attemptCount: 2,
     });
 
     const markedRetryableFailure = await markConnectShyftWebhookReceiptProcessingResult({
@@ -374,9 +395,11 @@ describe('connectshyft provider correlation mappings', () => {
     expect(second).toMatchObject({
       deterministic: true,
       alreadyApplied: false,
+      shouldProcess: true,
+      previousStatus: 'FAILED_RETRYABLE',
       dedupeKey: 'provider-event:provider-event-f3-transcription-1001',
-      status: 'RECEIVED',
-      attemptCount: 2,
+      status: 'PROCESSING',
+      attemptCount: 3,
     });
 
     const markedApplied = await markConnectShyftWebhookReceiptProcessingResult({
@@ -400,9 +423,11 @@ describe('connectshyft provider correlation mappings', () => {
     expect(duplicateAfterApplied).toMatchObject({
       deterministic: true,
       alreadyApplied: true,
+      shouldProcess: false,
+      previousStatus: 'APPLIED',
       dedupeKey: 'provider-event:provider-event-f3-transcription-1001',
-      status: 'APPLIED',
-      attemptCount: 3,
+      status: 'IGNORED_DUPLICATE',
+      attemptCount: 4,
     });
   });
 
@@ -451,7 +476,8 @@ describe('connectshyft provider correlation mappings', () => {
 
     expect(retried).toMatchObject({
       previousStatus: 'FAILED_RETRYABLE',
-      status: 'RECEIVED',
+      shouldProcess: true,
+      status: 'PROCESSING',
       attemptCount: 2,
       nextRetryAtUtc,
       lastFailureClassification: {
@@ -460,6 +486,53 @@ describe('connectshyft provider correlation mappings', () => {
         httpStatus: 429,
         providerCode: 'rate_limited',
       },
+    });
+  });
+
+  it('falls back to payload-hash identity when provider identifiers are unavailable', async () => {
+    const first = await beginConnectShyftWebhookReceiptProcessing({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'provider-a',
+      canonicalEventType: 'VoiceVoicemail',
+      payloadHash: 'hash-only-webhook-1001',
+    });
+
+    expect(first).toMatchObject({
+      deterministic: true,
+      alreadyApplied: false,
+      shouldProcess: true,
+      dedupeKey: 'payload:hash-only-webhook-1001|event:voicevoicemail',
+      status: 'PROCESSING',
+      attemptCount: 1,
+    });
+
+    await markConnectShyftWebhookReceiptProcessingResult({
+      tenantId: 'tenant-connectshyft-f3',
+      providerName: 'provider-a',
+      dedupeKey: first.dedupeKey,
+      canonicalEventType: 'VoiceVoicemail',
+      status: 'APPLIED',
+    });
+
+    const duplicate = await beginConnectShyftWebhookReceiptProcessing({
+      tenantId: 'tenant-connectshyft-f3',
+      orgUnitId: 'org-connectshyft-f3-east',
+      threadId: 'thread-f3-unclaimed-1001',
+      providerName: 'provider-a',
+      canonicalEventType: 'VoiceVoicemail',
+      payloadHash: 'hash-only-webhook-1001',
+    });
+
+    expect(duplicate).toMatchObject({
+      deterministic: true,
+      alreadyApplied: true,
+      shouldProcess: false,
+      previousStatus: 'APPLIED',
+      dedupeKey: 'payload:hash-only-webhook-1001|event:voicevoicemail',
+      status: 'IGNORED_DUPLICATE',
+      attemptCount: 2,
     });
   });
 

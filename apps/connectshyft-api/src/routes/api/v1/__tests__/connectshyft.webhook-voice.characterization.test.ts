@@ -1134,6 +1134,54 @@ describe('connectshyft inbound voice webhook route characterization', () => {
     ].sort());
   });
 
+  it('retries a failed inbound voice webhook safely on replay without duplicating voicemail artifacts', async () => {
+    recordCanonicalEventSpy.mockRejectedValueOnce(new Error('voice-canonical-down'));
+    const app = buildApp();
+    const body = buildVoiceWebhookBody({
+      providerEventId: 'provider-event-voice-retry-1005',
+      providerLegId: 'provider-leg-voice-retry-1005',
+      recordingUrl: 'https://connectshyft.test/inbound-voice-retry-1005.mp3',
+    });
+
+    const firstResponse = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildVoiceHeaders())
+      .send(body);
+    const replayResponse = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildVoiceHeaders())
+      .send(body);
+
+    expect(firstResponse.status).toBe(200);
+    expect(firstResponse.body.code).toBe('CONNECTSHYFT_CANONICAL_EVENT_PERSISTENCE_UNAVAILABLE');
+    expect(replayResponse.status).toBe(200);
+    expect(replayResponse.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+      data: {
+        replaySafe: {
+          duplicate: false,
+          suppressedDomainWrites: false,
+          dedupeKey: 'provider-event:provider-event-voice-retry-1005',
+        },
+      },
+    });
+
+    const persistedVoicemails = await connectShyftVoicemailServiceAsync.listThreadVoicemails({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: 'thread-f1-unclaimed-1001',
+    });
+
+    expect(persistedVoicemails).toHaveLength(1);
+    expect(persistedVoicemails[0]).toMatchObject({
+      providerEventId: 'provider-event-voice-retry-1005',
+      providerLegId: 'provider-leg-voice-retry-1005',
+      recordingUrl: 'https://connectshyft.test/inbound-voice-retry-1005.mp3',
+    });
+    expect(recordCanonicalEventSpy).toHaveBeenCalledTimes(2);
+  });
+
   it('persists one inbound voicemail artifact after replayed recording callbacks', async () => {
     const app = buildApp();
     const body = buildVoiceWebhookBody({

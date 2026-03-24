@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { refusal } from '../../../platform/envelopes/response';
+import logger from '../../../utils/logger';
 import {
   buildConnectShyftWebhookVerificationInput,
   mapConnectShyftWebhookVerificationResult,
@@ -352,6 +353,12 @@ export const resolveConnectShyftInboundWebhookAccessContext = async (
     ),
   );
   if (!signatureDecision.ok) {
+    logger.warn('ConnectShyft inbound webhook signature validation failed', {
+      routeKind,
+      providerName: providerSelection.providerResolution.resolvedProvider,
+      code: signatureDecision.refusal.code,
+      httpStatus: signatureDecision.refusal.httpStatus,
+    });
     const signatureMessageKey = signatureDecision.refusal.code === 'CONNECTSHYFT_WEBHOOK_SIGNATURE_MISSING'
       ? 'connectshyft.webhook.signature.missing'
       : signatureDecision.refusal.code === 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED'
