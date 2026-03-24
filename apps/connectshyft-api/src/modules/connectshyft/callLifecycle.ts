@@ -125,10 +125,22 @@ export interface HandleVoicemailInput {
   threadId: string;
   personId: string;
   artifactId: string;
+  bridgeSessionId?: string | null;
+  contactPointId?: string | null;
+  direction?: 'inbound' | 'outbound';
   recordingUrl: string | null;
   recordingStatus: 'pending' | 'completed' | 'failed';
+  providerEventId?: string | null;
+  providerLegId?: string | null;
+  providerRecordingId?: string | null;
   occurredAt: Date;
   transcriptionJson?: unknown;
+  transcriptionStatus?: 'pending' | 'completed' | 'failed' | null;
+  transcriptionText?: string | null;
+  transcriptionProvider?: string | null;
+  transcriptionRequestedAtUtc?: string | null;
+  transcriptionCompletedAtUtc?: string | null;
+  transcriptionFailedAtUtc?: string | null;
 }
 
 export interface ConnectShyftCallLifecycleService {
@@ -1045,17 +1057,29 @@ export const buildConnectShyftCallLifecycleService = (
         }
       }
 
-      const voicemail = await voicemailService.createVoicemail({
+      const voicemail = await voicemailService.upsertVoicemailArtifact({
         tenantId: input.tenantId,
         orgUnitId: input.orgUnitId,
         callId: input.callId,
         threadId: input.threadId,
         personId: input.personId,
         artifactId: input.artifactId,
+        bridgeSessionId: input.bridgeSessionId || bridgeAggregate?.session.id || null,
+        contactPointId: input.contactPointId || bridgeAggregate?.neighborLeg.contactPointId || null,
+        direction: input.direction || 'outbound',
         recordingUrl: input.recordingUrl,
         recordingStatus: input.recordingStatus,
+        providerEventId: input.providerEventId || null,
+        providerLegId: input.providerLegId || null,
+        providerRecordingId: input.providerRecordingId || null,
         occurredAtUtc: input.occurredAt.toISOString(),
         transcriptionJson: input.transcriptionJson,
+        transcriptionStatus: input.transcriptionStatus ?? null,
+        transcriptionText: input.transcriptionText ?? null,
+        transcriptionProvider: input.transcriptionProvider ?? null,
+        transcriptionRequestedAtUtc: input.transcriptionRequestedAtUtc ?? null,
+        transcriptionCompletedAtUtc: input.transcriptionCompletedAtUtc ?? null,
+        transcriptionFailedAtUtc: input.transcriptionFailedAtUtc ?? null,
       });
 
       if (shouldApplyCallUpdate(call.status, 'voicemail')) {

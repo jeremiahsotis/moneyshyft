@@ -372,7 +372,7 @@ describe('connectshyft thread timeline projection', () => {
         updatedAtUtc: '2026-03-19T10:01:30.000Z',
       },
     ]);
-    jest.spyOn(voicemailsModule.connectShyftVoicemailServiceAsync, 'listCallVoicemails').mockResolvedValueOnce([
+    jest.spyOn(voicemailsModule.connectShyftVoicemailServiceAsync, 'listThreadVoicemails').mockResolvedValueOnce([
       {
         id: 'voicemail-timeline-1001',
         tenantId: 'tenant-connectshyft-f1',
@@ -381,12 +381,27 @@ describe('connectshyft thread timeline projection', () => {
         threadId: 'thread-timeline-persisted-1001',
         personId: 'person-connectshyft-f1-1001',
         artifactId: 'artifact-timeline-1001',
+        bridgeSessionId: 'bridge-timeline-1001',
+        contactPointId: '+13175550100',
+        direction: 'inbound',
         recordingUrl: 'https://example.test/timeline-vm.mp3',
         recordingStatus: 'completed',
+        providerEventId: 'provider-event-vm-1001',
+        providerLegId: 'provider-leg-vm-1001',
+        providerRecordingId: 'provider-recording-vm-1001',
         occurredAtUtc: '2026-03-19T10:02:00.000Z',
         createdAtUtc: '2026-03-19T10:02:00.000Z',
         updatedAtUtc: '2026-03-19T10:02:00.000Z',
-        transcriptionJson: null,
+        transcriptionStatus: 'completed',
+        transcriptionText: 'Please call me back after 5.',
+        transcriptionProvider: 'telnyx',
+        transcriptionRequestedAtUtc: '2026-03-19T10:02:00.000Z',
+        transcriptionCompletedAtUtc: '2026-03-19T10:02:20.000Z',
+        transcriptionFailedAtUtc: null,
+        transcriptionJson: {
+          status: 'completed',
+          text: 'Please call me back after 5.',
+        },
       },
     ]);
 
@@ -437,13 +452,23 @@ describe('connectshyft thread timeline projection', () => {
       expect.objectContaining({
         id: 'voicemail-voicemail-timeline-1001',
         type: 'voicemail',
+        direction: 'inbound',
         occurredAtUtc: '2026-03-19T10:02:00.000Z',
         deliveryStatus: 'completed',
         recordingUrl: 'https://example.test/timeline-vm.mp3',
+        transcript: 'Please call me back after 5.',
         providerMetadata: {
           callId: 'call-timeline-1001',
+          bridgeSessionId: 'bridge-timeline-1001',
+          contactPointId: '+13175550100',
           artifactId: 'artifact-timeline-1001',
+          direction: 'inbound',
           recordingStatus: 'completed',
+          providerEventId: 'provider-event-vm-1001',
+          providerLegId: 'provider-leg-vm-1001',
+          providerRecordingId: 'provider-recording-vm-1001',
+          transcriptionStatus: 'completed',
+          transcriptionProvider: 'telnyx',
         },
       }),
     ]);

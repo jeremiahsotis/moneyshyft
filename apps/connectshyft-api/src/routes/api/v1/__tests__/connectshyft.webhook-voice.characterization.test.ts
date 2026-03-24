@@ -15,6 +15,10 @@ import * as providerCorrelationMappingsModule from '../../../../modules/connects
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings';
 import type { ConnectShyftProviderAdapter } from '../../../../modules/connectshyft/providerRegistry';
 import {
+  connectShyftVoicemailServiceAsync,
+  resetConnectShyftVoicemailStateForTests,
+} from '../../../../modules/connectshyft/voicemails';
+import {
   buildApp,
   buildHeaders,
   registerProviderRegistryRouteIntegrationHooks,
@@ -252,6 +256,7 @@ describe('connectshyft inbound voice webhook route characterization', () => {
     resetConnectShyftBridgeSessionStateForTests();
     resetConnectShyftCanonicalEventsForTests();
     resetConnectShyftProviderCorrelationStateForTests();
+    resetConnectShyftVoicemailStateForTests();
 
     resolveOperatorDestinationSpy = jest.spyOn(
       OperatorDestinationResolverModule,
@@ -1127,5 +1132,87 @@ describe('connectshyft inbound voice webhook route characterization', () => {
       'sideEffects',
       'timelineOutcome',
     ].sort());
+  });
+
+  it('persists one inbound voicemail artifact after replayed recording callbacks', async () => {
+    const app = buildApp();
+    const body = buildVoiceWebhookBody({
+      providerEventId: 'provider-event-voice-persisted-2001',
+      providerLegId: 'provider-leg-voice-persisted-2001',
+      recordingUrl: 'https://connectshyft.test/inbound-voicemail-persisted-2001.mp3',
+    });
+
+    const firstResponse = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildVoiceHeaders())
+      .send(body);
+    const duplicateResponse = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildVoiceHeaders())
+      .send(body);
+
+    expect(firstResponse.status).toBe(200);
+    expect(duplicateResponse.status).toBe(200);
+
+    const persistedVoicemails = await connectShyftVoicemailServiceAsync.listThreadVoicemails({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: 'thread-f1-unclaimed-1001',
+    });
+
+    expect(persistedVoicemails).toHaveLength(1);
+    expect(persistedVoicemails[0]).toMatchObject({
+      artifactId: 'vm-thread-f1-unclaimed-1001-provider-event-voice-persisted-2001',
+      direction: 'inbound',
+      providerEventId: 'provider-event-voice-persisted-2001',
+      providerLegId: 'provider-leg-voice-persisted-2001',
+      recordingUrl: 'https://connectshyft.test/inbound-voicemail-persisted-2001.mp3',
+      recordingStatus: 'completed',
+      transcriptionStatus: 'pending',
+    });
+  });
+
+  it('persists one outbound voicemail artifact after replayed recording callbacks', async () => {
+    const app = buildApp();
+    const seeded = await seedOutboundVoicemailBridgeSession({
+      threadId: 'thread-f1-outbound-voicemail-2002',
+      providerCallControlId: 'provider-leg-voicemail-recording-2002',
+    });
+    const body = buildVoiceWebhookBody({
+      threadId: 'thread-f1-outbound-voicemail-2002',
+      providerEventId: 'provider-event-outbound-voicemail-2002',
+      providerLegId: seeded.providerCallControlId,
+      recordingUrl: 'https://connectshyft.test/outbound-voicemail-persisted-2002.mp3',
+    });
+
+    const firstResponse = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildVoiceHeaders())
+      .send(body);
+    const duplicateResponse = await request(app)
+      .post('/api/v1/connectshyft/webhooks/inbound')
+      .set(buildVoiceHeaders())
+      .send(body);
+
+    expect(firstResponse.status).toBe(200);
+    expect(duplicateResponse.status).toBe(200);
+
+    const persistedVoicemails = await connectShyftVoicemailServiceAsync.listThreadVoicemails({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: 'thread-f1-outbound-voicemail-2002',
+    });
+
+    expect(persistedVoicemails).toHaveLength(1);
+    expect(persistedVoicemails[0]).toMatchObject({
+      artifactId: 'vm-thread-f1-outbound-voicemail-2002-provider-event-outbound-voicemail-2002',
+      bridgeSessionId: seeded.bridgeSessionId,
+      direction: 'outbound',
+      providerEventId: 'provider-event-outbound-voicemail-2002',
+      providerLegId: 'provider-leg-voicemail-recording-2002',
+      recordingUrl: 'https://connectshyft.test/outbound-voicemail-persisted-2002.mp3',
+      recordingStatus: 'completed',
+      transcriptionStatus: 'pending',
+    });
   });
 });

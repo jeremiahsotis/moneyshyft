@@ -437,20 +437,28 @@ const buildVoicemailTimelineItem = (voicemail: Voicemail): ConnectShyftVoicemail
   id: `voicemail-${voicemail.id}`,
   threadId: voicemail.threadId,
   type: 'voicemail',
-  direction: 'outbound',
+  direction: voicemail.direction,
   channel: 'voicemail',
   body: null,
   occurredAtUtc: voicemail.occurredAtUtc,
-  actor: 'system',
+  actor: voicemail.direction === 'inbound' ? 'neighbor' : 'user',
   providerMetadata: {
     callId: voicemail.callId,
+    bridgeSessionId: voicemail.bridgeSessionId,
+    contactPointId: voicemail.contactPointId,
     artifactId: voicemail.artifactId,
+    direction: voicemail.direction,
     recordingStatus: voicemail.recordingStatus,
+    providerEventId: voicemail.providerEventId,
+    providerLegId: voicemail.providerLegId,
+    providerRecordingId: voicemail.providerRecordingId,
+    transcriptionStatus: voicemail.transcriptionStatus,
+    transcriptionProvider: voicemail.transcriptionProvider,
   },
   deliveryStatus: voicemail.recordingStatus,
   recordingUrl: voicemail.recordingUrl,
   durationSeconds: null,
-  transcript: null,
+  transcript: voicemail.transcriptionText,
 });
 
 const CONNECTSHYFT_TIMELINE_MAPPERS = new Map<string, TimelineEventMapper>([
@@ -583,13 +591,12 @@ export const getThreadTimeline = async (
   });
 
   try {
-    const persistedVoicemails = await Promise.all(
-      persistedCalls.map((call) => connectShyftVoicemailServiceAsync.listCallVoicemails({
-        tenantId: input.tenantId,
-        callId: call.id,
-      })),
-    );
-    persistedVoicemails.flat().forEach((voicemail) => {
+    const persistedVoicemails = await connectShyftVoicemailServiceAsync.listThreadVoicemails({
+      tenantId: input.tenantId,
+      orgUnitId: input.orgUnitId,
+      threadId,
+    });
+    persistedVoicemails.forEach((voicemail) => {
       items.push(buildVoicemailTimelineItem(voicemail));
     });
   } catch (error) {

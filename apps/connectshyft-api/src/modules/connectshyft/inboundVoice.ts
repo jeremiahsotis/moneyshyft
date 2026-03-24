@@ -29,6 +29,13 @@ const CONNECTSHYFT_INBOUND_VOICE_RECORDING_URL_KEYS = [
   'recording_url',
 ] as const;
 
+const CONNECTSHYFT_INBOUND_VOICE_RECORDING_ID_KEYS = [
+  'recordingId',
+  'recording_id',
+  'providerRecordingId',
+  'provider_recording_id',
+] as const;
+
 const CONNECTSHYFT_INBOUND_VOICE_DURATION_KEYS = [
   'voicemail_duration_seconds',
   'duration_seconds',
@@ -134,6 +141,7 @@ export type ConnectShyftInboundVoiceArtifact = {
   providerEventId: string | null;
   providerMessageId: string | null;
   providerLegId: string | null;
+  providerRecordingId: string | null;
   from: string | null;
   to: string | null;
   recordingUrl: string | null;
@@ -355,6 +363,7 @@ export const mapConnectShyftInboundVoiceWebhookToDomainEvent = (input: {
   const from = readFromSources(sources, CONNECTSHYFT_INBOUND_VOICE_FROM_KEYS);
   const to = readFromSources(sources, CONNECTSHYFT_INBOUND_VOICE_TO_KEYS);
   const recordingUrl = readFromSources(sources, CONNECTSHYFT_INBOUND_VOICE_RECORDING_URL_KEYS);
+  const providerRecordingId = readFromSources(sources, CONNECTSHYFT_INBOUND_VOICE_RECORDING_ID_KEYS);
   const durationSeconds = readDurationFromSources(sources, CONNECTSHYFT_INBOUND_VOICE_DURATION_KEYS);
 
   return {
@@ -369,6 +378,7 @@ export const mapConnectShyftInboundVoiceWebhookToDomainEvent = (input: {
       providerEventId: input.providerEventId,
       providerMessageId: input.providerMessageId,
       providerLegId: input.providerLegId,
+      providerRecordingId,
       from,
       to,
       recordingUrl,
