@@ -85,6 +85,9 @@ const csrfProtection = useMinimalAppShell
 const connectShyftRouter = useMinimalAppShell
   ? express.Router()
   : require('./routes/api/v1/connectshyft').default;
+const postMergePerson = useMinimalAppShell
+  ? null
+  : require('./modules/peoplecore/handlers/postMergePerson').postMergePerson;
 
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -203,6 +206,9 @@ app.post('/people/resolver-reviews', (req: any, res: any) => {
 });
 
 app.use(csrfProtection);
+if (postMergePerson) {
+  app.post('/api/v1/peoplecore/persons/merge', postMergePerson);
+}
 app.use('/api/v1/connectshyft', connectShyftRouter);
 
 app.use((req: any, res: any) => {
