@@ -71,12 +71,20 @@ export interface ListPersonCallsInput {
   personId: string;
 }
 
+export interface RebindCallPersonInput {
+  tenantId: string;
+  orgUnitId: string;
+  provisionalPersonId: string;
+  canonicalPersonId: string;
+}
+
 export interface ConnectShyftCallService {
   createCall(input: CreateCallInput): Promise<Call>;
   updateCallStatus(input: UpdateCallStatusInput): Promise<void>;
   listThreadCalls(input: ListThreadCallsInput): Promise<Call[]>;
   listPersonCalls(input: ListPersonCallsInput): Promise<Call[]>;
   getCallById(callId: string, tenantId: string): Promise<Call | null>;
+  rebindPersonCalls(input: RebindCallPersonInput): Promise<void>;
 }
 
 type DbCallRow = {
@@ -266,12 +274,29 @@ class InMemoryConnectShyftCallStore implements ConnectShyftCallService {
     return record;
   }
 
+  async rebindPersonCalls(input: RebindCallPersonInput): Promise<void> {
+    this.records.forEach((call, callId) => {
+      if (
+        call.tenantId !== input.tenantId
+        || call.orgUnitId !== input.orgUnitId
+        || call.personId !== input.provisionalPersonId
+      ) {
+        return;
+      }
+
+      this.records.set(callId, {
+        ...call,
+        personId: input.canonicalPersonId,
+      });
+    });
+  }
+
   reset(): void {
     this.records.clear();
   }
 }
 
-class KnexConnectShyftCallStore implements ConnectShyftCallService {
+export class KnexConnectShyftCallStore implements ConnectShyftCallService {
   constructor(private readonly knexClient: Knex = db) {}
 
   private table() {
@@ -388,6 +413,18 @@ class KnexConnectShyftCallStore implements ConnectShyftCallService {
 
     return row ? mapCallRow(row) : null;
   }
+
+  async rebindPersonCalls(input: RebindCallPersonInput): Promise<void> {
+    await this.table()
+      .where({
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+        person_id: input.provisionalPersonId,
+      })
+      .update({
+        person_id: input.canonicalPersonId,
+      });
+  }
 }
 
 const inMemoryConnectShyftCallStore = new InMemoryConnectShyftCallStore();
@@ -462,6 +499,22 @@ class AsyncConnectShyftCallService implements ConnectShyftCallService {
 
     try {
       return await knexConnectShyftCallStore.getCallById(callId, tenantId);
+    } catch (error) {
+      if (isConnectShyftPersistenceErrorCause(error)) {
+        throw new ConnectShyftPersistenceUnavailableError(error);
+      }
+      throw error;
+    }
+  }
+
+  async rebindPersonCalls(input: RebindCallPersonInput): Promise<void> {
+    if (isConnectShyftTestOverrideEnabled()) {
+      await inMemoryConnectShyftCallStore.rebindPersonCalls(input);
+      return;
+    }
+
+    try {
+      await knexConnectShyftCallStore.rebindPersonCalls(input);
     } catch (error) {
       if (isConnectShyftPersistenceErrorCause(error)) {
         throw new ConnectShyftPersistenceUnavailableError(error);

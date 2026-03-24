@@ -1,7 +1,12 @@
 import type { Knex } from 'knex';
 import db from '../../config/knex';
 import { executePlatformMutation } from '../../platform/mutations/executePlatformMutation';
+import {
+  PEOPLECORE_PERSON_MERGED_EVENT_NAME,
+  type PeopleCorePersonMergedEvent,
+} from '../peoplecore/events';
 import { isConnectShyftTestOverrideEnabled } from './featureFlags';
+import { personRebindServiceAsync, type PersonRebindService } from './personRebind';
 import type { Call, CallStatus } from './calls';
 import type { Voicemail } from './voicemails';
 
@@ -35,6 +40,10 @@ export type ConnectShyftCallLifecycleEventPublisher = {
     voicemail: Voicemail;
     actorUserId?: string | null;
   }): Promise<void>;
+};
+
+export type ConnectShyftPersonRebindEventSubscriber = {
+  handlePeopleCorePersonMerged(event: PeopleCorePersonMergedEvent): Promise<void>;
 };
 
 const persistedLifecycleEventsForTests: ConnectShyftPersistedLifecycleEvent[] = [];
@@ -196,6 +205,28 @@ export const buildConnectShyftLifecycleEventPublisher = (
       entityId: input.voicemail.id,
       payload: buildVoicemailLifecycleEventPayload(input.voicemail),
       knexClient,
+    });
+  },
+});
+
+export const buildConnectShyftPersonRebindEventSubscriber = (
+  personRebindService: Pick<PersonRebindService, 'rebindPersonThreads'> = personRebindServiceAsync,
+): ConnectShyftPersonRebindEventSubscriber => ({
+  async handlePeopleCorePersonMerged(event) {
+    if (event.type !== PEOPLECORE_PERSON_MERGED_EVENT_NAME) {
+      return;
+    }
+
+    if (event.payload.reviewContactPointLinkIds.length > 0) {
+      return;
+    }
+
+    await personRebindService.rebindPersonThreads({
+      tenantId: event.tenantId,
+      orgUnitId: event.orgUnitId,
+      provisionalPersonId: event.payload.provisionalPersonId,
+      canonicalPersonId: event.payload.canonicalPersonId,
+      performedByUserId: event.payload.performedByUserId,
     });
   },
 });

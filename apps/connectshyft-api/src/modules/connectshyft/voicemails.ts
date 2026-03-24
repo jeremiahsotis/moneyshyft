@@ -28,6 +28,13 @@ export interface ListCallVoicemailsInput {
   callId: string;
 }
 
+export interface RebindVoicemailPersonInput {
+  tenantId: string;
+  orgUnitId: string;
+  provisionalPersonId: string;
+  canonicalPersonId: string;
+}
+
 export type Voicemail = {
   id: string;
   tenantId: string;
@@ -47,6 +54,7 @@ export type Voicemail = {
 export interface ConnectShyftVoicemailService {
   createVoicemail(input: CreateVoicemailInput): Promise<Voicemail>;
   listCallVoicemails(input: ListCallVoicemailsInput): Promise<Voicemail[]>;
+  rebindPersonVoicemails(input: RebindVoicemailPersonInput): Promise<void>;
 }
 
 type DbVoicemailRow = {
@@ -158,13 +166,30 @@ class InMemoryConnectShyftVoicemailStore implements ConnectShyftVoicemailService
       ) || right.id.localeCompare(left.id));
   }
 
+  async rebindPersonVoicemails(input: RebindVoicemailPersonInput): Promise<void> {
+    this.records.forEach((voicemail, voicemailId) => {
+      if (
+        voicemail.tenantId !== input.tenantId
+        || voicemail.orgUnitId !== input.orgUnitId
+        || voicemail.personId !== input.provisionalPersonId
+      ) {
+        return;
+      }
+
+      this.records.set(voicemailId, {
+        ...voicemail,
+        personId: input.canonicalPersonId,
+      });
+    });
+  }
+
   reset(): void {
     this.records.clear();
     this.recordIdByArtifactKey.clear();
   }
 }
 
-class KnexConnectShyftVoicemailStore implements ConnectShyftVoicemailService {
+export class KnexConnectShyftVoicemailStore implements ConnectShyftVoicemailService {
   constructor(private readonly knexClient: Knex = db) {}
 
   private table() {
@@ -226,6 +251,18 @@ class KnexConnectShyftVoicemailStore implements ConnectShyftVoicemailService {
 
     return rows.map(mapVoicemailRow);
   }
+
+  async rebindPersonVoicemails(input: RebindVoicemailPersonInput): Promise<void> {
+    await this.table()
+      .where({
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+        person_id: input.provisionalPersonId,
+      })
+      .update({
+        person_id: input.canonicalPersonId,
+      });
+  }
 }
 
 const inMemoryConnectShyftVoicemailStore = new InMemoryConnectShyftVoicemailStore();
@@ -254,6 +291,22 @@ class AsyncConnectShyftVoicemailService implements ConnectShyftVoicemailService 
 
     try {
       return await knexConnectShyftVoicemailStore.listCallVoicemails(input);
+    } catch (error) {
+      if (isConnectShyftPersistenceErrorCause(error)) {
+        throw new ConnectShyftPersistenceUnavailableError(error);
+      }
+      throw error;
+    }
+  }
+
+  async rebindPersonVoicemails(input: RebindVoicemailPersonInput): Promise<void> {
+    if (isConnectShyftTestOverrideEnabled()) {
+      await inMemoryConnectShyftVoicemailStore.rebindPersonVoicemails(input);
+      return;
+    }
+
+    try {
+      await knexConnectShyftVoicemailStore.rebindPersonVoicemails(input);
     } catch (error) {
       if (isConnectShyftPersistenceErrorCause(error)) {
         throw new ConnectShyftPersistenceUnavailableError(error);

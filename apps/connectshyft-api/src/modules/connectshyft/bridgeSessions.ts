@@ -51,6 +51,13 @@ export interface ConnectShyftBridgeLegProviderControlUpdateInput {
   providerCallControlId: string
 }
 
+export interface RebindConnectShyftBridgeSessionPersonInput {
+  tenantId: string
+  orgUnitId: string
+  provisionalPersonId: string
+  canonicalPersonId: string
+}
+
 type PersistedConnectShyftBridgeLegRole = ConnectShyftBridgeLegRole
 
 type ConnectShyftBridgeSessionScope = {
@@ -612,6 +619,23 @@ class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository 
     })
   }
 
+  async rebindPerson(input: RebindConnectShyftBridgeSessionPersonInput): Promise<void> {
+    this.sessions.forEach((session, sessionId) => {
+      if (
+        session.tenantId !== input.tenantId
+        || session.orgUnitId !== input.orgUnitId
+        || normalizeString(session.personId) !== input.provisionalPersonId
+      ) {
+        return
+      }
+
+      this.sessions.set(sessionId, {
+        ...session,
+        personId: input.canonicalPersonId,
+      })
+    })
+  }
+
   reset(): void {
     this.sessions.clear()
     this.legsBySessionId.clear()
@@ -621,7 +645,7 @@ class InMemoryConnectShyftBridgeSessionStore implements BridgeSessionRepository 
   }
 }
 
-class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
+export class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
   constructor(private readonly knexClient: Knex = db) {}
 
   async createSession(session: BridgeSessionRecord): Promise<void> {
@@ -932,6 +956,20 @@ class KnexConnectShyftBridgeSessionStore implements BridgeSessionRepository {
     }
 
     return this.getAggregateBySessionId(sessionId)
+  }
+
+  async rebindPerson(input: RebindConnectShyftBridgeSessionPersonInput): Promise<void> {
+    await this.knexClient
+      .withSchema('connectshyft')
+      .table(BRIDGE_SESSIONS_TABLE)
+      .where({
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+        person_id: input.provisionalPersonId,
+      })
+      .update({
+        person_id: input.canonicalPersonId,
+      })
   }
 }
 
@@ -1426,6 +1464,29 @@ export const loadConnectShyftBridgeAggregateByProviderCallId = async (input: {
   tenantId?: string | null
   providerCallId: string
 }): Promise<BridgeSessionAggregate | null> => repositoryProxy.getAggregateByProviderCallId(input)
+
+export async function rebindConnectShyftBridgeSessionPersonsAsync(
+  input: RebindConnectShyftBridgeSessionPersonInput,
+  knexClient?: Knex,
+): Promise<void> {
+  if (isConnectShyftTestOverrideEnabled() && !knexClient) {
+    await inMemoryBridgeSessionStore.rebindPerson(input)
+    return
+  }
+
+  try {
+    const store = knexClient
+      ? new KnexConnectShyftBridgeSessionStore(knexClient)
+      : knexBridgeSessionStore
+    await store.rebindPerson(input)
+  } catch (error) {
+    if (!isMissingPersistenceError(error)) {
+      throw error
+    }
+
+    await inMemoryBridgeSessionStore.rebindPerson(input)
+  }
+}
 
 export const startConnectShyftBridgeSession = async (
   input: StartConnectShyftBridgeSessionInput,

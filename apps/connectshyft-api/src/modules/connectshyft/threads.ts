@@ -40,6 +40,7 @@ export type ConnectShyftThread = {
   orgUnitId: string;
   neighborId: string;
   personId: string;
+  originPersonId?: string | null;
   activityId: string | null;
   source: string;
   state: ConnectShyftThreadState;
@@ -102,6 +103,18 @@ type ThreadStoreTransitionInput = {
 type ThreadStoreFindByIdInput = {
   tenantId: string;
   threadId: string;
+};
+
+type ThreadStoreListByPersonIdsInput = {
+  tenantId: string;
+  personIds: string[];
+};
+
+type ThreadStoreRebindInput = {
+  tenantId: string;
+  orgUnitId: string;
+  provisionalPersonId: string;
+  canonicalPersonId: string;
 };
 
 export type ConnectShyftEscalationTransition = {
@@ -253,12 +266,25 @@ export type ConnectShyftEvaluateEscalationsResult =
   }
   | ThreadRefusalResult;
 
+export type ConnectShyftListThreadsByPersonIdsInput = {
+  tenantId: string;
+  personIds: string[];
+};
+
+export type ConnectShyftRebindThreadPersonInput = {
+  tenantId: string;
+  orgUnitId: string;
+  provisionalPersonId: string;
+  canonicalPersonId: string;
+};
+
 type DbThreadRow = {
   id: string;
   tenant_id: string;
   org_unit_id: string;
   neighbor_id: string;
   person_id: string;
+  origin_person_id: string | null;
   activity_id: string | null;
   source: string;
   state: ConnectShyftThreadState;
@@ -539,6 +565,7 @@ const mapDbRowToThread = (row: DbThreadRow): ConnectShyftThread => ({
   orgUnitId: row.org_unit_id,
   neighborId: row.neighbor_id,
   personId: row.person_id,
+  originPersonId: normalizeString(row.origin_person_id) || null,
   activityId: row.activity_id,
   source: row.source,
   state: row.state,
@@ -799,6 +826,7 @@ export class InMemoryConnectShyftThreadStore {
       orgUnitId: input.orgUnitId,
       neighborId: input.neighborId,
       personId: input.personId,
+      originPersonId: null,
       activityId: input.activityId ?? null,
       source: input.source,
       state: input.state,
@@ -952,6 +980,61 @@ export class InMemoryConnectShyftThreadStore {
 
     return cloneThread(thread);
   }
+
+  listThreadsByPersonIds(input: ThreadStoreListByPersonIdsInput): ConnectShyftThread[] {
+    const personIds = new Set(
+      input.personIds
+        .map((personId) => normalizeString(personId))
+        .filter((personId) => personId.length > 0),
+    );
+    if (personIds.size === 0) {
+      return [];
+    }
+
+    return Array.from(this.threadsById.values())
+      .filter((thread) => (
+        thread.tenantId === input.tenantId
+        && (
+          personIds.has(thread.personId)
+          || personIds.has(normalizeString(thread.originPersonId))
+        )
+      ))
+      .sort((left, right) => (
+        new Date(left.createdAtUtc).getTime() - new Date(right.createdAtUtc).getTime()
+      ) || left.threadId.localeCompare(right.threadId))
+      .map(cloneThread);
+  }
+
+  rebindPersonThreads(input: ThreadStoreRebindInput): ConnectShyftThread[] {
+    const updatedThreads: ConnectShyftThread[] = [];
+
+    this.threadsById.forEach((thread, threadId) => {
+      if (
+        thread.tenantId !== input.tenantId
+        || thread.orgUnitId !== input.orgUnitId
+        || thread.personId !== input.provisionalPersonId
+      ) {
+        return;
+      }
+
+      const rebound: ConnectShyftThread = {
+        ...thread,
+        personId: input.canonicalPersonId,
+        originPersonId: normalizeString(thread.originPersonId) || thread.personId,
+      };
+      this.threadsById.set(threadId, rebound);
+      updatedThreads.push(cloneThread(rebound));
+    });
+
+    return updatedThreads.sort((left, right) => (
+      new Date(left.createdAtUtc).getTime() - new Date(right.createdAtUtc).getTime()
+    ) || left.threadId.localeCompare(right.threadId));
+  }
+
+  reset(): void {
+    this.threadsById.clear();
+    this.activeThreadIdByScope.clear();
+  }
 }
 
 export class KnexConnectShyftThreadStore {
@@ -964,6 +1047,7 @@ export class KnexConnectShyftThreadStore {
       'org_unit_id',
       'neighbor_id',
       'person_id',
+      'origin_person_id',
       'activity_id',
       'source',
       'state',
@@ -1043,6 +1127,7 @@ export class KnexConnectShyftThreadStore {
           org_unit_id: input.orgUnitId,
           neighbor_id: input.neighborId,
           person_id: input.personId,
+          origin_person_id: null,
           activity_id: input.activityId ?? null,
           source: input.source,
           state: input.state,
@@ -1299,6 +1384,48 @@ export class KnexConnectShyftThreadStore {
 
     return row ? mapDbRowToThread(row) : null;
   }
+
+  async listThreadsByPersonIds(input: ThreadStoreListByPersonIdsInput): Promise<ConnectShyftThread[]> {
+    const personIds = input.personIds
+      .map((personId) => normalizeString(personId))
+      .filter((personId) => personId.length > 0);
+    if (personIds.length === 0) {
+      return [];
+    }
+
+    const rows = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_threads')
+      .where({
+        tenant_id: input.tenantId,
+      })
+      .andWhere((queryBuilder) => {
+        queryBuilder.whereIn('person_id', personIds).orWhereIn('origin_person_id', personIds);
+      })
+      .orderBy('created_at_utc', 'asc')
+      .orderBy('id', 'asc')
+      .select<DbThreadRow[]>(this.threadColumns());
+
+    return rows.map(mapDbRowToThread);
+  }
+
+  async rebindPersonThreads(input: ThreadStoreRebindInput): Promise<ConnectShyftThread[]> {
+    const rows = await this.knexClient
+      .withSchema('connectshyft')
+      .table('cs_threads')
+      .where({
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+        person_id: input.provisionalPersonId,
+      })
+      .update({
+        origin_person_id: this.knexClient.raw('COALESCE(origin_person_id, person_id)'),
+        person_id: input.canonicalPersonId,
+      })
+      .returning<DbThreadRow[]>(this.threadColumns());
+
+    return rows.map(mapDbRowToThread);
+  }
 }
 
 export class ConnectShyftThreadService {
@@ -1474,6 +1601,14 @@ export class ConnectShyftThreadService {
 
   findThreadById(input: { tenantId: string; threadId: string }): ConnectShyftThread | null {
     return this.store.findThreadById(input);
+  }
+
+  listThreadsByPersonIds(input: ConnectShyftListThreadsByPersonIdsInput): ConnectShyftThread[] {
+    return this.store.listThreadsByPersonIds(input);
+  }
+
+  rebindPersonThreads(input: ConnectShyftRebindThreadPersonInput): ConnectShyftThread[] {
+    return this.store.rebindPersonThreads(input);
   }
 }
 
@@ -1718,6 +1853,38 @@ export class AsyncConnectShyftThreadService {
       return null;
     }
   }
+
+  async listThreadsByPersonIds(
+    input: ConnectShyftListThreadsByPersonIdsInput,
+  ): Promise<ConnectShyftThread[]> {
+    try {
+      return await this.store.listThreadsByPersonIds(input);
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return [];
+    }
+  }
+
+  async rebindPersonThreads(
+    input: ConnectShyftRebindThreadPersonInput,
+  ): Promise<ConnectShyftThread[]> {
+    try {
+      return await this.store.rebindPersonThreads(input);
+    } catch (error) {
+      if (!isMissingPersistenceError(error)) {
+        throw error;
+      }
+
+      return [];
+    }
+  }
 }
 
 export const connectShyftThreadServiceAsync = new AsyncConnectShyftThreadService();
+
+export const resetConnectShyftThreadStateForTests = (): void => {
+  defaultThreadStore.reset();
+};
