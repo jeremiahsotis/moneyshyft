@@ -50,7 +50,27 @@ describe('connectshyft voicemail artifact persistence', () => {
       providerRecordingId: 'provider-recording-voicemail-1001',
       transcriptionStatus: 'pending',
       transcriptionRequestedAtUtc: '2026-03-24T11:00:00.000Z',
+      seenAtUtc: null,
+      reviewedAtUtc: null,
     });
+  });
+
+  it('defaults outbound voicemail artifacts to seen and reviewed at creation time', async () => {
+    const voicemail = await connectShyftVoicemailServiceAsync.upsertVoicemailArtifact({
+      tenantId: 'tenant-voicemail-ack-1001',
+      orgUnitId: 'org-voicemail-ack-1001',
+      threadId: 'thread-voicemail-ack-1001',
+      personId: 'person-voicemail-ack-1001',
+      artifactId: 'artifact-voicemail-ack-1001',
+      direction: 'outbound',
+      recordingUrl: 'https://example.test/outbound-ack-1001.mp3',
+      recordingStatus: 'completed',
+      providerEventId: 'provider-event-voicemail-ack-1001',
+      occurredAtUtc: '2026-03-24T11:01:00.000Z',
+    });
+
+    expect(voicemail.seenAtUtc).toBe(voicemail.createdAtUtc);
+    expect(voicemail.reviewedAtUtc).toBe(voicemail.createdAtUtc);
   });
 
   it('updates an existing artifact instead of creating a second row for the same provider event', async () => {
@@ -258,6 +278,89 @@ describe('connectshyft voicemail artifact persistence', () => {
     expect(replayedRecording.id).toBe(seeded.id);
     expect(replayedRecording.transcriptionText).toBe('Call me when you are nearby.');
     expect(threadVoicemails).toHaveLength(1);
+  });
+
+  it('marks voicemail reviewed without mutating recording or transcription fields', async () => {
+    const seeded = await connectShyftVoicemailServiceAsync.upsertVoicemailArtifact({
+      tenantId: 'tenant-voicemail-review-1001',
+      orgUnitId: 'org-voicemail-review-1001',
+      threadId: 'thread-voicemail-review-1001',
+      personId: 'person-voicemail-review-1001',
+      artifactId: 'artifact-voicemail-review-1001',
+      direction: 'inbound',
+      recordingUrl: 'https://example.test/review-1001.mp3',
+      recordingStatus: 'completed',
+      providerEventId: 'provider-event-voicemail-review-1001',
+      occurredAtUtc: '2026-03-24T11:26:00.000Z',
+      transcriptionStatus: 'completed',
+      transcriptionText: 'Review me please.',
+    });
+
+    const reviewed = await connectShyftVoicemailServiceAsync.markVoicemailReviewed({
+      tenantId: 'tenant-voicemail-review-1001',
+      voicemailId: seeded.id,
+      actorUserId: 'user-voicemail-review-1001',
+      reviewedAtUtc: '2026-03-24T11:27:00.000Z',
+    });
+
+    expect(reviewed).toMatchObject({
+      id: seeded.id,
+      recordingUrl: 'https://example.test/review-1001.mp3',
+      transcriptionText: 'Review me please.',
+      seenAtUtc: '2026-03-24T11:27:00.000Z',
+      reviewedAtUtc: '2026-03-24T11:27:00.000Z',
+    });
+  });
+
+  it('marks inbound thread voicemails seen idempotently on thread open', async () => {
+    await connectShyftVoicemailServiceAsync.upsertVoicemailArtifact({
+      tenantId: 'tenant-voicemail-seen-1001',
+      orgUnitId: 'org-voicemail-seen-1001',
+      threadId: 'thread-voicemail-seen-1001',
+      personId: 'person-voicemail-seen-1001',
+      artifactId: 'artifact-voicemail-seen-1001',
+      direction: 'inbound',
+      recordingUrl: 'https://example.test/seen-1001.mp3',
+      recordingStatus: 'completed',
+      providerEventId: 'provider-event-voicemail-seen-1001',
+      occurredAtUtc: '2026-03-24T11:28:00.000Z',
+    });
+    await connectShyftVoicemailServiceAsync.upsertVoicemailArtifact({
+      tenantId: 'tenant-voicemail-seen-1001',
+      orgUnitId: 'org-voicemail-seen-1001',
+      threadId: 'thread-voicemail-seen-1001',
+      personId: 'person-voicemail-seen-1001',
+      artifactId: 'artifact-voicemail-seen-1002',
+      direction: 'outbound',
+      recordingUrl: 'https://example.test/seen-1002.mp3',
+      recordingStatus: 'completed',
+      providerEventId: 'provider-event-voicemail-seen-1002',
+      occurredAtUtc: '2026-03-24T11:29:00.000Z',
+    });
+
+    const firstSeenPass = await connectShyftVoicemailServiceAsync.markThreadVoicemailsSeen({
+      tenantId: 'tenant-voicemail-seen-1001',
+      orgUnitId: 'org-voicemail-seen-1001',
+      threadId: 'thread-voicemail-seen-1001',
+      seenAtUtc: '2026-03-24T11:30:00.000Z',
+    });
+    const secondSeenPass = await connectShyftVoicemailServiceAsync.markThreadVoicemailsSeen({
+      tenantId: 'tenant-voicemail-seen-1001',
+      orgUnitId: 'org-voicemail-seen-1001',
+      threadId: 'thread-voicemail-seen-1001',
+      seenAtUtc: '2026-03-24T11:31:00.000Z',
+    });
+
+    const inboundVoicemail = firstSeenPass.find((voicemail) => voicemail.direction === 'inbound');
+    const outboundVoicemail = firstSeenPass.find((voicemail) => voicemail.direction === 'outbound');
+    const inboundVoicemailAfterReplay = secondSeenPass.find((voicemail) => voicemail.direction === 'inbound');
+
+    expect(inboundVoicemail).toMatchObject({
+      seenAtUtc: '2026-03-24T11:30:00.000Z',
+      reviewedAtUtc: null,
+    });
+    expect(outboundVoicemail?.seenAtUtc).toBe(outboundVoicemail?.createdAtUtc);
+    expect(inboundVoicemailAfterReplay?.seenAtUtc).toBe('2026-03-24T11:30:00.000Z');
   });
 
   it('handles transcription callbacks through the artifact path and keeps playback metadata intact', async () => {

@@ -11,6 +11,10 @@ import {
   updateConnectShyftBridgeSessionVoicemailFallbackAsync,
 } from '../../../../modules/connectshyft/bridgeSessions';
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents';
+import {
+  listConnectShyftLifecycleEventsForTests,
+  resetConnectShyftLifecycleEventsForTests,
+} from '../../../../modules/connectshyft/events';
 import * as providerCorrelationMappingsModule from '../../../../modules/connectshyft/providerCorrelationMappings';
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings';
 import type { ConnectShyftProviderAdapter } from '../../../../modules/connectshyft/providerRegistry';
@@ -257,6 +261,7 @@ describe('connectshyft inbound voice webhook route characterization', () => {
     resetConnectShyftCanonicalEventsForTests();
     resetConnectShyftProviderCorrelationStateForTests();
     resetConnectShyftVoicemailStateForTests();
+    resetConnectShyftLifecycleEventsForTests();
 
     resolveOperatorDestinationSpy = jest.spyOn(
       OperatorDestinationResolverModule,
@@ -1225,6 +1230,8 @@ describe('connectshyft inbound voice webhook route characterization', () => {
       orgUnitId: 'org-connectshyft-f1-east',
       threadId: 'thread-f1-unclaimed-1001',
     });
+    const lifecycleEvents = listConnectShyftLifecycleEventsForTests()
+      .filter((event) => event.eventName === 'connectshyft.voicemail.recorded');
 
     expect(persistedVoicemails).toHaveLength(1);
     expect(persistedVoicemails[0]).toMatchObject({
@@ -1236,6 +1243,17 @@ describe('connectshyft inbound voice webhook route characterization', () => {
       recordingStatus: 'completed',
       transcriptionStatus: 'pending',
     });
+    expect(lifecycleEvents).toEqual([
+      expect.objectContaining({
+        entityId: persistedVoicemails[0].id,
+        payload: expect.objectContaining({
+          direction: 'inbound',
+          notificationEligible: true,
+          seenAtUtc: null,
+          reviewedAtUtc: null,
+        }),
+      }),
+    ]);
   });
 
   it('persists one outbound voicemail artifact after replayed recording callbacks', async () => {
@@ -1268,6 +1286,8 @@ describe('connectshyft inbound voice webhook route characterization', () => {
       orgUnitId: 'org-connectshyft-f1-east',
       threadId: 'thread-f1-outbound-voicemail-2002',
     });
+    const lifecycleEvents = listConnectShyftLifecycleEventsForTests()
+      .filter((event) => event.eventName === 'connectshyft.voicemail.recorded');
 
     expect(persistedVoicemails).toHaveLength(1);
     expect(persistedVoicemails[0]).toMatchObject({
@@ -1280,5 +1300,16 @@ describe('connectshyft inbound voice webhook route characterization', () => {
       recordingStatus: 'completed',
       transcriptionStatus: 'pending',
     });
+    expect(lifecycleEvents).toEqual([
+      expect.objectContaining({
+        entityId: persistedVoicemails[0].id,
+        payload: expect.objectContaining({
+          direction: 'outbound',
+          notificationEligible: false,
+          seenAtUtc: persistedVoicemails[0].createdAtUtc,
+          reviewedAtUtc: persistedVoicemails[0].createdAtUtc,
+        }),
+      }),
+    ]);
   });
 });

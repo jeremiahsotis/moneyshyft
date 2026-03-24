@@ -329,6 +329,8 @@ describe('connectshyft thread timeline projection', () => {
       transcript: null,
       transcriptionText: null,
       transcriptionStatus: null,
+      seenAtUtc: null,
+      reviewedAtUtc: null,
     });
     expect(timeline.items[3]).toMatchObject({
       id: 'event-voicemail-002',
@@ -338,6 +340,8 @@ describe('connectshyft thread timeline projection', () => {
       transcript: 'Leave package at the side door',
       transcriptionText: 'Leave package at the side door',
       transcriptionStatus: 'completed',
+      seenAtUtc: null,
+      reviewedAtUtc: null,
     });
   });
 
@@ -406,6 +410,8 @@ describe('connectshyft thread timeline projection', () => {
         transcriptionRequestedAtUtc: '2026-03-19T10:02:00.000Z',
         transcriptionCompletedAtUtc: '2026-03-19T10:02:20.000Z',
         transcriptionFailedAtUtc: null,
+        seenAtUtc: null,
+        reviewedAtUtc: null,
         transcriptionJson: {
           status: 'completed',
           text: 'Please call me back after 5.',
@@ -481,6 +487,8 @@ describe('connectshyft thread timeline projection', () => {
           transcriptionStatus: 'completed',
           transcriptionProvider: 'telnyx',
         },
+        seenAtUtc: null,
+        reviewedAtUtc: null,
       }),
     ]);
   });
@@ -596,6 +604,8 @@ describe('connectshyft thread timeline projection', () => {
         transcriptionRequestedAtUtc: '2026-03-19T10:05:30.000Z',
         transcriptionCompletedAtUtc: null,
         transcriptionFailedAtUtc: null,
+        seenAtUtc: '2026-03-19T10:05:00.000Z',
+        reviewedAtUtc: '2026-03-19T10:05:00.000Z',
         transcriptionJson: null,
       },
     ]);
@@ -615,6 +625,8 @@ describe('connectshyft thread timeline projection', () => {
         recordingUrl: 'https://example.test/timeline-artifact-first-1002.mp3',
         recordingStatus: 'completed',
         transcriptionStatus: 'pending',
+        seenAtUtc: '2026-03-19T10:05:00.000Z',
+        reviewedAtUtc: '2026-03-19T10:05:00.000Z',
       }),
     ]);
   });

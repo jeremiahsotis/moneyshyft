@@ -71,6 +71,8 @@ export type ConnectShyftVoicemailTimelineItem = ConnectShyftThreadTimelineItemBa
   transcript: string | null;
   transcriptionText: string | null;
   transcriptionStatus: ConnectShyftVoicemailTranscriptionStatus | null;
+  seenAtUtc: string | null;
+  reviewedAtUtc: string | null;
 };
 
 export type ConnectShyftThreadTimelineItem =
@@ -302,6 +304,7 @@ const mapVoicemailTimelineEvent: TimelineEventMapper = (event, payload) => {
   const recordingUrl = normalizeString(
     artifact?.recordingUrl || artifact?.recording_url,
   ) || null;
+  const direction = normalizeDirection(payload.direction) || 'inbound';
   const transcriptionText = normalizeString(
     transcription?.text
     || artifact?.transcriptionText
@@ -330,6 +333,18 @@ const mapVoicemailTimelineEvent: TimelineEventMapper = (event, payload) => {
           ? 'pending'
           : null
     ),
+    seen_at_utc: toIsoString(
+      artifact?.seenAtUtc
+      || artifact?.seen_at_utc
+      || metadata?.seenAtUtc
+      || metadata?.seen_at_utc,
+    ) || (direction === 'outbound' ? event.occurredAtUtc : null),
+    reviewed_at_utc: toIsoString(
+      artifact?.reviewedAtUtc
+      || artifact?.reviewed_at_utc
+      || metadata?.reviewedAtUtc
+      || metadata?.reviewed_at_utc,
+    ) || (direction === 'outbound' ? event.occurredAtUtc : null),
   };
   const providerMetadata = {
     ...(asRecord(payload.providerMetadata) || {}),
@@ -390,10 +405,10 @@ const mapVoicemailTimelineEvent: TimelineEventMapper = (event, payload) => {
     ...resolveTimelineBase({
       event,
       payload,
-      direction: normalizeDirection(payload.direction) || 'inbound',
+      direction,
       actor: resolveTimelineActor({
         payload,
-        fallbackDirection: 'inbound',
+        fallbackDirection: direction,
       }),
     }),
     type: 'voicemail',
@@ -408,6 +423,8 @@ const mapVoicemailTimelineEvent: TimelineEventMapper = (event, payload) => {
       : null,
     transcriptionText: artifactRenderSource.transcription_text,
     transcriptionStatus: artifactRenderSource.transcription_status,
+    seenAtUtc: artifactRenderSource.seen_at_utc,
+    reviewedAtUtc: artifactRenderSource.reviewed_at_utc,
   };
 };
 
@@ -506,6 +523,8 @@ const buildBridgeSessionVoicemailTimelineItem = (input: {
   transcript: null,
   transcriptionText: null,
   transcriptionStatus: null,
+  seenAtUtc: input.voicemailProjection.occurredAtUtc,
+  reviewedAtUtc: input.voicemailProjection.occurredAtUtc,
 });
 
 const buildCallStatusEvents = (call: Call): Array<{ status: string; occurredAtUtc: string }> => {
@@ -613,7 +632,20 @@ const buildVoicemailTimelineItem = (voicemail: Voicemail): ConnectShyftVoicemail
       : null,
     transcriptionText: artifactRenderSource.transcription_text,
     transcriptionStatus: artifactRenderSource.transcription_status,
+    seenAtUtc: voicemail.seenAtUtc,
+    reviewedAtUtc: voicemail.reviewedAtUtc,
   };
+};
+
+const resolveMergedVoicemailTimestamp = (
+  left: string | null,
+  right: string | null,
+): string | null => {
+  if (left) {
+    return left;
+  }
+
+  return right;
 };
 
 const resolveVoicemailProjectionSource = (
@@ -785,6 +817,14 @@ const mergeVoicemailTimelineItems = (
     transcript: transcriptionText,
     transcriptionText,
     transcriptionStatus,
+    seenAtUtc: resolveMergedVoicemailTimestamp(
+      preferred.seenAtUtc,
+      secondary.seenAtUtc,
+    ),
+    reviewedAtUtc: resolveMergedVoicemailTimestamp(
+      preferred.reviewedAtUtc,
+      secondary.reviewedAtUtc,
+    ),
   };
 };
 

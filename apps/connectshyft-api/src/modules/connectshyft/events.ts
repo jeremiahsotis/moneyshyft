@@ -116,6 +116,12 @@ const buildCallLifecycleEventPayload = (call: Call): Record<string, unknown> => 
   statusEvents: resolveCallStatusEvents(call),
 });
 
+const isVoicemailNotificationEligible = (voicemail: Voicemail): boolean => (
+  voicemail.direction === 'inbound'
+  && !voicemail.seenAtUtc
+  && !voicemail.reviewedAtUtc
+);
+
 const buildVoicemailLifecycleEventPayload = (
   voicemail: Voicemail,
 ): Record<string, unknown> => ({
@@ -123,9 +129,14 @@ const buildVoicemailLifecycleEventPayload = (
   callId: voicemail.callId,
   threadId: voicemail.threadId,
   personId: voicemail.personId,
+  direction: voicemail.direction,
   recordingUrl: voicemail.recordingUrl,
   recordingStatus: voicemail.recordingStatus,
+  transcriptionStatus: voicemail.transcriptionStatus,
   occurredAtUtc: voicemail.occurredAtUtc,
+  seenAtUtc: voicemail.seenAtUtc,
+  reviewedAtUtc: voicemail.reviewedAtUtc,
+  notificationEligible: isVoicemailNotificationEligible(voicemail),
 });
 
 const publishBestEffortLifecycleEvent = async (input: {

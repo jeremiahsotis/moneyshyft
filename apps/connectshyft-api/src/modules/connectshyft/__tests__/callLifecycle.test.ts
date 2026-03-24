@@ -269,6 +269,12 @@ describe('connectshyft callLifecycle', () => {
         expect.objectContaining({
           eventName: 'connectshyft.voicemail.recorded',
           entityId: voicemail.id,
+          payload: expect.objectContaining({
+            direction: 'outbound',
+            seenAtUtc: voicemail.createdAtUtc,
+            reviewedAtUtc: voicemail.createdAtUtc,
+            notificationEligible: false,
+          }),
         }),
       ]),
     );

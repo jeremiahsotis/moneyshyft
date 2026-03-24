@@ -211,6 +211,7 @@ import {
   listIdentityAmbiguityEvents,
   markIdentityAmbiguityEventReviewed,
 } from '../../../modules/connectshyft/ambiguityEvents';
+import { buildConnectShyftLifecycleEventPublisher } from '../../../modules/connectshyft/events';
 import {
   resolveInboundContactPointIdentityAsync,
   type ResolveInboundContactPointIdentityResult,
@@ -8780,6 +8781,13 @@ const performInboundWebhook = async ({
   const responseBridgeAggregate = bridgeWebhookProgression.aggregate || outboundVoicemailRecording.bridgeSession;
 
   await markWebhookReceipt('APPLIED');
+  if (persistedVoicemailArtifact) {
+    await buildConnectShyftLifecycleEventPublisher().publishVoicemailRecorded({
+      tenantId,
+      voicemail: persistedVoicemailArtifact,
+      actorUserId: resolveWebhookActorUserId(req),
+    });
+  }
   if (operatorDestinationResolution) {
     logInboundVoiceRuntimeOutcome(routingDecision === 'accepted' ? 'bridged' : 'fallback');
   }

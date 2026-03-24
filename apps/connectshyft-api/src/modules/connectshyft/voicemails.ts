@@ -41,6 +41,8 @@ export interface CreateVoicemailInput {
   transcriptionRequestedAtUtc?: string | null;
   transcriptionCompletedAtUtc?: string | null;
   transcriptionFailedAtUtc?: string | null;
+  seenAtUtc?: string | null;
+  reviewedAtUtc?: string | null;
 }
 
 export interface UpsertVoicemailArtifactInput {
@@ -66,6 +68,8 @@ export interface UpsertVoicemailArtifactInput {
   transcriptionRequestedAtUtc?: string | null;
   transcriptionCompletedAtUtc?: string | null;
   transcriptionFailedAtUtc?: string | null;
+  seenAtUtc?: string | null;
+  reviewedAtUtc?: string | null;
 }
 
 export interface FindVoicemailArtifactInput {
@@ -97,6 +101,20 @@ export interface RebindVoicemailPersonInput {
   canonicalPersonId: string;
 }
 
+export interface MarkThreadVoicemailsSeenInput {
+  tenantId: string;
+  orgUnitId: string;
+  threadId: string;
+  seenAtUtc?: string | null;
+}
+
+export interface MarkVoicemailReviewedInput {
+  tenantId: string;
+  voicemailId: string;
+  actorUserId?: string | null;
+  reviewedAtUtc?: string | null;
+}
+
 export type Voicemail = {
   id: string;
   tenantId: string;
@@ -122,6 +140,8 @@ export type Voicemail = {
   transcriptionRequestedAtUtc: string | null;
   transcriptionCompletedAtUtc: string | null;
   transcriptionFailedAtUtc: string | null;
+  seenAtUtc: string | null;
+  reviewedAtUtc: string | null;
   transcriptionJson: unknown | null;
 };
 
@@ -132,6 +152,8 @@ export interface ConnectShyftVoicemailService {
   listCallVoicemails(input: ListCallVoicemailsInput): Promise<Voicemail[]>;
   listThreadVoicemails(input: ListThreadVoicemailsInput): Promise<Voicemail[]>;
   rebindPersonVoicemails(input: RebindVoicemailPersonInput): Promise<void>;
+  markThreadVoicemailsSeen(input: MarkThreadVoicemailsSeenInput): Promise<Voicemail[]>;
+  markVoicemailReviewed(input: MarkVoicemailReviewedInput): Promise<Voicemail | null>;
 }
 
 export interface HandleVoicemailTranscriptionCallbackInput {
@@ -184,6 +206,8 @@ type DbVoicemailRow = {
   transcription_requested_at_utc?: string | Date | null;
   transcription_completed_at_utc?: string | Date | null;
   transcription_failed_at_utc?: string | Date | null;
+  seen_at_utc?: string | Date | null;
+  reviewed_at_utc?: string | Date | null;
   transcription_json?: unknown;
 };
 
@@ -445,6 +469,45 @@ const resolveArtifactDirection = (input: {
     || 'outbound';
 };
 
+const resolveDefaultSeenAtUtc = (input: {
+  direction: ConnectShyftVoicemailDirection;
+  existingSeenAtUtc?: string | null;
+  incomingSeenAtUtc?: string | null;
+  createdAtUtc: string;
+}): string | null => {
+  if (input.existingSeenAtUtc) {
+    return input.existingSeenAtUtc;
+  }
+
+  if (input.incomingSeenAtUtc) {
+    return input.incomingSeenAtUtc;
+  }
+
+  return input.direction === 'outbound'
+    ? input.createdAtUtc
+    : null;
+};
+
+const resolveDefaultReviewedAtUtc = (input: {
+  direction: ConnectShyftVoicemailDirection;
+  existingReviewedAtUtc?: string | null;
+  incomingReviewedAtUtc?: string | null;
+  seenAtUtc: string | null;
+  createdAtUtc: string;
+}): string | null => {
+  if (input.existingReviewedAtUtc) {
+    return input.existingReviewedAtUtc;
+  }
+
+  if (input.incomingReviewedAtUtc) {
+    return input.incomingReviewedAtUtc;
+  }
+
+  return input.direction === 'outbound'
+    ? input.seenAtUtc || input.createdAtUtc
+    : null;
+};
+
 const mapVoicemailRow = (row: DbVoicemailRow): Voicemail => {
   const legacyTranscriptionJson = row.transcription_json ?? null;
   const transcriptionText = normalizeNullableString(row.transcription_text)
@@ -456,6 +519,19 @@ const mapVoicemailRow = (row: DbVoicemailRow): Voicemail => {
     existingStatus: null,
     transcriptionText,
   });
+  const createdAtUtc = toIsoUtc(row.created_at_utc) || new Date().toISOString();
+  const direction = normalizeDirection(row.direction) || 'outbound';
+  const seenAtUtc = resolveDefaultSeenAtUtc({
+    direction,
+    incomingSeenAtUtc: toIsoUtc(row.seen_at_utc),
+    createdAtUtc,
+  });
+  const reviewedAtUtc = resolveDefaultReviewedAtUtc({
+    direction,
+    incomingReviewedAtUtc: toIsoUtc(row.reviewed_at_utc),
+    seenAtUtc,
+    createdAtUtc,
+  });
   const artifact: Voicemail = {
     id: row.id,
     tenantId: row.tenant_id,
@@ -466,14 +542,14 @@ const mapVoicemailRow = (row: DbVoicemailRow): Voicemail => {
     artifactId: row.artifact_id,
     bridgeSessionId: normalizeNullableString(row.bridge_session_id),
     contactPointId: normalizeNullableString(row.contact_point_id),
-    direction: normalizeDirection(row.direction) || 'outbound',
+    direction,
     recordingUrl: normalizeNullableString(row.recording_url),
     recordingStatus,
     providerEventId: normalizeNullableString(row.provider_event_id),
     providerLegId: normalizeNullableString(row.provider_leg_id),
     providerRecordingId: normalizeNullableString(row.provider_recording_id),
     occurredAtUtc: toIsoUtc(row.occurred_at_utc) || new Date().toISOString(),
-    createdAtUtc: toIsoUtc(row.created_at_utc) || new Date().toISOString(),
+    createdAtUtc,
     updatedAtUtc: toIsoUtc(row.updated_at_utc) || new Date().toISOString(),
     transcriptionStatus,
     transcriptionText,
@@ -497,6 +573,8 @@ const mapVoicemailRow = (row: DbVoicemailRow): Voicemail => {
         'transcriptionFailedAtUtc',
         'transcription_failed_at_utc',
       ]),
+    seenAtUtc,
+    reviewedAtUtc,
     transcriptionJson: legacyTranscriptionJson
       || buildLegacyTranscriptionJson({
         transcriptionStatus,
@@ -552,6 +630,17 @@ const buildArtifactForInsert = (input: UpsertVoicemailArtifactInput): MutableVoi
     existingStatus: null,
     transcriptionText,
   });
+  const seenAtUtc = resolveDefaultSeenAtUtc({
+    direction,
+    incomingSeenAtUtc: toIsoUtc(input.seenAtUtc),
+    createdAtUtc: nowIsoUtc,
+  });
+  const reviewedAtUtc = resolveDefaultReviewedAtUtc({
+    direction,
+    incomingReviewedAtUtc: toIsoUtc(input.reviewedAtUtc),
+    seenAtUtc,
+    createdAtUtc: nowIsoUtc,
+  });
 
   return {
     id: randomUUID(),
@@ -584,6 +673,8 @@ const buildArtifactForInsert = (input: UpsertVoicemailArtifactInput): MutableVoi
     transcriptionFailedAtUtc: transcriptionStatus === 'failed'
       ? toIsoUtc(input.transcriptionFailedAtUtc) || toIsoUtc(input.occurredAtUtc)
       : toIsoUtc(input.transcriptionFailedAtUtc),
+    seenAtUtc,
+    reviewedAtUtc,
   };
 };
 
@@ -639,6 +730,23 @@ const mergeVoicemailArtifact = (
       || nowIsoUtc
     )
     : existing.transcriptionFailedAtUtc;
+  const direction = resolveArtifactDirection({
+    existingDirection: existing.direction,
+    incomingDirection: normalizeDirection(input.direction),
+  });
+  const seenAtUtc = resolveDefaultSeenAtUtc({
+    direction,
+    existingSeenAtUtc: existing.seenAtUtc,
+    incomingSeenAtUtc: toIsoUtc(input.seenAtUtc),
+    createdAtUtc: existing.createdAtUtc,
+  });
+  const reviewedAtUtc = resolveDefaultReviewedAtUtc({
+    direction,
+    existingReviewedAtUtc: existing.reviewedAtUtc,
+    incomingReviewedAtUtc: toIsoUtc(input.reviewedAtUtc),
+    seenAtUtc,
+    createdAtUtc: existing.createdAtUtc,
+  });
 
   return {
     id: existing.id,
@@ -650,10 +758,7 @@ const mergeVoicemailArtifact = (
     artifactId: existing.artifactId,
     bridgeSessionId: normalizeNullableString(input.bridgeSessionId) || existing.bridgeSessionId,
     contactPointId: normalizeNullableString(input.contactPointId) || existing.contactPointId,
-    direction: resolveArtifactDirection({
-      existingDirection: existing.direction,
-      incomingDirection: normalizeDirection(input.direction),
-    }),
+    direction,
     recordingUrl: normalizeNullableString(input.recordingUrl) || existing.recordingUrl,
     recordingStatus,
     providerEventId: normalizeNullableString(input.providerEventId) || existing.providerEventId,
@@ -672,6 +777,8 @@ const mergeVoicemailArtifact = (
       : requestedAtUtc,
     transcriptionCompletedAtUtc: completedAtUtc,
     transcriptionFailedAtUtc: failedAtUtc,
+    seenAtUtc,
+    reviewedAtUtc,
   };
 };
 
@@ -700,6 +807,8 @@ const voicemailArtifactToDbRow = (artifact: MutableVoicemailArtifact) => ({
   transcription_requested_at_utc: artifact.transcriptionRequestedAtUtc,
   transcription_completed_at_utc: artifact.transcriptionCompletedAtUtc,
   transcription_failed_at_utc: artifact.transcriptionFailedAtUtc,
+  seen_at_utc: artifact.seenAtUtc,
+  reviewed_at_utc: artifact.reviewedAtUtc,
   transcription_json: buildLegacyTranscriptionJson(artifact),
 });
 
@@ -773,6 +882,8 @@ class InMemoryConnectShyftVoicemailStore implements ConnectShyftVoicemailService
       transcriptionRequestedAtUtc: input.transcriptionRequestedAtUtc ?? null,
       transcriptionCompletedAtUtc: input.transcriptionCompletedAtUtc ?? null,
       transcriptionFailedAtUtc: input.transcriptionFailedAtUtc ?? null,
+      seenAtUtc: input.seenAtUtc ?? null,
+      reviewedAtUtc: input.reviewedAtUtc ?? null,
     });
   }
 
@@ -841,6 +952,47 @@ class InMemoryConnectShyftVoicemailStore implements ConnectShyftVoicemailService
         personId: input.canonicalPersonId,
       });
     });
+  }
+
+  async markThreadVoicemailsSeen(input: MarkThreadVoicemailsSeenInput): Promise<Voicemail[]> {
+    const seenAtUtc = toIsoUtc(input.seenAtUtc) || new Date().toISOString();
+
+    this.records.forEach((voicemail, voicemailId) => {
+      if (
+        voicemail.tenantId !== input.tenantId
+        || voicemail.orgUnitId !== input.orgUnitId
+        || voicemail.threadId !== input.threadId
+        || voicemail.direction !== 'inbound'
+        || voicemail.seenAtUtc
+      ) {
+        return;
+      }
+
+      this.records.set(voicemailId, {
+        ...voicemail,
+        seenAtUtc,
+        updatedAtUtc: new Date().toISOString(),
+      });
+    });
+
+    return this.listThreadVoicemails(input);
+  }
+
+  async markVoicemailReviewed(input: MarkVoicemailReviewedInput): Promise<Voicemail | null> {
+    const reviewedAtUtc = toIsoUtc(input.reviewedAtUtc) || new Date().toISOString();
+    const voicemail = this.records.get(input.voicemailId);
+    if (!voicemail || voicemail.tenantId !== input.tenantId) {
+      return null;
+    }
+
+    const nextVoicemail: Voicemail = {
+      ...voicemail,
+      seenAtUtc: voicemail.seenAtUtc || reviewedAtUtc,
+      reviewedAtUtc: voicemail.reviewedAtUtc || reviewedAtUtc,
+      updatedAtUtc: new Date().toISOString(),
+    };
+    this.records.set(input.voicemailId, nextVoicemail);
+    return nextVoicemail;
   }
 
   reset(): void {
@@ -946,6 +1098,8 @@ export class KnexConnectShyftVoicemailStore implements ConnectShyftVoicemailServ
       transcriptionRequestedAtUtc: input.transcriptionRequestedAtUtc ?? null,
       transcriptionCompletedAtUtc: input.transcriptionCompletedAtUtc ?? null,
       transcriptionFailedAtUtc: input.transcriptionFailedAtUtc ?? null,
+      seenAtUtc: input.seenAtUtc ?? null,
+      reviewedAtUtc: input.reviewedAtUtc ?? null,
     });
   }
 
@@ -1051,6 +1205,66 @@ export class KnexConnectShyftVoicemailStore implements ConnectShyftVoicemailServ
         person_id: input.canonicalPersonId,
       });
   }
+
+  async markThreadVoicemailsSeen(input: MarkThreadVoicemailsSeenInput): Promise<Voicemail[]> {
+    const seenAtUtc = toIsoUtc(input.seenAtUtc) || new Date().toISOString();
+    const nowIsoUtc = new Date().toISOString();
+
+    await this.table()
+      .where({
+        tenant_id: input.tenantId,
+        org_unit_id: input.orgUnitId,
+        thread_id: input.threadId,
+        direction: 'inbound',
+      })
+      .whereNull('seen_at_utc')
+      .update({
+        seen_at_utc: seenAtUtc,
+        updated_at_utc: nowIsoUtc,
+      });
+
+    return this.listThreadVoicemails(input);
+  }
+
+  async markVoicemailReviewed(input: MarkVoicemailReviewedInput): Promise<Voicemail | null> {
+    const existingRow = await this.table()
+      .where({
+        id: input.voicemailId,
+        tenant_id: input.tenantId,
+      })
+      .first<DbVoicemailRow>();
+
+    if (!existingRow) {
+      return null;
+    }
+
+    const existing = mapVoicemailRow(existingRow);
+    const reviewedAtUtc = toIsoUtc(input.reviewedAtUtc) || new Date().toISOString();
+    const seenAtUtc = existing.seenAtUtc || reviewedAtUtc;
+    const nextReviewedAtUtc = existing.reviewedAtUtc || reviewedAtUtc;
+
+    if (existing.seenAtUtc === seenAtUtc && existing.reviewedAtUtc === nextReviewedAtUtc) {
+      return existing;
+    }
+
+    await this.table()
+      .where({ id: existing.id })
+      .update({
+        seen_at_utc: seenAtUtc,
+        reviewed_at_utc: nextReviewedAtUtc,
+        updated_at_utc: new Date().toISOString(),
+      });
+
+    const updatedRow = await this.table()
+      .where({ id: existing.id })
+      .first<DbVoicemailRow>();
+
+    if (!updatedRow) {
+      throw new Error(`Failed to reload ConnectShyft voicemail ${existing.id} after review update.`);
+    }
+
+    return mapVoicemailRow(updatedRow);
+  }
 }
 
 const inMemoryConnectShyftVoicemailStore = new InMemoryConnectShyftVoicemailStore();
@@ -1140,6 +1354,36 @@ class AsyncConnectShyftVoicemailService implements ConnectShyftVoicemailService 
 
     try {
       await knexConnectShyftVoicemailStore.rebindPersonVoicemails(input);
+    } catch (error) {
+      if (isConnectShyftPersistenceErrorCause(error)) {
+        throw new ConnectShyftPersistenceUnavailableError(error);
+      }
+      throw error;
+    }
+  }
+
+  async markThreadVoicemailsSeen(input: MarkThreadVoicemailsSeenInput): Promise<Voicemail[]> {
+    if (isConnectShyftTestOverrideEnabled()) {
+      return inMemoryConnectShyftVoicemailStore.markThreadVoicemailsSeen(input);
+    }
+
+    try {
+      return await knexConnectShyftVoicemailStore.markThreadVoicemailsSeen(input);
+    } catch (error) {
+      if (isConnectShyftPersistenceErrorCause(error)) {
+        throw new ConnectShyftPersistenceUnavailableError(error);
+      }
+      throw error;
+    }
+  }
+
+  async markVoicemailReviewed(input: MarkVoicemailReviewedInput): Promise<Voicemail | null> {
+    if (isConnectShyftTestOverrideEnabled()) {
+      return inMemoryConnectShyftVoicemailStore.markVoicemailReviewed(input);
+    }
+
+    try {
+      return await knexConnectShyftVoicemailStore.markVoicemailReviewed(input);
     } catch (error) {
       if (isConnectShyftPersistenceErrorCause(error)) {
         throw new ConnectShyftPersistenceUnavailableError(error);

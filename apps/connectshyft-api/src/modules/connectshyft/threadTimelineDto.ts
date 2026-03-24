@@ -20,6 +20,8 @@ export type ConnectShyftThreadTimelineItemDto = {
   transcript?: string | null;
   transcription_text?: string | null;
   transcription_status?: 'pending' | 'completed' | 'failed' | null;
+  seen_at_utc?: string | null;
+  reviewed_at_utc?: string | null;
 };
 
 export type ConnectShyftThreadTimelineResponseDto = {
@@ -59,6 +61,8 @@ const serializeConnectShyftThreadTimelineItem = (
     transcript: item.transcript,
     transcription_text: item.transcriptionText,
     transcription_status: item.transcriptionStatus,
+    seen_at_utc: item.seenAtUtc,
+    reviewed_at_utc: item.reviewedAtUtc,
   };
 };
 
