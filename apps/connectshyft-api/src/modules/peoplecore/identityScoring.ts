@@ -1,5 +1,6 @@
 import type {
   ContactPoint,
+  ContactPointStatus,
   ContactPointLink,
   HouseholdMembership,
   ResolverRiskFlag,
@@ -62,6 +63,7 @@ const SUBTRACTIVE = {
   crossHouseholdConflict: -25,
   noRecentUse: -15,
 } as const;
+const ARCHIVED_STATUS_PENALTY = -1_000_000_000;
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
@@ -160,6 +162,25 @@ const assertScoreContext = (context: ScoreContext): void => {
     throw new Error('scoreIdentityCandidates requires asOfUtc in the score context.');
   }
 };
+
+export function applyStatusPenalty(status: ContactPointStatus): number {
+  switch (status) {
+    case 'active_personal':
+      return 0;
+    case 'active_shared_possible':
+      return SUBTRACTIVE.activeSharedPossible;
+    case 'active_shared_confirmed':
+      return SUBTRACTIVE.activeSharedConfirmed;
+    case 'stale':
+      return SUBTRACTIVE.stale;
+    case 'reassignment_suspected':
+      return SUBTRACTIVE.reassignmentSuspected;
+    case 'archived':
+      return ARCHIVED_STATUS_PENALTY;
+    default:
+      return 0;
+  }
+}
 
 export function scoreIdentityCandidates(
   candidates: CandidateSubject[],
@@ -314,31 +335,37 @@ export function scoreIdentityCandidates(
         appendRiskFlag(riskFlags, 'shared_contact_possible');
       }
 
+      const statusPenalty = applyStatusPenalty(context.contactPointStatus);
       if (context.contactPointStatus === 'active_shared_possible') {
-        score += SUBTRACTIVE.activeSharedPossible;
+        score += statusPenalty;
         confidenceReasons.push(
-          `ContactPoint status active_shared_possible (${SUBTRACTIVE.activeSharedPossible})`,
+          `ContactPoint status active_shared_possible (${statusPenalty})`,
         );
         appendRiskFlag(riskFlags, 'shared_contact_possible');
       }
       if (context.contactPointStatus === 'active_shared_confirmed') {
-        score += SUBTRACTIVE.activeSharedConfirmed;
+        score += statusPenalty;
         confidenceReasons.push(
-          `ContactPoint status active_shared_confirmed (${SUBTRACTIVE.activeSharedConfirmed})`,
+          `ContactPoint status active_shared_confirmed (${statusPenalty})`,
         );
         appendRiskFlag(riskFlags, 'shared_contact_confirmed');
       }
       if (context.contactPointStatus === 'stale') {
-        score += SUBTRACTIVE.stale;
-        confidenceReasons.push(`ContactPoint status stale (${SUBTRACTIVE.stale})`);
+        score += statusPenalty;
+        confidenceReasons.push(`ContactPoint status stale (${statusPenalty})`);
         appendRiskFlag(riskFlags, 'stale_contact');
       }
       if (context.contactPointStatus === 'reassignment_suspected') {
-        score += SUBTRACTIVE.reassignmentSuspected;
+        score += statusPenalty;
         confidenceReasons.push(
-          `ContactPoint status reassignment_suspected (${SUBTRACTIVE.reassignmentSuspected})`,
+          `ContactPoint status reassignment_suspected (${statusPenalty})`,
         );
         appendRiskFlag(riskFlags, 'rapid_contact_reuse');
+      }
+      if (context.contactPointStatus === 'archived') {
+        score += statusPenalty;
+        confidenceReasons.push(`ContactPoint status archived (${statusPenalty})`);
+        appendRiskFlag(riskFlags, 'archived_prior_owner');
       }
 
       if (directCurrentLinks.length === 0 && directHistoricalLinks.length > 0) {

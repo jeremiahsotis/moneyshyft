@@ -2,6 +2,7 @@ import type {
   ContactPoint,
   ContactPointEvent,
   ContactPointLink,
+  ContactPointStatus,
   ResolverReviewStatus,
   ContactPointLinkSubjectType,
   ContactPointType,
@@ -12,6 +13,10 @@ import type {
 } from '@shyft/contracts';
 import type { Knex } from 'knex';
 import db from '../../config/knex';
+import {
+  assertContactPointStatus,
+  computeContactPointStatus,
+} from './lifecycle';
 import type {
   Activity,
   CreateActivityInput,
@@ -132,6 +137,18 @@ export class PeopleCorePersonAlreadyMergedError extends Error {
   constructor(message: string, cause?: unknown) {
     super(message);
     this.name = 'PeopleCorePersonAlreadyMergedError';
+    if (cause !== undefined) {
+      (this as Error & { cause?: unknown }).cause = cause;
+    }
+  }
+}
+
+export class PeopleCoreConflictError extends Error {
+  readonly code = 'PEOPLECORE_CONFLICT';
+
+  constructor(message: string, cause?: unknown) {
+    super(message);
+    this.name = 'PeopleCoreConflictError';
     if (cause !== undefined) {
       (this as Error & { cause?: unknown }).cause = cause;
     }
@@ -283,6 +300,11 @@ export interface PeopleCoreStore extends PeopleCoreActivityStore {
     input: ListCurrentContactPointLinksInput,
   ): Promise<ContactPointLink[]>;
   appendContactPointEvent(input: AppendContactPointEventInput): Promise<ContactPointEvent>;
+  updateContactPointStatus(input: {
+    tenantId: string;
+    contactPointId: string;
+    newStatus: ContactPointStatus;
+  }): Promise<void>;
   listContactPointEvents(input: ListContactPointEventsInput): Promise<ContactPointEvent[]>;
   createResolverReview(input: CreateResolverReviewInput): Promise<ResolverReview>;
   getResolverReview(input: GetResolverReviewInput): Promise<ResolverReview | null>;
@@ -818,6 +840,149 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
     return row ?? null;
   }
 
+  private async getScopedContactPointRow(
+    knexClient: Knex,
+    input: {
+      tenantId: string;
+      contactPointId: string;
+    },
+  ): Promise<DbContactPointRow | null> {
+    const row = await knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('contact_points')
+      .where({
+        id: input.contactPointId,
+        tenant_id: input.tenantId,
+      })
+      .first<DbContactPointRow>(this.contactPointColumns());
+
+    return row ?? null;
+  }
+
+  private async listScopedContactPointEventRows(
+    knexClient: Knex,
+    input: {
+      tenantId: string;
+      contactPointId: string;
+    },
+  ): Promise<DbContactPointEventRow[]> {
+    return knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('contact_point_events')
+      .where({
+        tenant_id: input.tenantId,
+        contact_point_id: input.contactPointId,
+      })
+      .orderBy('created_at_utc', 'asc')
+      .orderBy('id', 'asc')
+      .select<DbContactPointEventRow[]>(this.contactPointEventColumns());
+  }
+
+  private async listCurrentContactPointLinkRowsForContactPoint(
+    knexClient: Knex,
+    input: {
+      contactPointId: string;
+    },
+  ): Promise<DbContactPointLinkRow[]> {
+    return knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('contact_point_links')
+      .where({
+        contact_point_id: input.contactPointId,
+        is_current: true,
+      })
+      .orderBy('created_at_utc', 'asc')
+      .orderBy('id', 'asc')
+      .select<DbContactPointLinkRow[]>(this.contactPointLinkColumns());
+  }
+
+  private async updateContactPointStatusWithClient(
+    knexClient: Knex,
+    input: {
+      tenantId: string;
+      contactPointId: string;
+      newStatus: ContactPointStatus;
+    },
+  ): Promise<void> {
+    const newStatus = assertContactPointStatus(input.newStatus);
+    const currentRow = await this.getScopedContactPointRow(knexClient, input);
+
+    if (!currentRow) {
+      throw new PeopleCoreScopeViolationError(
+        `ContactPoint ${input.contactPointId} is not available in tenant ${input.tenantId}.`,
+      );
+    }
+
+    if (currentRow.status === newStatus) {
+      return;
+    }
+
+    const updatedRows = await knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('contact_points')
+      .where({
+        id: input.contactPointId,
+        tenant_id: input.tenantId,
+        status: currentRow.status,
+      })
+      .update({
+        status: newStatus,
+        updated_at_utc: knexClient.fn.now(),
+      });
+
+    if (updatedRows === 0) {
+      throw new PeopleCoreConflictError(
+        `ContactPoint ${input.contactPointId} status changed concurrently in tenant ${input.tenantId}.`,
+      );
+    }
+
+    await knexClient
+      .withSchema(PEOPLE_SCHEMA)
+      .table('contact_point_events')
+      .insert({
+        tenant_id: input.tenantId,
+        contact_point_id: input.contactPointId,
+        event_type: 'lifecycle_changed',
+        event_source: 'peoplecore.lifecycle',
+        related_object_type: 'effective_status',
+        related_object_id: newStatus,
+        created_at_utc: knexClient.fn.now(),
+      });
+  }
+
+  private async recomputeContactPointStatusWithinTransaction(
+    knexClient: Knex,
+    input: {
+      tenantId: string;
+      contactPointId: string;
+    },
+  ): Promise<void> {
+    const currentRow = await this.getScopedContactPointRow(knexClient, input);
+    if (!currentRow) {
+      throw new PeopleCoreScopeViolationError(
+        `ContactPoint ${input.contactPointId} is not available in tenant ${input.tenantId}.`,
+      );
+    }
+
+    const [eventRows, currentLinkRows] = await Promise.all([
+      this.listScopedContactPointEventRows(knexClient, input),
+      this.listCurrentContactPointLinkRowsForContactPoint(knexClient, {
+        contactPointId: input.contactPointId,
+      }),
+    ]);
+    const computedStatus = computeContactPointStatus(
+      eventRows.map(mapContactPointEventRow),
+      currentLinkRows.map(mapContactPointLinkRow),
+    );
+
+    if (computedStatus !== currentRow.status) {
+      await this.updateContactPointStatusWithClient(knexClient, {
+        ...input,
+        newStatus: computedStatus,
+      });
+    }
+  }
+
   private async listPersonContactPointLinksForTenant(
     knexClient: Knex,
     input: {
@@ -1169,6 +1334,7 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
 
       const autoMergedContactPointLinkIds: string[] = [];
       const reviewContactPointLinkIds: string[] = [];
+      const affectedContactPointIds = new Set<string>();
       const mergedAtUtc = new Date().toISOString();
       const transactionalStore = new KnexPeopleCoreStore(trx as unknown as Knex);
 
@@ -1188,6 +1354,7 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
           mergeReason: input.mergeReason,
         });
         autoMergedContactPointLinkIds.push(link.id);
+        affectedContactPointIds.add(link.contact_point_id);
 
         if (this.hasEquivalentCanonicalLink(canonicalLinksForContactPoint, link)) {
           continue;
@@ -1300,6 +1467,13 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
           merged_into_person_id: input.canonicalPersonId,
           updated_at_utc: mergedAtUtc,
         });
+
+      for (const contactPointId of affectedContactPointIds) {
+        await this.recomputeContactPointStatusWithinTransaction(trx as unknown as Knex, {
+          tenantId: input.tenantId,
+          contactPointId,
+        });
+      }
 
       return {
         mergedProvisionalPersonId: input.provisionalPersonId,
@@ -1633,6 +1807,16 @@ export class KnexPeopleCoreStore implements PeopleCoreStore {
       .returning<DbContactPointEventRow[]>(this.contactPointEventColumns());
 
     return mapContactPointEventRow(row);
+  }
+
+  async updateContactPointStatus(input: {
+    tenantId: string;
+    contactPointId: string;
+    newStatus: ContactPointStatus;
+  }): Promise<void> {
+    await this.knexClient.transaction(async (trx) => {
+      await this.updateContactPointStatusWithClient(trx as unknown as Knex, input);
+    });
   }
 
   async listContactPointEvents(input: ListContactPointEventsInput): Promise<ContactPointEvent[]> {

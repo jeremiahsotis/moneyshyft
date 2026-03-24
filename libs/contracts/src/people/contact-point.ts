@@ -63,7 +63,8 @@ export type ContactPointEventType =
   | 'state_changed'
   | 'reassignment_suspected'
   | 'shared_detected'
-  | 'stale_detected';
+  | 'stale_detected'
+  | 'lifecycle_changed';
 
 export type ContactPointEvent = {
   id: string;

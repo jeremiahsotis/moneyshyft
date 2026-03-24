@@ -1,5 +1,6 @@
 import {
   AsyncPeopleCoreService,
+  ContactPointLifecycleComputationError,
   PeopleCorePersistenceUnavailableError,
 } from '../service';
 import type { CreateResolverReviewInput } from '../store';
@@ -54,8 +55,12 @@ describe('AsyncPeopleCoreService', () => {
       getHousehold: jest.fn(async () => ({ id: 'household-1' })),
       listHouseholdMemberships: jest.fn(async () => [{ id: 'membership-1' }]),
       createContactPoint: jest.fn(async () => ({ id: 'contact-point-1' })),
-      listCurrentContactPointLinks: jest.fn(async () => [{ id: 'link-1' }]),
+      listCurrentContactPointLinks: jest.fn(async () => []),
+      getContactPoint: jest.fn(async () => ({ id: 'cp-1', status: 'active_personal' })),
+      createContactPointLink: jest.fn(async () => ({ id: 'link-1' })),
       appendContactPointEvent: jest.fn(async () => ({ id: 'event-1' })),
+      updateContactPointStatus: jest.fn(async () => undefined),
+      listContactPointEvents: jest.fn(async () => []),
       getResolverReview: jest.fn(async () => ({ id: 'review-1' })),
     };
     const service = new AsyncPeopleCoreService(store as any);
@@ -68,7 +73,20 @@ describe('AsyncPeopleCoreService', () => {
     await expect(service.createContactPoint(CONTACT_POINT_INPUT))
       .resolves.toEqual({ id: 'contact-point-1' });
     await expect(service.listCurrentContactPointLinks({ tenantId: 'tenant-1', contactPointId: 'cp-1' }))
-      .resolves.toEqual([{ id: 'link-1' }]);
+      .resolves.toEqual([]);
+    await expect(service.createContactPointLink({
+      tenantId: 'tenant-1',
+      contactPointId: 'cp-1',
+      subjectType: 'person',
+      subjectId: 'person-1',
+      linkType: 'primary',
+      confidenceBand: 'high',
+      isCurrent: true,
+      isPrimary: true,
+      manuallyConfirmed: false,
+      firstLinkedAt: '2026-03-21T12:00:00.000Z',
+      linkedBy: 'system',
+    })).resolves.toEqual({ id: 'link-1' });
     await expect(service.appendContactPointEvent({
       tenantId: 'tenant-1',
       contactPointId: 'cp-1',
@@ -77,6 +95,25 @@ describe('AsyncPeopleCoreService', () => {
     })).resolves.toEqual({ id: 'event-1' });
     await expect(service.getResolverReview({ tenantId: 'tenant-1', reviewId: 'review-1' }))
       .resolves.toEqual({ id: 'review-1' });
+  });
+
+  it('wraps lifecycle recomputation failures after event capture', async () => {
+    const store = {
+      appendContactPointEvent: jest.fn(async () => ({ id: 'event-1' })),
+      getContactPoint: jest.fn(async () => ({ id: 'cp-1', status: 'active_personal' })),
+      listContactPointEvents: jest.fn(async () => {
+        throw new Error('db read failed');
+      }),
+      listCurrentContactPointLinks: jest.fn(async () => []),
+    };
+    const service = new AsyncPeopleCoreService(store as any);
+
+    await expect(service.appendContactPointEvent({
+      tenantId: 'tenant-1',
+      contactPointId: 'cp-1',
+      eventType: 'inbound_seen',
+      eventSource: 'peoplecore',
+    })).rejects.toBeInstanceOf(ContactPointLifecycleComputationError);
   });
 
   it.each([
