@@ -2,6 +2,11 @@ import type {
   ConnectShyftIdentityResolutionCandidate,
   ConnectShyftIdentityResolutionResponse,
 } from '@shyft/contracts';
+import {
+  isConnectShyftIdentityResolutionOutcome,
+  isResolverReviewActiveStatus,
+  isResolverReviewResolvedStatus,
+} from '@shyft/contracts';
 
 export type {
   ConnectShyftIdentityResolutionCandidate,
@@ -29,16 +34,28 @@ export type ConnectShyftIdentityResolutionPresentation = {
 const normalizeResolutionState = (
   value: unknown,
 ): ConnectShyftIdentityResolutionPresentation['resolvedState'] | null => {
-  if (value === 'canonical' || value === 'match') {
-    return 'canonical';
+  if (isConnectShyftIdentityResolutionOutcome(value) || value === 'match') {
+    if (value === 'canonical') {
+      return 'canonical';
+    }
+
+    if (value === 'provisional') {
+      return 'provisional';
+    }
+
+    return 'resolver_required';
   }
 
-  if (value === 'provisional' || value === 'create_new') {
+  if (isResolverReviewActiveStatus(value) || value === 'review_needed') {
+    return 'resolver_required';
+  }
+
+  if (value === 'resolved_confirmed_new' || value === 'create_new') {
     return 'provisional';
   }
 
-  if (value === 'resolver_required' || value === 'review_needed') {
-    return 'resolver_required';
+  if (isResolverReviewResolvedStatus(value) || value === 'dismissed') {
+    return 'canonical';
   }
 
   return null;
@@ -48,11 +65,14 @@ export const resolveConnectShyftIdentityResolutionPresentation = (
   response: ConnectShyftIdentityResolutionResponse,
 ): ConnectShyftIdentityResolutionPresentation => {
   const resolvedState =
-    normalizeResolutionState(response.state) || normalizeResolutionState(response.outcome) || 'unknown';
+    normalizeResolutionState(response.resolvedState)
+    || normalizeResolutionState(response.outcome)
+    || normalizeResolutionState(response.state)
+    || 'unknown';
   const candidates = Array.isArray(response.candidates) ? response.candidates : [];
   const hasCandidates = candidates.length > 0;
 
-  if (resolvedState === 'resolver_required' || response.confidenceBand === 'very_high') {
+  if (resolvedState === 'resolver_required') {
     return {
       resolvedState: 'resolver_required',
       mode: 'resolver_required',

@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type {
+  ConnectShyftIdentityAmbiguityEvent,
   ConnectShyftIdentityAmbiguityConsumptionOutcome,
+  ConnectShyftIdentityAmbiguityReasonCode,
   ConnectShyftIdentityAmbiguityStatus,
   ConnectShyftResolverOutcomeAudit,
 } from '@shyft/contracts';
@@ -11,39 +13,16 @@ import {
 import type { Knex } from 'knex';
 import db from '../../config/knex';
 
+export type {
+  ConnectShyftIdentityAmbiguityEvent,
+  ConnectShyftIdentityAmbiguityReasonCode,
+} from '@shyft/contracts';
+
 const CONNECTSHYFT_SCHEMA = 'connectshyft';
 const AMBIGUITY_EVENTS_TABLE = 'cs_identity_ambiguity_events';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DEFAULT_LIST_LIMIT = 50;
 const MAX_LIST_LIMIT = 200;
-
-export type ConnectShyftIdentityAmbiguityReasonCode =
-  | 'IDENTITY_MATCH_AMBIGUOUS'
-  | 'PEOPLECORE_LEGACY_DISAGREEMENT'
-  | 'PEOPLECORE_MULTI_CURRENT_LINKS';
-
-export type ConnectShyftIdentityAmbiguityEvent = {
-  id: string;
-  tenantId: string;
-  orgUnitId: string | null;
-  sourceContext: string;
-  sourceContextId: string | null;
-  normalizedContactPoint: string;
-  contactPointType: 'phone';
-  candidateNeighborIds: string[];
-  candidateCount: number;
-  ambiguityReasonCode: ConnectShyftIdentityAmbiguityReasonCode;
-  status: ConnectShyftIdentityAmbiguityStatus;
-  requestedByUserId: string | null;
-  correlationId: string | null;
-  idempotencyKey: string | null;
-  resolverReviewId: string | null;
-  resolverConsumedByUserId: string | null;
-  resolverConsumedAtUtc: string | null;
-  resolverOutcome: ConnectShyftResolverOutcomeAudit | null;
-  createdAtUtc: string;
-  updatedAtUtc: string;
-};
 
 export type CreateIdentityAmbiguityEventInput = {
   id?: string;

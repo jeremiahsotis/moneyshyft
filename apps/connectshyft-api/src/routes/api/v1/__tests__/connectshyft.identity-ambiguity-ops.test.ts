@@ -149,6 +149,25 @@ const createEvent = async (overrides: Record<string, unknown> = {}) => createIde
   ...overrides,
 });
 
+const buildResolverReview = (overrides: Record<string, unknown> = {}) => ({
+  id: 'review-1',
+  tenantId: TEST_TENANT_ID,
+  orgUnitId: TEST_ORG_UNIT_ID,
+  reviewType: 'shared_contact_ambiguity',
+  reviewStatus: 'pending',
+  priority: 'high',
+  triggerSourceType: 'connectshyft_identity_match',
+  triggerSourceId: 'identity-match:resolver-review-route',
+  candidatePersonIds: ['person-a', 'person-b'],
+  contactPointId: 'contact-point-1',
+  confidenceBand: 'medium',
+  confidenceReasons: ['shared phone contact point'],
+  riskFlags: ['shared_contact_possible'],
+  requestedByUserId: TEST_USER_ID,
+  requestedAt: '2026-03-21T12:00:00.000Z',
+  ...overrides,
+});
+
 describe('connectshyft identity ambiguity ops route', () => {
   const previousNodeEnv = process.env.NODE_ENV;
   const previousOverrideFlag = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
@@ -241,6 +260,7 @@ describe('connectshyft identity ambiguity ops route', () => {
     });
     expect(response.body.data.events).toHaveLength(2);
     expect(Object.keys(response.body.data.events[0]).sort()).toEqual([
+      'actionable',
       'ambiguityReasonCode',
       'candidateCount',
       'candidateNeighborIds',
@@ -260,6 +280,7 @@ describe('connectshyft identity ambiguity ops route', () => {
       'sourceContextId',
       'status',
       'tenantId',
+      'terminal',
       'updatedAtUtc',
     ].sort());
 
@@ -676,6 +697,8 @@ describe('connectshyft identity ambiguity ops route', () => {
       expect.objectContaining({
         id: pending.id,
         status: 'pending',
+        actionable: true,
+        terminal: false,
       }),
     ]);
 
@@ -694,6 +717,8 @@ describe('connectshyft identity ambiguity ops route', () => {
       expect.objectContaining({
         id: 'ambiguity-event-resolved-default-list',
         status: 'resolved',
+        actionable: false,
+        terminal: true,
       }),
     ]);
   });
@@ -739,6 +764,8 @@ describe('connectshyft identity ambiguity ops route', () => {
         event: {
           id: created.id,
           status: 'dismissed',
+          actionable: false,
+          terminal: true,
           resolverReviewId: 'review-detail-terminal',
           resolverOutcome: {
             action: 'dismiss_no_action',
@@ -746,6 +773,112 @@ describe('connectshyft identity ambiguity ops route', () => {
           },
         },
       },
+    });
+  });
+
+  it('lists resolver reviews with normalized actionability semantics', async () => {
+    const listSpy = jest.spyOn(peopleCoreServiceAsync, 'listResolverReviews')
+      .mockResolvedValue([
+        buildResolverReview({
+          id: 'review-active',
+          reviewStatus: 'pending',
+        }) as any,
+        buildResolverReview({
+          id: 'review-terminal',
+          reviewStatus: 'resolved_confirmed_existing',
+          resolutionType: 'confirm_existing_person',
+          resolvedAt: '2026-03-21T13:00:00.000Z',
+        }) as any,
+      ]);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/resolver-reviews')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(response.status).toBe(200);
+    expect(listSpy).toHaveBeenCalledWith({
+      tenantId: TEST_TENANT_ID,
+      orgUnitId: undefined,
+    });
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_RESOLVER_REVIEWS_LISTED',
+      data: {
+        reviews: [
+          expect.objectContaining({
+            id: 'review-active',
+            reviewStatus: 'pending',
+            actionable: true,
+            terminal: false,
+            decisionStatus: null,
+          }),
+          expect.objectContaining({
+            id: 'review-terminal',
+            reviewStatus: 'resolved_confirmed_existing',
+            actionable: false,
+            terminal: true,
+            decisionStatus: 'resolved',
+          }),
+        ],
+      },
+    });
+  });
+
+  it('returns resolver review detail with stable lifecycle fields', async () => {
+    jest.spyOn(peopleCoreServiceAsync, 'getResolverReview')
+      .mockResolvedValue(buildResolverReview({
+        id: 'review-detail',
+        reviewStatus: 'resolved_confirmed_new',
+        resolutionType: 'confirm_new_person',
+        resolvedAt: '2026-03-21T14:00:00.000Z',
+      }) as any);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/resolver-reviews/review-detail')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_RESOLVER_REVIEW_RETRIEVED',
+      data: {
+        review: {
+          id: 'review-detail',
+          reviewStatus: 'resolved_confirmed_new',
+          actionable: false,
+          terminal: true,
+          decisionStatus: 'resolved',
+          resolutionType: 'confirm_new_person',
+        },
+      },
+    });
+  });
+
+  it('maps missing resolver review detail to a normalized business refusal', async () => {
+    jest.spyOn(peopleCoreServiceAsync, 'getResolverReview').mockResolvedValue(null);
+
+    const app = buildApp();
+    const response = await request(app)
+      .get('/api/v1/connectshyft/resolver-reviews/review-missing')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_RESOLVER_REVIEW_NOT_FOUND',
+      refusalType: 'business',
+      message: 'Resolver review is unavailable for the active tenant context.',
     });
   });
 
@@ -805,6 +938,37 @@ describe('connectshyft identity ambiguity ops route', () => {
           mergeApplied: false,
           rebindTriggered: true,
         },
+      },
+    });
+  });
+
+  it('rejects malformed resolver decision payloads before service dispatch', async () => {
+    const applySpy = jest.spyOn(peopleCoreServiceAsync, 'applyResolverDecision');
+
+    const app = buildApp();
+    const response = await request(app)
+      .post('/api/v1/connectshyft/resolver-reviews/review-1/decision')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }))
+      .send({
+        action: 'invented_action',
+      });
+
+    expect(response.status).toBe(400);
+    expect(applySpy).not.toHaveBeenCalled();
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_RESOLVER_DECISION_INVALID',
+      data: {
+        fieldErrors: [
+          {
+            field: 'action',
+            reason: 'INVALID',
+            message: 'action must be a canonical resolver action.',
+          },
+        ],
       },
     });
   });
