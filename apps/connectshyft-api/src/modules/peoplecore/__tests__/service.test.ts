@@ -3,6 +3,11 @@ import {
   RESOLVER_ACTION_TYPES,
 } from '@shyft/contracts';
 import {
+  createIdentityAmbiguityEvent,
+  getIdentityAmbiguityEvent,
+  resetIdentityAmbiguityEventsForTests,
+} from '../../connectshyft/ambiguityEvents';
+import {
   AsyncPeopleCoreService,
   assertResolverReviewTransitionAllowed,
   ContactPointLifecycleComputationError,
@@ -137,6 +142,7 @@ const createApplyResolverDecisionStore = (overrides: Record<string, jest.Mock> =
 describe('AsyncPeopleCoreService', () => {
   afterEach(() => {
     jest.restoreAllMocks();
+    resetIdentityAmbiguityEventsForTests();
   });
 
   it('delegates persistence-backed operations to the configured store', async () => {
@@ -856,5 +862,228 @@ describe('AsyncPeopleCoreService', () => {
       reason: 'Trying to override the existing terminal outcome.',
     })).rejects.toBeInstanceOf(InvalidResolverReviewTransitionError);
     expect(store.updateResolverReview).not.toHaveBeenCalled();
+  });
+
+  it('consumes linked ambiguity events when confirm_existing_person resolves a review', async () => {
+    const currentReview = buildDecisionReview({
+      triggerSourceId: 'identity-match:confirm-existing',
+    });
+    const updatedReview = buildResolvedReviewForAction('confirm_existing_person', {
+      triggerSourceId: 'identity-match:confirm-existing',
+    });
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => currentReview),
+      listCurrentContactPointLinks: jest.fn(async () => [
+        buildContactPointLink('person-provisional'),
+      ]),
+      setResolverContactPointPersons: jest.fn(async () => [
+        buildContactPointLink('person-existing'),
+      ]),
+      updateResolverReview: jest.fn(async () => updatedReview),
+    });
+    jest.spyOn(personRebindServiceAsync, 'rebindPersonThreads').mockResolvedValue(undefined);
+    const event = await createIdentityAmbiguityEvent({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      sourceContext: 'connectshyft_identity_match',
+      sourceContextId: 'identity-match:confirm-existing',
+      normalizedContactPoint: '+12605550021',
+      candidateNeighborIds: ['neighbor-1'],
+      ambiguityReasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+    });
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const result = await service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'confirm_existing_person',
+      personId: 'person-existing',
+      reason: 'Matched the existing person.',
+    });
+
+    const consumed = await getIdentityAmbiguityEvent({
+      tenantId: 'tenant-1',
+      ambiguityEventId: event.id,
+    });
+
+    expect(result.ambiguityEventIds).toEqual([event.id]);
+    expect(consumed).toMatchObject({
+      id: event.id,
+      status: 'resolved',
+      resolverReviewId: 'review-1',
+      resolverOutcome: expect.objectContaining({
+        action: 'confirm_existing_person',
+        personId: 'person-existing',
+      }),
+    });
+  });
+
+  it('consumes linked ambiguity events when merge_people resolves a review', async () => {
+    const currentReview = buildDecisionReview({
+      reviewType: 'merge_review',
+      triggerSourceId: 'identity-match:merge-people',
+      candidatePersonIds: ['person-canonical'],
+    });
+    const updatedReview = buildResolvedReviewForAction('merge_people', {
+      reviewType: 'merge_review',
+      triggerSourceId: 'identity-match:merge-people',
+      candidatePersonIds: ['person-canonical'],
+    });
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => currentReview),
+      mergePerson: jest.fn(async () => ({
+        mergedProvisionalPersonId: 'person-provisional',
+        canonicalPersonId: 'person-canonical',
+        autoMergedContactPointLinkIds: [],
+        reviewContactPointLinkIds: [],
+        resolverReviewId: 'review-1',
+        didPersistMerge: true,
+      })),
+      updateResolverReview: jest.fn(async () => updatedReview),
+    });
+    const mergeEventPublisher = {
+      publishPersonMerged: jest.fn(async () => undefined),
+    };
+    jest.spyOn(personRebindServiceAsync, 'rebindPersonThreads').mockResolvedValue(undefined);
+    const event = await createIdentityAmbiguityEvent({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      sourceContext: 'connectshyft_identity_match',
+      sourceContextId: 'identity-match:merge-people',
+      normalizedContactPoint: '+12605550022',
+      candidateNeighborIds: ['neighbor-merge'],
+      ambiguityReasonCode: 'PEOPLECORE_LEGACY_DISAGREEMENT',
+    });
+    const service = new AsyncPeopleCoreService(store as any, mergeEventPublisher as any);
+
+    const result = await service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'merge_people',
+      sourcePersonId: 'person-provisional',
+      targetPersonId: 'person-canonical',
+      reason: 'Merge the duplicate people.',
+    });
+
+    const consumed = await getIdentityAmbiguityEvent({
+      tenantId: 'tenant-1',
+      ambiguityEventId: event.id,
+    });
+
+    expect(result.ambiguityEventIds).toEqual([event.id]);
+    expect(consumed).toMatchObject({
+      id: event.id,
+      status: 'resolved',
+      resolverReviewId: 'review-1',
+      resolverOutcome: expect.objectContaining({
+        action: 'merge_people',
+        sourcePersonId: 'person-provisional',
+        targetPersonId: 'person-canonical',
+      }),
+    });
+  });
+
+  it('dismisses linked ambiguity events when dismiss_no_action resolves a review', async () => {
+    const currentReview = buildDecisionReview({
+      triggerSourceId: 'identity-match:dismiss-no-action',
+    });
+    const updatedReview = buildResolvedReviewForAction('dismiss_no_action', {
+      triggerSourceId: 'identity-match:dismiss-no-action',
+      reviewStatus: 'dismissed',
+      resolutionType: 'dismiss_no_action',
+    });
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => currentReview),
+      updateResolverReview: jest.fn(async () => updatedReview),
+    });
+    const event = await createIdentityAmbiguityEvent({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      sourceContext: 'connectshyft_identity_match',
+      sourceContextId: 'identity-match:dismiss-no-action',
+      normalizedContactPoint: '+12605550023',
+      candidateNeighborIds: ['neighbor-dismiss'],
+      ambiguityReasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+    });
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const result = await service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'dismiss_no_action',
+      reason: 'No identity change is required.',
+    });
+
+    const consumed = await getIdentityAmbiguityEvent({
+      tenantId: 'tenant-1',
+      ambiguityEventId: event.id,
+    });
+
+    expect(result.ambiguityEventIds).toEqual([event.id]);
+    expect(consumed).toMatchObject({
+      id: event.id,
+      status: 'dismissed',
+      resolverReviewId: 'review-1',
+      resolverOutcome: expect.objectContaining({
+        action: 'dismiss_no_action',
+        reviewStatus: 'dismissed',
+      }),
+    });
+  });
+
+  it('uses safe terminal replay to complete ambiguity-event consumption without conflicting state changes', async () => {
+    const terminalReview = buildResolvedReviewForAction('confirm_existing_person', {
+      triggerSourceId: 'identity-match:terminal-replay',
+      resolutionReason: 'Matched the existing person.',
+    });
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => terminalReview),
+      updateResolverReview: jest.fn(),
+    });
+    const event = await createIdentityAmbiguityEvent({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      sourceContext: 'connectshyft_identity_match',
+      sourceContextId: 'identity-match:terminal-replay',
+      normalizedContactPoint: '+12605550024',
+      candidateNeighborIds: ['neighbor-replay'],
+      ambiguityReasonCode: 'IDENTITY_MATCH_AMBIGUOUS',
+    });
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const first = await service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'confirm_existing_person',
+      personId: 'person-existing',
+      reason: 'Matched the existing person.',
+    });
+    const second = await service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'confirm_existing_person',
+      personId: 'person-existing',
+      reason: 'Matched the existing person.',
+    });
+
+    const consumed = await getIdentityAmbiguityEvent({
+      tenantId: 'tenant-1',
+      ambiguityEventId: event.id,
+    });
+
+    expect(first.ambiguityEventIds).toEqual([event.id]);
+    expect(second.ambiguityEventIds).toEqual([event.id]);
+    expect(store.updateResolverReview).not.toHaveBeenCalled();
+    expect(consumed).toMatchObject({
+      id: event.id,
+      status: 'resolved',
+      resolverReviewId: 'review-1',
+      resolverConsumedAtUtc: '2026-03-21T12:12:00.000Z',
+    });
   });
 });

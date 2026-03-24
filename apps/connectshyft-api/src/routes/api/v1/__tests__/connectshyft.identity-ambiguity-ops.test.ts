@@ -2,6 +2,7 @@
 import express from 'express';
 import request from 'supertest';
 import {
+  consumeAmbiguityEventsForResolverOutcome,
   createIdentityAmbiguityEvent,
   resetIdentityAmbiguityEventsForTests,
 } from '../../../../modules/connectshyft/ambiguityEvents';
@@ -251,6 +252,10 @@ describe('connectshyft identity ambiguity ops route', () => {
       'normalizedContactPoint',
       'orgUnitId',
       'requestedByUserId',
+      'resolverConsumedAtUtc',
+      'resolverConsumedByUserId',
+      'resolverOutcome',
+      'resolverReviewId',
       'sourceContext',
       'sourceContextId',
       'status',
@@ -617,6 +622,130 @@ describe('connectshyft identity ambiguity ops route', () => {
       ok: false,
       code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_UPDATE_FORBIDDEN',
       message: 'Identity ambiguity review requires a tenant-privileged ConnectShyft admin role.',
+    });
+  });
+
+  it('lists only active ambiguity events by default while allowing explicit terminal-status filters', async () => {
+    const pending = await createEvent({
+      id: 'ambiguity-event-pending-default-list',
+      sourceContextId: 'identity-match:pending-default-list',
+      createdAtUtc: '2026-03-21T14:00:00.000Z',
+      updatedAtUtc: '2026-03-21T14:00:00.000Z',
+    });
+    await createEvent({
+      id: 'ambiguity-event-reviewed-default-list',
+      status: 'reviewed',
+      sourceContextId: 'identity-match:reviewed-default-list',
+      createdAtUtc: '2026-03-21T14:05:00.000Z',
+      updatedAtUtc: '2026-03-21T14:05:00.000Z',
+    });
+    await createEvent({
+      id: 'ambiguity-event-resolved-default-list',
+      sourceContextId: 'identity-match:resolved-default-list',
+      createdAtUtc: '2026-03-21T14:10:00.000Z',
+      updatedAtUtc: '2026-03-21T14:10:00.000Z',
+    });
+
+    await consumeAmbiguityEventsForResolverOutcome({
+      tenantId: TEST_TENANT_ID,
+      resolverReviewId: 'review-default-list',
+      triggerSourceId: 'identity-match:resolved-default-list',
+      outcome: 'resolved',
+      consumedByUserId: TEST_USER_ID,
+      consumedAtUtc: '2026-03-21T14:15:00.000Z',
+      resolverOutcome: {
+        reviewId: 'review-default-list',
+        action: 'confirm_existing_person',
+        reviewStatus: 'resolved_confirmed_existing',
+        actorUserId: TEST_USER_ID,
+        occurredAtUtc: '2026-03-21T14:15:00.000Z',
+        personId: 'person-default-list',
+      },
+    });
+
+    const app = buildApp();
+    const activeResponse = await request(app)
+      .get('/api/v1/connectshyft/identity-ambiguities')
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(activeResponse.status).toBe(200);
+    expect(activeResponse.body.data.events).toEqual([
+      expect.objectContaining({
+        id: pending.id,
+        status: 'pending',
+      }),
+    ]);
+
+    const resolvedResponse = await request(app)
+      .get('/api/v1/connectshyft/identity-ambiguities')
+      .query({
+        status: 'resolved',
+      })
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(resolvedResponse.status).toBe(200);
+    expect(resolvedResponse.body.data.events).toEqual([
+      expect.objectContaining({
+        id: 'ambiguity-event-resolved-default-list',
+        status: 'resolved',
+      }),
+    ]);
+  });
+
+  it('returns terminal ambiguity detail with resolver-outcome linkage intact', async () => {
+    const created = await createEvent({
+      id: 'ambiguity-event-detail-terminal',
+      sourceContextId: 'identity-match:detail-terminal',
+      createdAtUtc: '2026-03-21T14:20:00.000Z',
+      updatedAtUtc: '2026-03-21T14:20:00.000Z',
+    });
+
+    await consumeAmbiguityEventsForResolverOutcome({
+      tenantId: TEST_TENANT_ID,
+      resolverReviewId: 'review-detail-terminal',
+      triggerSourceId: 'identity-match:detail-terminal',
+      outcome: 'dismissed',
+      consumedByUserId: TEST_USER_ID,
+      consumedAtUtc: '2026-03-21T14:25:00.000Z',
+      resolverOutcome: {
+        reviewId: 'review-detail-terminal',
+        action: 'dismiss_no_action',
+        reviewStatus: 'dismissed',
+        actorUserId: TEST_USER_ID,
+        occurredAtUtc: '2026-03-21T14:25:00.000Z',
+        reason: 'No identity change required.',
+      },
+    });
+
+    const app = buildApp();
+    const response = await request(app)
+      .get(`/api/v1/connectshyft/identity-ambiguities/${created.id}`)
+      .set(buildHeaders({
+        role: 'TENANT_ADMIN',
+        memberships: [TEST_ORG_UNIT_ID],
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_RETRIEVED',
+      data: {
+        event: {
+          id: created.id,
+          status: 'dismissed',
+          resolverReviewId: 'review-detail-terminal',
+          resolverOutcome: {
+            action: 'dismiss_no_action',
+            reviewStatus: 'dismissed',
+          },
+        },
+      },
     });
   });
 

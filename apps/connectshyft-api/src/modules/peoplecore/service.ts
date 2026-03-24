@@ -661,6 +661,14 @@ const loadPersonRebindService = (): Pick<
   return personRebindServiceAsync;
 };
 
+const loadAmbiguityEventService = (): Pick<
+  typeof import('../connectshyft/ambiguityEvents'),
+  'consumeAmbiguityEventsForResolverOutcome'
+> => {
+  const ambiguityEvents = require('../connectshyft/ambiguityEvents') as typeof import('../connectshyft/ambiguityEvents');
+  return ambiguityEvents;
+};
+
 const buildResolverDecisionResult = (input: {
   review: ResolverReview;
   action: ResolverActionType;
@@ -953,6 +961,47 @@ export class AsyncPeopleCoreService {
     });
   }
 
+  private async consumeLinkedAmbiguityEvents(input: {
+    review: ResolverReview;
+    action: ResolverActionType;
+    actorUserId: string;
+    reviewStatus: ResolverReviewStatus;
+    resolvedAtUtc: string;
+    reason?: string;
+    notes?: string;
+    personId?: string;
+    sourcePersonId?: string;
+    targetPersonId?: string;
+    contactPointId?: string;
+    ambiguityEventId?: string;
+  }): Promise<string[]> {
+    const outcome = input.reviewStatus === 'dismissed' ? 'dismissed' : 'resolved';
+    const consumed = await loadAmbiguityEventService().consumeAmbiguityEventsForResolverOutcome({
+      tenantId: input.review.tenantId,
+      resolverReviewId: input.review.id,
+      triggerSourceId: input.review.triggerSourceId,
+      ambiguityEventId: input.ambiguityEventId,
+      outcome,
+      consumedByUserId: input.actorUserId,
+      consumedAtUtc: input.resolvedAtUtc,
+      resolverOutcome: {
+        reviewId: input.review.id,
+        action: input.action,
+        reviewStatus: input.reviewStatus,
+        actorUserId: input.actorUserId,
+        occurredAtUtc: input.resolvedAtUtc,
+        reason: input.reason ?? input.review.resolutionReason ?? null,
+        notes: input.notes ?? input.review.resolutionNotes ?? null,
+        personId: input.personId ?? null,
+        sourcePersonId: input.sourcePersonId ?? null,
+        targetPersonId: input.targetPersonId ?? null,
+        contactPointId: input.contactPointId ?? input.review.contactPointId ?? null,
+      },
+    });
+
+    return uniqueStrings(consumed.events.map((event) => event.id));
+  }
+
   applyResolverDecision(input: ResolverDecisionInput): Promise<ResolverDecisionResult> {
     return this.execute(async () => {
       const validated = validateResolverDecisionInput(input);
@@ -990,9 +1039,20 @@ export class AsyncPeopleCoreService {
           validated.contactPointId,
           review.contactPointId,
         ];
-        const replayAmbiguityEventIds = validated.ambiguityEventId
-          ? [validated.ambiguityEventId]
-          : [];
+        const replayAmbiguityEventIds = await this.consumeLinkedAmbiguityEvents({
+          review,
+          action: validated.action,
+          actorUserId: validated.actorUserId,
+          reviewStatus: review.reviewStatus,
+          resolvedAtUtc: review.resolvedAt ?? nowIsoUtc(),
+          reason: validated.reason,
+          notes: validated.notes,
+          personId: validated.personId,
+          sourcePersonId: validated.sourcePersonId,
+          targetPersonId: validated.targetPersonId,
+          contactPointId: validated.contactPointId,
+          ambiguityEventId: validated.ambiguityEventId,
+        });
 
         return buildResolverDecisionResult({
           review,
@@ -1047,6 +1107,7 @@ export class AsyncPeopleCoreService {
         validated.targetPersonId,
       ]);
       let affectedContactPointIds = uniqueStrings([validated.contactPointId, review.contactPointId]);
+      let ambiguityEventIds: string[] = [];
       let mergeApplied = false;
       let rebindTriggered = false;
 
@@ -1198,12 +1259,27 @@ export class AsyncPeopleCoreService {
         resolvedAt: nowIsoUtc(),
       });
 
+      ambiguityEventIds = await this.consumeLinkedAmbiguityEvents({
+        review: updatedReview,
+        action: validated.action,
+        actorUserId: validated.actorUserId,
+        reviewStatus: updatedReview.reviewStatus,
+        resolvedAtUtc: updatedReview.resolvedAt ?? nowIsoUtc(),
+        reason: validated.reason,
+        notes: validated.notes,
+        personId: validated.personId,
+        sourcePersonId: validated.sourcePersonId,
+        targetPersonId: validated.targetPersonId,
+        contactPointId: validated.contactPointId,
+        ambiguityEventId: validated.ambiguityEventId,
+      });
+
       return buildResolverDecisionResult({
         review: updatedReview,
         action: validated.action,
         affectedPersonIds,
         affectedContactPointIds,
-        ambiguityEventIds: validated.ambiguityEventId ? [validated.ambiguityEventId] : [],
+        ambiguityEventIds,
         mergeApplied,
         rebindTriggered,
       });

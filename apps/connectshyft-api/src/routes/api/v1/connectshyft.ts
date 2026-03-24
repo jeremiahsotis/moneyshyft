@@ -208,6 +208,7 @@ import {
   resetConnectShyftCommunicationAuditLogForTests,
 } from '../../../modules/connectshyft/communicationAuditLog';
 import {
+  getIdentityAmbiguityEvent,
   listIdentityAmbiguityEvents,
   markIdentityAmbiguityEventReviewed,
 } from '../../../modules/connectshyft/ambiguityEvents';
@@ -2771,17 +2772,26 @@ const parseOrgUnitIdFromQuery = (req: Request): string | null => {
 
 const parseIdentityAmbiguityStatusFromQuery = (
   req: Request,
-): 'pending' | 'reviewed' | null => {
+): 'pending' | 'reviewed' | 'resolved' | 'dismissed' | null => {
   if (typeof req.query?.status !== 'string') {
-    return null;
+    return 'pending';
   }
 
   const normalized = req.query.status.trim().toLowerCase();
-  if (normalized === 'pending' || normalized === 'reviewed') {
+  if (normalized === 'all') {
+    return null;
+  }
+
+  if (
+    normalized === 'pending'
+    || normalized === 'reviewed'
+    || normalized === 'resolved'
+    || normalized === 'dismissed'
+  ) {
     return normalized;
   }
 
-  return null;
+  return 'pending';
 };
 
 const parseIdentityAmbiguityOptionalFilter = (
@@ -2811,7 +2821,7 @@ const parseIdentityAmbiguityLimit = (req: Request): number => {
 
 const parseIdentityAmbiguityFilters = (req: Request): {
   orgUnitId: string | null;
-  status: 'pending' | 'reviewed' | null;
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed' | null;
   normalizedContactPoint: string | null;
   sourceContext: string | null;
   limit: number;
@@ -4857,6 +4867,54 @@ router.get('/identity-ambiguities', async (req: Request, res: Response) => {
     data: {
       events: listed.events,
       nextCursor: listed.nextCursor,
+    },
+  });
+});
+
+router.get('/identity-ambiguities/:ambiguityEventId', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  if (!resolveIdentityAmbiguityTenantPrivilegedScope(req, res, context)) {
+    return;
+  }
+
+  const ambiguityEventId = parseIdentityAmbiguityEventIdParam(req);
+  if (!ambiguityEventId) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_ID_REQUIRED',
+      message: 'ambiguityEventId is required',
+    });
+    return;
+  }
+
+  const event = await getIdentityAmbiguityEvent({
+    tenantId: context.tenantId,
+    ambiguityEventId,
+  });
+
+  if (!event) {
+    refusal(res, {
+      code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_NOT_FOUND',
+      message: 'Identity ambiguity event is unavailable for the active tenant context.',
+      refusalType: 'business',
+      httpStatus: 200,
+    });
+    return;
+  }
+
+  return success(res, {
+    code: 'CONNECTSHYFT_IDENTITY_AMBIGUITY_RETRIEVED',
+    message: 'ConnectShyft identity ambiguity retrieved',
+    httpStatus: 200,
+    data: {
+      event,
     },
   });
 });
