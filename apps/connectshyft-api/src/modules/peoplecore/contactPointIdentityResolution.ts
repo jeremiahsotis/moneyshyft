@@ -43,6 +43,7 @@ export interface PeopleCoreScoredIdentityCandidate extends PeopleCoreGeneratedId
   confidenceBand: 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
   scoreReasons: string[];
   riskFlags: ResolverRiskFlag[];
+  contactPointStatus: ContactPoint['status'];
 }
 
 export interface ResolveInboundContactPointIdentityInput {
@@ -60,6 +61,7 @@ export interface ResolveInboundContactPointIdentityInput {
 export interface ResolveInboundContactPointIdentityResult {
   outcome: PeopleCoreIdentityResolutionOutcome;
   confidenceBand: PeopleCoreScoredIdentityCandidate['confidenceBand'];
+  contactPointStatus: ContactPoint['status'];
   personId: string;
   contactPointId: string;
   contactPointEventId: string;
@@ -604,6 +606,7 @@ export function scorePeopleCoreIdentityCandidates(input: {
   return scoreIdentityCandidates(input.candidates, scoreContext)
     .map((candidate) => ({
       ...candidate,
+      contactPointStatus: input.contactPoint.status,
       confidenceBand: assignConfidenceBand(
         candidate.score,
         input.contactPoint.status,
@@ -719,6 +722,7 @@ async function resolveInboundContactPointIdentityWithServiceAsync(
   return {
     outcome,
     confidenceBand: finalBand,
+    contactPointStatus: contactPoint.status,
     personId,
     contactPointId: contactPoint.id,
     contactPointEventId: contactPointEvent.id,

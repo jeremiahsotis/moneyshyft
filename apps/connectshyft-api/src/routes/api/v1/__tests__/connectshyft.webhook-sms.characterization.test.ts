@@ -158,6 +158,7 @@ const buildInboundSmsBody = (overrides: Record<string, unknown> = {}) => ({
 const buildIdentityAttachment = (overrides: Record<string, unknown> = {}) => ({
   outcome: 'canonical',
   confidenceBand: 'high',
+  contactPointStatus: 'active_personal',
   personId: 'person-connectshyft-f1-1001',
   contactPointId: 'contact-point-connectshyft-f1-1001',
   contactPointEventId: 'contact-point-event-connectshyft-f1-1001',
@@ -420,6 +421,12 @@ describe('connectshyft inbound sms webhook route characterization', () => {
           threadId: 'thread-sms-characterization-1001',
           threadState: 'UNCLAIMED',
           thread: buildEnsuredThread(),
+          identityResolution: {
+            outcome: 'canonical',
+            confidenceBand: 'high',
+            contactPointStatus: 'active_personal',
+            resolverReviewId: null,
+          },
           lifecycle: {
             ensuredActiveThread: true,
             createdNewThread: true,
@@ -924,6 +931,7 @@ describe('connectshyft inbound sms webhook route characterization', () => {
     resolveInboundIdentitySpy.mockResolvedValueOnce(buildIdentityAttachment({
       outcome: 'resolver_required',
       confidenceBand: 'medium',
+      contactPointStatus: 'reassignment_suspected',
       personId: 'person-connectshyft-f1-provisional-2005',
       provisionalPersonId: 'person-connectshyft-f1-provisional-2005',
       resolverReviewId: 'resolver-review-connectshyft-f1-2005',
@@ -955,6 +963,7 @@ describe('connectshyft inbound sms webhook route characterization', () => {
           identityResolution: {
             outcome: 'resolver_required',
             confidenceBand: 'medium',
+            contactPointStatus: 'reassignment_suspected',
             resolverReviewId: 'resolver-review-connectshyft-f1-2005',
           },
           thread: buildEnsuredThread({

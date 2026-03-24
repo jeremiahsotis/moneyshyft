@@ -35,11 +35,73 @@ describe('PeopleView', () => {
     expect(wrapper.text()).toContain('Run sample identity decision');
   });
 
+  it('renders shared, stale, and reassignment indicators for contact points', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ([
+        {
+          id: 'contact-shared',
+          tenantId: 'tenant-1',
+          type: 'phone',
+          normalizedValue: '+12605551212',
+          status: 'active_shared_possible',
+          firstSeenAt: '2026-03-24T10:00:00.000Z',
+          lastSeenAt: '2026-03-24T10:00:00.000Z',
+          suspectedShared: true,
+          confirmedShared: false,
+          reassignmentSuspected: false,
+          createdAt: '2026-03-24T10:00:00.000Z',
+          updatedAt: '2026-03-24T10:00:00.000Z',
+        },
+        {
+          id: 'contact-stale',
+          tenantId: 'tenant-1',
+          type: 'phone',
+          normalizedValue: '+12605551213',
+          status: 'stale',
+          firstSeenAt: '2026-03-24T10:00:00.000Z',
+          lastSeenAt: '2026-03-24T10:00:00.000Z',
+          suspectedShared: false,
+          confirmedShared: false,
+          reassignmentSuspected: false,
+          createdAt: '2026-03-24T10:00:00.000Z',
+          updatedAt: '2026-03-24T10:00:00.000Z',
+        },
+        {
+          id: 'contact-reassigned',
+          tenantId: 'tenant-1',
+          type: 'phone',
+          normalizedValue: '+12605551214',
+          status: 'reassignment_suspected',
+          firstSeenAt: '2026-03-24T10:00:00.000Z',
+          lastSeenAt: '2026-03-24T10:00:00.000Z',
+          suspectedShared: false,
+          confirmedShared: false,
+          reassignmentSuspected: true,
+          createdAt: '2026-03-24T10:00:00.000Z',
+          updatedAt: '2026-03-24T10:00:00.000Z',
+        },
+      ]),
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const wrapper = renderPeopleView();
+
+    await wrapper.get('[data-test="load-contact-points"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.findAll('[data-test="contact-point-shared-indicator"]')).toHaveLength(1);
+    expect(wrapper.findAll('[data-test="contact-point-stale-indicator"]')).toHaveLength(1);
+    expect(wrapper.findAll('[data-test="contact-point-reassignment-indicator"]')).toHaveLength(1);
+  });
+
   it('runs the sample identity decision and renders the result', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         confidenceBand: 'very_high',
+        contactPointStatus: 'reassignment_suspected',
         outcome: 'resolver_required',
         resolverReviewId: 'review-1',
         candidates: [],
@@ -77,10 +139,12 @@ describe('PeopleView', () => {
       ok: true,
       json: async () => ({
         confidenceBand: 'low',
+        contactPointStatus: 'active_shared_possible',
         candidates: [{
           personId: 'person-low',
           score: 24,
           reasons: ['historical contact match'],
+          contactPointStatus: 'active_shared_possible',
         }],
       }),
     });
@@ -94,6 +158,7 @@ describe('PeopleView', () => {
 
     expect(wrapper.text()).toContain('Default action: create_new');
     expect(wrapper.get('[data-test="decision-candidates"]').text()).toContain('person-low');
+    expect(wrapper.findAll('[data-test="decision-candidate-shared-indicator"]')).toHaveLength(1);
     expect(wrapper.find('[data-test="attach-existing"]').exists()).toBe(true);
     expect(wrapper.find('[data-test="create-new"]').exists()).toBe(true);
   });

@@ -243,12 +243,17 @@ describe('resolveInboundContactPointIdentityAsync', () => {
     expect(result).toMatchObject({
       outcome: 'canonical',
       confidenceBand: 'high',
+      contactPointStatus: 'active_personal',
       personId: canonicalPerson.id,
       contactPointId: CONTACT_POINT.id,
       contactPointEventId: CONTACT_POINT_EVENT.id,
       provisionalPersonId: null,
       resolverReviewId: null,
       selectedCandidatePersonId: canonicalPerson.id,
+    });
+    expect(result.candidates[0]).toMatchObject({
+      subjectId: canonicalPerson.id,
+      contactPointStatus: 'active_personal',
     });
     expect(mockPeopleCoreService.appendContactPointEvent).toHaveBeenCalledWith({
       tenantId: BASE_INPUT.tenantId,
@@ -294,6 +299,7 @@ describe('resolveInboundContactPointIdentityAsync', () => {
     expect(result).toMatchObject({
       outcome: 'provisional',
       confidenceBand: 'very_low',
+      contactPointStatus: 'active_personal',
       personId: provisionalPerson.id,
       contactPointId: createdContactPoint.id,
       provisionalPersonId: provisionalPerson.id,
@@ -386,10 +392,15 @@ describe('resolveInboundContactPointIdentityAsync', () => {
     expect(result).toMatchObject({
       outcome: 'resolver_required',
       confidenceBand: 'medium',
+      contactPointStatus: 'active_personal',
       personId: provisionalPerson.id,
       provisionalPersonId: provisionalPerson.id,
       resolverReviewId: 'review-tie',
       selectedCandidatePersonId: personA.id,
+    });
+    expect(result.candidates[0]).toMatchObject({
+      subjectId: personA.id,
+      contactPointStatus: 'active_personal',
     });
     expect(mockPeopleCoreService.createResolverReview).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -472,10 +483,15 @@ describe('resolveInboundContactPointIdentityAsync', () => {
     expect(result).toMatchObject({
       outcome: 'resolver_required',
       confidenceBand: 'very_high',
+      contactPointStatus: 'active_personal',
       personId: provisionalPerson.id,
       provisionalPersonId: provisionalPerson.id,
       resolverReviewId: 'review-very-high',
       selectedCandidatePersonId: person.id,
+    });
+    expect(result.candidates[0]).toMatchObject({
+      subjectId: person.id,
+      contactPointStatus: 'active_personal',
     });
     expect(mockPeopleCoreService.createResolverReview).toHaveBeenCalledWith(
       expect.objectContaining({

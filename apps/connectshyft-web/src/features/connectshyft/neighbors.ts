@@ -1,5 +1,6 @@
 import api from '@/services/api';
 import { buildConnectShyftTestOverrideHeaders } from '@/features/connectshyft/flags';
+import type { ContactPointStatus } from '@shyft/contracts';
 
 export type ConnectShyftNeighborPhoneInput = {
   label: string;
@@ -16,6 +17,7 @@ export type ConnectShyftNeighborPhone = {
   isPrimary: boolean;
   isShared: boolean;
   verificationStatus: 'verified' | 'unverified';
+  status: ContactPointStatus | null;
 };
 
 export type ConnectShyftTextingPreference = 'UNKNOWN' | 'YES' | 'NO';
@@ -220,6 +222,20 @@ const normalizeString = (value: unknown): string => {
   return value.trim();
 };
 
+const parseContactPointStatus = (value: unknown): ContactPointStatus | null => {
+  switch (value) {
+    case 'active_personal':
+    case 'active_shared_possible':
+    case 'active_shared_confirmed':
+    case 'stale':
+    case 'reassignment_suspected':
+    case 'archived':
+      return value;
+    default:
+      return null;
+  }
+};
+
 const parseNeighborPhone = (payload: unknown): ConnectShyftNeighborPhone | null => {
   if (!payload || typeof payload !== 'object') {
     return null;
@@ -236,6 +252,7 @@ const parseNeighborPhone = (payload: unknown): ConnectShyftNeighborPhone | null 
     verificationStatus: candidate.verificationStatus === 'verified'
       ? 'verified'
       : 'unverified',
+    status: parseContactPointStatus(candidate.status),
   };
 };
 

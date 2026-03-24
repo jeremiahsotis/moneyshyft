@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import type { ContactPoint } from '@shyft/contracts';
+import type {
+  ContactPoint,
+  ContactPointStatus,
+} from '@shyft/contracts';
 import { computed, ref } from 'vue';
 import {
   resolveConnectShyftIdentityResolutionPresentation,
@@ -19,13 +22,41 @@ const SAMPLE_CANDIDATES: ConnectShyftIdentityResolutionCandidate[] = [
     personId: 'person_very_high',
     score: 140,
     reasons: ['Exact phone match'],
+    contactPointStatus: 'reassignment_suspected',
   },
   {
     personId: 'person_medium',
     score: 60,
     reasons: ['Name similarity'],
+    contactPointStatus: 'active_shared_possible',
   },
 ];
+
+const isSharedStatus = (status: ContactPointStatus | null | undefined): boolean =>
+  status === 'active_shared_possible' || status === 'active_shared_confirmed';
+
+const isStaleStatus = (status: ContactPointStatus | null | undefined): boolean =>
+  status === 'stale';
+
+const isReassignmentStatus = (status: ContactPointStatus | null | undefined): boolean =>
+  status === 'reassignment_suspected';
+
+const warnMissingDecisionStatus = (payload: {
+  contactPointStatus?: ContactPointStatus;
+  candidates?: ConnectShyftIdentityResolutionCandidate[];
+}) => {
+  if (!payload.contactPointStatus) {
+    console.warn('ConnectShyft identity resolution response is missing contactPointStatus.');
+  }
+
+  (payload.candidates || []).forEach((candidate) => {
+    if (!candidate.contactPointStatus) {
+      console.warn('ConnectShyft identity resolution candidate is missing contactPointStatus.', {
+        personId: candidate.personId,
+      });
+    }
+  });
+};
 
 const decisionPresentation = computed(() => (
   decisionResult.value
@@ -67,7 +98,9 @@ async function runSampleDecision() {
       throw new Error(`Failed to run identity decision (${response.status})`);
     }
 
-    decisionResult.value = (await response.json()) as ConnectShyftIdentityResolutionResponse;
+    const payload = (await response.json()) as ConnectShyftIdentityResolutionResponse;
+    warnMissingDecisionStatus(payload);
+    decisionResult.value = payload;
   } catch (error) {
     decisionError.value = error instanceof Error ? error.message : 'Failed to run identity decision';
   }
@@ -94,9 +127,40 @@ async function runSampleDecision() {
 
       <p v-if="contactPointError">{{ contactPointError }}</p>
 
-      <ul v-if="contactPoints.length > 0" class="list-disc pl-5">
-        <li v-for="contactPoint in contactPoints" :key="contactPoint.id">
-          {{ contactPoint.type }} | {{ contactPoint.normalizedValue }} | {{ contactPoint.status }}
+      <ul v-if="contactPoints.length > 0" class="list-disc pl-5 space-y-2">
+        <li
+          v-for="contactPoint in contactPoints"
+          :key="contactPoint.id"
+          class="flex flex-wrap items-center gap-2"
+        >
+          <span>{{ contactPoint.type }} | {{ contactPoint.normalizedValue }} | {{ contactPoint.status }}</span>
+          <span
+            v-if="isSharedStatus(contactPoint.status)"
+            data-test="contact-point-shared-indicator"
+            role="status"
+            aria-label="Shared contact point indicator"
+            class="border border-amber-400 px-2 py-0.5 text-xs"
+          >
+            Shared
+          </span>
+          <span
+            v-if="isStaleStatus(contactPoint.status)"
+            data-test="contact-point-stale-indicator"
+            role="status"
+            aria-label="Stale contact point indicator"
+            class="border border-slate-400 px-2 py-0.5 text-xs"
+          >
+            Stale
+          </span>
+          <span
+            v-if="isReassignmentStatus(contactPoint.status)"
+            data-test="contact-point-reassignment-indicator"
+            role="status"
+            aria-label="Reassignment risk indicator"
+            class="border border-rose-400 px-2 py-0.5 text-xs"
+          >
+            Reassignment risk
+          </span>
         </li>
       </ul>
       <p v-else>No contact points loaded yet.</p>
@@ -127,8 +191,42 @@ async function runSampleDecision() {
           data-test="decision-candidates"
           class="list-disc pl-5"
         >
-          <li v-for="candidate in decisionCandidates" :key="candidate.personId">
-            {{ candidate.personId }} (score {{ candidate.score }})
+          <li
+            v-for="candidate in decisionCandidates"
+            :key="candidate.personId"
+            class="flex flex-wrap items-center gap-2"
+          >
+            <span>{{ candidate.personId }} (score {{ candidate.score }})</span>
+            <span data-test="decision-candidate-status">
+              {{ candidate.contactPointStatus }}
+            </span>
+            <span
+              v-if="isSharedStatus(candidate.contactPointStatus)"
+              data-test="decision-candidate-shared-indicator"
+              role="status"
+              aria-label="Shared decision candidate indicator"
+              class="border border-amber-400 px-2 py-0.5 text-xs"
+            >
+              Shared
+            </span>
+            <span
+              v-if="isStaleStatus(candidate.contactPointStatus)"
+              data-test="decision-candidate-stale-indicator"
+              role="status"
+              aria-label="Stale decision candidate indicator"
+              class="border border-slate-400 px-2 py-0.5 text-xs"
+            >
+              Stale
+            </span>
+            <span
+              v-if="isReassignmentStatus(candidate.contactPointStatus)"
+              data-test="decision-candidate-reassignment-indicator"
+              role="status"
+              aria-label="Reassignment risk decision candidate indicator"
+              class="border border-rose-400 px-2 py-0.5 text-xs"
+            >
+              Reassignment risk
+            </span>
           </li>
         </ul>
         <div class="flex flex-wrap gap-2">
