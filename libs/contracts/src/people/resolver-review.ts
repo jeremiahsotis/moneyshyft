@@ -110,6 +110,19 @@ export type ValidatedResolverDecisionInput = {
   ambiguityEventId?: string;
 };
 
+export type ResolverDecisionResult = {
+  reviewId: string;
+  status: ResolverDecisionStatus;
+  action: ResolverActionType;
+  reviewStatus: ResolverReviewStatus;
+  resolutionType: ResolverResolutionType;
+  affectedPersonIds: string[];
+  affectedContactPointIds: string[];
+  ambiguityEventIds: string[];
+  mergeApplied: boolean;
+  rebindTriggered: boolean;
+};
+
 export const isResolverActionType = (value: unknown): value is ResolverActionType =>
   typeof value === 'string'
   && (RESOLVER_ACTION_TYPES as readonly string[]).includes(value);

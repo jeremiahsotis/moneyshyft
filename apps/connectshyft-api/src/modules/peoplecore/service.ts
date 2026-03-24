@@ -4,7 +4,9 @@ import type {
   ListActivitiesInput,
 } from './activity';
 import type {
+  ResolverActionType,
   ResolverDecisionInput,
+  ResolverDecisionResult,
   ResolverReview,
   ResolverReviewStatus,
   ResolverResolutionType,
@@ -184,6 +186,15 @@ export class InvalidResolverReviewTransitionError extends ResolverReviewValidati
 }
 
 const nowIsoUtc = (): string => new Date().toISOString();
+
+const uniqueStrings = (values: Iterable<string | null | undefined>): string[] =>
+  Array.from(
+    new Set(
+      Array.from(values)
+        .map((value) => normalizeOptionalString(value))
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
 
 const normalizeOptionalString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') {
@@ -641,6 +652,37 @@ const assertTerminalReviewMutationAllowed = (
   }
 };
 
+const loadPersonRebindService = (): Pick<
+  import('../connectshyft/personRebind').PersonRebindService,
+  'rebindPersonThreads'
+> => {
+  // Keep the ConnectShyft dependency lazy so the existing service singleton can stay the owner.
+  const { personRebindServiceAsync } = require('../connectshyft/personRebind') as typeof import('../connectshyft/personRebind');
+  return personRebindServiceAsync;
+};
+
+const buildResolverDecisionResult = (input: {
+  review: ResolverReview;
+  action: ResolverActionType;
+  affectedPersonIds?: string[];
+  affectedContactPointIds?: string[];
+  ambiguityEventIds?: string[];
+  mergeApplied: boolean;
+  rebindTriggered: boolean;
+}): ResolverDecisionResult => ({
+  reviewId: input.review.id,
+  status: deriveResolverDecisionStatus(input.review.reviewStatus)
+    ?? (input.action === 'dismiss_no_action' ? 'dismissed' : 'resolved'),
+  action: input.action,
+  reviewStatus: input.review.reviewStatus,
+  resolutionType: input.review.resolutionType ?? input.action,
+  affectedPersonIds: uniqueStrings(input.affectedPersonIds ?? []),
+  affectedContactPointIds: uniqueStrings(input.affectedContactPointIds ?? []),
+  ambiguityEventIds: uniqueStrings(input.ambiguityEventIds ?? []),
+  mergeApplied: input.mergeApplied,
+  rebindTriggered: input.rebindTriggered,
+});
+
 export class AsyncPeopleCoreService {
   constructor(
     private readonly store: PeopleCoreStore = new KnexPeopleCoreStore(),
@@ -908,6 +950,263 @@ export class AsyncPeopleCoreService {
       }
 
       return updated;
+    });
+  }
+
+  applyResolverDecision(input: ResolverDecisionInput): Promise<ResolverDecisionResult> {
+    return this.execute(async () => {
+      const validated = validateResolverDecisionInput(input);
+      const review = await this.store.getResolverReview({
+        tenantId: validated.tenantId,
+        reviewId: validated.reviewId,
+      });
+
+      if (!review) {
+        throw new PeopleCoreScopeViolationError(
+          `Resolver review ${validated.reviewId} is not available in tenant ${validated.tenantId}.`,
+        );
+      }
+
+      const targetReviewStatus = RESOLVER_ACTION_STATUS_MAP[validated.action];
+      if (isResolverReviewTerminalStatus(review.reviewStatus)) {
+        assertTerminalReviewMutationAllowed(review, {
+          tenantId: validated.tenantId,
+          reviewId: validated.reviewId,
+          reviewStatus: targetReviewStatus,
+          assignedResolverUserId: validated.actorUserId,
+          resolutionType: validated.action,
+          resolutionReason: validated.reason,
+          resolutionNotes: validated.notes,
+        });
+
+        const replayAffectedPersonIds: Array<string | undefined> = [
+          review.provisionalPersonId,
+          ...review.candidatePersonIds,
+          validated.personId,
+          validated.sourcePersonId,
+          validated.targetPersonId,
+        ];
+        const replayAffectedContactPointIds: Array<string | undefined> = [
+          validated.contactPointId,
+          review.contactPointId,
+        ];
+        const replayAmbiguityEventIds = validated.ambiguityEventId
+          ? [validated.ambiguityEventId]
+          : [];
+
+        return buildResolverDecisionResult({
+          review,
+          action: validated.action,
+          affectedPersonIds: uniqueStrings(replayAffectedPersonIds),
+          affectedContactPointIds: uniqueStrings(replayAffectedContactPointIds),
+          ambiguityEventIds: replayAmbiguityEventIds,
+          mergeApplied: validated.action === 'merge_people',
+          rebindTriggered: false,
+        });
+      }
+
+      if (
+        validated.action === 'confirm_new_person'
+        && review.provisionalPersonId
+        && review.provisionalPersonId !== validated.personId
+      ) {
+        throw new ResolverReviewValidationError(
+          'confirm_new_person must resolve to the review provisionalPersonId.',
+          [
+            buildFieldError(
+              'personId',
+              'CONFLICT',
+              'personId must match the resolver review provisionalPersonId for confirm_new_person.',
+            ),
+          ],
+        );
+      }
+
+      if (
+        validated.action === 'confirm_existing_person'
+        && review.provisionalPersonId
+        && review.provisionalPersonId === validated.personId
+      ) {
+        throw new ResolverReviewValidationError(
+          'confirm_existing_person cannot target the review provisionalPersonId.',
+          [
+            buildFieldError(
+              'personId',
+              'CONFLICT',
+              'confirm_existing_person must target an existing person distinct from provisionalPersonId.',
+            ),
+          ],
+        );
+      }
+
+      let affectedPersonIds = uniqueStrings([
+        review.provisionalPersonId,
+        ...review.candidatePersonIds,
+        validated.personId,
+        validated.sourcePersonId,
+        validated.targetPersonId,
+      ]);
+      let affectedContactPointIds = uniqueStrings([validated.contactPointId, review.contactPointId]);
+      let mergeApplied = false;
+      let rebindTriggered = false;
+
+      switch (validated.action) {
+        case 'confirm_existing_person':
+        case 'confirm_new_person':
+        case 'link_without_merge':
+        case 'mark_shared_contact':
+        case 'reassign_contact_point': {
+          const contactPointId = validated.contactPointId ?? review.contactPointId;
+          if (!contactPointId) {
+            throw new ResolverReviewValidationError(
+              `${validated.action} requires a resolver review with contactPointId.`,
+              [
+                buildFieldError(
+                  'contactPointId',
+                  'REQUIRED',
+                  `contactPointId is required for ${validated.action}.`,
+                ),
+              ],
+            );
+          }
+
+          const currentPersonLinks = await this.store.listCurrentContactPointLinks({
+            tenantId: validated.tenantId,
+            contactPointId,
+            subjectType: 'person',
+          });
+          const currentPersonIds = uniqueStrings(currentPersonLinks.map((link) => link.subjectId));
+          const targetPersonIds = validated.action === 'mark_shared_contact'
+            ? uniqueStrings([
+              ...currentPersonIds,
+              review.provisionalPersonId,
+              ...review.candidatePersonIds,
+            ])
+            : uniqueStrings([validated.personId]);
+
+          if (validated.action === 'mark_shared_contact' && targetPersonIds.length < 2) {
+            throw new ResolverReviewValidationError(
+              'mark_shared_contact requires at least two people in the review context.',
+              [
+                buildFieldError(
+                  'reviewId',
+                  'CONFLICT',
+                  'mark_shared_contact requires at least two people in the resolver review context.',
+                ),
+              ],
+            );
+          }
+
+          const primaryPersonId = validated.action === 'mark_shared_contact'
+            ? currentPersonIds[0] ?? targetPersonIds[0]
+            : validated.personId!;
+
+          const updatedLinks = await this.store.setResolverContactPointPersons({
+            tenantId: validated.tenantId,
+            contactPointId,
+            personIds: targetPersonIds,
+            primaryPersonId,
+            performedByUserId: validated.actorUserId,
+            resolutionType: validated.action,
+          });
+
+          if (validated.action === 'mark_shared_contact') {
+            await this.store.appendContactPointEvent({
+              tenantId: validated.tenantId,
+              contactPointId,
+              eventType: 'shared_detected',
+              eventSource: 'peoplecore.resolver',
+              relatedObjectType: 'resolver_review',
+              relatedObjectId: review.id,
+            });
+            await this.recomputeContactPointLifecycle({
+              tenantId: validated.tenantId,
+              contactPointId,
+            });
+          }
+
+          const nextCurrentPersonIds = uniqueStrings(updatedLinks.map((link) => link.subjectId));
+          affectedPersonIds = uniqueStrings([
+            ...affectedPersonIds,
+            ...currentPersonIds,
+            ...nextCurrentPersonIds,
+          ]);
+          affectedContactPointIds = uniqueStrings([...affectedContactPointIds, contactPointId]);
+
+          if (
+            (validated.action === 'confirm_existing_person'
+              || validated.action === 'confirm_new_person'
+              || validated.action === 'reassign_contact_point')
+            && currentPersonIds.length === 1
+            && nextCurrentPersonIds.length === 1
+            && currentPersonIds[0] !== nextCurrentPersonIds[0]
+          ) {
+            await loadPersonRebindService().rebindPersonThreads({
+              tenantId: validated.tenantId,
+              orgUnitId: review.orgUnitId,
+              provisionalPersonId: currentPersonIds[0]!,
+              canonicalPersonId: nextCurrentPersonIds[0]!,
+              performedByUserId: validated.actorUserId,
+            });
+            rebindTriggered = true;
+          }
+
+          break;
+        }
+        case 'merge_people': {
+          const merged = await this.mergePerson({
+            tenantId: validated.tenantId,
+            orgUnitId: review.orgUnitId,
+            provisionalPersonId: validated.sourcePersonId!,
+            canonicalPersonId: validated.targetPersonId!,
+            performedByUserId: validated.actorUserId,
+            mergeReason: validated.reason,
+            resolverReviewId: review.id,
+            skipResolverReviewCreation: true,
+          });
+          mergeApplied = merged.didPersistMerge !== false;
+          if (mergeApplied && merged.reviewContactPointLinkIds.length === 0) {
+            await loadPersonRebindService().rebindPersonThreads({
+              tenantId: validated.tenantId,
+              orgUnitId: review.orgUnitId,
+              provisionalPersonId: validated.sourcePersonId!,
+              canonicalPersonId: validated.targetPersonId!,
+              performedByUserId: validated.actorUserId,
+            });
+            rebindTriggered = true;
+          }
+          break;
+        }
+        case 'dismiss_no_action':
+          break;
+        default: {
+          const exhaustiveAction: never = validated.action;
+          throw new ResolverReviewValidationError(
+            `Unsupported resolver action: ${String(exhaustiveAction)}.`,
+          );
+        }
+      }
+
+      const updatedReview = await this.updateResolverReview({
+        tenantId: validated.tenantId,
+        reviewId: validated.reviewId,
+        reviewStatus: targetReviewStatus,
+        assignedResolverUserId: validated.actorUserId,
+        resolutionType: validated.action,
+        resolutionReason: validated.reason,
+        resolutionNotes: validated.notes,
+        resolvedAt: nowIsoUtc(),
+      });
+
+      return buildResolverDecisionResult({
+        review: updatedReview,
+        action: validated.action,
+        affectedPersonIds,
+        affectedContactPointIds,
+        ambiguityEventIds: validated.ambiguityEventId ? [validated.ambiguityEventId] : [],
+        mergeApplied,
+        rebindTriggered,
+      });
     });
   }
 

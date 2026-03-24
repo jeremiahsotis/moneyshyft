@@ -216,7 +216,12 @@ import {
   resolveInboundContactPointIdentityAsync,
   type ResolveInboundContactPointIdentityResult,
 } from '../../../modules/peoplecore/contactPointIdentityResolution';
-import { peopleCoreServiceAsync } from '../../../modules/peoplecore/service';
+import {
+  InvalidResolverReviewTransitionError,
+  peopleCoreServiceAsync,
+  ResolverReviewValidationError,
+} from '../../../modules/peoplecore/service';
+import { PeopleCoreScopeViolationError } from '../../../modules/peoplecore/store';
 import { isStrictUtcIsoTimestamp } from '../../../platform/time/timezoneService';
 import connectShyftOpsRouter from './connectshyft/ops.routes';
 
@@ -2830,6 +2835,24 @@ const parseIdentityAmbiguityEventIdParam = (req: Request): string => {
   return req.params.ambiguityEventId.trim();
 };
 
+const parseResolverReviewIdParam = (req: Request): string => {
+  if (typeof req.params.reviewId !== 'string') {
+    return '';
+  }
+
+  return req.params.reviewId.trim();
+};
+
+const parseResolverDecisionBody = (
+  req: Request,
+): Record<string, unknown> => {
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    return {};
+  }
+
+  return req.body as Record<string, unknown>;
+};
+
 const parseIdentityAmbiguityStatusUpdate = (
   req: Request,
 ): 'reviewed' | null => {
@@ -4836,6 +4859,98 @@ router.get('/identity-ambiguities', async (req: Request, res: Response) => {
       nextCursor: listed.nextCursor,
     },
   });
+});
+
+router.post('/resolver-reviews/:reviewId/decision', async (req: Request, res: Response) => {
+  if (!await enforceCapability(req, res, 'module')) {
+    return;
+  }
+
+  const context = await enforceOrgUnitContext(req, res);
+  if (!context) {
+    return;
+  }
+
+  if (!resolveIdentityAmbiguityTenantPrivilegedScope(req, res, context)) {
+    return;
+  }
+
+  const reviewId = parseResolverReviewIdParam(req);
+  if (!reviewId) {
+    respondConnectShyftClientRefusal(res, {
+      code: 'CONNECTSHYFT_RESOLVER_REVIEW_ID_REQUIRED',
+      message: 'reviewId is required',
+    });
+    return;
+  }
+
+  const body = parseResolverDecisionBody(req);
+
+  try {
+    const result = await peopleCoreServiceAsync.applyResolverDecision({
+      tenantId: context.tenantId,
+      reviewId,
+      actorUserId: resolveConnectShyftRequestedActorUserId(req) || CONNECTSHYFT_SYSTEM_ACTOR_USER_ID,
+      action: body.action as any,
+      reason: typeof body.reason === 'string' ? body.reason : undefined,
+      notes: typeof body.notes === 'string' ? body.notes : undefined,
+      personId: typeof body.personId === 'string' ? body.personId : undefined,
+      provisionalPersonId: typeof body.provisionalPersonId === 'string'
+        ? body.provisionalPersonId
+        : undefined,
+      sourcePersonId: typeof body.sourcePersonId === 'string' ? body.sourcePersonId : undefined,
+      targetPersonId: typeof body.targetPersonId === 'string' ? body.targetPersonId : undefined,
+      contactPointId: typeof body.contactPointId === 'string' ? body.contactPointId : undefined,
+      ambiguityEventId: typeof body.ambiguityEventId === 'string'
+        ? body.ambiguityEventId
+        : undefined,
+    });
+
+    return success(res, {
+      code: 'CONNECTSHYFT_RESOLVER_DECISION_APPLIED',
+      message: 'ConnectShyft resolver decision applied',
+      httpStatus: 200,
+      data: {
+        result,
+      },
+    });
+  } catch (error) {
+    if (error instanceof InvalidResolverReviewTransitionError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_DECISION_TERMINAL',
+        message: 'Resolver review is already terminal for the requested decision.',
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          fieldErrors: error.fieldErrors,
+        },
+      });
+      return;
+    }
+
+    if (error instanceof ResolverReviewValidationError) {
+      respondConnectShyftClientRefusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_DECISION_INVALID',
+        message: error.message,
+        data: {
+          fieldErrors: error.fieldErrors,
+        },
+      });
+      return;
+    }
+
+    if (error instanceof PeopleCoreScopeViolationError) {
+      refusal(res, {
+        code: 'CONNECTSHYFT_RESOLVER_REVIEW_NOT_FOUND',
+        message: 'Resolver review is unavailable for the active tenant context.',
+        refusalType: 'business',
+        httpStatus: 200,
+      });
+      return;
+    }
+
+    throw error;
+  }
 });
 
 router.patch('/identity-ambiguities/:ambiguityEventId', async (req: Request, res: Response) => {

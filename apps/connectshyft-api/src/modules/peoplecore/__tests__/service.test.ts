@@ -1,4 +1,7 @@
-import { RESOLVER_ACTION_TYPES } from '@shyft/contracts';
+import {
+  RESOLVER_ACTION_STATUS_MAP,
+  RESOLVER_ACTION_TYPES,
+} from '@shyft/contracts';
 import {
   AsyncPeopleCoreService,
   assertResolverReviewTransitionAllowed,
@@ -9,6 +12,7 @@ import {
   validateResolverDecisionInput,
 } from '../service';
 import type { CreateResolverReviewInput } from '../store';
+import { personRebindServiceAsync } from '../../connectshyft/personRebind';
 
 const PERSON_INPUT = {
   tenantId: 'tenant-1',
@@ -75,7 +79,66 @@ const buildResolverReview = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const CONTACT_POINT_LINK_BASE = {
+  tenantId: 'tenant-1',
+  contactPointId: 'contact-point-1',
+  subjectType: 'person' as const,
+  linkType: 'primary' as const,
+  confidenceBand: 'high' as const,
+  isCurrent: true,
+  isPrimary: true,
+  manuallyConfirmed: true,
+  confirmationSource: 'resolver' as const,
+  firstLinkedAt: '2026-03-21T12:00:00.000Z',
+  linkedBy: 'resolver' as const,
+  createdAt: '2026-03-21T12:00:00.000Z',
+  updatedAt: '2026-03-21T12:00:00.000Z',
+};
+
+const buildContactPointLink = (subjectId: string, overrides: Record<string, unknown> = {}) => ({
+  ...CONTACT_POINT_LINK_BASE,
+  id: `link-${subjectId}`,
+  subjectId,
+  ...overrides,
+});
+
+const buildDecisionReview = (overrides: Record<string, unknown> = {}) => buildResolverReview({
+  contactPointId: 'contact-point-1',
+  provisionalPersonId: 'person-provisional',
+  candidatePersonIds: ['person-existing'],
+  ...overrides,
+});
+
+const buildResolvedReviewForAction = (
+  action: keyof typeof RESOLVER_ACTION_STATUS_MAP,
+  overrides: Record<string, unknown> = {},
+) => buildDecisionReview({
+  reviewStatus: RESOLVER_ACTION_STATUS_MAP[action],
+  resolutionType: action,
+  resolutionReason: 'Resolver decision applied.',
+  resolvedAt: '2026-03-21T12:12:00.000Z',
+  assignedResolverUserId: 'resolver-1',
+  ...overrides,
+});
+
+const createApplyResolverDecisionStore = (overrides: Record<string, jest.Mock> = {}) => ({
+  getResolverReview: jest.fn(),
+  listCurrentContactPointLinks: jest.fn(),
+  setResolverContactPointPersons: jest.fn(),
+  updateResolverReview: jest.fn(),
+  appendContactPointEvent: jest.fn(),
+  getContactPoint: jest.fn(),
+  listContactPointEvents: jest.fn(),
+  updateContactPointStatus: jest.fn(),
+  mergePerson: jest.fn(),
+  ...overrides,
+});
+
 describe('AsyncPeopleCoreService', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('delegates persistence-backed operations to the configured store', async () => {
     const store = {
       createPerson: jest.fn(async () => ({ id: 'person-1' })),
@@ -391,6 +454,406 @@ describe('AsyncPeopleCoreService', () => {
       reviewStatus: 'resolved_confirmed_existing',
       resolutionType: 'confirm_existing_person',
       resolutionReason: 'Attempting to resolve after dismissal.',
+    })).rejects.toBeInstanceOf(InvalidResolverReviewTransitionError);
+    expect(store.updateResolverReview).not.toHaveBeenCalled();
+  });
+
+  it('applies confirm_existing_person through the authoritative decision path and triggers rebind when ownership changes', async () => {
+    const currentReview = buildDecisionReview();
+    const updatedReview = buildResolvedReviewForAction('confirm_existing_person', {
+      candidatePersonIds: ['person-existing'],
+    });
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => currentReview),
+      listCurrentContactPointLinks: jest.fn(async () => [
+        buildContactPointLink('person-provisional'),
+      ]),
+      setResolverContactPointPersons: jest.fn(async () => [
+        buildContactPointLink('person-existing'),
+      ]),
+      updateResolverReview: jest.fn(async () => updatedReview),
+    });
+    const rebindSpy = jest.spyOn(personRebindServiceAsync, 'rebindPersonThreads')
+      .mockResolvedValue(undefined);
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const result = await service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'confirm_existing_person',
+      personId: 'person-existing',
+      reason: 'Matched the existing person.',
+    });
+
+    expect(store.setResolverContactPointPersons).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      contactPointId: 'contact-point-1',
+      personIds: ['person-existing'],
+      primaryPersonId: 'person-existing',
+      resolutionType: 'confirm_existing_person',
+    }));
+    expect(rebindSpy).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      provisionalPersonId: 'person-provisional',
+      canonicalPersonId: 'person-existing',
+      performedByUserId: 'resolver-1',
+    });
+    expect(result).toMatchObject({
+      reviewId: 'review-1',
+      status: 'resolved',
+      action: 'confirm_existing_person',
+      reviewStatus: 'resolved_confirmed_existing',
+      resolutionType: 'confirm_existing_person',
+      affectedPersonIds: ['person-provisional', 'person-existing'],
+      affectedContactPointIds: ['contact-point-1'],
+      mergeApplied: false,
+      rebindTriggered: true,
+    });
+  });
+
+  it('applies confirm_new_person without invoking merge and preserves the provisional identity', async () => {
+    const currentReview = buildDecisionReview();
+    const updatedReview = buildResolvedReviewForAction('confirm_new_person');
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => currentReview),
+      listCurrentContactPointLinks: jest.fn(async () => [
+        buildContactPointLink('person-provisional'),
+      ]),
+      setResolverContactPointPersons: jest.fn(async () => [
+        buildContactPointLink('person-provisional'),
+      ]),
+      updateResolverReview: jest.fn(async () => updatedReview),
+      mergePerson: jest.fn(),
+    });
+    const rebindSpy = jest.spyOn(personRebindServiceAsync, 'rebindPersonThreads')
+      .mockResolvedValue(undefined);
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const result = await service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'confirm_new_person',
+      provisionalPersonId: 'person-provisional',
+      reason: 'The provisional person is correct.',
+    });
+
+    expect(store.setResolverContactPointPersons).toHaveBeenCalledWith(expect.objectContaining({
+      personIds: ['person-provisional'],
+      primaryPersonId: 'person-provisional',
+      resolutionType: 'confirm_new_person',
+    }));
+    expect(store.mergePerson).not.toHaveBeenCalled();
+    expect(rebindSpy).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      action: 'confirm_new_person',
+      reviewStatus: 'resolved_confirmed_new',
+      resolutionType: 'confirm_new_person',
+      affectedPersonIds: ['person-provisional', 'person-existing'],
+      mergeApplied: false,
+      rebindTriggered: false,
+    });
+  });
+
+  it('applies merge_people through the existing merge path and emits merge-safe flags', async () => {
+    const currentReview = buildDecisionReview({
+      reviewType: 'merge_review',
+      candidatePersonIds: ['person-canonical'],
+    });
+    const updatedReview = buildResolvedReviewForAction('merge_people', {
+      reviewType: 'merge_review',
+      candidatePersonIds: ['person-canonical'],
+    });
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => currentReview),
+      mergePerson: jest.fn(async () => ({
+        mergedProvisionalPersonId: 'person-provisional',
+        canonicalPersonId: 'person-canonical',
+        autoMergedContactPointLinkIds: ['link-person-provisional'],
+        reviewContactPointLinkIds: [],
+        resolverReviewId: 'review-1',
+        didPersistMerge: true,
+      })),
+      updateResolverReview: jest.fn(async () => updatedReview),
+    });
+    const mergeEventPublisher = {
+      publishPersonMerged: jest.fn(async () => undefined),
+    };
+    const rebindSpy = jest.spyOn(personRebindServiceAsync, 'rebindPersonThreads')
+      .mockResolvedValue(undefined);
+    const service = new AsyncPeopleCoreService(store as any, mergeEventPublisher as any);
+
+    const result = await service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'merge_people',
+      sourcePersonId: 'person-provisional',
+      targetPersonId: 'person-canonical',
+      reason: 'Merge the duplicate people.',
+    });
+
+    expect(store.mergePerson).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      provisionalPersonId: 'person-provisional',
+      canonicalPersonId: 'person-canonical',
+      performedByUserId: 'resolver-1',
+      resolverReviewId: 'review-1',
+      skipResolverReviewCreation: true,
+    }));
+    expect(mergeEventPublisher.publishPersonMerged).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      provisionalPersonId: 'person-provisional',
+      canonicalPersonId: 'person-canonical',
+      resolverReviewId: 'review-1',
+    }));
+    expect(rebindSpy).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      provisionalPersonId: 'person-provisional',
+      canonicalPersonId: 'person-canonical',
+      performedByUserId: 'resolver-1',
+    });
+    expect(result).toMatchObject({
+      action: 'merge_people',
+      reviewStatus: 'resolved_merged',
+      resolutionType: 'merge_people',
+      mergeApplied: true,
+      rebindTriggered: true,
+      affectedPersonIds: ['person-provisional', 'person-canonical'],
+    });
+  });
+
+  it('applies link_without_merge without merge or broad rebind fanout', async () => {
+    const currentReview = buildDecisionReview();
+    const updatedReview = buildResolvedReviewForAction('link_without_merge');
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => currentReview),
+      listCurrentContactPointLinks: jest.fn(async () => [
+        buildContactPointLink('person-provisional'),
+      ]),
+      setResolverContactPointPersons: jest.fn(async () => [
+        buildContactPointLink('person-existing'),
+      ]),
+      updateResolverReview: jest.fn(async () => updatedReview),
+      mergePerson: jest.fn(),
+    });
+    const rebindSpy = jest.spyOn(personRebindServiceAsync, 'rebindPersonThreads')
+      .mockResolvedValue(undefined);
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const result = await service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'link_without_merge',
+      personId: 'person-existing',
+      reason: 'Keep both people distinct but maintain the operational link.',
+    });
+
+    expect(store.mergePerson).not.toHaveBeenCalled();
+    expect(rebindSpy).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      action: 'link_without_merge',
+      reviewStatus: 'resolved_confirmed_existing',
+      resolutionType: 'link_without_merge',
+      mergeApplied: false,
+      rebindTriggered: false,
+    });
+  });
+
+  it('applies mark_shared_contact without forcing exclusive ownership', async () => {
+    const currentReview = buildDecisionReview();
+    const updatedLinks = [
+      buildContactPointLink('person-existing'),
+      buildContactPointLink('person-provisional', {
+        id: 'link-person-provisional-secondary',
+        isPrimary: false,
+        linkType: 'secondary',
+      }),
+    ];
+    const updatedReview = buildResolvedReviewForAction('mark_shared_contact');
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => currentReview),
+      listCurrentContactPointLinks: jest.fn()
+        .mockResolvedValueOnce([
+          buildContactPointLink('person-existing'),
+        ])
+        .mockResolvedValueOnce(updatedLinks),
+      setResolverContactPointPersons: jest.fn(async () => updatedLinks),
+      appendContactPointEvent: jest.fn(async () => ({ id: 'event-1' })),
+      getContactPoint: jest.fn(async () => ({
+        id: 'contact-point-1',
+        status: 'active_personal',
+      })),
+      listContactPointEvents: jest.fn(async () => []),
+      updateContactPointStatus: jest.fn(async () => undefined),
+      updateResolverReview: jest.fn(async () => updatedReview),
+    });
+    const rebindSpy = jest.spyOn(personRebindServiceAsync, 'rebindPersonThreads')
+      .mockResolvedValue(undefined);
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const result = await service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'mark_shared_contact',
+      reason: 'This phone number is intentionally shared.',
+    });
+
+    expect(store.setResolverContactPointPersons).toHaveBeenCalledWith(expect.objectContaining({
+      personIds: ['person-existing', 'person-provisional'],
+      primaryPersonId: 'person-existing',
+      resolutionType: 'mark_shared_contact',
+    }));
+    expect(store.appendContactPointEvent).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: 'shared_detected',
+      relatedObjectId: 'review-1',
+    }));
+    expect(rebindSpy).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      action: 'mark_shared_contact',
+      reviewStatus: 'resolved_shared_contact',
+      resolutionType: 'mark_shared_contact',
+      mergeApplied: false,
+      rebindTriggered: false,
+      affectedPersonIds: ['person-provisional', 'person-existing'],
+    });
+  });
+
+  it('applies reassign_contact_point and triggers rebind when current subject truth changes', async () => {
+    const currentReview = buildDecisionReview();
+    const updatedReview = buildResolvedReviewForAction('reassign_contact_point');
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => currentReview),
+      listCurrentContactPointLinks: jest.fn(async () => [
+        buildContactPointLink('person-provisional'),
+      ]),
+      setResolverContactPointPersons: jest.fn(async () => [
+        buildContactPointLink('person-existing'),
+      ]),
+      updateResolverReview: jest.fn(async () => updatedReview),
+    });
+    const rebindSpy = jest.spyOn(personRebindServiceAsync, 'rebindPersonThreads')
+      .mockResolvedValue(undefined);
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const result = await service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'reassign_contact_point',
+      personId: 'person-existing',
+      contactPointId: 'contact-point-1',
+      reason: 'The contact point should belong to the existing person.',
+    });
+
+    expect(store.setResolverContactPointPersons).toHaveBeenCalledWith(expect.objectContaining({
+      contactPointId: 'contact-point-1',
+      personIds: ['person-existing'],
+      primaryPersonId: 'person-existing',
+      resolutionType: 'reassign_contact_point',
+    }));
+    expect(rebindSpy).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      orgUnitId: 'org-1',
+      provisionalPersonId: 'person-provisional',
+      canonicalPersonId: 'person-existing',
+      performedByUserId: 'resolver-1',
+    });
+    expect(result).toMatchObject({
+      action: 'reassign_contact_point',
+      reviewStatus: 'resolved_reassigned',
+      resolutionType: 'reassign_contact_point',
+      mergeApplied: false,
+      rebindTriggered: true,
+    });
+  });
+
+  it('applies dismiss_no_action without mutating identity truth', async () => {
+    const currentReview = buildDecisionReview();
+    const updatedReview = buildResolvedReviewForAction('dismiss_no_action', {
+      reviewStatus: 'dismissed',
+      resolutionType: 'dismiss_no_action',
+    });
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => currentReview),
+      updateResolverReview: jest.fn(async () => updatedReview),
+      setResolverContactPointPersons: jest.fn(),
+      mergePerson: jest.fn(),
+    });
+    const rebindSpy = jest.spyOn(personRebindServiceAsync, 'rebindPersonThreads')
+      .mockResolvedValue(undefined);
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const result = await service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'dismiss_no_action',
+      reason: 'No identity change is required.',
+    });
+
+    expect(store.setResolverContactPointPersons).not.toHaveBeenCalled();
+    expect(store.mergePerson).not.toHaveBeenCalled();
+    expect(rebindSpy).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      action: 'dismiss_no_action',
+      status: 'dismissed',
+      reviewStatus: 'dismissed',
+      resolutionType: 'dismiss_no_action',
+      mergeApplied: false,
+      rebindTriggered: false,
+    });
+  });
+
+  it('replays an identical terminal resolver decision safely without mutating the review again', async () => {
+    const terminalReview = buildResolvedReviewForAction('confirm_existing_person', {
+      resolutionReason: 'Matched the existing person.',
+    });
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => terminalReview),
+      updateResolverReview: jest.fn(),
+    });
+    const service = new AsyncPeopleCoreService(store as any);
+
+    const result = await service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'confirm_existing_person',
+      personId: 'person-existing',
+      reason: 'Matched the existing person.',
+    });
+
+    expect(store.updateResolverReview).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      action: 'confirm_existing_person',
+      status: 'resolved',
+      reviewStatus: 'resolved_confirmed_existing',
+      resolutionType: 'confirm_existing_person',
+    });
+  });
+
+  it('rejects changing a terminal resolver decision to a different action through applyResolverDecision', async () => {
+    const terminalReview = buildResolvedReviewForAction('confirm_existing_person');
+    const store = createApplyResolverDecisionStore({
+      getResolverReview: jest.fn(async () => terminalReview),
+      updateResolverReview: jest.fn(),
+    });
+    const service = new AsyncPeopleCoreService(store as any);
+
+    await expect(service.applyResolverDecision({
+      tenantId: 'tenant-1',
+      reviewId: 'review-1',
+      actorUserId: 'resolver-1',
+      action: 'dismiss_no_action',
+      reason: 'Trying to override the existing terminal outcome.',
     })).rejects.toBeInstanceOf(InvalidResolverReviewTransitionError);
     expect(store.updateResolverReview).not.toHaveBeenCalled();
   });
