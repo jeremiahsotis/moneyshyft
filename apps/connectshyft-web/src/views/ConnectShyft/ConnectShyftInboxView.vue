@@ -1,36 +1,23 @@
 <template>
-  <main class="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(219,234,254,0.8),_transparent_32%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_100%)] px-4 py-6 pb-32 sm:px-6 sm:py-8">
-    <section class="mx-auto max-w-7xl">
-      <header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 v-if="showUnavailableState" class="text-3xl font-semibold tracking-tight text-slate-900">
-            ConnectShyft unavailable
-          </h1>
-          <h1
-            v-else
-            aria-label="ConnectShyft Inbox"
-            class="text-3xl font-semibold tracking-tight text-slate-900"
-          >
-            ConnectShyft
-          </h1>
-          <p
-            v-if="!showUnavailableState"
-            data-testid="connectshyft-inbox-summary-copy"
-            class="mt-2 text-base font-medium text-slate-500"
-          >
-            {{ queueSummaryText }}
-          </p>
-        </div>
+  <main class="cs-page-shell">
+    <section class="cs-page-shell__inner cs-stack">
+      <SurfaceCard padding="default" panel tone="soft">
+        <SectionHeader
+          :eyebrow="bucketTitle"
+          :title="showUnavailableState ? 'ConnectShyft unavailable' : queueHeading"
+          :description="showUnavailableState ? '' : queueSummaryText"
+          size="md"
+        />
 
         <p
           v-if="showUnavailableState"
           data-testid="connectshyft-unavailable-state"
           :style="bodyTextStyle"
-          class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
+          class="cs-shell-notice cs-shell-notice--warning mt-4"
         >
           {{ unavailableMessage }}
         </p>
-      </header>
+      </SurfaceCard>
 
       <div class="sr-only">
         <span data-testid="connectshyft-capability-inbox">
@@ -48,7 +35,7 @@
         v-if="maintenanceBanner"
         data-testid="connectshyft-capability-maintenance-banner"
         :style="bodyTextStyle"
-        class="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
+        class="cs-shell-notice cs-shell-notice--warning"
       >
         {{ maintenanceBanner }}
       </p>
@@ -61,47 +48,41 @@
           <div
             :data-testid="activeLayoutTestId || undefined"
             :class="[
-              'grid gap-5',
+              'cs-panel-layout',
               isDesktopViewport && isThreadSurfaceVisible
-                ? 'xl:grid-cols-[minmax(0,0.86fr)_minmax(0,1.08fr)_20rem]'
+                ? 'cs-panel-layout--queue-thread-rail'
                 : isTabletViewport && isThreadSurfaceVisible
-                  ? 'md:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]'
-                  : 'grid-cols-1',
+                  ? 'cs-panel-layout--two-column'
+                  : '',
             ]"
           >
-            <section
+            <SurfaceCard
               data-testid="connectshyft-queue-panel"
               v-show="showQueuePanel"
-              class="rounded-[32px] border border-slate-200 bg-white/90 p-5 shadow-[0_28px_90px_-56px_rgba(15,23,42,0.45)]"
+              padding="default"
+              panel
+              tone="soft"
             >
               <div class="flex flex-col gap-4">
-                <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                      {{ bucketTitle }}
-                    </p>
-                    <h2 class="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
-                      {{ queueHeading }}
-                    </h2>
-                  </div>
+                <SectionHeader
+                  :eyebrow="bucketTitle"
+                  :title="queueHeading"
+                  description="Search first, then open the conversation that needs the next follow-up."
+                  size="md"
+                />
 
-                  <label class="flex min-w-0 flex-col gap-2 text-sm font-medium text-slate-500">
-                    Search neighbors
-                    <input
-                      v-model="queueSearch"
-                      data-testid="connectshyft-queue-search-input"
-                      aria-label="Queue search"
-                      type="search"
-                      placeholder="Search neighbors"
-                      class="min-h-[44px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-base text-slate-900 placeholder:text-slate-400"
-                    >
-                  </label>
-                </div>
+                <SearchField
+                  v-model="queueSearch"
+                  test-id="connectshyft-queue-search-input"
+                  aria-label="Queue search"
+                  label="Search conversations"
+                  placeholder="Search by name, phone, or the latest update"
+                />
 
                 <p
                   v-if="threadLoadError"
                   data-testid="connectshyft-inbox-load-error"
-                  class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
+                  class="cs-shell-notice cs-shell-notice--warning"
                 >
                   {{ threadLoadError }}
                 </p>
@@ -110,7 +91,7 @@
                   v-if="threadActionFeedback || threadActionError"
                   data-testid="connectshyft-inbox-action-feedback"
                   :data-feedback-taxonomy="threadActionFeedback?.taxonomy || 'refusal'"
-                  class="rounded-2xl border px-4 py-3 text-base"
+                  class="cs-shell-notice text-base"
                   :class="threadActionFeedbackClass"
                 >
                   {{ threadActionFeedback ? threadActionFeedback.message : threadActionError }}
@@ -133,7 +114,7 @@
 
                 <p
                   v-if="neighborLoadError"
-                  class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
+                  class="cs-shell-notice cs-shell-notice--warning"
                 >
                   {{ neighborLoadError }}
                 </p>
@@ -177,63 +158,67 @@
                     v-for="neighbor in directoryFallbackItems"
                     :key="neighbor.neighborId"
                     :data-testid="`connectshyft-neighbor-fallback-${neighbor.neighborId}`"
-                    class="rounded-[24px] border border-slate-200 bg-white/90 px-4 py-4 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.12)]"
                   >
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <SurfaceCard
+                      class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+                      padding="compact"
+                      interactive
+                    >
                       <div class="min-w-0 flex-1">
-                        <p class="text-[1.2rem] font-semibold leading-tight text-slate-900">
+                        <p class="cs-heading-md">
                           {{ resolveNeighborFallbackName(neighbor) }}
                         </p>
-                        <p class="mt-2 text-sm text-slate-500">
+                        <p class="mt-2 cs-body">
                           Ready to start a conversation
                         </p>
-                        <div class="mt-3 flex flex-wrap gap-2 text-sm text-slate-500">
+                        <div class="mt-3 flex flex-wrap gap-2">
                           <span
                             v-for="indicator in resolveNeighborPhoneIndicators(neighbor)"
                             :key="`${neighbor.neighborId}-${indicator}`"
-                            class="font-medium"
+                            class="cs-meta font-semibold"
                           >
                             {{ indicator }}
                           </span>
                         </div>
                       </div>
 
-                      <button
+                      <ActionButton
                         type="button"
-                        class="min-h-[44px] rounded-full border border-slate-200 bg-white px-4 py-2 text-base font-medium text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                        tone="secondary"
                         :style="tapTargetStyle"
-                        :class="focusRingClass"
+                        class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
                         :disabled="openingConversation"
                         @click="openConversation({ neighborId: neighbor.neighborId })"
                       >
                         {{ openingConversation ? 'Opening...' : 'Start conversation' }}
-                      </button>
-                    </div>
+                      </ActionButton>
+                    </SurfaceCard>
                   </li>
                 </ul>
 
-                <p v-else-if="!threadLoadError" class="rounded-3xl border border-dashed border-slate-200 px-4 py-8 text-center text-base text-slate-500">
-                  No neighbors are currently waiting in this queue.
-                </p>
+                <EmptyStatePanel
+                  v-else-if="!threadLoadError"
+                  eyebrow="Queue"
+                  title="Nothing is waiting right now"
+                  description="When a new conversation needs follow-up, it will appear here."
+                />
 
                 <div
                   data-testid="connectshyft-inbox-action-bar"
-                  class="mt-2 flex flex-wrap gap-3 border-t border-slate-200 pt-4"
+                  class="cs-action-group mt-2 border-t border-stone-200 pt-4"
                 >
-                  <button
+                  <ActionButton
                     type="button"
                     :data-testid="inboxActionCopy.openConversation.testId"
                     :aria-label="inboxActionCopy.openConversation.ariaLabel"
                     :disabled="openingConversation"
                     @click="() => openConversation()"
                     :style="tapTargetStyle"
-                    :class="[
-                      'min-h-[44px] rounded-full bg-slate-900 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400',
-                      focusRingClass,
-                    ]"
+                    class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+                    tone="primary"
                   >
                     {{ openingConversation ? 'Opening...' : inboxActionCopy.openConversation.label }}
-                  </button>
+                  </ActionButton>
                   <RouterLink
                     v-if="!isViewerRole"
                     :to="buildNeighborCreatePath()"
@@ -241,69 +226,64 @@
                     :aria-label="inboxActionCopy.addNeighbor.ariaLabel"
                     :style="tapTargetStyle"
                     :class="[
-                      'inline-flex min-h-[44px] items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-base font-medium text-white',
+                      'cs-button cs-button--secondary',
                       focusRingClass,
                     ]"
                   >
                     {{ inboxActionCopy.addNeighbor.label }}
                   </RouterLink>
-                  <button
+                  <ActionButton
                     type="button"
                     :data-testid="inboxActionCopy.composeMessage.testId"
                     :aria-label="inboxActionCopy.composeMessage.ariaLabel"
                     :disabled="!canUseOutboundInboxActions"
                     @click="openSendMessageModal"
                     :style="tapTargetStyle"
-                    :class="[
-                      'min-h-[44px] rounded-full border border-slate-200 bg-white px-4 py-2 text-base font-medium text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400',
-                      focusRingClass,
-                    ]"
+                    class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+                    tone="secondary"
                   >
                     {{ inboxActionCopy.composeMessage.label }}
-                  </button>
-                  <button
+                  </ActionButton>
+                  <ActionButton
                     type="button"
                     :data-testid="inboxActionCopy.makeCall.testId"
                     :aria-label="inboxActionCopy.makeCall.ariaLabel"
                     :disabled="!canUseOutboundInboxActions"
                     @click="openMakeCallModal"
                     :style="tapTargetStyle"
-                    :class="[
-                      'min-h-[44px] rounded-full border border-slate-200 bg-white px-4 py-2 text-base font-medium text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400',
-                      focusRingClass,
-                    ]"
+                    class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+                    tone="secondary"
                   >
                     {{ inboxActionCopy.makeCall.label }}
-                  </button>
+                  </ActionButton>
                 </div>
               </div>
-            </section>
+            </SurfaceCard>
 
-            <section
+            <SurfaceCard
               v-if="selectedThreadSummary && isThreadSurfaceVisible"
               data-testid="connectshyft-thread-panel"
-              class="rounded-[32px] border border-slate-200 bg-white/90 p-5 shadow-[0_28px_90px_-56px_rgba(15,23,42,0.45)]"
+              padding="default"
+              panel
             >
-              <button
+              <ActionButton
                 v-if="isMobileViewport"
                 type="button"
                 data-testid="connectshyft-thread-panel-back"
                 :style="tapTargetStyle"
-                :class="[
-                  'mb-4 inline-flex min-h-[44px] w-fit items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-base font-medium text-slate-700',
-                  focusRingClass,
-                ]"
+                class="mb-4 w-fit focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+                tone="secondary"
                 @click="closeThreadPanel"
               >
                 Back to queue
-              </button>
+              </ActionButton>
 
               <div data-testid="connectshyft-thread-surface" class="flex h-full flex-col gap-5">
                 <header class="border-b border-slate-200 pb-4">
-                  <p class="text-3xl font-semibold tracking-tight text-slate-900">
+                  <p class="cs-heading-lg">
                     {{ selectedThreadDisplayName }}
                   </p>
-                  <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-base text-slate-500">
+                  <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 cs-body">
                     <p class="font-medium">{{ selectedThreadConferenceLabel }}</p>
                     <span class="text-slate-300">•</span>
                     <p class="font-medium">{{ selectedThreadClaimLabel }}</p>
@@ -311,27 +291,26 @@
                 </header>
 
                 <div class="flex flex-wrap gap-2">
-                  <span class="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-600">
-                    {{ selectedThreadSummary.stateLabel || selectedThreadSummary.state }}
-                  </span>
-                  <span
+                  <StatusBadge
+                    :label="selectedThreadSummary.stateLabel || selectedThreadSummary.state"
+                    tone="neutral"
+                  />
+                  <StatusBadge
                     v-if="selectedThreadSummary.urgencyLabel"
-                    class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700"
-                  >
-                    {{ selectedThreadSummary.urgencyLabel }}
-                  </span>
-                  <span
+                    :label="selectedThreadSummary.urgencyLabel"
+                    tone="attention"
+                  />
+                  <StatusBadge
                     v-if="selectedThreadSummary.voicemailIndicator"
                     data-testid="connectshyft-inbox-preview-voicemail-chip"
-                    class="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700"
-                  >
-                    {{ selectedThreadSummary.voicemailLabel || 'Voicemail received' }}
-                  </span>
+                    :label="selectedThreadSummary.voicemailLabel || 'Voicemail received'"
+                    tone="voicemail"
+                  />
                 </div>
 
                 <section class="space-y-4">
-                  <div class="rounded-[28px] border border-slate-200 bg-slate-50/80 p-4">
-                    <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                  <SurfaceCard padding="compact" tone="muted">
+                    <p class="cs-kicker">
                       Conversation
                     </p>
                     <ConnectShyftMessageBubble
@@ -340,7 +319,7 @@
                       :meta-label="selectedThreadTimestampLabel"
                       tone="inbound"
                     />
-                  </div>
+                  </SurfaceCard>
 
                   <ConnectShyftVoicemailCard
                     :visible="selectedThreadSummary.voicemailIndicator === true"
@@ -370,15 +349,16 @@
                 <section
                   v-if="sendMessageModalOpen"
                   data-testid="connectshyft-send-message-modal"
-                  class="space-y-3 rounded-[28px] border border-slate-200 bg-slate-50/80 p-4"
+                  class="space-y-3"
                 >
-                  <h3 class="text-base font-semibold text-slate-900">Send Message</h3>
+                  <SurfaceCard padding="compact" tone="muted">
+                    <h3 class="cs-heading-md text-base">Send message</h3>
                   <fieldset class="space-y-2">
-                    <legend class="text-base text-slate-700">Choose a phone number</legend>
+                    <legend class="cs-body">Choose a phone number</legend>
                     <label
                       v-for="phoneOption in inboxActionPhoneOptions"
                       :key="`message-${phoneOption.id}`"
-                      class="flex items-center gap-2 text-base text-slate-700"
+                      class="flex items-center gap-2 cs-body"
                     >
                       <input
                         data-testid="connectshyft-send-message-phone-option"
@@ -390,7 +370,7 @@
                       <span>{{ phoneOption.label }}</span>
                     </label>
                   </fieldset>
-                  <label class="block text-base text-slate-700" for="connectshyft-send-message-body-input">
+                  <label class="cs-field-label" for="connectshyft-send-message-body-input">
                     Message
                   </label>
                   <textarea
@@ -398,48 +378,46 @@
                     v-model="inboxMessageBody"
                     data-testid="connectshyft-send-message-body-input"
                     rows="3"
-                    class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-base text-slate-900"
+                    class="cs-textarea"
                   />
-                  <div class="flex flex-wrap gap-3">
-                    <button
+                  <div class="cs-action-group">
+                    <ActionButton
                       type="button"
                       data-testid="connectshyft-send-message-modal-submit"
                       :disabled="!canSubmitSendMessage"
                       :style="tapTargetStyle"
-                      :class="[
-                        'min-h-[44px] rounded-full bg-slate-900 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400',
-                        focusRingClass,
-                      ]"
+                      class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+                      tone="primary"
                       @click="submitSendMessage"
                     >
-                      {{ inboxActionPending ? 'Sending...' : 'Send Message' }}
-                    </button>
-                    <button
+                      {{ inboxActionPending ? 'Sending...' : 'Send message' }}
+                    </ActionButton>
+                    <ActionButton
                       type="button"
                       :style="tapTargetStyle"
-                      :class="[
-                        'min-h-[44px] rounded-full border border-slate-200 bg-white px-4 py-2 text-base font-medium text-slate-700',
-                        focusRingClass,
-                      ]"
+                      class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+                      tone="secondary"
                       @click="closeInboxActionModals"
                     >
                       Cancel
-                    </button>
+                    </ActionButton>
                   </div>
+                  </SurfaceCard>
                 </section>
 
                 <section
                   v-if="makeCallModalOpen"
                   data-testid="connectshyft-make-call-modal"
-                  class="space-y-3 rounded-[28px] border border-slate-200 bg-slate-50/80 p-4"
+                  class="space-y-3"
                 >
-                  <h3 class="text-base font-semibold text-slate-900">Make Call</h3>
+                  <SurfaceCard padding="compact" tone="muted">
+                  <h3 class="cs-heading-md text-base">Make call</h3>
                   <fieldset class="space-y-2">
-                    <legend class="text-base text-slate-700">Choose a phone number</legend>
+                    <legend class="cs-body">Choose a phone number</legend>
                     <label
                       v-for="phoneOption in inboxActionPhoneOptions"
                       :key="`call-${phoneOption.id}`"
-                      class="flex items-center gap-2 text-base text-slate-700"
+                      class="flex items-center gap-2 cs-body"
                     >
                       <input
                         data-testid="connectshyft-make-call-phone-option"
@@ -451,35 +429,32 @@
                       <span>{{ phoneOption.label }}</span>
                     </label>
                   </fieldset>
-                  <div class="flex flex-wrap gap-3">
-                    <button
+                  <div class="cs-action-group">
+                    <ActionButton
                       type="button"
                       data-testid="connectshyft-make-call-modal-submit"
                       :disabled="!canSubmitCall"
                       :style="tapTargetStyle"
-                      :class="[
-                        'min-h-[44px] rounded-full bg-slate-900 px-4 py-2 text-base font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400',
-                        focusRingClass,
-                      ]"
+                      class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+                      tone="primary"
                       @click="submitMakeCall"
                     >
-                      {{ inboxActionPending ? 'Calling...' : 'Make Call' }}
-                    </button>
-                    <button
+                      {{ inboxActionPending ? 'Calling...' : 'Make call' }}
+                    </ActionButton>
+                    <ActionButton
                       type="button"
                       :style="tapTargetStyle"
-                      :class="[
-                        'min-h-[44px] rounded-full border border-slate-200 bg-white px-4 py-2 text-base font-medium text-slate-700',
-                        focusRingClass,
-                      ]"
+                      class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+                      tone="secondary"
                       @click="closeInboxActionModals"
                     >
                       Cancel
-                    </button>
+                    </ActionButton>
                   </div>
+                  </SurfaceCard>
                 </section>
               </div>
-            </section>
+            </SurfaceCard>
 
             <section
               v-if="isDesktopViewport && selectedThreadSummary && isThreadSurfaceVisible"
@@ -516,6 +491,12 @@ import ConnectShyftNeighborSnapshot from '@/components/connectshyft/ConnectShyft
 import ConnectShyftQueueCard from '@/components/connectshyft/ConnectShyftQueueCard.vue';
 import ConnectShyftThreadActionBar from '@/components/connectshyft/ConnectShyftThreadActionBar.vue';
 import ConnectShyftVoicemailCard from '@/components/connectshyft/ConnectShyftVoicemailCard.vue';
+import ActionButton from '@/components/ui/ActionButton.vue';
+import EmptyStatePanel from '@/components/ui/EmptyStatePanel.vue';
+import SearchField from '@/components/ui/SearchField.vue';
+import SectionHeader from '@/components/ui/SectionHeader.vue';
+import StatusBadge from '@/components/ui/StatusBadge.vue';
+import SurfaceCard from '@/components/ui/SurfaceCard.vue';
 import {
   DEFAULT_CONNECTSHYFT_AVAILABILITY,
   fetchConnectShyftAvailability,
@@ -749,7 +730,7 @@ const openConversation = async (overrides: Partial<ResolvedInboxContext> = {}): 
   };
   clearThreadActionOutcome();
   if (!context.orgUnitId) {
-    threadActionError.value = 'Select an orgUnit before opening a ConnectShyft conversation.';
+    threadActionError.value = 'Choose a workspace before opening a conversation.';
     return;
   }
 
@@ -1072,13 +1053,13 @@ const unavailableMessage = computed(() => {
 
   if (!moduleAvailable.value) {
     if (availability.value.entitlement && availability.value.entitlement.enabled === false) {
-      return 'ConnectShyft module entitlement is disabled for this tenant.';
+      return 'ConnectShyft is not turned on for this workspace yet.';
     }
 
-    return 'ConnectShyft is currently unavailable for this tenant. Contact an administrator to restore access.';
+    return 'ConnectShyft is currently unavailable in this workspace. Ask an administrator to help restore access.';
   }
 
-  return 'ConnectShyft inbox is currently unavailable for this tenant.';
+  return 'The inbox is currently unavailable in this workspace.';
 });
 
 const maintenanceBanner = computed(() => {
@@ -1087,7 +1068,7 @@ const maintenanceBanner = computed(() => {
   }
 
   if (!escalationAvailable.value) {
-    return 'Escalation controls are temporarily unavailable for this tenant.';
+    return 'Some escalation tools are temporarily unavailable right now.';
   }
 
   return '';

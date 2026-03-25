@@ -8,7 +8,7 @@
         <SectionHeader
           eyebrow="ConnectShyft"
           title="ConnectShyft More"
-          description="Secondary tools and policy-safe settings for ConnectShyft operators."
+          description="Keep the essentials close without turning this into an admin hub."
           size="md"
         />
         <p
@@ -44,52 +44,6 @@
           <p class="cs-heading-md">ConnectShyft Settings</p>
           <p class="mt-2 cs-meta">Set your callback / forwarding number and check voice forwarding readiness.</p>
         </RouterLink>
-
-        <div
-          data-testid="connectshyft-more-option-notifications"
-          class="cs-card cs-card--compact cs-card--muted text-left"
-        >
-          <p class="cs-heading-md">Notifications</p>
-          <p class="mt-2 cs-meta">Review notification preferences for volunteer-safe updates.</p>
-        </div>
-
-        <div
-          data-testid="connectshyft-more-option-display-preferences"
-          class="cs-card cs-card--compact cs-card--muted text-left"
-        >
-          <p class="cs-heading-md">Display Preferences</p>
-          <p class="mt-2 cs-meta">Keep conversation views readable and volunteer-first.</p>
-        </div>
-
-        <RouterLink
-          v-if="canAccessAdminSettings"
-          :to="{ path: '/app/connectshyft/settings/availability', query: navigationQuery }"
-          data-testid="connectshyft-more-admin-option-availability"
-          class="cs-card cs-card--compact cs-card--interactive cs-card--muted text-left"
-        >
-          <p class="cs-heading-md">Availability</p>
-          <p class="mt-2 cs-meta">Check module and capability rollout state for the current tenant.</p>
-        </RouterLink>
-
-        <RouterLink
-          v-if="canAccessAdminSettings"
-          :to="{ path: '/app/connectshyft/settings/numbers', query: navigationQuery }"
-          data-testid="connectshyft-more-admin-option-numbers"
-          class="cs-card cs-card--compact cs-card--interactive cs-card--muted text-left"
-        >
-          <p class="cs-heading-md">Number Mappings</p>
-          <p class="mt-2 cs-meta">Review inbound and outbound ConnectShyft number assignments.</p>
-        </RouterLink>
-
-        <RouterLink
-          v-if="canAccessAdminSettings"
-          :to="{ path: '/app/connectshyft/settings/escalation', query: navigationQuery }"
-          data-testid="connectshyft-more-admin-option-escalation"
-          class="cs-card cs-card--compact cs-card--interactive cs-card--muted text-left"
-        >
-          <p class="cs-heading-md">Escalation Settings</p>
-          <p class="mt-2 cs-meta">Manage escalation baselines and recipient policy routing.</p>
-        </RouterLink>
       </section>
 
       <div class="mt-6">
@@ -113,11 +67,7 @@ import { useRoute, useRouter } from 'vue-router';
 import ActionButton from '@/components/ui/ActionButton.vue';
 import SectionHeader from '@/components/ui/SectionHeader.vue';
 import { CONNECTSHYFT_RESPONSIVE_BREAKPOINTS } from '@/features/connectshyft/uiContracts';
-import {
-  hasConnectShyftAdminSettingsCapability,
-  normalizeConnectShyftQueryValue,
-  resolveConnectShyftAdminAccessFromQuery,
-} from '@/features/connectshyft/settingsAccess';
+import { normalizeConnectShyftQueryValue } from '@/features/connectshyft/settingsAccess';
 
 const route = useRoute();
 const router = useRouter();
@@ -141,16 +91,6 @@ onBeforeUnmount(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', updateViewportWidth);
   }
-});
-
-const canAccessAdminSettings = computed(() => {
-  const queryScopedAccess = resolveConnectShyftAdminAccessFromQuery(route.query);
-  const capabilityScopedAccess = hasConnectShyftAdminSettingsCapability({
-    hasAnyAdminAccess: false,
-    hasCapability: () => false,
-  });
-
-  return queryScopedAccess === null ? capabilityScopedAccess : queryScopedAccess;
 });
 
 const navigationQuery = computed(() => {

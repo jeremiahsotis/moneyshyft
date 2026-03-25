@@ -1,77 +1,67 @@
 <template>
-  <main class="min-h-screen bg-slate-50 px-4 py-8">
+  <main class="cs-page-shell">
     <section
       data-testid="connectshyft-directory-surface"
-      class="mx-auto max-w-5xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+      class="cs-page-shell__inner cs-stack"
     >
-      <header class="mb-6">
-        <h1 class="text-2xl font-semibold text-slate-900">
-          Neighbor Directory
-        </h1>
-        <p class="mt-2 text-sm text-slate-600">
-          Find people by name or phone and start the right conversation quickly.
-        </p>
-      </header>
+      <SurfaceCard padding="default" panel tone="soft">
+        <SectionHeader
+          eyebrow="Directory"
+          title="Neighbor Directory"
+          description="Find someone quickly and open the right conversation without digging through a dense list."
+          size="md"
+        />
+      </SurfaceCard>
 
       <p
         v-if="layoutMarkerTestId"
         :data-testid="layoutMarkerTestId"
-        class="mb-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+        class="cs-shell-notice cs-shell-notice--info"
       >
         {{ layoutMarkerCopy }}
       </p>
 
-      <section
+      <SurfaceCard
         data-testid="connectshyft-directory-context-panel"
-        class="mb-6 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"
+        padding="compact"
+        tone="muted"
       >
-        <p class="font-medium text-slate-900">Active conference scope</p>
-        <p class="mt-1">Tenant context: {{ scope ? 'Resolved' : 'Resolving from server...' }}</p>
-        <p>Conference context: {{ activeOrgUnitId ? 'Active' : 'Resolving from server...' }}</p>
-      </section>
-
-      <section class="rounded-md border border-slate-200 p-4">
-        <div class="grid grid-cols-1 gap-3 md:grid-cols-[auto_1fr] md:items-end">
-          <div class="inline-flex rounded border border-slate-300 p-1 text-sm text-slate-700">
-            <button
-              type="button"
-              data-testid="connectshyft-directory-search-mode-name"
-              class="min-h-[44px] rounded px-3 py-2"
-              :class="searchMode === 'name' ? 'bg-slate-900 text-white' : 'hover:bg-slate-100'"
-              :disabled="isLoading"
-              @click="searchMode = 'name'"
-            >
-              Name
-            </button>
-            <button
-              type="button"
-              data-testid="connectshyft-directory-search-mode-phone"
-              class="min-h-[44px] rounded px-3 py-2"
-              :class="searchMode === 'phone' ? 'bg-slate-900 text-white' : 'hover:bg-slate-100'"
-              :disabled="isLoading"
-              @click="searchMode = 'phone'"
-            >
-              Phone
-            </button>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="space-y-2">
+            <p class="cs-kicker">Current workspace</p>
+            <p class="cs-body">
+              {{ scope
+                ? 'New conversations started here stay with the current conference workspace.'
+                : 'Confirming the current workspace before showing results.' }}
+            </p>
           </div>
+          <StatusBadge
+            :label="activeOrgUnitId ? 'Ready to search' : 'Loading workspace'"
+            :tone="activeOrgUnitId ? 'success' : 'context'"
+          />
+        </div>
+      </SurfaceCard>
 
-          <label class="flex flex-col gap-1 text-sm text-slate-700">
-            <span>Search</span>
-            <input
-              data-testid="connectshyft-directory-search-input"
-              v-model="searchQuery"
-              type="text"
-              autocomplete="off"
-              :placeholder="searchMode === 'name' ? 'Search by first or last name' : 'Search by phone number'"
-              :disabled="isLoading"
-              class="min-h-[44px] rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
-            >
-          </label>
+      <SurfaceCard padding="default" panel>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-[auto_minmax(0,1fr)] md:items-end">
+          <SegmentedTabs
+            v-model="searchMode"
+            :disabled="isLoading"
+            :options="directorySearchModeOptions"
+            test-id="connectshyft-directory-search-mode"
+          />
+          <SearchField
+            v-model="searchQuery"
+            test-id="connectshyft-directory-search-input"
+            label="Search"
+            :disabled="isLoading"
+            :placeholder="searchMode === 'name' ? 'Search by first or last name' : 'Search by phone number'"
+          />
         </div>
 
         <p
           v-if="loadError"
-          class="mt-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          class="cs-shell-notice cs-shell-notice--warning mt-4"
         >
           {{ loadError }}
         </p>
@@ -81,47 +71,55 @@
             v-for="neighbor in visibleNeighbors"
             :key="neighbor.neighborId"
             data-testid="connectshyft-directory-result-card"
-            class="rounded border border-slate-200 bg-white p-3"
           >
-            <div
+            <SurfaceCard
               :data-testid="`connectshyft-directory-result-card-${neighbor.neighborId}`"
-              class="flex flex-wrap items-start justify-between gap-3"
+              class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+              padding="compact"
+              interactive
             >
-              <div>
-                <p class="text-base font-semibold text-slate-900">
+              <div class="min-w-0 flex-1">
+                <p class="cs-heading-md">
                   {{ formatNeighborName(neighbor) }}
                 </p>
-                <p class="mt-1 text-sm text-slate-600">
+                <p class="mt-2 cs-body">
                   {{ firstPhoneLabel(neighbor) }}
                 </p>
-                <p
-                  data-testid="connectshyft-directory-result-conference-chip"
-                  class="mt-2 inline-flex rounded-full border border-slate-300 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700"
-                >
-                  Conference scoped
-                </p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <StatusBadge
+                    data-testid="connectshyft-directory-result-conference-chip"
+                    label="Conference match"
+                    tone="context"
+                  />
+                  <StatusBadge
+                    v-if="neighbor.phones.length > 1"
+                    :label="`${neighbor.phones.length} numbers`"
+                    tone="neutral"
+                  />
+                </div>
               </div>
 
-              <button
+              <ActionButton
                 type="button"
                 data-testid="connectshyft-directory-start-conversation-action"
-                class="min-h-[44px] rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+                tone="primary"
                 :disabled="isEnsuringThread"
                 @click="startConversation(neighbor.neighborId)"
               >
-                {{ isEnsuringThread ? 'Opening...' : 'Start Conversation' }}
-              </button>
-            </div>
+                {{ isEnsuringThread ? 'Opening...' : 'Start conversation' }}
+              </ActionButton>
+            </SurfaceCard>
           </li>
         </ul>
 
-        <p
+        <EmptyStatePanel
           v-if="!isLoading && !loadError && visibleNeighbors.length === 0"
-          class="mt-4 text-sm text-slate-600"
-        >
-          No conference-scoped neighbors match your search.
-        </p>
-      </section>
+          class="mt-4"
+          eyebrow="Directory"
+          title="No one matches that search"
+          :description="directoryEmptyStateCopy"
+        />
+      </SurfaceCard>
     </section>
   </main>
 </template>
@@ -129,6 +127,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import ActionButton from '@/components/ui/ActionButton.vue';
+import EmptyStatePanel from '@/components/ui/EmptyStatePanel.vue';
+import SearchField from '@/components/ui/SearchField.vue';
+import SectionHeader from '@/components/ui/SectionHeader.vue';
+import SegmentedTabs from '@/components/ui/SegmentedTabs.vue';
+import StatusBadge from '@/components/ui/StatusBadge.vue';
+import SurfaceCard from '@/components/ui/SurfaceCard.vue';
 import {
   fetchConnectShyftNeighborScope,
   fetchConnectShyftNeighborsCollection,
@@ -156,6 +161,18 @@ const isEnsuringThread = ref(false);
 const loadError = ref('');
 const searchMode = ref<ConnectShyftNeighborSearchMode>('name');
 const searchQuery = ref('');
+const directorySearchModeOptions = [
+  {
+    label: 'Name',
+    value: 'name',
+    testId: 'connectshyft-directory-search-mode-name',
+  },
+  {
+    label: 'Phone',
+    value: 'phone',
+    testId: 'connectshyft-directory-search-mode-phone',
+  },
+] as const;
 const viewportWidth = ref<number>(typeof window === 'undefined' ? 1280 : window.innerWidth);
 let searchQueryReloadTimer: ReturnType<typeof setTimeout> | null = null;
 let directoryLoadRequestId = 0;
@@ -233,6 +250,14 @@ const layoutMarkerCopy = computed<string>(() => {
   }
 
   return 'Desktop directory layout active';
+});
+
+const directoryEmptyStateCopy = computed(() => {
+  if (searchQuery.value.trim().length > 0) {
+    return 'Try a different spelling, another phone number, or clear the search to see everyone in this workspace.';
+  }
+
+  return 'People in the current workspace will appear here as soon as ConnectShyft can load the directory.';
 });
 
 const formatNeighborName = (neighbor: ConnectShyftNeighbor): string => {
@@ -327,7 +352,7 @@ const scheduleDirectoryReload = (): void => {
 const startConversation = async (neighborId: string): Promise<void> => {
   const context = readDirectoryContext();
   if (!context) {
-    loadError.value = 'Select an orgUnit before starting a conversation.';
+    loadError.value = 'Choose a workspace before starting a conversation.';
     return;
   }
 

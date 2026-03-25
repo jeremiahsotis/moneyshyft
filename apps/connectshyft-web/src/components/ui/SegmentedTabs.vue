@@ -9,6 +9,7 @@
       :key="option.value"
       type="button"
       role="tab"
+      :data-testid="option.testId || undefined"
       :aria-selected="modelValue === option.value ? 'true' : 'false'"
       :class="[
         'cs-segmented__item',
@@ -25,7 +26,7 @@
 <script setup lang="ts">
 defineProps<{
   modelValue: string;
-  options: Array<{ label: string; value: string }>;
+  options: ReadonlyArray<{ label: string; value: string; testId?: string }>;
   disabled?: boolean;
   testId?: string;
 }>();

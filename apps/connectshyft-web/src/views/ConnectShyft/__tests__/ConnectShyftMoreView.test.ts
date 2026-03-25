@@ -59,10 +59,13 @@ describe('ConnectShyftMoreView', () => {
     expect(wrapper.text()).toContain(
       'Set your callback / forwarding number and check voice forwarding readiness.',
     );
-    expect(wrapper.text()).toContain('Notifications');
-    expect(wrapper.text()).toContain('Display Preferences');
+    expect(wrapper.text()).toContain(
+      'Keep the essentials close without turning this into an admin hub.',
+    );
     expect(wrapper.text()).not.toContain('Make voice forwarding work for your operator account.');
     expect(wrapper.find('[data-testid="connectshyft-more-admin-option-availability"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('Notifications');
+    expect(wrapper.text()).not.toContain('Display Preferences');
     expect(wrapper.text()).not.toContain('Save Callback Number');
   });
 
