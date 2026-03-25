@@ -11,21 +11,18 @@
         We couldn’t open that page.
       </h2>
       <p class="mt-3 text-base text-slate-600">
-        Return to People or ConnectShyft to keep working inside the shared shell.
+        Return to an available workspace to keep moving.
       </p>
 
       <div class="mt-6 flex flex-wrap gap-3">
         <RouterLink
-          :to="SHELL_ROUTE_PATHS.people"
+          v-for="action in fallbackActions"
+          :key="action.path"
+          :to="{ path: action.path, query: navigationQuery }"
+          :data-testid="`shell-route-fallback-${action.module}`"
           class="inline-flex min-h-[44px] items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
         >
-          Open People
-        </RouterLink>
-        <RouterLink
-          :to="SHELL_ROUTE_PATHS.connect"
-          class="inline-flex min-h-[44px] items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
-        >
-          Open ConnectShyft
+          {{ action.label }}
         </RouterLink>
       </div>
     </div>
@@ -33,5 +30,41 @@
 </template>
 
 <script setup lang="ts">
-import { SHELL_ROUTE_PATHS } from '@/shell/routes';
+import type { LocationQueryRaw } from 'vue-router';
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import { useShellAvailableOrgUnits } from '@/shell/orgUnitContext';
+import { useActiveShellOrgUnitId } from '@/shell/orgUnitState';
+import { isShellModuleAvailable, resolveShellModuleAvailability } from '@/shell/featureFlags';
+import { SHELL_PRIMARY_NAV_ITEMS } from '@/shell/routes';
+
+const route = useRoute();
+const availableOrgUnits = useShellAvailableOrgUnits();
+const currentOrgUnitId = useActiveShellOrgUnitId();
+
+const navigationQuery = computed<LocationQueryRaw>(() => {
+  const {
+    refusedPath: _refusedPath,
+    settingsRefusal: _settingsRefusal,
+    settingsRefusedPath: _settingsRefusedPath,
+    ...rest
+  } = route.query;
+
+  return rest as LocationQueryRaw;
+});
+
+const fallbackActions = computed(() => {
+  const moduleAvailability = resolveShellModuleAvailability(
+    availableOrgUnits.value,
+    currentOrgUnitId.value,
+  );
+
+  return SHELL_PRIMARY_NAV_ITEMS
+    .filter((item) => item.module !== 'settings')
+    .filter((item) => isShellModuleAvailable(moduleAvailability, item.module))
+    .map((item) => ({
+      ...item,
+      label: `Open ${item.label}`,
+    }));
+});
 </script>

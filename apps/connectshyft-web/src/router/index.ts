@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import api from '@/services/api';
 import { beginShellNavigation, endShellNavigation } from '@/shell/navigationState';
 import { SHELL_ROUTE_PATHS } from '@/shell/routes';
-import { resolveConnectShyftAdminAccessFromQuery } from '@/features/connectshyft/settingsAccess';
+import { canAccessConnectShyftSettingsPath } from '@/features/connectshyft/settingsNavigation';
 import ConnectShyftLoginView from '../views/Auth/ConnectShyftLoginView.vue';
 import ForgotPasswordView from '../views/Auth/ForgotPasswordView.vue';
 import ResetPasswordView from '../views/Auth/ResetPasswordView.vue';
@@ -255,8 +255,8 @@ router.beforeEach(async (to) => {
   const authenticated = await refreshSessionState();
   if (authenticated) {
     if (to.matched.some((record) => record.meta.requiresConnectShyftAdminSettings === true)) {
-      const canAccessAdminSettings = resolveConnectShyftAdminAccessFromQuery(to.query);
-      if (canAccessAdminSettings === false) {
+      const canAccessAdminSettings = await canAccessConnectShyftSettingsPath(to.path);
+      if (!canAccessAdminSettings) {
         return {
           path: SHELL_ROUTE_PATHS.settings,
           query: {

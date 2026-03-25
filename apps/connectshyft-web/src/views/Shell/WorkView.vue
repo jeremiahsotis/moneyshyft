@@ -6,7 +6,14 @@
           Settings
         </p>
         <p class="mt-2 text-sm text-slate-600">
-          Callback setup and operational settings stay in the same shared application frame.
+          Call routing and workspace settings live here.
+        </p>
+        <p
+          v-if="settingsRefusalGuidance"
+          data-testid="shell-settings-refusal-guidance"
+          class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+        >
+          {{ settingsRefusalGuidance }}
         </p>
       </div>
 
@@ -61,6 +68,12 @@ const navigationQuery = computed<LocationQueryRaw>(() => {
 
   return rest as LocationQueryRaw;
 });
+
+const settingsRefusalGuidance = computed(() => (
+  typeof route.query.refusedPath === 'string' && route.query.refusedPath.trim().length > 0
+    ? 'That settings page is not available for your current access in this workspace.'
+    : ''
+));
 
 const isActive = (path: string): boolean => route.path === path || route.path.startsWith(`${path}/`);
 

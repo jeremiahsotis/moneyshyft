@@ -24,10 +24,23 @@
 import type { LocationQueryRaw } from 'vue-router';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
+import { useShellAvailableOrgUnits } from '@/shell/orgUnitContext';
+import { useActiveShellOrgUnitId } from '@/shell/orgUnitState';
+import { isShellModuleAvailable, resolveShellModuleAvailability } from '@/shell/featureFlags';
 import { SHELL_PRIMARY_NAV_ITEMS, type ShellModuleKey } from '@/shell/routes';
 
 const route = useRoute();
-const navItems = SHELL_PRIMARY_NAV_ITEMS;
+const availableOrgUnits = useShellAvailableOrgUnits();
+const currentOrgUnitId = useActiveShellOrgUnitId();
+const navItems = computed(() => {
+  const moduleAvailability = resolveShellModuleAvailability(
+    availableOrgUnits.value,
+    currentOrgUnitId.value,
+  );
+
+  return SHELL_PRIMARY_NAV_ITEMS.filter((item) =>
+    isShellModuleAvailable(moduleAvailability, item.module));
+});
 
 const navigationQuery = computed<LocationQueryRaw>(() => {
   const {

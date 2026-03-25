@@ -3,8 +3,6 @@ import type {
   ConnectShyftResolverQueueDetailData,
   ConnectShyftResolverQueueItemRecord,
   ConnectShyftResolverQueueItemType,
-  ContactPoint,
-  ContactPointStatus,
   ResolverActionType,
   ResolverRiskFlag,
   ResolverReviewStatus,
@@ -18,15 +16,11 @@ import {
   releaseConnectShyftResolverQueueItem,
 } from '@/features/connectshyft/resolverQueue';
 import {
-  resolveConnectShyftIdentityResolutionPresentation,
-  type ConnectShyftIdentityResolutionCandidate,
-  type ConnectShyftIdentityResolutionResponse,
-} from '@/features/connectshyft/identityResolution';
-import {
   clearSubjectContext,
   replaceSubjectContext,
   useSubjectContext,
 } from '../../shell/subjectContext';
+import { useShellAvailableOrgUnits } from '../../shell/orgUnitContext';
 
 type ResolverWorkspaceFilter =
   | 'all_active'
@@ -42,10 +36,7 @@ type ResolverFilterDefinition = {
 };
 
 const subjectContext = useSubjectContext();
-const contactPoints = ref<ContactPoint[]>([]);
-const contactPointError = ref('');
-const decisionResult = ref<ConnectShyftIdentityResolutionResponse | null>(null);
-const decisionError = ref('');
+const availableOrgUnits = useShellAvailableOrgUnits();
 const resolverQueueItems = ref<ConnectShyftResolverQueueItemRecord[]>([]);
 const resolverQueueLoading = ref(false);
 const resolverQueueError = ref('');
@@ -58,21 +49,6 @@ const selectedResolverQueueDetail = ref<ConnectShyftResolverQueueDetailData | nu
 const resolverDetailLoading = ref(false);
 const resolverDetailError = ref('');
 const manuallySelectedResolverQueueKey = ref('');
-
-const SAMPLE_CANDIDATES: ConnectShyftIdentityResolutionCandidate[] = [
-  {
-    personId: 'person_very_high',
-    score: 140,
-    reasons: ['Exact phone match'],
-    contactPointStatus: 'reassignment_suspected',
-  },
-  {
-    personId: 'person_medium',
-    score: 60,
-    reasons: ['Name similarity'],
-    contactPointStatus: 'active_shared_possible',
-  },
-];
 
 const RESOLVER_FILTERS: ResolverFilterDefinition[] = [
   {
@@ -88,7 +64,7 @@ const RESOLVER_FILTERS: ResolverFilterDefinition[] = [
   {
     id: 'rebind_review',
     label: 'Rebind reviews',
-    description: 'Sensitive reassignment work that needs tenant-admin review.',
+    description: 'Sensitive reassignment work that needs review before it moves forward.',
   },
   {
     id: 'claimed_by_me',
@@ -98,42 +74,14 @@ const RESOLVER_FILTERS: ResolverFilterDefinition[] = [
   {
     id: 'unclaimed',
     label: 'Unclaimed',
-    description: 'Queue items ready for a tenant-admin to pick up.',
+    description: 'Queue items ready for someone to pick up.',
   },
 ];
 
-const isSharedStatus = (status: ContactPointStatus | null | undefined): boolean =>
-  status === 'active_shared_possible' || status === 'active_shared_confirmed';
-
-const isStaleStatus = (status: ContactPointStatus | null | undefined): boolean =>
-  status === 'stale';
-
-const isReassignmentStatus = (status: ContactPointStatus | null | undefined): boolean =>
-  status === 'reassignment_suspected';
-
-const warnMissingDecisionStatus = (payload: {
-  contactPointStatus?: ContactPointStatus;
-  candidates?: ConnectShyftIdentityResolutionCandidate[];
-}) => {
-  if (!payload.contactPointStatus) {
-    console.warn('ConnectShyft identity resolution response is missing contactPointStatus.');
-  }
-
-  (payload.candidates || []).forEach((candidate) => {
-    if (!candidate.contactPointStatus) {
-      console.warn('ConnectShyft identity resolution candidate is missing contactPointStatus.', {
-        personId: candidate.personId,
-      });
-    }
-  });
-};
-
-const decisionPresentation = computed(() => (
-  decisionResult.value
-    ? resolveConnectShyftIdentityResolutionPresentation(decisionResult.value)
-    : null
+const currentOrgUnitLabel = computed(() => (
+  availableOrgUnits.value.find((orgUnit) => orgUnit.id === subjectContext.value.orgUnitId)?.label
+  || 'Current workspace'
 ));
-const decisionCandidates = computed(() => decisionResult.value?.candidates || []);
 
 const buildResolverQueueKey = (itemType: ConnectShyftResolverQueueItemType, itemId: string): string =>
   `${itemType}:${itemId}`;
@@ -192,15 +140,15 @@ const selectedResolverQueueItem = computed(() => filteredResolverQueueItems.valu
 const resolverQueueSummary = computed(() => {
   const total = resolverQueueCounts.value.all_active;
   if (!resolverWorkspaceAccessible.value) {
-    return 'Resolver queue actions stay tenant-admin only. Read-safe PeopleCore identity context remains available below.';
+    return 'Review queue actions are not available for your access in this workspace.';
   }
 
   if (resolverQueueLoading.value && total === 0) {
-    return 'Loading backend-authored resolver work for this org unit.';
+    return 'Loading current review work for this workspace.';
   }
 
   if (total === 0) {
-    return 'No active resolver work is waiting right now. Identity and rebind reviews will appear here when backend truth requires action.';
+    return 'No review work is waiting right now. Identity and reassignment reviews will appear here when they need attention.';
   }
 
   const identityCount = resolverQueueCounts.value.identity_review;
@@ -258,7 +206,7 @@ const formatClaimStateLabel = (item: ConnectShyftResolverQueueItemRecord): strin
     case 'claimed_by_current_user':
       return 'Claimed by me';
     case 'claimed_by_other':
-      return 'Claimed by another resolver';
+      return 'Claimed elsewhere';
     default:
       return 'Unclaimed';
   }
@@ -317,7 +265,7 @@ const formatResolverRiskFlag = (flag: ResolverRiskFlag): string => {
 
 const formatResolverActionType = (value: ResolverActionType | null | undefined): string => {
   if (!value) {
-    return 'Tenant-admin review';
+    return 'Review required';
   }
 
   switch (value) {
@@ -342,14 +290,14 @@ const formatResolverActionType = (value: ResolverActionType | null | undefined):
 
 const buildQueueItemSummary = (item: ConnectShyftResolverQueueItemRecord): string => {
   if (item.itemType === 'rebind_review') {
-    return 'Sensitive reassignment work is waiting for tenant-admin review before historical ConnectShyft context moves with the new subject truth.';
+    return 'Sensitive record updates are waiting for review before conversation history moves to the right person.';
   }
 
   if (item.status === 'waiting_for_more_info') {
-    return 'Identity review is blocked until more information is available, but it stays in the active resolver workspace.';
+    return 'This review is waiting for more information before it can continue.';
   }
 
-  return 'Identity evidence requires tenant-admin confirmation before subject truth can be applied safely across PeopleCore and ConnectShyft.';
+  return 'Identity evidence needs review before People and ConnectShyft update together.';
 };
 
 const buildQueueItemContext = (item: ConnectShyftResolverQueueItemRecord): string[] => {
@@ -377,30 +325,30 @@ const buildIdentityReviewReason = (
   riskFlags: ResolverRiskFlag[],
 ): string => {
   if (reviewType === 'contact_point_reassignment') {
-    return 'This contact point may have moved between people, so tenant-admin review is required before identity truth changes.';
+    return 'This contact point may have moved between people, so review is required before identity updates.';
   }
 
   if (reviewType === 'shared_contact_ambiguity' || riskFlags.includes('shared_contact_possible')) {
-    return 'This contact point may belong to more than one person, so tenant-admin review is required before assignment is confirmed.';
+    return 'This contact point may belong to more than one person, so review is required before it is confirmed.';
   }
 
   if (riskFlags.includes('conflicting_name_dob')) {
-    return 'The current identity evidence conflicts, so a tenant admin needs to confirm the correct person before the workspace updates.';
+    return 'The current identity evidence conflicts, so the correct person needs review before the workspace updates.';
   }
 
-  return 'Tenant-admin review is required before PeopleCore and ConnectShyft can rely on this identity outcome.';
+  return 'Review is required before People and ConnectShyft can rely on this identity outcome.';
 };
 
 const buildRebindReviewReason = (resolutionType: ResolverActionType | null | undefined): string => {
   if (resolutionType === 'reassign_contact_point') {
-    return 'A contact-point reassignment created sensitive follow-up work, so tenant-admin review is required before historical context is rebound.';
+    return 'A contact-point reassignment created sensitive follow-up work, so review is required before history is rebound.';
   }
 
   if (resolutionType === 'merge_people') {
-    return 'A person merge created sensitive follow-up work, so tenant-admin review is required before historical context is rebound.';
+    return 'A person merge created sensitive follow-up work, so review is required before history is rebound.';
   }
 
-  return 'This reassignment affects sensitive ConnectShyft context, so tenant-admin review is required before the new subject truth is fully applied.';
+  return 'This reassignment affects sensitive ConnectShyft context, so review is required before the new person record is fully applied.';
 };
 
 const formatIdentityReviewStatus = (value: ResolverReviewStatus | undefined): string => {
@@ -658,57 +606,15 @@ watch(selectedResolverQueueDetail, (nextDetail) => {
 onMounted(() => {
   void loadResolverQueue();
 });
-
-async function loadContactPoints() {
-  contactPointError.value = '';
-
-  try {
-    const response = await fetch('/people/contact-points');
-    if (!response.ok) {
-      throw new Error(`Failed to load contact points (${response.status})`);
-    }
-
-    contactPoints.value = (await response.json()) as ContactPoint[];
-  } catch (error) {
-    contactPointError.value = error instanceof Error ? error.message : 'Failed to load contact points';
-  }
-}
-
-async function runSampleDecision() {
-  decisionError.value = '';
-
-  try {
-    const response = await fetch('/people/identity/decision', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        candidates: SAMPLE_CANDIDATES,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to run identity decision (${response.status})`);
-    }
-
-    const payload = (await response.json()) as ConnectShyftIdentityResolutionResponse;
-    warnMissingDecisionStatus(payload);
-    decisionResult.value = payload;
-  } catch (error) {
-    decisionError.value = error instanceof Error ? error.message : 'Failed to run identity decision';
-  }
-}
 </script>
 
 <template>
   <section class="space-y-6 p-4">
     <div class="space-y-1">
-      <h1 class="text-xl font-semibold text-slate-900">People shell</h1>
-      <p class="text-sm text-slate-600">Org unit: {{ subjectContext.orgUnitId }}</p>
+      <h1 class="text-xl font-semibold text-slate-900">People</h1>
+      <p class="text-sm text-slate-600">Current workspace: {{ currentOrgUnitLabel }}</p>
       <p class="text-sm text-slate-500">
-        Tenant-admin resolvers work the shared identity and rebind queue here. Existing PeopleCore
-        identity scaffolds stay available below for compatibility.
+        Identity review and record updates stay grounded here while current conversation context stays connected.
       </p>
     </div>
 
@@ -747,8 +653,7 @@ async function runSampleDecision() {
         data-test="resolver-workspace-locked"
         class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
       >
-        Resolver queue actions are available only to tenant-admin resolvers. People identity status
-        remains visible below where it is safe to show.
+        Review queue actions are not available for your current access in this workspace.
       </p>
 
       <div v-else class="mt-4 grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.82fr)]">
@@ -975,7 +880,7 @@ async function runSampleDecision() {
                     disabled
                     class="inline-flex min-h-[44px] items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed"
                   >
-                    Claimed by another resolver
+                    Already in progress
                   </button>
                 </div>
               </div>
@@ -992,7 +897,7 @@ async function runSampleDecision() {
                 data-test="resolver-detail-claimed-by-other"
                 class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
               >
-                Another tenant-admin resolver is currently working this item, so it is not actionable here.
+                Someone else is currently working this item, so it is not actionable here.
               </p>
               <p
                 v-else-if="selectedResolverQueueItem.status === 'waiting_for_more_info'"
@@ -1172,7 +1077,7 @@ async function runSampleDecision() {
               v-else
               class="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-sm text-slate-600"
             >
-              Select a resolver item to inspect its backend-authored context.
+              Select a review item to inspect its current context.
             </p>
           </div>
 
@@ -1181,164 +1086,10 @@ async function runSampleDecision() {
             data-test="resolver-detail-empty"
             class="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500"
           >
-            Select a resolver item to inspect its context and claim state.
+            Select a review item to inspect its context and action state.
           </p>
         </section>
       </div>
     </section>
-
-    <div class="space-y-2">
-      <button
-        data-test="load-contact-points"
-        type="button"
-        class="rounded-full border border-slate-300 px-3 py-2 text-sm text-slate-700"
-        @click="loadContactPoints"
-      >
-        Load contact points
-      </button>
-
-      <p
-        v-if="contactPointError"
-        class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-      >
-        {{ contactPointError }}
-      </p>
-
-      <ul v-if="contactPoints.length > 0" class="space-y-2 pl-5">
-        <li
-          v-for="contactPoint in contactPoints"
-          :key="contactPoint.id"
-          class="flex flex-wrap items-center gap-2 text-sm text-slate-700"
-        >
-          <span>{{ contactPoint.type }} | {{ contactPoint.normalizedValue }} | {{ contactPoint.status }}</span>
-          <span
-            v-if="isSharedStatus(contactPoint.status)"
-            data-test="contact-point-shared-indicator"
-            role="status"
-            aria-label="Shared contact point indicator"
-            class="border border-amber-400 px-2 py-0.5 text-xs"
-          >
-            Shared
-          </span>
-          <span
-            v-if="isStaleStatus(contactPoint.status)"
-            data-test="contact-point-stale-indicator"
-            role="status"
-            aria-label="Stale contact point indicator"
-            class="border border-slate-400 px-2 py-0.5 text-xs"
-          >
-            Stale
-          </span>
-          <span
-            v-if="isReassignmentStatus(contactPoint.status)"
-            data-test="contact-point-reassignment-indicator"
-            role="status"
-            aria-label="Reassignment risk indicator"
-            class="border border-rose-400 px-2 py-0.5 text-xs"
-          >
-            Reassignment risk
-          </span>
-        </li>
-      </ul>
-      <p v-else class="text-sm text-slate-500">No contact points loaded yet.</p>
-    </div>
-
-    <div class="space-y-2">
-      <button
-        data-test="run-sample-decision"
-        type="button"
-        class="rounded-full border border-slate-300 px-3 py-2 text-sm text-slate-700"
-        @click="runSampleDecision"
-      >
-        Run sample identity decision
-      </button>
-
-      <p
-        v-if="decisionError"
-        class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-      >
-        {{ decisionError }}
-      </p>
-
-      <div v-if="decisionResult && decisionPresentation" data-test="decision-result" class="space-y-2">
-        <p class="text-sm text-slate-700">Confidence band: {{ decisionResult.confidenceBand }}</p>
-        <p class="text-sm text-slate-700">Resolution state: {{ decisionPresentation.resolvedState }}</p>
-        <p class="text-sm text-slate-700">Default action: {{ decisionPresentation.defaultAction }}</p>
-        <p data-test="decision-guidance" class="text-sm text-slate-600">{{ decisionPresentation.guidance }}</p>
-        <p v-if="decisionResult.resolverReviewId" data-test="resolver-review-id" class="text-sm text-slate-700">
-          Resolver review: {{ decisionResult.resolverReviewId }}
-        </p>
-        <ul
-          v-if="decisionPresentation.showCandidates && decisionCandidates.length > 0"
-          data-test="decision-candidates"
-          class="space-y-2 pl-5"
-        >
-          <li
-            v-for="candidate in decisionCandidates"
-            :key="candidate.personId"
-            class="flex flex-wrap items-center gap-2 text-sm text-slate-700"
-          >
-            <span>{{ candidate.personId }} (score {{ candidate.score }})</span>
-            <span data-test="decision-candidate-status">
-              {{ candidate.contactPointStatus }}
-            </span>
-            <span
-              v-if="isSharedStatus(candidate.contactPointStatus)"
-              data-test="decision-candidate-shared-indicator"
-              role="status"
-              aria-label="Shared decision candidate indicator"
-              class="border border-amber-400 px-2 py-0.5 text-xs"
-            >
-              Shared
-            </span>
-            <span
-              v-if="isStaleStatus(candidate.contactPointStatus)"
-              data-test="decision-candidate-stale-indicator"
-              role="status"
-              aria-label="Stale decision candidate indicator"
-              class="border border-slate-400 px-2 py-0.5 text-xs"
-            >
-              Stale
-            </span>
-            <span
-              v-if="isReassignmentStatus(candidate.contactPointStatus)"
-              data-test="decision-candidate-reassignment-indicator"
-              role="status"
-              aria-label="Reassignment risk decision candidate indicator"
-              class="border border-rose-400 px-2 py-0.5 text-xs"
-            >
-              Reassignment risk
-            </span>
-          </li>
-        </ul>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-if="decisionPresentation.showAttachAction"
-            data-test="attach-existing"
-            type="button"
-            class="rounded-full border border-slate-300 px-3 py-2 text-sm text-slate-700"
-          >
-            Attach to suggested match
-          </button>
-          <button
-            v-if="decisionPresentation.showCreateNewAction"
-            data-test="create-new"
-            type="button"
-            class="rounded-full border border-slate-300 px-3 py-2 text-sm text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
-            :disabled="!decisionPresentation.createNewAllowed"
-          >
-            Create new person
-          </button>
-        </div>
-        <p
-          v-if="decisionPresentation.mode === 'resolver_required'"
-          data-test="resolver-required-message"
-          class="text-sm text-slate-600"
-        >
-          Resolver review is required before creating a new person.
-        </p>
-      </div>
-      <p v-else class="text-sm text-slate-500">No identity decision run yet.</p>
-    </div>
   </section>
 </template>

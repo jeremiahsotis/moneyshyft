@@ -175,8 +175,13 @@ const renderShell = async (input?: {
   initialPath?: string;
   subjectContext?: SubjectContext;
   contextResponse?: ReturnType<typeof buildShellContextResponse>;
+  contextError?: unknown;
 }) => {
-  apiGetMock.mockResolvedValueOnce(input?.contextResponse || buildShellContextResponse());
+  if (input?.contextError) {
+    apiGetMock.mockRejectedValueOnce(input.contextError);
+  } else {
+    apiGetMock.mockResolvedValueOnce(input?.contextResponse || buildShellContextResponse());
+  }
   const router = await buildRouter(input?.initialPath || '/people?orgUnitId=org-east');
   const shellSubjectContext = ref<SubjectContext>(input?.subjectContext || {
     orgUnitId: 'org-east',
@@ -221,6 +226,30 @@ describe('AppShellView', () => {
       'Settings',
     ]);
     expect(wrapper.get('[data-testid="shell-orgunit-selector"]').exists()).toBe(true);
+  });
+
+  it('hides backend-disabled modules from the shell nav', async () => {
+    const { wrapper } = await renderShell({
+      contextResponse: buildShellContextResponse({
+        orgUnits: [
+          {
+            id: 'org-east',
+            label: 'East Campus',
+            availableModules: {
+              people: true,
+              connect: false,
+              settings: false,
+            },
+          },
+        ],
+      }),
+    });
+
+    const navItems = wrapper.findAll('[data-testid^="shell-primary-nav-"]');
+    expect(navItems).toHaveLength(1);
+    expect(navItems[0]?.text()).toBe('People');
+    expect(wrapper.find('[data-testid="shell-primary-nav-connect"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="shell-primary-nav-settings"]').exists()).toBe(false);
   });
 
   it('executes a safe orgUnit switch immediately and preserves the current route', async () => {
@@ -370,5 +399,22 @@ describe('AppShellView', () => {
     expect(shellSubjectContext.value).toEqual({
       orgUnitId: 'org-west',
     });
+  });
+
+  it('shows a shell-level error state when orgUnit access fails to load', async () => {
+    const { wrapper } = await renderShell({
+      contextError: {
+        response: {
+          data: {
+            message: 'Unable to load org unit access.',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('[data-testid="people-surface"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="shell-surface-error"]').text()).toContain(
+      'We couldn’t load this workspace.',
+    );
   });
 });

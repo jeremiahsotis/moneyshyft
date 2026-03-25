@@ -229,23 +229,16 @@ describe('connectshyft settings and availability route characterization', () => 
         adminOptions: [],
       },
     });
-    expect(response.body.data.primaryOptions).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        key: 'directory',
-        path: '/app/connectshyft/directory',
-      }),
+    expect(response.body.data.primaryOptions).toEqual([
       expect.objectContaining({
         key: 'settings',
+        label: 'Call routing',
         path: '/app/connectshyft/settings',
       }),
-      expect.objectContaining({
-        key: 'sign-out',
-        path: '/login',
-      }),
-    ]));
+    ]);
     expect(response.body.data.pathways).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        path: '/app/connectshyft/directory',
+        path: '/app/connectshyft/settings',
         allowed: true,
       }),
       expect.objectContaining({
@@ -253,6 +246,8 @@ describe('connectshyft settings and availability route characterization', () => 
         allowed: false,
       }),
     ]));
+    expect(response.body.data.pathways.some((pathway: { path: string }) =>
+      /directory|notification|display|login/i.test(pathway.path))).toBe(false);
   });
 
   it('returns admin navigation pathways for admin-capable settings callers', async () => {
@@ -346,14 +341,12 @@ describe('connectshyft settings and availability route characterization', () => 
         adminOptions: [],
       },
     });
-    expect(response.body.data.primaryOptions).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        key: 'directory',
-      }),
+    expect(response.body.data.primaryOptions).toEqual([
       expect.objectContaining({
         key: 'settings',
+        label: 'Call routing',
       }),
-    ]));
+    ]);
     expect(response.body.data.pathways).toEqual(expect.arrayContaining([
       expect.objectContaining({
         path: '/app/connectshyft/settings/availability',

@@ -29,6 +29,24 @@ export type ShellSettingsNavigationItem = {
   path: string;
 };
 
+export type ShellSettingsNavigationState = {
+  items: ShellSettingsNavigationItem[];
+  allowedPaths: string[];
+};
+
+const DEFAULT_SETTINGS_NAVIGATION_STATE: ShellSettingsNavigationState = {
+  items: [
+    {
+      key: 'settings',
+      label: 'Call routing',
+      path: SHELL_ROUTE_PATHS.settings,
+    },
+  ],
+  allowedPaths: [
+    SHELL_ROUTE_PATHS.settings,
+  ],
+};
+
 const SETTINGS_PATH_TRANSLATIONS: Record<string, string> = {
   '/app/connectshyft/settings': SHELL_ROUTE_PATHS.settings,
   '/app/connectshyft/settings/availability': SHELL_ROUTE_PATHS.settingsAvailability,
@@ -65,6 +83,10 @@ const normalizeOption = (
 };
 
 export const fetchConnectShyftSettingsNavigation = async (): Promise<ShellSettingsNavigationItem[]> => {
+  return (await fetchConnectShyftSettingsNavigationState()).items;
+};
+
+export const fetchConnectShyftSettingsNavigationState = async (): Promise<ShellSettingsNavigationState> => {
   try {
     const response = await api.get('/connectshyft/settings/navigation', {
       headers: buildConnectShyftTestOverrideHeaders(),
@@ -87,22 +109,23 @@ export const fetchConnectShyftSettingsNavigation = async (): Promise<ShellSettin
       .map((option) => normalizeOption(option, allowedPaths))
       .filter((option): option is ShellSettingsNavigationItem => option !== null);
 
-    return items.length > 0
-      ? items
-      : [
-        {
-          key: 'settings',
-          label: 'Call routing',
-          path: SHELL_ROUTE_PATHS.settings,
-        },
-      ];
+    return {
+      items: items.length > 0
+        ? items
+        : [...DEFAULT_SETTINGS_NAVIGATION_STATE.items],
+      allowedPaths: allowedPaths.size > 0
+        ? [...allowedPaths]
+        : [...DEFAULT_SETTINGS_NAVIGATION_STATE.allowedPaths],
+    };
   } catch (_error) {
-    return [
-      {
-        key: 'settings',
-        label: 'Call routing',
-        path: SHELL_ROUTE_PATHS.settings,
-      },
-    ];
+    return {
+      items: [...DEFAULT_SETTINGS_NAVIGATION_STATE.items],
+      allowedPaths: [...DEFAULT_SETTINGS_NAVIGATION_STATE.allowedPaths],
+    };
   }
+};
+
+export const canAccessConnectShyftSettingsPath = async (path: string): Promise<boolean> => {
+  const navigationState = await fetchConnectShyftSettingsNavigationState();
+  return navigationState.allowedPaths.includes(path);
 };

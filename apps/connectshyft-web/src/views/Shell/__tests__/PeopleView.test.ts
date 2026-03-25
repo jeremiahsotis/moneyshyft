@@ -224,8 +224,9 @@ describe('PeopleView', () => {
     const { wrapper } = await renderPeopleView();
 
     expect(fetchResolverQueueMock).toHaveBeenCalledTimes(1);
-    expect(wrapper.text()).toContain('People shell');
-    expect(wrapper.text()).toContain('Org unit: test-org');
+    expect(wrapper.text()).toContain('People');
+    expect(wrapper.text()).toContain('Current workspace: Current workspace');
+    expect(wrapper.text()).not.toContain('test-org');
     expect(wrapper.get('[data-test="resolver-workspace"]').text()).toContain(
       'Primary queue for identity and rebind reviews',
     );
@@ -247,7 +248,7 @@ describe('PeopleView', () => {
     const { wrapper } = await renderPeopleView();
 
     expect(wrapper.get('[data-test="resolver-workspace-locked"]').text()).toContain(
-      'available only to tenant-admin resolvers',
+      'not available for your current access',
     );
     expect(wrapper.find('[data-test="resolver-filter-all_active"]').exists()).toBe(false);
     expect(wrapper.find('[data-test="resolver-detail-claim"]').exists()).toBe(false);
@@ -290,7 +291,7 @@ describe('PeopleView', () => {
       'Claimed by me',
     );
     expect(wrapper.get('[data-test="resolver-queue-item-claim-rebind-item"]').text()).toContain(
-      'Claimed by another resolver',
+      'Claimed elsewhere',
     );
   });
 
@@ -465,102 +466,12 @@ describe('PeopleView', () => {
     expect(wrapper.find('[data-test="resolver-queue-item-identity-other"]').exists()).toBe(false);
   });
 
-  it('renders shared, stale, and reassignment indicators for contact points', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ([
-        {
-          id: 'contact-shared',
-          tenantId: 'tenant-1',
-          type: 'phone',
-          normalizedValue: '+12605551212',
-          status: 'active_shared_possible',
-          firstSeenAt: '2026-03-24T10:00:00.000Z',
-          lastSeenAt: '2026-03-24T10:00:00.000Z',
-          suspectedShared: true,
-          confirmedShared: false,
-          reassignmentSuspected: false,
-          createdAt: '2026-03-24T10:00:00.000Z',
-          updatedAt: '2026-03-24T10:00:00.000Z',
-        },
-        {
-          id: 'contact-stale',
-          tenantId: 'tenant-1',
-          type: 'phone',
-          normalizedValue: '+12605551213',
-          status: 'stale',
-          firstSeenAt: '2026-03-24T10:00:00.000Z',
-          lastSeenAt: '2026-03-24T10:00:00.000Z',
-          suspectedShared: false,
-          confirmedShared: false,
-          reassignmentSuspected: false,
-          createdAt: '2026-03-24T10:00:00.000Z',
-          updatedAt: '2026-03-24T10:00:00.000Z',
-        },
-        {
-          id: 'contact-reassigned',
-          tenantId: 'tenant-1',
-          type: 'phone',
-          normalizedValue: '+12605551214',
-          status: 'reassignment_suspected',
-          firstSeenAt: '2026-03-24T10:00:00.000Z',
-          lastSeenAt: '2026-03-24T10:00:00.000Z',
-          suspectedShared: false,
-          confirmedShared: false,
-          reassignmentSuspected: true,
-          createdAt: '2026-03-24T10:00:00.000Z',
-          updatedAt: '2026-03-24T10:00:00.000Z',
-        },
-      ]),
-    });
-
-    vi.stubGlobal('fetch', fetchMock);
-
+  it('removes sample tooling and raw identifiers from the cleaned People shell', async () => {
     const { wrapper } = await renderPeopleView();
 
-    await wrapper.get('[data-test="load-contact-points"]').trigger('click');
-    await flushPromises();
-
-    expect(wrapper.findAll('[data-test="contact-point-shared-indicator"]')).toHaveLength(1);
-    expect(wrapper.findAll('[data-test="contact-point-stale-indicator"]')).toHaveLength(1);
-    expect(wrapper.findAll('[data-test="contact-point-reassignment-indicator"]')).toHaveLength(1);
-  });
-
-  it('runs the sample identity decision and keeps resolver-required guidance compatible', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        confidenceBand: 'very_high',
-        contactPointStatus: 'reassignment_suspected',
-        outcome: 'resolver_required',
-        resolverReviewId: 'review-1',
-        candidates: [],
-      }),
-    });
-
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { wrapper } = await renderPeopleView();
-
-    await wrapper.get('[data-test="run-sample-decision"]').trigger('click');
-    await flushPromises();
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/people/identity/decision',
-      expect.objectContaining({
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }),
-    );
-    expect(wrapper.text()).toContain('Confidence band: very_high');
-    expect(wrapper.text()).toContain('Resolution state: resolver_required');
-    expect(wrapper.text()).toContain('Default action: resolver_review');
-    expect(wrapper.get('[data-test="resolver-review-id"]').text()).toContain('review-1');
-    expect(wrapper.find('[data-test="create-new"]').exists()).toBe(false);
-    expect(wrapper.get('[data-test="resolver-required-message"]').text()).toContain(
-      'Resolver review is required before creating a new person.',
-    );
+    expect(wrapper.find('[data-test="load-contact-points"]').exists()).toBe(false);
+    expect(wrapper.find('[data-test="run-sample-decision"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('resolver-item-1');
+    expect(wrapper.text()).not.toContain('person-a');
   });
 });
