@@ -76,6 +76,8 @@ const buildThreadDetail = (overrides: Record<string, unknown> = {}) => ({
   subjectContext: {
     orgUnitId: 'org-connectshyft-ui-east',
     personId: 'person-detail-view-1001',
+    threadId: 'thread-detail-view-1001',
+    identityState: 'confirmed',
   },
   actions: ['Call', 'Text', 'Close'],
   timeline: [],
@@ -207,6 +209,8 @@ describe('ConnectShyftThreadDetailView', () => {
         subjectContext: {
           orgUnitId: 'org-connectshyft-ui-east',
           provisionalPersonId: 'person-detail-view-provisional-2005',
+          threadId: 'thread-detail-view-1001',
+          identityState: 'provisional',
         },
       }),
     });
@@ -225,6 +229,8 @@ describe('ConnectShyftThreadDetailView', () => {
     expect(shellSubjectContext.value).toEqual({
       orgUnitId: 'org-connectshyft-ui-east',
       provisionalPersonId: 'person-detail-view-provisional-2005',
+      threadId: 'thread-detail-view-1001',
+      identityState: 'provisional',
     });
     expect(shellSubjectContext.value).not.toHaveProperty('personId');
   });
@@ -239,6 +245,8 @@ describe('ConnectShyftThreadDetailView', () => {
     expect(shellSubjectContext.value).toEqual({
       orgUnitId: 'org-connectshyft-ui-east',
       personId: 'person-detail-view-1001',
+      threadId: 'thread-detail-view-1001',
+      identityState: 'confirmed',
     });
     expect(shellSubjectContext.value).not.toHaveProperty('provisionalPersonId');
   });
@@ -260,6 +268,8 @@ describe('ConnectShyftThreadDetailView', () => {
         subjectContext: {
           orgUnitId: 'org-connectshyft-ui-east',
           provisionalPersonId: 'person-detail-view-provisional-2006',
+          threadId: 'thread-detail-view-1001',
+          identityState: 'provisional',
         },
       }),
     });
@@ -294,6 +304,8 @@ describe('ConnectShyftThreadDetailView', () => {
         subjectContext: {
           orgUnitId: 'org-connectshyft-ui-east',
           provisionalPersonId: 'person-detail-view-resolver-2007',
+          threadId: 'thread-detail-view-1001',
+          identityState: 'provisional',
         },
       }),
     });
@@ -309,7 +321,7 @@ describe('ConnectShyftThreadDetailView', () => {
       'Review in People',
     );
     expect(wrapper.get('[data-testid="connectshyft-thread-subject-impact-people-link"]').attributes('href')).toContain(
-      '/app/people',
+      '/people',
     );
   });
 
@@ -332,6 +344,8 @@ describe('ConnectShyftThreadDetailView', () => {
           subjectContext: {
             orgUnitId: 'org-connectshyft-ui-east',
             provisionalPersonId: 'person-detail-view-provisional-2008',
+            threadId: 'thread-detail-view-1001',
+            identityState: 'provisional',
           },
         }),
       })
@@ -346,6 +360,8 @@ describe('ConnectShyftThreadDetailView', () => {
           subjectContext: {
             orgUnitId: 'org-connectshyft-ui-east',
             personId: 'person-detail-view-confirmed-2008',
+            threadId: 'thread-detail-view-1001',
+            identityState: 'confirmed',
           },
         }),
       })
@@ -360,6 +376,8 @@ describe('ConnectShyftThreadDetailView', () => {
           subjectContext: {
             orgUnitId: 'org-connectshyft-ui-east',
             personId: 'person-detail-view-confirmed-2008',
+            threadId: 'thread-detail-view-1001',
+            identityState: 'confirmed',
           },
         }),
       });
@@ -383,6 +401,8 @@ describe('ConnectShyftThreadDetailView', () => {
     expect(shellSubjectContext.value).toEqual({
       orgUnitId: 'org-connectshyft-ui-east',
       personId: 'person-detail-view-confirmed-2008',
+      threadId: 'thread-detail-view-1001',
+      identityState: 'confirmed',
     });
   });
 });

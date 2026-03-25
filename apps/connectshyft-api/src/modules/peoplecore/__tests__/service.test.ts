@@ -493,6 +493,13 @@ describe('AsyncPeopleCoreService', () => {
         reviewType: 'subject_reassignment_review',
       },
       rebindReview: reviewContext,
+      subjectContext: {
+        orgUnitId: rebindReview.orgUnitId,
+        provisionalPersonId: 'person-provisional',
+        candidatePersonIds: ['person-provisional', 'person-canonical'],
+        contactPointId: 'contact-point-1',
+        identityState: 'provisional',
+      },
     });
   });
 
@@ -542,6 +549,13 @@ describe('AsyncPeopleCoreService', () => {
       claimState: 'claimed_by_current_user',
       claimedByCurrentUser: true,
     });
+    expect(detail.subjectContext).toMatchObject({
+      orgUnitId: updatedReview.orgUnitId,
+      provisionalPersonId: 'person-provisional',
+      candidatePersonIds: ['person-provisional', 'person-canonical'],
+      contactPointId: 'contact-point-1',
+      identityState: 'provisional',
+    });
   });
 
   it('lets a tenant-admin resolver claim an unclaimed queue item', async () => {
@@ -580,6 +594,13 @@ describe('AsyncPeopleCoreService', () => {
       claimState: 'claimed_by_current_user',
       claimedByCurrentUser: true,
       actionable: true,
+    });
+    expect(detail.subjectContext).toMatchObject({
+      orgUnitId: updatedReview.orgUnitId,
+      provisionalPersonId: 'person-provisional',
+      candidatePersonIds: ['person-provisional', 'person-existing'],
+      contactPointId: 'contact-point-1',
+      identityState: 'provisional',
     });
   });
 
@@ -669,6 +690,13 @@ describe('AsyncPeopleCoreService', () => {
       claimable: true,
       releasable: false,
       actionable: false,
+    });
+    expect(detail.subjectContext).toMatchObject({
+      orgUnitId: updatedReview.orgUnitId,
+      provisionalPersonId: 'person-provisional',
+      candidatePersonIds: ['person-provisional', 'person-existing'],
+      contactPointId: 'contact-point-1',
+      identityState: 'provisional',
     });
   });
 

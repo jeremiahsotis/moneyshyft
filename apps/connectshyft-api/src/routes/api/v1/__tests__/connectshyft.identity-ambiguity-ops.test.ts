@@ -196,6 +196,14 @@ const buildResolverQueueItem = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+const buildResolverQueueSubjectContext = (overrides: Record<string, unknown> = {}) => ({
+  orgUnitId: TEST_ORG_UNIT_ID,
+  candidatePersonIds: ['person-a', 'person-b'],
+  conversationId: 'conversation-1',
+  contactPointId: 'contact-point-1',
+  ...overrides,
+});
+
 describe('connectshyft identity ambiguity ops route', () => {
   const previousNodeEnv = process.env.NODE_ENV;
   const previousOverrideFlag = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
@@ -864,6 +872,7 @@ describe('connectshyft identity ambiguity ops route', () => {
           resolutionType: 'confirm_existing_person',
           resolvedAt: '2026-03-21T13:00:00.000Z',
         }),
+        subjectContext: buildResolverQueueSubjectContext(),
       } as any);
 
     const app = buildApp();
@@ -894,6 +903,9 @@ describe('connectshyft identity ambiguity ops route', () => {
           id: 'review-terminal',
           reviewStatus: 'resolved_confirmed_existing',
         },
+        subjectContext: {
+          orgUnitId: TEST_ORG_UNIT_ID,
+        },
       },
     });
   });
@@ -916,6 +928,7 @@ describe('connectshyft identity ambiguity ops route', () => {
           assignedResolverUserId: TEST_USER_ID,
           startedAt: '2026-03-21T12:05:00.000Z',
         }),
+        subjectContext: buildResolverQueueSubjectContext(),
       } as any);
     const releaseSpy = jest.spyOn(peopleCoreServiceAsync, 'releaseResolverQueueItem')
       .mockResolvedValue({
@@ -924,6 +937,7 @@ describe('connectshyft identity ambiguity ops route', () => {
           reviewStatus: 'queued',
           assignedResolverUserId: undefined,
         }),
+        subjectContext: buildResolverQueueSubjectContext(),
       } as any);
 
     const app = buildApp();

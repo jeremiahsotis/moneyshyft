@@ -90,6 +90,15 @@ const buildQueueDetail = (
     terminal: item.terminal,
     decisionStatus: null,
   },
+  subjectContext: {
+    orgUnitId: item.orgUnitId || 'test-org',
+    provisionalPersonId: item.personIds[0],
+    candidatePersonIds: item.personIds,
+    conversationId: item.conversationId || undefined,
+    contactPointId: item.contactPointId || undefined,
+    threadId: item.threadId || undefined,
+    identityState: item.personIds[0] ? 'provisional' : undefined,
+  },
   rebindReview: item.itemType === 'rebind_review'
     ? {
       rebindHistoryId: `rebind-${item.id}`,
@@ -142,18 +151,19 @@ const setupResolverQueue = (items: ConnectShyftResolverQueueItemRecord[]) => {
 };
 
 const renderPeopleView = async () => {
+  const shellSubjectContext = ref({
+    orgUnitId: 'test-org',
+  });
   const wrapper = mount(PeopleView, {
     global: {
       provide: {
-        [SUBJECT_CONTEXT_KEY as symbol]: ref({
-          orgUnitId: 'test-org',
-        }),
+        [SUBJECT_CONTEXT_KEY as symbol]: shellSubjectContext,
       },
     },
   });
 
   await flushPromises();
-  return wrapper;
+  return { wrapper, shellSubjectContext };
 };
 
 beforeEach(() => {
@@ -211,11 +221,12 @@ describe('PeopleView', () => {
     });
     setupResolverQueue([identityItem, rebindItem]);
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     expect(fetchResolverQueueMock).toHaveBeenCalledTimes(1);
-    expect(wrapper.text()).toContain('People shell');
-    expect(wrapper.text()).toContain('Org unit: test-org');
+    expect(wrapper.text()).toContain('People');
+    expect(wrapper.text()).toContain('Current workspace: Current workspace');
+    expect(wrapper.text()).not.toContain('test-org');
     expect(wrapper.get('[data-test="resolver-workspace"]').text()).toContain(
       'Primary queue for identity and rebind reviews',
     );
@@ -234,10 +245,10 @@ describe('PeopleView', () => {
       unauthorized: true,
     });
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     expect(wrapper.get('[data-test="resolver-workspace-locked"]').text()).toContain(
-      'available only to tenant-admin resolvers',
+      'not available for your current access',
     );
     expect(wrapper.find('[data-test="resolver-filter-all_active"]').exists()).toBe(false);
     expect(wrapper.find('[data-test="resolver-detail-claim"]').exists()).toBe(false);
@@ -268,7 +279,7 @@ describe('PeopleView', () => {
     });
     setupResolverQueue([identityItem, rebindItem]);
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     expect(wrapper.get('[data-test="resolver-queue-item-type-identity-item"]').text()).toContain(
       'Identity review',
@@ -280,8 +291,45 @@ describe('PeopleView', () => {
       'Claimed by me',
     );
     expect(wrapper.get('[data-test="resolver-queue-item-claim-rebind-item"]').text()).toContain(
-      'Claimed by another resolver',
+      'Claimed elsewhere',
     );
+  });
+
+  it('does not overwrite shell subject context from the auto-selected resolver detail', async () => {
+    const identityItem = buildQueueItem({
+      id: 'identity-item',
+      itemType: 'identity_review',
+    });
+    setupResolverQueue([identityItem]);
+
+    const { shellSubjectContext } = await renderPeopleView();
+
+    expect(shellSubjectContext.value).toEqual({
+      orgUnitId: 'test-org',
+    });
+  });
+
+  it('syncs shell subject context only after a resolver item is explicitly selected', async () => {
+    const identityItem = buildQueueItem({
+      id: 'identity-item',
+      itemType: 'identity_review',
+    });
+    setupResolverQueue([identityItem]);
+
+    const { wrapper, shellSubjectContext } = await renderPeopleView();
+
+    await wrapper.get('[data-test="resolver-queue-item-identity-item"]').trigger('click');
+    await flushPromises();
+
+    expect(shellSubjectContext.value).toEqual({
+      orgUnitId: 'test-org',
+      provisionalPersonId: 'person-a',
+      candidatePersonIds: ['person-a', 'person-b'],
+      conversationId: 'conversation-1',
+      contactPointId: 'contact-point-1',
+      threadId: 'thread-1',
+      identityState: 'provisional',
+    });
   });
 
   it('claims and releases resolver work through backend-backed operations', async () => {
@@ -321,7 +369,7 @@ describe('PeopleView', () => {
       detail: buildQueueDetail(queueItem),
     });
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     await wrapper.get('[data-test="resolver-detail-claim"]').trigger('click');
     await flushPromises();
@@ -357,7 +405,7 @@ describe('PeopleView', () => {
     });
     setupResolverQueue([queueItem]);
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     expect(wrapper.get('[data-test="resolver-detail-claim-disabled"]').attributes('disabled')).toBeDefined();
     expect(wrapper.get('[data-test="resolver-detail-claimed-by-other"]').text()).toContain(
@@ -398,7 +446,7 @@ describe('PeopleView', () => {
     });
     setupResolverQueue([unclaimedIdentity, claimedRebind, claimedByOtherIdentity]);
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     await wrapper.get('[data-test="resolver-filter-rebind_review"]').trigger('click');
     await flushPromises();
@@ -418,102 +466,12 @@ describe('PeopleView', () => {
     expect(wrapper.find('[data-test="resolver-queue-item-identity-other"]').exists()).toBe(false);
   });
 
-  it('renders shared, stale, and reassignment indicators for contact points', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ([
-        {
-          id: 'contact-shared',
-          tenantId: 'tenant-1',
-          type: 'phone',
-          normalizedValue: '+12605551212',
-          status: 'active_shared_possible',
-          firstSeenAt: '2026-03-24T10:00:00.000Z',
-          lastSeenAt: '2026-03-24T10:00:00.000Z',
-          suspectedShared: true,
-          confirmedShared: false,
-          reassignmentSuspected: false,
-          createdAt: '2026-03-24T10:00:00.000Z',
-          updatedAt: '2026-03-24T10:00:00.000Z',
-        },
-        {
-          id: 'contact-stale',
-          tenantId: 'tenant-1',
-          type: 'phone',
-          normalizedValue: '+12605551213',
-          status: 'stale',
-          firstSeenAt: '2026-03-24T10:00:00.000Z',
-          lastSeenAt: '2026-03-24T10:00:00.000Z',
-          suspectedShared: false,
-          confirmedShared: false,
-          reassignmentSuspected: false,
-          createdAt: '2026-03-24T10:00:00.000Z',
-          updatedAt: '2026-03-24T10:00:00.000Z',
-        },
-        {
-          id: 'contact-reassigned',
-          tenantId: 'tenant-1',
-          type: 'phone',
-          normalizedValue: '+12605551214',
-          status: 'reassignment_suspected',
-          firstSeenAt: '2026-03-24T10:00:00.000Z',
-          lastSeenAt: '2026-03-24T10:00:00.000Z',
-          suspectedShared: false,
-          confirmedShared: false,
-          reassignmentSuspected: true,
-          createdAt: '2026-03-24T10:00:00.000Z',
-          updatedAt: '2026-03-24T10:00:00.000Z',
-        },
-      ]),
-    });
+  it('removes sample tooling and raw identifiers from the cleaned People shell', async () => {
+    const { wrapper } = await renderPeopleView();
 
-    vi.stubGlobal('fetch', fetchMock);
-
-    const wrapper = await renderPeopleView();
-
-    await wrapper.get('[data-test="load-contact-points"]').trigger('click');
-    await flushPromises();
-
-    expect(wrapper.findAll('[data-test="contact-point-shared-indicator"]')).toHaveLength(1);
-    expect(wrapper.findAll('[data-test="contact-point-stale-indicator"]')).toHaveLength(1);
-    expect(wrapper.findAll('[data-test="contact-point-reassignment-indicator"]')).toHaveLength(1);
-  });
-
-  it('runs the sample identity decision and keeps resolver-required guidance compatible', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        confidenceBand: 'very_high',
-        contactPointStatus: 'reassignment_suspected',
-        outcome: 'resolver_required',
-        resolverReviewId: 'review-1',
-        candidates: [],
-      }),
-    });
-
-    vi.stubGlobal('fetch', fetchMock);
-
-    const wrapper = await renderPeopleView();
-
-    await wrapper.get('[data-test="run-sample-decision"]').trigger('click');
-    await flushPromises();
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/people/identity/decision',
-      expect.objectContaining({
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }),
-    );
-    expect(wrapper.text()).toContain('Confidence band: very_high');
-    expect(wrapper.text()).toContain('Resolution state: resolver_required');
-    expect(wrapper.text()).toContain('Default action: resolver_review');
-    expect(wrapper.get('[data-test="resolver-review-id"]').text()).toContain('review-1');
-    expect(wrapper.find('[data-test="create-new"]').exists()).toBe(false);
-    expect(wrapper.get('[data-test="resolver-required-message"]').text()).toContain(
-      'Resolver review is required before creating a new person.',
-    );
+    expect(wrapper.find('[data-test="load-contact-points"]').exists()).toBe(false);
+    expect(wrapper.find('[data-test="run-sample-decision"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('resolver-item-1');
+    expect(wrapper.text()).not.toContain('person-a');
   });
 });

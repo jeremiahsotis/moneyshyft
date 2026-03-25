@@ -99,13 +99,11 @@
       </button>
     </section>
 
-    <ConnectShyftPrimaryNav />
   </main>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
 import {
   DEFAULT_CONNECTSHYFT_AVAILABILITY,
   fetchConnectShyftAvailability,

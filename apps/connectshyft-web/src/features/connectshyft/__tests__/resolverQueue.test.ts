@@ -160,6 +160,11 @@ describe('resolverQueue client', () => {
             terminal: false,
             decisionStatus: null,
           },
+          subjectContext: {
+            orgUnitId: 'org-1',
+            candidatePersonIds: ['person-2', 'person-3'],
+            contactPointId: 'contact-point-2',
+          },
           rebindReview: {
             rebindHistoryId: 'rebind-history-1',
             affectedObjectType: 'contact_point_link',
@@ -187,6 +192,11 @@ describe('resolverQueue client', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.detail.item.claimState).toBe('claimed_by_other');
+      expect(result.detail.subjectContext).toEqual({
+        orgUnitId: 'org-1',
+        candidatePersonIds: ['person-2', 'person-3'],
+        contactPointId: 'contact-point-2',
+      });
       expect(result.detail.rebindReview?.affectedObjectType).toBe('contact_point_link');
       expect(result.detail.rebindReview?.originatingResolutionType).toBe('reassign_contact_point');
     }
@@ -243,6 +253,11 @@ describe('resolverQueue client', () => {
               terminal: false,
               decisionStatus: null,
             },
+            subjectContext: {
+              orgUnitId: 'org-1',
+              candidatePersonIds: ['person-1'],
+              contactPointId: 'contact-point-1',
+            },
             rebindReview: null,
           },
         },
@@ -295,6 +310,11 @@ describe('resolverQueue client', () => {
               actionable: true,
               terminal: false,
               decisionStatus: null,
+            },
+            subjectContext: {
+              orgUnitId: 'org-1',
+              candidatePersonIds: ['person-1'],
+              contactPointId: 'contact-point-1',
             },
             rebindReview: null,
           },

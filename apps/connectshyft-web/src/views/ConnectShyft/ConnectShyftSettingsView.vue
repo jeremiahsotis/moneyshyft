@@ -214,14 +214,12 @@
       </section>
     </section>
 
-    <ConnectShyftPrimaryNav />
   </main>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
 import {
   DEFAULT_CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER,
   DEFAULT_CONNECTSHYFT_TELEPHONY_READINESS,

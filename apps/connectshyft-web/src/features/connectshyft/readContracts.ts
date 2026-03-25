@@ -7,6 +7,7 @@ import type {
 import {
   isConnectShyftResolverQueueItemType,
   isConnectShyftThreadSubjectImpactType,
+  validateSubjectContext,
 } from '@shyft/contracts';
 
 export type ConnectShyftThreadState = 'UNCLAIMED' | 'CLAIMED' | 'CLOSED';
@@ -130,6 +131,16 @@ const normalizeString = (value: unknown): string => {
 const normalizeOptionalString = (value: unknown): string | null => {
   const normalized = normalizeString(value);
   return normalized.length > 0 ? normalized : null;
+};
+
+const normalizeStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry) => normalizeOptionalString(entry))
+    .filter((entry): entry is string => Boolean(entry));
 };
 
 const normalizeStage = (value: unknown): number => {
@@ -293,23 +304,29 @@ const buildFallbackSubjectContext = (input: {
   orgUnitId: string;
   personId: string | null;
   identityState: ConnectShyftThreadIdentityState | null;
+  threadId: string;
 }): SubjectContext => {
+  const baseSubject: SubjectContext = {
+    orgUnitId: input.orgUnitId,
+    threadId: input.threadId,
+  };
+
   if (!input.personId) {
-    return {
-      orgUnitId: input.orgUnitId,
-    };
+    return baseSubject;
   }
 
   if (input.identityState === 'provisional') {
     return {
-      orgUnitId: input.orgUnitId,
+      ...baseSubject,
       provisionalPersonId: input.personId,
+      identityState: 'provisional',
     };
   }
 
   return {
-    orgUnitId: input.orgUnitId,
+    ...baseSubject,
     personId: input.personId,
+    identityState: 'confirmed',
   };
 };
 
@@ -318,6 +335,7 @@ const parseSubjectContext = (input: {
   orgUnitId: string;
   personId: string | null;
   identityState: ConnectShyftThreadIdentityState | null;
+  threadId: string;
 }): SubjectContext => {
   if (!input.payload || typeof input.payload !== 'object') {
     return buildFallbackSubjectContext(input);
@@ -327,45 +345,60 @@ const parseSubjectContext = (input: {
     orgUnitId?: unknown;
     personId?: unknown;
     provisionalPersonId?: unknown;
+    candidatePersonIds?: unknown;
+    candidate_person_ids?: unknown;
     conversationId?: unknown;
     contactPointId?: unknown;
+    threadId?: unknown;
+    thread_id?: unknown;
+    identityState?: unknown;
+    identity_state?: unknown;
   };
 
   const orgUnitId = normalizeString(candidate.orgUnitId) || input.orgUnitId;
   const personId = normalizeString(candidate.personId);
   const provisionalPersonId = normalizeString(candidate.provisionalPersonId);
+  const candidatePersonIds = normalizeStringArray(
+    candidate.candidatePersonIds ?? candidate.candidate_person_ids,
+  );
   const conversationId = normalizeString(candidate.conversationId);
   const contactPointId = normalizeString(candidate.contactPointId);
-
-  if (personId && !provisionalPersonId) {
-    return {
-      orgUnitId,
-      personId,
-      conversationId: conversationId || undefined,
-      contactPointId: contactPointId || undefined,
-    };
-  }
-
-  if (provisionalPersonId && !personId) {
-    return {
-      orgUnitId,
-      provisionalPersonId,
-      conversationId: conversationId || undefined,
-      contactPointId: contactPointId || undefined,
-    };
-  }
+  const threadId = normalizeString(candidate.threadId ?? candidate.thread_id) || input.threadId;
+  const identityStateCandidate = normalizeIdentityState(
+    candidate.identityState ?? candidate.identity_state,
+  );
 
   const fallback = buildFallbackSubjectContext({
     orgUnitId,
     personId: input.personId,
     identityState: input.identityState,
+    threadId,
   });
-
-  return {
+  const subject: SubjectContext = {
     ...fallback,
+    candidatePersonIds: candidatePersonIds.length > 0 ? candidatePersonIds : fallback.candidatePersonIds,
     conversationId: conversationId || undefined,
     contactPointId: contactPointId || undefined,
+    threadId,
+    identityState: identityStateCandidate ?? fallback.identityState,
   };
+
+  if (personId && !provisionalPersonId) {
+    delete subject.provisionalPersonId;
+    subject.personId = personId;
+    subject.identityState = identityStateCandidate === 'provisional'
+      ? 'confirmed'
+      : identityStateCandidate || 'confirmed';
+  } else if (provisionalPersonId && !personId) {
+    delete subject.personId;
+    subject.provisionalPersonId = provisionalPersonId;
+    subject.identityState = identityStateCandidate === 'confirmed'
+      ? 'provisional'
+      : identityStateCandidate || 'provisional';
+  }
+
+  validateSubjectContext(subject);
+  return subject;
 };
 
 const hasVoicemailTimelineEvent = (payload: unknown): boolean => {
@@ -552,12 +585,14 @@ const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null =>
     orgUnitId: summary.orgUnitId,
     personId: fallbackPersonId,
     identityState: parsedIdentityState,
+    threadId: summary.threadId,
   });
   const personId = fallbackPersonId
     || subjectContext.personId
     || subjectContext.provisionalPersonId
     || null;
   const identityState = parsedIdentityState
+    || subjectContext.identityState
     || (subjectContext.provisionalPersonId
       ? 'provisional'
       : personId

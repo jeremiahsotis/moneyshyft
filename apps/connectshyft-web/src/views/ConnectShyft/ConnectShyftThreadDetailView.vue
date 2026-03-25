@@ -527,7 +527,6 @@
       </section>
     </section>
 
-    <ConnectShyftPrimaryNav />
   </main>
 </template>
 
@@ -538,7 +537,6 @@ import { RouterLink, useRoute } from 'vue-router';
 import ConnectShyftComposer from '@/components/connectshyft/ConnectShyftComposer.vue';
 import ConnectShyftMessageBubble from '@/components/connectshyft/ConnectShyftMessageBubble.vue';
 import ConnectShyftNeighborSnapshot from '@/components/connectshyft/ConnectShyftNeighborSnapshot.vue';
-import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
 import ConnectShyftThreadActionBar from '@/components/connectshyft/ConnectShyftThreadActionBar.vue';
 import ConnectShyftThreadHeader from '@/components/connectshyft/ConnectShyftThreadHeader.vue';
 import ConnectShyftVoicemailCard from '@/components/connectshyft/ConnectShyftVoicemailCard.vue';
@@ -576,7 +574,11 @@ import {
   type ConnectShyftFeedback,
   type ConnectShyftFeedbackTaxonomy,
 } from '@/features/connectshyft/uiContracts';
-import { useSubjectContext } from '@/shell/subjectContext';
+import { SHELL_ROUTE_PATHS } from '@/shell/routes';
+import {
+  replaceSubjectContext,
+  useSubjectContext,
+} from '@/shell/subjectContext';
 
 const route = useRoute();
 const subjectContext = useSubjectContext();
@@ -693,10 +695,7 @@ const activeOrgUnitId = computed<string>(() => {
   return queryOrgUnitId || subjectContext.value.orgUnitId || '';
 });
 
-const threadSubjectContext = computed<SubjectContext>(() => {
-  const subject = threadDetail.value?.subjectContext;
-  return subject && subject.orgUnitId ? subject : { orgUnitId: activeOrgUnitId.value };
-});
+const threadSubjectContext = computed<SubjectContext | null>(() => threadDetail.value?.subjectContext || null);
 
 const threadSubjectImpact = computed(() => threadDetail.value?.subjectImpact || null);
 
@@ -712,7 +711,7 @@ const threadSubjectImpactPresentation = computed(() => {
 });
 
 const peopleWorkspaceLink = computed(() => ({
-  path: '/app/people',
+  path: SHELL_ROUTE_PATHS.people,
   query: {
     ...route.query,
     ...(activeOrgUnitId.value ? { orgUnitId: activeOrgUnitId.value } : {}),
@@ -1813,9 +1812,11 @@ watch(closeModalOpen, (isOpen) => {
 watch(
   threadSubjectContext,
   (nextSubjectContext) => {
-    subjectContext.value = {
-      ...nextSubjectContext,
-    };
+    if (!nextSubjectContext) {
+      return;
+    }
+
+    replaceSubjectContext(subjectContext, nextSubjectContext);
   },
   {
     immediate: true,

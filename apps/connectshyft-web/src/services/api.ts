@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { readActiveShellOrgUnitId } from '@/shell/orgUnitState';
 
 const api: AxiosInstance = axios.create({
   baseURL: '/api/v1',
@@ -45,6 +46,14 @@ api.interceptors.request.use((config) => {
     const csrfToken = getCookieValue('csrf_token');
     if (csrfToken) {
       (config.headers as Record<string, string>)['X-CSRF-Token'] = csrfToken;
+    }
+  }
+
+  const existingOrgUnitHeader = (config.headers as Record<string, string>)['x-org-unit-id'];
+  if (!existingOrgUnitHeader) {
+    const activeOrgUnitId = readActiveShellOrgUnitId();
+    if (activeOrgUnitId) {
+      (config.headers as Record<string, string>)['x-org-unit-id'] = activeOrgUnitId;
     }
   }
 

@@ -140,6 +140,7 @@ import {
   CONNECTSHYFT_RESPONSIVE_BREAKPOINTS,
   sanitizeConnectShyftOperatorCopy,
 } from '@/features/connectshyft/uiContracts';
+import { buildConnectThreadPath } from '@/shell/routes';
 
 const DEFAULT_THREAD_INBOUND_NUMBER_ID = 'cs-number-default-inbound';
 const DEFAULT_THREAD_OUTBOUND_NUMBER_ID = 'cs-number-default-outbound';
@@ -357,7 +358,7 @@ const startConversation = async (neighborId: string): Promise<void> => {
   };
 
   await router.push({
-    path: `/app/connectshyft/threads/${encodeURIComponent(ensureResult.thread.threadId)}`,
+    path: buildConnectThreadPath(ensureResult.thread.threadId),
     query: nextQuery,
   });
 };

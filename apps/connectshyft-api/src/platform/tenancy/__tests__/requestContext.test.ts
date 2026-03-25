@@ -69,7 +69,7 @@ describe('resolveTenantRequestContext', () => {
     });
   });
 
-  it('ignores caller-supplied tenant and orgunit headers for authenticated context', () => {
+  it('ignores caller-supplied tenant headers while honoring shell-selected orgunit context', () => {
     const req = {
       user: {
         userId: 'u1',
@@ -84,8 +84,8 @@ describe('resolveTenantRequestContext', () => {
         if (name.toLowerCase() === 'x-active-tenant-id') {
           return 'tenant-spoof';
         }
-        if (name.toLowerCase() === 'x-active-org-unit-id') {
-          return 'org-spoof';
+        if (name.toLowerCase() === 'x-org-unit-id') {
+          return 'org-shell-selected';
         }
         return undefined;
       },
@@ -93,8 +93,8 @@ describe('resolveTenantRequestContext', () => {
 
     expect(resolveTenantRequestContext(req)).toEqual({
       tenantId: 'tenant-safe',
-      orgUnitId: null,
-      scopeMode: 'TENANT',
+      orgUnitId: 'org-shell-selected',
+      scopeMode: 'ORG_UNIT',
       source: 'auth',
     });
   });

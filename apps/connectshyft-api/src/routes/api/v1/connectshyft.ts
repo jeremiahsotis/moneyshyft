@@ -1901,6 +1901,7 @@ const buildSyntheticThreadDetailRecord = (input: {
     subjectImpact: null,
     subjectContext: {
       orgUnitId: input.descriptor.orgUnitId,
+      threadId: input.threadId,
     },
     neighborDeleted: false,
     neighbor_deleted: false,

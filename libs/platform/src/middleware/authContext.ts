@@ -23,7 +23,7 @@ export const authContext = (req: RequestLike, res: ResponseLike, next: NextLike)
       role: request.user.role,
       householdId: request.user.householdId || null,
       activeTenantId: request.user.activeTenantId || request.tenantId || null,
-      orgUnitId: request.user.activeOrgUnitId || request.orgUnitId || null,
+      orgUnitId: request.orgUnitId || request.user.activeOrgUnitId || null,
       scopeMode: request.scopeMode || 'TENANT',
     }
     : null;

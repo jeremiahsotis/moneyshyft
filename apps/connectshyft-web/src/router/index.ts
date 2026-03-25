@@ -1,11 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import api from '@/services/api';
-
+import { beginShellNavigation, endShellNavigation } from '@/shell/navigationState';
+import { SHELL_ROUTE_PATHS } from '@/shell/routes';
+import { canAccessConnectShyftSettingsPath } from '@/features/connectshyft/settingsNavigation';
 import ConnectShyftLoginView from '../views/Auth/ConnectShyftLoginView.vue';
 import ForgotPasswordView from '../views/Auth/ForgotPasswordView.vue';
 import ResetPasswordView from '../views/Auth/ResetPasswordView.vue';
 import ConnectShyftInboxView from '../views/ConnectShyft/ConnectShyftInboxView.vue';
-import ConnectShyftMoreView from '../views/ConnectShyft/ConnectShyftMoreView.vue';
 import ConnectShyftSettingsView from '../views/ConnectShyft/ConnectShyftSettingsView.vue';
 import ConnectShyftThreadDetailView from '../views/ConnectShyft/ConnectShyftThreadDetailView.vue';
 import ConnectShyftNeighborProfileView from '../views/ConnectShyft/ConnectShyftNeighborProfileView.vue';
@@ -14,17 +15,11 @@ import ConnectShyftDirectoryView from '../views/ConnectShyft/ConnectShyftDirecto
 import ConnectShyftAvailabilityView from '../views/ConnectShyft/ConnectShyftAvailabilityView.vue';
 import ConnectShyftNumberMappingsView from '../views/ConnectShyft/ConnectShyftNumberMappingsView.vue';
 import ConnectShyftEscalationSettingsView from '../views/ConnectShyft/ConnectShyftEscalationSettingsView.vue';
+import AppShellView from '../views/Shell/AppShellView.vue';
 import ConnectView from '../views/Shell/ConnectView.vue';
 import PeopleView from '../views/Shell/PeopleView.vue';
+import ShellRouteFallbackView from '../views/Shell/ShellRouteFallbackView.vue';
 import WorkView from '../views/Shell/WorkView.vue';
-import { resolveConnectShyftAdminAccessFromQuery } from '@/features/connectshyft/settingsAccess';
-
-const CONNECTSHYFT_APP_PREFIX = '/app/connectshyft';
-const CONNECTSHYFT_ADMIN_SETTINGS_PATHS = new Set([
-  '/app/connectshyft/settings/availability',
-  '/app/connectshyft/settings/numbers',
-  '/app/connectshyft/settings/escalation',
-]);
 
 const extractCurrentUser = (payload: unknown): Record<string, unknown> | null => {
   if (!payload || typeof payload !== 'object') {
@@ -72,114 +67,198 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
-      path: '/login',
+      path: SHELL_ROUTE_PATHS.login,
       name: 'connectshyft-login',
       component: ConnectShyftLoginView,
     },
     {
-      path: '/auth/password/forgot',
+      path: SHELL_ROUTE_PATHS.forgotPassword,
       name: 'connectshyft-forgot-password',
       component: ForgotPasswordView,
     },
     {
-      path: '/auth/password/reset',
+      path: SHELL_ROUTE_PATHS.resetPassword,
       name: 'connectshyft-reset-password',
       component: ResetPasswordView,
     },
     {
       path: '/',
-      redirect: '/app/connectshyft/inbox',
-    },
-    {
-      path: '/app/connect',
-      name: 'shell-connect',
-      component: ConnectView,
-    },
-    {
-      path: '/app/people',
-      name: 'shell-people',
-      component: PeopleView,
-    },
-    {
-      path: '/app/work',
-      name: 'shell-work',
-      component: WorkView,
-    },
-    {
-      path: '/app/connectshyft/inbox',
-      name: 'connectshyft-inbox',
-      component: ConnectShyftInboxView,
-    },
-    {
-      path: '/app/connectshyft/mine',
-      name: 'connectshyft-mine',
-      component: ConnectShyftInboxView,
-    },
-    {
-      path: '/app/connectshyft/more',
-      name: 'connectshyft-more',
-      component: ConnectShyftMoreView,
-    },
-    {
-      path: '/app/connectshyft/settings',
-      name: 'connectshyft-settings',
-      component: ConnectShyftSettingsView,
-    },
-    {
-      path: '/app/connectshyft/threads/:threadId',
-      name: 'connectshyft-thread',
-      component: ConnectShyftThreadDetailView,
-    },
-    {
-      path: '/app/connectshyft/directory',
-      name: 'connectshyft-directory',
-      component: ConnectShyftDirectoryView,
-    },
-    {
-      path: '/app/connectshyft/neighbors/new',
-      name: 'connectshyft-neighbor-new',
-      component: ConnectShyftNeighborCreateView,
-    },
-    {
-      path: '/app/connectshyft/neighbors/:neighborId',
-      name: 'connectshyft-neighbor',
-      component: ConnectShyftNeighborProfileView,
-    },
-    {
-      path: '/app/connectshyft/settings/availability',
-      name: 'connectshyft-availability',
-      component: ConnectShyftAvailabilityView,
-    },
-    {
-      path: '/app/connectshyft/settings/numbers',
-      name: 'connectshyft-number-mappings',
-      component: ConnectShyftNumberMappingsView,
-    },
-    {
-      path: '/app/connectshyft/settings/escalation',
-      name: 'connectshyft-escalation',
-      component: ConnectShyftEscalationSettingsView,
+      component: AppShellView,
+      meta: {
+        requiresAuth: true,
+      },
+      children: [
+        {
+          path: '',
+          redirect: SHELL_ROUTE_PATHS.people,
+        },
+        {
+          path: 'people',
+          alias: ['/app/people'],
+          name: 'shell-people',
+          component: PeopleView,
+          meta: {
+            shellModule: 'people',
+            shellTitle: 'People',
+            shellOrgUnitFallback: 'people',
+          },
+        },
+        {
+          path: 'connect',
+          alias: ['/app/connect'],
+          component: ConnectView,
+          meta: {
+            shellModule: 'connect',
+            shellTitle: 'ConnectShyft',
+            shellOrgUnitFallback: 'communication',
+          },
+          children: [
+            {
+              path: '',
+              alias: ['/app/connectshyft/inbox'],
+              name: 'connectshyft-inbox',
+              component: ConnectShyftInboxView,
+              meta: {
+                shellTitle: 'ConnectShyft',
+              },
+            },
+            {
+              path: 'mine',
+              alias: ['/app/connectshyft/mine'],
+              name: 'connectshyft-mine',
+              component: ConnectShyftInboxView,
+              meta: {
+                shellTitle: 'ConnectShyft',
+              },
+            },
+            {
+              path: 'threads/:threadId',
+              alias: ['/app/connectshyft/threads/:threadId'],
+              name: 'connectshyft-thread',
+              component: ConnectShyftThreadDetailView,
+              meta: {
+                shellTitle: 'ConnectShyft',
+                shellOrgUnitSwitchMode: 'destructive',
+              },
+            },
+            {
+              path: 'directory',
+              alias: ['/app/connectshyft/directory'],
+              name: 'connectshyft-directory',
+              component: ConnectShyftDirectoryView,
+              meta: {
+                shellTitle: 'ConnectShyft',
+              },
+            },
+            {
+              path: 'neighbors/new',
+              alias: ['/app/connectshyft/neighbors/new'],
+              name: 'connectshyft-neighbor-new',
+              component: ConnectShyftNeighborCreateView,
+              meta: {
+                shellTitle: 'ConnectShyft',
+                shellOrgUnitSwitchMode: 'destructive',
+              },
+            },
+            {
+              path: 'neighbors/:neighborId',
+              alias: ['/app/connectshyft/neighbors/:neighborId'],
+              name: 'connectshyft-neighbor',
+              component: ConnectShyftNeighborProfileView,
+              meta: {
+                shellTitle: 'ConnectShyft',
+                shellOrgUnitSwitchMode: 'destructive',
+              },
+            },
+          ],
+        },
+        {
+          path: 'settings',
+          alias: ['/app/work', '/app/connectshyft/more'],
+          component: WorkView,
+          meta: {
+            shellModule: 'settings',
+            shellTitle: 'Settings',
+            shellOrgUnitFallback: 'shell',
+          },
+          children: [
+            {
+              path: '',
+              alias: ['/app/connectshyft/settings'],
+              name: 'connectshyft-settings',
+              component: ConnectShyftSettingsView,
+              meta: {
+                shellTitle: 'Settings',
+              },
+            },
+            {
+              path: 'availability',
+              alias: ['/app/connectshyft/settings/availability'],
+              name: 'connectshyft-availability',
+              component: ConnectShyftAvailabilityView,
+              meta: {
+                shellTitle: 'Settings',
+                requiresConnectShyftAdminSettings: true,
+              },
+            },
+            {
+              path: 'numbers',
+              alias: ['/app/connectshyft/settings/numbers'],
+              name: 'connectshyft-number-mappings',
+              component: ConnectShyftNumberMappingsView,
+              meta: {
+                shellTitle: 'Settings',
+                requiresConnectShyftAdminSettings: true,
+              },
+            },
+            {
+              path: 'escalation',
+              alias: ['/app/connectshyft/settings/escalation'],
+              name: 'connectshyft-escalation',
+              component: ConnectShyftEscalationSettingsView,
+              meta: {
+                shellTitle: 'Settings',
+                requiresConnectShyftAdminSettings: true,
+              },
+            },
+          ],
+        },
+        {
+          path: ':pathMatch(.*)*',
+          name: 'shell-route-fallback',
+          component: ShellRouteFallbackView,
+          meta: {
+            shellTitle: 'Workspace unavailable',
+          },
+        },
+      ],
     },
   ],
 });
 
 router.beforeEach(async (to) => {
-  if (to.path === '/login' || to.path === '/auth/password/forgot' || to.path === '/auth/password/reset') {
+  beginShellNavigation();
+
+  if (
+    to.path === SHELL_ROUTE_PATHS.login
+    || to.path === SHELL_ROUTE_PATHS.forgotPassword
+    || to.path === SHELL_ROUTE_PATHS.resetPassword
+  ) {
     const authenticated = await refreshSessionState();
-    return authenticated ? '/app/connectshyft/inbox' : true;
+    return authenticated ? SHELL_ROUTE_PATHS.people : true;
   }
 
-  if (!to.path.startsWith(CONNECTSHYFT_APP_PREFIX)) {
+  if (!to.matched.some((record) => record.meta.requiresAuth === true)) {
     return true;
   }
 
   const authenticated = await refreshSessionState();
   if (authenticated) {
-    if (CONNECTSHYFT_ADMIN_SETTINGS_PATHS.has(to.path)) {
-      const canAccessAdminSettings = resolveConnectShyftAdminAccessFromQuery(to.query);
-      if (canAccessAdminSettings === false) {
+    if (to.matched.some((record) => record.meta.requiresConnectShyftAdminSettings === true)) {
+      const canAccessAdminSettings = await canAccessConnectShyftSettingsPath(to.path);
+      if (!canAccessAdminSettings) {
         return {
-          path: '/app/connectshyft/settings',
+          path: SHELL_ROUTE_PATHS.settings,
           query: {
             ...to.query,
             refusedPath: to.path,
@@ -192,11 +271,19 @@ router.beforeEach(async (to) => {
   }
 
   return {
-    path: '/login',
+    path: SHELL_ROUTE_PATHS.login,
     query: {
       redirect: to.fullPath,
     },
   };
+});
+
+router.afterEach(() => {
+  endShellNavigation();
+});
+
+router.onError(() => {
+  endShellNavigation();
 });
 
 export default router;

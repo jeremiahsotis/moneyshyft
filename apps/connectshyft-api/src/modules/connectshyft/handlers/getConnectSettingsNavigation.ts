@@ -17,29 +17,9 @@ type ConnectShyftSettingsNavigationOption = {
 
 const CONNECTSHYFT_SETTINGS_PRIMARY_OPTIONS: readonly ConnectShyftSettingsNavigationOption[] = [
   {
-    key: 'directory',
-    label: 'Directory',
-    path: '/app/connectshyft/directory',
-  },
-  {
     key: 'settings',
-    label: 'Settings',
+    label: 'Call routing',
     path: '/app/connectshyft/settings',
-  },
-  {
-    key: 'notification-preferences',
-    label: 'Notification Preferences',
-    path: '/app/connectshyft/settings',
-  },
-  {
-    key: 'display-preferences',
-    label: 'Display Preferences',
-    path: '/app/connectshyft/settings',
-  },
-  {
-    key: 'sign-out',
-    label: 'Sign Out',
-    path: '/login',
   },
 ];
 

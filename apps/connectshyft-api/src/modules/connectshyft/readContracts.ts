@@ -956,6 +956,7 @@ const buildThreadDisplayRecord = (input: {
 
 const buildThreadSubjectContext = (input: {
   orgUnitId: string;
+  threadId: string;
   personId: string | null;
   identityState: ConnectShyftThreadIdentityState | null;
 }): SubjectContext => {
@@ -964,13 +965,18 @@ const buildThreadSubjectContext = (input: {
       ? {
         orgUnitId: input.orgUnitId,
         provisionalPersonId: input.personId,
+        identityState: 'provisional',
+        threadId: input.threadId,
       }
       : {
         orgUnitId: input.orgUnitId,
         personId: input.personId,
+        identityState: 'confirmed',
+        threadId: input.threadId,
       }
     : {
       orgUnitId: input.orgUnitId,
+      threadId: input.threadId,
     };
 
   validateSubjectContext(subject);
@@ -979,6 +985,7 @@ const buildThreadSubjectContext = (input: {
 
 const buildThreadIdentityProjection = (input: {
   orgUnitId: string;
+  threadId: string;
   personId?: string | null;
   personStatus?: string | null;
 }): {
@@ -1000,6 +1007,7 @@ const buildThreadIdentityProjection = (input: {
     subjectImpact: null,
     subjectContext: buildThreadSubjectContext({
       orgUnitId: input.orgUnitId,
+      threadId: input.threadId,
       personId,
       identityState,
     }),
@@ -1165,6 +1173,7 @@ export const resolveConnectShyftThreadDetailContract = (input: {
     ...summary,
     ...buildThreadIdentityProjection({
       orgUnitId: summary.orgUnitId,
+      threadId: summary.threadId,
       personId: matchedSeed.personId,
       personStatus: matchedSeed.personStatus,
     }),
@@ -1705,6 +1714,7 @@ export const resolveConnectShyftThreadDetailContractAsync = async (input: {
     ...summary,
     ...buildThreadIdentityProjection({
       orgUnitId: summary.orgUnitId,
+      threadId: summary.threadId,
       personId: threadPersonId,
       personStatus: threadPersonStatus,
     }),

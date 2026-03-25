@@ -1,5 +1,9 @@
 import { Request, Response } from 'express';
 import type { Knex } from 'knex';
+import type {
+  ConnectShyftShellModuleAvailability,
+  ConnectShyftShellOrgUnitOption,
+} from '@shyft/contracts';
 import { refusal } from '../../../platform/envelopes/response';
 import { CAPABILITIES, hasCapability, type Capability } from '../../../platform/rbac/capabilities';
 import {
@@ -27,6 +31,7 @@ import {
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TEST_USER_ID_HEADER = 'x-test-connectshyft-user-id';
 const TEST_TENANT_OVERRIDE_HEADER = 'x-test-connectshyft-tenant-id';
+const TEST_ORG_UNIT_MEMBERSHIPS_HEADER = 'x-test-connectshyft-orgunit-memberships';
 const CONNECTSHYFT_LEGACY_ROLE_ALIASES: Record<string, string> = {
   admin: 'TENANT_ADMIN',
   member: 'ORGUNIT_MEMBER',
@@ -45,6 +50,11 @@ export type ConnectShyftEntitlementAwareFlagsResult = {
   entitlementDecision: Awaited<ReturnType<typeof evaluateActorTenantModuleEntitlement>> | null;
 };
 
+type ConnectShyftOrgUnitRow = {
+  id: unknown;
+  name?: unknown;
+};
+
 const normalizeNonEmptyString = (value: unknown): string | null => {
   if (typeof value !== 'string') {
     return null;
@@ -52,6 +62,237 @@ const normalizeNonEmptyString = (value: unknown): string | null => {
 
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
+};
+
+const createShellModuleAvailability = (
+  input: Partial<ConnectShyftShellModuleAvailability> = {},
+): ConnectShyftShellModuleAvailability => ({
+  people: true,
+  connect: false,
+  settings: false,
+  ...input,
+});
+
+const titleCaseSegment = (value: string): string => (
+  value.charAt(0).toUpperCase() + value.slice(1)
+);
+
+const buildSyntheticOrgUnitLabel = (orgUnitId: string): string => {
+  const normalizedId = orgUnitId
+    .replace(/^org-connectshyft-/, '')
+    .replace(/^org-/, '');
+  const segments = normalizedId
+    .split('-')
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+
+  if (segments.length === 0) {
+    return 'Org unit';
+  }
+
+  return segments.map(titleCaseSegment).join(' ');
+};
+
+const normalizeOrgUnitLabel = (label: unknown, orgUnitId: string): string => {
+  const normalizedLabel = normalizeNonEmptyString(label);
+  return normalizedLabel || buildSyntheticOrgUnitLabel(orgUnitId);
+};
+
+const normalizeOrgUnitRows = (
+  rows: ConnectShyftOrgUnitRow[],
+): Array<{ id: string; label: string }> => {
+  const seen = new Set<string>();
+  const normalized: Array<{ id: string; label: string }> = [];
+
+  for (const row of rows) {
+    const id = normalizeNonEmptyString(row.id);
+    if (!id || seen.has(id)) {
+      continue;
+    }
+
+    seen.add(id);
+    normalized.push({
+      id,
+      label: normalizeOrgUnitLabel(row.name, id),
+    });
+  }
+
+  return normalized;
+};
+
+const parseTestOrgUnitMemberships = (req: Request): string[] => {
+  if (!isConnectShyftTestOverrideEnabled()) {
+    return [];
+  }
+
+  const rawMemberships = req.header(TEST_ORG_UNIT_MEMBERSHIPS_HEADER);
+  if (!rawMemberships) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(rawMemberships);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return Array.from(new Set(
+      parsed
+        .map((entry) => normalizeNonEmptyString(entry))
+        .filter((entry): entry is string => entry !== null),
+    ));
+  } catch (_error) {
+    return [];
+  }
+};
+
+const listAccessibleConnectShyftOrgUnits = async (
+  req: Request,
+  context: ResolvedConnectShyftContext,
+): Promise<Array<{ id: string; label: string }>> => {
+  if (!UUID_PATTERN.test(context.tenantId)) {
+    const membershipIds = parseTestOrgUnitMemberships(req);
+    const orgUnitIds = Array.from(new Set([
+      context.orgUnitId,
+      ...membershipIds,
+    ]));
+
+    return orgUnitIds.map((orgUnitId) => ({
+      id: orgUnitId,
+      label: normalizeOrgUnitLabel(null, orgUnitId),
+    }));
+  }
+
+  const db = loadConnectShyftPlatformDb();
+  const actorUserId = resolveConnectShyftRequestedActorUserId(req);
+  const canReadTenantWide = requestHasAnyCapability(req, [CAPABILITIES.TENANT_READ_ALL], context);
+
+  if (canReadTenantWide) {
+    const tenantOrgUnits = await db
+      .withSchema('platform')
+      .table('org_units')
+      .where({
+        tenant_id: context.tenantId,
+        status: 'active',
+      })
+      .select<ConnectShyftOrgUnitRow[]>('id', 'name')
+      .orderBy('name', 'asc')
+      .orderBy('id', 'asc');
+
+    return normalizeOrgUnitRows(tenantOrgUnits);
+  }
+
+  if (!actorUserId) {
+    return [{
+      id: context.orgUnitId,
+      label: normalizeOrgUnitLabel(null, context.orgUnitId),
+    }];
+  }
+
+  const membershipOrgUnits = await db
+    .withSchema('platform')
+    .table('org_unit_memberships as om')
+    .join('org_units as ou', 'ou.id', 'om.org_unit_id')
+    .where('om.user_id', actorUserId)
+    .andWhere('ou.tenant_id', context.tenantId)
+    .andWhere('ou.status', 'active')
+    .select<ConnectShyftOrgUnitRow[]>([
+      'om.org_unit_id as id',
+      'ou.name as name',
+    ])
+    .orderBy('ou.name', 'asc')
+    .orderBy('om.org_unit_id', 'asc');
+
+  const normalizedMemberships = normalizeOrgUnitRows(membershipOrgUnits);
+  if (normalizedMemberships.some((orgUnit) => orgUnit.id === context.orgUnitId)) {
+    return normalizedMemberships;
+  }
+
+  return [
+    {
+      id: context.orgUnitId,
+      label: normalizeOrgUnitLabel(null, context.orgUnitId),
+    },
+    ...normalizedMemberships,
+  ];
+};
+
+const buildConnectShyftShellModuleAvailabilityMap = async (
+  req: Request,
+  tenantId: string,
+  orgUnitIds: string[],
+  flagsResult: ConnectShyftEntitlementAwareFlagsResult,
+): Promise<Map<string, ConnectShyftShellModuleAvailability>> => {
+  const rawFlags = resolveConnectShyftFeatureFlags(req);
+  const connectEnabledByDefault =
+    rawFlags.connectshyft_enabled
+    && (
+      !flagsResult.entitlementDecision
+      || flagsResult.entitlementDecision.enabled === true
+    );
+  const availabilityMap = new Map<string, ConnectShyftShellModuleAvailability>();
+
+  for (const orgUnitId of orgUnitIds) {
+    availabilityMap.set(orgUnitId, createShellModuleAvailability({
+      connect: connectEnabledByDefault,
+      settings: connectEnabledByDefault,
+    }));
+  }
+
+  if (
+    connectEnabledByDefault
+    || !rawFlags.connectshyft_enabled
+    || !UUID_PATTERN.test(tenantId)
+    || orgUnitIds.length === 0
+  ) {
+    return availabilityMap;
+  }
+
+  const enabledOverrideRows = await loadConnectShyftPlatformDb()
+    .withSchema('platform')
+    .table('org_unit_module_overrides')
+    .where('tenant_id', tenantId)
+    .andWhere('module_key', 'connectshyft')
+    .whereIn('org_unit_id', orgUnitIds)
+    .andWhere('enabled', true)
+    .select(['org_unit_id as orgUnitId']);
+
+  const enabledOrgUnits = new Set(
+    enabledOverrideRows
+      .map((row) => normalizeNonEmptyString((row as { orgUnitId?: unknown }).orgUnitId))
+      .filter((orgUnitId): orgUnitId is string => orgUnitId !== null),
+  );
+
+  for (const orgUnitId of orgUnitIds) {
+    const enabled = enabledOrgUnits.has(orgUnitId);
+    availabilityMap.set(orgUnitId, createShellModuleAvailability({
+      connect: enabled,
+      settings: enabled,
+    }));
+  }
+
+  return availabilityMap;
+};
+
+export const resolveConnectShyftShellOrgUnits = async (
+  req: Request,
+  context: ResolvedConnectShyftContext,
+  flagsResult: ConnectShyftEntitlementAwareFlagsResult,
+): Promise<ConnectShyftShellOrgUnitOption[]> => {
+  const orgUnits = await listAccessibleConnectShyftOrgUnits(req, context);
+  const availabilityByOrgUnit = await buildConnectShyftShellModuleAvailabilityMap(
+    req,
+    context.tenantId,
+    orgUnits.map((orgUnit) => orgUnit.id),
+    flagsResult,
+  );
+
+  return orgUnits.map((orgUnit) => ({
+    id: orgUnit.id,
+    label: orgUnit.label,
+    availableModules: availabilityByOrgUnit.get(orgUnit.id)
+      || createShellModuleAvailability(),
+  }));
 };
 
 const actorFromRequest = (req: Request): PlatformAdminActorContext => ({

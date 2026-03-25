@@ -7,6 +7,7 @@ import type {
   ResolverReview,
   ResolverReviewStatus,
 } from './people';
+import type { SubjectContext } from './subject-context';
 
 export type ConnectShyftIdentityResolutionCandidate = {
   personId: string;
@@ -210,6 +211,7 @@ export type ConnectShyftResolverQueueDetailData = {
   item: ConnectShyftResolverQueueItemRecord;
   review: ConnectShyftResolverReviewRecord | null;
   rebindReview: ConnectShyftRebindReviewContext | null;
+  subjectContext: SubjectContext;
 };
 
 export type ConnectShyftResolverDecisionData = {
@@ -266,4 +268,39 @@ export type ConnectShyftIdentityResolutionResponse = {
   state?: ConnectShyftIdentityResolutionOutcome | ResolverReviewStatus | null;
   resolverReviewId?: string | null;
   candidates?: ConnectShyftIdentityResolutionCandidate[];
+};
+
+export const SHYFTUNITY_SHELL_MODULE_KEYS = [
+  'people',
+  'connect',
+  'settings',
+] as const;
+
+export type ShyftUnityShellModuleKey = typeof SHYFTUNITY_SHELL_MODULE_KEYS[number];
+
+export type ConnectShyftShellModuleAvailability = {
+  people: boolean;
+  connect: boolean;
+  settings: boolean;
+};
+
+export type ConnectShyftShellOrgUnitOption = {
+  id: string;
+  label: string;
+  availableModules: ConnectShyftShellModuleAvailability;
+};
+
+export type ConnectShyftContextTelephonySummary = {
+  operatorPhoneSource: string | null;
+  voiceReady: boolean;
+  smsReady: boolean;
+  degradedMode: boolean;
+};
+
+export type ConnectShyftShellContext = {
+  tenantId: string;
+  orgUnitId: string;
+  bypassedOrgUnitMembership: boolean;
+  orgUnits: ConnectShyftShellOrgUnitOption[];
+  telephony: ConnectShyftContextTelephonySummary;
 };
