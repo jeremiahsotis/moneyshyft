@@ -440,6 +440,16 @@ describe('ConnectShyftThreadDetailView', () => {
     );
   });
 
+  it('shows a plain-language launcher handoff notice when text launch opens the thread', async () => {
+    const { wrapper } = await renderThreadDetailView({
+      initialPath: '/app/connectshyft/threads/thread-detail-view-1001?launchChannel=text&launchState=new',
+    });
+
+    expect(wrapper.get('[data-testid="connectshyft-thread-launcher-text-notice"]').text()).toContain(
+      'Started a new conversation and opened it ready for a text reply.',
+    );
+  });
+
   it('keeps the subject snapshot in the responsive detail rail layout', async () => {
     const { wrapper } = await renderThreadDetailView();
 

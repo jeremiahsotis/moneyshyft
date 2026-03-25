@@ -12,12 +12,14 @@ vi.mock('@/features/connectshyft/neighbors', () => ({
 }));
 
 vi.mock('@/features/connectshyft/threads', () => ({
-  ensureConnectShyftThread: vi.fn(),
+  prepareConnectShyftConversationLaunch: vi.fn(),
+  dispatchConnectShyftThreadCall: vi.fn(),
 }));
 
 const fetchScopeMock = vi.mocked(neighborsModule.fetchConnectShyftNeighborScope);
 const fetchNeighborsMock = vi.mocked(neighborsModule.fetchConnectShyftNeighborsCollection);
-const ensureThreadMock = vi.mocked(threadsModule.ensureConnectShyftThread);
+const prepareConversationLaunchMock = vi.mocked(threadsModule.prepareConnectShyftConversationLaunch);
+const dispatchThreadCallMock = vi.mocked(threadsModule.dispatchConnectShyftThreadCall);
 
 const buildRouter = async (initialPath = '/app/connectshyft/directory') => {
   const router = createRouter({
@@ -31,6 +33,12 @@ const buildRouter = async (initialPath = '/app/connectshyft/directory') => {
         path: '/app/connectshyft/threads/:threadId',
         component: {
           template: '<div>Thread</div>',
+        },
+      },
+      {
+        path: '/connect/threads/:threadId',
+        component: {
+          template: '<div>Thread Shortcut</div>',
         },
       },
     ],
@@ -95,13 +103,41 @@ beforeEach(() => {
       orgUnitId: 'org-connectshyft-ui-east',
     },
   });
-  ensureThreadMock.mockResolvedValue({
+  prepareConversationLaunchMock.mockResolvedValue({
     ok: true,
-    code: 'CONNECTSHYFT_THREAD_READY',
+    code: 'CONNECTSHYFT_CONVERSATION_LAUNCH_PREPARED',
     thread: {
       threadId: 'thread-directory-1001',
+      orgUnitId: 'org-connectshyft-ui-east',
     },
     createdNewThread: true,
+    neighborId: 'neighbor-directory-1001',
+    targetPhone: '+13175550100',
+  });
+  dispatchThreadCallMock.mockResolvedValue({
+    ok: true,
+    code: 'CONNECTSHYFT_THREAD_CALL_DISPATCHED',
+    message: 'Placed the call from this conversation.',
+    thread: {
+      threadId: 'thread-directory-1001',
+      tenantId: 'tenant-connectshyft-ui',
+      orgUnitId: 'org-connectshyft-ui-east',
+      neighborId: 'neighbor-directory-1001',
+      source: 'DIRECTORY',
+      state: 'UNCLAIMED',
+      lastInboundCsNumberId: 'cs-number-default-inbound',
+      preferredOutboundCsNumberId: 'cs-number-default-outbound',
+      escalation: {
+        stage: 0,
+        nextEvaluationAtUtc: null,
+      },
+      claimedByUserId: null,
+      claimedAtUtc: null,
+      closedByUserId: null,
+      closedAtUtc: null,
+      createdAtUtc: '2026-03-25T00:00:00.000Z',
+      updatedAtUtc: '2026-03-25T00:00:00.000Z',
+    },
   });
 });
 
@@ -120,6 +156,9 @@ describe('ConnectShyftDirectoryView', () => {
     expect(wrapper.get('[data-testid="connectshyft-directory-search-input"]').exists()).toBe(true);
     expect(wrapper.get('[data-testid="connectshyft-directory-result-conference-chip"]').text()).toContain(
       'Conference match',
+    );
+    expect(wrapper.get('[data-testid="connectshyft-directory-open-launcher-action"]').text()).toContain(
+      'Start conversation',
     );
     expect(wrapper.get('[data-testid="connectshyft-directory-start-conversation-action"]').text()).toContain(
       'Start conversation',
@@ -149,5 +188,33 @@ describe('ConnectShyftDirectoryView', () => {
     expect(wrapper.text()).toContain(
       'People in the current workspace will appear here as soon as ConnectShyft can load the directory.',
     );
+  });
+
+  it('launches a call from the shared conversation launcher flow', async () => {
+    const { wrapper, router } = await renderDirectory('/app/connectshyft/directory?actorUserId=user-connectshyft-operator');
+
+    await wrapper.get('[data-testid="connectshyft-directory-start-conversation-action"]').trigger('click');
+    await flushPromises();
+
+    await wrapper.get('[data-testid="connectshyft-conversation-launcher-call"]').trigger('click');
+    await flushPromises();
+    await nextTick();
+
+    expect(prepareConversationLaunchMock).toHaveBeenCalledWith({
+      orgUnitId: 'org-connectshyft-ui-east',
+      neighborId: 'neighbor-directory-1001',
+      targetPhone: '+13175550100',
+      source: 'DIRECTORY',
+      lastInboundCsNumberId: 'cs-number-default-inbound',
+      preferredOutboundCsNumberId: 'cs-number-default-outbound',
+    });
+    expect(dispatchThreadCallMock).toHaveBeenCalledWith({
+      threadId: 'thread-directory-1001',
+      orgUnitId: 'org-connectshyft-ui-east',
+      targetPhone: '+13175550100',
+    });
+    expect(router.currentRoute.value.path).toBe('/connect/threads/thread-directory-1001');
+    expect(router.currentRoute.value.query.launchChannel).toBe('call');
+    expect(router.currentRoute.value.query.launchState).toBe('new');
   });
 });

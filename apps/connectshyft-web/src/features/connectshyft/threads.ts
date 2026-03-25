@@ -59,6 +59,7 @@ export type ConnectShyftDueThreadsResult =
 export type ConnectShyftEnsureThreadInput = {
   orgUnitId: string;
   neighborId: string;
+  personId?: string;
   source?: string;
   lastInboundCsNumberId: string;
   preferredOutboundCsNumberId: string;
@@ -112,6 +113,30 @@ export type ConnectShyftThreadActionResult =
   | ConnectShyftThreadActionFailure;
 
 export type { ConnectShyftThreadActionFailure };
+
+export type ConnectShyftConversationLaunchPrepareInput = {
+  orgUnitId: string;
+  neighborId?: string | null;
+  targetPhone: string;
+  source?: string;
+  lastInboundCsNumberId: string;
+  preferredOutboundCsNumberId: string;
+};
+
+export type ConnectShyftConversationLaunchPrepareResult =
+  | {
+    ok: true;
+    code: string;
+    thread: ConnectShyftThread;
+    createdNewThread: boolean;
+    neighborId: string;
+    targetPhone: string;
+  }
+  | {
+    ok: false;
+    code: string;
+    message: string;
+  };
 
 const CANONICAL_THREAD_STATES = new Set<ConnectShyftThreadState>([
   'UNCLAIMED',
@@ -341,6 +366,7 @@ export const ensureConnectShyftThread = async (
   const payload = {
     orgUnitId: normalizeString(input.orgUnitId),
     neighborId: normalizeString(input.neighborId),
+    personId: normalizeString(input.personId),
     source: normalizeString(input.source) || 'VOICE',
     lastInboundCsNumberId: normalizeString(input.lastInboundCsNumberId),
     preferredOutboundCsNumberId: normalizeString(input.preferredOutboundCsNumberId),
@@ -389,6 +415,77 @@ export const ensureConnectShyftThread = async (
       message: parseRefusalMessage(
         (error as { response?: { data?: unknown } })?.response?.data,
         'Unable to open a conversation right now.',
+      ),
+    };
+  }
+};
+
+export const prepareConnectShyftConversationLaunch = async (
+  input: ConnectShyftConversationLaunchPrepareInput,
+): Promise<ConnectShyftConversationLaunchPrepareResult> => {
+  const payload = {
+    orgUnitId: normalizeString(input.orgUnitId),
+    neighborId: normalizeString(input.neighborId || null) || undefined,
+    targetPhone: normalizeString(input.targetPhone),
+    source: normalizeString(input.source) || 'LAUNCHER',
+    lastInboundCsNumberId: normalizeString(input.lastInboundCsNumberId),
+    preferredOutboundCsNumberId: normalizeString(input.preferredOutboundCsNumberId),
+  };
+
+  try {
+    const response = await api.post('/connectshyft/conversation-launcher', payload, {
+      headers: buildConnectShyftTestOverrideHeaders(),
+    });
+
+    const envelope = response.data as ConnectShyftEnvelope & {
+      data?: {
+        target?: {
+          neighborId?: unknown;
+          phone?: unknown;
+        };
+      };
+    };
+    if (envelope?.ok !== true) {
+      return {
+        ok: false,
+        code: typeof envelope?.code === 'string'
+          ? envelope.code
+          : 'CONNECTSHYFT_CONVERSATION_LAUNCH_PREP_REFUSED',
+        message: parseRefusalMessage(
+          response.data,
+          'Unable to start that conversation right now.',
+        ),
+      };
+    }
+
+    const thread = parseThread(envelope.data?.thread);
+    const neighborId = normalizeString(envelope.data?.target?.neighborId);
+    const targetPhone = normalizeString(envelope.data?.target?.phone);
+    if (!thread || !neighborId || !targetPhone) {
+      return {
+        ok: false,
+        code: 'CONNECTSHYFT_CONVERSATION_LAUNCH_PREP_INVALID_RESPONSE',
+        message: 'Conversation launcher response was incomplete.',
+      };
+    }
+
+    return {
+      ok: true,
+      code: typeof envelope.code === 'string'
+        ? envelope.code
+        : 'CONNECTSHYFT_CONVERSATION_LAUNCH_PREPARED',
+      thread,
+      createdNewThread: parseCreatedNewThread(response.data, thread),
+      neighborId,
+      targetPhone,
+    };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      code: 'CONNECTSHYFT_CONVERSATION_LAUNCH_PREP_REQUEST_FAILED',
+      message: parseRefusalMessage(
+        (error as { response?: { data?: unknown } })?.response?.data,
+        'Unable to start that conversation right now.',
       ),
     };
   }

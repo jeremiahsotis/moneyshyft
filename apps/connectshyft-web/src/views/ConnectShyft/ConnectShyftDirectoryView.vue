@@ -44,7 +44,7 @@
       </SurfaceCard>
 
       <SurfaceCard padding="default" panel>
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-[auto_minmax(0,1fr)] md:items-end">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-end">
           <SegmentedTabs
             v-model="searchMode"
             :disabled="isLoading"
@@ -58,6 +58,15 @@
             :disabled="isLoading"
             :placeholder="searchMode === 'name' ? 'Search by first or last name' : 'Search by phone number'"
           />
+          <ActionButton
+            type="button"
+            data-testid="connectshyft-directory-open-launcher-action"
+            tone="primary"
+            :disabled="conversationLauncherPending"
+            @click="openConversationLauncher()"
+          >
+            {{ conversationLauncherPending ? 'Starting...' : 'Start conversation' }}
+          </ActionButton>
         </div>
 
         <p
@@ -66,6 +75,24 @@
         >
           {{ loadError }}
         </p>
+
+        <ConnectShyftConversationLauncher
+          v-if="conversationLauncherOpen"
+          class="mt-4"
+          :query="conversationLauncherQuery"
+          :targets="conversationLauncherVisibleTargets"
+          :recent-targets="conversationLauncherRecentTargets"
+          :selected-target="selectedConversationTarget"
+          :pending="conversationLauncherPending"
+          :error-message="conversationLauncherError"
+          :focus-ring-class="focusRingClass"
+          :tap-target-style="tapTargetStyle"
+          @update:query="updateConversationLauncherQuery"
+          @select-target="selectConversationLauncherTarget"
+          @clear-target="clearConversationLauncherTarget"
+          @launch="launchConversationFromLauncher"
+          @close="closeConversationLauncher"
+        />
 
         <ul class="mt-4 space-y-3">
           <li
@@ -104,10 +131,10 @@
                 type="button"
                 data-testid="connectshyft-directory-start-conversation-action"
                 tone="primary"
-                :disabled="isEnsuringThread"
-                @click="startConversation(neighbor.neighborId)"
+                :disabled="conversationLauncherPending"
+                @click="startConversation(neighbor)"
               >
-                {{ isEnsuringThread ? 'Opening...' : 'Start conversation' }}
+                {{ conversationLauncherPending ? 'Starting...' : 'Start conversation' }}
               </ActionButton>
             </SurfaceCard>
           </li>
@@ -128,6 +155,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import ConnectShyftConversationLauncher from '@/components/connectshyft/ConnectShyftConversationLauncher.vue';
 import ActionButton from '@/components/ui/ActionButton.vue';
 import EmptyStatePanel from '@/components/ui/EmptyStatePanel.vue';
 import SearchField from '@/components/ui/SearchField.vue';
@@ -141,10 +169,24 @@ import {
   type ConnectShyftNeighbor,
   type ConnectShyftNeighborScope,
 } from '@/features/connectshyft/neighbors';
-import { ensureConnectShyftThread } from '@/features/connectshyft/threads';
 import {
+  buildConnectShyftConversationLauncherRecentsStorageKey,
+  buildConnectShyftConversationLauncherTargets,
+  buildConnectShyftUnknownConversationLauncherTarget,
+  filterConnectShyftConversationLauncherTargets,
+  loadConnectShyftConversationLauncherRecents,
+  rememberConnectShyftConversationLauncherRecent,
+  resolveConnectShyftConversationLauncherPreset,
+  resolveConnectShyftConversationLauncherRecentTargets,
+  type ConnectShyftConversationLauncherRecentContact,
+  type ConnectShyftConversationLauncherTarget,
+} from '@/features/connectshyft/conversationLauncher';
+import { prepareConnectShyftConversationLaunch, dispatchConnectShyftThreadCall } from '@/features/connectshyft/threads';
+import {
+  CONNECTSHYFT_FOCUS_RING_CLASS,
   CONNECTSHYFT_RESPONSIVE_BREAKPOINTS,
   sanitizeConnectShyftOperatorCopy,
+  CONNECTSHYFT_ACCESSIBILITY_LOCKS,
 } from '@/features/connectshyft/uiContracts';
 import { buildConnectThreadPath } from '@/shell/routes';
 
@@ -158,10 +200,15 @@ const router = useRouter();
 const scope = ref<ConnectShyftNeighborScope | null>(null);
 const allNeighbors = ref<ConnectShyftNeighbor[]>([]);
 const isLoading = ref(false);
-const isEnsuringThread = ref(false);
 const loadError = ref('');
 const searchMode = ref<ConnectShyftNeighborSearchMode>('name');
 const searchQuery = ref('');
+const conversationLauncherOpen = ref(false);
+const conversationLauncherPending = ref(false);
+const conversationLauncherQuery = ref('');
+const conversationLauncherError = ref('');
+const selectedConversationTarget = ref<ConnectShyftConversationLauncherTarget | null>(null);
+const conversationLauncherRecents = ref<ConnectShyftConversationLauncherRecentContact[]>([]);
 const directorySearchModeOptions = [
   {
     label: 'Name',
@@ -177,6 +224,10 @@ const directorySearchModeOptions = [
 const viewportWidth = ref<number>(typeof window === 'undefined' ? 1280 : window.innerWidth);
 let searchQueryReloadTimer: ReturnType<typeof setTimeout> | null = null;
 let directoryLoadRequestId = 0;
+const focusRingClass = CONNECTSHYFT_FOCUS_RING_CLASS;
+const tapTargetStyle = {
+  minHeight: `${CONNECTSHYFT_ACCESSIBILITY_LOCKS.minTapTargetPx}px`,
+};
 
 const normalizeString = (value: unknown): string => {
   if (typeof value !== 'string') {
@@ -190,9 +241,24 @@ const normalizePhoneDigits = (value: string): string => {
   return value.replace(/\D/g, '');
 };
 
+const actorUserId = computed(() => {
+  const rawActorUserId = typeof route.query.actorUserId === 'string'
+    ? route.query.actorUserId
+    : typeof route.query.userId === 'string'
+      ? route.query.userId
+      : '';
+  return rawActorUserId.trim() || null;
+});
+
 const activeOrgUnitId = computed<string>(() => {
   return scope.value?.orgUnitId || '';
 });
+const conversationLauncherRecentsStorageKey = computed(() =>
+  buildConnectShyftConversationLauncherRecentsStorageKey({
+    actorUserId: actorUserId.value,
+    tenantId: scope.value?.tenantId || null,
+    orgUnitId: scope.value?.orgUnitId || null,
+  }));
 
 const scopedNeighbors = computed<ConnectShyftNeighbor[]>(() => {
   const orgUnitId = activeOrgUnitId.value;
@@ -228,6 +294,35 @@ const visibleNeighbors = computed<ConnectShyftNeighbor[]>(() => {
     return fullName.includes(loweredQuery);
   });
 });
+const conversationLauncherTargets = computed(() =>
+  buildConnectShyftConversationLauncherTargets(scopedNeighbors.value));
+const conversationLauncherVisibleTargets = computed(() => {
+  const visibleTargets = filterConnectShyftConversationLauncherTargets({
+    targets: conversationLauncherTargets.value,
+    query: conversationLauncherQuery.value,
+  });
+  if (!conversationLauncherQuery.value.trim()) {
+    return visibleTargets;
+  }
+
+  const queryTarget = buildConnectShyftUnknownConversationLauncherTarget(conversationLauncherQuery.value);
+  if (!queryTarget) {
+    return visibleTargets;
+  }
+
+  const hasExactKnownMatch = conversationLauncherTargets.value.some((target) =>
+    target.phone === queryTarget.phone);
+  if (hasExactKnownMatch) {
+    return visibleTargets;
+  }
+
+  return [queryTarget, ...visibleTargets];
+});
+const conversationLauncherRecentTargets = computed(() =>
+  resolveConnectShyftConversationLauncherRecentTargets({
+    recentContacts: conversationLauncherRecents.value,
+    targets: conversationLauncherTargets.value,
+  }));
 
 const layoutMarkerTestId = computed<string | null>(() => {
   if (viewportWidth.value <= CONNECTSHYFT_RESPONSIVE_BREAKPOINTS.mobile) {
@@ -277,6 +372,15 @@ const firstPhoneLabel = (neighbor: ConnectShyftNeighbor): string => {
   return `${firstPhone.label || 'phone'} · ${firstPhone.value}`;
 };
 
+const buildLauncherThreadQuery = (
+  channel: 'call' | 'text',
+  createdNewThread: boolean,
+) => ({
+  ...route.query,
+  launchChannel: channel,
+  launchState: createdNewThread ? 'new' : 'existing',
+});
+
 const updateViewportWidth = (): void => {
   if (typeof window === 'undefined') {
     return;
@@ -305,6 +409,12 @@ const readDirectoryContext = (): {
     lastInboundCsNumberId,
     preferredOutboundCsNumberId,
   };
+};
+
+const loadConversationLauncherRecents = (): void => {
+  conversationLauncherRecents.value = loadConnectShyftConversationLauncherRecents(
+    conversationLauncherRecentsStorageKey.value,
+  );
 };
 
 const loadDirectory = async (): Promise<void> => {
@@ -338,6 +448,7 @@ const loadDirectory = async (): Promise<void> => {
   }
 
   allNeighbors.value = listResult.neighbors;
+  loadConversationLauncherRecents();
 };
 
 const scheduleDirectoryReload = (): void => {
@@ -350,43 +461,118 @@ const scheduleDirectoryReload = (): void => {
   }, 250);
 };
 
-const startConversation = async (neighborId: string): Promise<void> => {
+const openConversationLauncher = (queryOverride?: string): void => {
+  conversationLauncherOpen.value = true;
+  conversationLauncherPending.value = false;
+  conversationLauncherError.value = '';
+  selectedConversationTarget.value = null;
+  conversationLauncherQuery.value = normalizeString(queryOverride) || normalizeString(searchQuery.value);
+};
+
+const closeConversationLauncher = (): void => {
+  conversationLauncherOpen.value = false;
+  conversationLauncherPending.value = false;
+  conversationLauncherError.value = '';
+  conversationLauncherQuery.value = '';
+  selectedConversationTarget.value = null;
+};
+
+const updateConversationLauncherQuery = (value: string): void => {
+  conversationLauncherQuery.value = value;
+  conversationLauncherError.value = '';
+  if (selectedConversationTarget.value) {
+    selectedConversationTarget.value = null;
+  }
+};
+
+const selectConversationLauncherTarget = (
+  target: ConnectShyftConversationLauncherTarget,
+): void => {
+  selectedConversationTarget.value = target;
+  conversationLauncherQuery.value = target.displayName;
+  conversationLauncherError.value = '';
+};
+
+const clearConversationLauncherTarget = (): void => {
+  selectedConversationTarget.value = null;
+  conversationLauncherError.value = '';
+};
+
+const startConversation = (neighbor: ConnectShyftNeighbor): void => {
+  const preset = resolveConnectShyftConversationLauncherPreset({
+    neighbor,
+    targets: conversationLauncherTargets.value,
+  });
+  conversationLauncherOpen.value = true;
+  conversationLauncherPending.value = false;
+  conversationLauncherError.value = '';
+  selectedConversationTarget.value = preset.selectedTarget;
+  conversationLauncherQuery.value = preset.query;
+};
+
+const launchConversationFromLauncher = async (channel: 'call' | 'text'): Promise<void> => {
   const context = readDirectoryContext();
   if (!context) {
-    loadError.value = 'Choose a workspace before starting a conversation.';
+    conversationLauncherError.value = 'Choose a workspace before starting a conversation.';
     return;
   }
 
-  isEnsuringThread.value = true;
-  loadError.value = '';
+  const target = selectedConversationTarget.value;
+  if (!target) {
+    conversationLauncherError.value = 'Choose a contact or phone number before continuing.';
+    return;
+  }
 
-  const ensureResult = await ensureConnectShyftThread({
-    orgUnitId: context.orgUnitId,
-    neighborId,
-    source: 'DIRECTORY',
-    lastInboundCsNumberId: context.lastInboundCsNumberId,
-    preferredOutboundCsNumberId: context.preferredOutboundCsNumberId,
-  });
+  conversationLauncherPending.value = true;
+  conversationLauncherError.value = '';
 
-  isEnsuringThread.value = false;
+  try {
+    const prepareResult = await prepareConnectShyftConversationLaunch({
+      orgUnitId: context.orgUnitId,
+      neighborId: target.neighborId,
+      targetPhone: target.phone,
+      source: 'DIRECTORY',
+      lastInboundCsNumberId: context.lastInboundCsNumberId,
+      preferredOutboundCsNumberId: context.preferredOutboundCsNumberId,
+    });
 
-  if (!ensureResult.ok) {
-    loadError.value = sanitizeConnectShyftOperatorCopy(
-      ensureResult.message,
-      'Unable to open a conversation right now.',
+    if (!prepareResult.ok) {
+      conversationLauncherError.value = sanitizeConnectShyftOperatorCopy(
+        prepareResult.message,
+        'Unable to start that conversation right now.',
+      );
+      return;
+    }
+
+    if (channel === 'call') {
+      const callResult = await dispatchConnectShyftThreadCall({
+        threadId: prepareResult.thread.threadId,
+        orgUnitId: prepareResult.thread.orgUnitId,
+        targetPhone: prepareResult.targetPhone,
+      });
+
+      if (!callResult.ok) {
+        conversationLauncherError.value = sanitizeConnectShyftOperatorCopy(
+          callResult.message,
+          'Unable to place the call right now.',
+        );
+        return;
+      }
+    }
+
+    conversationLauncherRecents.value = rememberConnectShyftConversationLauncherRecent(
+      conversationLauncherRecentsStorageKey.value,
+      target,
     );
-    return;
+    closeConversationLauncher();
+
+    await router.push({
+      path: buildConnectThreadPath(prepareResult.thread.threadId),
+      query: buildLauncherThreadQuery(channel, prepareResult.createdNewThread),
+    });
+  } finally {
+    conversationLauncherPending.value = false;
   }
-
-  const nextQuery = {
-    ...route.query,
-    directoryNotice: ensureResult.createdNewThread ? 'new' : 'existing',
-  };
-
-  await router.push({
-    path: buildConnectThreadPath(ensureResult.thread.threadId),
-    query: nextQuery,
-  });
 };
 
 onMounted(() => {
@@ -416,5 +602,9 @@ watch(searchMode, () => {
 
 watch(searchQuery, () => {
   scheduleDirectoryReload();
+});
+
+watch(conversationLauncherRecentsStorageKey, () => {
+  loadConversationLauncherRecents();
 });
 </script>

@@ -11,6 +11,7 @@
     </label>
     <textarea
       :id="composerId"
+      ref="composerInput"
       data-testid="connectshyft-composer-input"
       rows="3"
       :value="modelValue"
@@ -38,9 +39,10 @@
 </template>
 
 <script setup lang="ts">
+import { nextTick, ref, watch } from 'vue';
 import ActionButton from '@/components/ui/ActionButton.vue';
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: string;
   disabled: boolean;
   submitDisabled: boolean;
@@ -49,18 +51,34 @@ withDefaults(defineProps<{
   focusRingClass: string;
   tapTargetStyle: Record<string, string>;
   composerId?: string;
+  autofocus?: boolean;
 }>(), {
   placeholder: 'Type a message for this thread',
   composerId: 'connectshyft-composer-input-field',
+  autofocus: false,
 });
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
   submit: [];
 }>();
+const composerInput = ref<HTMLTextAreaElement | null>(null);
 
 const onInput = (event: Event): void => {
   const target = event.target as HTMLTextAreaElement | null;
   emit('update:modelValue', target?.value ?? '');
 };
+
+watch(
+  () => props.autofocus,
+  async (autofocus) => {
+    if (!autofocus || props.disabled) {
+      return;
+    }
+
+    await nextTick();
+    composerInput.value?.focus();
+  },
+  { immediate: true },
+);
 </script>

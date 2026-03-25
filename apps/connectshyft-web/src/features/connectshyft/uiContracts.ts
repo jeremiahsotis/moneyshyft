@@ -96,9 +96,9 @@ const CONNECTSHYFT_THREAD_ACTION_CONTRACTS: Record<string, ConnectShyftActionCon
 
 export const CONNECTSHYFT_INBOX_ACTION_COPY = {
   openConversation: {
-    label: 'Open Conversation',
-    ariaLabel: 'Open a conversation',
-    testId: 'connectshyft-open-conversation-action',
+    label: 'Start Conversation',
+    ariaLabel: 'Open the conversation launcher',
+    testId: 'connectshyft-open-conversation-launcher-action',
   },
   addNeighbor: {
     label: 'Add Neighbor',

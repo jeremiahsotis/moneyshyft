@@ -56,6 +56,7 @@ import {
   getConnectThreadDetail,
   getConnectThreadTimeline,
   getConnectWebhookReceiptMetrics,
+  postConnectConversationLauncher,
   postConnectNeighborCreate,
   postConnectNeighborIdentityMatch,
   postConnectNeighborMerge,
@@ -5823,6 +5824,7 @@ const getConnectThreadDetailWithSyntheticFallback = async (req: Request, res: Re
 };
 
 router.get('/threads/:threadId', getConnectThreadDetailWithSyntheticFallback);
+router.post('/conversation-launcher', postConnectConversationLauncher);
 
 router.post('/threads', async (req: Request, res: Response) => {
   if (!await enforceCapability(req, res, 'inbox')) {

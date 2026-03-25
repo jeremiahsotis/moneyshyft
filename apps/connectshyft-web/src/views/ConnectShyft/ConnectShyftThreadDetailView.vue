@@ -111,6 +111,14 @@
             </p>
 
             <p
+              v-if="launcherNoticeMessage"
+              :data-testid="launcherNoticeTestId"
+              class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-base text-emerald-900"
+            >
+              {{ launcherNoticeMessage }}
+            </p>
+
+            <p
               v-if="showActionRefusalBanner"
               data-testid="connectshyft-thread-action-refusal-banner"
               class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900"
@@ -281,6 +289,7 @@
                       :disabled="actionPending"
                       :submit-disabled="threadComposerBody.trim().length === 0"
                       submit-label="Send Message"
+                      :autofocus="launchChannel === 'text'"
                       :focus-ring-class="focusRingClass"
                       :tap-target-style="tapTargetStyle"
                       @submit="submitThreadComposerDraft"
@@ -1087,9 +1096,54 @@ const directoryNoticeMessage = computed(() => {
   return '';
 });
 
+const launchChannel = computed<'call' | 'text' | null>(() => {
+  return route.query.launchChannel === 'call' || route.query.launchChannel === 'text'
+    ? route.query.launchChannel
+    : null;
+});
+
+const launchState = computed<'new' | 'existing' | null>(() => {
+  return route.query.launchState === 'new' || route.query.launchState === 'existing'
+    ? route.query.launchState
+    : null;
+});
+
+const launcherNoticeTestId = computed(() => {
+  if (launchChannel.value === 'text') {
+    return 'connectshyft-thread-launcher-text-notice';
+  }
+
+  if (launchChannel.value === 'call') {
+    return 'connectshyft-thread-launcher-call-notice';
+  }
+
+  return '';
+});
+
+const launcherNoticeMessage = computed(() => {
+  if (launchChannel.value === 'text' && launchState.value === 'new') {
+    return 'Started a new conversation and opened it ready for a text reply.';
+  }
+
+  if (launchChannel.value === 'text') {
+    return 'Opened this conversation with the text box ready to reply.';
+  }
+
+  if (launchChannel.value === 'call' && launchState.value === 'new') {
+    return 'Started a new conversation and placed the call from it.';
+  }
+
+  if (launchChannel.value === 'call') {
+    return 'Placed the call from this conversation.';
+  }
+
+  return '';
+});
+
 const showContextualActionFeedback = computed(() => {
   return feedbackBanner.value !== null
     || directoryNoticeMessage.value.length > 0
+    || launcherNoticeMessage.value.length > 0
     || showActionRefusalBanner.value
     || policyRefusalBanner.value.length > 0
     || policyErrorBanner.value.length > 0

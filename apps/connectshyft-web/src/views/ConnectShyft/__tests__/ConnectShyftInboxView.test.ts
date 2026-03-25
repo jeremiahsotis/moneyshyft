@@ -37,7 +37,7 @@ vi.mock('@/features/connectshyft/readContracts', () => ({
 }));
 
 vi.mock('@/features/connectshyft/threads', () => ({
-  ensureConnectShyftThread: vi.fn(),
+  prepareConnectShyftConversationLaunch: vi.fn(),
   dispatchConnectShyftThreadCall: vi.fn(),
   dispatchConnectShyftThreadMessage: vi.fn(),
 }));
@@ -45,7 +45,8 @@ vi.mock('@/features/connectshyft/threads', () => ({
 const fetchAvailabilityMock = vi.mocked(flagsModule.fetchConnectShyftAvailability);
 const fetchNeighborsMock = vi.mocked(neighborsModule.fetchConnectShyftNeighborsCollection);
 const fetchBucketMock = vi.mocked(readContractsModule.fetchConnectShyftThreadBucket);
-const ensureThreadMock = vi.mocked(threadsModule.ensureConnectShyftThread);
+const prepareConversationLaunchMock = vi.mocked(threadsModule.prepareConnectShyftConversationLaunch);
+const dispatchThreadCallMock = vi.mocked(threadsModule.dispatchConnectShyftThreadCall);
 
 const buildRouter = async (initialPath = '/app/connectshyft') => {
   const router = createRouter({
@@ -65,6 +66,12 @@ const buildRouter = async (initialPath = '/app/connectshyft') => {
         path: '/app/connectshyft/threads/:threadId',
         component: {
           template: '<div>Thread</div>',
+        },
+      },
+      {
+        path: '/connect/threads/:threadId',
+        component: {
+          template: '<div>Thread Shortcut</div>',
         },
       },
       {
@@ -205,13 +212,41 @@ beforeEach(() => {
       bypassedOrgUnitMembership: false,
     },
   });
-  ensureThreadMock.mockResolvedValue({
+  prepareConversationLaunchMock.mockResolvedValue({
     ok: true,
-    code: 'CONNECTSHYFT_THREAD_READY',
+    code: 'CONNECTSHYFT_CONVERSATION_LAUNCH_PREPARED',
     thread: {
       threadId: 'thread-inbox-2001',
+      orgUnitId: 'org-connectshyft-ui-east',
     },
     createdNewThread: true,
+    neighborId: 'neighbor-inbox-1001',
+    targetPhone: '+13175550100',
+  });
+  dispatchThreadCallMock.mockResolvedValue({
+    ok: true,
+    code: 'CONNECTSHYFT_THREAD_CALL_DISPATCHED',
+    message: 'Placed the call from this conversation.',
+    thread: {
+      threadId: 'thread-inbox-2001',
+      tenantId: 'tenant-connectshyft-ui',
+      orgUnitId: 'org-connectshyft-ui-east',
+      neighborId: 'neighbor-inbox-1001',
+      source: 'LAUNCHER',
+      state: 'UNCLAIMED',
+      lastInboundCsNumberId: 'cs-inbound-1001',
+      preferredOutboundCsNumberId: 'cs-outbound-1001',
+      escalation: {
+        stage: 0,
+        nextEvaluationAtUtc: null,
+      },
+      claimedByUserId: null,
+      claimedAtUtc: null,
+      closedByUserId: null,
+      closedAtUtc: null,
+      createdAtUtc: '2026-03-25T00:00:00.000Z',
+      updatedAtUtc: '2026-03-25T00:00:00.000Z',
+    },
   });
 });
 
@@ -227,12 +262,10 @@ describe('ConnectShyftInboxView', () => {
     expect(wrapper.text()).toContain('Assigned conversations');
     expect(wrapper.text()).toContain('1 conversation needs attention');
     expect(wrapper.get('[data-testid="connectshyft-queue-search-input"]').exists()).toBe(true);
-    expect(wrapper.get('[data-testid="connectshyft-open-conversation-action"]').text()).toContain(
-      'Open Conversation',
+    expect(wrapper.get('[data-testid="connectshyft-open-conversation-launcher-action"]').text()).toContain(
+      'Start Conversation',
     );
-    expect(wrapper.get('[data-testid="connectshyft-compose-message-action"]').text()).toContain(
-      'Send Message',
-    );
+    expect(wrapper.find('[data-testid="connectshyft-compose-message-action"]').exists()).toBe(false);
   });
 
   it('shows a plain-language empty state when nothing is waiting in the queue', async () => {
@@ -267,5 +300,33 @@ describe('ConnectShyftInboxView', () => {
     expect(wrapper.text()).toContain(
       'When a new conversation needs attention, it will appear here.',
     );
+  });
+
+  it('routes a text launch into the thread detail after target selection', async () => {
+    const { wrapper, router } = await renderInbox('/app/connectshyft?actorUserId=user-connectshyft-operator');
+
+    await wrapper.get('[data-testid="connectshyft-open-conversation-launcher-action"]').trigger('click');
+    await flushPromises();
+
+    await wrapper
+      .get('[data-testid="connectshyft-conversation-launcher-target-neighbor-inbox-1001:+13175550100"]')
+      .trigger('click');
+    await flushPromises();
+
+    await wrapper.get('[data-testid="connectshyft-conversation-launcher-text"]').trigger('click');
+    await flushPromises();
+    await nextTick();
+
+    expect(prepareConversationLaunchMock).toHaveBeenCalledWith({
+      orgUnitId: 'org-connectshyft-ui-east',
+      neighborId: 'neighbor-inbox-1001',
+      targetPhone: '+13175550100',
+      source: 'LAUNCHER',
+      lastInboundCsNumberId: 'cs-inbound-c1-001',
+      preferredOutboundCsNumberId: 'cs-outbound-c1-001',
+    });
+    expect(router.currentRoute.value.path).toBe('/connect/threads/thread-inbox-2001');
+    expect(router.currentRoute.value.query.launchChannel).toBe('text');
+    expect(router.currentRoute.value.query.launchState).toBe('new');
   });
 });
