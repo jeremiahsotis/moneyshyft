@@ -13,6 +13,7 @@ import {
 export type ConnectShyftThreadState = 'UNCLAIMED' | 'CLAIMED' | 'CLOSED';
 export type ConnectShyftInboxBucket = 'inbox' | 'mine';
 export type ConnectShyftThreadIdentityState = 'confirmed' | 'provisional';
+export type ConnectShyftTimelineEventDirection = 'inbound' | 'outbound' | 'system';
 
 export type ConnectShyftInboxActions = {
   claim: boolean;
@@ -59,6 +60,16 @@ export type ConnectShyftTimelineEvent = {
   eventName: string;
   summary: string;
   conversationType: string;
+  direction?: ConnectShyftTimelineEventDirection;
+  occurredAtUtc?: string | null;
+  channel?: string | null;
+  body?: string | null;
+  recordingUrl?: string | null;
+  recordingStatus?: string | null;
+  durationSeconds?: number | null;
+  transcriptionText?: string | null;
+  transcriptionStatus?: string | null;
+  voicemailArtifactId?: string | null;
 };
 
 export type ConnectShyftThreadDetail = ConnectShyftThreadSummary & {
@@ -80,6 +91,7 @@ type ConnectShyftEnvelope = {
   data?: {
     items?: unknown[];
     thread?: unknown;
+    voicemailArtifacts?: unknown;
     context?: {
       tenantId?: unknown;
       orgUnitId?: unknown;
@@ -131,6 +143,22 @@ const normalizeString = (value: unknown): string => {
 const normalizeOptionalString = (value: unknown): string | null => {
   const normalized = normalizeString(value);
   return normalized.length > 0 ? normalized : null;
+};
+
+const normalizeOptionalNumber = (value: unknown): number | null => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return value;
+};
+
+const asRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
 };
 
 const normalizeStringArray = (value: unknown): string[] => {
@@ -264,7 +292,7 @@ const parseTimelineEvents = (payload: unknown): ConnectShyftTimelineEvent[] => {
   }
 
   return payload
-    .map((entry) => {
+    .map<ConnectShyftTimelineEvent | null>((entry) => {
       if (!entry || typeof entry !== 'object') {
         return null;
       }
@@ -273,31 +301,135 @@ const parseTimelineEvents = (payload: unknown): ConnectShyftTimelineEvent[] => {
         eventId?: unknown;
         eventName?: unknown;
         eventType?: unknown;
+        occurredAtUtc?: unknown;
+        occurred_at_utc?: unknown;
+        direction?: unknown;
+        actor?: unknown;
+        metadata?: unknown;
         conversationType?: unknown;
-        payload?: {
-          summary?: unknown;
-        };
+        payload?: unknown;
         summary?: unknown;
       };
+      const payloadRecord = asRecord(candidate.payload);
+      const metadata = asRecord(candidate.metadata) ?? asRecord(payloadRecord?.metadata);
+      const inboundMessageArtifact = asRecord(payloadRecord?.inboundMessageArtifact);
+      const outboundMessageArtifact = asRecord(payloadRecord?.outboundMessageArtifact);
+      const voicemailArtifact = asRecord(payloadRecord?.voicemailArtifact);
+      const transcription = asRecord(voicemailArtifact?.transcription)
+        ?? asRecord(payloadRecord?.transcription);
 
       const eventId = normalizeString(candidate.eventId);
       const eventName = normalizeString(candidate.eventName ?? candidate.eventType);
-      const summary = normalizeString(candidate.payload?.summary ?? candidate.summary);
+      const summary = normalizeString(payloadRecord?.summary ?? candidate.summary);
       const conversationType = normalizeString(candidate.conversationType)
         || (eventName.toLowerCase().includes('voicemail') ? 'voicemail' : 'message');
+      const actor = normalizeString(payloadRecord?.actor ?? candidate.actor).toLowerCase();
+      const rawDirection = normalizeString(payloadRecord?.direction ?? candidate.direction).toLowerCase();
+      const direction: ConnectShyftTimelineEventDirection = rawDirection === 'inbound'
+        ? 'inbound'
+        : rawDirection === 'outbound'
+          ? 'outbound'
+          : actor === 'neighbor'
+            ? 'inbound'
+            : actor === 'user'
+              ? 'outbound'
+              : 'system';
+      const body = normalizeOptionalString(
+        inboundMessageArtifact?.body
+        ?? outboundMessageArtifact?.body
+        ?? payloadRecord?.body
+        ?? payloadRecord?.message,
+      );
+      const recordingUrl = normalizeOptionalString(
+        voicemailArtifact?.recordingUrl
+        ?? voicemailArtifact?.recording_url
+        ?? payloadRecord?.recordingUrl
+        ?? payloadRecord?.recording_url,
+      );
+      const transcriptionText = normalizeOptionalString(
+        transcription?.text
+        ?? transcription?.transcriptText
+        ?? transcription?.transcriptionText
+        ?? transcription?.transcript_text
+        ?? transcription?.transcription_text
+        ?? metadata?.transcript
+        ?? metadata?.transcriptText
+        ?? metadata?.transcriptionText
+        ?? metadata?.transcript_text
+        ?? metadata?.transcription_text,
+      );
+      const transcriptionStatus = normalizeOptionalString(
+        transcription?.status
+        ?? transcription?.transcriptionStatus
+        ?? transcription?.transcription_status
+        ?? metadata?.transcriptionStatus
+        ?? metadata?.transcription_status,
+      );
+      const voicemailArtifactId = normalizeOptionalString(
+        voicemailArtifact?.artifactId
+        ?? voicemailArtifact?.artifact_id
+        ?? payloadRecord?.voicemailArtifactId
+        ?? payloadRecord?.voicemail_artifact_id
+        ?? metadata?.voicemailArtifactId
+        ?? metadata?.voicemail_artifact_id,
+      );
+      const fallbackSummary = conversationType === 'voicemail'
+        ? 'Voicemail received.'
+        : body || 'Conversation activity recorded.';
 
       if (!eventId && !eventName) {
         return null;
       }
 
-      return {
+      const normalizedEvent: ConnectShyftTimelineEvent = {
         eventId: eventId || eventName,
         eventName: eventName || 'connectshyft.timeline.event',
-        summary: summary || 'Conversation activity recorded.',
+        summary: summary || fallbackSummary,
         conversationType,
+        direction,
+        occurredAtUtc: normalizeOptionalString(candidate.occurredAtUtc ?? candidate.occurred_at_utc),
+        channel: normalizeOptionalString(payloadRecord?.channel),
+        body,
+        recordingUrl,
+        recordingStatus: normalizeOptionalString(
+          voicemailArtifact?.recordingStatus
+          ?? voicemailArtifact?.recording_status
+          ?? payloadRecord?.recordingStatus
+          ?? payloadRecord?.recording_status,
+        ),
+        durationSeconds: normalizeOptionalNumber(
+          voicemailArtifact?.durationSeconds
+          ?? voicemailArtifact?.duration_seconds
+          ?? payloadRecord?.durationSeconds
+          ?? payloadRecord?.duration_seconds,
+        ),
+        transcriptionText,
+        transcriptionStatus,
+        voicemailArtifactId,
       };
+
+      return normalizedEvent;
     })
     .filter((event): event is ConnectShyftTimelineEvent => event !== null);
+};
+
+const parseVoicemailArtifactTranscripts = (payload: unknown): Map<string, string> => {
+  if (!Array.isArray(payload)) {
+    return new Map();
+  }
+
+  return payload.reduce<Map<string, string>>((artifacts, entry) => {
+    const candidate = asRecord(entry);
+    const artifactId = normalizeString(candidate?.artifactId);
+    const transcription = asRecord(candidate?.transcription);
+    const transcriptionText = normalizeString(transcription?.text);
+    if (!artifactId || !transcriptionText) {
+      return artifacts;
+    }
+
+    artifacts.set(artifactId, transcriptionText);
+    return artifacts;
+  }, new Map());
 };
 
 const buildFallbackSubjectContext = (input: {
@@ -551,7 +683,10 @@ const parseThreadSubjectImpact = (payload: unknown): ConnectShyftThreadSubjectIm
   };
 };
 
-const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null => {
+const parseThreadDetail = (
+  payload: unknown,
+  voicemailArtifactTranscripts: Map<string, string>,
+): ConnectShyftThreadDetail | null => {
   if (!payload || typeof payload !== 'object') {
     return null;
   }
@@ -598,6 +733,22 @@ const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null =>
       : personId
         ? 'confirmed'
         : null);
+  const timeline = parseTimelineEvents(candidate.timeline).map((event) => {
+    if (!event.voicemailArtifactId) {
+      return event;
+    }
+
+    const enrichedTranscript = voicemailArtifactTranscripts.get(event.voicemailArtifactId);
+    if (!enrichedTranscript || event.transcriptionText) {
+      return event;
+    }
+
+    return {
+      ...event,
+      transcriptionText: enrichedTranscript,
+      transcriptionStatus: event.transcriptionStatus || 'completed',
+    };
+  });
 
   return {
     ...summary,
@@ -606,7 +757,7 @@ const parseThreadDetail = (payload: unknown): ConnectShyftThreadDetail | null =>
     subjectImpact: parseThreadSubjectImpact(candidate.subjectImpact),
     subjectContext,
     actions,
-    timeline: parseTimelineEvents(candidate.timeline),
+    timeline,
     lifecycle: {
       reopenedByInbound: candidate.lifecycle?.reopenedByInbound === true,
     },
@@ -739,7 +890,10 @@ export const fetchConnectShyftThreadDetail = async (
       };
     }
 
-    const thread = parseThreadDetail(envelope.data?.thread);
+    const thread = parseThreadDetail(
+      envelope.data?.thread,
+      parseVoicemailArtifactTranscripts(envelope.data?.voicemailArtifacts),
+    );
     if (!thread) {
       return {
         ok: false,
