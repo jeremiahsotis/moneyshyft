@@ -461,6 +461,7 @@ const resolveConnectShyftFallbackOrgUnitId = async (req: Request): Promise<strin
     .join('org_units as ou', 'ou.id', 'om.org_unit_id')
     .where('om.user_id', actorUserId)
     .andWhere('ou.tenant_id', tenantId)
+    .andWhere('ou.status', 'active')
     .select('om.org_unit_id as orgUnitId')
     .orderBy('om.org_unit_id', 'asc');
 
@@ -488,7 +489,10 @@ const resolveConnectShyftFallbackOrgUnitId = async (req: Request): Promise<strin
   const tenantOrgUnitRows = await db
     .withSchema('platform')
     .table('org_units')
-    .where('tenant_id', tenantId)
+    .where({
+      tenant_id: tenantId,
+      status: 'active',
+    })
     .select('id')
     .orderBy('id', 'asc')
     .limit(2);
@@ -547,6 +551,7 @@ const resolveConnectShyftEnabledByOrgUnitOverride = async (
         .join('org_units as ou', 'ou.id', 'om.org_unit_id')
         .where('om.user_id', actorUserId)
         .andWhere('ou.tenant_id', tenantId)
+        .andWhere('ou.status', 'active')
         .select('om.org_unit_id as orgUnitId')
         .orderBy('om.org_unit_id', 'asc')
     )

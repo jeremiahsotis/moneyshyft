@@ -160,6 +160,80 @@ const buildPlatformDbMock = (input: {
   })),
 });
 
+const buildActiveScopedPlatformDbMock = (input: {
+  tenantId: string;
+  activeOrgUnitId: string;
+  archivedOrgUnitId: string;
+  tenantMembershipRoleSetJson: string;
+  orgUnitMembershipRoleSetJson: string;
+}) => {
+  const directMembershipQuery: any = {
+    statusFilter: null as string | null,
+    join: jest.fn(() => directMembershipQuery),
+    where: jest.fn(() => directMembershipQuery),
+    andWhere: jest.fn((column: string, value: string) => {
+      if (column === 'ou.status') {
+        directMembershipQuery.statusFilter = value;
+      }
+      return directMembershipQuery;
+    }),
+    select: jest.fn(() => directMembershipQuery),
+    orderBy: jest.fn(() => directMembershipQuery),
+  };
+
+  directMembershipQuery.then = (
+    resolve: (value: Array<{ orgUnitId: string }>) => unknown,
+    reject?: (error: unknown) => unknown,
+  ) => Promise.resolve(
+    directMembershipQuery.statusFilter === 'active'
+      ? [{ orgUnitId: input.activeOrgUnitId }]
+      : [
+        { orgUnitId: input.activeOrgUnitId },
+        { orgUnitId: input.archivedOrgUnitId },
+      ],
+  ).then(resolve, reject);
+
+  return {
+    directMembershipQuery,
+    db: {
+      withSchema: jest.fn((schema: string) => ({
+        table: (table: string) => {
+          if (schema !== 'platform') {
+            throw new Error(`Unexpected schema lookup: ${schema}`);
+          }
+
+          if (table === 'tenant_memberships') {
+            return createThenableQuery(
+              [{ tenant_id: input.tenantId }],
+              { role_set_json: input.tenantMembershipRoleSetJson },
+            );
+          }
+
+          if (table === 'org_unit_memberships as om') {
+            return directMembershipQuery;
+          }
+
+          if (table === 'org_units') {
+            return createThenableQuery(
+              [{ id: input.activeOrgUnitId, tenant_id: input.tenantId }],
+              { id: input.activeOrgUnitId, tenant_id: input.tenantId },
+            );
+          }
+
+          if (table === 'org_unit_memberships') {
+            return createThenableQuery(
+              [],
+              { role_set_json: input.orgUnitMembershipRoleSetJson },
+            );
+          }
+
+          throw new Error(`Unexpected table lookup: ${schema}.${table}`);
+        },
+      })),
+    } as any,
+  };
+};
+
 describe('connectshyft handler access context helper', () => {
   const previousNodeEnv = process.env.NODE_ENV;
   const previousOverrideFlag = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
@@ -263,6 +337,47 @@ describe('connectshyft handler access context helper', () => {
       scopeMode: 'ORG_UNIT',
       source: 'auth',
     });
+  });
+
+  it('ignores archived orgUnit memberships when bootstrapping fallback context', async () => {
+    const tenantId = '11111111-1111-4111-8111-111111111111';
+    const activeOrgUnitId = '22222222-2222-4222-8222-222222222222';
+    const archivedOrgUnitId = '33333333-3333-4333-8333-333333333333';
+    const userId = '44444444-4444-4444-8444-444444444444';
+    const platformDbMock = buildActiveScopedPlatformDbMock({
+      tenantId,
+      activeOrgUnitId,
+      archivedOrgUnitId,
+      tenantMembershipRoleSetJson: '["TENANT_VIEWER"]',
+      orgUnitMembershipRoleSetJson: '["ORGUNIT_MEMBER"]',
+    });
+    jest.spyOn(accessContextModule, 'loadConnectShyftPlatformDb').mockReturnValue(
+      platformDbMock.db,
+    );
+
+    const req = createRequest({
+      tenantId: 'public',
+      orgUnitId: null,
+      role: 'member',
+      userId,
+      householdId: null,
+      activeTenantId: null,
+      activeOrgUnitId: null,
+      source: 'public',
+    });
+
+    const decision = await resolveConnectShyftRouteContextDecision(req);
+
+    expect(decision).toMatchObject({
+      ok: true,
+      context: {
+        tenantId,
+        orgUnitId: activeOrgUnitId,
+        bypassedOrgUnitMembership: true,
+        effectiveRoles: expect.arrayContaining(['TENANT_VIEWER', 'ORGUNIT_MEMBER']),
+      },
+    });
+    expect(platformDbMock.directMembershipQuery.andWhere).toHaveBeenCalledWith('ou.status', 'active');
   });
 
   it('maps a context refusal decision to the shared refusal envelope shape', async () => {
