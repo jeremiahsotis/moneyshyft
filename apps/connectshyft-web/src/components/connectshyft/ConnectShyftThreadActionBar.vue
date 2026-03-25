@@ -1,20 +1,17 @@
 <template>
   <section
     data-testid="connectshyft-thread-action-bar"
-    class="flex flex-wrap items-center"
+    class="cs-action-group"
     :style="actionBarStyle"
   >
-    <div data-testid="connectshyft-thread-actions" class="flex flex-wrap items-center gap-2">
-      <button
+    <div data-testid="connectshyft-thread-actions" class="cs-action-group">
+      <ActionButton
         v-for="action in actions"
         :key="action"
-        type="button"
         :data-testid="resolveConnectShyftThreadActionContract(action).testId"
         :aria-label="resolveConnectShyftThreadActionContract(action).ariaLabel"
-        :class="[
-          'min-h-[44px] rounded bg-slate-900 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
-          focusRingClass,
-        ]"
+        class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+        tone="primary"
         :style="[tapTargetStyle, bodyCopyStyle]"
         :disabled="actionPending"
         @click="$emit('action', action)"
@@ -22,28 +19,26 @@
         <span data-testid="connectshyft-thread-action-label">
           {{ resolveConnectShyftThreadActionContract(action).label }}
         </span>
-      </button>
+      </ActionButton>
 
-      <button
+      <ActionButton
         v-if="showAddNeighborAction"
-        type="button"
         data-testid="connectshyft-add-neighbor-action"
         aria-label="Add Neighbor"
-        :class="[
-          'min-h-[44px] rounded bg-emerald-700 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
-          focusRingClass,
-        ]"
+        class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+        tone="primary"
         :style="[tapTargetStyle, bodyCopyStyle]"
         :disabled="actionPending"
         @click="$emit('add-neighbor')"
       >
         Add Neighbor
-      </button>
+      </ActionButton>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
+import ActionButton from '@/components/ui/ActionButton.vue';
 import { resolveConnectShyftThreadActionContract } from '@/features/connectshyft/uiContracts';
 
 defineProps<{

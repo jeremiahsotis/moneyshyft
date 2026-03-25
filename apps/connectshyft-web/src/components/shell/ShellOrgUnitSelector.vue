@@ -1,13 +1,13 @@
 <template>
-  <label class="flex min-w-[14rem] flex-col gap-2 text-sm text-slate-600">
-    <span class="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+  <label class="cs-field-label min-w-[14rem]">
+    <span class="cs-kicker">
       Org unit
     </span>
     <select
       :value="currentOrgUnitId"
       :disabled="disabled || loading || options.length === 0"
       data-testid="shell-orgunit-selector"
-      class="min-h-[44px] rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+      class="cs-select"
       @change="handleChange"
     >
       <option v-if="loading" value="">

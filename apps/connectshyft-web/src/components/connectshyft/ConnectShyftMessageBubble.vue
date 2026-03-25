@@ -2,20 +2,20 @@
   <article
     data-testid="connectshyft-message-bubble"
     :class="[
-      'rounded-lg border px-3 py-2',
+      'cs-card cs-card--compact',
       bubbleToneClass,
     ]"
     :style="bubbleStyle"
   >
-    <p class="font-semibold" :style="labelStyle">
+    <p class="cs-secondary-label" :style="labelStyle">
       {{ title }}
     </p>
-    <p class="mt-1 text-slate-800" :style="bodyStyle">
+    <p class="mt-2 text-stone-800" :style="bodyStyle">
       {{ body }}
     </p>
     <p
       v-if="metaLabel"
-      class="mt-1 text-slate-500"
+      class="mt-2 cs-meta"
       :style="metaStyle"
     >
       {{ metaLabel }}
@@ -39,14 +39,14 @@ const props = withDefaults(defineProps<{
 
 const bubbleToneClass = computed(() => {
   if (props.tone === 'outbound') {
-    return 'border-slate-200 bg-slate-100';
+    return 'bg-stone-100';
   }
 
   if (props.tone === 'system') {
-    return 'border-blue-200 bg-blue-50';
+    return 'bg-blue-50';
   }
 
-  return 'border-slate-200 bg-white';
+  return 'bg-white';
 });
 
 const bubbleStyle = {

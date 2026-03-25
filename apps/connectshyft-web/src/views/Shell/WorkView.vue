@@ -1,36 +1,36 @@
 <template>
   <div class="space-y-4">
     <section class="mx-auto max-w-7xl px-4 sm:px-6">
-      <div class="rounded-[28px] border border-slate-200 bg-white/90 p-4 shadow-[0_20px_60px_-48px_rgba(15,23,42,0.24)]">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-          Settings
-        </p>
-        <p class="mt-2 text-sm text-slate-600">
-          Call routing and workspace settings live here.
-        </p>
+      <SurfaceCard tone="soft" padding="compact" panel>
+        <SectionHeader
+          eyebrow="Settings"
+          title="Workspace setup"
+          description="Call routing and workspace settings live here."
+          size="md"
+        />
         <p
           v-if="settingsRefusalGuidance"
           data-testid="shell-settings-refusal-guidance"
-          class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          class="cs-shell-notice cs-shell-notice--warning mt-4"
         >
           {{ settingsRefusalGuidance }}
         </p>
-      </div>
+      </SurfaceCard>
 
       <nav
         v-if="navigationItems.length > 0"
         data-testid="shell-settings-nav"
-        class="mt-4 flex flex-wrap gap-2"
+        class="cs-segmented mt-4"
       >
         <RouterLink
           v-for="item in navigationItems"
           :key="item.path"
           :to="{ path: item.path, query: navigationQuery }"
           :data-testid="`shell-settings-nav-${item.key}`"
-          class="inline-flex min-h-[44px] items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition"
+          class="cs-segmented__item"
           :class="isActive(item.path)
-            ? 'bg-slate-900 text-white shadow-sm'
-            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+            ? 'cs-segmented__item--active'
+            : ''"
         >
           {{ item.label }}
         </RouterLink>
@@ -46,6 +46,8 @@ import type { LocationQueryRaw } from 'vue-router';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { ShellSettingsNavigationItem } from '@/features/connectshyft/settingsNavigation';
+import SectionHeader from '@/components/ui/SectionHeader.vue';
+import SurfaceCard from '@/components/ui/SurfaceCard.vue';
 import { fetchConnectShyftSettingsNavigation } from '@/features/connectshyft/settingsNavigation';
 import { SHELL_ROUTE_PATHS } from '@/shell/routes';
 

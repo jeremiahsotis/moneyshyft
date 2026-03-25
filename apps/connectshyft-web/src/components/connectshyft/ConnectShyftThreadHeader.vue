@@ -1,20 +1,20 @@
 <template>
   <header
     data-testid="connectshyft-thread-header"
-    class="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-[0_28px_90px_-56px_rgba(15,23,42,0.45)]"
+    class="cs-card cs-card--padded cs-card--muted cs-shell-panel"
     :style="headerStyle"
   >
     <div class="flex flex-col gap-4 border-b border-slate-200 pb-4">
       <div data-testid="connectshyft-thread-context-neighbor">
         <p
           data-testid="connectshyft-thread-header-neighbor-context"
-          class="text-3xl font-semibold tracking-tight text-slate-900"
+          class="cs-heading-lg"
         >
           {{ title }}
         </p>
       </div>
 
-      <div class="flex flex-col gap-2 text-base text-slate-500">
+      <div class="flex flex-col gap-2 cs-body">
         <div
           data-testid="connectshyft-thread-context-conference"
           class="flex flex-wrap items-center gap-x-3 gap-y-1"

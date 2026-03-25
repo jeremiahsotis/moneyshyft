@@ -2,10 +2,10 @@
   <section
     v-if="visible"
     data-testid="connectshyft-voicemail-card"
-    class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-blue-900"
+    class="cs-card cs-card--compact bg-blue-50 text-blue-900"
     :style="voicemailStyle"
   >
-    <p class="font-semibold" :style="titleStyle">Voicemail</p>
+    <p class="cs-secondary-label text-blue-700" :style="titleStyle">Voicemail</p>
     <p class="mt-1" :style="bodyStyle">
       {{ label }}
     </p>

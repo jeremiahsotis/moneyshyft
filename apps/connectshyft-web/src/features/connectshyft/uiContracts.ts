@@ -22,7 +22,7 @@ export const CONNECTSHYFT_ACCESSIBILITY_LOCKS = {
 } as const;
 
 export const CONNECTSHYFT_FOCUS_RING_CLASS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2';
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2';
 
 export const CONNECTSHYFT_FORBIDDEN_COPY_TOKENS = [
   'rbac',

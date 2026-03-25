@@ -1,30 +1,30 @@
 <template>
   <aside
     data-testid="connectshyft-neighbor-snapshot"
-    class="rounded-[28px] border border-slate-200 bg-white/90 p-5 shadow-[0_24px_80px_-48px_rgba(15,23,42,0.45)]"
+    class="cs-card cs-card--padded cs-shell-panel"
   >
     <header class="border-b border-slate-200 pb-4">
-      <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+      <p class="cs-kicker">
         Neighbor Snapshot
       </p>
-      <h2 class="mt-2 text-2xl font-semibold text-slate-900">
+      <h2 class="mt-2 cs-heading-md">
         {{ title }}
       </h2>
-      <p class="mt-1 text-sm font-medium text-slate-500">
+      <p class="mt-1 cs-meta">
         {{ subtitle }}
       </p>
     </header>
 
     <div class="mt-5 space-y-3">
-      <div class="rounded-3xl border border-slate-200 bg-slate-50/80 px-4 py-4">
-        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Contact</p>
-        <p class="mt-2 text-lg font-semibold text-slate-900">
+      <div class="cs-card cs-card--compact cs-card--muted shadow-none">
+        <p class="cs-kicker">Contact</p>
+        <p class="mt-2 text-lg font-semibold text-stone-900">
           {{ resolvedName }}
         </p>
-        <p class="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+        <p class="mt-3 cs-kicker">
           Phone
         </p>
-        <p class="mt-1 text-base font-medium text-slate-600">
+        <p class="mt-1 cs-body font-medium">
           {{ primaryPhoneLabel }}
         </p>
       </div>
@@ -51,8 +51,8 @@
         </span>
       </div>
 
-      <div class="rounded-3xl border border-dashed border-slate-200 px-4 py-4 text-base leading-7 text-slate-500">
-        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+      <div class="rounded-3xl border border-dashed border-stone-200 px-4 py-4 text-base leading-7 text-stone-500">
+        <p class="cs-kicker">
           Volunteer note
         </p>
         <p class="mt-2">
@@ -75,7 +75,7 @@ const props = withDefaults(defineProps<{
   note?: string;
 }>(), {
   subtitle: 'Keep the neighbor context front and center.',
-  note: 'Volunteer-safe contact context stays visible here without leaking routing internals into the conversation flow.',
+  note: 'Helpful contact context stays visible here without crowding the conversation.',
 });
 
 const resolvedName = computed(() => {
