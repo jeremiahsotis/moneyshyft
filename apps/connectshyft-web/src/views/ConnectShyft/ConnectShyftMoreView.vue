@@ -1,24 +1,27 @@
 <template>
-  <main class="min-h-screen bg-slate-50 px-4 py-6 pb-32 sm:py-8">
+  <main class="cs-page-shell">
     <section
       data-testid="connectshyft-more-surface"
-      class="mx-auto max-w-4xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+      class="cs-page-shell__inner--narrow cs-card cs-card--padded cs-shell-panel"
     >
       <header class="mb-6">
-        <h1 class="text-2xl font-semibold text-slate-900">ConnectShyft More</h1>
-        <p class="mt-2 text-sm text-slate-600">
-          Secondary tools and policy-safe settings for ConnectShyft operators.
-        </p>
+        <SectionHeader
+          eyebrow="ConnectShyft"
+          title="ConnectShyft More"
+          description="Keep the essentials close without crowding the everyday work."
+          size="md"
+        />
         <p
           :data-testid="layoutTestId"
-          class="mt-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+          aria-hidden="true"
+          class="hidden"
         >
           {{ layoutLabel }}
         </p>
         <p
           v-if="settingsRefusalGuidance"
           data-testid="connectshyft-settings-refusal-guidance"
-          class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          class="cs-shell-notice cs-shell-notice--warning mt-4"
         >
           {{ settingsRefusalGuidance }}
         </p>
@@ -28,77 +31,31 @@
         <RouterLink
           :to="{ path: '/app/connectshyft/directory', query: navigationQuery }"
           data-testid="connectshyft-more-option-directory"
-          class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700 transition hover:bg-slate-100"
+          class="cs-card cs-card--compact cs-card--interactive cs-card--muted text-left"
         >
-          <p class="font-semibold text-slate-900">Directory</p>
-          <p class="mt-1">Find and open neighbor records for conversation work.</p>
+          <p class="cs-heading-md">Directory</p>
+          <p class="mt-2 cs-meta">Find and open neighbor records for conversation work.</p>
         </RouterLink>
 
         <RouterLink
           :to="{ path: '/app/connectshyft/settings', query: navigationQuery }"
           data-testid="connectshyft-more-option-settings"
-          class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700 transition hover:bg-slate-100"
+          class="cs-card cs-card--compact cs-card--interactive cs-card--muted text-left"
         >
-          <p class="font-semibold text-slate-900">ConnectShyft Settings</p>
-          <p class="mt-1">Set your callback / forwarding number and check voice forwarding readiness.</p>
-        </RouterLink>
-
-        <div
-          data-testid="connectshyft-more-option-notifications"
-          class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700"
-        >
-          <p class="font-semibold text-slate-900">Notifications</p>
-          <p class="mt-1">Review notification preferences for volunteer-safe updates.</p>
-        </div>
-
-        <div
-          data-testid="connectshyft-more-option-display-preferences"
-          class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700"
-        >
-          <p class="font-semibold text-slate-900">Display Preferences</p>
-          <p class="mt-1">Keep conversation views readable and volunteer-first.</p>
-        </div>
-
-        <RouterLink
-          v-if="canAccessAdminSettings"
-          :to="{ path: '/app/connectshyft/settings/availability', query: navigationQuery }"
-          data-testid="connectshyft-more-admin-option-availability"
-          class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700 transition hover:bg-slate-100"
-        >
-          <p class="font-semibold text-slate-900">Availability</p>
-          <p class="mt-1">Check module and capability rollout state for the current tenant.</p>
-        </RouterLink>
-
-        <RouterLink
-          v-if="canAccessAdminSettings"
-          :to="{ path: '/app/connectshyft/settings/numbers', query: navigationQuery }"
-          data-testid="connectshyft-more-admin-option-numbers"
-          class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700 transition hover:bg-slate-100"
-        >
-          <p class="font-semibold text-slate-900">Number Mappings</p>
-          <p class="mt-1">Review inbound and outbound ConnectShyft number assignments.</p>
-        </RouterLink>
-
-        <RouterLink
-          v-if="canAccessAdminSettings"
-          :to="{ path: '/app/connectshyft/settings/escalation', query: navigationQuery }"
-          data-testid="connectshyft-more-admin-option-escalation"
-          class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-left text-sm text-slate-700 transition hover:bg-slate-100"
-        >
-          <p class="font-semibold text-slate-900">Escalation Settings</p>
-          <p class="mt-1">Manage escalation baselines and recipient policy routing.</p>
+          <p class="cs-heading-md">ConnectShyft Settings</p>
+          <p class="mt-2 cs-meta">Set your callback number and check call and text readiness.</p>
         </RouterLink>
       </section>
 
       <div class="mt-6">
-        <button
+        <ActionButton
           type="button"
           data-testid="connectshyft-more-option-sign-out"
-          class="min-h-[44px] rounded border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+          tone="secondary"
           @click="handleSignOut"
         >
           Sign Out
-        </button>
+        </ActionButton>
       </div>
     </section>
 
@@ -108,12 +65,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import ActionButton from '@/components/ui/ActionButton.vue';
+import SectionHeader from '@/components/ui/SectionHeader.vue';
 import { CONNECTSHYFT_RESPONSIVE_BREAKPOINTS } from '@/features/connectshyft/uiContracts';
-import {
-  hasConnectShyftAdminSettingsCapability,
-  normalizeConnectShyftQueryValue,
-  resolveConnectShyftAdminAccessFromQuery,
-} from '@/features/connectshyft/settingsAccess';
+import { normalizeConnectShyftQueryValue } from '@/features/connectshyft/settingsAccess';
 
 const route = useRoute();
 const router = useRouter();
@@ -137,16 +92,6 @@ onBeforeUnmount(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', updateViewportWidth);
   }
-});
-
-const canAccessAdminSettings = computed(() => {
-  const queryScopedAccess = resolveConnectShyftAdminAccessFromQuery(route.query);
-  const capabilityScopedAccess = hasConnectShyftAdminSettingsCapability({
-    hasAnyAdminAccess: false,
-    hasCapability: () => false,
-  });
-
-  return queryScopedAccess === null ? capabilityScopedAccess : queryScopedAccess;
 });
 
 const navigationQuery = computed(() => {
@@ -190,7 +135,7 @@ const settingsRefusalGuidance = computed(() => {
     return '';
   }
 
-  return `Access to ${refusedPath} is available to authorized admin users only. Use the approved settings entry points for your role.`;
+  return 'That page is only available to people with the right permissions. Use the settings pages available for your role.';
 });
 
 const handleSignOut = async (): Promise<void> => {

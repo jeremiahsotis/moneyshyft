@@ -1,17 +1,17 @@
 <template>
-  <div data-testid="app-shell-root" class="min-h-screen bg-slate-100 text-slate-900">
-    <header class="border-b border-slate-200 bg-white/95 backdrop-blur">
+  <div data-testid="app-shell-root" class="min-h-screen text-stone-900">
+    <header class="border-b border-stone-200/80 bg-[rgb(250_247_241_/_0.82)] backdrop-blur-xl">
       <div class="mx-auto max-w-7xl px-4 py-5 sm:px-6">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div class="space-y-1">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+            <p class="cs-kicker">
               ShyftUnity
             </p>
             <div class="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
-              <h1 class="text-2xl font-semibold tracking-tight text-slate-900">
+              <h1 class="cs-heading-lg">
                 {{ currentTitle }}
               </h1>
-              <p class="text-sm text-slate-500">
+              <p class="cs-meta">
                 {{ currentSummary }}
               </p>
             </div>
@@ -44,7 +44,7 @@
         <p
           v-if="isNavigating"
           data-testid="shell-loading-state"
-          class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600"
+          class="cs-shell-notice cs-shell-notice--info mt-4"
         >
           Loading workspace...
         </p>
@@ -65,20 +65,20 @@
         data-testid="shell-surface-error"
         class="mx-auto max-w-3xl px-4 sm:px-6"
       >
-        <div class="rounded-[32px] border border-amber-200 bg-amber-50 p-8 text-amber-950 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.2)]">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-700">
+        <div class="cs-card cs-card--roomy cs-shell-panel border-amber-200 bg-amber-50 text-amber-950">
+          <p class="cs-kicker text-amber-700">
             Workspace unavailable
           </p>
-          <h2 class="mt-3 text-2xl font-semibold tracking-tight">
+          <h2 class="mt-3 cs-heading-lg">
             We couldn’t load this workspace.
           </h2>
-          <p class="mt-3 text-base text-amber-900/80">
+          <p class="mt-3 cs-body text-amber-900/80">
             {{ orgUnitError || 'Try again to reload your current access and workspace context.' }}
           </p>
           <button
             type="button"
             data-testid="shell-surface-retry"
-            class="mt-6 inline-flex min-h-[44px] items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+            class="cs-button cs-button--primary mt-6"
             @click="retryShellSurface"
           >
             Retry
@@ -91,14 +91,14 @@
         data-testid="shell-surface-loading"
         class="mx-auto max-w-3xl px-4 sm:px-6"
       >
-        <div class="rounded-[32px] border border-slate-200 bg-white p-8 text-slate-700 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.2)]">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+        <div class="cs-card cs-card--roomy cs-shell-panel text-stone-700">
+          <p class="cs-kicker">
             Loading
           </p>
-          <h2 class="mt-3 text-2xl font-semibold tracking-tight text-slate-900">
+          <h2 class="mt-3 cs-heading-lg">
             Preparing your workspace
           </h2>
-          <p class="mt-3 text-base text-slate-600">
+          <p class="mt-3 cs-body">
             We’re checking your current access and loading the right page.
           </p>
         </div>
@@ -120,21 +120,21 @@
       aria-modal="true"
       aria-labelledby="shell-orgunit-confirmation-title"
     >
-      <div class="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+      <div class="cs-card cs-card--padded cs-shell-panel w-full max-w-md bg-white">
         <h2
           id="shell-orgunit-confirmation-title"
-          class="text-lg font-semibold text-slate-900"
+          class="cs-heading-md"
         >
-          Switch orgUnit?
+          Switch workspace?
         </h2>
-        <p class="mt-3 text-sm leading-6 text-slate-600">
-          This will clear the current person or conversation and take you to the nearest available page in the selected orgUnit.
+        <p class="mt-3 cs-body">
+          This will clear the current person or conversation and take you to the nearest available page in the selected workspace.
         </p>
         <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
             data-testid="shell-orgunit-cancel"
-            class="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+            class="cs-button cs-button--secondary"
             @click="cancelPendingOrgUnitSwitch"
           >
             Cancel
@@ -142,10 +142,10 @@
           <button
             type="button"
             data-testid="shell-orgunit-confirm-switch"
-            class="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+            class="cs-button cs-button--primary"
             @click="confirmPendingOrgUnitSwitch"
           >
-            Switch orgUnit
+            Switch workspace
           </button>
         </div>
       </div>

@@ -1,50 +1,48 @@
 <template>
   <section
     data-testid="connectshyft-composer"
-    class="rounded-lg border border-slate-300 bg-slate-50 p-3"
-    :style="composerStyle"
+    class="cs-card cs-card--compact cs-card--muted"
   >
     <label
-      class="block text-slate-700"
+      class="cs-field-label"
       :for="composerId"
-      :style="labelStyle"
     >
       Message
     </label>
     <textarea
       :id="composerId"
+      ref="composerInput"
       data-testid="connectshyft-composer-input"
       rows="3"
       :value="modelValue"
       :disabled="disabled"
       :placeholder="placeholder"
       :class="[
-        'mt-2 w-full rounded border border-slate-300 px-3 py-2 text-slate-900 disabled:cursor-not-allowed disabled:bg-slate-100',
+        'cs-textarea mt-2',
         focusRingClass,
       ]"
-      :style="[tapTargetStyle, inputStyle]"
+      :style="tapTargetStyle"
       @input="onInput"
     />
-    <div class="mt-2 flex justify-end">
-      <button
-        type="button"
+    <div class="mt-3 flex justify-end">
+      <ActionButton
         data-testid="connectshyft-composer-submit"
-        :class="[
-          'min-h-[44px] rounded bg-slate-900 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60',
-          focusRingClass,
-        ]"
-        :style="tapTargetStyle"
+        class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
+        tone="primary"
         :disabled="disabled || submitDisabled"
         @click="$emit('submit')"
       >
         {{ submitLabel }}
-      </button>
+      </ActionButton>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{
+import { nextTick, ref, watch } from 'vue';
+import ActionButton from '@/components/ui/ActionButton.vue';
+
+const props = withDefaults(defineProps<{
   modelValue: string;
   disabled: boolean;
   submitDisabled: boolean;
@@ -53,31 +51,34 @@ withDefaults(defineProps<{
   focusRingClass: string;
   tapTargetStyle: Record<string, string>;
   composerId?: string;
+  autofocus?: boolean;
 }>(), {
   placeholder: 'Type a message for this thread',
   composerId: 'connectshyft-composer-input-field',
+  autofocus: false,
 });
 
 const emit = defineEmits<{
   'update:modelValue': [value: string];
   submit: [];
 }>();
+const composerInput = ref<HTMLTextAreaElement | null>(null);
 
 const onInput = (event: Event): void => {
   const target = event.target as HTMLTextAreaElement | null;
   emit('update:modelValue', target?.value ?? '');
 };
 
-const composerStyle = {
-  borderRadius: 'var(--cs-radius-card)',
-};
+watch(
+  () => props.autofocus,
+  async (autofocus) => {
+    if (!autofocus || props.disabled) {
+      return;
+    }
 
-const labelStyle = {
-  fontSize: 'var(--cs-type-body-sm)',
-};
-
-const inputStyle = {
-  fontSize: 'var(--cs-type-body-md)',
-};
-
+    await nextTick();
+    composerInput.value?.focus();
+  },
+  { immediate: true },
+);
 </script>

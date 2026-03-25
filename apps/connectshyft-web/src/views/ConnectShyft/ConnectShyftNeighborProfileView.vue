@@ -3,19 +3,24 @@
     <section class="mx-auto max-w-4xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
       <header class="mb-6">
         <h1 class="text-2xl font-semibold text-slate-900">
-          Neighbor Profile
+          Contact Profile
         </h1>
         <p class="mt-2 text-sm text-slate-600">
-          Changes here affect all orgUnits in this tenant immediately.
+          Update the details that help everyone respond with confidence.
         </p>
       </header>
 
       <section
         class="mb-6 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"
       >
-        <p class="font-medium text-slate-900">Active scope</p>
-        <p class="mt-1">Tenant: {{ scope?.tenantId || 'Resolving from server...' }}</p>
-        <p>orgUnit: {{ scope?.orgUnitId || 'Resolving from server...' }}</p>
+        <p class="font-medium text-slate-900">Current workspace</p>
+        <p class="mt-1">
+          {{
+            scope
+              ? 'This contact stays available from the current workspace while shared details remain in sync.'
+              : 'Confirming your current workspace.'
+          }}
+        </p>
       </section>
 
       <section
@@ -44,16 +49,13 @@
         class="mb-6 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
       >
         <p class="font-medium">Unable to load neighbor profile</p>
-        <p class="mt-1" data-testid="connectshyft-neighbor-profile-refusal-code">
-          {{ refusalState.code }}
-        </p>
         <p class="mt-1">{{ refusalState.message }}</p>
         <button
           type="button"
           disabled
           class="mt-3 rounded bg-slate-400 px-3 py-2 text-sm font-medium text-white"
         >
-          Save Neighbor Profile
+          Save Contact Profile
         </button>
       </section>
 
@@ -136,7 +138,7 @@
                   type="checkbox"
                   @change="toggleShared(index, $event)"
                 >
-                Shared across tenant
+                Shared number
               </label>
             </div>
           </article>
@@ -163,7 +165,7 @@
             :disabled="isSubmitting || Boolean(refusalState)"
             class="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
           >
-            Save Neighbor Profile
+            Save Contact Profile
           </button>
         </div>
 
@@ -171,18 +173,18 @@
           v-if="provenanceOrgUnit || provenanceActor"
           class="mt-4 rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700"
         >
-          <p class="font-semibold text-slate-900">Last update provenance</p>
+          <p class="font-semibold text-slate-900">Recent update</p>
           <p
             data-testid="connectshyft-neighbor-provenance-orgunit"
             class="mt-1"
           >
-            orgUnit: {{ provenanceOrgUnit }}
+            {{ provenanceOrgUnit ? 'Saved from the current workspace.' : '' }}
           </p>
           <p
             data-testid="connectshyft-neighbor-provenance-actor"
             class="mt-1"
           >
-            actor: {{ provenanceActor }}
+            {{ provenanceActor ? 'A teammate made the latest update.' : '' }}
           </p>
         </section>
 
@@ -190,12 +192,9 @@
           v-if="canRenderMergeControls"
           class="mt-6 rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900"
         >
-          <p class="font-semibold text-rose-950">Neighbor merge</p>
+          <p class="font-semibold text-rose-950">Merge duplicate contact</p>
           <p class="mt-1">
-            This action is irreversible and merges source identity records into the current profile.
-          </p>
-          <p class="mt-2 text-xs text-rose-800">
-            Source: {{ mergeCandidateNeighborId }} → Survivor: {{ profile?.neighborId }}
+            This action is irreversible and folds the selected duplicate into the contact you are viewing.
           </p>
 
           <section
@@ -204,9 +203,6 @@
             class="mt-3 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-amber-900"
           >
             <p class="font-medium">Merge unavailable</p>
-            <p data-testid="connectshyft-neighbor-merge-refusal-code" class="mt-1">
-              {{ mergeActiveRefusalState.code }}
-            </p>
             <p class="mt-1">{{ mergeActiveRefusalState.message }}</p>
           </section>
 
@@ -218,24 +214,6 @@
             {{ mergeSuccessMessage }}
           </p>
 
-          <div
-            v-if="mergeAuditBeforeId || mergeAuditAfterId"
-            class="mt-2 rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"
-          >
-            <p
-              data-testid="connectshyft-neighbor-merge-audit-before-id"
-              class="font-medium"
-            >
-              before: {{ mergeAuditBeforeId }}
-            </p>
-            <p
-              data-testid="connectshyft-neighbor-merge-audit-after-id"
-              class="mt-1 font-medium"
-            >
-              after: {{ mergeAuditAfterId }}
-            </p>
-          </div>
-
           <div v-if="!mergeActiveRefusalState" class="mt-3">
             <button
               type="button"
@@ -244,7 +222,7 @@
               class="rounded bg-rose-700 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-rose-300"
               @click="openMergeModal"
             >
-              Merge Neighbor Records
+              Merge Duplicate
             </button>
           </div>
         </section>
@@ -257,7 +235,7 @@
       class="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/40 px-4"
     >
       <div class="w-full max-w-lg rounded-lg border border-slate-300 bg-white p-5 shadow-lg">
-        <h2 class="text-lg font-semibold text-slate-900">Confirm irreversible merge</h2>
+        <h2 class="text-lg font-semibold text-slate-900">Confirm merge</h2>
         <p class="mt-2 text-sm text-slate-700">
           This action is irreversible. Type the exact confirmation phrase to continue.
         </p>
@@ -265,7 +243,7 @@
           data-testid="connectshyft-neighbor-merge-impact-summary"
           class="mt-3 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700"
         >
-          Source: {{ mergeCandidateNeighborId }} → Survivor: {{ profile?.neighborId }}
+          The selected duplicate will be merged into this contact.
         </p>
 
         <label class="mt-4 block text-sm text-slate-700">
@@ -300,7 +278,7 @@
             class="rounded bg-rose-700 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-rose-300"
             @click="handleMerge"
           >
-            Confirm Merge
+            Merge Contact
           </button>
         </div>
       </div>
@@ -351,7 +329,7 @@ const mergeAuditAfterId = ref<string | null>(null);
 const mergeRefusalState = ref<{ code: string; message: string } | null>(null);
 const MERGE_CONFIRMATION_PHRASE = 'IRREVERSIBLE MERGE';
 const MERGE_FORBIDDEN_CODE = 'CONNECTSHYFT_NEIGHBOR_MERGE_FORBIDDEN';
-const MERGE_FORBIDDEN_MESSAGE = 'Neighbor merge requires an authorized role.';
+const MERGE_FORBIDDEN_MESSAGE = 'Merging contacts requires the right permissions.';
 
 const mergeCandidateNeighborId = computed(() => {
   const rawCandidate = route.query.mergeCandidateNeighborId;
@@ -528,7 +506,7 @@ const handleSave = async (): Promise<void> => {
   contextOverrideNotice.value = result.contextOverrideNotice;
   provenanceOrgUnit.value = result.provenance?.orgUnitId || null;
   provenanceActor.value = result.provenance?.actorUserId || null;
-  successMessage.value = 'Neighbor profile updated';
+  successMessage.value = 'Contact profile updated.';
 };
 
 const openMergeModal = (): void => {
@@ -591,7 +569,7 @@ const handleMerge = async (): Promise<void> => {
   mergeConfirmationInput.value = '';
   mergeError.value = '';
   mergeRefusalState.value = null;
-  mergeSuccessMessage.value = 'Neighbor merge complete';
+  mergeSuccessMessage.value = 'Contact merge complete.';
   mergeAuditBeforeId.value = result.audit?.beforeNeighborId || result.merge.sourceNeighborId;
   mergeAuditAfterId.value = result.audit?.afterNeighborId || result.merge.survivorNeighborId;
 };

@@ -317,7 +317,7 @@ describe('ConnectShyftSettingsView', () => {
       'Ready',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-readiness-message"]').text()).toContain(
-      'Voice and SMS are ready for this operator.',
+      'Calls and texts are ready.',
     );
     expect(wrapper.get('[data-testid="connectshyft-voice-readiness-chip"]').text()).toContain(
       'Ready',
@@ -340,16 +340,16 @@ describe('ConnectShyftSettingsView', () => {
     );
 
     expect(wrapper.get('[data-testid="connectshyft-settings-refusal-guidance"]').text()).toContain(
-      'Access to /app/connectshyft/settings/availability is available to authorized admin users only.',
+      'That page is only available to people with the right permissions.',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-number-empty"]').text()).toContain(
       'No callback number saved yet.',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-readiness-message"]').text()).toContain(
-      'Voice forwarding requires an operator callback number.',
+      'Save a callback number so calls and texts can reach you.',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-readiness-chip"]').text()).toContain(
-      'Action Needed',
+      'Needs setup',
     );
     expect(wrapper.get('[data-testid="connectshyft-voice-readiness-chip"]').text()).toContain(
       'Blocked',
@@ -358,7 +358,7 @@ describe('ConnectShyftSettingsView', () => {
       'Blocked',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-next-action"]').text()).toContain(
-      'Save a callback / forwarding number for the current operator.',
+      'Save a callback number to finish setup.',
     );
   });
 
@@ -368,13 +368,13 @@ describe('ConnectShyftSettingsView', () => {
     const wrapper = await renderSettingsView();
 
     expect(wrapper.get('[data-testid="connectshyft-callback-readiness-chip"]').text()).toContain(
-      'Degraded Mode',
+      'Using backup line',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-readiness-message"]').text()).toContain(
-      'Voice and SMS are available, but ConnectShyft is relying on the orgUnit fallback phone.',
+      'Calls and texts are working, but ConnectShyft is still using the backup line.',
     );
     expect(wrapper.get('[data-testid="connectshyft-degraded-mode-banner"]').text()).toContain(
-      'OrgUnit fallback active',
+      'Backup line active',
     );
     expect(wrapper.get('[data-testid="connectshyft-voice-readiness-chip"]').text()).toContain(
       'Ready',
@@ -383,7 +383,7 @@ describe('ConnectShyftSettingsView', () => {
       'Ready',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-next-action"]').text()).toContain(
-      'Save a callback / forwarding number so telephony no longer depends on the orgUnit fallback phone.',
+      'Save your own callback number so ConnectShyft no longer needs the backup line.',
     );
   });
 
@@ -441,7 +441,7 @@ describe('ConnectShyftEscalationSettingsView', () => {
     const wrapper = await renderEscalationSettingsView();
 
     expect(wrapper.get('[data-testid="connectshyft-escalation-settings-surface"]').text()).toContain(
-      'ConnectShyft Escalation Settings',
+      'Escalation Settings',
     );
     expect(
       (wrapper.get('[data-testid="connectshyft-escalation-fallback-phone-input"]').element as HTMLInputElement).value,

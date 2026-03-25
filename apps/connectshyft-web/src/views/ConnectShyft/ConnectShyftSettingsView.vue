@@ -1,67 +1,66 @@
 <template>
-  <main class="min-h-screen bg-slate-50 px-4 py-8 pb-32">
+  <main class="cs-page-shell">
     <section
       data-testid="connectshyft-settings-surface"
-      class="mx-auto max-w-3xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+      class="cs-page-shell__inner--narrow cs-stack"
     >
-      <header class="mb-6">
-        <h1 class="text-2xl font-semibold text-slate-900">
-          ConnectShyft Settings
-        </h1>
-        <p class="mt-2 text-sm text-slate-600">
-          Make voice forwarding work for your operator account.
-        </p>
-        <p
-          class="mt-2 text-sm text-slate-600"
-        >
-          Inbound and bridge calls use this number to reach you, so save the line where you want ConnectShyft to ring.
-        </p>
+      <SurfaceCard padding="default" panel tone="soft">
+        <header class="space-y-4">
+          <SectionHeader
+            eyebrow="Settings"
+            title="ConnectShyft Settings"
+            description="Choose the phone number ConnectShyft should ring when someone needs you."
+            size="md"
+          />
+          <p class="cs-body">
+            Save the number you want ConnectShyft to call first when a conversation needs you.
+          </p>
+        </header>
         <p
           v-if="settingsRefusalGuidance"
           data-testid="connectshyft-settings-refusal-guidance"
-          class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          class="cs-shell-notice cs-shell-notice--warning mt-4"
         >
           {{ settingsRefusalGuidance }}
         </p>
         <p
           v-if="loadError"
           data-testid="connectshyft-settings-load-error"
-          class="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          class="cs-shell-notice cs-shell-notice--warning mt-4"
         >
           {{ loadError }}
         </p>
-      </header>
+      </SurfaceCard>
 
-      <section
+      <SurfaceCard
         data-testid="connectshyft-callback-settings-card"
-        class="rounded-xl border border-slate-200 bg-slate-50 p-5"
+        class="min-w-0"
+        padding="default"
+        panel
+        tone="soft"
       >
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 class="text-lg font-semibold text-slate-900">
-              Callback / forwarding number
-            </h2>
-            <p class="mt-1 text-sm text-slate-600">
-              Use a direct phone number where live voice calls can reach you.
-            </p>
-          </div>
+          <SectionHeader
+            eyebrow="Call setup"
+            title="Callback number"
+            description="Use a direct phone number where live calls can reach you."
+            size="md"
+          />
 
-          <span
+          <StatusBadge
             data-testid="connectshyft-callback-readiness-chip"
-            class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
-            :class="statusChipClass"
-          >
-            {{ statusChipLabel }}
-          </span>
+            :tone="statusChipTone"
+            :label="statusChipLabel"
+          />
         </div>
 
         <div
-          class="mt-4 rounded-lg border px-4 py-3 text-sm"
+          class="mt-4 cs-shell-notice"
           :class="statusPanelClass"
         >
           <p
             data-testid="connectshyft-callback-readiness-message"
-            class="font-medium"
+            class="font-semibold"
           >
             {{ statusMessage }}
           </p>
@@ -77,98 +76,94 @@
         <div
           v-if="readiness.degradedMode"
           data-testid="connectshyft-degraded-mode-banner"
-          class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          class="cs-shell-notice cs-shell-notice--warning mt-4"
         >
           <p
             data-testid="connectshyft-fallback-indicator"
-            class="font-medium"
+            class="font-semibold"
           >
-            OrgUnit fallback active
+            Backup line active
           </p>
           <p class="mt-1">
-            ConnectShyft is routing through the orgUnit fallback phone until a usable personal callback number is available.
+            ConnectShyft can still reach you, but it is relying on the backup line until you save your own callback number.
           </p>
         </div>
 
         <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <article
+          <SurfaceCard
             data-testid="connectshyft-voice-readiness-card"
-            class="rounded-lg border px-4 py-3"
+            padding="compact"
             :class="readinessCardClass(readiness.voiceReady)"
           >
             <div class="flex items-center justify-between gap-3">
-              <p class="text-sm font-semibold text-slate-900">
+              <p class="cs-heading-md text-base">
                 Voice
               </p>
-              <span
+              <StatusBadge
                 data-testid="connectshyft-voice-readiness-chip"
-                class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
-                :class="readinessChipClass(readiness.voiceReady)"
-              >
-                {{ readiness.voiceReady ? 'Ready' : 'Blocked' }}
-              </span>
+                :tone="readiness.voiceReady ? 'success' : 'attention'"
+                :label="readiness.voiceReady ? 'Ready' : 'Blocked'"
+              />
             </div>
             <p
               data-testid="connectshyft-voice-readiness-detail"
-              class="mt-2 text-sm"
+              class="mt-2 cs-body"
             >
               {{ voiceStatusDetail }}
             </p>
-          </article>
+          </SurfaceCard>
 
-          <article
+          <SurfaceCard
             data-testid="connectshyft-sms-readiness-card"
-            class="rounded-lg border px-4 py-3"
+            padding="compact"
             :class="readinessCardClass(readiness.smsReady)"
           >
             <div class="flex items-center justify-between gap-3">
-              <p class="text-sm font-semibold text-slate-900">
+              <p class="cs-heading-md text-base">
                 SMS
               </p>
-              <span
+              <StatusBadge
                 data-testid="connectshyft-sms-readiness-chip"
-                class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide"
-                :class="readinessChipClass(readiness.smsReady)"
-              >
-                {{ readiness.smsReady ? 'Ready' : 'Blocked' }}
-              </span>
+                :tone="readiness.smsReady ? 'success' : 'attention'"
+                :label="readiness.smsReady ? 'Ready' : 'Blocked'"
+              />
             </div>
             <p
               data-testid="connectshyft-sms-readiness-detail"
-              class="mt-2 text-sm"
+              class="mt-2 cs-body"
             >
               {{ smsStatusDetail }}
             </p>
-          </article>
+          </SurfaceCard>
         </div>
 
-        <div class="mt-4 rounded-lg border border-slate-200 bg-white px-4 py-3">
-          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <SurfaceCard class="mt-4" padding="compact">
+          <p class="cs-kicker">
             Current number
           </p>
           <p
             v-if="hasSavedCallbackNumber"
             data-testid="connectshyft-current-callback-number"
-            class="mt-1 text-base font-medium text-slate-900"
+            class="mt-2 text-base font-semibold text-stone-900"
           >
             {{ currentCallbackNumberLabel }}
           </p>
           <p
             v-else
             data-testid="connectshyft-callback-number-empty"
-            class="mt-1 text-sm text-slate-600"
+            class="mt-2 cs-body"
           >
             No callback number saved yet.
           </p>
-        </div>
+        </SurfaceCard>
 
         <form
           class="mt-4"
           novalidate
           @submit.prevent="handleSave"
         >
-          <label class="flex flex-col gap-1 text-sm text-slate-700">
-            Callback / forwarding number
+          <label class="cs-field-label">
+            Callback number
             <input
               v-model="callbackNumberInput"
               data-testid="connectshyft-callback-number-input"
@@ -177,18 +172,18 @@
               autocomplete="tel"
               placeholder="(317) 555-0100"
               :disabled="isInitializing || isSaving"
-              class="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
+              class="cs-input"
             >
           </label>
 
-          <p class="mt-2 text-xs text-slate-500">
-            Save the number you want ConnectShyft to call when a voice conversation needs you.
+          <p class="mt-2 cs-meta">
+            Save the number ConnectShyft should use when a live call needs you.
           </p>
 
           <p
             v-if="validationError"
             data-testid="connectshyft-callback-validation-error"
-            class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+            class="cs-shell-notice cs-shell-notice--warning mt-3"
           >
             {{ validationError }}
           </p>
@@ -196,22 +191,22 @@
           <p
             v-if="saveSuccessMessage"
             data-testid="connectshyft-callback-save-success"
-            class="mt-3 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+            class="cs-shell-notice mt-3 border-emerald-200 bg-emerald-50 text-emerald-900"
           >
             {{ saveSuccessMessage }}
           </p>
 
           <div class="mt-4">
-            <button
+            <ActionButton
               type="submit"
               :disabled="isInitializing || isSaving"
-              class="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+              tone="primary"
             >
               {{ saveButtonLabel }}
-            </button>
+            </ActionButton>
           </div>
         </form>
-      </section>
+      </SurfaceCard>
     </section>
 
   </main>
@@ -220,6 +215,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import ActionButton from '@/components/ui/ActionButton.vue';
+import SectionHeader from '@/components/ui/SectionHeader.vue';
+import StatusBadge from '@/components/ui/StatusBadge.vue';
+import SurfaceCard from '@/components/ui/SurfaceCard.vue';
 import {
   DEFAULT_CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER,
   DEFAULT_CONNECTSHYFT_TELEPHONY_READINESS,
@@ -263,7 +262,7 @@ const settingsRefusalGuidance = computed(() => {
     return '';
   }
 
-  return `Access to ${refusedPath} is available to authorized admin users only. Use the approved settings entry points for your role.`;
+  return 'That page is only available to people with the right permissions. Use the settings pages available for your role.';
 });
 
 const hasSavedCallbackNumber = computed(() =>
@@ -272,24 +271,9 @@ const hasSavedCallbackNumber = computed(() =>
 const currentCallbackNumberLabel = computed(() =>
   callbackNumber.value.rawInput || callbackNumber.value.value || '');
 
-const callbackBlockingReason = computed(() =>
-  readiness.value.blockingReasons.find((reason) => reason.category === 'callback_number') || null);
-
-const orgUnitFallbackReason = computed(() =>
-  readiness.value.blockingReasons.find((reason) => reason.category === 'orgunit_fallback') || null);
-
-const smsBlockingReason = computed(() =>
-  readiness.value.blockingReasons.find((reason) =>
-    reason.category === 'sms'
-    || reason.channel === 'sms'
-    || reason.channel === 'both') || null);
-
-const fallbackNextAction = computed(() =>
-  readiness.value.nextActions[0]?.message || '');
-
 const statusChipLabel = computed(() => {
   if (readiness.value.degradedMode) {
-    return 'Degraded Mode';
+    return 'Using backup line';
   }
 
   if (readiness.value.voiceReady && readiness.value.smsReady) {
@@ -297,26 +281,26 @@ const statusChipLabel = computed(() => {
   }
 
   if (hasSavedCallbackNumber.value) {
-    return 'Saved';
+    return 'Number saved';
   }
 
-  return 'Action Needed';
+  return 'Needs setup';
 });
 
-const statusChipClass = computed(() => {
+const statusChipTone = computed<'attention' | 'success' | 'context'>(() => {
   if (readiness.value.degradedMode) {
-    return 'border border-amber-200 bg-amber-100 text-amber-800';
+    return 'attention';
   }
 
   if (readiness.value.voiceReady && readiness.value.smsReady) {
-    return 'border border-emerald-200 bg-emerald-100 text-emerald-800';
+    return 'success';
   }
 
   if (hasSavedCallbackNumber.value) {
-    return 'border border-sky-200 bg-sky-100 text-sky-800';
+    return 'context';
   }
 
-  return 'border border-amber-200 bg-amber-100 text-amber-800';
+  return 'attention';
 });
 
 const statusPanelClass = computed(() => {
@@ -337,30 +321,26 @@ const statusPanelClass = computed(() => {
 
 const statusMessage = computed(() => {
   if (readiness.value.degradedMode) {
-    return 'Voice and SMS are available, but ConnectShyft is relying on the orgUnit fallback phone.';
+    return 'Calls and texts are working, but ConnectShyft is still using the backup line.';
   }
 
   if (readiness.value.voiceReady && readiness.value.smsReady) {
-    return 'Voice and SMS are ready for this operator.';
+    return 'Calls and texts are ready.';
   }
 
   if (readiness.value.voiceReady) {
-    return 'Voice is ready, but SMS still needs more setup.';
+    return 'Calls are ready, but texting still needs a little more setup.';
   }
 
   if (readiness.value.smsReady) {
-    return 'SMS is ready, but voice forwarding still needs more setup.';
-  }
-
-  if (callbackBlockingReason.value?.message) {
-    return callbackBlockingReason.value.message;
+    return 'Texting is ready, but calls still need a little more setup.';
   }
 
   if (hasSavedCallbackNumber.value) {
-    return 'Your callback number is saved, but voice forwarding still needs more setup.';
+    return 'Your callback number is saved, but calling still needs a little more setup.';
   }
 
-  return 'Save a callback number so inbound and bridge calls can reach you.';
+  return 'Save a callback number so calls and texts can reach you.';
 });
 
 const nextActionMessage = computed(() => {
@@ -368,59 +348,55 @@ const nextActionMessage = computed(() => {
     return '';
   }
 
-  const callbackSpecificAction = readiness.value.nextActions.find((action) =>
-    action.code === 'SET_OPERATOR_CALLBACK_NUMBER'
-    || action.code === 'REPLACE_OPERATOR_CALLBACK_NUMBER');
+  if (readiness.value.degradedMode) {
+    return 'Save your own callback number so ConnectShyft no longer needs the backup line.';
+  }
 
-  return callbackSpecificAction?.message || fallbackNextAction.value;
+  if (!hasSavedCallbackNumber.value) {
+    return 'Save a callback number to finish setup.';
+  }
+
+  return 'Finish the remaining calling and texting setup.';
 });
 
 const voiceStatusDetail = computed(() => {
-  if (readiness.value.degradedMode && orgUnitFallbackReason.value?.message) {
-    return orgUnitFallbackReason.value.message;
+  if (readiness.value.degradedMode) {
+    return 'Calls can still reach you because the backup line is standing in for your number.';
   }
 
   if (readiness.value.voiceReady) {
-    return 'Bridge and inbound voice calls can route to the active operator destination.';
+    return 'Calls can reach you on the saved line.';
   }
 
-  if (callbackBlockingReason.value?.message) {
-    return callbackBlockingReason.value.message;
+  if (hasSavedCallbackNumber.value) {
+    return 'Calls still need a working callback path.';
   }
 
-  return 'Voice forwarding still needs a usable operator destination.';
+  return 'Calls are waiting for a saved callback number.';
 });
 
 const smsStatusDetail = computed(() => {
-  if (readiness.value.degradedMode && orgUnitFallbackReason.value?.message) {
-    return 'SMS remains runnable while the orgUnit fallback phone is carrying telephony readiness.';
+  if (readiness.value.degradedMode) {
+    return 'Texting stays available while ConnectShyft uses the backup line.';
   }
 
   if (readiness.value.smsReady) {
-    return 'Outbound SMS can route through the current telephony configuration.';
+    return 'Texting is ready from this workspace.';
   }
 
-  if (smsBlockingReason.value?.message) {
-    return smsBlockingReason.value.message;
+  if (hasSavedCallbackNumber.value) {
+    return 'Texting still needs a little more setup.';
   }
 
-  if (callbackBlockingReason.value?.message) {
-    return 'SMS is blocked until the operator phone path becomes runnable.';
-  }
-
-  return 'SMS still needs more telephony setup before dispatch is allowed.';
+  return 'Texting is waiting for calling setup to finish.';
 });
 
 const readinessCardClass = (isReady: boolean): string => isReady
   ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
   : 'border-amber-200 bg-amber-50 text-amber-900';
 
-const readinessChipClass = (isReady: boolean): string => isReady
-  ? 'border border-emerald-200 bg-emerald-100 text-emerald-800'
-  : 'border border-amber-200 bg-amber-100 text-amber-800';
-
 const saveButtonLabel = computed(() =>
-  hasSavedCallbackNumber.value ? 'Update Callback Number' : 'Save Callback Number');
+  hasSavedCallbackNumber.value ? 'Update Number' : 'Save Number');
 
 const clearFeedback = (): void => {
   validationError.value = '';
@@ -442,7 +418,7 @@ const refreshReadiness = async (): Promise<void> => {
     appendLoadError(
       sanitizeConnectShyftOperatorCopy(
         error instanceof Error ? error.message : '',
-        'Unable to load telephony readiness right now.',
+        'Unable to load call and text status right now.',
       ),
     );
   }
@@ -476,7 +452,7 @@ const loadSettings = async (): Promise<void> => {
     appendLoadError(
       sanitizeConnectShyftOperatorCopy(
         readinessResult.reason instanceof Error ? readinessResult.reason.message : '',
-        'Unable to load telephony readiness right now.',
+        'Unable to load call and text status right now.',
       ),
     );
   }

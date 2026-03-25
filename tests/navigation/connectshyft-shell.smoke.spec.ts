@@ -262,8 +262,10 @@ test.describe('ConnectShyft shell smoke', () => {
     await expect(page.getByTestId('shell-primary-nav-people')).toBeVisible();
     await expect(page.getByTestId('shell-primary-nav-connect')).toBeVisible();
     await expect(page.getByTestId('shell-primary-nav-settings')).toBeVisible();
-    await expect(page.getByText('Resolver workspace')).toBeVisible();
-    await expect(page.getByText('Primary queue for identity and rebind reviews')).toBeVisible();
+    await expect(page.getByText('Current workspace: East Campus')).toBeVisible();
+    await expect(page.locator('[data-test="resolver-workspace"]')).toContainText(
+      'Identity and record update reviews',
+    );
 
     await page.getByTestId('shell-primary-nav-connect').click();
     await expect(page.getByTestId('connectshyft-inbox-surface')).toBeVisible();
@@ -278,6 +280,6 @@ test.describe('ConnectShyft shell smoke', () => {
     await expect(page.getByTestId('shell-settings-nav')).toBeVisible();
     await expect(page.getByTestId('connectshyft-settings-surface')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'ConnectShyft Settings' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Callback / forwarding number' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Callback number' })).toBeVisible();
   });
 });

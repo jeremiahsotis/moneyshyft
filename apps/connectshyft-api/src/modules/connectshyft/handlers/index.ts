@@ -17,6 +17,7 @@ export { getConnectThreadTimeline } from './getConnectThreadTimeline';
 export { getConnectWebhookReceiptMetrics } from './getConnectWebhookReceiptMetrics';
 export { deleteConnectNeighbor } from './deleteConnectNeighbor';
 export { postConnectNeighborCreate } from './postConnectNeighborCreate';
+export { postConnectConversationLauncher } from './postConnectConversationLauncher';
 export { postConnectNeighborIdentityMatch } from './postConnectNeighborIdentityMatch';
 export { postConnectNeighborMerge } from './postConnectNeighborMerge';
 export { postConnectNumberMapping } from './postConnectNumberMapping';

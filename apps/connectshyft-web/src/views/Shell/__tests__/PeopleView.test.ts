@@ -202,7 +202,7 @@ afterEach(() => {
 });
 
 describe('PeopleView', () => {
-  it('renders PeopleView with the resolver workspace for tenant-admin queue work', async () => {
+  it('renders PeopleView with the review queue for tenant-admin work', async () => {
     const identityItem = buildQueueItem({
       id: 'identity-item',
       itemType: 'identity_review',
@@ -228,10 +228,10 @@ describe('PeopleView', () => {
     expect(wrapper.text()).toContain('Current workspace: Current workspace');
     expect(wrapper.text()).not.toContain('test-org');
     expect(wrapper.get('[data-test="resolver-workspace"]').text()).toContain(
-      'Primary queue for identity and rebind reviews',
+      'Identity and record update reviews',
     );
     expect(wrapper.get('[data-test="resolver-workspace-summary"]').text()).toContain(
-      '2 active resolver items in one workspace',
+      '2 active reviews in this workspace',
     );
     expect(wrapper.find('[data-test="resolver-filter-all_active"]').exists()).toBe(true);
     expect(wrapper.find('[data-test="resolver-filter-claimed_by_me"]').exists()).toBe(true);
@@ -285,13 +285,13 @@ describe('PeopleView', () => {
       'Identity review',
     );
     expect(wrapper.get('[data-test="resolver-queue-item-type-rebind-item"]').text()).toContain(
-      'Rebind review',
+      'Record update review',
     );
     expect(wrapper.get('[data-test="resolver-queue-item-claim-identity-item"]').text()).toContain(
-      'Claimed by me',
+      'Assigned to me',
     );
     expect(wrapper.get('[data-test="resolver-queue-item-claim-rebind-item"]').text()).toContain(
-      'Claimed elsewhere',
+      'Assigned elsewhere',
     );
   });
 
@@ -375,21 +375,21 @@ describe('PeopleView', () => {
     await flushPromises();
 
     expect(claimResolverQueueItemMock).toHaveBeenCalledWith('identity_review', 'identity-item');
-    expect(wrapper.get('[data-test="resolver-queue-feedback"]').text()).toContain('claimed');
+    expect(wrapper.get('[data-test="resolver-queue-feedback"]').text()).toContain('Review assigned to you.');
     expect(wrapper.get('[data-test="resolver-queue-item-claim-identity-item"]').text()).toContain(
-      'Claimed by me',
+      'Assigned to me',
     );
     expect(wrapper.find('[data-test="resolver-detail-claim"]').exists()).toBe(false);
-    expect(wrapper.get('[data-test="resolver-detail-release"]').text()).toContain('Release item');
+    expect(wrapper.get('[data-test="resolver-detail-release"]').text()).toContain('Release assignment');
 
     await wrapper.get('[data-test="resolver-detail-release"]').trigger('click');
     await flushPromises();
 
     expect(releaseResolverQueueItemMock).toHaveBeenCalledWith('identity_review', 'identity-item');
     expect(wrapper.get('[data-test="resolver-queue-item-claim-identity-item"]').text()).toContain(
-      'Unclaimed',
+      'Available',
     );
-    expect(wrapper.get('[data-test="resolver-detail-claim"]').text()).toContain('Claim item');
+    expect(wrapper.get('[data-test="resolver-detail-claim"]').text()).toContain('Assign to me');
   });
 
   it('shows claimed-by-other work as explicit and non-actionable', async () => {
@@ -409,10 +409,10 @@ describe('PeopleView', () => {
 
     expect(wrapper.get('[data-test="resolver-detail-claim-disabled"]').attributes('disabled')).toBeDefined();
     expect(wrapper.get('[data-test="resolver-detail-claimed-by-other"]').text()).toContain(
-      'currently working this item',
+      'currently working this review',
     );
     expect(wrapper.get('[data-test="resolver-detail-reason"]').text()).toContain(
-      'contact-point reassignment created sensitive follow-up work',
+      'sensitive contact update needs review',
     );
   });
 

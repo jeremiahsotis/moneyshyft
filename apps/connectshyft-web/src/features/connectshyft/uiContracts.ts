@@ -22,7 +22,7 @@ export const CONNECTSHYFT_ACCESSIBILITY_LOCKS = {
 } as const;
 
 export const CONNECTSHYFT_FOCUS_RING_CLASS =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2';
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2';
 
 export const CONNECTSHYFT_FORBIDDEN_COPY_TOKENS = [
   'rbac',
@@ -96,9 +96,9 @@ const CONNECTSHYFT_THREAD_ACTION_CONTRACTS: Record<string, ConnectShyftActionCon
 
 export const CONNECTSHYFT_INBOX_ACTION_COPY = {
   openConversation: {
-    label: 'Open Conversation',
-    ariaLabel: 'Open a conversation',
-    testId: 'connectshyft-open-conversation-action',
+    label: 'Start Conversation',
+    ariaLabel: 'Open the conversation launcher',
+    testId: 'connectshyft-open-conversation-launcher-action',
   },
   addNeighbor: {
     label: 'Add Neighbor',

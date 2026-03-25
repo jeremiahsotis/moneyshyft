@@ -1,7 +1,7 @@
 <template>
   <nav
     data-testid="connectshyft-section-nav"
-    class="flex flex-wrap gap-2"
+    class="cs-segmented"
   >
     <RouterLink
       v-for="item in navItems"
@@ -13,10 +13,10 @@
       :data-testid="item.testId"
       :aria-label="item.ariaLabel"
       :style="tapTargetStyle"
-      class="inline-flex min-h-[44px] min-w-[96px] items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+      class="cs-segmented__item focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
       :class="isActive(item.path)
-        ? 'bg-slate-900 text-white shadow-sm'
-        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+        ? 'cs-segmented__item--active'
+        : ''"
     >
       {{ item.label }}
     </RouterLink>
@@ -42,8 +42,8 @@ const navItems = [
     testId: 'connectshyft-section-nav-inbox',
   },
   {
-    label: 'Mine',
-    ariaLabel: 'Open Mine',
+    label: 'Assigned',
+    ariaLabel: 'Open Assigned',
     path: SHELL_ROUTE_PATHS.connectMine,
     testId: 'connectshyft-section-nav-mine',
   },

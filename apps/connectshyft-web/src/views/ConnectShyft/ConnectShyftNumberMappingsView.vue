@@ -6,16 +6,16 @@
     >
       <header class="mb-6">
         <h1 class="text-2xl font-semibold text-slate-900">
-          ConnectShyft Numbers & OrgUnit Config
+          Conversation Numbers
         </h1>
         <p class="mt-2 text-sm text-slate-600">
-          Manage Twilio number mappings for the active orgUnit context.
+          Manage the phone numbers this workspace uses for calls and messages.
         </p>
         <p
           data-testid="connectshyft-admin-settings-context-chip"
           class="mt-3 inline-flex rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700"
         >
-          Admin settings context
+          Workspace settings
         </p>
       </header>
 
@@ -25,11 +25,11 @@
         @submit.prevent="handleSave"
       >
         <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Number Mapping
+          Phone line
         </h2>
         <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
           <label class="flex flex-col gap-1 text-sm text-slate-700">
-            Twilio number (E.164)
+            Phone number
             <input
               data-testid="connectshyft-number-input"
               v-model="twilioNumberE164"
@@ -47,7 +47,7 @@
               v-model="label"
               type="text"
               autocomplete="off"
-              placeholder="Primary Dispatch"
+              placeholder="Main line"
               :disabled="isSaving || isInitializing"
               class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
             >
@@ -68,7 +68,7 @@
             :disabled="isSaving || isInitializing"
             class="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
           >
-            Save Number Mapping
+            Save phone number
           </button>
           <button
             v-if="editingMappingId"
@@ -76,18 +76,18 @@
             class="rounded border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700"
             @click="resetForm"
           >
-            Cancel Edit
+            Cancel
           </button>
         </div>
       </form>
 
       <section class="rounded-md border border-slate-200 p-4">
         <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Active Number Mappings
+          Saved phone numbers
         </h2>
 
         <p v-if="mappings.length === 0" class="text-sm text-slate-600">
-          No number mappings configured yet.
+          No phone numbers are set up yet.
         </p>
 
         <ul v-else class="space-y-2">
@@ -99,7 +99,7 @@
           >
             <div class="space-y-1">
               <p class="font-medium">{{ mapping.twilioNumberE164 }}</p>
-              <p class="text-slate-600">{{ mapping.label || 'Unlabeled mapping' }}</p>
+              <p class="text-slate-600">{{ mapping.label || 'No label yet' }}</p>
             </div>
             <button
               type="button"

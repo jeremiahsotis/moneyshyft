@@ -54,7 +54,7 @@ const RESOLVER_FILTERS: ResolverFilterDefinition[] = [
   {
     id: 'all_active',
     label: 'All active',
-    description: 'Every active resolver item in the shared workspace.',
+    description: 'Every active review in this workspace.',
   },
   {
     id: 'identity_review',
@@ -63,18 +63,18 @@ const RESOLVER_FILTERS: ResolverFilterDefinition[] = [
   },
   {
     id: 'rebind_review',
-    label: 'Rebind reviews',
-    description: 'Sensitive reassignment work that needs review before it moves forward.',
+    label: 'Record updates',
+    description: 'Sensitive record updates that need review before they move forward.',
   },
   {
     id: 'claimed_by_me',
-    label: 'Claimed by me',
-    description: 'Items currently claimed by this resolver.',
+    label: 'Assigned to me',
+    description: 'Reviews currently assigned to you.',
   },
   {
     id: 'unclaimed',
-    label: 'Unclaimed',
-    description: 'Queue items ready for someone to pick up.',
+    label: 'Available',
+    description: 'Reviews ready for someone to pick up.',
   },
 ];
 
@@ -148,12 +148,12 @@ const resolverQueueSummary = computed(() => {
   }
 
   if (total === 0) {
-    return 'No review work is waiting right now. Identity and reassignment reviews will appear here when they need attention.';
+    return 'No review work is waiting right now. Identity and record update reviews will appear here when they need attention.';
   }
 
   const identityCount = resolverQueueCounts.value.identity_review;
   const rebindCount = resolverQueueCounts.value.rebind_review;
-  return `${total} active resolver item${total === 1 ? '' : 's'} in one workspace, including ${identityCount} identity review${identityCount === 1 ? '' : 's'} and ${rebindCount} rebind review${rebindCount === 1 ? '' : 's'}.`;
+  return `${total} active review${total === 1 ? '' : 's'} in this workspace, including ${identityCount} identity review${identityCount === 1 ? '' : 's'} and ${rebindCount} record update review${rebindCount === 1 ? '' : 's'}.`;
 });
 
 const resolverWorkspaceEmptyState = computed(() => {
@@ -161,13 +161,13 @@ const resolverWorkspaceEmptyState = computed(() => {
     case 'identity_review':
       return 'No identity reviews are active right now.';
     case 'rebind_review':
-      return 'No rebind reviews are active right now.';
+      return 'No record update reviews are active right now.';
     case 'claimed_by_me':
-      return 'You do not currently hold any claimed resolver work.';
+      return 'You do not currently have any assigned review work.';
     case 'unclaimed':
-      return 'No unclaimed resolver items are ready for pickup right now.';
+      return 'No available reviews are ready right now.';
     default:
-      return 'No active resolver work is waiting right now.';
+      return 'No active review work is waiting right now.';
   }
 });
 
@@ -198,17 +198,17 @@ const formatResolverQueueLabel = (value: string): string => (
 );
 
 const formatItemTypeLabel = (itemType: ConnectShyftResolverQueueItemType): string => (
-  itemType === 'identity_review' ? 'Identity review' : 'Rebind review'
+  itemType === 'identity_review' ? 'Identity review' : 'Record update review'
 );
 
 const formatClaimStateLabel = (item: ConnectShyftResolverQueueItemRecord): string => {
   switch (item.claimState) {
     case 'claimed_by_current_user':
-      return 'Claimed by me';
+      return 'Assigned to me';
     case 'claimed_by_other':
-      return 'Claimed elsewhere';
+      return 'Assigned elsewhere';
     default:
-      return 'Unclaimed';
+      return 'Available';
   }
 };
 
@@ -230,7 +230,7 @@ const formatReadinessLabel = (item: ConnectShyftResolverQueueItemRecord): string
   }
 
   if (item.claimable) {
-    return 'Claim required';
+    return 'Assignment needed';
   }
 
   if (item.status === 'in_review') {
@@ -280,7 +280,7 @@ const formatResolverActionType = (value: ResolverActionType | null | undefined):
     case 'mark_shared_contact':
       return 'Mark shared contact';
     case 'reassign_contact_point':
-      return 'Reassign contact point';
+      return 'Move contact record';
     case 'dismiss_no_action':
       return 'Dismiss without action';
     default:
@@ -309,7 +309,7 @@ const buildQueueItemContext = (item: ConnectShyftResolverQueueItemRecord): strin
   }
 
   if (item.contactPointId) {
-    context.push('Contact point context attached');
+    context.push('Contact details attached');
   }
 
   if (item.conversationId || item.threadId) {
@@ -325,30 +325,30 @@ const buildIdentityReviewReason = (
   riskFlags: ResolverRiskFlag[],
 ): string => {
   if (reviewType === 'contact_point_reassignment') {
-    return 'This contact point may have moved between people, so review is required before identity updates.';
+    return 'This contact number may belong with a different person, so review is needed before records update.';
   }
 
   if (reviewType === 'shared_contact_ambiguity' || riskFlags.includes('shared_contact_possible')) {
-    return 'This contact point may belong to more than one person, so review is required before it is confirmed.';
+    return 'This contact number may belong to more than one person, so review is needed before it is confirmed.';
   }
 
   if (riskFlags.includes('conflicting_name_dob')) {
     return 'The current identity evidence conflicts, so the correct person needs review before the workspace updates.';
   }
 
-  return 'Review is required before People and ConnectShyft can rely on this identity outcome.';
+  return 'Review is needed before People and ConnectShyft rely on this identity result.';
 };
 
 const buildRebindReviewReason = (resolutionType: ResolverActionType | null | undefined): string => {
   if (resolutionType === 'reassign_contact_point') {
-    return 'A contact-point reassignment created sensitive follow-up work, so review is required before history is rebound.';
+    return 'A sensitive contact update needs review before conversation history moves.';
   }
 
   if (resolutionType === 'merge_people') {
-    return 'A person merge created sensitive follow-up work, so review is required before history is rebound.';
+    return 'A person merge needs review before conversation history moves.';
   }
 
-  return 'This reassignment affects sensitive ConnectShyft context, so review is required before the new person record is fully applied.';
+  return 'This record update affects sensitive conversation context, so review is needed before the latest person record is fully applied.';
 };
 
 const formatIdentityReviewStatus = (value: ResolverReviewStatus | undefined): string => {
@@ -412,7 +412,7 @@ const loadResolverQueue = async () => {
       return;
     }
 
-    resolverQueueError.value = result.message || 'Unable to load resolver queue.';
+    resolverQueueError.value = result.message || 'Unable to load the review queue.';
     setResolverQueueItems([]);
     selectedResolverQueueKey.value = '';
     clearSelectedResolverQueueDetail();
@@ -448,7 +448,7 @@ const loadResolverQueueDetail = async (
     }
 
     if (result.unavailable) {
-      resolverDetailError.value = 'This resolver item is no longer available. Refresh the queue to continue.';
+      resolverDetailError.value = 'This review is no longer available. Refresh the list to continue.';
       resolverQueueFeedback.value = resolverDetailError.value;
       setResolverQueueItems(resolverQueueItems.value.filter((queueItem) =>
         buildResolverQueueKey(queueItem.itemType, queueItem.id) !== requestKey));
@@ -460,7 +460,7 @@ const loadResolverQueueDetail = async (
     }
 
     selectedResolverQueueDetail.value = null;
-    resolverDetailError.value = result.message || 'Unable to load resolver detail.';
+    resolverDetailError.value = result.message || 'Unable to load review details.';
     return;
   }
 
@@ -512,7 +512,7 @@ const runResolverQueueMutation = async (
     }
 
     if (result.unavailable) {
-      resolverQueueFeedback.value = 'This resolver item is no longer available.';
+      resolverQueueFeedback.value = 'This review is no longer available.';
       setResolverQueueItems(resolverQueueItems.value.filter((queueItem) =>
         buildResolverQueueKey(queueItem.itemType, queueItem.id) !== actionKey));
       selectedResolverQueueDetail.value = null;
@@ -525,14 +525,16 @@ const runResolverQueueMutation = async (
 
     resolverQueueFeedback.value = result.message || (
       action === 'claim'
-        ? 'Unable to claim this resolver item right now.'
-        : 'Unable to release this resolver item right now.'
+        ? 'Unable to assign this review right now.'
+        : 'Unable to release this review right now.'
     );
     return;
   }
 
   resolverQueueAuthorized.value = true;
-  resolverQueueFeedback.value = result.message;
+  resolverQueueFeedback.value = action === 'claim'
+    ? 'Review assigned to you.'
+    : 'Review returned to the queue.';
   selectedResolverQueueDetail.value = result.detail;
   selectedResolverQueueKey.value = buildResolverQueueKey(
     result.detail.item.itemType,
@@ -625,11 +627,11 @@ onMounted(() => {
       <div class="flex flex-col gap-4 border-b border-slate-200 pb-4 lg:flex-row lg:items-end lg:justify-between">
         <div class="space-y-2">
           <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-            Resolver workspace
+            People review queue
           </p>
           <div class="space-y-1">
             <h2 class="text-2xl font-semibold tracking-tight text-slate-900">
-              Primary queue for identity and rebind reviews
+              Identity and record update reviews
             </h2>
             <p data-test="resolver-workspace-summary" class="max-w-3xl text-sm text-slate-600">
               {{ resolverQueueSummary }}
@@ -644,7 +646,7 @@ onMounted(() => {
           :disabled="resolverQueueLoading || resolverActionPendingKey.length > 0"
           @click="loadResolverQueue"
         >
-          {{ resolverQueueLoading ? 'Refreshing...' : 'Refresh queue' }}
+          {{ resolverQueueLoading ? 'Refreshing...' : 'Refresh reviews' }}
         </button>
       </div>
 
@@ -704,7 +706,7 @@ onMounted(() => {
             data-test="resolver-queue-loading"
             class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600"
           >
-            Loading resolver queue...
+            Loading reviews...
           </p>
 
           <ul
@@ -838,7 +840,7 @@ onMounted(() => {
                   </div>
                   <div class="space-y-1">
                     <h3 class="text-lg font-semibold text-slate-900">
-                      {{ formatItemTypeLabel(selectedResolverQueueItem.itemType) }} detail
+                      {{ formatItemTypeLabel(selectedResolverQueueItem.itemType) }} details
                     </h3>
                     <p class="text-sm text-slate-600">
                       {{ formatClaimStateLabel(selectedResolverQueueItem) }}. {{ formatReadinessLabel(selectedResolverQueueItem) }}.
@@ -856,8 +858,8 @@ onMounted(() => {
                     @click="claimSelectedResolverQueueItem"
                   >
                     {{ resolverActionPendingKey === buildResolverQueueKey(selectedResolverQueueItem.itemType, selectedResolverQueueItem.id)
-                      ? 'Claiming...'
-                      : 'Claim item' }}
+                      ? 'Assigning...'
+                      : 'Assign to me' }}
                   </button>
 
                   <button
@@ -870,7 +872,7 @@ onMounted(() => {
                   >
                     {{ resolverActionPendingKey === buildResolverQueueKey(selectedResolverQueueItem.itemType, selectedResolverQueueItem.id)
                       ? 'Releasing...'
-                      : 'Release item' }}
+                      : 'Release assignment' }}
                   </button>
 
                   <button
@@ -890,21 +892,21 @@ onMounted(() => {
                 data-test="resolver-detail-claim-required"
                 class="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900"
               >
-                Claim this item before applying resolver actions anywhere else.
+                Assign this review before taking action anywhere else.
               </p>
               <p
                 v-else-if="selectedResolverQueueItem.claimState === 'claimed_by_other'"
                 data-test="resolver-detail-claimed-by-other"
                 class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900"
               >
-                Someone else is currently working this item, so it is not actionable here.
+                Someone else is currently working this review, so it is not actionable here.
               </p>
               <p
                 v-else-if="selectedResolverQueueItem.status === 'waiting_for_more_info'"
                 data-test="resolver-detail-waiting"
                 class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
               >
-                This resolver item remains active, but it is waiting for more information before action can continue.
+                This review remains active, but it is waiting for more information before action can continue.
               </p>
             </div>
 
@@ -913,7 +915,7 @@ onMounted(() => {
               data-test="resolver-detail-loading"
               class="rounded-2xl border border-slate-200 bg-white px-4 py-6 text-sm text-slate-600"
             >
-              Loading resolver detail...
+              Loading review details...
             </p>
 
             <p
@@ -937,7 +939,7 @@ onMounted(() => {
 
                 <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
                   <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                    Queue status
+                    Review status
                   </p>
                   <p class="mt-2 text-sm text-slate-700">
                     {{ formatIdentityReviewStatus(selectedResolverQueueDetail.item.status) }}
@@ -970,7 +972,7 @@ onMounted(() => {
                       {{
                         selectedResolverQueueDetail.review?.provisionalPersonId
                           ? 'Includes a provisional person awaiting confirmation.'
-                          : 'Resolver review is working from existing subject context.'
+                          : 'This review is working from the current subject record.'
                       }}
                     </p>
                   </div>
@@ -982,8 +984,8 @@ onMounted(() => {
                     <p class="mt-2 text-sm text-slate-700">
                       {{
                         selectedResolverQueueDetail.item.contactPointId
-                          ? 'Contact point context is attached to this review.'
-                          : 'Contact point context is still being gathered.'
+                          ? 'Contact details are attached to this review.'
+                          : 'Contact details are still being gathered.'
                       }}
                     </p>
                     <p class="mt-1 text-sm text-slate-500">
@@ -1026,7 +1028,7 @@ onMounted(() => {
                 <div class="grid gap-3 sm:grid-cols-2">
                   <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                      Rebind scope
+                      Update scope
                     </p>
                     <p class="mt-2 text-sm text-slate-700">
                       {{ formatResolverQueueLabel(
@@ -1036,7 +1038,7 @@ onMounted(() => {
                     <p class="mt-1 text-sm text-slate-500">
                       {{ selectedResolverQueueDetail.rebindReview?.affectedObjectIds.length || 0 }} affected record{{
                         (selectedResolverQueueDetail.rebindReview?.affectedObjectIds.length || 0) === 1 ? '' : 's'
-                      }} require review before rebinding continues.
+                      }} need review before history moves.
                     </p>
                   </div>
 
@@ -1045,12 +1047,12 @@ onMounted(() => {
                       Identity movement
                     </p>
                     <p class="mt-2 text-sm text-slate-700">
-                      Source and target person context are recorded for this rebind review.
+                      Source and target person context are recorded for this review.
                     </p>
                     <p class="mt-1 text-sm text-slate-500">
-                      {{ selectedResolverQueueDetail.rebindReview?.contactPointIds.length || 0 }} contact point{{
+                      {{ selectedResolverQueueDetail.rebindReview?.contactPointIds.length || 0 }} contact detail{{
                         (selectedResolverQueueDetail.rebindReview?.contactPointIds.length || 0) === 1 ? '' : 's'
-                      }} are part of the reassignment.
+                      }} are part of this update.
                     </p>
                   </div>
                 </div>
@@ -1062,12 +1064,12 @@ onMounted(() => {
                   <p class="mt-2 text-sm text-slate-700">
                     {{
                       selectedResolverQueueDetail.rebindReview?.originatingResolutionType
-                        ? `${formatResolverActionType(selectedResolverQueueDetail.rebindReview.originatingResolutionType)} created this follow-up review.`
-                        : 'A resolver decision created this follow-up review.'
+                        ? `${formatResolverActionType(selectedResolverQueueDetail.rebindReview.originatingResolutionType)} started this follow-up review.`
+                        : 'A prior review decision started this follow-up review.'
                     }}
                   </p>
                   <p class="mt-1 text-sm text-slate-500">
-                    Review this queue item here before sensitive ConnectShyft history follows the new subject truth.
+                    Review this item here before sensitive conversation history follows the latest person record.
                   </p>
                 </div>
               </template>

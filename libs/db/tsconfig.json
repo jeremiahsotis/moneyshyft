@@ -8,7 +8,8 @@
     "typeRoots": [
       "../../node_modules/@types",
       "../../apps/moneyshyft-api/node_modules/@types",
-      "../../apps/admin-api/node_modules/@types"
+      "../../apps/admin-api/node_modules/@types",
+      "../../apps/connectshyft-api/node_modules/@types"
     ],
     "rootDir": "./src",
     "outDir": "./dist",

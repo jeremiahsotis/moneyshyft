@@ -6,17 +6,18 @@
     >
       <header class="mb-6">
         <h1 class="text-2xl font-semibold text-slate-900">
-          Create Neighbor
+          Add Contact
         </h1>
         <p class="mt-2 text-sm text-slate-600">
-          Create a tenant-scoped neighbor record with conversation-first intake details.
+          Save the contact details needed to keep this conversation moving.
         </p>
       </header>
 
       <p
         v-if="layoutTestId"
         :data-testid="layoutTestId"
-        class="mb-4 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+        aria-hidden="true"
+        class="hidden"
       >
         {{ layoutLabel }}
       </p>
@@ -25,9 +26,14 @@
         data-testid="connectshyft-add-neighbor-context-panel"
         class="mb-6 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700"
       >
-        <p class="font-medium text-slate-900">Active scope</p>
-        <p class="mt-1">Tenant: {{ scope?.tenantId || 'Resolving from server...' }}</p>
-        <p>orgUnit: {{ scope?.orgUnitId || 'Resolving from server...' }}</p>
+        <p class="font-medium text-slate-900">Current workspace</p>
+        <p class="mt-1">
+          {{
+            scope
+              ? 'New contacts created here stay connected to your current workspace.'
+              : 'Confirming your current workspace.'
+          }}
+        </p>
       </section>
 
       <form class="rounded-md border border-slate-200 p-4" novalidate @submit.prevent="handleCreate">
@@ -236,7 +242,7 @@
             :disabled="isSubmitting"
             class="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
           >
-            Create Neighbor
+            Save contact
           </button>
         </div>
       </form>
@@ -326,7 +332,7 @@ const handleCreate = async (): Promise<void> => {
   successMessage.value = '';
 
   if (primaryPhoneValue.value.trim().length === 0) {
-    validationError.value = 'Provide at least one phone to create or update a neighbor.';
+    validationError.value = 'Add at least one phone number before saving this contact.';
     createdNeighbor.value = null;
     return;
   }
@@ -372,6 +378,6 @@ const handleCreate = async (): Promise<void> => {
     };
   }
   createdNeighbor.value = result.neighbor;
-  successMessage.value = 'Neighbor created';
+  successMessage.value = 'Contact saved.';
 };
 </script>

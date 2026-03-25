@@ -2,17 +2,17 @@
   <nav
     aria-label="Primary navigation"
     data-testid="shell-primary-nav"
-    class="flex flex-wrap gap-2"
+    class="cs-segmented"
   >
     <RouterLink
       v-for="item in navItems"
       :key="item.path"
       :to="{ path: item.path, query: navigationQuery }"
       :data-testid="`shell-primary-nav-${item.module}`"
-      class="inline-flex min-h-[44px] items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+      class="cs-segmented__item focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2"
       :class="isActive(item.module)
-        ? 'bg-slate-900 text-white shadow-sm'
-        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+        ? 'cs-segmented__item--active'
+        : ''"
       :aria-current="isActive(item.module) ? 'page' : undefined"
     >
       {{ item.label }}

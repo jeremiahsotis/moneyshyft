@@ -143,7 +143,6 @@ const renderThreadDetailView = async (input?: {
         ConnectShyftPrimaryNav: true,
         ConnectShyftThreadActionBar: true,
         ConnectShyftThreadHeader: true,
-        ConnectShyftVoicemailCard: true,
       },
     },
   });
@@ -315,7 +314,7 @@ describe('ConnectShyftThreadDetailView', () => {
     });
 
     expect(wrapper.get('[data-testid="connectshyft-thread-subject-impact-message"]').text()).toContain(
-      'Identity for this conversation is still waiting on tenant-admin review',
+      'Identity for this conversation is still waiting on review in People',
     );
     expect(wrapper.get('[data-testid="connectshyft-thread-subject-impact-people-link"]').text()).toContain(
       'Review in People',
@@ -404,5 +403,57 @@ describe('ConnectShyftThreadDetailView', () => {
       threadId: 'thread-detail-view-1001',
       identityState: 'confirmed',
     });
+  });
+
+  it('renders voicemail as calm timeline content with playback controls and transcript text', async () => {
+    fetchThreadDetailMock.mockResolvedValueOnce({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_DETAIL_LOADED',
+      message: 'Thread detail loaded',
+      thread: buildThreadDetail({
+        voicemailIndicator: true,
+        voicemailLabel: 'Voicemail received',
+        timeline: [
+          {
+            eventId: 'timeline-voicemail-1001',
+            eventName: 'connectshyft.voice.provider_callback.recording_completed',
+            summary: 'Jordan left a voicemail asking for a callback.',
+            conversationType: 'voicemail',
+            direction: 'inbound',
+            occurredAtUtc: '2026-03-24T14:30:00.000Z',
+            recordingUrl: 'https://connectshyft.test/voicemail-1001.mp3',
+            durationSeconds: 47,
+            transcriptionText: 'Please call me back this afternoon.',
+          },
+        ],
+      }),
+    });
+
+    const { wrapper } = await renderThreadDetailView();
+
+    const voicemailTimelineCard = wrapper.get('[data-testid="connectshyft-thread-timeline-event-voicemail"]');
+    expect(voicemailTimelineCard.text()).toContain('Voicemail received');
+    expect(voicemailTimelineCard.text()).toContain('Please call me back this afternoon.');
+    expect(voicemailTimelineCard.text()).not.toContain('provider_callback');
+    expect(wrapper.get('[data-testid="connectshyft-voicemail-audio"]').attributes('src')).toBe(
+      'https://connectshyft.test/voicemail-1001.mp3',
+    );
+  });
+
+  it('shows a plain-language launcher handoff notice when text launch opens the thread', async () => {
+    const { wrapper } = await renderThreadDetailView({
+      initialPath: '/app/connectshyft/threads/thread-detail-view-1001?launchChannel=text&launchState=new',
+    });
+
+    expect(wrapper.get('[data-testid="connectshyft-thread-launcher-text-notice"]').text()).toContain(
+      'Started a new conversation and opened it ready for a text reply.',
+    );
+  });
+
+  it('keeps the subject snapshot in the responsive detail rail layout', async () => {
+    const { wrapper } = await renderThreadDetailView();
+
+    expect(wrapper.get('.cs-panel-layout--two-column').exists()).toBe(true);
+    expect(wrapper.get('[data-testid="connectshyft-thread-subject-snapshot"]').exists()).toBe(true);
   });
 });

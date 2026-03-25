@@ -116,7 +116,7 @@ describe('resolveConnectShyftIdentityResolutionPresentation', () => {
       },
       isTenantAdminResolver: true,
     })).toEqual({
-      message: 'This conversation is waiting on a subject-context rebind review. Review in People to continue resolver work.',
+      message: 'This conversation is waiting on a record update review in People. Review in People to keep it moving.',
       ctaLabel: 'Review in People',
     });
   });
