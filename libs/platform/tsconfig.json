@@ -10,7 +10,9 @@
       "../../apps/moneyshyft-api/node_modules/@types",
       "../../apps/admin-api/node_modules/@types",
       "../../apps/moneyshyft-web/node_modules/@types",
-      "../../apps/admin-web/node_modules/@types"
+      "../../apps/admin-web/node_modules/@types",
+      "../../apps/connectshyft-api/node_modules/@types",
+      "../../apps/connectshyft-web/node_modules/@types"
     ],
     "rootDir": "./src",
     "outDir": "./dist",

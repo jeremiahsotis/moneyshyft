@@ -30,9 +30,14 @@ export const resolveTenantRequestContext = (req: RequestLike): TenantRequestCont
   const request = req as RequestWithTenantUser;
   const userTenant = normalizeValue(request.user?.activeTenantId || request.user?.householdId || null);
   const userOrgUnit = normalizeValue(request.user?.activeOrgUnitId || null);
+  const requestedOrgUnit = normalizeValue(
+    request.header('x-org-unit-id')
+    || request.header('x-orgunit-id')
+    || null,
+  );
   const tenantId = userTenant || 'public';
 
-  const orgUnitId = tenantId === 'public' ? null : userOrgUnit;
+  const orgUnitId = tenantId === 'public' ? null : (requestedOrgUnit || userOrgUnit);
   const scopeMode: ScopeMode = orgUnitId ? 'ORG_UNIT' : 'TENANT';
 
   return {

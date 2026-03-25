@@ -220,6 +220,16 @@ describe('connectshyft context and inbox route characterization', () => {
           tenantId: CONTEXT_TENANT_ID,
           orgUnitId: CONTEXT_ORG_UNIT_ID,
           bypassedOrgUnitMembership: false,
+          orgUnits: expect.arrayContaining([
+            expect.objectContaining({
+              id: CONTEXT_ORG_UNIT_ID,
+              availableModules: {
+                people: true,
+                connect: true,
+                settings: true,
+              },
+            }),
+          ]),
           telephony: {
             operatorPhoneSource: 'callback_number',
             voiceReady: true,
@@ -260,6 +270,16 @@ describe('connectshyft context and inbox route characterization', () => {
           tenantId: CONTEXT_TENANT_ID,
           orgUnitId: 'org-connectshyft-alpha-west',
           bypassedOrgUnitMembership: true,
+          orgUnits: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'org-connectshyft-alpha-west',
+              availableModules: {
+                people: true,
+                connect: true,
+                settings: true,
+              },
+            }),
+          ]),
           telephony: {
             operatorPhoneSource: 'orgunit_default',
             voiceReady: true,

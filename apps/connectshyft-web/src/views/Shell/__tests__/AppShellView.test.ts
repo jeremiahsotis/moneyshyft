@@ -1,11 +1,80 @@
 import { mount } from '@vue/test-utils';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter } from 'vue-router';
-import { nextTick } from 'vue';
+import { nextTick, ref } from 'vue';
+import type { SubjectContext } from '@shyft/contracts';
+import api from '@/services/api';
+import { SUBJECT_CONTEXT_KEY } from '@/shell/subjectContext';
+import { resetActiveShellOrgUnitIdForTests } from '@/shell/orgUnitState';
+import { resetShellOrgUnitContextForTests } from '@/shell/orgUnitContext';
 import AppShellView from '../AppShellView.vue';
+
+vi.mock('@/services/api', () => ({
+  default: {
+    get: vi.fn(),
+  },
+}));
 
 const TestApp = {
   template: '<RouterView />',
+};
+
+const apiGetMock = vi.mocked(api.get);
+
+const buildShellContextResponse = (input?: {
+  currentOrgUnitId?: string;
+  orgUnits?: Array<{
+    id: string;
+    label: string;
+    availableModules: {
+      people: boolean;
+      connect: boolean;
+      settings: boolean;
+    };
+  }>;
+}) => ({
+  data: {
+    ok: true,
+    code: 'CONNECTSHYFT_CONTEXT_RESOLVED',
+    data: {
+      context: {
+        tenantId: 'tenant-shell-test',
+        orgUnitId: input?.currentOrgUnitId || 'org-east',
+        bypassedOrgUnitMembership: false,
+        orgUnits: input?.orgUnits || [
+          {
+            id: 'org-east',
+            label: 'East Campus',
+            availableModules: {
+              people: true,
+              connect: true,
+              settings: true,
+            },
+          },
+          {
+            id: 'org-west',
+            label: 'West Campus',
+            availableModules: {
+              people: true,
+              connect: true,
+              settings: true,
+            },
+          },
+        ],
+        telephony: {
+          operatorPhoneSource: 'callback_number',
+          voiceReady: true,
+          smsReady: true,
+          degradedMode: false,
+        },
+      },
+    },
+  },
+});
+
+const flushPromises = async () => {
+  await Promise.resolve();
+  await Promise.resolve();
 };
 
 const buildRouter = async (initialPath: string) => {
@@ -28,17 +97,49 @@ const buildRouter = async (initialPath: string) => {
             meta: {
               shellModule: 'people',
               shellTitle: 'People',
+              shellOrgUnitFallback: 'people',
             },
           },
           {
             path: 'connect',
             component: {
-              template: '<div data-testid="connect-surface">Connect content</div>',
+              template: '<RouterView />',
             },
             meta: {
               shellModule: 'connect',
               shellTitle: 'ConnectShyft',
+              shellOrgUnitFallback: 'communication',
             },
+            children: [
+              {
+                path: '',
+                component: {
+                  template: '<div data-testid="connect-surface">Connect content</div>',
+                },
+                meta: {
+                  shellTitle: 'ConnectShyft',
+                },
+              },
+              {
+                path: 'directory',
+                component: {
+                  template: '<div data-testid="connect-directory-surface">Directory content</div>',
+                },
+                meta: {
+                  shellTitle: 'ConnectShyft',
+                },
+              },
+              {
+                path: 'threads/:threadId',
+                component: {
+                  template: '<div data-testid="connect-thread-surface">Thread content</div>',
+                },
+                meta: {
+                  shellTitle: 'ConnectShyft',
+                  shellOrgUnitSwitchMode: 'destructive',
+                },
+              },
+            ],
           },
           {
             path: 'settings',
@@ -48,6 +149,7 @@ const buildRouter = async (initialPath: string) => {
             meta: {
               shellModule: 'settings',
               shellTitle: 'Settings',
+              shellOrgUnitFallback: 'shell',
             },
           },
           {
@@ -69,25 +171,47 @@ const buildRouter = async (initialPath: string) => {
   return router;
 };
 
-const renderShell = async (initialPath: string) => {
-  const router = await buildRouter(initialPath);
+const renderShell = async (input?: {
+  initialPath?: string;
+  subjectContext?: SubjectContext;
+  contextResponse?: ReturnType<typeof buildShellContextResponse>;
+}) => {
+  apiGetMock.mockResolvedValueOnce(input?.contextResponse || buildShellContextResponse());
+  const router = await buildRouter(input?.initialPath || '/people?orgUnitId=org-east');
+  const shellSubjectContext = ref<SubjectContext>(input?.subjectContext || {
+    orgUnitId: 'org-east',
+  });
+
   const wrapper = mount(TestApp, {
     global: {
       plugins: [router],
+      provide: {
+        [SUBJECT_CONTEXT_KEY as symbol]: shellSubjectContext,
+      },
     },
   });
 
+  await flushPromises();
   await nextTick();
-  return { wrapper, router };
+
+  return { wrapper, router, shellSubjectContext };
 };
+
+beforeEach(() => {
+  apiGetMock.mockReset();
+  resetShellOrgUnitContextForTests();
+  resetActiveShellOrgUnitIdForTests();
+});
 
 afterEach(() => {
   document.body.innerHTML = '';
+  resetShellOrgUnitContextForTests();
+  resetActiveShellOrgUnitIdForTests();
 });
 
 describe('AppShellView', () => {
   it('renders exactly the MVP shell nav items', async () => {
-    const { wrapper } = await renderShell('/people');
+    const { wrapper } = await renderShell();
     const navItems = wrapper.findAll('[data-testid^="shell-primary-nav-"]');
 
     expect(navItems).toHaveLength(3);
@@ -96,31 +220,139 @@ describe('AppShellView', () => {
       'ConnectShyft',
       'Settings',
     ]);
+    expect(wrapper.get('[data-testid="shell-orgunit-selector"]').exists()).toBe(true);
   });
 
-  it('keeps one shell frame while navigating between primary modules', async () => {
-    const { wrapper, router } = await renderShell('/people');
+  it('executes a safe orgUnit switch immediately and preserves the current route', async () => {
+    const { wrapper, router, shellSubjectContext } = await renderShell({
+      initialPath: '/people?orgUnitId=org-east',
+      subjectContext: {
+        orgUnitId: 'org-east',
+      },
+    });
 
-    expect(wrapper.get('[data-testid="app-shell-root"]').exists()).toBe(true);
-    expect(wrapper.get('[data-testid="people-surface"]').text()).toContain('People content');
-
-    await router.push('/connect');
+    expect(wrapper.findAll('option')).toHaveLength(2);
+    await wrapper.findComponent(AppShellView).vm.handleOrgUnitSelection('org-west');
+    await flushPromises();
     await nextTick();
 
-    expect(wrapper.get('[data-testid="app-shell-root"]').exists()).toBe(true);
-    expect(wrapper.get('[data-testid="connect-surface"]').text()).toContain('Connect content');
-
-    await router.push('/settings');
-    await nextTick();
-
-    expect(wrapper.get('[data-testid="app-shell-root"]').exists()).toBe(true);
-    expect(wrapper.get('[data-testid="settings-surface"]').text()).toContain('Settings content');
+    expect(wrapper.find('[data-testid="shell-orgunit-confirmation"]').exists()).toBe(false);
+    expect(router.currentRoute.value.fullPath).toBe('/people?orgUnitId=org-west');
+    expect(shellSubjectContext.value).toEqual({
+      orgUnitId: 'org-west',
+    });
   });
 
-  it('renders a shell-safe fallback for invalid routes', async () => {
-    const { wrapper } = await renderShell('/not-a-real-route');
+  it('shows confirmation before a destructive orgUnit switch', async () => {
+    const { wrapper, router, shellSubjectContext } = await renderShell({
+      initialPath: '/connect/threads/thread-1?orgUnitId=org-east',
+      subjectContext: {
+        orgUnitId: 'org-east',
+        conversationId: 'conversation-1',
+      },
+    });
 
-    expect(wrapper.get('[data-testid="app-shell-root"]').exists()).toBe(true);
-    expect(wrapper.get('[data-testid="shell-route-fallback"]').text()).toContain('Fallback content');
+    await wrapper.findComponent(AppShellView).vm.handleOrgUnitSelection('org-west');
+    await flushPromises();
+    await nextTick();
+
+    expect(wrapper.get('[data-testid="shell-orgunit-confirmation"]').text()).toContain(
+      'This will clear the current person or conversation and take you to the nearest available page in the selected orgUnit.',
+    );
+    expect(router.currentRoute.value.fullPath).toBe('/connect/threads/thread-1?orgUnitId=org-east');
+    expect(shellSubjectContext.value).toEqual({
+      orgUnitId: 'org-east',
+      conversationId: 'conversation-1',
+    });
+  });
+
+  it('keeps the current route and subject context when the destructive switch is canceled', async () => {
+    const { wrapper, router, shellSubjectContext } = await renderShell({
+      initialPath: '/connect/threads/thread-1?orgUnitId=org-east',
+      subjectContext: {
+        orgUnitId: 'org-east',
+        conversationId: 'conversation-1',
+      },
+    });
+
+    await wrapper.findComponent(AppShellView).vm.handleOrgUnitSelection('org-west');
+    await flushPromises();
+    await nextTick();
+    await wrapper.get('[data-testid="shell-orgunit-cancel"]').trigger('click');
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="shell-orgunit-confirmation"]').exists()).toBe(false);
+    expect(router.currentRoute.value.fullPath).toBe('/connect/threads/thread-1?orgUnitId=org-east');
+    expect(shellSubjectContext.value).toEqual({
+      orgUnitId: 'org-east',
+      conversationId: 'conversation-1',
+    });
+  });
+
+  it('clears subject context and redirects after confirming a destructive switch', async () => {
+    const { wrapper, router, shellSubjectContext } = await renderShell({
+      initialPath: '/connect/threads/thread-1?orgUnitId=org-east',
+      subjectContext: {
+        orgUnitId: 'org-east',
+        conversationId: 'conversation-1',
+      },
+    });
+
+    await wrapper.findComponent(AppShellView).vm.handleOrgUnitSelection('org-west');
+    await flushPromises();
+    await nextTick();
+    expect(wrapper.find('[data-testid="shell-orgunit-confirmation"]').exists()).toBe(true);
+    await wrapper.findComponent(AppShellView).vm.confirmPendingOrgUnitSwitch();
+    await flushPromises();
+    await nextTick();
+
+    expect(router.currentRoute.value.fullPath).toBe('/connect?orgUnitId=org-west');
+    expect(shellSubjectContext.value).toEqual({
+      orgUnitId: 'org-west',
+    });
+  });
+
+  it('corrects invalid routes by redirecting to People when the target orgUnit disables the current module', async () => {
+    const { wrapper, router, shellSubjectContext } = await renderShell({
+      initialPath: '/connect/directory?orgUnitId=org-east',
+      subjectContext: {
+        orgUnitId: 'org-east',
+      },
+      contextResponse: buildShellContextResponse({
+        orgUnits: [
+          {
+            id: 'org-east',
+            label: 'East Campus',
+            availableModules: {
+              people: true,
+              connect: true,
+              settings: true,
+            },
+          },
+          {
+            id: 'org-west',
+            label: 'West Campus',
+            availableModules: {
+              people: true,
+              connect: false,
+              settings: false,
+            },
+          },
+        ],
+      }),
+    });
+
+    await wrapper.findComponent(AppShellView).vm.handleOrgUnitSelection('org-west');
+    await flushPromises();
+    await nextTick();
+    expect(wrapper.find('[data-testid="shell-orgunit-confirmation"]').exists()).toBe(true);
+    await wrapper.findComponent(AppShellView).vm.confirmPendingOrgUnitSwitch();
+    await flushPromises();
+    await nextTick();
+
+    expect(router.currentRoute.value.fullPath).toBe('/people?orgUnitId=org-west');
+    expect(shellSubjectContext.value).toEqual({
+      orgUnitId: 'org-west',
+    });
   });
 });

@@ -100,6 +100,7 @@ const router = createRouter({
           meta: {
             shellModule: 'people',
             shellTitle: 'People',
+            shellOrgUnitFallback: 'people',
           },
         },
         {
@@ -109,6 +110,7 @@ const router = createRouter({
           meta: {
             shellModule: 'connect',
             shellTitle: 'ConnectShyft',
+            shellOrgUnitFallback: 'communication',
           },
           children: [
             {
@@ -136,6 +138,7 @@ const router = createRouter({
               component: ConnectShyftThreadDetailView,
               meta: {
                 shellTitle: 'ConnectShyft',
+                shellOrgUnitSwitchMode: 'destructive',
               },
             },
             {
@@ -154,6 +157,7 @@ const router = createRouter({
               component: ConnectShyftNeighborCreateView,
               meta: {
                 shellTitle: 'ConnectShyft',
+                shellOrgUnitSwitchMode: 'destructive',
               },
             },
             {
@@ -163,6 +167,7 @@ const router = createRouter({
               component: ConnectShyftNeighborProfileView,
               meta: {
                 shellTitle: 'ConnectShyft',
+                shellOrgUnitSwitchMode: 'destructive',
               },
             },
           ],
@@ -174,6 +179,7 @@ const router = createRouter({
           meta: {
             shellModule: 'settings',
             shellTitle: 'Settings',
+            shellOrgUnitFallback: 'shell',
           },
           children: [
             {

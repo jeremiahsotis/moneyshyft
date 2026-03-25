@@ -3,14 +3,31 @@ import { InjectionKey, Ref, inject, ref } from 'vue';
 
 export const SUBJECT_CONTEXT_KEY: InjectionKey<Ref<SubjectContext>> = Symbol('subject-context');
 
-const DEFAULT_SUBJECT_CONTEXT: SubjectContext = {
-  orgUnitId: 'demo-org',
+export const createEmptySubjectContext = (orgUnitId = ''): SubjectContext => ({
+  orgUnitId,
+});
+
+export const subjectContextHasActiveSubject = (
+  subjectContext: SubjectContext | null | undefined,
+): boolean => Boolean(
+  subjectContext
+  && (
+    subjectContext.personId
+    || subjectContext.provisionalPersonId
+    || subjectContext.conversationId
+    || subjectContext.contactPointId
+  ),
+);
+
+export const clearSubjectContext = (
+  subjectContext: Ref<SubjectContext>,
+  orgUnitId = '',
+): void => {
+  subjectContext.value = createEmptySubjectContext(orgUnitId);
 };
 
 export function createSubjectContext(): Ref<SubjectContext> {
-  return ref<SubjectContext>({
-    ...DEFAULT_SUBJECT_CONTEXT,
-  });
+  return ref<SubjectContext>(createEmptySubjectContext());
 }
 
 export function useSubjectContext(): Ref<SubjectContext> {
