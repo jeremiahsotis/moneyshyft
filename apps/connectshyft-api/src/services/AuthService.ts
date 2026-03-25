@@ -74,6 +74,35 @@ class AuthService {
     return [];
   }
 
+  private resolveOrgUnitRolePriority(roleSet: string[]): number {
+    if (roleSet.includes('ORGUNIT_ADMIN')) {
+      return 0;
+    }
+
+    if (roleSet.includes('ORGUNIT_IDENTITY_LEAD')) {
+      return 1;
+    }
+
+    if (roleSet.includes('ORGUNIT_MEMBER')) {
+      return 2;
+    }
+
+    return 3;
+  }
+
+  private resolveTimestampWeight(value: unknown): number {
+    if (value instanceof Date) {
+      return value.getTime();
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+      const parsed = new Date(value).getTime();
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    return 0;
+  }
+
   async resolveActiveOrgUnitIdForSession(
     userId: string,
     tenantId: string | null | undefined,
@@ -85,6 +114,13 @@ class AuthService {
     }
 
     try {
+      type OrgUnitMembershipCandidate = {
+        orgUnitId: string;
+        roleSet: string[];
+        updatedAtUtc: unknown;
+        createdAtUtc: unknown;
+      };
+
       const membershipRows = await trxOrDb
         .withSchema('platform')
         .table('org_unit_memberships as om')
@@ -92,21 +128,53 @@ class AuthService {
         .where('om.user_id', userId)
         .andWhere('ou.tenant_id', tenantId)
         .andWhere('ou.status', 'active')
-        .select('om.org_unit_id as orgUnitId')
-        .orderBy('om.org_unit_id', 'asc');
+        .select([
+          'om.org_unit_id as orgUnitId',
+          'om.role_set_json as roleSetJson',
+          'om.updated_at_utc as updatedAtUtc',
+          'om.created_at_utc as createdAtUtc',
+        ]);
 
-      const orgUnitIds = Array.from(new Set(
+      const candidates: OrgUnitMembershipCandidate[] = Array.from(new Map(
         membershipRows
-          .map((row) => (typeof row.orgUnitId === 'string' ? row.orgUnitId.trim() : ''))
-          .filter((entry) => entry.length > 0),
-      ));
+          .map((row: any) => ({
+            orgUnitId: typeof row?.orgUnitId === 'string' ? row.orgUnitId.trim() : '',
+            roleSet: this.parseRoleSetJson(row?.roleSetJson),
+            updatedAtUtc: row?.updatedAtUtc ?? null,
+            createdAtUtc: row?.createdAtUtc ?? null,
+          }))
+          .filter((candidate: OrgUnitMembershipCandidate) => candidate.orgUnitId.length > 0)
+          .map((candidate: OrgUnitMembershipCandidate) => [candidate.orgUnitId, candidate] as const),
+      ).values());
 
-      if (orgUnitIds.length === 1) {
-        return orgUnitIds[0];
+      if (candidates.length === 1) {
+        return candidates[0]?.orgUnitId ?? null;
       }
 
-      if (orgUnitIds.length > 1) {
-        return null;
+      if (candidates.length > 1) {
+        candidates.sort((left: OrgUnitMembershipCandidate, right: OrgUnitMembershipCandidate) => {
+          const rolePriority = this.resolveOrgUnitRolePriority(left.roleSet)
+            - this.resolveOrgUnitRolePriority(right.roleSet);
+          if (rolePriority !== 0) {
+            return rolePriority;
+          }
+
+          const updatedPriority = this.resolveTimestampWeight(right.updatedAtUtc)
+            - this.resolveTimestampWeight(left.updatedAtUtc);
+          if (updatedPriority !== 0) {
+            return updatedPriority;
+          }
+
+          const createdPriority = this.resolveTimestampWeight(right.createdAtUtc)
+            - this.resolveTimestampWeight(left.createdAtUtc);
+          if (createdPriority !== 0) {
+            return createdPriority;
+          }
+
+          return left.orgUnitId.localeCompare(right.orgUnitId);
+        });
+
+        return candidates[0]?.orgUnitId ?? null;
       }
 
       const tenantMembership = await trxOrDb

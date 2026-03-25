@@ -119,6 +119,12 @@ const buildPlatformDbMock = (input: {
   tenantMembershipTenantIds: string[];
   tenantMembershipRoleSetJson: string;
   orgUnitMembershipIds: string[];
+  directMembershipRows?: Array<{
+    orgUnitId: string;
+    roleSetJson?: unknown;
+    updatedAtUtc?: unknown;
+    createdAtUtc?: unknown;
+  }>;
   orgUnitMembershipRoleSetJson: string;
   orgUnit: { id: string; tenantId: string };
 }) => ({
@@ -137,7 +143,7 @@ const buildPlatformDbMock = (input: {
 
       if (table === 'org_unit_memberships as om') {
         return createThenableQuery(
-          input.orgUnitMembershipIds.map((orgUnitId) => ({ orgUnitId })),
+          input.directMembershipRows ?? input.orgUnitMembershipIds.map((orgUnitId) => ({ orgUnitId })),
         );
       }
 
@@ -334,6 +340,69 @@ describe('connectshyft handler access context helper', () => {
     expect(req.tenantContext).toMatchObject({
       tenantId,
       orgUnitId,
+      scopeMode: 'ORG_UNIT',
+      source: 'auth',
+    });
+  });
+
+  it('prefers the strongest active orgUnit membership when bootstrapping fallback context', async () => {
+    const tenantId = '11111111-1111-4111-8111-111111111111';
+    const memberOrgUnitId = '22222222-2222-4222-8222-222222222222';
+    const adminOrgUnitId = '33333333-3333-4333-8333-333333333333';
+    const userId = '44444444-4444-4444-8444-444444444444';
+    jest.spyOn(accessContextModule, 'loadConnectShyftPlatformDb').mockReturnValue(
+      buildPlatformDbMock({
+        tenantMembershipTenantIds: [tenantId],
+        tenantMembershipRoleSetJson: '["TENANT_STAFF"]',
+        orgUnitMembershipIds: [memberOrgUnitId, adminOrgUnitId],
+        directMembershipRows: [
+          {
+            orgUnitId: memberOrgUnitId,
+            roleSetJson: '["ORGUNIT_MEMBER"]',
+            updatedAtUtc: '2026-03-25T10:00:00.000Z',
+            createdAtUtc: '2026-03-25T09:00:00.000Z',
+          },
+          {
+            orgUnitId: adminOrgUnitId,
+            roleSetJson: '["ORGUNIT_ADMIN"]',
+            updatedAtUtc: '2026-03-20T10:00:00.000Z',
+            createdAtUtc: '2026-03-20T09:00:00.000Z',
+          },
+        ],
+        orgUnitMembershipRoleSetJson: '["ORGUNIT_ADMIN"]',
+        orgUnit: {
+          id: adminOrgUnitId,
+          tenantId,
+        },
+      }) as any,
+    );
+
+    const req = createRequest({
+      tenantId: 'public',
+      orgUnitId: null,
+      role: 'member',
+      userId,
+      householdId: null,
+      activeTenantId: null,
+      activeOrgUnitId: null,
+      source: 'public',
+    });
+
+    const decision = await resolveConnectShyftRouteContextDecision(req);
+
+    expect(decision).toMatchObject({
+      ok: true,
+      context: {
+        tenantId,
+        orgUnitId: adminOrgUnitId,
+        bypassedOrgUnitMembership: true,
+        effectiveRoles: expect.arrayContaining(['TENANT_STAFF', 'ORGUNIT_ADMIN']),
+      },
+    });
+    expect(req.orgUnitId).toBe(adminOrgUnitId);
+    expect(req.tenantContext).toMatchObject({
+      tenantId,
+      orgUnitId: adminOrgUnitId,
       scopeMode: 'ORG_UNIT',
       source: 'auth',
     });

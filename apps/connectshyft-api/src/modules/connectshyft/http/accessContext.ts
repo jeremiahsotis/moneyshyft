@@ -55,6 +55,13 @@ type ConnectShyftOrgUnitRow = {
   name?: unknown;
 };
 
+type ConnectShyftOrgUnitMembershipCandidate = {
+  orgUnitId: string;
+  roleSet: string[];
+  updatedAtUtc: unknown;
+  createdAtUtc: unknown;
+};
+
 const normalizeNonEmptyString = (value: unknown): string | null => {
   if (typeof value !== 'string') {
     return null;
@@ -62,6 +69,98 @@ const normalizeNonEmptyString = (value: unknown): string | null => {
 
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
+};
+
+const parseRoleSetJson = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.filter((entry): entry is string => typeof entry === 'string');
+  }
+
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed)
+        ? parsed.filter((entry): entry is string => typeof entry === 'string')
+        : [];
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  return [];
+};
+
+const resolveOrgUnitRolePriority = (roleSet: string[]): number => {
+  if (roleSet.includes('ORGUNIT_ADMIN')) {
+    return 0;
+  }
+
+  if (roleSet.includes('ORGUNIT_IDENTITY_LEAD')) {
+    return 1;
+  }
+
+  if (roleSet.includes('ORGUNIT_MEMBER')) {
+    return 2;
+  }
+
+  return 3;
+};
+
+const resolveTimestampWeight = (value: unknown): number => {
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+};
+
+const selectPreferredOrgUnitMembership = (
+  rows: unknown[],
+): ConnectShyftOrgUnitMembershipCandidate | null => {
+  const candidates = Array.from(new Map(
+    rows
+      .map((row: any) => ({
+        orgUnitId: normalizeNonEmptyString(row?.orgUnitId) || '',
+        roleSet: parseRoleSetJson(row?.roleSetJson),
+        updatedAtUtc: row?.updatedAtUtc ?? null,
+        createdAtUtc: row?.createdAtUtc ?? null,
+      }))
+      .filter((candidate: ConnectShyftOrgUnitMembershipCandidate) => candidate.orgUnitId.length > 0)
+      .map((candidate: ConnectShyftOrgUnitMembershipCandidate) => [candidate.orgUnitId, candidate] as const),
+  ).values());
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  candidates.sort((left, right) => {
+    const rolePriority = resolveOrgUnitRolePriority(left.roleSet)
+      - resolveOrgUnitRolePriority(right.roleSet);
+    if (rolePriority !== 0) {
+      return rolePriority;
+    }
+
+    const updatedPriority = resolveTimestampWeight(right.updatedAtUtc)
+      - resolveTimestampWeight(left.updatedAtUtc);
+    if (updatedPriority !== 0) {
+      return updatedPriority;
+    }
+
+    const createdPriority = resolveTimestampWeight(right.createdAtUtc)
+      - resolveTimestampWeight(left.createdAtUtc);
+    if (createdPriority !== 0) {
+      return createdPriority;
+    }
+
+    return left.orgUnitId.localeCompare(right.orgUnitId);
+  });
+
+  return candidates[0] ?? null;
 };
 
 const createShellModuleAvailability = (
@@ -462,23 +561,16 @@ const resolveConnectShyftFallbackOrgUnitId = async (req: Request): Promise<strin
     .where('om.user_id', actorUserId)
     .andWhere('ou.tenant_id', tenantId)
     .andWhere('ou.status', 'active')
-    .select('om.org_unit_id as orgUnitId')
-    .orderBy('om.org_unit_id', 'asc');
+    .select([
+      'om.org_unit_id as orgUnitId',
+      'om.role_set_json as roleSetJson',
+      'om.updated_at_utc as updatedAtUtc',
+      'om.created_at_utc as createdAtUtc',
+    ]);
 
-  const directMembershipOrgUnitIds = Array.from(
-    new Set(
-      directMembershipRows
-        .map((row) => normalizeNonEmptyString((row as { orgUnitId?: unknown }).orgUnitId))
-        .filter((value): value is string => value !== null),
-    ),
-  );
-
-  if (directMembershipOrgUnitIds.length === 1) {
-    return directMembershipOrgUnitIds[0];
-  }
-
-  if (directMembershipOrgUnitIds.length > 1) {
-    return null;
+  const preferredDirectMembership = selectPreferredOrgUnitMembership(directMembershipRows);
+  if (preferredDirectMembership) {
+    return preferredDirectMembership.orgUnitId;
   }
 
   const requestedRole = resolveConnectShyftRequestedRole(req);
