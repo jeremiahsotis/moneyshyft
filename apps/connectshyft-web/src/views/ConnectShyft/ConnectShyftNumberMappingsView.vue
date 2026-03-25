@@ -113,13 +113,11 @@
       </section>
     </section>
 
-    <ConnectShyftPrimaryNav />
   </main>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
 import {
   fetchConnectShyftNumberMappings,
   saveConnectShyftNumberMapping,

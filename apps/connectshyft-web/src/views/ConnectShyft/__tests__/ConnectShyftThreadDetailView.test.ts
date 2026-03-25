@@ -309,7 +309,7 @@ describe('ConnectShyftThreadDetailView', () => {
       'Review in People',
     );
     expect(wrapper.get('[data-testid="connectshyft-thread-subject-impact-people-link"]').attributes('href')).toContain(
-      '/app/people',
+      '/people',
     );
   });
 

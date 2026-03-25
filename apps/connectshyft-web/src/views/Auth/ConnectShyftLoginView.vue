@@ -70,6 +70,7 @@
 import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '@/services/api';
+import { SHELL_ROUTE_PATHS } from '@/shell/routes';
 
 const route = useRoute();
 const router = useRouter();
@@ -103,12 +104,12 @@ const resolveLoginErrorMessage = (error: unknown): string => {
 
 const resolveRedirectPath = (): string => {
   if (typeof route.query.redirect !== 'string') {
-    return '/app/connectshyft/inbox';
+    return SHELL_ROUTE_PATHS.people;
   }
 
   const trimmed = route.query.redirect.trim();
   if (!trimmed.startsWith('/')) {
-    return '/app/connectshyft/inbox';
+    return SHELL_ROUTE_PATHS.people;
   }
 
   return trimmed;

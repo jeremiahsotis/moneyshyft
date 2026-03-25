@@ -504,7 +504,6 @@
       </p>
     </section>
 
-    <ConnectShyftPrimaryNav />
   </main>
 </template>
 
@@ -514,7 +513,6 @@ import { RouterLink, useRoute, useRouter, type LocationQueryRaw } from 'vue-rout
 import ConnectShyftComposer from '@/components/connectshyft/ConnectShyftComposer.vue';
 import ConnectShyftMessageBubble from '@/components/connectshyft/ConnectShyftMessageBubble.vue';
 import ConnectShyftNeighborSnapshot from '@/components/connectshyft/ConnectShyftNeighborSnapshot.vue';
-import ConnectShyftPrimaryNav from '@/components/connectshyft/ConnectShyftPrimaryNav.vue';
 import ConnectShyftQueueCard from '@/components/connectshyft/ConnectShyftQueueCard.vue';
 import ConnectShyftThreadActionBar from '@/components/connectshyft/ConnectShyftThreadActionBar.vue';
 import ConnectShyftVoicemailCard from '@/components/connectshyft/ConnectShyftVoicemailCard.vue';
@@ -553,6 +551,10 @@ import {
   sanitizeConnectShyftOperatorCopy,
   type ConnectShyftFeedback,
 } from '@/features/connectshyft/uiContracts';
+import {
+  buildConnectNeighborCreatePath,
+  buildConnectThreadPath,
+} from '@/shell/routes';
 
 const DEFAULT_THREAD_NEIGHBOR_ID = 'neighbor-connectshyft-c1-1001';
 const DEFAULT_THREAD_INBOUND_NUMBER_ID = 'cs-inbound-c1-001';
@@ -580,7 +582,7 @@ const inboxActionPending = ref(false);
 const viewportWidth = ref(typeof window === 'undefined' ? 1280 : window.innerWidth);
 
 const bucket = computed<'inbox' | 'mine'>(() => {
-  return route.path.includes('/app/connectshyft/mine') ? 'mine' : 'inbox';
+  return route.name === 'connectshyft-mine' ? 'mine' : 'inbox';
 });
 
 const bucketTitle = computed(() => (bucket.value === 'mine' ? 'Mine' : 'Inbox'));
@@ -1124,12 +1126,12 @@ const threadActionPreferencePolicyState = computed(() => {
 
 const buildThreadDetailPath = (threadId: string): string => {
   if (typeof window === 'undefined') {
-    return `/app/connectshyft/threads/${encodeURIComponent(threadId)}`;
+    return buildConnectThreadPath(threadId);
   }
 
   const currentQuery = new URLSearchParams(window.location.search);
   const queryString = currentQuery.toString();
-  const basePath = `/app/connectshyft/threads/${encodeURIComponent(threadId)}`;
+  const basePath = buildConnectThreadPath(threadId);
 
   return queryString.length > 0
     ? `${basePath}?${queryString}`
@@ -1138,12 +1140,12 @@ const buildThreadDetailPath = (threadId: string): string => {
 
 const buildNeighborCreatePath = (): string => {
   if (typeof window === 'undefined') {
-    return '/app/connectshyft/neighbors/new';
+    return buildConnectNeighborCreatePath();
   }
 
   const currentQuery = new URLSearchParams(window.location.search);
   const queryString = currentQuery.toString();
-  const basePath = '/app/connectshyft/neighbors/new';
+  const basePath = buildConnectNeighborCreatePath();
 
   return queryString.length > 0
     ? `${basePath}?${queryString}`

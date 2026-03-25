@@ -1,32 +1,25 @@
 <template>
   <nav
-    data-testid="connectshyft-bottom-nav"
-    class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-300 bg-white/95 backdrop-blur-sm"
+    data-testid="connectshyft-section-nav"
+    class="flex flex-wrap gap-2"
   >
-    <div class="mx-auto flex w-full max-w-4xl items-center justify-around gap-2 px-3 py-2">
-      <RouterLink
-        v-for="item in navItems"
-        :key="item.path"
-        :to="{
-          path: item.path,
-          query: sanitizedQuery(),
-        }"
-        :data-testid="item.testId"
-        :aria-label="item.ariaLabel"
-        :style="tapTargetStyle"
-        class="inline-flex min-h-[44px] min-w-[96px] items-center justify-center rounded-lg px-3 text-base font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
-        :class="isActive(item.path) ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'"
-      >
-        {{ item.label }}
-        <span
-          v-if="item.path === '/app/connectshyft/more' && isActive(item.path)"
-          data-testid="connectshyft-primary-nav-more-active"
-          class="ml-2 rounded bg-white/20 px-2 py-0.5 text-xs"
-        >
-          More active
-        </span>
-      </RouterLink>
-    </div>
+    <RouterLink
+      v-for="item in navItems"
+      :key="item.path"
+      :to="{
+        path: item.path,
+        query: sanitizedQuery(),
+      }"
+      :data-testid="item.testId"
+      :aria-label="item.ariaLabel"
+      :style="tapTargetStyle"
+      class="inline-flex min-h-[44px] min-w-[96px] items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+      :class="isActive(item.path)
+        ? 'bg-slate-900 text-white shadow-sm'
+        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+    >
+      {{ item.label }}
+    </RouterLink>
   </nav>
 </template>
 
@@ -34,6 +27,7 @@
 import type { LocationQueryRaw } from 'vue-router';
 import { useRoute } from 'vue-router';
 import { CONNECTSHYFT_ACCESSIBILITY_LOCKS } from '@/features/connectshyft/uiContracts';
+import { SHELL_ROUTE_PATHS } from '@/shell/routes';
 
 const route = useRoute();
 const tapTargetStyle = {
@@ -44,20 +38,20 @@ const navItems = [
   {
     label: 'Inbox',
     ariaLabel: 'Open Inbox',
-    path: '/app/connectshyft/inbox',
-    testId: 'connectshyft-bottom-nav-inbox',
+    path: SHELL_ROUTE_PATHS.connect,
+    testId: 'connectshyft-section-nav-inbox',
   },
   {
     label: 'Mine',
     ariaLabel: 'Open Mine',
-    path: '/app/connectshyft/mine',
-    testId: 'connectshyft-bottom-nav-mine',
+    path: SHELL_ROUTE_PATHS.connectMine,
+    testId: 'connectshyft-section-nav-mine',
   },
   {
-    label: 'More',
-    ariaLabel: 'Open More',
-    path: '/app/connectshyft/more',
-    testId: 'connectshyft-bottom-nav-more',
+    label: 'Directory',
+    ariaLabel: 'Open Directory',
+    path: SHELL_ROUTE_PATHS.connectDirectory,
+    testId: 'connectshyft-section-nav-directory',
   },
 ];
 
@@ -73,11 +67,16 @@ const sanitizedQuery = (): LocationQueryRaw => {
 };
 
 const isActive = (path: string): boolean => {
-  if (path === '/app/connectshyft/more') {
-    return route.path.startsWith('/app/connectshyft/more')
-      || route.path.startsWith('/app/connectshyft/settings');
+  if (path === SHELL_ROUTE_PATHS.connectDirectory) {
+    return route.path === path || route.path.startsWith(`${path}/`);
   }
 
-  return route.path === path || route.path.startsWith(`${path}/`);
+  if (path === SHELL_ROUTE_PATHS.connectMine) {
+    return route.path === path || route.path.startsWith(`${path}/`);
+  }
+
+  return route.path.startsWith(SHELL_ROUTE_PATHS.connect)
+    && !route.path.startsWith(SHELL_ROUTE_PATHS.connectMine)
+    && !route.path.startsWith(SHELL_ROUTE_PATHS.connectDirectory);
 };
 </script>
