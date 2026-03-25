@@ -3,6 +3,7 @@ import { executePlatformMutation } from '../../platform/mutations/executePlatfor
 import {
   createTenant,
   ensureScopedAdminUser,
+  evaluateRequestCapabilities,
   evaluateActorTenantModuleEntitlement,
   evaluateTenantModuleEntitlement,
   lookupScopedUsers,
@@ -773,6 +774,31 @@ describe('PlatformAdminService authorization and audit coverage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('uses the actor active tenant context when evaluating capabilities without an explicit tenant id', async () => {
+    const state = createDefaultState({
+      tenantMemberships: [{
+        tenant_id: TEST_TENANT_ID,
+        user_id: TEST_ACTOR_ID,
+        role_set_json: '["TENANT_ADMIN"]',
+      }],
+    });
+
+    const trxClient = {
+      transaction: async (callback: (trx: any) => Promise<unknown>) => callback(buildFakeTrx(state)),
+    } as any;
+
+    const result = await evaluateRequestCapabilities(trxClient, {
+      userId: TEST_ACTOR_ID,
+      baseRole: 'member',
+      headerRoles: [],
+      activeTenantId: TEST_TENANT_ID,
+    });
+
+    expect(result.roles).toContain('TENANT_ADMIN');
+    expect(result.capabilities).toContain('tenant:role:assign');
+    expect(result.tenantId).toBe(TEST_TENANT_ID);
   });
 
   it('rejects tenant membership role assignment for TENANT_STAFF actor (role matrix)', async () => {

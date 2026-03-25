@@ -76,12 +76,118 @@ class AuthService {
     return [];
   }
 
+  private resolveTenantRolePriority(roleSet: string[]): number {
+    if (roleSet.includes('TENANT_ADMIN')) {
+      return 0;
+    }
+
+    if (roleSet.includes('TENANT_STAFF')) {
+      return 1;
+    }
+
+    if (roleSet.includes('TENANT_VIEWER')) {
+      return 2;
+    }
+
+    return 3;
+  }
+
+  private resolveTimestampWeight(value: unknown): number {
+    if (value instanceof Date) {
+      return value.getTime();
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+      const parsed = new Date(value).getTime();
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    return 0;
+  }
+
+  private async ensureLegacyPlatformBootstrapForUser(
+    userId: string,
+    householdId: string | null | undefined,
+    userRole: string | null | undefined,
+    trxOrDb: Knex | Knex.Transaction = db,
+  ): Promise<void> {
+    if (!householdId) {
+      return;
+    }
+
+    try {
+      const household = await trxOrDb('households')
+        .select('id', 'name')
+        .where({ id: householdId })
+        .first();
+
+      if (!household) {
+        return;
+      }
+
+      const tenantName = household.name || `Tenant ${householdId.slice(0, 8)}`;
+      const normalizedRole = typeof userRole === 'string' ? userRole.trim().toLowerCase() : '';
+      const roleSet = normalizedRole === 'admin' || normalizedRole === 'system_admin'
+        ? ['TENANT_ADMIN']
+        : ['TENANT_VIEWER'];
+
+      await trxOrDb
+        .withSchema('platform')
+        .table('tenants')
+        .insert({
+          id: householdId,
+          name: tenantName,
+          status: 'active',
+          created_at_utc: trxOrDb.fn.now(),
+          updated_at_utc: trxOrDb.fn.now(),
+        })
+        .onConflict('id')
+        .ignore();
+
+      await trxOrDb
+        .withSchema('platform')
+        .table('tenant_memberships')
+        .insert({
+          tenant_id: householdId,
+          user_id: userId,
+          role_set_json: JSON.stringify(roleSet),
+          created_at_utc: trxOrDb.fn.now(),
+          updated_at_utc: trxOrDb.fn.now(),
+        })
+        .onConflict(['tenant_id', 'user_id'])
+        .ignore();
+    } catch (error) {
+      if (this.isMissingPlatformSchemaError(error)) {
+        logger.warn('Legacy platform bootstrap skipped because platform schema/tables are unavailable', {
+          householdId,
+          userId,
+        });
+        return;
+      }
+
+      throw error;
+    }
+  }
+
   async resolveActiveTenantIdForSession(
     userId: string,
     trxOrDb: Knex | Knex.Transaction = db,
   ): Promise<string | null> {
+    const user = await trxOrDb('users')
+      .where({ id: userId })
+      .first(['household_id']);
+    const householdId = typeof user?.household_id === 'string'
+      ? user.household_id.trim()
+      : '';
+    type TenantMembershipCandidate = {
+      tenantId: string;
+      roleSet: string[];
+      updatedAtUtc: unknown;
+      createdAtUtc: unknown;
+    };
+
     try {
-      const membership = await trxOrDb
+      const memberships = await trxOrDb
         .withSchema('platform')
         .table('tenant_memberships as tm')
         .leftJoin('tenants as t', 't.id', 'tm.tenant_id')
@@ -89,17 +195,58 @@ class AuthService {
         .andWhere((query) => {
           query.whereNull('t.status').orWhere('t.status', 'active');
         })
-        .select('tm.tenant_id as tenantId')
-        .orderBy('tm.tenant_id', 'asc')
-        .first();
+        .select([
+          'tm.tenant_id as tenantId',
+          'tm.role_set_json as roleSetJson',
+          'tm.updated_at_utc as updatedAtUtc',
+          'tm.created_at_utc as createdAtUtc',
+        ]);
 
-      const tenantId = typeof membership?.tenantId === 'string'
-        ? membership.tenantId.trim()
-        : '';
-      return tenantId.length > 0 ? tenantId : null;
+      const candidates: TenantMembershipCandidate[] = memberships
+        .map((membership: any) => ({
+          tenantId: typeof membership?.tenantId === 'string' ? membership.tenantId.trim() : '',
+          roleSet: this.parseRoleSetJson(membership?.roleSetJson),
+          updatedAtUtc: membership?.updatedAtUtc ?? null,
+          createdAtUtc: membership?.createdAtUtc ?? null,
+        }))
+        .filter((membership: TenantMembershipCandidate) => membership.tenantId.length > 0);
+
+      if (candidates.length === 0) {
+        return householdId.length > 0 ? householdId : null;
+      }
+
+      candidates.sort((left: TenantMembershipCandidate, right: TenantMembershipCandidate) => {
+        const leftHouseholdMatch = left.tenantId === householdId;
+        const rightHouseholdMatch = right.tenantId === householdId;
+        if (leftHouseholdMatch !== rightHouseholdMatch) {
+          return leftHouseholdMatch ? -1 : 1;
+        }
+
+        const rolePriority = this.resolveTenantRolePriority(left.roleSet)
+          - this.resolveTenantRolePriority(right.roleSet);
+        if (rolePriority !== 0) {
+          return rolePriority;
+        }
+
+        const updatedPriority = this.resolveTimestampWeight(right.updatedAtUtc)
+          - this.resolveTimestampWeight(left.updatedAtUtc);
+        if (updatedPriority !== 0) {
+          return updatedPriority;
+        }
+
+        const createdPriority = this.resolveTimestampWeight(right.createdAtUtc)
+          - this.resolveTimestampWeight(left.createdAtUtc);
+        if (createdPriority !== 0) {
+          return createdPriority;
+        }
+
+        return left.tenantId.localeCompare(right.tenantId);
+      });
+
+      return candidates[0]?.tenantId || (householdId.length > 0 ? householdId : null);
     } catch (error) {
       if (this.isMissingPlatformSchemaError(error)) {
-        return null;
+        return householdId.length > 0 ? householdId : null;
       }
 
       throw error;
@@ -134,7 +281,8 @@ class AuthService {
       ));
 
       if (orgUnitIds.length === 1) {
-        return orgUnitIds[0];
+        const [singleOrgUnitId] = orgUnitIds;
+        return singleOrgUnitId ?? null;
       }
 
       if (orgUnitIds.length > 1) {
@@ -252,7 +400,7 @@ class AuthService {
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     // Use transaction to create user and optionally household
-    const result = await db.transaction(async (trx) => {
+    const result = await db.transaction(async (trx: Knex.Transaction) => {
       let householdId: string | null = null;
       let returnInvitationCode: string | null = null;
 
@@ -481,6 +629,7 @@ class AuthService {
     logger.info(`User logged in: ${email}${rememberMe ? ' (Remember Me enabled)' : ''}`);
 
     // Generate tokens
+    await this.ensureLegacyPlatformBootstrapForUser(user.id, user.household_id, user.role);
     const activeTenantId = await this.resolveActiveTenantIdForSession(user.id);
     const payload: JWTPayload = {
       userId: user.id,
@@ -574,6 +723,7 @@ class AuthService {
    */
   private async formatUserResponse(user: any): Promise<UserResponse> {
     let setupWizardCompleted: boolean | undefined = user.setup_wizard_completed;
+    await this.ensureLegacyPlatformBootstrapForUser(user.id, user.household_id, user.role);
     const activeTenantId = await this.resolveActiveTenantIdForSession(user.id);
     const activeOrgUnitId = await this.resolveActiveOrgUnitIdForSession(
       user.id,

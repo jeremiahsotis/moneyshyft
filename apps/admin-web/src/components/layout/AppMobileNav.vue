@@ -51,7 +51,9 @@ const refreshAccess = async (): Promise<void> => {
     return;
   }
 
-  await accessStore.refresh({ tenantId: authStore.user?.householdId || undefined });
+  await accessStore.refresh({
+    tenantId: authStore.user?.activeTenantId || authStore.user?.householdId || undefined,
+  });
 };
 
 onMounted(() => {
@@ -59,7 +61,7 @@ onMounted(() => {
 });
 
 watch(
-  () => [authStore.isAuthenticated, authStore.user?.householdId],
+  () => [authStore.isAuthenticated, authStore.user?.activeTenantId, authStore.user?.householdId],
   () => {
     void refreshAccess();
   }

@@ -226,6 +226,7 @@ const resolveRequestRoles = async (
   orgUnitId?: string
 ): Promise<ScopedRole[]> => {
   const baseRole = actor.baseRole || null;
+  const effectiveTenantId = tenantId || normalizeIdInput(actor.activeTenantId || null) || undefined;
 
   const legacyRoleAliases: Record<string, ScopedRole> = {
     admin: 'TENANT_ADMIN',
@@ -237,7 +238,7 @@ const resolveRequestRoles = async (
     : null;
 
   const membershipRoles = actor.userId
-    ? await resolveMembershipRoles(trx, actor.userId, tenantId, orgUnitId)
+    ? await resolveMembershipRoles(trx, actor.userId, effectiveTenantId, orgUnitId)
     : [];
 
   return normalizeRoleSet([
