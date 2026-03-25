@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 
-const knownLibs = new Set(['auth', 'db', 'http', 'platform', 'ui-shell']);
+const knownLibs = new Set(['auth', 'contracts', 'db', 'http', 'platform', 'ui-shell']);
 const requestedLibs = process.argv.slice(2);
 const libs = requestedLibs.length > 0 ? requestedLibs : Array.from(knownLibs);
 

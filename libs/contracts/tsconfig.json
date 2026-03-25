@@ -1,8 +1,26 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
     "types": ["node", "jest"],
-    "typeRoots": ["../../apps/connectshyft-api/node_modules/@types"]
+    "typeRoots": [
+      "../../node_modules/@types",
+      "../../apps/moneyshyft-api/node_modules/@types",
+      "../../apps/admin-api/node_modules/@types",
+      "../../apps/connectshyft-api/node_modules/@types",
+      "../../apps/moneyshyft-web/node_modules/@types",
+      "../../apps/admin-web/node_modules/@types",
+      "../../apps/connectshyft-web/node_modules/@types"
+    ],
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "declaration": true,
+    "sourceMap": false,
+    "esModuleInterop": true,
+    "preserveSymlinks": true
   },
-  "include": ["src", "tests"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "node_modules"]
 }

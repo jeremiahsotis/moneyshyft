@@ -33,7 +33,9 @@ COPY --from=build /workspace/libs ./dist/libs
 COPY --from=build /workspace/apps/connectshyft-api/knexfile.js ./knexfile.js
 COPY --from=build /workspace/apps/connectshyft-api/scripts ./scripts
 
-RUN ln -s /app/node_modules /node_modules
+RUN mkdir -p /app/node_modules/@shyft \
+  && ln -s /libs/contracts /app/node_modules/@shyft/contracts \
+  && ln -s /app/node_modules /node_modules
 
 EXPOSE 3002
 
