@@ -161,7 +161,10 @@ export const loadShellOrgUnitContext = async (): Promise<ConnectShyftShellContex
     });
     const context = extractContextFromEnvelope(response.data);
     if (!context) {
-      shellOrgUnitError.value = 'Unable to load org unit access.';
+      shellOrgUnitError.value = extractEnvelopeMessage(
+        response.data,
+        'Unable to load org unit access.',
+      );
       return null;
     }
 

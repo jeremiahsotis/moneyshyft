@@ -506,12 +506,19 @@ const applyConnectShyftFallbackOrgUnitContext = async (req: Request): Promise<vo
     return;
   }
 
+  const resolvedTenantId = await resolveTenantIdFromRequest(req);
+  if (!resolvedTenantId || !UUID_PATTERN.test(resolvedTenantId)) {
+    return;
+  }
+
+  req.tenantId = resolvedTenantId;
   req.orgUnitId = fallbackOrgUnitId;
+  req.scopeMode = 'ORG_UNIT';
   req.tenantContext = {
-    tenantId: req.tenantContext?.tenantId || req.tenantId || req.user?.activeTenantId || 'public',
+    tenantId: resolvedTenantId,
     orgUnitId: fallbackOrgUnitId,
     scopeMode: 'ORG_UNIT',
-    source: req.tenantContext?.source || 'auth',
+    source: 'auth',
   };
 };
 

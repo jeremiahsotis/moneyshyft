@@ -417,4 +417,20 @@ describe('AppShellView', () => {
       'We couldn’t load this workspace.',
     );
   });
+
+  it('surfaces backend refusal copy when the context route returns a refusal envelope', async () => {
+    const { wrapper } = await renderShell({
+      contextResponse: {
+        data: {
+          ok: false,
+          code: 'CONNECTSHYFT_ORGUNIT_CONTEXT_REQUIRED',
+          message: 'orgUnit context is required for ConnectShyft orgUnit-scoped routes',
+        },
+      },
+    });
+
+    expect(wrapper.get('[data-testid="shell-surface-error"]').text()).toContain(
+      'orgUnit context is required for ConnectShyft orgUnit-scoped routes',
+    );
+  });
 });
