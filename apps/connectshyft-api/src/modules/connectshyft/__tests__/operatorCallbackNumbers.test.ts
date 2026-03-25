@@ -183,16 +183,18 @@ describe('connectshyft operator callback numbers', () => {
 
 function buildOperatorCallbackNumbersKnexMock(input: {
   firstResults?: Array<Record<string, unknown> | null>;
-  updatedRows?: Array<Record<string, unknown>>;
-  insertedRows?: Array<Record<string, unknown>>;
 } = {}) {
   const queuedFirstResults = [...(input.firstResults ?? [null])];
   const first = jest.fn(async () => queuedFirstResults.shift() ?? null);
-  const update = jest.fn(async () => input.updatedRows ?? []);
-  const insert = jest.fn(async () => input.insertedRows ?? []);
+  const merge = jest.fn(async () => undefined);
+  const onConflict = jest.fn(() => ({
+    merge,
+  }));
+  const insert = jest.fn(() => ({
+    onConflict,
+  }));
   const query = {
     first,
-    update,
     insert,
   };
   const where = jest.fn(() => query);
@@ -217,8 +219,9 @@ function buildOperatorCallbackNumbersKnexMock(input: {
     table,
     where,
     first,
-    update,
     insert,
+    onConflict,
+    merge,
   };
 }
 
@@ -260,9 +263,8 @@ describe('KnexConnectShyftOperatorCallbackNumberStore', () => {
   });
 
   it('inserts a callback number when no existing record is present', async () => {
-    const { knex, where, first, insert } = buildOperatorCallbackNumbersKnexMock({
-      firstResults: [null],
-      insertedRows: [
+    const { knex, where, first, insert, onConflict, merge } = buildOperatorCallbackNumbersKnexMock({
+      firstResults: [
         {
           tenant_id: 'tenant-connectshyft-alpha',
           user_id: 'user-connectshyft-alpha-operator',
@@ -289,32 +291,28 @@ describe('KnexConnectShyftOperatorCallbackNumberStore', () => {
       updatedAtUtc: '2026-03-22T13:00:00.000Z',
     });
 
-    expect(where).toHaveBeenCalledWith({
-      tenant_id: 'tenant-connectshyft-alpha',
-      user_id: 'user-connectshyft-alpha-operator',
-    });
-    expect(first).toHaveBeenCalledWith();
     expect(insert).toHaveBeenCalledWith({
       tenant_id: 'tenant-connectshyft-alpha',
       user_id: 'user-connectshyft-alpha-operator',
       callback_number_e164: '+12605550123',
       callback_number_raw_input: '260-555-0123',
-    }, '*');
+    });
+    expect(onConflict).toHaveBeenCalledWith(['tenant_id', 'user_id']);
+    expect(merge).toHaveBeenCalledWith({
+      callback_number_e164: '+12605550123',
+      callback_number_raw_input: '260-555-0123',
+      updated_at_utc: 'NOW_TOKEN',
+    });
+    expect(where).toHaveBeenCalledWith({
+      tenant_id: 'tenant-connectshyft-alpha',
+      user_id: 'user-connectshyft-alpha-operator',
+    });
+    expect(first).toHaveBeenCalledWith();
   });
 
   it('updates an existing callback number record in connectshyft.cs_operator_callback_numbers', async () => {
-    const { knex, where, first, update } = buildOperatorCallbackNumbersKnexMock({
+    const { knex, where, first, insert, onConflict, merge } = buildOperatorCallbackNumbersKnexMock({
       firstResults: [
-        {
-          tenant_id: 'tenant-connectshyft-alpha',
-          user_id: 'user-connectshyft-alpha-operator',
-          callback_number_e164: '+12605550000',
-          callback_number_raw_input: '260-555-0000',
-          created_at_utc: '2026-03-22T12:00:00.000Z',
-          updated_at_utc: '2026-03-22T12:30:00.000Z',
-        },
-      ],
-      updatedRows: [
         {
           tenant_id: 'tenant-connectshyft-alpha',
           user_id: 'user-connectshyft-alpha-operator',
@@ -341,15 +339,22 @@ describe('KnexConnectShyftOperatorCallbackNumberStore', () => {
       updatedAtUtc: '2026-03-22T13:00:00.000Z',
     });
 
+    expect(insert).toHaveBeenCalledWith({
+      tenant_id: 'tenant-connectshyft-alpha',
+      user_id: 'user-connectshyft-alpha-operator',
+      callback_number_e164: '+12605550123',
+      callback_number_raw_input: '260-555-0123',
+    });
+    expect(onConflict).toHaveBeenCalledWith(['tenant_id', 'user_id']);
+    expect(merge).toHaveBeenCalledWith({
+      callback_number_e164: '+12605550123',
+      callback_number_raw_input: '260-555-0123',
+      updated_at_utc: 'NOW_TOKEN',
+    });
     expect(where).toHaveBeenCalledWith({
       tenant_id: 'tenant-connectshyft-alpha',
       user_id: 'user-connectshyft-alpha-operator',
     });
     expect(first).toHaveBeenCalledWith();
-    expect(update).toHaveBeenCalledWith({
-      callback_number_e164: '+12605550123',
-      callback_number_raw_input: '260-555-0123',
-      updated_at_utc: 'NOW_TOKEN',
-    }, '*');
   });
 });

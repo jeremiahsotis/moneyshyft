@@ -75,6 +75,13 @@ const buildApp = (options: HarnessOptions = {}) => {
   });
 
   app.use('/api/v1/connectshyft', connectShyftRouter);
+  app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    res.status(500).json({
+      ok: false,
+      code: 'CONNECTSHYFT_UNHANDLED_ERROR',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  });
   return app;
 };
 
@@ -579,6 +586,28 @@ describe('connectshyft telephony runtime route characterization', () => {
           updatedAtUtc: '2026-03-22T11:00:00.000Z',
         },
       },
+    });
+  });
+
+  it('returns a deterministic 500 envelope when callback-number persistence throws unexpectedly', async () => {
+    jest.spyOn(
+      AsyncConnectShyftOperatorCallbackNumberService.prototype,
+      'setCallbackNumber',
+    ).mockRejectedValue(new Error('Callback number write exploded'));
+
+    const app = buildApp();
+    const response = await request(app)
+      .put('/api/v1/connectshyft/operator/callback-number')
+      .set(buildHeaders())
+      .send({
+        callbackNumber: '(317) 555-0100',
+      });
+
+    expect(response.status).toBe(500);
+    expect(response.body).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_UNHANDLED_ERROR',
+      message: 'Callback number write exploded',
     });
   });
 

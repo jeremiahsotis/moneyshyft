@@ -282,35 +282,26 @@ implements ConnectShyftOperatorCallbackNumberStore {
     callbackNumberE164: string;
     callbackNumberRawInput: string;
   }): Promise<ConnectShyftOperatorCallbackNumber> {
-    const existing = await this.table()
+    await this.table()
+      .insert({
+        tenant_id: input.tenantId,
+        user_id: input.userId,
+        callback_number_e164: input.callbackNumberE164,
+        callback_number_raw_input: input.callbackNumberRawInput,
+      })
+      .onConflict(['tenant_id', 'user_id'])
+      .merge({
+        callback_number_e164: input.callbackNumberE164,
+        callback_number_raw_input: input.callbackNumberRawInput,
+        updated_at_utc: this.knexClient.fn.now(),
+      });
+
+    const row = await this.table()
       .where({
         tenant_id: input.tenantId,
         user_id: input.userId,
       })
       .first<DbOperatorCallbackNumberRow>();
-
-    let row: DbOperatorCallbackNumberRow | undefined;
-
-    if (existing) {
-      [row] = await this.table()
-        .where({
-          tenant_id: input.tenantId,
-          user_id: input.userId,
-        })
-        .update({
-          callback_number_e164: input.callbackNumberE164,
-          callback_number_raw_input: input.callbackNumberRawInput,
-          updated_at_utc: this.knexClient.fn.now(),
-        }, '*') as DbOperatorCallbackNumberRow[];
-    } else {
-      [row] = await this.table()
-        .insert({
-          tenant_id: input.tenantId,
-          user_id: input.userId,
-          callback_number_e164: input.callbackNumberE164,
-          callback_number_raw_input: input.callbackNumberRawInput,
-        }, '*') as DbOperatorCallbackNumberRow[];
-    }
 
     if (!row) {
       throw new Error('Operator callback number persistence did not return a row.');

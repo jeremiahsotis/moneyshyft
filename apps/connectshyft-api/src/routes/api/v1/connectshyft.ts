@@ -29,6 +29,7 @@ import {
   isTelephonyProviderFailure,
   validatePhoneForChannel,
 } from '../../../../../../domains/communication';
+import { asyncHandler } from '../../../middleware/errorHandler';
 import { refusal, success } from '../../../platform/envelopes/response';
 import { CAPABILITIES, hasCapability, normalizeRoles } from '../../../platform/rbac/capabilities';
 import {
@@ -4888,11 +4889,11 @@ router.get('/settings/navigation', getConnectSettingsNavigation);
 
 router.get('/availability', getConnectAvailability);
 
-router.get('/telephony-readiness', getConnectTelephonyReadiness);
+router.get('/telephony-readiness', asyncHandler(getConnectTelephonyReadiness));
 
-router.get('/operator/callback-number', getConnectOperatorCallbackNumber);
+router.get('/operator/callback-number', asyncHandler(getConnectOperatorCallbackNumber));
 
-router.put('/operator/callback-number', putConnectOperatorCallbackNumber);
+router.put('/operator/callback-number', asyncHandler(putConnectOperatorCallbackNumber));
 
 router.get('/context', getConnectContext);
 
