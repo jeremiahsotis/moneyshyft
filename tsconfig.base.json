@@ -6,10 +6,22 @@
     "moduleResolution": "Bundler",
     "baseUrl": ".",
     "paths": {
-      "express": ["apps/moneyshyft-api/node_modules/express"],
-      "joi": ["apps/moneyshyft-api/node_modules/joi"],
-      "jsonwebtoken": ["apps/moneyshyft-api/node_modules/jsonwebtoken"],
-      "knex": ["apps/moneyshyft-api/node_modules/knex"],
+      "express": [
+        "apps/connectshyft-api/node_modules/express",
+        "apps/moneyshyft-api/node_modules/express"
+      ],
+      "joi": [
+        "apps/connectshyft-api/node_modules/joi",
+        "apps/moneyshyft-api/node_modules/joi"
+      ],
+      "jsonwebtoken": [
+        "apps/connectshyft-api/node_modules/jsonwebtoken",
+        "apps/moneyshyft-api/node_modules/jsonwebtoken"
+      ],
+      "knex": [
+        "apps/connectshyft-api/node_modules/knex",
+        "apps/moneyshyft-api/node_modules/knex"
+      ],
       "pinia": ["apps/moneyshyft-web/node_modules/pinia"],
       "vue": ["apps/moneyshyft-web/node_modules/vue"],
       "@shyft/auth": ["libs/auth/src/index.ts"],
