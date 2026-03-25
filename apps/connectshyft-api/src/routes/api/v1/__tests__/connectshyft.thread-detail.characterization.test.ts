@@ -17,52 +17,79 @@ import {
 const TEST_TENANT_ID = 'tenant-connectshyft-f1';
 const TEST_ORG_UNIT_ID = 'org-connectshyft-f1-east';
 
-const buildThreadDetailRecord = (overrides: Record<string, unknown> = {}) => ({
-  threadId: 'thread-detail-characterization-1001',
-  neighborId: 'neighbor-detail-characterization-1001',
-  personId: 'person-detail-characterization-1001',
-  identityState: 'confirmed',
-  subjectImpact: null,
-  subjectContext: {
-    orgUnitId: TEST_ORG_UNIT_ID,
+const buildThreadDetailRecord = (overrides: Record<string, unknown> = {}) => {
+  const record = {
+    threadId: 'thread-detail-characterization-1001',
+    neighborId: 'neighbor-detail-characterization-1001',
     personId: 'person-detail-characterization-1001',
-  },
-  neighborDeleted: false,
-  neighbor_deleted: false,
-  neighborDeletedAtUtc: null,
-  neighbor_deleted_at_utc: null,
-  tenantId: TEST_TENANT_ID,
-  orgUnitId: TEST_ORG_UNIT_ID,
-  state: 'CLAIMED',
-  claimedByUserId: 'user-connectshyft-f1-operator',
-  claimed_by_user_id: 'user-connectshyft-f1-operator',
-  bucket: 'mine',
-  escalationStage: 1,
-  isNewUnread: false,
-  priorityRank: 3,
-  urgencyLabel: 'Needs attention soon',
-  lastActivityAtUtc: '2026-03-19T10:05:00.000Z',
-  lastInboundCsNumberId: 'cs-number-1001',
-  last_inbound_cs_number_id: 'cs-number-1001',
-  preferredOutboundCsNumberId: 'cs-number-2001',
-  preferred_outbound_cs_number_id: 'cs-number-2001',
-  preferredOutboundContext: {
-    csNumberId: 'cs-number-2001',
-    label: 'Primary Queue',
-  },
-  preferred_outbound_context: {
-    cs_number_id: 'cs-number-2001',
-    label: 'Primary Queue',
-  },
-  voicemailIndicator: false,
-  voicemailLabel: null,
-  summary: 'Thread detail characterization baseline',
-  actions: ['Call', 'Text', 'Close'],
-  lifecycle: {
-    reopenedByInbound: false,
-  },
-  ...overrides,
-});
+    identityState: 'confirmed',
+    subjectImpact: null,
+    subjectContext: {
+      orgUnitId: TEST_ORG_UNIT_ID,
+      personId: 'person-detail-characterization-1001',
+      threadId: 'thread-detail-characterization-1001',
+      identityState: 'confirmed',
+    },
+    neighborDeleted: false,
+    neighbor_deleted: false,
+    neighborDeletedAtUtc: null,
+    neighbor_deleted_at_utc: null,
+    tenantId: TEST_TENANT_ID,
+    orgUnitId: TEST_ORG_UNIT_ID,
+    state: 'CLAIMED',
+    claimedByUserId: 'user-connectshyft-f1-operator',
+    claimed_by_user_id: 'user-connectshyft-f1-operator',
+    bucket: 'mine',
+    escalationStage: 1,
+    isNewUnread: false,
+    priorityRank: 3,
+    urgencyLabel: 'Needs attention soon',
+    lastActivityAtUtc: '2026-03-19T10:05:00.000Z',
+    lastInboundCsNumberId: 'cs-number-1001',
+    last_inbound_cs_number_id: 'cs-number-1001',
+    preferredOutboundCsNumberId: 'cs-number-2001',
+    preferred_outbound_cs_number_id: 'cs-number-2001',
+    preferredOutboundContext: {
+      csNumberId: 'cs-number-2001',
+      label: 'Primary Queue',
+    },
+    preferred_outbound_context: {
+      cs_number_id: 'cs-number-2001',
+      label: 'Primary Queue',
+    },
+    voicemailIndicator: false,
+    voicemailLabel: null,
+    summary: 'Thread detail characterization baseline',
+    actions: ['Call', 'Text', 'Close'],
+    lifecycle: {
+      reopenedByInbound: false,
+    },
+    ...overrides,
+  } as Record<string, unknown>;
+
+  if (!('subjectContext' in overrides) && typeof record.threadId === 'string') {
+    record.subjectContext = record.personId && record.identityState === 'provisional'
+      ? {
+        orgUnitId: record.orgUnitId,
+        provisionalPersonId: record.personId,
+        threadId: record.threadId,
+        identityState: record.identityState,
+      }
+      : record.personId
+        ? {
+          orgUnitId: record.orgUnitId,
+          personId: record.personId,
+          threadId: record.threadId,
+          identityState: record.identityState,
+        }
+        : {
+          orgUnitId: record.orgUnitId,
+          threadId: record.threadId,
+        };
+  }
+
+  return record;
+};
 
 const buildBridgeSessionAggregate = (overrides: Record<string, unknown> = {}) => ({
   session: {
@@ -228,6 +255,8 @@ describe('connectshyft thread detail route characterization', () => {
           subjectContext: {
             orgUnitId: TEST_ORG_UNIT_ID,
             personId: 'person-detail-characterization-1001',
+            threadId,
+            identityState: 'confirmed',
           },
           neighborDeleted: false,
           neighbor_deleted: false,
@@ -322,6 +351,8 @@ describe('connectshyft thread detail route characterization', () => {
       subjectContext: {
         orgUnitId: TEST_ORG_UNIT_ID,
         provisionalPersonId: 'person-detail-provisional-1003',
+        threadId,
+        identityState: 'provisional',
       },
     }) as any);
     jest.spyOn(
@@ -352,6 +383,8 @@ describe('connectshyft thread detail route characterization', () => {
           subjectContext: {
             orgUnitId: TEST_ORG_UNIT_ID,
             provisionalPersonId: 'person-detail-provisional-1003',
+            threadId,
+            identityState: 'provisional',
           },
         },
       },
@@ -371,6 +404,8 @@ describe('connectshyft thread detail route characterization', () => {
       subjectContext: {
         orgUnitId: TEST_ORG_UNIT_ID,
         provisionalPersonId: 'person-detail-resolver-impact-1007',
+        threadId,
+        identityState: 'provisional',
       },
     }) as any);
     jest.spyOn(
@@ -430,6 +465,8 @@ describe('connectshyft thread detail route characterization', () => {
       subjectContext: {
         orgUnitId: TEST_ORG_UNIT_ID,
         personId: 'person-detail-rebind-impact-1008',
+        threadId,
+        identityState: 'confirmed',
       },
     }) as any);
     jest.spyOn(

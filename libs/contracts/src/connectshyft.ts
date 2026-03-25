@@ -7,6 +7,7 @@ import type {
   ResolverReview,
   ResolverReviewStatus,
 } from './people';
+import type { SubjectContext } from './subject-context';
 
 export type ConnectShyftIdentityResolutionCandidate = {
   personId: string;
@@ -210,6 +211,7 @@ export type ConnectShyftResolverQueueDetailData = {
   item: ConnectShyftResolverQueueItemRecord;
   review: ConnectShyftResolverReviewRecord | null;
   rebindReview: ConnectShyftRebindReviewContext | null;
+  subjectContext: SubjectContext;
 };
 
 export type ConnectShyftResolverDecisionData = {

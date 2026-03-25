@@ -22,7 +22,11 @@ import {
   type ConnectShyftIdentityResolutionCandidate,
   type ConnectShyftIdentityResolutionResponse,
 } from '@/features/connectshyft/identityResolution';
-import { useSubjectContext } from '../../shell/subjectContext';
+import {
+  clearSubjectContext,
+  replaceSubjectContext,
+  useSubjectContext,
+} from '../../shell/subjectContext';
 
 type ResolverWorkspaceFilter =
   | 'all_active'
@@ -53,6 +57,7 @@ const selectedResolverQueueKey = ref('');
 const selectedResolverQueueDetail = ref<ConnectShyftResolverQueueDetailData | null>(null);
 const resolverDetailLoading = ref(false);
 const resolverDetailError = ref('');
+const manuallySelectedResolverQueueKey = ref('');
 
 const SAMPLE_CANDIDATES: ConnectShyftIdentityResolutionCandidate[] = [
   {
@@ -433,6 +438,15 @@ const clearSelectedResolverQueueDetail = () => {
   resolverDetailError.value = '';
 };
 
+const clearManualResolverSubjectSelection = (orgUnitId = '') => {
+  if (!manuallySelectedResolverQueueKey.value) {
+    return;
+  }
+
+  manuallySelectedResolverQueueKey.value = '';
+  clearSubjectContext(subjectContext, orgUnitId || subjectContext.value.orgUnitId);
+};
+
 const loadResolverQueue = async () => {
   resolverQueueLoading.value = true;
   resolverQueueError.value = '';
@@ -480,6 +494,7 @@ const loadResolverQueueDetail = async (
     if (result.unauthorized) {
       resolverQueueAuthorized.value = false;
       setResolverQueueItems([]);
+      clearManualResolverSubjectSelection(item.orgUnitId || subjectContext.value.orgUnitId);
       clearSelectedResolverQueueDetail();
       return;
     }
@@ -490,6 +505,9 @@ const loadResolverQueueDetail = async (
       setResolverQueueItems(resolverQueueItems.value.filter((queueItem) =>
         buildResolverQueueKey(queueItem.itemType, queueItem.id) !== requestKey));
       selectedResolverQueueDetail.value = null;
+      if (manuallySelectedResolverQueueKey.value === requestKey) {
+        clearManualResolverSubjectSelection(item.orgUnitId || subjectContext.value.orgUnitId);
+      }
       return;
     }
 
@@ -504,7 +522,19 @@ const loadResolverQueueDetail = async (
 };
 
 const selectResolverQueueItem = (item: ConnectShyftResolverQueueItemRecord) => {
-  selectedResolverQueueKey.value = buildResolverQueueKey(item.itemType, item.id);
+  const requestKey = buildResolverQueueKey(item.itemType, item.id);
+  manuallySelectedResolverQueueKey.value = requestKey;
+  selectedResolverQueueKey.value = requestKey;
+
+  if (selectedResolverQueueDetail.value) {
+    const detailKey = buildResolverQueueKey(
+      selectedResolverQueueDetail.value.item.itemType,
+      selectedResolverQueueDetail.value.item.id,
+    );
+    if (detailKey === requestKey) {
+      replaceSubjectContext(subjectContext, selectedResolverQueueDetail.value.subjectContext);
+    }
+  }
 };
 
 const runResolverQueueMutation = async (
@@ -528,6 +558,7 @@ const runResolverQueueMutation = async (
       resolverQueueAuthorized.value = false;
       setResolverQueueItems([]);
       selectedResolverQueueKey.value = '';
+      clearManualResolverSubjectSelection(item.orgUnitId || subjectContext.value.orgUnitId);
       clearSelectedResolverQueueDetail();
       return;
     }
@@ -538,6 +569,9 @@ const runResolverQueueMutation = async (
         buildResolverQueueKey(queueItem.itemType, queueItem.id) !== actionKey));
       selectedResolverQueueDetail.value = null;
       selectedResolverQueueKey.value = '';
+      if (manuallySelectedResolverQueueKey.value === actionKey) {
+        clearManualResolverSubjectSelection(item.orgUnitId || subjectContext.value.orgUnitId);
+      }
       return;
     }
 
@@ -577,6 +611,7 @@ const releaseSelectedResolverQueueItem = async () => {
 
 watch(filteredResolverQueueItems, (items) => {
   if (items.length === 0) {
+    clearManualResolverSubjectSelection(subjectContext.value.orgUnitId);
     selectedResolverQueueKey.value = '';
     clearSelectedResolverQueueDetail();
     return;
@@ -585,6 +620,13 @@ watch(filteredResolverQueueItems, (items) => {
   const hasSelectedItem = items.some((item) =>
     buildResolverQueueKey(item.itemType, item.id) === selectedResolverQueueKey.value);
   if (!hasSelectedItem) {
+    if (manuallySelectedResolverQueueKey.value) {
+      const hasManualSelection = items.some((item) =>
+        buildResolverQueueKey(item.itemType, item.id) === manuallySelectedResolverQueueKey.value);
+      if (!hasManualSelection) {
+        clearManualResolverSubjectSelection(subjectContext.value.orgUnitId);
+      }
+    }
     selectedResolverQueueKey.value = buildResolverQueueKey(items[0].itemType, items[0].id);
   }
 }, { immediate: true });
@@ -598,6 +640,19 @@ watch(selectedResolverQueueKey, (nextKey) => {
   }
 
   void loadResolverQueueDetail(item);
+});
+
+watch(selectedResolverQueueDetail, (nextDetail) => {
+  if (!nextDetail) {
+    return;
+  }
+
+  const detailKey = buildResolverQueueKey(nextDetail.item.itemType, nextDetail.item.id);
+  if (!manuallySelectedResolverQueueKey.value || detailKey !== manuallySelectedResolverQueueKey.value) {
+    return;
+  }
+
+  replaceSubjectContext(subjectContext, nextDetail.subjectContext);
 });
 
 onMounted(() => {

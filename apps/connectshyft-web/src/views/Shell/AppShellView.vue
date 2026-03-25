@@ -53,6 +53,8 @@
           data-testid="shell-subject-slot"
           class="mt-4"
           aria-hidden="true"
+          :data-subject-active="shellSubjectSummary.hasSubject ? 'true' : 'false'"
+          :data-subject-identity-state="shellSubjectSummary.identityState || undefined"
         />
       </div>
     </header>
@@ -130,6 +132,8 @@ import {
 import { useActiveShellOrgUnitId } from '@/shell/orgUnitState';
 import {
   clearSubjectContext,
+  replaceSubjectContext,
+  resolveShellSubjectSummary,
   subjectContextHasActiveSubject,
   useSubjectContext,
 } from '@/shell/subjectContext';
@@ -146,6 +150,17 @@ const pendingOrgUnitSwitch = ref<{
   targetOrgUnit: ConnectShyftShellOrgUnitOption;
   redirectPath: string;
 } | null>(null);
+const currentShellModule = computed<'people' | 'connect' | 'settings' | null>(() => {
+  const matchedModule = [...route.matched]
+    .reverse()
+    .find((record) => typeof record.meta.shellModule === 'string')
+    ?.meta.shellModule;
+
+  return matchedModule === 'people' || matchedModule === 'connect' || matchedModule === 'settings'
+    ? matchedModule
+    : null;
+});
+const shellSubjectSummary = computed(() => resolveShellSubjectSummary(subjectContext.value));
 
 const currentTitle = computed(() => {
   const titledRecord = [...route.matched]
@@ -158,11 +173,7 @@ const currentTitle = computed(() => {
 });
 
 const currentSummary = computed(() => {
-  const moduleRecord = [...route.matched]
-    .reverse()
-    .find((record) => typeof record.meta.shellModule === 'string');
-
-  switch (moduleRecord?.meta.shellModule) {
+  switch (currentShellModule.value) {
     case 'people':
       return 'Identity and resolver work stays inside one shared workspace.';
     case 'connect':
@@ -181,6 +192,10 @@ const buildRouteQueryWithOrgUnit = (orgUnitId: string): LocationQueryRaw => ({
   orgUnitId,
 });
 
+const routeSupportsShellSubjectContext = computed(() => (
+  currentShellModule.value === 'people' || currentShellModule.value === 'connect'
+));
+
 const syncSubjectOrgUnit = (orgUnitId: string): void => {
   if (!orgUnitId || subjectContextHasActiveSubject(subjectContext.value)) {
     return;
@@ -190,10 +205,19 @@ const syncSubjectOrgUnit = (orgUnitId: string): void => {
     return;
   }
 
-  subjectContext.value = {
+  replaceSubjectContext(subjectContext, {
     ...subjectContext.value,
     orgUnitId,
-  };
+  });
+};
+
+const normalizeSubjectContextForRoute = (orgUnitId: string): void => {
+  if (!routeSupportsShellSubjectContext.value) {
+    clearSubjectContext(subjectContext, orgUnitId);
+    return;
+  }
+
+  syncSubjectOrgUnit(orgUnitId);
 };
 
 const preserveCurrentRouteForOrgUnit = async (orgUnitId: string): Promise<void> => {
@@ -255,7 +279,7 @@ const normalizeShellRoute = async (): Promise<void> => {
   });
 
   if (routeIsCompatible) {
-    syncSubjectOrgUnit(resolvedOrgUnit.id);
+    normalizeSubjectContextForRoute(resolvedOrgUnit.id);
     const currentQueryOrgUnitId = typeof route.query.orgUnitId === 'string'
       ? route.query.orgUnitId.trim()
       : '';
@@ -351,5 +375,6 @@ defineExpose({
   handleOrgUnitSelection,
   confirmPendingOrgUnitSwitch,
   cancelPendingOrgUnitSwitch,
+  shellSubjectSummary,
 });
 </script>

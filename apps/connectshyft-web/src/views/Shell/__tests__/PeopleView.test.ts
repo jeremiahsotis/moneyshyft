@@ -90,6 +90,15 @@ const buildQueueDetail = (
     terminal: item.terminal,
     decisionStatus: null,
   },
+  subjectContext: {
+    orgUnitId: item.orgUnitId || 'test-org',
+    provisionalPersonId: item.personIds[0],
+    candidatePersonIds: item.personIds,
+    conversationId: item.conversationId || undefined,
+    contactPointId: item.contactPointId || undefined,
+    threadId: item.threadId || undefined,
+    identityState: item.personIds[0] ? 'provisional' : undefined,
+  },
   rebindReview: item.itemType === 'rebind_review'
     ? {
       rebindHistoryId: `rebind-${item.id}`,
@@ -142,18 +151,19 @@ const setupResolverQueue = (items: ConnectShyftResolverQueueItemRecord[]) => {
 };
 
 const renderPeopleView = async () => {
+  const shellSubjectContext = ref({
+    orgUnitId: 'test-org',
+  });
   const wrapper = mount(PeopleView, {
     global: {
       provide: {
-        [SUBJECT_CONTEXT_KEY as symbol]: ref({
-          orgUnitId: 'test-org',
-        }),
+        [SUBJECT_CONTEXT_KEY as symbol]: shellSubjectContext,
       },
     },
   });
 
   await flushPromises();
-  return wrapper;
+  return { wrapper, shellSubjectContext };
 };
 
 beforeEach(() => {
@@ -211,7 +221,7 @@ describe('PeopleView', () => {
     });
     setupResolverQueue([identityItem, rebindItem]);
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     expect(fetchResolverQueueMock).toHaveBeenCalledTimes(1);
     expect(wrapper.text()).toContain('People shell');
@@ -234,7 +244,7 @@ describe('PeopleView', () => {
       unauthorized: true,
     });
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     expect(wrapper.get('[data-test="resolver-workspace-locked"]').text()).toContain(
       'available only to tenant-admin resolvers',
@@ -268,7 +278,7 @@ describe('PeopleView', () => {
     });
     setupResolverQueue([identityItem, rebindItem]);
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     expect(wrapper.get('[data-test="resolver-queue-item-type-identity-item"]').text()).toContain(
       'Identity review',
@@ -282,6 +292,43 @@ describe('PeopleView', () => {
     expect(wrapper.get('[data-test="resolver-queue-item-claim-rebind-item"]').text()).toContain(
       'Claimed by another resolver',
     );
+  });
+
+  it('does not overwrite shell subject context from the auto-selected resolver detail', async () => {
+    const identityItem = buildQueueItem({
+      id: 'identity-item',
+      itemType: 'identity_review',
+    });
+    setupResolverQueue([identityItem]);
+
+    const { shellSubjectContext } = await renderPeopleView();
+
+    expect(shellSubjectContext.value).toEqual({
+      orgUnitId: 'test-org',
+    });
+  });
+
+  it('syncs shell subject context only after a resolver item is explicitly selected', async () => {
+    const identityItem = buildQueueItem({
+      id: 'identity-item',
+      itemType: 'identity_review',
+    });
+    setupResolverQueue([identityItem]);
+
+    const { wrapper, shellSubjectContext } = await renderPeopleView();
+
+    await wrapper.get('[data-test="resolver-queue-item-identity-item"]').trigger('click');
+    await flushPromises();
+
+    expect(shellSubjectContext.value).toEqual({
+      orgUnitId: 'test-org',
+      provisionalPersonId: 'person-a',
+      candidatePersonIds: ['person-a', 'person-b'],
+      conversationId: 'conversation-1',
+      contactPointId: 'contact-point-1',
+      threadId: 'thread-1',
+      identityState: 'provisional',
+    });
   });
 
   it('claims and releases resolver work through backend-backed operations', async () => {
@@ -321,7 +368,7 @@ describe('PeopleView', () => {
       detail: buildQueueDetail(queueItem),
     });
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     await wrapper.get('[data-test="resolver-detail-claim"]').trigger('click');
     await flushPromises();
@@ -357,7 +404,7 @@ describe('PeopleView', () => {
     });
     setupResolverQueue([queueItem]);
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     expect(wrapper.get('[data-test="resolver-detail-claim-disabled"]').attributes('disabled')).toBeDefined();
     expect(wrapper.get('[data-test="resolver-detail-claimed-by-other"]').text()).toContain(
@@ -398,7 +445,7 @@ describe('PeopleView', () => {
     });
     setupResolverQueue([unclaimedIdentity, claimedRebind, claimedByOtherIdentity]);
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     await wrapper.get('[data-test="resolver-filter-rebind_review"]').trigger('click');
     await flushPromises();
@@ -469,7 +516,7 @@ describe('PeopleView', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     await wrapper.get('[data-test="load-contact-points"]').trigger('click');
     await flushPromises();
@@ -493,7 +540,7 @@ describe('PeopleView', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const wrapper = await renderPeopleView();
+    const { wrapper } = await renderPeopleView();
 
     await wrapper.get('[data-test="run-sample-decision"]').trigger('click');
     await flushPromises();

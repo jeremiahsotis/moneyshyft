@@ -7,12 +7,14 @@ import type {
   ConnectShyftResolverQueueItemType,
   ConnectShyftResolverReviewRecord,
   ResolverReviewStatus,
+  SubjectContext,
 } from '@shyft/contracts';
 import {
   isConnectShyftRebindReviewAffectedObjectType,
   isConnectShyftResolverQueueClaimState,
   isConnectShyftResolverQueueItemType,
   isResolverReviewStatus,
+  validateSubjectContext,
 } from '@shyft/contracts';
 
 type ResolverQueueEnvelope = {
@@ -24,6 +26,7 @@ type ResolverQueueEnvelope = {
     item?: unknown;
     review?: unknown;
     rebindReview?: unknown;
+    subjectContext?: unknown;
   };
 };
 
@@ -77,6 +80,15 @@ const normalizeStringArray = (value: unknown): string[] => {
   return value
     .map((entry) => normalizeOptionalString(entry))
     .filter((entry): entry is string => Boolean(entry));
+};
+
+const normalizeSubjectIdentityState = (
+  value: unknown,
+): SubjectContext['identityState'] | undefined => {
+  const normalized = normalizeOptionalString(value);
+  return normalized === 'confirmed' || normalized === 'provisional'
+    ? normalized
+    : undefined;
 };
 
 const parseEnvelopeMessage = (payload: unknown, fallback: string): string => {
@@ -210,6 +222,36 @@ const parseRebindReviewContext = (payload: unknown): ConnectShyftRebindReviewCon
   };
 };
 
+const parseSubjectContext = (payload: unknown): SubjectContext | null => {
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const candidate = payload as Record<string, unknown>;
+  const orgUnitId = normalizeString(candidate.orgUnitId);
+  if (!orgUnitId) {
+    return null;
+  }
+
+  const subjectContext: SubjectContext = {
+    orgUnitId,
+    personId: normalizeOptionalString(candidate.personId) ?? undefined,
+    provisionalPersonId: normalizeOptionalString(candidate.provisionalPersonId) ?? undefined,
+    candidatePersonIds: normalizeStringArray(candidate.candidatePersonIds ?? candidate.candidate_person_ids),
+    conversationId: normalizeOptionalString(candidate.conversationId ?? candidate.conversation_id) ?? undefined,
+    contactPointId: normalizeOptionalString(candidate.contactPointId ?? candidate.contact_point_id) ?? undefined,
+    threadId: normalizeOptionalString(candidate.threadId ?? candidate.thread_id) ?? undefined,
+    identityState: normalizeSubjectIdentityState(candidate.identityState ?? candidate.identity_state),
+  };
+
+  if (!subjectContext.candidatePersonIds?.length) {
+    delete subjectContext.candidatePersonIds;
+  }
+
+  validateSubjectContext(subjectContext);
+  return subjectContext;
+};
+
 const parseResolverQueueDetail = (payload: unknown): ConnectShyftResolverQueueDetailData | null => {
   if (!payload || typeof payload !== 'object') {
     return null;
@@ -221,10 +263,16 @@ const parseResolverQueueDetail = (payload: unknown): ConnectShyftResolverQueueDe
     return null;
   }
 
+  const subjectContext = parseSubjectContext(envelope.data?.subjectContext);
+  if (!subjectContext) {
+    return null;
+  }
+
   return {
     item,
     review: parseResolverReviewRecord(envelope.data?.review),
     rebindReview: parseRebindReviewContext(envelope.data?.rebindReview),
+    subjectContext,
   };
 };
 

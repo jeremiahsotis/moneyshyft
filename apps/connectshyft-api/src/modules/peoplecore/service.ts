@@ -15,6 +15,7 @@ import type {
   ResolverReview,
   ResolverReviewStatus,
   ResolverResolutionType,
+  SubjectContext,
   ValidatedResolverDecisionInput,
 } from '@shyft/contracts';
 import {
@@ -25,6 +26,7 @@ import {
   isResolverReviewResolvedStatus,
   isResolverReviewTerminalStatus,
   RESOLVER_ACTION_STATUS_MAP,
+  validateSubjectContext,
 } from '@shyft/contracts';
 import { normalizeRoles } from '../../platform/rbac/capabilities';
 import {
@@ -436,6 +438,27 @@ const toResolverQueueItem = (
     startedAt: review.startedAt ?? null,
     resolvedAt: review.resolvedAt ?? null,
   };
+};
+
+const buildResolverQueueSubjectContext = (
+  review: ResolverReview,
+  item: ConnectShyftResolverQueueItemRecord,
+): SubjectContext => {
+  const subject: SubjectContext = {
+    orgUnitId: review.orgUnitId,
+    candidatePersonIds: item.personIds.length > 0 ? [...item.personIds] : undefined,
+    conversationId: review.conversationId ?? undefined,
+    contactPointId: review.contactPointId ?? undefined,
+    threadId: item.threadId ?? undefined,
+  };
+
+  if (review.provisionalPersonId && isResolverReviewActiveStatus(review.reviewStatus)) {
+    subject.provisionalPersonId = review.provisionalPersonId;
+    subject.identityState = 'provisional';
+  }
+
+  validateSubjectContext(subject);
+  return subject;
 };
 
 const assertResolverReviewClaimedByActor = (
@@ -946,6 +969,7 @@ export class AsyncPeopleCoreService {
     review: ResolverReview,
     actorUserId: string,
   ): Promise<ConnectShyftResolverQueueDetailData> {
+    const item = toResolverQueueItem(review, actorUserId);
     const rebindReview = isQueueBackedRebindReview(review)
       ? await loadPersonRebindService().getRebindReviewContext({
         tenantId: review.tenantId,
@@ -954,9 +978,10 @@ export class AsyncPeopleCoreService {
       : null;
 
     return {
-      item: toResolverQueueItem(review, actorUserId),
+      item,
       review: toResolverReviewRecord(review),
       rebindReview,
+      subjectContext: buildResolverQueueSubjectContext(review, item),
     };
   }
 

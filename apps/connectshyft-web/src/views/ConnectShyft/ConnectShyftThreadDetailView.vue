@@ -575,7 +575,10 @@ import {
   type ConnectShyftFeedbackTaxonomy,
 } from '@/features/connectshyft/uiContracts';
 import { SHELL_ROUTE_PATHS } from '@/shell/routes';
-import { useSubjectContext } from '@/shell/subjectContext';
+import {
+  replaceSubjectContext,
+  useSubjectContext,
+} from '@/shell/subjectContext';
 
 const route = useRoute();
 const subjectContext = useSubjectContext();
@@ -692,10 +695,7 @@ const activeOrgUnitId = computed<string>(() => {
   return queryOrgUnitId || subjectContext.value.orgUnitId || '';
 });
 
-const threadSubjectContext = computed<SubjectContext>(() => {
-  const subject = threadDetail.value?.subjectContext;
-  return subject && subject.orgUnitId ? subject : { orgUnitId: activeOrgUnitId.value };
-});
+const threadSubjectContext = computed<SubjectContext | null>(() => threadDetail.value?.subjectContext || null);
 
 const threadSubjectImpact = computed(() => threadDetail.value?.subjectImpact || null);
 
@@ -1812,9 +1812,11 @@ watch(closeModalOpen, (isOpen) => {
 watch(
   threadSubjectContext,
   (nextSubjectContext) => {
-    subjectContext.value = {
-      ...nextSubjectContext,
-    };
+    if (!nextSubjectContext) {
+      return;
+    }
+
+    replaceSubjectContext(subjectContext, nextSubjectContext);
   },
   {
     immediate: true,

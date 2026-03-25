@@ -243,6 +243,22 @@ describe('AppShellView', () => {
     });
   });
 
+  it('clears active subject context on routes that do not support shared subject continuity', async () => {
+    const { wrapper, shellSubjectContext } = await renderShell({
+      initialPath: '/settings?orgUnitId=org-east',
+      subjectContext: {
+        orgUnitId: 'org-east',
+        conversationId: 'conversation-1',
+        threadId: 'thread-1',
+      },
+    });
+
+    expect(shellSubjectContext.value).toEqual({
+      orgUnitId: 'org-east',
+    });
+    expect(wrapper.get('[data-testid="shell-subject-slot"]').attributes('data-subject-active')).toBe('false');
+  });
+
   it('shows confirmation before a destructive orgUnit switch', async () => {
     const { wrapper, router, shellSubjectContext } = await renderShell({
       initialPath: '/connect/threads/thread-1?orgUnitId=org-east',

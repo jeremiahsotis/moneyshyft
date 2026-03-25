@@ -90,6 +90,8 @@ describe('fetchConnectShyftThreadDetail', () => {
             subjectContext: {
               orgUnitId: 'org-1',
               provisionalPersonId: 'person-1',
+              threadId: 'thread-1',
+              identityState: 'provisional',
             },
             actions: ['Call', 'Text', 'Close'],
             timeline: [],
@@ -119,6 +121,8 @@ describe('fetchConnectShyftThreadDetail', () => {
       expect(result.thread.subjectContext).toEqual({
         orgUnitId: 'org-1',
         provisionalPersonId: 'person-1',
+        threadId: 'thread-1',
+        identityState: 'provisional',
       });
     }
   });
