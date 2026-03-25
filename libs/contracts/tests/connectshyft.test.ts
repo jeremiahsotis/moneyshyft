@@ -60,11 +60,19 @@ describe('connectshyft contracts', () => {
       item: rebindItem,
       review: null,
       rebindReview,
+      subjectContext: {
+        orgUnitId: rebindItem.orgUnitId || 'org-1',
+        personId: rebindReview.targetPersonId,
+        conversationId: rebindItem.conversationId || undefined,
+        contactPointId: rebindItem.contactPointId || undefined,
+        identityState: 'confirmed',
+      },
     };
 
     expect(identityItem.itemType).toBe('identity_review');
     expect(rebindItem.itemType).toBe('rebind_review');
     expect(detail.rebindReview?.rebindHistoryId).toBe('rebind-history-1');
+    expect(detail.subjectContext.orgUnitId).toBe('org-1');
     expect(isConnectShyftResolverQueueItemType(identityItem.itemType)).toBe(true);
     expect(isConnectShyftResolverQueueItemType(rebindItem.itemType)).toBe(true);
     expect(isConnectShyftResolverQueueClaimState(identityItem.claimState)).toBe(true);
