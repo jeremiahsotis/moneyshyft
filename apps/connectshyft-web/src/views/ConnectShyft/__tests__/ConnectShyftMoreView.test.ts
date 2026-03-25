@@ -57,10 +57,10 @@ describe('ConnectShyftMoreView', () => {
     );
     expect(wrapper.text()).toContain('ConnectShyft Settings');
     expect(wrapper.text()).toContain(
-      'Set your callback / forwarding number and check voice forwarding readiness.',
+      'Set your callback number and check call and text readiness.',
     );
     expect(wrapper.text()).toContain(
-      'Keep the essentials close without turning this into an admin hub.',
+      'Keep the essentials close without crowding the everyday work.',
     );
     expect(wrapper.text()).not.toContain('Make voice forwarding work for your operator account.');
     expect(wrapper.find('[data-testid="connectshyft-more-admin-option-availability"]').exists()).toBe(false);
@@ -75,9 +75,9 @@ describe('ConnectShyftMoreView', () => {
     );
 
     expect(wrapper.get('[data-testid="connectshyft-settings-refusal-guidance"]').text()).toContain(
-      'Access to /app/connectshyft/settings/availability is available to authorized admin users only.',
+      'That page is only available to people with the right permissions.',
     );
-    expect(wrapper.text()).toContain('Use the approved settings entry points for your role.');
+    expect(wrapper.text()).toContain('Use the settings pages available for your role.');
     expect(wrapper.text()).not.toContain('Save Callback Number');
   });
 });

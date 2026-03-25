@@ -8,12 +8,13 @@
         <SectionHeader
           eyebrow="ConnectShyft"
           title="ConnectShyft More"
-          description="Keep the essentials close without turning this into an admin hub."
+          description="Keep the essentials close without crowding the everyday work."
           size="md"
         />
         <p
           :data-testid="layoutTestId"
-          class="cs-shell-notice cs-shell-notice--info mt-4"
+          aria-hidden="true"
+          class="hidden"
         >
           {{ layoutLabel }}
         </p>
@@ -42,7 +43,7 @@
           class="cs-card cs-card--compact cs-card--interactive cs-card--muted text-left"
         >
           <p class="cs-heading-md">ConnectShyft Settings</p>
-          <p class="mt-2 cs-meta">Set your callback / forwarding number and check voice forwarding readiness.</p>
+          <p class="mt-2 cs-meta">Set your callback number and check call and text readiness.</p>
         </RouterLink>
       </section>
 
@@ -134,7 +135,7 @@ const settingsRefusalGuidance = computed(() => {
     return '';
   }
 
-  return `Access to ${refusedPath} is available to authorized admin users only. Use the approved settings entry points for your role.`;
+  return 'That page is only available to people with the right permissions. Use the settings pages available for your role.';
 });
 
 const handleSignOut = async (): Promise<void> => {

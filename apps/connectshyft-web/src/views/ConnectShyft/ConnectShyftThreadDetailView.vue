@@ -12,7 +12,7 @@
         >
           <div class="flex flex-wrap items-center gap-2">
             <StatusBadge
-              :label="threadDetail.stateLabel || threadDetail.state"
+              :label="threadStateLabel"
               tone="neutral"
             />
             <StatusBadge
@@ -189,7 +189,7 @@
                     :neighbor-context-label="neighborContextLabel"
                     :conference-context-label="threadConferenceLabel"
                     :claim-context-label="threadClaimLabel"
-                    :state-label="threadDetail.stateLabel || threadDetail.state"
+                    :state-label="threadStateLabel"
                     :owner-label="threadOwnerLabel"
                     :escalation-label="escalationChipLabel"
                     :inactivity-label="inactivityChipLabel"
@@ -750,26 +750,26 @@ const CONNECTSHYFT_MODAL_FOCUSABLE_SELECTOR = [
 
 const resolveStateLabel = (state: ConnectShyftThreadDetail['state']): string => {
   if (state === 'CLAIMED') {
-    return 'Claimed';
+    return 'Assigned';
   }
 
   if (state === 'CLOSED') {
     return 'Closed';
   }
 
-  return 'Unclaimed';
+  return 'Available';
 };
 
 const resolveClaimContextLabelFromState = (state: ConnectShyftThreadDetail['state']): string => {
   if (state === 'CLAIMED') {
-    return 'Claim context: Claimed conversation';
+    return 'Assigned to a volunteer';
   }
 
   if (state === 'CLOSED') {
-    return 'Claim context: Closed conversation';
+    return 'Conversation closed';
   }
 
-  return 'Claim context: Unclaimed conversation';
+  return 'Available to pick up';
 };
 
 const role = computed(() => {
@@ -1137,10 +1137,18 @@ const threadConferenceLabel = computed(() => {
 
 const threadClaimLabel = computed(() => {
   if (!threadDetail.value) {
-    return 'Ready to claim';
+    return 'Available to pick up';
   }
 
   return resolveConnectShyftClaimLabel(threadDetail.value, actorUserId.value);
+});
+
+const threadStateLabel = computed(() => {
+  if (!threadDetail.value) {
+    return 'Available';
+  }
+
+  return resolveStateLabel(threadDetail.value.state);
 });
 
 const threadOwnerLabel = computed(() => {
@@ -1193,11 +1201,11 @@ const threadSubjectSnapshotNote = computed(() => {
   }
 
   if (threadSubjectImpact.value?.impactType === 'resolver_required') {
-    return 'This snapshot shows the current match while tenant-admin review is still in progress.';
+    return 'This snapshot shows the current match while identity review is still in progress.';
   }
 
   if (threadSubjectImpact.value?.impactType === 'rebind_review') {
-    return 'This snapshot updates to final truth as soon as rebind review finishes.';
+    return 'This snapshot updates to final truth as soon as the current review finishes.';
   }
 
   if (threadDetail.value.identityState === 'provisional') {
@@ -1884,8 +1892,8 @@ const submitAddNeighbor = async (): Promise<void> => {
 
     setFeedbackBanner(
       'success',
-      'Neighbor added to this orgUnit context.',
-      'Neighbor added.',
+      'Contact added to this workspace.',
+      'Contact added.',
     );
     closeAddNeighborForm();
   } catch (_error: unknown) {

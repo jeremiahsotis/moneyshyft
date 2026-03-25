@@ -16,7 +16,8 @@
       <p
         v-if="layoutMarkerTestId"
         :data-testid="layoutMarkerTestId"
-        class="cs-shell-notice cs-shell-notice--info"
+        aria-hidden="true"
+        class="hidden"
       >
         {{ layoutMarkerCopy }}
       </p>

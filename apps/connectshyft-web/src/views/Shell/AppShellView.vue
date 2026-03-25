@@ -125,10 +125,10 @@
           id="shell-orgunit-confirmation-title"
           class="cs-heading-md"
         >
-          Switch orgUnit?
+          Switch workspace?
         </h2>
         <p class="mt-3 cs-body">
-          This will clear the current person or conversation and take you to the nearest available page in the selected orgUnit.
+          This will clear the current person or conversation and take you to the nearest available page in the selected workspace.
         </p>
         <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
@@ -145,7 +145,7 @@
             class="cs-button cs-button--primary"
             @click="confirmPendingOrgUnitSwitch"
           >
-            Switch orgUnit
+            Switch workspace
           </button>
         </div>
       </div>

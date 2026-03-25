@@ -88,8 +88,8 @@ export const resolveConnectShyftIdentityResolutionPresentation = (
       showCreateNewAction: false,
       createNewAllowed: false,
       guidance: response.resolverReviewId
-        ? 'Resolver review is required before creating a new person.'
-        : 'Resolver review is required before continuing.',
+        ? 'Review is required before creating a new person.'
+        : 'Review is required before continuing.',
     };
   }
 
@@ -164,7 +164,7 @@ export const resolveConnectShyftThreadSubjectImpactPresentation = (input: {
     case 'resolver_required':
       return {
         message: isTenantAdminResolver
-          ? 'Identity for this conversation is still waiting on tenant-admin review. Review in People to continue resolver work.'
+          ? 'Identity for this conversation is still waiting on review in People. Review in People to keep it moving.'
           : 'Identity for this conversation is still being reviewed. Conversation context may update once the review is complete.',
         ctaLabel: isTenantAdminResolver
           ? (subjectImpact.actionable ? 'Review in People' : 'Open in People')
@@ -173,7 +173,7 @@ export const resolveConnectShyftThreadSubjectImpactPresentation = (input: {
     case 'rebind_review':
       return {
         message: isTenantAdminResolver
-          ? 'This conversation is waiting on a subject-context rebind review. Review in People to continue resolver work.'
+          ? 'This conversation is waiting on a record update review in People. Review in People to keep it moving.'
           : 'Conversation context is being updated to match the latest subject record. Keep working from the current thread until the update is complete.',
         ctaLabel: isTenantAdminResolver
           ? (subjectImpact.actionable ? 'Review in People' : 'Open in People')

@@ -1,7 +1,7 @@
 <template>
   <label class="cs-field-label min-w-[14rem]">
     <span class="cs-kicker">
-      Org unit
+      Workspace
     </span>
     <select
       :value="currentOrgUnitId"
@@ -11,7 +11,7 @@
       @change="handleChange"
     >
       <option v-if="loading" value="">
-        Loading org units...
+        Loading workspaces...
       </option>
       <option
         v-for="option in options"

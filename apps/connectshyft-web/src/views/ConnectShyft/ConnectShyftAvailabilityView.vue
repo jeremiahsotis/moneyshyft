@@ -6,16 +6,16 @@
     >
       <header class="mb-6">
         <h1 class="text-2xl font-semibold text-slate-900">
-          ConnectShyft Availability
+          ConnectShyft Status
         </h1>
         <p class="mt-2 text-sm text-slate-600">
-          Current module and sub-capability rollout state for this tenant.
+          Check whether conversations, escalations, and incoming updates are ready in this workspace.
         </p>
         <p
           data-testid="connectshyft-admin-settings-context-chip"
           class="mt-3 inline-flex rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700"
         >
-          Admin settings context
+          Workspace status
         </p>
       </header>
 
@@ -24,11 +24,11 @@
         class="mb-6 rounded-md border border-slate-200 p-4"
       >
         <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Capability Status
+          What&apos;s ready
         </h2>
         <dl class="grid grid-cols-1 gap-3 text-sm text-slate-700 md:grid-cols-4">
           <div class="rounded border border-slate-200 p-3">
-            <dt>Module</dt>
+            <dt>ConnectShyft</dt>
             <dd class="mt-1 font-medium">
               {{ moduleAvailable ? 'Available' : 'Unavailable' }}
             </dd>
@@ -52,7 +52,7 @@
             </dd>
           </div>
           <div class="rounded border border-slate-200 p-3">
-            <dt>Webhooks</dt>
+            <dt>Incoming updates</dt>
             <dd
               data-testid="connectshyft-capability-webhooks"
               class="mt-1 font-medium"
@@ -78,24 +78,24 @@
       >
         {{
           entitlementDisabled
-            ? 'ConnectShyft module entitlement is disabled for this tenant.'
-            : 'ConnectShyft module access is unavailable for this tenant.'
+            ? 'ConnectShyft is turned off for this workspace.'
+            : 'ConnectShyft is unavailable in this workspace right now.'
         }}
       </p>
 
       <p
-        v-if="!webhooksAvailable"
-        class="mb-4 text-sm text-slate-700"
+      v-if="!webhooksAvailable"
+      class="mb-4 text-sm text-slate-700"
       >
-        Inbound webhook processing is currently unavailable for this tenant.
+        Incoming call and message updates are temporarily unavailable.
       </p>
 
       <button
         type="button"
-        :disabled="!webhooksAvailable"
-        class="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+      :disabled="!webhooksAvailable"
+      class="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
       >
-        Replay webhook
+        Retry incoming updates
       </button>
     </section>
 
@@ -134,7 +134,7 @@ const maintenanceBanner = computed(() => {
   }
 
   if (!webhooksAvailable.value) {
-    return 'Webhook processing is temporarily unavailable for this tenant.';
+    return 'Incoming call and message updates are temporarily unavailable.';
   }
 
   return '';

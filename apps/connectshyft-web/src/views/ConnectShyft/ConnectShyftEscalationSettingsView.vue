@@ -6,19 +6,19 @@
     >
       <header class="mb-6">
         <h1 class="text-2xl font-semibold text-slate-900">
-          ConnectShyft Escalation Settings
+          Escalation Settings
         </h1>
         <p class="mt-2 text-sm text-slate-600">
-          Configure orgUnit escalation baseline and recipient targets.
+          Choose when a conversation needs backup and who should hear about it.
         </p>
         <p class="mt-2 text-sm text-slate-600">
-          Escalation resets only when a thread is claimed. Outbound actions without claim do not reset escalation, and baseline hours directly affect scheduler timing.
+          Escalation timing resets when someone takes ownership of the conversation. Calls or texts sent without taking ownership do not reset the timer.
         </p>
         <p
           data-testid="connectshyft-admin-settings-context-chip"
           class="mt-3 inline-flex rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700"
         >
-          Admin settings context
+          Workspace settings
         </p>
       </header>
 
@@ -29,11 +29,11 @@
         @submit.prevent="handleSave"
       >
         <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Escalation Configuration
+          Timing and contacts
         </h2>
 
         <label class="mb-4 flex flex-col gap-1 text-sm text-slate-700">
-          Escalation baseline (hours)
+          Escalation timing (hours)
           <input
             data-testid="connectshyft-escalation-baseline-input"
             v-model.number="baselineHoursInput"
@@ -48,7 +48,7 @@
         </label>
 
         <label class="mb-4 flex flex-col gap-1 text-sm text-slate-700">
-          OrgUnit fallback phone (E.164)
+          Backup callback number
           <input
             data-testid="connectshyft-escalation-fallback-phone-input"
             v-model="defaultOperatorPhoneInput"
@@ -60,7 +60,7 @@
             class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200"
           >
           <span class="text-xs text-slate-500">
-            Used when an operator callback number is missing or unusable and the orgUnit fallback must carry telephony readiness.
+            Used when a callback number is missing or cannot be used.
           </span>
         </label>
 
@@ -104,7 +104,7 @@
           </label>
 
           <label class="flex flex-col gap-1 text-sm text-slate-700">
-            Tenant staff recipient
+            Additional backup recipient
             <select
               data-testid="connectshyft-escalation-recipient-tenant-staff"
               v-model="tenantStaffRecipientUserId"
@@ -160,7 +160,7 @@
             :disabled="isSaving || isInitializing"
             class="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-400"
           >
-            Save Escalation Settings
+            Save settings
           </button>
         </div>
       </form>
@@ -299,7 +299,7 @@ onMounted(async () => {
     const options = await fetchConnectShyftEscalationRecipientOptions();
     recipientOptions.value = options;
     if (options.length === 0 && !validationError.value) {
-      validationError.value = 'No eligible recipients are available for this orgUnit. Ask a tenant administrator to assign orgUnit or tenant members.';
+      validationError.value = 'No eligible recipients are available for this workspace. Ask an administrator to update workspace access.';
     }
   } catch (error: unknown) {
     recipientOptions.value = [];

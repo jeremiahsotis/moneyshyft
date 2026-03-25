@@ -13,7 +13,7 @@
             size="md"
           />
           <p class="cs-body">
-            Inbound and bridge calls use this number to reach you, so save the line where you want ConnectShyft to call first.
+            Save the number you want ConnectShyft to call first when a conversation needs you.
           </p>
         </header>
         <p
@@ -42,8 +42,8 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <SectionHeader
             eyebrow="Call setup"
-            title="Callback / forwarding number"
-            description="Use a direct phone number where live voice calls can reach you."
+            title="Callback number"
+            description="Use a direct phone number where live calls can reach you."
             size="md"
           />
 
@@ -82,10 +82,10 @@
             data-testid="connectshyft-fallback-indicator"
             class="font-semibold"
           >
-            Backup calling line active
+            Backup line active
           </p>
           <p class="mt-1">
-            ConnectShyft can still reach you, but it is leaning on the backup line until you save your own callback number.
+            ConnectShyft can still reach you, but it is relying on the backup line until you save your own callback number.
           </p>
         </div>
 
@@ -153,7 +153,7 @@
             data-testid="connectshyft-callback-number-empty"
             class="mt-2 cs-body"
           >
-            No personal callback number saved yet.
+            No callback number saved yet.
           </p>
         </SurfaceCard>
 
@@ -163,7 +163,7 @@
           @submit.prevent="handleSave"
         >
           <label class="cs-field-label">
-            Callback / forwarding number
+            Callback number
             <input
               v-model="callbackNumberInput"
               data-testid="connectshyft-callback-number-input"
@@ -177,7 +177,7 @@
           </label>
 
           <p class="mt-2 cs-meta">
-            Save the number you want ConnectShyft to call when a voice conversation needs you.
+            Save the number ConnectShyft should use when a live call needs you.
           </p>
 
           <p
@@ -262,7 +262,7 @@ const settingsRefusalGuidance = computed(() => {
     return '';
   }
 
-  return `Access to ${refusedPath} is available to authorized admin users only. Use the approved settings entry points for your role.`;
+  return 'That page is only available to people with the right permissions. Use the settings pages available for your role.';
 });
 
 const hasSavedCallbackNumber = computed(() =>
@@ -270,18 +270,6 @@ const hasSavedCallbackNumber = computed(() =>
 
 const currentCallbackNumberLabel = computed(() =>
   callbackNumber.value.rawInput || callbackNumber.value.value || '');
-
-const callbackBlockingReason = computed(() =>
-  readiness.value.blockingReasons.find((reason) => reason.category === 'callback_number') || null);
-
-const smsBlockingReason = computed(() =>
-  readiness.value.blockingReasons.find((reason) =>
-    reason.category === 'sms'
-    || reason.channel === 'sms'
-    || reason.channel === 'both') || null);
-
-const fallbackNextAction = computed(() =>
-  readiness.value.nextActions[0]?.message || '');
 
 const statusChipLabel = computed(() => {
   if (readiness.value.degradedMode) {
@@ -333,30 +321,26 @@ const statusPanelClass = computed(() => {
 
 const statusMessage = computed(() => {
   if (readiness.value.degradedMode) {
-    return 'Calls and messages are available, but ConnectShyft is leaning on the backup line.';
+    return 'Calls and texts are working, but ConnectShyft is still using the backup line.';
   }
 
   if (readiness.value.voiceReady && readiness.value.smsReady) {
-    return 'Calls and messages are ready to reach you.';
+    return 'Calls and texts are ready.';
   }
 
   if (readiness.value.voiceReady) {
-    return 'Calls are ready, but messages still need more setup.';
+    return 'Calls are ready, but texting still needs a little more setup.';
   }
 
   if (readiness.value.smsReady) {
-    return 'Messages are ready, but calls still need more setup.';
-  }
-
-  if (callbackBlockingReason.value?.message) {
-    return callbackBlockingReason.value.message;
+    return 'Texting is ready, but calls still need a little more setup.';
   }
 
   if (hasSavedCallbackNumber.value) {
-    return 'Your callback number is saved, but voice forwarding still needs more setup.';
+    return 'Your callback number is saved, but calling still needs a little more setup.';
   }
 
-  return 'Save a callback number so inbound and bridge calls can reach you.';
+  return 'Save a callback number so calls and texts can reach you.';
 });
 
 const nextActionMessage = computed(() => {
@@ -368,47 +352,43 @@ const nextActionMessage = computed(() => {
     return 'Save your own callback number so ConnectShyft no longer needs the backup line.';
   }
 
-  const callbackSpecificAction = readiness.value.nextActions.find((action) =>
-    action.code === 'SET_OPERATOR_CALLBACK_NUMBER'
-    || action.code === 'REPLACE_OPERATOR_CALLBACK_NUMBER');
+  if (!hasSavedCallbackNumber.value) {
+    return 'Save a callback number to finish setup.';
+  }
 
-  return callbackSpecificAction?.message || fallbackNextAction.value;
+  return 'Finish the remaining calling and texting setup.';
 });
 
 const voiceStatusDetail = computed(() => {
   if (readiness.value.degradedMode) {
-    return 'Calls can still reach you because the backup line is standing in for your personal number.';
+    return 'Calls can still reach you because the backup line is standing in for your number.';
   }
 
   if (readiness.value.voiceReady) {
-    return 'Bridge and inbound voice calls can route to the active operator destination.';
+    return 'Calls can reach you on the saved line.';
   }
 
-  if (callbackBlockingReason.value?.message) {
-    return callbackBlockingReason.value.message;
+  if (hasSavedCallbackNumber.value) {
+    return 'Calls still need a working callback path.';
   }
 
-  return 'Voice forwarding still needs a usable operator destination.';
+  return 'Calls are waiting for a saved callback number.';
 });
 
 const smsStatusDetail = computed(() => {
   if (readiness.value.degradedMode) {
-    return 'Messages remain available while ConnectShyft uses the backup line for readiness.';
+    return 'Texting stays available while ConnectShyft uses the backup line.';
   }
 
   if (readiness.value.smsReady) {
-    return 'Outbound SMS can route through the current telephony configuration.';
+    return 'Texting is ready from this workspace.';
   }
 
-  if (smsBlockingReason.value?.message) {
-    return smsBlockingReason.value.message;
+  if (hasSavedCallbackNumber.value) {
+    return 'Texting still needs a little more setup.';
   }
 
-  if (callbackBlockingReason.value?.message) {
-    return 'SMS is blocked until the operator phone path becomes runnable.';
-  }
-
-  return 'SMS still needs more telephony setup before dispatch is allowed.';
+  return 'Texting is waiting for calling setup to finish.';
 });
 
 const readinessCardClass = (isReady: boolean): string => isReady
@@ -416,7 +396,7 @@ const readinessCardClass = (isReady: boolean): string => isReady
   : 'border-amber-200 bg-amber-50 text-amber-900';
 
 const saveButtonLabel = computed(() =>
-  hasSavedCallbackNumber.value ? 'Update Callback Number' : 'Save Callback Number');
+  hasSavedCallbackNumber.value ? 'Update Number' : 'Save Number');
 
 const clearFeedback = (): void => {
   validationError.value = '';
@@ -438,7 +418,7 @@ const refreshReadiness = async (): Promise<void> => {
     appendLoadError(
       sanitizeConnectShyftOperatorCopy(
         error instanceof Error ? error.message : '',
-        'Unable to load telephony readiness right now.',
+        'Unable to load call and text status right now.',
       ),
     );
   }
@@ -472,7 +452,7 @@ const loadSettings = async (): Promise<void> => {
     appendLoadError(
       sanitizeConnectShyftOperatorCopy(
         readinessResult.reason instanceof Error ? readinessResult.reason.message : '',
-        'Unable to load telephony readiness right now.',
+        'Unable to load call and text status right now.',
       ),
     );
   }

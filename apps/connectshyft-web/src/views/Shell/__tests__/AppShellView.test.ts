@@ -302,7 +302,7 @@ describe('AppShellView', () => {
     await nextTick();
 
     expect(wrapper.get('[data-testid="shell-orgunit-confirmation"]').text()).toContain(
-      'This will clear the current person or conversation and take you to the nearest available page in the selected orgUnit.',
+      'This will clear the current person or conversation and take you to the nearest available page in the selected workspace.',
     );
     expect(router.currentRoute.value.fullPath).toBe('/connect/threads/thread-1?orgUnitId=org-east');
     expect(shellSubjectContext.value).toEqual({

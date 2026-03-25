@@ -314,7 +314,7 @@ describe('ConnectShyftThreadDetailView', () => {
     });
 
     expect(wrapper.get('[data-testid="connectshyft-thread-subject-impact-message"]').text()).toContain(
-      'Identity for this conversation is still waiting on tenant-admin review',
+      'Identity for this conversation is still waiting on review in People',
     );
     expect(wrapper.get('[data-testid="connectshyft-thread-subject-impact-people-link"]').text()).toContain(
       'Review in People',

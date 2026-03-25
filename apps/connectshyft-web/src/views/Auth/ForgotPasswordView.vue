@@ -37,11 +37,6 @@
           Back to login
         </router-link>
       </form>
-
-      <div v-if="debugResetLink" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 break-all">
-        <div class="font-semibold">Development reset link</div>
-        <a :href="debugResetLink" class="underline">{{ debugResetLink }}</a>
-      </div>
     </div>
   </div>
 </template>
@@ -50,19 +45,10 @@
 import { ref } from 'vue';
 import api from '@/services/api';
 
-type ForgotPasswordResponse = {
-  data?: {
-    debug?: {
-      resetLink?: string;
-    };
-  };
-};
-
 const email = ref('');
 const isSubmitting = ref(false);
 const errorMessage = ref('');
 const successMessage = ref('');
-const debugResetLink = ref('');
 
 const resolveResetBaseUrl = (): string => `${window.location.origin}/auth/password/reset`;
 
@@ -70,16 +56,14 @@ const handleSubmit = async (): Promise<void> => {
   isSubmitting.value = true;
   errorMessage.value = '';
   successMessage.value = '';
-  debugResetLink.value = '';
 
   try {
-    const response = await api.post<ForgotPasswordResponse>('/auth/password/forgot', {
+    await api.post('/auth/password/forgot', {
       email: email.value,
       resetBaseUrl: resolveResetBaseUrl(),
     });
 
     successMessage.value = 'If an account exists, reset instructions are now available.';
-    debugResetLink.value = response.data?.data?.debug?.resetLink || '';
   } catch (error: any) {
     errorMessage.value = error?.response?.data?.message
       || error?.response?.data?.error

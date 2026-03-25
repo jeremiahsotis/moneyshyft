@@ -221,11 +221,11 @@ afterEach(() => {
 });
 
 describe('ConnectShyftInboxView', () => {
-  it('renders Mine with shared search-first triage copy and actions', async () => {
+  it('renders Assigned with shared search-first triage copy and actions', async () => {
     const { wrapper } = await renderInbox('/app/connectshyft/mine?actorUserId=user-connectshyft-operator');
 
-    expect(wrapper.text()).toContain('My follow-ups');
-    expect(wrapper.text()).toContain('1 neighbor needs follow-up');
+    expect(wrapper.text()).toContain('Assigned conversations');
+    expect(wrapper.text()).toContain('1 conversation needs attention');
     expect(wrapper.get('[data-testid="connectshyft-queue-search-input"]').exists()).toBe(true);
     expect(wrapper.get('[data-testid="connectshyft-open-conversation-action"]').text()).toContain(
       'Open Conversation',
@@ -265,7 +265,7 @@ describe('ConnectShyftInboxView', () => {
 
     expect(wrapper.text()).toContain('Nothing is waiting right now');
     expect(wrapper.text()).toContain(
-      'When a new conversation needs follow-up, it will appear here.',
+      'When a new conversation needs attention, it will appear here.',
     );
   });
 });

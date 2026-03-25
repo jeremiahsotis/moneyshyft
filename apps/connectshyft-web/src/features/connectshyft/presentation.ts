@@ -45,15 +45,15 @@ const resolveVolunteerPreviewFallback = (value: string): string => {
   }
 
   if (lowered.includes('claimed')) {
-    return 'Another volunteer is already following up.';
+    return 'Another volunteer is already assigned.';
   }
 
   if (lowered.includes('closed')) {
-    return 'Conversation is closed until the next follow-up starts.';
+    return 'Conversation is closed until the next step starts.';
   }
 
   if (lowered.includes('unclaimed')) {
-    return 'Ready for volunteer follow-up.';
+    return 'Available for follow-up.';
   }
 
   return 'Conversation activity recorded.';
@@ -106,18 +106,32 @@ export const resolveConnectShyftClaimLabel = (
 ): string => {
   if (thread.state === 'CLAIMED') {
     if (actorUserId && thread.claimedByUserId === actorUserId) {
-      return 'Claimed by you';
+      return 'Assigned to you';
     }
 
-    return 'Claimed by another volunteer';
+    return 'Assigned to another volunteer';
   }
 
   if (thread.state === 'CLOSED') {
-    return 'Closed thread';
+    return 'Closed';
   }
 
-  const claimContext = stripContextPrefix(thread.claimContextLabel || '', 'Claim context');
-  return claimContext || 'Ready to claim';
+  const claimContext = stripContextPrefix(
+    stripContextPrefix(thread.claimContextLabel || '', 'Claim context'),
+    'Conversation status',
+  );
+
+  if (/claimed/i.test(claimContext)) {
+    return actorUserId && thread.claimedByUserId === actorUserId
+      ? 'Assigned to you'
+      : 'Assigned to another volunteer';
+  }
+
+  if (/closed/i.test(claimContext)) {
+    return 'Closed';
+  }
+
+  return 'Available to pick up';
 };
 
 export const resolveConnectShyftPreviewText = (

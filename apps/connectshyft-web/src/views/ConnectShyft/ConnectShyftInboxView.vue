@@ -67,7 +67,7 @@
                 <SectionHeader
                   :eyebrow="bucketTitle"
                   :title="queueHeading"
-                  description="Search first, then open the conversation that needs the next follow-up."
+                  description="Search first, then open the conversation that needs the next response."
                   size="md"
                 />
 
@@ -133,7 +133,7 @@
                       :preview="resolveThreadPreview(item)"
                       :timestamp-label="formatThreadTimestamp(item.lastActivityAtUtc)"
                       :urgency-label="item.urgencyLabel || ''"
-                      :context-pills="[item.bucket === 'mine' ? 'Mine' : 'Inbox']"
+                      :context-pills="[item.bucket === 'mine' ? 'Assigned' : 'Inbox']"
                       :phone-indicators="resolveThreadPhoneIndicators(item)"
                       :last-inbound-context="item.lastInboundContext || 'Inbound line unavailable'"
                       :preferred-outbound-context="item.preferredOutboundContextLabel || 'Outbound line unavailable'"
@@ -200,7 +200,7 @@
                   v-else-if="!threadLoadError"
                   eyebrow="Queue"
                   title="Nothing is waiting right now"
-                  description="When a new conversation needs follow-up, it will appear here."
+                  description="When a new conversation needs attention, it will appear here."
                 />
 
                 <div
@@ -566,7 +566,7 @@ const bucket = computed<'inbox' | 'mine'>(() => {
   return route.name === 'connectshyft-mine' ? 'mine' : 'inbox';
 });
 
-const bucketTitle = computed(() => (bucket.value === 'mine' ? 'Mine' : 'Inbox'));
+const bucketTitle = computed(() => (bucket.value === 'mine' ? 'Assigned' : 'Inbox'));
 const actorUserId = computed(() => {
   const rawActorUserId = typeof route.query.actorUserId === 'string'
     ? route.query.actorUserId
@@ -895,7 +895,7 @@ const resolveNeighborPhoneIndicators = (neighbor: ConnectShyftNeighbor): string[
 };
 const formatThreadTimestamp = (value: string): string => formatConnectShyftTimestamp(value);
 const queueHeading = computed(() => {
-  return bucket.value === 'mine' ? 'My follow-ups' : 'Neighbors needing follow-up';
+  return bucket.value === 'mine' ? 'Assigned conversations' : 'Conversations needing attention';
 });
 const queueSummaryText = computed(() => {
   const count = filteredThreadItems.value.length;
@@ -905,10 +905,10 @@ const queueSummaryText = computed(() => {
       return `${fallbackCount} ${fallbackCount === 1 ? 'neighbor is' : 'neighbors are'} ready to reach out`;
     }
 
-    return 'No neighbors need follow-up right now.';
+    return 'No conversations need attention right now.';
   }
 
-  return `${count} ${count === 1 ? 'neighbor needs' : 'neighbors need'} follow-up`;
+  return `${count} ${count === 1 ? 'conversation needs' : 'conversations need'} attention`;
 });
 const directoryFallbackItems = computed(() => {
   if (threadItems.value.length > 0) {
@@ -960,7 +960,7 @@ const selectedThreadConferenceLabel = computed(() => {
 });
 const selectedThreadClaimLabel = computed(() => {
   if (!selectedThreadSummary.value) {
-    return 'Ready to claim';
+    return 'Available to pick up';
   }
 
   return resolveThreadClaimLabel(selectedThreadSummary.value);

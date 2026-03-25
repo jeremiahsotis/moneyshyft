@@ -42,8 +42,8 @@ const navItems = [
     testId: 'connectshyft-section-nav-inbox',
   },
   {
-    label: 'Mine',
-    ariaLabel: 'Open Mine',
+    label: 'Assigned',
+    ariaLabel: 'Open Assigned',
     path: SHELL_ROUTE_PATHS.connectMine,
     testId: 'connectshyft-section-nav-mine',
   },
