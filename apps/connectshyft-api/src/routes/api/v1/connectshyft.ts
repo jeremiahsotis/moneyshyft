@@ -4398,8 +4398,8 @@ const mapSenderResolverRefusalToSmsSenderRefusal = (input: {
       ? 'CONNECTSHYFT_SMS_SENDER_AMBIGUOUS'
       : 'CONNECTSHYFT_SMS_SENDER_REQUIRED',
     message: isAmbiguous
-      ? 'Resolve the mapped ConnectShyft sender number so exactly one active scoped mapping remains before sending SMS.'
-      : 'Persist one valid mapped ConnectShyft sender number on the thread before sending SMS.',
+      ? 'This conversation needs one texting number selected before it can send a text.'
+      : 'This conversation cannot send a text until a texting number and a textable contact are both ready.',
     messageKey: isAmbiguous
       ? 'connectshyft.sms_sender.ambiguous'
       : 'connectshyft.sms_sender.required',
@@ -4415,8 +4415,8 @@ const mapSenderResolverRefusalToSmsSenderRefusal = (input: {
       isActive: mapping.isActive,
     })),
     accessibilityHint: isAmbiguous
-      ? 'Review the thread sender alignment and scoped number mappings before retrying.'
-      : 'Persist a valid mapped provider number on the thread before retrying.',
+      ? 'Review the conversation line before retrying.'
+      : 'Review the conversation line and contact details before retrying.',
   });
 };
 

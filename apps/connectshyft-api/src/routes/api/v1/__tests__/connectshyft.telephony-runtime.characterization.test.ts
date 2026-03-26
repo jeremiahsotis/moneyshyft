@@ -321,8 +321,8 @@ describe('connectshyft telephony runtime route characterization', () => {
       callbackNumberNormalized: false,
       voiceReady: false,
       bridgeCallRunnable: false,
-      smsReady: false,
-      messageDispatchRunnable: false,
+      smsReady: true,
+      messageDispatchRunnable: true,
       provider: {
         requestedProvider: 'telnyx',
         resolvedProvider: 'telnyx',
@@ -354,7 +354,7 @@ describe('connectshyft telephony runtime route characterization', () => {
           category: 'callback_number',
           message: 'Voice forwarding requires an operator callback number.',
           blocking: true,
-          channel: 'both',
+          channel: 'voice',
         },
       ],
       nextActions: [
@@ -379,8 +379,8 @@ describe('connectshyft telephony runtime route characterization', () => {
       data: {
         voiceReady: false,
         bridgeCallRunnable: false,
-        smsReady: false,
-        messageDispatchRunnable: false,
+        smsReady: true,
+        messageDispatchRunnable: true,
         callbackNumberConfigured: false,
         callbackNumberNormalized: false,
         operatorPhoneSource: 'none',
@@ -391,7 +391,7 @@ describe('connectshyft telephony runtime route characterization', () => {
             category: 'callback_number',
             message: 'Voice forwarding requires an operator callback number.',
             blocking: true,
-            channel: 'both',
+            channel: 'voice',
           },
         ],
         nextActions: [
@@ -451,7 +451,7 @@ describe('connectshyft telephony runtime route characterization', () => {
           category: 'orgunit_fallback',
           message: 'Using the orgUnit fallback phone until the operator callback number is set.',
           blocking: false,
-          channel: 'both',
+          channel: 'voice',
         },
       ],
       nextActions: [
@@ -488,7 +488,7 @@ describe('connectshyft telephony runtime route characterization', () => {
             category: 'orgunit_fallback',
             message: 'Using the orgUnit fallback phone until the operator callback number is set.',
             blocking: false,
-            channel: 'both',
+            channel: 'voice',
           },
         ],
         nextActions: [

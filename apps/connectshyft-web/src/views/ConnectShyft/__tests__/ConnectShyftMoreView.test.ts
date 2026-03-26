@@ -57,7 +57,7 @@ describe('ConnectShyftMoreView', () => {
     );
     expect(wrapper.text()).toContain('ConnectShyft Settings');
     expect(wrapper.text()).toContain(
-      'Set your callback number and check call and text readiness.',
+      'Set your callback number and review calling and texting setup.',
     );
     expect(wrapper.text()).toContain(
       'Keep the essentials close without crowding the everyday work.',

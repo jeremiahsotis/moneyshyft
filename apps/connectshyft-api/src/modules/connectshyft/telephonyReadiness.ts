@@ -302,7 +302,7 @@ const mapCallbackNumberReadiness = (
         'callback_number',
         'Operator callback number storage is unavailable. Voice forwarding readiness cannot be confirmed.',
         {
-          channel: 'both',
+          channel: 'voice',
         },
       ),
     };
@@ -324,7 +324,7 @@ const mapCallbackNumberReadiness = (
         'callback_number',
         'Voice forwarding requires an operator callback number.',
         {
-          channel: 'both',
+          channel: 'voice',
         },
       ),
     };
@@ -347,7 +347,7 @@ const mapCallbackNumberReadiness = (
         'callback_number',
         'Operator callback number must be a dialable voice number.',
         {
-          channel: 'both',
+          channel: 'voice',
         },
       ),
     };
@@ -466,7 +466,7 @@ const buildDegradedModeReason = (
     : 'Using the orgUnit fallback phone until the operator callback number is set.',
   {
     blocking: false,
-    channel: 'both',
+    channel: 'voice',
   },
 );
 
@@ -476,7 +476,7 @@ const buildInvalidOrgUnitFallbackReason = (): ConnectShyftTelephonyReadinessBloc
     'orgunit_fallback',
     'OrgUnit fallback phone must be a valid dialable number before telephony can route through fallback.',
     {
-      channel: 'both',
+      channel: 'voice',
     },
   );
 
@@ -571,7 +571,8 @@ export class AsyncConnectShyftTelephonyReadinessService {
     }
 
     const voiceChannelReady = canDispatchForChannel(operatorPhoneResolution, 'voice');
-    const smsChannelReady = canDispatchForChannel(operatorPhoneResolution, 'sms');
+    // SMS workspace readiness depends on provider + webhook + mapped lines, not the operator callback path.
+    const smsChannelReady = true;
     const bridgeCallRunnable = providerReadiness.providerReady
       && providerReadiness.webhookSignatureConfigured
       && numberMappings.activeCount > 0

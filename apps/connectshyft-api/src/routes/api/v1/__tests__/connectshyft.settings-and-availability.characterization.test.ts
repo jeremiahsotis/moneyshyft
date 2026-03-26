@@ -51,7 +51,7 @@ const buildTelephonyReadiness = (overrides: Record<string, unknown> = {}) => ({
       category: 'orgunit_fallback',
       message: 'Using the orgUnit fallback phone until the operator callback number is set.',
       blocking: false,
-      channel: 'both',
+      channel: 'voice',
     },
   ],
   nextActions: [

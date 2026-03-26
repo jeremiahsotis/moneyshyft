@@ -154,7 +154,7 @@ describe('connectshyft read contracts', () => {
       preferredOutboundCsNumberId: '+12605552005',
       display: {
         inboundContext: 'Mapped inbound number configured',
-        outboundContext: 'Mapped outbound number configured',
+        outboundContext: 'Conversation line selected',
       },
     });
   });

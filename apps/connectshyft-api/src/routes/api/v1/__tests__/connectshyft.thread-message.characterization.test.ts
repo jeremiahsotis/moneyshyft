@@ -482,36 +482,27 @@ describe('connectshyft outbound message route characterization', () => {
     expect(sendSmsMock).toHaveBeenCalledTimes(1);
   });
 
-  it('returns the current SMS-not-ready refusal shape before outbound message dispatch', async () => {
+  it('returns the current SMS-not-ready refusal shape before outbound message dispatch when webhook validation is missing', async () => {
     inspectReadinessSpy.mockResolvedValueOnce(buildTelephonyReadiness({
-      callbackNumberConfigured: false,
-      callbackNumberNormalized: false,
+      webhookSignatureConfigured: false,
       voiceReady: false,
       bridgeCallRunnable: false,
       smsReady: false,
       messageDispatchRunnable: false,
-      callbackNumber: {
-        value: null,
-        rawInput: null,
-        createdAtUtc: null,
-        updatedAtUtc: null,
-        persistenceAvailable: true,
-      },
-      operatorPhoneSource: 'none',
       degradedMode: false,
       blockingReasons: [
         {
-          code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
-          category: 'callback_number',
-          message: 'Voice forwarding requires an operator callback number.',
+          code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED',
+          category: 'provider',
+          message: 'Webhook signature verification must be configured before outbound telephony can be dispatched.',
           blocking: true,
           channel: 'both',
         },
       ],
       nextActions: [
         {
-          code: 'SET_OPERATOR_CALLBACK_NUMBER',
-          message: 'Save a callback / forwarding number for the current operator.',
+          code: 'CONFIGURE_CONNECTSHYFT_WEBHOOK_SIGNATURE',
+          message: 'Configure webhook signature verification for the active telephony provider.',
         },
       ],
     }));
@@ -551,16 +542,14 @@ describe('connectshyft outbound message route characterization', () => {
           bridgeCallRunnable: false,
           smsReady: false,
           messageDispatchRunnable: false,
-          operatorPhoneSource: 'none',
-          degradedMode: false,
           blockingReasons: [
             expect.objectContaining({
-              code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
+              code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED',
             }),
           ],
           nextActions: [
             expect.objectContaining({
-              code: 'SET_OPERATOR_CALLBACK_NUMBER',
+              code: 'CONFIGURE_CONNECTSHYFT_WEBHOOK_SIGNATURE',
             }),
           ],
         },
@@ -847,7 +836,7 @@ describe('connectshyft outbound message route characterization', () => {
     expect(response.body).toMatchObject({
       ok: false,
       code: 'CONNECTSHYFT_SMS_SENDER_REQUIRED',
-      message: 'Persist one valid mapped ConnectShyft sender number on the thread before sending SMS.',
+      message: 'This conversation cannot send a text until a texting number and a textable contact are both ready.',
       refusalType: 'business',
       data: {
         context: {
@@ -881,8 +870,8 @@ describe('connectshyft outbound message route characterization', () => {
           presentation: 'contextual-action-feedback',
           requiresAction: true,
           actionLabel: 'Review numbers',
-          accessibilityHint: 'Persist a valid mapped provider number on the thread before retrying.',
-          message: 'Persist one valid mapped ConnectShyft sender number on the thread before sending SMS.',
+          accessibilityHint: 'Review the conversation line and contact details before retrying.',
+          message: 'This conversation cannot send a text until a texting number and a textable contact are both ready.',
         },
         chrome: {
           persistentOperationsBannerVisible: false,

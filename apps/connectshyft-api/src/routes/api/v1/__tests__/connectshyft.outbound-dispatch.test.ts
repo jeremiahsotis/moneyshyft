@@ -1140,7 +1140,7 @@ describe('connectshyft outbound dispatch routes', () => {
     expect(sendSmsMock).not.toHaveBeenCalled();
   });
 
-  it('returns CONNECTSHYFT_SMS_NOT_READY before route-level sender-ambiguity validation when telephony readiness blocks outbound SMS', async () => {
+  it('returns CONNECTSHYFT_SMS_NOT_READY before route-level sender-ambiguity validation when webhook validation blocks outbound SMS', async () => {
     const routingMappingMock = connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber as jest.MockedFunction<
       typeof connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber
     >;
@@ -1164,31 +1164,22 @@ describe('connectshyft outbound dispatch routes', () => {
       ],
     });
     inspectReadinessSpy.mockResolvedValueOnce(buildDispatchReadyTelephonyReadiness({
-      callbackNumberConfigured: false,
-      callbackNumberNormalized: false,
+      webhookSignatureConfigured: false,
       smsReady: false,
       messageDispatchRunnable: false,
-      callbackNumber: {
-        value: null,
-        rawInput: null,
-        createdAtUtc: null,
-        updatedAtUtc: null,
-        persistenceAvailable: true,
-      },
-      operatorPhoneSource: 'none',
       blockingReasons: [
         {
-          code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
-          category: 'callback_number',
-          message: 'Voice forwarding requires an operator callback number.',
+          code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED',
+          category: 'provider',
+          message: 'Webhook signature verification must be configured before outbound telephony can be dispatched.',
           blocking: true,
           channel: 'both',
         },
       ],
       nextActions: [
         {
-          code: 'SET_OPERATOR_CALLBACK_NUMBER',
-          message: 'Save a callback / forwarding number for the current operator.',
+          code: 'CONFIGURE_CONNECTSHYFT_WEBHOOK_SIGNATURE',
+          message: 'Configure webhook signature verification for the active telephony provider.',
         },
       ],
     }));
@@ -1209,11 +1200,10 @@ describe('connectshyft outbound dispatch routes', () => {
       code: 'CONNECTSHYFT_SMS_NOT_READY',
       data: {
         telephonyReadiness: {
-          callbackNumberConfigured: false,
           smsReady: false,
           blockingReasons: [
             expect.objectContaining({
-              code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
+              code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED',
             }),
           ],
         },

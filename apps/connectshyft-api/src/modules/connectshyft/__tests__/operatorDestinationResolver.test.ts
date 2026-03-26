@@ -2,6 +2,7 @@ import {
   ConnectShyftOperatorDestinationResolverService,
   ConnectShyftTelephonyOperatorPhoneResolverService,
   InMemoryConnectShyftOperatorDestinationStore,
+  KnexConnectShyftOperatorDestinationStore,
 } from '../operatorDestinationResolver';
 
 describe('connectshyft operatorDestinationResolver', () => {
@@ -244,5 +245,50 @@ describe('connectshyft telephony operator phone resolver', () => {
       callbackNumberStatus: 'missing',
       orgUnitDefaultStatus: 'invalid',
     });
+  });
+});
+
+describe('KnexConnectShyftOperatorDestinationStore', () => {
+  const buildKnexMock = (row: Record<string, unknown> | null) => {
+    const first = jest.fn(async () => row);
+    const where = jest.fn(() => ({
+      first,
+    }));
+    const table = jest.fn(() => ({
+      where,
+    }));
+    const knex = jest.fn(() => ({
+      table,
+    }));
+
+    return {
+      knex: knex as any,
+      table,
+      where,
+      first,
+    };
+  };
+
+  it('reads user phones by id without household scoping', async () => {
+    const { knex, table, where, first } = buildKnexMock({
+      id: 'user-connectshyft-alpha-operator',
+      household_id: 'different-household-row',
+      phone_e164: '+12605550123',
+    });
+    const store = new KnexConnectShyftOperatorDestinationStore(knex);
+
+    await expect(store.getUserPhone({
+      tenantId: 'tenant-connectshyft-alpha',
+      userId: 'user-connectshyft-alpha-operator',
+    })).resolves.toEqual({
+      userId: 'user-connectshyft-alpha-operator',
+      phoneNumber: '+12605550123',
+    });
+
+    expect(table).toHaveBeenCalledWith('users');
+    expect(where).toHaveBeenCalledWith({
+      id: 'user-connectshyft-alpha-operator',
+    });
+    expect(first).toHaveBeenCalledWith(['id', 'phone_e164']);
   });
 });

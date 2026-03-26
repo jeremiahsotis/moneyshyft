@@ -33,7 +33,7 @@ describe('connectshyft telephony readiness', () => {
     resolution: ConnectShyftTelephonyOperatorPhoneResolution,
   ) => jest.fn(async () => resolution);
 
-  it('reports callback-number missing when provider and number mappings are otherwise ready', async () => {
+  it('reports callback-number missing for calling while texting stays ready when provider and number mappings are otherwise ready', async () => {
     const readinessService = new AsyncConnectShyftTelephonyReadinessService(
       {
         listMappings: jest.fn(async () => [
@@ -85,8 +85,8 @@ describe('connectshyft telephony readiness', () => {
       callbackNumberNormalized: false,
       voiceReady: false,
       bridgeCallRunnable: false,
-      smsReady: false,
-      messageDispatchRunnable: false,
+      smsReady: true,
+      messageDispatchRunnable: true,
       operatorPhoneSource: 'none',
       degradedMode: false,
       provider: {
@@ -106,7 +106,7 @@ describe('connectshyft telephony readiness', () => {
       blockingReasons: expect.arrayContaining([
         expect.objectContaining({
           code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
-          channel: 'both',
+          channel: 'voice',
         }),
       ]),
       nextActions: expect.arrayContaining([
@@ -318,6 +318,7 @@ describe('connectshyft telephony readiness', () => {
           code: 'CONNECTSHYFT_ORGUNIT_DEFAULT_OPERATOR_PHONE_ACTIVE',
           category: 'orgunit_fallback',
           blocking: false,
+          channel: 'voice',
         }),
       ]),
       nextActions: expect.arrayContaining([

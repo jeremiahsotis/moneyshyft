@@ -43,7 +43,7 @@
           class="cs-card cs-card--compact cs-card--interactive cs-card--muted text-left"
         >
           <p class="cs-heading-md">ConnectShyft Settings</p>
-          <p class="mt-2 cs-meta">Set your callback number and check call and text readiness.</p>
+          <p class="mt-2 cs-meta">Set your callback number and review calling and texting setup.</p>
         </RouterLink>
       </section>
 

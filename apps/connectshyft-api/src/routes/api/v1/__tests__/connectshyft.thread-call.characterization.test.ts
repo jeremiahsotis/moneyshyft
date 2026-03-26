@@ -492,7 +492,7 @@ describe('connectshyft outbound call route characterization', () => {
           category: 'orgunit_fallback',
           message: 'Using the orgUnit fallback phone until the operator callback number is set.',
           blocking: false,
-          channel: 'both',
+          channel: 'voice',
         },
       ],
       nextActions: [
@@ -734,8 +734,8 @@ describe('connectshyft outbound call route characterization', () => {
       callbackNumberNormalized: false,
       voiceReady: false,
       bridgeCallRunnable: false,
-      smsReady: false,
-      messageDispatchRunnable: false,
+      smsReady: true,
+      messageDispatchRunnable: true,
       callbackNumber: {
         value: null,
         rawInput: null,
@@ -751,7 +751,7 @@ describe('connectshyft outbound call route characterization', () => {
           category: 'callback_number',
           message: 'Voice forwarding requires an operator callback number.',
           blocking: true,
-          channel: 'both',
+          channel: 'voice',
         },
       ],
       nextActions: [
@@ -795,8 +795,8 @@ describe('connectshyft outbound call route characterization', () => {
         telephonyReadiness: {
           voiceReady: false,
           bridgeCallRunnable: false,
-          smsReady: false,
-          messageDispatchRunnable: false,
+          smsReady: true,
+          messageDispatchRunnable: true,
           operatorPhoneSource: 'none',
           degradedMode: false,
           blockingReasons: [

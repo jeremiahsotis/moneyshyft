@@ -930,7 +930,7 @@ const buildThreadDisplayRecord = (input: {
   );
   const outboundContext = normalizeString(input.preferredOutboundLabel)
     || (preferredOutboundProviderNumber
-      ? 'Mapped outbound number configured'
+      ? 'Conversation line selected'
       : 'Outbound number unavailable');
   const inboundContext = lastInboundProviderNumber
     ? 'Mapped inbound number configured'
