@@ -2,6 +2,8 @@
 import express from 'express';
 import request from 'supertest';
 import { responseEnvelope } from '../../../../platform/middleware/responseEnvelope';
+import * as readContractsModule from '../../../../modules/connectshyft/readContracts';
+import * as threadsModule from '../../../../modules/connectshyft/threads';
 import connectShyftRouter from '../connectshyft';
 import {
   buildApp,
@@ -12,8 +14,10 @@ import {
 const TEST_TENANT_ID = 'tenant-connectshyft-c5';
 const TEST_ORG_UNIT_ID = 'org-connectshyft-c5-east';
 const TEST_ACTOR_USER_ID = 'user-connectshyft-c5-operator';
+const UUID_ACTOR_USER_ID = 'f3bb331f-8adb-4664-926b-66e01c1881a7';
 const CLAIM_SUCCESS_THREAD_ID = 'thread-c5-unclaimed-claim-characterization-success-1001';
 const CLAIM_INVALID_STATE_THREAD_ID = 'thread-c5-unclaimed-claim-characterization-invalid-state-1001';
+const CLAIM_UUID_THREAD_ID = 'f3fe1191-f90a-4c7d-82ef-f77ce5dff8ba';
 const NOT_FOUND_THREAD_ID = '11111111-1111-4111-8111-111111111111';
 
 const buildLifecycleHeaders = (
@@ -211,6 +215,102 @@ describe('connectshyft thread claim route characterization', () => {
       'updatedAtUtc',
     ].sort());
     expect(response.body.data.audit).toEqual(response.body.data.outbox);
+  });
+
+  it('routes UUID-backed claim requests through the async thread transition write path', async () => {
+    const app = buildApp();
+    const detailSpy = jest.spyOn(
+      readContractsModule,
+      'resolveConnectShyftThreadDetailContractAsync',
+    ).mockResolvedValue({
+      threadId: CLAIM_UUID_THREAD_ID,
+      tenantId: TEST_TENANT_ID,
+      orgUnitId: TEST_ORG_UNIT_ID,
+      state: 'UNCLAIMED',
+      claimedByUserId: null,
+      claimed_by_user_id: null,
+    } as any);
+    const transitionSpy = jest.spyOn(
+      threadsModule.connectShyftThreadServiceAsync,
+      'transitionThreadState',
+    ).mockResolvedValue({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_TRANSITIONED',
+      httpStatus: 200,
+      data: {
+        thread: {
+          threadId: CLAIM_UUID_THREAD_ID,
+          tenantId: TEST_TENANT_ID,
+          orgUnitId: TEST_ORG_UNIT_ID,
+          neighborId: `neighbor-${CLAIM_UUID_THREAD_ID}`,
+          source: 'VOICE',
+          state: 'CLAIMED',
+          lastInboundCsNumberId: '+12605550179',
+          preferredOutboundCsNumberId: '+12605550179',
+          claimedByUserId: UUID_ACTOR_USER_ID,
+          claimedAtUtc: '2026-03-26T12:00:00.000Z',
+          closedByUserId: null,
+          closedAtUtc: null,
+          createdAtUtc: '2026-03-25T12:00:00.000Z',
+          updatedAtUtc: '2026-03-26T12:00:00.000Z',
+          escalation: {
+            stage: 0,
+            nextEvaluationAtUtc: null,
+          },
+        },
+      },
+    } as any);
+
+    const response = await postClaim(
+      app,
+      CLAIM_UUID_THREAD_ID,
+      buildLifecycleHeaders({
+        'x-test-connectshyft-user-id': UUID_ACTOR_USER_ID,
+      }),
+      {
+        reason: 'Operator accepted ownership',
+        resolution: 'needs_follow_up',
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(detailSpy).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: TEST_TENANT_ID,
+      orgUnitId: TEST_ORG_UNIT_ID,
+      threadId: CLAIM_UUID_THREAD_ID,
+      actorUserId: UUID_ACTOR_USER_ID,
+    }));
+    expect(transitionSpy).toHaveBeenCalledWith({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: TEST_TENANT_ID,
+      threadId: CLAIM_UUID_THREAD_ID,
+      nextState: 'CLAIMED',
+      actorUserId: UUID_ACTOR_USER_ID,
+    });
+    expect(response.body).toMatchObject({
+      ok: true,
+      code: 'CONNECTSHYFT_THREAD_CLAIMED',
+      message: 'ConnectShyft claim action accepted',
+      data: {
+        threadId: CLAIM_UUID_THREAD_ID,
+        sideEffectsPersisted: false,
+        thread: {
+          threadId: CLAIM_UUID_THREAD_ID,
+          state: 'CLAIMED',
+          claimedByUserId: UUID_ACTOR_USER_ID,
+          claimedAtUtc: '2026-03-26T12:00:00.000Z',
+        },
+        audit: {
+          eventName: 'connectshyft.thread.claimed',
+          metadata: expect.objectContaining({
+            actor_user_id: UUID_ACTOR_USER_ID,
+            thread_id: CLAIM_UUID_THREAD_ID,
+            new_state: 'CLAIMED',
+            action: 'claim',
+          }),
+        },
+      },
+    });
   });
 
   it('returns the current invalid-state refusal when claim is retried on an already claimed thread', async () => {
