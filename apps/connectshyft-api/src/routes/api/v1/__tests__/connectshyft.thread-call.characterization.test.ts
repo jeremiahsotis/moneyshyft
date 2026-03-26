@@ -243,7 +243,7 @@ describe('connectshyft outbound call route characterization', () => {
     resolveSenderNumberSpy.mockRestore();
   });
 
-  it('returns the current outbound call success envelope and bridge-session response shape', async () => {
+  it('returns the current outbound call success envelope and bridge-session response shape when callback-backed operator resolution succeeds', async () => {
     const app = buildApp();
     const response = await request(app)
       .post(`/api/v1/connectshyft/threads/${CALL_SUCCESS_THREAD_ID}/call`)
@@ -468,9 +468,11 @@ describe('connectshyft outbound call route characterization', () => {
       'createdAtUtc',
       'escalation',
       'lastInboundCsNumberId',
+      'lastInboundProviderNumberE164',
       'neighborId',
       'orgUnitId',
       'preferredOutboundCsNumberId',
+      'preferredOutboundProviderNumberE164',
       'source',
       'state',
       'tenantId',
@@ -479,6 +481,12 @@ describe('connectshyft outbound call route characterization', () => {
     ].sort());
     expect(response.body.data.audit).toEqual(response.body.data.outbox);
     expect(response.body.data.outboundDispatch.audit).toEqual(response.body.data.audit);
+    expect(resolveOperatorDestinationSpy).toHaveBeenCalledWith({
+      tenantId: TEST_TENANT_ID,
+      orgUnitId: TEST_ORG_UNIT_ID,
+      actorUserId: TEST_ACTOR_USER_ID,
+      claimedByUserId: null,
+    });
     expect(startOutboundCallMock).toHaveBeenCalledTimes(1);
   });
 
