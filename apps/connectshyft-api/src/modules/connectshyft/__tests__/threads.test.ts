@@ -278,7 +278,44 @@ describe('connectshyft thread service', () => {
       threadId: 'thread-c1-provider-1001',
       lastInboundCsNumberId: '+12605550191',
       preferredOutboundCsNumberId: '+12605550191',
+      lastInboundProviderNumberE164: '+12605550191',
+      preferredOutboundProviderNumberE164: '+12605550191',
     });
+  });
+
+  it('does not overwrite canonical provider-number alignment with symbolic compatibility values', () => {
+    const first = ensureThreadWithPerson(service, {
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c1',
+      orgUnitId: 'org-connectshyft-c1-east',
+      neighborId: 'neighbor-connectshyft-c1-provider-1002',
+      source: 'SMS',
+      threadId: 'thread-c1-provider-1002',
+      lastInboundCsNumberId: '+12605550192',
+      preferredOutboundCsNumberId: '+12605550192',
+    });
+
+    const second = ensureThreadWithPerson(service, {
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c1',
+      orgUnitId: 'org-connectshyft-c1-east',
+      neighborId: 'neighbor-connectshyft-c1-provider-1002',
+      source: 'SMS',
+      threadId: 'thread-c1-provider-1002-second',
+      lastInboundCsNumberId: 'cs-number-c1-902',
+      preferredOutboundCsNumberId: 'cs-number-c1-902',
+    });
+
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    if (!first.ok || !second.ok) {
+      throw new Error('Expected both ensureThread calls to succeed');
+    }
+
+    expect(second.data.thread.lastInboundCsNumberId).toBe('cs-number-c1-902');
+    expect(second.data.thread.preferredOutboundCsNumberId).toBe('cs-number-c1-902');
+    expect(second.data.thread.lastInboundProviderNumberE164).toBe('+12605550192');
+    expect(second.data.thread.preferredOutboundProviderNumberE164).toBe('+12605550192');
   });
 
   it('aligns lifecycle nullable fields with canonical state transitions', () => {

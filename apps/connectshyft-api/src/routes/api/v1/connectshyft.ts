@@ -1905,6 +1905,10 @@ const buildSyntheticThread = (input: {
     state: input.nextState,
     lastInboundCsNumberId: input.fallbackLastInboundCsNumberId || '',
     preferredOutboundCsNumberId: input.fallbackPreferredOutboundCsNumberId || '',
+    lastInboundProviderNumberE164:
+      normalizeProviderNumberE164OrNull(input.fallbackLastInboundCsNumberId) || null,
+    preferredOutboundProviderNumberE164:
+      normalizeProviderNumberE164OrNull(input.fallbackPreferredOutboundCsNumberId) || null,
     claimedByUserId: input.nextState === 'CLAIMED' ? actorUserId : null,
     claimedAtUtc: input.nextState === 'CLAIMED' ? now : null,
     closedByUserId: input.nextState === 'CLOSED' ? actorUserId : null,
@@ -1947,6 +1951,8 @@ const buildThreadFromDetailRecord = (
     state: detail.state,
     lastInboundCsNumberId: detail.lastInboundCsNumberId,
     preferredOutboundCsNumberId: detail.preferredOutboundCsNumberId,
+    lastInboundProviderNumberE164: detail.lastInboundProviderNumberE164 || null,
+    preferredOutboundProviderNumberE164: detail.preferredOutboundProviderNumberE164 || null,
     claimedByUserId: detail.claimedByUserId,
     claimedAtUtc: null,
     closedByUserId: null,
@@ -2019,8 +2025,16 @@ const buildSyntheticThreadDetailRecord = (input: {
     lastActivityAtUtc: input.descriptor.nextEvaluationAtUtc || nowIsoUtc(),
     lastInboundCsNumberId: input.descriptor.lastInboundCsNumberId,
     last_inbound_cs_number_id: input.descriptor.lastInboundCsNumberId,
+    lastInboundProviderNumberE164:
+      normalizeProviderNumberE164OrNull(input.descriptor.lastInboundCsNumberId) || null,
+    last_inbound_provider_number_e164:
+      normalizeProviderNumberE164OrNull(input.descriptor.lastInboundCsNumberId) || null,
     preferredOutboundCsNumberId: input.descriptor.preferredOutboundCsNumberId,
     preferred_outbound_cs_number_id: input.descriptor.preferredOutboundCsNumberId,
+    preferredOutboundProviderNumberE164:
+      normalizeProviderNumberE164OrNull(input.descriptor.preferredOutboundCsNumberId) || null,
+    preferred_outbound_provider_number_e164:
+      normalizeProviderNumberE164OrNull(input.descriptor.preferredOutboundCsNumberId) || null,
     preferredOutboundContext: {
       csNumberId: input.descriptor.preferredOutboundCsNumberId,
       label: outboundContextLabel,
@@ -2425,6 +2439,8 @@ const persistResolvedSenderAlignmentForThread = async (input: {
     ...input.thread,
     lastInboundCsNumberId: providerNumberE164,
     preferredOutboundCsNumberId: providerNumberE164,
+    lastInboundProviderNumberE164: providerNumberE164,
+    preferredOutboundProviderNumberE164: providerNumberE164,
   };
   const persistedThreadId = UUID_PATTERN.test(input.thread.threadId)
     ? input.thread.threadId
@@ -2454,6 +2470,8 @@ const persistResolvedSenderAlignmentForThread = async (input: {
       .update({
         last_inbound_cs_number_id: providerNumberE164,
         preferred_outbound_cs_number_id: providerNumberE164,
+        last_inbound_provider_number_e164: providerNumberE164,
+        preferred_outbound_provider_number_e164: providerNumberE164,
         updated_by_user_id: persistedActorUserId,
         updated_at_utc: loadPlatformDb().fn.now(),
       })
@@ -4233,6 +4251,13 @@ type ConnectShyftResolvedSmsSender =
 
 const isValidConnectShyftSmsTargetPhone = (value: string): boolean => {
   return value.length > 0 && validatePhoneForChannel(value, 'sms').ok;
+};
+
+const normalizeProviderNumberE164OrNull = (value: unknown): string | null => {
+  const normalized = normalizeLifecycleString(value) || '';
+  return normalized.length > 0 && validatePhoneForChannel(normalized, 'sms').ok
+    ? normalized
+    : null;
 };
 
 const buildConnectShyftSmsSenderThreadHints = (input: {
