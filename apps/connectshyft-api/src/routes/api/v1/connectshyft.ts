@@ -122,6 +122,7 @@ import {
   resolveSenderNumber,
   type ResolveSenderNumberRefusal,
 } from '../../../modules/connectshyft/senderNumberResolver';
+import { resolveThreadSmsTarget } from '../../../modules/connectshyft/threadSmsTargetResolver';
 import {
   connectShyftSmsPreferenceOverrideServiceAsync,
   ConnectShyftSmsOverridePersistenceUnavailableError,
@@ -4314,6 +4315,28 @@ const buildConnectShyftSmsTargetRefusal = (input: {
   },
 });
 
+const buildPeopleCoreSmsTargetUiFeedback = (input: {
+  message: string;
+  reason: 'missing_target' | 'ambiguous_target' | 'invalid_target';
+}) => ({
+  severity: 'warning' as const,
+  ariaLive: 'assertive' as const,
+  messageKey: input.reason === 'ambiguous_target'
+    ? 'connectshyft.sms_target.ambiguous'
+    : input.reason === 'invalid_target'
+      ? 'connectshyft.sms_target.invalid'
+      : 'connectshyft.sms_target.missing',
+  presentation: 'contextual-action-feedback' as const,
+  requiresAction: true,
+  actionLabel: 'Review contact',
+  accessibilityHint: input.reason === 'ambiguous_target'
+    ? 'Choose the one current textable contact for this conversation before retrying.'
+    : input.reason === 'invalid_target'
+      ? 'Update the current contact so this conversation has a textable phone number.'
+      : 'Add or mark one current textable phone number for this conversation before retrying.',
+  message: input.message,
+});
+
 const buildConnectShyftSmsSenderRefusal = (input: {
   code: string;
   message: string;
@@ -6239,6 +6262,29 @@ const performOutboundAction = async ({
       ...(sideEffects || {}),
     };
   };
+  const resolveOutboundThreadPersonId = (): string => {
+    const threadPersonId = normalizeLifecycleString((thread as { personId?: unknown }).personId);
+    if (threadPersonId) {
+      return threadPersonId;
+    }
+
+    const detailPersonId = normalizeLifecycleString(lifecycleContext.detail?.personId);
+    if (detailPersonId) {
+      return detailPersonId;
+    }
+
+    const neighborIdForPerson = normalizeLifecycleString(
+      thread.neighborId
+      || resolvedThreadNeighborId
+      || lifecycleContext.syntheticThread?.neighborId
+      || null,
+    );
+    if (neighborIdForPerson.startsWith('neighbor-')) {
+      return neighborIdForPerson.replace(/^neighbor-/, 'person-');
+    }
+
+    return '';
+  };
 
   let operatorDestinationResolution: ConnectShyftOperatorDestinationResolution | null = null;
   let claimedByUserIdForOperatorDestination: string | null = null;
@@ -6454,103 +6500,6 @@ const performOutboundAction = async ({
   }
 
   if (outboundAction === 'message') {
-    const smsTargetResolution = await resolveConnectShyftSmsTarget({
-      tenantId: context.tenantId,
-      orgUnitId: context.orgUnitId,
-      threadId,
-      thread,
-      actorRoles,
-      requestedTargetPhone: outboundMessagePolicy?.targetPhone || null,
-      allowTestFallback: allowPhoneFallback,
-    });
-    if (!smsTargetResolution.ok) {
-      refusal(res, {
-        code: smsTargetResolution.code,
-        message: smsTargetResolution.message,
-        refusalType: 'business',
-        httpStatus: 200,
-        data: {
-          context,
-          threadId,
-          preferencePolicy: {
-            prefersTexting: smsPreferenceDecision?.prefersTexting || 'UNKNOWN',
-            source: smsPreferenceDecision?.source || 'unknown',
-            overrideRequired: smsPreferenceDecision?.prefersTexting === 'NO',
-            overrideAccepted: smsPreferenceDecision?.prefersTexting !== 'NO'
-              || Boolean(validatedSmsOverride),
-            ...(validatedSmsOverride
-              ? {
-                override: {
-                  reason: validatedSmsOverride.reason,
-                  note: validatedSmsOverride.note,
-                },
-              }
-              : {}),
-          },
-          ...smsTargetResolution.data,
-          chrome: {
-            persistentOperationsBannerVisible: false,
-            heavyOperationsDefaultLayout: false,
-          },
-          sideEffects: {
-            messageDispatched: false,
-            lifecycleMutationApplied,
-            auditPersisted: false,
-          },
-          ...buildReopenLifecycleData(),
-        },
-      });
-      return;
-    }
-
-    outboundMessageTargetPhone = smsTargetResolution.targetPhone;
-    const dispatchReadySmsTarget = ensureConnectShyftDispatchReadySmsTarget({
-      resolvedTargetPhone: outboundMessageTargetPhone,
-      requestedTargetPhone: outboundMessagePolicy?.targetPhone || null,
-      threadNeighborId: thread.neighborId,
-    });
-    if (!dispatchReadySmsTarget.ok) {
-      refusal(res, {
-        code: dispatchReadySmsTarget.code,
-        message: dispatchReadySmsTarget.message,
-        refusalType: 'business',
-        httpStatus: 200,
-        data: {
-          context,
-          threadId,
-          preferencePolicy: {
-            prefersTexting: smsPreferenceDecision?.prefersTexting || 'UNKNOWN',
-            source: smsPreferenceDecision?.source || 'unknown',
-            overrideRequired: smsPreferenceDecision?.prefersTexting === 'NO',
-            overrideAccepted: smsPreferenceDecision?.prefersTexting !== 'NO'
-              || Boolean(validatedSmsOverride),
-            ...(validatedSmsOverride
-              ? {
-                override: {
-                  reason: validatedSmsOverride.reason,
-                  note: validatedSmsOverride.note,
-                },
-              }
-              : {}),
-          },
-          ...dispatchReadySmsTarget.data,
-          chrome: {
-            persistentOperationsBannerVisible: false,
-            heavyOperationsDefaultLayout: false,
-          },
-          sideEffects: {
-            messageDispatched: false,
-            lifecycleMutationApplied,
-            auditPersisted: false,
-          },
-          ...buildReopenLifecycleData(),
-        },
-      });
-      return;
-    }
-
-    outboundMessageTargetPhone = dispatchReadySmsTarget.targetPhone;
-
     const smsSenderResolution = await resolveConnectShyftSmsSender({
       tenantId: context.tenantId,
       orgUnitId: context.orgUnitId,
@@ -6608,6 +6557,62 @@ const performOutboundAction = async ({
       alignedFrom: smsSenderResolution.metadata.alignedFrom,
       threadHints: smsSenderResolution.metadata.threadHints,
     };
+
+    const smsTarget = await resolveThreadSmsTarget({
+      tenantId: context.tenantId,
+      orgUnitId: context.orgUnitId,
+      threadId,
+      personId: resolveOutboundThreadPersonId(),
+    });
+    if (!smsTarget.ok) {
+      refusal(res, {
+        code: smsTarget.code,
+        message: smsTarget.message,
+        refusalType: 'business',
+        httpStatus: 200,
+        data: {
+          context,
+          threadId,
+          preferencePolicy: {
+            prefersTexting: smsPreferenceDecision?.prefersTexting || 'UNKNOWN',
+            source: smsPreferenceDecision?.source || 'unknown',
+            overrideRequired: smsPreferenceDecision?.prefersTexting === 'NO',
+            overrideAccepted: smsPreferenceDecision?.prefersTexting !== 'NO'
+              || Boolean(validatedSmsOverride),
+            ...(validatedSmsOverride
+              ? {
+                override: {
+                  reason: validatedSmsOverride.reason,
+                  note: validatedSmsOverride.note,
+                },
+              }
+              : {}),
+          },
+          targetResolution: {
+            deterministic: smsTarget.reason !== 'ambiguous_target',
+            source: 'peoplecore_current_contact_point',
+            reason: smsTarget.reason,
+          },
+          uiFeedback: buildPeopleCoreSmsTargetUiFeedback({
+            message: smsTarget.message,
+            reason: smsTarget.reason,
+          }),
+          chrome: {
+            persistentOperationsBannerVisible: false,
+            heavyOperationsDefaultLayout: false,
+          },
+          sideEffects: {
+            messageDispatched: false,
+            lifecycleMutationApplied,
+            auditPersisted: false,
+          },
+          ...buildReopenLifecycleData(),
+        },
+      });
+      return;
+    }
+
+    outboundMessageTargetPhone = smsTarget.normalizedValue;
   }
 
   if (outboundAction === 'call') {

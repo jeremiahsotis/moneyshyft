@@ -2,6 +2,7 @@
 import request from 'supertest';
 import * as SenderNumberResolverModule from '../../../../modules/connectshyft/senderNumberResolver';
 import * as TelephonyReadinessModule from '../../../../modules/connectshyft/telephonyReadiness';
+import * as ThreadSmsTargetResolverModule from '../../../../modules/connectshyft/threadSmsTargetResolver';
 import { resetConnectShyftBridgeSessionStateForTests } from '../../../../modules/connectshyft/bridgeSessions';
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents';
 import { resetConnectShyftCommunicationAuditLogForTests } from '../../../../modules/connectshyft/communicationAuditLog';
@@ -210,6 +211,7 @@ describe('connectshyft outbound message route characterization', () => {
   let resolvePreferenceSpy: jest.SpyInstance;
   let resolveSenderNumberSpy: jest.SpyInstance;
   let inspectReadinessSpy: jest.SpyInstance;
+  let resolveThreadSmsTargetSpy: jest.SpyInstance;
 
   beforeEach(() => {
     sendSmsMock.mockClear();
@@ -234,12 +236,23 @@ describe('connectshyft outbound message route characterization', () => {
     ).mockResolvedValue(buildSmsPreference());
     resolveSenderNumberSpy = jest.spyOn(SenderNumberResolverModule, 'resolveSenderNumber')
       .mockImplementation(async (input) => buildSmsSenderResolution(input));
+    resolveThreadSmsTargetSpy = jest.spyOn(
+      ThreadSmsTargetResolverModule,
+      'resolveThreadSmsTarget',
+    ).mockImplementation(async (input) => ({
+      ok: true,
+      contactPointId: `contact-point-${input.threadId}`,
+      normalizedValue: input.threadId === MESSAGE_CLOSED_THREAD_ID
+        ? '+12605550228'
+        : '+12605550222',
+    }));
   });
 
   afterEach(() => {
     inspectReadinessSpy.mockRestore();
     resolvePreferenceSpy.mockRestore();
     resolveSenderNumberSpy.mockRestore();
+    resolveThreadSmsTargetSpy.mockRestore();
   });
 
   it('returns the current outbound message success envelope and dispatch response shape', async () => {
@@ -749,6 +762,13 @@ describe('connectshyft outbound message route characterization', () => {
   });
 
   it('returns the current SMS-target-required refusal shape before outbound message dispatch', async () => {
+    resolveThreadSmsTargetSpy.mockResolvedValueOnce({
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_TARGET_REQUIRED',
+      message: 'This conversation cannot send a text until a textable contact is ready.',
+      reason: 'missing_target',
+    });
+
     const app = buildApp();
     const response = await request(app)
       .post(`/api/v1/connectshyft/threads/${MESSAGE_SUCCESS_THREAD_ID}/messages`)
@@ -762,7 +782,7 @@ describe('connectshyft outbound message route characterization', () => {
     expect(response.body).toMatchObject({
       ok: false,
       code: 'CONNECTSHYFT_SMS_TARGET_REQUIRED',
-      message: 'Add or select a valid phone number before sending SMS.',
+      message: 'This conversation cannot send a text until a textable contact is ready.',
       refusalType: 'business',
       data: {
         context: {
@@ -779,11 +799,8 @@ describe('connectshyft outbound message route characterization', () => {
         },
         targetResolution: {
           reason: 'missing_target',
-          source: 'neighbor_record',
-          neighborId: 'neighbor-connectshyft-f2-1001',
-          requestedTargetPhone: null,
-          candidateCount: 0,
-          candidatePhones: [],
+          source: 'peoplecore_current_contact_point',
+          deterministic: true,
         },
         uiFeedback: {
           severity: 'warning',
@@ -791,9 +808,9 @@ describe('connectshyft outbound message route characterization', () => {
           messageKey: 'connectshyft.sms_target.missing',
           presentation: 'contextual-action-feedback',
           requiresAction: true,
-          actionLabel: 'Select phone',
-          accessibilityHint: 'Update the neighbor profile or choose a valid phone number before sending the outbound message.',
-          message: 'Add or select a valid phone number before sending SMS.',
+          actionLabel: 'Review contact',
+          accessibilityHint: 'Add or mark one current textable phone number for this conversation before retrying.',
+          message: 'This conversation cannot send a text until a textable contact is ready.',
         },
         chrome: {
           persistentOperationsBannerVisible: false,
