@@ -2,9 +2,11 @@ import {
   AsyncConnectShyftThreadService,
   ConnectShyftThreadService,
   InMemoryConnectShyftThreadStore,
+  KnexConnectShyftThreadStore,
   evaluateConnectShyftLifecyclePolicy,
 } from '../threads';
 import { resolveSenderNumber } from '../senderNumberResolver';
+import logger from '../../../utils/logger';
 
 const withRequiredPersonId = <T extends { neighborId: string; personId?: string }>(
   input: T,
@@ -508,6 +510,127 @@ describe('connectshyft async thread service persistence guards', () => {
       code: 'CONNECTSHYFT_THREAD_ENSURE_PERSISTENCE_UNAVAILABLE',
     });
     expect(store.ensureActiveThread).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs transition persistence failures with the text actor id that triggered the claim', async () => {
+    const missingSchemaError = Object.assign(new Error('relation does not exist'), {
+      code: '42P01',
+    });
+    const store = {
+      ensureActiveThread: jest.fn(),
+      listDueThreads: jest.fn(),
+      transitionThreadState: jest.fn().mockRejectedValue(missingSchemaError),
+    } as any;
+    const loggerErrorSpy = jest.spyOn(logger, 'error').mockImplementation(() => logger);
+    const service = new AsyncConnectShyftThreadService(store);
+
+    const result = await service.transitionThreadState({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c1',
+      threadId: 'thread-connectshyft-c1-claim-logging',
+      nextState: 'CLAIMED',
+      actorUserId: 'operator-text-id',
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_PERSISTENCE_UNAVAILABLE',
+    });
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      'connectshyft thread transition persistence failed',
+      expect.objectContaining({
+        tenantId: 'tenant-connectshyft-c1',
+        threadId: 'thread-connectshyft-c1-claim-logging',
+        nextState: 'CLAIMED',
+        actorUserId: 'operator-text-id',
+        error: missingSchemaError,
+      }),
+    );
+
+    loggerErrorSpy.mockRestore();
+  });
+});
+
+describe('connectshyft knex thread persistence', () => {
+  it('persists a claimed thread with a stable text actor id', async () => {
+    const existingRow = {
+      id: 'thread-connectshyft-c1-persisted-claim',
+      tenant_id: 'tenant-connectshyft-c1',
+      org_unit_id: 'org-connectshyft-c1-east',
+      neighbor_id: 'neighbor-connectshyft-c1-9001',
+      person_id: 'person-connectshyft-c1-9001',
+      origin_person_id: null,
+      activity_id: null,
+      source: 'VOICE',
+      state: 'UNCLAIMED',
+      escalation_stage: 2,
+      next_evaluation_at_utc: '2026-03-01T00:00:00.000Z',
+      last_inbound_cs_number_id: '+12605550191',
+      preferred_outbound_cs_number_id: '+12605550191',
+      claimed_by_user_id: null,
+      claimed_at_utc: null,
+      closed_by_user_id: null,
+      closed_at_utc: null,
+      created_at_utc: '2026-03-01T00:00:00.000Z',
+      updated_at_utc: '2026-03-01T00:00:00.000Z',
+    };
+    const updatedRow = {
+      ...existingRow,
+      state: 'CLAIMED',
+      escalation_stage: 0,
+      next_evaluation_at_utc: null,
+      claimed_by_user_id: 'operator-text-id',
+      claimed_at_utc: '2026-03-02T00:00:00.000Z',
+      updated_at_utc: '2026-03-02T00:00:00.000Z',
+    };
+    const capturedUpdates: Array<Record<string, unknown>> = [];
+
+    const createBuilder = () => ({
+      where: jest.fn().mockReturnThis(),
+      first: jest.fn().mockResolvedValue(existingRow),
+      update: jest.fn((payload: Record<string, unknown>) => {
+        capturedUpdates.push(payload);
+        return {
+          returning: jest.fn().mockResolvedValue([updatedRow]),
+        };
+      }),
+    });
+
+    const trx = {
+      fn: {
+        now: jest.fn(() => 'db-now'),
+      },
+      withSchema: jest.fn().mockReturnValue({
+        table: jest.fn(() => createBuilder()),
+      }),
+    };
+    const knexClient = {
+      transaction: jest.fn(async (handler: (transaction: typeof trx) => Promise<unknown>) => handler(trx)),
+    } as any;
+    const store = new KnexConnectShyftThreadStore(knexClient);
+
+    const result = await store.transitionThreadState({
+      tenantId: 'tenant-connectshyft-c1',
+      threadId: 'thread-connectshyft-c1-persisted-claim',
+      nextState: 'CLAIMED',
+      actorUserId: 'operator-text-id',
+    } as any);
+
+    expect(result).toMatchObject({
+      ok: true,
+      thread: {
+        threadId: 'thread-connectshyft-c1-persisted-claim',
+        state: 'CLAIMED',
+        claimedByUserId: 'operator-text-id',
+      },
+    });
+    expect(capturedUpdates).toContainEqual(expect.objectContaining({
+      state: 'CLAIMED',
+      claimed_by_user_id: 'operator-text-id',
+      claimed_at_utc: 'db-now',
+      updated_by_user_id: 'operator-text-id',
+      updated_at_utc: 'db-now',
+    }));
   });
 });
 
