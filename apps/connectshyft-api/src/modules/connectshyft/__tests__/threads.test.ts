@@ -586,6 +586,44 @@ describe('connectshyft async thread service persistence guards', () => {
 
     loggerErrorSpy.mockRestore();
   });
+
+  it('classifies database claim write failures as thread persistence refusals', async () => {
+    const invalidUuidError = Object.assign(new Error('invalid input syntax for type uuid'), {
+      code: '22P02',
+    });
+    const store = {
+      ensureActiveThread: jest.fn(),
+      listDueThreads: jest.fn(),
+      transitionThreadState: jest.fn().mockRejectedValue(invalidUuidError),
+    } as any;
+    const loggerErrorSpy = jest.spyOn(logger, 'error').mockImplementation(() => logger);
+    const service = new AsyncConnectShyftThreadService(store);
+
+    const result = await service.transitionThreadState({
+      actorRoles: ['ORGUNIT_MEMBER'],
+      tenantId: 'tenant-connectshyft-c1',
+      threadId: 'f3fe1191-f90a-4c7d-82ef-f77ce5dff8ba',
+      nextState: 'CLAIMED',
+      actorUserId: 'f3bb331f-8adb-4664-926b-66e01c1881a7',
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      code: 'CONNECTSHYFT_THREAD_PERSISTENCE_UNAVAILABLE',
+    });
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      'connectshyft thread transition persistence failed',
+      expect.objectContaining({
+        tenantId: 'tenant-connectshyft-c1',
+        threadId: 'f3fe1191-f90a-4c7d-82ef-f77ce5dff8ba',
+        nextState: 'CLAIMED',
+        actorUserId: 'f3bb331f-8adb-4664-926b-66e01c1881a7',
+        error: invalidUuidError,
+      }),
+    );
+
+    loggerErrorSpy.mockRestore();
+  });
 });
 
 describe('connectshyft knex thread persistence', () => {
@@ -668,6 +706,95 @@ describe('connectshyft knex thread persistence', () => {
       updated_by_user_id: 'operator-text-id',
       updated_at_utc: 'db-now',
     }));
+  });
+
+  it('logs the exact claim update payload when persistence fails inside transitionThreadState', async () => {
+    const actorUserId = 'f3bb331f-8adb-4664-926b-66e01c1881a7';
+    const threadId = 'f3fe1191-f90a-4c7d-82ef-f77ce5dff8ba';
+    const updateError = Object.assign(new Error('insert or update on table "cs_threads" violates foreign key constraint'), {
+      code: '23503',
+    });
+    const existingRow = {
+      id: threadId,
+      tenant_id: 'tenant-connectshyft-c1',
+      org_unit_id: 'org-connectshyft-c1-east',
+      neighbor_id: 'neighbor-connectshyft-c1-9001',
+      person_id: 'person-connectshyft-c1-9001',
+      origin_person_id: null,
+      activity_id: null,
+      source: 'VOICE',
+      state: 'UNCLAIMED',
+      escalation_stage: 2,
+      next_evaluation_at_utc: '2026-03-01T00:00:00.000Z',
+      last_inbound_cs_number_id: '+12605550191',
+      preferred_outbound_cs_number_id: '+12605550191',
+      claimed_by_user_id: null,
+      claimed_at_utc: null,
+      closed_by_user_id: null,
+      closed_at_utc: null,
+      created_at_utc: '2026-03-01T00:00:00.000Z',
+      updated_at_utc: '2026-03-01T00:00:00.000Z',
+    };
+    const capturedUpdates: Array<Record<string, unknown>> = [];
+    const loggerErrorSpy = jest.spyOn(logger, 'error').mockImplementation(() => logger);
+
+    const createBuilder = () => ({
+      where: jest.fn().mockReturnThis(),
+      first: jest.fn().mockResolvedValue(existingRow),
+      update: jest.fn((payload: Record<string, unknown>) => {
+        capturedUpdates.push(payload);
+        return {
+          returning: jest.fn().mockRejectedValue(updateError),
+        };
+      }),
+    });
+
+    const trx = {
+      fn: {
+        now: jest.fn(() => 'db-now'),
+      },
+      withSchema: jest.fn().mockReturnValue({
+        table: jest.fn(() => createBuilder()),
+      }),
+    };
+    const knexClient = {
+      transaction: jest.fn(async (handler: (transaction: typeof trx) => Promise<unknown>) => handler(trx)),
+    } as any;
+    const store = new KnexConnectShyftThreadStore(knexClient);
+
+    await expect(store.transitionThreadState({
+      tenantId: 'tenant-connectshyft-c1',
+      threadId,
+      nextState: 'CLAIMED',
+      actorUserId,
+    } as any)).rejects.toBe(updateError);
+
+    expect(capturedUpdates).toContainEqual(expect.objectContaining({
+      state: 'CLAIMED',
+      claimed_by_user_id: actorUserId,
+      claimed_at_utc: 'db-now',
+      updated_by_user_id: actorUserId,
+      updated_at_utc: 'db-now',
+    }));
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      'connectshyft thread transition persistence failed',
+      expect.objectContaining({
+        tenantId: 'tenant-connectshyft-c1',
+        threadId,
+        nextState: 'CLAIMED',
+        actorUserId,
+        updatePayload: expect.objectContaining({
+          state: 'CLAIMED',
+          claimed_by_user_id: actorUserId,
+          claimed_at_utc: 'db-now',
+          updated_by_user_id: actorUserId,
+          updated_at_utc: 'db-now',
+        }),
+        error: updateError,
+      }),
+    );
+
+    loggerErrorSpy.mockRestore();
   });
 });
 

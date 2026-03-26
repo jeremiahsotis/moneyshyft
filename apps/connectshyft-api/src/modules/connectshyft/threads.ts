@@ -21,6 +21,18 @@ const MAX_ESCALATION_STAGE = 3;
 const HOUR_MS = 60 * 60 * 1000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const E164_PROVIDER_NUMBER_PATTERN = /^\+[1-9]\d{1,14}$/;
+const CONNECTSHYFT_PERSISTENCE_ERROR_CODES = new Set([
+  '3F000',
+  '22P02',
+  '22007',
+  '23502',
+  '23503',
+  '23505',
+  '23514',
+  '42703',
+  '42804',
+  '42P01',
+]);
 
 export type ConnectShyftThreadState = (typeof CONNECTSHYFT_CANONICAL_THREAD_STATES)[number];
 export type ConnectShyftLifecycleAction = 'claim' | 'takeover' | 'close';
@@ -650,15 +662,14 @@ const hasThreadTransitionCapability = (actorRoles: Array<string | null | undefin
     || hasCapability(actorRoles, CAPABILITIES.THREAD_TAKEOVER_ALL);
 };
 
-const isMissingPersistenceError = (error: unknown): boolean => {
+const isClassifiedPersistenceError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {
     return false;
   }
 
   const candidate = error as { code?: string };
-  return candidate.code === '42P01'
-    || candidate.code === '3F000'
-    || candidate.code === '42703';
+  return typeof candidate.code === 'string'
+    && CONNECTSHYFT_PERSISTENCE_ERROR_CODES.has(candidate.code);
 };
 
 const buildThreadViewCapabilityRefusal = (): ThreadRefusalResult => ({
@@ -1399,20 +1410,32 @@ export class KnexConnectShyftThreadStore {
         updatePayload.next_evaluation_at_utc = null;
       }
 
-      const [updated] = await trx
-        .withSchema('connectshyft')
-        .table('cs_threads')
-        .where({
-          tenant_id: input.tenantId,
-          id: input.threadId,
-        })
-        .update(updatePayload)
-        .returning<DbThreadRow[]>(this.threadColumns());
+      try {
+        const [updated] = await trx
+          .withSchema('connectshyft')
+          .table('cs_threads')
+          .where({
+            tenant_id: input.tenantId,
+            id: input.threadId,
+          })
+          .update(updatePayload)
+          .returning<DbThreadRow[]>(this.threadColumns());
 
-      return {
-        ok: true,
-        thread: mapDbRowToThread(updated),
-      };
+        return {
+          ok: true,
+          thread: mapDbRowToThread(updated),
+        };
+      } catch (errorCaught) {
+        logger.error('connectshyft thread transition persistence failed', {
+          tenantId: input.tenantId,
+          threadId: input.threadId,
+          nextState: input.nextState,
+          actorUserId: input.actorUserId,
+          updatePayload,
+          error: errorCaught,
+        });
+        throw errorCaught;
+      }
     });
   }
 
@@ -1823,7 +1846,7 @@ export class AsyncConnectShyftThreadService {
         },
       };
     } catch (error) {
-      if (!isMissingPersistenceError(error)) {
+      if (!isClassifiedPersistenceError(error)) {
         throw error;
       }
 
@@ -1854,7 +1877,7 @@ export class AsyncConnectShyftThreadService {
         },
       };
     } catch (error) {
-      if (!isMissingPersistenceError(error)) {
+      if (!isClassifiedPersistenceError(error)) {
         throw error;
       }
 
@@ -1905,7 +1928,7 @@ export class AsyncConnectShyftThreadService {
         },
       };
     } catch (error) {
-      if (!isMissingPersistenceError(error)) {
+      if (!isClassifiedPersistenceError(error)) {
         throw error;
       }
 
@@ -1944,7 +1967,7 @@ export class AsyncConnectShyftThreadService {
         },
       };
     } catch (error) {
-      if (!isMissingPersistenceError(error)) {
+      if (!isClassifiedPersistenceError(error)) {
         throw error;
       }
 
@@ -1967,7 +1990,7 @@ export class AsyncConnectShyftThreadService {
     try {
       return await this.store.findThreadById(input);
     } catch (error) {
-      if (!isMissingPersistenceError(error)) {
+      if (!isClassifiedPersistenceError(error)) {
         throw error;
       }
 
@@ -1981,7 +2004,7 @@ export class AsyncConnectShyftThreadService {
     try {
       return await this.store.listThreadsByPersonIds(input);
     } catch (error) {
-      if (!isMissingPersistenceError(error)) {
+      if (!isClassifiedPersistenceError(error)) {
         throw error;
       }
 
@@ -1995,7 +2018,7 @@ export class AsyncConnectShyftThreadService {
     try {
       return await this.store.rebindPersonThreads(input);
     } catch (error) {
-      if (!isMissingPersistenceError(error)) {
+      if (!isClassifiedPersistenceError(error)) {
         throw error;
       }
 
